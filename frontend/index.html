@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deja Vu1 — Snapmaker U1 Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">DV1</span>
+      <div>
+        <h1>Deja Vu1</h1>
+        <p>Maintenance, dock status, and filament checks for the Snapmaker U1</p>
+      </div>
+    </div>
+    <div class="conn">
+      <span class="dot"></span>
+      <span>Mock Moonraker</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- Printer summary strip ------------------------------------------- -->
+  <section class="stats" id="stats">
+    <div class="stat"><span class="stat-val" id="stat-hours">—</span><span class="stat-key">Print hours</span></div>
+    <div class="stat"><span class="stat-val" id="stat-prints">—</span><span class="stat-key">Prints</span></div>
+    <div class="stat"><span class="stat-val" id="stat-filament">—</span><span class="stat-key">Filament used</span></div>
+    <div class="stat"><span class="stat-val" id="stat-due">—</span><span class="stat-key">Tasks overdue</span></div>
+  </section>
+
+  <!-- Module 1: Maintenance ------------------------------------------- -->
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2>Maintenance</h2>
+        <p class="card-sub">Reminders based on real print history</p>
+      </div>
+      <span class="badge badge-live">Live</span>
+    </div>
+
+    <div id="tasks" class="tasks">
+      <p class="loading">Loading maintenance data…</p>
+    </div>
+
+    <details class="log">
+      <summary>Maintenance history</summary>
+      <div id="mlog"><p class="muted">Nothing logged yet.</p></div>
+    </details>
+  </section>
+
+  <div class="grid-2">
+
+    <!-- Module 2: LED dock rings -------------------------------------- -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Dock status rings</h2>
+          <p class="card-sub">WS2812 rings beside each toolhead dock</p>
+        </div>
+        <span class="badge badge-sim">Simulation</span>
+      </div>
+
+      <div id="rings" class="rings">
+        <p class="loading">Loading…</p>
+      </div>
+
+      <p class="pending">
+        Showing what the LEDs would display, driven by live printer state.
+        Physical rings pending hardware access.
+      </p>
+    </section>
+
+    <!-- Module 3: Color check ----------------------------------------- -->
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Right color loaded?</h2>
+          <p class="card-sub">Optical check before the print starts</p>
+        </div>
+        <span class="badge badge-sim">Simulation</span>
+      </div>
+
+      <div id="colorfile" class="colorfile"></div>
+      <div id="colors" class="colors">
+        <p class="loading">Loading…</p>
+      </div>
+
+      <p class="pending">
+        Detected values are simulated. Physical color sensor pending hardware access.
+      </p>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <span>Running entirely on simulated printer data — no printer connected.</span>
+    <span>MIT licensed · <span id="stamp"></span></span>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
