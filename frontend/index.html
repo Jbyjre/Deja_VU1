@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deja Vu1 — Snapmaker U1 Dashboard</title>
+<!-- Inline favicon: the dock-ring mark. Embedded rather than served as a file
+     so the page makes no extra requests. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff7a2f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ff7a2f'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Filter definitions for the glass edge-refraction. Invisible on its own;
+     referenced from CSS by url(#lg-distort). Only Chromium browsers apply an
+     SVG filter inside backdrop-filter — everywhere else the CSS falls back to
+     plain blur, which still looks fine. -->
+<svg class="lg-defs" width="0" height="0" aria-hidden="true">
+  <defs>
+    <filter id="lg-distort" x="-20%" y="-20%" width="140%" height="140%"
+            color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012"
+                    numOctaves="2" seed="7" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14"
+                         xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- Background atmosphere. Glass needs something with colour and depth behind
+     it, or there is nothing for it to refract and it reads as grey plastic. -->
+<div class="bg" aria-hidden="true">
+  <div class="pool pool-a"></div>
+  <div class="pool pool-b"></div>
+  <div class="pool pool-c"></div>
+  <div class="grain"></div>
+</div>
+
+<header class="topbar liquid-glass">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <span class="brand-ring"></span>
+        <span class="brand-dot"></span>
+      </span>
+      <div class="brand-text">
+        <h1>Deja&nbsp;Vu1</h1>
+        <p>Snapmaker U1 · Moonraker dashboard</p>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="conn" id="conn">
+        <span class="conn-dot" aria-hidden="true"></span>
+        <span id="conn-label">Checking…</span>
+      </div>
+
+      <label class="switch" for="demo-toggle">
+        <span class="switch-label">Demo data</span>
+        <input type="checkbox" id="demo-toggle">
+        <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
+      </label>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- Banner shown whenever figures on screen are simulated ------------- -->
+  <div class="notice liquid-glass" id="notice" hidden>
+    <span class="notice-mark" aria-hidden="true">!</span>
+    <p><strong>Demo data.</strong> No printer is connected. Every figure below
+       is simulated so the dashboard can be previewed.</p>
+  </div>
+
+  <!-- Printer summary -------------------------------------------------- -->
+  <section class="stats" aria-label="Printer totals">
+    <div class="stat liquid-glass">
+      <span class="stat-key">Print hours</span>
+      <span class="stat-val" id="stat-hours">—</span>
+      <span class="stat-foot" id="stat-hours-foot">No printer</span>
+    </div>
+    <div class="stat liquid-glass">
+      <span class="stat-key">Prints</span>
+      <span class="stat-val" id="stat-prints">—</span>
+      <span class="stat-foot" id="stat-prints-foot">No printer</span>
+    </div>
+    <div class="stat liquid-glass">
+      <span class="stat-key">Filament</span>
+      <span class="stat-val" id="stat-filament">—</span>
+      <span class="stat-foot" id="stat-filament-foot">No printer</span>
+    </div>
+    <div class="stat liquid-glass">
+      <span class="stat-key">Overdue</span>
+      <span class="stat-val" id="stat-due">—</span>
+      <span class="stat-foot" id="stat-due-foot">No printer</span>
+    </div>
+  </section>
+
+  <!-- Module 1: Maintenance -------------------------------------------- -->
+  <section class="card liquid-glass">
+    <div class="card-head">
+      <div>
+        <h2>Maintenance</h2>
+        <p class="card-sub">Reminders from cumulative print history</p>
+      </div>
+      <span class="badge badge-live">Working module</span>
+    </div>
+
+    <div id="tasks" class="tasks">
+      <div class="empty">
+        <span class="empty-mark" aria-hidden="true"></span>
+        <p class="empty-title">No printer connected</p>
+        <p class="empty-sub">Maintenance reminders appear once print history
+           is available. Turn on demo data to preview them.</p>
+      </div>
+    </div>
+
+    <details class="log" id="log-wrap" hidden>
+      <summary>Maintenance history</summary>
+      <div id="mlog"></div>
+    </details>
+  </section>
+
+  <div class="grid-2">
+
+    <!-- Module 2: LED dock rings --------------------------------------- -->
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div>
+          <h2>Dock status rings</h2>
+          <p class="card-sub">WS2812 rings beside each toolhead dock</p>
+        </div>
+        <span class="badge badge-sim">Hardware pending</span>
+      </div>
+
+      <div id="rings" class="rings">
+        <div class="empty">
+          <span class="empty-mark" aria-hidden="true"></span>
+          <p class="empty-title">No signal</p>
+          <p class="empty-sub">Ring colours follow live printer state.</p>
+        </div>
+      </div>
+
+      <p class="pending" id="rings-note" hidden>
+        Showing what the LEDs would display. Physical rings pending hardware access.
+      </p>
+    </section>
+
+    <!-- Module 3: Color check ------------------------------------------ -->
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div>
+          <h2>Right colour loaded?</h2>
+          <p class="card-sub">Optical check before the print starts</p>
+        </div>
+        <span class="badge badge-sim">Hardware pending</span>
+      </div>
+
+      <div id="colorfile" class="colorfile" hidden></div>
+      <div id="colors" class="colors">
+        <div class="empty">
+          <span class="empty-mark" aria-hidden="true"></span>
+          <p class="empty-title">Nothing to check</p>
+          <p class="empty-sub">Needs a print file and a sensor reading.</p>
+        </div>
+      </div>
+
+      <p class="pending" id="colors-note" hidden>
+        Detected values are simulated. Physical sensor pending hardware access.
+      </p>
+    </section>
+
+  </div>
+
+  <footer class="foot">
+    <span id="foot-state">No printer connected — nothing is contacted.</span>
+    <span>MIT licensed · <span id="stamp">—</span></span>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

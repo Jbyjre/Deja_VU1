@@ -1,0 +1,774 @@
+/* ==========================================================================
+   Deja Vu1 dashboard
+
+   Visual direction: a precision instrument panel seen through glass.
+   Deep atmospheric background, floating translucent panels, monospaced
+   numerals like lab equipment, one sharp accent colour.
+
+   Liquid Glass is built from five layers, all of which matter:
+     1. backdrop blur + saturation      (the frosted base)
+     2. edge refraction via SVG filter  (light bending — the part that sells it)
+     3. a specular highlight that moves with the pointer
+     4. a thin bright rim, brighter at the light-facing edge
+     5. elevation shadow + faint tint
+
+   Plain CSS. No framework, no build step, no downloaded fonts — the app is
+   meant to run offline with nothing fetched from anywhere.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- glass tokens ---- */
+  --lg-blur: 26px;
+  --lg-saturate: 1.7;
+  --lg-tint: 158, 174, 205;      /* cool grey-blue, not pure white */
+  --lg-tint-alpha: 0.055;
+  --lg-border-alpha: 0.16;
+  --lg-radius: 22px;
+  --lg-highlight: 190px;
+  --lg-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 14px 40px rgba(0, 0, 0, 0.44),
+    0 3px 10px rgba(0, 0, 0, 0.28);
+
+  /* ---- palette ---- */
+  --bg:        #080a0e;
+  --text:      #eef1f7;
+  --text-dim:  #9aa3b8;
+  --text-faint:#6c7488;
+  --accent:    #ff7a2f;         /* Snapmaker orange */
+  --ok:        #3ddc84;
+  --warn:      #ffc44d;
+  --bad:       #ff5f56;
+
+  /* ---- type ----
+     No webfonts: the dashboard must work with no network. Character comes
+     from the pairing instead — monospace for anything measured, a humanist
+     sans for prose. */
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code",
+               Menlo, Consolas, monospace;
+  --font-sans: "Avenir Next", "Segoe UI Variable Display", "Segoe UI",
+               ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* The hidden attribute has to beat any display rule we set below, otherwise
+   an element like .notice (display:flex) stays visible when JS hides it. */
+[hidden] { display: none !important; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding-bottom: 64px;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   Background atmosphere
+   Glass with nothing behind it looks like grey plastic. These slow-drifting
+   colour pools give the panels something to actually bend and saturate.
+   ========================================================================== */
+
+.bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+
+.pool {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+}
+.pool-a {
+  width: 62vw; height: 62vw; top: -22vw; left: -14vw;
+  background: radial-gradient(circle, #1b6fd6 0%, transparent 68%);
+  animation: drift-a 34s ease-in-out infinite;
+}
+.pool-b {
+  width: 56vw; height: 56vw; bottom: -20vw; right: -12vw;
+  background: radial-gradient(circle, #ff7a2f 0%, transparent 68%);
+  opacity: 0.42;
+  animation: drift-b 41s ease-in-out infinite;
+}
+.pool-c {
+  width: 40vw; height: 40vw; top: 34%; left: 42%;
+  background: radial-gradient(circle, #6b3fd4 0%, transparent 70%);
+  opacity: 0.3;
+  animation: drift-c 47s ease-in-out infinite;
+}
+
+@keyframes drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(6vw, 5vh, 0) scale(1.12); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-7vw, -4vh, 0) scale(1.08); }
+}
+@keyframes drift-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-5vw, 6vh, 0) scale(0.9); }
+}
+
+/* Fine grain over everything — stops the large blurred gradients from
+   showing colour banding, and adds a little texture. */
+.grain {
+  position: absolute; inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.lg-defs { position: absolute; pointer-events: none; }
+
+/* ==========================================================================
+   The glass material
+   ========================================================================== */
+
+.liquid-glass {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--lg-radius);
+  background: rgba(var(--lg-tint), var(--lg-tint-alpha));
+  border: 1px solid rgba(255, 255, 255, var(--lg-border-alpha));
+  box-shadow: var(--lg-shadow);
+
+  /* Layer 1 — baseline, understood by every browser. */
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate));
+}
+
+/* Layer 2 — edge refraction. A browser that doesn't understand url(#…) inside
+   backdrop-filter drops this whole declaration and keeps the rule above, so
+   Safari and Firefox get clean blurred glass rather than a broken panel. */
+.liquid-glass {
+  backdrop-filter: blur(calc(var(--lg-blur) * 0.62))
+                   saturate(var(--lg-saturate)) url(#lg-distort);
+}
+
+/* Layer 3 — specular highlight. Follows the pointer via --mx/--my, which
+   app.js updates; falls back to a fixed top-left glint. */
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    var(--lg-highlight) var(--lg-highlight) at var(--mx, 28%) var(--my, 8%),
+    rgba(255, 255, 255, 0.4),
+    transparent 72%
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.7;
+  transition: opacity 0.35s ease;
+}
+.liquid-glass:hover::before { opacity: 1; }
+
+/* Layer 4 — the rim. Brighter along the top-left edge, as if lit from there. */
+.liquid-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  z-index: 0;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.04) 38%,
+    rgba(255, 255, 255, 0.03) 62%,
+    rgba(255, 255, 255, 0.22) 100%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+
+/* Card content has to sit above the two pseudo-element layers. */
+.liquid-glass > * { position: relative; z-index: 1; }
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 26px; }
+
+/* ---- top bar ---------------------------------------------------------- */
+
+.topbar {
+  position: sticky;
+  top: 14px;
+  z-index: 40;
+  max-width: 1100px;
+  margin: 14px auto 26px;
+  width: calc(100% - 52px);
+  border-radius: 26px;
+  padding: 4px;
+}
+.topbar-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; padding: 12px 18px;
+}
+
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+
+/* Mark: a dock ring with a toolhead in it — the project in one glyph. */
+.brand-mark {
+  position: relative; flex: 0 0 40px;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+}
+.brand-ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0.85;
+}
+.brand-dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(255, 122, 47, 0.85);
+}
+
+.brand-text { min-width: 0; }
+.brand h1 {
+  font: 600 17px/1.2 var(--font-mono);
+  letter-spacing: -0.3px;
+}
+.brand p {
+  font-size: 11.5px; color: var(--text-faint);
+  letter-spacing: 0.4px; margin-top: 3px;
+}
+
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+
+.conn {
+  display: flex; align-items: center; gap: 8px;
+  font: 500 11.5px/1 var(--font-mono);
+  letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px; padding: 8px 14px; white-space: nowrap;
+}
+.conn-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-faint);
+  box-shadow: 0 0 0 3px rgba(108, 116, 136, 0.16);
+}
+.conn.is-demo { color: var(--warn); border-color: rgba(255, 196, 77, 0.3); }
+.conn.is-demo .conn-dot {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px rgba(255, 196, 77, 0.16);
+  animation: breathe 2.4s ease-in-out infinite;
+}
+@keyframes breathe { 50% { opacity: 0.4; } }
+
+/* ---- demo switch ------------------------------------------------------ */
+
+.switch {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; user-select: none;
+}
+.switch-label {
+  font: 500 11.5px/1 var(--font-mono);
+  letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text-dim); white-space: nowrap;
+}
+.switch input {
+  position: absolute; opacity: 0;
+  width: 1px; height: 1px; pointer-events: none;
+}
+.switch-track {
+  position: relative;
+  width: 46px; height: 27px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4);
+  transition: background 0.28s ease, border-color 0.28s ease;
+  flex: 0 0 auto;
+}
+.switch-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 21px; height: 21px; border-radius: 50%;
+  background: linear-gradient(160deg, #fdfdfe, #c3c8d4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(0,0,0,0.2);
+  transition: transform 0.28s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.switch input:checked + .switch-track {
+  background: linear-gradient(160deg, var(--accent), #e05a12);
+  border-color: rgba(255, 150, 90, 0.5);
+}
+.switch input:checked + .switch-track .switch-knob { transform: translateX(19px); }
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent); outline-offset: 3px;
+}
+
+/* ---- demo notice ------------------------------------------------------ */
+
+.notice {
+  display: flex; align-items: center; gap: 13px;
+  padding: 14px 18px; margin-bottom: 20px;
+  border-radius: 16px;
+  border-color: rgba(255, 196, 77, 0.26);
+  animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.notice-mark {
+  flex: 0 0 22px;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(255, 196, 77, 0.18);
+  color: var(--warn);
+  font: 700 13px/1 var(--font-mono);
+}
+.notice p { font-size: 13.5px; color: var(--text-dim); }
+.notice strong { color: var(--warn); font-weight: 600; }
+
+/* ---- stat tiles ------------------------------------------------------- */
+
+.stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px; margin-bottom: 22px;
+}
+.stat {
+  padding: 17px 19px 15px;
+  display: flex; flex-direction: column; gap: 3px;
+  border-radius: 18px;
+  animation: rise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.stat:nth-child(1) { animation-delay: 0.02s; }
+.stat:nth-child(2) { animation-delay: 0.07s; }
+.stat:nth-child(3) { animation-delay: 0.12s; }
+.stat:nth-child(4) { animation-delay: 0.17s; }
+
+.stat-key {
+  font: 500 10.5px/1 var(--font-mono);
+  letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--text-faint);
+}
+.stat-val {
+  font: 300 32px/1.15 var(--font-mono);
+  letter-spacing: -1.2px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 6px;
+  transition: color 0.3s ease;
+}
+.stat.is-empty .stat-val { color: var(--text-faint); }
+.stat-foot {
+  font-size: 11.5px; color: var(--text-faint);
+  font-family: var(--font-mono); letter-spacing: 0.2px;
+}
+.stat.is-alert .stat-val { color: var(--bad); }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---- cards ------------------------------------------------------------ */
+
+.card {
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  animation: rise 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation-delay: 0.16s;
+}
+.card-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 20px;
+}
+.card h2 {
+  font: 600 15px/1.2 var(--font-mono);
+  letter-spacing: 0.2px;
+}
+.card-sub { font-size: 13px; color: var(--text-faint); margin-top: 4px; }
+
+.badge {
+  font: 600 10px/1 var(--font-mono);
+  letter-spacing: 0.9px; text-transform: uppercase;
+  padding: 6px 11px; border-radius: 999px; white-space: nowrap;
+}
+.badge-live {
+  background: rgba(61, 220, 132, 0.12); color: var(--ok);
+  border: 1px solid rgba(61, 220, 132, 0.26);
+}
+.badge-sim {
+  background: rgba(255, 255, 255, 0.04); color: var(--text-faint);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* align-items:start lets each card size to its own content. Stretching them to
+   equal height leaves a large dead gap under the shorter one. */
+.grid-2 {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 20px; align-items: start;
+}
+.grid-2 .card { margin-bottom: 0; }
+
+/* ---- empty states ----------------------------------------------------- */
+
+.empty {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 7px;
+  padding: 40px 20px;
+}
+.empty-mark {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.18);
+  margin-bottom: 6px;
+  position: relative;
+}
+.empty-mark::after {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+}
+.empty-title {
+  font: 500 13px/1 var(--font-mono);
+  letter-spacing: 0.5px; color: var(--text-dim);
+}
+.empty-sub {
+  font-size: 12.5px; color: var(--text-faint);
+  max-width: 34ch; line-height: 1.55;
+}
+
+/* ---- maintenance tasks ------------------------------------------------
+   These repeat, so they deliberately do NOT get their own backdrop-filter —
+   one blurred region per row would be slow and would also look wrong, since
+   glass can't cleanly sample other glass. A translucent fill reads correctly
+   sitting inside the parent panel. */
+
+.tasks { display: flex; flex-direction: column; gap: 10px; }
+
+.task {
+  position: relative;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 14px;
+  padding: 15px 17px;
+  padding-left: 21px;
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 14px; align-items: center;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  animation: rise 0.4s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.task:hover { background: rgba(255, 255, 255, 0.055); }
+
+/* The status stripe down the left edge. */
+.task::before {
+  content: ""; position: absolute;
+  left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--task-color);
+  box-shadow: 0 0 14px -1px var(--task-color);
+}
+.task.overdue  { --task-color: var(--bad); }
+.task.due_soon { --task-color: var(--warn); }
+.task.ok       { --task-color: var(--ok); }
+
+.task-name {
+  font-size: 14.5px; font-weight: 550;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.pill {
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.8px; text-transform: uppercase;
+  padding: 4px 8px; border-radius: 5px;
+  color: var(--task-color);
+  background: color-mix(in srgb, var(--task-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--task-color) 28%, transparent);
+}
+.task-desc { font-size: 13px; color: var(--text-faint); margin-top: 4px; }
+.task-meta {
+  font: 400 11.5px/1 var(--font-mono);
+  color: var(--text-faint); margin-top: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  height: 3px; border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 10px; overflow: hidden;
+}
+.bar span {
+  display: block; height: 100%; border-radius: 3px;
+  background: var(--task-color);
+  box-shadow: 0 0 10px -1px var(--task-color);
+  transform-origin: left;
+  animation: fill 0.75s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ---- buttons ---------------------------------------------------------- */
+
+.btn {
+  position: relative;
+  font: 500 12.5px/1 var(--font-mono);
+  letter-spacing: 0.3px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 11px;
+  padding: 11px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 3px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+              background 0.18s ease, box-shadow 0.18s ease,
+              border-color 0.18s ease;
+}
+/* A glint across the top edge, so the button reads as the same material. */
+.btn::before {
+  content: ""; position: absolute; inset: 0;
+  border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.16), transparent 55%);
+}
+.btn:hover {
+  background: rgba(255, 122, 47, 0.9);
+  border-color: rgba(255, 160, 100, 0.6);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 6px 18px rgba(255, 122, 47, 0.32);
+  transform: translateY(-1px);
+}
+.btn:active { transform: scale(0.965) translateY(0); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.btn:disabled {
+  opacity: 0.45; cursor: default; transform: none;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+/* ---- maintenance log -------------------------------------------------- */
+
+.log {
+  margin-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 15px;
+}
+.log summary {
+  cursor: pointer; list-style: none;
+  font: 500 11.5px/1 var(--font-mono);
+  letter-spacing: 0.7px; text-transform: uppercase;
+  color: var(--text-faint);
+  transition: color 0.18s ease;
+}
+.log summary::-webkit-details-marker { display: none; }
+.log summary::before { content: "+ "; }
+.log[open] summary::before { content: "– "; }
+.log summary:hover { color: var(--text-dim); }
+
+.log-row {
+  display: flex; justify-content: space-between; gap: 14px;
+  font-size: 13px; padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.log-row:last-child { border-bottom: none; }
+.log-row span:last-child {
+  color: var(--text-faint); white-space: nowrap;
+  font-family: var(--font-mono); font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.log-empty { font-size: 12.5px; color: var(--text-faint); padding-top: 10px; }
+
+/* ---- LED rings -------------------------------------------------------- */
+
+.rings {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px; text-align: center;
+}
+.rings .empty { grid-column: 1 / -1; }
+
+.ring-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* The ring itself: a lit torus. The glow is what makes it read as an LED
+   rather than a circle with a border. */
+.ring {
+  position: relative;
+  width: 58px; height: 58px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 5px solid currentColor;
+  box-shadow:
+    0 0 20px -2px currentColor,
+    0 0 44px -8px currentColor,
+    inset 0 0 12px -4px currentColor;
+}
+.ring-core {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: currentColor;
+  filter: blur(0.5px);
+  opacity: 0.9;
+}
+.ring.pulse { animation: led-pulse 2.4s ease-in-out infinite; }
+.ring.blink { animation: led-blink 0.9s steps(1) infinite; }
+
+@keyframes led-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.42; } }
+@keyframes led-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.22; } }
+
+.ring-id {
+  font: 600 12px/1 var(--font-mono);
+  letter-spacing: 1px;
+}
+.ring-label {
+  font-size: 11px; color: var(--text-faint); line-height: 1.4;
+}
+.ring-pct {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--text-dim); font-variant-numeric: tabular-nums;
+}
+
+/* ---- colour check ----------------------------------------------------- */
+
+.colorfile {
+  font: 400 11.5px/1 var(--font-mono);
+  color: var(--text-faint);
+  letter-spacing: 0.3px;
+  margin-bottom: 15px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.colors { display: flex; flex-direction: column; gap: 12px; }
+
+.crow {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 14px;
+  padding: 14px 16px;
+  animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.crow-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 12px;
+}
+.crow-head {
+  font: 500 12px/1 var(--font-mono);
+  letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.swatches { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+.sw { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-faint); }
+
+/* Chips get a highlight and a shadow so they look like a physical sample,
+   not a flat rectangle of colour. */
+.chip {
+  width: 28px; height: 28px; border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 3px 8px rgba(0, 0, 0, 0.4);
+  flex: 0 0 auto;
+}
+.arrow { color: var(--text-faint); font-size: 13px; }
+
+.verdict {
+  font: 600 9.5px/1 var(--font-mono);
+  letter-spacing: 0.9px; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 6px;
+  color: var(--v-color);
+  background: color-mix(in srgb, var(--v-color) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--v-color) 30%, transparent);
+}
+.verdict.match    { --v-color: var(--ok); }
+.verdict.close    { --v-color: var(--warn); }
+.verdict.mismatch { --v-color: var(--bad); }
+
+.crow-msg { font-size: 12.5px; color: var(--text-faint); margin-top: 11px; }
+
+/* ---- misc ------------------------------------------------------------- */
+
+.pending {
+  font-size: 11.5px; color: var(--text-faint);
+  margin-top: 18px; padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  line-height: 1.5;
+}
+
+.foot {
+  display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  font: 400 11.5px/1.5 var(--font-mono);
+  color: var(--text-faint);
+  letter-spacing: 0.2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 18px; margin-top: 24px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 880px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-2 .card { margin-bottom: 20px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 620px) {
+  .wrap { padding: 0 16px; }
+  .topbar { width: calc(100% - 32px); top: 10px; }
+  .topbar-inner { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .topbar-right { width: 100%; justify-content: space-between; }
+  .task { grid-template-columns: 1fr; }
+  .task .btn { justify-self: start; }
+  .rings { grid-template-columns: repeat(2, 1fr); }
+  .stat-val { font-size: 27px; }
+}
+
+/* ==========================================================================
+   Accessibility
+   These map to real system settings. Not optional polish.
+   ========================================================================== */
+
+/* "Reduce transparency" — drop the blur, make panels solid so text stays crisp. */
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #141821;
+  }
+  .liquid-glass::before { display: none; }
+  .bg { display: none; }
+  body { background: #0d1015; }
+}
+
+/* "Reduce motion" — nothing drifts, pulses, or chases the pointer. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .pool { animation: none; }
+  .liquid-glass::before {
+    background: radial-gradient(180px 180px at 28% 8%,
+      rgba(255, 255, 255, 0.32), transparent 72%);
+  }
+}
+
+/* "Increase contrast" — real borders instead of faint glass edges. */
+@media (prefers-contrast: more) {
+  :root { --text-faint: #aab2c4; }
+  .liquid-glass {
+    background: #12161e;
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .liquid-glass::before { display: none; }
+  .task, .crow { border-color: rgba(255, 255, 255, 0.35); }
+  .btn { border-color: rgba(255, 255, 255, 0.5); }
+}
