@@ -17,18 +17,30 @@ then open http://localhost:8000 in a browser.
 
 API endpoints
 -------------
+  GET  /api/connection           is a printer connected?
   GET  /api/maintenance          what's due
   GET  /api/maintenance/history  completed maintenance log
   POST /api/maintenance/done     mark a task done  {"task_id": "..."}
   GET  /api/leds                 simulated LED ring states
   GET  /api/colorcheck           simulated filament color check
   GET  /api/printer              raw mock printer state
+
+No figures without a printer
+----------------------------
+With no printer connected, the data endpoints return no numbers at all —
+just {"connected": false, "demo": false}. The dashboard shows empty states
+rather than inventing values.
+
+Adding ?demo=1 to a request opts in to the simulated data explicitly. That is
+what the dashboard's "Demo data" switch sends. Everything returned that way is
+flagged "demo": true, so simulated figures can never be mistaken for real ones.
 """
 
 import json
 import os
 import sys
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
 
 # Make sure Python can find the other backend modules no matter which folder
 # the server was started from.
@@ -44,6 +56,17 @@ import mock_moonraker
 _FRONTEND_DIR = os.path.join(os.path.dirname(_BACKEND_DIR), "frontend")
 
 PORT = int(os.environ.get("PORT", 8000))
+
+# The routes that return printer figures, each mapped to the function that
+# produces them. Kept in one place so the connection check below cannot miss
+# one: everything in here is gated, by construction.
+_DATA_ROUTES = {
+    "/api/maintenance": lambda: maintenance.get_status(),
+    "/api/maintenance/history": lambda: {"history": maintenance.get_history()},
+    "/api/leds": lambda: led_status.get_all_ring_states(),
+    "/api/colorcheck": lambda: color_check.check_current_job(),
+    "/api/printer": lambda: mock_moonraker.get_printer_state(),
+}
 
 
 class DejaVuHandler(SimpleHTTPRequestHandler):
@@ -96,27 +119,58 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         # Not an API call, so serve a file from the frontend folder.
         return super().do_GET()
 
+    def _wants_demo(self):
+        """
+        Did the caller explicitly ask for simulated data?
+
+        True when the URL carries ?demo=1. Anything else means no — we do not
+        hand out invented figures unless they were asked for by name.
+        """
+        query = parse_qs(urlparse(self.path).query)
+        return query.get("demo", ["0"])[0] in ("1", "true", "yes")
+
+    @staticmethod
+    def _tag(payload, connected):
+        """
+        Label a response with where its numbers came from.
+
+        Anything served without a real printer is marked demo data, so the
+        dashboard can badge it and nobody mistakes it for a live reading.
+        """
+        payload["connected"] = connected
+        payload["demo"] = not connected
+        return payload
+
     def _handle_api_get(self):
         # Ignore any "?something=..." on the end of the URL.
         route = self.path.split("?")[0].rstrip("/")
 
+        connected = mock_moonraker.is_connected()
+        demo = self._wants_demo()
+
         try:
-            if route == "/api/maintenance":
-                return self._send_json(maintenance.get_status())
+            if route == "/api/connection":
+                return self._send_json({
+                    "connected": connected,
+                    "demo_available": True,
+                    "source": "Moonraker" if connected else None,
+                    "message": ("Printer connected." if connected else
+                                "No printer connected. Turn on demo data to "
+                                "preview the dashboard with simulated values."),
+                })
 
-            if route == "/api/maintenance/history":
-                return self._send_json({"history": maintenance.get_history()})
+            # Check the route exists before checking the connection, so a typo
+            # in a URL still reports 404 rather than looking like a
+            # disconnected printer.
+            if route not in _DATA_ROUTES:
+                return self._send_json({"error": "Unknown endpoint"}, status=404)
 
-            if route == "/api/leds":
-                return self._send_json(led_status.get_all_ring_states())
+            # Every route below returns figures. Without a printer, and without
+            # an explicit demo request, it returns none.
+            if not connected and not demo:
+                return self._send_json({"connected": False, "demo": False})
 
-            if route == "/api/colorcheck":
-                return self._send_json(color_check.check_current_job())
-
-            if route == "/api/printer":
-                return self._send_json(mock_moonraker.get_printer_state())
-
-            return self._send_json({"error": "Unknown endpoint"}, status=404)
+            return self._send_json(self._tag(_DATA_ROUTES[route](), connected))
 
         except Exception as exc:                      # noqa: BLE001
             # Never let a crash take the whole server down mid-demo.
@@ -128,6 +182,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route != "/api/maintenance/done":
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
+        # Marking a task done is only meaningful against real data, or in an
+        # explicit demo. Same rule as the read endpoints.
+        connected = mock_moonraker.is_connected()
+        if not connected and not self._wants_demo():
+            return self._send_json({"connected": False, "demo": False}, status=409)
+
         body = self._read_json_body()
         task_id = body.get("task_id")
 
@@ -136,7 +196,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         try:
             updated = maintenance.mark_done(task_id, note=body.get("note", ""))
-            return self._send_json(updated)
+            return self._send_json(self._tag(updated, connected))
         except ValueError as exc:
             return self._send_json({"error": str(exc)}, status=400)
         except Exception as exc:                      # noqa: BLE001

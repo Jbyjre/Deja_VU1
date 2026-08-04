@@ -84,14 +84,31 @@ frontend folder as static files and answers `/api/*` with JSON. No framework,
 so there is nothing to install.
 
 ### `frontend/`
-Three files — HTML, CSS, and JavaScript. No framework and no build step. The
-page fetches from the API and redraws. LED and color panels re-poll every five
-seconds so the dashboard looks live.
+Three files — HTML, CSS, and JavaScript. No framework, no build step, and
+nothing fetched from any external host: no webfonts, no CDN. The dashboard
+runs fully offline.
+
+The visual treatment is an approximation of Apple's Liquid Glass, built from
+five layers: a backdrop blur, edge refraction via an SVG displacement filter,
+a specular highlight that tracks the pointer, a thin bright rim, and an
+elevation shadow. Only Chromium applies an SVG filter inside `backdrop-filter`;
+Safari and Firefox drop that one declaration and keep the plain blur, which
+still looks correct.
+
+Repeated elements — task rows, colour rows — deliberately do not get their own
+`backdrop-filter`. One blurred region per row would be slow, and glass cannot
+cleanly sample other glass. They use a translucent fill inside the parent panel
+instead.
+
+`prefers-reduced-transparency`, `prefers-reduced-motion`, and
+`prefers-contrast` are all handled: the first two drop the blur and the
+animation, the third swaps in solid panels with real borders.
 
 ## API
 
 | Method | Path | Returns |
 |---|---|---|
+| GET | `/api/connection` | Whether a printer is connected |
 | GET | `/api/maintenance` | All tasks with status, plus usage totals |
 | GET | `/api/maintenance/history` | Completed maintenance log, newest first |
 | POST | `/api/maintenance/done` | Marks `{"task_id": "..."}` done, returns fresh status |
@@ -99,9 +116,32 @@ seconds so the dashboard looks live.
 | GET | `/api/colorcheck` | Simulated filament color check |
 | GET | `/api/printer` | Raw mock printer state |
 
-Every simulated response carries `"simulated": true` and
-`"hardware_connected": false`. The dashboard uses those flags to draw its
-"Simulation" badges, so a panel can never quietly present fake data as real.
+### No printer, no figures
+
+With no printer connected, every route that would return numbers instead
+returns exactly this and nothing else:
+
+```json
+{"connected": false, "demo": false}
+```
+
+`POST /api/maintenance/done` refuses with `409` and does not touch the log.
+
+Adding `?demo=1` opts in to the simulated data explicitly. That is what the
+dashboard's "Demo data" switch sends. Everything returned that way is flagged
+`"demo": true`, and simulated module output additionally carries
+`"simulated": true` and `"hardware_connected": false`.
+
+The dashboard uses those flags to draw its badges and its demo banner, so a
+panel can never quietly present invented data as a live reading. The gate is
+enforced in the server, not just hidden in CSS — `curl` gets the same answer
+the browser does.
+
+Only values the server recognises turn demo mode on (`1`, `true`, `yes`). A
+malformed or stray parameter leaves the gate closed.
+
+Route matching happens before the connection check, so a mistyped URL still
+returns `404` rather than looking like a disconnected printer.
 
 ## Storage
 
@@ -125,7 +165,7 @@ Everything that calls them already works.
 
 ## Testing
 
-39 tests, using Python's built-in `unittest`:
+51 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -137,3 +177,8 @@ sorting, and that marking a task done resets it without disturbing others.
 `tests/test_modules.py` covers what is real in the placeholders: the LED
 state machine, the color-distance maths, and a check that the simulation
 always reports itself as simulated.
+
+`tests/test_api.py` starts the real server on a spare port and talks to it
+over HTTP. Its main job is guarding the no-printer-no-figures rule: it asserts
+that a disconnected response contains the two flags and nothing else, so a
+data key can never leak into it unnoticed.

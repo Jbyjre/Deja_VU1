@@ -122,6 +122,20 @@ def _build_print_history(job_count=38, days_back=64):
 _PRINT_HISTORY = _build_print_history()
 
 
+def is_connected():
+    """
+    Is a real printer connected?
+
+    Always False right now — there is no Moonraker instance to talk to, only
+    this file pretending to be one. The dashboard uses this to decide whether
+    it is allowed to show any figures at all.
+
+    When a real Moonraker client replaces this module, this becomes an actual
+    reachability check against the printer.
+    """
+    return False
+
+
 def get_print_history():
     """
     Stand-in for Moonraker's GET /server/history/list.

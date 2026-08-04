@@ -89,6 +89,20 @@ It also means the modules that need hardware do not block the one that
 doesn't. The maintenance module works now, on any Moonraker-connected
 printer. The other two switch on when their parts arrive.
 
+## No printer, no numbers
+
+The dashboard does not invent figures. With no printer connected it shows
+empty states — not zeroes, not placeholder data dressed up as real readings.
+
+To preview it, there is a **Demo data** switch in the header. Turning it on
+loads the simulated print history and labels every panel accordingly, with a
+banner saying plainly that nothing is connected.
+
+This is enforced in the server, not just hidden in the interface. Without a
+printer and without an explicit demo request, the data endpoints return
+`{"connected": false, "demo": false}` and nothing else. `curl` gets the same
+answer the browser does.
+
 ## Current status
 
 Built and tested on mock data. There is no real printer connection yet.
@@ -119,10 +133,16 @@ only sensible approach. Details in
 - **Web server:** `http.server` from the standard library
 - **Frontend:** HTML, CSS, and JavaScript — no framework, no build step
 - **Storage:** a JSON file
-- **Tests:** `unittest` from the standard library
+- **Tests:** `unittest` from the standard library, 51 cases
 - **Printer API:** Moonraker (simulated for now)
 
-No dependencies. Nothing to install beyond Python itself.
+No dependencies. Nothing to install beyond Python itself, and nothing is
+fetched from the internet at runtime — no webfonts, no CDN. It works offline.
+
+The interface uses a Liquid Glass treatment: translucent panels with real edge
+refraction, a highlight that tracks the pointer, and depth on the cards and
+buttons. It respects the system settings for reduced transparency, reduced
+motion, and increased contrast.
 
 ## Roadmap
 
@@ -155,6 +175,10 @@ python3 backend/app.py
 ```
 
 Then open **http://localhost:8000** in a browser.
+
+The dashboard will report that no printer is connected and show empty panels.
+Flip the **Demo data** switch in the header to fill it with the simulated
+print history.
 
 To see the maintenance module on its own, printed to the terminal:
 
