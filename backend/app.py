@@ -8,8 +8,7 @@ The web server. It does two jobs:
   2. Answers questions from that page over a small JSON API.
 
 This uses only Python's built-in http.server, so there is nothing to install.
-Flask or FastAPI would work too, but they would each add a dependency for a
-server this small. Run it with:
+Run it with:
 
     python3 backend/app.py
 
@@ -39,7 +38,7 @@ flagged "demo": true, so simulated figures can never be mistaken for real ones.
 import json
 import os
 import sys
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 # Make sure Python can find the other backend modules no matter which folder
@@ -56,6 +55,7 @@ import mock_moonraker
 _FRONTEND_DIR = os.path.join(os.path.dirname(_BACKEND_DIR), "frontend")
 
 PORT = int(os.environ.get("PORT", 8000))
+MAX_JSON_BODY = 16 * 1024
 
 # The routes that return printer figures, each mapped to the function that
 # produces them. Kept in one place so the connection check below cannot miss
@@ -70,42 +70,52 @@ _DATA_ROUTES = {
 
 
 class DejaVuHandler(SimpleHTTPRequestHandler):
-    """
-    Handles every incoming browser request.
-
-    Anything starting with /api/ is answered with JSON by our own code.
-    Everything else is treated as a request for a file in the frontend folder,
-    which the built-in SimpleHTTPRequestHandler already knows how to serve.
-    """
+    """Serve the frontend and the small JSON API."""
 
     def __init__(self, *args, **kwargs):
-        # Tell the built-in file server to serve out of the frontend folder.
         super().__init__(*args, directory=_FRONTEND_DIR, **kwargs)
 
     # -- helpers ----------------------------------------------------------
+
+    def end_headers(self):
+        # Conservative browser hardening that does not interfere with the
+        # dependency-free inline SVG/CSS used by the dashboard.
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        super().end_headers()
 
     def _send_json(self, payload, status=200):
         """Send a Python dictionary back to the browser as JSON."""
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        # Stop the browser caching API responses, so the dashboard always
-        # shows current data when it refreshes.
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
     def _read_json_body(self):
         """Read and parse the JSON a browser sent us in a POST request."""
-        length = int(self.headers.get("Content-Length", 0))
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+        except (TypeError, ValueError):
+            return None, "Invalid Content-Length"
+
+        if length < 0 or length > MAX_JSON_BODY:
+            return None, "Request body is too large"
         if not length:
-            return {}
+            return {}, None
+
         raw = self.rfile.read(length)
         try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            return {}
+            body = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None, "Invalid JSON body"
+
+        if not isinstance(body, dict):
+            return None, "JSON body must be an object"
+        return body, None
 
     def log_message(self, fmt, *args):
         """Keep the terminal quiet — one tidy line per request."""
@@ -116,35 +126,23 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/"):
             return self._handle_api_get()
-        # Not an API call, so serve a file from the frontend folder.
         return super().do_GET()
 
     def _wants_demo(self):
-        """
-        Did the caller explicitly ask for simulated data?
-
-        True when the URL carries ?demo=1. Anything else means no — we do not
-        hand out invented figures unless they were asked for by name.
-        """
         query = parse_qs(urlparse(self.path).query)
         return query.get("demo", ["0"])[0] in ("1", "true", "yes")
 
     @staticmethod
     def _tag(payload, connected):
-        """
-        Label a response with where its numbers came from.
-
-        Anything served without a real printer is marked demo data, so the
-        dashboard can badge it and nobody mistakes it for a live reading.
-        """
-        payload["connected"] = connected
-        payload["demo"] = not connected
-        return payload
+        # Copy before tagging so a route cannot accidentally retain request
+        # metadata if it returns a shared dictionary in the future.
+        tagged = dict(payload)
+        tagged["connected"] = connected
+        tagged["demo"] = not connected
+        return tagged
 
     def _handle_api_get(self):
-        # Ignore any "?something=..." on the end of the URL.
         route = self.path.split("?")[0].rstrip("/")
-
         connected = mock_moonraker.is_connected()
         demo = self._wants_demo()
 
@@ -159,22 +157,19 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                 "preview the dashboard with simulated values."),
                 })
 
-            # Check the route exists before checking the connection, so a typo
-            # in a URL still reports 404 rather than looking like a
-            # disconnected printer.
             if route not in _DATA_ROUTES:
                 return self._send_json({"error": "Unknown endpoint"}, status=404)
 
-            # Every route below returns figures. Without a printer, and without
-            # an explicit demo request, it returns none.
             if not connected and not demo:
                 return self._send_json({"connected": False, "demo": False})
 
             return self._send_json(self._tag(_DATA_ROUTES[route](), connected))
 
-        except Exception as exc:                      # noqa: BLE001
-            # Never let a crash take the whole server down mid-demo.
-            return self._send_json({"error": str(exc)}, status=500)
+        except Exception as exc:  # noqa: BLE001
+            # Keep the server alive, but do not expose internal exception text
+            # to remote clients. The exception still lands in the terminal.
+            sys.stderr.write(f"  API error {route}: {exc!r}\n")
+            return self._send_json({"error": "Internal server error"}, status=500)
 
     def do_POST(self):
         route = self.path.split("?")[0].rstrip("/")
@@ -182,39 +177,48 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route != "/api/maintenance/done":
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
-        # Marking a task done is only meaningful against real data, or in an
-        # explicit demo. Same rule as the read endpoints.
         connected = mock_moonraker.is_connected()
         if not connected and not self._wants_demo():
             return self._send_json({"connected": False, "demo": False}, status=409)
 
-        body = self._read_json_body()
-        task_id = body.get("task_id")
+        body, error = self._read_json_body()
+        if error:
+            return self._send_json({"error": error}, status=400)
 
-        if not task_id:
+        task_id = body.get("task_id")
+        if not isinstance(task_id, str) or not task_id.strip():
             return self._send_json({"error": "Missing task_id"}, status=400)
 
+        note = body.get("note", "")
+        if not isinstance(note, str):
+            return self._send_json({"error": "note must be a string"}, status=400)
+
         try:
-            updated = maintenance.mark_done(task_id, note=body.get("note", ""))
+            updated = maintenance.mark_done(task_id.strip(), note=note[:1000])
             return self._send_json(self._tag(updated, connected))
         except ValueError as exc:
             return self._send_json({"error": str(exc)}, status=400)
-        except Exception as exc:                      # noqa: BLE001
-            return self._send_json({"error": str(exc)}, status=500)
+        except Exception as exc:  # noqa: BLE001
+            sys.stderr.write(f"  API error {route}: {exc!r}\n")
+            return self._send_json({"error": "Internal server error"}, status=500)
 
 
 def main():
-    server = HTTPServer(("0.0.0.0", PORT), DejaVuHandler)
+    # Threading keeps a slow browser request from blocking every other panel.
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), DejaVuHandler)
+    server.daemon_threads = True
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")
-    print("  Running on simulated printer data. No printer needed.")
+    print("  No printer is contacted unless a real connector is added.")
+    print("  Use the Demo data switch to preview simulated values.")
     print("  Press Ctrl+C to stop.")
     print("=" * 58)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")
+    finally:
         server.server_close()
 
 
