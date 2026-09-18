@@ -4,37 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deja Vu1 — Snapmaker U1 Dashboard</title>
-<!-- Inline favicon: the dock-ring mark. Embedded rather than served as a file
-     so the page makes no extra requests. -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff7a2f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ff7a2f'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Filter definitions for the glass edge-refraction. Invisible on its own;
-     referenced from CSS by url(#lg-distort). Only Chromium browsers apply an
-     SVG filter inside backdrop-filter — everywhere else the CSS falls back to
-     plain blur, which still looks fine. -->
+<!-- Edge-refraction filter for the glass material. Chromium applies it
+     inside backdrop-filter; everywhere else the CSS falls back to plain
+     blur, which still looks fine. -->
 <svg class="lg-defs" width="0" height="0" aria-hidden="true">
   <defs>
     <filter id="lg-distort" x="-20%" y="-20%" width="140%" height="140%"
             color-interpolation-filters="sRGB">
-      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012"
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.011"
                     numOctaves="2" seed="7" result="noise"/>
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14"
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="20"
                          xChannelSelector="R" yChannelSelector="G"/>
       <feGaussianBlur stdDeviation="0.6"/>
     </filter>
   </defs>
 </svg>
 
-<!-- Background atmosphere. Glass needs something with colour and depth behind
-     it, or there is nothing for it to refract and it reads as grey plastic. -->
 <div class="bg" aria-hidden="true">
   <div class="pool pool-a"></div>
   <div class="pool pool-b"></div>
-  <div class="pool pool-c"></div>
-  <div class="grain"></div>
+  <div class="ring-motif" style="width:260px;height:260px;top:8%;right:8%;opacity:.06;"></div>
+  <div class="ring-motif" style="width:140px;height:140px;top:32%;right:26%;opacity:.05;"></div>
+  <div class="ring-motif blue" style="width:100px;height:100px;bottom:14%;left:6%;opacity:.07;"></div>
 </div>
 
 <header class="topbar liquid-glass">
@@ -55,6 +51,7 @@
         <span class="conn-dot" aria-hidden="true"></span>
         <span id="conn-label">Checking…</span>
       </div>
+      <span class="device-count" id="device-count" hidden></span>
 
       <label class="switch" for="demo-toggle">
         <span class="switch-label">Demo data</span>
@@ -67,112 +64,307 @@
 
 <main class="wrap">
 
-  <!-- Banner shown whenever figures on screen are simulated ------------- -->
   <div class="notice liquid-glass" id="notice" hidden>
     <span class="notice-mark" aria-hidden="true">!</span>
     <p><strong>Demo data.</strong> No printer is connected. Every figure below
        is simulated so the dashboard can be previewed.</p>
   </div>
 
-  <!-- Printer summary -------------------------------------------------- -->
-  <section class="stats" aria-label="Printer totals">
-    <div class="stat liquid-glass">
-      <span class="stat-key">Print hours</span>
-      <span class="stat-val" id="stat-hours">—</span>
-      <span class="stat-foot" id="stat-hours-foot">No printer</span>
-    </div>
-    <div class="stat liquid-glass">
-      <span class="stat-key">Prints</span>
-      <span class="stat-val" id="stat-prints">—</span>
-      <span class="stat-foot" id="stat-prints-foot">No printer</span>
-    </div>
-    <div class="stat liquid-glass">
-      <span class="stat-key">Filament</span>
-      <span class="stat-val" id="stat-filament">—</span>
-      <span class="stat-foot" id="stat-filament-foot">No printer</span>
-    </div>
-    <div class="stat liquid-glass">
-      <span class="stat-key">Overdue</span>
-      <span class="stat-val" id="stat-due">—</span>
-      <span class="stat-foot" id="stat-due-foot">No printer</span>
-    </div>
-  </section>
+  <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
+    <button class="navtab active" data-tab="overview">Overview</button>
+    <button class="navtab" data-tab="control">Printer control</button>
+    <button class="navtab" data-tab="maintenance">Maintenance</button>
+    <button class="navtab" data-tab="filament">Filament &amp; colour</button>
+    <button class="navtab" data-tab="modules">Modules &amp; devices</button>
+    <button class="navtab" data-tab="games">While you wait</button>
+  </nav>
 
-  <!-- Module 1: Maintenance -------------------------------------------- -->
-  <section class="card liquid-glass">
-    <div class="card-head">
-      <div>
-        <h2>Maintenance</h2>
-        <p class="card-sub">Reminders from cumulative print history</p>
-      </div>
-      <span class="badge badge-live">Working module</span>
-    </div>
-
-    <div id="tasks" class="tasks">
-      <div class="empty">
-        <span class="empty-mark" aria-hidden="true"></span>
-        <p class="empty-title">No printer connected</p>
-        <p class="empty-sub">Maintenance reminders appear once print history
-           is available. Turn on demo data to preview them.</p>
-      </div>
-    </div>
-
-    <details class="log" id="log-wrap" hidden>
-      <summary>Maintenance history</summary>
-      <div id="mlog"></div>
-    </details>
-  </section>
-
-  <div class="grid-2">
-
-    <!-- Module 2: LED dock rings --------------------------------------- -->
-    <section class="card liquid-glass">
-      <div class="card-head">
-        <div>
-          <h2>Dock status rings</h2>
-          <p class="card-sub">WS2812 rings beside each toolhead dock</p>
-        </div>
-        <span class="badge badge-sim">Hardware pending</span>
-      </div>
-
-      <div id="rings" class="rings">
-        <div class="empty">
-          <span class="empty-mark" aria-hidden="true"></span>
-          <p class="empty-title">No signal</p>
-          <p class="empty-sub">Ring colours follow live printer state.</p>
-        </div>
-      </div>
-
-      <p class="pending" id="rings-note" hidden>
-        Showing what the LEDs would display. Physical rings pending hardware access.
-      </p>
-    </section>
-
-    <!-- Module 3: Color check ------------------------------------------ -->
-    <section class="card liquid-glass">
-      <div class="card-head">
-        <div>
-          <h2>Right colour loaded?</h2>
-          <p class="card-sub">Optical check before the print starts</p>
-        </div>
-        <span class="badge badge-sim">Hardware pending</span>
-      </div>
-
-      <div id="colorfile" class="colorfile" hidden></div>
-      <div id="colors" class="colors">
-        <div class="empty">
-          <span class="empty-mark" aria-hidden="true"></span>
-          <p class="empty-title">Nothing to check</p>
-          <p class="empty-sub">Needs a print file and a sensor reading.</p>
-        </div>
-      </div>
-
-      <p class="pending" id="colors-note" hidden>
-        Detected values are simulated. Physical sensor pending hardware access.
-      </p>
-    </section>
-
+  <!-- Always visible so a finished or failed print is never missed just
+       because you're on another tab, or mid-game. -->
+  <div class="status-ribbon liquid-glass" id="status-ribbon">
+    <span class="rb-dot" aria-hidden="true"></span>
+    <span class="rb-text" id="rb-text">No printer connected.</span>
+    <div class="rb-bar" id="rb-bar" hidden><span id="rb-bar-fill"></span></div>
+    <span class="rb-pct" id="rb-pct" hidden></span>
   </div>
+
+  <!-- ============================================================ -->
+  <!-- OVERVIEW                                                      -->
+  <!-- ============================================================ -->
+  <section id="tab-overview" class="tab-panel">
+    <section class="stats liquid-glass divider-row cols-4" aria-label="Printer totals">
+      <div class="stat" id="stat-hours-wrap">
+        <span class="stat-key">Print hours</span>
+        <span class="stat-val" id="stat-hours">—</span>
+        <span class="stat-foot" id="stat-hours-foot">No printer</span>
+      </div>
+      <div class="stat" id="stat-prints-wrap">
+        <span class="stat-key">Prints</span>
+        <span class="stat-val" id="stat-prints">—</span>
+        <span class="stat-foot" id="stat-prints-foot">No printer</span>
+      </div>
+      <div class="stat" id="stat-filament-wrap">
+        <span class="stat-key">Filament</span>
+        <span class="stat-val" id="stat-filament">—</span>
+        <span class="stat-foot" id="stat-filament-foot">No printer</span>
+      </div>
+      <div class="stat" id="stat-due-wrap">
+        <span class="stat-key">Overdue</span>
+        <span class="stat-val" id="stat-due">—</span>
+        <span class="stat-foot" id="stat-due-foot">No printer</span>
+      </div>
+    </section>
+
+    <div class="grid-2" style="margin-bottom:20px;">
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Maintenance</h2><p class="card-sub">What's due right now</p></div>
+        </div>
+        <div id="overview-maintenance"></div>
+      </section>
+
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Printer control</h2><p class="card-sub">Quick actions</p></div>
+        </div>
+        <div id="overview-control"></div>
+      </section>
+    </div>
+
+    <section class="card liquid-glass" style="display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap;">
+      <div>
+        <h2 style="margin-bottom:6px;">Sync this dashboard to your phone</h2>
+        <p class="card-sub" style="max-width:52ch;">No account, no cloud — the phone talks straight to this dashboard over your home network.</p>
+      </div>
+      <button class="btn primary" id="overview-pair-btn">Pair a device</button>
+    </section>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- PRINTER CONTROL                                               -->
+  <!-- ============================================================ -->
+  <section id="tab-control" class="tab-panel" hidden>
+    <section class="card liquid-glass" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="conn-dot" id="ctrl-state-dot" aria-hidden="true" style="width:9px;height:9px;"></span>
+        <div>
+          <div id="ctrl-state-text" style="font:700 14px/1 var(--font-mono);">No printer connected</div>
+          <div id="ctrl-state-sub" class="card-sub" style="margin-top:4px;"></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn primary" id="ctrl-pause-resume" disabled>Pause</button>
+        <button class="btn danger" id="ctrl-cancel" disabled>Cancel print</button>
+      </div>
+    </section>
+
+    <section class="liquid-glass divider-row cols-4" id="ctrl-temps" style="margin-bottom:20px;"></section>
+
+    <div class="grid-2">
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>Home axes</h2></div></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" data-home="X" disabled>Home X</button>
+          <button class="btn" data-home="Y" disabled>Home Y</button>
+          <button class="btn" data-home="Z" disabled>Home Z</button>
+          <button class="btn primary" data-home="all" disabled>Home all</button>
+        </div>
+      </section>
+
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>G-code console</h2></div></div>
+        <div class="console-log" id="gcode-log"></div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="gcode-input" placeholder="Send a G-code command…" style="flex:1;" disabled>
+          <button class="btn primary" id="gcode-send" disabled>Send</button>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- MAINTENANCE                                                   -->
+  <!-- ============================================================ -->
+  <section id="tab-maintenance" class="tab-panel" hidden>
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div><h2>Maintenance</h2><p class="card-sub">Reminders from cumulative print history</p></div>
+        <span class="badge badge-live">Working module</span>
+      </div>
+      <div id="tasks" class="tasks">
+        <div class="empty">
+          <span class="empty-mark" aria-hidden="true"></span>
+          <p class="empty-title">No printer connected</p>
+          <p class="empty-sub">Maintenance reminders appear once print history is available. Turn on demo data to preview them.</p>
+        </div>
+      </div>
+      <details class="log" id="log-wrap" hidden>
+        <summary>Maintenance history</summary>
+        <div id="mlog"></div>
+      </details>
+    </section>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- FILAMENT & COLOUR                                             -->
+  <!-- ============================================================ -->
+  <section id="tab-filament" class="tab-panel" hidden>
+    <div class="grid-2" style="margin-bottom:20px;">
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Dock status rings</h2><p class="card-sub">WS2812 rings, or a WLED strip you already own</p></div>
+          <span class="badge badge-sim">Hardware pending</span>
+        </div>
+        <div id="rings" class="rings">
+          <div class="empty">
+            <span class="empty-mark" aria-hidden="true"></span>
+            <p class="empty-title">No signal</p>
+            <p class="empty-sub">Ring colours follow live printer state.</p>
+          </div>
+        </div>
+        <p class="log-empty" id="rings-note" hidden>Showing what the LEDs would display. Physical rings pending hardware access.</p>
+      </section>
+
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Right colour loaded?</h2><p class="card-sub">Optical check before the print starts</p></div>
+          <span class="badge badge-sim">Hardware pending</span>
+        </div>
+        <div id="colorfile" class="colorfile" hidden></div>
+        <div id="colors" class="colors">
+          <div class="empty">
+            <span class="empty-mark" aria-hidden="true"></span>
+            <p class="empty-title">Nothing to check</p>
+            <p class="empty-sub">Needs a print file and a sensor reading.</p>
+          </div>
+        </div>
+        <p class="log-empty" id="colors-note" hidden>Detected values are simulated. Physical sensor pending hardware access.</p>
+      </section>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px;">
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Filament inventory</h2><p class="card-sub">Spools on hand</p></div>
+          <span class="badge badge-optional">Optional module</span>
+        </div>
+        <div id="spool-list"></div>
+        <form id="spool-form" style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+          <input type="text" id="spool-material" placeholder="Material (PLA)" style="flex:1; min-width:100px;">
+          <input type="text" id="spool-color-name" placeholder="Colour name" style="flex:1; min-width:100px;">
+          <input type="color" id="spool-color-hex" value="#ff7a2f" style="width:44px; padding:2px;">
+          <input type="number" id="spool-grams" placeholder="Grams" style="width:90px;">
+          <button class="btn primary" type="submit">Add spool</button>
+        </form>
+        <div id="spool-idle-note" class="log-empty" hidden></div>
+      </section>
+
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>What changed?</h2><p class="card-sub">Compared against your print history</p></div>
+          <span class="badge badge-optional">Optional module</span>
+        </div>
+        <div id="compare-body">
+          <div class="empty">
+            <span class="empty-mark" aria-hidden="true"></span>
+            <p class="empty-title">Nothing to compare yet</p>
+            <p class="empty-sub">Needs a printer connection and print history for this file.</p>
+          </div>
+        </div>
+        <button class="btn" id="repeat-settings-btn" style="margin-top:14px; width:100%;">Show last successful settings</button>
+        <div id="repeat-settings-body" style="margin-top:10px;"></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- MODULES & DEVICES                                             -->
+  <!-- ============================================================ -->
+  <section id="tab-modules" class="tab-panel" hidden>
+    <div class="grid-2" style="align-items:start;">
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>Modules</h2><p class="card-sub">Turn features on or off</p></div></div>
+        <div id="module-list"></div>
+      </section>
+
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Paired devices</h2></div></div>
+          <div id="pairing-code-display" style="display:none; text-align:center; margin-bottom:14px;">
+            <div class="pair-code" id="pairing-code-text">— — —</div>
+            <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
+          </div>
+          <div id="device-list"></div>
+          <button class="btn block" id="generate-code-btn" style="margin-top:12px;">+ Pair another device</button>
+          <form id="redeem-form" style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" id="redeem-code" placeholder="Enter a code" style="flex:1;">
+            <button class="btn" type="submit">Pair</button>
+          </form>
+        </section>
+
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Preferences</h2></div></div>
+          <p class="card-sub" style="margin-bottom:8px;">Accent colour</p>
+          <div id="accent-swatches" style="display:flex; gap:9px; margin-bottom:16px;"></div>
+          <p class="card-sub" style="margin-bottom:8px;">Temperature units</p>
+          <div class="pill-toggle">
+            <button id="units-c" class="active">°C</button>
+            <button id="units-f">°F</button>
+          </div>
+        </section>
+
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Notifications</h2></div></div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <input type="text" id="notif-ntfy" placeholder="ntfy.sh topic">
+            <input type="text" id="notif-discord" placeholder="Discord webhook URL">
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="notif-telegram-token" placeholder="Telegram bot token" style="flex:1;">
+              <input type="text" id="notif-telegram-chat" placeholder="Chat ID" style="width:100px;">
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label class="card-sub" for="notif-quiet-start">Quiet hours</label>
+              <input type="number" id="notif-quiet-start" min="0" max="23" style="width:64px;" title="Start hour (0-23)">
+              <span class="card-sub">to</span>
+              <input type="number" id="notif-quiet-end" min="0" max="23" style="width:64px;" title="End hour (0-23)">
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px;">
+            <button class="btn" id="notif-save" style="flex:1;">Save</button>
+            <button class="btn" id="notif-test" style="flex:1;">Send test</button>
+          </div>
+        </section>
+
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Updates &amp; backup</h2></div></div>
+          <div id="updates-body" class="log-empty">—</div>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <a class="btn block" id="backup-btn" href="/api/backup" download style="text-align:center; text-decoration:none;">Download backup</a>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- WHILE YOU WAIT (games)                                        -->
+  <!-- ============================================================ -->
+  <section id="tab-games" class="tab-panel" hidden>
+    <section class="card liquid-glass">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+        <div class="game-picker liquid-glass" id="game-picker">
+          <button class="active" data-game="skydash">Sky Dash</button>
+          <button data-game="echomaze">Echo Maze</button>
+          <button data-game="stacker">Block Stacker</button>
+          <button data-game="merge">Merge Puzzle</button>
+          <button data-game="breakout">Brick Break</button>
+        </div>
+        <div class="game-stats" id="game-stats"></div>
+      </div>
+      <div id="game-host"></div>
+      <p class="log-empty" style="margin-top:14px; text-align:center;">Purely for fun — nothing here reads the printer.</p>
+    </section>
+  </section>
 
   <footer class="foot">
     <span id="foot-state">No printer connected — nothing is contacted.</span>

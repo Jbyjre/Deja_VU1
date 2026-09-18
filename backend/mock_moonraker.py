@@ -16,10 +16,16 @@ needs to be swapped for a real HTTP client. Nothing else in the project talks
 to the printer directly, so nothing else has to change.
 
 Real Moonraker endpoints this file imitates:
-  GET /server/history/list    -> past print jobs
-  GET /printer/objects/query  -> live printer state (temps, progress, etc.)
+  GET  /server/history/list       -> past print jobs
+  GET  /printer/objects/query     -> live printer state (temps, progress, etc.)
+  POST /printer/print/pause       -> pause_print()
+  POST /printer/print/resume      -> resume_print()
+  POST /printer/print/cancel      -> cancel_print()
+  POST /printer/gcode/script      -> run_gcode(), home_axes(), set_target_temperature()
+  GET  /machine/update/status     -> get_update_status()
 """
 
+import copy
 import random
 from datetime import datetime, timedelta
 
@@ -146,14 +152,8 @@ def get_print_history():
     return list(_PRINT_HISTORY)
 
 
-def get_printer_state():
-    """
-    Stand-in for Moonraker's GET /printer/objects/query.
-
-    Returns what the printer is "doing" right now: whether it is printing,
-    how far along it is, temperatures, and which toolhead is active. The LED
-    module uses this to decide what color each dock ring should be.
-    """
+def _initial_live_state():
+    """The starting point for the printer's live, mutable state."""
     active = "T2"
 
     # Which spool is sitting in each toolhead right now. T0 and T1 are set to
@@ -180,6 +180,7 @@ def get_printer_state():
             th: {
                 "status": "active" if th == active else "docked",
                 "temperature": 218.0 if th == active else 32.5,
+                "target_temperature": 220.0 if th == active else 0.0,
                 "filament_loaded": True,
                 "filament_color_hex": loaded[th]["hex"],
                 "filament_color_name": loaded[th]["name"],
@@ -188,6 +189,127 @@ def get_printer_state():
         },
         "bed_temperature": 60.0,
     }
+
+
+# The printer's live state, and the console log of commands sent to it.
+# Unlike print history (fixed once at startup, like a real machine's past),
+# this changes while the server runs — a real printer's live state isn't
+# saved to disk either, so neither is this one. It resets on restart, which
+# is the correct behavior: a real printer forgets "paused" when power-cycled.
+_LIVE_STATE = _initial_live_state()
+_CONSOLE_LOG = []
+_MAX_CONSOLE_LOG = 100
+
+
+def _log_command(kind, detail):
+    _CONSOLE_LOG.append({
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "kind": kind,
+        "detail": detail,
+    })
+    del _CONSOLE_LOG[:-_MAX_CONSOLE_LOG]
+
+
+def get_printer_state():
+    """
+    Stand-in for Moonraker's GET /printer/objects/query.
+
+    Returns what the printer is "doing" right now: whether it is printing,
+    how far along it is, temperatures, and which toolhead is active. The LED
+    module uses this to decide what color each dock ring should be.
+
+    Returns a copy so callers can't accidentally mutate the live state by
+    editing the dict they were handed.
+    """
+    return copy.deepcopy(_LIVE_STATE)
+
+
+def pause_print():
+    """Stand-in for Moonraker's POST /printer/print/pause."""
+    if _LIVE_STATE["state"] != "printing":
+        raise ValueError("Nothing is printing right now")
+    _LIVE_STATE["state"] = "paused"
+    _LIVE_STATE["state_message"] = "Paused"
+    _log_command("pause", _LIVE_STATE["current_file"])
+    return get_printer_state()
+
+
+def resume_print():
+    """Stand-in for Moonraker's POST /printer/print/resume."""
+    if _LIVE_STATE["state"] != "paused":
+        raise ValueError("Printer is not paused")
+    _LIVE_STATE["state"] = "printing"
+    _LIVE_STATE["state_message"] = f"Printing {_LIVE_STATE['current_file']}"
+    _log_command("resume", _LIVE_STATE["current_file"])
+    return get_printer_state()
+
+
+def cancel_print():
+    """Stand-in for Moonraker's POST /printer/print/cancel."""
+    if _LIVE_STATE["state"] not in ("printing", "paused"):
+        raise ValueError("Nothing to cancel")
+    cancelled_file = _LIVE_STATE["current_file"]
+    _LIVE_STATE["state"] = "ready"
+    _LIVE_STATE["state_message"] = "Idle"
+    _LIVE_STATE["progress"] = 0.0
+    _LIVE_STATE["current_file"] = None
+    _log_command("cancel", cancelled_file)
+    return get_printer_state()
+
+
+def set_target_temperature(toolhead, target):
+    """
+    Stand-in for sending an M104/M109-style G-code through Moonraker.
+
+    Only sets the target — this file does not simulate the temperature
+    gradually climbing to meet it, the same way the rest of this project
+    does not invent data it cannot back up.
+    """
+    if toolhead not in TOOLHEADS:
+        raise ValueError(f"Unknown toolhead: {toolhead}")
+    _LIVE_STATE["toolheads"][toolhead]["target_temperature"] = target
+    _log_command("temperature", f"{toolhead} -> {target}°C")
+    return get_printer_state()
+
+
+def home_axes(axes):
+    """Stand-in for sending a G28 through Moonraker."""
+    _log_command("home", "".join(axes))
+    return {"homed": list(axes)}
+
+
+def run_gcode(command):
+    """Stand-in for Moonraker's POST /printer/gcode/script."""
+    _log_command("gcode", command)
+    return {"command": command, "response": "ok"}
+
+
+def get_console_log(limit=30):
+    """Recent commands sent to the printer, newest first."""
+    return list(reversed(_CONSOLE_LOG))[:limit]
+
+
+def get_update_status():
+    """
+    Stand-in for Moonraker's GET /machine/update/status.
+
+    A real Moonraker instance compares local vs. upstream git commits for
+    Klipper, Moonraker, and any git-tracked app, and reports which ones have
+    an update waiting. This fakes that same shape.
+    """
+    return {
+        "packages": [
+            {"name": "klipper", "current_version": "v0.12.0-312", "remote_version": "v0.12.0-312", "update_available": False},
+            {"name": "moonraker", "current_version": "v0.9.2-88", "remote_version": "v0.9.2-94", "update_available": True},
+        ],
+    }
+
+
+def reset_live_state():
+    """Restore printer state to its starting point. Useful for tests."""
+    global _LIVE_STATE, _CONSOLE_LOG
+    _LIVE_STATE = _initial_live_state()
+    _CONSOLE_LOG = []
 
 
 def get_current_job_requirements():
