@@ -908,6 +908,8 @@ function stopCurrentGame() {
   document.removeEventListener('keydown', mergeKeyHandler);
   document.removeEventListener('keydown', beaconKeyDownHandler);
   document.removeEventListener('keyup', beaconKeyUpHandler);
+  document.removeEventListener('pointerup', beaconPointerUpHandler);
+  document.removeEventListener('pointercancel', beaconPointerUpHandler);
   activeGame = null;
 }
 
@@ -1188,6 +1190,7 @@ function initEchoMaze() {
 
 let beaconKeyDownHandler = () => {};
 let beaconKeyUpHandler = () => {};
+let beaconPointerUpHandler = () => {};
 
 function initBeacon() {
   const BEST_KEY = 'dejavu1.beacon.best';
@@ -1470,6 +1473,12 @@ function initBeacon() {
     btn.addEventListener('pointerleave', up);
     btn.addEventListener('pointercancel', up);
   });
+  // On touch, a finger can slide off a small button while still held down —
+  // pointerleave won't always catch that. A document-wide release clears
+  // every held key so a stray touch never leaves movement stuck on.
+  beaconPointerUpHandler = () => { Object.keys(keys).forEach(k => { keys[k] = false; }); };
+  document.addEventListener('pointerup', beaconPointerUpHandler);
+  document.addEventListener('pointercancel', beaconPointerUpHandler);
 
   const KEY_MAP = { KeyW: 'fwd', ArrowUp: 'fwd', KeyS: 'back', ArrowDown: 'back',
     KeyA: 'turnL', ArrowLeft: 'turnL', KeyD: 'turnR', ArrowRight: 'turnR' };
