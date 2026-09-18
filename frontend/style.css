@@ -832,24 +832,31 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
   background-size: 60px 60px;
   background-color: #e4e8ef;
 }
-.beacon-marker {
-  position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px;
-  border-radius: 50%; border: 3px solid var(--accent);
-  box-shadow: 0 0 18px 4px color-mix(in srgb, var(--accent) 55%, transparent);
+/* Terrain voxels: one flat top face per tile, plus real rotated CSS side
+ * faces only toward a neighbor tile that's actually lower (see renderVoxel
+ * in app.js). Position/size are set inline per-tile in JS; these rules
+ * just establish that they live in the world's 3D space. */
+.voxel-top, .voxel-side { position: absolute; top: 0; left: 0; }
+.voxel-built { position: absolute; top: 0; left: 0; transform-style: preserve-3d; }
+
+.voxel-ore {
+  position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px;
+  border-radius: 50%; border: 3px solid #ffcc66;
+  box-shadow: 0 0 16px 4px rgba(255, 204, 102, .55);
   animation: beaconPulse 1.4s ease-in-out infinite;
 }
-.beacon-marker::after {
-  content: ""; position: absolute; inset: 8px; border-radius: 50%;
-  background: var(--accent); opacity: .55;
+.voxel-ore::after {
+  content: ""; position: absolute; inset: 7px; border-radius: 50%;
+  background: #ffcc66; opacity: .6;
 }
 @keyframes beaconPulse {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.25); opacity: .6; }
 }
-.beacon-pillar {
-  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
-  border-radius: 6px; background: rgba(28, 28, 30, .35);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .4) inset;
+.voxel-wood {
+  position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border-radius: 40%; background: #5cc16f; border: 4px solid #7a4a2c;
+  box-shadow: 0 0 10px 2px rgba(92, 193, 111, .5);
 }
 .beacon-reticle {
   position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;

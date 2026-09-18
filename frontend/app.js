@@ -1164,7 +1164,7 @@ function initEchoMaze() {
   draw();
 }
 
-/* ---- Game 3: Beacon Run (continuous free-roam 3D world) -----------------
+/* ---- Game 3: Block World (continuous free-roam 3D voxel world) ----------
  * Echo Maze snaps between rooms on a grid. This one doesn't: the player has
  * a real (x, y) position and a facing angle that both change continuously,
  * the same rotate-by-negative-yaw-around-the-camera trick Echo Maze uses,
@@ -1172,8 +1172,18 @@ function initEchoMaze() {
  *   world.transform = rotateZ(-yaw) translate3d(-px, -py, 0)
  * translate3d runs first (moves the world so the player is at the origin),
  * then rotateZ turns that around the camera to match which way they're
- * facing — so beacons the player hasn't reached yet visibly slide and spin
- * past as they walk and turn, instead of the room simply swapping out.
+ * facing — so the terrain the player hasn't reached yet visibly slides and
+ * spins past as they walk and turn, instead of a room simply swapping out.
+ *
+ * Minecraft-inspired, not a clone: a blocky, deterministically-generated
+ * chunk (flat-topped voxels, elevation via translateZ, real rotated CSS
+ * side faces only where a tile is actually taller than its neighbor — the
+ * same "only draw exposed faces" idea real voxel engines use, just done by
+ * hand for a couple dozen tiles instead of a renderer). Walk into ore or
+ * trees to mine/chop them, then spend wood to place your own blocks. There
+ * is no jump and no collision with terrain height — the player always
+ * walks at a fixed height, so a hill is climbed by walking onto it rather
+ * than jumped up, a deliberate simplification for a browser mini-game.
  * --------------------------------------------------------------------- */
 
 let beaconKeyDownHandler = () => {};
@@ -1181,105 +1191,191 @@ let beaconKeyUpHandler = () => {};
 
 function initBeacon() {
   const BEST_KEY = 'dejavu1.beacon.best';
-  const MOVE_SPEED = 3.2, TURN_SPEED = 2.6, COLLECT_RADIUS = 42, WORLD_HALF = 900;
-  const BASE_TIME = 45, BASE_BEACONS = 6;
+  const MOVE_SPEED = 3.4, TURN_SPEED = 2.6, COLLECT_RADIUS = 58;
+  const BASE_TIME = 55;
+  const GRID = 9, HALF = 4, BLOCK = 110, BLOCK_H = 46;
+  const WORLD_HALF = HALF * BLOCK + BLOCK * 0.4;
+
+  const TIERS = [
+    { top: '#8bc97e', side: '#6b9a5c' },   // grass
+    { top: '#b7bcc4', side: '#8f959e' },   // stone
+    { top: '#eef2f6', side: '#c7cdd6' },   // snow cap
+  ];
+  const BUILT_COLOR = { top: 'var(--accent-light)', side: 'var(--accent)' };
 
   $('game-stats').innerHTML = `
     <div class="game-stat"><div class="g-key">Level</div><div class="g-val" id="bc-level">1</div></div>
-    <div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="bc-score">0</div></div>
+    <div class="game-stat"><div class="g-key">Wood</div><div class="g-val" id="bc-wood">0</div></div>
+    <div class="game-stat"><div class="g-key">Ore</div><div class="g-val" id="bc-ore">0</div></div>
     <div class="game-stat"><div class="g-key">Best level</div><div class="g-val accent" id="bc-best">${readBest(BEST_KEY) ?? '—'}</div></div>`;
 
   $('game-host').innerHTML = `
-    <p class="card-sub" style="margin-bottom:12px; max-width:48ch;">Walk into every glowing beacon before the clock runs out — free movement, not room-by-room. WASD or arrow keys, or hold the buttons below.</p>
+    <p class="card-sub" style="margin-bottom:12px; max-width:52ch;">Mine every glowing ore vein and tree in the chunk before time runs out, then spend wood to place blocks of your own. WASD or arrow keys to move and turn, E or the button to place.</p>
     <div class="beacon-viewport" id="bc-viewport">
-      <div class="beacon-hud"><span id="bc-hud-left">Beacons: 0/0</span><span id="bc-hud-right">Time: —</span></div>
+      <div class="beacon-hud"><span id="bc-hud-left">Resources: 0/0</span><span id="bc-hud-right">Time: —</span></div>
       <div class="beacon-horizon">
         <div class="beacon-world" id="bc-world">
           <div class="beacon-ground"></div>
         </div>
       </div>
       <div class="beacon-reticle" aria-hidden="true"></div>
-      <div class="game-overlay" id="bc-overlay"><div class="g-title">Beacon Run</div><div class="g-sub">Click to start — WASD / arrows to move and turn</div></div>
+      <div class="game-overlay" id="bc-overlay"><div class="g-title">Block World</div><div class="g-sub">Click to start — WASD / arrows to move and turn</div></div>
     </div>
     <div class="beacon-controls">
       <button class="btn" id="bc-turnl" data-hold="turnL">↺ Turn</button>
       <button class="btn primary" id="bc-fwd" data-hold="fwd">▲ Forward</button>
       <button class="btn" id="bc-back" data-hold="back">▼ Back</button>
       <button class="btn" id="bc-turnr" data-hold="turnR">Turn ↻</button>
+      <button class="btn" id="bc-place">⬛ Place (1 wood)</button>
     </div>`;
 
   const keys = {};
   let state = { status: 'idle' };
 
-  const randRange = (a, b) => a + Math.random() * (b - a);
-
-  function spawnBeacons(count) {
-    const beacons = [];
-    let tries = 0;
-    while (beacons.length < count && tries < count * 50) {
-      tries++;
-      const x = randRange(-WORLD_HALF * 0.85, WORLD_HALF * 0.85);
-      const y = randRange(-WORLD_HALF * 0.85, WORLD_HALF * 0.85);
-      if (Math.hypot(x, y) < 90) continue;
-      if (beacons.some(b => Math.hypot(b.x - x, b.y - y) < 100)) continue;
-      beacons.push({ x, y, got: false });
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return beacons;
+    return arr;
   }
 
-  function spawnPillars(count) {
-    return Array.from({ length: count }, () => ({
-      x: randRange(-WORLD_HALF * 0.7, WORLD_HALF * 0.7),
-      y: randRange(-WORLD_HALF * 0.7, WORLD_HALF * 0.7),
-    }));
+  // Cheap deterministic pseudo-noise (no external library): three
+  // out-of-phase sine/cosine waves combined, seeded per level so each
+  // level is a fresh but reproducible-looking chunk, not literal Perlin
+  // noise but enough to cluster into hills instead of pure random static.
+  function noise(col, row, seed) {
+    const v = Math.sin((col + seed) * 0.9) + Math.cos((row + seed * 1.7) * 0.9)
+      + Math.sin((col + row + seed * 2.3) * 0.5);
+    return (v + 3) / 6;
   }
 
-  function renderStatics() {
+  function buildTerrain(level) {
+    const seed = level * 13.37;
+    const tiles = new Map();
+    for (let col = -HALF; col <= HALF; col++) {
+      for (let row = -HALF; row <= HALF; row++) {
+        const n = noise(col, row, seed);
+        const tier = n > 0.72 ? 2 : n > 0.5 ? 1 : 0;
+        tiles.set(`${col},${row}`, { col, row, x: col * BLOCK, y: row * BLOCK, tier, h: tier * BLOCK_H });
+      }
+    }
+    return tiles;
+  }
+
+  function placeResources(tiles, oreCount, woodCount) {
+    const candidates = shuffle([...tiles.values()].filter(t => Math.hypot(t.col, t.row) > 1.5));
+    return [
+      ...candidates.slice(0, oreCount).map(t => ({ x: t.x, y: t.y, h: t.h, kind: 'ore', got: false })),
+      ...candidates.slice(oreCount, oreCount + woodCount).map(t => ({ x: t.x, y: t.y, h: t.h, kind: 'wood', got: false })),
+    ];
+  }
+
+  // One flat top face plus real rotated CSS side faces, but only toward a
+  // neighbor that's actually lower — the same "don't draw a face nothing
+  // will ever occlude" idea a voxel engine uses, applied to ~80 tiles by
+  // hand instead of by a renderer.
+  function renderVoxel(host, x, y, h, neighborH, colors) {
+    const top = document.createElement('div');
+    top.className = 'voxel-top';
+    top.style.width = top.style.height = `${BLOCK}px`;
+    top.style.marginLeft = top.style.marginTop = `${-BLOCK / 2}px`;
+    top.style.background = colors.top;
+    top.style.transform = `translate3d(${x}px, ${y}px, ${h}px)`;
+    host.appendChild(top);
+
+    const sides = [
+      { dx: 0, dy: 1, w: BLOCK, hh: null, rot: 'rotateX(90deg)' },   // south
+      { dx: 0, dy: -1, w: BLOCK, hh: null, rot: 'rotateX(90deg)' },  // north
+      { dx: 1, dy: 0, w: null, hh: BLOCK, rot: 'rotateY(90deg)' },   // east
+      { dx: -1, dy: 0, w: null, hh: BLOCK, rot: 'rotateY(90deg)' },  // west
+    ];
+    sides.forEach(s => {
+      const nh = neighborH(s.dx, s.dy);
+      if (nh === null || nh >= h) return;
+      const face = document.createElement('div');
+      face.className = 'voxel-side';
+      const faceH = h - nh;
+      face.style.width = `${s.w ?? faceH}px`;
+      face.style.height = `${s.hh ?? faceH}px`;
+      face.style.marginLeft = `${-(s.w ?? faceH) / 2}px`;
+      face.style.marginTop = `${-(s.hh ?? faceH) / 2}px`;
+      face.style.background = colors.side;
+      face.style.transform =
+        `translate3d(${x + s.dx * BLOCK / 2}px, ${y + s.dy * BLOCK / 2}px, ${(h + nh) / 2}px) ${s.rot}`;
+      host.appendChild(face);
+    });
+  }
+
+  function renderTerrain() {
     const world = $('bc-world');
-    world.querySelectorAll('.beacon-marker, .beacon-pillar').forEach(el => el.remove());
-    state.beacons.forEach((b, i) => {
+    world.querySelectorAll('.voxel-top, .voxel-side').forEach(el => el.remove());
+    state.tiles.forEach(t => {
+      const neighborH = (dx, dy) => {
+        const n = state.tiles.get(`${t.col + dx},${t.row + dy}`);
+        return n ? n.h : null;
+      };
+      renderVoxel(world, t.x, t.y, t.h, neighborH, TIERS[t.tier]);
+    });
+  }
+
+  function renderResources() {
+    const world = $('bc-world');
+    world.querySelectorAll('.voxel-ore, .voxel-wood').forEach(el => el.remove());
+    state.resources.forEach((r, i) => {
       const el = document.createElement('div');
-      el.className = 'beacon-marker';
+      el.className = r.kind === 'ore' ? 'voxel-ore' : 'voxel-wood';
       el.dataset.index = i;
       world.appendChild(el);
     });
-    state.pillars.forEach(() => {
-      const el = document.createElement('div');
-      el.className = 'beacon-pillar';
-      world.appendChild(el);
-    });
-    positionStatics();
+    positionResources();
   }
 
-  function positionStatics() {
-    const markers = $('bc-world').querySelectorAll('.beacon-marker');
-    state.beacons.forEach((b, i) => {
-      const el = markers[i];
+  function positionResources() {
+    const world = $('bc-world');
+    const oreEls = world.querySelectorAll('.voxel-ore');
+    const woodEls = world.querySelectorAll('.voxel-wood');
+    let oi = 0, wi = 0;
+    state.resources.forEach(r => {
+      const el = r.kind === 'ore' ? oreEls[oi++] : woodEls[wi++];
       if (!el) return;
-      el.style.display = b.got ? 'none' : '';
-      el.style.transform = `translate3d(${b.x}px, ${b.y}px, 0)`;
+      el.style.display = r.got ? 'none' : '';
+      el.style.transform = `translate3d(${r.x}px, ${r.y}px, ${r.h + 30}px)`;
     });
-    const pillars = $('bc-world').querySelectorAll('.beacon-pillar');
-    state.pillars.forEach((p, i) => {
-      const el = pillars[i];
-      if (el) el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+  }
+
+  function renderBuilt() {
+    const world = $('bc-world');
+    world.querySelectorAll('.voxel-built').forEach(el => el.remove());
+    state.built.forEach(b => {
+      const wrap = document.createElement('div');
+      wrap.className = 'voxel-built';
+      renderVoxel(wrap, b.x, b.y, BLOCK_H, (dx, dy) => (dx === 0 && dy === 0 ? null : 0), BUILT_COLOR);
+      world.appendChild(wrap);
     });
   }
 
   function newLevel(level) {
-    const count = Math.min(BASE_BEACONS + (level - 1) * 2, 16);
-    const carriedScore = state.score || 0;
+    const oreCount = Math.min(4 + level, 11);
+    const woodCount = Math.min(3 + Math.floor(level / 2), 9);
+    const carried = { wood: state.wood || 0, ore: state.ore || 0 };
+    const tiles = buildTerrain(level);
     state = {
       status: 'playing',
       level,
-      score: carriedScore,
+      wood: carried.wood,
+      ore: carried.ore,
       px: 0, py: 0, yaw: 0,
-      beacons: spawnBeacons(count),
-      pillars: spawnPillars(3 + Math.min(level, 5)),
-      timeLeft: Math.max(BASE_TIME - (level - 1) * 2, 22),
+      tiles,
+      resources: placeResources(tiles, oreCount, woodCount),
+      built: [],
+      timeLeft: Math.max(BASE_TIME - (level - 1) * 2, 28),
       collected: 0,
+      goal: oreCount + woodCount,
     };
-    renderStatics();
+    renderTerrain();
+    renderResources();
+    renderBuilt();
   }
 
   function draw() {
@@ -1290,15 +1386,28 @@ function initBeacon() {
     }
     $('bc-world').style.transform = `rotateZ(${-state.yaw}deg) translate3d(${-state.px}px, ${-state.py}px, 0)`;
     $('bc-level').textContent = state.level;
-    $('bc-score').textContent = state.score;
-    $('bc-hud-left').textContent = `Beacons: ${state.collected}/${state.beacons.length}`;
+    $('bc-wood').textContent = state.wood;
+    $('bc-ore').textContent = state.ore;
+    $('bc-hud-left').textContent = `Resources: ${state.collected}/${state.goal}`;
     $('bc-hud-right').textContent = `Time: ${Math.max(Math.ceil(state.timeLeft), 0)}s`;
 
     const overlay = $('bc-overlay');
     overlay.style.display = state.status === 'playing' ? 'none' : 'flex';
     if (state.status === 'over') {
-      overlay.innerHTML = `<div class="g-title">Out of time</div><div class="g-sub">Reached level ${state.level}, score ${state.score} — click to try again</div>`;
+      overlay.innerHTML = `<div class="g-title">Out of time</div><div class="g-sub">Reached level ${state.level} — ${state.wood} wood, ${state.ore} ore — click to try again</div>`;
     }
+  }
+
+  function place() {
+    if (state.status !== 'playing' || state.wood < 1) return;
+    state.wood -= 1;
+    const yawRad = state.yaw * Math.PI / 180;
+    state.built.push({
+      x: state.px + Math.sin(yawRad) * 95,
+      y: state.py - Math.cos(yawRad) * 95,
+    });
+    renderBuilt();
+    draw();
   }
 
   function tick() {
@@ -1313,18 +1422,18 @@ function initBeacon() {
     state.px = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, state.px));
     state.py = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, state.py));
 
-    state.beacons.forEach(b => {
-      if (b.got) return;
-      if (Math.hypot(b.x - state.px, b.y - state.py) < COLLECT_RADIUS) {
-        b.got = true;
+    state.resources.forEach(r => {
+      if (r.got) return;
+      if (Math.hypot(r.x - state.px, r.y - state.py) < COLLECT_RADIUS) {
+        r.got = true;
         state.collected += 1;
-        state.score += 10;
+        if (r.kind === 'ore') state.ore += 1; else state.wood += 1;
       }
     });
 
     state.timeLeft -= 0.03;
 
-    if (state.collected === state.beacons.length) {
+    if (state.collected === state.goal) {
       const best = Math.max(readBest(BEST_KEY) ?? 0, state.level);
       saveBest(BEST_KEY, best);
       $('bc-best').textContent = best;
@@ -1336,7 +1445,7 @@ function initBeacon() {
       saveBest(BEST_KEY, best);
       $('bc-best').textContent = best;
     } else {
-      positionStatics();
+      positionResources();
     }
     draw();
   }
@@ -1350,6 +1459,7 @@ function initBeacon() {
   $('bc-viewport').addEventListener('click', () => {
     if (state.status !== 'playing') start();
   });
+  $('bc-place').addEventListener('click', place);
 
   document.querySelectorAll('[data-hold]').forEach(btn => {
     const key = btn.dataset.hold;
@@ -1363,7 +1473,10 @@ function initBeacon() {
 
   const KEY_MAP = { KeyW: 'fwd', ArrowUp: 'fwd', KeyS: 'back', ArrowDown: 'back',
     KeyA: 'turnL', ArrowLeft: 'turnL', KeyD: 'turnR', ArrowRight: 'turnR' };
-  beaconKeyDownHandler = (e) => { if (KEY_MAP[e.code]) { e.preventDefault(); keys[KEY_MAP[e.code]] = true; } };
+  beaconKeyDownHandler = (e) => {
+    if (KEY_MAP[e.code]) { e.preventDefault(); keys[KEY_MAP[e.code]] = true; }
+    else if (e.code === 'KeyE') { e.preventDefault(); place(); }
+  };
   beaconKeyUpHandler = (e) => { if (KEY_MAP[e.code]) keys[KEY_MAP[e.code]] = false; };
   document.addEventListener('keydown', beaconKeyDownHandler);
   document.addEventListener('keyup', beaconKeyUpHandler);

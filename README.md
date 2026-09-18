@@ -78,11 +78,14 @@ with real difficulty curves rather than a single fixed setting —
 **Sky Dash** (a gravity dodge that speeds up and tightens the gap as your
 score climbs), **Echo Maze** (a real 3D maze rendered in pure CSS, now a
 bigger 7×7 layout whose minimap only remembers rooms you've actually
-visited — every room looks the same as the last, on purpose), **Beacon Run**
-(a free-roam 3D world, not room-snapped like the maze — real continuous
-position and turning rendered with CSS 3D transforms; walk into every
-glowing beacon before the clock runs out, with more beacons and less time
-each level), **Block Stacker** (speeds up the taller your tower gets),
+visited — every room looks the same as the last, on purpose), **Block World**
+(a free-roam 3D voxel chunk, not room-snapped like the maze — Minecraft-
+inspired rather than a clone: a blocky, procedurally-generated terrain of
+real extruded CSS cubes with grass, stone, and snow tiers, walked with
+continuous position and turning. Mine glowing ore and trees for wood and
+ore, then spend wood to place blocks of your own, before the chunk's timer
+runs out; each level regenerates a bigger, harder chunk), **Block Stacker**
+(speeds up the taller your tower gets),
 **Merge Puzzle** (a 2048-style board that deals harder tiles the higher your
 score), and **Brick Break** (clearing the board advances a level instead of
 ending the game — the paddle shrinks, the ball speeds up, and another row of

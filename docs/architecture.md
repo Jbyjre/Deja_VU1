@@ -153,14 +153,27 @@ Modules & devices, While you wait) hold everything; a status strip stays
 pinned above all six so a print's progress is visible no matter which tab —
 including mid-game — you're on.
 
-The games tab's newest addition, Beacon Run, generalizes the same rotate-
-by-negative-yaw-around-the-camera trick Echo Maze uses for its room-to-room
-turns, extended from 90-degree snaps to continuous free movement:
+The games tab's Block World generalizes the same rotate-by-negative-yaw-
+around-the-camera trick Echo Maze uses for its room-to-room turns, extended
+from 90-degree snaps to continuous free movement:
 `world.transform = rotateZ(-yaw) translate3d(-px, -py, 0)`. The translate
 runs first (recentring the world on the player), then the rotate turns that
-around the now-centered camera — so beacons slide and spin past naturally
-as the player walks and turns, all still plain CSS 3D transforms with no
-canvas or WebGL.
+around the now-centered camera — so the terrain slides and spins past
+naturally as the player walks and turns, all still plain CSS 3D transforms
+with no canvas or WebGL.
+
+Each terrain tile is one flat top face, positioned with real elevation via
+`translateZ`, plus a real rotated CSS side face — `rotateX(90deg)` for a
+north/south-facing wall, `rotateY(90deg)` for east/west — but only toward a
+neighboring tile that's actually lower. That mirrors the face-culling a
+real voxel engine does (never draw a face nothing will occlude), done by
+hand for the ~80 tiles in one chunk instead of by a renderer. The chunk
+itself comes from a small deterministic pseudo-noise function (a few
+out-of-phase sine/cosine waves, not real Perlin noise) seeded per level, so
+each level is a fresh but reproducible-looking chunk. Player-built blocks
+reuse the exact same tile-rendering function with all four neighbor heights
+fixed at 0, so a placed block always gets all four side faces — free-
+standing, unlike terrain tiles that lean on their neighbors.
 
 ## API
 
