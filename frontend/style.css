@@ -779,6 +779,17 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .sd-obstacle { position: absolute; width: 50px; border: 1px solid rgba(0, 0, 0, .08); }
 .sd-obstacle.top { border-top: none; border-radius: 0 0 10px 10px; background: linear-gradient(180deg, rgba(127, 178, 255, .85), rgba(127, 178, 255, .5)); }
 .sd-obstacle.bottom { border-bottom: none; border-radius: 10px 10px 0 0; background: linear-gradient(0deg, rgba(127, 178, 255, .85), rgba(127, 178, 255, .5)); }
+.sd-obstacle.mover { border-color: rgba(255, 122, 47, .45); box-shadow: 0 0 10px 1px rgba(255, 122, 47, .25); }
+.sd-popups { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.sd-popup {
+  position: absolute; font: 700 12.5px/1 var(--font-mono); color: var(--accent);
+  white-space: nowrap; animation: sdPopup .7s ease-out forwards;
+}
+@keyframes sdPopup {
+  0% { opacity: 0; transform: translateY(0); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-26px); }
+}
 
 /* Echo Maze */
 .maze-viewport {
@@ -796,6 +807,24 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .maze-map .mc.unseen { background: rgba(0, 0, 0, .04); }
 .maze-map .mc.here { background: var(--accent); }
 .maze-map .mc.exit { background: rgba(52, 199, 89, .55); }
+.maze-map .mc.pursuer { background: #e0475f; box-shadow: 0 0 6px 1px rgba(224, 71, 95, .7); animation: beaconPulse 1s ease-in-out infinite; }
+.maze-viewport.em-danger { box-shadow: inset 0 0 0 3px rgba(224, 71, 95, .55), 0 0 24px 4px rgba(224, 71, 95, .3); animation: emDanger 1s ease-in-out infinite; }
+@keyframes emDanger {
+  0%, 100% { filter: saturate(1); }
+  50% { filter: saturate(1.4); }
+}
+.em-popup {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  font: 700 12.5px/1.3 var(--font-mono); color: #fff; text-align: center;
+  background: rgba(224, 71, 95, .92); padding: 8px 14px; border-radius: 10px;
+  max-width: 80%; z-index: 3; animation: emPopup 1.1s ease-out forwards;
+}
+@keyframes emPopup {
+  0% { opacity: 0; transform: translate(-50%, -8px); }
+  12% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
 
 /* Block Stacker */
 .stacker { width: 100%; max-width: 320px; height: 420px; }
@@ -803,6 +832,16 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
   position: absolute; height: 26px; border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, .12);
   box-shadow: 0 2px 6px rgba(31, 38, 56, .18);
+}
+.stacker-block.perfect {
+  border-color: rgba(255, 204, 102, .9);
+  box-shadow: 0 0 10px 2px rgba(255, 204, 102, .55), 0 2px 6px rgba(31, 38, 56, .18);
+}
+.stacker-popup {
+  position: absolute; left: 50%; top: 16px; transform: translateX(-50%);
+  font: 700 13px/1 var(--font-mono); color: #e0a83c;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .6);
+  animation: emPopup .7s ease-out forwards;
 }
 
 /* Merge Puzzle */
@@ -812,12 +851,43 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
   font: 700 20px/1 var(--font-mono); background: rgba(0, 0, 0, .05);
   transition: background .15s ease, transform .1s ease;
 }
+.merge-cell.spawn { animation: mergeSpawn .22s ease-out; }
+@keyframes mergeSpawn {
+  0% { transform: scale(.4); opacity: .4; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.mg-dirbtn.suggested {
+  background: linear-gradient(160deg, var(--accent-light), var(--accent));
+  color: #2a1200; animation: emDanger .5s ease-in-out 2;
+}
 
 /* Brick Break */
 .breakout { width: 100%; max-width: 480px; height: 360px; }
-.bo-paddle { position: absolute; height: 12px; border-radius: 6px; background: linear-gradient(160deg, var(--accent-light), var(--accent)); transition: width .2s ease; }
+.bo-paddle { position: absolute; height: 12px; border-radius: 6px; background: linear-gradient(160deg, var(--accent-light), var(--accent)); transition: width .2s ease, left .05s linear; }
+.bo-paddle.wide { box-shadow: 0 0 12px 2px rgba(52, 199, 89, .55); }
 .bo-ball { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--text); box-shadow: 0 0 8px rgba(0, 0, 0, .3); }
 .bo-brick { position: absolute; border-radius: 5px; border: 1px solid rgba(0, 0, 0, .08); }
+.bo-brick.cracked {
+  background-image: repeating-linear-gradient(135deg, rgba(0, 0, 0, .18) 0 3px, transparent 3px 8px);
+  border-color: rgba(0, 0, 0, .25);
+}
+.bo-powerup {
+  position: absolute; width: 22px; height: 22px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 11px/1 var(--font-mono); color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+  animation: powerupSpin 1.6s linear infinite;
+}
+@keyframes powerupSpin {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+.bo-popup {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  font: 700 12.5px/1 var(--font-mono); color: var(--text);
+  background: rgba(255, 255, 255, .85); padding: 6px 12px; border-radius: 9px;
+  z-index: 2; animation: emPopup .75s ease-out forwards;
+}
 
 /* Beacon Run — continuous free-roam 3D, not grid-snapped like Echo Maze */
 .beacon-viewport {
@@ -862,6 +932,42 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
   position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px;
   border-radius: 40%; background: #5cc16f; border: 4px solid #7a4a2c;
   box-shadow: 0 0 10px 2px rgba(92, 193, 111, .5);
+}
+.voxel-ore.collected, .voxel-wood.collected {
+  animation: voxelCollect .35s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes voxelCollect {
+  0% { transform: scale(1); opacity: 1; }
+  45% { transform: scale(1.6); opacity: 1; }
+  100% { transform: scale(.15); opacity: 0; }
+}
+.voxel-built-torch { filter: drop-shadow(0 0 10px rgba(255, 204, 102, .65)); }
+.voxel-critter {
+  position: absolute; top: 0; left: 0; width: 26px; height: 26px;
+  margin: -13px 0 0 -13px; transform-style: preserve-3d;
+}
+.voxel-critter-body {
+  position: absolute; inset: 0; border-radius: 45% 45% 40% 40%;
+  background: linear-gradient(160deg, #d9a06b, #a86a3c);
+  border: 2px solid #7a4a2c; box-shadow: 0 3px 6px rgba(0, 0, 0, .25);
+  animation: critterBob 1.6s ease-in-out infinite;
+}
+.voxel-critter-body::before, .voxel-critter-body::after {
+  content: ""; position: absolute; top: -5px; width: 7px; height: 9px;
+  border-radius: 50% 50% 20% 20%; background: #a86a3c;
+}
+.voxel-critter-body::before { left: 3px; }
+.voxel-critter-body::after { right: 3px; }
+@keyframes critterBob {
+  0%, 100% { transform: translateZ(0); }
+  50% { transform: translateZ(6px); }
+}
+.bc-popup {
+  position: absolute; left: 50%; top: 42px; transform: translateX(-50%);
+  font: 700 12px/1 var(--font-mono); color: #1c1c1e;
+  background: rgba(255, 255, 255, .82); padding: 5px 11px; border-radius: 8px;
+  z-index: 2; animation: emPopup .75s ease-out forwards;
 }
 .beacon-reticle {
   position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
