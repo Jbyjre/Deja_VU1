@@ -788,7 +788,8 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .maze-wall.solid { background: linear-gradient(180deg, rgba(255, 177, 122, .78), rgba(255, 177, 122, .42)); }
 .maze-wall.open { background: linear-gradient(180deg, rgba(127, 178, 255, .16), rgba(127, 178, 255, .03)); }
 .maze-map { display: grid; gap: 4px; width: 150px; height: 150px; padding: 10px; box-sizing: border-box; }
-.maze-map .mc { width: 100%; height: 100%; border-radius: 3px; background: rgba(0, 0, 0, .08); }
+.maze-map .mc { width: 100%; height: 100%; border-radius: 3px; background: rgba(0, 0, 0, .16); }
+.maze-map .mc.unseen { background: rgba(0, 0, 0, .04); }
 .maze-map .mc.here { background: var(--accent); }
 .maze-map .mc.exit { background: rgba(52, 199, 89, .55); }
 
@@ -810,9 +811,59 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 
 /* Brick Break */
 .breakout { width: 100%; max-width: 480px; height: 360px; }
-.bo-paddle { position: absolute; height: 12px; border-radius: 6px; background: linear-gradient(160deg, var(--accent-light), var(--accent)); }
+.bo-paddle { position: absolute; height: 12px; border-radius: 6px; background: linear-gradient(160deg, var(--accent-light), var(--accent)); transition: width .2s ease; }
 .bo-ball { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--text); box-shadow: 0 0 8px rgba(0, 0, 0, .3); }
 .bo-brick { position: absolute; border-radius: 5px; border: 1px solid rgba(0, 0, 0, .08); }
+
+/* Beacon Run — continuous free-roam 3D, not grid-snapped like Echo Maze */
+.beacon-viewport {
+  position: relative; width: 100%; max-width: 640px; height: 380px;
+  overflow: hidden; border-radius: 20px; perspective: 800px;
+  background: linear-gradient(180deg, #cfe8ff 0%, #eef3fb 55%, #dfe6ee 100%);
+  margin: 0 auto;
+}
+.beacon-horizon { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(58deg); }
+.beacon-world { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+.beacon-ground {
+  position: absolute; width: 2400px; height: 2400px; left: -1200px; top: -1200px;
+  background-image:
+    linear-gradient(rgba(28, 28, 30, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 28, 30, .08) 1px, transparent 1px);
+  background-size: 60px 60px;
+  background-color: #e4e8ef;
+}
+.beacon-marker {
+  position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px;
+  border-radius: 50%; border: 3px solid var(--accent);
+  box-shadow: 0 0 18px 4px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: beaconPulse 1.4s ease-in-out infinite;
+}
+.beacon-marker::after {
+  content: ""; position: absolute; inset: 8px; border-radius: 50%;
+  background: var(--accent); opacity: .55;
+}
+@keyframes beaconPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: .6; }
+}
+.beacon-pillar {
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+  border-radius: 6px; background: rgba(28, 28, 30, .35);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .4) inset;
+}
+.beacon-reticle {
+  position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+  margin: -5px 0 0 -5px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .6);
+}
+.beacon-hud {
+  position: absolute; top: 12px; left: 12px; right: 12px; z-index: 2;
+  display: flex; justify-content: space-between;
+  font: 700 12px/1 var(--font-mono); color: #1c1c1e;
+  background: rgba(255, 255, 255, .6); padding: 6px 10px; border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+.beacon-controls { display: flex; justify-content: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 
 /* ---- footer --------------------------------------------------------------*/
 

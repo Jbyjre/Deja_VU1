@@ -111,6 +111,30 @@ REGISTRY = [
         "status": "ready",
         "default_enabled": True,
     },
+    {
+        "id": "cost_calculator",
+        "name": "Print cost calculator",
+        "description": "Prices filament by material and adds electricity, "
+                        "for past jobs and the one currently running.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "wled_bridge",
+        "name": "WLED bridge",
+        "description": "Pushes dock ring colors to a WLED-flashed LED "
+                        "strip you already own, over WLED's JSON API.",
+        "status": "optional",
+        "default_enabled": False,
+    },
+    {
+        "id": "home_assistant_bridge",
+        "name": "Home Assistant bridge",
+        "description": "Publishes printer state to Home Assistant as REST "
+                        "sensors — no MQTT broker, no custom component.",
+        "status": "optional",
+        "default_enabled": False,
+    },
 ]
 
 _BY_ID = {m["id"]: m for m in REGISTRY}

@@ -90,7 +90,9 @@ real printer is wired in.
 `comparison.py` ("what changed?" + likely-cause, by pattern-matching your own
 past failures — never a prediction, only ever "this looks like what happened
 before"), `sanity_check.py` (combines maintenance + LED + colour-check into
-one verdict).
+one verdict), `cost_calculator.py` (prices filament by material plus
+electricity, for both finished jobs and one in progress — extrapolating
+grams from elapsed progress, and explicit about that being an estimate).
 
 ### Modules that are their own small settings stores
 `filament_inventory.py`, `notifications.py` (priority-aware: failures always
@@ -100,6 +102,16 @@ this dashboard has no login wall and pairing doesn't add one), `backup.py`
 (zips the dashboard's own data directory), `camera.py` (a frozen-feed
 watchdog; the actual video stream needs a real camera), `updates.py` (reads
 `mock_moonraker.get_update_status()`).
+
+### Modules that push this dashboard's data outward
+`wled_bridge.py` (pushes dock ring colours to a WLED device over its own
+JSON HTTP API — a real network client, not a simulation) and
+`home_assistant_bridge.py` (publishes printer state as REST sensors via
+Home Assistant's `POST /api/states/<entity_id>`, with a bearer token). Both
+fail cleanly with `{"ok": false, "error": ...}` rather than raising when
+unconfigured or unreachable, the same pattern `notifications.py` uses for
+its webhooks — a misconfigured strip or HA instance should never take the
+dashboard down with it.
 
 ### `backend/led_status.py` / `backend/color_check.py`
 Hardware-pending placeholders. The decision logic (state → colour, colour
@@ -140,6 +152,15 @@ Six tabs (Overview, Printer control, Maintenance, Filament & colour,
 Modules & devices, While you wait) hold everything; a status strip stays
 pinned above all six so a print's progress is visible no matter which tab —
 including mid-game — you're on.
+
+The games tab's newest addition, Beacon Run, generalizes the same rotate-
+by-negative-yaw-around-the-camera trick Echo Maze uses for its room-to-room
+turns, extended from 90-degree snaps to continuous free movement:
+`world.transform = rotateZ(-yaw) translate3d(-px, -py, 0)`. The translate
+runs first (recentring the world on the player), then the rotate turns that
+around the now-centered camera — so beacons slide and spin past naturally
+as the player walks and turns, all still plain CSS 3D transforms with no
+canvas or WebGL.
 
 ## API
 
@@ -186,7 +207,7 @@ Everything that calls them already works.
 
 ## Testing
 
-143 tests, using Python's built-in `unittest`:
+170 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -195,7 +216,9 @@ python3 -m unittest discover tests
 One test file per backend module (`test_maintenance.py`,
 `test_printer_control.py`, `test_notifications.py`, `test_filament_inventory.py`,
 `test_comparison.py`, `test_sanity_check.py`, `test_support_modules.py`,
-`test_modules_registry.py`, plus the original `test_modules.py` for the LED
-and colour-check placeholders), and `test_api.py` starting the real server on
-a spare port to test what a browser would actually receive — module gating,
-connection gating, and the no-printer-no-figures rule.
+`test_modules_registry.py`, `test_cost_calculator.py`, `test_bridges.py`
+(WLED + Home Assistant, pointed at unreachable addresses to confirm they
+fail cleanly rather than hang or raise), plus the original `test_modules.py`
+for the LED and colour-check placeholders), and `test_api.py` starting the
+real server on a spare port to test what a browser would actually receive —
+module gating, connection gating, and the no-printer-no-figures rule.

@@ -4,8 +4,9 @@ A dashboard and companion app for the Snapmaker U1. It started as an answer
 to three questions you currently have to walk over and figure out yourself —
 is that docked toolhead ready or stuck, is the right filament loaded, is
 anything due for maintenance — and has grown into a fuller companion:
-printer control, phone pairing, filament tracking, smart notifications, and
-a few games for while a long print runs. It runs on Moonraker, the web API
+printer control, phone pairing, filament tracking, smart notifications, a
+running cost estimate, bridges to smart-home gear you likely already own,
+and six games for while a long print runs. It runs on Moonraker, the web API
 that already sits in front of the printer, and reads it through one
 connection rather than three.
 
@@ -46,6 +47,7 @@ machine, and all of it is visible in data the printer already publishes.
 | **Config backup** | One-click download of this dashboard's own settings and history as a zip. |
 | **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
 | **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. |
+| **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history — editable $/kg per material, $/kWh, and printer wattage. |
 
 ### Optional — on by request
 
@@ -54,6 +56,8 @@ machine, and all of it is visible in data the printer already publishes.
 | **Filament inventory** | Tracks spools on hand, flags print files needing a colour you don't have, and nudges you if a spool has sat loaded for weeks. |
 | **What changed?** | Compares the job about to print against your last few runs of that file, and flags a likely cause when the file has failed before and shares a pattern (a filament type in common, say). |
 | **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
+| **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API — no extra hardware to build. |
+| **Home Assistant bridge** | Publishes printer state as a handful of REST sensors, so it shows up on an existing HA dashboard — no MQTT broker, no custom component. |
 
 ### Interface + simulation, hardware pending
 
@@ -69,13 +73,23 @@ silently doing nothing.
 
 ### While you wait
 
-Five small games, playable from the dashboard while a long print runs —
-**Sky Dash** (a gravity dodge, tap to climb), **Echo Maze** (a real 3D maze
-rendered in pure CSS, room by room — every room looks the same as the last,
-on purpose), **Block Stacker**, **Merge Puzzle**, and **Brick Break**. None
-of them read the printer; a status strip stays pinned to the top of every
-tab, including mid-game, so a finished or failed print is never missed.
-Best scores are remembered per browser.
+Six small games, playable from the dashboard while a long print runs, all
+with real difficulty curves rather than a single fixed setting —
+**Sky Dash** (a gravity dodge that speeds up and tightens the gap as your
+score climbs), **Echo Maze** (a real 3D maze rendered in pure CSS, now a
+bigger 7×7 layout whose minimap only remembers rooms you've actually
+visited — every room looks the same as the last, on purpose), **Beacon Run**
+(a free-roam 3D world, not room-snapped like the maze — real continuous
+position and turning rendered with CSS 3D transforms; walk into every
+glowing beacon before the clock runs out, with more beacons and less time
+each level), **Block Stacker** (speeds up the taller your tower gets),
+**Merge Puzzle** (a 2048-style board that deals harder tiles the higher your
+score), and **Brick Break** (clearing the board advances a level instead of
+ending the game — the paddle shrinks, the ball speeds up, and another row of
+bricks appears, for as long as you can keep up). None of them read the
+printer; a status strip stays pinned to the top of every tab, including
+mid-game, so a finished or failed print is never missed. Best scores are
+remembered per browser.
 
 ## Why one dashboard, not several tools
 
@@ -108,12 +122,16 @@ printer figures, so they work the same with or without a printer connected.
 Built and tested on mock data. There is no real printer connection yet.
 
 - Maintenance, printer control, notifications, updates, backup, camera
-  watchdog, and pairing are complete and tested against the simulated
-  Moonraker layer. Swapping `backend/mock_moonraker.py` for a real Moonraker
-  HTTP client is the only change needed to run any of it against an actual
-  printer — nothing else in the project talks to the printer directly.
+  watchdog, pairing, and the print cost calculator are complete and tested
+  against the simulated Moonraker layer. Swapping
+  `backend/mock_moonraker.py` for a real Moonraker HTTP client is the only
+  change needed to run any of it against an actual printer — nothing else
+  in the project talks to the printer directly.
 - Filament inventory, the What-changed check, and the pre-print sanity check
   are complete and tested; they're optional and off by default.
+- The WLED and Home Assistant bridges are complete and tested outbound HTTP
+  clients — point either at a real device or instance and it works today;
+  leave the host or URL blank and they fail cleanly instead of pretending.
 - The LED and colour-check modules have working decision logic and console
   simulations, but no hardware drivers yet.
 - `backend/mock_moonraker.py` generates 38 fake print jobs over about two
@@ -138,7 +156,7 @@ only sensible approach. Details in
 - **Web server:** `http.server` from the standard library
 - **Frontend:** HTML, CSS, and JavaScript — no framework, no build step
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 143 cases
+- **Tests:** `unittest` from the standard library, 170 cases
 - **Printer API:** Moonraker (simulated for now)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is
@@ -170,7 +188,6 @@ increased contrast, and the layout collapses cleanly to a phone-width screen.
 
 **Beyond that:**
 
-- Home Assistant bridge (simple HTTP sensors, no MQTT dependency needed).
 - Chamber climate monitoring and control.
 - An import-compatibility check for files converted from other slicer
   ecosystems.

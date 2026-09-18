@@ -787,8 +787,116 @@ async function loadUpdates() {
   }
 }
 
+/* ---- Print cost ---------------------------------------------------------*/
+
+async function loadCost() {
+  const host = $('cost-body');
+  const [current, history] = await Promise.all([
+    getJSON(api('/api/cost/current')),
+    getJSON(api('/api/cost/history')),
+  ]);
+
+  if (isModuleDisabled(current)) {
+    host.innerHTML = moduleDisabledEmpty('Print cost calculator');
+    return;
+  }
+
+  const rows = [];
+  if (hasData(current) && current.total_cost !== undefined) {
+    rows.push(`
+      <div class="crow" style="border-left:3px solid var(--accent);">
+        <strong>This print, so far:</strong> $${current.cost_so_far.toFixed(2)}
+        (est. total once done: $${current.total_cost.toFixed(2)}) — ${Math.round(current.progress * 100)}% complete
+      </div>`);
+  }
+
+  if (hasData(history) && history.jobs && history.jobs.length) {
+    rows.push(...history.jobs.slice(0, 5).map(job => `
+      <div class="log-row">
+        <span>${esc(job.filename)}</span>
+        <span>$${job.total_cost.toFixed(2)} · ${esc(job.filament_type)} ${job.filament_grams.toFixed(0)}g</span>
+      </div>`));
+  }
+
+  host.innerHTML = rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.');
+}
+
+function initCostSettings() {
+  getJSON('/api/cost/settings').then(data => {
+    if (!data || isModuleDisabled(data)) return;
+    $('cost-electricity').value = data.electricity_rate_per_kwh ?? '';
+    $('cost-watts').value = data.printer_watts ?? '';
+  });
+
+  $('cost-save-btn').addEventListener('click', async () => {
+    const material = $('cost-material').value.trim();
+    const price = parseFloat($('cost-price').value);
+    const updates = {
+      electricity_rate_per_kwh: parseFloat($('cost-electricity').value) || 0,
+      printer_watts: parseFloat($('cost-watts').value) || 0,
+    };
+    if (material && !Number.isNaN(price)) {
+      updates.filament_price_per_kg = { [material]: price };
+    }
+    await postJSON('/api/cost/settings', updates);
+    const btn = $('cost-save-btn');
+    const original = btn.textContent;
+    btn.textContent = 'Saved';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+    loadCost();
+  });
+}
+
+/* ---- Smart home bridges: WLED + Home Assistant ---------------------------*/
+
+function initBridges() {
+  getJSON('/api/wled/settings').then(data => {
+    if (data && !isModuleDisabled(data)) $('wled-host').value = data.host || '';
+  });
+  getJSON('/api/homeassistant/settings').then(data => {
+    if (data && !isModuleDisabled(data)) {
+      $('ha-url').value = data.base_url || '';
+      $('ha-token').value = data.token || '';
+    }
+  });
+
+  $('wled-save-btn').addEventListener('click', async () => {
+    await postJSON('/api/wled/settings', { host: $('wled-host').value.trim() });
+    $('wled-status').textContent = 'Saved.';
+  });
+
+  $('wled-test-btn').addEventListener('click', async () => {
+    $('wled-status').textContent = 'Testing…';
+    const { body } = await postJSON('/api/wled/test', {});
+    $('wled-status').textContent = body.ok ? 'WLED device reachable.' : `Could not reach it: ${body.error || 'unknown error'}`;
+  });
+
+  $('wled-push-btn').addEventListener('click', async () => {
+    $('wled-status').textContent = 'Pushing…';
+    const { body } = await postJSON('/api/wled/push', {});
+    $('wled-status').textContent = body.ok
+      ? `Pushed ${body.segments_sent} ring(s) to WLED.`
+      : `Push failed: ${body.error || 'unknown error'}`;
+  });
+
+  $('ha-save-btn').addEventListener('click', async () => {
+    await postJSON('/api/homeassistant/settings', {
+      base_url: $('ha-url').value.trim(), token: $('ha-token').value.trim(),
+    });
+    $('ha-status').textContent = 'Saved.';
+  });
+
+  $('ha-push-btn').addEventListener('click', async () => {
+    $('ha-status').textContent = 'Pushing…';
+    const { body } = await postJSON('/api/homeassistant/push', {});
+    $('ha-status').textContent = body.ok
+      ? 'Pushed sensors to Home Assistant.'
+      : `Push failed: ${body.error || 'unknown error'}`;
+  });
+}
+
 /* ==========================================================================
-   Games — 5 of them, no printer theming. Only one runs at a time; switching
+   Games — 6 of them, no printer theming. Only one runs at a time; switching
    games or tabs stops whichever loop is active.
    ========================================================================== */
 
@@ -798,6 +906,8 @@ let gameLoopHandle = null;
 function stopCurrentGame() {
   if (gameLoopHandle) { clearInterval(gameLoopHandle); gameLoopHandle = null; }
   document.removeEventListener('keydown', mergeKeyHandler);
+  document.removeEventListener('keydown', beaconKeyDownHandler);
+  document.removeEventListener('keyup', beaconKeyUpHandler);
   activeGame = null;
 }
 
@@ -827,7 +937,10 @@ function initGames() {
 function renderGame(name) {
   stopCurrentGame();
   activeGame = name;
-  const games = { skydash: initSkyDash, echomaze: initEchoMaze, stacker: initStacker, merge: initMerge, breakout: initBreakout };
+  const games = {
+    skydash: initSkyDash, echomaze: initEchoMaze, beacon: initBeacon,
+    stacker: initStacker, merge: initMerge, breakout: initBreakout,
+  };
   (games[name] || initSkyDash)();
 }
 
@@ -835,7 +948,10 @@ function renderGame(name) {
 
 function initSkyDash() {
   const BEST_KEY = 'dejavu1.skydash.best';
-  const W = 640, H = 380, GRAVITY = 0.55, FLAP = -8, SPEED = 3, GAP = 128, X = 90, R = 13;
+  const W = 640, H = 380, GRAVITY = 0.55, FLAP = -8, X = 90, R = 13;
+  // Difficulty ramps with score: faster obstacles, a tighter gap to thread.
+  const speedFor = (score) => Math.min(3 + score * 0.12, 7.5);
+  const gapFor = (score) => Math.max(128 - score * 2, 86);
 
   $('game-stats').innerHTML = `
     <div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="sd-score">0</div></div>
@@ -856,14 +972,15 @@ function initSkyDash() {
 
     document.querySelectorAll('.sd-obstacle').forEach(el => el.remove());
     const surface = $('sd-surface');
+    const gap = gapFor(state.score);
     state.obstacles.forEach(o => {
       const top = document.createElement('div');
       top.className = 'sd-obstacle top';
-      top.style.left = `${o.x}px`; top.style.top = '0px'; top.style.height = `${Math.max(0, o.gapY - GAP / 2)}px`;
+      top.style.left = `${o.x}px`; top.style.top = '0px'; top.style.height = `${Math.max(0, o.gapY - gap / 2)}px`;
       surface.appendChild(top);
       const bottom = document.createElement('div');
       bottom.className = 'sd-obstacle bottom';
-      bottom.style.left = `${o.x}px`; bottom.style.top = `${o.gapY + GAP / 2}px`; bottom.style.height = `${Math.max(0, H - (o.gapY + GAP / 2))}px`;
+      bottom.style.left = `${o.x}px`; bottom.style.top = `${o.gapY + gap / 2}px`; bottom.style.height = `${Math.max(0, H - (o.gapY + gap / 2))}px`;
       surface.appendChild(bottom);
     });
 
@@ -880,10 +997,12 @@ function initSkyDash() {
 
   function tick() {
     if (state.status !== 'playing') return;
+    const speed = speedFor(state.score);
+    const gap = gapFor(state.score);
     state.v += GRAVITY;
     state.y += state.v;
 
-    state.obstacles = state.obstacles.map(o => ({ ...o, x: o.x - SPEED })).filter(o => o.x > -60);
+    state.obstacles = state.obstacles.map(o => ({ ...o, x: o.x - speed })).filter(o => o.x > -60);
     const last = state.obstacles[state.obstacles.length - 1];
     if (!last || last.x < W - 260) state.obstacles.push({ x: W, gapY: 90 + Math.random() * (H - 180), passed: false });
 
@@ -894,7 +1013,7 @@ function initSkyDash() {
     });
     state.obstacles.forEach(o => {
       if (o.x < X + R && o.x + 50 > X - R) {
-        if (state.y - R < o.gapY - GAP / 2 || state.y + R > o.gapY + GAP / 2) collided = true;
+        if (state.y - R < o.gapY - gap / 2 || state.y + R > o.gapY + gap / 2) collided = true;
       }
     });
 
@@ -925,7 +1044,7 @@ function initSkyDash() {
 
 function initEchoMaze() {
   const BEST_KEY = 'dejavu1.echomaze.best';
-  const N = 5;
+  const N = 7;   // bigger maze than before — more rooms that all look the same
   const FACINGS = ['N', 'E', 'S', 'W'];
   const DELTA = { N: [-1, 0], E: [0, 1], S: [1, 0], W: [0, -1] };
 
@@ -947,12 +1066,12 @@ function initEchoMaze() {
     return cells;
   }
 
-  let maze = { grid: generate(), row: 0, col: 0, rotation: 0, steps: 0, won: false };
+  let maze = { grid: generate(), row: 0, col: 0, rotation: 0, steps: 0, won: false, visited: new Set(['0,0']) };
 
   $('game-host').innerHTML = `
     <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
       <div style="flex:1; min-width:260px;">
-        <p class="card-sub" style="margin-bottom:12px; max-width:34ch;">Every room looks the same as the last — on purpose. Find the glowing exit.</p>
+        <p class="card-sub" style="margin-bottom:12px; max-width:34ch;">Every room looks the same as the last — on purpose. The map only remembers rooms you've actually been in. Find the glowing exit.</p>
         <div class="maze-viewport" id="em-viewport">
           <div class="maze-cube" id="em-cube">
             <div class="maze-wall" id="em-wall-N"></div>
@@ -998,11 +1117,17 @@ function initEchoMaze() {
     $('em-forward').disabled = Boolean(cell[facing]) || maze.won;
 
     const map = $('em-map');
+    map.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
     map.innerHTML = '';
     for (let r = 0; r < N; r++) {
       for (let c = 0; c < N; c++) {
         const cellEl = document.createElement('div');
-        cellEl.className = 'mc' + (r === maze.row && c === maze.col ? ' here' : '') + (r === N - 1 && c === N - 1 ? ' exit' : '');
+        const seen = maze.visited.has(`${r},${c}`);
+        const isExit = r === N - 1 && c === N - 1;
+        cellEl.className = 'mc'
+          + (r === maze.row && c === maze.col ? ' here' : '')
+          + (isExit && seen ? ' exit' : '')
+          + (!seen ? ' unseen' : '');
         map.appendChild(cellEl);
       }
     }
@@ -1022,6 +1147,7 @@ function initEchoMaze() {
     if (cell[facing]) return;
     const [dr, dc] = DELTA[facing];
     maze.row += dr; maze.col += dc; maze.steps += 1;
+    maze.visited.add(`${maze.row},${maze.col}`);
     if (maze.row === N - 1 && maze.col === N - 1) {
       maze.won = true;
       const best = Math.min(readBest(BEST_KEY) ?? Infinity, maze.steps);
@@ -1031,14 +1157,221 @@ function initEchoMaze() {
     draw();
   });
   $('em-new').addEventListener('click', () => {
-    maze = { grid: generate(), row: 0, col: 0, rotation: 0, steps: 0, won: false };
+    maze = { grid: generate(), row: 0, col: 0, rotation: 0, steps: 0, won: false, visited: new Set(['0,0']) };
     draw();
   });
 
   draw();
 }
 
-/* ---- Game 3: Block Stacker ------------------------------------------- */
+/* ---- Game 3: Beacon Run (continuous free-roam 3D world) -----------------
+ * Echo Maze snaps between rooms on a grid. This one doesn't: the player has
+ * a real (x, y) position and a facing angle that both change continuously,
+ * the same rotate-by-negative-yaw-around-the-camera trick Echo Maze uses,
+ * just generalized from 90-degree room snaps to a free-roam world:
+ *   world.transform = rotateZ(-yaw) translate3d(-px, -py, 0)
+ * translate3d runs first (moves the world so the player is at the origin),
+ * then rotateZ turns that around the camera to match which way they're
+ * facing — so beacons the player hasn't reached yet visibly slide and spin
+ * past as they walk and turn, instead of the room simply swapping out.
+ * --------------------------------------------------------------------- */
+
+let beaconKeyDownHandler = () => {};
+let beaconKeyUpHandler = () => {};
+
+function initBeacon() {
+  const BEST_KEY = 'dejavu1.beacon.best';
+  const MOVE_SPEED = 3.2, TURN_SPEED = 2.6, COLLECT_RADIUS = 42, WORLD_HALF = 900;
+  const BASE_TIME = 45, BASE_BEACONS = 6;
+
+  $('game-stats').innerHTML = `
+    <div class="game-stat"><div class="g-key">Level</div><div class="g-val" id="bc-level">1</div></div>
+    <div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="bc-score">0</div></div>
+    <div class="game-stat"><div class="g-key">Best level</div><div class="g-val accent" id="bc-best">${readBest(BEST_KEY) ?? '—'}</div></div>`;
+
+  $('game-host').innerHTML = `
+    <p class="card-sub" style="margin-bottom:12px; max-width:48ch;">Walk into every glowing beacon before the clock runs out — free movement, not room-by-room. WASD or arrow keys, or hold the buttons below.</p>
+    <div class="beacon-viewport" id="bc-viewport">
+      <div class="beacon-hud"><span id="bc-hud-left">Beacons: 0/0</span><span id="bc-hud-right">Time: —</span></div>
+      <div class="beacon-horizon">
+        <div class="beacon-world" id="bc-world">
+          <div class="beacon-ground"></div>
+        </div>
+      </div>
+      <div class="beacon-reticle" aria-hidden="true"></div>
+      <div class="game-overlay" id="bc-overlay"><div class="g-title">Beacon Run</div><div class="g-sub">Click to start — WASD / arrows to move and turn</div></div>
+    </div>
+    <div class="beacon-controls">
+      <button class="btn" id="bc-turnl" data-hold="turnL">↺ Turn</button>
+      <button class="btn primary" id="bc-fwd" data-hold="fwd">▲ Forward</button>
+      <button class="btn" id="bc-back" data-hold="back">▼ Back</button>
+      <button class="btn" id="bc-turnr" data-hold="turnR">Turn ↻</button>
+    </div>`;
+
+  const keys = {};
+  let state = { status: 'idle' };
+
+  const randRange = (a, b) => a + Math.random() * (b - a);
+
+  function spawnBeacons(count) {
+    const beacons = [];
+    let tries = 0;
+    while (beacons.length < count && tries < count * 50) {
+      tries++;
+      const x = randRange(-WORLD_HALF * 0.85, WORLD_HALF * 0.85);
+      const y = randRange(-WORLD_HALF * 0.85, WORLD_HALF * 0.85);
+      if (Math.hypot(x, y) < 90) continue;
+      if (beacons.some(b => Math.hypot(b.x - x, b.y - y) < 100)) continue;
+      beacons.push({ x, y, got: false });
+    }
+    return beacons;
+  }
+
+  function spawnPillars(count) {
+    return Array.from({ length: count }, () => ({
+      x: randRange(-WORLD_HALF * 0.7, WORLD_HALF * 0.7),
+      y: randRange(-WORLD_HALF * 0.7, WORLD_HALF * 0.7),
+    }));
+  }
+
+  function renderStatics() {
+    const world = $('bc-world');
+    world.querySelectorAll('.beacon-marker, .beacon-pillar').forEach(el => el.remove());
+    state.beacons.forEach((b, i) => {
+      const el = document.createElement('div');
+      el.className = 'beacon-marker';
+      el.dataset.index = i;
+      world.appendChild(el);
+    });
+    state.pillars.forEach(() => {
+      const el = document.createElement('div');
+      el.className = 'beacon-pillar';
+      world.appendChild(el);
+    });
+    positionStatics();
+  }
+
+  function positionStatics() {
+    const markers = $('bc-world').querySelectorAll('.beacon-marker');
+    state.beacons.forEach((b, i) => {
+      const el = markers[i];
+      if (!el) return;
+      el.style.display = b.got ? 'none' : '';
+      el.style.transform = `translate3d(${b.x}px, ${b.y}px, 0)`;
+    });
+    const pillars = $('bc-world').querySelectorAll('.beacon-pillar');
+    state.pillars.forEach((p, i) => {
+      const el = pillars[i];
+      if (el) el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+    });
+  }
+
+  function newLevel(level) {
+    const count = Math.min(BASE_BEACONS + (level - 1) * 2, 16);
+    const carriedScore = state.score || 0;
+    state = {
+      status: 'playing',
+      level,
+      score: carriedScore,
+      px: 0, py: 0, yaw: 0,
+      beacons: spawnBeacons(count),
+      pillars: spawnPillars(3 + Math.min(level, 5)),
+      timeLeft: Math.max(BASE_TIME - (level - 1) * 2, 22),
+      collected: 0,
+    };
+    renderStatics();
+  }
+
+  function draw() {
+    if (state.status === 'idle') {
+      $('bc-world').style.transform = 'translate3d(0,0,0)';
+      $('bc-overlay').style.display = 'flex';
+      return;
+    }
+    $('bc-world').style.transform = `rotateZ(${-state.yaw}deg) translate3d(${-state.px}px, ${-state.py}px, 0)`;
+    $('bc-level').textContent = state.level;
+    $('bc-score').textContent = state.score;
+    $('bc-hud-left').textContent = `Beacons: ${state.collected}/${state.beacons.length}`;
+    $('bc-hud-right').textContent = `Time: ${Math.max(Math.ceil(state.timeLeft), 0)}s`;
+
+    const overlay = $('bc-overlay');
+    overlay.style.display = state.status === 'playing' ? 'none' : 'flex';
+    if (state.status === 'over') {
+      overlay.innerHTML = `<div class="g-title">Out of time</div><div class="g-sub">Reached level ${state.level}, score ${state.score} — click to try again</div>`;
+    }
+  }
+
+  function tick() {
+    if (state.status !== 'playing') return;
+
+    const turn = (keys.turnR ? 1 : 0) - (keys.turnL ? 1 : 0);
+    const move = (keys.fwd ? 1 : 0) - (keys.back ? 1 : 0);
+    state.yaw += turn * TURN_SPEED;
+    const yawRad = state.yaw * Math.PI / 180;
+    state.px += move * Math.sin(yawRad) * MOVE_SPEED;
+    state.py += -move * Math.cos(yawRad) * MOVE_SPEED;
+    state.px = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, state.px));
+    state.py = Math.max(-WORLD_HALF, Math.min(WORLD_HALF, state.py));
+
+    state.beacons.forEach(b => {
+      if (b.got) return;
+      if (Math.hypot(b.x - state.px, b.y - state.py) < COLLECT_RADIUS) {
+        b.got = true;
+        state.collected += 1;
+        state.score += 10;
+      }
+    });
+
+    state.timeLeft -= 0.03;
+
+    if (state.collected === state.beacons.length) {
+      const best = Math.max(readBest(BEST_KEY) ?? 0, state.level);
+      saveBest(BEST_KEY, best);
+      $('bc-best').textContent = best;
+      newLevel(state.level + 1);
+    } else if (state.timeLeft <= 0) {
+      state.status = 'over';
+      clearInterval(gameLoopHandle); gameLoopHandle = null;
+      const best = Math.max(readBest(BEST_KEY) ?? 0, state.level);
+      saveBest(BEST_KEY, best);
+      $('bc-best').textContent = best;
+    } else {
+      positionStatics();
+    }
+    draw();
+  }
+
+  function start() {
+    newLevel(1);
+    gameLoopHandle = setInterval(tick, 30);
+    draw();
+  }
+
+  $('bc-viewport').addEventListener('click', () => {
+    if (state.status !== 'playing') start();
+  });
+
+  document.querySelectorAll('[data-hold]').forEach(btn => {
+    const key = btn.dataset.hold;
+    const down = (e) => { e.preventDefault(); keys[key] = true; };
+    const up = () => { keys[key] = false; };
+    btn.addEventListener('pointerdown', down);
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointerleave', up);
+    btn.addEventListener('pointercancel', up);
+  });
+
+  const KEY_MAP = { KeyW: 'fwd', ArrowUp: 'fwd', KeyS: 'back', ArrowDown: 'back',
+    KeyA: 'turnL', ArrowLeft: 'turnL', KeyD: 'turnR', ArrowRight: 'turnR' };
+  beaconKeyDownHandler = (e) => { if (KEY_MAP[e.code]) { e.preventDefault(); keys[KEY_MAP[e.code]] = true; } };
+  beaconKeyUpHandler = (e) => { if (KEY_MAP[e.code]) keys[KEY_MAP[e.code]] = false; };
+  document.addEventListener('keydown', beaconKeyDownHandler);
+  document.addEventListener('keyup', beaconKeyUpHandler);
+
+  draw();
+}
+
+/* ---- Game 4: Block Stacker ------------------------------------------- */
 
 function initStacker() {
   const BEST_KEY = 'dejavu1.stacker.best';
@@ -1093,7 +1426,10 @@ function initStacker() {
 
   function tick() {
     if (status !== 'playing' || !moving) return;
-    moving.x += moving.dir * 4;
+    // Speeds up as the tower gets taller, and the margin for a clean drop
+    // (blocks shrink toward the overlap already) gets less forgiving.
+    const speed = Math.min(4 + level * 0.35, 11);
+    moving.x += moving.dir * speed;
     if (moving.x <= 0 || moving.x + moving.width >= W) moving.dir *= -1;
     moving.x = Math.max(0, Math.min(W - moving.width, moving.x));
     draw();
@@ -1137,7 +1473,7 @@ function initStacker() {
   draw();
 }
 
-/* ---- Game 4: Merge Puzzle (2048-style) --------------------------------- */
+/* ---- Game 5: Merge Puzzle (2048-style) --------------------------------- */
 
 let mergeKeyHandler = () => {};
 
@@ -1175,7 +1511,10 @@ function initMerge() {
     for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (grid[r][c] === 0) empties.push([r, c]);
     if (!empties.length) return;
     const [r, c] = empties[Math.floor(Math.random() * empties.length)];
-    grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+    // The higher the score climbs, the more often a 4 shows up instead of a
+    // 2 — harder to plan around, same as the real game gets harder late.
+    const twoChance = Math.max(0.9 - score / 15000, 0.68);
+    grid[r][c] = Math.random() < twoChance ? 2 : 4;
   }
 
   function newGame() {
@@ -1284,38 +1623,59 @@ function initMerge() {
   newGame();
 }
 
-/* ---- Game 5: Brick Break (breakout) ------------------------------------ */
+/* ---- Game 6: Brick Break (breakout, with level progression) ------------ */
 
 function initBreakout() {
   const BEST_KEY = 'dejavu1.breakout.best';
-  const W = 480, H = 360, PADDLE_W = 80, PADDLE_H = 12, BALL_R = 6;
-  const ROWS = 4, COLS = 8, BRICK_H = 20;
+  const W = 480, H = 360, PADDLE_W_BASE = 80, PADDLE_H = 12, BALL_R = 6;
+  const COLS = 8, BRICK_H = 18, ROWS_MAX = 7;
 
   $('game-stats').innerHTML = `
+    <div class="game-stat"><div class="g-key">Level</div><div class="g-val" id="bo-level">1</div></div>
     <div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="bo-score">0</div></div>
-    <div class="game-stat"><div class="g-key">Best</div><div class="g-val accent" id="bo-best">${readBest(BEST_KEY) ?? '—'}</div></div>`;
+    <div class="game-stat"><div class="g-key">Best level</div><div class="g-val accent" id="bo-best">${readBest(BEST_KEY) ?? '—'}</div></div>`;
 
   $('game-host').innerHTML = `
     <div class="game-surface breakout" id="bo-surface" style="width:${W}px; max-width:100%; height:${H}px;">
-      <div class="bo-paddle" id="bo-paddle" style="width:${PADDLE_W}px;"></div>
+      <div class="bo-paddle" id="bo-paddle" style="width:${PADDLE_W_BASE}px;"></div>
       <div class="bo-ball" id="bo-ball"></div>
       <div class="game-overlay" id="bo-overlay"><div class="g-title">Brick Break</div><div class="g-sub">Move the mouse to steer — click to launch</div></div>
     </div>`;
 
   const BRICK_W = W / COLS;
-  const COLORS = ['#ff9c66', '#ffcc66', '#7fb2ff', '#5cc16f'];
+  const COLORS = ['#ff9c66', '#ffcc66', '#7fb2ff', '#5cc16f', '#e0475f', '#34c759', '#a78bfa'];
 
-  let paddleX = W / 2 - PADDLE_W / 2;
+  // Every level shrinks the paddle a little and speeds the ball up, on top
+  // of one more row of bricks, up to ROWS_MAX — it keeps going instead of
+  // stopping the moment the board clears.
+  let level = 1;
+  let paddleW = PADDLE_W_BASE;
+  let paddleX = W / 2 - paddleW / 2;
   let ball = { x: W / 2, y: H - 40, vx: 2.4, vy: -3 };
   let bricks = [];
   let score = 0;
   let status = 'idle';
 
-  function resetBricks() {
+  function ballSpeedMultiplier() {
+    return 1 + (level - 1) * 0.14;
+  }
+
+  function resetBricks(forLevel) {
+    const rows = Math.min(3 + Math.floor((forLevel - 1) / 1), ROWS_MAX);
     bricks = [];
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    for (let r = 0; r < rows; r++) for (let c = 0; c < COLS; c++) {
       bricks.push({ x: c * BRICK_W, y: r * BRICK_H + 10, w: BRICK_W - 4, h: BRICK_H - 4, color: COLORS[r % COLORS.length], alive: true });
     }
+  }
+
+  function setupLevel(forLevel) {
+    level = forLevel;
+    paddleW = Math.max(PADDLE_W_BASE - (level - 1) * 4, 40);
+    $('bo-paddle').style.width = `${paddleW}px`;
+    paddleX = Math.max(0, Math.min(W - paddleW, paddleX));
+    resetBricks(level);
+    const speed = 3.4 * ballSpeedMultiplier();
+    ball = { x: W / 2, y: H - 40, vx: speed * 0.7, vy: -speed };
   }
 
   function draw() {
@@ -1334,12 +1694,12 @@ function initBreakout() {
     $('bo-paddle').style.bottom = '10px';
     $('bo-ball').style.left = `${ball.x - BALL_R}px`;
     $('bo-ball').style.top = `${ball.y - BALL_R}px`;
+    $('bo-level').textContent = level;
     $('bo-score').textContent = score;
 
     const overlay = $('bo-overlay');
     overlay.style.display = status === 'playing' ? 'none' : 'flex';
-    if (status === 'over') overlay.innerHTML = `<div class="g-title">Game over</div><div class="g-sub">Score ${score} — click to try again</div>`;
-    if (status === 'won') overlay.innerHTML = `<div class="g-title">Cleared!</div><div class="g-sub">Score ${score} — click to play again</div>`;
+    if (status === 'over') overlay.innerHTML = `<div class="g-title">Game over</div><div class="g-sub">Reached level ${level}, score ${score} — click to try again</div>`;
   }
 
   function tick() {
@@ -1351,10 +1711,11 @@ function initBreakout() {
 
     const paddleY = H - 10 - PADDLE_H;
     if (ball.y + BALL_R >= paddleY && ball.y + BALL_R <= paddleY + PADDLE_H + 6 &&
-        ball.x >= paddleX && ball.x <= paddleX + PADDLE_W && ball.vy > 0) {
-      const hitPos = (ball.x - paddleX) / PADDLE_W - 0.5;
-      ball.vx = hitPos * 6;
-      ball.vy = -Math.abs(ball.vy);
+        ball.x >= paddleX && ball.x <= paddleX + paddleW && ball.vy > 0) {
+      const hitPos = (ball.x - paddleX) / paddleW - 0.5;
+      const speed = 3.4 * ballSpeedMultiplier();
+      ball.vx = hitPos * speed * 2.2;
+      ball.vy = -Math.abs(speed);
     }
 
     bricks.forEach(b => {
@@ -1369,13 +1730,13 @@ function initBreakout() {
     if (ball.y - BALL_R > H) {
       status = 'over';
       clearInterval(gameLoopHandle); gameLoopHandle = null;
-      const best = Math.max(readBest(BEST_KEY) ?? 0, score);
+      const best = Math.max(readBest(BEST_KEY) ?? 0, level);
       saveBest(BEST_KEY, best);
       $('bo-best').textContent = best;
     } else if (bricks.every(b => !b.alive)) {
-      status = 'won';
-      clearInterval(gameLoopHandle); gameLoopHandle = null;
-      const best = Math.max(readBest(BEST_KEY) ?? 0, score);
+      // Cleared the board — advance instead of stopping. Score carries over.
+      setupLevel(level + 1);
+      const best = Math.max(readBest(BEST_KEY) ?? 0, level);
       saveBest(BEST_KEY, best);
       $('bo-best').textContent = best;
     }
@@ -1384,20 +1745,19 @@ function initBreakout() {
 
   $('bo-surface').addEventListener('pointermove', (e) => {
     const rect = $('bo-surface').getBoundingClientRect();
-    paddleX = Math.max(0, Math.min(W - PADDLE_W, e.clientX - rect.left - PADDLE_W / 2));
+    paddleX = Math.max(0, Math.min(W - paddleW, e.clientX - rect.left - paddleW / 2));
     if (status !== 'playing') draw();
   });
 
   $('bo-surface').addEventListener('click', () => {
     if (status !== 'playing') {
-      resetBricks();
-      ball = { x: W / 2, y: H - 40, vx: 2.4, vy: -3 };
       score = 0; status = 'playing';
+      setupLevel(1);
       gameLoopHandle = setInterval(tick, 16);
     }
   });
 
-  resetBricks();
+  setupLevel(1);
   draw();
 }
 
@@ -1432,7 +1792,7 @@ async function refreshAll() {
     await Promise.all([
       loadMaintenance(), loadRings(), loadColorCheck(), loadStatusRibbon(),
       loadFilament(), loadCompare(), loadModules(), loadDevices(),
-      loadUpdates(), loadPrinterControl(),
+      loadUpdates(), loadPrinterControl(), loadCost(),
     ]);
     $('stamp').textContent = new Date().toLocaleTimeString();
   } catch (err) {
@@ -1458,11 +1818,13 @@ initSpoolForm();
 initRepeatSettings();
 initPairing();
 initNotifications();
+initCostSettings();
+initBridges();
 initGames();
 trackHighlights();
 refreshAll();
 loadNotificationSettings();
 
 setInterval(() => {
-  if (demoOn) { loadRings(); loadColorCheck(); loadStatusRibbon(); }
+  if (demoOn) { loadRings(); loadColorCheck(); loadStatusRibbon(); loadCost(); }
 }, 5000);

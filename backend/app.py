@@ -62,6 +62,20 @@ API endpoints
   POST /api/pairing/redeem           {"code": "...", "device_name": "..."}
   POST /api/pairing/devices/<id>/unpair
 
+  GET  /api/cost/history              cost of recent print jobs
+  GET  /api/cost/current              estimated cost of the job in progress
+  GET  /api/cost/settings
+  POST /api/cost/settings            {"electricity_rate_per_kwh": 0.15, ...}
+
+  GET  /api/wled/settings
+  POST /api/wled/settings            {"host": "192.168.1.42", ...}
+  POST /api/wled/test                 checks the configured WLED device
+  POST /api/wled/push                 pushes current ring states to it
+
+  GET  /api/homeassistant/settings
+  POST /api/homeassistant/settings   {"base_url": "...", "token": "..."}
+  POST /api/homeassistant/push        pushes printer state as HA sensors
+
 No figures without a printer
 ----------------------------
 With no printer connected, routes that read printer state return no numbers
@@ -93,7 +107,9 @@ import backup
 import camera
 import color_check
 import comparison
+import cost_calculator
 import filament_inventory
+import home_assistant_bridge
 import led_status
 import maintenance
 import mock_moonraker
@@ -103,6 +119,7 @@ import pairing
 import printer_control
 import sanity_check
 import updates
+import wled_bridge
 
 # The dashboard's HTML/CSS/JS lives here.
 _FRONTEND_DIR = os.path.join(os.path.dirname(_BACKEND_DIR), "frontend")
@@ -126,6 +143,8 @@ _DATA_ROUTES = {
     "/api/sanity": ("sanity_check", lambda: sanity_check.check()),
     "/api/updates": ("updates", lambda: updates.get_status()),
     "/api/camera": ("camera", lambda: camera.get_status()),
+    "/api/cost/history": ("cost_calculator", lambda: {"jobs": cost_calculator.cost_history()}),
+    "/api/cost/current": ("cost_calculator", lambda: cost_calculator.estimate_current_job()),
 }
 
 # Routes that answer from this dashboard's own settings, not printer figures.
@@ -137,6 +156,9 @@ _APP_ROUTES = {
     }),
     "/api/notifications/settings": ("notifications", lambda: notifications.get_settings()),
     "/api/notifications/queue": ("notifications", lambda: {"queue": notifications.get_queue()}),
+    "/api/cost/settings": ("cost_calculator", lambda: cost_calculator.get_settings()),
+    "/api/wled/settings": ("wled_bridge", lambda: wled_bridge.get_settings()),
+    "/api/homeassistant/settings": ("home_assistant_bridge", lambda: home_assistant_bridge.get_settings()),
 }
 
 # POST actions on printer-figure-gated routes.
@@ -365,6 +387,39 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 device_id = route[len("/api/pairing/devices/"):-len("/unpair")]
                 devices = pairing.unpair(device_id)
                 return self._send_json({"devices": devices})
+
+            if route == "/api/cost/settings":
+                if self._module_blocked("cost_calculator"):
+                    return None
+                body = self._read_json_body()
+                return self._send_json(cost_calculator.save_settings(body))
+
+            if route == "/api/wled/settings":
+                if self._module_blocked("wled_bridge"):
+                    return None
+                body = self._read_json_body()
+                return self._send_json(wled_bridge.save_settings(body))
+
+            if route == "/api/wled/test":
+                if self._module_blocked("wled_bridge"):
+                    return None
+                return self._send_json(wled_bridge.test_connection())
+
+            if route == "/api/wled/push":
+                if self._module_blocked("wled_bridge"):
+                    return None
+                return self._send_json(wled_bridge.push_ring_states())
+
+            if route == "/api/homeassistant/settings":
+                if self._module_blocked("home_assistant_bridge"):
+                    return None
+                body = self._read_json_body()
+                return self._send_json(home_assistant_bridge.save_settings(body))
+
+            if route == "/api/homeassistant/push":
+                if self._module_blocked("home_assistant_bridge"):
+                    return None
+                return self._send_json(home_assistant_bridge.push_sensors())
 
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 

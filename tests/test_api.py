@@ -22,12 +22,15 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
 
-import app as dv_app        # noqa: E402
-import maintenance          # noqa: E402
-import mock_moonraker       # noqa: E402
-import modules              # noqa: E402
-import notifications        # noqa: E402
-import pairing              # noqa: E402
+import app as dv_app         # noqa: E402
+import cost_calculator       # noqa: E402
+import home_assistant_bridge  # noqa: E402
+import maintenance           # noqa: E402
+import mock_moonraker        # noqa: E402
+import modules               # noqa: E402
+import notifications         # noqa: E402
+import pairing                # noqa: E402
+import wled_bridge            # noqa: E402
 
 
 class APITestCase(unittest.TestCase):
@@ -317,6 +320,93 @@ class TestAppLevelRoutesIgnoreConnectionState(APITestCase):
         status, body = self.get("/api/filament")
         self.assertEqual(status, 200)
         self.assertIn("spools", body)
+
+
+class TestCostCalculatorRoutes(APITestCase):
+
+    def setUp(self):
+        super().setUp()
+        cost_calculator.reset()
+        mock_moonraker.reset_live_state()
+
+    def tearDown(self):
+        super().tearDown()
+        cost_calculator.reset()
+        mock_moonraker.reset_live_state()
+
+    def test_settings_readable_and_writable_without_a_printer(self):
+        status, body = self.get("/api/cost/settings")
+        self.assertEqual(status, 200)
+        self.assertIn("printer_watts", body)
+
+        status, body = self.post("/api/cost/settings", {"printer_watts": 300})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["printer_watts"], 300)
+
+    def test_history_requires_connection_or_demo(self):
+        status, body = self.get("/api/cost/history")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, {"connected": False, "demo": False})
+
+    def test_history_in_demo_mode(self):
+        status, body = self.get("/api/cost/history?demo=1")
+        self.assertEqual(status, 200)
+        self.assertIn("jobs", body)
+        self.assertGreater(len(body["jobs"]), 0)
+
+    def test_current_job_estimate_in_demo_mode(self):
+        status, body = self.get("/api/cost/current?demo=1")
+        self.assertEqual(status, 200)
+        self.assertIn("total_cost", body)
+
+
+class TestBridgeRoutes(APITestCase):
+
+    def setUp(self):
+        super().setUp()
+        wled_bridge.reset()
+        home_assistant_bridge.reset()
+        modules.set_enabled("wled_bridge", True)
+        modules.set_enabled("home_assistant_bridge", True)
+
+    def tearDown(self):
+        super().tearDown()
+        wled_bridge.reset()
+        home_assistant_bridge.reset()
+        modules.reset_state()
+
+    def test_wled_settings_roundtrip(self):
+        status, body = self.post("/api/wled/settings", {"host": "192.0.2.9"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["host"], "192.0.2.9")
+
+        status, body = self.get("/api/wled/settings")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["host"], "192.0.2.9")
+
+    def test_wled_push_without_host_fails_cleanly(self):
+        status, body = self.post("/api/wled/push", {})
+        self.assertEqual(status, 200)
+        self.assertFalse(body["ok"])
+
+    def test_wled_routes_respect_module_gating(self):
+        self.post("/api/modules/wled_bridge/toggle", {"enabled": False})
+        status, body = self.get("/api/wled/settings")
+        self.assertEqual(status, 403)
+        self.assertTrue(body["module_disabled"])
+        self.post("/api/modules/wled_bridge/toggle", {"enabled": True})
+
+    def test_home_assistant_settings_roundtrip(self):
+        status, body = self.post(
+            "/api/homeassistant/settings",
+            {"base_url": "http://ha.local:8123", "token": "abc"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["base_url"], "http://ha.local:8123")
+
+    def test_home_assistant_push_without_config_fails_cleanly(self):
+        status, body = self.post("/api/homeassistant/push", {})
+        self.assertEqual(status, 200)
+        self.assertFalse(body["ok"])
 
 
 class TestBackupDownload(APITestCase):
