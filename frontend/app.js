@@ -906,21 +906,22 @@ let activeGame = null; // games runtime retained
    ========================================================================== */
 
 let gamesCleanupV2 = () => {};
+let gameToastTimeoutsV2 = [];
 function gamesToolsV2() {
   const events = [], intervals = [], timeouts = [];
   const on = (target, type, handler, options) => { target.addEventListener(type, handler, options); events.push(() => target.removeEventListener(type, handler, options)); };
   const every = (handler, ms) => { const id = setInterval(handler, ms); intervals.push(id); return id; };
   const later = (handler, ms) => { const id = setTimeout(handler, ms); timeouts.push(id); return id; };
-  gamesCleanupV2 = () => { events.splice(0).forEach(remove => remove()); intervals.splice(0).forEach(id => clearInterval(id)); timeouts.splice(0).forEach(id => clearTimeout(id)); };
+  gamesCleanupV2 = () => { events.splice(0).forEach(remove => remove()); intervals.splice(0).forEach(id => clearInterval(id)); timeouts.splice(0).forEach(id => clearTimeout(id)); gameToastTimeoutsV2.splice(0).forEach(id => clearTimeout(id)); };
   return { on, every, later };
 }
 const gameBestV2 = key => readBest(key) || 0;
 const randomV2 = max => Math.floor(Math.random() * max);
 function gameShellV2(title, help, body) { return `<div class="game-frame"><div class="game-toolbar"><div><strong>${title}</strong><span>${help}</span></div></div>${body}</div>`; }
-function gameToastV2(host, text, kind = '') { const toast = document.createElement('div'); toast.className = `game-toast ${kind}`; toast.textContent = text; host.appendChild(toast); setTimeout(() => toast.remove(), 850); }
+function gameToastV2(host, text, kind = '') { const toast = document.createElement('div'); toast.className = `game-toast ${kind}`; toast.textContent = text; host.appendChild(toast); const timeout = setTimeout(() => toast.remove(), 850); gameToastTimeoutsV2.push(timeout); }
 function gameFullscreenV2(host, tools) {
   const button = document.createElement('button'); button.className = 'btn small game-fullscreen'; button.type = 'button'; button.textContent = '⛶ Fullscreen';
-  tools.on(button, 'click', () => { const target = host.querySelector('.game-stage') || host; if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else target.requestFullscreen?.().catch?.(() => {}); });
+  tools.on(button, 'click', () => { const target = host.querySelector('.game-frame') || host; if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; } const request = target.requestFullscreen?.(); request?.catch?.(() => {}); });
   tools.on(document, 'fullscreenchange', () => { button.textContent = document.fullscreenElement ? '× Exit fullscreen' : '⛶ Fullscreen'; });
   host.querySelector('.game-toolbar').appendChild(button);
 }

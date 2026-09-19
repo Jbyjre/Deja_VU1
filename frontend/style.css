@@ -995,9 +995,13 @@ input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); ou
 .game-toolbar strong { font:700 15px/1 var(--font-mono); letter-spacing:.2px; }
 .game-toolbar span { color:var(--text-faint); font-size:12px; }
 .game-fullscreen { margin-left:auto; }
-.game-stage { width:100%; max-width:760px; margin:0 auto; min-height:280px; }
+.game-stage { width:100%; max-width:760px; margin:0 auto; min-height:280px; touch-action:none; }
 .game-stage:fullscreen { max-width:none; width:100vw; height:100vh; min-height:100vh; border-radius:0; }
 .game-stage:fullscreen .game-overlay { border-radius:0; }
+.game-frame:fullscreen { width:100vw; height:100vh; min-height:100vh; overflow:auto; padding:20px; background:var(--page-bg, #f4f5f8); }
+.game-frame:fullscreen .game-stage { max-width:min(1100px, 94vw); min-height:min(760px, 82vh); margin:0 auto; }
+.game-frame:fullscreen .block-world-v2 { height:min(760px, 82vh); }
+.game-frame:fullscreen .game-toolbar { max-width:min(1100px, 94vw); }
 .game-toast { position:absolute; z-index:8; left:50%; top:14%; transform:translateX(-50%); pointer-events:none; white-space:nowrap; padding:8px 13px; border-radius:10px; background:rgba(20,26,40,.88); color:#fff; font:700 12px/1 var(--font-mono); box-shadow:0 8px 24px rgba(0,0,0,.2); animation:gameToastIn .85s ease-out forwards; }
 @keyframes gameToastIn { 0%{opacity:0;transform:translate(-50%,8px)} 12%,80%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-12px)} }
 
