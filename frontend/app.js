@@ -1015,20 +1015,156 @@ function arcadeShell(host, title, help, body, stats, tools) { gameStats(stats); 
 
 function newAsteroids() {
   const tools = gameTools(), key = 'dejavu1.asteroids.best', W = 760, H = 440, host = $('game-host');
-  arcadeShell(host, 'Asteroids', '← → rotate · ↑ thrust · Space fire · H hyperspace', '<canvas id="arcade-asteroids" class="arcade-canvas" aria-label="Asteroids"></canvas><div class="arcade-overlay" id="asteroids-overlay"><b>ASTEROIDS</b><span>Momentum, wraparound, split rocks. Clear the field.</span><button class="btn primary">Launch</button></div>', `<div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="as-score">0</div></div><div class="game-stat"><div class="g-key">Ships</div><div class="g-val" id="as-lives">3</div></div><div class="game-stat"><div class="g-key">Best</div><div class="g-val accent" id="as-best">${gameBest(key) || '—'}</div></div>`, tools);
-  const [canvas, ctx] = gameCanvas(host, 'arcade-asteroids', W, H); let ship = { x: W / 2, y: H / 2, a: -Math.PI / 2, vx: 0, vy: 0, inv: 100 }, rocks = [], shots = [], sparks = [], score = 0, lives = 3, playing = false, loop;
-  const keys = {}; const wrap = o => { o.x = (o.x + W) % W; o.y = (o.y + H) % H; };
-  const makeRock = (x, y, size = 3) => ({ x, y, size, r: size * 14, vx: (Math.random() - .5) * (1.2 + 3.5 / size), vy: (Math.random() - .5) * (1.2 + 3.5 / size), spin: (Math.random() - .5) * .04, angle: Math.random() * 6.28, points: Array.from({ length: 9 }, (_, i) => .78 + Math.random() * .35 + Math.sin(i * 2.7) * .04) });
-  function reset() { ship = { x: W / 2, y: H / 2, a: -Math.PI / 2, vx: 0, vy: 0, inv: 100 }; rocks = Array.from({ length: 5 }, () => makeRock(Math.random() * W, Math.random() * H)); shots = []; sparks = []; score = 0; lives = 3; playing = true; $('asteroids-overlay').style.display = 'none'; loop = tools.every(tick, 16); }
+  /* Classic-fidelity pass, tuned against the 1979 arcade original: all-large
+     waves (4, 6, 8, 10, capped at 11), large -> medium -> small splitting,
+     20/50/100 scoring with an extra ship every 10,000, big and small saucers
+     whose aim sharpens as the score climbs, a hyperspace that can kill you,
+     a respawn that waits for a clear center, and touch pads for mobile. */
+  arcadeShell(host, 'Asteroids', 'Rotate with the arrows, thrust, and shoot · H hyperspaces at a risk · saucers hunt you as you score', '<canvas id="arcade-asteroids" class="arcade-canvas" aria-label="Asteroids"></canvas><div class="pong-pad"><button class="btn" data-ast="ccw">↺</button><button class="btn" data-ast="fire">◉</button><button class="btn" data-ast="cw">↻</button><button class="btn" data-ast="thrust">▲</button><button class="btn" data-ast="hyper">H</button></div><div class="arcade-overlay" id="asteroids-overlay"><b>ASTEROIDS</b><span>Momentum, wraparound, splitting rocks — and saucers that learn your position.</span><button class="btn primary">Launch</button></div>', `<div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="as-score">0</div></div><div class="game-stat"><div class="g-key">Ships</div><div class="g-val" id="as-lives">3</div></div><div class="game-stat"><div class="g-key">Wave</div><div class="g-val" id="as-wave">1</div></div><div class="game-stat"><div class="g-key">Best</div><div class="g-val accent" id="as-best">${gameBest(key) || '—'}</div></div>`, tools);
+  const [canvas, ctx] = gameCanvas(host, 'arcade-asteroids', W, H);
+  let ship = null, rocks = [], shots = [], sparks = [], saucer = null, saucerTimer = null, score = 0, lives = 3, wave = 1, nextExtra = 10000, playing = false, loop = null, respawnWait = 0;
+  const keys = {};
+  const wrap = o => { o.x = (o.x + W) % W; o.y = (o.y + H) % H; };
+  const makeRock = (x, y, size = 3, speedScale = 1) => ({ x, y, size, r: size * 13, vx: (Math.random() - .5) * 2.2 * speedScale, vy: (Math.random() - .5) * 2.2 * speedScale, spin: (Math.random() - .5) * .05, angle: Math.random() * 6.28, points: Array.from({ length: 9 }, (_, i) => .78 + Math.random() * .35 + Math.sin(i * 2.7) * .04) });
+  /* Every wave opens with large rocks only, spread away from the ship, and
+     drifts a little faster each wave — the original ramp. */
+  const waveRocks = count => { rocks = []; const px = ship ? ship.x : W / 2, py = ship ? ship.y : H / 2; for (let i = 0; i < count; i++) { let x, y; do { x = Math.random() * W; y = Math.random() * H; } while (Math.hypot(x - px, y - py) < 150); rocks.push(makeRock(x, y, 3, 1 + wave * .06)); } };
+  const spawnSaucer = () => { const small = score >= 40000 || Math.random() < .35; const fromLeft = Math.random() < .5; saucer = { x: fromLeft ? -22 : W + 22, y: 40 + Math.random() * (H - 80), vx: (small ? 1.9 : 1.1) * (fromLeft ? 1 : -1), vy: (Math.random() - .5) * .9, small, r: small ? 12 : 18, cd: 60 }; };
+  const scheduleSaucer = () => { if (saucerTimer) return; saucerTimer = tools.later(() => { saucerTimer = null; if (playing && !saucer) spawnSaucer(); }, 12000 + Math.random() * 9000); };
+  function reset() { ship = { x: W / 2, y: H / 2, a: -Math.PI / 2, vx: 0, vy: 0, inv: 120 }; rocks = []; shots = []; sparks = []; saucer = null; score = 0; lives = 3; wave = 1; nextExtra = 10000; respawnWait = 0; playing = true; $('asteroids-overlay').style.display = 'none'; clearInterval(loop); loop = tools.every(tick, 16); waveRocks(4); scheduleSaucer(); }
   function burst(x, y, color = '#ffcf66', count = 12) { for (let i = 0; i < count; i++) sparks.push({ x, y, vx: (Math.random() - .5) * 5, vy: (Math.random() - .5) * 5, life: 1, color }); }
-  function fire() { if (!playing || shots.length > 5) return; shots.push({ x: ship.x + Math.cos(ship.a) * 15, y: ship.y + Math.sin(ship.a) * 15, vx: ship.vx + Math.cos(ship.a) * 8, vy: ship.vy + Math.sin(ship.a) * 8, life: 55 }); }
-  function hitShip() { if (ship.inv > 0) return; burst(ship.x, ship.y, '#ff806e', 24); lives--; if (!lives) { playing = false; clearInterval(loop); const best = Math.max(gameBest(key), score); setGameBest(key, best); $('as-best').textContent = best; $('asteroids-overlay').innerHTML = `<b>FIELD LOST</b><span>${score.toLocaleString()} points</span><button class="btn primary">Retry</button>`; $('asteroids-overlay').style.display = 'flex'; } else { ship.x = W / 2; ship.y = H / 2; ship.vx = ship.vy = 0; ship.inv = 140; } }
-  function tick() { if (!playing) return; if (keys.ArrowLeft || keys.KeyA) ship.a -= .075; if (keys.ArrowRight || keys.KeyD) ship.a += .075; if (keys.ArrowUp || keys.KeyW) { ship.vx += Math.cos(ship.a) * .13; ship.vy += Math.sin(ship.a) * .13; burst(ship.x - Math.cos(ship.a) * 10, ship.y - Math.sin(ship.a) * 10, '#ff9c66', 1); } ship.vx *= .992; ship.vy *= .992; ship.x += ship.vx; ship.y += ship.vy; wrap(ship); if (ship.inv) ship.inv--;
-    shots.forEach(s => { s.x += s.vx; s.y += s.vy; s.life--; wrap(s); }); shots = shots.filter(s => s.life > 0); rocks.forEach(r => { r.x += r.vx; r.y += r.vy; r.angle += r.spin; wrap(r); });
-    for (let si = shots.length - 1; si >= 0; si--) for (let ri = rocks.length - 1; ri >= 0; ri--) { const s = shots[si], r = rocks[ri]; if (Math.hypot(s.x - r.x, s.y - r.y) < r.r) { shots.splice(si, 1); rocks.splice(ri, 1); score += r.size === 3 ? 20 : r.size === 2 ? 50 : 100; burst(r.x, r.y); if (r.size > 1) { rocks.push(makeRock(r.x, r.y, r.size - 1), makeRock(r.x, r.y, r.size - 1)); } break; } }
-    rocks.forEach(r => { if (Math.hypot(ship.x - r.x, ship.y - r.y) < r.r + 10) hitShip(); }); sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= .04; }); sparks = sparks.filter(p => p.life > 0); if (!rocks.length) rocks = Array.from({ length: 5 + Math.min(7, Math.floor(score / 300)) }, () => makeRock(Math.random() * W, Math.random() * H)); draw(); }
-  function draw() { ctx.fillStyle = '#07111e'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = 'rgba(255,255,255,.65)'; for (let i = 0; i < 55; i++) ctx.fillRect((i * 137) % W, (i * 71) % H, 1, 1); ctx.save(); ctx.translate(ship.x, ship.y); ctx.rotate(ship.a); ctx.globalAlpha = ship.inv && Math.floor(ship.inv / 6) % 2 ? .25 : 1; ctx.strokeStyle = '#f4f7ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-11, -10); ctx.lineTo(-7, 0); ctx.lineTo(-11, 10); ctx.closePath(); ctx.stroke(); ctx.restore(); ctx.globalAlpha = 1; rocks.forEach(r => { ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.angle); ctx.strokeStyle = r.size === 3 ? '#9eb7ca' : r.size === 2 ? '#d1a96d' : '#ff8e68'; ctx.beginPath(); r.points.forEach((p, i) => { const a = i * Math.PI * 2 / r.points.length; const x = Math.cos(a) * r.r * p, y = Math.sin(a) * r.r * p; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); ctx.stroke(); ctx.restore(); }); ctx.fillStyle = '#ffe69b'; shots.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, 2, 0, 7); ctx.fill(); }); sparks.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); }); ctx.globalAlpha = 1; $('as-score').textContent = score.toLocaleString(); $('as-lives').textContent = lives; }
-  const input = event => { if (event.code === 'Space') { event.preventDefault(); fire(); } if (event.code === 'KeyH') { ship.x = Math.random() * W; ship.y = Math.random() * H; ship.inv = 80; } if (['ArrowUp','ArrowLeft','ArrowRight','KeyW','KeyA','KeyD'].includes(event.code)) { event.preventDefault(); keys[event.code] = true; } }; const up = event => { keys[event.code] = false; }; tools.on(document, 'keydown', input); tools.on(document, 'keyup', up); tools.on(canvas, 'pointerdown', () => { if (!playing) reset(); else fire(); }); tools.on(host.querySelector('.arcade-overlay button'), 'click', reset); draw();
+  function awardPoints(points) { score += points; if (score >= nextExtra) { lives++; nextExtra += 10000; burst(W / 2, 24, '#9ef0b1', 14); } }
+  /* Four shots in flight, matching the arcade cabinet's shot limit. */
+  function fire() { if (!playing || !ship || shots.filter(s => !s.hostile).length >= 4) return; shots.push({ x: ship.x + Math.cos(ship.a) * 15, y: ship.y + Math.sin(ship.a) * 15, vx: ship.vx + Math.cos(ship.a) * 9, vy: ship.vy + Math.sin(ship.a) * 9, life: 60 }); }
+  /* Hyperspace is the classic gamble: a small chance of self-destruct, and
+     you can rematerialize right on top of a rock. */
+  function hyperspace() { if (!playing || !ship) return; burst(ship.x, ship.y, '#65c9ff', 14); ship.x = Math.random() * W; ship.y = Math.random() * H; ship.vx = ship.vy = 0; if (Math.random() < .06) { hitShip(true); return; } ship.inv = 40; }
+  function loseGame() { playing = false; clearInterval(loop); loop = null; const best = Math.max(gameBest(key), score); setGameBest(key, best); $('as-best').textContent = best; $('asteroids-overlay').innerHTML = `<b>FIELD LOST</b><span>${score.toLocaleString()} points · wave ${wave}</span><button class="btn primary">Retry</button>`; $('asteroids-overlay').style.display = 'flex'; }
+  function hitShip(force) { if (ship.inv > 0 && !force) return; burst(ship.x, ship.y, '#ff806e', 26); ship = null; lives--; if (lives <= 0) { loseGame(); return; } respawnWait = 90; }
+  function tick() {
+    if (!playing) return;
+    if (ship) {
+      if (keys.ArrowLeft || keys.KeyA) ship.a -= .082;
+      if (keys.ArrowRight || keys.KeyD) ship.a += .082;
+      if (keys.ArrowUp || keys.KeyW) { ship.vx += Math.cos(ship.a) * .12; ship.vy += Math.sin(ship.a) * .12; burst(ship.x - Math.cos(ship.a) * 11, ship.y - Math.sin(ship.a) * 11, '#ff9c66', 1); }
+      ship.vx *= .991; ship.vy *= .991; ship.x += ship.vx; ship.y += ship.vy; wrap(ship);
+      if (ship.inv) ship.inv--;
+    } else if (respawnWait > 0) {
+      /* Classic respawn discipline: never drop a new ship into danger. */
+      respawnWait--;
+      if (respawnWait === 0) {
+        const danger = rocks.some(r => Math.hypot(W / 2 - r.x, H / 2 - r.y) < r.r + 90) || (saucer && Math.hypot(W / 2 - saucer.x, H / 2 - saucer.y) < 120);
+        if (danger) respawnWait = 30; else ship = { x: W / 2, y: H / 2, a: -Math.PI / 2, vx: 0, vy: 0, inv: 150 };
+      }
+    }
+    shots.forEach(s => { s.x += s.vx; s.y += s.vy; s.life--; wrap(s); });
+    shots = shots.filter(s => s.life > 0);
+    rocks.forEach(r => { r.x += r.vx; r.y += r.vy; r.angle += r.spin; wrap(r); });
+    if (saucer) {
+      saucer.x += saucer.vx; saucer.y += saucer.vy;
+      if (Math.random() < .012) saucer.vy = (Math.random() - .5) * 1.2;
+      if (saucer.y < 24 || saucer.y > H - 24) { saucer.y = Math.max(24, Math.min(H - 24, saucer.y)); saucer.vy *= -1; }
+      saucer.cd--;
+      /* The small saucer leads its shots; its accuracy tightens with score,
+         becoming near-hitscan deep into a run, exactly like the original. */
+      if (saucer.cd <= 0) {
+        saucer.cd = saucer.small ? 34 : 80;
+        let angle;
+        const aimChance = Math.min(1, .12 + score / 60000);
+        if (saucer.small && ship && Math.random() < aimChance) angle = Math.atan2(ship.y - saucer.y, ship.x - saucer.x) + (Math.random() - .5) * Math.max(.05, .5 - score / 80000);
+        else angle = Math.random() * Math.PI * 2;
+        shots.push({ x: saucer.x, y: saucer.y, vx: Math.cos(angle) * 5.2, vy: Math.sin(angle) * 5.2, life: 70, hostile: true });
+      }
+      if ((saucer.x < -30 && saucer.vx < 0) || (saucer.x > W + 30 && saucer.vx > 0)) { saucer = null; scheduleSaucer(); }
+    }
+    for (let si = shots.length - 1; si >= 0; si--) {
+      const s = shots[si];
+      let consumed = false;
+      for (let ri = rocks.length - 1; ri >= 0; ri--) {
+        const r = rocks[ri];
+        if (Math.hypot(s.x - r.x, s.y - r.y) < r.r) {
+          shots.splice(si, 1); rocks.splice(ri, 1);
+          awardPoints(r.size === 3 ? 20 : r.size === 2 ? 50 : 100);
+          burst(r.x, r.y);
+          if (r.size > 1) { const childSpeed = 1 + wave * .06 + (3 - r.size) * .25; rocks.push(makeRock(r.x, r.y, r.size - 1, childSpeed), makeRock(r.x, r.y, r.size - 1, childSpeed)); }
+          if (!rocks.length && !saucer) { wave++; $('as-wave').textContent = wave; waveRocks(Math.min(4 + (wave - 1) * 2, 11)); }
+          consumed = true;
+          break;
+        }
+      }
+      if (consumed) continue;
+      if (saucer && Math.hypot(s.x - saucer.x, s.y - saucer.y) < saucer.r + 3) { shots.splice(si, 1); awardPoints(saucer.small ? 1000 : 200); burst(saucer.x, saucer.y, '#ff8e68', 22); saucer = null; scheduleSaucer(); continue; }
+      if (s.hostile && ship && Math.hypot(s.x - ship.x, s.y - ship.y) < 12) { shots.splice(si, 1); hitShip(); }
+    }
+    if (ship) {
+      rocks.forEach(r => { if (Math.hypot(ship.x - r.x, ship.y - r.y) < r.r + 8) hitShip(); });
+      if (ship && saucer && Math.hypot(ship.x - saucer.x, ship.y - saucer.y) < saucer.r + 10) hitShip();
+    }
+    sparks.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= .04; });
+    sparks = sparks.filter(p => p.life > 0);
+    draw();
+  }
+  function draw() {
+    ctx.fillStyle = '#07111e'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,.65)';
+    for (let i = 0; i < 55; i++) ctx.fillRect((i * 137) % W, (i * 71) % H, 1, 1);
+    if (ship) {
+      ctx.save(); ctx.translate(ship.x, ship.y); ctx.rotate(ship.a);
+      ctx.globalAlpha = ship.inv && Math.floor(ship.inv / 6) % 2 ? .25 : 1;
+      ctx.strokeStyle = '#f4f7ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(16, 0); ctx.lineTo(-11, -10); ctx.lineTo(-7, 0); ctx.lineTo(-11, 10); ctx.closePath(); ctx.stroke();
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
+    rocks.forEach(r => {
+      ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.angle);
+      ctx.strokeStyle = r.size === 3 ? '#9eb7ca' : r.size === 2 ? '#d1a96d' : '#ff8e68';
+      ctx.beginPath();
+      r.points.forEach((p, i) => { const a = i * Math.PI * 2 / r.points.length; const x = Math.cos(a) * r.r * p, y = Math.sin(a) * r.r * p; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+      ctx.closePath(); ctx.stroke(); ctx.restore();
+    });
+    if (saucer) {
+      ctx.save(); ctx.translate(saucer.x, saucer.y);
+      ctx.strokeStyle = saucer.small ? '#ff6e6e' : '#d1a96d'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(0, 0, saucer.r, saucer.r * .55, 0, 0, 7);
+      ctx.moveTo(-saucer.r, 0); ctx.lineTo(saucer.r, 0);
+      ctx.moveTo(-saucer.r * .45, -saucer.r * .55); ctx.lineTo(saucer.r * .45, -saucer.r * .55);
+      ctx.stroke(); ctx.restore();
+    }
+    shots.forEach(s => { ctx.fillStyle = s.hostile ? '#ff8e68' : '#ffe69b'; ctx.beginPath(); ctx.arc(s.x, s.y, 2.2, 0, 7); ctx.fill(); });
+    sparks.forEach(p => { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 3, 3); });
+    ctx.globalAlpha = 1;
+    $('as-score').textContent = score.toLocaleString();
+    $('as-lives').textContent = lives;
+  }
+  /* Hold-to-move pads register on pointerdown; a document-wide pointerup and
+     pointercancel release them, so a finger sliding off a button cannot leave
+     thrust or rotation stuck on. */
+  const padMap = { ccw: 'ArrowLeft', cw: 'ArrowRight', thrust: 'ArrowUp', fire: 'Space', hyper: 'KeyH' };
+  document.querySelectorAll('[data-ast]').forEach(button => { button.style.touchAction = 'none'; });
+  document.querySelectorAll('[data-ast]').forEach(button => {
+    const code = padMap[button.dataset.ast];
+    tools.on(button, 'pointerdown', e => {
+      e.preventDefault();
+      if (code === 'Space') { if (playing) fire(); else reset(); return; }
+      if (code === 'KeyH') { hyperspace(); return; }
+      keys[code] = true;
+    });
+  });
+  const releasePads = () => { keys.ArrowLeft = keys.ArrowRight = keys.ArrowUp = false; };
+  tools.on(document, 'pointerup', releasePads);
+  tools.on(document, 'pointercancel', releasePads);
+  const input = event => {
+    if (event.code === 'Space') { event.preventDefault(); if (event.type === 'keydown') { if (playing) fire(); else reset(); } return; }
+    if (event.code === 'KeyH') { if (event.type === 'keydown') hyperspace(); return; }
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyD', 'KeyS'].includes(event.code)) { event.preventDefault(); keys[event.code] = event.type === 'keydown'; }
+  };
+  tools.on(document, 'keydown', input);
+  tools.on(document, 'keyup', input);
+  tools.on(canvas, 'pointerdown', () => { if (!playing) reset(); else fire(); });
+  tools.on(host.querySelector('.arcade-overlay button'), 'click', reset);
+  ship = { x: W / 2, y: H / 2, a: -Math.PI / 2, vx: 0, vy: 0, inv: 0 };
+  waveRocks(4);
+  draw();
 }
 
 function newPong() {
