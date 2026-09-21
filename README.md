@@ -241,6 +241,10 @@ Everything runs on simulated data. No printer is contacted at any point.
   and how to swap in a real printer
 - [docs/hardware-modules.md](docs/hardware-modules.md) — parts lists, wiring,
   and the non-invasive design constraint
+- [docs/project-status.md](docs/project-status.md) — a thorough, current
+  status snapshot: what's built, what's deferred, what's next
+- [docs/games-improvement-handoff.md](docs/games-improvement-handoff.md) —
+  a standalone prompt for a dedicated pass on the six games
 
 ## License
 
