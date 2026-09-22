@@ -135,6 +135,71 @@ REGISTRY = [
         "status": "optional",
         "default_enabled": False,
     },
+    {
+        "id": "fleet",
+        "name": "Printer fleet",
+        "description": "An at-a-glance overview of every printer, and "
+                        "switching the whole dashboard between them.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "file_library",
+        "name": "Print file library",
+        "description": "Your G-code, 3MF and STL files with thumbnails, a "
+                        "G-code viewer with small edits, and a 3D viewer.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "print_queue",
+        "name": "Print queue",
+        "description": "Files to print one after another, each checked by "
+                        "the Confirm Print gate before it starts.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "automations",
+        "name": "Automations",
+        "description": "Local when-this-then-that rules: temperatures, print "
+                        "events, filament and maintenance to alerts, lights, "
+                        "Home Assistant or pause.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "converter",
+        "name": "3MF converter",
+        "description": "Turns MakerWorld and NexPrint projects into Snapmaker "
+                        "Orca projects set up for the U1.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "timelapse",
+        "name": "Time-lapse flipbook",
+        "description": "Keeps a camera frame every few layers and plays the "
+                        "print back as a flipbook in the browser.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "chamber_climate",
+        "name": "Chamber climate",
+        "description": "Chamber temperature over the last half hour, where "
+                        "Klipper reports a chamber sensor.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "handoff",
+        "name": "Continue on another device",
+        "description": "Offers to pick up on your phone exactly where another "
+                        "device left off.",
+        "status": "ready",
+        "default_enabled": True,
+    },
 ]
 
 _BY_ID = {m["id"]: m for m in REGISTRY}

@@ -20,25 +20,31 @@ def check():
     rings = led_status.get_all_ring_states()
     colors = color_check.check_current_job()
 
-    reasons = []
+    # Blocking reasons stop a print from starting (see print_gate.py, which
+    # enforces this on the server). Warnings are shown and must be accepted.
+    blocking, warnings = [], []
 
     overdue = [t for t in maintenance_status["tasks"] if t["status"] == "overdue"]
     if overdue:
-        reasons.append(
+        warnings.append(
             f"{len(overdue)} maintenance task(s) overdue: " +
             ", ".join(t["name"] for t in overdue))
 
     error_rings = [r for r in rings["rings"] if r["state"] == "error"]
     if error_rings:
-        reasons.append(
+        blocking.append(
             "Dock error on " + ", ".join(r["toolhead"] for r in error_rings))
 
     if colors["overall"] == "mismatch":
-        reasons.append("Filament colour mismatch detected before this print starts")
+        blocking.append("Filament colour mismatch detected before this print starts")
     elif colors["overall"] == "close":
-        reasons.append("Filament colour is a close call — worth a glance")
+        warnings.append("Filament colour is a close call — worth a glance")
 
+    reasons = blocking + warnings
     return {
         "safe_to_print": len(reasons) == 0,
+        "can_start": len(blocking) == 0,
         "reasons": reasons,
+        "blocking": blocking,
+        "warnings": warnings,
     }

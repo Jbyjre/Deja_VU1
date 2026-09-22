@@ -122,3 +122,83 @@ def repeat_last_settings(filename=None):
         "from_job_id": last["job_id"],
         "printed_at": last["start_time"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Side-by-side views
+# ---------------------------------------------------------------------------
+
+def side_by_side(filename=None):
+    """
+    The job about to print next to the last clean run of the same file, one
+    row per recorded field, each marked same or changed. Only fields print
+    history actually records are compared - nothing is inferred.
+    """
+    state = mock_moonraker.get_printer_state()
+    if filename is None:
+        filename = state["current_file"]
+    if not filename:
+        return {"has_history": False, "filename": None, "rows": []}
+    past = _history_for_file(filename, {"completed"})
+    if not past:
+        return {"has_history": False, "filename": filename, "rows": []}
+    last = past[0]
+    active = state["active_toolhead"]
+    dock = state["toolheads"].get(active) if active else None
+    required = mock_moonraker.get_current_job_requirements()["required_filament"]
+    now_material = required[0]["expected_material"] if required else None
+    rows = [
+        ("Toolheads", ", ".join(last["toolheads_used"]),
+         ", ".join(sorted({r["toolhead"] for r in required})) or (active or "—")),
+        ("Filament type", last["filament_type"], now_material or "—"),
+        ("Filament colour (active toolhead)", last["filament_color_name"],
+         dock["filament_color_name"] if dock else "—"),
+    ]
+    return {
+        "has_history": True, "filename": filename, "from_job_id": last["job_id"],
+        "printed_at": last["start_time"],
+        "rows": [{"field": f, "last_clean": a, "now": b, "changed": a != b} for f, a, b in rows],
+    }
+
+
+def _settings_of(name):
+    import json
+    import zipfile
+    import io
+    import file_library
+    import gcode_tools
+    kind = file_library.kind_of(name)
+    if kind == "gcode":
+        settings = gcode_tools.parse_metadata(file_library.read_text(name))["settings"]
+        return {k: v for k, v in settings.items() if not k.startswith(("estimated", "total", "model printing"))}
+    if kind == "3mf":
+        z = zipfile.ZipFile(io.BytesIO(file_library.read_bytes(name)))
+        if "Metadata/project_settings.config" not in z.namelist():
+            raise ValueError(f"{name} has no print settings inside (it's a model-only 3MF)")
+        raw = json.loads(z.read("Metadata/project_settings.config"))
+        return {k: (";".join(map(str, v)) if isinstance(v, list) else str(v)) for k, v in raw.items()}
+    raise ValueError("Profiles can be compared between G-code files or 3MF projects")
+
+
+def diff_profiles(name_a, name_b, include_same=False):
+    """
+    A real diff of two files' slicer settings: every setting present in
+    either, with both values, sorted so changes come first.
+    """
+    a, b = _settings_of(name_a), _settings_of(name_b)
+    rows = []
+    for key in sorted(set(a) | set(b)):
+        if key in a and key in b:
+            status = "same" if a[key] == b[key] else "changed"
+        else:
+            status = "only_a" if key in a else "only_b"
+        if status == "same" and not include_same:
+            continue
+        rows.append({"setting": key, "a": a.get(key), "b": b.get(key), "status": status})
+    order = {"changed": 0, "only_a": 1, "only_b": 2, "same": 3}
+    rows.sort(key=lambda r: (order[r["status"]], r["setting"]))
+    same = sum(1 for k in set(a) & set(b) if a[k] == b[k])
+    return {"a": name_a, "b": name_b, "rows": rows,
+            "counts": {"changed": sum(r["status"] == "changed" for r in rows),
+                       "only_a": sum(r["status"] == "only_a" for r in rows),
+                       "only_b": sum(r["status"] == "only_b" for r in rows), "same": same}}

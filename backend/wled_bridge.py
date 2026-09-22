@@ -113,6 +113,24 @@ def push_ring_states(ring_states=None, settings=None):
     return result
 
 
+def push_color(color_hex, settings=None):
+    """
+    Set the whole strip to one colour - what an automation's "light" action
+    sends (for example amber when a print pauses). Same fail-cleanly
+    contract as push_ring_states.
+    """
+    settings = settings or get_settings()
+    host = settings.get("host")
+    if not host:
+        return {"ok": False, "error": "No WLED host configured"}
+    value = str(color_hex or "").lstrip("#")
+    if len(value) != 6 or any(c not in "0123456789abcdefABCDEF" for c in value):
+        raise ValueError("Colour must be a hex value like #ffaa00")
+    rgb = [int(value[i:i + 2], 16) for i in (0, 2, 4)]
+    return _request(f"http://{host}/json/state",
+                    payload={"on": True, "seg": [{"col": [rgb]}]}, method="POST")
+
+
 def reset():
     """Restore default settings. Useful for tests."""
     _save_settings(_DEFAULT_SETTINGS)
