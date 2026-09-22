@@ -390,7 +390,16 @@ def run_action(rule, printer_id, detail, manual=False):
     kind = action["type"]
     if kind == "notify":
         message = f"{prefix}{action['message']} — {printer_name}" + (f" ({detail})" if detail else "")
-        sent = notifications.notify(message, priority=action.get("priority", "normal"))
+        settings = notifications.get_settings()
+        has_channel = settings.get("ntfy_topic") or settings.get("discord_webhook_url") or (
+            settings.get("telegram_bot_token") and settings.get("telegram_chat_id"))
+        if not has_channel:
+            # Checked first: a message "queued for later" with nowhere to go
+            # would never arrive, so it must not be reported as queued.
+            return _record(rule, printer_id, detail, {
+                "ok": False, "error": "Not sent: no notification channel is set up (ntfy, Discord or Telegram)"},
+                manual=manual)
+        sent = notifications.notify(message, priority=action.get("priority", "normal"), settings=settings)
         if sent["queued"]:
             result = {"ok": True, "detail": "Queued until quiet hours end"}
         elif not sent["results"]:

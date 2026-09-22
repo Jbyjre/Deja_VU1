@@ -77,7 +77,7 @@ class TestNoFakeData(FeatureAPI):
     def test_every_new_printer_route_refuses_without_demo(self):
         modules.set_enabled("filament_inventory", True)      # optional modules, off by default
         modules.set_enabled("compare", True)
-        for path in ("/api/fleet", "/api/live/snapshot", "/api/chamber", "/api/health",
+        for path in ("/api/fleet", "/api/live/snapshot", "/api/live/events", "/api/chamber", "/api/health",
                      "/api/queue", "/api/timelapse", "/api/filament/forecast",
                      "/api/compare/side-by-side", "/api/print/confirm?file=x.gcode"):
             status, body = self.request(path)
@@ -103,6 +103,25 @@ class TestNoFakeData(FeatureAPI):
         self.assertEqual(self.request("/api/printer?demo=1&printer=nope")[0], 404)
 
 
+class TestCrossSiteProtection(FeatureAPI):
+    def post_from(self, origin, path="/api/printer/control/pause?demo=1"):
+        req = Request(self.base + path, data=b"{}", method="POST",
+                      headers={"Content-Type": "text/plain", "Origin": origin,
+                               "Host": self.base.split("//")[1]})
+        try:
+            with urlopen(req, timeout=5) as resp:
+                return resp.status
+        except HTTPError as err:
+            return err.code
+
+    def test_a_command_from_another_website_is_refused(self):
+        self.assertEqual(self.post_from("https://evil.example"), 403)
+        self.assertEqual(self.request("/api/printer?demo=1")[1]["state"], "printing")
+
+    def test_the_dashboard_own_page_is_allowed(self):
+        self.assertEqual(self.post_from(self.base), 200)
+
+
 class TestPrinterScoping(FeatureAPI):
     def test_printer_parameter_scopes_existing_modules(self):
         _, workshop = self.request("/api/printer?demo=1")
@@ -115,6 +134,13 @@ class TestPrinterScoping(FeatureAPI):
         _, h_workshop = self.request("/api/maintenance/history?demo=1")
         self.assertEqual(len(h_studio["history"]), 1)
         self.assertEqual(len(h_workshop["history"]), 0)
+
+    def test_polling_fallback_gets_events_too(self):
+        self.request("/api/live/snapshot?demo=1")        # the server's first read, as at start-up
+        self.request("/api/printer/control/pause?demo=1", {})
+        status, body = self.request("/api/live/events?demo=1&since=0")
+        self.assertEqual(status, 200)
+        self.assertIn("paused", [e.get("event") for e in body["events"]])
 
     def test_fleet_overview(self):
         status, body = self.request("/api/fleet?demo=1")

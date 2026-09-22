@@ -6,7 +6,11 @@ is that docked toolhead ready or stuck, is the right filament loaded, is
 anything due for maintenance — and has grown into a fuller companion:
 printer control, phone pairing, filament tracking, smart notifications, a
 running cost estimate, bridges to smart-home gear you likely already own,
-and six games for while a long print runs. It runs on Moonraker, the web API
+and ten games for while a long print runs. It now also runs a whole fleet
+of printers, updates live four times a second, starts prints from your
+phone behind a real safety check, reads and edits print files in 2D and 3D,
+converts MakerWorld and NexPrint projects for the U1, and runs local
+"when this happens, do that" automations. It runs on Moonraker, the web API
 that already sits in front of the printer, and reads it through one
 connection rather than three.
 
@@ -49,6 +53,28 @@ machine, and all of it is visible in data the printer already publishes.
 | **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. |
 | **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history — editable $/kg per material, $/kWh, and printer wattage. |
 
+### Live, fleet-wide, and hands-on — no hardware needed
+
+| Feature | What it does |
+|---|---|
+| **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If a network blocks WebSockets, the dashboard notices and asks once a second instead, and says which it's doing. |
+| **Printer fleet** | Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
+| **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
+| **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer actually reports back. A command the printer refuses is shown as refused, in words — never as done. |
+| **File library** | Your G-code, 3MF and STL files, with real thumbnails, estimated time and grams, a pre-flight verdict, and a recent list. |
+| **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command — each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
+| **Interactive 3D viewer** | The toolpath of any G-code file, scrubbable layer by layer, and any STL or 3MF model — drawn with plain WebGL and parsers written for this project, no 3D library. |
+| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. |
+| **MakerWorld / NexPrint → U1** | One click turns a Bambu Studio (MakerWorld) or Elegoo Slicer (NexPrint) project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. |
+| **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
+| **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
+| **Digital twin** | A live 3D view of the toolhead, the part growing layer by layer, and the four docks — pure CSS 3D, the same technique as the games' 3D scenes. |
+| **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast — see [docs/architecture.md](docs/architecture.md). |
+
+On a phone the layout is rebuilt thumb-first: the main sections and the
+Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
+screen, and a small live "print pill" follows you across every tab.
+
 ### Optional — on by request
 
 | Module | What it does |
@@ -73,26 +99,12 @@ silently doing nothing.
 
 ### While you wait
 
-Six small games, playable from the dashboard while a long print runs, all
-with real difficulty curves rather than a single fixed setting —
-**Sky Dash** (a gravity dodge that speeds up and tightens the gap as your
-score climbs), **Echo Maze** (a real 3D maze rendered in pure CSS, now a
-bigger 7×7 layout whose minimap only remembers rooms you've actually
-visited — every room looks the same as the last, on purpose), **Block World**
-(a free-roam 3D voxel chunk, not room-snapped like the maze — Minecraft-
-inspired rather than a clone: a blocky, procedurally-generated terrain of
-real extruded CSS cubes with grass, stone, and snow tiers, walked with
-continuous position and turning. Mine glowing ore and trees for wood and
-ore, then spend wood to place blocks of your own, before the chunk's timer
-runs out; each level regenerates a bigger, harder chunk), **Block Stacker**
-(speeds up the taller your tower gets),
-**Merge Puzzle** (a 2048-style board that deals harder tiles the higher your
-score), and **Brick Break** (clearing the board advances a level instead of
-ending the game — the paddle shrinks, the ball speeds up, and another row of
-bricks appears, for as long as you can keep up). None of them read the
-printer; a status strip stays pinned to the top of every tab, including
-mid-game, so a finished or failed print is never missed. Best scores are
-remembered per browser.
+Ten games, playable from the dashboard while a long print runs: **Sky
+Dash**, **Pong**, **Minesweeper**, **Tetris**, **Pac-Man**, **Brick Break**,
+**Blackjack**, **Asteroids**, **Snake** and **2048**. None of them read the
+printer; the status strip and the live print pill stay visible on every
+tab, including mid-game, so a finished or failed print is never missed.
+Best scores are remembered per browser.
 
 ## Why one dashboard, not several tools
 
@@ -124,6 +136,22 @@ printer figures, so they work the same with or without a printer connected.
 
 Built and tested on mock data. There is no real printer connection yet.
 
+- The live engine, the fleet, start-print with its interlock, the file
+  library, G-code viewer and editor, 3D viewer, pre-flight check, the
+  converter, automations, the queue, the digital twin, health gauge,
+  chamber panel, time-lapse, celebration card and handoff are complete,
+  covered by tests, and were played through in a real (headless) browser
+  on desktop and phone sizes, including touch.
+- The simulation is now a fleet of three U1s (Workshop, Studio, Garage),
+  each with its own history, and it moves: hotends heat toward their
+  target, prints progress and finish, the toolhead travels. Demo controls
+  can fast-forward it, restart it, or make the next command fail on purpose
+  to show how a failure is reported.
+- Not verified yet, and said so: the converter's output hasn't been opened
+  in Snapmaker Orca itself (it follows Snapmaker Orca's source code and
+  profile names exactly), and nothing has touched a real Moonraker, a real
+  camera, or a real Cloudflare Tunnel.
+
 - Maintenance, printer control, notifications, updates, backup, camera
   watchdog, pairing, and the print cost calculator are complete and tested
   against the simulated Moonraker layer. Swapping
@@ -137,9 +165,9 @@ Built and tested on mock data. There is no real printer connection yet.
   leave the host or URL blank and they fail cleanly instead of pretending.
 - The LED and colour-check modules have working decision logic and console
   simulations, but no hardware drivers yet.
-- `backend/mock_moonraker.py` generates 38 fake print jobs over about two
-  months, and now also holds mutable live state so pause/resume/cancel and
-  temperature changes actually do something in the simulation.
+- `backend/mock_moonraker.py` generates fake print histories (38 jobs over
+  about two months for the first printer) and live state that pause /
+  resume / cancel / start and temperature changes genuinely change.
 
 I do not own a Snapmaker U1. This project is part of an application to the
 Snapmaker Innovation Fund, partly to request a unit. Everything that can be
@@ -156,14 +184,20 @@ only sensible approach. Details in
 ## Tech stack
 
 - **Backend:** Python 3.8+, standard library only
-- **Web server:** `http.server` from the standard library
-- **Frontend:** HTML, CSS, and JavaScript — no framework, no build step
+- **Web server:** `http.server` from the standard library (the threading
+  version), plus a hand-written RFC 6455 WebSocket for live updates
+- **Frontend:** HTML, CSS, and JavaScript — no framework, no build step;
+  raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
+  unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 170 cases
+- **Tests:** `unittest` from the standard library, 302 cases
 - **Printer API:** Moonraker (simulated for now)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is
 fetched from the internet at runtime — no webfonts, no CDN, no analytics.
+(Reaching it from outside your home uses Cloudflare's own `cloudflared`
+program, which you install separately if you want that — see
+[docs/remote-access.md](docs/remote-access.md).)
 It works offline, including the phone pairing, which talks directly to this
 server over your local network rather than through any cloud relay.
 
@@ -176,6 +210,15 @@ than each getting its own blur, both for the look and for performance. It
 respects the system settings for reduced transparency, reduced motion, and
 increased contrast, and the layout collapses cleanly to a phone-width screen.
 
+Liquid Glass 2.0 adds four things on top: panels **morph** — a sheet of
+glass deforms on a spring from one element into another (a printer card
+into the overview, a file into its detail view, a button into its dialog,
+the active tab sliding along the tab bar); the highlight and some surfaces
+**drift gently even at rest**; glass laid over glass (dialogs) uses a
+**deeper refraction**, so what's underneath visibly bends more than the
+background; and panels **take a tint** from what they're about — the active
+filament's colour, a printer's state, a verdict.
+
 ## Roadmap
 
 **With access to a U1:**
@@ -186,14 +229,22 @@ increased contrast, and the layout collapses cleanly to a phone-width screen.
    implement the driver (or wire up WLED instead).
 4. Build the color checker — print the sensor housings, mount on the filament
    path, implement the sensor read and calibration.
-5. Add pre-print blocking: pause a print that starts with the wrong filament
-   loaded, instead of only warning.
+5. Connect the pre-print blocking (built — it already refuses a print whose
+   file doesn't match the filament the printer reports) to the optical
+   colour sensor once it exists.
+6. Open the converter's output in Snapmaker Orca to confirm it, and test
+   the Cloudflare Tunnel setup end to end.
 
 **Beyond that:**
 
-- Chamber climate monitoring and control.
-- An import-compatibility check for files converted from other slicer
-  ecosystems.
+- Chamber climate control (monitoring is built, read-only).
+- A full macro builder — deliberately waiting for real hardware to test
+  macros against.
+- An on-desk AR preview of models (WebXR). Not built: it only works in
+  Android / WebXR browsers (iOS Safari has no equivalent) and couldn't be
+  tested here.
+- A lower-latency camera option (WebRTC via something like go2rtc) — it
+  would need an extra program installed, so MJPEG stays the default.
 - Package as a proper Moonraker component so it installs alongside Fluidd or
   Mainsail.
 
@@ -213,6 +264,15 @@ The dashboard will report that no printer is connected and show empty panels.
 Flip the **Demo data** switch in the header to fill it with the simulated
 print history. To try it from a phone on the same network, open
 **Modules & devices → Pair another device** to get a code.
+
+With demo data on, a quick tour of the newer parts: **Fleet** to switch
+between the three simulated printers; **Files → Add sample files**, open
+one, then **Print…** to see the Confirm Print check (the "unsafe example"
+file is refused on purpose); **Automations** to build a rule and watch it
+fire; and **Modules & devices → Demo controls** to fast-forward a print to
+its finish, or to make the next Pause fail and see how that is reported.
+
+(Developed and tested on Python 3.11.)
 
 To see the maintenance module on its own, printed to the terminal:
 
@@ -241,6 +301,8 @@ Everything runs on simulated data. No printer is contacted at any point.
   and how to swap in a real printer
 - [docs/hardware-modules.md](docs/hardware-modules.md) — parts lists, wiring,
   and the non-invasive design constraint
+- [docs/remote-access.md](docs/remote-access.md) — reaching the dashboard
+  away from home with a Cloudflare Tunnel, safely
 
 ## License
 

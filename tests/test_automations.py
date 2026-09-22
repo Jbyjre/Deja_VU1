@@ -112,6 +112,14 @@ class TestFiring(AutomationCase):
         self.assertFalse(entry["ok"])
         self.assertIn("no notification channel", entry["error"])
 
+    def test_no_channel_is_never_reported_as_queued_even_in_quiet_hours(self):
+        notifications.save_settings({"quiet_hours_start": 0, "quiet_hours_end": 23})
+        saved = automations.add_rule(rule({"type": "state", "event": "paused"},
+                                          {"type": "notify", "message": "x", "priority": "normal"}), demo=True)
+        entry = automations.test_fire(saved["id"], "u1-workshop")
+        self.assertFalse(entry["ok"])
+        self.assertIn("no notification channel", entry["error"])
+
     def test_bridge_actions_report_real_failures(self):
         light = automations.add_rule(rule({"type": "state", "event": "paused"},
                                           {"type": "light", "color": "#ffaa00"}), demo=True)

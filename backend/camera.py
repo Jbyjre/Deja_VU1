@@ -127,6 +127,12 @@ class FrameSplitter:
         return found
 
 
+def looks_like_camera(content_type):
+    """An MJPEG stream or a single image - nothing else is relayed."""
+    kind = (content_type or "").split(";")[0].strip().lower()
+    return kind == "multipart/x-mixed-replace" or kind.startswith("image/")
+
+
 def open_stream(url=None, timeout=10):
     """Open the configured camera stream. Raises ValueError if it can't."""
     url = url or get_settings()["stream_url"]

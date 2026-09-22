@@ -205,8 +205,76 @@ async function postJSON(url, payload) {
 const STORE_KEY = 'dejavu1.demo';
 let demoOn = localStorage.getItem(STORE_KEY) === '1';
 
+/* Which printer the whole dashboard is looking at. Every request carries
+ * ?printer=<id>, and the server answers every module for that printer. */
+const PRINTER_KEY = 'dejavu1.printer';
+let currentPrinter = localStorage.getItem(PRINTER_KEY) || '';
+
 function api(path) {
-  return path + (demoOn ? (path.includes('?') ? '&' : '?') + 'demo=1' : '');
+  const params = [];
+  if (demoOn) params.push('demo=1');
+  if (currentPrinter) params.push(`printer=${encodeURIComponent(currentPrinter)}`);
+  return params.length ? path + (path.includes('?') ? '&' : '?') + params.join('&') : path;
+}
+
+/* ---- announcements --------------------------------------------------------
+ * One polite live region for toasts, so screen-reader users hear the same
+ * "Paused — confirmed" or "Pause failed" a sighted user sees. */
+
+function toast(message, kind = 'info', ms = 4200) {
+  const host = $('toasts');
+  if (!host) return;
+  const el = document.createElement('div');
+  el.className = `toast liquid-glass is-${kind}`;
+  el.setAttribute('role', kind === 'bad' ? 'alert' : 'status');
+  el.textContent = message;
+  host.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('is-in'));
+  setTimeout(() => { el.classList.remove('is-in'); setTimeout(() => el.remove(), 400); }, ms);
+}
+
+/* ---- honest commands --------------------------------------------------------
+ * Every control action follows the same three steps, and never skips one:
+ *   1. the button says what is being sent, straight away ("Pausing…")
+ *   2. the server sends the command, then re-reads the printer
+ *   3. the button shows what the printer now actually reports - or the
+ *      failure, in words, if the printer refused or the request failed.
+ * The UI never flips to "Paused" because the button was pressed; only
+ * because the printer said so. */
+
+async function runCommand(button, path, body, labels) {
+  const original = button ? button.textContent : '';
+  const started = performance.now();
+  if (button) {
+    button.disabled = true;
+    button.dataset.phase = 'sending';
+    button.textContent = labels.sending;
+  }
+  let result;
+  try {
+    result = await postJSON(api(path), body || {});
+  } catch (err) {
+    result = { ok: false, status: 0, body: { error: 'Could not reach the dashboard server' } };
+  }
+  const ms = Math.round(performance.now() - started);
+  if (button) delete button.dataset.phase;
+  if (!result.ok) {
+    const why = result.body.error || `HTTP ${result.status}`;
+    if (button) { button.textContent = original; button.disabled = false; button.dataset.phase = 'failed'; setTimeout(() => delete button.dataset.phase, 2400); }
+    toast(`${labels.failed}: ${why}`, 'bad', 7000);
+    if (window.Workshop) Workshop.refreshPrinter();
+    return { ok: false, result };
+  }
+  const state = result.body.confirmed_state;
+  const confirmed = !labels.expect || (state && labels.expect(state));
+  if (state && window.Workshop) Workshop.applyState(state, true);
+  if (button) { button.textContent = original; button.disabled = false; button.dataset.phase = confirmed ? 'done' : 'failed'; setTimeout(() => delete button.dataset.phase, 1600); }
+  // "Confirmed by the printer" only when the printer's own state was read
+  // back and checked - saving a rule or a queue entry is not a printer act.
+  if (confirmed && labels.expect && state) toast(`${labels.done} — confirmed by the printer in ${ms} ms`, 'ok');
+  else if (confirmed) toast(`${labels.done} (${ms} ms)`, 'ok');
+  else toast(`${labels.done.split(' ')[0]} sent, but the printer now reports "${state ? state.state : 'unknown'}"`, 'warn', 7000);
+  return { ok: true, result, confirmed };
 }
 
 function hasData(payload) {
@@ -333,7 +401,9 @@ function initTabs() {
     localStorage.setItem(TAB_KEY, name);
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
+    if (window.Workshop) Workshop.onTab(name);
   }
+  window.showTab = show;
 
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
   $('overview-pair-btn').addEventListener('click', () => show('modules'));
@@ -346,7 +416,10 @@ function initTabs() {
 let lastPrinterState = null;
 
 async function loadStatusRibbon() {
-  const data = await getJSON(api('/api/printer'));
+  renderStatusRibbon(await getJSON(api('/api/printer')));
+}
+
+function renderStatusRibbon(data) {
   const ribbon = $('status-ribbon');
   const text = $('rb-text');
   const bar = $('rb-bar');
@@ -366,11 +439,12 @@ async function loadStatusRibbon() {
   const isPrinting = data.state === 'printing';
   ribbon.classList.toggle('is-live', isPrinting);
 
-  if (data.state === 'ready') {
-    text.textContent = 'Idle — no print running.';
+  if (data.state === 'ready' || data.state === 'error') {
+    text.textContent = data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.';
     bar.hidden = true; pct.hidden = true;
   } else {
-    text.textContent = `${data.state === 'paused' ? 'Paused' : 'Printing'} — ${data.current_file || 'unknown file'}`;
+    const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
+    text.textContent = `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`;
     bar.hidden = false; pct.hidden = false;
     fill.style.width = `${Math.round(data.progress * 100)}%`;
     pct.textContent = `${Math.round(data.progress * 100)}%`;
@@ -579,6 +653,7 @@ function renderControlTab(state) {
   const homeButtons = document.querySelectorAll('[data-home]');
   const gcodeInput = $('gcode-input');
   const gcodeSend = $('gcode-send');
+  const temps = $('ctrl-temps');
 
   if (!state || !state.state) {
     dot.style.background = '';
@@ -590,27 +665,32 @@ function renderControlTab(state) {
     homeButtons.forEach(b => b.disabled = true);
     gcodeInput.disabled = true;
     gcodeSend.disabled = true;
-    $('ctrl-temps').innerHTML = '';
+    temps.innerHTML = '';
+    temps.dataset.built = '';
     $('gcode-log').innerHTML = '';
     return;
   }
 
-  dot.style.background = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : 'var(--text-faint)');
-  text.textContent = state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || ''}`;
-  sub.textContent = state.state === 'ready' ? 'No job running.' : `${Math.round(state.progress * 100)}% · ${state.print_duration_hours.toFixed(1)}h elapsed`;
+  const running = state.state === 'printing' || state.state === 'paused';
+  dot.style.background = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
+  text.textContent = state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || state.state_message || ''}`;
+  sub.textContent = running ? `${Math.round(state.progress * 100)}% · ${state.print_duration_hours.toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.');
 
-  pauseResume.disabled = !(state.state === 'printing' || state.state === 'paused');
-  pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
-  pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause');
-
-  cancel.disabled = !(state.state === 'printing' || state.state === 'paused');
-  cancel.onclick = () => controlAction('cancel');
+  // A button that is mid-send keeps its "Pausing…" until the printer answers.
+  if (!pauseResume.dataset.phase || pauseResume.dataset.phase !== 'sending') {
+    pauseResume.disabled = !running;
+    pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
+  }
+  pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
+  if (cancel.dataset.phase !== 'sending') cancel.disabled = !running;
+  cancel.onclick = () => controlAction('cancel', cancel);
 
   homeButtons.forEach(b => {
-    b.disabled = false;
+    if (b.dataset.phase !== 'sending') b.disabled = false;
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
-      postJSON(api('/api/printer/control/home'), { axes }).then(() => loadPrinterControl());
+      runCommand(b, '/api/printer/control/home', { axes }, { sending: 'Homing…', done: `Homed ${axes.join('')}`, failed: 'Homing failed' })
+        .then(loadPrinterConsole);
     };
   });
 
@@ -619,27 +699,43 @@ function renderControlTab(state) {
   gcodeSend.onclick = () => sendGcode();
   gcodeInput.onkeydown = (e) => { if (e.key === 'Enter') sendGcode(); };
 
-  $('ctrl-temps').innerHTML = Object.entries(state.toolheads).map(([th, info]) => `
-    <div>
-      <div class="stat-key">${esc(th)}${th === state.active_toolhead ? ' · active' : ''}</div>
-      <div class="stat-val" style="font-size:22px; ${th === state.active_toolhead ? 'color:var(--accent);' : ''}">${formatTemp(info.temperature)}</div>
-      <div style="display:flex; gap:6px; margin-top:8px;">
-        <input type="number" placeholder="target" data-toolhead="${esc(th)}" style="width:100%; font-size:12px;">
-        <button class="btn small" data-set-temp="${esc(th)}">Set</button>
-      </div>
-    </div>`).join('');
-
-  $('ctrl-temps').querySelectorAll('[data-set-temp]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const th = btn.dataset.setTemp;
-      const input = $('ctrl-temps').querySelector(`input[data-toolhead="${th}"]`);
-      const celsiusValue = tempUnit === 'F'
-        ? (parseFloat(input.value) - 32) * 5 / 9
-        : parseFloat(input.value);
-      if (Number.isNaN(celsiusValue)) return;
-      postJSON(api('/api/printer/control/temperature'), { toolhead: th, target: celsiusValue })
-        .then(() => loadPrinterControl());
+  // Build the temperature row once, then only update the numbers - four
+  // live updates a second must never wipe out a target being typed.
+  const heads = Object.keys(state.toolheads);
+  if (temps.dataset.built !== heads.join(',')) {
+    temps.dataset.built = heads.join(',');
+    temps.innerHTML = heads.map(th => `
+      <div>
+        <div class="stat-key" data-temp-key="${esc(th)}">${esc(th)}</div>
+        <div class="stat-val" style="font-size:22px;" data-temp-val="${esc(th)}">—</div>
+        <div class="stat-foot" data-temp-target="${esc(th)}"></div>
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <label class="sr-only" for="target-${esc(th)}">${esc(th)} target temperature</label>
+          <input type="number" inputmode="decimal" placeholder="target" id="target-${esc(th)}" data-toolhead="${esc(th)}" style="width:100%; font-size:12px;">
+          <button class="btn small" data-set-temp="${esc(th)}">Set</button>
+        </div>
+      </div>`).join('');
+    temps.querySelectorAll('[data-set-temp]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const th = btn.dataset.setTemp;
+        const input = temps.querySelector(`input[data-toolhead="${th}"]`);
+        const celsiusValue = tempUnit === 'F' ? (parseFloat(input.value) - 32) * 5 / 9 : parseFloat(input.value);
+        if (Number.isNaN(celsiusValue)) { toast('Type a target temperature first', 'warn'); return; }
+        runCommand(btn, '/api/printer/control/temperature', { toolhead: th, target: celsiusValue }, {
+          sending: 'Setting…', done: `${th} target set to ${formatTemp(celsiusValue)}`, failed: `Setting ${th} failed`,
+          expect: s => Math.abs(s.toolheads[th].target_temperature - celsiusValue) < 0.01,
+        }).then(r => { if (r.ok) input.value = ''; });
+      });
     });
+  }
+  heads.forEach(th => {
+    const info = state.toolheads[th];
+    const active = th === state.active_toolhead;
+    temps.querySelector(`[data-temp-key="${th}"]`).textContent = `${th}${active ? ' · active' : ''}${info.status === 'error' ? ' · error' : ''}`;
+    const val = temps.querySelector(`[data-temp-val="${th}"]`);
+    val.textContent = formatTemp(info.temperature);
+    val.style.color = active ? 'var(--accent)' : '';
+    temps.querySelector(`[data-temp-target="${th}"]`).textContent = info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off';
   });
 }
 
@@ -648,38 +744,52 @@ function renderOverviewControl(state) {
   if (!host) return;
   if (!state || !state.state) {
     host.innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    host.dataset.built = '';
     return;
   }
-  host.innerHTML = `
-    <div class="card-sub" style="margin-bottom:8px;">${state.state === 'ready' ? 'Idle' : `${esc(state.current_file || '')}`}</div>
-    <div class="bar" style="margin-bottom:14px;"><span style="width:${Math.round(state.progress * 100)}%"></span></div>
-    <div style="display:flex; gap:8px;">
-      <button class="btn primary" id="ov-pause-resume" style="flex:1;">${state.state === 'paused' ? 'Resume' : 'Pause'}</button>
-      <button class="btn danger" id="ov-cancel" style="flex:1;">Cancel</button>
-    </div>`;
+  if (!host.dataset.built) {
+    host.dataset.built = '1';
+    host.innerHTML = `
+      <div class="card-sub" style="margin-bottom:8px;" id="ov-file"></div>
+      <div class="bar" style="margin-bottom:14px;"><span id="ov-bar"></span></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn primary" id="ov-pause-resume" style="flex:1;">Pause</button>
+        <button class="btn danger" id="ov-cancel" style="flex:1;">Cancel</button>
+      </div>`;
+  }
+  const running = state.state === 'printing' || state.state === 'paused';
+  $('ov-file').textContent = running || state.state === 'complete' ? (state.current_file || '') : 'Idle';
+  $('ov-bar').style.width = `${Math.round((state.progress || 0) * 100)}%`;
   const pauseResume = $('ov-pause-resume');
   const cancel = $('ov-cancel');
-  if (pauseResume) {
-    pauseResume.disabled = !(state.state === 'printing' || state.state === 'paused');
-    pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause');
+  if (pauseResume.dataset.phase !== 'sending') {
+    pauseResume.disabled = !running;
+    pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
   }
-  if (cancel) {
-    cancel.disabled = !(state.state === 'printing' || state.state === 'paused');
-    cancel.onclick = () => controlAction('cancel');
-  }
+  pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
+  if (cancel.dataset.phase !== 'sending') cancel.disabled = !running;
+  cancel.onclick = () => controlAction('cancel', cancel);
 }
 
-async function controlAction(action) {
-  await postJSON(api(`/api/printer/control/${action}`), {});
-  await loadPrinterControl();
+const CONTROL_LABELS = {
+  pause: { sending: 'Pausing…', done: 'Paused', failed: 'Pause failed', expect: s => s.state === 'paused' },
+  resume: { sending: 'Resuming…', done: 'Resumed', failed: 'Resume failed', expect: s => s.state === 'printing' },
+  cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state === 'ready' },
+};
+
+async function controlAction(action, button) {
+  const outcome = await runCommand(button, `/api/printer/control/${action}`, {}, CONTROL_LABELS[action]);
+  loadPrinterConsole();
+  return outcome;
 }
 
 async function sendGcode() {
   const input = $('gcode-input');
   const command = input.value.trim();
   if (!command) return;
-  input.value = '';
-  await postJSON(api('/api/printer/control/gcode'), { command });
+  const outcome = await runCommand($('gcode-send'), '/api/printer/control/gcode', { command },
+    { sending: 'Sending…', done: `Sent ${command}`, failed: `${command} failed` });
+  if (outcome.ok) input.value = '';
   await loadPrinterConsole();
 }
 
@@ -691,7 +801,7 @@ async function loadPrinterConsole() {
   }
   $('gcode-log').innerHTML = [...data.log].reverse().map(entry => `
     <div><span class="c-cmd">&gt; ${esc(entry.detail)}</span></div>
-    <div class="c-detail">ok — ${esc(entry.kind)}</div>`).join('') || '<span class="c-detail">No commands sent yet.</span>';
+    <div class="c-detail ${entry.kind === 'error' ? 'is-failed' : ''}">${entry.kind === 'error' ? 'failed' : 'ok'} — ${esc(entry.kind)}</div>`).join('') || '<span class="c-detail">No commands sent yet.</span>';
 }
 
 async function loadPrinterControl() {
@@ -2916,6 +3026,7 @@ async function refreshAll() {
       loadFilament(), loadCompare(), loadModules(), loadDevices(),
       loadUpdates(), loadPrinterControl(), loadCost(),
     ]);
+    if (window.Workshop) await Workshop.refresh();
     $('stamp').textContent = new Date().toLocaleTimeString();
   } catch (err) {
     console.error('Dashboard failed to load:', err);
@@ -2929,6 +3040,7 @@ function initDemoToggle() {
   toggle.addEventListener('change', () => {
     demoOn = toggle.checked;
     localStorage.setItem(STORE_KEY, demoOn ? '1' : '0');
+    if (window.Workshop) Workshop.reconnect();
     refreshAll();
   });
 }
@@ -2947,6 +3059,11 @@ trackHighlights();
 refreshAll();
 loadNotificationSettings();
 
+// Printer state itself arrives live (workshop.js, every 250 ms over the
+// WebSocket). These slower panels only need a periodic refresh.
 setInterval(() => {
-  if (demoOn) { loadRings(); loadColorCheck(); loadStatusRibbon(); loadCost(); }
+  if (demoOn) {
+    loadRings(); loadColorCheck(); loadCost();
+    if (!window.Workshop || !Workshop.isLive()) loadStatusRibbon();
+  }
 }, 5000);

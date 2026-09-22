@@ -31,6 +31,7 @@ API endpoints
 
   WS   /api/live                     live state + events (WebSocket)
   GET  /api/live/snapshot            the same live state, for polling fallback
+  GET  /api/live/events?since=       events after a given id, for polling fallback
   GET  /api/fleet                    one overview row per printer
   GET  /api/fleet/registry           printers you added by address
   POST /api/fleet/registry           add one {"name", "moonraker_url"}
@@ -239,6 +240,7 @@ _DATA_ROUTES = {
     "/api/cost/history": ("cost_calculator", lambda q: {"jobs": cost_calculator.cost_history()}),
     "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.estimate_current_job()),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
+    "/api/live/events": (None, lambda q: {"events": live_feed.events_since(int(_q(q, "since", "0")))}),
     "/api/fleet": ("fleet", lambda q: live_feed.fleet_snapshot()),
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
@@ -384,7 +386,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         """Keep the terminal quiet — one tidy line per request."""
         path = self.path.split("?")[0]
-        if path in ("/api/live/snapshot", "/api/fleet", "/api/handoff"):
+        if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff"):
             return
         sys.stderr.write(f"  {self.command} {path}\n")
 
@@ -447,7 +449,26 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if not self._same_origin():
+            return self._send_json({"error": "Refused: this request came from another website"}, status=403)
         return self._dispatch(self._handle_api_post)
+
+    def _same_origin(self):
+        """
+        Browsers label every cross-site POST and WebSocket with an Origin
+        header. This dashboard has no login, so without this check any web
+        page you happened to visit could send "cancel print" to it. Requests
+        without an Origin (curl, scripts, the tests) are not from a browser
+        page and are allowed, exactly as before.
+        """
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        # cloudflared keeps the original Host header by default; if its
+        # httpHostHeader option is set it moves it to X-Forwarded-Host.
+        allowed = {h.strip().lower() for h in (self.headers.get("Host", ""),
+                   self.headers.get("X-Forwarded-Host", "")) if h}
+        return urlparse(origin).netloc.lower() in allowed
 
     def _dispatch(self, handler):
         try:
@@ -814,7 +835,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     def _relay_camera(self):
         upstream = camera.open_stream()
-        ctype = upstream.headers.get("Content-Type", "multipart/x-mixed-replace")
+        ctype = upstream.headers.get("Content-Type", "")
+        if not camera.looks_like_camera(ctype):
+            # Only ever relay a camera stream - never turn this into a way
+            # to read some other device's web page through the dashboard.
+            upstream.close()
+            return self._send_json({"error": "That address didn't answer like a camera stream "
+                                             f"(it sent {ctype or 'no content type'})"}, status=502)
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Cache-Control", "no-store")
@@ -847,6 +874,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         reconnecting.
         """
         self.close_connection = True
+        if not self._same_origin():
+            return self._send_json({"error": "Refused: this connection came from another website"}, status=403)
         try:
             response = websocket.handshake_response(self.headers)
         except websocket.ProtocolError as exc:

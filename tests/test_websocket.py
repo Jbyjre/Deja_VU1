@@ -270,6 +270,16 @@ class TestLiveEndpoint(unittest.TestCase):
             client.close()
             mock_moonraker.reset_all()
 
+    def test_a_connection_from_another_website_is_refused(self):
+        sock = socket.create_connection(("127.0.0.1", self.port), timeout=5)
+        try:
+            sock.sendall(b"GET /api/live?demo=1 HTTP/1.1\r\nHost: 127.0.0.1\r\nUpgrade: websocket\r\n"
+                         b"Connection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                         b"Sec-WebSocket-Version: 13\r\nOrigin: https://evil.example\r\n\r\n")
+            self.assertIn(b"403", sock.recv(64))
+        finally:
+            sock.close()
+
     def test_bad_handshake_gets_a_400(self):
         sock = socket.create_connection(("127.0.0.1", self.port), timeout=5)
         try:

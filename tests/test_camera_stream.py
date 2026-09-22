@@ -47,6 +47,12 @@ class TestMJPEG(unittest.TestCase):
         self.assertEqual(b"".join(out).count(JPEG), 3)
         self.assertFalse(camera.get_status()["frozen"])
 
+    def test_only_camera_streams_are_relayed(self):
+        self.assertTrue(camera.looks_like_camera("multipart/x-mixed-replace; boundary=frame"))
+        self.assertTrue(camera.looks_like_camera("image/jpeg"))
+        self.assertFalse(camera.looks_like_camera("text/html; charset=utf-8"))
+        self.assertFalse(camera.looks_like_camera(""))
+
     def test_no_camera_configured_is_an_honest_error(self):
         camera.save_settings({"stream_url": ""})
         with self.assertRaisesRegex(ValueError, "No camera stream"):
