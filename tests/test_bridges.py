@@ -107,7 +107,13 @@ class TestHomeAssistantPush(unittest.TestCase):
         result = home_assistant_bridge.push_sensors()
         self.assertFalse(result["ok"])
         self.assertIn("results", result)
-        self.assertEqual(len(result["results"]), 4)
+        # Every entity is reported on, not silently dropped: state, progress,
+        # layers, bed, chamber, and four readings per toolhead.
+        self.assertGreaterEqual(len(result["results"]), 20)
+        for entity in ("sensor.dejavu1_state", "sensor.dejavu1_progress",
+                       "sensor.dejavu1_t0_temperature", "sensor.dejavu1_chamber_temperature"):
+            self.assertIn(entity, result["results"])
+            self.assertFalse(result["results"][entity]["ok"])
 
 
 if __name__ == "__main__":

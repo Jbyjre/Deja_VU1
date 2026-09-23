@@ -6,6 +6,7 @@
 <title>Deja Vu1 — Snapmaker U1 Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff7a2f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ff7a2f'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="workshop.css">
 </head>
 <body>
 
@@ -21,6 +22,29 @@
       <feDisplacementMap in="SourceGraphic" in2="noise" scale="20"
                          xChannelSelector="R" yChannelSelector="G"/>
       <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+    <!-- Liquid Glass 2.0. "live" breathes slowly even at rest (ambient
+         refraction) and is used only on a few hero surfaces; "deep" bends
+         harder and wider, for glass that sits on top of other glass
+         (dialogs), so the layer underneath visibly refracts more than the
+         background does. The morph animation drives the scale of both. -->
+    <filter id="lg-distort-live" x="-20%" y="-20%" width="140%" height="140%"
+            color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009 0.012"
+                    numOctaves="2" seed="11" result="noise"/>
+      <feDisplacementMap id="lg-live-map" in="SourceGraphic" in2="noise" scale="20"
+                         xChannelSelector="R" yChannelSelector="G">
+        <animate attributeName="scale" values="16;26;16" dur="9s" repeatCount="indefinite"/>
+      </feDisplacementMap>
+      <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+    <filter id="lg-distort-deep" x="-20%" y="-20%" width="140%" height="140%"
+            color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.004 0.006"
+                    numOctaves="2" seed="3" result="noise"/>
+      <feDisplacementMap id="lg-deep-map" in="SourceGraphic" in2="noise" scale="46"
+                         xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation="0.9"/>
     </filter>
   </defs>
 </svg>
@@ -47,6 +71,11 @@
     </div>
 
     <div class="topbar-right">
+      <button class="printer-chip" id="printer-chip" type="button" aria-label="Choose a printer">
+        <span class="pc-dot" aria-hidden="true"></span>
+        <span class="pc-name" id="printer-chip-name">Default printer</span>
+        <span class="pc-caret" aria-hidden="true">▾</span>
+      </button>
       <div class="conn" id="conn">
         <span class="conn-dot" aria-hidden="true"></span>
         <span id="conn-label">Checking…</span>
@@ -71,8 +100,11 @@
   </div>
 
   <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
+    <button class="navtab" data-tab="fleet">Fleet</button>
     <button class="navtab active" data-tab="overview">Overview</button>
     <button class="navtab" data-tab="control">Printer control</button>
+    <button class="navtab" data-tab="files">Files</button>
+    <button class="navtab" data-tab="automations">Automations</button>
     <button class="navtab" data-tab="maintenance">Maintenance</button>
     <button class="navtab" data-tab="filament">Filament &amp; colour</button>
     <button class="navtab" data-tab="modules">Modules &amp; devices</button>
@@ -86,7 +118,36 @@
     <span class="rb-text" id="rb-text">No printer connected.</span>
     <div class="rb-bar" id="rb-bar" hidden><span id="rb-bar-fill"></span></div>
     <span class="rb-pct" id="rb-pct" hidden></span>
+    <span class="rb-live" id="rb-live" hidden title="How printer data is arriving">
+      <span class="rb-live-dot" aria-hidden="true"></span><span id="rb-live-text">Live</span>
+    </span>
   </div>
+
+  <!-- ============================================================ -->
+  <!-- FLEET                                                         -->
+  <!-- ============================================================ -->
+  <section id="tab-fleet" class="tab-panel" hidden>
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div><h2>Your printers</h2><p class="card-sub">Everything at a glance. Choose one to point the whole dashboard at it.</p></div>
+        <span class="badge badge-live">Live</span>
+      </div>
+      <div id="fleet-grid" class="fleet-grid"></div>
+    </section>
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. Saved here; it shows as connected once a real Moonraker link exists.</p></div>
+      </div>
+      <div id="fleet-registry"></div>
+      <form id="fleet-add-form" class="inline-form">
+        <label class="sr-only" for="fleet-add-name">Printer name</label>
+        <input type="text" id="fleet-add-name" placeholder="Name (Bench U1)" maxlength="40" required>
+        <label class="sr-only" for="fleet-add-url">Moonraker address</label>
+        <input type="url" id="fleet-add-url" placeholder="http://192.168.1.50:7125" required>
+        <button class="btn primary" type="submit">Add printer</button>
+      </form>
+    </section>
+  </section>
 
   <!-- ============================================================ -->
   <!-- OVERVIEW                                                      -->
@@ -114,6 +175,27 @@
         <span class="stat-foot" id="stat-due-foot">No printer</span>
       </div>
     </section>
+
+    <div class="live-row">
+      <section class="card liquid-glass twin-card" data-tint id="twin-card">
+        <div class="card-head">
+          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">Toolhead position and docks, live</p></div>
+        </div>
+        <div id="twin-host" class="twin-host"></div>
+      </section>
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Print health</h2><p class="card-sub">Maintenance, filament and pre-flight in one number</p></div>
+        </div>
+        <div id="health-host"></div>
+      </section>
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Chamber climate</h2><p class="card-sub">Last 30 minutes</p></div>
+        </div>
+        <div id="chamber-host"></div>
+      </section>
+    </div>
 
     <div class="grid-2" style="margin-bottom:20px;">
       <section class="card liquid-glass">
@@ -190,6 +272,74 @@
   </section>
 
   <!-- ============================================================ -->
+  <!-- FILES                                                         -->
+  <!-- ============================================================ -->
+  <section id="tab-files" class="tab-panel" hidden>
+    <div class="files-layout">
+      <section class="card liquid-glass files-library">
+        <div class="card-head">
+          <div><h2>File library</h2><p class="card-sub">G-code to print, STL and 3MF models to inspect or convert</p></div>
+        </div>
+        <div class="file-actions">
+          <label class="btn primary file-upload">Add files
+            <input type="file" id="file-upload" accept=".gcode,.gco,.g,.3mf,.stl" multiple>
+          </label>
+          <button class="btn" id="file-samples" type="button">Add sample files</button>
+        </div>
+        <div id="file-drop" class="file-drop" hidden>Drop files to add them</div>
+        <div id="file-recent" class="file-recent"></div>
+        <div id="file-grid" class="file-grid"></div>
+      </section>
+
+      <section class="card liquid-glass files-queue">
+        <div class="card-head">
+          <div><h2>Print queue</h2><p class="card-sub">Each file passes the Confirm Print check before it starts</p></div>
+        </div>
+        <div id="queue-host"></div>
+      </section>
+    </div>
+
+    <section class="card liquid-glass file-detail" id="file-detail" hidden>
+      <div class="card-head">
+        <div><h2 id="fd-name">—</h2><p class="card-sub" id="fd-sub"></p></div>
+        <button class="btn small" id="fd-close" type="button">Close</button>
+      </div>
+      <div class="fd-body">
+        <div class="fd-view">
+          <canvas id="fd-canvas" class="viewer-canvas" tabindex="0" aria-label="3D view. Drag to turn, scroll or pinch to zoom, arrow keys to turn."></canvas>
+          <div class="fd-view-tools" id="fd-view-tools"></div>
+        </div>
+        <div class="fd-side" id="fd-side"></div>
+      </div>
+      <div id="fd-gcode" class="fd-gcode" hidden></div>
+    </section>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- AUTOMATIONS                                                   -->
+  <!-- ============================================================ -->
+  <section id="tab-automations" class="tab-panel" hidden>
+    <div class="grid-2 automations-grid">
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>New rule</h2><p class="card-sub">When this happens, do that. Runs on this machine, no cloud.</p></div>
+        </div>
+        <form id="rule-form" class="rule-form"></form>
+      </section>
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>What fired</h2><p class="card-sub">Every run, with what really happened</p></div>
+        </div>
+        <div id="rule-log" class="rule-log"></div>
+      </section>
+    </div>
+    <section class="card liquid-glass">
+      <div class="card-head"><div><h2>Rules</h2></div></div>
+      <div id="rule-list"></div>
+    </section>
+  </section>
+
+  <!-- ============================================================ -->
   <!-- MAINTENANCE                                                   -->
   <!-- ============================================================ -->
   <section id="tab-maintenance" class="tab-panel" hidden>
@@ -209,6 +359,18 @@
         <summary>Maintenance history</summary>
         <div id="mlog"></div>
       </details>
+    </section>
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div><h2>Swapped a nozzle or hotend?</h2><p class="card-sub">Record it and "Recalibrate" comes due straight away, until you mark it done.</p></div>
+      </div>
+      <form id="swap-form" class="inline-form">
+        <label class="sr-only" for="swap-kind">What was swapped</label>
+        <select id="swap-kind"><option value="nozzle">Nozzle</option><option value="hotend">Hotend</option></select>
+        <label class="sr-only" for="swap-toolhead">Toolhead</label>
+        <select id="swap-toolhead"><option>T0</option><option>T1</option><option>T2</option><option>T3</option></select>
+        <button class="btn primary" type="submit">Record swap</button>
+      </form>
     </section>
   </section>
 
@@ -264,6 +426,10 @@
           <button class="btn primary" type="submit">Add spool</button>
         </form>
         <div id="spool-idle-note" class="log-empty" hidden></div>
+        <details class="log" id="forecast-wrap">
+          <summary>How long each spool will last</summary>
+          <div id="forecast-body"></div>
+        </details>
       </section>
 
       <section class="card liquid-glass">
@@ -280,6 +446,7 @@
         </div>
         <button class="btn" id="repeat-settings-btn" style="margin-top:14px; width:100%;">Show last successful settings</button>
         <div id="repeat-settings-body" style="margin-top:10px;"></div>
+        <div id="side-by-side-body" style="margin-top:14px;"></div>
       </section>
     </div>
   </section>
@@ -392,6 +559,45 @@
         </section>
       </div>
     </div>
+    <div class="grid-2" style="margin-top:20px;">
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>Camera</h2><p class="card-sub">MJPEG stream from the printer, relayed through this dashboard</p></div></div>
+        <form id="camera-form" class="inline-form">
+          <label class="sr-only" for="camera-url">Camera stream address</label>
+          <input type="url" id="camera-url" placeholder="http://192.168.1.50/webcam/?action=stream">
+          <button class="btn" type="submit">Save</button>
+        </form>
+        <div id="camera-host" class="camera-host"></div>
+      </section>
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
+        <div id="timelapse-host"></div>
+      </section>
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">Reach this dashboard through a Cloudflare Tunnel</p></div></div>
+        <p class="card-sub">The dashboard stays on your home network; <code>cloudflared</code>, a separate program you run on the same machine, opens an outgoing link to Cloudflare. The printer itself is never exposed. It needs a domain on Cloudflare and about fifteen minutes of setup — the steps are in <code>docs/remote-access.md</code>. Put Cloudflare Access in front of it: this dashboard has no login of its own.</p>
+      </section>
+      <section class="card liquid-glass" id="demo-tools-card" hidden>
+        <div class="card-head"><div><h2>Demo controls</h2><p class="card-sub">Only with demo data on — for trying things out</p></div></div>
+        <div class="demo-tools">
+          <div class="pill-toggle" id="demo-speed" role="group" aria-label="Simulation speed">
+            <button data-speed="1" class="active">Real time</button>
+            <button data-speed="60">60×</button>
+            <button data-speed="300">300×</button>
+          </div>
+          <div class="inline-form">
+            <label class="sr-only" for="demo-fail-action">Command to fail</label>
+            <select id="demo-fail-action">
+              <option value="pause">Pause</option><option value="resume">Resume</option>
+              <option value="cancel">Cancel</option><option value="start">Start print</option>
+              <option value="temperature">Set temperature</option>
+            </select>
+            <button class="btn" id="demo-fail-btn" type="button">Make the next one fail</button>
+          </div>
+          <button class="btn" id="demo-reset-btn" type="button">Restart the simulated printers</button>
+        </div>
+      </section>
+    </div>
   </section>
 
   <!-- ============================================================ -->
@@ -426,6 +632,110 @@
 
 </main>
 
+<!-- Always-on overlays: toasts, the live print pill, "continue here". -->
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<button class="live-pill liquid-glass" id="live-pill" type="button" hidden data-tint
+        aria-label="Current print - open printer control">
+  <svg class="lp-ring" viewBox="0 0 36 36" aria-hidden="true">
+    <circle cx="18" cy="18" r="15.5" class="lp-track"/>
+    <circle cx="18" cy="18" r="15.5" class="lp-fill" id="lp-fill"/>
+  </svg>
+  <span class="lp-text">
+    <span class="lp-title" id="lp-title">—</span>
+    <span class="lp-sub" id="lp-sub"></span>
+  </span>
+</button>
+
+<div class="handoff liquid-glass" id="handoff" hidden role="status">
+  <span id="handoff-text"></span>
+  <button class="btn small primary" id="handoff-go" type="button">Continue here</button>
+  <button class="btn small" id="handoff-dismiss" type="button" aria-label="Dismiss">✕</button>
+</div>
+
+<!-- Phone layout: thumb-first. Primary tabs and the quick actions live at
+     the bottom of the screen, where a thumb reaches without shifting grip. -->
+<div class="thumb-dock" id="thumb-dock">
+  <div class="quick-actions liquid-glass" id="quick-actions" hidden>
+    <button class="qa-btn qa-primary" id="qa-pause" type="button">Pause</button>
+    <button class="qa-btn qa-danger hold" id="qa-cancel" type="button"
+            aria-label="Cancel print - press and hold">
+      <span class="hold-fill" aria-hidden="true"></span><span class="hold-label">Hold to cancel</span>
+    </button>
+    <button class="qa-btn" id="qa-next" type="button">Start next</button>
+  </div>
+  <nav class="bottom-nav liquid-glass" aria-label="Main sections">
+    <button data-tab="fleet"><span class="bn-ico" aria-hidden="true">▦</span>Fleet</button>
+    <button data-tab="overview"><span class="bn-ico" aria-hidden="true">◉</span>Now</button>
+    <button data-tab="control"><span class="bn-ico" aria-hidden="true">⏯</span>Control</button>
+    <button data-tab="files"><span class="bn-ico" aria-hidden="true">▤</span>Files</button>
+    <button id="bn-more" type="button" aria-haspopup="true"><span class="bn-ico" aria-hidden="true">⋯</span>More</button>
+  </nav>
+  <div class="more-sheet liquid-glass" id="more-sheet" hidden>
+    <button data-tab="automations">Automations</button>
+    <button data-tab="maintenance">Maintenance</button>
+    <button data-tab="filament">Filament &amp; colour</button>
+    <button data-tab="modules">Modules &amp; devices</button>
+    <button data-tab="games">While you wait</button>
+  </div>
+</div>
+
+<!-- Dialogs: glass laid over glass - they use the "deep" refraction. -->
+<dialog class="glass-dialog" id="confirm-dialog" aria-labelledby="confirm-title">
+  <div class="dialog-panel liquid-glass deep" data-tint>
+    <div class="card-head">
+      <div><h2 id="confirm-title">Confirm print</h2><p class="card-sub" id="confirm-sub"></p></div>
+      <div class="gauge-mini" id="confirm-health"></div>
+    </div>
+    <div id="confirm-body"></div>
+    <div class="dialog-actions">
+      <button class="btn" id="confirm-cancel" type="button">Not now</button>
+      <button class="btn primary" id="confirm-go" type="button">Start print</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="glass-dialog" id="diff-dialog" aria-labelledby="diff-title">
+  <div class="dialog-panel liquid-glass deep wide">
+    <div class="card-head">
+      <div><h2 id="diff-title">Compare settings</h2><p class="card-sub" id="diff-sub"></p></div>
+      <button class="btn small" data-close type="button">Close</button>
+    </div>
+    <div id="diff-body"></div>
+  </div>
+</dialog>
+
+<dialog class="glass-dialog" id="flip-dialog" aria-labelledby="flip-title">
+  <div class="dialog-panel liquid-glass deep wide">
+    <div class="card-head">
+      <div><h2 id="flip-title">Time-lapse</h2><p class="card-sub" id="flip-sub"></p></div>
+      <button class="btn small" data-close type="button">Close</button>
+    </div>
+    <div class="flip-stage"><img id="flip-img" alt="Time-lapse frame"></div>
+    <div class="flip-controls">
+      <button class="btn small" id="flip-play" type="button">Pause</button>
+      <label class="sr-only" for="flip-scrub">Frame</label>
+      <input type="range" id="flip-scrub" min="0" max="0" value="0">
+      <span class="flip-count" id="flip-count"></span>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="glass-dialog" id="celebrate-dialog" aria-labelledby="celebrate-title">
+  <div class="dialog-panel liquid-glass deep celebrate" data-tint>
+    <div class="celebrate-ring" aria-hidden="true"><span></span></div>
+    <h2 id="celebrate-title">Print finished</h2>
+    <p class="card-sub" id="celebrate-sub"></p>
+    <div class="celebrate-stats divider-row cols-3" id="celebrate-stats"></div>
+    <div class="dialog-actions">
+      <button class="btn" id="celebrate-timelapse" type="button">Watch time-lapse</button>
+      <button class="btn primary" data-close type="button">Done</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="app.js"></script>
+<script src="viewer3d.js"></script>
+<script src="workshop.js"></script>
 </body>
 </html>
