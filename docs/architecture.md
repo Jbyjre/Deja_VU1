@@ -194,12 +194,52 @@ Snapmaker's profile. Profile names come from Snapmaker's repository
 (`resources/profiles/Snapmaker`). Not yet confirmed by opening the result
 in Snapmaker Orca.
 
+**Why it hasn't been opened in Orca yet.** We made one attempt to run
+Snapmaker Orca headless in the build environment, and it was blocked. The
+v2.4.0 release downloads can't be reached from there (GitHub answered 403 for
+the release assets page). Building from source means first compiling
+about 30 libraries Orca bundles (`deps/CMakeLists.txt`: Boost, wxWidgets,
+OpenCASCADE, CGAL, OpenVDB, OpenCV and more; `build_linux.sh -d`), each
+downloaded from its own site. That's far beyond the environment's
+10-minute limit per command, and it wasn't attempted.
+
+**What checks it instead.** `tests/test_converter_orca_rules.py` holds every
+converted project to what Snapmaker Orca's loader actually reads, from its
+source at commit `da53bc5` of
+[Snapmaker/OrcaSlicer](https://github.com/Snapmaker/OrcaSlicer):
+- values are strings or lists of strings (`Config.cpp`, `load_from_json`)
+- the filament count is the length of `filament_colour`
+- `inherits_group` and `different_settings_to_system` are exactly that count
+  + 2 long: print profile first, then each filament, then the printer
+  (`PresetBundle.cpp`, `load_config_file_config`)
+- every profile named is a real Snapmaker profile that lists the chosen U1 as
+  compatible
+- every "kept" setting belongs to that kind of profile (`Preset.cpp`'s option
+  lists)
+- bed size and height match Snapmaker's U1 profile exactly
+
+It runs on 13 kinds of project (both samples, 1 to 6 filaments, every nozzle
+size, missing colours, unknown materials). Snapmaker's profile facts are
+stored in `tests/fixtures/snapmaker_u1_profiles.json`, made by
+`tools/snapshot_snapmaker_profiles.py`. Run that again when Snapmaker updates
+its profiles. The check found one real bug, now fixed: a project with more
+filament types than colours made Orca read a filament's name as the printer.
+Missing colours are now filled with white, with a warning.
+
 ### Smaller pieces
 `fleet.py` (registered printers + the overview rows), `timelapse.py` (a
 frame every two layers, simulated frames drawn as labelled SVG),
 `handoff.py` ("continue on another device", memory only), and `camera.py`'s
 MJPEG relay, which only ever passes on something that is actually a
-camera stream.
+camera stream. `webrtc_camera.py` (optional, off by default) passes the
+browser's WebRTC offer to a go2rtc the user runs themselves
+(`POST /api/webrtc?src=<stream>`, JSON offer → JSON answer, read from go2rtc's
+`internal/webrtc/server.go`). It never imports or needs go2rtc: any failure
+comes back in words, and the browser falls back to MJPEG. See
+[low-latency-camera.md](low-latency-camera.md). `frontend/ar.js` is the "View
+on your desk" AR preview: WebXR `immersive-ar` + `hit-test` on the same
+geometry `DV3D.parseModel` produces, converted from mm (Z up) to metres
+(Y up). See [ar-preview.md](ar-preview.md).
 
 ### `backend/led_status.py` / `backend/color_check.py`
 Hardware-pending placeholders. The decision logic (state → colour, colour
@@ -341,7 +381,7 @@ Everything that calls them already works.
 
 ## Testing
 
-302 tests, using Python's built-in `unittest`:
+317 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests

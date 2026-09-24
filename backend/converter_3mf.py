@@ -222,6 +222,17 @@ def convert(data):
     colours = _as_list(config.get("filament_colour"))
     types = _as_list(config.get("filament_type"))
     count = max(len(colours), len(types), len(_as_list(config.get("filament_settings_id"))), 1)
+    # Snapmaker Orca counts filaments by filament_colour alone
+    # (PresetBundle::load_config_file_config) and reads the printer from
+    # slot count + 1 of inherits_group, so every filament needs a colour -
+    # otherwise the printer would be read from a filament's slot.
+    if len(colours) < count:
+        missing = list(range(len(colours) + 1, count + 1))
+        colours = colours + ["#FFFFFF"] * (count - len(colours))
+        change("filament_colour", colours)
+        report["warnings"].append(
+            f"Filament{'s' if len(missing) > 1 else ''} {', '.join(map(str, missing))} had no colour in the "
+            "project; set to white - pick the real colour in Snapmaker Orca")
     if count > U1_TOOLHEADS:
         report["warnings"].append(
             f"This project uses {count} filaments; the U1 has {U1_TOOLHEADS} toolheads. "
@@ -248,8 +259,8 @@ def convert(data):
                       {"filament_colour"})
         filament_keep.append(";".join(keys))
     change("inherits_group", [process] + filament_presets + [printer_preset])
-    # The printer list must be non-empty for Snapmaker Orca to fill every
-    # other printer setting from its U1 profile; printer_notes is harmless.
+    # Snapmaker Orca fills every printer setting not listed here from the
+    # U1 profile; printer_notes carries the "converted from" note.
     change("different_settings_to_system", [";".join(print_keep)] + filament_keep + ["printer_notes"])
     for key in ("compatible_printers", "print_compatible_printers"):
         if key in new or key == "print_compatible_printers":

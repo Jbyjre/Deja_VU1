@@ -567,6 +567,17 @@
           <input type="url" id="camera-url" placeholder="http://192.168.1.50/webcam/?action=stream">
           <button class="btn" type="submit">Save</button>
         </form>
+        <details class="webrtc-setup" id="webrtc-setup" hidden>
+          <summary>Low-latency camera (optional, needs go2rtc)</summary>
+          <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
+          <form id="webrtc-form" class="inline-form">
+            <label class="sr-only" for="webrtc-url">go2rtc address</label>
+            <input type="url" id="webrtc-url" placeholder="http://192.168.1.50:1984">
+            <label class="sr-only" for="webrtc-stream">Stream name in go2rtc</label>
+            <input type="text" id="webrtc-stream" placeholder="u1" class="webrtc-stream" autocomplete="off" spellcheck="false">
+            <button class="btn" type="submit">Save</button>
+          </form>
+        </details>
         <div id="camera-host" class="camera-host"></div>
       </section>
       <section class="card liquid-glass">
@@ -734,8 +745,15 @@
   </div>
 </dialog>
 
+<div class="ar-overlay" id="ar-overlay" hidden>
+  <div class="ar-bar liquid-glass deep" data-tint>
+    <p class="ar-status" id="ar-status" role="status" aria-live="polite">Starting AR…</p>
+    <button class="btn" id="ar-exit" type="button">Done</button>
+  </div>
+</div>
 <script src="app.js"></script>
 <script src="viewer3d.js"></script>
+<script src="ar.js"></script>
 <script src="workshop.js"></script>
 </body>
 </html>
