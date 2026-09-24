@@ -396,7 +396,10 @@ function initTabs() {
   const panels = document.querySelectorAll('.tab-panel');
 
   function show(name) {
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    tabs.forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === name);
+      if (t.dataset.tab === name) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
+    });
     panels.forEach(p => { p.hidden = p.id !== `tab-${name}`; });
     localStorage.setItem(TAB_KEY, name);
     if (name === 'games') startCurrentGame();
