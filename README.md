@@ -66,6 +66,7 @@ machine, and all of it is visible in data the printer already publishes.
 | **Interactive 3D viewer** | The toolpath of any G-code file, scrubbable layer by layer, and any STL or 3MF model — drawn with plain WebGL and parsers written for this project, no 3D library. |
 | **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. |
 | **MakerWorld / NexPrint → U1** | One click turns a Bambu Studio (MakerWorld) or Elegoo Slicer (NexPrint) project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. |
+| **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
 | **Digital twin** | A live 3D view of the toolhead, the part growing layer by layer, and the four docks — pure CSS 3D, the same technique as the games' 3D scenes. |
@@ -84,6 +85,7 @@ screen, and a small live "print pill" follows you across every tab.
 | **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
 | **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API — no extra hardware to build. |
 | **Home Assistant bridge** | Publishes printer state as a handful of REST sensors, so it shows up on an existing HA dashboard — no MQTT broker, no custom component. |
+| **Low-latency camera (WebRTC)** | Plays the camera with almost no delay through [go2rtc](https://github.com/AlexxIT/go2rtc), **a separate program you install yourself**. It's one step beyond "nothing to install", so it's off by default. MJPEG stays the default, and the dashboard falls back to it automatically, saying which feed is on. See [docs/low-latency-camera.md](docs/low-latency-camera.md). |
 
 ### Interface + simulation, hardware pending
 
@@ -148,9 +150,14 @@ Built and tested on mock data. There is no real printer connection yet.
   can fast-forward it, restart it, or make the next command fail on purpose
   to show how a failure is reported.
 - Not verified yet, and said so: the converter's output hasn't been opened
-  in Snapmaker Orca itself (it follows Snapmaker Orca's source code and
-  profile names exactly), and nothing has touched a real Moonraker, a real
-  camera, or a real Cloudflare Tunnel.
+  in Snapmaker Orca itself. Getting Orca running here was tried and blocked
+  (see [docs/architecture.md](docs/architecture.md#conversion)). Instead,
+  every converted project is checked by a test against the rules in
+  Snapmaker Orca's loader source and a snapshot of Snapmaker's real U1
+  profiles. That check caught and fixed one real bug. Nothing has touched a
+  real Moonraker, a real camera, go2rtc, or a real Cloudflare Tunnel. The AR
+  preview has only run against a stand-in for a phone's WebXR, never on a
+  real device.
 
 - Maintenance, printer control, notifications, updates, backup, camera
   watchdog, pairing, and the print cost calculator are complete and tested
@@ -190,14 +197,16 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 302 cases
+- **Tests:** `unittest` from the standard library, 317 cases
 - **Printer API:** Moonraker (simulated for now)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is
 fetched from the internet at runtime — no webfonts, no CDN, no analytics.
 (Reaching it from outside your home uses Cloudflare's own `cloudflared`
 program, which you install separately if you want that — see
-[docs/remote-access.md](docs/remote-access.md).)
+[docs/remote-access.md](docs/remote-access.md). The optional low-latency
+camera works the same way: it uses go2rtc, which you'd install yourself —
+see [docs/low-latency-camera.md](docs/low-latency-camera.md).)
 It works offline, including the phone pairing, which talks directly to this
 server over your local network rather than through any cloud relay.
 
@@ -240,11 +249,8 @@ filament's colour, a printer's state, a verdict.
 - Chamber climate control (monitoring is built, read-only).
 - A full macro builder — deliberately waiting for real hardware to test
   macros against.
-- An on-desk AR preview of models (WebXR). Not built: it only works in
-  Android / WebXR browsers (iOS Safari has no equivalent) and couldn't be
-  tested here.
-- A lower-latency camera option (WebRTC via something like go2rtc) — it
-  would need an extra program installed, so MJPEG stays the default.
+- Try the AR preview on a real Android phone, and the low-latency camera
+  with a real go2rtc install.
 - Package as a proper Moonraker component so it installs alongside Fluidd or
   Mainsail.
 
@@ -303,6 +309,10 @@ Everything runs on simulated data. No printer is contacted at any point.
   and the non-invasive design constraint
 - [docs/remote-access.md](docs/remote-access.md) — reaching the dashboard
   away from home with a Cloudflare Tunnel, safely
+- [docs/ar-preview.md](docs/ar-preview.md) — "View on your desk": where AR
+  works, and what was and wasn't tested
+- [docs/low-latency-camera.md](docs/low-latency-camera.md) — the optional
+  WebRTC camera through go2rtc (an extra program you install)
 
 ## License
 
