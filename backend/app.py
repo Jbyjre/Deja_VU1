@@ -103,6 +103,8 @@ API endpoints
   GET  /api/camera                   camera feed + freeze watchdog
   GET  /api/camera/settings | POST   the MJPEG stream address
   GET  /api/camera/stream            the camera, relayed (MJPEG)
+  GET  /api/camera/webrtc/settings | POST   optional go2rtc address (low latency)
+  POST /api/camera/webrtc/offer      pass a WebRTC offer to go2rtc, return its answer
 
   GET  /api/notifications/settings
   POST /api/notifications/settings
@@ -178,6 +180,7 @@ import file_library
 import filament_inventory
 import fleet
 import handoff
+import webrtc_camera
 import home_assistant_bridge
 import led_status
 import live_feed
@@ -275,6 +278,7 @@ _APP_ROUTES = {
     "/api/automations": ("automations", lambda q: {"rules": automations.list_rules()}),
     "/api/automations/log": ("automations", lambda q: {"log": automations.get_log()}),
     "/api/camera/settings": ("camera", lambda q: camera.get_settings()),
+    "/api/camera/webrtc/settings": ("webrtc_camera", lambda q: webrtc_camera.get_settings()),
     "/api/handoff": ("handoff", lambda q: handoff.offer_for(_q(q, "device", ""))),
 }
 
@@ -725,6 +729,16 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("camera"):
                 return None
             return self._send_json(camera.save_settings(self._read_json_body()))
+
+        if route == "/api/camera/webrtc/settings":
+            if self._module_blocked("webrtc_camera"):
+                return None
+            return self._send_json(webrtc_camera.save_settings(self._read_json_body()))
+
+        if route == "/api/camera/webrtc/offer":
+            if self._module_blocked("webrtc_camera"):
+                return None
+            return self._send_json(webrtc_camera.exchange(self._read_json_body()))
 
         if route == "/api/handoff":
             if self._module_blocked("handoff"):

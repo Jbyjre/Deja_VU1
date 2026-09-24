@@ -599,9 +599,11 @@ const Workshop = (() => {
     lib.addEventListener('dragleave', (e) => { if (!lib.contains(e.relatedTarget)) drop.hidden = true; });
     lib.addEventListener('drop', (e) => { e.preventDefault(); drop.hidden = true; uploadFiles([...e.dataTransfer.files]); });
     $('fd-close').addEventListener('click', closeFile);
+    $('ar-exit').addEventListener('click', () => { if (ar.handle) ar.handle.end(); else $('ar-overlay').hidden = true; });
   }
 
   function closeFile() {
+    if (ar.handle) ar.handle.end();
     $('file-detail').hidden = true;
     files.open = null;
     if (files.viewer) { files.viewer.dispose(); files.viewer = null; }
@@ -729,6 +731,47 @@ const Workshop = (() => {
     loadFiles();
   }
 
+  /* View on your desk (AR). The button appears only where the browser
+   * says it can place things in AR; everywhere else, one plain line
+   * says why. */
+  const ar = { handle: null };
+  async function setupAR(entry, mesh) {
+    const slot = $('fd-ar-slot'), note = $('fd-ar-note');
+    if (!slot || typeof DVAR === 'undefined') return;
+    const mods = await getJSON('/api/modules').catch(() => null);
+    if (!mods || !(mods.modules || []).some(m => m.id === 'ar_preview' && m.enabled)) return;
+    const can = await DVAR.support();
+    if (files.open !== entry || !document.body.contains(slot)) return;
+    if (!can.ok) {
+      note.hidden = false;
+      note.textContent = `View on your desk (AR) isn't available here: ${can.reason} ${DVAR.UNSUPPORTED_NOTE}`;
+      return;
+    }
+    slot.innerHTML = '<button class="btn" id="fd-ar" type="button">View on your desk</button>';
+    $('fd-ar').addEventListener('click', (e) => startAR(mesh, e.currentTarget));
+  }
+
+  async function startAR(mesh, btn) {
+    const overlay = $('ar-overlay');
+    const reset = () => { overlay.hidden = true; ar.handle = null; btn.disabled = false; btn.textContent = 'View on your desk'; };
+    btn.disabled = true;
+    btn.textContent = 'Starting AR…';
+    $('ar-status').textContent = 'Starting AR…';
+    overlay.hidden = false;
+    try {
+      ar.handle = await DVAR.start(mesh, {
+        color: getComputedStyle(document.documentElement).getPropertyValue('--accent'),
+        overlay,
+        onStatus: (text) => { $('ar-status').textContent = text; },
+        onEnd: reset,
+      });
+      btn.textContent = 'AR is running';
+    } catch (err) {
+      reset();
+      toast(`AR couldn't start: ${err.message || err}`, 'bad', 6000);
+    }
+  }
+
   async function openModel(entry, viewer) {
     const side = $('fd-side');
     try {
@@ -749,14 +792,17 @@ const Workshop = (() => {
         <p class="log-empty">Models need slicing (in Snapmaker Orca) before they can be printed.</p>
         <div class="fd-actions">
           ${is3mf ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          <span id="fd-ar-slot" class="fd-ar-slot"></span>
           <a class="btn" href="/api/files/raw?name=${enc(entry.name)}&download=1">Download</a>
           <button class="btn danger" id="fd-delete" type="button">Delete</button>
         </div>
+        <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
         <div id="fd-compare-host"></div>
         <div id="fd-convert-report"></div>`;
       $('fd-delete').addEventListener('click', () => deleteFile(entry.name));
       if ($('fd-convert')) $('fd-convert').addEventListener('click', (e) => convertFile(entry.name, e.currentTarget));
       renderCompare(entry);
+      setupAR(entry, mesh);
     } catch (err) {
       side.innerHTML = `<p class="log-empty">Couldn't read this model: ${esc(err.message)}</p>`;
     }
@@ -1220,25 +1266,130 @@ const Workshop = (() => {
     </div>`;
   }
 
-  let cameraOn = false;
+  /* Camera: MJPEG through this dashboard is the default. If the optional
+   * low-latency module is on and go2rtc is set up, WebRTC is tried first
+   * (the browser's own RTCPeerConnection, signalled through this server)
+   * and anything that goes wrong falls back to MJPEG, saying which is on. */
+  const cam = { built: false, mjpeg: '', webrtc: false, pc: null, run: 0 };
   async function loadCamera() {
     const host = $('camera-host');
     if (!host) return;
     const s = await getJSON('/api/camera/settings').catch(() => null);
-    if (isModuleDisabled(s)) { host.innerHTML = moduleDisabledEmpty('Camera bridge'); return; }
+    if (isModuleDisabled(s)) { host.innerHTML = moduleDisabledEmpty('Camera bridge'); cam.built = false; $('webrtc-setup').hidden = true; return; }
     $('camera-url').value = (s && s.stream_url) || '';
-    if (!s || !s.stream_url) { host.innerHTML = empty('No camera set up', 'Add the printer camera\'s MJPEG address above. Nothing is simulated here — the demo has no camera.'); cameraOn = false; return; }
-    if (!cameraOn) {
-      host.innerHTML = `<img id="camera-img" alt="Printer camera" class="camera-img">
+    const w = await getJSON('/api/camera/webrtc/settings').catch(() => null);
+    const webrtcModule = Boolean(w && !isModuleDisabled(w) && w.go2rtc_url !== undefined);
+    $('webrtc-setup').hidden = !webrtcModule;
+    if (webrtcModule) { $('webrtc-url').value = w.go2rtc_url; $('webrtc-stream').value = w.stream; }
+    cam.mjpeg = (s && s.stream_url) || '';
+    cam.webrtc = webrtcModule && Boolean(w.go2rtc_url && w.stream) && typeof RTCPeerConnection === 'function';
+    if (!cam.mjpeg && !cam.webrtc) {
+      host.innerHTML = empty('No camera set up', 'Add the printer camera\'s MJPEG address above. Nothing is simulated here — the demo has no camera.');
+      cam.built = false;
+      return;
+    }
+    if (!cam.built) {
+      host.innerHTML = `<div class="camera-frame">
+          <video id="camera-video" class="camera-img" playsinline muted autoplay hidden aria-label="Printer camera, low latency"></video>
+          <img id="camera-img" alt="Printer camera" class="camera-img" hidden>
+          <span class="cam-mode" id="cam-mode" data-tint role="status">Connecting…</span>
+        </div>
+        <p class="log-empty cam-why" id="cam-why" hidden></p>
         <div class="fd-actions"><button class="btn small" id="camera-reload" type="button">Reconnect</button>
         <span class="log-empty">Over Wi-Fi, MJPEG delay can slowly build up — Reconnect resets it.</span></div>`;
-      $('camera-reload').addEventListener('click', () => { $('camera-img').src = `/api/camera/stream?t=${Date.now()}`; });
-      cameraOn = true;
+      $('camera-reload').addEventListener('click', () => { stopCamera(); startCamera(); });
+      cam.built = true;
     }
-    const img = $('camera-img');
-    if (document.querySelector('#tab-modules:not([hidden])')) img.src = `/api/camera/stream?t=${Date.now()}`;
+    if (document.querySelector('#tab-modules:not([hidden])')) { stopCamera(); startCamera(); }
   }
-  function stopCamera() { const img = $('camera-img'); if (img) img.removeAttribute('src'); }
+
+  function setCamMode(mode, why) {
+    const pill = $('cam-mode'), note = $('cam-why');
+    if (!pill) return;
+    pill.dataset.mode = mode;
+    pill.textContent = { webrtc: 'Low latency · WebRTC', mjpeg: 'MJPEG', connecting: 'Connecting…', none: 'No camera' }[mode];
+    note.hidden = !why;
+    note.textContent = why || '';
+  }
+
+  function showMjpeg(why) {
+    const img = $('camera-img'), video = $('camera-video');
+    if (!img) return;
+    video.hidden = true;
+    if (!cam.mjpeg) { img.hidden = true; setCamMode('none', `${why} There's no MJPEG address to fall back to — add one above.`); return; }
+    img.hidden = false;
+    img.src = `/api/camera/stream?t=${Date.now()}`;
+    setCamMode('mjpeg', why ? `Using the normal camera feed: ${why}` : '');
+  }
+
+  async function startCamera() {
+    const run = ++cam.run;
+    if (!cam.webrtc) { showMjpeg(''); return; }
+    setCamMode('connecting', '');
+    try {
+      await playWebRTC($('camera-video'), run);
+      if (run !== cam.run) return;
+      $('camera-img').hidden = true;
+      $('camera-img').removeAttribute('src');
+      $('camera-video').hidden = false;
+      setCamMode('webrtc', '');
+    } catch (err) {
+      if (run !== cam.run) return;
+      closePeer();
+      showMjpeg(`the low-latency camera couldn't connect (${err.message || err}).`);
+    }
+  }
+
+  function closePeer() {
+    if (cam.pc) { try { cam.pc.close(); } catch (e) { /* already closed */ } cam.pc = null; }
+    const video = $('camera-video');
+    if (video) { video.srcObject = null; }
+  }
+
+  function within(ms, promise, what) {
+    let timer;
+    return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(what)), ms); })])
+      .finally(() => clearTimeout(timer));
+  }
+
+  async function playWebRTC(video, run) {
+    const pc = new RTCPeerConnection();
+    cam.pc = pc;
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    const track = new Promise((resolve) => pc.addEventListener('track', (e) => {
+      video.srcObject = e.streams[0] || new MediaStream([e.track]);
+      resolve();
+    }, { once: true }));
+    const connected = new Promise((resolve, reject) => pc.addEventListener('connectionstatechange', () => {
+      if (pc.connectionState === 'connected') resolve();
+      if (pc.connectionState === 'failed') reject(new Error('the network path to go2rtc failed'));
+    }));
+    await pc.setLocalDescription(await pc.createOffer());
+    // go2rtc's /api/webrtc takes one complete offer, so gather our
+    // network candidates first (briefly - whatever is found is sent).
+    await within(3000, new Promise((resolve) => {
+      if (pc.iceGatheringState === 'complete') resolve();
+      pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') resolve(); });
+    }), 'gathering').catch(() => {});
+    const r = await postJSON('/api/camera/webrtc/offer', { type: 'offer', sdp: pc.localDescription.sdp });
+    if (!r.ok) throw new Error(r.body.error || `the dashboard answered ${r.status}`);
+    await pc.setRemoteDescription(r.body);
+    await within(8000, Promise.all([track, connected]), 'no video arrived within 8 seconds');
+    await video.play().catch(() => {});
+    pc.addEventListener('connectionstatechange', () => {
+      if (run === cam.run && ['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+        closePeer();
+        showMjpeg('the low-latency connection dropped.');
+      }
+    });
+  }
+
+  function stopCamera() {
+    cam.run++;
+    closePeer();
+    const img = $('camera-img');
+    if (img) img.removeAttribute('src');
+  }
 
   async function loadTimelapse() {
     const host = $('timelapse-host');
@@ -1304,8 +1455,13 @@ const Workshop = (() => {
       e.preventDefault();
       const r = await postJSON('/api/camera/settings', { stream_url: $('camera-url').value.trim() });
       toast(r.ok ? 'Camera address saved' : `Not saved: ${r.body.error}`, r.ok ? 'ok' : 'bad');
-      cameraOn = false;
       loadCamera();
+    });
+    $('webrtc-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const r = await postJSON('/api/camera/webrtc/settings', { go2rtc_url: $('webrtc-url').value.trim(), stream: $('webrtc-stream').value.trim() });
+      toast(r.ok ? (r.body.go2rtc_url ? 'go2rtc address saved — trying the low-latency camera' : 'Low-latency camera cleared') : `Not saved: ${r.body.error}`, r.ok ? 'ok' : 'bad', 5000);
+      if (r.ok) loadCamera();
     });
   }
 

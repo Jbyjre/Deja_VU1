@@ -112,6 +112,15 @@ REGISTRY = [
         "default_enabled": True,
     },
     {
+        "id": "webrtc_camera",
+        "name": "Low-latency camera (WebRTC)",
+        "description": "Plays the camera with almost no delay through go2rtc, "
+                        "a separate program you install. Falls back to the "
+                        "normal camera feed if it can't connect.",
+        "status": "optional",
+        "default_enabled": False,
+    },
+    {
         "id": "cost_calculator",
         "name": "Print cost calculator",
         "description": "Prices filament by material and adds electricity, "
@@ -165,6 +174,15 @@ REGISTRY = [
         "description": "Local when-this-then-that rules: temperatures, print "
                         "events, filament and maintenance to alerts, lights, "
                         "Home Assistant or pause.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "ar_preview",
+        "name": "View on your desk (AR)",
+        "description": "Places an STL or 3MF model at real size on your desk "
+                        "through the phone camera. Works on Android/WebXR "
+                        "browsers; iOS Safari has no equivalent.",
         "status": "ready",
         "default_enabled": True,
     },

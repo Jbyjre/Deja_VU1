@@ -642,15 +642,65 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
   .files-layout { grid-template-columns: 1fr; }
 }
 
+/* ---- camera mode + low-latency setup ----------------------------------------------------- */
+
+.camera-frame { position: relative; }
+.camera-frame video.camera-img { aspect-ratio: 16 / 9; object-fit: contain; }
+/* Which feed is playing, in words, as a small glass pill on the picture.
+   The tint says it at a glance: green for WebRTC, clear for MJPEG. */
+.cam-mode {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  color: var(--text); --lg-tint-alpha: .82;
+  backdrop-filter: blur(14px) saturate(1.8); -webkit-backdrop-filter: blur(14px) saturate(1.8);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 4px 14px rgba(0, 0, 0, .18);
+}
+.cam-mode[data-mode="webrtc"] { --glass-tint: var(--ok); }
+.cam-mode[data-mode="connecting"] { --glass-tint: var(--accent); }
+.cam-mode[data-mode="none"] { --glass-tint: var(--bad); }
+.cam-why { margin: 8px 0 0; font-size: 12.5px; }
+.webrtc-setup { margin-top: 12px; }
+.webrtc-setup summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-dim); padding: 4px 0; }
+.webrtc-setup summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.webrtc-setup .log-empty { font-size: 12.5px; margin: 6px 0 0; }
+.webrtc-setup a { color: var(--text); font-weight: 600; text-decoration: underline 2px var(--accent); text-underline-offset: 3px; }
+.webrtc-setup a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.webrtc-setup .inline-form { flex-wrap: wrap; }
+.webrtc-setup input[type="url"] { flex: 1 1 180px; min-width: 0; }
+.webrtc-setup .webrtc-stream { flex: 0 1 96px; min-width: 72px; }
+
+/* ---- view on your desk (AR) --------------------------------------------------------------- */
+
+.fd-ar-slot { display: contents; }
+.fd-ar-note { font-size: 12.5px; margin: 8px 0 0; }
+/* In AR this whole layer is the WebXR dom-overlay: transparent, with one
+   deep-glass bar at the bottom that rises in on a spring. */
+.ar-overlay {
+  position: fixed; left: 0; right: 0; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 90;
+  display: flex; justify-content: center; padding: 0 16px; pointer-events: none; background: transparent;
+}
+.ar-overlay[hidden] { display: none; }
+.ar-bar {
+  pointer-events: auto; display: flex; align-items: center; gap: 12px;
+  max-width: 520px; width: 100%; padding: 10px 10px 10px 18px; border-radius: 999px;
+  --glass-tint: var(--accent);
+  animation: ar-rise .55s cubic-bezier(.3, 1.4, .5, 1) both;
+}
+.ar-status { flex: 1; margin: 0; font-size: 14px; font-weight: 600; color: var(--text); }
+.ar-bar .btn { min-height: 44px; }
+@keyframes ar-rise { from { transform: translateY(24px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+
 /* ---- system settings ---------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass { animation: none; }
   .hold.is-holding .hold-fill { transition: none; transform: scaleX(.5); }
+  .ar-bar { animation: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .liquid-glass.deep, .morph-ghost, .live-pill, .twin-card { backdrop-filter: none; background: #f4f5f8; }
   [data-tint] { background: #f4f5f8; }
+  .cam-mode { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 @media (prefers-contrast: more) {
   .liquid-glass.deep, [data-tint] { background: #fdfdfe; backdrop-filter: none; }
