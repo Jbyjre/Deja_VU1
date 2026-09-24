@@ -1572,8 +1572,18 @@ const Workshop = (() => {
   function initPhone() {
     const nav = qs('.bottom-nav');
     const sheet = $('more-sheet');
-    qsa('[data-tab]', $('thumb-dock')).forEach(b => b.addEventListener('click', () => { showTab(b.dataset.tab); sheet.hidden = true; }));
-    $('bn-more').addEventListener('click', () => { sheet.hidden = !sheet.hidden; $('bn-more').setAttribute('aria-expanded', String(!sheet.hidden)); });
+    const more = $('bn-more');
+    const setSheet = (open) => { sheet.hidden = !open; more.setAttribute('aria-expanded', String(open)); };
+    qsa('[data-tab]', $('thumb-dock')).forEach(b => b.addEventListener('click', () => { showTab(b.dataset.tab); setSheet(false); }));
+    more.setAttribute('aria-expanded', 'false');
+    more.addEventListener('click', () => setSheet(sheet.hidden));
+    // The sheet closes the way a popover should: tap anywhere else, or Escape.
+    document.addEventListener('pointerdown', (e) => {
+      if (!sheet.hidden && !sheet.contains(e.target) && !more.contains(e.target)) setSheet(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !sheet.hidden) { setSheet(false); more.focus(); }
+    });
     $('qa-next').addEventListener('click', (e) => startNext(e.currentTarget));
     $('live-pill').addEventListener('click', () => showTab('control'));
     initHoldToCancel();
@@ -1582,7 +1592,10 @@ const Workshop = (() => {
   }
 
   function syncNav(name) {
-    qsa('.bottom-nav [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    qsa('.bottom-nav [data-tab]').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === name);
+      if (b.dataset.tab === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
     const inMore = qsa('#more-sheet [data-tab]').some(b => b.dataset.tab === name);
     $('bn-more').classList.toggle('active', inMore);
     moveTabBlob(name);
@@ -1652,21 +1665,69 @@ const Workshop = (() => {
     anim.onfinish = () => { ghost.remove(); target.classList.remove('is-morph-target'); };
   }
 
-  /* The tab bar's active "lens" slides between tabs on the same spring. */
-  function moveTabBlob(name) {
-    const bar = $('tabbar');
-    if (!bar) return;
+  /* The tab bars' active "lens" slides between tabs on the same spring:
+   * the desktop bar's orange lens and the phone dock's clear one. */
+  function placeBlob(bar, btn, instant) {
+    if (!bar || !btn) return;
     let blob = qs('.tab-blob', bar);
     if (!blob) { blob = document.createElement('span'); blob.className = 'tab-blob'; blob.setAttribute('aria-hidden', 'true'); bar.prepend(blob); }
-    const btn = qs(`.navtab[data-tab="${name}"]`, bar);
-    if (!btn) return;
     const to = { x: btn.offsetLeft, w: btn.offsetWidth };
+    if (!to.w) return;                          // bar not laid out (hidden at this width)
     const from = blob.dataset.x ? { x: +blob.dataset.x, w: +blob.dataset.w } : to;
     blob.dataset.x = to.x; blob.dataset.w = to.w;
     blob.style.width = `${to.w}px`;
-    if (REDUCED.matches || from.x === to.x) { blob.style.transform = `translateX(${to.x}px)`; return; }
+    blob.getAnimations().forEach(a => a.cancel());
+    if (instant || REDUCED.matches || (from.x === to.x && from.w === to.w)) { blob.style.transform = `translateX(${to.x}px)`; return; }
+    blob.style.transform = `translateX(${to.x}px)`;
     blob.animate(SPRING.map(t => ({ transform: `translateX(${lerp(from.x, to.x, t)}px) scaleX(${lerp(from.w, to.w, t) / to.w})` })),
-                 { duration: 560, easing: 'linear', fill: 'forwards' });
+                 { duration: 560, easing: 'linear' });
+  }
+  function moveTabBlob(name, instant) {
+    const bar = $('tabbar');
+    const btn = bar && qs(`.navtab[data-tab="${name}"]`, bar);
+    placeBlob(bar, btn, instant);
+    // Nine tabs scroll sideways; bring the active one into view without
+    // moving the page itself.
+    if (btn && (btn.offsetLeft < bar.scrollLeft || btn.offsetLeft + btn.offsetWidth > bar.scrollLeft + bar.clientWidth)) {
+      bar.scrollTo({ left: btn.offsetLeft - 24, behavior: instant || REDUCED.matches ? 'auto' : 'smooth' });
+    }
+    placeBlob(qs('.bottom-nav'), qs('.bottom-nav button.active'), instant);
+  }
+
+  /* Press feedback: record where the finger landed so the bloom of light
+   * (workshop.css section 5) spreads from that exact point. */
+  const PRESSABLE = '.btn, .chip-btn, .printer-chip, .qa-btn, .navtab, .bottom-nav button, .more-sheet button, .file-card';
+  function initPressGlow() {
+    document.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest && e.target.closest(PRESSABLE);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--px', `${e.clientX - r.left}px`);
+      el.style.setProperty('--py', `${e.clientY - r.top}px`);
+    }, { passive: true });
+  }
+
+  /* Scroll edge: the top bar frosts harder once content is under it. The two
+   * thresholds stop it flickering when the page rests right at the edge. */
+  function initScrollEdge() {
+    let on = false, queued = false;
+    const check = () => {
+      queued = false;
+      const y = window.scrollY;
+      if (!on && y > 12) { on = true; document.body.classList.add('is-scrolled'); }
+      else if (on && y < 4) { on = false; document.body.classList.remove('is-scrolled'); }
+    };
+    window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(check); } }, { passive: true });
+    check();
+  }
+
+  /* Keep both lenses on their tab when the window is resized or rotated. */
+  function initBlobResize() {
+    let timer;
+    window.addEventListener('resize', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => moveTabBlob(currentTab(), true), 120);
+    });
   }
 
   /* Dialogs are glass laid over glass: they get the "deep" filter, and the
@@ -1767,6 +1828,9 @@ const Workshop = (() => {
     initDemoTools();
     initCameraForm();
     initPhone();
+    initPressGlow();
+    initScrollEdge();
+    initBlobResize();
     initDialogs();
     honourReducedMotion();
     connect();
