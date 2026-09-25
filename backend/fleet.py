@@ -19,7 +19,6 @@ Selecting a printer anywhere in the dashboard adds ?printer=<id> to every
 request; the server then answers every existing module for that printer.
 """
 
-import json
 import os
 import re
 import threading
@@ -29,6 +28,7 @@ from datetime import datetime
 import maintenance
 import mock_moonraker
 import print_gate
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _PATH = os.path.join(_DATA_DIR, "fleet.json")
@@ -38,16 +38,12 @@ _lock = threading.RLock()
 
 def registered():
     with _lock:
-        if not os.path.exists(_PATH):
-            return []
-        with open(_PATH, "r", encoding="utf-8") as fh:
-            return json.load(fh)
+        items = storage.load_json(_PATH, [])
+        return items if isinstance(items, list) else []
 
 
 def _save(items):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_PATH, "w", encoding="utf-8") as fh:
-        json.dump(items, fh, indent=2)
+    storage.save_json(_PATH, items)
 
 
 def add(name, moonraker_url):

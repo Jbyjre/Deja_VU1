@@ -17,9 +17,11 @@ flush too, which is what `get_settings` conventionally pairs with).
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from datetime import datetime
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "notification_settings.json")
@@ -38,14 +40,11 @@ _DEFAULT_SETTINGS = {
 def _load_json(path, default):
     if not os.path.exists(path):
         return default
-    with open(path, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+    return storage.load_json(path, default)
 
 
 def _save_json(path, data):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2)
+    storage.save_json(path, data)
 
 
 def get_settings():
@@ -54,11 +53,59 @@ def get_settings():
     return settings
 
 
+# What each setting must look like. Checking these keeps the dashboard from
+# being turned into a way to send requests to arbitrary addresses, and turns
+# a typo into a clear message instead of a notification that silently fails.
+_PATTERNS = {
+    "ntfy_topic": (re.compile(r"^[A-Za-z0-9_-]{1,64}$"),
+                   "An ntfy topic is letters, numbers, - and _ only (up to 64)"),
+    "discord_webhook_url": (re.compile(r"^https://(?:canary\.|ptb\.)?(?:discord|discordapp)\.com"
+                                       r"/api/webhooks/\d{1,25}/[A-Za-z0-9_-]{1,100}$"),
+                            "Paste the Discord webhook address, which starts "
+                            "https://discord.com/api/webhooks/"),
+    "telegram_bot_token": (re.compile(r"^\d{3,15}:[A-Za-z0-9_-]{20,100}$"),
+                           "A Telegram bot token looks like 123456789:ABC-def... (from @BotFather)"),
+    "telegram_chat_id": (re.compile(r"^(?:-?\d{1,20}|@[A-Za-z0-9_]{4,32})$"),
+                         "A Telegram chat ID is a number (or @channelname)"),
+}
+# Settings that work like passwords: saved, used, never sent back out.
+SECRET_KEYS = ("discord_webhook_url", "telegram_bot_token")
+MAX_QUEUED = 50
+
+
+def public_settings(settings=None):
+    """The settings as the dashboard page sees them: secrets masked."""
+    settings = dict(settings or get_settings())
+    for key in SECRET_KEYS:
+        settings[key] = storage.mask_secret(settings.get(key))
+    return settings
+
+
+def _hour(value, name):
+    try:
+        hour = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be an hour from 0 to 23")
+    if not 0 <= hour <= 23:
+        raise ValueError(f"{name} must be an hour from 0 to 23")
+    return hour
+
+
 def save_settings(updates):
     settings = get_settings()
-    for key in _DEFAULT_SETTINGS:
-        if key in updates:
-            settings[key] = updates[key]
+    for key, (pattern, message) in _PATTERNS.items():
+        if key not in updates:
+            continue
+        if key in SECRET_KEYS and storage.is_masked(updates[key]):
+            continue                      # the masked stand-in: keep what's saved
+        value = str(updates[key] or "").strip()
+        if value and not pattern.match(value):
+            raise ValueError(message)
+        settings[key] = value
+    if "quiet_hours_start" in updates:
+        settings["quiet_hours_start"] = _hour(updates["quiet_hours_start"], "Quiet hours start")
+    if "quiet_hours_end" in updates:
+        settings["quiet_hours_end"] = _hour(updates["quiet_hours_end"], "Quiet hours end")
     _save_json(_SETTINGS_PATH, settings)
     return settings
 
@@ -72,8 +119,11 @@ def is_quiet_hours(now=None, settings=None):
     """
     settings = settings or get_settings()
     now = now or datetime.now()
-    start = settings["quiet_hours_start"]
-    end = settings["quiet_hours_end"]
+    try:
+        start = int(settings["quiet_hours_start"]) % 24
+        end = int(settings["quiet_hours_end"]) % 24
+    except (KeyError, TypeError, ValueError):
+        return False                      # settings saved by an older version: no quiet hours
     hour = now.hour
 
     if start == end:
@@ -140,7 +190,7 @@ def notify(message, priority="normal", settings=None):
 
     queue = _get_queue()
     queue.append({"message": message, "priority": priority, "queued_at": now.isoformat(timespec="seconds")})
-    _save_queue(queue)
+    _save_queue(queue[-MAX_QUEUED:])      # a long quiet spell can't grow it without end
     return {"sent": False, "queued": True, "results": {}}
 
 

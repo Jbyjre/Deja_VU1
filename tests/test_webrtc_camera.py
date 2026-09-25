@@ -108,7 +108,7 @@ class WebRTCCamera(unittest.TestCase):
         src = open(webrtc_camera.__file__, encoding="utf-8").read()
         imports = [line for line in src.splitlines() if line.startswith(("import ", "from "))]
         self.assertTrue(all(line.split()[1].split(".")[0] in
-                            {"json", "os", "re", "urllib"} for line in imports), imports)
+                            {"json", "os", "re", "urllib", "storage"} for line in imports), imports)
 
     # -- settings --------------------------------------------------------
 

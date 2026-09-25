@@ -26,6 +26,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "webrtc_settings.json")
@@ -38,8 +39,7 @@ DEFAULTS = {"go2rtc_url": "", "stream": ""}
 def get_settings():
     if not os.path.exists(_SETTINGS_PATH):
         return dict(DEFAULTS)
-    with open(_SETTINGS_PATH, "r", encoding="utf-8") as fh:
-        saved = json.load(fh)
+    saved = storage.load_json(_SETTINGS_PATH, {})
     return {k: str(saved.get(k) or "") for k in DEFAULTS}
 
 
@@ -53,9 +53,7 @@ def save_settings(updates):
                          "like u1 (letters, numbers, - _ . : only)")
     if bool(url) != bool(stream):
         raise ValueError("Fill in both go2rtc's address and the stream name, or clear both")
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_SETTINGS_PATH, "w", encoding="utf-8") as fh:
-        json.dump({"go2rtc_url": url, "stream": stream}, fh)
+    storage.save_json(_SETTINGS_PATH, {"go2rtc_url": url, "stream": stream})
     return get_settings()
 
 

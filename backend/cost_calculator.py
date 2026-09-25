@@ -22,6 +22,7 @@ import json
 import os
 
 import mock_moonraker
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "cost_settings.json")
@@ -50,8 +51,7 @@ def _load_settings():
     if not os.path.exists(_SETTINGS_PATH):
         _save_settings(_DEFAULT_SETTINGS)
         return json.loads(json.dumps(_DEFAULT_SETTINGS))
-    with open(_SETTINGS_PATH, "r", encoding="utf-8") as fh:
-        settings = json.load(fh)
+    settings = storage.load_json(_SETTINGS_PATH, {})
     merged = json.loads(json.dumps(_DEFAULT_SETTINGS))
     merged.update({k: v for k, v in settings.items() if k != "filament_price_per_kg"})
     if "filament_price_per_kg" in settings:
@@ -60,9 +60,7 @@ def _load_settings():
 
 
 def _save_settings(settings):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_SETTINGS_PATH, "w", encoding="utf-8") as fh:
-        json.dump(settings, fh, indent=2)
+    storage.save_json(_SETTINGS_PATH, settings)
 
 
 def get_settings():

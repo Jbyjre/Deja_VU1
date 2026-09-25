@@ -19,7 +19,6 @@ whether or not a printer is connected. It never contains printer readings.
 """
 
 import base64
-import json
 import os
 import re
 import threading
@@ -28,6 +27,7 @@ from datetime import datetime
 import gcode_tools
 import mesh_tools
 import sample_files
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 FILES_DIR = os.path.join(_DATA_DIR, "files")
@@ -46,14 +46,11 @@ def _now():
 def _load_index():
     if not os.path.exists(_INDEX_PATH):
         return {}
-    with open(_INDEX_PATH, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+    return storage.load_json(_INDEX_PATH, {})
 
 
 def _save_index(index):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_INDEX_PATH, "w", encoding="utf-8") as fh:
-        json.dump(index, fh, indent=2)
+    storage.save_json(_INDEX_PATH, index)
 
 
 def kind_of(name):

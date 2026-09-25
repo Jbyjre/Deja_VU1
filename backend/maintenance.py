@@ -20,12 +20,12 @@ Nothing here talks to a printer directly. It asks mock_moonraker for history,
 so swapping in a real printer later changes nothing in this file.
 """
 
-import json
 import os
 from datetime import datetime, timedelta
 
 import mock_moonraker
 from mock_moonraker import get_print_history
+import storage
 
 # Where the "when did I last do this task" records are saved. A plain JSON
 # file keeps this dependency-free — no database to install.
@@ -193,8 +193,11 @@ def _load_log():
         _save_log(log)
         return log
 
-    with open(_log_path(), "r", encoding="utf-8") as fh:
-        log = json.load(fh)
+    log = storage.load_json(_log_path(), None)
+    if not isinstance(log, dict) or not isinstance(log.get("tasks"), dict):
+        log = _default_log()
+        _save_log(log)
+        return log
 
     # If a new task was added to TASKS after the log was created, give it a
     # sensible starting point rather than crashing.
@@ -207,9 +210,7 @@ def _load_log():
 
 def _save_log(log):
     """Write the log back to disk."""
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_log_path(), "w", encoding="utf-8") as fh:
-        json.dump(log, fh, indent=2)
+    storage.save_json(_log_path(), log)
 
 
 # ---------------------------------------------------------------------------

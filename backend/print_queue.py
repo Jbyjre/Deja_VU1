@@ -16,7 +16,6 @@ the confirm screen. Held items say exactly why they are waiting.
 Stored per printer in backend/data/print_queue.json.
 """
 
-import json
 import os
 import threading
 import uuid
@@ -26,6 +25,7 @@ import file_library
 import mock_moonraker
 import print_gate
 import printer_control
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _PATH = os.path.join(_DATA_DIR, "print_queue.json")
@@ -36,14 +36,11 @@ _lock = threading.RLock()
 def _load():
     if not os.path.exists(_PATH):
         return {}
-    with open(_PATH, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+    return storage.load_json(_PATH, {})
 
 
 def _save(data):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_PATH, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2)
+    storage.save_json(_PATH, data)
 
 
 def _queue(data, printer_id):

@@ -197,7 +197,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 317 cases
+- **Tests:** `unittest` from the standard library, 345 cases
 - **Printer API:** Moonraker (simulated for now)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is

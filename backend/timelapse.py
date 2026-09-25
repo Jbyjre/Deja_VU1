@@ -23,6 +23,7 @@ import re
 import shutil
 import threading
 from datetime import datetime
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _ROOT = os.path.join(_DATA_DIR, "timelapse")
@@ -50,10 +51,10 @@ def begin(printer_id, filename, source):
     session = f"{stamp}-{re.sub(r'[^A-Za-z0-9_-]', '_', filename or 'print')[:40]}"
     with _lock:
         os.makedirs(_dir(printer_id, session), exist_ok=True)
-        with open(_meta_path(printer_id, session), "w", encoding="utf-8") as fh:
-            json.dump({"session": session, "filename": filename, "source": source,
-                       "started_at": datetime.now().isoformat(timespec="seconds"),
-                       "frames": 0, "finished": False}, fh)
+        storage.save_json(_meta_path(printer_id, session),
+                          {"session": session, "filename": filename, "source": source,
+                           "started_at": datetime.now().isoformat(timespec="seconds"),
+                           "frames": 0, "finished": False}, indent=None)
         _active[printer_id] = {"session": session, "last_layer": -99}
         _prune(printer_id)
     return session
@@ -72,16 +73,16 @@ def maybe_capture(printer_id, layer, frame_bytes, extension):
         if not info or layer - info["last_layer"] < EVERY_N_LAYERS:
             return False
         meta_path = _meta_path(printer_id, info["session"])
-        with open(meta_path, "r", encoding="utf-8") as fh:
-            meta = json.load(fh)
+        meta = storage.load_json(meta_path, None)
+        if not isinstance(meta, dict):
+            return False
         if meta["frames"] >= MAX_FRAMES:
             return False
         meta["frames"] += 1
         name = f"{meta['frames']:05d}.{extension}"
         with open(os.path.join(_dir(printer_id, info["session"]), name), "wb") as fh:
             fh.write(frame_bytes)
-        with open(meta_path, "w", encoding="utf-8") as fh:
-            json.dump(meta, fh)
+        storage.save_json(meta_path, meta, indent=None)
         info["last_layer"] = layer
         return True
 
@@ -92,11 +93,11 @@ def finish(printer_id):
         if not info:
             return
         path = _meta_path(printer_id, info["session"])
-        with open(path, "r", encoding="utf-8") as fh:
-            meta = json.load(fh)
+        meta = storage.load_json(path, None)
+        if not isinstance(meta, dict):
+            return
         meta.update(finished=True, finished_at=datetime.now().isoformat(timespec="seconds"))
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(meta, fh)
+        storage.save_json(path, meta, indent=None)
 
 
 def is_recording(printer_id):

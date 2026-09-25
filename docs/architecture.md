@@ -381,7 +381,7 @@ Everything that calls them already works.
 
 ## Testing
 
-317 tests, using Python's built-in `unittest`:
+345 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests

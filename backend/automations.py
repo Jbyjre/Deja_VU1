@@ -35,7 +35,6 @@ simulated printers, and any message they send is prefixed "[Demo data]",
 so a simulated printer can never produce a real-looking alert.
 """
 
-import json
 import os
 import queue
 import threading
@@ -47,6 +46,7 @@ import maintenance
 import mock_moonraker
 import notifications
 import wled_bridge
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _RULES_PATH = os.path.join(_DATA_DIR, "automations.json")
@@ -73,14 +73,11 @@ _worker = None
 def _load(path, default):
     if not os.path.exists(path):
         return default
-    with open(path, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+    return storage.load_json(path, default)
 
 
 def _save(path, data):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2)
+    storage.save_json(path, data)
 
 
 def list_rules():

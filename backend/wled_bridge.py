@@ -18,10 +18,14 @@ pretending to succeed.
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 
 import led_status
+import storage
+
+_HOST = re.compile(r"^[A-Za-z0-9.-]{1,253}(:\d{1,5})?$")
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "wled_settings.json")
@@ -36,17 +40,14 @@ def _load_settings():
     if not os.path.exists(_SETTINGS_PATH):
         _save_settings(_DEFAULT_SETTINGS)
         return dict(_DEFAULT_SETTINGS)
-    with open(_SETTINGS_PATH, "r", encoding="utf-8") as fh:
-        settings = json.load(fh)
+    settings = storage.load_json(_SETTINGS_PATH, {})
     merged = dict(_DEFAULT_SETTINGS)
     merged.update(settings)
     return merged
 
 
 def _save_settings(settings):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_SETTINGS_PATH, "w", encoding="utf-8") as fh:
-        json.dump(settings, fh, indent=2)
+    storage.save_json(_SETTINGS_PATH, settings)
 
 
 def get_settings():
@@ -56,9 +57,20 @@ def get_settings():
 def save_settings(updates):
     settings = _load_settings()
     if "host" in updates:
-        settings["host"] = str(updates["host"]).strip()
+        host = str(updates["host"] or "").strip()
+        # Just a name or address (and port): it is put into http://<host>/json/...
+        # so anything else could point those requests somewhere unexpected.
+        if host and not _HOST.match(host):
+            raise ValueError("Enter the WLED device's address, like 192.168.1.42 or wled.local")
+        settings["host"] = host
     if "leds_per_segment" in updates:
-        settings["leds_per_segment"] = int(updates["leds_per_segment"])
+        try:
+            leds = int(updates["leds_per_segment"])
+        except (TypeError, ValueError):
+            raise ValueError("LEDs per ring must be a whole number")
+        if not 1 <= leds <= 1000:
+            raise ValueError("LEDs per ring must be between 1 and 1000")
+        settings["leds_per_segment"] = leds
     _save_settings(settings)
     return settings
 

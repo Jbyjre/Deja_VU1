@@ -156,11 +156,13 @@ the same whether or not a printer is connected, because they aren't printer
 figures.
 """
 
+import ipaddress
 import json
 import os
 import sys
 import threading
 import time
+import traceback
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -203,6 +205,47 @@ _FRONTEND_DIR = os.path.join(os.path.dirname(_BACKEND_DIR), "frontend")
 
 PORT = int(os.environ.get("PORT", 8000))
 MAX_UPLOAD = file_library.MAX_BYTES
+
+# Names this dashboard answers to, beyond the ones that are obviously on
+# your own network (see _host_allowed). Set this if you reach it through
+# your own domain, e.g. DEJAVU_ALLOWED_HOSTS=printer.example.com
+EXTRA_HOSTS = {h.strip().lower() for h in os.environ.get("DEJAVU_ALLOWED_HOSTS", "").split(",")
+               if h.strip()}
+_LOCAL_SUFFIXES = (".local", ".lan", ".home", ".internal", ".home.arpa",
+                   ".localdomain", ".ts.net")
+
+
+def _host_name(host):
+    """'printer.local:8000' -> 'printer.local'; '[::1]:8000' -> '::1'."""
+    host = (host or "").strip().lower().rstrip(".")
+    if host.startswith("["):
+        return host[1:host.find("]")] if "]" in host else ""
+    if host.count(":") == 1:
+        return host.split(":")[0]
+    return host
+
+
+def host_is_local(host):
+    """
+    Is this Host header a name only your own network could have given?
+
+    An IP address, a name with no dots (like "raspberrypi"), localhost, or a
+    home-network suffix such as .local. A public web site can't hand out any
+    of those, which is what stops "DNS rebinding": a trick where a page you
+    visit points its own domain name at your dashboard's address to get
+    around the browser's same-site rules.
+    """
+    name = _host_name(host)
+    if not name:
+        return False
+    if name in EXTRA_HOSTS:
+        return True
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    return name == "localhost" or "." not in name or name.endswith(_LOCAL_SUFFIXES)
 
 
 def _chamber():
@@ -263,11 +306,11 @@ _APP_ROUTES = {
         "spools": filament_inventory.get_inventory(),
         "idle_spools": filament_inventory.idle_spools(),
     }),
-    "/api/notifications/settings": ("notifications", lambda q: notifications.get_settings()),
+    "/api/notifications/settings": ("notifications", lambda q: notifications.public_settings()),
     "/api/notifications/queue": ("notifications", lambda q: {"queue": notifications.get_queue()}),
     "/api/cost/settings": ("cost_calculator", lambda q: cost_calculator.get_settings()),
     "/api/wled/settings": ("wled_bridge", lambda q: wled_bridge.get_settings()),
-    "/api/homeassistant/settings": ("home_assistant_bridge", lambda q: home_assistant_bridge.get_settings()),
+    "/api/homeassistant/settings": ("home_assistant_bridge", lambda q: home_assistant_bridge.public_settings()),
     "/api/files": ("file_library", lambda q: file_library.list_files()),
     "/api/files/lines": ("file_library", lambda q: file_library.gcode_tools.view_lines(
         file_library.read_text(_q(q, "name")), _q(q, "offset", "0"), _q(q, "limit", "200"),
@@ -327,9 +370,27 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     which the built-in SimpleHTTPRequestHandler already knows how to serve.
     """
 
+    # A browser that opens a connection and then sends nothing (or trickles
+    # a byte at a time) would otherwise hold a thread forever. Live
+    # connections raise this once they are set up (see _handle_websocket).
+    timeout = 60
+
     def __init__(self, *args, **kwargs):
         # Tell the built-in file server to serve out of the frontend folder.
         super().__init__(*args, directory=_FRONTEND_DIR, **kwargs)
+
+    def end_headers(self):
+        # Sent with every response, pages and API alike:
+        #  - nosniff: a stored file is only ever treated as the type we say.
+        #  - frame-ancestors / X-Frame-Options: no other site can load the
+        #    dashboard invisibly inside its own page and trick clicks
+        #    ("clickjacking") onto Pause or Cancel.
+        #  - Referrer-Policy: addresses are not leaked to other sites.
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("Content-Security-Policy", "frame-ancestors 'self'")
+        self.send_header("Referrer-Policy", "same-origin")
+        super().end_headers()
 
     # -- helpers ----------------------------------------------------------
 
@@ -358,9 +419,23 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _content_length(self):
+        """
+        The body size the browser declared. A negative or garbled value is
+        refused: a negative one would make the read wait for the connection
+        to close, tying up a thread.
+        """
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise ValueError("The request's Content-Length isn't a number")
+        if length < 0:
+            raise ValueError("The request's Content-Length can't be negative")
+        return length
+
     def _read_json_body(self):
         """Read and parse the JSON a browser sent us in a POST request."""
-        length = int(self.headers.get("Content-Length", 0))
+        length = self._content_length()
         if not length:
             return {}
         if length > 1024 * 1024:
@@ -368,12 +443,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         raw = self.rfile.read(length)
         try:
             body = json.loads(raw)
-        except json.JSONDecodeError:
-            return {}
+        except ValueError:
+            raise ValueError("The request wasn't valid JSON")
         return body if isinstance(body, dict) else {}
 
     def _read_raw_body(self):
-        length = int(self.headers.get("Content-Length", 0))
+        length = self._content_length()
         if not length:
             raise ValueError("The file is empty")
         if length > MAX_UPLOAD:
@@ -444,7 +519,34 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     # -- request handling -------------------------------------------------
 
+    def _host_allowed(self):
+        """
+        Refuse requests addressed to a name that isn't this dashboard's.
+
+        Allowed: any local-looking name (host_is_local), anything in
+        DEJAVU_ALLOWED_HOSTS, no Host header at all (not a browser), and a
+        request that cloudflared forwarded from this same machine - the
+        Cloudflare Tunnel set-up in docs/remote-access.md - which keeps your
+        own domain in the Host header.
+        """
+        host = self.headers.get("Host", "")
+        if not host or host_is_local(host):
+            return True
+        peer = self.client_address[0] if self.client_address else ""
+        try:
+            from_this_machine = ipaddress.ip_address(peer.split("%")[0]).is_loopback
+        except ValueError:
+            from_this_machine = False
+        if from_this_machine and self.headers.get("Cf-Connecting-Ip"):
+            return True
+        self._send_json({"error": f"Refused: this dashboard doesn't answer to \"{_host_name(host)}\". "
+                                  "If that is your own address for it, start the server with "
+                                  f"DEJAVU_ALLOWED_HOSTS={_host_name(host)}"}, status=421)
+        return False
+
     def do_GET(self):
+        if not self._host_allowed():
+            return None
         if self.path.startswith("/api/live") and websocket.is_upgrade_request(self.headers):
             return self._handle_websocket()
         if self.path.startswith("/api/"):
@@ -452,7 +554,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         # Not an API call, so serve a file from the frontend folder.
         return super().do_GET()
 
+    def do_HEAD(self):
+        if not self._host_allowed():
+            return None
+        return super().do_HEAD()
+
     def do_POST(self):
+        if not self._host_allowed():
+            return None
         if not self._same_origin():
             return self._send_json({"error": "Refused: this request came from another website"}, status=403)
         return self._dispatch(self._handle_api_post)
@@ -498,9 +607,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                     "printer_failed": True}, status=502)
         except ValueError as exc:
             return self._send_json({"error": str(exc)}, status=400)
-        except Exception as exc:                      # noqa: BLE001
-            # Never let a crash take the whole server down mid-demo.
-            return self._send_json({"error": str(exc)}, status=500)
+        except (ConnectionError, BrokenPipeError):
+            return None                               # the browser left
+        except Exception:                             # noqa: BLE001
+            # Never let a crash take the whole server down mid-demo. The
+            # details go to the terminal, not to whoever sent the request.
+            traceback.print_exc()
+            return self._send_json({"error": "Something went wrong on the dashboard server. "
+                                             "The details are in its terminal window."}, status=500)
 
     def _gate(self, connected):
         """True when printer figures may be served (and sent the refusal if not)."""
@@ -775,13 +889,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("notifications"):
                 return None
             body = self._read_json_body()
-            return self._send_json(notifications.save_settings(body))
+            return self._send_json(notifications.public_settings(notifications.save_settings(body)))
 
         if route == "/api/notifications/test":
             if self._module_blocked("notifications"):
                 return None
             body = self._read_json_body()
-            message = body.get("message") or "Test notification from Deja Vu1"
+            message = str(body.get("message") or "Test notification from Deja Vu1")[:500]
             return self._send_json(notifications.notify(message, priority="high"))
 
         if route == "/api/pairing/code":
@@ -823,7 +937,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("home_assistant_bridge"):
                 return None
             body = self._read_json_body()
-            return self._send_json(home_assistant_bridge.save_settings(body))
+            return self._send_json(home_assistant_bridge.public_settings(
+                home_assistant_bridge.save_settings(body)))
 
         if route == "/api/homeassistant/push":
             if self._module_blocked("home_assistant_bridge"):
@@ -901,6 +1016,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         demo = self._wants_demo()
         self.wfile.write(response)
         self.wfile.flush()
+        # Browsers answer the ping sent every 20 s, so a live connection is
+        # never quiet for this long; one that is has gone away.
+        self.connection.settimeout(75)
         conn = websocket.WebSocketConnection(self.rfile, self.wfile, threading.Lock())
 
         connected = mock_moonraker.is_connected(printer_id) and mock_moonraker.has_printer(printer_id)

@@ -16,16 +16,23 @@ list the user maintains, the same way the maintenance log is a plain list
 Deja Vu1 maintains for you automatically.
 """
 
-import json
+import math
 import os
+import re
+import threading
 from datetime import datetime
 
 import mock_moonraker
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _INVENTORY_PATH = os.path.join(_DATA_DIR, "filament_inventory.json")
 
 IDLE_DAYS_THRESHOLD = 21
+MAX_SPOOLS = 200
+MAX_GRAMS = 100_000
+_HEX = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_lock = threading.RLock()
 
 
 def _default_inventory():
@@ -41,60 +48,80 @@ def _default_inventory():
 
 
 def _load():
-    if not os.path.exists(_INVENTORY_PATH):
+    inventory = storage.load_json(_INVENTORY_PATH, None)
+    if not isinstance(inventory, list):
         inventory = _default_inventory()
         _save(inventory)
-        return inventory
-    with open(_INVENTORY_PATH, "r", encoding="utf-8") as fh:
-        return json.load(fh)
+    return inventory
 
 
 def _save(inventory):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_INVENTORY_PATH, "w", encoding="utf-8") as fh:
-        json.dump(inventory, fh, indent=2)
+    storage.save_json(_INVENTORY_PATH, inventory)
 
 
 def get_inventory():
     return list(_load())
 
 
+def _grams(value):
+    """A real, sensible weight. NaN or infinity would break the page's data."""
+    try:
+        grams = float(value)
+    except (TypeError, ValueError):
+        raise ValueError("Grams remaining must be a number")
+    if not math.isfinite(grams) or not 0 <= grams <= MAX_GRAMS:
+        raise ValueError(f"Grams remaining must be between 0 and {MAX_GRAMS}")
+    return grams
+
+
 def add_spool(material, color_name, color_hex, grams_remaining):
-    inventory = _load()
-    next_id = f"spool-{len(inventory) + 1}"
-    while any(s["id"] == next_id for s in inventory):
-        next_id = f"{next_id}x"
-    spool = {
-        "id": next_id,
-        "material": material,
-        "color_name": color_name,
-        "color_hex": color_hex,
-        "grams_remaining": float(grams_remaining),
-        "loaded_since": datetime.now().isoformat(timespec="seconds"),
-    }
-    inventory.append(spool)
-    _save(inventory)
+    material = str(material or "").strip()[:20] or "PLA"
+    color_name = str(color_name or "").strip()[:40] or "Unnamed"
+    color_hex = str(color_hex or "").strip()
+    if not _HEX.match(color_hex):
+        raise ValueError("Colour must be a hex value like #ff7a2f")
+    grams = _grams(grams_remaining)
+    with _lock:
+        inventory = _load()
+        if len(inventory) >= MAX_SPOOLS:
+            raise ValueError(f"At most {MAX_SPOOLS} spools - remove an empty one first")
+        next_id = f"spool-{len(inventory) + 1}"
+        while any(s["id"] == next_id for s in inventory):
+            next_id = f"{next_id}x"
+        spool = {
+            "id": next_id,
+            "material": material,
+            "color_name": color_name,
+            "color_hex": color_hex.lower(),
+            "grams_remaining": grams,
+            "loaded_since": datetime.now().isoformat(timespec="seconds"),
+        }
+        inventory.append(spool)
+        _save(inventory)
     return spool
 
 
 def remove_spool(spool_id):
-    inventory = _load()
-    filtered = [s for s in inventory if s["id"] != spool_id]
-    if len(filtered) == len(inventory):
-        raise ValueError(f"Unknown spool: {spool_id}")
-    _save(filtered)
+    with _lock:
+        inventory = _load()
+        filtered = [s for s in inventory if s["id"] != spool_id]
+        if len(filtered) == len(inventory):
+            raise ValueError(f"Unknown spool: {spool_id}")
+        _save(filtered)
     return filtered
 
 
 def update_grams(spool_id, grams_remaining):
-    inventory = _load()
-    for spool in inventory:
-        if spool["id"] == spool_id:
-            spool["grams_remaining"] = float(grams_remaining)
-            spool["last_weighed_at"] = datetime.now().isoformat(timespec="seconds")
-            spool["used_since_weighed"] = 0.0
-            _save(inventory)
-            return spool
+    grams = _grams(grams_remaining)
+    with _lock:
+        inventory = _load()
+        for spool in inventory:
+            if spool["id"] == spool_id:
+                spool["grams_remaining"] = grams
+                spool["last_weighed_at"] = datetime.now().isoformat(timespec="seconds")
+                spool["used_since_weighed"] = 0.0
+                _save(inventory)
+                return spool
     raise ValueError(f"Unknown spool: {spool_id}")
 
 
@@ -187,14 +214,15 @@ def deduct_after_print(job):
     the remaining weight follows what was actually printed rather than
     waiting for someone to weigh the spool again.
     """
-    inventory = _load()
-    spool = _match_spool(inventory, job.get("filament_type"), job.get("filament_color_hex"))
-    if spool is None:
-        return None
-    grams = float(job.get("filament_used_grams") or 0.0)
-    spool["grams_remaining"] = round(max(0.0, spool["grams_remaining"] - grams), 1)
-    spool["used_since_weighed"] = round(spool.get("used_since_weighed", 0.0) + grams, 1)
-    _save(inventory)
+    with _lock:                           # runs on the live feed's thread
+        inventory = _load()
+        spool = _match_spool(inventory, job.get("filament_type"), job.get("filament_color_hex"))
+        if spool is None:
+            return None
+        grams = float(job.get("filament_used_grams") or 0.0)
+        spool["grams_remaining"] = round(max(0.0, spool["grams_remaining"] - grams), 1)
+        spool["used_since_weighed"] = round(spool.get("used_since_weighed", 0.0) + grams, 1)
+        _save(inventory)
     return {"spool_id": spool["id"], "deducted": grams, "grams_remaining": spool["grams_remaining"]}
 
 

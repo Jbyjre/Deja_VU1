@@ -17,8 +17,8 @@ status meanings:
   "optional"          - works today, off by default, not essential
 """
 
-import json
 import os
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _STATE_PATH = os.path.join(_DATA_DIR, "modules.json")
@@ -232,17 +232,17 @@ def _load_state():
         state = _default_state()
         _save_state(state)
         return state
-    with open(_STATE_PATH, "r", encoding="utf-8") as fh:
-        state = json.load(fh)
+    state = storage.load_json(_STATE_PATH, None)
+    if not isinstance(state, dict):
+        state = _default_state()
+        _save_state(state)
     for module_id, enabled in _default_state().items():
         state.setdefault(module_id, enabled)
     return state
 
 
 def _save_state(state):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_STATE_PATH, "w", encoding="utf-8") as fh:
-        json.dump(state, fh, indent=2)
+    storage.save_json(_STATE_PATH, state)
 
 
 def get_all():
