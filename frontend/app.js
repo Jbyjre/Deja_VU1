@@ -193,22 +193,37 @@ async function getJSON(url) {
 }
 
 async function postJSON(url, payload) {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload || {}),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    });
+  } catch (_) {
+    // The server stopped, or Wi-Fi dropped. Report it like any refusal so
+    // no button is left saying "Sending…" forever.
+    return { ok: false, status: 0, body: { error: "Couldn't reach the dashboard server - is it still running?" } };
+  }
   const body = await response.json().catch(() => ({}));
   return { ok: response.ok, status: response.status, body };
 }
 
+/* localStorage can throw (private browsing in some browsers, or site data
+ * blocked). Remembered choices are a convenience, so a failure here must
+ * never stop the dashboard loading. */
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* not remembered */ } },
+};
+
 const STORE_KEY = 'dejavu1.demo';
-let demoOn = localStorage.getItem(STORE_KEY) === '1';
+let demoOn = store.get(STORE_KEY) === '1';
 
 /* Which printer the whole dashboard is looking at. Every request carries
  * ?printer=<id>, and the server answers every module for that printer. */
 const PRINTER_KEY = 'dejavu1.printer';
-let currentPrinter = localStorage.getItem(PRINTER_KEY) || '';
+let currentPrinter = store.get(PRINTER_KEY) || '';
 
 function api(path) {
   const params = [];
@@ -309,7 +324,7 @@ const EMPTY = (title, sub) => `
  * temperature is displayed. */
 
 const UNIT_KEY = 'dejavu1.units';
-let tempUnit = localStorage.getItem(UNIT_KEY) === 'F' ? 'F' : 'C';
+let tempUnit = store.get(UNIT_KEY) === 'F' ? 'F' : 'C';
 
 function formatTemp(celsius) {
   if (celsius === null || celsius === undefined) return '—';
@@ -333,7 +348,7 @@ function applyAccent(id) {
   const accent = ACCENTS.find(a => a.id === id) || ACCENTS[0];
   document.documentElement.style.setProperty('--accent', accent.hex);
   document.documentElement.style.setProperty('--accent-light', accent.light);
-  localStorage.setItem(ACCENT_KEY, accent.id);
+  store.set(ACCENT_KEY, accent.id);
   document.querySelectorAll('.accent-swatch').forEach(el => {
     el.classList.toggle('is-active', el.dataset.accent === accent.id);
   });
@@ -348,11 +363,11 @@ function initPreferences() {
   host.querySelectorAll('.accent-swatch').forEach(btn => {
     btn.addEventListener('click', () => applyAccent(btn.dataset.accent));
   });
-  applyAccent(localStorage.getItem(ACCENT_KEY) || 'orange');
+  applyAccent(store.get(ACCENT_KEY) || 'orange');
 
   const setUnits = (unit) => {
     tempUnit = unit;
-    localStorage.setItem(UNIT_KEY, unit);
+    store.set(UNIT_KEY, unit);
     $('units-c').classList.toggle('active', unit === 'C');
     $('units-f').classList.toggle('active', unit === 'F');
     loadPrinterControl();
@@ -401,7 +416,7 @@ function initTabs() {
       if (t.dataset.tab === name) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
     });
     panels.forEach(p => { p.hidden = p.id !== `tab-${name}`; });
-    localStorage.setItem(TAB_KEY, name);
+    store.set(TAB_KEY, name);
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);
@@ -411,7 +426,7 @@ function initTabs() {
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
   $('overview-pair-btn').addEventListener('click', () => show('modules'));
 
-  show(localStorage.getItem(TAB_KEY) || 'overview');
+  show(store.get(TAB_KEY) || 'overview');
 }
 
 /* ---- status ribbon (always visible) --------------------------------------*/
@@ -1022,7 +1037,7 @@ async function loadNotificationSettings() {
 
 function initNotifications() {
   $('notif-save').addEventListener('click', async () => {
-    await postJSON('/api/notifications/settings', {
+    const { ok, body } = await postJSON('/api/notifications/settings', {
       ntfy_topic: $('notif-ntfy').value.trim(),
       discord_webhook_url: $('notif-discord').value.trim(),
       telegram_bot_token: $('notif-telegram-token').value.trim(),
@@ -1032,7 +1047,14 @@ function initNotifications() {
     });
     const btn = $('notif-save');
     const original = btn.textContent;
-    btn.textContent = 'Saved';
+    if (!ok) {
+      // Say what was wrong (e.g. a mistyped Discord address) - never "Saved".
+      btn.textContent = 'Not saved';
+      toast(`Notification settings not saved: ${body.error || 'unknown error'}`, 'bad', 7000);
+    } else {
+      btn.textContent = 'Saved';
+      loadNotificationSettings();
+    }
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
 
@@ -1040,8 +1062,21 @@ function initNotifications() {
     const btn = $('notif-test');
     const original = btn.textContent;
     btn.textContent = 'Sending…';
-    await postJSON('/api/notifications/test', { message: 'Test notification from Deja Vu1' });
-    btn.textContent = 'Sent';
+    const { ok, body } = await postJSON('/api/notifications/test', { message: 'Test notification from Deja Vu1' });
+    const results = Object.entries((body && body.results) || {});
+    const failed = results.filter(([, r]) => !r.ok);
+    if (!ok) {
+      btn.textContent = 'Not sent';
+      toast(`Test not sent: ${body.error || 'unknown error'}`, 'bad', 7000);
+    } else if (!results.length) {
+      btn.textContent = 'Nothing set up';
+      toast('Add an ntfy topic, Discord webhook or Telegram bot first, then save.', 'warn', 6000);
+    } else if (failed.length) {
+      btn.textContent = 'Failed';
+      toast(`Couldn't send to ${failed.map(([name, r]) => `${name} (${r.error || 'error'})`).join(', ')}`, 'bad', 8000);
+    } else {
+      btn.textContent = 'Sent';
+    }
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
 }
@@ -1141,8 +1176,8 @@ function initBridges() {
   });
 
   $('wled-save-btn').addEventListener('click', async () => {
-    await postJSON('/api/wled/settings', { host: $('wled-host').value.trim() });
-    $('wled-status').textContent = 'Saved.';
+    const { ok, body } = await postJSON('/api/wled/settings', { host: $('wled-host').value.trim() });
+    $('wled-status').textContent = ok ? 'Saved.' : `Not saved: ${body.error || 'unknown error'}`;
   });
 
   $('wled-test-btn').addEventListener('click', async () => {
@@ -1160,10 +1195,13 @@ function initBridges() {
   });
 
   $('ha-save-btn').addEventListener('click', async () => {
-    await postJSON('/api/homeassistant/settings', {
+    const { ok, body } = await postJSON('/api/homeassistant/settings', {
       base_url: $('ha-url').value.trim(), token: $('ha-token').value.trim(),
     });
-    $('ha-status').textContent = 'Saved.';
+    // The server never sends the saved token back, only a masked stand-in;
+    // saving that stand-in unchanged keeps the real token.
+    if (ok) $('ha-token').value = body.token || '';
+    $('ha-status').textContent = ok ? 'Saved.' : `Not saved: ${body.error || 'unknown error'}`;
   });
 
   $('ha-push-btn').addEventListener('click', async () => {
@@ -3042,7 +3080,7 @@ function initDemoToggle() {
   toggle.checked = demoOn;
   toggle.addEventListener('change', () => {
     demoOn = toggle.checked;
-    localStorage.setItem(STORE_KEY, demoOn ? '1' : '0');
+    store.set(STORE_KEY, demoOn ? '1' : '0');
     if (window.Workshop) Workshop.reconnect();
     refreshAll();
   });

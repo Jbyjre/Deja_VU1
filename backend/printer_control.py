@@ -101,7 +101,7 @@ def home(axes):
 
 
 def send_gcode(command):
-    command = (command or "").strip()
+    command = str(command or "").strip()
     if not command:
         raise ValueError("G-code command cannot be empty")
     if len(command) > MAX_GCODE_LENGTH:

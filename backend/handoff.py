@@ -23,6 +23,8 @@ _views = {}          # device_id -> view
 
 def report(device_id, device_name, view):
     device_id = str(device_id or "")[:64]
+    if not isinstance(view, dict):
+        view = {}
     if not device_id:
         raise ValueError("device_id is required")
     clean = {

@@ -60,12 +60,12 @@ def _simulate_age(seconds):
 # slowly build up, because frames queue instead of being dropped. Reloading
 # the stream resets it; the dashboard has a "Reconnect" button for that.
 
-import json
 import os
 import re
 import threading
 import urllib.error
 import urllib.request
+import storage
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "camera_settings.json")
@@ -78,17 +78,14 @@ MAX_BUFFER = 4 * 1024 * 1024
 def get_settings():
     if not os.path.exists(_SETTINGS_PATH):
         return {"stream_url": ""}
-    with open(_SETTINGS_PATH, "r", encoding="utf-8") as fh:
-        return {"stream_url": "", **json.load(fh)}
+    return {"stream_url": "", **storage.load_json(_SETTINGS_PATH, {})}
 
 
 def save_settings(updates):
     url = str(updates.get("stream_url") or "").strip()
     if url and not _URL.match(url):
         raise ValueError("Enter the camera's stream address, like http://192.168.1.50/webcam/?action=stream")
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_SETTINGS_PATH, "w", encoding="utf-8") as fh:
-        json.dump({"stream_url": url}, fh)
+    storage.save_json(_SETTINGS_PATH, {"stream_url": url})
     return get_settings()
 
 

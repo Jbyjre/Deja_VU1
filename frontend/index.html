@@ -491,9 +491,9 @@
           <div class="card-head"><div><h2>Notifications</h2></div></div>
           <div style="display:flex; flex-direction:column; gap:8px;">
             <input type="text" id="notif-ntfy" placeholder="ntfy.sh topic">
-            <input type="text" id="notif-discord" placeholder="Discord webhook URL">
+            <input type="password" id="notif-discord" placeholder="Discord webhook URL" autocomplete="new-password" spellcheck="false">
             <div style="display:flex; gap:8px;">
-              <input type="text" id="notif-telegram-token" placeholder="Telegram bot token" style="flex:1;">
+              <input type="password" id="notif-telegram-token" placeholder="Telegram bot token" autocomplete="new-password" spellcheck="false" style="flex:1;">
               <input type="text" id="notif-telegram-chat" placeholder="Chat ID" style="width:100px;">
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
@@ -550,7 +550,7 @@
             <span class="badge badge-optional">Optional module</span>
           </div>
           <input type="text" id="ha-url" placeholder="http://homeassistant.local:8123" style="width:100%;">
-          <input type="text" id="ha-token" placeholder="Long-lived access token" style="width:100%; margin-top:8px;">
+          <input type="password" id="ha-token" placeholder="Long-lived access token" autocomplete="new-password" spellcheck="false" style="width:100%; margin-top:8px;">
           <div style="display:flex; gap:8px; margin-top:10px;">
             <button class="btn" id="ha-save-btn" style="flex:1;">Save</button>
             <button class="btn primary" id="ha-push-btn" style="flex:1;">Push now</button>

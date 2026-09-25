@@ -14,12 +14,16 @@ printer_control.py stays the only thing that can do that.
 """
 
 import json
-import re
 import os
+import re
 import urllib.error
 import urllib.request
 
 import mock_moonraker
+import storage
+
+_BASE_URL = re.compile(r"^https?://[A-Za-z0-9.\-\[\]:]{1,260}(/[^\s?#]{0,200})?$")
+_PREFIX = re.compile(r"^[a-z_]{1,30}\.[a-z0-9_]{1,60}$")
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "home_assistant_settings.json")
@@ -35,31 +39,46 @@ def _load_settings():
     if not os.path.exists(_SETTINGS_PATH):
         _save_settings(_DEFAULT_SETTINGS)
         return dict(_DEFAULT_SETTINGS)
-    with open(_SETTINGS_PATH, "r", encoding="utf-8") as fh:
-        settings = json.load(fh)
+    settings = storage.load_json(_SETTINGS_PATH, {})
     merged = dict(_DEFAULT_SETTINGS)
     merged.update(settings)
     return merged
 
 
 def _save_settings(settings):
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_SETTINGS_PATH, "w", encoding="utf-8") as fh:
-        json.dump(settings, fh, indent=2)
+    storage.save_json(_SETTINGS_PATH, settings)
 
 
 def get_settings():
     return _load_settings()
 
 
+def public_settings(settings=None):
+    """The settings as the dashboard page sees them: the token masked."""
+    settings = dict(settings or _load_settings())
+    settings["token_set"] = bool(settings.get("token"))
+    settings["token"] = storage.mask_secret(settings.get("token"))
+    return settings
+
+
 def save_settings(updates):
     settings = _load_settings()
     if "base_url" in updates:
-        settings["base_url"] = str(updates["base_url"]).strip().rstrip("/")
-    if "token" in updates:
-        settings["token"] = str(updates["token"]).strip()
+        base_url = str(updates["base_url"] or "").strip().rstrip("/")
+        if base_url and not _BASE_URL.match(base_url):
+            raise ValueError("Enter Home Assistant's address, like http://homeassistant.local:8123")
+        settings["base_url"] = base_url
+    if "token" in updates and not storage.is_masked(updates["token"]):
+        # A masked stand-in means "unchanged" - keep the saved token.
+        token = str(updates["token"] or "").strip()
+        if len(token) > 1024 or any(c.isspace() for c in token):
+            raise ValueError("That doesn't look like a Home Assistant access token")
+        settings["token"] = token
     if "entity_prefix" in updates:
-        settings["entity_prefix"] = str(updates["entity_prefix"]).strip()
+        prefix = str(updates["entity_prefix"] or "").strip()
+        if not _PREFIX.match(prefix):
+            raise ValueError("Entity prefix must look like sensor.dejavu1")
+        settings["entity_prefix"] = prefix
     _save_settings(settings)
     return settings
 

@@ -104,6 +104,27 @@ tunnel. Replace `deja-vu1` with any name you like and
 Leave the tunnel's "HTTP Host Header" option unset. Deja Vu1 checks it
 either way, but unset is the default and the simplest.
 
+### Which addresses the dashboard answers to
+
+Deja Vu1 only answers requests addressed to a name that belongs to your own
+network: an IP address, `localhost`, a plain machine name like
+`raspberrypi`, or a home-network name ending in `.local`, `.lan`, `.home`,
+`.home.arpa` or `.internal`. Anything else gets a "Refused" message. This
+blocks a trick called *DNS rebinding*, where a web page you happen to visit
+points its own domain at your dashboard's address to control it from your
+browser.
+
+Requests that `cloudflared` forwards from the same computer are recognised
+and allowed, so the tunnel above works without extra set-up. If you run
+`cloudflared` on a *different* computer, or reach the dashboard through some
+other domain name of your own, list the name when starting the server:
+
+```
+DEJAVU_ALLOWED_HOSTS=printer.example.com python3 backend/app.py
+```
+
+(Several names can be separated with commas.)
+
 ## Live updates through the tunnel
 
 The dashboard's live updates travel over a WebSocket. Cloudflare's

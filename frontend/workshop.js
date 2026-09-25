@@ -251,7 +251,7 @@ const Workshop = (() => {
 
   function selectPrinter(id, fromEl) {
     currentPrinter = id;
-    localStorage.setItem(PRINTER_KEY, id);
+    store.set(PRINTER_KEY, id);
     if (live.ws && live.ws.readyState === 1) live.ws.send(JSON.stringify({ type: 'subscribe', printer: id, fleet: true }));
     else reconnect();
     renderChip();
@@ -1468,9 +1468,9 @@ const Workshop = (() => {
   /* Continue on another device: every open dashboard says what it's
    * looking at; another device can pick up exactly there. */
   const DEVICE_KEY = 'dejavu1.device';
-  const deviceId = localStorage.getItem(DEVICE_KEY) || (() => {
+  const deviceId = store.get(DEVICE_KEY) || (() => {
     const id = `dev-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(DEVICE_KEY, id);
+    store.set(DEVICE_KEY, id);
     return id;
   })();
   const deviceName = (() => {
@@ -1484,7 +1484,7 @@ const Workshop = (() => {
   })();
   let dismissedOffer = 0;
 
-  function currentTab() { return localStorage.getItem('dejavu1.tab') || 'overview'; }
+  function currentTab() { return store.get('dejavu1.tab') || 'overview'; }
 
   function reportView() {
     postJSON('/api/handoff', { device_id: deviceId, device_name: deviceName,
