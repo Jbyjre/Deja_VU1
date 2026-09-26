@@ -72,6 +72,14 @@ machine, and all of it is visible in data the printer already publishes.
 | **Digital twin** | A live 3D view of the toolhead, the part growing layer by layer, and the four docks — pure CSS 3D, the same technique as the games' 3D scenes. |
 | **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast — see [docs/architecture.md](docs/architecture.md). |
 
+### Running a farm, and making new things — no hardware needed
+
+| Feature | What it does |
+|---|---|
+| **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately — "2 of 3 confirmed; failed on Garage: nothing is printing" — never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
+| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. It all runs in the browser; the photo is never uploaded. |
+| **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios — a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue — and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
+
 On a phone the layout is rebuilt thumb-first: the main sections and the
 Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
 screen, and a small live "print pill" follows you across every tab.
@@ -85,6 +93,7 @@ screen, and a small live "print pill" follows you across every tab.
 | **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
 | **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API — no extra hardware to build. |
 | **Home Assistant bridge** | Publishes printer state as a handful of REST sensors, so it shows up on an existing HA dashboard — no MQTT broker, no custom component. |
+| **Auto-print pipeline** | Slices STL and 3MF models with [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer), **a separate program you install yourself**, using Orca presets you choose; the G-code lands in the file library, or straight on a printer's queue, where it still passes Confirm Print before it starts. Off by default. Driving another program from outside is fragile — an Orca update can change its command line — so every slice has a time limit, is checked for real printable layers before it's kept, fails in words with Orca's own message, and records the Orca version that made it. |
 | **Low-latency camera (WebRTC)** | Plays the camera with almost no delay through [go2rtc](https://github.com/AlexxIT/go2rtc), **a separate program you install yourself**. It's one step beyond "nothing to install", so it's off by default. MJPEG stays the default, and the dashboard falls back to it automatically, saying which feed is on. See [docs/low-latency-camera.md](docs/low-latency-camera.md). |
 
 ### Interface + simulation, hardware pending
@@ -159,6 +168,17 @@ Built and tested on mock data. There is no real printer connection yet.
   preview has only run against a stand-in for a phone's WebXR, never on a
   real device.
 
+- The fleet command center, Photo-to-Print Studio, auto-print pipeline and
+  farm sandbox are complete and covered by tests, and were clicked through
+  in a real (headless) browser at desktop and phone sizes. What isn't
+  verified yet, and said so: the auto-print pipeline has only run against a
+  stand-in program that behaves the way OrcaSlicer's source code says Orca
+  does (the command line was read from Orca's source, v2.3.2 and main) —
+  never against a real Orca install. A studio 3MF's tool changes use the
+  layout Orca's own 3MF reader expects, but one hasn't been opened in Orca
+  yet. The studio's colour preview is a light-absorption model with
+  estimated filament transmission values, not a photo of a print.
+
 - Maintenance, printer control, notifications, updates, backup, camera
   watchdog, pairing, and the print cost calculator are complete and tested
   against the simulated Moonraker layer. Swapping
@@ -197,7 +217,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 345 cases
+- **Tests:** `unittest` from the standard library, 421 cases
 - **Printer API:** Moonraker (simulated for now)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is
@@ -206,7 +226,8 @@ fetched from the internet at runtime — no webfonts, no CDN, no analytics.
 program, which you install separately if you want that — see
 [docs/remote-access.md](docs/remote-access.md). The optional low-latency
 camera works the same way: it uses go2rtc, which you'd install yourself —
-see [docs/low-latency-camera.md](docs/low-latency-camera.md).)
+see [docs/low-latency-camera.md](docs/low-latency-camera.md). The optional
+auto-print pipeline is the same again: it runs an OrcaSlicer you install.)
 It works offline, including the phone pairing, which talks directly to this
 server over your local network rather than through any cloud relay.
 
@@ -243,6 +264,9 @@ filament's colour, a printer's state, a verdict.
    colour sensor once it exists.
 6. Open the converter's output in Snapmaker Orca to confirm it, and test
    the Cloudflare Tunnel setup end to end.
+7. Run the auto-print pipeline against a real OrcaSlicer install, open a
+   Photo-to-Print Studio 3MF in Orca to confirm its tool changes, and
+   measure real filaments' transmission distances for the studio.
 
 **Beyond that:**
 

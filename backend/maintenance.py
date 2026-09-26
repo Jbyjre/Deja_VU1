@@ -447,6 +447,15 @@ def reset_log():
     return log
 
 
+def forget_printer(printer_id):
+    """Delete a removed simulated printer's log (never the default printer's)."""
+    if printer_id == mock_moonraker.DEFAULT_PRINTER_ID:
+        return
+    path = os.path.join(_DATA_DIR, f"maintenance_log.{printer_id}.json")
+    if os.path.exists(path):
+        os.remove(path)
+
+
 def reset_all_logs():
     """Reset every printer's log, not just the selected one's."""
     for printer_id in mock_moonraker.printer_ids():

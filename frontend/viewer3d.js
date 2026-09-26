@@ -223,8 +223,14 @@ const DV3D = (() => {
 
   const MESH_VS = `attribute vec3 p; attribute vec3 n; uniform mat4 m; varying vec3 vn; varying float vz;
     void main(){ vn = n; vz = p.z; gl_Position = m * vec4(p, 1.0); }`;
+  /* Optional height bands (the Photo-to-Print Studio): up to four colours,
+     each from its start height upward - which filament prints where. */
   const MESH_FS = `precision mediump float; varying vec3 vn; varying float vz; uniform vec3 c; uniform vec3 l;
-    void main(){ float d = abs(dot(normalize(vn), l)); gl_FragColor = vec4(c * (0.38 + 0.62 * d), 1.0); }`;
+    uniform vec3 bc[4]; uniform float bz[4]; uniform int nb;
+    void main(){
+      vec3 col = c;
+      for (int i = 0; i < 4; i++) { if (i < nb && vz >= bz[i] - 0.0005) col = bc[i]; }
+      float d = abs(dot(normalize(vn), l)); gl_FragColor = vec4(col * (0.38 + 0.62 * d), 1.0); }`;
   const LINE_VS = `attribute vec3 p; attribute vec4 k; uniform mat4 m; varying vec4 vk;
     void main(){ vk = k; gl_Position = m * vec4(p, 1.0); }`;
   const LINE_FS = `precision mediump float; varying vec4 vk; void main(){ gl_FragColor = vk; }`;
@@ -287,7 +293,8 @@ const DV3D = (() => {
       return { pos: this.buffer(new Float32Array(pos)), col: this.buffer(new Float32Array(col)), count: pos.length / 3 };
     }
 
-    setMesh(mesh, colorHex) {
+    /* bands (optional): [{z, hex}] lowest first, heights in the model's own mm. */
+    setMesh(mesh, colorHex, bands) {
       const gl = this.gl;
       this.clear();
       // Sit the model on the bed, centred, as a slicer would place it.
@@ -299,6 +306,9 @@ const DV3D = (() => {
       }
       this.mesh = { pos: this.buffer(pos), nrm: this.buffer(mesh.normals), count: pos.length / 3 };
       this.color = hexToRGB(colorHex);
+      // Like the toolpath view, lift near-black on screen only so it doesn't vanish.
+      const lift = (c) => { const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; return l < 0.22 ? c.map(v => v + (0.42 - l)) : c; };
+      this.bands = (bands || []).slice(0, 4).map(b => ({ z: b.z + dz, color: lift(hexToRGB(b.hex)) }));
       this.frame([BED / 2, BED / 2, mesh.size[2] / 2], Math.max(...mesh.size));
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
       this.draw();
@@ -424,6 +434,14 @@ const DV3D = (() => {
         gl.useProgram(this.meshProg);
         gl.uniformMatrix4fv(gl.getUniformLocation(this.meshProg, 'm'), false, m);
         gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'c'), this.color);
+        const bands = this.bands || [];
+        gl.uniform1i(gl.getUniformLocation(this.meshProg, 'nb'), bands.length);
+        if (bands.length) {
+          const bc = new Float32Array(12), bz = new Float32Array(4);
+          bands.forEach((b, i) => { bc.set(b.color, i * 3); bz[i] = b.z; });
+          gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'bc'), bc);
+          gl.uniform1fv(gl.getUniformLocation(this.meshProg, 'bz'), bz);
+        }
         const l = [Math.cos(this.yaw + 0.6), Math.sin(this.yaw + 0.6), 0.8];
         const ll = Math.hypot(...l);
         gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'l'), l.map(v => v / ll));

@@ -37,6 +37,15 @@ API endpoints
   POST /api/fleet/registry           add one {"name", "moonraker_url"}
   POST /api/fleet/registry/<id>/remove
 
+  Fleet command center (operate several printers at once):
+  POST /api/fleet/broadcast          {"action": "preheat|pause|resume|cancel|home",
+                                      "printers": [ids] (empty = all), "params": {...}}
+                                     one row per printer: ok, or exactly why not
+  POST /api/fleet/route              {"filename", "to"} or {"from_printer", "item_id", "to"}
+  GET  /api/fleet/queues             every printer's queue
+  GET  /api/fleet/history?days=30&bucket=day|week
+                                     prints, completed vs failed, grams, hours over time
+
   GET  /api/maintenance              what's due
   GET  /api/maintenance/history      completed maintenance log
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
@@ -73,6 +82,18 @@ API endpoints
   POST /api/files/opened             {"name"}
   POST /api/convert                  {"name"} MakerWorld/NexPrint -> U1
   GET  /api/profiles/diff?a=&b=      side-by-side slicer settings
+
+  Photo-to-Print Studio (the studio itself runs in the browser):
+  GET  /api/studio/palette           colours to build with (your filament inventory)
+  POST /api/studio/save?name=&note=  the STL/3MF the studio built, as the request body
+
+  Auto-print pipeline (OrcaSlicer, a program you install; off by default):
+  GET  /api/slicer/settings | POST   {"slicer_path", "timeout_s", "default_profile"}
+  POST /api/slicer/check             runs "<slicer> --help": is it there, which version?
+  POST /api/slicer/profiles          {"name", "machine", "process", "filaments": [...]}
+  POST /api/slicer/profiles/<id>/remove
+  POST /api/slicer/slice             {"name", "profile", "queue": bool} - starts a job
+  GET  /api/slicer/jobs              every recent job: running, done, queued or failed (in words)
 
   GET  /api/queue                    this printer's print queue
   POST /api/queue/add | remove | move | auto | start-next | clear-done
@@ -138,6 +159,17 @@ API endpoints
   POST /api/demo/time-scale          {"scale": 60} fast-forward the simulation
   POST /api/demo/reset               restart every simulated printer
 
+  Farm sandbox (demo only, like the hooks above):
+  GET  /api/sandbox                  farm, scenario, clock and what each step did
+  POST /api/sandbox/farm             {"count": 8, "busy_fraction": 0.5}
+  POST /api/sandbox/teardown         remove the printers the sandbox added
+  POST /api/sandbox/scenario         {"preset": "jam"} or {"steps": [{"at_s", "printer", "event", "params"}]}
+  POST /api/sandbox/run              {"running": bool}
+  POST /api/sandbox/speed            {"speed": 60}
+  POST /api/sandbox/step             {"seconds": 600} move the farm forward now
+  POST /api/sandbox/fire             {"event", "printer", "params"} one event, now
+  POST /api/sandbox/reset
+
 No figures without a printer
 ----------------------------
 With no printer connected, routes that read printer state return no numbers
@@ -191,10 +223,13 @@ import mock_moonraker
 import modules
 import notifications
 import pairing
+import photo_studio
 import print_gate
 import print_queue
 import printer_control
+import sandbox
 import sanity_check
+import slicer_bridge
 import timelapse
 import updates
 import websocket
@@ -288,6 +323,9 @@ _DATA_ROUTES = {
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
     "/api/live/events": (None, lambda q: {"events": live_feed.events_since(int(_q(q, "since", "0")))}),
     "/api/fleet": ("fleet", lambda q: live_feed.fleet_snapshot()),
+    "/api/fleet/history": ("fleet_command", lambda q: fleet.history(_q(q, "days", "30"), _q(q, "bucket", "day"))),
+    "/api/fleet/queues": ("fleet_command", lambda q: fleet.queues() if modules.is_enabled("print_queue")
+                          else {"queues": {}, "queue_disabled": True}),
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
     "/api/print/confirm": (None, lambda q: print_gate.summary(_q(q, "file"))),
@@ -323,6 +361,9 @@ _APP_ROUTES = {
     "/api/camera/settings": ("camera", lambda q: camera.get_settings()),
     "/api/camera/webrtc/settings": ("webrtc_camera", lambda q: webrtc_camera.get_settings()),
     "/api/handoff": ("handoff", lambda q: handoff.offer_for(_q(q, "device", ""))),
+    "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
+    "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
+    "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
 }
 
 # POST actions on printer-figure-gated routes. Each changes the printer, so
@@ -465,7 +506,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         """Keep the terminal quiet — one tidy line per request."""
         path = self.path.split("?")[0]
-        if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff"):
+        if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff",
+                    "/api/fleet/queues", "/api/sandbox", "/api/slicer/jobs"):
             return
         sys.stderr.write(f"  {self.command} {path}\n")
 
@@ -680,6 +722,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             return self._send_json(producer(query))
 
+        if route == "/api/sandbox":
+            if self._module_blocked("sandbox") or not self._demo_allowed(connected):
+                return None
+            return self._send_json(sandbox.status())
+
         if route == "/api/demo/status":
             if not self._demo_allowed(connected):
                 return None
@@ -755,6 +802,46 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                             "server_ms": round((time.perf_counter() - started) * 1000, 1)})
             return self._send_json(self._tag(payload, connected))
 
+        if route in ("/api/fleet/broadcast", "/api/fleet/route"):
+            is_broadcast = route == "/api/fleet/broadcast"
+            if self._module_blocked("fleet_command") or \
+                    self._module_blocked("printer_control" if is_broadcast else "print_queue"):
+                return None
+            if not connected and not self._wants_demo():
+                return self._send_json({"connected": False, "demo": False}, status=409)
+            body = self._read_json_body()
+            if is_broadcast:
+                result = fleet.broadcast(body.get("action"), body.get("printers"), body.get("params"))
+                # Push each printer's read-back to every open dashboard now.
+                for row in result["results"]:
+                    if mock_moonraker.has_printer(row["printer"]):
+                        live_feed.refresh(row["printer"])
+            else:
+                result = fleet.route_file(body.get("filename"), body.get("to"),
+                                          body.get("from_printer"), body.get("item_id"))
+            return self._send_json(self._tag(result, connected))
+
+        if route.startswith("/api/sandbox/"):
+            if self._module_blocked("sandbox") or not self._demo_allowed(connected):
+                return None
+            body = self._read_json_body()
+            verb = route[len("/api/sandbox/"):]
+            actions = {
+                "farm": lambda: sandbox.build_farm(body.get("count", 6), body.get("busy_fraction", 0.5),
+                                                   body.get("seed")),
+                "teardown": sandbox.teardown,
+                "scenario": lambda: sandbox.load_scenario(body.get("steps"), body.get("preset"), body.get("seed")),
+                "run": lambda: sandbox.set_running(body.get("running", True)),
+                "speed": lambda: sandbox.set_speed(body.get("speed", 1)),
+                "step": lambda: sandbox.step(body.get("seconds", 60)),
+                "fire": lambda: {"outcomes": sandbox.fire(body.get("event"), body.get("printer") or "random",
+                                                          body.get("params")), **sandbox.status()},
+                "reset": sandbox.reset,
+            }
+            if verb not in actions:
+                return self._send_json({"error": "Unknown endpoint"}, status=404)
+            return self._send_json(actions[verb]())
+
         if route.startswith("/api/demo/"):
             if not self._demo_allowed(connected):
                 return None
@@ -765,6 +852,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if route == "/api/demo/time-scale":
                 return self._send_json(mock_moonraker.set_time_scale(body.get("scale", 1)))
             if route == "/api/demo/reset":
+                sandbox.reset()                 # its printers' queues and logs go with them
                 mock_moonraker.reset_all()
                 for pid in mock_moonraker.printer_ids():
                     live_feed.refresh(pid)
@@ -793,6 +881,45 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if route == "/api/files/opened":
                 file_library.touch(body.get("name"), "last_opened")
                 return self._send_json({"ok": True})
+            return self._send_json({"error": "Unknown endpoint"}, status=404)
+
+        if route == "/api/studio/save":
+            if self._module_blocked("photo_studio") or self._module_blocked("file_library"):
+                return None
+            name = _q(query, "name")
+            file_library.clean_name(name)          # refuse bad names before reading the body
+            return self._send_json(photo_studio.save(name, self._read_raw_body(), query.get("note", [""])[0]))
+
+        if route.startswith("/api/slicer/"):
+            if self._module_blocked("auto_print"):
+                return None
+            body = self._read_json_body()
+            verb = route[len("/api/slicer/"):]
+            if verb == "settings":
+                return self._send_json(slicer_bridge.save_settings(body))
+            if verb == "check":
+                return self._send_json(slicer_bridge.check())
+            if verb == "profiles":
+                return self._send_json(slicer_bridge.add_profile(body.get("name"), body.get("machine"),
+                                                                 body.get("process"), body.get("filaments")))
+            if verb.startswith("profiles/") and verb.endswith("/remove"):
+                return self._send_json(slicer_bridge.remove_profile(verb.split("/")[1]))
+            if verb == "slice":
+                queue_to = None
+                if body.get("queue"):
+                    # Queueing is a printer action: the same rules as /api/queue/add.
+                    if self._module_blocked("print_queue"):
+                        return None
+                    if force_disconnected or (not connected and not self._wants_demo()):
+                        return self._send_json({"error": "No printer connected to queue it on - slice without "
+                                                         "queueing, or turn on demo data", "connected": False,
+                                                "demo": False}, status=409)
+                    queue_to = printer_id
+                job = slicer_bridge.start_job(body.get("name"), body.get("profile"), queue_to,
+                                              on_done=lambda j: live_feed.publish_event({
+                                                  "type": "slicer", "job": {k: j.get(k) for k in (
+                                                      "id", "model", "status", "step", "error", "queued")}}))
+                return self._send_json(job)
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
         if route == "/api/convert":

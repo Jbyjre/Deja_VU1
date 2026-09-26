@@ -7,6 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff7a2f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ff7a2f'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="workshop.css">
+<link rel="stylesheet" href="farm.css">
 </head>
 <body>
 
@@ -104,10 +105,13 @@
     <button class="navtab active" data-tab="overview">Overview</button>
     <button class="navtab" data-tab="control">Printer control</button>
     <button class="navtab" data-tab="files">Files</button>
+    <button class="navtab" data-tab="studio">Photo studio</button>
+    <button class="navtab" data-tab="autoprint">Auto-print</button>
     <button class="navtab" data-tab="automations">Automations</button>
     <button class="navtab" data-tab="maintenance">Maintenance</button>
     <button class="navtab" data-tab="filament">Filament &amp; colour</button>
     <button class="navtab" data-tab="modules">Modules &amp; devices</button>
+    <button class="navtab" data-tab="sandbox">Sandbox</button>
     <button class="navtab" data-tab="games">While you wait</button>
   </nav>
 
@@ -129,10 +133,49 @@
   <section id="tab-fleet" class="tab-panel" hidden>
     <section class="card liquid-glass">
       <div class="card-head">
-        <div><h2>Your printers</h2><p class="card-sub">Everything at a glance. Choose one to point the whole dashboard at it.</p></div>
+        <div><h2>Your printers</h2><p class="card-sub">Everything at a glance. Tick printers to command them together, or open one to point the whole dashboard at it.</p></div>
         <span class="badge badge-live">Live</span>
       </div>
+      <!-- Fleet command center: one action, every ticked printer, each result read back. -->
+      <div class="fc-bar liquid-glass" id="fc-bar" role="toolbar" aria-label="Command the selected printers" hidden>
+        <div class="fc-bar-left">
+          <span class="fc-count" id="fc-count" aria-live="polite"></span>
+          <button class="btn small" type="button" id="fc-all">Select all</button>
+        </div>
+        <div class="fc-bar-actions">
+          <div class="fc-preheat">
+            <label>Nozzle <input type="number" id="fc-nozzle" min="0" max="300" step="5" value="210" inputmode="numeric"> °C</label>
+            <label>Bed <input type="number" id="fc-bed" min="0" max="120" step="5" value="60" inputmode="numeric"> °C</label>
+            <label class="sr-only" for="fc-tools">Which toolheads</label>
+            <select id="fc-tools"><option value="T0">T0</option><option value="all">All toolheads</option></select>
+            <button class="btn small primary" type="button" data-act="preheat">Preheat</button>
+          </div>
+          <button class="btn small" type="button" data-act="pause">Pause</button>
+          <button class="btn small" type="button" data-act="resume">Resume</button>
+          <button class="btn small" type="button" data-act="home">Home</button>
+          <button class="btn small danger" type="button" data-act="cancel" id="fc-cancel">Cancel prints</button>
+        </div>
+      </div>
+      <div class="fc-results" id="fc-results" aria-live="polite"></div>
+      <div class="fc-files" id="fc-files"></div>
       <div id="fleet-grid" class="fleet-grid"></div>
+    </section>
+    <section class="card liquid-glass">
+      <div class="card-head">
+        <div><h2>Farm history</h2><p class="card-sub">Every figure is summed from each printer's own print history — nothing estimated.</p></div>
+        <div class="fh-controls">
+          <div class="pill-toggle" id="fh-metric" role="group" aria-label="Measure">
+            <button data-metric="prints" class="active" type="button">Prints</button>
+            <button data-metric="grams" type="button">Material</button>
+          </div>
+          <div class="pill-toggle" id="fh-range" role="group" aria-label="Time range">
+            <button data-days="7" type="button">7 days</button>
+            <button data-days="30" class="active" type="button">30 days</button>
+            <button data-days="90" type="button">90 days</button>
+          </div>
+        </div>
+      </div>
+      <div id="fh-host"></div>
     </section>
     <section class="card liquid-glass">
       <div class="card-head">
@@ -313,6 +356,143 @@
       </div>
       <div id="fd-gcode" class="fd-gcode" hidden></div>
     </section>
+  </section>
+
+
+  <!-- ============================================================ -->
+  <!-- PHOTO-TO-PRINT STUDIO                                         -->
+  <!-- ============================================================ -->
+  <section id="tab-studio" class="tab-panel" hidden>
+    <div id="st-off" hidden></div>
+    <div class="studio-layout" id="st-body">
+      <section class="card liquid-glass studio-controls">
+        <div class="card-head">
+          <div><h2>Photo-to-Print Studio</h2><p class="card-sub">A photo becomes a colour-layered relief, printed in filament you own. The photo never leaves this browser.</p></div>
+        </div>
+        <label class="studio-drop" id="st-drop">
+          <input type="file" id="st-file" accept="image/*" class="sr-only">
+          <span class="st-drop-title">Choose a photo</span>
+          <span class="st-drop-text" id="st-drop-text">or drop one here · JPEG, PNG, WebP</span>
+        </label>
+        <button class="btn small" type="button" id="st-test">Try a test pattern</button>
+
+        <h3 class="fd-h">Size</h3>
+        <div class="st-grid">
+          <label>Width <span><input type="number" id="st-width" min="20" max="250" value="100"> mm</span></label>
+          <label>Detail <span><input type="range" id="st-detail" min="60" max="220" step="10" value="140" aria-describedby="st-detail-hint"></span></label>
+        </div>
+        <p class="log-empty" id="st-detail-hint">Detail is columns across. Near your nozzle's width (0.4 mm) per column is the finest a print can show.</p>
+
+        <h3 class="fd-h">Layers</h3>
+        <div class="st-grid">
+          <label>Layer height <select id="st-layer"><option value="0.08" selected>0.08 mm</option><option value="0.12">0.12 mm</option><option value="0.16">0.16 mm</option><option value="0.2">0.20 mm</option></select></label>
+          <label>First layer <select id="st-first"><option value="0.2" selected>0.20 mm</option><option value="0.16">0.16 mm</option><option value="0.12">0.12 mm</option></select></label>
+          <label>Base layers <input type="number" id="st-base" min="1" max="20" value="4"></label>
+          <label>Colour layers <input type="number" id="st-max" min="4" max="80" value="24"></label>
+        </div>
+
+        <h3 class="fd-h">Colours <small>bottom to top, one per toolhead</small></h3>
+        <ol class="st-stack" id="st-stack"></ol>
+        <p class="log-empty">TD (transmission distance) is how thick a layer must be before it hides what's under it. The numbers start as estimates from each colour's lightness — measure your own filament for the truest result.</p>
+        <details class="st-palette-wrap" open>
+          <summary>Add colours</summary>
+          <div id="st-palette"></div>
+        </details>
+
+        <label class="switch st-auto" for="st-auto">
+          <span class="switch-label">Let the studio choose where colours change</span>
+          <input type="checkbox" id="st-auto" checked>
+          <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
+        </label>
+        <button class="btn primary block" type="button" id="st-build" disabled>Build model</button>
+        <p class="log-empty" id="st-status" aria-live="polite"></p>
+      </section>
+
+      <section class="card liquid-glass studio-preview">
+        <div class="st-compare">
+          <figure><canvas id="st-original" width="360" height="240" aria-label="Your photo"></canvas><figcaption>Your photo</figcaption></figure>
+          <figure><canvas id="st-printed" width="360" height="240" class="st-pixels" aria-label="How the print is modelled to look"></canvas>
+            <figcaption>As printed — modelled, not photographed</figcaption></figure>
+        </div>
+        <div class="divider-row cols-4 st-metrics" id="st-metrics"></div>
+        <div class="st-plan">
+          <div class="st-ladder" id="st-ladder"></div>
+          <div class="st-view">
+            <canvas id="st-canvas" class="viewer-canvas" tabindex="0" aria-label="3D view of the relief. Drag to turn, scroll or pinch to zoom."></canvas>
+            <p class="log-empty" id="st-view-note">Colours show which filament prints where.</p>
+          </div>
+        </div>
+        <p class="st-plan-text" id="st-plan-text"></p>
+        <div class="st-save" id="st-save-row" hidden>
+          <label class="sr-only" for="st-name">File name</label>
+          <input type="text" id="st-name" value="photo-relief" maxlength="80">
+          <button class="btn primary" type="button" id="st-save-3mf">Save as 3MF with tool changes</button>
+          <button class="btn" type="button" id="st-save-stl">Save as STL</button>
+        </div>
+        <p class="log-empty" id="st-saved"></p>
+        <p class="log-empty">The 3MF carries its colour changes as OrcaSlicer tool changes (the layout Orca's own 3MF reader expects), but opening one in Orca hasn't been confirmed yet — the plan above says where each change goes, so you can set them by hand on Orca's layer slider if needed.</p>
+      </section>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- AUTO-PRINT PIPELINE                                           -->
+  <!-- ============================================================ -->
+  <section id="tab-autoprint" class="tab-panel" hidden>
+    <section class="card liquid-glass" id="ap-off" hidden></section>
+    <div id="ap-body">
+      <div class="grid-2">
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Slicer</h2><p class="card-sub">OrcaSlicer, installed by you. The dashboard runs its command line; it never downloads or installs anything.</p></div>
+            <span class="badge badge-optional">Optional</span>
+          </div>
+          <div id="ap-status"></div>
+          <form id="ap-form" class="ap-form">
+            <label>Path to the OrcaSlicer program
+              <input type="text" id="ap-path" placeholder="/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer" spellcheck="false" autocomplete="off"></label>
+            <p class="log-empty" id="ap-path-note"></p>
+            <label>Time limit per slice <span><input type="number" id="ap-timeout" min="30" max="3600" value="600"> seconds</span></label>
+            <div class="fd-actions">
+              <button class="btn primary" type="submit">Save</button>
+              <button class="btn" type="button" id="ap-check">Check slicer</button>
+            </div>
+          </form>
+          <p class="ap-fragile"><b>Worth knowing:</b> this drives another program from outside. An OrcaSlicer update can change its command line;
+            when that happens a slice here fails with Orca's own message in words — it never quietly makes a bad file. Every slice is checked
+            for real, printable layers before it's added, and records which Orca version made it.</p>
+        </section>
+
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Profiles</h2><p class="card-sub">Which Orca presets to slice with — the .json files Orca keeps for your printer, print settings and filament.</p></div></div>
+          <ul class="ap-profiles" id="ap-profiles"></ul>
+          <form id="ap-profile-form" class="ap-form">
+            <label>Profile name <input type="text" id="ap-p-name" maxlength="60" placeholder="U1 · 0.20 mm PLA" required></label>
+            <label>Machine preset <input type="text" id="ap-p-machine" placeholder="…/user/default/machine/Snapmaker U1.json" required spellcheck="false"></label>
+            <label>Process preset <input type="text" id="ap-p-process" placeholder="…/user/default/process/0.20mm Standard.json" required spellcheck="false"></label>
+            <label>Filament presets, one per line (up to four)
+              <textarea id="ap-p-filaments" rows="2" placeholder="…/user/default/filament/Generic PLA.json" required spellcheck="false"></textarea></label>
+            <button class="btn" type="submit">Add profile</button>
+            <p class="log-empty">Each file is read before it's saved: Orca's command line only loads presets that say what they are ("type") and where they came from ("from": system or User).</p>
+          </form>
+        </section>
+      </div>
+
+      <section class="card liquid-glass">
+        <div class="card-head"><div><h2>Slice a model</h2><p class="card-sub">The G-code lands in your file library. Queued files still pass Confirm Print before they start.</p></div></div>
+        <div class="inline-form">
+          <label class="sr-only" for="ap-model">Model</label>
+          <select id="ap-model"></select>
+          <label class="sr-only" for="ap-profile">Profile</label>
+          <select id="ap-profile"></select>
+          <button class="btn" type="button" id="ap-slice">Slice</button>
+          <button class="btn primary" type="button" id="ap-slice-queue">Slice and queue</button>
+        </div>
+        <p class="log-empty" id="ap-queue-note"></p>
+        <h3 class="fd-h">Recent slices</h3>
+        <ul class="ap-jobs" id="ap-jobs"></ul>
+      </section>
+    </div>
   </section>
 
   <!-- ============================================================ -->
@@ -611,6 +791,83 @@
     </div>
   </section>
 
+
+  <!-- ============================================================ -->
+  <!-- FARM SANDBOX                                                  -->
+  <!-- ============================================================ -->
+  <section id="tab-sandbox" class="tab-panel" hidden>
+    <section class="card liquid-glass" id="sb-off" hidden></section>
+    <div id="sb-body" hidden>
+      <section class="card liquid-glass sb-console" data-tint>
+        <div class="sb-clock-wrap">
+          <span class="stat-key">Scenario clock</span>
+          <output class="sb-clock" id="sb-clock" aria-live="off">+00:00:00</output>
+          <span class="card-sub" id="sb-scenario-name"></span>
+        </div>
+        <div class="sb-controls">
+          <button class="btn primary" type="button" id="sb-play" aria-pressed="false">Play</button>
+          <div class="pill-toggle" id="sb-speed" role="group" aria-label="Speed while playing">
+            <button data-speed="1" type="button">1×</button><button data-speed="60" type="button">60×</button>
+            <button data-speed="300" type="button">300×</button><button data-speed="600" type="button">600×</button>
+          </div>
+          <div class="sb-steps-btns" role="group" aria-label="Step forward now">
+            <span class="stat-key">Step</span>
+            <button class="btn small" type="button" data-step="60">+1 min</button>
+            <button class="btn small" type="button" data-step="600">+10 min</button>
+            <button class="btn small" type="button" data-step="3600">+1 h</button>
+            <button class="btn small" type="button" data-step="21600">+6 h</button>
+          </div>
+        </div>
+        <div class="sb-timeline" id="sb-timeline" aria-hidden="true"></div>
+        <p class="log-empty">Simulated printers only — every figure here is demo data. Step forward runs the real live feed, so the fleet, automations, queue and notifications react exactly as they would.</p>
+      </section>
+
+      <div class="grid-2">
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>The farm</h2><p class="card-sub" id="sb-farm-count"></p></div>
+          </div>
+          <div class="sb-floor" id="sb-floor"></div>
+          <form class="inline-form" id="sb-farm-form">
+            <label>Add <input type="number" id="sb-count" min="1" max="24" value="8" style="width:5em"> printers</label>
+            <label>with <select id="sb-busy"><option value="0">none</option><option value="25">a quarter</option><option value="50" selected>half</option><option value="75">most</option><option value="100">all</option></select> mid-print</label>
+            <button class="btn primary" type="submit">Add printers</button>
+            <button class="btn" type="button" id="sb-teardown">Remove added printers</button>
+          </form>
+        </section>
+
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Something happens now</h2><p class="card-sub">One event, straight away, outside the scenario</p></div></div>
+          <div class="sb-fire-form">
+            <label>Event <select id="sb-fire-event"></select></label>
+            <label>On <select id="sb-fire-printer"></select></label>
+            <span class="sb-params" id="sb-fire-params"></span>
+            <button class="btn primary" type="button" id="sb-fire">Make it happen</button>
+          </div>
+          <h3 class="fd-h">What happened</h3>
+          <ul class="sb-log" id="sb-log" aria-live="polite"></ul>
+        </section>
+      </div>
+
+      <section class="card liquid-glass">
+        <div class="card-head">
+          <div><h2>Scenario</h2><p class="card-sub">Timed steps. Loading one rewinds the clock; the farm stays as it is.</p></div>
+          <button class="btn small" type="button" id="sb-reset">Reset the sandbox</button>
+        </div>
+        <div class="sb-presets" id="sb-presets"></div>
+        <ol class="sb-steps" id="sb-steps"></ol>
+        <details class="sb-builder">
+          <summary>Build your own</summary>
+          <ol class="sb-draft" id="sb-draft"></ol>
+          <div class="fd-actions">
+            <button class="btn small" type="button" id="sb-add-step">Add a step</button>
+            <button class="btn primary small" type="button" id="sb-load-draft" disabled>Load my scenario</button>
+          </div>
+        </details>
+      </section>
+    </div>
+  </section>
+
   <!-- ============================================================ -->
   <!-- WHILE YOU WAIT (games)                                        -->
   <!-- ============================================================ -->
@@ -683,6 +940,9 @@
     <button id="bn-more" type="button" aria-haspopup="true"><span class="bn-ico" aria-hidden="true">⋯</span>More</button>
   </nav>
   <div class="more-sheet liquid-glass" id="more-sheet" hidden>
+    <button data-tab="studio">Photo studio</button>
+    <button data-tab="autoprint">Auto-print</button>
+    <button data-tab="sandbox">Sandbox</button>
     <button data-tab="automations">Automations</button>
     <button data-tab="maintenance">Maintenance</button>
     <button data-tab="filament">Filament &amp; colour</button>
@@ -755,5 +1015,7 @@
 <script src="viewer3d.js"></script>
 <script src="ar.js"></script>
 <script src="workshop.js"></script>
+<script src="studio.js"></script>
+<script src="farm.js"></script>
 </body>
 </html>

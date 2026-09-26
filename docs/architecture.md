@@ -2,7 +2,7 @@
 
 ## Overview
 
-Deja Vu1 is one web application, grown from three modules to about thirty.
+Deja Vu1 is one web application, grown from three modules to about thirty-five.
 It reads printer state from Moonraker through a single connection per
 printer, keeps a live copy of it in memory, decides what to show, and
 serves a dashboard — plus its own settings and files (pairing, filament
@@ -118,6 +118,22 @@ makes the next command fail exactly as a refusing printer would (raising
 and `set_time_scale()` fast-forwards the simulation. The API only exposes
 them with an explicit demo request, and never while a real printer is
 connected.
+
+The farm sandbox (below) adds more hooks of the same kind, all in this
+file: `add_printer()` / `remove_printer()` grow the simulated fleet (up to
+24 extra printers; the built-in three can't be removed, and `reset_all()`
+drops the extras), and the faults a real farm runs into —
+`inject_jam()` and `inject_heater_fault()` (the print stops in error and
+lands in history as failed, with Klipper's own wording for the heater
+check), `inject_runout()` (the dock errors; the print pauses if that
+toolhead was printing), `load_filament()` (a spool swap, right or wrong),
+`clear_error()` (a firmware restart), `add_wear()` (completed print hours
+added to history, so maintenance comes due by its own counting rather than
+by editing its log) and `set_link()` (a network drop: commands fail with
+`PrinterCommandError`, readers see the last state that arrived marked
+`link_lost`, and the simulation keeps running behind the drop, the way a
+printer keeps printing when the Wi-Fi goes). `advance(..., scaled=False)`
+takes simulated seconds directly, for the sandbox's "step forward".
 
 ### `backend/modules.py`
 The on/off registry for every feature. Metadata only — disabling a module
@@ -241,6 +257,95 @@ on your desk" AR preview: WebXR `immersive-ar` + `hit-test` on the same
 geometry `DV3D.parseModel` produces, converted from mm (Z up) to metres
 (Y up). See [ar-preview.md](ar-preview.md).
 
+### Running the farm: fleet command center
+`fleet.py` also operates printers as a group. `broadcast(action, printers,
+params)` sends preheat / pause / resume / cancel / home to several printers
+at once — in parallel (a thread pool), each inside its own
+`use_printer()`, through `printer_control`'s per-printer functions, so
+every existing check still applies. Each printer's outcome is its own row:
+`done`, `refused` (the dashboard said no, e.g. nothing to pause),
+`printer_failed` (the printer refused), `not_confirmed` (accepted, but the
+state read back isn't what the action should leave — the same "expect"
+check the single-printer buttons use), or `not_connected` for printers
+registered by address. The headline names every printer that failed.
+Preheat values are validated once, before anything is sent.
+`route_file()` puts a library file on another printer's queue — or moves
+a waiting queue item, removing it from the first queue only once it's on
+the second. `history(days, bucket)` sums each printer's
+`get_print_history()` into counts, completion / failure / cancel rates
+(`None`, not 0%, when there are no prints), grams (split by outcome, so
+material spent on failed prints is visible) and hours, per day or week,
+per printer and for the farm. Registered as the `fleet_command` module;
+broadcasting also needs `printer_control` on, and routing needs
+`print_queue` on.
+
+### Making new things: Photo-to-Print Studio
+`frontend/studio.js` turns a photo into a colour-layered relief (the
+"HueForge" technique) entirely in the browser: the photo is never
+uploaded. Each filament colour is a partially translucent layer — a layer
+of thickness *h* lets through `exp(-3h / TD)` of the light, Beer–Lambert
+style, where TD (transmission distance) is the thickness that hides ~95% —
+composited top-down in linear light. For every possible column height it
+computes the colour that column shows; each pixel takes the height whose
+colour is nearest the photo's in OKLab; where each colour starts is
+optimised by coordinate descent over a sample of the image. The mesh is
+one column per pixel joined into a single closed solid (walls split at
+every height that meets them, so there are no T-junctions; checked by a
+script that every edge is met equally from both sides and the volume is
+exact). It previews through `DV3D.parseSTL` and `DV3D.Viewer` like any
+other model — the viewer gained optional height bands so it can show which
+filament prints where — and saves as a binary STL or a 3MF written by a
+small built-in ZIP writer (deflated with the browser's `CompressionStream`
+where available). The 3MF carries the tool changes in
+`Metadata/custom_gcode_per_layer.xml`, in the layout OrcaSlicer's own
+reader expects (`bbs_3mf.cpp`, type 2 = ToolChange); not yet confirmed by
+opening one in Orca. `backend/photo_studio.py` is the server half: the
+palette (your filament inventory's spools when that module is on, with an
+*estimated* TD each, labelled as such; otherwise clearly-labelled
+suggestions) and `save()`, which checks the model reads, fits the U1's
+270 mm volume and isn't absurdly large, reads back the tool changes from a
+3MF, and adds it to the file library with origin `studio`.
+
+### Closing the loop: auto-print pipeline
+`backend/slicer_bridge.py` slices STL / 3MF models with an OrcaSlicer the
+user installed — off by default, never bundled, like go2rtc and
+cloudflared. It runs Orca's command line with `subprocess`:
+`--slice 0 --load-settings "machine.json;process.json" --load-filaments
+"…" --outputdir <temp> model.stl`, which was read from Orca's source
+(tag v2.3.2 and main, September 2026: `PrintConfig.cpp` for the options,
+`OrcaSlicer.cpp` for `plate_<n>.gcode` and the Linux-only `result.json`,
+`Utils.hpp` for the error codes). Preset files are checked before Orca
+starts (`type` and `from`, which Orca's loader requires). Every run has a
+hard time limit and is killed with its whole process group past it; its
+result is judged by what came out — a G-code file that exists and has
+printable layers — not by the exit code alone; failures come back in
+words with the end of Orca's output; the Orca version is recorded in the
+new file's note. The G-code joins the library with origin `sliced`; "slice
+and queue" adds it to a printer's queue, where the Confirm Print gate
+still decides whether it starts. Slicing runs as a background job (one at
+a time) and publishes a `slicer` live event when it ends. For safety the
+program path set from the dashboard must be named like Orca (this
+dashboard has no login); `DEJAVU_SLICER_PATH` set by whoever starts the
+server overrides it. Tested against a stand-in program, never a real
+Orca install yet.
+
+### Testing it all: farm sandbox
+`backend/sandbox.py` is a control panel on `mock_moonraker.py`'s demo
+hooks, not a second simulator. `build_farm()` adds simulated printers
+(some mid-print), `teardown()` removes them along with their queues,
+maintenance logs and cached live state. A scenario is a list of timed
+steps (`at_s`, a target — a printer, `all`, `random`, `random-printing`,
+`random-idle` or `previous` — an event and its parameters); five presets
+ship with it. The scenario clock moves while playing (a live-feed tick
+listener, at the sandbox's speed) or in one jump with `step()`, which
+drives `live_feed.tick()` itself in short slices, split at each step's
+time — so events, automations, the queue, time-lapse and notifications
+all happen when they would have in real time. Each step's outcome is
+logged as what really happened (a jam aimed at an idle printer is logged
+as refused) and published as a `sandbox` live event. Starting a print
+goes through the Confirm Print gate exactly as the queue does. Demo only,
+like every other demo hook.
+
 ### `backend/led_status.py` / `backend/color_check.py`
 Hardware-pending placeholders. The decision logic (state → colour, colour
 distance) is real and tested. The hardware write / sensor read is faked.
@@ -254,10 +359,15 @@ the connection; every route that reads the dashboard's own settings checks
 only its module state. No framework, so there is nothing to install.
 
 ### `frontend/`
-Six files — `index.html`, `style.css` and `app.js` (the original dashboard
+Nine files — `index.html`, `style.css` and `app.js` (the original dashboard
 and the games), `workshop.css` and `workshop.js` (live connection, fleet,
-files, automations, phone layout, Liquid Glass 2.0), and `viewer3d.js`
-(the STL / 3MF parsers and the WebGL renderer). No framework, no build
+files, automations, phone layout, Liquid Glass 2.0), `viewer3d.js`
+(the STL / 3MF parsers and the WebGL renderer), `studio.js` (the
+Photo-to-Print Studio) and `farm.js` + `farm.css` (fleet command center,
+fleet history, farm sandbox, auto-print pipeline). `workshop.js` tells the
+newer files what happens through window events — `dv-tab`, `dv-refresh`,
+`dv-fleet`, `dv-live-event`, `dv-model-open` — rather than them reaching
+into its internals. No framework, no build
 step, and nothing fetched from any external host: no webfonts, no CDN. The
 dashboard runs fully offline, including phone pairing, which talks
 directly to this server over the local network.
@@ -303,9 +413,9 @@ breathes); *depth* (dialogs use a deeper displacement filter, so glass
 under glass bends more than the background); and *tint* (panels take a
 colour from what they're about — filament, printer state, verdict).
 
-Nine tabs (Fleet, Overview, Printer control, Files, Automations,
-Maintenance, Filament & colour, Modules & devices, While you wait) hold
-everything; a status strip and a floating live "print pill" stay visible on
+Twelve tabs (Fleet, Overview, Printer control, Files, Photo studio,
+Auto-print, Automations, Maintenance, Filament & colour, Modules & devices,
+Sandbox, While you wait) hold everything; a status strip and a floating live "print pill" stay visible on
 every tab — including mid-game.
 
 The Block World game (its code is still in `app.js`, though it isn't in the
@@ -381,7 +491,7 @@ Everything that calls them already works.
 
 ## Testing
 
-345 tests, using Python's built-in `unittest`:
+421 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -408,6 +518,20 @@ example, framing, and a real socket client against `/api/live`),
 `test_api_features.py` for the new routes — including the automation demo
 path end to end, a forced printer failure reported as a failure, and
 commands from another website being refused.
+
+The four flagship features follow it too: `test_fleet_command.py`
+(partial broadcasts name each failure, printer failures vs. refusals, a
+dropped link, routing and moving queue items, history totals matching the
+raw history), `test_photo_studio.py`, `test_slicer_bridge.py` (a stand-in
+"orca-slicer" that can succeed, fail with an Orca error code, crash, hang
+past the time limit, or write nothing, an empty file or one with no
+printable layers — each must end in a worded failure with nothing added to
+the library), `test_sandbox.py` (scenarios fire in order at their time, the
+live feed sees the failures they cause, starts go through Confirm Print),
+the sandbox hooks in `test_mock_moonraker.py`, and `test_api_flagship.py`
+for their routes, module switches and the no-printer-no-figures rule. The
+studio's mesh builder was checked separately in Node (every edge met
+equally from both sides, exact volume), outside the stdlib test suite.
 
 The browser side was checked by driving the real dashboard in headless
 Chromium (Playwright) at desktop and phone sizes, with touch input for the

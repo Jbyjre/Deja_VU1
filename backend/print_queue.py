@@ -173,6 +173,14 @@ def on_print_finished(printer_id):
     return None
 
 
+def forget(printer_id):
+    """Drop a removed printer's queue (the sandbox tidying up after itself)."""
+    with _lock:
+        data = _load()
+        if data.pop(printer_id, None) is not None:
+            _save(data)
+
+
 def reset():
     with _lock:
         _save({})

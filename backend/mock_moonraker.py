@@ -230,6 +230,10 @@ class SimulatedPrinter:
             self.fail_next = {}
             self.time_scale = 1.0
             self.motion_phase = 0.0
+            # Sandbox network drop: while set, commands get no answer and
+            # readers see the last state that arrived, labelled as stale.
+            self.link_lost_at = None
+            self.last_seen = None
             self.job = {
                 "filename": s["file"],
                 "total_hours": s["total_hours"],
@@ -311,6 +315,7 @@ class SimulatedPrinter:
 
     def check_failure(self, action):
         """Raise the failure a test or demo asked for, exactly once."""
+        self.check_link(action)
         message = self.fail_next.pop(action, None)
         if message:
             self.log("error", f"{action} failed: {message}")
@@ -318,21 +323,35 @@ class SimulatedPrinter:
 
     def snapshot(self):
         with self.lock:
+            if self.link_lost_at:
+                frozen = copy.deepcopy(self.last_seen)
+                frozen["link_lost"] = True
+                frozen["link_lost_at"] = self.link_lost_at
+                return frozen
             return copy.deepcopy(self.live)
+
+    def check_link(self, action):
+        if self.link_lost_at:
+            self.log("error", f"{action}: no answer (network link down)")
+            raise PrinterCommandError(
+                f"No answer from Moonraker since {self.link_lost_at[11:19]} - the network link "
+                "to this printer is down (simulated drop)")
 
     # -- simulated time -----------------------------------------------------
 
-    def advance(self, seconds):
+    def advance(self, seconds, scaled=True):
         """
         Move the simulation forward by `seconds` of wall-clock time.
 
         Temperatures approach their targets on a first-order lag (roughly
         how a heater under PID control settles), the toolhead travels the
         current layer's outline, and a running print's progress climbs until
-        it finishes. `time_scale` (demo only) fast-forwards all of it.
+        it finishes. `time_scale` (demo only) fast-forwards all of it;
+        scaled=False takes `seconds` as simulated time already (the sandbox's
+        "step forward" button).
         """
         with self.lock:
-            sim = max(0.0, seconds) * self.time_scale
+            sim = max(0.0, seconds) * (self.time_scale if scaled else 1.0)
             if sim <= 0:
                 return None
             live = self.live
@@ -459,12 +478,15 @@ def _point_on_rectangle(phase, w, d):
 
 _PRINTERS = {spec["id"]: SimulatedPrinter(spec) for spec in _FLEET_SPEC}
 DEFAULT_PRINTER_ID = _FLEET_SPEC[0]["id"]
+BUILT_IN_IDS = tuple(_PRINTERS)
 _selected = threading.local()
+_fleet_lock = threading.RLock()
 
 
 def printer_ids():
     """Every simulated printer, in display order."""
-    return [spec["id"] for spec in _FLEET_SPEC]
+    with _fleet_lock:
+        return [spec["id"] for spec in _FLEET_SPEC]
 
 
 def printer_name(printer_id):
@@ -543,16 +565,17 @@ def get_printer_state():
     return _current().snapshot()
 
 
-def advance(seconds, printer_id=None):
+def advance(seconds, printer_id=None, scaled=True):
     """Move one printer's simulation forward. Returns a finish event, if any."""
     printer = _PRINTERS[printer_id] if printer_id else _current()
-    return printer.advance(seconds)
+    return printer.advance(seconds, scaled=scaled)
 
 
 def pause_print():
     """Stand-in for Moonraker's POST /printer/print/pause."""
     printer = _current()
     with printer.lock:
+        printer.check_link("pause")
         if printer.live["state"] != "printing":
             raise ValueError("Nothing is printing right now")
         printer.check_failure("pause")
@@ -566,6 +589,7 @@ def resume_print():
     """Stand-in for Moonraker's POST /printer/print/resume."""
     printer = _current()
     with printer.lock:
+        printer.check_link("resume")
         if printer.live["state"] != "paused":
             raise ValueError("Printer is not paused")
         printer.check_failure("resume")
@@ -579,6 +603,7 @@ def cancel_print():
     """Stand-in for Moonraker's POST /printer/print/cancel."""
     printer = _current()
     with printer.lock:
+        printer.check_link("cancel")
         live = printer.live
         if live["state"] not in ("printing", "paused"):
             raise ValueError("Nothing to cancel")
@@ -620,6 +645,7 @@ def start_print(filename, job=None):
     printer = _current()
     job = job or {}
     with printer.lock:
+        printer.check_link("start")
         live = printer.live
         if live["state"] in ("printing", "paused"):
             raise ValueError("The printer is busy with another print")
@@ -674,6 +700,16 @@ def set_target_temperature(toolhead, target):
         printer.check_failure("temperature")
         printer.live["toolheads"][toolhead]["target_temperature"] = target
         printer.log("temperature", f"{toolhead} -> {target}°C")
+        return printer.snapshot()
+
+
+def set_bed_temperature(target):
+    """Stand-in for sending an M140 through Moonraker (bed target only)."""
+    printer = _current()
+    with printer.lock:
+        printer.check_failure("temperature")
+        printer.live["bed_target"] = float(target)
+        printer.log("temperature", f"bed -> {target}°C")
         return printer.snapshot()
 
 
@@ -781,6 +817,218 @@ def reset_live_state():
 
 
 def reset_all():
-    """Restore every simulated printer to its starting point."""
-    for printer in _PRINTERS.values():
+    """Restore every simulated printer to its starting point (and drop sandbox ones)."""
+    with _fleet_lock:
+        for spec in [s for s in _FLEET_SPEC if s.get("sandbox")]:
+            _FLEET_SPEC.remove(spec)
+            del _PRINTERS[spec["id"]]
+        printers = list(_PRINTERS.values())
+    for printer in printers:
         printer.reset()
+
+
+# ---------------------------------------------------------------------------
+# Sandbox hooks - a farm of any size, and the faults a real farm runs into.
+# Like fail_next, only ever reached through an explicit demo request.
+# ---------------------------------------------------------------------------
+
+MAX_SANDBOX_PRINTERS = 24
+
+
+def add_printer(name, seed, scenario, jobs=12, days=30):
+    """
+    Add one more simulated printer to the fleet. It is a SimulatedPrinter
+    like the built-in three, so every module sees it the moment it exists.
+    `scenario` has the same shape as _FLEET_SPEC's.
+    """
+    with _fleet_lock:
+        extra = [s for s in _FLEET_SPEC if s.get("sandbox")]
+        if len(extra) >= MAX_SANDBOX_PRINTERS:
+            raise ValueError(f"The sandbox holds at most {MAX_SANDBOX_PRINTERS} extra printers")
+        n = 1
+        while f"sim-{n:02d}" in _PRINTERS:
+            n += 1
+        spec = {"id": f"sim-{n:02d}", "name": str(name)[:40] or f"Sim {n:02d}", "seed": int(seed),
+                "jobs": int(jobs), "days": int(days), "scenario": scenario, "sandbox": True}
+        _PRINTERS[spec["id"]] = SimulatedPrinter(spec)
+        _FLEET_SPEC.append(spec)
+    return spec["id"]
+
+
+def remove_printer(printer_id):
+    """Remove a sandbox printer. The built-in three can't be removed."""
+    with _fleet_lock:
+        spec = next((s for s in _FLEET_SPEC if s["id"] == printer_id), None)
+        if spec is None:
+            raise ValueError(f"Unknown printer: {printer_id}")
+        if not spec.get("sandbox"):
+            raise ValueError("Only printers the sandbox added can be removed")
+        _FLEET_SPEC.remove(spec)
+        del _PRINTERS[printer_id]
+
+
+def is_sandbox_printer(printer_id):
+    with _fleet_lock:
+        return any(s["id"] == printer_id and s.get("sandbox") for s in _FLEET_SPEC)
+
+
+def _record_failed_job(printer, message):
+    """A print that stops with an error lands in history, as Moonraker's does."""
+    live = printer.live
+    hours = round(live["print_duration_hours"], 2)
+    total = printer.job["total_hours"] or 1.0
+    printer.session_jobs.append({
+        "job_id": f"live-{len(printer.session_jobs) + 1:03d}",
+        "filename": live["current_file"], "status": "error",
+        "start_time": (datetime.now() - timedelta(hours=hours)).isoformat(timespec="seconds"),
+        "end_time": datetime.now().isoformat(timespec="seconds"),
+        "print_duration_hours": hours,
+        "filament_used_grams": round(printer.job["filament_grams"] * min(1.0, hours / total), 1),
+        "filament_type": printer.job["material"],
+        "filament_color_name": "Unknown", "filament_color_hex": "#888888",
+        "toolheads_used": sorted({r["toolhead"] for r in printer.job["required_filament"]}) or ["T0"],
+        "error": message,
+    })
+
+
+def _stop_with_error(printer, message):
+    live = printer.live
+    if live["state"] in ("printing", "paused"):
+        _record_failed_job(printer, message)
+    live["state"] = "error"
+    live["state_message"] = message
+    live["bed_target"] = 0.0
+    for data in live["toolheads"].values():
+        data["target_temperature"] = 0.0
+        if data["status"] == "active":
+            data["status"] = "docked"
+    printer.log("error", message)
+
+
+def inject_jam(toolhead=None):
+    """The extruder stops pushing filament mid-print: Klipper halts with an error."""
+    printer = _current()
+    with printer.lock:
+        if printer.live["state"] not in ("printing", "paused"):
+            raise ValueError("A jam needs a print running on this printer")
+        th = toolhead or printer.live["active_toolhead"] or "T0"
+        if th not in TOOLHEADS:
+            raise ValueError(f"Unknown toolhead: {th}")
+        printer.live["toolheads"][th]["status"] = "error"
+        _stop_with_error(printer, f"Filament jam on {th}: extruder stopped")
+        return printer.snapshot()
+
+
+def inject_heater_fault(toolhead=None):
+    """Klipper's heater check trips and it shuts the heaters down."""
+    printer = _current()
+    with printer.lock:
+        th = toolhead or printer.live["active_toolhead"] or "T0"
+        if th not in TOOLHEADS:
+            raise ValueError(f"Unknown toolhead: {th}")
+        # Klipper's own wording (klippy/extras/verify_heater.py).
+        _stop_with_error(printer, f"Heater {th} not heating at expected rate")
+        return printer.snapshot()
+
+
+def inject_runout(toolhead):
+    """
+    A dock runs out of filament. If it's the toolhead printing, the print
+    pauses the way Klipper's filament sensor pauses it.
+    """
+    if toolhead not in TOOLHEADS:
+        raise ValueError(f"Unknown toolhead: {toolhead}")
+    printer = _current()
+    with printer.lock:
+        live = printer.live
+        dock = live["toolheads"][toolhead]
+        dock["status"] = "error"
+        dock["filament_loaded"] = False
+        message = f"Filament runout on {toolhead}"
+        if live["state"] == "printing" and live["active_toolhead"] == toolhead:
+            live["state"] = "paused"
+        if live["state"] != "printing":
+            live["state_message"] = message
+        printer.log("runout", toolhead)
+        return printer.snapshot()
+
+
+def load_filament(toolhead, color_index):
+    """Someone swaps the spool on a dock - to the right colour or the wrong one."""
+    if toolhead not in TOOLHEADS:
+        raise ValueError(f"Unknown toolhead: {toolhead}")
+    if not isinstance(color_index, int) or not 0 <= color_index < len(FILAMENT_COLORS):
+        raise ValueError("Pick one of the simulated filament colours")
+    colour = FILAMENT_COLORS[color_index]
+    printer = _current()
+    with printer.lock:
+        dock = printer.live["toolheads"][toolhead]
+        dock.update(filament_loaded=True, filament_color_hex=colour["hex"],
+                    filament_color_name=colour["name"])
+        if dock["status"] == "error":
+            dock["status"] = "docked"
+        printer.log("filament", f"{toolhead} loaded {colour['name']}")
+        return printer.snapshot()
+
+
+def clear_error():
+    """FIRMWARE_RESTART: an errored printer comes back idle; dock errors clear."""
+    printer = _current()
+    with printer.lock:
+        printer.check_link("restart")
+        live = printer.live
+        for data in live["toolheads"].values():
+            if data["status"] == "error":
+                data.update(status="docked", filament_loaded=True)
+        if live["state"] in ("error", "complete"):
+            live.update(state="ready", state_message="Idle", current_file=None, progress=0.0,
+                        active_toolhead=None)
+        printer.log("restart", "FIRMWARE_RESTART")
+        return printer.snapshot()
+
+
+def add_wear(hours):
+    """
+    Add `hours` of completed prints to history, as if the printer had been
+    busy - which is what makes maintenance come due, through maintenance.py's
+    own counting rather than by editing its log.
+    """
+    hours = float(hours)
+    if not 0 < hours <= 2000:
+        raise ValueError("Wear must be between 0 and 2000 print hours")
+    printer = _current()
+    with printer.lock:
+        left, n = hours, 0
+        while left > 0:
+            chunk = min(left, 6.0)
+            end = datetime.now() - timedelta(hours=n * 7)
+            n += 1
+            printer.session_jobs.append({
+                "job_id": f"wear-{len(printer.session_jobs) + 1:03d}", "filename": "sandbox_wear.gcode",
+                "status": "completed", "start_time": (end - timedelta(hours=chunk)).isoformat(timespec="seconds"),
+                "end_time": end.isoformat(timespec="seconds"), "print_duration_hours": round(chunk, 2),
+                "filament_used_grams": round(chunk * 12.0, 1), "filament_type": "PLA",
+                "filament_color_name": FILAMENT_COLORS[0]["name"], "filament_color_hex": FILAMENT_COLORS[0]["hex"],
+                "toolheads_used": ["T0"],
+            })
+            left -= chunk
+        printer.log("wear", f"+{hours:g} print hours")
+    return {"added_hours": hours, "jobs": n}
+
+
+def set_link(up):
+    """Drop or restore the network link to the selected printer."""
+    printer = _current()
+    with printer.lock:
+        if up:
+            printer.link_lost_at = None
+            printer.last_seen = None
+        elif not printer.link_lost_at:
+            printer.last_seen = copy.deepcopy(printer.live)
+            printer.link_lost_at = datetime.now().isoformat(timespec="seconds")
+        return {"link": "up" if up else "down", "since": printer.link_lost_at}
+
+
+def link_is_up(printer_id=None):
+    printer = _PRINTERS[printer_id] if printer_id else _current()
+    return printer.link_lost_at is None

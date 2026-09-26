@@ -55,6 +55,7 @@ _detect_lock = threading.RLock()   # the feed thread and request threads both de
 _demo_seen_at = 0.0
 _thread = None
 _running = False
+_tick_listeners = []           # told about every tick (the sandbox's scenario clock)
 
 
 def mark_demo_seen():
@@ -239,11 +240,17 @@ def _on_automation(entry):
 # The loop
 # ---------------------------------------------------------------------------
 
-def tick(seconds=TICK_SECONDS, count=0):
-    """One step for every printer. Separate from the loop so tests can drive it."""
+def tick(seconds=TICK_SECONDS, count=0, scaled=True):
+    """
+    One step for every printer. Separate from the loop so tests can drive it.
+    scaled=False means `seconds` is already simulated time (the sandbox's
+    "step forward"), so each printer's demo speed isn't applied again.
+    """
     now = time.time()
     for printer_id in mock_moonraker.printer_ids():
-        finish = mock_moonraker.advance(seconds, printer_id)
+        if not mock_moonraker.has_printer(printer_id):
+            continue                  # removed by the sandbox mid-tick
+        finish = mock_moonraker.advance(seconds, printer_id, scaled=scaled)
         with mock_moonraker.use_printer(printer_id):
             state = mock_moonraker.get_printer_state()
         events, side_effects, simulated = _detect(printer_id, state, finish)
@@ -272,6 +279,26 @@ def tick(seconds=TICK_SECONDS, count=0):
                             "bed": state.get("bed_temperature")})
     if count % 4 == 0:
         _refresh_fleet()
+    for listener in list(_tick_listeners):
+        try:
+            listener(seconds, scaled)
+        except Exception as exc:          # noqa: BLE001 - a listener must not stop the feed
+            import sys
+            sys.stderr.write(f"  tick listener failed: {exc}\n")
+
+
+def add_tick_listener(fn):
+    _tick_listeners.append(fn)
+
+
+def forget(printer_id):
+    """Drop everything cached about a printer that no longer exists."""
+    with _cond:
+        _cache.pop(printer_id, None)
+        _climate.pop(printer_id, None)
+    with _detect_lock:
+        _prev_state.pop(printer_id, None)
+    _refresh_fleet()
 
 
 def _loop():
