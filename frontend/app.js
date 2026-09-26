@@ -415,19 +415,26 @@ function formatTemp(celsius) {
  * A real user-facing preference: swaps the CSS custom properties every
  * accent-coloured element already reads from. */
 
+// Blue is the default. Each accent carries its own text-on-fill colour
+// ("on") and text colour, measured for WCAG AA against it.
 const ACCENTS = [
-  { id: 'orange', label: 'Snapmaker Orange', hex: '#ff7a2f', light: '#ff9c66' },
-  { id: 'red', label: 'Signal Red', hex: '#c8102e', light: '#e0475f' },
-  { id: 'blue', label: 'Sky Blue', hex: '#3b82f6', light: '#6fa8ff' },
-  { id: 'green', label: 'Grass Green', hex: '#2f9e44', light: '#5cc16f' },
+  { id: 'blue', label: 'Sky Blue', hex: '#4a8df8', light: '#7db2ff', on: '#04122b', text: '#1d5fc8' },
+  { id: 'orange', label: 'Snapmaker Orange', hex: '#ff7a2f', light: '#ff9c66', on: '#2a1200', text: '#a8430a' },
+  { id: 'red', label: 'Signal Red', hex: '#c8102e', light: '#d42640', on: '#ffffff', text: '#a50d26' },
+  { id: 'green', label: 'Grass Green', hex: '#2f9e44', light: '#5cc16f', on: '#04200c', text: '#1d6d31' },
 ];
-const ACCENT_KEY = 'dejavu1.accent';
+// Only a colour you picked is remembered. (The old key was written on every
+// load, so every browser had "orange" stored whether or not it was chosen;
+// a deliberate red or green there is still honoured.)
+const ACCENT_KEY = 'dejavu1.accent-choice';
+const OLD_ACCENT_KEY = 'dejavu1.accent';
 
 function applyAccent(id) {
   const accent = ACCENTS.find(a => a.id === id) || ACCENTS[0];
   document.documentElement.style.setProperty('--accent', accent.hex);
   document.documentElement.style.setProperty('--accent-light', accent.light);
-  store.set(ACCENT_KEY, accent.id);
+  document.documentElement.style.setProperty('--on-accent', accent.on);
+  document.documentElement.style.setProperty('--accent-text', accent.text);
   document.querySelectorAll('.accent-swatch').forEach(el => {
     el.classList.toggle('is-active', el.dataset.accent === accent.id);
   });
@@ -440,9 +447,10 @@ function initPreferences() {
             style="background:${a.hex};"></button>
   `).join('');
   host.querySelectorAll('.accent-swatch').forEach(btn => {
-    btn.addEventListener('click', () => applyAccent(btn.dataset.accent));
+    btn.addEventListener('click', () => { applyAccent(btn.dataset.accent); store.set(ACCENT_KEY, btn.dataset.accent); });
   });
-  applyAccent(store.get(ACCENT_KEY) || 'orange');
+  const old = store.get(OLD_ACCENT_KEY);
+  applyAccent(store.get(ACCENT_KEY) || (old === 'red' || old === 'green' ? old : 'blue'));
 
   const setUnits = (unit) => {
     tempUnit = unit;
@@ -489,7 +497,13 @@ function initTabs() {
   const tabs = document.querySelectorAll('.navtab[data-tab]');
   const panels = document.querySelectorAll('.tab-panel');
 
-  function show(name) {
+  // Sections folded into another tab: their old names (a remembered tab,
+  // a "Slice…" button, another device's handoff) open the parent tab and
+  // scroll to the section.
+  const FOLDED = { sandbox: 'fleet', autoprint: 'files', filament: 'maintenance' };
+
+  function show(requested) {
+    const name = FOLDED[requested] || requested;
     tabs.forEach(t => {
       t.classList.toggle('active', t.dataset.tab === name);
       if (t.dataset.tab === name) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current');
@@ -499,6 +513,8 @@ function initTabs() {
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);
+    // A short wait: the cards above it fill in first, so the section doesn't slide away.
+    if (FOLDED[requested]) setTimeout(() => $(`tab-${requested}`)?.scrollIntoView({ block: 'start' }), 350);
   }
   window.showTab = show;
 

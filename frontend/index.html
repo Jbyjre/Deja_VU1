@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deja Vu1 — Snapmaker U1 Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23ff7a2f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23ff7a2f'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%234a8df8' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%234a8df8'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="workshop.css">
 <link rel="stylesheet" href="farm.css">
@@ -102,21 +102,17 @@
   </div>
 
   <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
+    <!-- Nine tabs, every one always showing: Sandbox lives in Fleet,
+         Auto-print in Files, Filament & colour in Care. -->
     <button class="navtab" data-tab="fleet">Fleet</button>
     <button class="navtab active" data-tab="overview">Overview</button>
-    <button class="navtab" data-tab="control">Printer control</button>
+    <button class="navtab" data-tab="control">Control</button>
     <button class="navtab" data-tab="files">Files</button>
     <button class="navtab" data-tab="studio">Photo studio</button>
-    <button class="navtab" data-tab="autoprint">Auto-print</button>
     <button class="navtab" data-tab="automations">Automations</button>
-    <button class="navtab" data-tab="maintenance">Maintenance</button>
-    <button class="navtab" data-tab="filament">Filament &amp; colour</button>
-    <button class="navtab" data-tab="modules">Modules &amp; devices</button>
-    <button class="navtab" data-tab="sandbox">Sandbox</button>
-    <button class="navtab" data-tab="games">While you wait</button>
-    <!-- Tabs that don't fit on one line move into this menu (fitTabs). -->
-    <button class="navtab navtab-more" id="tab-more" type="button" hidden
-            aria-haspopup="menu" aria-expanded="false"><span class="more-label">More</span> <span aria-hidden="true">▾</span></button>
+    <button class="navtab" data-tab="maintenance">Care</button>
+    <button class="navtab" data-tab="modules">Settings</button>
+    <button class="navtab" data-tab="games">Games</button>
   </nav>
 
   <!-- Always visible so a finished or failed print is never missed just
@@ -193,6 +189,81 @@
         <input type="url" id="fleet-add-url" placeholder="http://192.168.1.50:7125" required>
         <button class="btn primary" type="submit">Add printer</button>
       </form>
+    </section>
+
+    <!-- Folded into this tab so every section is always in the tab bar. -->
+    <section id="tab-sandbox" class="tab-sub" aria-labelledby="sub-sandbox-title">
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-sandbox-title">Farm sandbox</h2><p>Simulated printers and scripted problems, for trying the dashboard out</p></div>
+      <section class="card liquid-glass" id="sb-off" hidden></section>
+      <div id="sb-body" hidden>
+        <section class="card liquid-glass sb-console" data-tint>
+          <div class="sb-clock-wrap">
+            <span class="stat-key">Scenario clock</span>
+            <output class="sb-clock" id="sb-clock" aria-live="off">+00:00:00</output>
+            <span class="card-sub" id="sb-scenario-name"></span>
+          </div>
+          <div class="sb-controls">
+            <button class="btn primary" type="button" id="sb-play" aria-pressed="false">Play</button>
+            <div class="pill-toggle" id="sb-speed" role="group" aria-label="Speed while playing">
+              <button data-speed="1" type="button">1×</button><button data-speed="60" type="button">60×</button>
+              <button data-speed="300" type="button">300×</button><button data-speed="600" type="button">600×</button>
+            </div>
+            <div class="sb-steps-btns" role="group" aria-label="Step forward now">
+              <span class="stat-key">Step</span>
+              <button class="btn small" type="button" data-step="60">+1 min</button>
+              <button class="btn small" type="button" data-step="600">+10 min</button>
+              <button class="btn small" type="button" data-step="3600">+1 h</button>
+              <button class="btn small" type="button" data-step="21600">+6 h</button>
+            </div>
+          </div>
+          <div class="sb-timeline" id="sb-timeline" aria-hidden="true"></div>
+          <p class="log-empty">Simulated printers only — every figure here is demo data. Step forward runs the real live feed, so the fleet, automations, queue and notifications react exactly as they would.</p>
+        </section>
+
+        <div class="grid-2">
+          <section class="card liquid-glass">
+            <div class="card-head">
+              <div><h2>The farm</h2><p class="card-sub" id="sb-farm-count"></p></div>
+            </div>
+            <div class="sb-floor" id="sb-floor"></div>
+            <form class="inline-form" id="sb-farm-form">
+              <label>Add <input type="number" id="sb-count" min="1" max="24" value="8" style="width:5em"> printers</label>
+              <label>with <select id="sb-busy"><option value="0">none</option><option value="25">a quarter</option><option value="50" selected>half</option><option value="75">most</option><option value="100">all</option></select> mid-print</label>
+              <button class="btn primary" type="submit">Add printers</button>
+              <button class="btn" type="button" id="sb-teardown">Remove added printers</button>
+            </form>
+          </section>
+
+          <section class="card liquid-glass">
+            <div class="card-head"><div><h2>Something happens now</h2><p class="card-sub">One event, straight away, outside the scenario</p></div></div>
+            <div class="sb-fire-form">
+              <label>Event <select id="sb-fire-event"></select></label>
+              <label>On <select id="sb-fire-printer"></select></label>
+              <span class="sb-params" id="sb-fire-params"></span>
+              <button class="btn primary" type="button" id="sb-fire">Make it happen</button>
+            </div>
+            <h3 class="fd-h">What happened</h3>
+            <ul class="sb-log" id="sb-log" aria-live="polite"></ul>
+          </section>
+        </div>
+
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Scenario</h2><p class="card-sub">Timed steps. Loading one rewinds the clock; the farm stays as it is.</p></div>
+            <button class="btn small" type="button" id="sb-reset">Reset the sandbox</button>
+          </div>
+          <div class="sb-presets" id="sb-presets"></div>
+          <ol class="sb-steps" id="sb-steps"></ol>
+          <details class="sb-builder">
+            <summary>Build your own</summary>
+            <ol class="sb-draft" id="sb-draft"></ol>
+            <div class="fd-actions">
+              <button class="btn small" type="button" id="sb-add-step">Add a step</button>
+              <button class="btn primary small" type="button" id="sb-load-draft" disabled>Load my scenario</button>
+            </div>
+          </details>
+        </section>
+      </div>
     </section>
   </section>
 
@@ -364,6 +435,65 @@
       </div>
       <div id="fd-gcode" class="fd-gcode" hidden></div>
     </section>
+
+    <!-- Folded into this tab so every section is always in the tab bar. -->
+    <section id="tab-autoprint" class="tab-sub" aria-labelledby="sub-autoprint-title">
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Auto-print</h2><p>Slice models with your own OrcaSlicer and queue the result</p></div>
+      <section class="card liquid-glass" id="ap-off" hidden></section>
+      <div id="ap-body">
+        <div class="grid-2">
+          <section class="card liquid-glass">
+            <div class="card-head">
+              <div><h2>Slicer</h2><p class="card-sub">OrcaSlicer, installed by you. The dashboard runs its command line; it never downloads or installs anything.</p></div>
+              <span class="badge badge-optional">Optional</span>
+            </div>
+            <div id="ap-status"></div>
+            <form id="ap-form" class="ap-form">
+              <label>Path to the OrcaSlicer program
+                <input type="text" id="ap-path" placeholder="/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer" spellcheck="false" autocomplete="off"></label>
+              <p class="log-empty" id="ap-path-note"></p>
+              <label>Time limit per slice <span><input type="number" id="ap-timeout" min="30" max="3600" value="600"> seconds</span></label>
+              <div class="fd-actions">
+                <button class="btn primary" type="submit">Save</button>
+                <button class="btn" type="button" id="ap-check">Check slicer</button>
+              </div>
+            </form>
+            <p class="ap-fragile"><b>Worth knowing:</b> this drives another program from outside. An OrcaSlicer update can change its command line;
+              when that happens a slice here fails with Orca's own message in words — it never quietly makes a bad file. Every slice is checked
+              for real, printable layers before it's added, and records which Orca version made it.</p>
+          </section>
+
+          <section class="card liquid-glass">
+            <div class="card-head"><div><h2>Profiles</h2><p class="card-sub">Which Orca presets to slice with — the .json files Orca keeps for your printer, print settings and filament.</p></div></div>
+            <ul class="ap-profiles" id="ap-profiles"></ul>
+            <form id="ap-profile-form" class="ap-form">
+              <label>Profile name <input type="text" id="ap-p-name" maxlength="60" placeholder="U1 · 0.20 mm PLA" required></label>
+              <label>Machine preset <input type="text" id="ap-p-machine" placeholder="…/user/default/machine/Snapmaker U1.json" required spellcheck="false"></label>
+              <label>Process preset <input type="text" id="ap-p-process" placeholder="…/user/default/process/0.20mm Standard.json" required spellcheck="false"></label>
+              <label>Filament presets, one per line (up to four)
+                <textarea id="ap-p-filaments" rows="2" placeholder="…/user/default/filament/Generic PLA.json" required spellcheck="false"></textarea></label>
+              <button class="btn" type="submit">Add profile</button>
+              <p class="log-empty">Each file is read before it's saved: Orca's command line only loads presets that say what they are ("type") and where they came from ("from": system or User).</p>
+            </form>
+          </section>
+        </div>
+
+        <section class="card liquid-glass">
+          <div class="card-head"><div><h2>Slice a model</h2><p class="card-sub">The G-code lands in your file library. Queued files still pass Confirm Print before they start.</p></div></div>
+          <div class="inline-form">
+            <label class="sr-only" for="ap-model">Model</label>
+            <select id="ap-model"></select>
+            <label class="sr-only" for="ap-profile">Profile</label>
+            <select id="ap-profile"></select>
+            <button class="btn" type="button" id="ap-slice">Slice</button>
+            <button class="btn primary" type="button" id="ap-slice-queue">Slice and queue</button>
+          </div>
+          <p class="log-empty" id="ap-queue-note"></p>
+          <h3 class="fd-h">Recent slices</h3>
+          <ul class="ap-jobs" id="ap-jobs"></ul>
+        </section>
+      </div>
+    </section>
   </section>
 
 
@@ -452,66 +582,6 @@
   </section>
 
   <!-- ============================================================ -->
-  <!-- AUTO-PRINT PIPELINE                                           -->
-  <!-- ============================================================ -->
-  <section id="tab-autoprint" class="tab-panel" hidden>
-    <section class="card liquid-glass" id="ap-off" hidden></section>
-    <div id="ap-body">
-      <div class="grid-2">
-        <section class="card liquid-glass">
-          <div class="card-head">
-            <div><h2>Slicer</h2><p class="card-sub">OrcaSlicer, installed by you. The dashboard runs its command line; it never downloads or installs anything.</p></div>
-            <span class="badge badge-optional">Optional</span>
-          </div>
-          <div id="ap-status"></div>
-          <form id="ap-form" class="ap-form">
-            <label>Path to the OrcaSlicer program
-              <input type="text" id="ap-path" placeholder="/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer" spellcheck="false" autocomplete="off"></label>
-            <p class="log-empty" id="ap-path-note"></p>
-            <label>Time limit per slice <span><input type="number" id="ap-timeout" min="30" max="3600" value="600"> seconds</span></label>
-            <div class="fd-actions">
-              <button class="btn primary" type="submit">Save</button>
-              <button class="btn" type="button" id="ap-check">Check slicer</button>
-            </div>
-          </form>
-          <p class="ap-fragile"><b>Worth knowing:</b> this drives another program from outside. An OrcaSlicer update can change its command line;
-            when that happens a slice here fails with Orca's own message in words — it never quietly makes a bad file. Every slice is checked
-            for real, printable layers before it's added, and records which Orca version made it.</p>
-        </section>
-
-        <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Profiles</h2><p class="card-sub">Which Orca presets to slice with — the .json files Orca keeps for your printer, print settings and filament.</p></div></div>
-          <ul class="ap-profiles" id="ap-profiles"></ul>
-          <form id="ap-profile-form" class="ap-form">
-            <label>Profile name <input type="text" id="ap-p-name" maxlength="60" placeholder="U1 · 0.20 mm PLA" required></label>
-            <label>Machine preset <input type="text" id="ap-p-machine" placeholder="…/user/default/machine/Snapmaker U1.json" required spellcheck="false"></label>
-            <label>Process preset <input type="text" id="ap-p-process" placeholder="…/user/default/process/0.20mm Standard.json" required spellcheck="false"></label>
-            <label>Filament presets, one per line (up to four)
-              <textarea id="ap-p-filaments" rows="2" placeholder="…/user/default/filament/Generic PLA.json" required spellcheck="false"></textarea></label>
-            <button class="btn" type="submit">Add profile</button>
-            <p class="log-empty">Each file is read before it's saved: Orca's command line only loads presets that say what they are ("type") and where they came from ("from": system or User).</p>
-          </form>
-        </section>
-      </div>
-
-      <section class="card liquid-glass">
-        <div class="card-head"><div><h2>Slice a model</h2><p class="card-sub">The G-code lands in your file library. Queued files still pass Confirm Print before they start.</p></div></div>
-        <div class="inline-form">
-          <label class="sr-only" for="ap-model">Model</label>
-          <select id="ap-model"></select>
-          <label class="sr-only" for="ap-profile">Profile</label>
-          <select id="ap-profile"></select>
-          <button class="btn" type="button" id="ap-slice">Slice</button>
-          <button class="btn primary" type="button" id="ap-slice-queue">Slice and queue</button>
-        </div>
-        <p class="log-empty" id="ap-queue-note"></p>
-        <h3 class="fd-h">Recent slices</h3>
-        <ul class="ap-jobs" id="ap-jobs"></ul>
-      </section>
-    </div>
-  </section>
-
-  <!-- ============================================================ -->
   <!-- AUTOMATIONS                                                   -->
   <!-- ============================================================ -->
   <section id="tab-automations" class="tab-panel" hidden>
@@ -568,83 +638,82 @@
         <button class="btn primary" type="submit">Record swap</button>
       </form>
     </section>
-  </section>
 
-  <!-- ============================================================ -->
-  <!-- FILAMENT & COLOUR                                             -->
-  <!-- ============================================================ -->
-  <section id="tab-filament" class="tab-panel" hidden>
-    <div class="grid-2" style="margin-bottom:20px;">
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Dock status rings</h2><p class="card-sub">WS2812 rings, or a WLED strip you already own</p></div>
-          <span class="badge badge-sim">Hardware pending</span>
-        </div>
-        <div id="rings" class="rings">
-          <div class="empty">
-            <span class="empty-mark" aria-hidden="true"></span>
-            <p class="empty-title">No signal</p>
-            <p class="empty-sub">Ring colours follow live printer state.</p>
+    <!-- Folded into this tab so every section is always in the tab bar. -->
+    <section id="tab-filament" class="tab-sub" aria-labelledby="sub-filament-title">
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-filament-title">Filament & colour</h2><p>Dock rings, the colour check, your spools and what changed</p></div>
+      <div class="grid-2" style="margin-bottom:20px;">
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Dock status rings</h2><p class="card-sub">WS2812 rings, or a WLED strip you already own</p></div>
+            <span class="badge badge-sim">Hardware pending</span>
           </div>
-        </div>
-        <p class="log-empty" id="rings-note" hidden>Showing what the LEDs would display. Physical rings pending hardware access.</p>
-      </section>
-
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Right colour loaded?</h2><p class="card-sub">Optical check before the print starts</p></div>
-          <span class="badge badge-sim">Hardware pending</span>
-        </div>
-        <div id="colorfile" class="colorfile" hidden></div>
-        <div id="colors" class="colors">
-          <div class="empty">
-            <span class="empty-mark" aria-hidden="true"></span>
-            <p class="empty-title">Nothing to check</p>
-            <p class="empty-sub">Needs a print file and a sensor reading.</p>
+          <div id="rings" class="rings">
+            <div class="empty">
+              <span class="empty-mark" aria-hidden="true"></span>
+              <p class="empty-title">No signal</p>
+              <p class="empty-sub">Ring colours follow live printer state.</p>
+            </div>
           </div>
-        </div>
-        <p class="log-empty" id="colors-note" hidden>Detected values are simulated. Physical sensor pending hardware access.</p>
-      </section>
-    </div>
+          <p class="log-empty" id="rings-note" hidden>Showing what the LEDs would display. Physical rings pending hardware access.</p>
+        </section>
 
-    <div class="grid-2" style="margin-bottom:20px;">
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Filament inventory</h2><p class="card-sub">Spools on hand</p></div>
-          <span class="badge badge-optional">Optional module</span>
-        </div>
-        <div id="spool-list"></div>
-        <form id="spool-form" data-module-body="filament_inventory" style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
-          <input type="text" id="spool-material" placeholder="Material (PLA)" aria-label="Material" style="flex:1; min-width:130px;">
-          <input type="text" id="spool-color-name" placeholder="Colour name" aria-label="Colour name" style="flex:1; min-width:120px;">
-          <input type="color" id="spool-color-hex" value="#ff7a2f" aria-label="Colour" style="width:44px; padding:2px;">
-          <input type="number" id="spool-grams" placeholder="Grams" aria-label="Grams on the spool" style="width:90px;">
-          <button class="btn primary" type="submit">Add spool</button>
-        </form>
-        <div id="spool-idle-note" class="log-empty" hidden></div>
-        <details class="log" id="forecast-wrap" data-module-body="filament_inventory">
-          <summary>How long each spool will last</summary>
-          <div id="forecast-body"></div>
-        </details>
-      </section>
-
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>What changed?</h2><p class="card-sub">Compared against your print history</p></div>
-          <span class="badge badge-optional">Optional module</span>
-        </div>
-        <div id="compare-body">
-          <div class="empty">
-            <span class="empty-mark" aria-hidden="true"></span>
-            <p class="empty-title">Nothing to compare yet</p>
-            <p class="empty-sub">Needs a printer connection and print history for this file.</p>
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Right colour loaded?</h2><p class="card-sub">Optical check before the print starts</p></div>
+            <span class="badge badge-sim">Hardware pending</span>
           </div>
-        </div>
-        <button class="btn" id="repeat-settings-btn" data-module-body="compare" style="margin-top:14px; width:100%;">Show last successful settings</button>
-        <div id="repeat-settings-body" style="margin-top:10px;"></div>
-        <div id="side-by-side-body" style="margin-top:14px;"></div>
-      </section>
-    </div>
+          <div id="colorfile" class="colorfile" hidden></div>
+          <div id="colors" class="colors">
+            <div class="empty">
+              <span class="empty-mark" aria-hidden="true"></span>
+              <p class="empty-title">Nothing to check</p>
+              <p class="empty-sub">Needs a print file and a sensor reading.</p>
+            </div>
+          </div>
+          <p class="log-empty" id="colors-note" hidden>Detected values are simulated. Physical sensor pending hardware access.</p>
+        </section>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:20px;">
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Filament inventory</h2><p class="card-sub">Spools on hand</p></div>
+            <span class="badge badge-optional">Optional module</span>
+          </div>
+          <div id="spool-list"></div>
+          <form id="spool-form" data-module-body="filament_inventory" style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+            <input type="text" id="spool-material" placeholder="Material (PLA)" aria-label="Material" style="flex:1; min-width:130px;">
+            <input type="text" id="spool-color-name" placeholder="Colour name" aria-label="Colour name" style="flex:1; min-width:120px;">
+            <input type="color" id="spool-color-hex" value="#ff7a2f" aria-label="Colour" style="width:44px; padding:2px;">
+            <input type="number" id="spool-grams" placeholder="Grams" aria-label="Grams on the spool" style="width:90px;">
+            <button class="btn primary" type="submit">Add spool</button>
+          </form>
+          <div id="spool-idle-note" class="log-empty" hidden></div>
+          <details class="log" id="forecast-wrap" data-module-body="filament_inventory">
+            <summary>How long each spool will last</summary>
+            <div id="forecast-body"></div>
+          </details>
+        </section>
+
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>What changed?</h2><p class="card-sub">Compared against your print history</p></div>
+            <span class="badge badge-optional">Optional module</span>
+          </div>
+          <div id="compare-body">
+            <div class="empty">
+              <span class="empty-mark" aria-hidden="true"></span>
+              <p class="empty-title">Nothing to compare yet</p>
+              <p class="empty-sub">Needs a printer connection and print history for this file.</p>
+            </div>
+          </div>
+          <button class="btn" id="repeat-settings-btn" data-module-body="compare" style="margin-top:14px; width:100%;">Show last successful settings</button>
+          <div id="repeat-settings-body" style="margin-top:10px;"></div>
+          <div id="side-by-side-body" style="margin-top:14px;"></div>
+        </section>
+      </div>
+    </section>
   </section>
 
   <!-- ============================================================ -->
@@ -820,82 +889,6 @@
 
 
   <!-- ============================================================ -->
-  <!-- FARM SANDBOX                                                  -->
-  <!-- ============================================================ -->
-  <section id="tab-sandbox" class="tab-panel" hidden>
-    <section class="card liquid-glass" id="sb-off" hidden></section>
-    <div id="sb-body" hidden>
-      <section class="card liquid-glass sb-console" data-tint>
-        <div class="sb-clock-wrap">
-          <span class="stat-key">Scenario clock</span>
-          <output class="sb-clock" id="sb-clock" aria-live="off">+00:00:00</output>
-          <span class="card-sub" id="sb-scenario-name"></span>
-        </div>
-        <div class="sb-controls">
-          <button class="btn primary" type="button" id="sb-play" aria-pressed="false">Play</button>
-          <div class="pill-toggle" id="sb-speed" role="group" aria-label="Speed while playing">
-            <button data-speed="1" type="button">1×</button><button data-speed="60" type="button">60×</button>
-            <button data-speed="300" type="button">300×</button><button data-speed="600" type="button">600×</button>
-          </div>
-          <div class="sb-steps-btns" role="group" aria-label="Step forward now">
-            <span class="stat-key">Step</span>
-            <button class="btn small" type="button" data-step="60">+1 min</button>
-            <button class="btn small" type="button" data-step="600">+10 min</button>
-            <button class="btn small" type="button" data-step="3600">+1 h</button>
-            <button class="btn small" type="button" data-step="21600">+6 h</button>
-          </div>
-        </div>
-        <div class="sb-timeline" id="sb-timeline" aria-hidden="true"></div>
-        <p class="log-empty">Simulated printers only — every figure here is demo data. Step forward runs the real live feed, so the fleet, automations, queue and notifications react exactly as they would.</p>
-      </section>
-
-      <div class="grid-2">
-        <section class="card liquid-glass">
-          <div class="card-head">
-            <div><h2>The farm</h2><p class="card-sub" id="sb-farm-count"></p></div>
-          </div>
-          <div class="sb-floor" id="sb-floor"></div>
-          <form class="inline-form" id="sb-farm-form">
-            <label>Add <input type="number" id="sb-count" min="1" max="24" value="8" style="width:5em"> printers</label>
-            <label>with <select id="sb-busy"><option value="0">none</option><option value="25">a quarter</option><option value="50" selected>half</option><option value="75">most</option><option value="100">all</option></select> mid-print</label>
-            <button class="btn primary" type="submit">Add printers</button>
-            <button class="btn" type="button" id="sb-teardown">Remove added printers</button>
-          </form>
-        </section>
-
-        <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Something happens now</h2><p class="card-sub">One event, straight away, outside the scenario</p></div></div>
-          <div class="sb-fire-form">
-            <label>Event <select id="sb-fire-event"></select></label>
-            <label>On <select id="sb-fire-printer"></select></label>
-            <span class="sb-params" id="sb-fire-params"></span>
-            <button class="btn primary" type="button" id="sb-fire">Make it happen</button>
-          </div>
-          <h3 class="fd-h">What happened</h3>
-          <ul class="sb-log" id="sb-log" aria-live="polite"></ul>
-        </section>
-      </div>
-
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Scenario</h2><p class="card-sub">Timed steps. Loading one rewinds the clock; the farm stays as it is.</p></div>
-          <button class="btn small" type="button" id="sb-reset">Reset the sandbox</button>
-        </div>
-        <div class="sb-presets" id="sb-presets"></div>
-        <ol class="sb-steps" id="sb-steps"></ol>
-        <details class="sb-builder">
-          <summary>Build your own</summary>
-          <ol class="sb-draft" id="sb-draft"></ol>
-          <div class="fd-actions">
-            <button class="btn small" type="button" id="sb-add-step">Add a step</button>
-            <button class="btn primary small" type="button" id="sb-load-draft" disabled>Load my scenario</button>
-          </div>
-        </details>
-      </section>
-    </div>
-  </section>
-
-  <!-- ============================================================ -->
   <!-- WHILE YOU WAIT (games)                                        -->
   <!-- ============================================================ -->
   <section id="tab-games" class="tab-panel" hidden>
@@ -978,13 +971,10 @@
   </nav>
   <div class="more-sheet liquid-glass" id="more-sheet" hidden>
     <button data-tab="studio">Photo studio</button>
-    <button data-tab="autoprint">Auto-print</button>
-    <button data-tab="sandbox">Sandbox</button>
     <button data-tab="automations">Automations</button>
-    <button data-tab="maintenance">Maintenance</button>
-    <button data-tab="filament">Filament &amp; colour</button>
-    <button data-tab="modules">Modules &amp; devices</button>
-    <button data-tab="games">While you wait</button>
+    <button data-tab="maintenance">Care · maintenance &amp; filament</button>
+    <button data-tab="modules">Settings · modules &amp; devices</button>
+    <button data-tab="games">Games</button>
   </div>
 </div>
 

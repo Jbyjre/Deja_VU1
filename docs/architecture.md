@@ -427,20 +427,29 @@ breathes); *depth* (dialogs use a deeper displacement filter, so glass
 under glass bends more than the background); and *tint* (panels take a
 colour from what they're about — filament, printer state, verdict).
 
-Twelve tabs (Fleet, Overview, Printer control, Files, Photo studio,
-Auto-print, Automations, Maintenance, Filament & colour, Modules & devices,
-Sandbox, While you wait) hold everything; a status strip and a floating live "print pill" stay visible on
-every tab — including mid-game. Where the bar can't fit all twelve on one
-line, the ones that don't fit move, from the end, into a "More" menu at
-its end (`fitTabs`, measured again on every resize); on one of those tabs
-"More" shows that tab's name. The printer chip in the header opens a list
-of printers; choosing one there keeps you on the tab you're on. Both use
-one small glass menu that live updates never re-render, so a refresh
-can't close it under the pointer.
+Nine tabs hold everything, and every one is always showing: Fleet (with
+the farm sandbox at the bottom), Overview, Control, Files (with Auto-print),
+Photo studio, Automations, Care (maintenance, then filament & colour),
+Settings (modules & devices) and Games. The folded-in sections keep their
+own ids (`tab-sandbox`, `tab-autoprint`, `tab-filament`, class `tab-sub`);
+their old tab names still work in `showTab()`, opening the parent tab and
+scrolling to the section. The labels fit one line on a laptop; on a
+narrower screen the bar wraps to a second row rather than hiding a tab.
+On a phone the bottom bar holds Fleet, Now, Control and Files, and More
+opens the other five. A status strip and a floating live "print pill" stay
+visible on every tab — including mid-game. The printer chip in the header
+opens a list of printers; choosing one there keeps you on the tab you're
+on. That list is a small glass menu that live updates never re-render, so
+a refresh can't close it under the pointer.
+
+**Accent colour.** Blue by default; Settings > Preferences switches it.
+Each choice in `ACCENTS` (app.js) sets `--accent`, `--accent-light`,
+`--on-accent` (text on an accent fill) and `--accent-text` together, each
+pair measured for WCAG AA. Only a colour someone picks is remembered.
 
 **Colour for text.** `--accent`, `--ok`, `--warn` and `--bad` are for fills,
 dots, bars and borders; as small text they fall below WCAG's 4.5:1 (the
-orange measures about 2.4:1). Text uses `--accent-text`, `--ok-text`,
+old orange measured about 2.4:1). Text uses `--accent-text`, `--ok-text`,
 `--warn-text` and `--bad-text`, each measured at 4.7:1 or better on white,
 on the page background and on the pale tint of its own colour that badges
 sit on.

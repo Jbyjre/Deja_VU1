@@ -103,12 +103,12 @@ screen, with the print's progress on a line just above them on every tab.
 | **Dock status rings** | A ring of light beside each toolhead dock — white for ready, green for printing, amber for heating, red for a fault — readable across the room. Two ways to build it: WS2812 rings, or push the same state to a WLED-controlled strip you already own. |
 | **"Right colour loaded?"** | An optical sensor in the filament path, compared against what the print file expects, catching the wrong spool before the print starts. |
 
-Every module can be switched on or off from **Modules & devices** — the
+Every module can be switched on or off from **Settings** — the
 toggle you see there is enforced by the server, not just hidden in the
 interface: a disabled module's API routes refuse to answer rather than
 silently doing nothing.
 
-### While you wait
+### While you wait (the Games tab)
 
 Ten games, playable from the dashboard while a long print runs: **Sky
 Dash**, **Pong**, **Minesweeper**, **Tetris**, **Pac-Man**, **Brick Break**,
@@ -293,13 +293,13 @@ Then open **http://localhost:8000** in a browser.
 The dashboard will report that no printer is connected and show empty panels.
 Flip the **Demo data** switch in the header to fill it with the simulated
 print history. To try it from a phone on the same network, open
-**Modules & devices → Pair another device** to get a code.
+**Settings → Pair another device** to get a code.
 
 With demo data on, a quick tour of the newer parts: **Fleet** to switch
 between the three simulated printers; **Files → Add sample files**, open
 one, then **Print…** to see the Confirm Print check (the "unsafe example"
 file is refused on purpose); **Automations** to build a rule and watch it
-fire; and **Modules & devices → Demo controls** to fast-forward a print to
+fire; and **Settings → Demo controls** to fast-forward a print to
 its finish, or to make the next Pause fail and see how that is reported.
 
 (Developed and tested on Python 3.11.)
