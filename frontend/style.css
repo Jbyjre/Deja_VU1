@@ -40,8 +40,11 @@
   --text:       #1c1c1e;
   --text-dim:   #3a3a3c;
   --text-faint: #636366;   /* 4.8:1 or better on the glass, the page and the segmented-control track (#6e6e73 fell to 4.1:1 there) */
-  --accent:       #ff7a2f;   /* Snapmaker orange — the one brand colour */
-  --accent-light: #ff9c66;
+  /* The one accent colour: blue by default. Settings > Preferences can
+     switch it (app.js ACCENTS sets all four of these together). */
+  --accent:       #4a8df8;
+  --accent-light: #7db2ff;
+  --on-accent:    #04122b;   /* text on an accent fill: 5.7:1 or better */
   --ok:   #34c759;
   --warn: #ffcc00;
   --bad:  #ff3b30;
@@ -51,7 +54,7 @@
      (orange 2.3-2.6:1, red 3.0-3.6:1, green 1.9-2.2:1). Each of these is
      4.7:1 or better on white, on the page background and on the pale tint
      of its own colour that badges use (red on its 16% tint is the lowest). */
-  --accent-text: #a8430a;
+  --accent-text: #1d5fc8;   /* 4.8:1 or better, as below */
   --ok-text:   color-mix(in srgb, var(--ok) 55%, black);
   --warn-text: color-mix(in srgb, var(--warn) 50%, black);
   --bad-text:  #c8102e;
@@ -94,7 +97,7 @@ body {
 .pool { position: absolute; border-radius: 50%; filter: blur(120px); }
 .pool-a {
   width: 62vw; height: 62vw; top: -26vw; left: 6vw;
-  background: radial-gradient(circle, #ffb17a 0%, transparent 66%);
+  background: radial-gradient(circle, var(--accent-light) 0%, transparent 66%);
   opacity: .32;
   animation: drift-a 36s ease-in-out infinite;
 }
@@ -258,7 +261,7 @@ body {
 .brand-dot {
   width: 13px; height: 13px; border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 14px rgba(255, 122, 47, .55);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .brand-text { min-width: 0; }
@@ -377,7 +380,7 @@ body {
 .navtab:hover { color: var(--text-dim); background: rgba(0, 0, 0, .03); }
 .navtab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .navtab.active {
-  color: #2a1200;
+  color: var(--on-accent);
   background: linear-gradient(160deg, var(--accent-light), var(--accent));
   box-shadow: 0 4px 14px rgba(31, 38, 56, .18);
 }
@@ -592,7 +595,7 @@ body {
 .btn:disabled { opacity: .45; cursor: default; transform: none; box-shadow: none; }
 .btn.primary {
   background: linear-gradient(160deg, var(--accent-light), var(--accent));
-  color: #2a1200; border-color: rgba(255, 255, 255, .7);
+  color: var(--on-accent); border-color: rgba(255, 255, 255, .7);
   box-shadow: 0 1px 0 rgba(255, 255, 255, .5) inset, 0 8px 18px rgba(31, 38, 56, .22);
 }
 .btn.danger { color: var(--bad-text); border-color: rgba(255, 59, 48, .3); }
@@ -780,7 +783,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   font: 700 11px/1 var(--font-mono); padding: 8px 16px; border-radius: 999px;
   cursor: pointer; border: none; background: transparent; color: var(--text-faint);
 }
-.pill-toggle button.active { background: linear-gradient(160deg, var(--accent-light), var(--accent)); color: #2a1200; }
+.pill-toggle button.active { background: linear-gradient(160deg, var(--accent-light), var(--accent)); color: var(--on-accent); }
 
 /* ---- pairing -----------------------------------------------------------*/
 
@@ -812,7 +815,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   font: 700 11.5px/1 var(--font-mono); padding: 9px 15px; border-radius: 999px;
   cursor: pointer; border: none; background: transparent; color: var(--text-faint);
 }
-.game-picker button.active { background: linear-gradient(160deg, var(--accent-light), var(--accent)); color: #2a1200; }
+.game-picker button.active { background: linear-gradient(160deg, var(--accent-light), var(--accent)); color: var(--on-accent); }
 
 .game-stats { display: flex; gap: 22px; justify-content: flex-end; }
 .game-stat { text-align: right; }
@@ -928,7 +931,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 }
 .mg-dirbtn.suggested {
   background: linear-gradient(160deg, var(--accent-light), var(--accent));
-  color: #2a1200; animation: emDanger .5s ease-in-out 2;
+  color: var(--on-accent); animation: emDanger .5s ease-in-out 2;
 }
 
 /* Brick Break */

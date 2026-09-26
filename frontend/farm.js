@@ -406,7 +406,7 @@ const Farm = (() => {
     const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
-  const STATE_HEX = { printing: '#248a3d', paused: '#b58300', error: '#d70015', complete: '#ff7a2f', ready: '#7c7c80' };
+  const STATE_HEX = { printing: '#248a3d', paused: '#b58300', error: '#d70015', complete: '#4a8df8', ready: '#7c7c80' };
   const PARAMS = {
     jam: ['toolhead'], runout: ['toolhead'], heater_fault: ['toolhead'], bad_swap: ['toolhead'],
     wear: ['hours'], start_print: ['file', 'accept'], queue_file: ['file'],
@@ -432,7 +432,7 @@ const Farm = (() => {
 
   function startPolling() {
     if (sb.timer) return;
-    sb.timer = setInterval(() => { if (visible('tab-sandbox')) loadSandbox(); else stopPolling(); }, 1000);
+    sb.timer = setInterval(() => { if (visible('tab-fleet')) loadSandbox(); else stopPolling(); }, 1000);
   }
   function stopPolling() { clearInterval(sb.timer); sb.timer = null; }
 
@@ -772,8 +772,9 @@ const Farm = (() => {
 
   function onTab(tab) {
     if (tab === 'fleet') { loadFileStrip(); loadQueues(); loadHistory(); }
-    if (tab === 'sandbox') { loadSandbox(); startPolling(); } else stopPolling();
-    if (tab === 'autoprint') loadAutoPrint();
+    // Sandbox is part of the Fleet tab, Auto-print part of Files.
+    if (tab === 'fleet') { loadSandbox(); startPolling(); } else stopPolling();
+    if (tab === 'files') loadAutoPrint();
   }
 
   function init() {
@@ -797,7 +798,7 @@ const Farm = (() => {
       if (ev.type === 'slicer') loadJobs();
       // Sandbox events are the scenario talking - worth a word on any tab,
       // since the point is to watch the rest of the dashboard react.
-      if (ev.type === 'sandbox' && ev.printer && !visible('tab-sandbox')) {
+      if (ev.type === 'sandbox' && ev.printer && !visible('tab-fleet')) {
         toast(`Sandbox: ${ev.printer_name} — ${ev.detail}`, ev.ok ? 'info' : 'warn', 5000);
       }
     });

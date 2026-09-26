@@ -47,7 +47,7 @@ const Workshop = (() => {
     return `${Math.round(s / 86400)} d ago`;
   };
   const STATE_COLOR = { printing: 'var(--ok)', paused: 'var(--warn)', error: 'var(--bad)', complete: 'var(--accent)', ready: 'var(--text-faint)' };
-  const STATE_HEX = { printing: '#34c759', paused: '#ffcc00', error: '#ff3b30', complete: '#ff7a2f', ready: '#8e8e93' };
+  const STATE_HEX = { printing: '#34c759', paused: '#ffcc00', error: '#ff3b30', complete: '#4a8df8', ready: '#8e8e93' };
   const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Idle' };
 
   /* Continuous visuals ease toward each new reading instead of jumping.
@@ -1660,7 +1660,7 @@ const Workshop = (() => {
     });
     const inMore = qsa('#more-sheet [data-tab]').some(b => b.dataset.tab === name);
     $('bn-more').classList.toggle('active', inMore);
-    if ($('tabbar') && $('tabbar').offsetParent) fitTabs(true); else moveTabBlob(name);
+    moveTabBlob(name);
   }
 
   /* ================================================================
@@ -1738,6 +1738,8 @@ const Workshop = (() => {
     const from = blob.dataset.x ? { x: +blob.dataset.x, w: +blob.dataset.w } : to;
     blob.dataset.x = to.x; blob.dataset.w = to.w;
     blob.style.width = `${to.w}px`;
+    blob.style.top = `${btn.offsetTop}px`;       // the bar can wrap to a second row
+    blob.style.height = `${btn.offsetHeight}px`;
     blob.getAnimations().forEach(a => a.cancel());
     if (instant || REDUCED.matches || (from.x === to.x && from.w === to.w)) { blob.style.transform = `translateX(${to.x}px)`; return; }
     blob.style.transform = `translateX(${to.x}px)`;
@@ -1746,66 +1748,8 @@ const Workshop = (() => {
   }
   function moveTabBlob(name, instant) {
     const bar = $('tabbar');
-    let btn = bar && qs(`.navtab[data-tab="${name}"]`, bar);
-    // A tab living in the More menu: the lens sits on "More" instead.
-    const more = $('tab-more');
-    if (btn && btn.hidden) btn = more;
-    if (more) more.classList.toggle('active', btn === more);
-    placeBlob(bar, btn, instant);
+    placeBlob(bar, bar && qs(`.navtab[data-tab="${name}"]`, bar), instant);
     placeBlob(qs('.bottom-nav'), qs('.bottom-nav button.active'), instant);
-  }
-
-  /* Twelve sections don't fit one line on most screens. Before, the last
-   * few scrolled out of sight with nothing saying they were there. Now the
-   * tabs that don't fit move, in order from the end, into a "More" menu at
-   * the end of the bar - the same idea as the phone's More sheet. Measured
-   * afresh on every resize (and zoom, which is a resize). */
-  function fitTabs(animate) {
-    const bar = $('tabbar'), more = $('tab-more');
-    if (!bar || !more || !bar.offsetParent) return;          // phone layout: bar hidden
-    const tabs = qsa('.navtab[data-tab]', bar);
-    const label = qs('.more-label', more);
-    tabs.forEach(t => { t.hidden = false; });
-    more.hidden = false;
-    label.textContent = 'More';
-    const cs = getComputedStyle(bar), host = getComputedStyle(bar.parentElement);
-    const gap = parseFloat(cs.columnGap) || 0;
-    const room = bar.parentElement.clientWidth - parseFloat(host.paddingLeft) - parseFloat(host.paddingRight)
-      - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
-    const widths = tabs.map(t => t.offsetWidth);
-    const total = widths.reduce((a, w) => a + w, 0) + gap * (tabs.length - 1);
-    const fitWith = (moreWidth) => {
-      let used = moreWidth, n = 0;
-      while (n < tabs.length && used + gap + widths[n] <= room) { used += gap + widths[n]; n++; }
-      return n;
-    };
-    let fit = total > room ? fitWith(more.offsetWidth) : tabs.length;
-    // On a tab that lives in the menu, "More" wears that tab's name, so the
-    // bar always says where you are. (The active tab is past the cut, so
-    // the refit can only move the cut earlier, never back past it.)
-    const active = tabs.findIndex(t => t.dataset.tab === currentTab());
-    if (fit < tabs.length && active >= fit) {
-      label.textContent = tabs[active].textContent.trim();
-      fit = Math.min(fit, fitWith(more.offsetWidth));
-    }
-    more.setAttribute('aria-label', active >= fit && fit < tabs.length
-      ? `More sections (now showing ${tabs[active].textContent.trim()})` : 'More sections');
-    tabs.forEach((t, i) => { t.hidden = i >= fit; });
-    more.hidden = fit >= tabs.length;
-    bar.scrollLeft = 0;
-    moveTabBlob(currentTab(), !animate);
-  }
-
-  function initTabMore() {
-    const more = $('tab-more');
-    if (!more) return;
-    more.addEventListener('click', (e) => {
-      const items = qsa('#tabbar .navtab[data-tab]').filter(t => t.hidden).map(t => ({
-        value: t.dataset.tab, current: t.dataset.tab === currentTab(), html: `<span class="gm-label">${t.innerHTML}</span>`,
-      }));
-      openMenu(more, items, (name) => showTab(name), 'More sections', e.detail === 0);
-    });
-    fitTabs();
   }
 
   /* The shared glass menu. Built fresh each time it opens and never touched
@@ -1907,7 +1851,7 @@ const Workshop = (() => {
     let timer;
     window.addEventListener('resize', () => {
       clearTimeout(timer);
-      timer = setTimeout(() => { fitTabs(); moveTabBlob(currentTab(), true); }, 120);
+      timer = setTimeout(() => moveTabBlob(currentTab(), true), 120);
     });
   }
 
@@ -1951,8 +1895,8 @@ const Workshop = (() => {
       <div><span class="stat-key">Filament</span><b>${Number(s.grams).toFixed(1)} g ${esc(s.material)}</b></div>
       <div><span class="stat-key">Cost</span><b>${money(s.cost.total_cost)}</b></div>`;
     const dialog = $('celebrate-dialog');
-    qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#ff7a2f');
-    qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#ff7a2f');
+    qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#4a8df8');
+    qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#4a8df8');
     $('celebrate-timelapse').onclick = async () => {
       dialog.close();
       const data = await getJSON(api(`/api/timelapse?printer=${enc(event.printer)}`));
@@ -1982,7 +1926,7 @@ const Workshop = (() => {
     if (name === 'files') { loadFiles(); loadQueue(); }
     if (name === 'automations') { ruleForm(); loadRules(); loadRuleLog(); }
     if (name === 'modules') { loadCamera(); loadTimelapse(); } else stopCamera();
-    if (name === 'filament') { loadForecast(); loadSideBySide(); }
+    if (name === 'maintenance') { loadForecast(); loadSideBySide(); }   // Filament & colour lives here
     window.dispatchEvent(new CustomEvent('dv-tab', { detail: name }));
     reportView();
   }
@@ -2015,7 +1959,6 @@ const Workshop = (() => {
     initScrollEdge();
     initBlobResize();
     initGlassMenu();
-    initTabMore();
     initDialogs();
     honourReducedMotion();
     connect();
