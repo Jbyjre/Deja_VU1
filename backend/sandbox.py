@@ -323,7 +323,7 @@ def _perform(printer_id, event, params):
             hours = float(params.get("hours", 60))
             r = mock_moonraker.add_wear(hours)
             overdue = maintenance.get_status()["summary"]["overdue"]
-            return f"+{r['added_hours']:g} print hours - {overdue} maintenance task(s) now overdue"
+            return f"+{r['added_hours']:g} print hours - {overdue} maintenance {'task' if overdue == 1 else 'tasks'} now overdue"
         if event == "pause":
             return f"Now {printer_control.pause_print()['state']}"
         if event == "resume":

@@ -198,6 +198,24 @@ class TestModuleGating(APITestCase):
         self.assertEqual(status, 200)
         self.assertGreater(len(body["modules"]), 0)
 
+    def test_modules_list_names_the_routes_each_module_owns(self):
+        # The dashboard uses this to skip asking a switched-off module.
+        _, body = self.get("/api/modules")
+        routes = body["routes"]
+        self.assertEqual(routes["/api/filament"], "filament_inventory")
+        self.assertEqual(routes["/api/slicer/settings"], "auto_print")
+        self.assertNotIn("/api/printer", routes)          # no owning module
+        ids = {m["id"] for m in body["modules"]}
+        self.assertTrue(set(routes.values()) <= ids)
+
+    def test_a_listed_route_really_is_refused_when_its_module_is_off(self):
+        _, body = self.get("/api/modules")
+        self.assertEqual(body["routes"]["/api/compare"], "compare")
+        self.post("/api/modules/compare/toggle", {"enabled": False})
+        status, blocked = self.get("/api/compare?demo=1")
+        self.assertEqual(status, 403)
+        self.assertTrue(blocked["module_disabled"])
+
     def test_disabling_a_module_blocks_its_routes(self):
         self.post("/api/modules/printer_control/toggle", {"enabled": False})
         status, body = self.get("/api/printer/control/capabilities?demo=1")

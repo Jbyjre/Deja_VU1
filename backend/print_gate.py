@@ -170,9 +170,9 @@ def health(preflight, filament_rows, maint):
     overdue = sum(1 for t in maint["tasks"] if t["status"] == "overdue")
     soon = sum(1 for t in maint["tasks"] if t["status"] == "due_soon")
     if overdue:
-        take(min(45, overdue * 15), f"{overdue} maintenance task(s) overdue")
+        take(min(45, overdue * 15), f"{overdue} maintenance {'task' if overdue == 1 else 'tasks'} overdue")
     if soon:
-        take(min(15, soon * 5), f"{soon} maintenance task(s) due soon")
+        take(min(15, soon * 5), f"{soon} maintenance {'task' if soon == 1 else 'tasks'} due soon")
     if filament_rows is not None:
         bad = [r for r in filament_rows if r["status"] in ("mismatch", "not_loaded", "missing_toolhead")]
         close = [r for r in filament_rows if r["status"] == "close"]

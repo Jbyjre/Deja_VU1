@@ -396,7 +396,7 @@ const Studio = (() => {
       <form class="st-custom" id="st-custom">
         <label>Your own <input type="color" id="st-custom-hex" value="#3b82f6" aria-label="Colour"></label>
         <label class="sr-only" for="st-custom-name">Colour name</label>
-        <input type="text" id="st-custom-name" placeholder="Name (Galaxy blue)" maxlength="30">
+        <input type="text" id="st-custom-name" placeholder="e.g. Galaxy blue" maxlength="30">
         <button class="btn small" type="submit">Add</button>
       </form>
       <p class="log-empty">${esc(p.note)}</p>`;
@@ -444,6 +444,13 @@ const Studio = (() => {
       s.stack.splice(+b.dataset.remove, 1); s.starts = null; renderStack();
     }));
     $('st-build').disabled = s.stack.length < 2 || !s.image;
+    buildHint();
+  }
+
+  /* A disabled button says why it's disabled. */
+  function buildHint() {
+    $('st-build-hint').textContent = !s.image ? 'Choose a photo first.'
+      : s.stack.length < 2 ? 'Add at least two colours to build.' : '';
   }
 
   /* ---- the photo ---- */
@@ -481,6 +488,7 @@ const Studio = (() => {
     cv.width = 360; cv.height = Math.round(360 * ratio);
     cv.getContext('2d').drawImage(s.image, 0, 0, cv.width, cv.height);
     $('st-drop').classList.add('has-photo');
+    $('st-preview').classList.remove('is-empty');
     $('st-drop-text').textContent = `${s.imageName} · ${s.image.width} × ${s.image.height} px`;
     renderStack();
     if (s.stack.length >= 2) build();
@@ -553,6 +561,7 @@ const Studio = (() => {
       s.busy = false;
       btn.textContent = 'Build model';
       btn.disabled = s.stack.length < 2 || !s.image;
+      buildHint();
     }
   }
 
@@ -574,10 +583,10 @@ const Studio = (() => {
     const height = C.zTop(plan.baseLayers + tallest, plan);
     const match = r.meanDeltaE < 5 ? 'close' : r.meanDeltaE < 10 ? 'fair' : 'rough';
     $('st-metrics').innerHTML = `
-      <div><span class="stat-key">Size</span><b>${(grid.w * grid.pitch).toFixed(0)} × ${(grid.h * grid.pitch).toFixed(0)}</b><small>mm, ${height.toFixed(2)} mm tall</small></div>
-      <div><span class="stat-key">Columns</span><b>${grid.w} × ${grid.h}</b><small>${grid.pitch.toFixed(2)} mm each</small></div>
-      <div><span class="stat-key">Triangles</span><b>${(r.tris.length / 3).toLocaleString()}</b><small>built in ${r.ms} ms</small></div>
-      <div><span class="stat-key">Colour match</span><b>${match}</b><small>average ΔE ${r.meanDeltaE.toFixed(1)} (OKLab ×100)</small></div>`;
+      <div class="stat"><span class="stat-key">Size</span><span class="stat-val">${(grid.w * grid.pitch).toFixed(0)} × ${(grid.h * grid.pitch).toFixed(0)}</span><span class="stat-foot">mm, ${height.toFixed(2)} mm tall</span></div>
+      <div class="stat"><span class="stat-key">Columns</span><span class="stat-val">${grid.w} × ${grid.h}</span><span class="stat-foot">${grid.pitch.toFixed(2)} mm each</span></div>
+      <div class="stat"><span class="stat-key">Triangles</span><span class="stat-val">${(r.tris.length / 3).toLocaleString()}</span><span class="stat-foot">built in ${r.ms} ms</span></div>
+      <div class="stat"><span class="stat-key">Colour match</span><span class="stat-val">${match}</span><span class="stat-foot">average ΔE ${r.meanDeltaE.toFixed(1)} (OKLab ×100)</span></div>`;
     renderLadder();
     $('st-status').textContent = '';
     $('st-save-row').hidden = false;

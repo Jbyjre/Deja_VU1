@@ -250,13 +250,34 @@ const Workshop = (() => {
     chip.style.setProperty('--pc-color', STATE_HEX[state] || '#8e8e93');
   }
 
-  function selectPrinter(id, fromEl) {
+  /* The chip's caret promised a list, so it opens one: every printer with
+   * its state, picked without leaving the tab you're on. With one printer
+   * (or none) there's nothing to choose, and it opens the Fleet tab. */
+  function openPrinterMenu(chip, fromKeyboard) {
+    if (live.fleet.length < 2) { showTab('fleet'); return; }
+    const current = currentPrinter || live.fleet[0].id;
+    const items = live.fleet.map(p => ({
+      value: p.id, current: p.id === current,
+      html: `<span class="gm-dot" style="background:${STATE_HEX[p.state] || '#8e8e93'}" aria-hidden="true"></span>
+             <span class="gm-label">${esc(p.name)}</span><span class="gm-note">${esc(STATE_WORD[p.state] || p.state || '')}${p.link_lost ? ' · no link' : ''}</span>`,
+    }));
+    items.push({ value: '__fleet', html: '<span class="gm-label">All printers</span><span class="gm-note">Fleet tab</span>', divider: true });
+    openMenu(chip, items, (id) => {
+      if (id === '__fleet') showTab('fleet');
+      else if (id !== current) selectPrinter(id, null, true);
+    }, 'Printers', fromKeyboard);
+  }
+
+  function selectPrinter(id, fromEl, stay) {
     currentPrinter = id;
     store.set(PRINTER_KEY, id);
     if (live.ws && live.ws.readyState === 1) live.ws.send(JSON.stringify({ type: 'subscribe', printer: id, fleet: true }));
     else reconnect();
     renderChip();
     qsa('.fleet-card').forEach(c => c.classList.toggle('is-selected', c.dataset.printer === id));
+    // From the chip's menu you stay where you were; the tab reloads for the
+    // printer you picked. From a fleet card you go to its overview.
+    if (stay) { refreshAll(); onTab(currentTab()); toast(`Now showing ${printerName(id)}`, 'info', 2200); return; }
     const go = () => { showTab('overview'); refreshAll(); };
     if (fromEl) morph(fromEl, () => qs('#tab-overview .live-row') || qs('#tab-overview'), go);
     else go();
@@ -356,7 +377,7 @@ const Workshop = (() => {
   }
 
   function initFleet() {
-    $('printer-chip').addEventListener('click', () => showTab('fleet'));
+    $('printer-chip').addEventListener('click', (e) => openPrinterMenu(e.currentTarget, e.detail === 0));
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value });
@@ -547,9 +568,15 @@ const Workshop = (() => {
     $('lp-sub').textContent = state.state === 'paused' ? `Paused — ${state.current_file || ''}` :
       state.state === 'complete' ? `${state.current_file || ''} finished` : `${state.current_file || ''} · ${fmtHours(left)} left`;
     const c = 2 * Math.PI * 15.5;
-    tween('pill', state.progress, (v) => { $('lp-fill').style.strokeDashoffset = `${c * (1 - v)}`; });
+    tween('pill', state.progress, (v) => {
+      $('lp-fill').style.strokeDashoffset = `${c * (1 - v)}`;
+      $('qa-status-fill').style.transform = `scaleX(${v})`;
+    });
     $('lp-fill').style.strokeDasharray = `${c}`;
     pill.setAttribute('aria-label', `${state.printer_name || 'Printer'}: ${STATE_WORD[state.state]}, ${pct} percent. Open printer control.`);
+    // The phone dock's status line carries the same reading.
+    $('qa-status-text').textContent = `${$('lp-title').textContent} · ${$('lp-sub').textContent}`;
+    $('qa-status').setAttribute('aria-label', pill.getAttribute('aria-label'));
   }
 
   /* ================================================================
@@ -1597,9 +1624,33 @@ const Workshop = (() => {
     });
     $('qa-next').addEventListener('click', (e) => startNext(e.currentTarget));
     $('live-pill').addEventListener('click', () => showTab('control'));
+    $('qa-status').addEventListener('click', () => showTab('control'));
     initHoldToCancel();
+    initDockStack();
     syncNav(currentTab());
     nav.dataset.ready = '1';
+  }
+
+  /* On a phone the print pill and the "continue here" offer join the thumb
+   * dock's own column, so they stack above the dock by its real height
+   * instead of by guessed pixel offsets (which broke as soon as the quick
+   * actions appeared or disappeared). Wider screens float them as before.
+   * The page's bottom padding follows the dock's height the same way, so
+   * the end of every tab can always be scrolled clear of it. */
+  function initDockStack() {
+    const dock = $('thumb-dock'), pill = $('live-pill'), offer = $('handoff');
+    const phone = window.matchMedia('(max-width: 720px)');
+    const place = () => {
+      if (phone.matches) dock.prepend(offer, pill);
+      else dock.before(pill, offer);
+    };
+    phone.addEventListener('change', place);
+    place();
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(() => {
+        document.body.style.setProperty('--dock-h', `${Math.ceil(dock.getBoundingClientRect().height)}px`);
+      }).observe(dock);
+    }
   }
 
   function syncNav(name) {
@@ -1609,7 +1660,7 @@ const Workshop = (() => {
     });
     const inMore = qsa('#more-sheet [data-tab]').some(b => b.dataset.tab === name);
     $('bn-more').classList.toggle('active', inMore);
-    moveTabBlob(name);
+    if ($('tabbar') && $('tabbar').offsetParent) fitTabs(true); else moveTabBlob(name);
   }
 
   /* ================================================================
@@ -1695,14 +1746,121 @@ const Workshop = (() => {
   }
   function moveTabBlob(name, instant) {
     const bar = $('tabbar');
-    const btn = bar && qs(`.navtab[data-tab="${name}"]`, bar);
+    let btn = bar && qs(`.navtab[data-tab="${name}"]`, bar);
+    // A tab living in the More menu: the lens sits on "More" instead.
+    const more = $('tab-more');
+    if (btn && btn.hidden) btn = more;
+    if (more) more.classList.toggle('active', btn === more);
     placeBlob(bar, btn, instant);
-    // Nine tabs scroll sideways; bring the active one into view without
-    // moving the page itself.
-    if (btn && (btn.offsetLeft < bar.scrollLeft || btn.offsetLeft + btn.offsetWidth > bar.scrollLeft + bar.clientWidth)) {
-      bar.scrollTo({ left: btn.offsetLeft - 24, behavior: instant || REDUCED.matches ? 'auto' : 'smooth' });
-    }
     placeBlob(qs('.bottom-nav'), qs('.bottom-nav button.active'), instant);
+  }
+
+  /* Twelve sections don't fit one line on most screens. Before, the last
+   * few scrolled out of sight with nothing saying they were there. Now the
+   * tabs that don't fit move, in order from the end, into a "More" menu at
+   * the end of the bar - the same idea as the phone's More sheet. Measured
+   * afresh on every resize (and zoom, which is a resize). */
+  function fitTabs(animate) {
+    const bar = $('tabbar'), more = $('tab-more');
+    if (!bar || !more || !bar.offsetParent) return;          // phone layout: bar hidden
+    const tabs = qsa('.navtab[data-tab]', bar);
+    const label = qs('.more-label', more);
+    tabs.forEach(t => { t.hidden = false; });
+    more.hidden = false;
+    label.textContent = 'More';
+    const cs = getComputedStyle(bar), host = getComputedStyle(bar.parentElement);
+    const gap = parseFloat(cs.columnGap) || 0;
+    const room = bar.parentElement.clientWidth - parseFloat(host.paddingLeft) - parseFloat(host.paddingRight)
+      - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
+    const widths = tabs.map(t => t.offsetWidth);
+    const total = widths.reduce((a, w) => a + w, 0) + gap * (tabs.length - 1);
+    const fitWith = (moreWidth) => {
+      let used = moreWidth, n = 0;
+      while (n < tabs.length && used + gap + widths[n] <= room) { used += gap + widths[n]; n++; }
+      return n;
+    };
+    let fit = total > room ? fitWith(more.offsetWidth) : tabs.length;
+    // On a tab that lives in the menu, "More" wears that tab's name, so the
+    // bar always says where you are. (The active tab is past the cut, so
+    // the refit can only move the cut earlier, never back past it.)
+    const active = tabs.findIndex(t => t.dataset.tab === currentTab());
+    if (fit < tabs.length && active >= fit) {
+      label.textContent = tabs[active].textContent.trim();
+      fit = Math.min(fit, fitWith(more.offsetWidth));
+    }
+    more.setAttribute('aria-label', active >= fit && fit < tabs.length
+      ? `More sections (now showing ${tabs[active].textContent.trim()})` : 'More sections');
+    tabs.forEach((t, i) => { t.hidden = i >= fit; });
+    more.hidden = fit >= tabs.length;
+    bar.scrollLeft = 0;
+    moveTabBlob(currentTab(), !animate);
+  }
+
+  function initTabMore() {
+    const more = $('tab-more');
+    if (!more) return;
+    more.addEventListener('click', (e) => {
+      const items = qsa('#tabbar .navtab[data-tab]').filter(t => t.hidden).map(t => ({
+        value: t.dataset.tab, current: t.dataset.tab === currentTab(), html: `<span class="gm-label">${t.innerHTML}</span>`,
+      }));
+      openMenu(more, items, (name) => showTab(name), 'More sections', e.detail === 0);
+    });
+    fitTabs();
+  }
+
+  /* The shared glass menu. Built fresh each time it opens and never touched
+   * by live updates, so a refresh can't close or reshuffle it under your
+   * pointer. Closes on a pick, a click or tap outside, Escape, scrolling
+   * the page a long way, or a resize; arrow keys, Home and End move through
+   * it. The button that opened it gets focus back only when a keyboard
+   * opened it. */
+  const gmenu = { btn: null, keyboard: false };
+  function closeMenu(refocus) {
+    const el = $('glass-menu');
+    if (!el || el.hidden) return;
+    el.hidden = true;
+    if (gmenu.btn) { gmenu.btn.setAttribute('aria-expanded', 'false'); if (refocus) gmenu.btn.focus(); }
+    gmenu.btn = null;
+  }
+  function openMenu(btn, items, onPick, label, fromKeyboard) {
+    const el = $('glass-menu');
+    if (gmenu.btn === btn) { closeMenu(fromKeyboard); return; }   // second press closes it
+    closeMenu(false);
+    el.setAttribute('aria-label', label);
+    el.innerHTML = items.map(it => `${it.divider ? '<hr class="gm-divider">' : ''}<button type="button" role="menuitem" class="gm-item"
+      data-value="${esc(it.value)}"${it.current ? ' aria-current="true"' : ''}>${it.html}</button>`).join('');
+    qsa('.gm-item', el).forEach(b => b.addEventListener('click', () => { const v = b.dataset.value; closeMenu(gmenu.keyboard); onPick(v); }));
+    el.hidden = false;
+    gmenu.btn = btn; gmenu.keyboard = !!fromKeyboard;
+    btn.setAttribute('aria-expanded', 'true');
+    const r = btn.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+    const left = Math.max(12, Math.min(r.right - el.offsetWidth, vw - el.offsetWidth - 12));
+    el.style.left = `${left + window.scrollX}px`;
+    el.style.top = `${r.bottom + window.scrollY + 8}px`;
+    el.style.transformOrigin = `${r.left + r.width / 2 - left}px 0`;
+    if (fromKeyboard) (qs('.gm-item[aria-current]', el) || qs('.gm-item', el)).focus();
+  }
+  function initGlassMenu() {
+    const el = $('glass-menu');
+    if (!el) return;
+    document.addEventListener('pointerdown', (e) => {
+      if (!el.hidden && !el.contains(e.target) && !(gmenu.btn && gmenu.btn.contains(e.target))) closeMenu(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (el.hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeMenu(true); return; }
+      const items = qsa('.gm-item', el);
+      const i = items.indexOf(document.activeElement);
+      const to = { ArrowDown: i + 1, ArrowUp: i - 1, Home: 0, End: items.length - 1 }[e.key];
+      if (to === undefined) return;
+      e.preventDefault();
+      items[(to + items.length) % items.length].focus();
+    });
+    el.addEventListener('focusout', (e) => { if (!el.contains(e.relatedTarget) && e.relatedTarget !== gmenu.btn && e.relatedTarget) closeMenu(false); });
+    window.addEventListener('resize', () => closeMenu(false));
+    let openedAt = 0;
+    new MutationObserver(() => { openedAt = window.scrollY; }).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+    window.addEventListener('scroll', () => { if (!el.hidden && Math.abs(window.scrollY - openedAt) > 240) closeMenu(false); }, { passive: true });
   }
 
   /* Press feedback: record where the finger landed so the bloom of light
@@ -1721,13 +1879,25 @@ const Workshop = (() => {
   /* Scroll edge: the top bar frosts harder once content is under it. The two
    * thresholds stop it flickering when the page rests right at the edge. */
   function initScrollEdge() {
-    let on = false, queued = false;
+    let on = false, queued = false, tucked = false, lastY = window.scrollY;
+    const phone = window.matchMedia('(max-width: 720px)');
+    const bar = qs('.topbar');
     const check = () => {
       queued = false;
       const y = window.scrollY;
       if (!on && y > 12) { on = true; document.body.classList.add('is-scrolled'); }
       else if (on && y < 4) { on = false; document.body.classList.remove('is-scrolled'); }
+      // On a phone the bar tucks away while you scroll down a page and
+      // returns the moment you scroll back up, so it isn't holding a sixth
+      // of the screen the whole time. Never while it holds focus (the
+      // printer menu is open, or a keyboard user is in it).
+      const dy = y - lastY;
+      if (Math.abs(dy) < 8 && y > 4) return;
+      lastY = y;
+      const tuck = phone.matches && dy > 0 && y > 160 && !bar.matches(':focus-within');
+      if (tuck !== tucked) { tucked = tuck; document.body.classList.toggle('is-tucked', tuck); }
     };
+    bar.addEventListener('focusin', () => { tucked = false; document.body.classList.remove('is-tucked'); });
     window.addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(check); } }, { passive: true });
     check();
   }
@@ -1737,7 +1907,7 @@ const Workshop = (() => {
     let timer;
     window.addEventListener('resize', () => {
       clearTimeout(timer);
-      timer = setTimeout(() => moveTabBlob(currentTab(), true), 120);
+      timer = setTimeout(() => { fitTabs(); moveTabBlob(currentTab(), true); }, 120);
     });
   }
 
@@ -1844,6 +2014,8 @@ const Workshop = (() => {
     initPressGlow();
     initScrollEdge();
     initBlobResize();
+    initGlassMenu();
+    initTabMore();
     initDialogs();
     honourReducedMotion();
     connect();
@@ -1858,7 +2030,7 @@ const Workshop = (() => {
   }
 
   return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph,
-           openFile, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog };
+           openFile, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
 })();
 
 window.Workshop = Workshop;

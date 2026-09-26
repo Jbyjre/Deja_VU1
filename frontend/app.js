@@ -186,9 +186,56 @@ function esc(text) {
   }[c]));
 }
 
+/* Which module owns each data route (the server lists them with the
+ * modules), and which modules are off. A route of a switched-off module
+ * would only answer 403, which every browser logs as an error, so it isn't
+ * asked: the caller gets the same {module_disabled: true} answer at once.
+ * The picture refreshes whenever the module list is read, when a module is
+ * toggled here, and at least every 20 s, so a module switched on from
+ * another device is noticed. */
+const modGate = { routes: {}, off: new Set(), at: 0, pending: null, idOf: {}, nameOf: {} };
+
+function noteModules(body) {
+  if (!body || !Array.isArray(body.modules)) return;
+  modGate.off = new Set(body.modules.filter(m => !m.enabled).map(m => m.id));
+  body.modules.forEach(m => { modGate.idOf[m.name] = m.id; modGate.nameOf[m.id] = m.name; });
+  if (body.routes) modGate.routes = body.routes;
+  modGate.at = Date.now();
+  syncModuleBodies();
+}
+
+/* Controls that belong to a module ([data-module-body]) hide while it is
+ * off, and its [data-module-off] slot says so, with the switch right there:
+ * a form that could only answer "module disabled" isn't offered. */
+function syncModuleBodies() {
+  document.querySelectorAll('[data-module-body]').forEach(el => { el.hidden = modGate.off.has(el.dataset.moduleBody); });
+  document.querySelectorAll('[data-module-off]').forEach(el => {
+    const off = modGate.off.has(el.dataset.moduleOff);
+    el.hidden = !off;
+    if (off && !el.firstElementChild) el.innerHTML = moduleDisabledEmpty(modGate.nameOf[el.dataset.moduleOff] || 'This module');
+    if (!off) el.innerHTML = '';
+  });
+}
+
+function freshModules() {
+  if (Date.now() - modGate.at < 20000) return null;
+  if (!modGate.pending) {
+    modGate.pending = fetch('/api/modules').then(r => r.json()).then(noteModules)
+      .catch(() => {}).finally(() => { modGate.pending = null; });
+  }
+  return modGate.pending;
+}
+
 async function getJSON(url) {
+  const path = url.split('?')[0];
+  if (path !== '/api/modules') {
+    await freshModules();
+    const owner = modGate.routes[path];
+    if (owner && modGate.off.has(owner)) return { error: 'Module disabled', module_disabled: true };
+  }
   const response = await fetch(url);
   const body = await response.json().catch(() => ({}));
+  if (path === '/api/modules') noteModules(body);
   return body;
 }
 
@@ -206,6 +253,11 @@ async function postJSON(url, payload) {
     return { ok: false, status: 0, body: { error: "Couldn't reach the dashboard server - is it still running?" } };
   }
   const body = await response.json().catch(() => ({}));
+  const toggled = url.split('?')[0].match(/^\/api\/modules\/([\w-]+)\/toggle$/);
+  if (toggled && response.ok) {
+    if (payload && payload.enabled) modGate.off.delete(toggled[1]); else modGate.off.add(toggled[1]);
+    syncModuleBodies();
+  }
   return { ok: response.ok, status: response.status, body };
 }
 
@@ -302,9 +354,36 @@ function isModuleDisabled(payload) {
   return Boolean(payload && payload.module_disabled);
 }
 
+/* Every switched-off panel, old or new, reads the same way: which module,
+ * where its switch lives, and the switch itself. */
 function moduleDisabledEmpty(name) {
-  return EMPTY(`${name} is off`, 'Turn it back on from Modules & devices.');
+  const id = modGate.idOf[name];
+  return `
+  <div class="empty is-off">
+    <span class="empty-mark" aria-hidden="true"></span>
+    <p class="empty-title">${esc(name)}</p>
+    <p class="empty-sub">Switched off in Modules &amp; devices.</p>
+    ${id ? `<button class="btn small" type="button" data-turn-on="${esc(id)}">Turn on</button>` : ''}
+  </div>`;
 }
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest && e.target.closest('[data-turn-on]');
+  if (!btn || btn.disabled) return;
+  const id = btn.dataset.turnOn;
+  btn.disabled = true;
+  btn.textContent = 'Turning on…';
+  const { ok, body } = await postJSON(api(`/api/modules/${id}/toggle`), { enabled: true });
+  if (!ok) {
+    btn.disabled = false;
+    btn.textContent = 'Turn on';
+    toast(`Couldn't turn it on: ${body.error || 'the server refused'}`, 'bad', 6000);
+    return;
+  }
+  toast(`${modGate.nameOf[id] || 'Module'} is on`, 'ok', 2200);
+  await refreshAll();
+  if (window.showTab) window.showTab(store.get(TAB_KEY) || 'overview');
+});
 
 const STATUS_TEXT = { overdue: 'Overdue', due_soon: 'Due soon', ok: 'OK' };
 
@@ -407,7 +486,7 @@ async function loadConnection() {
 const TAB_KEY = 'dejavu1.tab';
 
 function initTabs() {
-  const tabs = document.querySelectorAll('.navtab');
+  const tabs = document.querySelectorAll('.navtab[data-tab]');
   const panels = document.querySelectorAll('.tab-panel');
 
   function show(name) {
@@ -464,7 +543,10 @@ function renderStatusRibbon(data) {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
     text.textContent = `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`;
     bar.hidden = false; pct.hidden = false;
-    fill.style.width = `${Math.round(data.progress * 100)}%`;
+    // Eases like the other progress visuals (Workshop.tween: each frame
+    // closes a fixed fraction of the gap), so switching printers glides.
+    const setFill = v => { fill.style.width = `${(v * 100).toFixed(2)}%`; };
+    if (window.Workshop && Workshop.tween) Workshop.tween('ribbon', data.progress, setFill); else setFill(data.progress);
     pct.textContent = `${Math.round(data.progress * 100)}%`;
   }
 
@@ -752,7 +834,7 @@ function renderControlTab(state) {
     temps.querySelector(`[data-temp-key="${th}"]`).textContent = `${th}${active ? ' · active' : ''}${info.status === 'error' ? ' · error' : ''}`;
     const val = temps.querySelector(`[data-temp-val="${th}"]`);
     val.textContent = formatTemp(info.temperature);
-    val.style.color = active ? 'var(--accent)' : '';
+    val.style.color = active ? 'var(--accent-text)' : '';
     temps.querySelector(`[data-temp-target="${th}"]`).textContent = info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off';
   });
 }
@@ -954,14 +1036,24 @@ async function loadModules() {
         <div class="mod-desc">${esc(m.description)}</div>
       </div>
       <label class="switch" style="gap:0;">
-        <input type="checkbox" ${m.enabled ? 'checked' : ''} data-module="${esc(m.id)}">
+        <input type="checkbox" ${m.enabled ? 'checked' : ''} data-module="${esc(m.id)}" aria-label="${esc(m.name)}">
         <span class="switch-track ${m.enabled ? 'is-on' : ''}" aria-hidden="true"><span class="switch-knob"></span></span>
       </label>
     </div>`).join('');
 
+  // The switch stays where you put it but dims while the server saves it;
+  // if the server says no, it goes back and says why.
   host.querySelectorAll('[data-module]').forEach(input => {
     input.addEventListener('change', async () => {
-      await postJSON(api(`/api/modules/${input.dataset.module}/toggle`), { enabled: input.checked });
+      const want = input.checked;
+      input.disabled = true;
+      const { ok, body } = await postJSON(api(`/api/modules/${input.dataset.module}/toggle`), { enabled: want });
+      if (!ok) {
+        input.checked = !want;
+        input.disabled = false;
+        toast(`Couldn't turn ${input.getAttribute('aria-label')} ${want ? 'on' : 'off'}: ${body.error || 'the server refused'}`, 'bad', 6000);
+        return;
+      }
       refreshAll();
     });
   });
@@ -3075,6 +3167,18 @@ async function refreshAll() {
   }
 }
 
+/* Segmented controls mark the chosen option with .active; screen readers
+ * need that as aria-pressed. One observer keeps the two in step for every
+ * .pill-toggle, whichever code changed it. */
+function initPressedSync() {
+  const sync = b => b.setAttribute('aria-pressed', String(b.classList.contains('active')));
+  const watch = new MutationObserver(records => records.forEach(r => { if (r.target.tagName === 'BUTTON') sync(r.target); }));
+  document.querySelectorAll('.pill-toggle').forEach(group => {
+    group.querySelectorAll('button').forEach(sync);
+    watch.observe(group, { subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
+}
+
 function initDemoToggle() {
   const toggle = $('demo-toggle');
   toggle.checked = demoOn;
@@ -3087,6 +3191,7 @@ function initDemoToggle() {
 }
 
 initDemoToggle();
+initPressedSync();
 initTabs();
 initPreferences();
 initSpoolForm();
