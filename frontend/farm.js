@@ -253,7 +253,9 @@ const Farm = (() => {
    * 2. fleet history
    * ================================================================ */
 
-  const hist = { days: 30, metric: 'prints', data: null, tip: null };
+  // The range and measure you last chose are remembered on this device.
+  const hist = { days: [7, 30, 90].includes(+store.get('dejavu1.fh-days')) ? +store.get('dejavu1.fh-days') : 30,
+                 metric: store.get('dejavu1.fh-metric') === 'grams' ? 'grams' : 'prints', data: null, tip: null };
   // Outcome colours are status colours, darkened from the dashboard's
   // --ok / --bad so each bar segment keeps 3:1 against the glass; failed
   // bars are also hatched, so outcome never rests on red vs green alone.
@@ -283,10 +285,10 @@ const Farm = (() => {
     const host = $('fh-host');
     host.innerHTML = `
       <div class="fh-tiles divider-row cols-4">
-        <div><span class="stat-key">Prints</span><b>${f.prints}</b><small>last ${d.days} days · ${d.printers.length} printers</small></div>
-        <div><span class="stat-key">Completed</span><b>${pct(f.completion_rate)}</b><small>${f.completed} finished cleanly</small></div>
-        <div><span class="stat-key">Failed</span><b>${pct(f.failure_rate)}</b><small>${f.error} failed · ${f.cancelled} cancelled</small></div>
-        <div><span class="stat-key">Material</span><b>${(f.grams / 1000).toFixed(2)} kg</b><small>${Math.round(f.grams_failed)} g on prints that didn't finish</small></div>
+        <div class="stat"><span class="stat-key">Prints</span><span class="stat-val">${f.prints}</span><span class="stat-foot">last ${d.days} days · ${d.printers.length} printers</span></div>
+        <div class="stat"><span class="stat-key">Completed</span><span class="stat-val">${pct(f.completion_rate)}</span><span class="stat-foot">${f.completed} finished cleanly</span></div>
+        <div class="stat ${f.error ? 'is-alert' : ''}"><span class="stat-key">Failed</span><span class="stat-val">${pct(f.failure_rate)}</span><span class="stat-foot">${f.error} failed · ${f.cancelled} cancelled</span></div>
+        <div class="stat"><span class="stat-key">Material</span><span class="stat-val">${(f.grams / 1000).toFixed(2)} kg</span><span class="stat-foot">${Math.round(f.grams_failed)} g on prints that didn't finish</span></div>
       </div>
       <div class="fh-chart-head">
         <h3 class="fd-h">${hist.metric === 'prints' ? 'Prints' : 'Filament used (g)'} per ${d.bucket}, by outcome</h3>
@@ -376,13 +378,17 @@ const Farm = (() => {
 
   function initHistory() {
     if (!$('fh-range')) return;
+    qsa('#fh-range [data-days]').forEach(x => x.classList.toggle('active', +x.dataset.days === hist.days));
+    qsa('#fh-metric [data-metric]').forEach(x => x.classList.toggle('active', x.dataset.metric === hist.metric));
     qsa('#fh-range [data-days]').forEach(b => b.addEventListener('click', () => {
       hist.days = +b.dataset.days;
+      store.set('dejavu1.fh-days', String(hist.days));
       qsa('#fh-range button').forEach(x => x.classList.toggle('active', x === b));
       loadHistory();
     }));
     qsa('#fh-metric [data-metric]').forEach(b => b.addEventListener('click', () => {
       hist.metric = b.dataset.metric;
+      store.set('dejavu1.fh-metric', hist.metric);
       qsa('#fh-metric button').forEach(x => x.classList.toggle('active', x === b));
       if (hist.data) renderHistory();
     }));

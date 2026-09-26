@@ -72,7 +72,8 @@
     </div>
 
     <div class="topbar-right">
-      <button class="printer-chip" id="printer-chip" type="button" aria-label="Choose a printer">
+      <button class="printer-chip" id="printer-chip" type="button" aria-label="Choose a printer"
+              aria-haspopup="menu" aria-expanded="false">
         <span class="pc-dot" aria-hidden="true"></span>
         <span class="pc-name" id="printer-chip-name">Default printer</span>
         <span class="pc-caret" aria-hidden="true">▾</span>
@@ -113,6 +114,9 @@
     <button class="navtab" data-tab="modules">Modules &amp; devices</button>
     <button class="navtab" data-tab="sandbox">Sandbox</button>
     <button class="navtab" data-tab="games">While you wait</button>
+    <!-- Tabs that don't fit on one line move into this menu (fitTabs). -->
+    <button class="navtab navtab-more" id="tab-more" type="button" hidden
+            aria-haspopup="menu" aria-expanded="false"><span class="more-label">More</span> <span aria-hidden="true">▾</span></button>
   </nav>
 
   <!-- Always visible so a finished or failed print is never missed just
@@ -248,21 +252,25 @@
         <div id="overview-maintenance"></div>
       </section>
 
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Printer control</h2><p class="card-sub">Quick actions</p></div>
-        </div>
-        <div id="overview-control"></div>
-      </section>
-    </div>
+      <!-- The short control card and the pairing card share the column, so the
+           taller maintenance list beside them doesn't leave a hole. -->
+      <div class="col-stack">
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Printer control</h2><p class="card-sub">Quick actions</p></div>
+          </div>
+          <div id="overview-control"></div>
+        </section>
 
-    <section class="card liquid-glass" style="display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:20px;">
-      <div>
-        <h2 style="margin-bottom:6px;">Sync this dashboard to your phone</h2>
-        <p class="card-sub" style="max-width:52ch;">No account, no cloud — the phone talks straight to this dashboard over your home network.</p>
+        <section class="card liquid-glass pair-card">
+          <div>
+            <h2 style="margin-bottom:6px;">Sync this dashboard to your phone</h2>
+            <p class="card-sub" style="max-width:52ch;">No account, no cloud — the phone talks straight to this dashboard over your home network.</p>
+          </div>
+          <button class="btn primary" id="overview-pair-btn">Pair a device</button>
+        </section>
       </div>
-      <button class="btn primary" id="overview-pair-btn">Pair a device</button>
-    </section>
+    </div>
 
     <section class="card liquid-glass">
       <div class="card-head">
@@ -404,11 +412,19 @@
           <input type="checkbox" id="st-auto" checked>
           <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
         </label>
-        <button class="btn primary block" type="button" id="st-build" disabled>Build model</button>
+        <button class="btn primary block" type="button" id="st-build" disabled aria-describedby="st-build-hint">Build model</button>
+        <p class="log-empty" id="st-build-hint">Choose a photo first.</p>
         <p class="log-empty" id="st-status" aria-live="polite"></p>
       </section>
 
-      <section class="card liquid-glass studio-preview">
+      <section class="card liquid-glass studio-preview is-empty" id="st-preview">
+        <!-- Until there is a photo, one clear invitation instead of three blank frames. -->
+        <div class="empty st-empty">
+          <span class="empty-mark" aria-hidden="true"></span>
+          <p class="empty-title">Your relief appears here</p>
+          <p class="empty-sub">Choose a photo or try the test pattern. You'll see the photo, how it prints in your
+            filaments, and the 3D model before anything is saved.</p>
+        </div>
         <div class="st-compare">
           <figure><canvas id="st-original" width="360" height="240" aria-label="Your photo"></canvas><figcaption>Your photo</figcaption></figure>
           <figure><canvas id="st-printed" width="360" height="240" class="st-pixels" aria-label="How the print is modelled to look"></canvas>
@@ -598,15 +614,15 @@
           <span class="badge badge-optional">Optional module</span>
         </div>
         <div id="spool-list"></div>
-        <form id="spool-form" style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
-          <input type="text" id="spool-material" placeholder="Material (PLA)" style="flex:1; min-width:100px;">
-          <input type="text" id="spool-color-name" placeholder="Colour name" style="flex:1; min-width:100px;">
-          <input type="color" id="spool-color-hex" value="#ff7a2f" style="width:44px; padding:2px;">
-          <input type="number" id="spool-grams" placeholder="Grams" style="width:90px;">
+        <form id="spool-form" data-module-body="filament_inventory" style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
+          <input type="text" id="spool-material" placeholder="Material (PLA)" aria-label="Material" style="flex:1; min-width:130px;">
+          <input type="text" id="spool-color-name" placeholder="Colour name" aria-label="Colour name" style="flex:1; min-width:120px;">
+          <input type="color" id="spool-color-hex" value="#ff7a2f" aria-label="Colour" style="width:44px; padding:2px;">
+          <input type="number" id="spool-grams" placeholder="Grams" aria-label="Grams on the spool" style="width:90px;">
           <button class="btn primary" type="submit">Add spool</button>
         </form>
         <div id="spool-idle-note" class="log-empty" hidden></div>
-        <details class="log" id="forecast-wrap">
+        <details class="log" id="forecast-wrap" data-module-body="filament_inventory">
           <summary>How long each spool will last</summary>
           <div id="forecast-body"></div>
         </details>
@@ -624,7 +640,7 @@
             <p class="empty-sub">Needs a printer connection and print history for this file.</p>
           </div>
         </div>
-        <button class="btn" id="repeat-settings-btn" style="margin-top:14px; width:100%;">Show last successful settings</button>
+        <button class="btn" id="repeat-settings-btn" data-module-body="compare" style="margin-top:14px; width:100%;">Show last successful settings</button>
         <div id="repeat-settings-body" style="margin-top:10px;"></div>
         <div id="side-by-side-body" style="margin-top:14px;"></div>
       </section>
@@ -661,7 +677,7 @@
           <p class="card-sub" style="margin-bottom:8px;">Accent colour</p>
           <div id="accent-swatches" style="display:flex; gap:9px; margin-bottom:16px;"></div>
           <p class="card-sub" style="margin-bottom:8px;">Temperature units</p>
-          <div class="pill-toggle">
+          <div class="pill-toggle" role="group" aria-label="Temperature units">
             <button id="units-c" class="active">°C</button>
             <button id="units-f">°F</button>
           </div>
@@ -669,24 +685,24 @@
 
         <section class="card liquid-glass">
           <div class="card-head"><div><h2>Notifications</h2></div></div>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <input type="text" id="notif-ntfy" placeholder="ntfy.sh topic">
-            <input type="password" id="notif-discord" placeholder="Discord webhook URL" autocomplete="new-password" spellcheck="false">
-            <div style="display:flex; gap:8px;">
-              <input type="password" id="notif-telegram-token" placeholder="Telegram bot token" autocomplete="new-password" spellcheck="false" style="flex:1;">
-              <input type="text" id="notif-telegram-chat" placeholder="Chat ID" style="width:100px;">
+          <div class="field-stack" data-module-body="notifications">
+            <label class="field">ntfy.sh topic<input type="text" id="notif-ntfy" placeholder="my-u1-alerts"></label>
+            <label class="field">Discord webhook URL<input type="password" id="notif-discord" placeholder="https://discord.com/api/webhooks/…" autocomplete="new-password" spellcheck="false"></label>
+            <div class="field-row">
+              <label class="field">Telegram bot token<input type="password" id="notif-telegram-token" autocomplete="new-password" spellcheck="false"></label>
+              <label class="field field-narrow">Chat ID<input type="text" id="notif-telegram-chat"></label>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <label class="card-sub" for="notif-quiet-start">Quiet hours</label>
-              <input type="number" id="notif-quiet-start" min="0" max="23" style="width:64px;" title="Start hour (0-23)">
-              <span class="card-sub">to</span>
-              <input type="number" id="notif-quiet-end" min="0" max="23" style="width:64px;" title="End hour (0-23)">
+            <div class="field-row field-row-end">
+              <label class="field field-hour">Quiet from<input type="number" id="notif-quiet-start" min="0" max="23"></label>
+              <label class="field field-hour">until<input type="number" id="notif-quiet-end" min="0" max="23"></label>
+              <span class="field-hint">Hours, 0-23. Failures always send at once.</span>
+            </div>
+            <div class="btn-row">
+              <button class="btn" id="notif-save">Save</button>
+              <button class="btn" id="notif-test">Send test</button>
             </div>
           </div>
-          <div style="display:flex; gap:8px; margin-top:12px;">
-            <button class="btn" id="notif-save" style="flex:1;">Save</button>
-            <button class="btn" id="notif-test" style="flex:1;">Send test</button>
-          </div>
+          <div data-module-off="notifications" hidden></div>
         </section>
 
         <section class="card liquid-glass">
@@ -699,15 +715,19 @@
 
         <section class="card liquid-glass">
           <div class="card-head"><div><h2>Print cost pricing</h2></div></div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <input type="number" id="cost-electricity" step="0.01" min="0" placeholder="$/kWh" style="flex:1; min-width:90px;">
-            <input type="number" id="cost-watts" step="1" min="0" placeholder="Printer watts" style="flex:1; min-width:100px;">
+          <div class="field-stack" data-module-body="cost_calculator">
+            <div class="field-row">
+              <label class="field">Electricity ($ per kWh)<input type="number" id="cost-electricity" step="0.01" min="0" placeholder="0.15"></label>
+              <label class="field">Printer power (watts)<input type="number" id="cost-watts" step="1" min="0" placeholder="250"></label>
+            </div>
+            <div class="field-row">
+              <label class="field">Material<input type="text" id="cost-material" placeholder="PLA"></label>
+              <label class="field">Its price ($ per kg)<input type="number" id="cost-price" step="0.01" min="0" placeholder="20"></label>
+            </div>
+            <span class="field-hint">Leave Material empty to save only the electricity figures.</span>
+            <button class="btn block" id="cost-save-btn">Save pricing</button>
           </div>
-          <div style="display:flex; gap:8px; margin-top:8px;">
-            <input type="text" id="cost-material" placeholder="Material (PLA)" style="flex:1;">
-            <input type="number" id="cost-price" step="0.01" min="0" placeholder="$/kg" style="width:90px;">
-          </div>
-          <button class="btn block" id="cost-save-btn" style="margin-top:12px;">Save pricing</button>
+          <div data-module-off="cost_calculator" hidden></div>
         </section>
 
         <section class="card liquid-glass">
@@ -715,13 +735,16 @@
             <div><h2>WLED bridge</h2><p class="card-sub">Push dock ring colours to a WLED strip</p></div>
             <span class="badge badge-optional">Optional module</span>
           </div>
-          <input type="text" id="wled-host" placeholder="WLED host or IP" style="width:100%;">
-          <div style="display:flex; gap:8px; margin-top:10px;">
-            <button class="btn" id="wled-save-btn" style="flex:1;">Save</button>
-            <button class="btn" id="wled-test-btn" style="flex:1;">Test</button>
-            <button class="btn primary" id="wled-push-btn" style="flex:1;">Push now</button>
+          <div class="field-stack" data-module-body="wled_bridge">
+            <label class="field">WLED address<input type="text" id="wled-host" placeholder="wled.local or 192.168.1.60"></label>
+            <div class="btn-row">
+              <button class="btn" id="wled-save-btn">Save</button>
+              <button class="btn" id="wled-test-btn">Test</button>
+              <button class="btn primary" id="wled-push-btn">Push now</button>
+            </div>
+            <div id="wled-status" class="log-empty" role="status"></div>
           </div>
-          <div id="wled-status" class="log-empty" style="margin-top:10px;"></div>
+          <div data-module-off="wled_bridge" hidden></div>
         </section>
 
         <section class="card liquid-glass">
@@ -729,13 +752,16 @@
             <div><h2>Home Assistant bridge</h2><p class="card-sub">Publish printer state as REST sensors</p></div>
             <span class="badge badge-optional">Optional module</span>
           </div>
-          <input type="text" id="ha-url" placeholder="http://homeassistant.local:8123" style="width:100%;">
-          <input type="password" id="ha-token" placeholder="Long-lived access token" autocomplete="new-password" spellcheck="false" style="width:100%; margin-top:8px;">
-          <div style="display:flex; gap:8px; margin-top:10px;">
-            <button class="btn" id="ha-save-btn" style="flex:1;">Save</button>
-            <button class="btn primary" id="ha-push-btn" style="flex:1;">Push now</button>
+          <div class="field-stack" data-module-body="home_assistant_bridge">
+            <label class="field">Home Assistant address<input type="text" id="ha-url" placeholder="http://homeassistant.local:8123"></label>
+            <label class="field">Long-lived access token<input type="password" id="ha-token" autocomplete="new-password" spellcheck="false"></label>
+            <div class="btn-row">
+              <button class="btn" id="ha-save-btn">Save</button>
+              <button class="btn primary" id="ha-push-btn">Push now</button>
+            </div>
+            <div id="ha-status" class="log-empty" role="status"></div>
           </div>
-          <div id="ha-status" class="log-empty" style="margin-top:10px;"></div>
+          <div data-module-off="home_assistant_bridge" hidden></div>
         </section>
       </div>
     </div>
@@ -744,9 +770,10 @@
         <div class="card-head"><div><h2>Camera</h2><p class="card-sub">MJPEG stream from the printer, relayed through this dashboard</p></div></div>
         <form id="camera-form" class="inline-form">
           <label class="sr-only" for="camera-url">Camera stream address</label>
-          <input type="url" id="camera-url" placeholder="http://192.168.1.50/webcam/?action=stream">
+          <input type="url" id="camera-url" placeholder="http://printer/webcam/…" aria-describedby="camera-url-hint">
           <button class="btn" type="submit">Save</button>
         </form>
+        <p class="field-hint" id="camera-url-hint">Usually <code>http://&lt;printer address&gt;/webcam/?action=stream</code></p>
         <details class="webrtc-setup" id="webrtc-setup" hidden>
           <summary>Low-latency camera (optional, needs go2rtc)</summary>
           <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
@@ -915,6 +942,10 @@
   </span>
 </button>
 
+<!-- One small glass menu, shared by the tab bar's "More" and the printer
+     chip. Glass over glass, so it takes the deep refraction too. -->
+<div class="glass-menu liquid-glass deep" id="glass-menu" role="menu" hidden></div>
+
 <div class="handoff liquid-glass" id="handoff" hidden role="status">
   <span id="handoff-text"></span>
   <button class="btn small primary" id="handoff-go" type="button">Continue here</button>
@@ -925,6 +956,12 @@
      the bottom of the screen, where a thumb reaches without shifting grip. -->
 <div class="thumb-dock" id="thumb-dock">
   <div class="quick-actions liquid-glass" id="quick-actions" hidden>
+    <!-- On a phone this line stands in for the floating print pill, so the
+         print's progress and its controls share one pane of glass. -->
+    <button class="qa-status" id="qa-status" type="button">
+      <span class="qa-status-text" id="qa-status-text"></span>
+      <span class="qa-status-bar" aria-hidden="true"><span id="qa-status-fill"></span></span>
+    </button>
     <button class="qa-btn qa-primary" id="qa-pause" type="button">Pause</button>
     <button class="qa-btn qa-danger hold" id="qa-cancel" type="button"
             aria-label="Cancel print - press and hold">

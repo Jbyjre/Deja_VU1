@@ -366,6 +366,21 @@ _APP_ROUTES = {
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
 }
 
+def module_routes():
+    """
+    Which module owns each GET route, for the dashboard.
+
+    Knowing this, the browser doesn't ask a switched-off module for data it
+    would only refuse (a 403 that every browser logs as a console error);
+    it shows the module's "off" state straight away instead. Built from the
+    same tables the gate itself reads, so the two can't disagree.
+    """
+    routes = {path: owner for path, (owner, _) in {**_DATA_ROUTES, **_APP_ROUTES}.items() if owner}
+    routes["/api/sandbox"] = "sandbox"
+    routes["/api/timelapse/frame"] = "timelapse"
+    return routes
+
+
 # POST actions on printer-figure-gated routes. Each changes the printer, so
 # each is followed straight away by a fresh read of the printer's state.
 _CONTROL_ACTIONS = {
@@ -682,7 +697,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             })
 
         if route == "/api/modules":
-            return self._send_json({"modules": modules.get_all()})
+            return self._send_json({"modules": modules.get_all(), "routes": module_routes()})
 
         if route == "/api/pairing/devices":
             return self._send_json({"devices": pairing.list_devices()})

@@ -82,7 +82,7 @@ machine, and all of it is visible in data the printer already publishes.
 
 On a phone the layout is rebuilt thumb-first: the main sections and the
 Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
-screen, and a small live "print pill" follows you across every tab.
+screen, with the print's progress on a line just above them on every tab.
 
 ### Optional — on by request
 

@@ -27,7 +27,7 @@ def check():
     overdue = [t for t in maintenance_status["tasks"] if t["status"] == "overdue"]
     if overdue:
         warnings.append(
-            f"{len(overdue)} maintenance task(s) overdue: " +
+            f"{len(overdue)} maintenance {'task' if len(overdue) == 1 else 'tasks'} overdue: " +
             ", ".join(t["name"] for t in overdue))
 
     error_rings = [r for r in rings["rings"] if r["state"] == "error"]

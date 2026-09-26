@@ -142,6 +142,14 @@ the code itself is never unloaded. Deliberately not a real plugin system
 that runs arbitrary code — that's a security problem this project doesn't
 need to take on.
 
+`GET /api/modules` also returns `routes`: which module owns each GET route,
+built by `app.module_routes()` from the same tables the gate reads. The
+browser uses it to not ask a switched-off module for data at all (a 403
+is logged by every browser as a console error); `getJSON` answers such a
+request itself with the same `{"module_disabled": true}`. It re-reads the
+module list at least every 20 s, so a module switched on from another
+device is noticed.
+
 ### Modules that need only a Moonraker connection
 `maintenance.py`, `printer_control.py` — complete, tested, work the moment a
 real printer is wired in.
@@ -378,7 +386,7 @@ and then shows only what the printer reports back — or the failure, in
 words. The UI never switches to "Paused" because a button was pressed.
 
 **Smooth, not snapping.** Continuous visuals (the digital twin's toolhead,
-the progress rings, the gauge needle) ease toward each new reading with the
+the progress rings, the status strip's bar, the gauge needle) ease toward each new reading with the
 same easing Block World uses for movement — each frame closes a fixed
 fraction (0.18) of the gap — made frame-rate independent.
 
@@ -386,7 +394,13 @@ fraction (0.18) of the gap — made frame-rate independent.
 navigation bar and a quick-action dock (Pause/Resume, Hold-to-cancel, Start
 next). Hold-to-cancel uses `touch-action: none` and releases on
 `pointerup` / `pointercancel` anywhere on the page, so a finger sliding off
-the button can never leave a hold running.
+the button can never leave a hold running. While the quick actions show,
+their top line carries the print's progress, so the floating print pill
+isn't stacked on top as a second pane of glass. The pill (when it does
+show) and the "continue here" offer move into the dock's own column
+(`initDockStack`), so they sit above it by its real height, and the page's
+bottom padding follows that height. The header is one row, and tucks away
+while you scroll down a page, coming back as soon as you scroll up.
 
 The visual treatment is Apple Liquid Glass, built from five layers: a
 backdrop blur, edge refraction via an SVG displacement filter, a specular
@@ -416,7 +430,27 @@ colour from what they're about — filament, printer state, verdict).
 Twelve tabs (Fleet, Overview, Printer control, Files, Photo studio,
 Auto-print, Automations, Maintenance, Filament & colour, Modules & devices,
 Sandbox, While you wait) hold everything; a status strip and a floating live "print pill" stay visible on
-every tab — including mid-game.
+every tab — including mid-game. Where the bar can't fit all twelve on one
+line, the ones that don't fit move, from the end, into a "More" menu at
+its end (`fitTabs`, measured again on every resize); on one of those tabs
+"More" shows that tab's name. The printer chip in the header opens a list
+of printers; choosing one there keeps you on the tab you're on. Both use
+one small glass menu that live updates never re-render, so a refresh
+can't close it under the pointer.
+
+**Colour for text.** `--accent`, `--ok`, `--warn` and `--bad` are for fills,
+dots, bars and borders; as small text they fall below WCAG's 4.5:1 (the
+orange measures about 2.4:1). Text uses `--accent-text`, `--ok-text`,
+`--warn-text` and `--bad-text`, each measured at 4.7:1 or better on white,
+on the page background and on the pale tint of its own colour that badges
+sit on.
+
+**Switched-off modules.** A panel whose module is off says so the same way
+everywhere (`moduleDisabledEmpty`), with a Turn on button. Controls that
+belong to a module carry `data-module-body="<id>"` and hide while it is
+off; a `data-module-off="<id>"` slot shows the off state in their place.
+Settings fields have visible labels (`.field`), because a placeholder
+disappears the moment the box holds a value.
 
 The Block World game (its code is still in `app.js`, though it isn't in the
 current game picker) generalizes the same rotate-by-negative-yaw-
@@ -491,7 +525,7 @@ Everything that calls them already works.
 
 ## Testing
 
-421 tests, using Python's built-in `unittest`:
+423 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
