@@ -153,6 +153,15 @@ REGISTRY = [
         "default_enabled": True,
     },
     {
+        "id": "fleet_command",
+        "name": "Fleet command center",
+        "description": "Select several printers and pause, resume, cancel, home or "
+                        "preheat them together; send files between queues; the "
+                        "farm's print history over time.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
         "id": "file_library",
         "name": "Print file library",
         "description": "Your G-code, 3MF and STL files with thumbnails, a "
@@ -207,6 +216,30 @@ REGISTRY = [
         "name": "Chamber climate",
         "description": "Chamber temperature over the last half hour, where "
                         "Klipper reports a chamber sensor.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "photo_studio",
+        "name": "Photo-to-Print Studio",
+        "description": "Turns a photo into a colour-layered relief model from your "
+                        "own filament colours, previewed in 3D and saved to the library.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "auto_print",
+        "name": "Auto-print pipeline",
+        "description": "Slices STL and 3MF models with OrcaSlicer, a separate program "
+                        "you install, and puts the G-code in the library or queue.",
+        "status": "optional",
+        "default_enabled": False,
+    },
+    {
+        "id": "sandbox",
+        "name": "Farm sandbox",
+        "description": "A simulated farm of any size with scripted jams, runouts, network "
+                        "drops and wear, to watch the whole dashboard react. Demo data only.",
         "status": "ready",
         "default_enabled": True,
     },

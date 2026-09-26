@@ -18,6 +18,7 @@ import print_gate
 VALID_AXES = {"X", "Y", "Z"}
 MIN_TEMP = 0
 MAX_TEMP = 300
+MAX_BED_TEMP = 120
 MAX_GCODE_LENGTH = 200
 
 
@@ -87,6 +88,16 @@ def set_temperature(toolhead, target):
     if not (MIN_TEMP <= target <= MAX_TEMP):
         raise ValueError(f"Target temperature must be between {MIN_TEMP} and {MAX_TEMP}")
     return mock_moonraker.set_target_temperature(toolhead, target)
+
+
+def set_bed_temperature(target):
+    try:
+        target = float(target)
+    except (TypeError, ValueError):
+        raise ValueError("Bed temperature must be a number")
+    if not (MIN_TEMP <= target <= MAX_BED_TEMP):
+        raise ValueError(f"Bed temperature must be between {MIN_TEMP} and {MAX_BED_TEMP}")
+    return mock_moonraker.set_bed_temperature(target)
 
 
 def home(axes):

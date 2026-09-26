@@ -211,6 +211,7 @@ const Workshop = (() => {
   }
 
   function onEvent(event) {
+    window.dispatchEvent(new CustomEvent('dv-live-event', { detail: event }));
     if (event.type === 'print_event') {
       const mine = !currentPrinter || event.printer === currentPrinter;
       const word = { started: 'started', finished: 'finished', failed: 'failed', paused: 'paused', resumed: 'resumed', cancelled: 'cancelled' }[event.event];
@@ -282,7 +283,10 @@ const Workshop = (() => {
       grid.innerHTML = live.fleet.map(p => `
         <article class="fleet-card liquid-glass" data-tint data-printer="${esc(p.id)}">
           <div class="fc-head">
-            <h3 class="fc-name">${esc(p.name)}</h3>
+            <label class="fc-pick" title="Select for fleet commands">
+              <input type="checkbox" data-pick="${esc(p.id)}" aria-label="Select ${esc(p.name)} for fleet commands">
+            </label>
+            <h3 class="fc-name">${esc(p.name)}${p.sandbox ? ' <span class="fc-sim">sandbox</span>' : ''}</h3>
             <span class="fc-state" data-f="state"></span>
           </div>
           <div class="fc-main">
@@ -295,6 +299,7 @@ const Workshop = (() => {
           <div class="fc-docks" data-f="docks" aria-label="Toolhead docks"></div>
           <div class="fc-temps" data-f="temps"></div>
           <ul class="fc-alerts" data-f="alerts"></ul>
+          <div class="fc-queue" data-f="queue"></div>
           <button class="btn block fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
         </article>`).join('');
       qsa('[data-open]', grid).forEach(btn => btn.addEventListener('click', () => selectPrinter(btn.dataset.open, btn.closest('.fleet-card'))));
@@ -323,7 +328,10 @@ const Workshop = (() => {
       f('alerts').innerHTML = p.alerts.length
         ? p.alerts.map(a => `<li class="fc-alert ${a.level}">${esc(a.text)}</li>`).join('')
         : '<li class="fc-alert ok">No alerts</li>';
+      card.classList.toggle('is-stale', !!p.link_lost);
     });
+    // The fleet command center (farm.js) adds selection, queues and drop targets.
+    window.dispatchEvent(new CustomEvent('dv-fleet', { detail: live.fleet }));
   }
 
   let registry = [];
@@ -611,7 +619,8 @@ const Workshop = (() => {
   }
 
   async function openFile(name, fromEl) {
-    const entry = files.list.find(f => f.name === name);
+    let entry = files.list.find(f => f.name === name);
+    if (!entry) { await loadFiles(); entry = files.list.find(f => f.name === name); }      // made elsewhere (studio, slicer)
     if (!entry) return;
     files.open = entry;
     files.lines = { offset: 0, q: '' };
@@ -792,6 +801,7 @@ const Workshop = (() => {
         <p class="log-empty">Models need slicing (in Snapmaker Orca) before they can be printed.</p>
         <div class="fd-actions">
           ${is3mf ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          <span id="fd-slice-slot" class="fd-slice-slot"></span>
           <span id="fd-ar-slot" class="fd-ar-slot"></span>
           <a class="btn" href="/api/files/raw?name=${enc(entry.name)}&download=1">Download</a>
           <button class="btn danger" id="fd-delete" type="button">Delete</button>
@@ -803,6 +813,7 @@ const Workshop = (() => {
       if ($('fd-convert')) $('fd-convert').addEventListener('click', (e) => convertFile(entry.name, e.currentTarget));
       renderCompare(entry);
       setupAR(entry, mesh);
+      window.dispatchEvent(new CustomEvent('dv-model-open', { detail: entry }));
     } catch (err) {
       side.innerHTML = `<p class="log-empty">Couldn't read this model: ${esc(err.message)}</p>`;
     }
@@ -1802,6 +1813,7 @@ const Workshop = (() => {
     if (name === 'automations') { ruleForm(); loadRules(); loadRuleLog(); }
     if (name === 'modules') { loadCamera(); loadTimelapse(); } else stopCamera();
     if (name === 'filament') { loadForecast(); loadSideBySide(); }
+    window.dispatchEvent(new CustomEvent('dv-tab', { detail: name }));
     reportView();
   }
 
@@ -1818,6 +1830,7 @@ const Workshop = (() => {
       loadRules(), loadRuleLog(), loadForecast(), loadSideBySide(), loadTimelapse()]);
     if (demoOn) refreshPrinter();
     renderChip();
+    window.dispatchEvent(new CustomEvent('dv-refresh'));
   }
 
   function init() {
@@ -1844,7 +1857,8 @@ const Workshop = (() => {
     window.addEventListener('resize', () => moveTabBlob(currentTab()));
   }
 
-  return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph };
+  return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph,
+           openFile, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog };
 })();
 
 window.Workshop = Workshop;
