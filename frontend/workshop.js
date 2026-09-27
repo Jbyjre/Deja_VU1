@@ -112,10 +112,12 @@ const Workshop = (() => {
   }
 
   function connect() {
-    if (!demoOn) { live.mode = 'off'; badge(); return; }
+    if (!liveData()) { live.mode = 'off'; badge(); return; }
     if (!('WebSocket' in window)) { startPolling(); return; }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const params = ['demo=1', 'fleet=1'];
+    // demo=1 only when demo data is on: a real printer's live feed must
+    // never be asked for (or labelled as) simulated data.
+    const params = demoOn ? ['demo=1', 'fleet=1'] : ['fleet=1'];
     if (currentPrinter) params.push(`printer=${enc(currentPrinter)}`);
     let ws;
     try { ws = new WebSocket(`${proto}://${location.host}/api/live?${params.join('&')}`); }
@@ -139,7 +141,7 @@ const Workshop = (() => {
     ws.onclose = () => {
       if (live.ws !== ws || live.closing) return;
       live.ws = null;
-      if (!demoOn) { live.mode = 'off'; badge(); return; }
+      if (!liveData()) { live.mode = 'off'; badge(); return; }
       live.retries += 1;
       if (live.retries >= 3) { startPolling(); return; }
       live.mode = 'reconnecting'; badge();
@@ -155,7 +157,7 @@ const Workshop = (() => {
     clearInterval(live.poll);
     let tick = 0;
     const once = async () => {
-      if (!demoOn) { clearInterval(live.poll); live.mode = 'off'; badge(); return; }
+      if (!liveData()) { clearInterval(live.poll); live.mode = 'off'; badge(); return; }
       const snap = await getJSON(api('/api/live/snapshot')).catch(() => null);
       if (snap && snap.state) { live.lastAt = performance.now(); applyState(snap.state); }
       const ev = await getJSON(api(`/api/live/events?since=${live.lastEvent}`)).catch(() => null);
@@ -242,7 +244,7 @@ const Workshop = (() => {
   function renderChip() {
     const chip = $('printer-chip');
     if (!chip) return;
-    chip.hidden = !demoOn && !registry.length;
+    chip.hidden = !liveData() && !registry.length;
     const id = currentPrinter || (live.fleet[0] && live.fleet[0].id);
     const row = live.fleet.find(p => p.id === id);
     $('printer-chip-name').textContent = row ? row.name : (printerState && printerState.printer_name) || 'Printer';
@@ -297,7 +299,7 @@ const Workshop = (() => {
     renderChip();
     const grid = $('fleet-grid');
     if (!grid) return;
-    if (!demoOn) { grid.innerHTML = demoNeeded('the fleet'); grid.dataset.ids = ''; return; }
+    if (!liveData()) { grid.innerHTML = demoNeeded('the fleet'); grid.dataset.ids = ''; return; }
     const ids = live.fleet.map(p => p.id).join(',');
     if (grid.dataset.ids !== ids) {
       grid.dataset.ids = ids;
@@ -365,9 +367,31 @@ const Workshop = (() => {
       <div class="reg-row">
         <span class="reg-name">${esc(p.name)}</span>
         <code class="reg-url">${esc(p.moonraker_url)}</code>
-        <span class="pill reg-pill">Not connected</span>
+        <span class="pill reg-pill ${p.connected ? 'is-ok' : 'is-bad'}" role="status">${esc(p.link || (p.connected ? 'Connected' : 'Not connected'))}</span>
+        <button class="btn small" data-reg-details="${esc(p.id)}" type="button" aria-expanded="false">Details</button>
         <button class="btn small" data-reg-remove="${esc(p.id)}" type="button">Remove</button>
+        <div class="reg-details" id="reg-details-${esc(p.id)}" hidden></div>
       </div>`).join('') : '<p class="log-empty">No printers added yet.</p>';
+    qsa('[data-reg-details]', host).forEach(b => b.addEventListener('click', async () => {
+      const box = $(`reg-details-${b.dataset.regDetails}`);
+      const open = box.hidden;
+      box.hidden = !open;
+      b.setAttribute('aria-expanded', String(open));
+      if (!open) return;
+      box.textContent = 'Loading…';
+      const d = await getJSON(`/api/printers/diagnostics?printer=${enc(b.dataset.regDetails)}`).catch(() => null);
+      if (!d || d.error) { box.textContent = (d && d.error) || 'Couldn\'t load the connection details.'; return; }
+      const facts = [
+        ['Connection', d.connected ? `open since ${d.connected_at || '?'}` : `closed — ${d.last_error || 'connecting…'}`],
+        ['Klipper', d.klippy_state || '—'],
+        ['Toolheads', (d.toolheads || []).join(', ') || '—'],
+        ['Chamber sensor', d.chamber_sensor || 'none reported'],
+        ['Print history', d.history_error ? `couldn't read it: ${d.history_error}` : `${d.history_jobs ?? 0} jobs`],
+      ];
+      const log = (d.log || []).slice(0, 14).map(e => `<li><span class="reg-t">${esc((e.t || '').slice(11))}</span> ${esc(e.method || '')} ${esc(e.path || '')}${e.status ? ` → ${esc(e.status)}` : ''}${e.error ? ` <strong class="reg-err">${esc(e.error)}</strong>` : ''}</li>`).join('');
+      box.innerHTML = `<dl class="reg-facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+        <p class="reg-log-head">Last exchanges with its Moonraker (newest first)</p><ol class="reg-log">${log || '<li>Nothing yet.</li>'}</ol>`;
+    }));
     qsa('[data-reg-remove]', host).forEach(b => b.addEventListener('click', async () => {
       const r = await postJSON(`/api/fleet/registry/${enc(b.dataset.regRemove)}/remove`, {});
       toast(r.ok ? 'Printer removed' : `Couldn't remove: ${r.body.error}`, r.ok ? 'ok' : 'bad');
@@ -380,10 +404,13 @@ const Workshop = (() => {
     $('printer-chip').addEventListener('click', (e) => openPrinterMenu(e.currentTarget, e.detail === 0));
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value });
-      if (r.ok) { toast(`${r.body.name} added — it will show as connected once a real Moonraker link exists`, 'ok', 6000); e.target.reset(); }
+      const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,
+                                                         api_key: $('fleet-add-key').value });
+      if (r.ok) { toast(`${r.body.name} added — connecting to it now`, 'ok', 5000); e.target.reset(); }
       else toast(`Couldn't add it: ${r.body.error}`, 'bad', 6000);
       loadRegistry();
+      // Show the connection opening (or why it can't) without a reload.
+      if (r.ok) [2000, 5000, 10000, 20000].forEach(ms => setTimeout(() => { loadRegistry(); refreshAll(); }, ms));
     });
   }
 
@@ -731,7 +758,7 @@ const Workshop = (() => {
       <div id="fd-compare-host"></div>`;
     $('fd-print').addEventListener('click', (e) => openConfirm(entry.name, e.currentTarget));
     $('fd-queue').addEventListener('click', async (e) => {
-      if (!demoOn) { toast('No printer connected — turn on demo data to queue on a simulated printer', 'warn'); return; }
+      if (!liveData()) { toast('No printer connected — turn on demo data to queue on a simulated printer', 'warn'); return; }
       const r = await runCommand(e.currentTarget, '/api/queue/add', { filename: entry.name },
         { sending: 'Adding…', done: `Added ${entry.name} to the queue`, failed: 'Could not queue it' });
       if (r.ok) loadQueue();
@@ -991,7 +1018,7 @@ const Workshop = (() => {
 
   let confirmFile = null;
   async function openConfirm(filename, fromEl, preloaded) {
-    if (!demoOn) { toast('No printer connected — turn on demo data to print on a simulated printer', 'warn'); return; }
+    if (!liveData()) { toast('No printer connected — turn on demo data to print on a simulated printer', 'warn'); return; }
     confirmFile = filename;
     const dialog = $('confirm-dialog');
     $('confirm-sub').textContent = `${filename} on ${printerName(currentPrinter || (live.fleet[0] || {}).id)}`;
@@ -1933,7 +1960,7 @@ const Workshop = (() => {
 
   async function refresh() {
     $('demo-tools-card').hidden = !demoOn;
-    if (!demoOn) {
+    if (!liveData()) {
       printerState = null;
       $('live-pill').hidden = true;
       $('quick-actions').hidden = true;
@@ -1942,7 +1969,7 @@ const Workshop = (() => {
     }
     await Promise.all([loadHealth(), loadChamber(), loadFiles(), loadQueue(), loadRegistry(),
       loadRules(), loadRuleLog(), loadForecast(), loadSideBySide(), loadTimelapse()]);
-    if (demoOn) refreshPrinter();
+    if (liveData()) refreshPrinter();
     renderChip();
     window.dispatchEvent(new CustomEvent('dv-refresh'));
   }
@@ -1968,7 +1995,7 @@ const Workshop = (() => {
     setInterval(reportView, 20000);
     setInterval(checkHandoff, 15000);
     setTimeout(checkHandoff, 3000);
-    setInterval(() => { if (demoOn) { loadHealth(); loadChamber(); } }, 15000);
+    setInterval(() => { if (liveData()) { loadHealth(); loadChamber(); } }, 15000);
     window.addEventListener('resize', () => moveTabBlob(currentTab()));
   }
 

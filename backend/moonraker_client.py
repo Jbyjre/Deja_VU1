@@ -562,7 +562,7 @@ class HttpTransport:
         return f"Can't reach {ep}: {exc}"
 
     def request(self, method, path, query=None, body=None, raw_body=None, content_type=None,
-                timeout=READ_TIMEOUT, wrapped=True, max_bytes=MAX_RESPONSE):
+                timeout=READ_TIMEOUT, wrapped=True, max_bytes=MAX_RESPONSE, expected=()):
         """
         One request. Returns the reply's "result" (the whole reply when
         wrapped=False). Raises PrinterUnreachable when there was no whole
@@ -647,12 +647,14 @@ class HttpTransport:
                          "in Settings, or add this computer's address to [authorization] trusted_clients "
                          "in moonraker.conf")
             elif status == 404:
-                words = f"Moonraker has no {path} ({message}) - is this Moonraker, and a recent enough one?"
+                words = f"Moonraker has no {path} ({message})"
             elif status == 503:
                 words = f"{message} - Klipper isn't running or isn't connected to Moonraker"
             else:
                 words = message
-            entry["error"] = words
+            # An answer the caller expects (the U1 has no update manager) is
+            # noted, not logged as a failure.
+            entry["note" if status in expected else "error"] = words
             self._log(entry)
             err_obj = PrinterRefused(words)
             err_obj.status = status
@@ -870,7 +872,7 @@ class MoonrakerPrinter:
         self._link_up = False          # WebSocket open and subscribed
         self._link_lost_at = None
         self._connected_at = None
-        self._last_error = "Not connected yet"
+        self._last_error = None        # None until a first attempt says otherwise: "connecting"
         self._stop = threading.Event()
         self._wake = threading.Event()
         self._need_setup = threading.Event()
@@ -1210,7 +1212,9 @@ class MoonrakerPrinter:
     def snapshot(self):
         with self.lock:
             if not self._status:
-                return placeholder_state(self.id, self.name, f"Not connected: {self._last_error}")
+                return placeholder_state(self.id, self.name,
+                                         f"Not connected: {self._last_error}" if self._last_error
+                                         else "Connecting...")
             state = translate_state(self._status, self._ctx())
             if state["state"] == "complete" and self._finished_job:
                 state["finished_job"] = copy.deepcopy(self._finished_job)
@@ -1318,7 +1322,7 @@ class MoonrakerPrinter:
 
     def get_update_status(self):
         try:
-            result = self.http.request("GET", "/machine/update/status")
+            result = self.http.request("GET", "/machine/update/status", expected=(404,))
         except PrinterRefused as exc:
             if getattr(exc, "status", None) == 404:
                 return {"packages": [], "note": "This printer's Moonraker has no update manager switched on "

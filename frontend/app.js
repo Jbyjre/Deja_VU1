@@ -272,6 +272,11 @@ const store = {
 const STORE_KEY = 'dejavu1.demo';
 let demoOn = store.get(STORE_KEY) === '1';
 
+/* A real printer (added by address) with its connection open. Live figures
+ * come from either source: demo data, or a connected printer. */
+let realOn = false;
+function liveData() { return demoOn || realOn; }
+
 /* Which printer the whole dashboard is looking at. Every request carries
  * ?printer=<id>, and the server answers every module for that printer. */
 const PRINTER_KEY = 'dejavu1.printer';
@@ -471,6 +476,11 @@ async function loadConnection() {
   const data = await getJSON('/api/connection');
   const pill = $('conn');
   const label = $('conn-label');
+  const wasReal = realOn;
+  realOn = !!data.connected || (data.printers || []).some(p => p.connected);
+  // A printer connecting (or dropping) while the page is open: open or
+  // close the live connection to match, without waiting for a reload.
+  if (wasReal !== realOn && window.Workshop) setTimeout(() => Workshop.reconnect(), 0);
 
   if (data.connected) {
     pill.classList.remove('is-demo');
@@ -483,7 +493,8 @@ async function loadConnection() {
   } else {
     pill.classList.remove('is-demo');
     label.textContent = 'Not connected';
-    $('foot-state').textContent = 'No printer connected — nothing is contacted.';
+    $('foot-state').textContent = (data.printers || []).length
+      ? data.message : 'No printer connected — nothing is contacted.';
   }
 
   $('notice').hidden = !(demoOn && !data.connected);
@@ -3230,7 +3241,8 @@ loadNotificationSettings();
 // Printer state itself arrives live (workshop.js, every 250 ms over the
 // WebSocket). These slower panels only need a periodic refresh.
 setInterval(() => {
-  if (demoOn) {
+  loadConnection().catch(() => {});
+  if (liveData()) {
     loadRings(); loadColorCheck(); loadCost();
     if (!window.Workshop || !Workshop.isLive()) loadStatusRibbon();
   }
