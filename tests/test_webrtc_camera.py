@@ -30,12 +30,20 @@ class FakeGo2rtc(BaseHTTPRequestHandler):
     """Behaves like go2rtc's outputWebRTC for the JSON content type."""
     seen = []
     reply = "answer"          # or "garbage", "error"
+    credentials = None        # ("user", "pw"): answer 401 without them, as internal/api/api.go does
 
     def do_POST(self):
         url = urlparse(self.path)
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         FakeGo2rtc.seen.append({"path": url.path, "query": parse_qs(url.query),
-                                "ctype": self.headers.get("Content-Type"), "body": body})
+                                "ctype": self.headers.get("Content-Type"), "body": body,
+                                "auth": self.headers.get("Authorization")})
+        if FakeGo2rtc.credentials:
+            import base64
+            want = "Basic " + base64.b64encode(":".join(FakeGo2rtc.credentials).encode()).decode()
+            if self.headers.get("Authorization") != want:
+                self.send_response(401); self.end_headers(); self.wfile.write(b"Unauthorized")
+                return
         if url.path != "/api/webrtc" or parse_qs(url.query).get("src") != ["u1"]:
             self.send_response(404); self.end_headers(); self.wfile.write(b"stream not found")
             return
@@ -73,6 +81,7 @@ class WebRTCCamera(unittest.TestCase):
         modules.reset_state()
         FakeGo2rtc.seen = []
         FakeGo2rtc.reply = "answer"
+        FakeGo2rtc.credentials = None
 
     def tearDown(self):
         webrtc_camera.reset()
@@ -108,7 +117,7 @@ class WebRTCCamera(unittest.TestCase):
         src = open(webrtc_camera.__file__, encoding="utf-8").read()
         imports = [line for line in src.splitlines() if line.startswith(("import ", "from "))]
         self.assertTrue(all(line.split()[1].split(".")[0] in
-                            {"json", "os", "re", "urllib", "storage"} for line in imports), imports)
+                            {"base64", "json", "os", "re", "urllib", "storage"} for line in imports), imports)
 
     # -- settings --------------------------------------------------------
 
@@ -171,7 +180,7 @@ class WebRTCCamera(unittest.TestCase):
         FakeGo2rtc.reply = "error"
         status, data = self.request("/api/camera/webrtc/offer", OFFER)
         self.assertEqual(status, 400)
-        self.assertIn("refused the connection (500", data["error"])
+        self.assertIn("couldn't start the stream: codecs not matched", data["error"])
 
         FakeGo2rtc.reply = "garbage"
         status, data = self.request("/api/camera/webrtc/offer", OFFER)
@@ -184,6 +193,24 @@ class WebRTCCamera(unittest.TestCase):
         status, data = self.request("/api/camera/webrtc/offer", OFFER)
         self.assertEqual(status, 400)
         self.assertIn("Couldn't reach go2rtc", data["error"])
+
+    def test_a_go2rtc_with_a_password(self):
+        # urllib would look "user:pw@host" up as a host name; the password
+        # must go in an Authorization header, and never back to the browser.
+        self.turn_on()
+        FakeGo2rtc.credentials = ("admin", "p@ss word")
+        host = self.fake_url.split("//")[1]
+        self.request("/api/camera/webrtc/settings", {"go2rtc_url": f"http://admin:p%40ss%20word@{host}", "stream": "u1"})
+        status, data = self.request("/api/camera/webrtc/offer", OFFER)
+        self.assertEqual(status, 200, data)
+        _, shown = self.request("/api/camera/webrtc/settings")
+        self.assertNotIn("p%40ss", shown["go2rtc_url"])
+        # Saving the masked address back unchanged keeps the password.
+        self.request("/api/camera/webrtc/settings", {"go2rtc_url": shown["go2rtc_url"], "stream": "u1"})
+        self.assertEqual(self.request("/api/camera/webrtc/offer", OFFER)[0], 200)
+        FakeGo2rtc.credentials = ("admin", "other")
+        status, data = self.request("/api/camera/webrtc/offer", OFFER)
+        self.assertIn("asks for a username and password", data["error"])
 
     def test_signalling_url_escapes_the_stream_name(self):
         url = webrtc_camera.signalling_url({"go2rtc_url": "http://h:1984", "stream": "a:b"})

@@ -380,7 +380,7 @@ _APP_ROUTES = {
     "/api/automations": ("automations", lambda q: {"rules": automations.list_rules()}),
     "/api/automations/log": ("automations", lambda q: {"log": automations.get_log()}),
     "/api/camera/settings": ("camera", lambda q: camera.get_settings()),
-    "/api/camera/webrtc/settings": ("webrtc_camera", lambda q: webrtc_camera.get_settings()),
+    "/api/camera/webrtc/settings": ("webrtc_camera", lambda q: webrtc_camera.public_settings()),
     "/api/handoff": ("handoff", lambda q: handoff.offer_for(_q(q, "device", ""))),
     "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
