@@ -64,7 +64,10 @@ def compare_current_job(filename=None, limit=3):
     differences = []
     likely_causes = []
 
-    if past_successful:
+    # Between prints (finished, cancelled, stopped with an error) no toolhead
+    # is active, so there is no setup on the printer to compare - only the
+    # file's own history below.
+    if past_successful and active is not None:
         last_good = past_successful[0]
         if active not in last_good["toolheads_used"]:
             differences.append(

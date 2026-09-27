@@ -140,7 +140,7 @@ API endpoints
   POST /api/handoff                  {"device_id", "device_name", "view"}
 
   GET  /api/cost/history              cost of recent print jobs
-  GET  /api/cost/current              estimated cost of the job in progress
+  GET  /api/cost/current              estimated cost of the job in progress ({"printing": false} when idle)
   GET  /api/cost/settings
   POST /api/cost/settings            {"electricity_rate_per_kwh": 0.15, ...}
 
@@ -319,7 +319,7 @@ _DATA_ROUTES = {
     "/api/updates": ("updates", lambda q: updates.get_status()),
     "/api/camera": ("camera", lambda q: camera.get_status()),
     "/api/cost/history": ("cost_calculator", lambda q: {"jobs": cost_calculator.cost_history()}),
-    "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.estimate_current_job()),
+    "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.current_job()),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
     "/api/live/events": (None, lambda q: {"events": live_feed.events_since(int(_q(q, "since", "0")))}),
     "/api/fleet": ("fleet", lambda q: live_feed.fleet_snapshot()),
@@ -1139,7 +1139,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         Messages sent: {"type": "state"} for the subscribed printer whenever
         it changes (up to every 250 ms), {"type": "fleet"} about once a
-        second if asked for, and {"type": "event"} for print events and
+        second if asked for (and the fleet module is on), and {"type":
+        "event"} for print events and
         automation firings. The browser may send {"type": "subscribe",
         "printer": id, "fleet": bool} to switch printers without
         reconnecting.
@@ -1224,7 +1225,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                     last_event = event_id
                 if sub["fleet"]:
                     snap = live_feed.fleet_snapshot()
-                    if snap["seq"] != fleet_seq:
+                    # Checked only when there is something new to send: the
+                    # fleet module switched off means no fleet rows, here
+                    # as on GET /api/fleet.
+                    if snap["seq"] != fleet_seq and modules.is_enabled("fleet"):
                         fleet_seq = snap["seq"]
                         conn.send_text(json.dumps({"type": "fleet", "printers": snap["printers"],
                                                    "t": snap["t"], **tag}))

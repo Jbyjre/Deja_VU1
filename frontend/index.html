@@ -134,7 +134,7 @@
     <section class="card liquid-glass">
       <div class="card-head">
         <div><h2>Your printers</h2><p class="card-sub">Everything at a glance. Tick printers to command them together, or open one to point the whole dashboard at it.</p></div>
-        <span class="badge badge-live">Live</span>
+        <span class="badge badge-live" id="fleet-live-badge" hidden>Live</span>
       </div>
       <!-- Fleet command center: one action, every ticked printer, each result read back. -->
       <div class="fc-bar liquid-glass" id="fc-bar" role="toolbar" aria-label="Command the selected printers" hidden>
@@ -330,7 +330,8 @@
           <div class="card-head">
             <div><h2>Printer control</h2><p class="card-sub">Quick actions</p></div>
           </div>
-          <div id="overview-control"></div>
+          <div id="overview-control" data-module-body="printer_control"></div>
+          <div data-module-off="printer_control" hidden></div>
         </section>
 
         <section class="card liquid-glass pair-card">
@@ -363,15 +364,18 @@
           <div id="ctrl-state-sub" class="card-sub" style="margin-top:4px;"></div>
         </div>
       </div>
-      <div style="display:flex; gap:10px;">
+      <div style="display:flex; gap:10px;" data-module-body="printer_control">
         <button class="btn primary" id="ctrl-pause-resume" disabled>Pause</button>
         <button class="btn danger" id="ctrl-cancel" disabled>Cancel print</button>
       </div>
     </section>
 
-    <section class="liquid-glass divider-row cols-4" id="ctrl-temps" style="margin-bottom:20px;"></section>
+    <!-- With printer control switched off, its controls aren't offered - just the switch. -->
+    <section class="card liquid-glass" data-module-off="printer_control" hidden></section>
 
-    <div class="grid-2">
+    <section class="liquid-glass divider-row cols-4" id="ctrl-temps" style="margin-bottom:20px;" data-module-body="printer_control"></section>
+
+    <div class="grid-2" data-module-body="printer_control">
       <section class="card liquid-glass">
         <div class="card-head"><div><h2>Home axes</h2></div></div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -777,9 +781,10 @@
         <section class="card liquid-glass">
           <div class="card-head"><div><h2>Updates &amp; backup</h2></div></div>
           <div id="updates-body" class="log-empty">—</div>
-          <div style="display:flex; gap:8px; margin-top:14px;">
+          <div style="display:flex; gap:8px; margin-top:14px;" data-module-body="backup">
             <a class="btn block" id="backup-btn" href="/api/backup" download style="text-align:center; text-decoration:none;">Download backup</a>
           </div>
+          <div data-module-off="backup" hidden></div>
         </section>
 
         <section class="card liquid-glass">
@@ -955,8 +960,8 @@
       <span class="qa-status-text" id="qa-status-text"></span>
       <span class="qa-status-bar" aria-hidden="true"><span id="qa-status-fill"></span></span>
     </button>
-    <button class="qa-btn qa-primary" id="qa-pause" type="button">Pause</button>
-    <button class="qa-btn qa-danger hold" id="qa-cancel" type="button"
+    <button class="qa-btn qa-primary" id="qa-pause" type="button" data-module-body="printer_control">Pause</button>
+    <button class="qa-btn qa-danger hold" id="qa-cancel" type="button" data-module-body="printer_control"
             aria-label="Cancel print - press and hold">
       <span class="hold-fill" aria-hidden="true"></span><span class="hold-label">Hold to cancel</span>
     </button>

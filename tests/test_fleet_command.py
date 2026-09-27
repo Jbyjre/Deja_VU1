@@ -8,6 +8,8 @@ says exactly which printers failed and why - never a blanket "done".
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
@@ -17,6 +19,7 @@ import fleet           # noqa: E402
 import maintenance     # noqa: E402
 import mock_moonraker  # noqa: E402
 import print_queue     # noqa: E402
+import printer_control  # noqa: E402
 import sample_files    # noqa: E402
 
 
@@ -73,6 +76,23 @@ class TestBroadcast(FleetCommandTest):
                 state = mock_moonraker.get_printer_state()
             self.assertEqual(state["bed_target"], 65.0)
             self.assertTrue(all(t["target_temperature"] == 210.0 for t in state["toolheads"].values()))
+
+    def test_pausing_a_paused_printer_says_it_is_already_paused(self):
+        rows = self.rows(fleet.broadcast("pause", ["u1-studio"]))
+        self.assertEqual(rows["u1-studio"]["kind"], "refused")
+        self.assertEqual(rows["u1-studio"]["error"], "Print already paused")   # Klipper's wording
+
+    def test_preheat_the_printer_did_not_apply_is_not_confirmed(self):
+        # The printer answers without error, but its read-back target never
+        # changes. The same check the single-printer control makes: not done.
+        with mock.patch.object(printer_control, "set_temperature", lambda th, t: None):
+            rows = self.rows(fleet.broadcast("preheat", ["u1-garage", "u1-studio"],
+                                             {"nozzle": 205, "bed": 60}))
+        for pid in ("u1-garage", "u1-studio"):
+            self.assertFalse(rows[pid]["ok"])
+            self.assertEqual(rows[pid]["kind"], "not_confirmed")
+            self.assertIn("T0", rows[pid]["error"])
+            self.assertNotIn("bed", rows[pid]["error"])        # the bed did take its target
 
     def test_preheat_validates_once_for_the_whole_request(self):
         with self.assertRaisesRegex(ValueError, "between 0 and 300"):
@@ -166,6 +186,31 @@ class TestHistory(FleetCommandTest):
             fleet.history(0)
         with self.assertRaises(ValueError):
             fleet.history(30, "month")
+
+    def test_a_print_counts_on_the_day_it_ended(self):
+        # Started before today's window, failed inside it: it is today's
+        # failure, whatever the time of day the test runs.
+        now = datetime.now()
+        job = {"job_id": "x", "filename": "overnight.gcode", "status": "error",
+               "start_time": (now - timedelta(days=1, hours=2)).isoformat(timespec="seconds"),
+               "end_time": now.isoformat(timespec="seconds"), "print_duration_hours": 26,
+               "filament_used_grams": 10, "filament_type": "PLA"}
+        before = fleet.history(1)["farm"]
+        with mock_moonraker.use_printer("u1-garage"):
+            real = mock_moonraker.get_print_history
+            with mock.patch.object(mock_moonraker, "get_print_history",
+                                   lambda: real() + ([job] if mock_moonraker.selected_printer_id() == "u1-garage" else [])):
+                after = fleet.history(1)["farm"]
+        self.assertEqual(after["error"], before["error"] + 1)
+        self.assertEqual(sum(b["error"] for b in after["series"]), after["error"])
+
+    def test_the_demo_history_holds_only_finished_prints(self):
+        now = datetime.now()
+        for pid in mock_moonraker.printer_ids():
+            with mock_moonraker.use_printer(pid):
+                for job in mock_moonraker.get_print_history():
+                    self.assertLessEqual(datetime.fromisoformat(job["end_time"]), now)
+                    self.assertLessEqual(job["start_time"], job["end_time"])
 
     def test_a_failed_print_shows_up(self):
         before = fleet.history(1)["farm"]["error"]

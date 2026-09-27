@@ -62,7 +62,8 @@ const Farm = (() => {
   function renderBar() {
     const bar = $('fc-bar');
     if (!bar) return;
-    bar.hidden = !demoOn || !cmd.fleet.length || cmd.moduleOff;
+    // Every action on the bar is a printer command, so it needs printer control too.
+    bar.hidden = !demoOn || !cmd.fleet.length || cmd.moduleOff || modGate.off.has('printer_control');
     const n = cmd.selected.size;
     $('fc-count').textContent = n ? `${n} of ${cmd.fleet.length} selected` : 'Select printers to command them together';
     qsa('#fc-bar [data-act]').forEach(b => { b.disabled = !n; });
@@ -141,6 +142,12 @@ const Farm = (() => {
 
   async function route(body, target) {
     const r = await postJSON(api('/api/fleet/route'), { ...body, to: target });
+    // The "Queue here" button or "Move to…" menu just used still has focus,
+    // and setHTML never redraws a region holding focus - so the queue would
+    // keep showing its old contents. Hand focus to the card it sits in.
+    const used = document.activeElement;
+    const card = used && used.closest && used.closest('#fleet-grid .fleet-card');
+    if (card && used.closest('[data-f="queue"]')) { card.tabIndex = -1; card.focus({ preventScroll: true }); }
     if (r.ok) toast(`${r.body.routed} ${r.body.moved_from ? 'moved' : 'queued'} on ${r.body.to_name} — it starts only after its Confirm Print check`, 'ok', 5500);
     else toast(`Couldn't queue it on ${name(target)}: ${r.body.error || r.status}`, 'bad', 7000);
     await loadQueues();
@@ -179,7 +186,7 @@ const Farm = (() => {
     });
     grid.addEventListener('click', (e) => {
       const here = e.target.closest('[data-here]');
-      if (here) { route({ filename: cmd.picked }, here.dataset.here).then(ok => { if (ok) { cmd.picked = null; loadFileStrip(); renderQueues(); } }); }
+      if (here && cmd.picked) { route({ filename: cmd.picked }, here.dataset.here).then(ok => { if (ok) { cmd.picked = null; loadFileStrip(); renderQueues(); } }); }
     });
     // Drag and drop: library files and waiting queue items onto any printer.
     document.addEventListener('dragstart', (e) => {

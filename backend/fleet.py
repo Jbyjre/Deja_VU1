@@ -253,6 +253,15 @@ def _run_one(printer_id, action, params):
         return {**row, "ok": False, "kind": "not_confirmed",
                 "error": f"Sent, but the printer now reports \"{state['state']}\""}
     if action == "preheat":
+        # The same read-back the single-printer temperature control makes:
+        # the target the printer now reports must be the one asked for.
+        wrong = [th for th in params["toolheads"] if params["nozzle"] is not None
+                 and abs(state["toolheads"][th]["target_temperature"] - params["nozzle"]) > 0.01]
+        if params["bed"] is not None and abs((state.get("bed_target") or 0) - params["bed"]) > 0.01:
+            wrong.append("bed")
+        if wrong:
+            return {**row, "ok": False, "kind": "not_confirmed",
+                    "error": f"Sent, but the printer doesn't report the new target for {', '.join(wrong)}"}
         targets = [f"{th} {state['toolheads'][th]['target_temperature']:.0f}°C" for th in params["toolheads"]
                    if params["nozzle"] is not None]
         if params["bed"] is not None:
@@ -339,7 +348,8 @@ def history(days=30, bucket="day"):
     """
     The farm's output over time: per printer and totalled, with a time
     series of prints and grams per day (or week). Every figure is summed
-    from the printers' own print history - nothing is estimated.
+    from the printers' own print history - nothing is estimated. Each
+    print is counted in the day (or week) it ended.
     """
     try:
         days = int(days)
@@ -376,15 +386,20 @@ def history(days=30, bucket="day"):
         series = {k: empty() for k in keys}
         counts, materials = empty(), defaultdict(float)
         for job in jobs:
+            # A print counts on the day it ended - when its outcome happened -
+            # so a failure just after midnight is in today's figures even if
+            # the print started yesterday. Older records without an end time
+            # fall back to their start.
             try:
-                started = datetime.fromisoformat(job["start_time"])
-            except (KeyError, ValueError):
+                ended = datetime.fromisoformat(job.get("end_time") or job["start_time"])
+            except (KeyError, TypeError, ValueError):
                 continue
-            if started < since:
+            ended = min(ended, now)
+            if ended < since:
                 continue
             status = job["status"] if job["status"] in ("completed", "error", "cancelled") else "error"
             grams, hours = float(job.get("filament_used_grams") or 0), float(job.get("print_duration_hours") or 0)
-            k = key_for(started)
+            k = key_for(ended)
             for bag in (series.get(k), farm_series.get(k), counts, total):
                 if bag is None:
                     continue

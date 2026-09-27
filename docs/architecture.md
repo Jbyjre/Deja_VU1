@@ -274,8 +274,9 @@ every existing check still applies. Each printer's outcome is its own row:
 `done`, `refused` (the dashboard said no, e.g. nothing to pause),
 `printer_failed` (the printer refused), `not_confirmed` (accepted, but the
 state read back isn't what the action should leave — the same "expect"
-check the single-printer buttons use), or `not_connected` for printers
-registered by address. The headline names every printer that failed.
+check the single-printer buttons use: the state for pause / resume /
+cancel, the target temperatures for preheat), or `not_connected` for
+printers registered by address. The headline names every printer that failed.
 Preheat values are validated once, before anything is sent.
 `route_file()` puts a library file on another printer's queue — or moves
 a waiting queue item, removing it from the first queue only once it's on
@@ -283,9 +284,10 @@ the second. `history(days, bucket)` sums each printer's
 `get_print_history()` into counts, completion / failure / cancel rates
 (`None`, not 0%, when there are no prints), grams (split by outcome, so
 material spent on failed prints is visible) and hours, per day or week,
-per printer and for the farm. Registered as the `fleet_command` module;
-broadcasting also needs `printer_control` on, and routing needs
-`print_queue` on.
+per printer and for the farm. A print counts in the day it ended, when
+its outcome happened, so a failure just after midnight is today's.
+Registered as the `fleet_command` module; broadcasting also needs
+`printer_control` on, and routing needs `print_queue` on.
 
 ### Making new things: Photo-to-Print Studio
 `frontend/studio.js` turns a photo into a colour-layered relief (the

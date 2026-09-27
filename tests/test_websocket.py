@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
 import app as dv_app       # noqa: E402
 import live_feed           # noqa: E402
 import mock_moonraker      # noqa: E402
+import modules            # noqa: E402
 import websocket           # noqa: E402
 
 
@@ -240,6 +241,19 @@ class TestLiveEndpoint(unittest.TestCase):
             fleet = client.recv_until(lambda m: m.get("type") == "fleet", timeout=3)
             self.assertEqual(len(fleet["printers"]), 3)
         finally:
+            client.close()
+
+    def test_no_fleet_rows_while_the_fleet_module_is_off(self):
+        modules.set_enabled("fleet", False)
+        client = LiveClient(self.port, "/api/live?demo=1&fleet=1")
+        try:
+            client.recv()
+            self.assertIsNotNone(client.recv_until(lambda m: m.get("type") == "state"))
+            self.assertIsNone(client.recv_until(lambda m: m.get("type") == "fleet", timeout=2.5))
+            modules.set_enabled("fleet", True)
+            self.assertIsNotNone(client.recv_until(lambda m: m.get("type") == "fleet", timeout=3))
+        finally:
+            modules.set_enabled("fleet", True)
             client.close()
 
     def test_a_control_action_is_pushed_immediately(self):

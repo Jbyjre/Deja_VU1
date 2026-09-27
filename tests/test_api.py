@@ -376,6 +376,16 @@ class TestCostCalculatorRoutes(APITestCase):
         status, body = self.get("/api/cost/current?demo=1")
         self.assertEqual(status, 200)
         self.assertIn("total_cost", body)
+        self.assertTrue(body["printing"])
+
+    def test_current_job_on_an_idle_printer_is_not_an_error(self):
+        # Idle is an ordinary state: a plain answer with no figures, not a
+        # 400 the browser would log as an error on every refresh.
+        status, body = self.get("/api/cost/current?demo=1&printer=u1-garage")
+        self.assertEqual(status, 200)
+        self.assertFalse(body["printing"])
+        self.assertNotIn("total_cost", body)
+        self.assertNotIn("cost_so_far", body)
 
 
 class TestBridgeRoutes(APITestCase):

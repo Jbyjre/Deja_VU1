@@ -52,6 +52,14 @@ FAKE_ORCA = textwrap.dedent('''\
         result(-5, "Loading configuration file failed")
         sys.stderr.write("load_config_file: can not resolve preset\\n")
         sys.exit(251)
+    if mode == "model_outside_bed":
+        # What Orca writes for a model it won't slice (src/OrcaSlicer.cpp,
+        # cli_errors[CLI_OBJECTS_PARTLY_INSIDE]); it exits with the code, -52.
+        result(-52, "Some objects are located over the boundary of the heated bed.")
+        sys.exit(256 - 52)
+    if mode == "unreadable_model":
+        result(-6, "The input model file to the slicer can not be parsed.")
+        sys.exit(256 - 6)
     if mode == "crash_no_result":
         sys.stderr.write("Segmentation fault\\n")
         sys.exit(3)
@@ -223,6 +231,17 @@ class TestSlicing(SlicerBridgeTest):
         report = self.assertFailsWithoutAFile("config_error", "couldn't load one of the preset files")
         self.assertEqual(report["orca_result"]["return_code"], -5)
         self.assertIn("can not resolve preset", report["error_tail"])
+
+    def test_a_model_orca_rejects_is_a_failure_in_words(self):
+        report = self.assertFailsWithoutAFile(
+            "model_outside_bed",
+            r"Part of the model is outside the printable area\. Orca said: Some objects are located "
+            r"over the boundary of the heated bed\.")
+        self.assertEqual(report["orca_result"]["return_code"], -52)
+        self.assertEqual(report["exit_code"], 204)
+
+    def test_a_model_orca_cannot_read_is_a_failure_in_words(self):
+        self.assertFailsWithoutAFile("unreadable_model", "Orca couldn't read the model file")
 
     def test_a_crash_without_result_json_still_explains(self):
         self.assertFailsWithoutAFile("crash_no_result", "exited with code 3: Segmentation fault")

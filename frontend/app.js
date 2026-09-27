@@ -890,7 +890,10 @@ function renderOverviewControl(state) {
 const CONTROL_LABELS = {
   pause: { sending: 'Pausing…', done: 'Paused', failed: 'Pause failed', expect: s => s.state === 'paused' },
   resume: { sending: 'Resuming…', done: 'Resumed', failed: 'Resume failed', expect: s => s.state === 'printing' },
-  cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state === 'ready' },
+  // Klipper's print_stats reads "cancelled" after a cancel (the simulation says
+  // "ready"): either way, confirmed once it is no longer printing or paused -
+  // the same check the fleet command center makes.
+  cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state !== 'printing' && s.state !== 'paused' },
 };
 
 async function controlAction(action, button) {
