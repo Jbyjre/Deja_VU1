@@ -424,7 +424,8 @@ const Farm = (() => {
     if (!body) return;
     if (!demoOn) {
       body.hidden = true; off.hidden = false;
-      off.innerHTML = EMPTY('The sandbox runs on simulated printers', 'Turn on demo data (top right) to build a farm and run scenarios. It never touches a real printer.');
+      off.innerHTML = serverMissing() ? needsServerEmpty('the farm sandbox')
+        : EMPTY('The sandbox runs on simulated printers', 'Turn on demo data (top right) to build a farm and run scenarios. It never touches a real printer.');
       stopPolling();
       return;
     }
@@ -614,6 +615,8 @@ const Farm = (() => {
     const body = $('ap-body'), off = $('ap-off');
     if (!body) return;
     const data = await getJSON('/api/slicer/settings').catch(() => null);
+    // No server: its cards already say they need one.
+    if (data && data.server_missing) { body.hidden = false; off.hidden = true; return; }
     ap.enabled = !isModuleDisabled(data) && !!data;
     if (!ap.enabled) {
       body.hidden = true; off.hidden = false;

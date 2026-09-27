@@ -90,7 +90,9 @@ const Workshop = (() => {
   }
 
   function empty(title, sub) { return EMPTY(title, sub); }
-  function demoNeeded(what) { return empty(`No printer connected`, `Turn on demo data to see ${what} on the simulated printers.`); }
+  function demoNeeded(what) {
+    return serverMissing() ? needsServerEmpty(what) : empty(`No printer connected`, `Turn on demo data to see ${what} on the simulated printers.`);
+  }
 
   /* ================================================================
    * 2. the live connection
@@ -613,12 +615,51 @@ const Workshop = (() => {
    * 6. files
    * ================================================================ */
 
-  const files = { list: [], viewer: null, open: null, analysis: null, lines: { offset: 0, q: '' }, selectedLine: null };
+  const files = { list: [], local: [], viewer: null, open: null, analysis: null, lines: { offset: 0, q: '' }, selectedLine: null };
+
+  /* Without the server there's no library, but a file from this device can
+   * still be looked at: it's read here, in the browser, and never sent
+   * anywhere. The same 64 MB limit as the library (file_library.MAX_BYTES). */
+  const LOCAL_MAX_BYTES = 64 * 1024 * 1024;
+  const kindOf = (name) => /\.stl$/i.test(name) ? 'stl' : /\.3mf$/i.test(name) ? '3mf' : /\.(gcode|gco|g)$/i.test(name) ? 'gcode' : null;
+
+  function renderLocalFiles() {
+    const grid = $('file-grid');
+    files.list = files.local;
+    $('file-recent').innerHTML = '';
+    const label = qs('.file-upload');
+    if (label && label.firstChild.nodeType === 3) label.firstChild.textContent = 'Open a file ';
+    grid.innerHTML = `<p class="log-empty file-local-note">Files open here, in your browser only - nothing is uploaded. Keeping a library,
+        the pre-flight check, edits, converting and printing need the Deja Vu1 server.</p>` +
+      (files.local.length ? files.local.map(f => `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
+          <span class="fcd-thumb"><span class="fcd-kind">${esc(f.kind.toUpperCase())}</span></span>
+          <span class="fcd-name">${esc(f.name)}</span>
+          <span class="fcd-meta">${f.local.size < 1048576 ? `${Math.max(1, Math.round(f.local.size / 1024))} KB` : `${(f.local.size / 1048576).toFixed(1)} MB`}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span><span class="origin-tag">on this device</span></span>
+        </button>`).join('')
+        : empty('No file open', 'Choose a G-code, STL or 3MF file from this device to see it in 3D.'));
+    qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b));
+  }
+
+  function openLocalFiles(list) {
+    let last = null;
+    for (const file of list) {
+      const kind = kindOf(file.name);
+      if (!kind) { toast(`${file.name} isn't a G-code, STL or 3MF file`, 'warn'); continue; }
+      if (file.size > LOCAL_MAX_BYTES) { toast(`${file.name} is over 64 MB - too big to open here`, 'warn'); continue; }
+      files.local = files.local.filter(f => f.name !== file.name);
+      files.local.unshift({ name: file.name, kind, local: file, origin: 'local', note: 'On this device - not uploaded' });
+      last = file.name;
+    }
+    renderLocalFiles();
+    if (last) openFile(last);
+  }
 
   async function loadFiles() {
     const grid = $('file-grid');
     if (!grid) return;
     const data = await getJSON('/api/files').catch(() => null);
+    if (data && data.server_missing) { renderLocalFiles(); return; }
     if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; return; }
     files.list = (data && data.files) || [];
     $('file-recent').innerHTML = data && data.recent && data.recent.length
@@ -640,6 +681,7 @@ const Workshop = (() => {
   }
 
   async function uploadFiles(list) {
+    if (serverMissing()) { openLocalFiles(list); return; }
     for (const file of list) {
       const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file });
       const body = await res.json().catch(() => ({}));
@@ -682,7 +724,7 @@ const Workshop = (() => {
     files.open = entry;
     files.lines = { offset: 0, q: '' };
     files.selectedLine = null;
-    postJSON('/api/files/opened', { name });
+    if (!entry.local) postJSON('/api/files/opened', { name });
     const panel = $('file-detail');
     const reveal = (instant) => {
       panel.hidden = false;
@@ -711,7 +753,52 @@ const Workshop = (() => {
     else await openModel(entry, viewer);
   }
 
+  /* A G-code file from this device: the toolpath and a few plain facts,
+   * read in the browser. No verdict - that's the server's pre-flight. */
+  async function openLocalGcode(entry, viewer) {
+    let a;
+    try {
+      const text = await entry.local.text();
+      entry.localLines = text.split(/\r?\n/);
+      a = DV3D.parseGcode(text);
+    } catch (err) {
+      $('fd-side').innerHTML = `<p class="log-empty">Couldn't read this file: ${esc(err.message || err)}</p>`;
+      return;
+    }
+    if (files.open !== entry) return;
+    if (viewer && a.toolpath.segments.length) {
+      const { zmax } = viewer.setToolpath(a.toolpath.segments, a.colours);
+      $('fd-view-tools').innerHTML = `
+        <label class="vt-layer">Up to <span id="vt-z">${zmax.toFixed(2)}</span> mm
+          <input type="range" id="vt-range" min="0" max="${zmax}" step="0.01" value="${zmax}" aria-label="Show layers up to this height">
+        </label>
+        <label class="vt-travel"><input type="checkbox" id="vt-travel"> Show travel moves</label>
+        ${a.toolpath.downsampled ? `<span class="vt-note">Showing ${a.toolpath.segments.length.toLocaleString()} of ${a.toolpath.total_segments.toLocaleString()} moves</span>` : ''}`;
+      $('vt-range').addEventListener('input', (e) => { viewer.setLayerLimit(+e.target.value); $('vt-z').textContent = (+e.target.value).toFixed(2); });
+      $('vt-travel').addEventListener('change', (e) => { viewer.showTravel = e.target.checked; viewer.draw(); });
+    }
+    $('fd-side').innerHTML = `
+      <div class="fd-facts divider-row cols-2">
+        <div><span class="stat-key">Lines</span><b>${a.lines.toLocaleString()}</b><small>in the file</small></div>
+        <div><span class="stat-key">Layers</span><b>${a.layers || '—'}</b><small>heights that print plastic</small></div>
+        <div><span class="stat-key">Toolheads</span><b>${a.tools_used.join(' ') || '—'}</b><small>that extrude</small></div>
+        <div><span class="stat-key">Footprint</span><b>${a.footprint_mm ? a.footprint_mm.join(' × ') : '—'}</b><small>${a.footprint_mm ? 'mm' : 'no extrusion found'}</small></div>
+      </div>
+      <p class="log-empty">Read in this browser - the file isn't uploaded. The pre-flight check, time and filament estimates,
+        edits and printing need the Deja Vu1 server.</p>
+      <div class="fd-actions"><button class="btn" id="fd-forget" type="button">Close and forget</button></div>`;
+    $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
+    loadLines();
+  }
+
+  function forgetLocal(name) {
+    files.local = files.local.filter(f => f.name !== name);
+    closeFile();
+    renderLocalFiles();
+  }
+
   async function openGcode(entry, viewer) {
+    if (entry.local) { await openLocalGcode(entry, viewer); return; }
     const res = await fetch(`/api/files/analysis?name=${enc(entry.name)}`);
     const a = await res.json();
     if (!res.ok) { $('fd-side').innerHTML = `<p class="log-empty">${esc(a.error || 'Could not read the file')}</p>`; return; }
@@ -804,8 +891,10 @@ const Workshop = (() => {
   async function setupAR(entry, mesh) {
     const slot = $('fd-ar-slot'), note = $('fd-ar-note');
     if (!slot || typeof DVAR === 'undefined') return;
+    // Without the server there's no module switch to read; AR runs in the
+    // browser alone, so it's offered on the same terms as anything else here.
     const mods = await getJSON('/api/modules').catch(() => null);
-    if (!mods || !(mods.modules || []).some(m => m.id === 'ar_preview' && m.enabled)) return;
+    if (!serverMissing() && (!mods || !(mods.modules || []).some(m => m.id === 'ar_preview' && m.enabled))) return;
     const can = await DVAR.support();
     if (files.open !== entry || !document.body.contains(slot)) return;
     if (!can.ok) {
@@ -841,10 +930,16 @@ const Workshop = (() => {
   async function openModel(entry, viewer) {
     const side = $('fd-side');
     try {
-      const res = await fetch(`/api/files/raw?name=${enc(entry.name)}`);
-      if (!res.ok) throw new Error((await res.json()).error || res.status);
+      let buffer;
+      if (entry.local) buffer = await entry.local.arrayBuffer();
+      else {
+        const res = await fetch(`/api/files/raw?name=${enc(entry.name)}`);
+        if (!res.ok) throw new Error((await res.json()).error || res.status);
+        buffer = await res.arrayBuffer();
+      }
       const started = performance.now();
-      const mesh = await DV3D.parseModel(await res.arrayBuffer(), entry.name);
+      const mesh = await DV3D.parseModel(buffer, entry.name);
+      if (files.open !== entry) return;
       const ms = Math.round(performance.now() - started);
       if (viewer) viewer.setMesh(mesh, getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
       const is3mf = entry.kind === '3mf';
@@ -856,6 +951,11 @@ const Workshop = (() => {
           <div><span class="stat-key">Fits the U1?</span><b>${mesh.size[0] <= 270 && mesh.size[1] <= 270 && mesh.size[2] <= 270 ? 'Yes' : 'No'}</b><small>270 × 270 × 270 mm</small></div>
         </div>
         <p class="log-empty">Models need slicing (in Snapmaker Orca) before they can be printed.</p>
+        ${entry.local ? `<p class="log-empty">Read in this browser - the file isn't uploaded. Converting for the U1 and
+          slicing need the Deja Vu1 server.</p>
+        <div class="fd-actions"><span id="fd-ar-slot" class="fd-ar-slot"></span>
+          <button class="btn" id="fd-forget" type="button">Close and forget</button></div>
+        <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>` : `
         <div class="fd-actions">
           ${is3mf && !modGate.off.has('converter') ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
           <span id="fd-slice-slot" class="fd-slice-slot"></span>
@@ -865,7 +965,12 @@ const Workshop = (() => {
         </div>
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
         <div id="fd-compare-host"></div>
-        <div id="fd-convert-report"></div>`;
+        <div id="fd-convert-report"></div>`}`;
+      if (entry.local) {
+        $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
+        setupAR(entry, mesh);
+        return;
+      }
       $('fd-delete').addEventListener('click', () => deleteFile(entry.name));
       if ($('fd-convert')) $('fd-convert').addEventListener('click', (e) => convertFile(entry.name, e.currentTarget));
       renderCompare(entry);
@@ -904,8 +1009,9 @@ const Workshop = (() => {
     const host = $('fd-gcode');
     if (!files.open || files.open.kind !== 'gcode') return;
     const { offset, q } = files.lines;
-    const url = `/api/files/lines?name=${enc(files.open.name)}&offset=${offset}&limit=200${q ? `&q=${enc(q)}` : ''}`;
-    const data = await getJSON(url);
+    const data = files.open.local ? localLines(files.open, offset, q)
+      : await getJSON(`/api/files/lines?name=${enc(files.open.name)}&offset=${offset}&limit=200${q ? `&q=${enc(q)}` : ''}`);
+    if (!data.lines) { host.innerHTML = `<p class="log-empty">${esc(data.error || "Couldn't read the lines")}</p>`; delete host.dataset.built; return; }
     if (!host.dataset.built) {
       host.dataset.built = '1';
       host.innerHTML = `
@@ -930,6 +1036,17 @@ const Workshop = (() => {
     qsa('.gc-line', host).forEach(b => b.addEventListener('click', () => selectLine(+b.dataset.line, b.querySelector('.gc-t').textContent)));
   }
 
+  // The same answer as the server's gcode_tools.view_lines, for a local file.
+  function localLines(entry, offset, q) {
+    const lines = entry.localLines || [];
+    if (q) {
+      const needle = q.toLowerCase(), hits = [];
+      lines.forEach((l, i) => { if (l.toLowerCase().includes(needle)) hits.push(i); });
+      return { total: lines.length, matches: hits.length, lines: hits.slice(0, 200).map(i => ({ n: i + 1, text: lines[i] })) };
+    }
+    return { total: lines.length, offset, lines: lines.slice(offset, offset + 200).map((text, i) => ({ n: offset + i + 1, text })) };
+  }
+
   function gotoLine(n) {
     files.lines = { offset: Math.max(0, n - 20), q: '' };
     files.selectedLine = n;
@@ -948,6 +1065,11 @@ const Workshop = (() => {
     const editable = /^[GM]\d+/i.test(code) && params.length;
     const box = $('gc-edit');
     box.hidden = false;
+    if (files.open && files.open.local) {
+      box.innerHTML = `<div class="gc-edit-title">Line ${n}: <code>${esc(text.trim() || '(blank)')}</code></div>
+        <p class="log-empty">Editing a line (checked first, original kept) needs the Deja Vu1 server - this file is only being viewed here.</p>`;
+      return;
+    }
     box.innerHTML = `
       <div class="gc-edit-title">Line ${n}: <code>${esc(text.trim() || '(blank)')}</code></div>
       <div class="gc-edit-row">

@@ -454,8 +454,12 @@ const Studio = (() => {
 
   /* A disabled button says why it's disabled. */
   function buildHint() {
-    $('st-build-hint').textContent = !s.image ? 'Choose a photo first.'
-      : s.stack.length < 2 ? 'Add at least two colours to build.' : '';
+    const hint = !s.image ? 'Choose a photo first.'
+      : s.stack.length < 2 ? 'Add at least two colours to build - pick them under "Add colours".' : '';
+    $('st-build-hint').textContent = hint;
+    // The same words beside the preview, which is where you're looking.
+    const inPreview = $('st-preview-hint');
+    if (inPreview) { inPreview.textContent = s.image ? hint : ''; inPreview.hidden = !(s.image && hint); }
   }
 
   /* ---- the photo ---- */
@@ -653,6 +657,15 @@ const Studio = (() => {
 
   /* ---- save ---- */
 
+  /* Straight to this device, for when there's no file library to save to. */
+  function download(body, name) {
+    const url = URL.createObjectURL(new Blob([body], { type: name.endsWith('.stl') ? 'model/stl' : 'model/3mf' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
   async function save(kind, btn) {
     const r = s.result;
     if (!r) return;
@@ -660,20 +673,33 @@ const Studio = (() => {
     const name = `${base}.${kind}`;
     btn.disabled = true;
     const label = btn.textContent;
-    btn.textContent = 'Saving…';
+    btn.textContent = serverMissing() ? 'Preparing…' : 'Saving…';
+    let body = null;
     try {
-      const body = kind === 'stl' ? r.stl : await C.to3MF(r.tris, C.swapPlan(r.plan));
+      body = kind === 'stl' ? r.stl : await C.to3MF(r.tris, C.swapPlan(r.plan));
+      if (serverMissing()) {
+        download(body, name);
+        $('st-saved').textContent = `Downloaded ${name} to this device. To keep it in a file library and print it, run the Deja Vu1 server.`;
+        return;
+      }
       const note = `${(r.grid.w * r.grid.pitch).toFixed(0)}×${(r.grid.h * r.grid.pitch).toFixed(0)} mm, `
         + `${r.plan.colours.map((c, i) => `T${i} ${c.name}`).join(' → ')}; slice at ${r.plan.layerH} mm layers, `
         + `${r.plan.firstLayerH} mm first layer`;
-      const res = await fetch(`/api/studio/save?name=${encodeURIComponent(name)}&note=${encodeURIComponent(note)}`, { method: 'POST', body });
+      let res;
+      try { res = await fetch(`/api/studio/save?name=${encodeURIComponent(name)}&note=${encodeURIComponent(note)}`, { method: 'POST', body }); }
+      catch (_) { throw new Error("couldn't reach the dashboard server"); }
       const out = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(out.error || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(out.error || `the dashboard answered ${res.status}`);
       toast(`Saved ${out.file.name} to your file library${out.swaps && out.swaps.length ? ` with ${out.swaps.length} tool change(s)` : ''}`, 'ok', 6000);
       $('st-saved').innerHTML = `Saved <button class="chip-btn" type="button" id="st-open-saved">${esc(out.file.name)}</button> - open it in Files to view, convert or slice it.`;
       $('st-open-saved').addEventListener('click', () => { showTab('files'); if (window.Workshop) Workshop.openFile(out.file.name); });
     } catch (err) {
       toast(`Not saved: ${err.message}`, 'bad', 7000);
+      // The model is still here: offer it to this device instead.
+      if (body) {
+        $('st-saved').innerHTML = `Not saved to the file library (${esc(err.message)}). <button class="chip-btn" type="button" id="st-download">Download ${esc(name)} instead</button>`;
+        $('st-download').addEventListener('click', () => download(body, name));
+      }
     } finally {
       btn.disabled = false; btn.textContent = label;
     }
@@ -681,12 +707,36 @@ const Studio = (() => {
 
   /* ---- wiring ---- */
 
+  /* The colours to try when the dashboard server can't be reached: the same
+   * six the server suggests (mock_moonraker.FILAMENT_COLORS, TD estimated by
+   * photo_studio.estimate_td). Suggestions only - nothing claims you own them. */
+  const BUILT_IN = [
+    { name: 'Black', hex: '#1C1C1E' }, { name: 'White', hex: '#F2F2F0' },
+    { name: 'Snapmaker Orange', hex: '#F26A1B' }, { name: 'Signal Red', hex: '#C8102E' },
+    { name: 'Sky Blue', hex: '#3B82F6' }, { name: 'Grass Green', hex: '#2F9E44' },
+  ];
+  function builtInPalette(why) {
+    return { source: 'built-in', colours: [],
+             suggestions: BUILT_IN.map(c => ({ ...c, td_mm: estimateTD(c.hex), td_source: 'estimate' })),
+             note: `${why} Pick colours yourself; nothing here claims you own them.` };
+  }
+
   async function load() {
-    const data = await getJSON('/api/studio/palette').catch(() => null);
+    let data = await getJSON('/api/studio/palette').catch(() => null);
     const body = $('st-body'), off = $('st-off');
     if (isModuleDisabled(data)) { body.hidden = true; off.hidden = false; off.innerHTML = moduleDisabledEmpty('Photo-to-Print Studio'); return; }
     body.hidden = false; off.hidden = true;
-    if (!data || !data.suggestions) return;
+    // No server, or an answer without colours: the studio itself runs here,
+    // so it carries on with its own suggestions rather than an empty palette.
+    if (!data || !Array.isArray(data.suggestions) || !Array.isArray(data.colours)) {
+      data = builtInPalette(data && data.server_missing
+        ? 'Your filament inventory is on the Deja Vu1 server, which isn\'t running at this address.'
+        : 'Couldn\'t read your filament inventory from the dashboard server.');
+    }
+    if (serverMissing()) {
+      $('st-save-3mf').textContent = 'Download 3MF with tool changes';
+      $('st-save-stl').textContent = 'Download STL';
+    }
     s.palette = data;
     renderPalette();
     if (!s.loaded) {

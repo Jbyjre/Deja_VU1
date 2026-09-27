@@ -454,6 +454,21 @@ step, and nothing fetched from any external host: no webfonts, no CDN. The
 dashboard runs fully offline, including phone pairing, which talks
 directly to this server over the local network.
 
+**No server behind the pages.** The pages can be served without
+`backend/app.py` (the public Cloudflare link publishes `frontend/` alone as
+static files). `app.js` asks `/api/health` once before any other request;
+a network error, a 404 or a non-JSON answer means the server isn't there.
+Then `getJSON` / `postJSON` stop sending requests and answer at once with
+`{server_missing: true, connected: false}`, `showServerMissing()` shows
+the banner, switches Demo data off (the remembered choice is kept), and
+gives every card without `data-browser-only` a one-line "needs the Deja Vu1
+server" note in place of its body. The browser-only parts: the Studio
+(built-in palette, download instead of save), local G-code / STL / 3MF
+viewing (`DV3D.parseGcode` in `viewer3d.js` reads the toolpath in the
+browser — moves, arcs, G92, T0–T3; its footprint includes every extrusion,
+where the server's pre-flight leaves out-of-bounds points out of the
+footprint and reports them instead), AR, the games and the preferences.
+
 **Honest commands.** Every control button goes through one function
 (`runCommand` in `app.js`): it shows "Pausing…" at once, sends the command,
 and then shows only what the printer reports back — or the failure, in

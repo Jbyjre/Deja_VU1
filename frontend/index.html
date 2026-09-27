@@ -95,6 +95,21 @@
 
 <main class="wrap">
 
+  <section class="server-banner liquid-glass" id="server-banner" hidden>
+    <span class="notice-mark" aria-hidden="true">i</span>
+    <div class="sbn-body" id="server-banner-text">
+      <p><strong>Browser-only preview.</strong> The Deja Vu1 server isn't running at this address, so there's no
+        printer, no demo farm, no file library and no saved settings here &mdash; those cards say so below.</p>
+      <p>Works right here in your browser:
+        <button class="chip-btn" type="button" data-go="studio">Photo studio</button>
+        <button class="chip-btn" type="button" data-go="files">View G-code, STL &amp; 3MF files</button>
+        <button class="chip-btn" type="button" data-go="games">Games</button></p>
+      <p>To use everything, run the server on a computer or Raspberry Pi at home:
+        <a href="https://github.com/Jbyjre/Deja_VU1#how-to-run-it" target="_blank" rel="noopener">how to run it</a>.</p>
+    </div>
+    <button class="btn small" id="server-retry" type="button">Check again</button>
+  </section>
+
   <div class="notice liquid-glass" id="notice" hidden>
     <span class="notice-mark" aria-hidden="true">!</span>
     <p><strong>Demo data.</strong> No printer is connected. Every figure below
@@ -358,7 +373,7 @@
   <!-- PRINTER CONTROL                                               -->
   <!-- ============================================================ -->
   <section id="tab-control" class="tab-panel" hidden>
-    <section class="card liquid-glass" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <section class="card liquid-glass" data-server-what="Printer status and controls" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
       <div style="display:flex; align-items:center; gap:12px;">
         <span class="conn-dot" id="ctrl-state-dot" aria-hidden="true" style="width:9px;height:9px;"></span>
         <div>
@@ -404,7 +419,7 @@
   <!-- ============================================================ -->
   <section id="tab-files" class="tab-panel" hidden>
     <div class="files-layout">
-      <section class="card liquid-glass files-library">
+      <section class="card liquid-glass files-library" data-browser-only>
         <div class="card-head">
           <div><h2>File library</h2><p class="card-sub">G-code to print, STL and 3MF models to inspect or convert</p></div>
         </div>
@@ -509,7 +524,7 @@
   <section id="tab-studio" class="tab-panel" hidden>
     <div id="st-off" hidden></div>
     <div class="studio-layout" id="st-body">
-      <section class="card liquid-glass studio-controls">
+      <section class="card liquid-glass studio-controls" data-browser-only>
         <div class="card-head">
           <div><h2>Photo-to-Print Studio</h2><p class="card-sub">A photo becomes a colour-layered relief, printed in filament you own. The photo never leaves this browser.</p></div>
         </div>
@@ -553,7 +568,7 @@
         <p class="log-empty" id="st-status" aria-live="polite"></p>
       </section>
 
-      <section class="card liquid-glass studio-preview is-empty" id="st-preview">
+      <section class="card liquid-glass studio-preview is-empty" id="st-preview" data-browser-only>
         <!-- Until there is a photo, one clear invitation instead of three blank frames. -->
         <div class="empty st-empty">
           <span class="empty-mark" aria-hidden="true"></span>
@@ -561,6 +576,7 @@
           <p class="empty-sub">Choose a photo or try the test pattern. You'll see the photo, how it prints in your
             filaments, and the 3D model before anything is saved.</p>
         </div>
+        <p class="st-preview-hint" id="st-preview-hint" role="status" hidden></p>
         <div class="st-compare">
           <figure><canvas id="st-original" width="360" height="240" aria-label="Your photo"></canvas><figcaption>Your photo</figcaption></figure>
           <figure><canvas id="st-printed" width="360" height="240" class="st-pixels" aria-label="How the print is modelled to look"></canvas>
@@ -747,7 +763,7 @@
           </form>
         </section>
 
-        <section class="card liquid-glass">
+        <section class="card liquid-glass" data-browser-only>
           <div class="card-head"><div><h2>Preferences</h2></div></div>
           <p class="card-sub" style="margin-bottom:8px;">Accent colour</p>
           <div id="accent-swatches" style="display:flex; gap:9px; margin-bottom:16px;"></div>
@@ -867,7 +883,7 @@
         <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
         <div id="timelapse-host"></div>
       </section>
-      <section class="card liquid-glass">
+      <section class="card liquid-glass" data-browser-only>
         <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">Reach this dashboard through a Cloudflare Tunnel</p></div></div>
         <p class="card-sub">The dashboard stays on your home network; <code>cloudflared</code>, a separate program you run on the same machine, opens an outgoing link to Cloudflare. The printer itself is never exposed. It needs a domain on Cloudflare and about fifteen minutes of setup — the steps are in <code>docs/remote-access.md</code>. Put Cloudflare Access in front of it: this dashboard has no login of its own.</p>
       </section>
@@ -899,7 +915,7 @@
   <!-- WHILE YOU WAIT (games)                                        -->
   <!-- ============================================================ -->
   <section id="tab-games" class="tab-panel" hidden>
-    <section class="card liquid-glass">
+    <section class="card liquid-glass" data-browser-only>
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
         <div class="game-picker liquid-glass" id="game-picker">
           <button class="active" data-game="skydash">Sky Dash</button>
