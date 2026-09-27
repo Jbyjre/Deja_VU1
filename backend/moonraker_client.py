@@ -479,7 +479,9 @@ def translate_state(status, ctx):
     }
     table = ptc.get("extruder_map_table")
     if isinstance(table, list) and extruders:
-        mapping = {f"T{i}": f"T{table[i]}" for i in range(min(len(table), 32))
+        # Only the physical heads' slots: the U1 pads the table to 32 logical
+        # extruders with zeros (print_task_config.py DEFAULT_PRINT_TASK_CONFIG).
+        mapping = {f"T{i}": f"T{table[i]}" for i in range(min(len(table), len(extruders)))
                    if isinstance(table[i], int) and table[i] != i and f"T{table[i]}" in extruders}
         if mapping:
             out["extruder_map"] = mapping
@@ -606,6 +608,10 @@ class HttpTransport:
                         raise PrinterUnreachable(f"The reply from {self.endpoint.label} was too large "
                                                  f"(over {max_bytes // (1024 * 1024)} MB)")
                     chunks.append(chunk)
+                # http.client hands back a short body without complaint when
+                # the connection drops early; the declared length says so.
+                if resp.length:
+                    raise http.client.IncompleteRead(b"".join(chunks), resp.length)
                 data = b"".join(chunks)
             finally:
                 conn.close()
@@ -739,7 +745,7 @@ class WebSocketClient:
     def _send(self, payload, opcode):
         with self._wlock:
             if self.closed:
-                raise ws.ConnectionClosed("Already closed")
+                raise ws.ConnectionClosed("The connection to the printer has closed")
             try:
                 self._sock.sendall(ws.encode_frame(payload, opcode, mask_key=os.urandom(4)))
             except OSError as exc:
@@ -794,7 +800,11 @@ class WebSocketClient:
             self._sock.shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
-        self._sock.close()
+        for thing in (self._rfile, self._sock):
+            try:
+                thing.close()
+            except OSError:
+                pass
 
 
 # ---------------------------------------------------------------------------
