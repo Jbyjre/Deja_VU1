@@ -10,15 +10,17 @@ inventory, notification preferences, the file library, automation rules)
 that aren't printer data at all.
 
 ```
-   Snapmaker U1
+   Snapmaker U1                         (no printer: demo data)
         │
         ▼
-   Moonraker  ── the printer's web API
+   Moonraker  ── the printer's web API (HTTP + WebSocket JSON-RPC)
         │
         ▼
  ┌──────────────────────────────────────────┐
- │  mock_moonraker.py                       │  ← the only file that
- │  (today: fake data. later: real HTTP)    │    talks to the printer
+ │  moonraker_client.py  (a real printer)   │
+ │  mock_moonraker.py    (the one interface │  ← the only files that
+ │   every module calls; simulated printers │    know where printer
+ │   live here too)                         │    data comes from
  └──────────────────────────────────────────┘
         │
    ┌────┼──────┬───────────┬──────────────┐
@@ -39,9 +41,11 @@ that aren't printer data at all.
 
 ### Which printer?
 
-`mock_moonraker.py` holds a small fleet of simulated printers. Every call
-into it answers for the *selected* printer — the default one, unless the
-caller is inside `with mock_moonraker.use_printer("u1-studio"):`. The web
+`mock_moonraker.py` holds a small fleet of simulated printers and, once
+you add one by address, real ones. Every call into it answers for the
+*selected* printer — the default one (the first real printer if there is
+one, otherwise the first simulated one), unless the caller is inside
+`with mock_moonraker.use_printer("u1-studio"):`. The web
 server wraps every request in that, from a `?printer=` parameter, so every
 existing module (maintenance, control, cost, sanity check…) works for any
 printer without a single change to its own code. Maintenance logs are kept
@@ -56,9 +60,12 @@ can see fresher data — it steps each printer forward, stores a numbered
 snapshot, and wakes every waiting WebSocket. It also notices *changes*
 (started, paused, resumed, finished, failed, cancelled) and turns them into
 numbered events: automations are checked, time-lapse frames recorded, the
-queue advanced, and a finished print gets its celebration summary. With a
-real printer this thread would hold Moonraker's WebSocket open and apply
-each `notify_status_update` instead of stepping a simulation.
+queue advanced, and a finished print gets its celebration summary. A real
+printer isn't stepped: its own connection thread keeps Moonraker's
+WebSocket open and merges each `notify_status_update` into its copy, and
+the tick only reads that copy from memory — so a slow or lost printer can
+never stall the feed. Each printer is its own step of the tick: one that
+fails is logged and skipped, and the others still update.
 
 A control action (pause, start…) doesn't wait for the next tick: the server
 sends the command, reads the printer straight back, returns that state to
@@ -71,18 +78,20 @@ badge says "Polling 1 s" instead of "Live".
 
 ## The one rule
 
-**Only `mock_moonraker.py` knows where printer data comes from.**
+**Only `mock_moonraker.py` (and, behind it, `moonraker_client.py`) knows
+where printer data comes from.**
 
 Every module that reads printer state asks it for print history, live
 state, or update status and gets back a plain Python dictionary. None of
 them contain a URL, an HTTP call, or any knowledge of Moonraker's wire
 format.
 
-The result: connecting a real printer means rewriting one file. The
-maintenance logic, printer control, the LED decisions, the colour
-comparison, the API, and the entire frontend stay exactly as they are. That
-is also why the whole project is testable on a laptop with no printer
-attached.
+The result: connecting a real printer didn't change the maintenance logic,
+printer control, the LED decisions, the colour comparison or the API's
+shape. `moonraker_client.py` translates Moonraker's replies into exactly
+the dictionaries the simulation has always returned, and
+`mock_moonraker.py` passes each call to it for a real printer. That is also
+why the whole project is still testable on a laptop with no printer.
 
 Modules that hold the dashboard's *own* settings — `modules.py`,
 `pairing.py`, `filament_inventory.py`, `notifications.py` — don't go through
@@ -112,6 +121,10 @@ too, deliberately).
 | `upload_file()` / `start_print()` | `POST /server/files/upload`, `POST /printer/print/start` |
 | `advance()` | one 250 ms step — stands in for `printer.objects.subscribe` updates |
 
+For a printer added by address, each of these goes to
+`moonraker_client.MoonrakerPrinter` instead (see below). The demo and
+sandbox hooks refuse a real printer outright.
+
 Each simulated printer also has test and demo hooks — `fail_next(action)`
 makes the next command fail exactly as a refusing printer would (raising
 `PrinterCommandError`, which the API reports as a 502 with the reason),
@@ -135,6 +148,39 @@ by editing its log) and `set_link()` (a network drop: commands fail with
 printer keeps printing when the Wi-Fi goes). `advance(..., scaled=False)`
 takes simulated seconds directly, for the sandbox's "step forward".
 
+### `backend/moonraker_client.py` — the real printer
+
+One `MoonrakerPrinter` per printer added by address (fleet.py's registry,
+when the `printer_link` module is on). It keeps a WebSocket open to
+Moonraker (JSON-RPC: identify, `server.info`, `printer.objects.list`,
+`printer.objects.subscribe`), merges each partial `notify_status_update`
+into its copy, re-subscribes after a Klipper restart, pings every 15 s and
+reconnects on its own (1 s up to 30 s apart). History and file metadata are
+fetched over HTTP on a worker thread, so reading them never waits on the
+network. Commands go over HTTP, each checked first against a fresh
+reading and then read back until the printer reports the change (or said
+not to have). Every exchange is kept in a log for the Details panel
+(`GET /api/printers/diagnostics`). Written against Moonraker's, Klipper's
+and Snapmaker's U1 source — see [real-printer.md](real-printer.md) for
+exactly what was read, what it changed, and what can't be checked without
+a printer.
+
+`tests/fake_moonraker.py` is a stand-in Moonraker built from the same
+source (not a copy of the simulation): real HTTP and WebSocket, partial
+updates, `RESUME` that only takes effect a moment later, the U1's
+200-with-error refusal, checksum-checked uploads, 50-job history pages.
+`tests/test_moonraker_client.py` holds the client to it, and
+`tests/test_real_printer.py` runs the whole dashboard against it with the
+printer added through the API.
+
+**Demo and real never mix.** Demo data only ever means simulated printers:
+a real printer without a live link answers "not connected" even with demo
+data on; the fleet overview lists simulated printers only on a demo
+request; "all printers" in a broadcast means the real ones, or — with demo
+on — only the simulated ones; the sandbox's targets (`all`, `random`, …)
+never include a real printer; and the live WebSocket labels every message
+by the printer it is about.
+
 ### `backend/modules.py`
 The on/off registry for every feature. Metadata only — disabling a module
 makes its API routes refuse to answer (`403`, `{"module_disabled": true}`);
@@ -151,8 +197,10 @@ module list at least every 20 s, so a module switched on from another
 device is noticed.
 
 ### Modules that need only a Moonraker connection
-`maintenance.py`, `printer_control.py` — complete, tested, work the moment a
-real printer is wired in.
+`maintenance.py`, `printer_control.py` — complete and tested, against the
+simulation and against the stand-in Moonraker. `printer_control` refuses
+homing while a print runs (a real `G28` would drive the head through it),
+and starts one print at a time per printer.
 
 ### Modules that read printer history but add their own logic
 `comparison.py` ("what changed?" + likely-cause, by pattern-matching your own
@@ -173,21 +221,42 @@ watchdog; the actual video stream needs a real camera), `updates.py` (reads
 
 ### Modules that push this dashboard's data outward
 `wled_bridge.py` (pushes dock ring colours to a WLED device over its own
-JSON HTTP API — a real network client, not a simulation) and
-`home_assistant_bridge.py` (publishes printer state as REST sensors via
-Home Assistant's `POST /api/states/<entity_id>`, with a bearer token). Both
-fail cleanly with `{"ok": false, "error": ...}` rather than raising when
-unconfigured or unreachable, the same pattern `notifications.py` uses for
-its webhooks — a misconfigured strip or HA instance should never take the
-dashboard down with it.
+JSON HTTP API) and `home_assistant_bridge.py` (publishes printer state as
+REST sensors via Home Assistant's `POST /api/states/<entity_id>`, with a
+bearer token). Both, and `notifications.py`'s ntfy / Discord / Telegram
+posts, go through `outbound.py`, which turns every network failure into a
+sentence (`{"ok": false, "error": ...}`) — a misconfigured strip or HA
+instance never takes the dashboard down with it. Each was checked against
+the service's own source (`tests/test_outbound.py` has stand-ins that follow
+it): WLED ignores a segment it doesn't have unless the request says where
+it stops (`wled00/json.cpp`), so every ring segment is sent with its start
+and stop, and a one-colour change names every segment; Home Assistant
+refuses a state over 255 characters (`MAX_LENGTH_STATE_STATE`) and a
+non-admin token; Discord's webhook drops a message silently without
+`wait=true`; each service's length limit is respected. Notifications held
+back by quiet hours are sent by the live feed once they end, and kept if
+they still can't be delivered.
 
 ### Files, G-code and 3D
 `file_library.py` keeps G-code / 3MF / STL files under `backend/data/files/`
 with cached summaries and thumbnails. `gcode_tools.py` walks a G-code file
 move by move once and produces metadata, the pre-flight risk check, a
-toolpath for the viewer, and small validated edits. `mesh_tools.py` reads
-STL and 3MF (following Bambu/Orca-style `<component>` parts) and draws a
-PNG thumbnail with a tiny depth-buffered rasterizer. `sample_files.py`
+toolpath for the viewer, and small validated edits. It reads every line
+**the way Klipper will**: split at `\n` only (`virtual_sdcard.py`),
+tokenised with Klipper's own rules (`gcode.py`: upper-cased, words may run
+together, a leading `N` line number skipped, only `;` starts a comment),
+extrusion relative under `M83` *or* `G91` (`gcode_move.py`), and arcs
+followed along their curve with the U1's `gcode_arcs.py` rules — so a file
+can't hide an unsafe move in a form the checker skips and the printer runs.
+Its result is remembered per file version (size + modification time).
+`mesh_tools.py` reads STL and 3MF (following Bambu/Orca-style
+`<component>` parts) as a stream — 3MF XML with expat callbacks into compact
+arrays, STL a triangle at a time — and draws a PNG thumbnail from an even
+sample with a tiny depth-buffered rasterizer, so the largest model an
+upload allows takes about 120 MB rather than 1.5 GB. `safe_zip.py` opens
+uploaded archives: each part's size is checked before and while it's
+unpacked (a zip bomb is refused in words), and every kind of damage is a
+worded refusal, never a crash. `sample_files.py`
 builds the "Add sample files" set, each labelled for what it is.
 
 ### Starting prints safely
@@ -356,8 +425,11 @@ like every other demo hook.
 
 ### `backend/led_status.py` / `backend/color_check.py`
 Hardware-pending placeholders. The decision logic (state → colour, colour
-distance) is real and tested. The hardware write / sensor read is faked.
-See `hardware-modules.md`.
+distance) is real and tested. The hardware write / sensor read is faked —
+so with a real printer the colour check reports "no sensor fitted" rather
+than passing a simulated reading (with its deliberate demo mismatch) off as
+that printer's, and the rings say what they *would* show. See
+`hardware-modules.md`.
 
 ### `backend/app.py`
 The web server, built on Python's standard-library `http.server`. Serves the
@@ -520,13 +592,10 @@ database to install; each is created on first use and regenerated if
 deleted. The whole directory is gitignored, so a fresh clone always starts
 from the same seeded demo state.
 
-## Swapping in a real printer
+## Connecting a real printer
 
-1. Rewrite the functions in `mock_moonraker.py` to call a real Moonraker
-   instance over HTTP instead of mutating an in-memory dict, and make
-   `advance()` apply Moonraker's `notify_status_update` messages.
-2. Map each registered printer (`fleet.py`) to its own client.
-3. Nothing else changes — every other module already only talks to this file.
+Done: add it under **Fleet → Add a printer**. See
+[real-printer.md](real-printer.md).
 
 For the hardware modules, implement `_write_to_hardware()` in `led_status.py`
 and `connect_sensor()` / `calibrate()` / `read_sensor()` in `color_check.py`.
@@ -534,7 +603,7 @@ Everything that calls them already works.
 
 ## Testing
 
-423 tests, using Python's built-in `unittest`:
+544 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -575,6 +644,17 @@ the sandbox hooks in `test_mock_moonraker.py`, and `test_api_flagship.py`
 for their routes, module switches and the no-printer-no-figures rule. The
 studio's mesh builder was checked separately in Node (every edge met
 equally from both sides, exact volume), outside the stdlib test suite.
+
+The real-hardware pass added `test_moonraker_client.py` (the client against
+`fake_moonraker.py` over real sockets, and every network failure ending in
+words), `test_real_printer.py` (the whole dashboard with a printer added
+through the API: every printer route, printing from the library, the
+finish summary and spool deduction, and demo and real kept apart),
+`test_outbound.py` (WLED, Home Assistant and the notification services
+against stand-ins built from their source), `test_concurrency.py` (slow
+printers on real threads: the queue never freezes, two devices never start
+two prints, a move is all-or-nothing), and hostile-input cases in
+`test_gcode_tools.py` and `test_mesh_tools.py`.
 
 The browser side was checked by driving the real dashboard in headless
 Chromium (Playwright) at desktop and phone sizes, with touch input for the

@@ -48,6 +48,12 @@ FAKE_ORCA = textwrap.dedent('''\
             json.dump({{"plate_index": 0, "return_code": code, "error_string": text}}, fh)
     if mode == "hang":
         time.sleep(60)
+    if mode == "hang_with_helper":
+        # A helper in a session of its own, holding our output pipes open:
+        # killing the process group doesn't reach it.
+        import subprocess
+        subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True)
+        time.sleep(60)
     if mode == "config_error":
         result(-5, "Loading configuration file failed")
         sys.stderr.write("load_config_file: can not resolve preset\\n")
@@ -235,6 +241,15 @@ class TestSlicing(SlicerBridgeTest):
 
     def test_gcode_that_prints_nothing(self):
         self.assertFailsWithoutAFile("nothing_printable", "no printable layers")
+
+    def test_a_hang_with_a_helper_holding_the_output_still_ends(self):
+        slicer_bridge.MIN_TIMEOUT, original = 1, slicer_bridge.MIN_TIMEOUT
+        try:
+            started = time.monotonic()
+            self.assertFailsWithoutAFile("hang_with_helper", "didn't finish within 1 s", timeout=1)
+            self.assertLess(time.monotonic() - started, 25)
+        finally:
+            slicer_bridge.MIN_TIMEOUT = original
 
     def test_a_hang_is_stopped_at_the_time_limit(self):
         slicer_bridge.MIN_TIMEOUT, original = 1, slicer_bridge.MIN_TIMEOUT

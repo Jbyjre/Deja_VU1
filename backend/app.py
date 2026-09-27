@@ -33,9 +33,12 @@ API endpoints
   GET  /api/live/snapshot            the same live state, for polling fallback
   GET  /api/live/events?since=       events after a given id, for polling fallback
   GET  /api/fleet                    one overview row per printer
-  GET  /api/fleet/registry           printers you added by address
-  POST /api/fleet/registry           add one {"name", "moonraker_url"}
+  GET  /api/fleet/registry           printers you added by address, each with its link in words
+  POST /api/fleet/registry           add one {"name", "moonraker_url", "api_key" (optional)}
   POST /api/fleet/registry/<id>/remove
+  GET  /api/printers/diagnostics?printer=<id>
+                                     a real printer's connection: state, last error, and the
+                                     last exchanges with its Moonraker (what was sent and received)
 
   Fleet command center (operate several printers at once):
   POST /api/fleet/broadcast          {"action": "preheat|pause|resume|cancel|home",
@@ -291,6 +294,22 @@ def _chamber():
             "history": live_feed.climate(mock_moonraker.selected_printer_id())}
 
 
+def _demo(query):
+    return query.get("demo", ["0"])[0] in ("1", "true", "yes")
+
+
+def _fleet_rows(include_demo):
+    """The fleet overview: real printers always, simulated ones only with demo data on."""
+    snap = live_feed.fleet_snapshot()
+    return {**snap, "printers": [p for p in snap["printers"] if include_demo or not p.get("demo", True)]}
+
+
+# Routes about the whole farm rather than one printer: they have figures to
+# show whenever any real printer is connected (or demo data is on), even if
+# the printer a request defaults to is the one that's down.
+_FARM_ROUTES = {"/api/fleet", "/api/fleet/history", "/api/fleet/queues"}
+
+
 def _live_snapshot():
     entry = live_feed.snapshot(mock_moonraker.selected_printer_id())
     return {"seq": entry["seq"], "t": entry["t"], "state": entry["state"],
@@ -322,9 +341,10 @@ _DATA_ROUTES = {
     "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.estimate_current_job()),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
     "/api/live/events": (None, lambda q: {"events": live_feed.events_since(int(_q(q, "since", "0")))}),
-    "/api/fleet": ("fleet", lambda q: live_feed.fleet_snapshot()),
-    "/api/fleet/history": ("fleet_command", lambda q: fleet.history(_q(q, "days", "30"), _q(q, "bucket", "day"))),
-    "/api/fleet/queues": ("fleet_command", lambda q: fleet.queues() if modules.is_enabled("print_queue")
+    "/api/fleet": ("fleet", lambda q: _fleet_rows(_demo(q))),
+    "/api/fleet/history": ("fleet_command", lambda q: fleet.history(_q(q, "days", "30"), _q(q, "bucket", "day"),
+                                                                    include_demo=_demo(q))),
+    "/api/fleet/queues": ("fleet_command", lambda q: fleet.queues(_demo(q)) if modules.is_enabled("print_queue")
                           else {"queues": {}, "queue_disabled": True}),
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
@@ -356,10 +376,11 @@ _APP_ROUTES = {
     "/api/files/analysis": ("file_library", lambda q: file_library.analysis(_q(q, "name"))),
     "/api/profiles/diff": ("file_library", lambda q: comparison.diff_profiles(_q(q, "a"), _q(q, "b"))),
     "/api/fleet/registry": ("fleet", lambda q: fleet.registry()),
+    "/api/printers/diagnostics": ("fleet", lambda q: fleet.diagnostics(_q(q, "printer"))),
     "/api/automations": ("automations", lambda q: {"rules": automations.list_rules()}),
     "/api/automations/log": ("automations", lambda q: {"log": automations.get_log()}),
     "/api/camera/settings": ("camera", lambda q: camera.get_settings()),
-    "/api/camera/webrtc/settings": ("webrtc_camera", lambda q: webrtc_camera.get_settings()),
+    "/api/camera/webrtc/settings": ("webrtc_camera", lambda q: webrtc_camera.public_settings()),
     "/api/handoff": ("handoff", lambda q: handoff.offer_for(_q(q, "device", ""))),
     "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
@@ -555,7 +576,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         """
         requested = self._query().get("printer", [""])[0]
         if not requested:
-            return mock_moonraker.DEFAULT_PRINTER_ID
+            return mock_moonraker.default_printer_id()
         if mock_moonraker.has_printer(requested):
             return requested
         if any(p["id"] == requested for p in fleet.registered()):
@@ -645,12 +666,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             printer_id = self._printer_id()
         except LookupError as exc:
             return self._send_json({"error": str(exc)}, status=404)
-        registered_only = not mock_moonraker.has_printer(printer_id)
+        # A printer added by address with no live link right now (never
+        # connected, the Wi-Fi dropped, or the connection module is off)
+        # answers like any unconnected printer: no figures - and demo data
+        # never unlocks it, because demo data only ever means the simulation.
+        offline_real = not mock_moonraker.has_printer(printer_id) or (
+            mock_moonraker.is_real(printer_id) and not mock_moonraker.is_connected(printer_id))
         try:
-            if registered_only:
-                # A printer the user added by address. There is no live
-                # client for it yet, so it answers like any unconnected
-                # printer: no figures, and never the simulation's figures.
+            if offline_real:
                 return handler(printer_id, force_disconnected=True)
             with mock_moonraker.use_printer(printer_id):
                 return handler(printer_id)
@@ -687,13 +710,25 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         connected = mock_moonraker.is_connected(printer_id)
 
         if route == "/api/connection":
+            real = [{"id": pid, "name": mock_moonraker.printer_name(pid),
+                     "connected": mock_moonraker.is_connected(pid)} for pid in mock_moonraker.real_printer_ids()]
+            waiting = [p for p in real if not p["connected"]]
+            if connected:
+                message = "Printer connected."
+            elif real:
+                diag = mock_moonraker.diagnostics(waiting[0]["id"]) if waiting else None
+                message = (f"{waiting[0]['name']} isn't connected yet: "
+                           f"{(diag or {}).get('last_error') or 'connecting...'}") if waiting else "Printer connected."
+            else:
+                message = ("No printer connected. Turn on demo data to "
+                           "preview the dashboard with simulated values.")
             return self._send_json({
                 "connected": connected,
                 "demo_available": True,
                 "source": "Moonraker" if connected else None,
-                "message": ("Printer connected." if connected else
-                            "No printer connected. Turn on demo data to "
-                            "preview the dashboard with simulated values."),
+                "printer": printer_id,
+                "printers": real,
+                "message": message,
             })
 
         if route == "/api/modules":
@@ -746,7 +781,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if not self._demo_allowed(connected):
                 return None
             return self._send_json({"time_scale": mock_moonraker.get_time_scale(),
-                                    "printers": mock_moonraker.printer_ids()})
+                                    "printers": mock_moonraker.simulated_printer_ids()})
 
         if route == "/api/timelapse/frame":
             if self._module_blocked("timelapse"):
@@ -765,8 +800,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             # Every route here returns figures derived from the printer.
             # Without a printer, and without an explicit demo request,
             # it returns none.
-            if force_disconnected:
+            if force_disconnected and route not in _FARM_ROUTES:
                 return self._send_json({"connected": False, "demo": False})
+            if route in _FARM_ROUTES:
+                connected = mock_moonraker.any_connected()
             if not self._gate(connected):
                 return None
             return self._send_json(self._tag(producer(query), connected))
@@ -797,6 +834,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             module_id = route[len("/api/modules/"):-len("/toggle")]
             body = self._read_json_body()
             result = modules.set_enabled(module_id, body.get("enabled", True))
+            if module_id == "printer_link":
+                fleet.sync_real_printers()
             return self._send_json({"modules": result})
 
         if route in _CONTROL_ACTIONS or route in _QUEUE_ACTIONS:
@@ -822,18 +861,21 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("fleet_command") or \
                     self._module_blocked("printer_control" if is_broadcast else "print_queue"):
                 return None
-            if not connected and not self._wants_demo():
+            connected = connected or mock_moonraker.any_connected()
+            demo = self._wants_demo()
+            if not connected and not demo:
                 return self._send_json({"connected": False, "demo": False}, status=409)
             body = self._read_json_body()
             if is_broadcast:
-                result = fleet.broadcast(body.get("action"), body.get("printers"), body.get("params"))
+                result = fleet.broadcast(body.get("action"), body.get("printers"), body.get("params"),
+                                         include_demo=demo)
                 # Push each printer's read-back to every open dashboard now.
                 for row in result["results"]:
                     if mock_moonraker.has_printer(row["printer"]):
                         live_feed.refresh(row["printer"])
             else:
                 result = fleet.route_file(body.get("filename"), body.get("to"),
-                                          body.get("from_printer"), body.get("item_id"))
+                                          body.get("from_printer"), body.get("item_id"), include_demo=demo)
             return self._send_json(self._tag(result, connected))
 
         if route.startswith("/api/sandbox/"):
@@ -966,7 +1008,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                     if rule and rule.get("demo") and not self._wants_demo():
                         return self._send_json({"error": "This rule was made with demo data - "
                                                          "switch demo data on to test it"}, status=409)
-                    target = printer_id if mock_moonraker.has_printer(printer_id) else mock_moonraker.DEFAULT_PRINTER_ID
+                    target = printer_id if mock_moonraker.has_printer(printer_id) else mock_moonraker.default_printer_id()
                     return self._send_json(automations.test_fire(rule_id, target))
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
@@ -974,7 +1016,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("fleet"):
                 return None
             body = self._read_json_body()
-            return self._send_json(fleet.add(body.get("name"), body.get("moonraker_url")))
+            return self._send_json(fleet.add(body.get("name"), body.get("moonraker_url"), body.get("api_key")))
 
         if route.startswith("/api/fleet/registry/") and route.endswith("/remove"):
             if self._module_blocked("fleet"):
@@ -1163,14 +1205,25 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         self.connection.settimeout(75)
         conn = websocket.WebSocketConnection(self.rfile, self.wfile, threading.Lock())
 
-        connected = mock_moonraker.is_connected(printer_id) and mock_moonraker.has_printer(printer_id)
-        if not connected and (not demo or not mock_moonraker.has_printer(printer_id)):
+        real = mock_moonraker.is_real(printer_id)
+        connected = mock_moonraker.is_connected(printer_id)
+        if not (real and connected) and (not demo or not mock_moonraker.has_printer(printer_id)):
             # The same rule as every other printer route: nothing else.
             try:
                 conn.send_text(json.dumps({"connected": False, "demo": False}))
             finally:
                 conn.close(1000, "No printer connected")
             return None
+
+        def allowed(pid):
+            """A real printer, or a simulated one on a demo connection - nothing else."""
+            return mock_moonraker.has_printer(pid) and (mock_moonraker.is_real(pid) or demo)
+
+        def tag_for(pid):
+            # Worked out per message, for the printer the message is about: a
+            # connection that switched printers never carries the first one's label.
+            is_live = mock_moonraker.is_connected(pid)
+            return {"connected": is_live, "demo": not mock_moonraker.is_real(pid)}
 
         sub = {"printer": printer_id, "fleet": self._query().get("fleet", ["0"])[0] == "1"}
         stop = threading.Event()
@@ -1185,23 +1238,25 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                         msg = json.loads(data)
                     except ValueError:
                         continue
+                    if not isinstance(msg, dict):
+                        continue
                     if msg.get("type") == "subscribe":
                         pid = msg.get("printer")
-                        if pid and mock_moonraker.has_printer(pid):
+                        if isinstance(pid, str) and allowed(pid):
                             sub["printer"] = pid
                             sub["sent_seq"] = -1
                         if "fleet" in msg:
                             sub["fleet"] = bool(msg["fleet"])
-                        live_feed.mark_demo_seen()
+                        if demo:
+                            live_feed.mark_demo_seen()
             except (websocket.ConnectionClosed, websocket.ProtocolError, OSError):
                 pass
             finally:
                 stop.set()
 
         threading.Thread(target=reader, name="ws-reader", daemon=True).start()
-        tag = {"connected": connected, "demo": not connected}
         conn.send_text(json.dumps({"type": "hello", "tick_ms": int(live_feed.TICK_SECONDS * 1000),
-                                   "printer": printer_id, **tag}))
+                                   "printer": printer_id, **tag_for(printer_id)}))
         last_event = live_feed.last_event_id()
         sub["sent_seq"] = -1
         fleet_seq = -1
@@ -1210,24 +1265,33 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         try:
             while not stop.is_set():
                 seq, event_id = live_feed.wait_for_change(seq, last_event, timeout=1.0)
-                if not connected:
+                if demo:
                     live_feed.mark_demo_seen()
-                entry = live_feed.snapshot(sub["printer"])
+                current = sub["printer"]
+                if not mock_moonraker.has_printer(current):
+                    break                         # removed (a sandbox printer, or unregistered)
+                entry = live_feed.snapshot(current)
                 if entry["seq"] != sub["sent_seq"]:
                     sub["sent_seq"] = entry["seq"]
-                    conn.send_text(json.dumps({"type": "state", "printer": sub["printer"],
+                    conn.send_text(json.dumps({"type": "state", "printer": current,
                                                "seq": entry["seq"], "t": entry["t"],
-                                               "state": entry["state"], **tag}))
+                                               "state": entry["state"], **tag_for(current)}))
                 if event_id != last_event:
                     for event in live_feed.events_since(last_event):
-                        conn.send_text(json.dumps({"type": "event", "event": event, **tag}))
+                        # Events about simulated printers go only to demo connections.
+                        if not demo and event.get("printer") and not mock_moonraker.is_real(event["printer"]):
+                            continue
+                        about = event.get("printer")
+                        if not about or not mock_moonraker.has_printer(about):
+                            about = current
+                        conn.send_text(json.dumps({"type": "event", "event": event, **tag_for(about)}))
                     last_event = event_id
                 if sub["fleet"]:
-                    snap = live_feed.fleet_snapshot()
+                    snap = _fleet_rows(demo)
                     if snap["seq"] != fleet_seq:
                         fleet_seq = snap["seq"]
                         conn.send_text(json.dumps({"type": "fleet", "printers": snap["printers"],
-                                                   "t": snap["t"], **tag}))
+                                                   "t": snap["t"], **tag_for(current)}))
                 if time.time() - last_ping > 20:
                     conn.ping()
                     last_ping = time.time()
@@ -1250,7 +1314,13 @@ def main():
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")
-    print("  Running on simulated printer data. No printer needed.")
+    real = fleet.registered()
+    if real and modules.is_enabled("printer_link"):
+        print(f"  Connecting to {len(real)} printer(s) added by address;")
+        print("  connection problems are printed here in words.")
+    else:
+        print("  No printer added yet: demo data is available, and a real")
+        print("  printer can be added by address under Fleet > Add printer.")
     print("  Live updates every 250 ms over /api/live (WebSocket).")
     print("  Press Ctrl+C to stop.")
     print("=" * 58)

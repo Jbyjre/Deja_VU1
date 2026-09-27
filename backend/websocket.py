@@ -125,12 +125,13 @@ def _read_exact(reader, count):
     return data
 
 
-def read_frame(reader, require_mask=True):
+def read_frame(reader, require_mask=True, max_bytes=MAX_INCOMING_BYTES):
     """
     Read one frame using `reader(n)` (for example a socket file's .read).
     Returns (fin, opcode, payload). Enforces the rules a server must:
     client frames are masked, control frames are short and unfragmented,
-    reserved bits are zero.
+    reserved bits are zero. A client (moonraker_client.py) reads the
+    server's unmasked frames with require_mask=False and its own size cap.
     """
     b1, b2 = _read_exact(reader, 2)
     fin = bool(b1 & 0x80)
@@ -149,7 +150,7 @@ def read_frame(reader, require_mask=True):
             raise ProtocolError("Control frames must be whole and 125 bytes or less")
     elif opcode not in (OP_CONTINUATION, OP_TEXT, OP_BINARY):
         raise ProtocolError(f"Unknown opcode {opcode}")
-    if length > MAX_INCOMING_BYTES:
+    if length > max_bytes:
         raise ProtocolError("Frame too large")
     if require_mask and not masked:
         raise ProtocolError("Client frames must be masked")

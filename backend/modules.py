@@ -18,7 +18,11 @@ status meanings:
 """
 
 import os
+import threading
+
 import storage
+
+_lock = threading.Lock()
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _STATE_PATH = os.path.join(_DATA_DIR, "modules.json")
@@ -149,6 +153,14 @@ REGISTRY = [
         "name": "Printer fleet",
         "description": "An at-a-glance overview of every printer, and "
                         "switching the whole dashboard between them.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
+        "id": "printer_link",
+        "name": "Printer connection (Moonraker)",
+        "description": "Connects to the printers you add by address, through Moonraker's own "
+                        "HTTP and WebSocket API, and keeps their live state current.",
         "status": "ready",
         "default_enabled": True,
     },
@@ -302,9 +314,10 @@ def is_enabled(module_id):
 def set_enabled(module_id, enabled):
     if module_id not in _BY_ID:
         raise ValueError(f"Unknown module: {module_id}")
-    state = _load_state()
-    state[module_id] = bool(enabled)
-    _save_state(state)
+    with _lock:                      # two devices switching two modules at once both stick
+        state = _load_state()
+        state[module_id] = bool(enabled)
+        _save_state(state)
     return get_all()
 
 

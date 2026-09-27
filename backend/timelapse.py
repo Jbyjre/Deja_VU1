@@ -141,8 +141,8 @@ def simulated_frame(state, job):
     current layer, and the toolhead - drawn from the simulated state, and
     labelled as simulated on the image.
     """
-    layer = state.get("layer", {}).get("current", 0)
-    total = max(1, state.get("layer", {}).get("total", 1))
+    layer = (state.get("layer") or {}).get("current") or 0
+    total = max(1, (state.get("layer") or {}).get("total") or 1)
     w_mm, d_mm = (job.get("footprint_mm") or [60, 40])[:2]
     frac = min(1.0, layer / total)
     part_w = 40 + min(160, w_mm * 2.2)

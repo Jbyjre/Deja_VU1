@@ -35,6 +35,7 @@ module. See docs/hardware-modules.md.
 
 import random
 
+import mock_moonraker
 from mock_moonraker import get_current_job_requirements, get_printer_state
 
 # Same fixed seed idea as the mock printer: consistent demos.
@@ -188,6 +189,19 @@ def check_current_job():
     compares them. Returns one result per toolhead plus an overall verdict.
     """
     job = get_current_job_requirements()
+    if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        # A real printer and no sensor fitted: nothing was measured, so
+        # nothing is reported - the simulated reading (with its deliberate
+        # demo mismatch) must never be passed off as this printer's.
+        return {
+            "simulated": False,
+            "hardware_connected": False,
+            "note": "No colour sensor is fitted, so nothing was measured. Confirm Print still compares "
+                    "the file with what the printer itself reports loaded.",
+            "filename": job["filename"],
+            "overall": "no_sensor",
+            "checks": [],
+        }
     results = []
 
     for requirement in job["required_filament"]:

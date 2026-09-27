@@ -89,7 +89,12 @@ If the WebRTC connection drops later, it switches to MJPEG on its own.
 go2rtc's own README warns that its ports (1984, 8554, 8555) are open to
 your whole local network without a password by default. Anyone on your
 Wi-Fi can watch the camera through go2rtc. Only run it on a network you
-trust, and see go2rtc's README for its password options.
+trust, and see go2rtc's README for its password options. If you give its
+API a username and password (go2rtc's `api:` `username` / `password`), put
+them in the address you enter here, like
+`http://user:password@192.168.1.50:1984`: the dashboard sends them as HTTP
+Basic auth (what go2rtc's `internal/api/api.go` checks) and shows the
+password masked afterwards.
 
 ## What has and hasn't been tested
 

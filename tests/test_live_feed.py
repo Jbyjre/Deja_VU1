@@ -115,3 +115,28 @@ class TestLiveFeed(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestOnePrinterFailing(unittest.TestCase):
+    def setUp(self):
+        mock_moonraker.reset_all()
+        live_feed.reset()
+
+    def tearDown(self):
+        mock_moonraker.reset_all()
+        live_feed.reset()
+
+    def test_one_printer_failing_never_stops_the_others(self):
+        real_advance = mock_moonraker.advance
+
+        def broken(seconds, printer_id=None, scaled=True):
+            if printer_id == "u1-workshop":            # first in the list
+                raise RuntimeError("a printer sent something nobody expected")
+            return real_advance(seconds, printer_id, scaled)
+        mock_moonraker.advance = broken
+        try:
+            live_feed.tick(0.25, 0)
+        finally:
+            mock_moonraker.advance = real_advance
+        for pid in ("u1-studio", "u1-garage"):
+            self.assertIn(pid, live_feed._cache)          # before: the whole tick stopped at the first

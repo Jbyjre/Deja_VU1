@@ -35,6 +35,15 @@ is this file's stand-in for that feed: the live-feed thread calls it every
 250 ms and the simulated printer moves forward by that much time - progress
 climbs, hotends heat toward their target, the toolhead travels its path.
 
+Real printers
+-------------
+A printer added by address (fleet.py's registry) is a real one: it is
+attached here as a moonraker_client.MoonrakerPrinter, and every function
+below hands the call to it instead of the simulation. Callers can't tell
+the difference except through is_connected() and the "real" flag in its
+state - which is the point. The demo and sandbox hooks at the bottom only
+ever touch simulated printers, and refuse a real one.
+
 Real Moonraker endpoints this file imitates:
   GET  /server/history/list       -> get_print_history()
   GET  /printer/objects/query     -> get_printer_state()
@@ -54,6 +63,8 @@ import random
 import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+
+import moonraker_client
 
 # Filament colors we pretend the user owns. Used by the color checker module.
 FILAMENT_COLORS = [
@@ -85,15 +96,10 @@ _JOB_NAMES = [
 AMBIENT_C = 24.0
 
 
-class PrinterCommandError(Exception):
-    """
-    The printer (or Moonraker) refused or failed a command.
-
-    Separate from ValueError, which means "the dashboard asked for something
-    invalid". This one means the request was fine but the printer side
-    failed - the case the dashboard must never paper over with a fake
-    success.
-    """
+# The printer (or Moonraker) refused or failed a command - separate from
+# ValueError ("the dashboard asked for something invalid"). The real client
+# raises the same class, so one `except` covers both.
+PrinterCommandError = moonraker_client.PrinterCommandError
 
 
 def _build_print_history(rng, job_count=38, days_back=64):
@@ -477,39 +483,71 @@ def _point_on_rectangle(phase, w, d):
 # ---------------------------------------------------------------------------
 
 _PRINTERS = {spec["id"]: SimulatedPrinter(spec) for spec in _FLEET_SPEC}
+_REAL = {}                    # printer_id -> moonraker_client.MoonrakerPrinter, in the order added
 DEFAULT_PRINTER_ID = _FLEET_SPEC[0]["id"]
 BUILT_IN_IDS = tuple(_PRINTERS)
 _selected = threading.local()
 _fleet_lock = threading.RLock()
 
+SimulatedPrinter.real = False
+
+
+def _get(printer_id):
+    printer = _REAL.get(printer_id) or _PRINTERS.get(printer_id)
+    if printer is None:
+        raise ValueError(f"Unknown printer: {printer_id}")
+    return printer
+
 
 def printer_ids():
-    """Every simulated printer, in display order."""
+    """Every printer - real ones first, then the simulated ones - in display order."""
+    with _fleet_lock:
+        return list(_REAL) + [spec["id"] for spec in _FLEET_SPEC]
+
+
+def real_printer_ids():
+    with _fleet_lock:
+        return list(_REAL)
+
+
+def simulated_printer_ids():
     with _fleet_lock:
         return [spec["id"] for spec in _FLEET_SPEC]
 
 
+def is_real(printer_id):
+    return printer_id in _REAL
+
+
 def printer_name(printer_id):
-    return _PRINTERS[printer_id].name
+    return _get(printer_id).name
 
 
 def has_printer(printer_id):
-    return printer_id in _PRINTERS
+    return printer_id in _REAL or printer_id in _PRINTERS
+
+
+def default_printer_id():
+    """
+    The printer a request without ?printer= is about: the first real
+    printer once one is attached, otherwise the first simulated one.
+    """
+    with _fleet_lock:
+        return next(iter(_REAL), DEFAULT_PRINTER_ID)
 
 
 def selected_printer_id():
-    return getattr(_selected, "printer_id", DEFAULT_PRINTER_ID)
+    return getattr(_selected, "printer_id", None) or default_printer_id()
 
 
 @contextmanager
 def use_printer(printer_id):
     """Answer every call inside this block for `printer_id`."""
-    if printer_id not in _PRINTERS:
-        raise ValueError(f"Unknown printer: {printer_id}")
+    printer = _get(printer_id)
     previous = getattr(_selected, "printer_id", None)
     _selected.printer_id = printer_id
     try:
-        yield _PRINTERS[printer_id]
+        yield printer
     finally:
         if previous is None:
             del _selected.printer_id
@@ -518,7 +556,36 @@ def use_printer(printer_id):
 
 
 def _current():
-    return _PRINTERS[selected_printer_id()]
+    return _get(selected_printer_id())
+
+
+# ---------------------------------------------------------------------------
+# Real printers
+# ---------------------------------------------------------------------------
+
+def attach_real_printer(printer_id, name, url, api_key=None, on_change=None, start=True):
+    """Connect a printer added by address. Replaces an earlier attachment of the same id."""
+    printer = moonraker_client.MoonrakerPrinter(printer_id, name, url, api_key=api_key, on_change=on_change)
+    with _fleet_lock:
+        old = _REAL.pop(printer_id, None)
+        _REAL[printer_id] = printer
+    if old:
+        old.stop()
+    if start:
+        printer.start()
+    return printer
+
+
+def detach_real_printer(printer_id):
+    with _fleet_lock:
+        printer = _REAL.pop(printer_id, None)
+    if printer:
+        printer.stop()
+    return printer is not None
+
+
+def real_printer(printer_id):
+    return _REAL.get(printer_id)
 
 
 # ---------------------------------------------------------------------------
@@ -527,53 +594,55 @@ def _current():
 
 def is_connected(printer_id=None):
     """
-    Is a real printer connected?
+    Is this printer a real one with a live connection right now?
 
-    Always False right now — there is no Moonraker instance to talk to, only
-    this file pretending to be one. The dashboard uses this to decide whether
-    it is allowed to show any figures at all.
-
-    When a real Moonraker client replaces this module, this becomes an actual
-    reachability check against the printer.
+    Always False for a simulated printer - it's the dashboard's rule for
+    whether figures may be shown without demo data switched on.
     """
-    return False
+    printer = _REAL.get(printer_id or selected_printer_id())
+    return bool(printer and printer.is_connected())
+
+
+def any_connected():
+    with _fleet_lock:
+        printers = list(_REAL.values())
+    return any(p.is_connected() for p in printers)
 
 
 def get_print_history():
     """
-    Stand-in for Moonraker's GET /server/history/list.
-
-    Returns every simulated print job, oldest first. The maintenance module
-    reads this to work out how many hours the printer has run.
+    Moonraker's GET /server/history/list: every finished job, oldest first.
+    The maintenance module reads this to work out how many hours the
+    printer has run.
     """
     printer = _current()
+    if printer.real:
+        return printer.get_print_history()
     with printer.lock:
         return list(printer.history) + list(printer.session_jobs)
 
 
 def get_printer_state():
     """
-    Stand-in for Moonraker's GET /printer/objects/query.
-
-    Returns what the printer is "doing" right now: whether it is printing,
-    how far along it is, temperatures, and which toolhead is active. The LED
-    module uses this to decide what color each dock ring should be.
-
-    Returns a copy so callers can't accidentally mutate the live state by
-    editing the dict they were handed.
+    Moonraker's printer objects (GET /printer/objects/query, kept current by
+    printer.objects.subscribe): whether it is printing, how far along,
+    temperatures, which toolhead is active. A copy, so callers can't
+    mutate the live state by editing the dict they were handed.
     """
     return _current().snapshot()
 
 
 def advance(seconds, printer_id=None, scaled=True):
-    """Move one printer's simulation forward. Returns a finish event, if any."""
-    printer = _PRINTERS[printer_id] if printer_id else _current()
+    """Move one simulated printer forward (a real one moves by itself). Returns a finish event, if any."""
+    printer = _get(printer_id) if printer_id else _current()
     return printer.advance(seconds, scaled=scaled)
 
 
 def pause_print():
-    """Stand-in for Moonraker's POST /printer/print/pause."""
+    """POST /printer/print/pause."""
     printer = _current()
+    if printer.real:
+        return printer.pause_print()
     with printer.lock:
         printer.check_link("pause")
         if printer.live["state"] != "printing":
@@ -586,8 +655,10 @@ def pause_print():
 
 
 def resume_print():
-    """Stand-in for Moonraker's POST /printer/print/resume."""
+    """POST /printer/print/resume."""
     printer = _current()
+    if printer.real:
+        return printer.resume_print()
     with printer.lock:
         printer.check_link("resume")
         if printer.live["state"] != "paused":
@@ -600,8 +671,10 @@ def resume_print():
 
 
 def cancel_print():
-    """Stand-in for Moonraker's POST /printer/print/cancel."""
+    """POST /printer/print/cancel."""
     printer = _current()
+    if printer.real:
+        return printer.cancel_print()
     with printer.lock:
         printer.check_link("cancel")
         live = printer.live
@@ -622,10 +695,13 @@ def cancel_print():
         return printer.snapshot()
 
 
-def upload_file(filename, size_bytes=0):
-    """Stand-in for Moonraker's POST /server/files/upload (root "gcodes")."""
+def upload_file(filename, size_bytes=0, data=None):
+    """POST /server/files/upload (root "gcodes"). A real printer needs `data`."""
     printer = _current()
+    if printer.real:
+        return printer.upload_file(filename, size_bytes, data)
     with printer.lock:
+        printer.check_link("upload")
         printer.check_failure("upload")
         printer.files.add(filename)
         printer.log("upload", f"{filename} ({size_bytes} bytes)")
@@ -635,14 +711,16 @@ def upload_file(filename, size_bytes=0):
 
 def start_print(filename, job=None):
     """
-    Stand-in for Moonraker's POST /printer/print/start?filename=...
+    POST /printer/print/start?filename=...
 
     `job` carries what the dashboard read from the file itself - estimated
     time, layer count, filament grams and which toolheads it needs - so the
     simulation runs the print that was actually chosen rather than a
-    made-up one.
+    made-up one (and a real printer's finish summary has the right grams).
     """
     printer = _current()
+    if printer.real:
+        return printer.start_print(filename, job)
     job = job or {}
     with printer.lock:
         printer.check_link("start")
@@ -687,15 +765,15 @@ def start_print(filename, job=None):
 
 def set_target_temperature(toolhead, target):
     """
-    Stand-in for sending an M104/M109-style G-code through Moonraker.
-
-    Only sets the target. The reading then climbs toward it as the live feed
-    advances the simulation, the way a real heater settles over a minute or
-    two rather than jumping.
+    Set a toolhead's heater target (on a real printer:
+    SET_HEATER_TEMPERATURE HEATER=extruderN). Only the target: the reading
+    then climbs toward it, the way a real heater settles.
     """
     if toolhead not in TOOLHEADS:
         raise ValueError(f"Unknown toolhead: {toolhead}")
     printer = _current()
+    if printer.real:
+        return printer.set_target_temperature(toolhead, target)
     with printer.lock:
         printer.check_failure("temperature")
         printer.live["toolheads"][toolhead]["target_temperature"] = target
@@ -704,8 +782,10 @@ def set_target_temperature(toolhead, target):
 
 
 def set_bed_temperature(target):
-    """Stand-in for sending an M140 through Moonraker (bed target only)."""
+    """The bed heater's target only."""
     printer = _current()
+    if printer.real:
+        return printer.set_bed_temperature(target)
     with printer.lock:
         printer.check_failure("temperature")
         printer.live["bed_target"] = float(target)
@@ -714,38 +794,50 @@ def set_bed_temperature(target):
 
 
 def home_axes(axes):
-    """Stand-in for sending a G28 through Moonraker."""
+    """G28 through POST /printer/gcode/script - refused mid-print, like the real client."""
     printer = _current()
+    if printer.real:
+        return printer.home_axes(axes)
     with printer.lock:
+        printer.check_link("home")
+        if printer.live["state"] in ("printing", "paused"):
+            raise ValueError("Homing is refused while a print is running or paused - it would drive the "
+                             "toolhead through the print")
         printer.check_failure("home")
         printer.log("home", "".join(axes))
     return {"homed": list(axes)}
 
 
 def run_gcode(command):
-    """Stand-in for Moonraker's POST /printer/gcode/script."""
+    """POST /printer/gcode/script."""
     printer = _current()
+    if printer.real:
+        return printer.run_gcode(command)
     with printer.lock:
+        printer.check_link("gcode")
         printer.check_failure("gcode")
         printer.log("gcode", command)
     return {"command": command, "response": "ok"}
 
 
 def get_console_log(limit=30):
-    """Recent commands sent to the printer, newest first."""
+    """Recent commands sent to the printer (and, for a real one, its replies), newest first."""
     printer = _current()
+    if printer.real:
+        return printer.get_console_log(limit)
     with printer.lock:
         return list(reversed(printer.console))[:limit]
 
 
 def get_update_status():
     """
-    Stand-in for Moonraker's GET /machine/update/status.
-
-    A real Moonraker instance compares local vs. upstream git commits for
-    Klipper, Moonraker, and any git-tracked app, and reports which ones have
-    an update waiting. This fakes that same shape.
+    GET /machine/update/status. A real Moonraker compares local and
+    upstream versions of Klipper, Moonraker and other tracked software;
+    the simulation fakes that same shape.
     """
+    printer = _current()
+    if printer.real:
+        return printer.get_update_status()
     return {
         "packages": [
             {"name": "klipper", "current_version": "v0.12.0-312", "remote_version": "v0.12.0-312", "update_available": False},
@@ -756,13 +848,13 @@ def get_update_status():
 
 def get_current_job_requirements():
     """
-    Stand-in for reading the metadata block of the G-code file being printed.
-
-    A slicer writes into each print file which material and color it was
-    sliced for. The color checker module compares this against whatever the
-    (future) color sensor actually sees in the filament path.
+    What the running file was sliced for, per toolhead: from the dashboard's
+    own reading of the file when it started the print, or from Moonraker's
+    metadata for a print started elsewhere.
     """
     printer = _current()
+    if printer.real:
+        return printer.get_current_job_requirements()
     with printer.lock:
         return {
             "filename": printer.job["filename"],
@@ -771,15 +863,32 @@ def get_current_job_requirements():
 
 
 def get_current_job():
-    """What the simulation knows about the running job (time, grams, size)."""
+    """What is known about the running job (time, grams, size)."""
     printer = _current()
+    if printer.real:
+        return printer.get_current_job()
     with printer.lock:
         return copy.deepcopy(printer.job)
 
 
+def diagnostics(printer_id):
+    """The connection report for a real printer (None for a simulated one)."""
+    printer = _REAL.get(printer_id)
+    return printer.diagnostics() if printer else None
+
+
 # ---------------------------------------------------------------------------
-# Test and demo hooks - never reachable without an explicit demo request
+# Test and demo hooks - never reachable without an explicit demo request,
+# and never on a real printer: each one refuses a real printer outright,
+# whatever route or scenario asked (a second lock behind the API's own).
 # ---------------------------------------------------------------------------
+
+def _sim():
+    printer = _current()
+    if printer.real:
+        raise ValueError(f"{printer.name} is a real printer - simulation controls never touch it")
+    return printer
+
 
 def fail_next(action, message="Moonraker did not accept the command"):
     """
@@ -790,7 +899,7 @@ def fail_next(action, message="Moonraker did not accept the command"):
     if action not in {"pause", "resume", "cancel", "start", "upload",
                       "temperature", "home", "gcode"}:
         raise ValueError(f"Unknown action: {action}")
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         printer.fail_next[action] = str(message)[:200]
     return {"armed": action, "message": printer.fail_next[action]}
@@ -801,19 +910,20 @@ def set_time_scale(scale):
     scale = float(scale)
     if not 1 <= scale <= 600:
         raise ValueError("Time scale must be between 1 and 600")
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         printer.time_scale = scale
     return {"time_scale": scale}
 
 
 def get_time_scale():
-    return _current().time_scale
+    printer = _current()
+    return 1.0 if printer.real else printer.time_scale
 
 
 def reset_live_state():
     """Restore the selected printer to its starting point. Useful for tests."""
-    _current().reset()
+    _sim().reset()
 
 
 def reset_all():
@@ -907,7 +1017,7 @@ def _stop_with_error(printer, message):
 
 def inject_jam(toolhead=None):
     """The extruder stops pushing filament mid-print: Klipper halts with an error."""
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         if printer.live["state"] not in ("printing", "paused"):
             raise ValueError("A jam needs a print running on this printer")
@@ -921,7 +1031,7 @@ def inject_jam(toolhead=None):
 
 def inject_heater_fault(toolhead=None):
     """Klipper's heater check trips and it shuts the heaters down."""
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         th = toolhead or printer.live["active_toolhead"] or "T0"
         if th not in TOOLHEADS:
@@ -938,7 +1048,7 @@ def inject_runout(toolhead):
     """
     if toolhead not in TOOLHEADS:
         raise ValueError(f"Unknown toolhead: {toolhead}")
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         live = printer.live
         dock = live["toolheads"][toolhead]
@@ -960,7 +1070,7 @@ def load_filament(toolhead, color_index):
     if not isinstance(color_index, int) or not 0 <= color_index < len(FILAMENT_COLORS):
         raise ValueError("Pick one of the simulated filament colours")
     colour = FILAMENT_COLORS[color_index]
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         dock = printer.live["toolheads"][toolhead]
         dock.update(filament_loaded=True, filament_color_hex=colour["hex"],
@@ -973,7 +1083,7 @@ def load_filament(toolhead, color_index):
 
 def clear_error():
     """FIRMWARE_RESTART: an errored printer comes back idle; dock errors clear."""
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         printer.check_link("restart")
         live = printer.live
@@ -996,7 +1106,7 @@ def add_wear(hours):
     hours = float(hours)
     if not 0 < hours <= 2000:
         raise ValueError("Wear must be between 0 and 2000 print hours")
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         left, n = hours, 0
         while left > 0:
@@ -1018,7 +1128,7 @@ def add_wear(hours):
 
 def set_link(up):
     """Drop or restore the network link to the selected printer."""
-    printer = _current()
+    printer = _sim()
     with printer.lock:
         if up:
             printer.link_lost_at = None
@@ -1030,5 +1140,7 @@ def set_link(up):
 
 
 def link_is_up(printer_id=None):
-    printer = _PRINTERS[printer_id] if printer_id else _current()
+    printer = _get(printer_id) if printer_id else _current()
+    if printer.real:
+        return printer.is_connected()
     return printer.link_lost_at is None

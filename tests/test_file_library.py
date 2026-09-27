@@ -65,3 +65,24 @@ class TestLibrary(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCheckedCache(unittest.TestCase):
+    def setUp(self):
+        file_library.reset()
+
+    def tearDown(self):
+        file_library.reset()
+
+    def test_a_replaced_file_is_always_checked_again(self):
+        safe = b"G28\nM104 S210\nM83\nG1 X100 Y100 Z0.3 E1\nG1 X120 Y100 E1\n"
+        file_library.save("part.gcode", safe)
+        self.assertEqual(file_library.checked("part.gcode")["preflight"]["errors"], [])
+        file_library.save("part.gcode", safe + b"G1 X400 Y100 E5\n")        # replaced, now unsafe
+        codes = {e["code"] for e in file_library.checked("part.gcode")["preflight"]["errors"]}
+        self.assertIn("out_of_bounds", codes)
+
+    def test_callers_cant_change_the_remembered_answer(self):
+        file_library.save("part.gcode", b"G28\nM104 S210\nM83\nG1 X100 Y100 Z0.3 E1\n")
+        file_library.checked("part.gcode")["preflight"]["errors"].append({"code": "tampered"})
+        self.assertEqual(file_library.checked("part.gcode")["preflight"]["errors"], [])

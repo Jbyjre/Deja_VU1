@@ -63,3 +63,34 @@ class TestMJPEG(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFramesWithoutAViewer(unittest.TestCase):
+    """A real printer's time-lapse needs camera frames while nobody is watching the stream."""
+
+    def setUp(self):
+        from http.server import ThreadingHTTPServer
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), FakeCamera)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        camera.save_settings({"stream_url": f"http://127.0.0.1:{self.server.server_address[1]}/stream"})
+
+    def tearDown(self):
+        camera._grab["until"] = 0
+        self.server.shutdown()
+        self.server.server_close()
+        camera.save_settings({"stream_url": ""})
+
+    def test_frames_keep_coming_while_asked_and_stale_ones_dont_count(self):
+        import time
+        with camera._frame_lock:
+            camera._latest_frame, camera._latest_frame_mono = b"old", time.monotonic() - 3600
+        self.assertIsNone(camera.latest_frame(max_age=15))          # an hour-old frame is no frame
+        self.assertTrue(camera.keep_frames_coming(3))
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and camera.latest_frame(max_age=15) != JPEG:
+            time.sleep(0.05)
+        self.assertEqual(camera.latest_frame(max_age=15), JPEG)
+
+    def test_nothing_is_read_without_a_camera(self):
+        camera.save_settings({"stream_url": ""})
+        self.assertFalse(camera.keep_frames_coming(3))

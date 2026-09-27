@@ -46,8 +46,11 @@ its output in Snapmaker Orca itself - that is listed as unverified.
 import io
 import json
 import re
+import shutil
 import zipfile
-import xml.etree.ElementTree as ET
+from xml.parsers import expat
+
+import safe_zip
 
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 PROJECT_CONFIG = "Metadata/project_settings.config"
@@ -101,17 +104,49 @@ class ConversionError(ValueError):
     """The file can't be converted; the message says why in plain words."""
 
 
+class _Done(Exception):
+    pass
+
+
 def _read_application(archive):
-    try:
-        root = ET.fromstring(archive.read("3D/3dmodel.model"))
-    except KeyError:
+    """
+    The <metadata name="Application"> at the top of the model part. Read as
+    a stream and stopped as soon as the metadata is over (it comes before
+    the meshes), so a large model is never loaded to answer one question.
+    """
+    if "3D/3dmodel.model" not in archive.namelist():
         raise ConversionError("This 3MF has no 3D/3dmodel.model part, so it isn't a model project")
-    except ET.ParseError:
+    found, current = {}, {"name": None, "text": []}
+
+    def start(name, attrs):
+        tag = name.rsplit("}", 1)[-1]
+        if tag == "metadata":
+            current["name"], current["text"] = attrs.get("name"), []
+        elif tag in ("resources", "build"):
+            raise _Done()
+
+    def end(name):
+        if name.rsplit("}", 1)[-1] == "metadata" and current["name"] == "Application":
+            found["application"] = "".join(current["text"]).strip()[:200]
+            raise _Done()
+        current["name"] = None
+
+    def text(data):
+        if current["name"] == "Application" and sum(map(len, current["text"])) < 200:
+            current["text"].append(data)
+
+    parser = expat.ParserCreate(namespace_separator="}")
+    parser.StartElementHandler, parser.EndElementHandler, parser.CharacterDataHandler = start, end, text
+    try:
+        with safe_zip.open_part(archive, "3D/3dmodel.model", what="3MF project") as stream:
+            parser.ParseFile(stream)
+    except _Done:
+        pass
+    except safe_zip.DamagedArchive as exc:
+        raise ConversionError(str(exc))
+    except expat.ExpatError:
         raise ConversionError("The 3MF's model part isn't valid XML")
-    for m in root.findall(f"{{{CORE_NS}}}metadata"):
-        if m.get("name") == "Application":
-            return (m.text or "").strip()
-    return ""
+    return found.get("application", "")
 
 
 def detect_source(application, config):
@@ -147,15 +182,18 @@ def convert(data):
     ConversionError with a plain explanation when it can't.
     """
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-    except zipfile.BadZipFile:
-        raise ConversionError("This isn't a 3MF file (3MF files are zip archives)")
+        archive = safe_zip.open_archive(data, "3MF project")
+    except safe_zip.DamagedArchive as exc:
+        raise ConversionError(f"This isn't a readable 3MF file - {exc}")
 
     application = _read_application(archive)
     config = None
     if PROJECT_CONFIG in archive.namelist():
         try:
-            config = json.loads(archive.read(PROJECT_CONFIG))
+            config = json.loads(safe_zip.read(archive, PROJECT_CONFIG, limit=64 * 1024 * 1024,
+                                              what="3MF project"))
+        except safe_zip.DamagedArchive as exc:
+            raise ConversionError(str(exc))
         except (ValueError, UnicodeDecodeError):
             raise ConversionError("The project's settings file is damaged and can't be read")
 
@@ -282,8 +320,19 @@ def convert(data):
                 continue
             if name == PROJECT_CONFIG:
                 target.writestr(item, json.dumps(new, indent=4, ensure_ascii=False))
+            elif item.is_dir():
+                target.writestr(item, b"")
             else:
-                target.writestr(item, archive.read(name))
+                # Copied as a stream, part by part, each size-checked: a
+                # large model never sits in memory twice.
+                entry = zipfile.ZipInfo(name, item.date_time)
+                entry.compress_type = zipfile.ZIP_DEFLATED
+                try:
+                    with safe_zip.open_part(archive, name, what="3MF project") as src, \
+                            target.open(entry, "w") as dst:
+                        shutil.copyfileobj(src, dst, 1024 * 1024)
+                except safe_zip.DamagedArchive as exc:
+                    raise ConversionError(str(exc))
     if dropped:
         report["warnings"].append(
             "Removed G-code that was already sliced for the original printer - "

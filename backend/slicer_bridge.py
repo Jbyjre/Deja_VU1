@@ -327,7 +327,18 @@ def _run(cmd, timeout, cwd=None):
                 proc.kill()
         except OSError:
             pass
-        out, err = proc.communicate()
+        try:
+            # Bounded too: a helper Orca started in a session of its own could
+            # keep the output pipes open after the group is gone.
+            out, err = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            for pipe in (proc.stdout, proc.stderr):
+                try:
+                    pipe.close()
+                except OSError:
+                    pass
+            out, err = b"", b"(Orca's output couldn't be collected after it was stopped)"
         return None, out, err
 
 

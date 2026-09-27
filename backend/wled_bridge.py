@@ -16,13 +16,11 @@ configured) and every call fails cleanly with a clear error instead of
 pretending to succeed.
 """
 
-import json
 import os
 import re
-import urllib.error
-import urllib.request
 
 import led_status
+import outbound
 import storage
 
 _HOST = re.compile(r"^[A-Za-z0-9.-]{1,253}(:\d{1,5})?$")
@@ -75,26 +73,50 @@ def save_settings(updates):
     return settings
 
 
+# WLED's effect numbers (wled00/FX.h): 0 Solid, 1 Blink, 2 Breathe - the
+# three the ring states use.
+_WLED_FX = {"solid": 0, "blink": 1, "pulse": 2}
+RINGS = 4
+
+
 def _request(url, payload=None, method="GET"):
-    data = json.dumps(payload).encode("utf-8") if payload is not None else None
-    req = urllib.request.Request(
-        url, data=data, method=method,
-        headers={"Content-Type": "application/json"} if data else {})
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            body = resp.read()
-            return {"ok": True, "status": resp.status,
-                    "body": json.loads(body) if body else {}}
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError) as exc:
-        return {"ok": False, "error": str(exc)}
+    return outbound.send(url, "The WLED device", payload=payload, method=method)
+
+
+def _confirmed(result):
+    """
+    WLED answers a state change with {"success":true} (wled00/wled_server.cpp),
+    or the whole new state when asked to. Anything else wasn't WLED saying yes.
+    """
+    body = result.get("body") if result.get("ok") else None
+    if result.get("ok") and not (isinstance(body, dict) and (body.get("success") is True or "on" in body)):
+        return {"ok": False, "status": result.get("status"),
+                "error": "The device answered, but not the way WLED confirms a change - is that address a WLED device?"}
+    return result
 
 
 def test_connection(settings=None):
+    """GET /json/info: is it WLED, which version, and how many LEDs it drives."""
     settings = settings or get_settings()
     host = settings.get("host")
     if not host:
         return {"ok": False, "error": "No WLED host configured"}
-    return _request(f"http://{host}/json/info")
+    result = _request(f"http://{host}/json/info")
+    if not result["ok"]:
+        return result
+    info = result.get("body")
+    if not isinstance(info, dict) or "ver" not in info:
+        return {"ok": False, "status": result.get("status"),
+                "error": "The device answered, but it doesn't look like WLED (no version in /json/info)"}
+    leds = (info.get("leds") or {}).get("count")
+    needed = RINGS * int(settings.get("leds_per_segment") or 12)
+    result.update(version=info.get("ver"), name=info.get("name"), leds=leds,
+                  message=f"Found WLED {info.get('ver')}" + (f" \"{info['name']}\"" if info.get("name") else "")
+                  + (f" driving {leds} LEDs" if leds else ""))
+    if isinstance(leds, int) and leds < needed:
+        result["warning"] = (f"The strip has {leds} LEDs, but {RINGS} rings of "
+                             f"{settings.get('leds_per_segment')} need {needed} - the last rings won't all light")
+    return result
 
 
 def push_ring_states(ring_states=None, settings=None):
@@ -104,6 +126,11 @@ def push_ring_states(ring_states=None, settings=None):
     the same pattern notifications.py uses for its webhook posts — a
     misconfigured or offline WLED strip should never take the dashboard
     down with it.
+
+    Each segment names where it starts and stops: WLED ignores a segment id
+    it doesn't have yet unless it is given a stop (wled00/json.cpp,
+    deserializeSegment: "ignore empty/inactive segments"), so without them a
+    fresh strip - one segment - would only ever show T0's ring.
     """
     settings = settings or get_settings()
     host = settings.get("host")
@@ -111,16 +138,21 @@ def push_ring_states(ring_states=None, settings=None):
         return {"ok": False, "error": "No WLED host configured"}
 
     ring_states = ring_states or led_status.get_all_ring_states()
+    per = int(settings.get("leds_per_segment") or 12)
     segments = []
     for i, ring in enumerate(ring_states["rings"]):
         r, g, b = ring["color_rgb"]
         segments.append({
             "id": i,
+            "start": i * per,
+            "stop": (i + 1) * per,
             "on": ring["state"] != "off",
             "col": [[r, g, b]],
+            "fx": _WLED_FX.get(ring.get("effect"), 0),
         })
 
-    result = _request(f"http://{host}/json/state", payload={"on": True, "seg": segments}, method="POST")
+    result = _confirmed(_request(f"http://{host}/json/state", payload={"on": True, "seg": segments},
+                                 method="POST"))
     result["segments_sent"] = len(segments)
     return result
 
@@ -129,7 +161,10 @@ def push_color(color_hex, settings=None):
     """
     Set the whole strip to one colour - what an automation's "light" action
     sends (for example amber when a print pauses). Same fail-cleanly
-    contract as push_ring_states.
+    contract as push_ring_states. Every ring segment is named: in WLED a
+    list entry without an id means segment 0 only, which after the ring
+    push is just T0's ring. (A segment that doesn't exist is skipped by
+    WLED, so on an unsplit strip this still colours all of it.)
     """
     settings = settings or get_settings()
     host = settings.get("host")
@@ -139,8 +174,9 @@ def push_color(color_hex, settings=None):
     if len(value) != 6 or any(c not in "0123456789abcdefABCDEF" for c in value):
         raise ValueError("Colour must be a hex value like #ffaa00")
     rgb = [int(value[i:i + 2], 16) for i in (0, 2, 4)]
-    return _request(f"http://{host}/json/state",
-                    payload={"on": True, "seg": [{"col": [rgb]}]}, method="POST")
+    return _confirmed(_request(f"http://{host}/json/state", method="POST",
+                               payload={"on": True, "seg": [{"id": i, "on": True, "col": [rgb], "fx": 0}
+                                                            for i in range(RINGS)]}))
 
 
 def reset():
