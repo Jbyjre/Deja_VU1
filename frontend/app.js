@@ -226,7 +226,47 @@ function freshModules() {
   return modGate.pending;
 }
 
+/* ---- is the dashboard server here? ----------------------------------------
+ * These pages can be published on their own, with no Deja Vu1 server behind
+ * them (a static host such as the public Cloudflare link). Then every /api
+ * request fails, and without this check each card would quietly show
+ * "No printer connected" and offer demo data that can't run. So one request
+ * asks first: a JSON answer from /api/health means the server is here; a
+ * network error, a 404 or a web page instead means it isn't. After that,
+ * requests aren't sent at all - each caller gets the same answer at once. */
+const server = { missing: false, checked: null };
+const SERVER_MISSING = "The Deja Vu1 server isn't running at this address, so this part can't work here.";
+
+function serverMissing() { return server.missing; }
+
+function serverMissingBody() {
+  return { error: SERVER_MISSING, server_missing: true, connected: false, demo: false };
+}
+
+async function checkServer() {
+  let here = false;
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 8000);
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store', signal: stop.signal });
+    here = response.status !== 404 && (response.headers.get('content-type') || '').includes('application/json');
+  } catch (_) {
+    here = false;
+  } finally {
+    clearTimeout(timer);
+  }
+  server.missing = !here;
+  if (server.missing) showServerMissing();
+  return here;
+}
+
+function serverReady() {
+  if (!server.checked) server.checked = checkServer();
+  return server.checked;
+}
+
 async function getJSON(url) {
+  if (!await serverReady()) return serverMissingBody();
   const path = url.split('?')[0];
   if (path !== '/api/modules') {
     await freshModules();
@@ -240,6 +280,7 @@ async function getJSON(url) {
 }
 
 async function postJSON(url, payload) {
+  if (!await serverReady()) return { ok: false, status: 0, body: serverMissingBody() };
   let response;
   try {
     response = await fetch(url, {
@@ -474,6 +515,7 @@ function initPreferences() {
 
 async function loadConnection() {
   const data = await getJSON('/api/connection');
+  if (data.server_missing) return;          // showServerMissing() has said so already
   const pill = $('conn');
   const label = $('conn-label');
   const wasReal = realOn;
@@ -498,6 +540,81 @@ async function loadConnection() {
   }
 
   $('notice').hidden = !(demoOn && !data.connected);
+}
+
+/* ---- no server: a browser-only preview ----------------------------------
+ * One banner says what's missing and what still works. Every card that
+ * needs the server keeps its heading (so you can see what the dashboard
+ * does) and says so in one line, instead of an empty box or an offer of
+ * demo data that can't run. Demo data is switched off, not hidden: the
+ * simulated printers live on the server too. */
+const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#how-to-run-it';
+const BROWSER_ONLY = '[data-browser-only], [data-module-off], #sb-off, #ap-off, #demo-tools-card, #file-detail';
+
+function needsServerNote(what) {
+  return `<p class="needs-server-note">${what ? `${esc(what)} needs` : 'Needs'} the Deja Vu1 server, which isn't running at this address.
+    <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>`;
+}
+
+function needsServerEmpty(what) {
+  return `
+  <div class="empty is-off">
+    <span class="empty-mark" aria-hidden="true"></span>
+    <p class="empty-title">Needs the Deja Vu1 server</p>
+    <p class="empty-sub">${esc(what ? `${what[0].toUpperCase()}${what.slice(1)} runs` : 'This runs')} on the server, which isn't running at this address.
+      <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>
+  </div>`;
+}
+
+/* "No printer" wording, unless there's no server to have a printer at all. */
+function noPrinterEmpty(sub, what) {
+  return serverMissing() ? needsServerEmpty(what) : EMPTY('No printer connected', sub);
+}
+
+function showServerMissing() {
+  document.body.classList.add('no-server');
+  $('server-banner').hidden = false;
+  $('notice').hidden = true;
+
+  const toggle = $('demo-toggle');
+  demoOn = false;                       // the remembered choice is kept for when the server is back
+  toggle.checked = false;
+  toggle.disabled = true;
+  toggle.closest('.switch').title = 'Demo data runs on the Deja Vu1 server, which isn\'t running at this address.';
+  toggle.setAttribute('aria-describedby', 'server-banner-text');
+
+  const pill = $('conn');
+  pill.classList.remove('is-demo');
+  pill.classList.add('is-offline');
+  $('conn-label').textContent = 'No server';
+  $('printer-chip').hidden = true;
+  $('foot-state').textContent = 'Browser-only preview: the Deja Vu1 server isn\'t running at this address.';
+  $('rb-text').textContent = 'Browser-only preview - no printer or demo farm without the server.';
+
+  document.querySelectorAll('.tab-panel section.card').forEach(card => {
+    if (card.matches(BROWSER_ONLY) || card.querySelector(':scope > .needs-server-note')) return;
+    card.classList.add('needs-server');
+    const head = card.querySelector(':scope > .card-head');
+    if (head) head.insertAdjacentHTML('afterend', needsServerNote());
+    else card.insertAdjacentHTML('afterbegin', needsServerNote(card.dataset.serverWhat || card.querySelector('h2')?.textContent.trim()));
+  });
+  if (window.Workshop) Workshop.reconnect();
+}
+
+function initServerBanner() {
+  document.querySelectorAll('#server-banner [data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+  $('server-retry').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.textContent = 'Checking…';
+    let here = false;
+    try {
+      const r = await fetch('/api/health', { cache: 'no-store' });
+      here = r.status !== 404 && (r.headers.get('content-type') || '').includes('application/json');
+    } catch (_) { here = false; }
+    if (here) { location.reload(); return; }
+    btn.disabled = false; btn.textContent = 'Check again';
+    toast('Still no server at this address.', 'warn');
+  });
 }
 
 /* ---- tabs -----------------------------------------------------------------*/
@@ -552,7 +669,7 @@ function renderStatusRibbon(data) {
 
   if (!hasData(data) || !data.state) {
     ribbon.classList.remove('is-live');
-    text.textContent = 'No printer connected.';
+    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.' : 'No printer connected.';
     bar.hidden = true;
     pct.hidden = true;
     lastPrinterState = null;
@@ -627,7 +744,7 @@ async function loadMaintenance() {
     $('tasks').innerHTML = EMPTY('No printer connected',
       'Maintenance reminders appear once print history is available. Turn on demo data to preview them.');
     $('log-wrap').hidden = true;
-    $('overview-maintenance').innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    $('overview-maintenance').innerHTML = noPrinterEmpty('Turn on demo data to preview.', 'maintenance');
     return;
   }
 
@@ -882,7 +999,7 @@ function renderOverviewControl(state) {
   const host = $('overview-control');
   if (!host) return;
   if (!state || !state.state) {
-    host.innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    host.innerHTML = noPrinterEmpty('Turn on demo data to preview.');
     host.dataset.built = '';
     return;
   }
@@ -3229,6 +3346,8 @@ function initDemoToggle() {
   });
 }
 
+serverReady();
+initServerBanner();
 initDemoToggle();
 initPressedSync();
 initTabs();

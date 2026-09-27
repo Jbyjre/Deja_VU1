@@ -1280,3 +1280,47 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   .task, .crow { border-color: rgba(0, 0, 0, .3); }
   .btn { border-color: rgba(0, 0, 0, .35); }
 }
+
+/* ---- no server: the browser-only preview --------------------------------
+ * The pages served on their own (no Deja Vu1 server behind them). One
+ * banner explains; each card that needs the server keeps its heading and
+ * says so in one line. */
+
+.server-banner {
+  display: flex; align-items: flex-start; gap: 13px;
+  padding: 14px 18px; margin-bottom: 20px;
+  border-radius: 16px;
+  border-color: rgba(74, 141, 248, .4);
+}
+.server-banner[hidden] { display: none; }
+.server-banner .notice-mark { background: rgba(74, 141, 248, .18); color: var(--accent-text); margin-top: 1px; }
+.server-banner .sbn-body { flex: 1 1 auto; min-width: 0; display: grid; gap: 6px; }
+.server-banner p { font-size: 13.5px; color: var(--text-dim); }
+.server-banner strong { color: var(--accent-text); font-weight: 700; }
+.server-banner .chip-btn { margin: 2px 4px 2px 0; }
+.server-banner #server-retry { flex: 0 0 auto; }
+@media (max-width: 640px) {
+  .server-banner { flex-wrap: wrap; }
+  .server-banner #server-retry { margin-left: 35px; }
+}
+
+.conn.is-offline { color: var(--text-dim); }
+
+.card.needs-server > :not(.card-head):not(.needs-server-note) { display: none !important; }
+.card.needs-server { min-height: 0 !important; }
+.needs-server-note { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+.needs-server-note a, .server-banner a, .empty.is-off a { color: var(--accent-text); }
+
+body.no-server .stats,
+body.no-server #ctrl-temps,
+body.no-server #demo-tools-card,
+body.no-server #file-samples,
+body.no-server [data-module-off] { display: none !important; }
+
+.st-preview-hint {
+  margin: 0 0 12px; padding: 10px 14px; border-radius: 12px;
+  font-size: 13.5px; color: var(--text-dim);
+  background: rgba(255, 204, 0, .12); border: 1px solid rgba(255, 204, 0, .35);
+}
+.st-preview-hint[hidden] { display: none; }
+.file-grid .file-local-note { grid-column: 1 / -1; margin-bottom: 4px; }

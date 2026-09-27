@@ -352,6 +352,20 @@ its finish, or to make the next Pause fail and see how that is reported.
 
 (Developed and tested on Python 3.11.)
 
+**Opened the pages without the server?** The `frontend/` folder can be
+published on its own (for example as static files on Cloudflare — see
+`wrangler.jsonc`), with no Python server behind it. The dashboard notices
+(its first request, `/api/health`, gets no JSON back) and turns into a
+**browser-only preview**: one banner says the server isn't there, Demo data
+is switched off rather than pretending, and every card that needs the server
+keeps its heading and says so in one line. What still works there, entirely
+in the browser: the **Photo studio** (with six built-in suggested colours,
+and **Download STL / 3MF** instead of saving to the library), viewing
+**G-code, STL and 3MF files from your own device** in 3D (read in the
+browser, never uploaded — no pre-flight verdict, which is the server's job),
+**View on your desk (AR)** where the browser supports it, the **Games**, and
+the accent and unit **Preferences**.
+
 To see the maintenance module on its own, printed to the terminal:
 
 ```bash
