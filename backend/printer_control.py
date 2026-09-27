@@ -60,7 +60,9 @@ def start_print(filename, confirmed=False):
         raise PrintBlocked({**gate, "blocking": [], "verdict": "confirm",
                             "warnings": gate["warnings"] or ["Confirm the print summary to start"]})
     data = file_library.read_bytes(filename)
-    mock_moonraker.upload_file(filename, len(data))
+    # The file's bytes, not just its size: a real printer stores exactly
+    # these (checked on arrival by their SHA-256) before it prints them.
+    mock_moonraker.upload_file(filename, len(data), data)
     state = mock_moonraker.start_print(filename, gate["job"])
     file_library.touch(filename, "last_printed")
     return state

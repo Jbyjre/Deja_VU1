@@ -244,6 +244,8 @@ def _resolve(target):
                              .get(target, "No printers"))
         return [_state["rng"].choice(sorted(pool))]
     if target not in ids:
+        if mock_moonraker.is_real(target):
+            raise ValueError(f"{target} is a real printer - the sandbox only ever drives simulated ones")
         raise ValueError(f"{target} isn't in the simulated farm")
     return [target]
 
