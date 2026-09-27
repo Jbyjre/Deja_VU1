@@ -671,11 +671,13 @@ async function markDone(button) {
   button.disabled = true;
   button.textContent = 'Saving…';
   try {
-    const { ok } = await postJSON(api('/api/maintenance/done'), { task_id: button.dataset.task });
-    if (!ok) throw new Error('save failed');
+    const { ok, status, body } = await postJSON(api('/api/maintenance/done'), { task_id: button.dataset.task });
+    if (!ok) throw new Error(body.error || (body.connected === false ? 'No printer connected' : `the dashboard answered ${status}`));
     await loadMaintenance();
+    toast('Marked done — its counter starts again from now', 'ok', 2600);
   } catch (err) {
     console.error('Could not mark task done:', err);
+    toast(`Couldn't mark it done: ${err.message}`, 'bad', 6000);
     button.disabled = false;
     button.textContent = 'Retry';
   }
@@ -819,7 +821,10 @@ function renderControlTab(state) {
   cancel.onclick = () => controlAction('cancel', cancel);
 
   homeButtons.forEach(b => {
-    if (b.dataset.phase !== 'sending') b.disabled = false;
+    // Homing mid-print would drive the toolhead through the print; the
+    // server refuses it too, but the button shouldn't offer it.
+    if (b.dataset.phase !== 'sending') b.disabled = running;
+    b.title = running ? 'Not while a print is running or paused' : '';
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
       runCommand(b, '/api/printer/control/home', { axes }, { sending: 'Homing…', done: `Homed ${axes.join('')}`, failed: 'Homing failed' })
