@@ -227,6 +227,13 @@ def _run_one(printer_id, action, params):
     try:
         with mock_moonraker.use_printer(printer_id):
             if action == "preheat":
+                busy = mock_moonraker.get_printer_state()
+                if busy["state"] in ("printing", "paused") and not busy.get("link_lost"):
+                    # A farm-wide preheat is for idle printers. Sent to one
+                    # mid-print it would rewrite the running print's nozzle
+                    # and bed temperatures; change those from its own page.
+                    raise ValueError(f"It's {busy['state']} - preheat is for idle printers; change a running "
+                                     "print's temperatures from its own Control page")
                 for th in params["toolheads"]:
                     if params["nozzle"] is not None:
                         printer_control.set_temperature(th, params["nozzle"])

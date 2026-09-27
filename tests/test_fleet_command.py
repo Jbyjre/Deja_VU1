@@ -61,11 +61,16 @@ class TestBroadcast(FleetCommandTest):
             self.assertEqual(mock_moonraker.get_printer_state()["state"], "paused")
 
     def test_everything_confirmed_says_so(self):
+        with mock_moonraker.use_printer("u1-workshop"):
+            mock_moonraker.cancel_print()
         result = fleet.broadcast("home", ["u1-workshop", "u1-garage"])
         self.assertTrue(result["all_ok"])
         self.assertIn("all 2", result["headline"])
 
     def test_preheat_sets_every_chosen_target(self):
+        for pid in ("u1-workshop", "u1-studio"):
+            with mock_moonraker.use_printer(pid):
+                mock_moonraker.cancel_print()
         result = fleet.broadcast("preheat", [], {"nozzle": 210, "bed": 65, "toolheads": "all"})
         self.assertTrue(result["all_ok"], result["headline"])
         for pid in mock_moonraker.printer_ids():
@@ -73,6 +78,23 @@ class TestBroadcast(FleetCommandTest):
                 state = mock_moonraker.get_printer_state()
             self.assertEqual(state["bed_target"], 65.0)
             self.assertTrue(all(t["target_temperature"] == 210.0 for t in state["toolheads"].values()))
+
+    def test_preheat_leaves_running_prints_alone(self):
+        # On a real printer this would rewrite the running print's temperatures.
+        rows = self.rows(fleet.broadcast("preheat", [], {"nozzle": 150, "bed": 40}))
+        for pid in ("u1-workshop", "u1-studio"):
+            self.assertEqual(rows[pid]["kind"], "refused")
+            self.assertIn("preheat is for idle printers", rows[pid]["error"])
+            with mock_moonraker.use_printer(pid):
+                self.assertNotEqual(mock_moonraker.get_printer_state()["bed_target"], 40.0)
+        self.assertTrue(rows["u1-garage"]["ok"])
+
+    def test_homing_a_printer_mid_print_is_refused(self):
+        # A real G28 mid-print drives the toolhead through the print.
+        rows = self.rows(fleet.broadcast("home"))
+        self.assertEqual(rows["u1-workshop"]["kind"], "refused")
+        self.assertIn("Homing is refused", rows["u1-workshop"]["error"])
+        self.assertTrue(rows["u1-garage"]["ok"])
 
     def test_preheat_validates_once_for_the_whole_request(self):
         with self.assertRaisesRegex(ValueError, "between 0 and 300"):
@@ -85,16 +107,16 @@ class TestBroadcast(FleetCommandTest):
     def test_a_dropped_link_fails_that_printer_only(self):
         with mock_moonraker.use_printer("u1-garage"):
             mock_moonraker.set_link(False)
-        rows = self.rows(fleet.broadcast("home"))
+        rows = self.rows(fleet.broadcast("pause"))
         self.assertTrue(rows["u1-workshop"]["ok"])
         self.assertEqual(rows["u1-garage"]["kind"], "printer_failed")
         self.assertIn("network link", rows["u1-garage"]["error"])
 
     def test_registered_printer_is_not_connected_not_skipped(self):
         added = fleet.add("Bench U1", "http://192.168.1.50:7125")
-        rows = self.rows(fleet.broadcast("home", [added["id"], "u1-studio"]))
+        rows = self.rows(fleet.broadcast("home", [added["id"], "u1-garage"]))
         self.assertEqual(rows[added["id"]]["kind"], "not_connected")
-        self.assertTrue(rows["u1-studio"]["ok"])
+        self.assertTrue(rows["u1-garage"]["ok"])
 
     def test_unknown_things_are_refused(self):
         with self.assertRaisesRegex(ValueError, "Unknown action"):
