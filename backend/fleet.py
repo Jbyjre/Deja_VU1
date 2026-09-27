@@ -340,6 +340,10 @@ def history(days=30, bucket="day"):
     The farm's output over time: per printer and totalled, with a time
     series of prints and grams per day (or week). Every figure is summed
     from the printers' own print history - nothing is estimated.
+
+    A print counts on the day it *ended* (its start, if it has no end
+    time): an overnight print that fails at 2 am is one of today's
+    failures, not a print from yesterday that today's figures miss.
     """
     try:
         days = int(days)
@@ -377,14 +381,18 @@ def history(days=30, bucket="day"):
         counts, materials = empty(), defaultdict(float)
         for job in jobs:
             try:
-                started = datetime.fromisoformat(job["start_time"])
-            except (KeyError, ValueError):
+                when = datetime.fromisoformat(job.get("end_time") or job["start_time"])
+            except (KeyError, TypeError, ValueError):
                 continue
-            if started < since:
+            if when < since:
                 continue
-            status = job["status"] if job["status"] in ("completed", "error", "cancelled") else "error"
+            status = job.get("status")
+            if status in ("in_progress", None):
+                continue                  # still running: not an outcome yet
+            if status not in ("completed", "error", "cancelled"):
+                status = "error"          # klippy_shutdown, interrupted, ... - it didn't finish
             grams, hours = float(job.get("filament_used_grams") or 0), float(job.get("print_duration_hours") or 0)
-            k = key_for(started)
+            k = key_for(when)
             for bag in (series.get(k), farm_series.get(k), counts, total):
                 if bag is None:
                     continue

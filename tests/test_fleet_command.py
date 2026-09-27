@@ -173,6 +173,30 @@ class TestHistory(FleetCommandTest):
             mock_moonraker.inject_jam()
         self.assertEqual(fleet.history(1)["farm"]["error"], before + 1)
 
+    def test_an_overnight_failure_counts_on_the_day_it_ended(self):
+        # A print that has run 30 hours always started before today's
+        # midnight, whatever time the test runs. It failed today, so it is
+        # one of today's failures (it used to be missed before ~2 am).
+        before = fleet.history(1)["farm"]["error"]
+        with mock_moonraker.use_printer("u1-workshop") as printer:
+            printer.live["print_duration_hours"] = 30.0
+            mock_moonraker.inject_jam()
+        self.assertEqual(fleet.history(1)["farm"]["error"], before + 1)
+
+    def test_a_running_job_is_not_counted_as_a_failure(self):
+        # Real Moonraker lists the job in progress with status "in_progress".
+        before = fleet.history(1)["farm"]
+        with mock_moonraker.use_printer("u1-workshop") as printer:
+            printer.session_jobs.append({
+                "job_id": "live-x", "filename": "a.gcode", "status": "in_progress",
+                "start_time": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+                "end_time": None, "print_duration_hours": 0.5, "filament_used_grams": 3.0,
+                "filament_type": "PLA", "filament_color_name": "Black", "filament_color_hex": "#000000",
+                "toolheads_used": ["T0"]})
+        after = fleet.history(1)["farm"]
+        self.assertEqual(after["prints"], before["prints"])
+        self.assertEqual(after["error"], before["error"])
+
 
 class TestOverviewAlerts(FleetCommandTest):
     def test_lost_link_is_an_alert_and_the_row_is_labelled(self):
