@@ -1095,7 +1095,7 @@ const Workshop = (() => {
       ${q.items.length ? `<ol class="queue-list">${q.items.map((i, n) => `
         <li class="queue-item ${i.status}">
           <div class="qi-main"><span class="qi-name">${esc(i.filename)}</span>
-            <span class="pill qi-status">${{ queued: 'Waiting', held: 'Held', started: 'Printing', done: 'Done' }[i.status]}</span></div>
+            <span class="pill qi-status">${{ queued: 'Waiting', held: 'Held', starting: 'Starting…', started: 'Printing', done: 'Done' }[i.status] || esc(i.status)}</span></div>
           ${i.note ? `<div class="qi-note">${esc(i.note)}</div>` : ''}
           ${i.status === 'queued' || i.status === 'held' ? `<div class="qi-tools">
             <button class="btn small" data-q="up" data-id="${i.id}" type="button" ${n === 0 ? 'disabled' : ''} aria-label="Move ${esc(i.filename)} up">↑</button>

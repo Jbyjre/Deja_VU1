@@ -436,16 +436,11 @@ def route_file(filename, target, from_printer=None, item_id=None, include_demo=T
             raise ValueError("Say which printer's queue the item comes from")
         if from_printer == target:
             raise ValueError("It's already on that printer's queue")
-        source = print_queue.get(from_printer)
-        item = next((i for i in source["items"] if i["id"] == item_id), None)
-        if item is None:
-            raise ValueError("That item isn't in the queue any more")
-        if item["status"] not in ("queued", "held"):
-            raise ValueError("Only waiting items can be moved - that one has started or finished")
-        filename = item["filename"]
-    result = print_queue.add(filename, printer_id=target)
-    if item_id:
-        print_queue.remove(item_id, printer_id=from_printer)
+        # One step under the queue's lock: the item can't be started on the
+        # first printer between being copied and being taken off it.
+        filename, result = print_queue.transfer(item_id, from_printer, target)
+    else:
+        result = print_queue.add(filename, printer_id=target)
     return {"routed": filename, "to": target, "to_name": mock_moonraker.printer_name(target),
             "moved_from": from_printer if item_id else None, "queue": result}
 
