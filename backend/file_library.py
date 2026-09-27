@@ -26,6 +26,7 @@ from datetime import datetime
 
 import gcode_tools
 import mesh_tools
+import safe_zip
 import sample_files
 import storage
 
@@ -211,19 +212,21 @@ def _summarize(name):
             if uri:
                 thumb = base64.b64decode(uri.split(",", 1)[1])
         else:
-            triangles, info = mesh_tools.parse_model(data, name)
-            b = mesh_tools.bounds(triangles)
-            summary.update({"triangles": len(triangles), "size_mm": b["size"] if b else None,
-                            "application": info.get("application")})
+            # Streamed: count and bounds exact, the thumbnail from an even
+            # sample - a detailed model never has to fit in memory whole.
+            model = mesh_tools.summarize(data, name)
+            b = model["bounds"]
+            summary.update({"triangles": model["count"], "size_mm": b["size"] if b else None,
+                            "application": model["info"].get("application")})
             if kind == "3mf":
-                import zipfile, io
-                z = zipfile.ZipFile(io.BytesIO(data))
+                z = safe_zip.open_archive(data, "3MF file")
                 for part in ("Metadata/plate_1.png", "Metadata/thumbnail.png"):
                     if part in z.namelist():
-                        thumb = z.read(part)
+                        png = safe_zip.read(z, part, limit=8 * 1024 * 1024, what="3MF file")
+                        thumb = png if png.startswith(b"\x89PNG\r\n\x1a\n") else None
                         break
             if thumb is None:
-                thumb = mesh_tools.png_thumbnail(triangles)
+                thumb = mesh_tools.png_thumbnail(model["sample"])
     except (ValueError, KeyError, OSError) as exc:
         summary["error"] = str(exc)
     if thumb:

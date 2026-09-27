@@ -33,7 +33,8 @@ confirmed by opening a studio file in Orca.
 import io
 import re
 import xml.etree.ElementTree as ET
-import zipfile
+
+import safe_zip
 
 import file_library
 import filament_inventory
@@ -94,13 +95,15 @@ def palette():
 def read_swap_plan(data):
     """The tool changes a 3MF asks for, from Metadata/custom_gcode_per_layer.xml."""
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-    except zipfile.BadZipFile:
+        archive = safe_zip.open_archive(data, "3MF file")
+    except safe_zip.DamagedArchive:
         return []
     if CUSTOM_GCODE_PART not in archive.namelist():
         return []
     try:
-        root = ET.fromstring(archive.read(CUSTOM_GCODE_PART))
+        root = ET.fromstring(safe_zip.read(archive, CUSTOM_GCODE_PART, limit=4 * 1024 * 1024, what="3MF file"))
+    except safe_zip.DamagedArchive as exc:
+        raise ValueError(str(exc))
     except ET.ParseError:
         raise ValueError("The colour-swap plan inside the 3MF isn't valid XML")
     if root.tag != "custom_gcodes_per_layer":
@@ -123,14 +126,15 @@ def save(name, data, note=None):
     if not data:
         raise ValueError("The model is empty")
     try:
-        triangles, info = mesh_tools.parse_model(data, name)
+        model = mesh_tools.summarize(data, name, keep=1)
     except mesh_tools.MeshError as exc:
         raise ValueError(f"That isn't a readable model: {exc}")
-    if not triangles:
+    count = model["count"]
+    if not count:
         raise ValueError("The model has no triangles")
-    if len(triangles) > MAX_TRIANGLES:
-        raise ValueError(f"{len(triangles):,} triangles is too many - lower the resolution")
-    size = mesh_tools.bounds(triangles)["size"]
+    if count > MAX_TRIANGLES:
+        raise ValueError(f"{count:,} triangles is too many - lower the resolution")
+    size = model["bounds"]["size"]
     if any(v > BED_MM + 1e-6 for v in size):
         raise ValueError(f"At {size[0]:.0f} × {size[1]:.0f} × {size[2]:.1f} mm it doesn't fit the U1's "
                          f"{BED_MM:.0f} mm build volume")
@@ -141,5 +145,5 @@ def save(name, data, note=None):
         words = (words + " · " if words else "") + f"Tool changes: {plan}"
     entry = file_library.save(name, data, origin="studio",
                               note=("Made in Photo-to-Print Studio. " + words).strip())
-    return {"file": entry, "triangles": len(triangles), "size_mm": [round(v, 2) for v in size],
+    return {"file": entry, "triangles": count, "size_mm": [round(v, 2) for v in size],
             "swaps": swaps}
