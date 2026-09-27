@@ -129,7 +129,7 @@ class PrinterRefused(PrinterCommandError):
 
 def toolhead_for(extruder):
     """'extruder' -> 'T0', 'extruder2' -> 'T2'; None for anything else."""
-    m = _TOOL_RE.match(extruder or "")
+    m = _TOOL_RE.match(extruder) if isinstance(extruder, str) else None
     if not m:
         return None
     return f"T{int(m.group(1) or 0)}"
@@ -147,6 +147,22 @@ def _num(value, default=None):
     except (TypeError, ValueError):
         return default
     return f if f == f and abs(f) != float("inf") else default
+
+
+def _obj(status, name):
+    """A printer object from the status, or {} - whatever shape actually arrived."""
+    value = status.get(name) if isinstance(status, dict) and name else None
+    return value if isinstance(value, dict) else {}
+
+
+def _str(value):
+    return value if isinstance(value, str) else None
+
+
+def _count(value):
+    """A positive whole number from metadata, or None."""
+    v = _num(value)
+    return int(v) if v is not None and 0 < v < 1e9 else None
 
 
 def _at(seq, i):
@@ -184,7 +200,8 @@ def _iso(unix):
 
 def mm_to_grams(mm, material, diameter=None):
     """Filament length to weight, with gcode_tools' densities (an estimate)."""
-    d = _num(diameter) or gcode_tools.FILAMENT_DIAMETER_MM
+    d = _num(diameter)
+    d = d if d and 0.5 < d < 5 else gcode_tools.FILAMENT_DIAMETER_MM
     density = gcode_tools.DENSITY.get(str(material or "PLA").upper().split("-")[0].split(" ")[0], 1.24)
     return max(0.0, _num(mm, 0.0)) * 3.141592653589793 * (d / 2) ** 2 * density / 1000.0
 
@@ -249,7 +266,7 @@ def job_from_metadata(filename, meta):
     return {
         "filename": filename,
         "total_hours": round(est / 3600.0, 4) if est else None,
-        "layers": int(meta["layer_count"]) if isinstance(meta.get("layer_count"), (int, float)) else None,
+        "layers": _count(meta.get("layer_count")),
         "filament_grams": _num(meta.get("filament_weight_total")),
         "filament_mm": _num(meta.get("filament_total")),
         "material": types[0] if types else None,
@@ -272,16 +289,22 @@ def _grams_used(mm, meta_or_job, material, completed):
     total_g = _num(meta_or_job.get("filament_weight_total", meta_or_job.get("filament_grams")))
     total_mm = _num(meta_or_job.get("filament_total", meta_or_job.get("filament_mm")))
     mm = _num(mm, 0.0)
+    if total_g is not None and not 0 < total_g < 1e6:
+        total_g = None                       # not a real spool's worth: ignore it
     if total_g and total_mm and total_mm > 0 and mm > 0:
-        return total_g * min(1.5, mm / total_mm), False
-    if total_g and completed and mm <= 0:
-        return total_g, False
-    if mm > 0:
+        grams, estimated = total_g * min(1.5, mm / total_mm), False
+    elif total_g and completed and mm <= 0:
+        grams, estimated = total_g, False
+    elif mm > 0:
         diameter = meta_or_job.get("filament_diameter")
         if isinstance(diameter, list):
             diameter = _at(diameter, 0)
-        return mm_to_grams(mm, material, diameter), True
-    return 0.0, False
+        grams, estimated = mm_to_grams(mm, material, diameter), True
+    else:
+        grams, estimated = 0.0, False
+    if not 0 <= grams < 1e6:
+        return 0.0, False                    # a figure that can't be real is left out, not reported
+    return grams, estimated
 
 
 def translate_history_job(job):
@@ -324,7 +347,7 @@ def translate_history_job(job):
         "source": "moonraker",
     }
     if out["status"] != status:
-        out["status_detail"] = status
+        out["status_detail"] = status[:40] if isinstance(status, str) else "unknown"
     return out
 
 
@@ -345,8 +368,8 @@ def packages_from_update_status(result):
 def _toolheads(status, extruders, ptc):
     """Every toolhead, keyed T0..Tn, and which one is on the carriage."""
     active = None
-    carriage = (status.get("toolhead") or {}).get("extruder")
-    parked_states = {th: (status.get(name) or {}).get("state") for th, name in extruders.items()}
+    carriage = _obj(status, "toolhead").get("extruder")
+    parked_states = {th: _obj(status, name).get("state") for th, name in extruders.items()}
     if any(isinstance(s, str) for s in parked_states.values()):
         # The U1 reports each head's dock sensor: ACTIVATE = on the carriage.
         on = [th for th, s in parked_states.items() if s == "ACTIVATE"]
@@ -355,7 +378,7 @@ def _toolheads(status, extruders, ptc):
         active = toolhead_for(carriage) if toolhead_for(carriage) in extruders else None
     out = {}
     for th, name in sorted(extruders.items(), key=lambda kv: int(kv[0][1:])):
-        e = status.get(name) or {}
+        e = _obj(status, name)
         i = int(th[1:])
         exist = _at(ptc.get("filament_exist"), i)
         ftype = _at(ptc.get("filament_type"), i)
@@ -394,23 +417,26 @@ def translate_state(status, ctx):
     sensor object, if any), job (the running file's details) and
     klippy_state / klippy_message when Klipper isn't ready.
     """
-    status = status or {}
-    wh = status.get("webhooks") or {}
-    ps = status.get("print_stats") or {}
-    vsd = status.get("virtual_sdcard") or {}
-    gm = status.get("gcode_move") or {}
-    bed = status.get("heater_bed") or {}
-    ptc = status.get("print_task_config") or {}
+    # Every value is taken as whatever type actually arrived: a firmware
+    # quirk or a future Moonraker change must never break a printer's state.
+    status = status if isinstance(status, dict) else {}
+    wh = _obj(status, "webhooks")
+    ps = _obj(status, "print_stats")
+    vsd = _obj(status, "virtual_sdcard")
+    gm = _obj(status, "gcode_move")
+    bed = _obj(status, "heater_bed")
+    ptc = _obj(status, "print_task_config")
     job = ctx.get("job") or {}
-    klippy = ctx.get("klippy_state") or wh.get("state") or "ready"
-    raw = ps.get("state") or "standby"
-    filename = ps.get("filename") or None
+    klippy = ctx.get("klippy_state") or _str(wh.get("state")) or "ready"
+    raw = ps.get("state") if "state" in ps else "standby"
+    raw = raw if isinstance(raw, str) and raw else ("standby" if raw in (None, "") else repr(raw)[:40])
+    filename = _str(ps.get("filename")) or None
 
     state = _PRINT_STATES.get(raw)
     message = None
     if klippy != "ready":
         state = "error"
-        message = clean_error(ctx.get("klippy_message") or wh.get("state_message") or f"Klipper is {klippy}")
+        message = clean_error(ctx.get("klippy_message") or _str(wh.get("state_message")) or f"Klipper is {klippy}")
     elif state is None:
         state = "error"
         message = f"The printer reports a state this dashboard doesn't know: {raw!r}"
@@ -431,6 +457,7 @@ def translate_state(status, ctx):
         # SET_PRINT_STATS_INFO; otherwise estimate it from the nozzle height,
         # the way Mainsail and Fluidd do.
         z = _num(_at(gm.get("gcode_position"), 2))
+        z = z if z is not None and abs(z) < 1e6 else None
         lh, flh = job.get("layer_height"), job.get("first_layer_height") or job.get("layer_height")
         if z is not None and lh and flh:
             current = int(min(total, max(1, round((z - flh) / lh) + 1)))
@@ -442,9 +469,11 @@ def translate_state(status, ctx):
 
     extruders = ctx.get("extruders") or {}
     toolheads, active = _toolheads(status, extruders, ptc)
-    pos = (status.get("toolhead") or {}).get("position") or [0, 0, 0, 0]
+    pos = _obj(status, "toolhead").get("position")
+    pos = list(pos)[:3] if isinstance(pos, (list, tuple)) else []
+    pos += [0.0] * (3 - len(pos))
     chamber_obj = ctx.get("chamber")
-    chamber = _num((status.get(chamber_obj) or {}).get("temperature")) if chamber_obj else None
+    chamber = _num(_obj(status, chamber_obj).get("temperature")) if chamber_obj else None
 
     if message is None:
         if state == "printing":
@@ -455,7 +484,7 @@ def translate_state(status, ctx):
         elif state == "complete":
             message = f"Finished {filename or ''}".strip()
         elif state == "error":
-            message = clean_error(ps.get("message") or "The print stopped with an error")
+            message = clean_error(_str(ps.get("message")) or "The print stopped with an error")
         else:
             message = "Idle" if raw != "cancelled" else "Idle - the last print was cancelled"
 
@@ -470,7 +499,7 @@ def translate_state(status, ctx):
         "bed_temperature": _num(bed.get("temperature")),
         "bed_target": _num(bed.get("target"), 0.0),
         "chamber_temperature": chamber,
-        "toolhead_position": [round(_num(v, 0.0), 2) for v in list(pos)[:3]],
+        "toolhead_position": [round(_num(v, 0.0), 2) for v in pos],
         "layer": {"current": current, "total": total, **({"estimated": True} if estimated_layer else {})},
         "printer_id": ctx.get("printer_id"),
         "printer_name": ctx.get("name"),
@@ -1445,7 +1474,7 @@ class MoonrakerPrinter:
             self._job = {
                 "filename": filename,
                 "total_hours": _num(job.get("estimated_hours")),
-                "layers": int(job["layers"]) if isinstance(job.get("layers"), (int, float)) and job["layers"] else None,
+                "layers": _count(job.get("layers")),
                 "filament_grams": _num(job.get("filament_grams")),
                 "filament_mm": None,
                 "material": job.get("material"),

@@ -63,6 +63,7 @@ def _simulate_age(seconds):
 import os
 import re
 import threading
+import time
 import urllib.error
 import urllib.request
 import storage
@@ -72,6 +73,7 @@ _SETTINGS_PATH = os.path.join(_DATA_DIR, "camera_settings.json")
 _URL = re.compile(r"^https?://[^\s]{1,300}$")
 _frame_lock = threading.Lock()
 _latest_frame = None
+_latest_frame_mono = 0.0
 MAX_BUFFER = 4 * 1024 * 1024
 
 
@@ -89,9 +91,57 @@ def save_settings(updates):
     return get_settings()
 
 
-def latest_frame():
+def latest_frame(max_age=None):
+    """
+    The newest camera frame, or None. With max_age (seconds), a frame older
+    than that counts as none - so a time-lapse never stores the same stale
+    picture again as if it were the latest layer.
+    """
     with _frame_lock:
+        if max_age is not None and time.monotonic() - _latest_frame_mono > max_age:
+            return None
         return _latest_frame
+
+
+# Frames normally arrive only while someone watches the stream. A time-lapse
+# of a real printer needs them while nobody does, so the live feed asks for
+# them here: one background reader, only while it keeps being asked, that
+# stops on its own shortly after (and retries a camera that drops).
+_grab = {"until": 0.0, "thread": None, "error": None}
+_grab_lock = threading.Lock()
+
+
+def keep_frames_coming(seconds=90):
+    """Keep reading the camera for at least `seconds` more. False when no camera is set up."""
+    if not get_settings().get("stream_url"):
+        return False
+    with _grab_lock:
+        _grab["until"] = time.monotonic() + seconds
+        if _grab["thread"] and _grab["thread"].is_alive():
+            return True
+        _grab["thread"] = threading.Thread(target=_grab_loop, name="camera-grabber", daemon=True)
+        _grab["thread"].start()
+    return True
+
+
+def _grab_loop():
+    wanted = lambda: time.monotonic() < _grab["until"]      # noqa: E731
+    while wanted():
+        try:
+            upstream = open_stream(timeout=10)
+            try:
+                ctype = upstream.headers.get("Content-Type", "")
+                if looks_like_camera(ctype):
+                    _grab["error"] = None
+                    relay(upstream, lambda chunk: None, lambda: not wanted())
+                else:
+                    _grab["error"] = f"The camera address answered with {ctype or 'no content type'}, not a picture"
+            finally:
+                upstream.close()
+        except (ValueError, OSError) as exc:
+            _grab["error"] = str(exc)
+        if wanted():
+            time.sleep(5)            # a snapshot URL is polled; a dropped stream is retried
 
 
 class FrameSplitter:
@@ -101,7 +151,7 @@ class FrameSplitter:
         self.buffer = b""
 
     def feed(self, chunk):
-        global _latest_frame
+        global _latest_frame, _latest_frame_mono
         self.buffer += chunk
         found = 0
         while True:
@@ -119,6 +169,7 @@ class FrameSplitter:
             self.buffer = self.buffer[end + 2:]
             with _frame_lock:
                 _latest_frame = jpeg
+                _latest_frame_mono = time.monotonic()
             receive_frame()
             found += 1
         return found
