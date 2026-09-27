@@ -15,12 +15,13 @@ in its own 3D/Objects/*.model part and reference it through a <component>,
 so components are followed across parts, with their transforms.
 """
 
-import io
 import math
 import re
 import struct
-import zipfile
-import xml.etree.ElementTree as ET
+from array import array
+from xml.parsers import expat
+
+import safe_zip
 
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 PROD_NS = "http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
@@ -35,26 +36,68 @@ class MeshError(ValueError):
 # STL
 # ---------------------------------------------------------------------------
 
-def parse_stl(data):
-    """Binary or ASCII STL -> list of triangles ((x,y,z),(x,y,z),(x,y,z))."""
+def _finite(v):
+    return all(math.isfinite(c) for c in v)
+
+
+def iter_stl(data):
+    """
+    Binary or ASCII STL, one triangle at a time - so a large model is never
+    held whole as Python objects. Refuses what can't be printed or read:
+    a cut-short file, coordinates that aren't numbers.
+    """
+    view = memoryview(data)
     if len(data) >= 84:
         count = struct.unpack_from("<I", data, 80)[0]
-        if 84 + count * 50 == len(data):
+        expected = 84 + count * 50
+        looks_ascii = data[:5].lower() == b"solid" and b"facet" in data[:2048]
+        if not looks_ascii and expected <= len(data) <= expected + 1024:
             if count > MAX_TRIANGLES:
-                raise MeshError("Model has too many triangles to preview")
-            tris = []
-            for i in range(count):
-                v = struct.unpack_from("<12f", data, 84 + i * 50)
-                tris.append(((v[3], v[4], v[5]), (v[6], v[7], v[8]), (v[9], v[10], v[11])))
-            return tris
-    text = data.decode("ascii", errors="ignore")
-    if "facet" not in text:
+                raise MeshError(f"The model has {count:,} triangles - more than the {MAX_TRIANGLES:,} this "
+                                "dashboard reads")
+
+            def binary():
+                for v in struct.iter_unpack("<12fH", view[84:expected]):
+                    if not _finite(v[3:12]):
+                        raise MeshError("The STL has a coordinate that isn't a number")
+                    yield ((v[3], v[4], v[5]), (v[6], v[7], v[8]), (v[9], v[10], v[11]))
+            return binary()
+        if not looks_ascii and 84 < len(data) < expected and count < 50_000_000:
+            raise MeshError(f"The STL is cut short: it says {count:,} triangles but holds "
+                            f"{(len(data) - 84) // 50:,} - the upload may not have finished")
+    head = bytes(view[:4096]).decode("ascii", errors="ignore").lower()
+    if "facet" not in head and "solid" not in head:
         raise MeshError("Not a readable STL file")
-    nums = re.findall(r"vertex\s+(\S+)\s+(\S+)\s+(\S+)", text)
-    verts = [(float(a), float(b), float(c)) for a, b, c in nums]
-    if len(verts) % 3 or not verts:
-        raise MeshError("STL has an incomplete triangle")
-    return [tuple(verts[i:i + 3]) for i in range(0, len(verts), 3)]
+
+    def ascii_stl():
+        pending, n = [], 0
+        for m in _ASCII_VERTEX.finditer(data):
+            try:
+                v = (float(m.group(1)), float(m.group(2)), float(m.group(3)))
+            except ValueError:
+                raise MeshError("The STL has a vertex that isn't three numbers")
+            if not _finite(v):
+                raise MeshError("The STL has a coordinate that isn't a number")
+            pending.append(v)
+            if len(pending) == 3:
+                n += 1
+                if n > MAX_TRIANGLES:
+                    raise MeshError(f"The model has more than {MAX_TRIANGLES:,} triangles")
+                yield tuple(pending)
+                pending = []
+        if pending:
+            raise MeshError("STL has an incomplete triangle")
+        if not n:
+            raise MeshError("Not a readable STL file")
+    return ascii_stl()
+
+
+_ASCII_VERTEX = re.compile(rb"vertex\s+(\S+)\s+(\S+)\s+(\S+)", re.IGNORECASE)
+
+
+def parse_stl(data):
+    """Binary or ASCII STL -> list of triangles ((x,y,z),(x,y,z),(x,y,z))."""
+    return list(iter_stl(data))
 
 
 # ---------------------------------------------------------------------------
@@ -65,9 +108,14 @@ def _matrix(text):
     """3MF transform 'm00 m01 m02 m10 ... m32' -> 4x3 list, or identity."""
     if not text:
         return None
-    values = [float(v) for v in text.split()]
+    try:
+        values = [float(v) for v in text.split()]
+    except ValueError:
+        raise MeshError("A 3MF transform isn't a list of numbers")
     if len(values) != 12:
         return None
+    if not _finite(values):
+        raise MeshError("A 3MF transform has a value that isn't a number")
     return values
 
 
@@ -95,83 +143,183 @@ def _compose(a, b):
     return out
 
 
-def parse_3mf(data):
-    """3MF bytes -> (triangles, info) with every build item placed."""
+_CORE = CORE_NS + "}"
+_PROD_PATH = PROD_NS + "}path"
+
+
+def _read_model_part(stream, part_name):
+    """
+    One 3MF model part, read with expat callbacks as it streams out of the
+    archive - no document tree is built. Vertices and triangle corners go
+    into compact arrays (8 and 4 bytes a number), which is what lets a
+    large model be read on a Raspberry Pi. Expat also refuses XML entity
+    expansion attacks by itself.
+    """
+    objects, build, metadata = {}, [], {}
+    state = {"obj": None, "in_build": False, "meta": None, "text": [], "vertices": 0}
+
+    def start(name, attrs):
+        if not name.startswith(_CORE):
+            return
+        tag = name[len(_CORE):]
+        obj = state["obj"]
+        try:
+            if tag == "vertex" and obj is not None:
+                state["vertices"] += 1
+                if state["vertices"] > 3 * MAX_TRIANGLES:
+                    raise MeshError("The model has too many vertices")
+                v = (float(attrs["x"]), float(attrs["y"]), float(attrs["z"]))
+                if not _finite(v):
+                    raise MeshError("The 3MF has a vertex coordinate that isn't a number")
+                obj["verts"].extend(v)
+            elif tag == "triangle" and obj is not None:
+                obj["tris"].extend((int(attrs["v1"]), int(attrs["v2"]), int(attrs["v3"])))
+            elif tag == "object":
+                state["obj"] = {"verts": array("d"), "tris": array("l"), "components": []}
+                objects[attrs.get("id")] = state["obj"]
+            elif tag == "component" and obj is not None:
+                obj["components"].append((attrs.get(_PROD_PATH), attrs.get("objectid"), attrs.get("transform")))
+            elif tag == "build":
+                state["in_build"] = True
+            elif tag == "item" and state["in_build"]:
+                build.append((attrs.get("objectid"), attrs.get("transform")))
+            elif tag == "metadata":
+                state["meta"], state["text"] = attrs.get("name"), []
+        except (KeyError, ValueError, OverflowError) as exc:
+            if isinstance(exc, MeshError):
+                raise
+            raise MeshError(f"A 3MF {tag} in {part_name} is missing a value or has one that isn't a number")
+
+    def end(name):
+        if not name.startswith(_CORE):
+            return
+        tag = name[len(_CORE):]
+        if tag == "object":
+            state["obj"] = None
+        elif tag == "build":
+            state["in_build"] = False
+        elif tag == "metadata" and state["meta"] is not None:
+            metadata[state["meta"]] = "".join(state["text"])[:500]
+            state["meta"] = None
+
+    def text(data):
+        if state["meta"] is not None and sum(len(t) for t in state["text"]) < 500:
+            state["text"].append(data)
+
+    parser = expat.ParserCreate(namespace_separator="}")
+    parser.StartElementHandler, parser.EndElementHandler, parser.CharacterDataHandler = start, end, text
     try:
-        archive = zipfile.ZipFile(io.BytesIO(data))
-    except zipfile.BadZipFile:
-        raise MeshError("Not a 3MF file (it isn't a zip archive)")
+        parser.ParseFile(stream)
+    except expat.ExpatError as exc:
+        raise MeshError(f"The 3MF's {part_name} isn't valid XML ({exc})")
+    return objects, build, metadata
+
+
+def iter_3mf(data):
+    """3MF bytes -> (triangle iterator, info), every build item placed."""
+    try:
+        archive = safe_zip.open_archive(data, "3MF file")
+    except safe_zip.DamagedArchive as exc:
+        raise MeshError(str(exc))
     names = {n.lower(): n for n in archive.namelist()}
     main = names.get("3d/3dmodel.model")
     if not main:
         raise MeshError("3MF has no 3D/3dmodel.model part")
-
     parts = {}
 
     def load(path):
-        key = path.lstrip("/").lower()
+        key = (path or "").lstrip("/").lower()
         if key not in parts:
             if key not in names:
                 raise MeshError(f"3MF refers to a missing part: {path}")
-            parts[key] = ET.fromstring(archive.read(names[key]))
+            try:
+                with safe_zip.open_part(archive, names[key], what="3MF file") as stream:
+                    parts[key] = _read_model_part(stream, names[key])
+            except safe_zip.DamagedArchive as exc:
+                raise MeshError(str(exc))
         return parts[key]
 
-    def objects_in(root):
-        res = root.find(f"{{{CORE_NS}}}resources")
-        return {o.get("id"): o for o in (res if res is not None else [])
-                if o.tag == f"{{{CORE_NS}}}object"}
-
-    triangles = []
+    objects, build, metadata = load(main)
+    items = build or [(oid, None) for oid in objects]
     count = [0]
 
     def emit(part_path, object_id, transform, depth=0):
         if depth > 8:
             raise MeshError("3MF components nest too deeply")
-        obj = objects_in(load(part_path)).get(object_id)
+        obj = load(part_path)[0].get(object_id)
         if obj is None:
             raise MeshError(f"3MF object {object_id} is missing")
-        mesh = obj.find(f"{{{CORE_NS}}}mesh")
-        if mesh is not None:
-            verts = [(float(v.get("x")), float(v.get("y")), float(v.get("z")))
-                     for v in mesh.find(f"{{{CORE_NS}}}vertices")]
-            for t in mesh.find(f"{{{CORE_NS}}}triangles"):
-                count[0] += 1
-                if count[0] > MAX_TRIANGLES:
-                    raise MeshError("Model has too many triangles to preview")
-                triangles.append(tuple(_apply(transform, verts[int(t.get(k))])
-                                       for k in ("v1", "v2", "v3")))
-        comps = obj.find(f"{{{CORE_NS}}}components")
-        if comps is not None:
-            for c in comps:
-                path = c.get(f"{{{PROD_NS}}}path") or part_path
-                emit(path, c.get("objectid"),
-                     _compose(_matrix(c.get("transform")), transform), depth + 1)
+        verts, tris = obj["verts"], obj["tris"]
+        n_verts = len(verts) // 3
+        for i in range(0, len(tris) - 2, 3):
+            count[0] += 1
+            if count[0] > MAX_TRIANGLES:
+                raise MeshError(f"The model has more than {MAX_TRIANGLES:,} triangles")
+            corners = []
+            for k in (tris[i], tris[i + 1], tris[i + 2]):
+                if not 0 <= k < n_verts:
+                    raise MeshError(f"A 3MF triangle refers to vertex {k}, which doesn't exist")
+                corners.append(_apply(transform, (verts[3 * k], verts[3 * k + 1], verts[3 * k + 2])))
+            yield tuple(corners)
+        for path, child, child_transform in obj["components"]:
+            yield from emit(path or part_path, child, _compose(_matrix(child_transform), transform), depth + 1)
 
-    root = load(main)
-    metadata = {m.get("name"): (m.text or "") for m in root.findall(f"{{{CORE_NS}}}metadata")}
-    build = root.find(f"{{{CORE_NS}}}build")
-    items = list(build) if build is not None else []
-    if not items:
-        items = [ET.Element("item", objectid=oid) for oid in objects_in(root)]
-    for item in items:
-        emit(main, item.get("objectid"), _matrix(item.get("transform")))
+    def all_triangles():
+        for object_id, item_transform in items:
+            yield from emit(main, object_id, _matrix(item_transform))
+
     info = {"application": metadata.get("Application", ""), "title": metadata.get("Title", ""),
             "objects": len(items), "parts": sorted(names.values())}
-    return triangles, info
+    return all_triangles(), info
 
 
-def parse_model(data, filename):
+def parse_3mf(data):
+    """3MF bytes -> (triangles, info) with every build item placed."""
+    triangles, info = iter_3mf(data)
+    return list(triangles), info
+
+
+def iter_model(data, filename):
     lower = filename.lower()
     if lower.endswith(".stl"):
-        return parse_stl(data), {"objects": 1}
+        return iter_stl(data), {"objects": 1}
     if lower.endswith(".3mf"):
-        return parse_3mf(data)
+        return iter_3mf(data)
     raise MeshError("Only STL and 3MF models can be read")
 
 
-# ---------------------------------------------------------------------------
-# Size and a preview thumbnail
-# ---------------------------------------------------------------------------
+def parse_model(data, filename):
+    triangles, info = iter_model(data, filename)
+    return list(triangles), info
+
+
+def summarize(data, filename, keep=120_000):
+    """
+    Count, exact bounds, and an even sample of at most `keep` triangles for
+    the thumbnail - in one streaming pass, so memory stays small however
+    large the model is.
+    """
+    triangles, info = iter_model(data, filename)
+    lo, hi = [math.inf] * 3, [-math.inf] * 3
+    sample, stride, n = [], 1, 0
+    for tri in triangles:
+        for p in tri:
+            for i in range(3):
+                if p[i] < lo[i]:
+                    lo[i] = p[i]
+                if p[i] > hi[i]:
+                    hi[i] = p[i]
+        if n % stride == 0:
+            sample.append(tri)
+            if len(sample) >= 2 * keep:
+                sample = sample[::2]
+                stride *= 2
+        n += 1
+    box = None
+    if n:
+        box = {"min": lo, "max": hi, "size": [round(hi[i] - lo[i], 2) for i in range(3)]}
+    return {"count": n, "bounds": box, "sample": sample, "info": info}
+
 
 def bounds(triangles):
     if not triangles:

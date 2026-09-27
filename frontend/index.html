@@ -179,7 +179,7 @@
     </section>
     <section class="card liquid-glass">
       <div class="card-head">
-        <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. Saved here; it shows as connected once a real Moonraker link exists.</p></div>
+        <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. It connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p></div>
       </div>
       <div id="fleet-registry"></div>
       <form id="fleet-add-form" class="inline-form">
@@ -187,6 +187,8 @@
         <input type="text" id="fleet-add-name" placeholder="Name (Bench U1)" maxlength="40" required>
         <label class="sr-only" for="fleet-add-url">Moonraker address</label>
         <input type="url" id="fleet-add-url" placeholder="http://192.168.1.50:7125" required>
+        <label class="sr-only" for="fleet-add-key">Moonraker API key (only if your Moonraker asks for one)</label>
+        <input type="password" id="fleet-add-key" placeholder="API key (only if needed)" autocomplete="off" maxlength="128">
         <button class="btn primary" type="submit">Add printer</button>
       </form>
     </section>

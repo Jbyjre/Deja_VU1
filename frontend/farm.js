@@ -63,7 +63,7 @@ const Farm = (() => {
     const bar = $('fc-bar');
     if (!bar) return;
     // Every action on the bar is a printer command, so it needs printer control too.
-    bar.hidden = !demoOn || !cmd.fleet.length || cmd.moduleOff || modGate.off.has('printer_control');
+    bar.hidden = !liveData() || !cmd.fleet.length || cmd.moduleOff || modGate.off.has('printer_control');
     const n = cmd.selected.size;
     $('fc-count').textContent = n ? `${n} of ${cmd.fleet.length} selected` : 'Select printers to command them together';
     qsa('#fc-bar [data-act]').forEach(b => { b.disabled = !n; });
@@ -107,7 +107,7 @@ const Farm = (() => {
 
   async function loadQueues() {
     cmd.queuesAt = Date.now();
-    if (!demoOn) { cmd.queues = {}; renderQueues(); return; }
+    if (!liveData()) { cmd.queues = {}; renderQueues(); return; }
     const data = await getJSON(api('/api/fleet/queues')).catch(() => null);
     cmd.queues = (data && data.queues) || {};
     cmd.moduleOff = isModuleDisabled(data);
@@ -158,7 +158,7 @@ const Farm = (() => {
   async function loadFileStrip() {
     const host = $('fc-files');
     if (!host) return;
-    if (!demoOn) { host.innerHTML = ''; return; }
+    if (!liveData()) { host.innerHTML = ''; return; }
     const data = await getJSON('/api/files').catch(() => null);
     if (isModuleDisabled(data)) { host.innerHTML = '<p class="log-empty">The file library is off.</p>'; return; }
     cmd.files = ((data && data.files) || []).filter(f => f.kind === 'gcode');
@@ -275,7 +275,7 @@ const Farm = (() => {
   async function loadHistory() {
     const host = $('fh-host');
     if (!host) return;
-    if (!demoOn) { host.innerHTML = EMPTY('No printer connected', 'Turn on demo data to see the simulated farm\'s history.'); return; }
+    if (!liveData()) { host.innerHTML = EMPTY('No printer connected', 'Turn on demo data to see the simulated farm\'s history.'); return; }
     const bucket = hist.days > 45 ? 'week' : 'day';
     const data = await getJSON(api(`/api/fleet/history?days=${hist.days}&bucket=${bucket}`)).catch(() => null);
     if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Fleet command center'); return; }
@@ -685,9 +685,10 @@ const Farm = (() => {
   function updateSliceButtons() {
     const ready = ap.settings && !ap.settings.problem && ap.settings.profiles.length && ap.models.length;
     $('ap-slice').disabled = !ready;
-    $('ap-slice-queue').disabled = !ready || !demoOn;
-    $('ap-slice-queue').textContent = `Slice and queue on ${name(currentPrinter || 'u1-workshop')}`;
-    $('ap-queue-note').textContent = demoOn ? '' : 'Queueing needs a printer - with none connected, turn on demo data to queue on a simulated one.';
+    $('ap-slice-queue').disabled = !ready || !liveData();
+    const target = currentPrinter || (cmd.fleet[0] && cmd.fleet[0].id);
+    $('ap-slice-queue').textContent = target ? `Slice and queue on ${name(target)}` : 'Slice and queue';
+    $('ap-queue-note').textContent = liveData() ? '' : 'Queueing needs a printer - with none connected, turn on demo data to queue on a simulated one.';
   }
 
   async function startSlice(queue, btn, model) {

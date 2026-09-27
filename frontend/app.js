@@ -272,6 +272,11 @@ const store = {
 const STORE_KEY = 'dejavu1.demo';
 let demoOn = store.get(STORE_KEY) === '1';
 
+/* A real printer (added by address) with its connection open. Live figures
+ * come from either source: demo data, or a connected printer. */
+let realOn = false;
+function liveData() { return demoOn || realOn; }
+
 /* Which printer the whole dashboard is looking at. Every request carries
  * ?printer=<id>, and the server answers every module for that printer. */
 const PRINTER_KEY = 'dejavu1.printer';
@@ -471,6 +476,11 @@ async function loadConnection() {
   const data = await getJSON('/api/connection');
   const pill = $('conn');
   const label = $('conn-label');
+  const wasReal = realOn;
+  realOn = !!data.connected || (data.printers || []).some(p => p.connected);
+  // A printer connecting (or dropping) while the page is open: open or
+  // close the live connection to match, without waiting for a reload.
+  if (wasReal !== realOn && window.Workshop) setTimeout(() => Workshop.reconnect(), 0);
 
   if (data.connected) {
     pill.classList.remove('is-demo');
@@ -483,7 +493,8 @@ async function loadConnection() {
   } else {
     pill.classList.remove('is-demo');
     label.textContent = 'Not connected';
-    $('foot-state').textContent = 'No printer connected — nothing is contacted.';
+    $('foot-state').textContent = (data.printers || []).length
+      ? data.message : 'No printer connected — nothing is contacted.';
   }
 
   $('notice').hidden = !(demoOn && !data.connected);
@@ -660,11 +671,13 @@ async function markDone(button) {
   button.disabled = true;
   button.textContent = 'Saving…';
   try {
-    const { ok } = await postJSON(api('/api/maintenance/done'), { task_id: button.dataset.task });
-    if (!ok) throw new Error('save failed');
+    const { ok, status, body } = await postJSON(api('/api/maintenance/done'), { task_id: button.dataset.task });
+    if (!ok) throw new Error(body.error || (body.connected === false ? 'No printer connected' : `the dashboard answered ${status}`));
     await loadMaintenance();
+    toast('Marked done — its counter starts again from now', 'ok', 2600);
   } catch (err) {
     console.error('Could not mark task done:', err);
+    toast(`Couldn't mark it done: ${err.message}`, 'bad', 6000);
     button.disabled = false;
     button.textContent = 'Retry';
   }
@@ -727,6 +740,12 @@ async function loadColorCheck() {
   if (isModuleDisabled(data)) {
     $('colorfile').hidden = true;
     $('colors').innerHTML = moduleDisabledEmpty('Right colour loaded?');
+    $('colors-note').hidden = true;
+    return;
+  }
+  if (data.overall === 'no_sensor') {
+    $('colorfile').hidden = true;
+    $('colors').innerHTML = EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.');
     $('colors-note').hidden = true;
     return;
   }
@@ -802,7 +821,10 @@ function renderControlTab(state) {
   cancel.onclick = () => controlAction('cancel', cancel);
 
   homeButtons.forEach(b => {
-    if (b.dataset.phase !== 'sending') b.disabled = false;
+    // Homing mid-print would drive the toolhead through the print; the
+    // server refuses it too, but the button shouldn't offer it.
+    if (b.dataset.phase !== 'sending') b.disabled = running;
+    b.title = running ? 'Not while a print is running or paused' : '';
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
       runCommand(b, '/api/printer/control/home', { axes }, { sending: 'Homing…', done: `Homed ${axes.join('')}`, failed: 'Homing failed' })
@@ -839,7 +861,8 @@ function renderControlTab(state) {
         if (Number.isNaN(celsiusValue)) { toast('Type a target temperature first', 'warn'); return; }
         runCommand(btn, '/api/printer/control/temperature', { toolhead: th, target: celsiusValue }, {
           sending: 'Setting…', done: `${th} target set to ${formatTemp(celsiusValue)}`, failed: `Setting ${th} failed`,
-          expect: s => Math.abs(s.toolheads[th].target_temperature - celsiusValue) < 0.01,
+          // Real printers are sent targets to 0.1 °C (a °F entry rarely lands on one).
+          expect: s => Math.abs(s.toolheads[th].target_temperature - celsiusValue) < 0.051,
         }).then(r => { if (r.ok) input.value = ''; });
       });
     });
@@ -890,10 +913,7 @@ function renderOverviewControl(state) {
 const CONTROL_LABELS = {
   pause: { sending: 'Pausing…', done: 'Paused', failed: 'Pause failed', expect: s => s.state === 'paused' },
   resume: { sending: 'Resuming…', done: 'Resumed', failed: 'Resume failed', expect: s => s.state === 'printing' },
-  // Klipper's print_stats reads "cancelled" after a cancel (the simulation says
-  // "ready"): either way, confirmed once it is no longer printing or paused -
-  // the same check the fleet command center makes.
-  cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state !== 'printing' && s.state !== 'paused' },
+  cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state === 'ready' },
 };
 
 async function controlAction(action, button) {
@@ -3227,7 +3247,8 @@ loadNotificationSettings();
 // Printer state itself arrives live (workshop.js, every 250 ms over the
 // WebSocket). These slower panels only need a periodic refresh.
 setInterval(() => {
-  if (demoOn) {
+  loadConnection().catch(() => {});
+  if (liveData()) {
     loadRings(); loadColorCheck(); loadCost();
     if (!window.Workshop || !Workshop.isLive()) loadStatusRibbon();
   }

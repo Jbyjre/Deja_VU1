@@ -135,14 +135,24 @@ def estimate_current_job():
     if state["state"] not in ("printing", "paused"):
         raise ValueError("Nothing is printing right now")
 
-    duration_hours = state["print_duration_hours"]
-    progress = state["progress"]
-    elapsed_grams = duration_hours * _ESTIMATED_GRAMS_PER_HOUR
-    total_estimated_grams = elapsed_grams / progress if progress > 0 else elapsed_grams
+    duration_hours = state.get("print_duration_hours") or 0.0
+    progress = state.get("progress") or 0.0
+    job = mock_moonraker.get_current_job() or {}
+    planned = job.get("filament_grams")
+    if planned and planned > 0:
+        # The file's own figure (the slicer's, or the dashboard's reading of
+        # the file) is far better than a flat grams-per-hour guess.
+        total_estimated_grams = float(planned)
+        elapsed_grams = total_estimated_grams * progress
+        grams_source = "file"
+    else:
+        elapsed_grams = duration_hours * _ESTIMATED_GRAMS_PER_HOUR
+        total_estimated_grams = elapsed_grams / progress if progress > 0 else elapsed_grams
+        grams_source = "rate"
 
     requirements = mock_moonraker.get_current_job_requirements()
-    materials = [r["expected_material"] for r in requirements.get("required_filament", [])]
-    filament_type = materials[0] if materials else "PLA"
+    materials = [r.get("expected_material") for r in requirements.get("required_filament", [])]
+    filament_type = next((m for m in materials if m), None) or job.get("material") or "PLA"
 
     total_estimated_hours = duration_hours / progress if progress > 0 else duration_hours
 
@@ -150,6 +160,7 @@ def estimate_current_job():
     result["filename"] = state["current_file"]
     result["progress"] = round(progress, 3)
     result["is_estimate"] = True
+    result["grams_source"] = grams_source
     result["cost_so_far"] = compute_job_cost(
         filament_type, elapsed_grams, duration_hours)["total_cost"]
     return result

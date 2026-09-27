@@ -26,6 +26,7 @@ from datetime import datetime
 
 import gcode_tools
 import mesh_tools
+import safe_zip
 import sample_files
 import storage
 
@@ -159,6 +160,35 @@ def analysis(name):
     return gcode_tools.analyze(read_text(name))
 
 
+# The pre-flight check of a large file takes seconds (a million-line file
+# is about 10 s here, longer on a Raspberry Pi), and the Confirm Print
+# screen, the start itself and the queue each ask for it. Remembered per
+# file *version* - its size and modification time - so a file that is
+# edited or replaced is always checked again, never answered from memory.
+_ANALYSIS_KEEP = 8
+_analysis_cache = {}
+_analysis_lock = threading.Lock()
+
+
+def checked(name):
+    """The G-code analysis without a toolpath, for the gate and the queue (a copy each time)."""
+    import copy
+    path = _path(name)
+    st = os.stat(path)
+    key = (clean_name(name), st.st_mtime_ns, st.st_size)
+    with _analysis_lock:
+        hit = _analysis_cache.get(key)
+    if hit is None:
+        hit = gcode_tools.analyze(read_text(name), want_toolpath=False)
+        with _analysis_lock:
+            for old in [k for k in _analysis_cache if k[0] == key[0]]:
+                del _analysis_cache[old]
+            _analysis_cache[key] = hit
+            while len(_analysis_cache) > _ANALYSIS_KEEP:
+                del _analysis_cache[next(iter(_analysis_cache))]
+    return copy.deepcopy(hit)
+
+
 def _summarize(name):
     kind = kind_of(name)
     data = read_bytes(name)
@@ -182,19 +212,21 @@ def _summarize(name):
             if uri:
                 thumb = base64.b64decode(uri.split(",", 1)[1])
         else:
-            triangles, info = mesh_tools.parse_model(data, name)
-            b = mesh_tools.bounds(triangles)
-            summary.update({"triangles": len(triangles), "size_mm": b["size"] if b else None,
-                            "application": info.get("application")})
+            # Streamed: count and bounds exact, the thumbnail from an even
+            # sample - a detailed model never has to fit in memory whole.
+            model = mesh_tools.summarize(data, name)
+            b = model["bounds"]
+            summary.update({"triangles": model["count"], "size_mm": b["size"] if b else None,
+                            "application": model["info"].get("application")})
             if kind == "3mf":
-                import zipfile, io
-                z = zipfile.ZipFile(io.BytesIO(data))
+                z = safe_zip.open_archive(data, "3MF file")
                 for part in ("Metadata/plate_1.png", "Metadata/thumbnail.png"):
                     if part in z.namelist():
-                        thumb = z.read(part)
+                        png = safe_zip.read(z, part, limit=8 * 1024 * 1024, what="3MF file")
+                        thumb = png if png.startswith(b"\x89PNG\r\n\x1a\n") else None
                         break
             if thumb is None:
-                thumb = mesh_tools.png_thumbnail(triangles)
+                thumb = mesh_tools.png_thumbnail(model["sample"])
     except (ValueError, KeyError, OSError) as exc:
         summary["error"] = str(exc)
     if thumb:

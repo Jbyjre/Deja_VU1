@@ -40,30 +40,50 @@ import modules
 
 
 def _filament_match(required, state):
-    """Compare what the file needs with what the printer reports loaded."""
+    """
+    Compare what the file needs with what the printer reports loaded.
+
+    A real printer may not know (no filament sensor, or a spool with no
+    RFID tag and nothing set on its screen): that is "unknown" - a warning
+    to check by eye - never treated as empty and never as a match. On a
+    U1 whose filament mapping sends the file's T0 to another head, the
+    head that will really print is the one checked.
+    """
     rows, blocking, warnings = [], [], []
+    mapping = state.get("extruder_map") or {}
     for req in required:
         th = req["toolhead"]
-        dock = state["toolheads"].get(th)
+        head = mapping.get(th, th)
+        dock = state["toolheads"].get(head)
         row = {"toolhead": th, "expected_hex": req.get("expected_color_hex"),
                "expected_material": req.get("expected_material"), "grams": req.get("grams")}
+        if head != th:
+            row["prints_on"] = head
+        where = th if head == th else f"{th} (printing on {head}, the printer's filament mapping)"
         if dock is None:
             row["status"] = "missing_toolhead"
-            blocking.append(f"The file uses {th}, which this printer doesn't have")
-        elif dock["status"] == "error" or not dock["filament_loaded"]:
+            blocking.append(f"The file uses {where}, which this printer doesn't have")
+        elif dock["status"] == "error" or dock.get("filament_loaded") is False:
             row["status"] = "not_loaded"
-            blocking.append(f"{th} has no filament loaded or is reporting an error")
+            blocking.append(f"{where} has no filament loaded or is reporting an error")
+        elif dock.get("filament_loaded") is None:
+            row["status"] = "unknown"
+            warnings.append(f"The printer doesn't report what's loaded on {where} - check it by eye")
         else:
-            row["loaded_hex"] = dock["filament_color_hex"]
-            row["loaded_name"] = dock["filament_color_name"]
-            if req.get("expected_color_hex"):
+            row["loaded_hex"] = dock.get("filament_color_hex")
+            row["loaded_name"] = dock.get("filament_color_name")
+            if req.get("expected_color_hex") and dock.get("filament_color_hex"):
                 verdict = color_check.compare(req["expected_color_hex"], dock["filament_color_hex"])
                 row["status"] = verdict["verdict"]
                 if verdict["verdict"] == "mismatch":
-                    blocking.append(f"{th} has {dock['filament_color_name']} loaded, but the file "
-                                    f"was sliced for {req['expected_color_hex']}")
+                    blocking.append(f"{where} has {dock.get('filament_color_name') or dock['filament_color_hex']} "
+                                    f"loaded, but the file was sliced for {req['expected_color_hex']}")
                 elif verdict["verdict"] == "close":
-                    warnings.append(f"{th}'s colour is a close call against the file - worth a glance")
+                    warnings.append(f"{where}'s colour is a close call against the file - worth a glance")
+            elif req.get("expected_color_hex"):
+                row["status"] = "unknown_colour"
+                warnings.append(f"{where} has filament loaded, but the printer doesn't know its colour "
+                                "(no RFID tag, and none set on its screen) - check it by eye")
             else:
                 row["status"] = "no_colour_in_file"
         rows.append(row)
@@ -74,7 +94,7 @@ def summary(filename, printer_state=None):
     """The whole Confirm Print screen for one file on the selected printer."""
     if file_library.kind_of(filename) != "gcode":
         raise ValueError("Only G-code files can be printed - slice models first")
-    analysis = gcode_tools.analyze(file_library.read_text(filename), want_toolpath=False)
+    analysis = file_library.checked(filename)
     state = printer_state or mock_moonraker.get_printer_state()
     blocking, warnings, info = [], [], []
 
@@ -180,6 +200,10 @@ def health(preflight, filament_rows, maint):
             take(35, "Filament doesn't match the file on " + ", ".join(r["toolhead"] for r in bad))
         if close:
             take(10, "Filament colour is a close call on " + ", ".join(r["toolhead"] for r in close))
+        unknown = [r for r in filament_rows if r["status"] in ("unknown", "unknown_colour")]
+        if unknown:
+            take(10, "Can't check the filament on " + ", ".join(r["toolhead"] for r in unknown)
+                 + " - the printer doesn't report it")
     if preflight is not None:
         if preflight["errors"]:
             take(40, f"{len(preflight['errors'])} pre-flight error(s)")

@@ -254,6 +254,16 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .reg-row:last-child { border-bottom: none; }
 .reg-name { font-weight: 600; font-size: 13.5px; flex: 1; min-width: 120px; }
 .reg-url { font-size: 12px; color: var(--text-faint); }
+.reg-pill.is-ok { color: var(--ok-text); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.reg-pill.is-bad { color: var(--bad-text); background: color-mix(in srgb, var(--bad) 12%, transparent); white-space: normal; max-width: 100%; }
+.reg-details { flex-basis: 100%; font-size: 13px; padding: 8px 0 2px; }
+.reg-facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0 0 8px; }
+.reg-facts dt { color: var(--text-faint); }
+.reg-facts dd { margin: 0; overflow-wrap: anywhere; }
+.reg-log-head { margin: 6px 0 4px; color: var(--text-faint); }
+.reg-log { margin: 0; padding-left: 18px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
+.reg-t { color: var(--text-faint); }
+.reg-err { color: var(--bad-text); font-weight: 600; }
 .inline-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .inline-form input[type="text"], .inline-form input[type="url"], .inline-form input[type="search"] { flex: 1 1 200px; min-width: 0; }
 

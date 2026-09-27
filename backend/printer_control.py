@@ -11,9 +11,19 @@ mock_moonraker today; swapping that file for a real Moonraker HTTP client is
 the only change needed to make these commands reach a real printer.
 """
 
+import threading
+
 import file_library
 import mock_moonraker
 import print_gate
+
+_start_locks = {}
+_start_locks_guard = threading.Lock()
+
+
+def _start_lock(printer_id):
+    with _start_locks_guard:
+        return _start_locks.setdefault(printer_id, threading.Lock())
 
 VALID_AXES = {"X", "Y", "Z"}
 MIN_TEMP = 0
@@ -53,6 +63,19 @@ def start_print(filename, confirmed=False):
     """
     if not file_library.exists(filename):
         raise ValueError(f"No file called {filename} in the library")
+    # One start at a time per printer: with a real printer the upload and
+    # start take a while, and two devices pressing Start together must get
+    # one print and one clear refusal - not two uploads racing.
+    lock = _start_lock(mock_moonraker.selected_printer_id())
+    if not lock.acquire(blocking=False):
+        raise ValueError("A print is being started on this printer right now - wait for it to finish starting")
+    try:
+        return _start_locked(filename, confirmed)
+    finally:
+        lock.release()
+
+
+def _start_locked(filename, confirmed):
     gate = print_gate.summary(filename)
     if gate["verdict"] == "blocked" or (gate["verdict"] == "confirm" and not confirmed):
         raise PrintBlocked(gate)
@@ -60,7 +83,9 @@ def start_print(filename, confirmed=False):
         raise PrintBlocked({**gate, "blocking": [], "verdict": "confirm",
                             "warnings": gate["warnings"] or ["Confirm the print summary to start"]})
     data = file_library.read_bytes(filename)
-    mock_moonraker.upload_file(filename, len(data))
+    # The file's bytes, not just its size: a real printer stores exactly
+    # these (checked on arrival by their SHA-256) before it prints them.
+    mock_moonraker.upload_file(filename, len(data), data)
     state = mock_moonraker.start_print(filename, gate["job"])
     file_library.touch(filename, "last_printed")
     return state

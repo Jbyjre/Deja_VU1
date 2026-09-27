@@ -15,13 +15,15 @@ the queue from a background loop; the dashboard's own load can trigger a
 flush too, which is what `get_settings` conventionally pairs with).
 """
 
-import json
 import os
 import re
-import urllib.error
-import urllib.request
+import threading
 from datetime import datetime
+
+import outbound
 import storage
+
+_queue_lock = threading.Lock()
 
 _DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "notification_settings.json")
@@ -141,33 +143,52 @@ def _save_queue(queue):
     _save_json(_QUEUE_PATH, queue)
 
 
-def _post(url, payload_bytes, headers):
-    request = urllib.request.Request(url, data=payload_bytes, headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(request, timeout=5) as response:
-            return {"ok": True, "status": response.status}
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
-        return {"ok": False, "error": str(exc)}
+# Each service's own limit (checked against its source / published docs):
+# ntfy.sh DefaultMessageSizeLimit 4096 bytes (server/config.go); a Discord
+# webhook's content is up to 2000 characters (discord-api-docs, Execute
+# Webhook); Telegram's text up to 4096 characters. Longer is shortened.
+NTFY_MAX_BYTES = 4096
+DISCORD_MAX = 2000
+TELEGRAM_MAX = 4096
+
+
+def _discord_url(url):
+    # Without wait=true Discord answers 204 before saving the message, and
+    # "a message that is not saved does not return an error" - so ask it to
+    # wait, and a refusal comes back as one.
+    return url + ("&" if "?" in url else "?") + "wait=true"
 
 
 def _send_now(message, settings=None):
-    """Actually deliver `message` to every configured channel."""
+    """Actually deliver `message` to every configured channel. Each result says what happened, in words."""
     settings = settings or get_settings()
     results = {}
 
     if settings.get("ntfy_topic"):
         url = f"https://ntfy.sh/{settings['ntfy_topic']}"
-        results["ntfy"] = _post(url, message.encode("utf-8"), {"Content-Type": "text/plain"})
+        results["ntfy"] = outbound.send(url, "ntfy.sh", raw=outbound.clip(message, NTFY_MAX_BYTES, "utf-8")
+                                        .encode("utf-8"), method="POST",
+                                        headers={"Content-Type": "text/plain; charset=utf-8"})
 
     if settings.get("discord_webhook_url"):
-        body = json.dumps({"content": message}).encode("utf-8")
-        results["discord"] = _post(settings["discord_webhook_url"], body, {"Content-Type": "application/json"})
+        results["discord"] = outbound.send(_discord_url(settings["discord_webhook_url"]), "Discord",
+                                           payload={"content": outbound.clip(message, DISCORD_MAX)})
 
     if settings.get("telegram_bot_token") and settings.get("telegram_chat_id"):
         url = f"https://api.telegram.org/bot{settings['telegram_bot_token']}/sendMessage"
-        body = json.dumps({"chat_id": settings["telegram_chat_id"], "text": message}).encode("utf-8")
-        results["telegram"] = _post(url, body, {"Content-Type": "application/json"})
+        r = outbound.send(url, "Telegram", payload={"chat_id": settings["telegram_chat_id"],
+                                                   "text": outbound.clip(message, TELEGRAM_MAX)})
+        # Telegram answers {"ok": false, "description": ...} when it says no.
+        body = r.get("body")
+        if r["ok"] and isinstance(body, dict) and body.get("ok") is False:
+            r = {"ok": False, "status": r["status"], "error": f"Telegram: {body.get('description', 'refused')}"}
+        if not r["ok"]:
+            # The bot token is part of the address; never echo it back.
+            r["error"] = r["error"].replace(settings["telegram_bot_token"], "<token>")
+        results["telegram"] = r
 
+    for r in results.values():
+        r.pop("body", None)                # replies can carry the message and chat details back
     return results
 
 
@@ -188,9 +209,10 @@ def notify(message, priority="normal", settings=None):
         results = _send_now(message, settings)
         return {"sent": True, "queued": False, "results": results}
 
-    queue = _get_queue()
-    queue.append({"message": message, "priority": priority, "queued_at": now.isoformat(timespec="seconds")})
-    _save_queue(queue[-MAX_QUEUED:])      # a long quiet spell can't grow it without end
+    with _queue_lock:
+        queue = _get_queue()
+        queue.append({"message": message, "priority": priority, "queued_at": now.isoformat(timespec="seconds")})
+        _save_queue(queue[-MAX_QUEUED:])      # a long quiet spell can't grow it without end
     return {"sent": False, "queued": True, "results": {}}
 
 
@@ -207,15 +229,33 @@ def notify_print_event(status, filename, settings=None):
 
 
 def flush_queue(settings=None):
-    """Send every queued notification now. Call this when quiet hours end."""
+    """
+    Send every queued notification now (quiet hours are over). One that
+    still can't be delivered stays queued for the next try rather than
+    being dropped.
+    """
     settings = settings or get_settings()
-    queue = _get_queue()
-    sent = []
-    for item in queue:
-        _send_now(item["message"], settings)
-        sent.append(item)
-    _save_queue([])
-    return {"flushed": len(sent)}
+    with _queue_lock:
+        queue = _get_queue()
+        kept, sent = [], 0
+        for item in queue:
+            results = _send_now(item["message"], settings)
+            if results and not any(r.get("ok") for r in results.values()):
+                item["attempts"] = item.get("attempts", 0) + 1
+                if item["attempts"] < 24:
+                    kept.append(item)
+            else:
+                sent += 1
+        _save_queue(kept)
+    return {"flushed": sent, "still_queued": len(kept)}
+
+
+def flush_if_due(now=None, settings=None):
+    """Called by the live feed about once a minute: send what quiet hours held back, once they're over."""
+    settings = settings or get_settings()
+    if not _get_queue() or is_quiet_hours(now or datetime.now(), settings):
+        return None
+    return flush_queue(settings)
 
 
 def get_queue():

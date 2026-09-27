@@ -18,6 +18,7 @@ import tempfile
 import textwrap
 import time
 import unittest
+import unittest.mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
@@ -47,6 +48,12 @@ FAKE_ORCA = textwrap.dedent('''\
         with open(os.path.join(out, "result.json"), "w") as fh:
             json.dump({{"plate_index": 0, "return_code": code, "error_string": text}}, fh)
     if mode == "hang":
+        time.sleep(60)
+    if mode == "hang_with_helper":
+        # A helper in a session of its own, holding our output pipes open:
+        # killing the process group doesn't reach it.
+        import subprocess
+        subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True)
         time.sleep(60)
     if mode == "config_error":
         result(-5, "Loading configuration file failed")
@@ -255,6 +262,15 @@ class TestSlicing(SlicerBridgeTest):
     def test_gcode_that_prints_nothing(self):
         self.assertFailsWithoutAFile("nothing_printable", "no printable layers")
 
+    def test_a_hang_with_a_helper_holding_the_output_still_ends(self):
+        slicer_bridge.MIN_TIMEOUT, original = 1, slicer_bridge.MIN_TIMEOUT
+        try:
+            started = time.monotonic()
+            self.assertFailsWithoutAFile("hang_with_helper", "didn't finish within 1 s", timeout=1)
+            self.assertLess(time.monotonic() - started, 25)
+        finally:
+            slicer_bridge.MIN_TIMEOUT = original
+
     def test_a_hang_is_stopped_at_the_time_limit(self):
         slicer_bridge.MIN_TIMEOUT, original = 1, slicer_bridge.MIN_TIMEOUT
         try:
@@ -272,6 +288,25 @@ class TestSlicing(SlicerBridgeTest):
 
 
 class TestJobs(SlicerBridgeTest):
+    def test_a_job_that_queues_is_never_seen_finished_before_it_is_queued(self):
+        # Found as a failure under load: the job read "done" for a moment
+        # before "queued", and anything polling it (the dashboard's job list
+        # stops when nothing is running) could stop there.
+        self.configure()
+        seen = []
+        real_add = print_queue.add
+
+        def slow_add(filename, printer_id=None):
+            seen.append(slicer_bridge.jobs()["jobs"][0]["status"])
+            time.sleep(0.2)
+            return real_add(filename, printer_id=printer_id)
+
+        with unittest.mock.patch.object(print_queue, "add", slow_add):
+            job = slicer_bridge.start_job("dock_bracket.stl", queue_to="u1-garage")
+            job = slicer_bridge.wait(job["id"])
+        self.assertEqual(seen, ["running"])
+        self.assertEqual(job["status"], "queued", job)
+
     def test_slice_and_queue(self):
         self.configure()
         done = []

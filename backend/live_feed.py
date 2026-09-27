@@ -199,6 +199,8 @@ def _detect_locked(printer_id, state, finish_event):
         payload = {"type": "print_event", "event": name, "printer": printer_id,
                    "printer_name": mock_moonraker.printer_name(printer_id),
                    "file": state.get("current_file"), "demo": simulated}
+        if name == "finished" and not finish_event and state.get("finished_job"):
+            finish_event = {"type": "print_finished", "job": state["finished_job"]}
         if name == "finished" and finish_event:
             job = finish_event["job"]
             cost = cost_calculator.compute_job_cost(job["filament_type"], job["filament_used_grams"],
@@ -250,41 +252,76 @@ def tick(seconds=TICK_SECONDS, count=0, scaled=True):
     for printer_id in mock_moonraker.printer_ids():
         if not mock_moonraker.has_printer(printer_id):
             continue                  # removed by the sandbox mid-tick
-        finish = mock_moonraker.advance(seconds, printer_id, scaled=scaled)
-        with mock_moonraker.use_printer(printer_id):
-            state = mock_moonraker.get_printer_state()
-        events, side_effects, simulated = _detect(printer_id, state, finish)
-        _publish(printer_id, state)
-
-        if side_effects:
-            # Continuous triggers (temperatures, mismatch, maintenance);
-            # print events were already handled in _detect.
-            automations.evaluate(printer_id, state, set(), demo_printer=simulated,
-                                 slow_checks=(count % 4 == 0))
-            if timelapse.is_recording(printer_id) and state["state"] == "printing":
-                with mock_moonraker.use_printer(printer_id):
-                    job = mock_moonraker.get_current_job()
-                layer = state["layer"]["current"]
-                if simulated:
-                    timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
-                else:
-                    import camera
-                    frame = camera.latest_frame()
-                    if frame:
-                        timelapse.maybe_capture(printer_id, layer, frame, "jpg")
-
-        samples = _climate.setdefault(printer_id, deque(maxlen=CHAMBER_SAMPLES))
-        if not samples or now - samples[-1]["t"] >= CHAMBER_SAMPLE_SECONDS:
-            samples.append({"t": round(now, 1), "chamber": state.get("chamber_temperature"),
-                            "bed": state.get("bed_temperature")})
+        try:
+            _tick_one(printer_id, seconds, count, scaled, now)
+        except Exception as exc:      # noqa: BLE001 - one printer must never stop the others' updates
+            import sys
+            sys.stderr.write(f"  live feed: {printer_id} failed this tick: {exc!r}\n")
     if count % 4 == 0:
         _refresh_fleet()
+    if count % 240 == 120:
+        # About once a minute: notifications held back by quiet hours go out
+        # once they end (on a worker - a slow network never stalls the feed).
+        threading.Thread(target=_flush_notifications, daemon=True).start()
     for listener in list(_tick_listeners):
         try:
             listener(seconds, scaled)
         except Exception as exc:          # noqa: BLE001 - a listener must not stop the feed
             import sys
             sys.stderr.write(f"  tick listener failed: {exc}\n")
+
+
+def _tick_one(printer_id, seconds, count, scaled, now):
+    finish = mock_moonraker.advance(seconds, printer_id, scaled=scaled)
+    with mock_moonraker.use_printer(printer_id):
+        state = mock_moonraker.get_printer_state()
+    events, side_effects, simulated = _detect(printer_id, state, finish)
+    _publish(printer_id, state)
+
+    if side_effects:
+        # Continuous triggers (temperatures, mismatch, maintenance);
+        # print events were already handled in _detect.
+        automations.evaluate(printer_id, state, set(), demo_printer=simulated,
+                             slow_checks=(count % 4 == 0))
+        if timelapse.is_recording(printer_id) and state["state"] == "printing":
+            with mock_moonraker.use_printer(printer_id):
+                job = mock_moonraker.get_current_job()
+            layer = (state.get("layer") or {}).get("current")
+            if not isinstance(layer, int):
+                pass                      # the printer doesn't know the layer: no frame is due
+            elif simulated:
+                timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
+            else:
+                import camera
+                # Frames arrive only while something reads the stream: keep it
+                # read while recording, and never store a stale one as new.
+                camera.keep_frames_coming(90)
+                frame = camera.latest_frame(max_age=15)
+                if frame:
+                    timelapse.maybe_capture(printer_id, layer, frame, "jpg")
+
+    samples = _climate.setdefault(printer_id, deque(maxlen=CHAMBER_SAMPLES))
+    if not samples or now - samples[-1]["t"] >= CHAMBER_SAMPLE_SECONDS:
+        samples.append({"t": round(now, 1), "chamber": state.get("chamber_temperature"),
+                        "bed": state.get("bed_temperature")})
+
+
+_flushing = threading.Lock()
+
+
+def _flush_notifications():
+    import notifications
+    import modules
+    if not _flushing.acquire(blocking=False):
+        return
+    try:
+        if modules.is_enabled("notifications"):
+            notifications.flush_if_due()
+    except Exception as exc:             # noqa: BLE001 - never let it reach the feed
+        import sys
+        sys.stderr.write(f"  sending held notifications failed: {exc}\n")
+    finally:
+        _flushing.release()
 
 
 def add_tick_listener(fn):
@@ -328,6 +365,7 @@ def start():
     if _thread and _thread.is_alive():
         return
     _running = True
+    fleet.sync_real_printers()        # connect every printer added by address
     for printer_id in mock_moonraker.printer_ids():
         refresh(printer_id)
     _thread = threading.Thread(target=_loop, name="live-feed", daemon=True)

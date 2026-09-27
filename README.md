@@ -14,9 +14,13 @@ converts MakerWorld and NexPrint projects for the U1, and runs local
 that already sits in front of the printer, and reads it through one
 connection rather than three.
 
-Built and tested on simulated printer data. Most of it needs no hardware and
-runs today; two modules (the LED dock rings and the optical colour sensor)
-have complete, tested logic waiting on physical parts.
+It connects to a real printer by its Moonraker address, and has a
+simulated farm for trying everything without one. The real connection was
+written against Moonraker's, Klipper's and Snapmaker's own U1 source code
+and tested against a stand-in built from that source — but it has not yet
+talked to a physical U1 (see [Current status](#current-status)). Two
+modules (the LED dock rings and the optical colour sensor) have complete,
+tested logic waiting on physical parts.
 
 ## The problem
 
@@ -145,7 +149,44 @@ printer figures, so they work the same with or without a printer connected.
 
 ## Current status
 
-Built and tested on mock data. There is no real printer connection yet.
+**The real printer connection exists and is tested — against the source,
+not against a machine.** `backend/moonraker_client.py` talks to Moonraker
+over HTTP and its WebSocket and translates what it says into what every
+module already reads. It was written from Moonraker's, Klipper's and
+Snapmaker's published U1 source, and reading that source found and fixed
+about a dozen things that would each have broken the first real connection
+(state names, partial live updates, commands that answer "ok" before the
+printer has moved, the U1 refusing a start with a "successful" reply,
+temperatures reaching the wrong toolhead through the U1's filament mapping,
+history paging, millimetres vs grams, the U1's own metadata names, and
+more). It is tested against a stand-in Moonraker built from the same
+source, over real sockets, and the whole dashboard runs against it with a
+printer added through the API. **It has not talked to a physical U1** — the
+first connection is where any difference between the published source and
+a real machine shows up, and the printer's **Details** panel and the server
+log are built to make that first run easy to debug. Everything checked,
+everything not yet checkable, and why: [docs/real-printer.md](docs/real-printer.md).
+
+The same pass hardened the rest for real conditions:
+
+- The G-code pre-flight check reads every line the way Klipper will. Before,
+  a file could hide an out-of-bounds extrusion from it (`G1X300E5` with no
+  spaces, a leading line number, relative moves under `G91`, an arc
+  bulging past the bed) while the printer would still have run it.
+- Models are read as a stream: a zip bomb or a damaged 3MF is refused in
+  words, and the largest STL an upload allows takes ~120 MB instead of
+  ~1.5 GB (enough to crash a small Raspberry Pi before).
+- WLED, Home Assistant, ntfy, Discord and Telegram were each checked against
+  their own source or docs. Fixed: only the first WLED ring ever lit, long
+  printer messages were refused by Home Assistant, Discord could drop
+  messages silently, and notifications held during quiet hours were never
+  sent.
+- Races that only appear when commands take real time: a slow upload froze
+  every print queue, two devices could start two prints at once, and a
+  queue item could be moved and started at the same time.
+- Unsafe things the simulation allowed are now refused: homing while a
+  print runs, and a farm-wide "preheat" rewriting running prints'
+  temperatures. Demo data can never reach a real printer.
 
 - The live engine, the fleet, start-print with its interlock, the file
   library, G-code viewer and editor, 3D viewer, pre-flight check, the
@@ -164,9 +205,10 @@ Built and tested on mock data. There is no real printer connection yet.
   every converted project is checked by a test against the rules in
   Snapmaker Orca's loader source and a snapshot of Snapmaker's real U1
   profiles. That check caught and fixed one real bug. Nothing has touched a
-  real Moonraker, a real camera, go2rtc, or a real Cloudflare Tunnel. The AR
-  preview has only run against a stand-in for a phone's WebXR, never on a
-  real device.
+  real Moonraker (only a stand-in built from its source), a real camera,
+  a real go2rtc (its API was checked against go2rtc's source; a password-
+  protected one now works), or a real Cloudflare Tunnel. The AR preview has
+  only run against a stand-in for a phone's WebXR, never on a real device.
 
 - The fleet command center, Photo-to-Print Studio, auto-print pipeline and
   farm sandbox are complete and covered by tests, and were clicked through
@@ -180,16 +222,17 @@ Built and tested on mock data. There is no real printer connection yet.
   estimated filament transmission values, not a photo of a print.
 
 - Maintenance, printer control, notifications, updates, backup, camera
-  watchdog, pairing, and the print cost calculator are complete and tested
-  against the simulated Moonraker layer. Swapping
-  `backend/mock_moonraker.py` for a real Moonraker HTTP client is the only
-  change needed to run any of it against an actual printer — nothing else
-  in the project talks to the printer directly.
+  watchdog, pairing, and the print cost calculator are complete and tested,
+  against the simulation and (through the real Moonraker client) against
+  the stand-in Moonraker. Nothing outside `backend/mock_moonraker.py` and
+  `backend/moonraker_client.py` talks to the printer directly.
 - Filament inventory, the What-changed check, and the pre-print sanity check
   are complete and tested; they're optional and off by default.
-- The WLED and Home Assistant bridges are complete and tested outbound HTTP
-  clients — point either at a real device or instance and it works today;
-  leave the host or URL blank and they fail cleanly instead of pretending.
+- The WLED and Home Assistant bridges are complete outbound HTTP clients,
+  tested against stand-ins that follow WLED's and Home Assistant's own
+  source (not yet against a real strip or a real Home Assistant); leave the
+  host or URL blank, or point them at something unreachable, and they fail
+  in words instead of pretending.
 - The LED and colour-check modules have working decision logic and console
   simulations, but no hardware drivers yet.
 - `backend/mock_moonraker.py` generates fake print histories (38 jobs over
@@ -217,8 +260,9 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 421 cases
-- **Printer API:** Moonraker (simulated for now)
+- **Tests:** `unittest` from the standard library, 544 cases
+- **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
+  farm for demo data)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is
 fetched from the internet at runtime — no webfonts, no CDN, no analytics.
@@ -253,7 +297,9 @@ filament's colour, a printer's state, a verdict.
 
 **With access to a U1:**
 
-1. Replace the mock layer with a real Moonraker HTTP client.
+1. Connect to a real U1 and work through [the list of things only a real
+   machine can confirm](docs/real-printer.md#what-cannot-be-checked-without-the-printer)
+   (the Details panel shows every exchange).
 2. Confirm maintenance thresholds against how the machine actually wears.
 3. Build the LED rings — print the dock brackets, wire the WS2812 chain,
    implement the driver (or wire up WLED instead).
@@ -291,7 +337,9 @@ python3 backend/app.py
 Then open **http://localhost:8000** in a browser.
 
 The dashboard will report that no printer is connected and show empty panels.
-Flip the **Demo data** switch in the header to fill it with the simulated
+To connect one: **Fleet → Add a printer**, with its Moonraker address (usually
+`http://<printer-ip>:7125`) — see [docs/real-printer.md](docs/real-printer.md).
+Or flip the **Demo data** switch in the header to fill it with the simulated
 print history. To try it from a phone on the same network, open
 **Settings → Pair another device** to get a code.
 
@@ -323,12 +371,17 @@ To run the tests:
 python3 -m unittest discover tests
 ```
 
-Everything runs on simulated data. No printer is contacted at any point.
+With no printer added, everything runs on simulated data and no printer is
+contacted at any point. Add one by address and the dashboard connects to
+it; `DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py` prints every exchange
+with it.
 
 ## Documentation
 
+- [docs/real-printer.md](docs/real-printer.md) — connecting a real printer:
+  what was checked against Moonraker's and Snapmaker's source, what can't
+  be without the machine, and what the first run will tell you
 - [docs/architecture.md](docs/architecture.md) — how the pieces fit together
-  and how to swap in a real printer
 - [docs/hardware-modules.md](docs/hardware-modules.md) — parts lists, wiring,
   and the non-invasive design constraint
 - [docs/remote-access.md](docs/remote-access.md) — reaching the dashboard

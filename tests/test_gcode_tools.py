@@ -155,3 +155,75 @@ class TestEdits(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestReadLikeKlipper(unittest.TestCase):
+    """
+    The pre-flight check reads each line the way Klipper will
+    (klippy/gcode.py's tokeniser, virtual_sdcard's "\\n"-only line split,
+    gcode_move's relative-E rule, the U1's gcode_arcs.py). Every file here
+    carries a move Klipper would run outside the bed; each one used to be
+    passed as safe, or read differently from how the printer reads it.
+    """
+    START = "G28\nM104 S210\nG90\nM83\n"
+
+    def errors(self, body):
+        found = gcode_tools.analyze(self.START + body + "\nG1 X100 Y100 Z0.3 E1\n", want_toolpath=False)
+        return {e["code"] for e in found["preflight"]["errors"]}
+
+    def test_words_run_together(self):
+        self.assertIn("out_of_bounds", self.errors("G1X300Y100Z0.3E5"))
+
+    def test_lowercase(self):
+        self.assertIn("out_of_bounds", self.errors("g1 x300 y100 z0.3 e5"))
+
+    def test_line_numbers_and_checksums(self):
+        self.assertIn("out_of_bounds", self.errors("N120 G1 X300 Y100 Z0.3 E5*71"))
+
+    def test_relative_moves_make_extrusion_relative_too(self):
+        # M82 (absolute E) but G91: Klipper extrudes E5 here; this used to
+        # be read as E going back from 1 to 5 - absolute - i.e. a retraction.
+        found = gcode_tools.analyze("G28\nM104 S210\nM82\nG90\nG1 X100 Y100 Z0.3 E10\nG91\nG1 X200 E5\n",
+                                    want_toolpath=False)
+        self.assertIn("out_of_bounds", {e["code"] for e in found["preflight"]["errors"]})
+
+    def test_an_arc_that_bulges_past_the_bed(self):
+        # Both ends are on the bed; the half-circle between them is not.
+        # Centre (250, 130), radius 30: counter-clockwise (G3) from below the
+        # centre to above it sweeps out to X280; clockwise (G2) stays at X220.
+        self.assertIn("out_of_bounds", self.errors("G1 X250 Y100 Z0.3\nG3 X250 Y160 I0 J30 E4"))
+        self.assertNotIn("out_of_bounds", self.errors("G1 X250 Y100 Z0.3\nG2 X250 Y160 I0 J30 E4"))
+
+    def test_arcs_the_u1_refuses(self):
+        self.assertIn("arc_radius", self.errors("G2 X110 Y110 R10 E1"))
+        self.assertIn("arc_no_centre", self.errors("G2 X110 Y110 E1"))
+        self.assertIn("arc_relative", self.errors("G91\nG2 X10 Y10 I5 J0 E1\nG90"))
+
+    def test_a_line_break_klipper_doesnt_split_on(self):
+        self.assertIn("line_break", self.errors("G1 X100 Y100 E1\rG1 X300 Y100 E5"))
+        self.assertIn("line_break", self.errors("G1 X100 Y100 E1 G1 X300 E5"))
+
+    def test_crlf_files_are_fine(self):
+        text = (self.START + "G1 X100 Y100 Z0.3 E1\nG1 X120 Y100 E1\n").replace("\n", "\r\n")
+        self.assertEqual(gcode_tools.analyze(text, want_toolpath=False)["preflight"]["errors"], [])
+
+    def test_numbers_klipper_cant_read_stop_the_print(self):
+        self.assertIn("unreadable_move", self.errors("G1 X10) Y100 E1"))
+        self.assertIn("unreadable_move", self.errors("G1 X1.2.3 E1"))
+
+    def test_mid_print_stops_and_heat_limits(self):
+        self.assertIn("forbidden", self.errors("M112"))
+        self.assertIn("forbidden", self.errors("FIRMWARE_RESTART"))
+        self.assertIn("nozzle_too_hot", self.errors("SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET=350"))
+        self.assertIn("bed_too_hot", self.errors("M190 S140"))
+
+    def test_hostile_input_never_crashes(self):
+        cases = ["", "\n" * 5000, ";" * 100000, "\x00\x01\x02" * 1000, "G1 " + "X" * 50000,
+                 "G1 X" + "9" * 400 + " E1", "G1 X1e999 E1", "G1 Xnan Ynan E1", "G1 X-inf E1",
+                 "G2 X0 Y0 I0.000001 J0 E1", "G3 X1 Y1 I1e308 J1e308 E1", "T" + "9" * 50,
+                 "M104 S" + "1" * 400, "G92 E" + "9" * 400, "﻿G28\nG1 X1 E1", "N N N G1",
+                 "*/*/*", "G" * 10000]
+        for body in cases:
+            with self.subTest(body=body[:30]):
+                result = gcode_tools.analyze(body, want_toolpath=True)
+                self.assertIn(result["preflight"]["verdict"], ("blocked", "check", "clear"))

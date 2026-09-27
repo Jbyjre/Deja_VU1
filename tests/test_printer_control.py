@@ -99,8 +99,14 @@ class TestHomeAndGcode(unittest.TestCase):
         mock_moonraker.reset_live_state()
 
     def test_home_default_axes(self):
+        printer_control.cancel_print()
         result = printer_control.home(None)
         self.assertEqual(set(result["homed"]), {"X", "Y", "Z"})
+
+    def test_home_is_refused_mid_print(self):
+        # The default printer is printing; a real G28 now would crash the head into the print.
+        with self.assertRaisesRegex(ValueError, "Homing is refused"):
+            printer_control.home(["X"])
 
     def test_home_rejects_unknown_axis(self):
         with self.assertRaises(ValueError):

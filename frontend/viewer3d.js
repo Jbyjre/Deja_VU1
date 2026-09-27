@@ -18,11 +18,21 @@ const DV3D = (() => {
 
   /* ---------------- parsing ---------------- */
 
+  /* The same rules as the server's mesh_tools.py: a binary STL may carry a
+   * little padding after its triangles, a cut-short one says so, and a
+   * coordinate that isn't a number is refused rather than drawn as NaN. */
+  const MAX_TRIANGLES = 2000000;
+  const MAX_PART_BYTES = 512 * 1024 * 1024;
+
   function parseSTL(buffer) {
     const view = new DataView(buffer);
-    if (buffer.byteLength >= 84) {
+    const head = new TextDecoder().decode(new Uint8Array(buffer, 0, Math.min(2048, buffer.byteLength))).toLowerCase();
+    const looksAscii = head.startsWith('solid') && head.includes('facet');
+    if (buffer.byteLength >= 84 && !looksAscii) {
       const count = view.getUint32(80, true);
-      if (84 + count * 50 === buffer.byteLength) {
+      const expected = 84 + count * 50;
+      if (expected <= buffer.byteLength && buffer.byteLength <= expected + 1024) {
+        if (count > MAX_TRIANGLES) throw new Error(`The model has ${count.toLocaleString()} triangles - too many to show`);
         const pos = new Float32Array(count * 9);
         for (let i = 0; i < count; i++) {
           const base = 84 + i * 50 + 12;
@@ -30,14 +40,18 @@ const DV3D = (() => {
         }
         return finishMesh(pos, { objects: 1 });
       }
+      if (buffer.byteLength < expected && count < 50000000) {
+        throw new Error(`The STL is cut short: it says ${count.toLocaleString()} triangles but holds ${Math.floor((buffer.byteLength - 84) / 50).toLocaleString()}`);
+      }
     }
     const text = new TextDecoder().decode(buffer);
     if (!text.includes('facet')) throw new Error('Not a readable STL file');
     const nums = [];
-    const re = /vertex\s+(\S+)\s+(\S+)\s+(\S+)/g;
+    const re = /vertex\s+(\S+)\s+(\S+)\s+(\S+)/gi;
     let m;
     while ((m = re.exec(text))) nums.push(+m[1], +m[2], +m[3]);
     if (!nums.length || nums.length % 9) throw new Error('STL has an incomplete triangle');
+    if (nums.length / 9 > MAX_TRIANGLES) throw new Error('The model has too many triangles to show');
     return finishMesh(new Float32Array(nums), { objects: 1 });
   }
 
@@ -55,18 +69,23 @@ const DV3D = (() => {
       if (view.getUint32(ptr, true) !== 0x02014b50) throw new Error('Damaged zip directory');
       const method = view.getUint16(ptr + 10, true);
       const csize = view.getUint32(ptr + 20, true);
+      const usize = view.getUint32(ptr + 24, true);
       const nameLen = view.getUint16(ptr + 28, true);
       const extraLen = view.getUint16(ptr + 30, true);
       const commentLen = view.getUint16(ptr + 32, true);
       const local = view.getUint32(ptr + 42, true);
       const name = new TextDecoder().decode(new Uint8Array(buffer, ptr + 46, nameLen));
       if (csize === 0xffffffff || local === 0xffffffff) throw new Error('Very large (ZIP64) 3MF files are not supported yet');
-      files[name.toLowerCase()] = { name, method, csize, local };
+      files[name.toLowerCase()] = { name, method, csize, usize, local };
       ptr += 46 + nameLen + extraLen + commentLen;
     }
     const read = async (key) => {
       const f = files[key.replace(/^\//, '').toLowerCase()];
       if (!f) return null;
+      if (view.getUint32(f.local, true) !== 0x04034b50) throw new Error(`The 3MF is damaged (${f.name} has no header)`);
+      // Checked before unpacking: a small file that unpacks to gigabytes
+      // (a "zip bomb") must not fill the tab's memory.
+      if (f.usize > MAX_PART_BYTES) throw new Error(`The 3MF's ${f.name} would unpack to ${Math.round(f.usize / 1048576)} MB - refused`);
       const nl = view.getUint16(f.local + 26, true);
       const el = view.getUint16(f.local + 28, true);
       const data = new Uint8Array(buffer, f.local + 30 + nl + el, f.csize);
@@ -74,7 +93,11 @@ const DV3D = (() => {
       if (f.method !== 8) throw new Error('Unsupported zip compression');
       if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot unzip 3MF files');
       const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-      return new Uint8Array(await new Response(stream).arrayBuffer());
+      let out;
+      try { out = new Uint8Array(await new Response(stream).arrayBuffer()); }
+      catch (e) { throw new Error(`The 3MF is damaged - ${f.name} can't be unpacked`); }
+      if (out.length > f.usize) throw new Error(`The 3MF's ${f.name} is larger than it says - refused`);
+      return out;
     };
     return { read, names: Object.values(files).map(f => f.name) };
   }
@@ -108,7 +131,10 @@ const DV3D = (() => {
       if (!parts[key]) {
         const bytes = await zip.read(key);
         if (!bytes) throw new Error(`3MF refers to a missing part: ${path}`);
-        parts[key] = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'application/xml');
+        const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'application/xml');
+        // DOMParser doesn't throw on bad XML - it returns a <parsererror> document.
+        if (doc.getElementsByTagName('parsererror').length) throw new Error(`The 3MF's ${path} isn't valid XML`);
+        parts[key] = doc;
       }
       return parts[key];
     };
@@ -133,6 +159,7 @@ const DV3D = (() => {
         const verts = new Float32Array(vs.length * 3);
         for (let i = 0; i < vs.length; i++) {
           let x = +vs[i].getAttribute('x'), y = +vs[i].getAttribute('y'), z = +vs[i].getAttribute('z');
+          if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) throw new Error('The 3MF has a vertex coordinate that isn\'t a number');
           if (t) {
             const nx = x * t[0] + y * t[3] + z * t[6] + t[9];
             const ny = x * t[1] + y * t[4] + z * t[7] + t[10];
@@ -141,9 +168,13 @@ const DV3D = (() => {
           verts[i * 3] = x; verts[i * 3 + 1] = y; verts[i * 3 + 2] = z;
         }
         const ts = mesh.getElementsByTagNameNS(NS, 'triangle');
+        if (total / 9 + ts.length > MAX_TRIANGLES) throw new Error('The model has too many triangles to show');
         const pos = new Float32Array(ts.length * 9);
         for (let i = 0; i < ts.length; i++) {
           const a = +ts[i].getAttribute('v1') * 3, b = +ts[i].getAttribute('v2') * 3, c = +ts[i].getAttribute('v3') * 3;
+          for (const k of [a, b, c]) {
+            if (!Number.isInteger(k) || k < 0 || k + 3 > verts.length) throw new Error(`A 3MF triangle refers to vertex ${k / 3}, which doesn't exist`);
+          }
           pos.set(verts.subarray(a, a + 3), i * 9);
           pos.set(verts.subarray(b, b + 3), i * 9 + 3);
           pos.set(verts.subarray(c, c + 3), i * 9 + 6);
@@ -167,6 +198,9 @@ const DV3D = (() => {
   }
 
   function finishMesh(pos, info) {
+    for (let i = 0; i < pos.length; i++) {
+      if (!Number.isFinite(pos[i])) throw new Error('The model has a coordinate that isn\'t a number');
+    }
     const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
     for (let i = 0; i < pos.length; i += 3) {
       for (let k = 0; k < 3; k++) {
@@ -189,8 +223,14 @@ const DV3D = (() => {
 
   async function parseModel(buffer, name) {
     const lower = name.toLowerCase();
-    if (lower.endsWith('.stl')) return parseSTL(buffer);
-    if (lower.endsWith('.3mf')) return parse3MF(buffer);
+    try {
+      if (lower.endsWith('.stl')) return parseSTL(buffer);
+      if (lower.endsWith('.3mf')) return await parse3MF(buffer);
+    } catch (e) {
+      // A header pointing past the end of the file: say it's damaged, not "Offset is outside the bounds".
+      if (e instanceof RangeError) throw new Error('The file is damaged or cut short - it can\'t be read');
+      throw e;
+    }
     throw new Error('Only STL and 3MF models can be shown');
   }
 

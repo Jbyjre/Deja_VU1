@@ -243,7 +243,7 @@ def _temperature(state, sensor):
         return state.get("bed_temperature")
     if sensor == "active_nozzle":
         active = state.get("active_toolhead")
-        return state["toolheads"][active]["temperature"] if active else None
+        return (state["toolheads"].get(active) or {}).get("temperature") if active else None
     return state["toolheads"].get(sensor, {}).get("temperature")
 
 
@@ -253,11 +253,15 @@ def _mismatch(printer_id, state):
         required = mock_moonraker.get_current_job_requirements()["required_filament"]
     if not state.get("current_file"):
         return False, None
+    mapping = state.get("extruder_map") or {}
     for req in required:
-        dock = state["toolheads"].get(req["toolhead"])
-        if dock and req.get("expected_color_hex") and \
+        head = mapping.get(req["toolhead"], req["toolhead"])
+        dock = state["toolheads"].get(head)
+        # Only a colour the printer actually reports can be a mismatch; an
+        # unknown one is never guessed at.
+        if dock and req.get("expected_color_hex") and dock.get("filament_color_hex") and \
                 color_check.compare(req["expected_color_hex"], dock["filament_color_hex"])["verdict"] == "mismatch":
-            return True, f"{req['toolhead']} has {dock['filament_color_name']} loaded"
+            return True, f"{head} has {dock.get('filament_color_name') or dock['filament_color_hex']} loaded"
     return False, None
 
 
