@@ -13,13 +13,11 @@ Assistant, and never controls the printer from it — the dashboard's own
 printer_control.py stays the only thing that can do that.
 """
 
-import json
 import os
 import re
-import urllib.error
-import urllib.request
 
 import mock_moonraker
+import outbound
 import storage
 
 _BASE_URL = re.compile(r"^https?://[A-Za-z0-9.\-\[\]:]{1,260}(/[^\s?#]{0,200})?$")
@@ -83,20 +81,24 @@ def save_settings(updates):
     return settings
 
 
+# Home Assistant refuses a state longer than this (homeassistant/const.py
+# MAX_LENGTH_STATE_STATE; the REST API answers 400 "Invalid state specified").
+# A Klipper error message can be longer, so text states are shortened.
+MAX_STATE_LENGTH = 255
+
+
 def _put_state(base_url, token, entity_id, state, attributes):
-    url = f"{base_url}/api/states/{entity_id}"
-    body = json.dumps({"state": state, "attributes": attributes}).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=body, method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-        })
-    try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            return {"ok": True, "status": resp.status}
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
-        return {"ok": False, "error": str(exc)}
+    if isinstance(state, str):
+        state = outbound.clip(state, MAX_STATE_LENGTH)
+    result = outbound.send(f"{base_url}/api/states/{entity_id}", "Home Assistant",
+                           payload={"state": state, "attributes": attributes},
+                           headers={"Authorization": f"Bearer {token}"})
+    if result.get("status") == 401:
+        # homeassistant/components/api: only an administrator's token may set states.
+        result["error"] = ("Home Assistant refused the token (401) - it must be a long-lived access token "
+                           "made by an administrator (Profile > Security)")
+    result.pop("body", None)
+    return result
 
 
 def _sensors_from_state(state, prefix, extras=None):
@@ -193,8 +195,11 @@ def push_sensors(settings=None, extras=None, only=None):
             results[entity_id] = {"ok": False, "error": f"Skipped: {unreachable}"}
             continue
         results[entity_id] = _put_state(base_url, token, entity_id, value, attributes)
-        if not results[entity_id]["ok"] and "status" not in results[entity_id]:
-            unreachable = results[entity_id]["error"]
+        r = results[entity_id]
+        if not r["ok"] and (r.get("status") is None or r.get("status") in (401, 403)):
+            # Unreachable, or the token refused: every other entity would
+            # meet the same, so say it once instead of waiting it out each time.
+            unreachable = r["error"]
 
     return {"ok": all(r["ok"] for r in results.values()), "results": results,
             "entities": len(results)}

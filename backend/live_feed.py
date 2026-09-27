@@ -283,12 +283,34 @@ def tick(seconds=TICK_SECONDS, count=0, scaled=True):
                             "bed": state.get("bed_temperature")})
     if count % 4 == 0:
         _refresh_fleet()
+    if count % 240 == 120:
+        # About once a minute: notifications held back by quiet hours go out
+        # once they end (on a worker - a slow network never stalls the feed).
+        threading.Thread(target=_flush_notifications, daemon=True).start()
     for listener in list(_tick_listeners):
         try:
             listener(seconds, scaled)
         except Exception as exc:          # noqa: BLE001 - a listener must not stop the feed
             import sys
             sys.stderr.write(f"  tick listener failed: {exc}\n")
+
+
+_flushing = threading.Lock()
+
+
+def _flush_notifications():
+    import notifications
+    import modules
+    if not _flushing.acquire(blocking=False):
+        return
+    try:
+        if modules.is_enabled("notifications"):
+            notifications.flush_if_due()
+    except Exception as exc:             # noqa: BLE001 - never let it reach the feed
+        import sys
+        sys.stderr.write(f"  sending held notifications failed: {exc}\n")
+    finally:
+        _flushing.release()
 
 
 def add_tick_listener(fn):
