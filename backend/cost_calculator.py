@@ -11,6 +11,7 @@ types in once).
 Two things it answers:
   - "What did my last N prints cost?"   -> cost_history()
   - "What is this print costing so far?" -> estimate_current_job()
+    (current_job() for the API: the same, or {"printing": false} when idle)
 
 Both are honest about being estimates: filament grams for a job in progress
 are extrapolated from how far it's gotten, not measured by a scale, and the
@@ -163,6 +164,17 @@ def estimate_current_job():
     result["cost_so_far"] = compute_job_cost(
         filament_type, elapsed_grams, duration_hours)["total_cost"]
     return result
+
+
+def current_job():
+    """
+    What GET /api/cost/current answers. An idle printer is an ordinary
+    state, not a bad request, so it says so plainly - with no figures -
+    rather than failing.
+    """
+    if mock_moonraker.get_printer_state()["state"] not in ("printing", "paused"):
+        return {"printing": False, "message": "Nothing is printing right now, so there is no cost to estimate"}
+    return {"printing": True, **estimate_current_job()}
 
 
 def reset():

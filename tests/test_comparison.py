@@ -57,7 +57,23 @@ _STATE_DIFFERENT = {
 }
 
 
+_STATE_BETWEEN_PRINTS = {
+    "current_file": "vase.gcode",          # a finished print keeps its file name
+    "active_toolhead": None,               # but no toolhead is active any more
+    "toolheads": {"T0": {"filament_color_name": "Black"}},
+}
+
+
 class TestCompareCurrentJob(unittest.TestCase):
+
+    def test_a_finished_print_with_no_active_toolhead_does_not_crash(self):
+        # Found in the browser: /api/compare answered 500 after a print ended.
+        with patch("comparison.mock_moonraker.get_print_history", return_value=_HISTORY), \
+             patch("comparison.mock_moonraker.get_printer_state", return_value=_STATE_BETWEEN_PRINTS):
+            result = comparison.compare_current_job()
+        self.assertTrue(result["has_history"])
+        self.assertEqual(result["differences"], [])        # nothing on the printer to compare
+        self.assertEqual(len(result["likely_causes"]), 1)  # the file's own history still counts
 
     def test_no_history_for_unknown_file(self):
         with patch("comparison.mock_moonraker.get_print_history", return_value=_HISTORY):

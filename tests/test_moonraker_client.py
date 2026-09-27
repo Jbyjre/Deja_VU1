@@ -347,6 +347,14 @@ class TestCommands(WireTest):
             self.printer.pause_print()
         self.assertNotIn(("POST", "/printer/print/pause"), self.fake.requests)
 
+    def test_pausing_a_paused_printer_says_so_and_sends_nothing(self):
+        self.printing()
+        self.printer.pause_print()
+        sent = self.fake.requests.count(("POST", "/printer/print/pause"))
+        with self.assertRaisesRegex(ValueError, "^Print already paused$"):
+            self.printer.pause_print()
+        self.assertEqual(self.fake.requests.count(("POST", "/printer/print/pause")), sent)
+
     def test_start_uploads_with_a_checksum_then_waits_for_printing(self):
         data = b"G28\nG1 X10 E1\n"
         self.printer.upload_file("cube.gcode", len(data), data)

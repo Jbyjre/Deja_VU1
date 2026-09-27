@@ -861,7 +861,8 @@ function renderControlTab(state) {
         if (Number.isNaN(celsiusValue)) { toast('Type a target temperature first', 'warn'); return; }
         runCommand(btn, '/api/printer/control/temperature', { toolhead: th, target: celsiusValue }, {
           sending: 'Setting…', done: `${th} target set to ${formatTemp(celsiusValue)}`, failed: `Setting ${th} failed`,
-          expect: s => Math.abs(s.toolheads[th].target_temperature - celsiusValue) < 0.01,
+          // Real printers are sent targets to 0.1 °C (a °F entry rarely lands on one).
+          expect: s => Math.abs(s.toolheads[th].target_temperature - celsiusValue) < 0.051,
         }).then(r => { if (r.ok) input.value = ''; });
       });
     });

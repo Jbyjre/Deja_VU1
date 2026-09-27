@@ -172,6 +172,9 @@ const Workshop = (() => {
   }
 
   function badge() {
+    // The fleet card's "Live" label only while a live feed is really running.
+    const fleetBadge = $('fleet-live-badge');
+    if (fleetBadge) fleetBadge.hidden = !isLive();
     const el = $('rb-live');
     if (!el) return;
     el.hidden = live.mode === 'off';
@@ -854,7 +857,7 @@ const Workshop = (() => {
         </div>
         <p class="log-empty">Models need slicing (in Snapmaker Orca) before they can be printed.</p>
         <div class="fd-actions">
-          ${is3mf ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          ${is3mf && !modGate.off.has('converter') ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
           <span id="fd-slice-slot" class="fd-slice-slot"></span>
           <span id="fd-ar-slot" class="fd-ar-slot"></span>
           <a class="btn" href="/api/files/raw?name=${enc(entry.name)}&download=1">Download</a>
@@ -1552,6 +1555,7 @@ const Workshop = (() => {
   function currentTab() { return store.get('dejavu1.tab') || 'overview'; }
 
   function reportView() {
+    if (modGate.off.has('handoff')) return;      // switched off: nothing to report, and no refused request
     postJSON('/api/handoff', { device_id: deviceId, device_name: deviceName,
       view: { printer: currentPrinter, tab: currentTab(), file: files.open ? files.open.name : null } }).catch(() => {});
   }

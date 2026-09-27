@@ -1416,6 +1416,8 @@ class MoonrakerPrinter:
 
     def pause_print(self):
         state = self._fresh_state()
+        if state["state"] == "paused":
+            raise ValueError("Print already paused")      # Klipper's own words (pause_resume.py)
         if state["state"] != "printing":
             raise ValueError("Nothing is printing right now")
         self._log_command("pause", state.get("current_file"))

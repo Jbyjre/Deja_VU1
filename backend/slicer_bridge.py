@@ -571,15 +571,21 @@ def _work(job_id, name, profile_id, queue_to, on_done):
         _job_update(job_id, status="running", started_at=datetime.now().isoformat(timespec="seconds"))
         try:
             report = slice_model(name, profile_id, on_step=lambda text: _job_update(job_id, step=text))
-            _job_update(job_id, status="done", step="Sliced", report=report)
-            if queue_to:
+            if not queue_to:
+                _job_update(job_id, status="done", step="Sliced", report=report)
+            else:
+                # Still "running" until the queue step is over: a job reads as
+                # finished only once, with its final outcome - never "done"
+                # for a moment before it is "queued".
+                _job_update(job_id, step="Sliced - adding it to the queue", report=report)
                 import print_queue          # imported here: the queue imports the printer side
                 try:
                     print_queue.add(report["files"][0]["name"], printer_id=queue_to)
                     _job_update(job_id, status="queued", queued={"printer": queue_to, "file": report["files"][0]["name"]},
                                 step="Sliced and queued - it will be checked by Confirm Print before it starts")
                 except ValueError as exc:
-                    _job_update(job_id, step=f"Sliced, but couldn't queue it: {exc}", queue_error=str(exc))
+                    _job_update(job_id, status="done", step=f"Sliced, but couldn't queue it: {exc}",
+                                queue_error=str(exc))
         except SliceFailed as exc:
             _job_update(job_id, status="failed", step="Failed", error=str(exc), report=exc.report)
         except ValueError as exc:

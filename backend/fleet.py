@@ -270,6 +270,10 @@ BROADCAST_ACTIONS = ("preheat", "pause", "resume", "cancel", "home")
 # What each action should leave the printer reporting. Used to check the
 # read-back, the same way the single-printer buttons do (runCommand's
 # "expect"): a command the printer accepted but didn't act on is a failure.
+# A target read back within this counts as the one asked for: real
+# printers are sent temperatures to 0.1 °C.
+TARGET_TOLERANCE = 0.051
+
 _EXPECT = {
     "pause": lambda s: s["state"] == "paused",
     "resume": lambda s: s["state"] == "printing",
@@ -379,6 +383,16 @@ def _run_one(printer_id, action, params):
         return {**row, "ok": False, "kind": "not_confirmed",
                 "error": f"Sent, but the printer now reports \"{state['state']}\""}
     if action == "preheat":
+        # The same read-back the single-printer temperature control makes:
+        # the target the printer now reports must be the one asked for (to
+        # the 0.1 °C a real printer is sent - moonraker_client's TARGET=%.1f).
+        wrong = [th for th in params["toolheads"] if params["nozzle"] is not None
+                 and abs(state["toolheads"][th]["target_temperature"] - params["nozzle"]) > TARGET_TOLERANCE]
+        if params["bed"] is not None and abs((state.get("bed_target") or 0) - params["bed"]) > TARGET_TOLERANCE:
+            wrong.append("bed")
+        if wrong:
+            return {**row, "ok": False, "kind": "not_confirmed",
+                    "error": f"Sent, but the printer doesn't report the new target for {', '.join(wrong)}"}
         targets = [f"{th} {state['toolheads'][th]['target_temperature']:.0f}°C" for th in params["toolheads"]
                    if params["nozzle"] is not None]
         if params["bed"] is not None:

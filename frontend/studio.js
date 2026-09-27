@@ -304,6 +304,9 @@ const StudioCore = (() => {
   }
   async function zip(files) {
     const enc = new TextEncoder(), local = [], central = [];
+    // Every entry is stamped 1980-01-01 00:00, the earliest valid MS-DOS
+    // date (APPNOTE 4.4.6) - an all-zero date would mean month 0, day 0.
+    const DOS_DATE = (1 << 5) | 1;
     let offset = 0;
     for (const [name, content] of files) {
       const data = typeof content === 'string' ? enc.encode(content) : content;
@@ -313,11 +316,13 @@ const StudioCore = (() => {
       const nameBytes = enc.encode(name), crc = crc32(data);
       const header = new DataView(new ArrayBuffer(30));
       header.setUint32(0, 0x04034b50, true); header.setUint16(4, 20, true); header.setUint16(8, method, true);
+      header.setUint16(12, DOS_DATE, true);
       header.setUint32(14, crc, true); header.setUint32(18, body.length, true); header.setUint32(22, data.length, true);
       header.setUint16(26, nameBytes.length, true);
       local.push(new Uint8Array(header.buffer), nameBytes, body);
       const cd = new DataView(new ArrayBuffer(46));
       cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(10, method, true);
+      cd.setUint16(14, DOS_DATE, true);
       cd.setUint32(16, crc, true); cd.setUint32(20, body.length, true); cd.setUint32(24, data.length, true);
       cd.setUint16(28, nameBytes.length, true); cd.setUint32(42, offset, true);
       central.push(new Uint8Array(cd.buffer), nameBytes);

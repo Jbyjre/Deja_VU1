@@ -115,15 +115,16 @@ def _build_print_history(rng, job_count=38, days_back=64):
     jobs = []
     now = datetime.now()
 
-    # Pick a random moment for each job. Sorting largest-first means the
-    # biggest "days ago" comes first, so the finished list reads oldest-first.
+    # Pick a random moment for each job to have ended.
     offsets = sorted(
         (rng.uniform(0, days_back) for _ in range(job_count)),
         reverse=True,
     )
 
     for i, days_ago in enumerate(offsets):
-        started = now - timedelta(days=days_ago)
+        # Each job's end is the random moment, so every job in the history
+        # has already finished - none ends in the future.
+        ended = now - timedelta(days=days_ago)
 
         # Print length: mostly short-to-medium jobs, occasionally an overnighter.
         hours = rng.choice([
@@ -148,13 +149,14 @@ def _build_print_history(rng, job_count=38, days_back=64):
         grams = round(actual_hours * rng.uniform(9, 16), 1)
 
         color = rng.choice(FILAMENT_COLORS)
+        started = ended - timedelta(hours=actual_hours)
 
         jobs.append({
             "job_id": f"job-{i + 1:03d}",
             "filename": rng.choice(_JOB_NAMES),
             "status": status,
             "start_time": started.isoformat(timespec="seconds"),
-            "end_time": (started + timedelta(hours=actual_hours)).isoformat(timespec="seconds"),
+            "end_time": ended.isoformat(timespec="seconds"),
             "print_duration_hours": round(actual_hours, 2),
             "filament_used_grams": grams,
             "filament_type": rng.choice(["PLA", "PLA", "PETG", "ABS"]),
@@ -165,6 +167,10 @@ def _build_print_history(rng, job_count=38, days_back=64):
             ),
         })
 
+    # Oldest start first, as Moonraker lists its history, numbered in that order.
+    jobs.sort(key=lambda job: job["start_time"])
+    for i, job in enumerate(jobs):
+        job["job_id"] = f"job-{i + 1:03d}"
     return jobs
 
 
@@ -645,6 +651,8 @@ def pause_print():
         return printer.pause_print()
     with printer.lock:
         printer.check_link("pause")
+        if printer.live["state"] == "paused":
+            raise ValueError("Print already paused")      # Klipper's own words (pause_resume.py)
         if printer.live["state"] != "printing":
             raise ValueError("Nothing is printing right now")
         printer.check_failure("pause")

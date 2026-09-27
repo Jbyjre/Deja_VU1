@@ -18,6 +18,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
 import notifications      # noqa: E402
 
 
+def quiet_now(settings):
+    """A quiet-hours window around the current hour (and the next), whatever
+    time of day the tests run - a fixed window like 0-23 isn't quiet at 23:30."""
+    hour = datetime.now().hour
+    settings["quiet_hours_start"] = (hour - 1) % 24
+    settings["quiet_hours_end"] = (hour + 2) % 24
+    return settings
+
+
+def quiet_later(settings):
+    """A quiet-hours window that is certainly not now."""
+    hour = datetime.now().hour
+    settings["quiet_hours_start"] = (hour + 4) % 24
+    settings["quiet_hours_end"] = (hour + 6) % 24
+    return settings
+
+
 class TestQuietHours(unittest.TestCase):
 
     def test_same_day_window(self):
@@ -67,16 +84,14 @@ class TestPriorityRouting(unittest.TestCase):
 
     def test_high_priority_always_sends_even_in_quiet_hours(self):
         settings = notifications.get_settings()
-        settings["quiet_hours_start"] = 0
-        settings["quiet_hours_end"] = 23
+        quiet_now(settings)
         result = notifications.notify("failure", priority="high", settings=settings)
         self.assertTrue(result["sent"])
         self.assertFalse(result["queued"])
 
     def test_normal_priority_queues_during_quiet_hours(self):
         settings = notifications.get_settings()
-        settings["quiet_hours_start"] = 0
-        settings["quiet_hours_end"] = 23
+        quiet_now(settings)
         result = notifications.notify("done", priority="normal", settings=settings)
         self.assertFalse(result["sent"])
         self.assertTrue(result["queued"])
@@ -84,8 +99,7 @@ class TestPriorityRouting(unittest.TestCase):
 
     def test_normal_priority_sends_outside_quiet_hours(self):
         settings = notifications.get_settings()
-        settings["quiet_hours_start"] = 3
-        settings["quiet_hours_end"] = 4
+        quiet_later(settings)
         result = notifications.notify("done", priority="normal", settings=settings)
         self.assertTrue(result["sent"])
 
@@ -95,8 +109,7 @@ class TestPriorityRouting(unittest.TestCase):
 
     def test_flush_queue_empties_it(self):
         settings = notifications.get_settings()
-        settings["quiet_hours_start"] = 0
-        settings["quiet_hours_end"] = 23
+        quiet_now(settings)
         notifications.notify("done", priority="normal", settings=settings)
         result = notifications.flush_queue(settings)
         self.assertEqual(result["flushed"], 1)
@@ -113,15 +126,13 @@ class TestPrintEventHelper(unittest.TestCase):
 
     def test_failure_is_always_high_priority(self):
         settings = notifications.get_settings()
-        settings["quiet_hours_start"] = 0
-        settings["quiet_hours_end"] = 23
+        quiet_now(settings)
         result = notifications.notify_print_event("error", "vase.gcode", settings=settings)
         self.assertTrue(result["sent"])
 
     def test_completed_respects_quiet_hours(self):
         settings = notifications.get_settings()
-        settings["quiet_hours_start"] = 0
-        settings["quiet_hours_end"] = 23
+        quiet_now(settings)
         result = notifications.notify_print_event("completed", "vase.gcode", settings=settings)
         self.assertTrue(result["queued"])
 
