@@ -159,6 +159,35 @@ def analysis(name):
     return gcode_tools.analyze(read_text(name))
 
 
+# The pre-flight check of a large file takes seconds (a million-line file
+# is about 10 s here, longer on a Raspberry Pi), and the Confirm Print
+# screen, the start itself and the queue each ask for it. Remembered per
+# file *version* - its size and modification time - so a file that is
+# edited or replaced is always checked again, never answered from memory.
+_ANALYSIS_KEEP = 8
+_analysis_cache = {}
+_analysis_lock = threading.Lock()
+
+
+def checked(name):
+    """The G-code analysis without a toolpath, for the gate and the queue (a copy each time)."""
+    import copy
+    path = _path(name)
+    st = os.stat(path)
+    key = (clean_name(name), st.st_mtime_ns, st.st_size)
+    with _analysis_lock:
+        hit = _analysis_cache.get(key)
+    if hit is None:
+        hit = gcode_tools.analyze(read_text(name), want_toolpath=False)
+        with _analysis_lock:
+            for old in [k for k in _analysis_cache if k[0] == key[0]]:
+                del _analysis_cache[old]
+            _analysis_cache[key] = hit
+            while len(_analysis_cache) > _ANALYSIS_KEEP:
+                del _analysis_cache[next(iter(_analysis_cache))]
+    return copy.deepcopy(hit)
+
+
 def _summarize(name):
     kind = kind_of(name)
     data = read_bytes(name)

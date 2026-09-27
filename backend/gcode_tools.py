@@ -146,6 +146,80 @@ def _words(code):
     return {letter.upper(): float(value) for letter, value in _WORD.findall(code)}
 
 
+# Klipper's own G-code tokeniser (klippy/gcode.py: GCodeDispatch.args_r and
+# _process_commands): the line is stripped, cut at ";", upper-cased and split
+# into letter/value pairs - so "g1x300e5" is G1 X300 E5 and a leading
+# "N123" line number is skipped. Parentheses are NOT comments to Klipper.
+_ARGS_R = re.compile(r"([A-Z_]+|[A-Z*/])")
+# Characters Python's splitlines() breaks on but Klipper (which splits at
+# "\n" only) does not.
+_OTHER_BREAKS = ("\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029")
+_EXT_PARAM = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(\S+)")
+MAX_BED_C = 120
+
+
+def klipper_command(raw):
+    """(command, params, code) for one line, exactly as Klipper reads it."""
+    line = raw.strip()
+    cpos = line.find(";")
+    if cpos >= 0:
+        line = line[:cpos]
+    parts = _ARGS_R.split(line.upper())
+    n = len(parts)
+    cmd = ""
+    if n >= 3 and parts[1] != "N":
+        cmd = parts[1] + parts[2].strip()
+    elif n >= 5 and parts[1] == "N":
+        cmd = parts[3] + parts[4].strip()
+    params = {parts[i]: parts[i + 1].strip() for i in range(1, n, 2)}
+    return cmd, params, line
+
+
+def _extended(code):
+    return {k.upper(): v for k, v in _EXT_PARAM.findall(code)}
+
+
+def _num(value):
+    """A parameter as Klipper's get_float reads it; None if it isn't a finite number."""
+    if value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _arc_points(start, end, i, j, clockwise, max_step_mm=1.0):
+    """Points along a G2/G3 arc (centre = start + I,J), the way the printer will sweep it."""
+    cx, cy = start["X"] + i, start["Y"] + j
+    r = math.hypot(i, j)
+    a0 = math.atan2(start["Y"] - cy, start["X"] - cx)
+    a1 = math.atan2(end["Y"] - cy, end["X"] - cx)
+    sweep = a1 - a0
+    if clockwise:
+        if sweep >= -1e-9:
+            sweep -= 2 * math.pi
+    elif sweep <= 1e-9:
+        sweep += 2 * math.pi
+    steps = max(1, min(720, int(abs(sweep) * r / max_step_mm)))
+    points = []
+    for k in range(1, steps + 1):
+        a = a0 + sweep * k / steps
+        z = start["Z"] + (end["Z"] - start["Z"]) * k / steps
+        points.append((cx + r * math.cos(a), cy + r * math.sin(a), z))
+    points[-1] = (end["X"], end["Y"], end["Z"])
+    return points
+
+
+def _path_length(start, points):
+    total, prev = 0.0, (start["X"], start["Y"], start["Z"])
+    for p in points:
+        total += math.dist(prev, p)
+        prev = p
+    return total
+
+
 def analyze(text, want_toolpath=True):
     """
     Walk the whole file. Returns metadata, movement statistics, the
@@ -180,14 +254,22 @@ def analyze(text, want_toolpath=True):
     segments = []
     line_count = 0
 
-    for line_no, raw in enumerate(text.splitlines(), start=1):
+    # Lines are split where Klipper splits them - at "\n" only
+    # (virtual_sdcard.py: data.split('\n')) - and each is read with Klipper's
+    # own tokeniser, so what is checked here is what the printer would run.
+    for line_no, raw in enumerate(text.split("\n"), start=1):
         line_count = line_no
-        code = raw.split(";", 1)[0].strip()
-        if not code:
+        head, params, code = klipper_command(raw)
+        if not head:
             continue
-        upper = code.upper()
-        head = upper.split()[0]
+        if any(sep in code for sep in _OTHER_BREAKS):
+            flag("error", "line_break", line_no,
+                 "This line holds a line break Klipper doesn't split on (a lone carriage return or similar), "
+                 "so it would run several commands as one")
 
+        if head in _FORBIDDEN:
+            flag("error", "forbidden", line_no, _FORBIDDEN[head])
+            continue
         if head.startswith("T") and head[1:].isdigit():
             tool = int(head[1:])
             if tool not in VALID_TOOLS:
@@ -212,41 +294,80 @@ def analyze(text, want_toolpath=True):
         if head == "M83":
             abs_e = False
             continue
-        if head in ("M104", "M109"):
-            s = _words(upper[len(head):]).get("S")
+        if head in ("M104", "M109", "M140", "M190", "SET_HEATER_TEMPERATURE"):
+            if head == "SET_HEATER_TEMPERATURE":
+                ext = _extended(code)
+                heater, s = ext.get("HEATER", ""), _num(ext.get("TARGET"))
+                bed = heater.lower() == "heater_bed"
+            else:
+                s, bed = _num(params.get("S")), head in ("M140", "M190")
             if s is not None:
-                if s > MAX_NOZZLE_C:
-                    flag("error", "nozzle_too_hot", line_no,
-                         f"Sets the nozzle to {s:.0f}°C; this dashboard allows at most {MAX_NOZZLE_C}°C")
-                if s >= 150:
+                top = MAX_BED_C if bed else MAX_NOZZLE_C
+                if s > top:
+                    flag("error", "bed_too_hot" if bed else "nozzle_too_hot", line_no,
+                         f"Sets the {'bed' if bed else 'nozzle'} to {s:.0f}°C; this dashboard allows at most {top}°C")
+                if s >= 150 and not bed:
                     heated = True
             continue
         if head == "G92":
-            words = _words(upper[3:])
             for axis in ("X", "Y", "Z", "E"):
-                if axis in words:
-                    pos[axis] = words[axis]
+                v = _num(params.get(axis))
+                if v is not None:
+                    pos[axis] = v
             continue
         if head not in ("G0", "G1", "G2", "G3"):
             continue
 
-        words = _words(upper[len(head):])
+        words = {}
+        unreadable = None
+        for letter, value in params.items():
+            if letter in ("X", "Y", "Z", "E", "F", "I", "J", "R"):
+                v = _num(value)
+                if v is None:
+                    unreadable = f"{letter}{value}"
+                else:
+                    words[letter] = v
+        if unreadable is not None:
+            flag("error", "unreadable_move", line_no,
+                 f"Klipper can't read \"{unreadable}\" in this move and would stop the print")
+            continue
         if "F" in words and words["F"] > 0:
             feed = words["F"]
         start = dict(pos)
+        is_arc = head in ("G2", "G3")
+        if is_arc:
+            # The U1's own gcode_arcs.py refuses these - the print would stop.
+            if not absolute:
+                flag("error", "arc_relative", line_no, "An arc (G2/G3) in relative mode - the U1 refuses it")
+                continue
+            if "R" in words:
+                flag("error", "arc_radius", line_no, "An arc given by R - the U1 only takes I and J")
+                continue
+            if not (words.get("I") or words.get("J")):
+                flag("error", "arc_no_centre", line_no, "An arc (G2/G3) without I or J - the U1 refuses it")
+                continue
         for axis in ("X", "Y", "Z"):
             if axis in words:
                 pos[axis] = words[axis] if absolute else pos[axis] + words[axis]
         extruding = False
         if "E" in words:
-            e_delta = words["E"] - start["E"] if abs_e else words["E"]
-            pos["E"] = words["E"] if abs_e else pos["E"] + words["E"]
+            # Klipper: E is relative under M83 *or* G91 (gcode_move.py cmd_G1).
+            relative_e = (not abs_e) or (not absolute)
+            e_delta = words["E"] if relative_e else words["E"] - start["E"]
+            pos["E"] = pos["E"] + words["E"] if relative_e else words["E"]
             if e_delta > 0:
                 extruding = True
                 filament_mm[tool] = filament_mm.get(tool, 0.0) + e_delta
 
+        # Every point the nozzle passes: for an arc, points along the curve
+        # (it can bulge past its end points), otherwise just the end.
+        if is_arc:
+            points = _arc_points(start, pos, words.get("I", 0.0), words.get("J", 0.0), head == "G2")
+        else:
+            points = [(pos["X"], pos["Y"], pos["Z"])]
+
         dx, dy, dz = pos["X"] - start["X"], pos["Y"] - start["Y"], pos["Z"] - start["Z"]
-        dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+        dist = _path_length(start, points)
         if dist:
             time_s += dist / (feed / 60.0)
         if not homed and dist:
@@ -263,34 +384,41 @@ def analyze(text, want_toolpath=True):
             if z < -0.01:
                 flag("error", "below_bed", line_no,
                      f"Extrudes at Z={z:.2f} - the nozzle would press into the bed")
-            if not (-BOUNDS_SLACK <= x <= BUILD_X + BOUNDS_SLACK and
-                    -BOUNDS_SLACK <= y <= BUILD_Y + BOUNDS_SLACK and z <= BUILD_Z):
-                flag("error", "out_of_bounds", line_no,
-                     f"Extrudes at X{x:.1f} Y{y:.1f} Z{z:.1f}, outside the U1's "
-                     f"{BUILD_X:.0f} x {BUILD_Y:.0f} x {BUILD_Z:.0f} mm build volume")
-            for i, v in enumerate((x, y, z)):
-                ext_min[i] = min(ext_min[i], v)
-                ext_max[i] = max(ext_max[i], v)
+            for px, py, pz in points:
+                if not (-BOUNDS_SLACK <= px <= BUILD_X + BOUNDS_SLACK and
+                        -BOUNDS_SLACK <= py <= BUILD_Y + BOUNDS_SLACK and pz <= BUILD_Z):
+                    flag("error", "out_of_bounds", line_no,
+                         f"Extrudes at X{px:.1f} Y{py:.1f} Z{pz:.1f}, outside the U1's "
+                         f"{BUILD_X:.0f} x {BUILD_Y:.0f} x {BUILD_Z:.0f} mm build volume")
+                    break
+                for i, v in enumerate((px, py, pz)):
+                    ext_min[i] = min(ext_min[i], v)
+                    ext_max[i] = max(ext_max[i], v)
             if layer_z is None or abs(z - layer_z) > 1e-6:
                 layer_z = z
                 layer_zs.add(round(z, 3))
             top_printed_z = max(top_printed_z, z)
         else:
-            travel_mm += math.hypot(dx, dy)
-            if not (-TRAVEL_SLACK <= x <= BUILD_X + TRAVEL_SLACK and
-                    -TRAVEL_SLACK <= y <= BUILD_Y + TRAVEL_SLACK and
-                    z <= BUILD_Z + TRAVEL_SLACK):
-                flag("warning", "travel_out_of_bounds", line_no,
-                     f"Travels to X{x:.1f} Y{y:.1f} Z{z:.1f}, past the build volume - "
-                     "Klipper stops the print on a move beyond its axis limits")
+            travel_mm += dist if is_arc else math.hypot(dx, dy)
+            for px, py, pz in points:
+                if not (-TRAVEL_SLACK <= px <= BUILD_X + TRAVEL_SLACK and
+                        -TRAVEL_SLACK <= py <= BUILD_Y + TRAVEL_SLACK and
+                        pz <= BUILD_Z + TRAVEL_SLACK):
+                    flag("warning", "travel_out_of_bounds", line_no,
+                         f"Travels to X{px:.1f} Y{py:.1f} Z{pz:.1f}, past the build volume - "
+                         "Klipper stops the print on a move beyond its axis limits")
+                    break
             if (dx or dy) and top_printed_z > 0.6 and z < top_printed_z - 0.45:
                 flag("warning", "low_travel", line_no,
                      f"Travels at Z{z:.2f}, below plastic already printed up to "
                      f"Z{top_printed_z:.2f} - a collision risk")
 
-        if want_toolpath and (dx or dy or dz):
-            segments.append((round(start["X"], 2), round(start["Y"], 2), round(start["Z"], 2),
-                             round(x, 2), round(y, 2), round(z, 2), tool, 1 if extruding else 0))
+        if want_toolpath and (dx or dy or dz or is_arc):
+            prev = (start["X"], start["Y"], start["Z"])
+            for p in points:
+                segments.append((round(prev[0], 2), round(prev[1], 2), round(prev[2], 2),
+                                 round(p[0], 2), round(p[1], 2), round(p[2], 2), tool, 1 if extruding else 0))
+                prev = p
 
     has_extrusion = ext_min[0] != math.inf
     if not has_extrusion:
