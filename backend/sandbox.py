@@ -150,7 +150,7 @@ def build_farm(count, busy_fraction=0.5, seed=None):
 
 
 def sandbox_printers():
-    return [pid for pid in mock_moonraker.printer_ids() if mock_moonraker.is_sandbox_printer(pid)]
+    return [pid for pid in mock_moonraker.simulated_printer_ids() if mock_moonraker.is_sandbox_printer(pid)]
 
 
 def teardown():
@@ -183,7 +183,9 @@ def _clean_step(step):
     if not 0 <= at <= MAX_SCENARIO_SECONDS:
         raise ValueError("Steps must happen within 7 days of the start")
     printer = str(step.get("printer") or "random")
-    if printer not in TARGETS and not mock_moonraker.has_printer(printer):
+    if printer not in TARGETS and printer not in mock_moonraker.simulated_printer_ids():
+        if mock_moonraker.is_real(printer):
+            raise ValueError(f"{printer} is a real printer - the sandbox only ever drives simulated ones")
         raise ValueError(f"Unknown printer: {printer}")
     params = step.get("params") or {}
     if not isinstance(params, dict):
@@ -215,13 +217,16 @@ def load_scenario(steps=None, preset=None, seed=None):
 
 
 def _resolve(target):
-    """Which printer(s) a step's target means right now."""
-    ids = mock_moonraker.printer_ids()
+    """
+    Which printer(s) a step's target means right now - only ever simulated
+    ones: "all" and "random" never reach a real printer.
+    """
+    ids = mock_moonraker.simulated_printer_ids()
     if target == "all":
         return ids
     if target == "previous":
         prev = _state["previous"]
-        if not prev or not mock_moonraker.has_printer(prev):
+        if not prev or prev not in ids:
             raise ValueError("There's no earlier step's printer to repeat")
         return [prev]
     if target.startswith("random"):
@@ -238,8 +243,8 @@ def _resolve(target):
             raise ValueError({"random-printing": "No printer is printing", "random-idle": "No printer is idle"}
                              .get(target, "No printers"))
         return [_state["rng"].choice(sorted(pool))]
-    if not mock_moonraker.has_printer(target):
-        raise ValueError(f"{target} isn't in the farm any more")
+    if target not in ids:
+        raise ValueError(f"{target} isn't in the simulated farm")
     return [target]
 
 
@@ -409,7 +414,7 @@ def set_speed(speed):
         raise ValueError("Speed must be a number")
     if not 1 <= speed <= 600:
         raise ValueError("Speed must be between 1× and 600×")
-    for pid in mock_moonraker.printer_ids():
+    for pid in mock_moonraker.simulated_printer_ids():
         with mock_moonraker.use_printer(pid):
             mock_moonraker.set_time_scale(speed)
     with _lock:
@@ -464,7 +469,7 @@ live_feed.add_tick_listener(on_tick)
 
 def status():
     farm = []
-    for pid in mock_moonraker.printer_ids():
+    for pid in mock_moonraker.simulated_printer_ids():
         with mock_moonraker.use_printer(pid):
             st = mock_moonraker.get_printer_state()
         farm.append({"id": pid, "name": mock_moonraker.printer_name(pid), "state": st["state"],

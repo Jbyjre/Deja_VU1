@@ -199,6 +199,8 @@ def _detect_locked(printer_id, state, finish_event):
         payload = {"type": "print_event", "event": name, "printer": printer_id,
                    "printer_name": mock_moonraker.printer_name(printer_id),
                    "file": state.get("current_file"), "demo": simulated}
+        if name == "finished" and not finish_event and state.get("finished_job"):
+            finish_event = {"type": "print_finished", "job": state["finished_job"]}
         if name == "finished" and finish_event:
             job = finish_event["job"]
             cost = cost_calculator.compute_job_cost(job["filament_type"], job["filament_used_grams"],
@@ -264,8 +266,10 @@ def tick(seconds=TICK_SECONDS, count=0, scaled=True):
             if timelapse.is_recording(printer_id) and state["state"] == "printing":
                 with mock_moonraker.use_printer(printer_id):
                     job = mock_moonraker.get_current_job()
-                layer = state["layer"]["current"]
-                if simulated:
+                layer = (state.get("layer") or {}).get("current")
+                if not isinstance(layer, int):
+                    pass                      # the printer doesn't know the layer: no frame is due
+                elif simulated:
                     timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
                 else:
                     import camera
@@ -328,6 +332,7 @@ def start():
     if _thread and _thread.is_alive():
         return
     _running = True
+    fleet.sync_real_printers()        # connect every printer added by address
     for printer_id in mock_moonraker.printer_ids():
         refresh(printer_id)
     _thread = threading.Thread(target=_loop, name="live-feed", daemon=True)

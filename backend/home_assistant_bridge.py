@@ -130,22 +130,32 @@ def _sensors_from_state(state, prefix, extras=None):
         f"{prefix}_active_toolhead": s(state["active_toolhead"] or "none", "active toolhead"),
         f"{prefix}_print_duration": s(round(elapsed * 60, 1), "print time so far", "min", "duration"),
         f"{prefix}_time_remaining": s(round(remaining * 60, 1), "time remaining (estimate)", "min", "duration"),
-        f"{prefix}_current_layer": s(layer.get("current", 0), "current layer", icon="mdi:layers"),
-        f"{prefix}_total_layers": s(layer.get("total", 0), "total layers", icon="mdi:layers-triple"),
-        f"{prefix}_bed_temperature": s(round(state.get("bed_temperature", 0.0), 1), "bed temperature", "°C", "temperature"),
-        f"{prefix}_bed_target": s(round(state.get("bed_target", 0.0), 1), "bed target", "°C", "temperature"),
+        f"{prefix}_current_layer": s(layer.get("current") or 0, "current layer", icon="mdi:layers"),
+        f"{prefix}_total_layers": s(layer.get("total") or 0, "total layers", icon="mdi:layers-triple"),
+        f"{prefix}_bed_target": s(round(state.get("bed_target") or 0.0, 1), "bed target", "°C", "temperature"),
     }
+    # A reading the printer doesn't give (no heated bed, no chamber sensor)
+    # is left out rather than published as 0 °C.
+    if state.get("bed_temperature") is not None:
+        sensors[f"{prefix}_bed_temperature"] = s(
+            round(state["bed_temperature"], 1), "bed temperature", "°C", "temperature")
     if state.get("chamber_temperature") is not None:
         sensors[f"{prefix}_chamber_temperature"] = s(
             round(state["chamber_temperature"], 1), "chamber temperature", "°C", "temperature")
     for th, data in sorted(state.get("toolheads", {}).items()):
         key = f"{prefix}_{th.lower()}"
-        sensors[f"{key}_temperature"] = s(round(data["temperature"], 1), f"{th} temperature", "°C", "temperature")
-        sensors[f"{key}_target"] = s(round(data["target_temperature"], 1), f"{th} target", "°C", "temperature")
+        if data.get("temperature") is not None:
+            sensors[f"{key}_temperature"] = s(round(data["temperature"], 1), f"{th} temperature", "°C", "temperature")
+        sensors[f"{key}_target"] = s(round(data.get("target_temperature") or 0.0, 1), f"{th} target", "°C",
+                                     "temperature")
         sensors[f"{key}_status"] = s(data["status"], f"{th} dock status", icon="mdi:printer-3d-nozzle")
-        sensors[f"{key}_filament"] = (data["filament_color_name"] if data["filament_loaded"] else "empty",
+        loaded = data.get("filament_loaded")
+        filament = ("unknown" if loaded is None else
+                    (data.get("filament_color_name") or "loaded, colour unknown") if loaded else "empty")
+        sensors[f"{key}_filament"] = (filament,
                                       {"friendly_name": f"{name} {th} filament",
-                                       "color_hex": data["filament_color_hex"], "icon": "mdi:printer-3d-nozzle"})
+                                       "color_hex": data.get("filament_color_hex"),
+                                       "icon": "mdi:printer-3d-nozzle"})
     if "maintenance_overdue" in extras:
         sensors[f"{prefix}_maintenance_overdue"] = s(extras["maintenance_overdue"], "maintenance tasks overdue", icon="mdi:wrench-clock")
     if "health_score" in extras:

@@ -730,6 +730,12 @@ async function loadColorCheck() {
     $('colors-note').hidden = true;
     return;
   }
+  if (data.overall === 'no_sensor') {
+    $('colorfile').hidden = true;
+    $('colors').innerHTML = EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.');
+    $('colors-note').hidden = true;
+    return;
+  }
   if (!hasData(data) || !data.checks) {
     $('colorfile').hidden = true;
     $('colors').innerHTML = EMPTY('Nothing to check', 'Needs a print file and a sensor reading.');

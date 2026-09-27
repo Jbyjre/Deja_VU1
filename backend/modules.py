@@ -153,6 +153,14 @@ REGISTRY = [
         "default_enabled": True,
     },
     {
+        "id": "printer_link",
+        "name": "Printer connection (Moonraker)",
+        "description": "Connects to the printers you add by address, through Moonraker's own "
+                        "HTTP and WebSocket API, and keeps their live state current.",
+        "status": "ready",
+        "default_enabled": True,
+    },
+    {
         "id": "fleet_command",
         "name": "Fleet command center",
         "description": "Select several printers and pause, resume, cancel, home or "

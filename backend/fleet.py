@@ -65,24 +65,71 @@ def _save(items):
     storage.save_json(_PATH, items)
 
 
-def add(name, moonraker_url):
+# The live feed hands this a function to call whenever a real printer's
+# state changes, so browsers are woken at once rather than on the next tick.
+_on_change = None
+
+
+def set_change_listener(fn):
+    global _on_change
+    _on_change = fn
+
+
+def _changed(printer_id):
+    if _on_change:
+        try:
+            _on_change(printer_id)
+        except Exception:                 # noqa: BLE001 - a listener must never break the connection
+            pass
+
+
+def sync_real_printers():
+    """
+    Connect every registered printer (when the printer_link module is on)
+    and disconnect any that were removed or switched off. Called at start-up,
+    and whenever the registry or the module changes.
+    """
+    import modules
+    wanted = {p["id"]: p for p in registered()} if modules.is_enabled("printer_link") else {}
+    for pid in mock_moonraker.real_printer_ids():
+        entry = wanted.get(pid)
+        current = mock_moonraker.real_printer(pid)
+        if entry is None or current.url != entry["moonraker_url"] or current.api_key != (entry.get("api_key") or None):
+            mock_moonraker.detach_real_printer(pid)
+    for pid, entry in wanted.items():
+        if mock_moonraker.real_printer(pid) is None:
+            try:
+                mock_moonraker.attach_real_printer(pid, entry["name"], entry["moonraker_url"],
+                                                   api_key=entry.get("api_key") or None, on_change=_changed)
+            except ValueError:
+                continue                  # an address saved before validation was this strict
+
+
+def add(name, moonraker_url, api_key=None):
     name = str(name or "").strip()[:40]
     url = str(moonraker_url or "").strip()
+    api_key = str(api_key or "").strip()
     if not name:
         raise ValueError("Give the printer a name")
     if not _URL.match(url):
         raise ValueError("Enter the printer's Moonraker address, like http://192.168.1.50:7125")
+    if api_key and not re.fullmatch(r"[A-Za-z0-9_\-]{8,128}", api_key):
+        raise ValueError("That doesn't look like a Moonraker API key (letters and digits, 32 of them usually)")
     with _lock:
         items = registered()
         if len(items) >= 12:
             raise ValueError("At most 12 printers")
+        if any(p["moonraker_url"] == url.rstrip("/") for p in items):
+            raise ValueError("That printer is already in the list")
         entry = {"id": f"printer-{uuid.uuid4().hex[:6]}", "name": name,
                  "moonraker_url": url.rstrip("/"),
-                 "added_at": datetime.now().isoformat(timespec="seconds"),
-                 "connected": mock_moonraker.is_connected()}
+                 "added_at": datetime.now().isoformat(timespec="seconds")}
+        if api_key:
+            entry["api_key"] = api_key
         items.append(entry)
         _save(items)
-    return entry
+    sync_real_printers()
+    return _public(entry)
 
 
 def remove(printer_id):
@@ -92,14 +139,48 @@ def remove(printer_id):
         if len(kept) == len(items):
             raise ValueError("Unknown printer")
         _save(kept)
-    return kept
+    sync_real_printers()
+    return [_public(p) for p in kept]
+
+
+def _public(entry):
+    """A registry entry for the browser: the API key masked, the link described."""
+    out = {k: v for k, v in entry.items() if k != "api_key"}
+    out["api_key"] = storage.mask_secret(entry.get("api_key"))
+    diag = mock_moonraker.diagnostics(entry["id"])
+    out["connected"] = bool(diag and diag["connected"])
+    if diag is None:
+        out["link"] = "The printer connection module is off" if not _link_module_on() else "Connecting..."
+    elif diag["connected"]:
+        out["link"] = "Connected" + (f" - Klipper is {diag['klippy_state']}"
+                                     if diag["klippy_state"] not in (None, "ready") else "")
+    else:
+        out["link"] = f"Not connected: {diag['last_error'] or 'connecting...'}"
+    return out
+
+
+def _link_module_on():
+    import modules
+    return modules.is_enabled("printer_link")
 
 
 def registry():
-    return {"printers": [{**p, "connected": mock_moonraker.is_connected()} for p in registered()],
-            "note": ("Printers you add are saved here. Live data needs a real Moonraker "
-                     "connection, which arrives with the hardware - until then they show "
-                     "as not connected.")}
+    return {"printers": [_public(p) for p in registered()],
+            "note": ("Printers you add here are connected through their Moonraker address. "
+                     "Their live figures show only once the connection is open - until then they "
+                     "show as not connected, never with made-up numbers.")}
+
+
+def diagnostics(printer_id):
+    """Everything about one real printer's connection, including the last exchanges."""
+    diag = mock_moonraker.diagnostics(printer_id)
+    if diag is None:
+        if any(p["id"] == printer_id for p in registered()):
+            return {"id": printer_id, "connected": False,
+                    "last_error": "Not connected - the printer connection module is off"
+                    if not _link_module_on() else "Connecting...", "log": []}
+        raise ValueError("Unknown printer")
+    return diag
 
 
 def _alerts(state, maint):
@@ -107,13 +188,16 @@ def _alerts(state, maint):
     for th, dock in state["toolheads"].items():
         if dock["status"] == "error":
             alerts.append({"level": "error", "text": f"Dock {th} error"})
-    if state["state"] == "error":
+    if state["state"] == "error" and not state.get("never_connected"):
         alerts.append({"level": "error", "text": state.get("state_message") or "Printer error"})
     if state["state"] == "paused":
         alerts.append({"level": "warning", "text": "Paused"})
-    if state.get("link_lost"):
+    if state.get("never_connected"):
+        alerts.append({"level": "error", "text": state.get("state_message") or "Not connected yet"})
+    elif state.get("link_lost"):
+        since = (state.get("link_lost_at") or "")[11:19]
         alerts.append({"level": "error",
-                       "text": f"No answer since {state['link_lost_at'][11:19]} - showing its last report"})
+                       "text": f"No answer since {since or 'a moment ago'} - showing its last report"})
     overdue = maint["summary"]["overdue"]
     if overdue:
         alerts.append({"level": "warning", "text": f"{overdue} maintenance overdue"})
@@ -153,7 +237,29 @@ def summary_for(printer_id, state=None):
 
 
 def overview():
-    return {"printers": [summary_for(pid) for pid in mock_moonraker.printer_ids()]}
+    """
+    One row per printer - real and simulated, each row saying which. One
+    printer failing to report never stops the others' rows.
+    """
+    rows = []
+    for pid in mock_moonraker.printer_ids():
+        try:
+            row = summary_for(pid)
+        except ValueError:
+            continue                          # removed while the overview was being made
+        except Exception as exc:              # noqa: BLE001 - one printer can't sink the overview
+            row = {"id": pid, "name": pid, "state": "error", "state_message": f"Couldn't read it: {exc}",
+                   "alerts": [{"level": "error", "text": "Couldn't read this printer"}], "docks": {},
+                   "progress": 0.0, "health": None, "link_lost": True}
+        row["demo"] = not mock_moonraker.is_real(pid)
+        rows.append(row)
+    return {"printers": rows}
+
+
+def visible_ids(include_demo):
+    """The printers a request may see: real ones always, simulated ones only with demo data on."""
+    return [pid for pid in mock_moonraker.printer_ids()
+            if mock_moonraker.is_real(pid) or include_demo]
 
 
 # ---------------------------------------------------------------------------
@@ -171,12 +277,20 @@ _EXPECT = {
 }
 
 
-def _targets(printer_ids):
-    """Validate the chosen printers; None or [] means every simulated printer."""
+def _targets(printer_ids, include_demo=True):
+    """
+    Validate the chosen printers. None or [] means every printer this
+    request can see: the real ones, or - with demo data on - the simulated
+    ones only, so a demo "pause all" can never reach a real printer. A
+    simulated printer named without demo data on is refused.
+    """
     known = mock_moonraker.printer_ids()
     registered_ids = {p["id"] for p in registered()}
     if not printer_ids:
-        return known
+        if include_demo:
+            return mock_moonraker.simulated_printer_ids()
+        return mock_moonraker.real_printer_ids() + [p for p in registered_ids
+                                                    if not mock_moonraker.has_printer(p)]
     if not isinstance(printer_ids, list) or len(printer_ids) > 64:
         raise ValueError("printers must be a list of printer ids")
     out = []
@@ -184,6 +298,8 @@ def _targets(printer_ids):
         pid = str(pid)
         if pid not in known and pid not in registered_ids:
             raise ValueError(f"Unknown printer: {pid}")
+        if not include_demo and pid in known and not mock_moonraker.is_real(pid):
+            raise ValueError(f"{pid} is a simulated printer - switch demo data on to use it")
         if pid not in out:
             out.append(pid)
     return out
@@ -224,6 +340,9 @@ def _run_one(printer_id, action, params):
         return {**row, "name": name, "ok": False, "kind": "not_connected",
                 "error": "Not connected - there is no live link to this printer yet"}
     row["name"] = mock_moonraker.printer_name(printer_id)
+    if mock_moonraker.is_real(printer_id) and not mock_moonraker.is_connected(printer_id):
+        reason = (mock_moonraker.diagnostics(printer_id) or {}).get("last_error") or "connecting..."
+        return {**row, "ok": False, "kind": "not_connected", "error": f"Not connected: {reason}"}
     try:
         with mock_moonraker.use_printer(printer_id):
             if action == "preheat":
@@ -268,7 +387,7 @@ def _run_one(printer_id, action, params):
     return {**row, "ok": True, "kind": "done"}
 
 
-def broadcast(action, printer_ids=None, params=None):
+def broadcast(action, printer_ids=None, params=None, include_demo=True):
     """
     Send one action to several printers at once and report each outcome.
 
@@ -277,7 +396,7 @@ def broadcast(action, printer_ids=None, params=None):
     """
     if action not in BROADCAST_ACTIONS:
         raise ValueError(f"Unknown action: {action}. Choose one of {', '.join(BROADCAST_ACTIONS)}")
-    targets = _targets(printer_ids)
+    targets = _targets(printer_ids, include_demo)
     if not targets:
         raise ValueError("No printers to send it to")
     params = _preheat_params(params) if action == "preheat" else (params or {})
@@ -298,7 +417,7 @@ def broadcast(action, printer_ids=None, params=None):
             "ms": round((datetime.now() - started).total_seconds() * 1000, 1)}
 
 
-def route_file(filename, target, from_printer=None, item_id=None):
+def route_file(filename, target, from_printer=None, item_id=None, include_demo=True):
     """
     Put a file on another printer's queue. With from_printer + item_id it's
     a move: the item leaves the first queue only once it's safely on the
@@ -309,6 +428,9 @@ def route_file(filename, target, from_printer=None, item_id=None):
         if any(p["id"] == target for p in registered()):
             raise ValueError("That printer isn't connected yet, so it has no queue to add to")
         raise ValueError(f"Unknown printer: {target}")
+    for pid in (target, from_printer if item_id else None):
+        if pid and not include_demo and mock_moonraker.has_printer(pid) and not mock_moonraker.is_real(pid):
+            raise ValueError(f"{pid} is a simulated printer - switch demo data on to use it")
     if item_id:
         if not mock_moonraker.has_printer(str(from_printer or "")):
             raise ValueError("Say which printer's queue the item comes from")
@@ -328,9 +450,9 @@ def route_file(filename, target, from_printer=None, item_id=None):
             "moved_from": from_printer if item_id else None, "queue": result}
 
 
-def queues():
-    """Every simulated printer's queue, for the command center's drop targets."""
-    return {"queues": {pid: print_queue.get(pid) for pid in mock_moonraker.printer_ids()}}
+def queues(include_demo=True):
+    """Every visible printer's queue, for the command center's drop targets."""
+    return {"queues": {pid: print_queue.get(pid) for pid in visible_ids(include_demo)}}
 
 
 def _rates(counts):
@@ -342,7 +464,7 @@ def _rates(counts):
             "cancel_rate": round(counts["cancelled"] / finished, 4)}
 
 
-def history(days=30, bucket="day"):
+def history(days=30, bucket="day", include_demo=True):
     """
     The farm's output over time: per printer and totalled, with a time
     series of prints and grams per day (or week). Every figure is summed
@@ -381,7 +503,7 @@ def history(days=30, bucket="day"):
                      "grams_completed": 0.0, "grams_error": 0.0, "grams_cancelled": 0.0}
     farm_series = {k: empty() for k in keys}
     printers, total = [], {**empty(), "materials": defaultdict(float)}
-    for pid in mock_moonraker.printer_ids():
+    for pid in visible_ids(include_demo):
         with mock_moonraker.use_printer(pid):
             jobs = mock_moonraker.get_print_history()
         series = {k: empty() for k in keys}
@@ -433,3 +555,4 @@ def history(days=30, bucket="day"):
 def reset():
     with _lock:
         _save([])
+    sync_real_printers()          # and disconnect whatever was registered
