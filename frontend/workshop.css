@@ -717,7 +717,7 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 }
 .cam-mode[data-mode="webrtc"] { --glass-tint: var(--ok); }
 .cam-mode[data-mode="connecting"] { --glass-tint: var(--accent); }
-.cam-mode[data-mode="none"] { --glass-tint: var(--bad); }
+.cam-mode[data-mode="none"], .cam-mode[data-mode="trouble"], .cam-mode[data-mode="frozen"] { --glass-tint: var(--bad); }
 .cam-why { margin: 8px 0 0; font-size: 12.5px; }
 .webrtc-setup { margin-top: 12px; }
 .webrtc-setup summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-dim); padding: 4px 0; }

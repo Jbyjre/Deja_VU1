@@ -1356,7 +1356,7 @@ const Workshop = (() => {
    * low-latency module is on and go2rtc is set up, WebRTC is tried first
    * (the browser's own RTCPeerConnection, signalled through this server)
    * and anything that goes wrong falls back to MJPEG, saying which is on. */
-  const cam = { built: false, mjpeg: '', webrtc: false, pc: null, run: 0 };
+  const cam = { built: false, mjpeg: '', webrtc: false, pc: null, run: 0, watch: null };
   async function loadCamera() {
     const host = $('camera-host');
     if (!host) return;
@@ -1393,7 +1393,8 @@ const Workshop = (() => {
     const pill = $('cam-mode'), note = $('cam-why');
     if (!pill) return;
     pill.dataset.mode = mode;
-    pill.textContent = { webrtc: 'Low latency · WebRTC', mjpeg: 'MJPEG', connecting: 'Connecting…', none: 'No camera' }[mode];
+    pill.textContent = { webrtc: 'Low latency · WebRTC', mjpeg: 'MJPEG', connecting: 'Connecting…', none: 'No camera',
+                         trouble: 'Camera not answering', frozen: 'Picture frozen' }[mode];
     note.hidden = !why;
     note.textContent = why || '';
   }
@@ -1404,8 +1405,45 @@ const Workshop = (() => {
     video.hidden = true;
     if (!cam.mjpeg) { img.hidden = true; setCamMode('none', `${why} There's no MJPEG address to fall back to — add one above.`); return; }
     img.hidden = false;
+    const run = cam.run;
+    const note = why ? `Using the normal camera feed: ${why}` : '';
+    img.onload = () => { if (run === cam.run && $('cam-mode').dataset.mode === 'trouble') setCamMode('mjpeg', note); };
+    img.onerror = async () => { if (run === cam.run) setCamMode('trouble', `${await streamProblem()} Reconnect to try again.`); };
     img.src = `/api/camera/stream?t=${Date.now()}`;
-    setCamMode('mjpeg', why ? `Using the normal camera feed: ${why}` : '');
+    setCamMode('mjpeg', note);
+    watchCamera(run, note);
+  }
+
+  /* An <img> can't read why its stream failed, so ask the relay once: when
+   * the camera can't be reached it answers at once with the reason in words.
+   * If it starts streaming instead, the request is dropped straight away. */
+  async function streamProblem() {
+    const stop = new AbortController();
+    try {
+      const r = await fetch(`/api/camera/stream?t=${Date.now()}`, { signal: stop.signal });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); const why = b.error || `The relay answered ${r.status}`; return /[.?!]$/.test(why) ? why : `${why}.`; }
+      return 'The picture stopped loading.';
+    } catch (e) {
+      return 'The dashboard server could not be reached.';
+    } finally { stop.abort(); }
+  }
+
+  /* The relay's watchdog counts frames (camera.py). While the picture is on
+   * screen, read it every 5 s and say so when no new frame has arrived for
+   * a while - a frozen MJPEG image otherwise looks exactly like a live one. */
+  function watchCamera(run, note) {
+    clearInterval(cam.watch);
+    cam.watch = setInterval(async () => {
+      if (run !== cam.run) { clearInterval(cam.watch); return; }
+      const s = await getJSON('/api/camera').catch(() => null);
+      if (!s || run !== cam.run || s.frozen === undefined) return;
+      const mode = $('cam-mode') && $('cam-mode').dataset.mode;
+      if (s.frozen && mode !== 'trouble') {
+        setCamMode('frozen', `No new picture for ${Math.round(s.seconds_since_last_frame)} s, so what's shown may be out of date. Reconnect to try again.`);
+      } else if (!s.frozen && mode === 'frozen') {
+        setCamMode('mjpeg', note);
+      }
+    }, 5000);
   }
 
   async function startCamera() {
@@ -1472,6 +1510,7 @@ const Workshop = (() => {
 
   function stopCamera() {
     cam.run++;
+    clearInterval(cam.watch);
     closePeer();
     const img = $('camera-img');
     if (img) img.removeAttribute('src');

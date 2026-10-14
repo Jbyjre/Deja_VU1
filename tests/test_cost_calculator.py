@@ -42,6 +42,24 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(settings["printer_watts"], 300)
 
 
+    def test_material_names_ignore_case_and_spaces(self):
+        # Typing "pla" used to add a second, never-used "pla" price.
+        settings = cost_calculator.save_settings({"filament_price_per_kg": {" pla ": 31, "tpu": 40}})
+        self.assertEqual(settings["filament_price_per_kg"]["PLA"], 31.0)
+        self.assertEqual(settings["filament_price_per_kg"]["TPU"], 40.0)
+        self.assertNotIn("pla", settings["filament_price_per_kg"])
+        self.assertEqual(cost_calculator.compute_job_cost("Tpu", 1000, 0)["material_cost"], 40.0)
+
+    def test_bad_amounts_are_refused_in_words(self):
+        for updates, words in (({"filament_price_per_kg": {"PLA": "abc"}}, "The price of PLA must be a number"),
+                               ({"electricity_rate_per_kwh": -1}, "The electricity rate can't be negative"),
+                               ({"printer_watts": "inf"}, "The printer's wattage must be a number")):
+            with self.assertRaises(ValueError) as caught:
+                cost_calculator.save_settings(updates)
+            self.assertEqual(str(caught.exception), words)
+        self.assertEqual(cost_calculator.get_settings()["filament_price_per_kg"]["PLA"], 20.0)
+
+
 class TestComputeJobCost(unittest.TestCase):
 
     def setUp(self):

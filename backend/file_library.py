@@ -30,7 +30,7 @@ import safe_zip
 import sample_files
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 FILES_DIR = os.path.join(_DATA_DIR, "files")
 _INDEX_PATH = os.path.join(_DATA_DIR, "file_index.json")
 _THUMB_DIR = os.path.join(_DATA_DIR, "thumbs")

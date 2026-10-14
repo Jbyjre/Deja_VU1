@@ -27,7 +27,7 @@ import print_gate
 import printer_control
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "print_queue.json")
 MAX_ITEMS = 20
 _lock = threading.RLock()

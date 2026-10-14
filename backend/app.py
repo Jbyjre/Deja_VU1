@@ -336,7 +336,6 @@ _DATA_ROUTES = {
     "/api/compare/side-by-side": ("compare", lambda q: comparison.side_by_side()),
     "/api/sanity": ("sanity_check", lambda q: sanity_check.check()),
     "/api/updates": ("updates", lambda q: updates.get_status()),
-    "/api/camera": ("camera", lambda q: camera.get_status()),
     "/api/cost/history": ("cost_calculator", lambda q: {"jobs": cost_calculator.cost_history()}),
     "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.current_job()),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
@@ -360,6 +359,10 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    # The camera's frozen-stream watchdog is about the camera relay, not
+    # printer figures: it stays readable while a printer's link is down,
+    # like the stream itself, which is when a frozen picture matters most.
+    "/api/camera": ("camera", lambda q: camera.get_status()),
     "/api/filament": ("filament_inventory", lambda q: {
         "spools": filament_inventory.get_inventory(),
         "idle_spools": filament_inventory.idle_spools(),

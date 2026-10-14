@@ -23,7 +23,7 @@ import storage
 _BASE_URL = re.compile(r"^https?://[A-Za-z0-9.\-\[\]:]{1,260}(/[^\s?#]{0,200})?$")
 _PREFIX = re.compile(r"^[a-z_]{1,30}\.[a-z0-9_]{1,60}$")
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "home_assistant_settings.json")
 
 _DEFAULT_SETTINGS = {
@@ -201,8 +201,16 @@ def push_sensors(settings=None, extras=None, only=None):
             # meet the same, so say it once instead of waiting it out each time.
             unreachable = r["error"]
 
-    return {"ok": all(r["ok"] for r in results.values()), "results": results,
-            "entities": len(results)}
+    out = {"ok": all(r["ok"] for r in results.values()), "results": results,
+           "entities": len(results)}
+    if not out["ok"]:
+        # One reason in words for the whole push: the dashboard shows this,
+        # not "unknown error", when Home Assistant can't be reached or some
+        # sensors are refused.
+        failed = [r for r in results.values() if not r["ok"]]
+        out["error"] = unreachable or (
+            f"{len(failed)} of {len(results)} sensors were refused - the first said: {failed[0]['error']}")
+    return out
 
 
 def publish_entity(entity_id, state, attributes=None, settings=None):

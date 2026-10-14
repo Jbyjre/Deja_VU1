@@ -260,7 +260,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 557 cases
+- **Tests:** `unittest` from the standard library, 566 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -374,6 +374,10 @@ To run the tests:
 ```bash
 python3 -m unittest discover tests
 ```
+
+The tests work in a temporary folder of their own and never touch your
+printers, settings or files in `backend/data/`. The dashboard keeps its
+data in `backend/data/` unless `DEJAVU_DATA_DIR` names another folder.
 
 With no printer added, everything runs on simulated data and no printer is
 contacted at any point. Add one by address and the dashboard connects to

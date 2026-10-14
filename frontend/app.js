@@ -1150,11 +1150,43 @@ async function loadDevices() {
   }
 }
 
+/* While a code is on screen, the other device redeems it somewhere else, so
+ * this one looks for it: every 2 s until a new device appears or the code
+ * expires. Without this the code stayed up and the list said "No devices
+ * paired yet" until the page was reloaded, as if pairing had failed. */
+let pairingWatch = null;
+function watchForPairing() {
+  clearInterval(pairingWatch);
+  const known = getJSON('/api/pairing/devices').then(d => new Set((d.devices || []).map(x => x.id))).catch(() => null);
+  // A code lasts 10 minutes (pairing.py CODE_TTL_MINUTES). Counted here, not
+  // read from the server's clock, whose time zone this device may not share.
+  const until = Date.now() + 10 * 60 * 1000;
+  pairingWatch = setInterval(async () => {
+    if (Date.now() > until) {
+      clearInterval(pairingWatch);
+      $('pairing-code-display').style.display = 'none';
+      toast('The pairing code expired - make a new one when you are ready', 'info', 5000);
+      return;
+    }
+    const data = await getJSON('/api/pairing/devices').catch(() => null);
+    const seen = await known;
+    if (!seen) return;                      // couldn't read the starting list
+    const added = ((data && data.devices) || []).filter(d => !seen.has(d.id));
+    if (!added.length) return;
+    clearInterval(pairingWatch);
+    $('pairing-code-display').style.display = 'none';
+    toast(`${added.map(d => d.name).join(', ')} paired`, 'ok');
+    loadDevices();
+  }, 2000);
+}
+
 function initPairing() {
   $('generate-code-btn').addEventListener('click', async () => {
-    const { body } = await postJSON('/api/pairing/code', {});
+    const { ok, body } = await postJSON('/api/pairing/code', {});
+    if (!ok) { toast(`Couldn't make a code: ${body.error || 'unknown error'}`, 'bad'); return; }
     $('pairing-code-display').style.display = 'block';
     $('pairing-code-text').textContent = (body.code || '').replace(/(\d{3})(\d{3})/, '$1 $2');
+    watchForPairing();
   });
 
   $('redeem-form').addEventListener('submit', async (e) => {
@@ -1163,8 +1195,10 @@ function initPairing() {
     const code = codeInput.value.replace(/\s/g, '');
     const { ok, body } = await postJSON('/api/pairing/redeem', { code, device_name: navigator.userAgent.includes('Mobile') ? 'Phone' : 'Browser' });
     if (ok) {
+      clearInterval(pairingWatch);
       codeInput.value = '';
       $('pairing-code-display').style.display = 'none';
+      toast('Paired - this device is now on the list', 'ok');
       loadDevices();
     } else {
       codeInput.setCustomValidity(body.error || 'Could not pair');
@@ -1288,11 +1322,20 @@ async function loadCost() {
   host.innerHTML = rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.');
 }
 
+/* The prices already set, so you can see what PLA costs before changing it. */
+function showCostPrices(data) {
+  const hint = $('cost-prices');
+  if (!hint || !data || !data.filament_price_per_kg) return;
+  const list = Object.entries(data.filament_price_per_kg).map(([m, p]) => `${m} $${Number(p).toFixed(2)}`).join(' · ');
+  hint.textContent = list ? `Prices now (per kg): ${list}` : '';
+}
+
 function initCostSettings() {
   getJSON('/api/cost/settings').then(data => {
     if (!data || isModuleDisabled(data)) return;
     $('cost-electricity').value = data.electricity_rate_per_kwh ?? '';
     $('cost-watts').value = data.printer_watts ?? '';
+    showCostPrices(data);
   });
 
   $('cost-save-btn').addEventListener('click', async () => {
@@ -1305,7 +1348,11 @@ function initCostSettings() {
     if (material && !Number.isNaN(price)) {
       updates.filament_price_per_kg = { [material]: price };
     }
-    await postJSON('/api/cost/settings', updates);
+    const r = await postJSON('/api/cost/settings', updates);
+    if (!r.ok) { toast(`Prices not saved: ${r.body.error || `HTTP ${r.status}`}`, 'bad', 6000); return; }
+    showCostPrices(r.body);
+    $('cost-material').value = '';
+    $('cost-price').value = '';
     const btn = $('cost-save-btn');
     const original = btn.textContent;
     btn.textContent = 'Saved';
@@ -1360,7 +1407,7 @@ function initBridges() {
     $('ha-status').textContent = 'Pushing…';
     const { body } = await postJSON('/api/homeassistant/push', {});
     $('ha-status').textContent = body.ok
-      ? 'Pushed sensors to Home Assistant.'
+      ? `Pushed ${body.entities || ''} sensors to Home Assistant.`.replace('  ', ' ')
       : `Push failed: ${body.error || 'unknown error'}`;
   });
 }

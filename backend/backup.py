@@ -20,7 +20,7 @@ from datetime import datetime
 
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 
 _INCLUDED_FILES = [
     "maintenance_log.json",

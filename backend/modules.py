@@ -24,7 +24,7 @@ import storage
 
 _lock = threading.Lock()
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _STATE_PATH = os.path.join(_DATA_DIR, "modules.json")
 
 REGISTRY = [

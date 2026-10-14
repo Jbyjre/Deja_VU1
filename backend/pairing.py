@@ -19,7 +19,7 @@ import threading
 from datetime import datetime, timedelta
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _DEVICES_PATH = os.path.join(_DATA_DIR, "paired_devices.json")
 
 CODE_TTL_MINUTES = 10
@@ -57,7 +57,8 @@ def redeem_code(code, device_name):
     global _current_code, _code_expires_at, _failed_attempts
     with _lock:
         if _current_code is None or _code_expires_at is None:
-            raise ValueError("No pairing code has been generated")
+            raise ValueError("There's no pairing code waiting - it was already used, or none was made. "
+                             "Show a new one on the device that's already set up")
         if datetime.now() > _code_expires_at:
             raise ValueError("Pairing code has expired")
         if not secrets.compare_digest(str(code or "").strip(), _current_code):
@@ -66,13 +67,14 @@ def redeem_code(code, device_name):
                 _current_code = _code_expires_at = None
                 raise ValueError("Too many wrong codes - show a new pairing code and try again")
             raise ValueError("Incorrect pairing code")
-        # Each code pairs one device, then it is used up.
-        _current_code = _code_expires_at = None
-
         device_name = str(device_name or "").strip()[:40] or "New device"
         devices = _load_devices()
         if len(devices) >= MAX_DEVICES:
+            # Checked before the code is used up, so it still works once
+            # a device has been unpaired.
             raise ValueError(f"At most {MAX_DEVICES} paired devices - unpair one first")
+        # Each code pairs one device, then it is used up.
+        _current_code = _code_expires_at = None
         device = {
             "id": f"device-{secrets.token_hex(4)}",
             "name": device_name,

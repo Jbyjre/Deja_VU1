@@ -60,6 +60,24 @@ class TestMJPEG(unittest.TestCase):
         with self.assertRaises(ValueError):
             camera.save_settings({"stream_url": "not a url"})
 
+    def test_unreachable_camera_is_explained_in_words(self):
+        # It used to read "Couldn't reach the camera: <urlopen error [Errno 111] ...>".
+        probe = HTTPServer(("127.0.0.1", 0), FakeCamera)
+        port = probe.server_port
+        probe.server_close()                          # nothing listens there now
+        with self.assertRaises(ValueError) as caught:
+            camera.open_stream(f"http://127.0.0.1:{port}/stream", timeout=2)
+        self.assertEqual(str(caught.exception),
+                         f"The camera at 127.0.0.1:{port} refused the connection - "
+                         "is it on, and is that the right address and port?")
+
+    def test_watchdog_is_readable_without_a_printer(self):
+        # The page reads it to flag a frozen picture; a printer whose link is
+        # down must not hide it, since the camera has nothing to do with that.
+        import app
+        self.assertIn("/api/camera", app._APP_ROUTES)
+        self.assertNotIn("/api/camera", app._DATA_ROUTES)
+
 
 if __name__ == "__main__":
     unittest.main()

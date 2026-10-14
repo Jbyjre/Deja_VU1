@@ -30,6 +30,33 @@ import tempfile
 import time
 
 
+def _data_dir():
+    """
+    Where every module keeps its files: backend/data/, or the folder named
+    by the DEJAVU_DATA_DIR environment variable.
+
+    The automated tests change printers, prices, spools and settings on
+    purpose. Pointed at backend/data/ they replaced the real ones with test
+    values - running the tests wiped your own setup. So whenever the test
+    runner is loaded and no folder was named, a fresh temporary folder is
+    used instead. The dashboard itself never loads the test runner.
+    """
+    named = os.environ.get("DEJAVU_DATA_DIR")
+    if named:
+        return os.path.abspath(named)
+    if "unittest" in sys.modules or "pytest" in sys.modules:
+        import atexit
+        import shutil
+        folder = tempfile.mkdtemp(prefix="dejavu-test-data-")
+        os.environ["DEJAVU_DATA_DIR"] = folder      # one folder for the whole run
+        atexit.register(shutil.rmtree, folder, ignore_errors=True)
+        return folder
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+DATA_DIR = _data_dir()
+
+
 def load_json(path, default):
     """The file's contents, or `default` if it is missing or unreadable."""
     try:

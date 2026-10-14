@@ -58,6 +58,27 @@ class Storage(unittest.TestCase):
     def test_missing_file_gives_default(self):
         self.assertEqual(storage.load_json(self.path, []), [])
 
+    def test_tests_never_touch_the_real_data_folder(self):
+        # The tests replace printers, prices and spools on purpose; pointed
+        # at backend/data they wiped the real setup of whoever ran them.
+        real = os.path.join(os.path.dirname(os.path.abspath(storage.__file__)), "data")
+        self.assertNotEqual(os.path.abspath(storage.DATA_DIR), os.path.abspath(real))
+        for module in (dv_app.fleet, dv_app.maintenance, dv_app.cost_calculator,
+                       dv_app.filament_inventory, dv_app.file_library, dv_app.modules):
+            self.assertEqual(module._DATA_DIR, storage.DATA_DIR, module.__name__)
+
+    def test_the_dashboard_uses_backend_data_unless_told_otherwise(self):
+        backend = os.path.dirname(os.path.abspath(storage.__file__))
+        script = ("import os, sys; os.environ.pop('DEJAVU_DATA_DIR', None); "
+                  f"sys.path.insert(0, {backend!r}); import storage; print(storage.DATA_DIR)")
+        import subprocess
+        out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)
+        self.assertEqual(out.stdout.strip(), os.path.join(backend, "data"))
+        out = subprocess.run([sys.executable, "-c", script.replace(
+            "os.environ.pop('DEJAVU_DATA_DIR', None)", f"os.environ['DEJAVU_DATA_DIR'] = {self.dir!r}")],
+            capture_output=True, text=True, check=True)
+        self.assertEqual(out.stdout.strip(), self.dir)
+
     def test_damaged_file_is_set_aside_and_default_returned(self):
         os.makedirs(os.path.dirname(self.path))
         with open(self.path, "w") as fh:

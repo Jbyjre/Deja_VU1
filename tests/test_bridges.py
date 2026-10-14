@@ -11,6 +11,7 @@ raised.
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
@@ -114,6 +115,24 @@ class TestHomeAssistantPush(unittest.TestCase):
                        "sensor.dejavu1_t0_temperature", "sensor.dejavu1_chamber_temperature"):
             self.assertIn(entity, result["results"])
             self.assertFalse(result["results"][entity]["ok"])
+        # One overall reason in words, which the dashboard shows - it used
+        # to find none and say "Push failed: unknown error".
+        self.assertEqual(result["error"], result["results"]["sensor.dejavu1_state"]["error"])
+        self.assertTrue(result["error"])
+
+    def test_some_sensors_refused_says_how_many_and_why(self):
+        home_assistant_bridge.save_settings({"base_url": "http://ha.local:8123", "token": "sekret"})
+        calls = []
+
+        def put(base_url, token, entity_id, value, attributes):
+            calls.append(entity_id)
+            return ({"ok": False, "status": 400, "error": "HA said 400: bad entity"}
+                    if len(calls) == 2 else {"ok": True, "status": 200})
+        with mock.patch.object(home_assistant_bridge, "_put_state", side_effect=put):
+            result = home_assistant_bridge.push_sensors()
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"], f"1 of {result['entities']} sensors were refused - "
+                                          "the first said: HA said 400: bad entity")
 
 
 if __name__ == "__main__":
