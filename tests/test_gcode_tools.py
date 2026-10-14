@@ -87,6 +87,19 @@ class TestPreflight(unittest.TestCase):
         self.assertIn("unknown_tool", errors)
         self.assertIn("nozzle_too_hot", errors)
 
+    def test_add_on_toolheads_say_how_to_fix_them(self):
+        # multiACE numbers its extra slots T4-T15 (T = unit * 4 + slot) and
+        # its post-processor rewrites them before printing - a raw one is
+        # still refused, but the message says what to run.
+        pre = gcode_tools.preflight("PRINT_START\nT6\nG1 X10 Y10 Z0.2 E1\n")
+        msg = next(f["message"] for f in pre["errors"] if f["code"] == "unknown_tool")
+        self.assertIn("post-processor", msg)
+        self.assertNotIn("post-processor", next(f["message"] for f in gcode_tools.preflight(
+            "PRINT_START\nT42\nG1 X10 Y10 Z0.2 E1\n")["errors"] if f["code"] == "unknown_tool"))
+        # After multiACE's rewrite the file only asks for T0-T3 plus its swap macro.
+        errors, _, _ = self.codes("PRINT_START\nT2\nACE_SWAP_HEAD HEAD=2 ACE=1\nG1 X10 Y10 Z0.2 E1\n")
+        self.assertNotIn("unknown_tool", errors)
+
     def test_no_extrusion_blocks(self):
         errors, _, _ = self.codes("PRINT_START\nG1 X10 Y10\n")
         self.assertIn("no_extrusion", errors)

@@ -528,6 +528,8 @@ body {
   animation: rise .4s cubic-bezier(.2, .9, .3, 1) both;
 }
 .task:hover { background: rgba(255, 255, 255, .68); }
+/* Redrawn by a timer: no entrance animation again (see paint() in app.js). */
+.is-settled :is(.crow, .task, .ring-cell) { animation: none; }
 
 .task::before {
   content: ""; position: absolute;

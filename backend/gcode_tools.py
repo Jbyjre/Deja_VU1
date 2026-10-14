@@ -21,6 +21,7 @@ the coordinates actually written in the file; it cannot see inside Klipper
 macros such as PRINT_START, which run on the printer.
 """
 
+import json
 import math
 import re
 
@@ -158,6 +159,40 @@ _EXT_PARAM = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(\S+)")
 MAX_BED_C = 120
 
 
+MAX_OBJECTS = 64
+MAX_POLYGON_POINTS = 64
+
+
+def object_definition(code):
+    """
+    One EXCLUDE_OBJECT_DEFINE line -> {"name", "center"?, "polygon"?}, the
+    shape Klipper keeps it in (extras/exclude_object.py: the name upper-cased,
+    CENTER as "x,y", POLYGON as a JSON list of [x, y] points). Slicers write
+    one per object at the top of the file when "label objects" is on, which
+    Snapmaker's U1 profiles turn on - it's what lets one object be skipped
+    mid-print. None if the line names nothing.
+    """
+    ext = _extended(code)
+    name = ext.get("NAME", "").upper()
+    if not name or len(name) > 128:
+        return None
+    obj = {"name": name}
+    center = [_num(v) for v in ext.get("CENTER", "").split(",")]
+    if len(center) == 2 and None not in center:
+        obj["center"] = [round(v, 2) for v in center]
+    try:
+        raw = json.loads(ext["POLYGON"]) if "POLYGON" in ext else None
+    except ValueError:
+        raw = None
+    if isinstance(raw, list):
+        points = [[round(float(p[0]), 2), round(float(p[1]), 2)] for p in raw
+                  if isinstance(p, list) and len(p) == 2 and all(isinstance(v, (int, float)) for v in p)]
+        if len(points) >= 3:
+            step = max(1, -(-len(points) // MAX_POLYGON_POINTS))
+            obj["polygon"] = points[::step]
+    return obj
+
+
 def klipper_command(raw):
     """(command, params, code) for one line, exactly as Klipper reads it."""
     line = raw.strip()
@@ -238,6 +273,7 @@ def analyze(text, want_toolpath=True):
 
     findings = []
     counts = {}
+    objects = []
 
     def flag(level, code, line_no, message):
         # Keep the list readable: report the first few of each kind, count the rest.
@@ -273,8 +309,17 @@ def analyze(text, want_toolpath=True):
         if head.startswith("T") and head[1:].isdigit():
             tool = int(head[1:])
             if tool not in VALID_TOOLS:
+                # T4 and up are how a slicer numbers the extra slots of a
+                # filament add-on (multiACE: T = unit * 4 + slot, T4-T15).
+                # They mean nothing to a stock U1 until the add-on's own
+                # post-processor rewrites them (multiACE turns them into T0-T3
+                # plus ACE_SWAP_HEAD), so a raw one is still refused - with
+                # the way to fix it.
+                hint = (" - if this file was sliced for multiACE or another filament add-on, run the add-on's "
+                        "post-processor on it first (multiACE rewrites T4-T15 into ACE_SWAP_HEAD swaps)"
+                        if 4 <= tool <= 15 else "")
                 flag("error", "unknown_tool", line_no,
-                     f"Asks for toolhead {head}; the U1 has T0-T3")
+                     f"Asks for toolhead {head}; the U1 has T0-T3{hint}")
             continue
         if head == "PRINT_START":
             seen_print_start, homed, heated = True, True, True
@@ -308,6 +353,11 @@ def analyze(text, want_toolpath=True):
                          f"Sets the {'bed' if bed else 'nozzle'} to {s:.0f}°C; this dashboard allows at most {top}°C")
                 if s >= 150 and not bed:
                     heated = True
+            continue
+        if head == "EXCLUDE_OBJECT_DEFINE":
+            obj = object_definition(code)
+            if obj and len(objects) < MAX_OBJECTS and all(o["name"] != obj["name"] for o in objects):
+                objects.append(obj)
             continue
         if head == "G92":
             for axis in ("X", "Y", "Z", "E"):
@@ -452,6 +502,7 @@ def analyze(text, want_toolpath=True):
         "footprint_mm": ([round(ext_max[0] - ext_min[0], 1), round(ext_max[1] - ext_min[1], 1)]
                          if has_extrusion else None),
         "tools_used": sorted(f"T{t}" for t in filament_mm),
+        "objects": objects,
         "filament_mm": {f"T{t}": round(v, 1) for t, v in filament_mm.items()},
         "filament_grams_by_tool": grams_by_tool,
         "filament_grams": meta.get("filament_grams") or round(sum(grams_by_tool.values()), 2),

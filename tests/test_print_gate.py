@@ -40,10 +40,25 @@ class TestGate(GateCase):
         self.assertTrue(any("Pre-flight" in r for r in gate["blocking"]))
 
     def test_wrong_colour_blocks(self):
-        with mock_moonraker.use_printer("u1-garage"):     # T0 has White loaded
+        with mock_moonraker.use_printer("u1-garage"):
+            mock_moonraker.load_filament("T0", 1)          # White, where the cube wants orange
             gate = print_gate.summary("calibration_cube_20mm.gcode")
         self.assertEqual(gate["verdict"], "blocked")
         self.assertEqual(gate["filament"][0]["status"], "mismatch")
+
+    def test_the_demo_tour_can_really_print_a_sample(self):
+        # The idle demo printer has what the sample files were sliced for,
+        # so "Files -> Add sample files -> Print..." ends in a started print.
+        with mock_moonraker.use_printer("u1-garage"):
+            gate = print_gate.summary("calibration_cube_20mm.gcode")
+            self.assertEqual(gate["verdict"], "confirm", gate["blocking"])
+            self.assertEqual(print_gate.summary("two_colour_coaster.gcode")["verdict"], "confirm")
+            state = printer_control.start_print("three_cubes_skip_one.gcode", confirmed=True)
+            self.assertEqual(state["state"], "printing")
+            # The file's own object labels arrive as the printer's plate, ready to skip one.
+            self.assertEqual(len(state["objects"]["list"]), 3)
+            skipped = printer_control.exclude_object("CUBE.STL_ID_1_COPY_0")
+            self.assertEqual(skipped["objects"]["excluded"], ["CUBE.STL_ID_1_COPY_0"])
 
     def test_matching_file_needs_only_a_confirm_for_overdue_maintenance(self):
         mock_moonraker.cancel_print()

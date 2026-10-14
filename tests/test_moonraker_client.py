@@ -208,7 +208,8 @@ class TestStateTranslation(unittest.TestCase):
         import mock_moonraker
         simulated = mock_moonraker.get_printer_state()
         real = mc.translate_state(self.fake_status(), self.ctx())
-        self.assertLessEqual(set(simulated) - {"printer_id", "printer_name"}, set(real))
+        # "objects" is only there while a print that labels its objects runs.
+        self.assertLessEqual(set(simulated) - {"printer_id", "printer_name", "objects"}, set(real))
         self.assertLessEqual(set(next(iter(simulated["toolheads"].values()))),
                              set(real["toolheads"]["T0"]))
 
@@ -340,6 +341,42 @@ class TestCommands(WireTest):
         state = self.printer.cancel_print()
         self.assertEqual(state["state"], "ready")
         self.assertIsNone(state["current_file"])
+
+    def test_skipping_one_object_is_sent_and_read_back(self):
+        self.fake.define_objects("cube.stl_id_0_copy_0", "cube.stl_id_1_copy_0", "cube.stl_id_2_copy_0")
+        self.printing()
+        self.assertTrue(wait_for(lambda: len((self.printer.snapshot().get("objects") or {}).get("list", [])) == 3))
+        state = self.printer.exclude_object("CUBE.STL_ID_1_COPY_0")
+        self.assertEqual(state["objects"]["excluded"], ["CUBE.STL_ID_1_COPY_0"])
+        self.assertIn("EXCLUDE_OBJECT NAME=CUBE.STL_ID_1_COPY_0", self.fake.scripts)
+        self.assertEqual(state["objects"]["list"][0]["polygon"][0], [90.0, 110.0])
+
+    def test_skipping_refuses_what_klipper_would_silently_accept(self):
+        self.fake.define_objects("a", "b")
+        self.printing()
+        self.assertTrue(wait_for(lambda: self.printer.snapshot().get("objects")))
+        for name, words in (("NOT_THERE", "no object called"), ):
+            with self.assertRaisesRegex(ValueError, words):
+                self.printer.exclude_object(name)
+        self.printer.exclude_object("A")
+        with self.assertRaisesRegex(ValueError, "last object"):
+            self.printer.exclude_object("B")
+        self.assertEqual([s for s in self.fake.scripts if s.startswith("EXCLUDE_OBJECT")], ["EXCLUDE_OBJECT NAME=A"])
+
+    def test_objects_only_show_while_printing(self):
+        self.fake.define_objects("a", "b")
+        self.assertTrue(wait_for(lambda: self.printer.snapshot()["state"] == "ready"))
+        self.assertNotIn("objects", self.printer.snapshot())
+        with self.assertRaisesRegex(ValueError, "Nothing is printing"):
+            self.printer.exclude_object("A")
+
+    def test_filament_is_asked_for_not_only_waited_for(self):
+        # A touchscreen change the printer never pushes still shows up.
+        with self.fake.lock:
+            self.fake.status["print_task_config"]["filament_color_rgba"][0] = "00FF00FF"
+        self.assertTrue(self.printer._requery_filament(now=10 ** 9))
+        self.assertEqual(self.printer.snapshot()["toolheads"]["T0"]["filament_color_hex"].upper(), "#00FF00")
+        self.assertFalse(self.printer._requery_filament(now=10 ** 9 + 1))     # not again so soon
 
     def test_pausing_an_idle_printer_is_refused_before_anything_is_sent(self):
         # Klipper would answer "ok" and set is_paused on an idle printer.

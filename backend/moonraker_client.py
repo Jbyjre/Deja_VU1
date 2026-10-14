@@ -85,6 +85,11 @@ WS_MAX_MESSAGE = 8 * 1024 * 1024
 HISTORY_PAGE = 500
 HISTORY_MAX_JOBS = 20000
 PING_INTERVAL = 15.0
+# U1 Print Hub (a Snapmaker Innovation Fund winner, tested on real U1s)
+# found print_task_config doesn't always push an update when a filament is
+# changed on the touchscreen, so what each head has loaded is also asked
+# for directly this often rather than trusted to arrive.
+FILAMENT_REQUERY = 30.0
 DEAD_AFTER = 60.0              # nothing heard (not even a pong) for this long: reconnect
 KLIPPY_RETRY = 2.0             # Moonraker's docs: ask again in 2 s while Klipper starts
 LOG_LINES = 300
@@ -506,6 +511,9 @@ def translate_state(status, ctx):
         "klipper_state": raw,
         "real": True,
     }
+    plate = plate_objects(_obj(status, "exclude_object"))
+    if plate and state in ("printing", "paused"):
+        out["objects"] = plate
     table = ptc.get("extruder_map_table")
     if isinstance(table, list) and extruders:
         # Only the physical heads' slots: the U1 pads the table to 32 logical
@@ -515,6 +523,62 @@ def translate_state(status, ctx):
         if mapping:
             out["extruder_map"] = mapping
     return out
+
+
+def plate_objects(eo):
+    """
+    Klipper's exclude_object status -> {"list", "excluded", "current"}, or
+    None when the running file defined no objects. Fields as
+    extras/exclude_object.py reports them (Snapmaker's U1 fork included):
+    objects [{name, center?, polygon?}], excluded_objects, current_object.
+    """
+    eo = eo if isinstance(eo, dict) else {}
+    raw = eo.get("objects")
+    if not isinstance(raw, list) or not raw:
+        return None
+    listed = []
+    for o in raw[:64]:
+        if not isinstance(o, dict) or not _str(o.get("name")):
+            continue
+        item = {"name": _str(o.get("name"))[:128]}
+        center = o.get("center")
+        if isinstance(center, list) and len(center) == 2 and all(_num(v) is not None for v in center):
+            item["center"] = [round(_num(v), 2) for v in center]
+        poly = o.get("polygon")
+        if isinstance(poly, list):
+            pts = [[round(_num(p[0]), 2), round(_num(p[1]), 2)] for p in poly
+                   if isinstance(p, list) and len(p) == 2 and None not in (_num(p[0]), _num(p[1]))]
+            if len(pts) >= 3:
+                item["polygon"] = pts[::max(1, -(-len(pts) // 64))]
+        listed.append(item)
+    if not listed:
+        return None
+    excluded = eo.get("excluded_objects")
+    excluded = [_str(n) for n in excluded if _str(n)] if isinstance(excluded, list) else []
+    current = _str(eo.get("current_object")) or None
+    return {"list": listed, "excluded": excluded, "current": current}
+
+
+def exclude_refusal(state, name):
+    """
+    Why skipping `name` must not be sent right now, in words - or None.
+    Klipper's EXCLUDE_OBJECT accepts any name without complaint (it just
+    adds it to the excluded list), so the check that it's real is here.
+    """
+    if state.get("state") not in ("printing", "paused"):
+        return "Nothing is printing right now"
+    plate = state.get("objects")
+    if not plate:
+        return "This print doesn't label its objects, so one can't be skipped - turn on " \
+               "\"Label objects\" in the slicer for the next one"
+    names = [o["name"] for o in plate["list"]]
+    if name not in names:
+        return f"There's no object called {name} in this print"
+    if name in plate["excluded"]:
+        return f"{name} is already being skipped"
+    if len([n for n in names if n not in plate["excluded"]]) <= 1:
+        return "That's the last object still printing - use Cancel to stop the whole print"
+    return None
 
 
 def placeholder_state(printer_id, name, reason):
@@ -853,6 +917,7 @@ _BASE_OBJECTS = {
     "heater_bed": ["temperature", "target"],
     "print_task_config": ["filament_exist", "filament_type", "filament_color_rgba", "filament_vendor",
                           "extruder_map_table"],
+    "exclude_object": ["objects", "excluded_objects", "current_object"],
 }
 _EXTRUDER_FIELDS = ["temperature", "target", "state"]
 
@@ -883,6 +948,7 @@ class MoonrakerPrinter:
         self._extruders = {}           # {"T0": "extruder", ...}
         self._chamber = None
         self._subscription = {}
+        self._filament_asked = float("-inf")
         self._klippy_state = None
         self._klippy_message = None
         self._job = None
@@ -1023,11 +1089,35 @@ class MoonrakerPrinter:
                     raise PrinterUnreachable(f"Nothing heard from {self.endpoint.label} for "
                                              f"{DEAD_AFTER:g} s - the connection is dead")
                 conn.ping()
+                self._requery_filament()
             if not self._stop.is_set():
                 raise PrinterUnreachable(self._last_error if not reader.is_alive() else "Connection ended")
         finally:
             conn.close()
             reader.join(timeout=2)
+
+    def _requery_filament(self, now=None):
+        """Ask for print_task_config outright, at most every FILAMENT_REQUERY seconds."""
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            fields = (self._subscription or {}).get("print_task_config")
+            due = fields is not None and now - self._filament_asked >= FILAMENT_REQUERY
+            if due:
+                self._filament_asked = now
+        if not due:
+            return False
+        try:
+            result = self._call("printer.objects.query", {"objects": {"print_task_config": fields}})
+        except PrinterCommandError as exc:
+            self._note("filament re-query failed (carrying on)", error=str(exc))
+            return False
+        status = result.get("status") if isinstance(result, dict) else None
+        if isinstance(status, dict) and isinstance(status.get("print_task_config"), dict):
+            with self.lock:
+                self._merge({"print_task_config": status["print_task_config"]})
+            self.on_change(self.id)
+            return True
+        return False
 
     def _setup(self):
         """server.info, then (Klipper willing) list objects and subscribe. True when live."""
@@ -1532,6 +1622,16 @@ class MoonrakerPrinter:
                              "toolhead through the print")
         self._gcode("G28 " + " ".join(axes), timeout=HOME_TIMEOUT)
         return {"homed": list(axes)}
+
+    def exclude_object(self, name):
+        """Skip one labelled object for the rest of the print (Klipper's EXCLUDE_OBJECT)."""
+        state = self._fresh_state()
+        refusal = exclude_refusal(state, name)
+        if refusal:
+            raise ValueError(refusal)
+        self._log_command("exclude", name)
+        self._gcode(f"EXCLUDE_OBJECT NAME={name}")
+        return self._await(lambda s: name in ((s.get("objects") or {}).get("excluded") or []), STATE_WAIT)
 
     def run_gcode(self, command):
         if command.strip().upper().split(" ")[0] == "M112":

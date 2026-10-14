@@ -131,7 +131,9 @@ class TestEvents(SandboxTest):
         [busy] = sandbox.fire("start_print", "u1-studio")         # paused mid-print
         self.assertFalse(busy["ok"])
         self.assertIn("Confirm Print blocked it", busy["detail"])
-        [wrong] = sandbox.fire("start_print", "u1-garage")        # White on T0; the cube wants orange
+        with mock_moonraker.use_printer("u1-garage"):
+            mock_moonraker.load_filament("T0", 1)                  # White on T0; the cube wants orange
+        [wrong] = sandbox.fire("start_print", "u1-garage")
         self.assertIn("sliced for #F26A1B", wrong["detail"])
         self.assertEqual(self.state("u1-garage")["state"], "ready")
 

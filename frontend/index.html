@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deja Vu1 — Snapmaker U1 Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%234a8df8' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%234a8df8'/%3E%3C/svg%3E">
+<!-- Add to Home Screen: a real icon and name, opening without browser chrome where the phone allows. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#f0f1f5">
+<meta name="apple-mobile-web-app-title" content="Deja Vu1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="workshop.css">
 <link rel="stylesheet" href="farm.css">
@@ -375,6 +383,24 @@
     <!-- With printer control switched off, its controls aren't offered - just the switch. -->
     <section class="card liquid-glass" data-module-off="printer_control" hidden></section>
 
+    <!-- Skip one object mid-print (Klipper's exclude_object). Shown while a
+         print runs; the list is the control, the map shows where each is. -->
+    <div data-module-body="printer_control">
+      <section class="card liquid-glass plate-card" id="ctrl-plate" hidden>
+        <div class="card-head"><div><h2>Objects on the plate</h2>
+          <p class="card-sub" id="plate-sub">If one fails, skip just that one - the rest keep printing.</p></div></div>
+        <div class="plate-layout" id="plate-body">
+          <svg class="plate-map" id="plate-map" viewBox="-6 -6 282 298" role="img" aria-labelledby="plate-map-title">
+            <title id="plate-map-title">The 270 by 270 mm bed, seen from above, with each object on it</title>
+          </svg>
+          <div class="plate-side">
+            <ul class="plate-list" id="plate-list" aria-label="Objects in this print"></ul>
+            <div class="plate-action" id="plate-action" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
     <section class="liquid-glass divider-row cols-4" id="ctrl-temps" style="margin-bottom:20px;" data-module-body="printer_control"></section>
 
     <div class="grid-2" data-module-body="printer_control">
@@ -695,6 +721,15 @@
             <input type="number" id="spool-grams" placeholder="Grams" aria-label="Grams on the spool" style="width:90px;">
             <button class="btn primary" type="submit">Add spool</button>
           </form>
+          <details class="log" id="spoolman-wrap" data-module-body="filament_inventory">
+            <summary>Import from Spoolman</summary>
+            <form id="spoolman-form" class="inline-form spoolman-form">
+              <label class="sr-only" for="spoolman-url">Spoolman's address</label>
+              <input type="url" id="spoolman-url" placeholder="http://192.168.1.20:7912" autocomplete="url" inputmode="url">
+              <button class="btn" type="submit">Import spools</button>
+            </form>
+            <p class="log-empty" id="spoolman-result">Brings in every spool you track in Spoolman, with its colour and grams left. Importing again updates them; spools you added here stay as they are.</p>
+          </details>
           <div id="spool-idle-note" class="log-empty" hidden></div>
           <details class="log" id="forecast-wrap" data-module-body="filament_inventory">
             <summary>How long each spool will last</summary>
@@ -884,7 +919,7 @@
             <select id="demo-fail-action">
               <option value="pause">Pause</option><option value="resume">Resume</option>
               <option value="cancel">Cancel</option><option value="start">Start print</option>
-              <option value="temperature">Set temperature</option>
+              <option value="temperature">Set temperature</option><option value="exclude">Skip an object</option>
             </select>
             <button class="btn" id="demo-fail-btn" type="button">Make the next one fail</button>
           </div>

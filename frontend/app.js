@@ -293,6 +293,25 @@ function api(path) {
  * One polite live region for toasts, so screen-reader users hear the same
  * "Paused — confirmed" or "Pause failed" a sighted user sees. */
 
+/* Copy text for a bug report. navigator.clipboard only exists on https://
+ * and localhost, and a phone on the LAN reaches this over plain http, so
+ * fall back to the old select-and-copy - and say so if both are refused. */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+  } catch (_) { /* fall through to the fallback */ }
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(area);
+  area.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+  area.remove();
+  return ok;
+}
+
 function toast(message, kind = 'info', ms = 4200) {
   const host = $('toasts');
   if (!host) return;
@@ -391,6 +410,18 @@ document.addEventListener('click', async (e) => {
 });
 
 const STATUS_TEXT = { overdue: 'Overdue', due_soon: 'Due soon', ok: 'OK' };
+
+/* Panels that refresh on a timer are redrawn only when what they show has
+ * changed, and their entrance animation plays the first time only - played
+ * on every refresh it read as the rows blinking out and back every 5 s. */
+const paintedHTML = new WeakMap();
+function paint(host, html) {
+  if (!host || paintedHTML.get(host) === html) return false;
+  if (paintedHTML.has(host)) host.classList.add('is-settled');
+  paintedHTML.set(host, html);
+  host.innerHTML = html;
+  return true;
+}
 
 function stagger(nodes, step = 45) {
   nodes.forEach((node, i) => { node.style.animationDelay = `${i * step}ms`; });
@@ -618,7 +649,7 @@ async function loadMaintenance() {
     clearStats();
     $('tasks').innerHTML = moduleDisabledEmpty('Maintenance reminders');
     $('log-wrap').hidden = true;
-    $('overview-maintenance').innerHTML = moduleDisabledEmpty('Maintenance reminders');
+    paint($('overview-maintenance'), moduleDisabledEmpty('Maintenance reminders'));
     return;
   }
 
@@ -627,7 +658,7 @@ async function loadMaintenance() {
     $('tasks').innerHTML = EMPTY('No printer connected',
       'Maintenance reminders appear once print history is available. Turn on demo data to preview them.');
     $('log-wrap').hidden = true;
-    $('overview-maintenance').innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    paint($('overview-maintenance'), EMPTY('No printer connected', 'Turn on demo data to preview.'));
     return;
   }
 
@@ -653,7 +684,7 @@ async function loadMaintenance() {
   });
 
   // Overview tab gets the top 3 most urgent, read-only.
-  $('overview-maintenance').innerHTML = data.tasks.length
+  paint($('overview-maintenance'), data.tasks.length
     ? data.tasks.slice(0, 3).map(t => `
         <div class="task ${t.status}" style="margin-bottom:9px;">
           <div>
@@ -661,7 +692,7 @@ async function loadMaintenance() {
             <div class="task-meta">${esc(t.reason)}</div>
           </div>
         </div>`).join('')
-    : EMPTY('All caught up', 'Nothing due right now.');
+    : EMPTY('All caught up', 'Nothing due right now.'));
 
   $('log-wrap').hidden = false;
   loadMaintenanceLog();
@@ -706,17 +737,17 @@ async function loadRings() {
   const data = await getJSON(api('/api/leds'));
 
   if (isModuleDisabled(data)) {
-    $('rings').innerHTML = moduleDisabledEmpty('Dock status rings');
+    paint($('rings'), moduleDisabledEmpty('Dock status rings'));
     $('rings-note').hidden = true;
     return;
   }
   if (!hasData(data) || !data.rings) {
-    $('rings').innerHTML = EMPTY('No signal', 'Ring colours follow live printer state.');
+    paint($('rings'), EMPTY('No signal', 'Ring colours follow live printer state.'));
     $('rings-note').hidden = true;
     return;
   }
 
-  $('rings').innerHTML = data.rings.map(ring => {
+  paint($('rings'), data.rings.map(ring => {
     const effect = ring.effect === 'solid' ? '' : ring.effect;
     const pct = ring.state === 'active' ? `<div class="ring-pct">${Math.round(ring.progress * 100)}%</div>` : '';
     return `
@@ -726,7 +757,7 @@ async function loadRings() {
         <div class="ring-label">${esc(ring.label)}</div>
         ${pct}
       </div>`;
-  }).join('');
+  }).join(''));
 
   stagger([...document.querySelectorAll('.ring-cell')], 60);
   $('rings-note').hidden = false;
@@ -739,19 +770,19 @@ async function loadColorCheck() {
 
   if (isModuleDisabled(data)) {
     $('colorfile').hidden = true;
-    $('colors').innerHTML = moduleDisabledEmpty('Right colour loaded?');
+    paint($('colors'), moduleDisabledEmpty('Right colour loaded?'));
     $('colors-note').hidden = true;
     return;
   }
   if (data.overall === 'no_sensor') {
     $('colorfile').hidden = true;
-    $('colors').innerHTML = EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.');
+    paint($('colors'), EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.'));
     $('colors-note').hidden = true;
     return;
   }
   if (!hasData(data) || !data.checks) {
     $('colorfile').hidden = true;
-    $('colors').innerHTML = EMPTY('Nothing to check', 'Needs a print file and a sensor reading.');
+    paint($('colors'), EMPTY('Nothing to check', 'Needs a print file and a sensor reading.'));
     $('colors-note').hidden = true;
     return;
   }
@@ -759,7 +790,7 @@ async function loadColorCheck() {
   $('colorfile').textContent = data.filename;
   $('colorfile').hidden = false;
 
-  $('colors').innerHTML = data.checks.map(check => `
+  paint($('colors'), data.checks.map(check => `
     <div class="crow">
       <div class="crow-top">
         <span class="crow-head">Toolhead ${esc(check.toolhead)}</span>
@@ -771,7 +802,7 @@ async function loadColorCheck() {
         <div class="sw"><span class="chip" style="background:${esc(check.detected_hex)}"></span> detected</div>
       </div>
       <div class="crow-msg">${esc(check.message)}</div>
-    </div>`).join('');
+    </div>`).join(''));
 
   stagger([...document.querySelectorAll('.crow')], 70);
   $('colors-note').hidden = false;
@@ -790,6 +821,7 @@ function renderControlTab(state) {
   const gcodeSend = $('gcode-send');
   const temps = $('ctrl-temps');
 
+  renderPlate(state);
   if (!state || !state.state) {
     dot.style.background = '';
     text.textContent = 'No printer connected';
@@ -876,6 +908,125 @@ function renderControlTab(state) {
     val.style.color = active ? 'var(--accent-text)' : '';
     temps.querySelector(`[data-temp-target="${th}"]`).textContent = info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off';
   });
+}
+
+/* ---- Objects on the plate: skip one, keep the rest ------------------------
+ * Klipper's exclude_object lists what the file labelled. The list is the
+ * control (real buttons, keyboard and screen-reader friendly); the map
+ * shows where each one is on the bed. Skipping asks twice, because it
+ * can't be undone for this print. Idea from U1 Print Hub (a Snapmaker
+ * Innovation Fund winner); written for this dashboard. */
+const plateUI = { selected: null, confirmUntil: 0, sig: '' };
+
+function plateShape(o) {
+  if (o.polygon && o.polygon.length >= 3) return o.polygon;
+  if (o.center) {
+    const [x, y] = o.center, r = 6;
+    return [[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]];
+  }
+  return null;
+}
+
+function renderPlate(state) {
+  const card = $('ctrl-plate');
+  if (!card) return;
+  const running = state && (state.state === 'printing' || state.state === 'paused');
+  card.hidden = !running;
+  if (!running) { plateUI.selected = null; plateUI.sig = ''; return; }
+  const plate = state.objects;
+  const body = $('plate-body');
+  if (!plate || !plate.list.length) {
+    if (plateUI.sig !== 'none') {
+      plateUI.sig = 'none';
+      body.hidden = true;
+      $('plate-sub').textContent = 'This print doesn\'t label its objects, so none can be skipped. Turn on '
+        + '"Label objects" in the slicer (Snapmaker\'s U1 profiles have it on) for the next one.';
+    }
+    return;
+  }
+  body.hidden = false;
+  const excluded = new Set(plate.excluded);
+  const live = plate.list.filter(o => !excluded.has(o.name));
+  if (plateUI.selected && (!plate.list.some(o => o.name === plateUI.selected) || excluded.has(plateUI.selected))) plateUI.selected = null;
+  const confirming = plateUI.selected && Date.now() < plateUI.confirmUntil;
+  const sig = JSON.stringify([plate.list.map(o => o.name), plate.excluded, plate.current, plateUI.selected, confirming]);
+  if (sig === plateUI.sig) return;
+  plateUI.sig = sig;
+  $('plate-sub').textContent = `${live.length} of ${plate.list.length} still printing. If one fails, skip just that one - the rest keep going.`;
+
+  const short = (n) => n.replace(/_ID_\d+_COPY_\d+$/i, '').replace(/\.(STL|3MF|STEP|OBJ)$/i, '');
+  const copies = (n) => { const m = n.match(/_ID_(\d+)_COPY_(\d+)$/i); return m ? `#${+m[1] + 1}${+m[2] ? `.${+m[2] + 1}` : ''}` : ''; };
+  // Klipper upper-cases names; show them the way a person would write them.
+  const words = (s) => { const w = s.replace(/_/g, ' ').toLowerCase().trim(); return w ? w[0].toUpperCase() + w.slice(1) : s; };
+  const label = (n) => `${words(short(n))} ${copies(n)}`.trim();
+
+  // The map: bed coordinates have Y pointing away from you; SVG's points down.
+  const grid = [30, 60, 90, 120, 150, 180, 210, 240].map(v =>
+    `<line x1="${v}" y1="0" x2="${v}" y2="270"/><line x1="0" y1="${v}" x2="270" y2="${v}"/>`).join('');
+  const shapes = plate.list.map(o => {
+    const pts = plateShape(o);
+    if (!pts) return '';
+    const cls = excluded.has(o.name) ? 'is-skipped' : o.name === plate.current ? 'is-current' : '';
+    const sel = o.name === plateUI.selected ? ' is-selected' : '';
+    return `<polygon class="plate-obj ${cls}${sel}" data-plate-obj="${esc(o.name)}" points="${pts.map(([x, y]) => `${x},${270 - y}`).join(' ')}"><title>${esc(label(o.name))}</title></polygon>`;
+  }).join('');
+  $('plate-map').innerHTML = `<title id="plate-map-title">The 270 by 270 mm bed, seen from above, with each object on it</title>
+    <defs><pattern id="plate-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" class="plate-hatch-line"/></pattern></defs>
+    <rect class="plate-bed" x="0" y="0" width="270" height="270" rx="10"/>
+    <g class="plate-grid">${grid}</g>${shapes}
+    <text class="plate-front" x="135" y="285" text-anchor="middle">front</text>`;
+
+  $('plate-list').innerHTML = plate.list.map(o => {
+    const skipped = excluded.has(o.name), current = o.name === plate.current;
+    return `<li><button type="button" class="plate-item${o.name === plateUI.selected ? ' is-selected' : ''}${skipped ? ' is-skipped' : ''}"
+        data-plate-pick="${esc(o.name)}" ${skipped ? 'disabled' : ''} aria-pressed="${o.name === plateUI.selected}">
+      <span class="plate-dot ${skipped ? 'is-skipped' : current ? 'is-current' : ''}" aria-hidden="true"></span>
+      <span class="plate-name">${esc(label(o.name))}</span>
+      <span class="plate-state">${skipped ? 'skipped' : current ? 'printing now' : 'waiting'}</span></button></li>`;
+  }).join('');
+
+  const action = $('plate-action');
+  if (!plateUI.selected) {
+    action.innerHTML = `<p class="log-empty">${live.length > 1 ? 'Choose an object to skip it.' : 'Only one object is left - Cancel stops the whole print.'}</p>`;
+  } else {
+    const n = plateUI.selected;
+    action.innerHTML = `<p class="plate-confirm-text">${confirming
+      ? `Skip <b>${esc(label(n))}</b> for the rest of this print? It can't be brought back.`
+      : `<b>${esc(label(n))}</b> selected.`}</p>
+      <div class="plate-buttons">
+        <button class="btn danger" type="button" id="plate-skip">${confirming ? 'Yes, skip it' : 'Skip this object'}</button>
+        <button class="btn" type="button" id="plate-clear">${confirming ? 'Keep printing it' : 'Done'}</button>
+      </div>`;
+    $('plate-clear').onclick = () => { plateUI.selected = null; plateUI.confirmUntil = 0; renderPlate(lastPrinterState); };
+    $('plate-skip').onclick = async (e) => {
+      if (Date.now() >= plateUI.confirmUntil) {
+        plateUI.confirmUntil = Date.now() + 6000;
+        renderPlate(lastPrinterState);
+        setTimeout(() => renderPlate(lastPrinterState), 6100);   // the question times out by itself
+        $('plate-skip').focus();
+        return;
+      }
+      plateUI.confirmUntil = 0;
+      const r = await runCommand(e.currentTarget, '/api/printer/control/exclude', { name: n }, {
+        sending: 'Skipping…', done: `Skipping ${label(n)}`, failed: `Skipping ${label(n)} failed`,
+        expect: s => ((s.objects || {}).excluded || []).includes(n),
+      });
+      if (r.ok) plateUI.selected = null;
+      plateUI.sig = '';
+      renderPlate(lastPrinterState);
+    };
+  }
+  const pick = (name) => {
+    if (excluded.has(name)) return;
+    plateUI.selected = plateUI.selected === name ? null : name;
+    plateUI.confirmUntil = 0;
+    renderPlate(lastPrinterState);
+    const btn = document.querySelector(`[data-plate-pick="${CSS.escape(name)}"]`);
+    if (btn) btn.focus();
+  };
+  document.querySelectorAll('[data-plate-pick]').forEach(b => { b.onclick = () => pick(b.dataset.platePick); });
+  document.querySelectorAll('[data-plate-obj]').forEach(p => { p.onclick = () => pick(p.dataset.plateObj); });
 }
 
 function renderOverviewControl(state) {
@@ -972,10 +1123,11 @@ async function loadFilament() {
   }
 
   const spools = data.spools || [];
+  if (data.spoolman && data.spoolman.url && !$('spoolman-url').value) $('spoolman-url').value = data.spoolman.url;
   host.innerHTML = spools.length ? spools.map(s => `
     <div class="spool-row">
       <span class="spool-swatch" style="background:${esc(s.color_hex || '#888')}"></span>
-      <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}</span>
+      <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}${s.spoolman_id ? ` <small class="spool-src" title="Imported from Spoolman (spool ${esc(s.spoolman_id)})">Spoolman</small>` : ''}</span>
       <span class="spool-grams ${s.grams_remaining < 80 ? 'is-low' : ''}">${s.grams_remaining.toFixed(0)} g</span>
       <button class="btn small" data-remove-spool="${esc(s.id)}">Remove</button>
     </div>`).join('') : EMPTY('No spools tracked', 'Add one below.');
@@ -1002,11 +1154,31 @@ function initSpoolForm() {
     const colorName = $('spool-color-name').value.trim() || 'Unnamed';
     const colorHex = $('spool-color-hex').value;
     const grams = parseFloat($('spool-grams').value) || 0;
-    await postJSON(api('/api/filament/spools'), {
+    const r = await postJSON(api('/api/filament/spools'), {
       material, color_name: colorName, color_hex: colorHex, grams_remaining: grams,
     });
+    // A refused spool keeps what was typed, and says why.
+    if (!r.ok) { toast(`Spool not added: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); return; }
     e.target.reset();
     $('spool-color-hex').value = '#ff7a2f';
+    toast(`Added ${r.body.color_name} ${r.body.material}`, 'ok');
+    loadFilament();
+  });
+  $('spoolman-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const out = $('spoolman-result');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    const r = await postJSON(api('/api/filament/spoolman'), { url: $('spoolman-url').value });
+    btn.disabled = false; btn.textContent = 'Import spools';
+    if (!r.ok) { out.textContent = `Not imported: ${r.body.error || `HTTP ${r.status}`}`; out.classList.add('is-bad'); return; }
+    const b = r.body;
+    out.classList.remove('is-bad');
+    out.textContent = `${b.found} spool${b.found === 1 ? '' : 's'} in Spoolman: ${b.added} added, ${b.updated} updated.`
+      + (b.unknown_weight ? ` ${b.unknown_weight} had no weight in Spoolman - set it there or weigh them here.` : '')
+      + (b.not_added_full ? ` ${b.not_added_full} didn't fit - the inventory is full.` : '')
+      + (b.skipped.length ? ` Skipped: ${b.skipped.join('; ')}.` : '');
+    toast(`Spoolman: ${b.added} added, ${b.updated} updated`, 'ok');
     loadFilament();
   });
 }
@@ -1030,7 +1202,7 @@ async function loadCompare() {
   }
 
   if (isModuleDisabled(compareData) && !rows.length) {
-    host.innerHTML = moduleDisabledEmpty('What changed?');
+    paint(host, moduleDisabledEmpty('What changed?'));
     return;
   }
   if (hasData(compareData) && compareData.has_history) {
@@ -1038,7 +1210,7 @@ async function loadCompare() {
     compareData.differences.forEach(msg => rows.push(`<div class="crow" style="border-left:3px solid var(--warn);">${esc(msg)}</div>`));
   }
 
-  host.innerHTML = rows.length ? rows.join('') : EMPTY('Nothing to check yet', 'Needs a printer connection and print history for this file.');
+  paint(host, rows.length ? rows.join('') : EMPTY('Nothing to check yet', 'Needs a printer connection and print history for this file.'));
 }
 
 function initRepeatSettings() {
@@ -1243,7 +1415,7 @@ async function loadCost() {
   ]);
 
   if (isModuleDisabled(current)) {
-    host.innerHTML = moduleDisabledEmpty('Print cost calculator');
+    paint(host, moduleDisabledEmpty('Print cost calculator'));
     return;
   }
 
@@ -1264,7 +1436,7 @@ async function loadCost() {
       </div>`));
   }
 
-  host.innerHTML = rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.');
+  paint(host, rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.'));
 }
 
 function initCostSettings() {
