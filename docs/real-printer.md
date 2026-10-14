@@ -135,3 +135,15 @@ Said plainly, because a good test suite is not a real machine:
   read back for 12 s; these are generous guesses, not measurements.
 - **Authorization.** API-key and trusted-client handling follows
   Moonraker's docs; the U1's defaults haven't been seen.
+- **Skipping one object.** The `exclude_object` status and command follow
+  Snapmaker's u1-klipper source, and Snapmaker's U1 process profile turns
+  object labels on, but whether the stock U1's `printer.cfg` loads
+  `[exclude_object]` hasn't been seen. The client only subscribes to it when
+  the printer lists it; if it doesn't, the Control tab says the print's
+  objects aren't labelled.
+- **Filament after a touchscreen change.** Asked for every 30 s as well as
+  pushed (U1 Print Hub's finding on real machines); the interval is a guess.
+- **The U1's own chamber camera.** U1 Print Hub's code says a stock U1
+  serves it through Snapmaker's `camera.start_monitor` plugin rather than
+  the usual webcam address. That isn't built here yet: the camera panel still
+  needs a stream address you type in.
