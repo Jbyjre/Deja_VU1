@@ -260,7 +260,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 544 cases
+- **Tests:** `unittest` from the standard library, 557 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -279,16 +279,20 @@ The interface uses an Apple Liquid Glass treatment: translucent panels with
 real edge refraction (an SVG displacement filter, not just a blur), a
 specular highlight that tracks the pointer, a bright rim, and elevation
 shadow — the five layers that separate genuine glass from a blurred box.
-Repeated small panels share one glass surface with plain dividers rather
-than each getting its own blur, both for the look and for performance. It
+The real refracting glass sits on the navigation and floating layer — top
+bar, tab bar, live print pill, menus, sheets and dialogs, the things content
+scrolls under. Content cards keep the same tint, highlight, rim and shadow
+but don't blur what's behind them: behind them is only the soft background
+glow, where a blur looks the same and costs real work every frame. Repeated
+small panels share one surface with plain dividers for the same reason. It
 respects the system settings for reduced transparency, reduced motion, and
 increased contrast, and the layout collapses cleanly to a phone-width screen.
 
 Liquid Glass 2.0 adds four things on top: panels **morph** — a sheet of
 glass deforms on a spring from one element into another (a printer card
 into the overview, a file into its detail view, a button into its dialog,
-the active tab sliding along the tab bar); the highlight and some surfaces
-**drift gently even at rest**; glass laid over glass (dialogs) uses a
+the active tab sliding along the tab bar); on the live print pill and the
+digital twin the highlight **drifts gently even at rest**; glass laid over glass (dialogs) uses a
 **deeper refraction**, so what's underneath visibly bends more than the
 background; and panels **take a tint** from what they're about — the active
 filament's colour, a printer's state, a verdict.

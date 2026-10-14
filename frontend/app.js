@@ -180,6 +180,23 @@ setTimeout(installArcadePlus,50);
 
 const $ = id => document.getElementById(id);
 
+/* Live readings arrive four times a second. Writing the same text or
+ * markup back each time still makes the browser re-measure that part of
+ * the page (and restarts any animation inside replaced markup), so these
+ * only touch the page when the value has actually changed. */
+function setText(el, text) {
+  if (!el) return;
+  text = String(text);
+  if (el.textContent !== text) el.textContent = text;
+}
+function setHTML(el, html) {
+  if (!el) return;
+  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+}
+function setVar(el, name, value) {
+  if (el && el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
+}
+
 function esc(text) {
   return String(text).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -564,17 +581,17 @@ function renderStatusRibbon(data) {
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
-    text.textContent = data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.';
+    setText(text, data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.');
     bar.hidden = true; pct.hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
-    text.textContent = `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`;
+    setText(text, `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`);
     bar.hidden = false; pct.hidden = false;
     // Eases like the other progress visuals (Workshop.tween: each frame
     // closes a fixed fraction of the gap), so switching printers glides.
     const setFill = v => { fill.style.width = `${(v * 100).toFixed(2)}%`; };
     if (window.Workshop && Workshop.tween) Workshop.tween('ribbon', data.progress, setFill); else setFill(data.progress);
-    pct.textContent = `${Math.round(data.progress * 100)}%`;
+    setText(pct, `${Math.round(data.progress * 100)}%`);
   }
 
   renderOverviewControl(data);
@@ -807,24 +824,26 @@ function renderControlTab(state) {
   }
 
   const running = state.state === 'printing' || state.state === 'paused';
-  dot.style.background = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
-  text.textContent = state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || state.state_message || ''}`;
-  sub.textContent = running ? `${Math.round(state.progress * 100)}% · ${state.print_duration_hours.toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.');
+  const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
+  if (dot.style.background !== dotColor) dot.style.background = dotColor;
+  setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || state.state_message || ''}`);
+  setText(sub, running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
-  if (!pauseResume.dataset.phase || pauseResume.dataset.phase !== 'sending') {
-    pauseResume.disabled = !running;
-    pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
+  if (pauseResume.dataset.phase !== 'sending') {
+    if (pauseResume.disabled !== !running) pauseResume.disabled = !running;
+    setText(pauseResume, state.state === 'paused' ? 'Resume' : 'Pause');
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
-  if (cancel.dataset.phase !== 'sending') cancel.disabled = !running;
+  if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => controlAction('cancel', cancel);
 
+  const homeTitle = running ? 'Not while a print is running or paused' : '';
   homeButtons.forEach(b => {
     // Homing mid-print would drive the toolhead through the print; the
     // server refuses it too, but the button shouldn't offer it.
-    if (b.dataset.phase !== 'sending') b.disabled = running;
-    b.title = running ? 'Not while a print is running or paused' : '';
+    if (b.dataset.phase !== 'sending' && b.disabled !== running) b.disabled = running;
+    if (b.title !== homeTitle) b.title = homeTitle;
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
       runCommand(b, '/api/printer/control/home', { axes }, { sending: 'Homing…', done: `Homed ${axes.join('')}`, failed: 'Homing failed' })
@@ -832,8 +851,8 @@ function renderControlTab(state) {
     };
   });
 
-  gcodeInput.disabled = false;
-  gcodeSend.disabled = false;
+  if (gcodeInput.disabled) gcodeInput.disabled = false;
+  if (gcodeSend.disabled) gcodeSend.disabled = false;
   gcodeSend.onclick = () => sendGcode();
   gcodeInput.onkeydown = (e) => { if (e.key === 'Enter') sendGcode(); };
 
@@ -870,11 +889,12 @@ function renderControlTab(state) {
   heads.forEach(th => {
     const info = state.toolheads[th];
     const active = th === state.active_toolhead;
-    temps.querySelector(`[data-temp-key="${th}"]`).textContent = `${th}${active ? ' · active' : ''}${info.status === 'error' ? ' · error' : ''}`;
+    setText(temps.querySelector(`[data-temp-key="${th}"]`), `${th}${active ? ' · active' : ''}${info.status === 'error' ? ' · error' : ''}`);
     const val = temps.querySelector(`[data-temp-val="${th}"]`);
-    val.textContent = formatTemp(info.temperature);
-    val.style.color = active ? 'var(--accent-text)' : '';
-    temps.querySelector(`[data-temp-target="${th}"]`).textContent = info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off';
+    setText(val, formatTemp(info.temperature));
+    const valColor = active ? 'var(--accent-text)' : '';
+    if (val.style.color !== valColor) val.style.color = valColor;
+    setText(temps.querySelector(`[data-temp-target="${th}"]`), info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off');
   });
 }
 
@@ -897,16 +917,17 @@ function renderOverviewControl(state) {
       </div>`;
   }
   const running = state.state === 'printing' || state.state === 'paused';
-  $('ov-file').textContent = running || state.state === 'complete' ? (state.current_file || '') : 'Idle';
-  $('ov-bar').style.width = `${Math.round((state.progress || 0) * 100)}%`;
+  setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Idle');
+  const barWidth = `${Math.round((state.progress || 0) * 100)}%`;
+  if ($('ov-bar').style.width !== barWidth) $('ov-bar').style.width = barWidth;
   const pauseResume = $('ov-pause-resume');
   const cancel = $('ov-cancel');
   if (pauseResume.dataset.phase !== 'sending') {
-    pauseResume.disabled = !running;
-    pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
+    if (pauseResume.disabled !== !running) pauseResume.disabled = !running;
+    setText(pauseResume, state.state === 'paused' ? 'Resume' : 'Pause');
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
-  if (cancel.dataset.phase !== 'sending') cancel.disabled = !running;
+  if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => controlAction('cancel', cancel);
 }
 
@@ -3174,14 +3195,20 @@ function trackHighlights() {
     if (queued) return;
     queued = true;
     requestAnimationFrame(() => {
+      // Measure every panel first, then write. Writing between
+      // measurements made the browser lay the page out again for each
+      // panel, on every pointer move.
+      const margin = 70;
+      const near = [];
       document.querySelectorAll('.liquid-glass').forEach(el => {
         const box = el.getBoundingClientRect();
-        const margin = 70;
-        const near = event.clientX >= box.left - margin && event.clientX <= box.right + margin &&
-                     event.clientY >= box.top - margin && event.clientY <= box.bottom + margin;
-        if (!near) return;
-        el.style.setProperty('--mx', `${((event.clientX - box.left) / box.width) * 100}%`);
-        el.style.setProperty('--my', `${((event.clientY - box.top) / box.height) * 100}%`);
+        if (!box.width || !box.height) return;            // on a hidden tab
+        if (event.clientX >= box.left - margin && event.clientX <= box.right + margin &&
+            event.clientY >= box.top - margin && event.clientY <= box.bottom + margin) near.push([el, box]);
+      });
+      near.forEach(([el, box]) => {
+        el.style.setProperty('--mx', `${Math.round(((event.clientX - box.left) / box.width) * 100)}%`);
+        el.style.setProperty('--my', `${Math.round(((event.clientY - box.top) / box.height) * 100)}%`);
       });
       queued = false;
     });

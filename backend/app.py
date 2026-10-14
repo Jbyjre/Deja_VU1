@@ -467,7 +467,20 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         self.send_header("X-Frame-Options", "SAMEORIGIN")
         self.send_header("Content-Security-Policy", "frame-ancestors 'self'")
         self.send_header("Referrer-Policy", "same-origin")
+        # The page's own files (HTML, scripts, styles) carry no caching rule
+        # from the built-in file server, so a browser guessed one and could
+        # keep running last week's scripts against today's page after an
+        # update. no-cache means "check first": an unchanged file costs only
+        # a short "304 Not Modified" reply. API answers set their own rule.
+        if not self.path.startswith("/api/") and not getattr(self, "_cache_rule_sent", False):
+            self.send_header("Cache-Control", "no-cache")
+        self._cache_rule_sent = False
         super().end_headers()
+
+    def send_header(self, keyword, value):
+        if keyword.lower() == "cache-control":
+            self._cache_rule_sent = True
+        super().send_header(keyword, value)
 
     # -- helpers ----------------------------------------------------------
 

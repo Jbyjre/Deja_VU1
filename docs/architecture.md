@@ -483,6 +483,15 @@ shadow. Only Chromium applies an SVG filter inside `backdrop-filter`; Safari
 and Firefox drop that one declaration and keep the plain blur, which still
 looks correct.
 
+That full material is used on the navigation and floating layer only: the
+top bar, tab bar, live print pill, sticky fleet command bar, menus, sheets
+and dialogs, which are what content scrolls under. Content cards keep the
+tint, highlight, rim and shadow but have no `backdrop-filter`: behind them
+is only the background glow, so a blur there is invisible but is still
+re-run every frame. The background glows themselves are still, many-stop
+radial gradients rather than an animated `blur(120px)`, because everything
+glass above them has to look through them.
+
 Repeated elements — task rows, module rows, stat tiles — deliberately share
 one glass surface with plain dividers rather than each getting its own
 `backdrop-filter`. One blurred region per row is both slower and the most
@@ -495,9 +504,11 @@ animation, the third swaps in solid panels with real borders.
 
 **Liquid Glass 2.0** adds: spring-driven *morphing* (a glass sheet deforms
 from one element into another, animating position, size, corner radius and
-the displacement filter's strength together); *ambient* motion (the
-highlight drifts at rest; hero surfaces use a refraction filter that
-breathes); *depth* (dialogs use a deeper displacement filter, so glass
+the displacement filter's strength together); *ambient* motion (on the
+two hero surfaces, the live print pill and the digital twin, the highlight
+drifts at rest - animated on the highlight layer itself with non-inheriting
+properties, so it never restyles what's inside the panel; they also refract
+a little harder); *depth* (dialogs use a deeper displacement filter, so glass
 under glass bends more than the background); and *tint* (panels take a
 colour from what they're about — filament, printer state, verdict).
 
@@ -605,7 +616,7 @@ Everything that calls them already works.
 
 ## Testing
 
-544 tests, using Python's built-in `unittest`:
+557 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests

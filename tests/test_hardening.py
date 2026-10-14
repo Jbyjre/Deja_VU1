@@ -310,6 +310,28 @@ class ServerHardening(unittest.TestCase):
             self.assertEqual(headers["X-Frame-Options"], "SAMEORIGIN")
             self.assertIn("frame-ancestors 'self'", headers["Content-Security-Policy"])
 
+    def test_page_files_are_rechecked_and_api_is_never_cached(self):
+        # The page's own files must be re-checked on every load, so an update
+        # can't leave a browser running old scripts against a new page; an
+        # unchanged file then costs only a 304. API answers stay uncached.
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            for path, rule in (("/app.js", "no-cache"), ("/style.css", "no-cache"),
+                               ("/", "no-cache"), ("/api/modules", "no-store")):
+                conn.request("GET", path)
+                resp = conn.getresponse()
+                resp.read()
+                rules = [v for k, v in resp.getheaders() if k.lower() == "cache-control"]
+                self.assertEqual(rules, [rule], path)
+                conn.close()
+        finally:
+            conn.close()
+        status, headers, _ = self.request("GET", "/app.js")
+        status, _, data = self.request("GET", "/app.js",
+                                       headers={"If-Modified-Since": headers["Last-Modified"]})
+        self.assertEqual(status, 304)
+        self.assertEqual(data, b"")
+
     def test_secrets_never_leave_through_the_api(self):
         was_on = modules.is_enabled("home_assistant_bridge")
         modules.set_enabled("home_assistant_bridge", True)
