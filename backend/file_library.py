@@ -55,6 +55,10 @@ def _save_index(index):
 
 
 def kind_of(name):
+    # Anything but a file name (missing, a number, a list - an odd request)
+    # is no kind of file, rather than a crash.
+    if not isinstance(name, str):
+        return None
     lower = name.lower()
     if lower.endswith((".gcode", ".gco", ".g")):
         return "gcode"

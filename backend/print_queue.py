@@ -56,6 +56,8 @@ def get(printer_id=None):
 
 def add(filename, printer_id=None):
     printer_id = printer_id or mock_moonraker.selected_printer_id()
+    if not isinstance(filename, str) or not filename.strip():
+        raise ValueError("Choose a G-code file to queue")
     if file_library.kind_of(filename) != "gcode":
         raise ValueError("Only G-code files can be queued")
     if not file_library.exists(filename):

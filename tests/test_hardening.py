@@ -365,6 +365,26 @@ class ServerHardening(unittest.TestCase):
         self.assertNotIn("t" * 40, data.decode())
         self.assertTrue(json.loads(data)["token_set"])
 
+    def test_odd_inputs_are_refused_in_words_not_crashes(self):
+        # Each of these used to answer 500 ("Something went wrong") - a
+        # missing file name or a list where a word belonged reached code
+        # that called .lower() or looked the value up in a set.
+        cases = [
+            ("/api/queue/add?demo=1", {}, "Choose a G-code file"),
+            ("/api/queue/add?demo=1", {"filename": ["x.gcode"]}, "Choose a G-code file"),
+            ("/api/files/edit", {"name": {"a": 1}, "edits": []}, None),
+            ("/api/demo/fail-next?demo=1", {"action": []}, "Unknown action"),
+            ("/api/demo/time-scale?demo=1", {"scale": None}, "must be a number"),
+            ("/api/maintenance/done?demo=1", {"task_id": [1]}, "Unknown maintenance task"),
+            ("/api/sandbox/fire?demo=1", {"event": {}}, "Unknown event"),
+            ("/api/sandbox/scenario?demo=1", {"steps": [{"event": []}]}, "Unknown event"),
+        ]
+        for path, body, words in cases:
+            status, _, data = self.request("POST", path, json.dumps(body).encode())
+            self.assertIn(status, (400, 403, 404), f"{path} {body}: {status} {data[:120]}")
+            if words and status == 400:
+                self.assertIn(words, json.loads(data)["error"], path)
+
     def test_crash_details_stay_in_the_terminal(self):
         with mock.patch.object(dv_app.pairing, "list_devices", side_effect=KeyError("secret-path")), \
                 mock.patch("traceback.print_exc"):

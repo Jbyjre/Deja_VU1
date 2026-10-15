@@ -315,7 +315,9 @@ body {
 .conn.is-demo .conn-dot {
   background: var(--warn);
   box-shadow: 0 0 0 3px rgba(255, 204, 0, .2);
-  animation: breathe 2.4s ease-in-out infinite;
+  /* Steady, not pulsing: it sits inside the refracting top bar, and any
+     animation in there re-runs the bar's blur and bend on every frame,
+     forever - it alone cost about a third of the frame rate. */
 }
 @keyframes breathe { 50% { opacity: .4; } }
 
@@ -586,8 +588,10 @@ body {
 }
 .bar span {
   display: block; height: 100%; border-radius: 3px;
-  background: var(--task-color);
-  box-shadow: 0 0 10px -2px var(--task-color);
+  /* Maintenance rows set --task-color; anywhere else (the overview's print
+     bar) the fill had no colour at all and the bar always looked empty. */
+  background: var(--task-color, var(--accent));
+  box-shadow: 0 0 10px -2px var(--task-color, var(--accent));
   transform-origin: left;
   animation: fill .75s cubic-bezier(.2, .9, .3, 1) both;
 }
@@ -648,6 +652,11 @@ input::placeholder { color: var(--text-faint); }
 .field-row > .field-hour { flex: 0 0 76px; }
 .field-row-end { align-items: flex-end; }
 .field-hint { font-size: 12px; color: var(--text-faint); align-self: center; flex: 1 1 140px; }
+/* In a stacked column the 140 px basis above became 140 px of height per
+   hint - an empty gap. Stacked, a hint is only as tall as its text. */
+.field-stack > .field-hint { flex: none; align-self: stretch; }
+.field-hint:empty { display: none; }
+.home-why { margin-top: 12px; }
 p.field-hint { margin-top: 6px; }
 .field-hint code { font: 500 11.5px var(--font-mono); overflow-wrap: anywhere; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }

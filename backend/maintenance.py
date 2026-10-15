@@ -405,7 +405,7 @@ def mark_done(task_id, note=""):
     printer's current totals, so the countdown for that task starts over from
     here. Returns the freshly recalculated status.
     """
-    if task_id not in _TASKS_BY_ID:
+    if not isinstance(task_id, str) or task_id not in _TASKS_BY_ID:
         raise ValueError(f"Unknown maintenance task: {task_id}")
 
     log = _load_log()

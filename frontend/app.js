@@ -839,6 +839,9 @@ function renderControlTab(state) {
   cancel.onclick = () => controlAction('cancel', cancel);
 
   const homeTitle = running ? 'Not while a print is running or paused' : '';
+  // Said on the card too: a tooltip never shows on a phone.
+  const homeWhy = $('home-why');
+  if (homeWhy && homeWhy.hidden !== !running) homeWhy.hidden = !running;
   homeButtons.forEach(b => {
     // Homing mid-print would drive the toolhead through the print; the
     // server refuses it too, but the button shouldn't offer it.
