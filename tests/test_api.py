@@ -179,6 +179,32 @@ class TestRoutingAndErrors(APITestCase):
                     self.assertEqual(response.status, 200)
                     self.assertTrue(len(response.read()) > 0)
 
+    def test_every_file_the_pages_load_is_served(self):
+        # The dashboard and the public product page load their stylesheets,
+        # scripts, bundled fonts and screenshots by relative path. A file
+        # renamed or forgotten would only show up as a missing font or a
+        # broken picture, so each reference is fetched here, with the type
+        # a browser needs to use it.
+        import re
+        expected = {".css": "text/css", ".js": "javascript", ".woff2": "font/woff2",
+                    ".jpg": "image/jpeg", ".html": "text/html"}
+        for page in ("/", "/welcome.html"):
+            with urlopen(self.base + page, timeout=10) as response:
+                html = response.read().decode("utf-8")
+            refs = set(re.findall(r'(?:href|src)="([^"#:]+\.(?:css|js|woff2|jpg|html))"', html))
+            refs |= set(re.findall(r'url\("([^"]+\.woff2)"\)', html))
+            if page == "/":
+                with urlopen(self.base + "/theme.css", timeout=10) as response:
+                    refs |= set(re.findall(r'url\("([^"]+\.woff2)"\)', response.read().decode("utf-8")))
+            self.assertTrue(refs, f"{page} references no local files - the pattern is wrong")
+            for ref in sorted(refs):
+                with self.subTest(page=page, ref=ref):
+                    with urlopen(self.base + "/" + ref.lstrip("/"), timeout=10) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertIn(expected[os.path.splitext(ref)[1]],
+                                      response.headers.get("Content-Type", ""))
+                        self.assertTrue(len(response.read()) > 0)
+
 
 class TestModuleGating(APITestCase):
     """Disabling a module should make its routes refuse, not error out."""

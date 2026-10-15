@@ -756,6 +756,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 
 .crow-msg { font-size: 12.5px; color: var(--text-faint); margin-top: 11px; }
 
+/* Rows rise in once, when a panel first shows them; a timed refresh that
+   changes a figure updates the row in place (app.js paint()). */
+.is-settled .crow, .is-settled .ring-cell, .is-settled .task { animation: none; }
+
 /* ---- filament inventory -------------------------------------------------*/
 
 .spool-row { display: flex; align-items: center; gap: 12px; font-size: 13px; padding: 8px 0; }

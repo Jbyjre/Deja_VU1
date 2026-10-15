@@ -8,6 +8,9 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="workshop.css">
 <link rel="stylesheet" href="farm.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
 
@@ -38,6 +41,17 @@
         <animate attributeName="scale" values="16;26;16" dur="9s" repeatCount="indefinite"/>
       </feDisplacementMap>
       <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+    <!-- "clear": for glass that only ever sits over the background (the
+         tab bar, the status ribbon). One slow octave of noise, no blur, so
+         the background's layer lines stay lines and visibly shift where
+         the glass bends them, instead of being scrambled into haze. -->
+    <filter id="lg-lens-clear" x="0" y="0" width="100%" height="100%"
+            color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.009"
+                    numOctaves="1" seed="4" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14"
+                         xChannelSelector="R" yChannelSelector="G"/>
     </filter>
     <filter id="lg-distort-deep" x="-20%" y="-20%" width="140%" height="140%"
             color-interpolation-filters="sRGB">
@@ -122,6 +136,7 @@
     <span class="rb-text" id="rb-text">No printer connected.</span>
     <div class="rb-bar" id="rb-bar" hidden><span id="rb-bar-fill"></span></div>
     <span class="rb-pct" id="rb-pct" hidden></span>
+    <span class="rb-done" id="rb-done" hidden></span>
     <span class="rb-live" id="rb-live" hidden title="How printer data is arriving">
       <span class="rb-live-dot" aria-hidden="true"></span><span id="rb-live-text">Live</span>
     </span>
@@ -273,6 +288,18 @@
   <!-- OVERVIEW                                                      -->
   <!-- ============================================================ -->
   <section id="tab-overview" class="tab-panel">
+    <!-- Every printer, ranked by what wants a person: faults first, then
+         paused and finished prints, idle printers with work waiting,
+         maintenance, and prints about to finish. Built from the live fleet
+         feed (workshop.js, renderAttention). -->
+    <section class="card liquid-glass attention" id="attention" aria-labelledby="attention-title" hidden>
+      <div class="card-head">
+        <div><h2 id="attention-title">Needs you</h2><p class="card-sub" id="attention-sub">Across every printer, most urgent first</p></div>
+        <span class="att-count" id="attention-count" aria-hidden="true"></span>
+      </div>
+      <ol class="att-list" id="attention-list"></ol>
+    </section>
+
     <section class="stats liquid-glass divider-row cols-4" aria-label="Printer totals">
       <div class="stat" id="stat-hours-wrap">
         <span class="stat-key">Print hours</span>
@@ -311,7 +338,7 @@
       </section>
       <section class="card liquid-glass">
         <div class="card-head">
-          <div><h2>Chamber climate</h2><p class="card-sub">Last 30 minutes</p></div>
+          <div><h2>Chamber climate</h2><p class="card-sub" id="ch-sub">Last 30 minutes</p></div>
         </div>
         <div id="chamber-host"></div>
       </section>

@@ -367,7 +367,7 @@ function moduleDisabledEmpty(name) {
   <div class="empty is-off">
     <span class="empty-mark" aria-hidden="true"></span>
     <p class="empty-title">${esc(name)}</p>
-    <p class="empty-sub">Switched off in Modules &amp; devices.</p>
+    <p class="empty-sub">Switched off in Settings → Modules.</p>
     ${id ? `<button class="btn small" type="button" data-turn-on="${esc(id)}">Turn on</button>` : ''}
   </div>`;
 }
@@ -396,6 +396,22 @@ function stagger(nodes, step = 45) {
   nodes.forEach((node, i) => { node.style.animationDelay = `${i * step}ms`; });
 }
 
+/* Panels on the five-second refresh used to rebuild their rows every time,
+ * so each row replayed its entrance animation and the panel visibly
+ * flickered. paint() leaves an unchanged panel alone, and once a panel has
+ * shown its rows it marks itself settled, which turns the entrance
+ * animation off for later updates (style.css, .is-settled). Returns true
+ * when it painted for the first time, so callers stagger only then. */
+const painted = new WeakMap();
+function paint(host, html) {
+  if (!host || painted.get(host) === html) return false;
+  const first = !painted.has(host);
+  host.classList.toggle('is-settled', !first);
+  host.innerHTML = html;
+  painted.set(host, html);
+  return first;
+}
+
 const EMPTY = (title, sub) => `
   <div class="empty">
     <span class="empty-mark" aria-hidden="true"></span>
@@ -414,6 +430,60 @@ function formatTemp(celsius) {
   if (celsius === null || celsius === undefined) return '—';
   const value = tempUnit === 'F' ? (celsius * 9 / 5) + 32 : celsius;
   return `${value.toFixed(0)}°${tempUnit}`;
+}
+
+/* When a print should finish, as a time on the clock rather than a duration:
+ * "4:12 PM", "tomorrow 1:05 AM", or "Sat 9:40 AM" further out. Empty when
+ * there is no estimate. The estimate is the one used everywhere else here
+ * (elapsed time scaled by progress), so it is only as good as that. */
+function doneAt(hoursLeft) {
+  if (hoursLeft == null || !isFinite(hoursLeft) || hoursLeft < 0) return '';
+  const at = new Date(Date.now() + hoursLeft * 3600e3);
+  const clock = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const day = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((day(at) - day(new Date())) / 864e5);
+  if (days === 0) return clock;
+  if (days === 1) return `tomorrow ${clock}`;
+  return `${at.toLocaleDateString([], { weekday: 'short' })} ${clock}`;
+}
+
+/* Time left from a printer state: elapsed time scaled by progress, the same
+ * estimate the fleet uses (backend/fleet.py). Null when there isn't one. */
+function hoursLeft(state) {
+  const p = state && state.progress, elapsed = state && state.print_duration_hours;
+  return state && state.state === 'printing' && p > 0 && p < 1 && elapsed != null ? elapsed / p - elapsed : null;
+}
+
+/* ---- the browser tab mirrors the print -------------------------------------
+ * With the dashboard in a background tab, its title and icon still say how
+ * the print is going: "46% · U1 · Workshop", "Paused · …", "Finished · …".
+ * The icon draws the same progress ring. Both change only when what they
+ * show changes, not on every live update. */
+const BASE_TITLE = document.title;
+const tabMirror = { title: null, icon: null };
+function mirrorInTab(data) {
+  const s = data && data.state;
+  const name = (data && data.printer_name) || 'Printer';
+  const pct = s ? Math.round((data.progress || 0) * 100) : 0;
+  const lead = { printing: `${pct}%`, paused: 'Paused', complete: 'Finished', error: 'Needs attention' }[s];
+  const title = lead ? `${lead} · ${name} — Deja Vu1` : BASE_TITLE;
+  if (title !== tabMirror.title) { document.title = title; tabMirror.title = title; }
+
+  // Redrawn per whole percent, not per live update.
+  const key = `${s}|${pct}|${document.documentElement.style.getPropertyValue('--accent')}`;
+  if (key === tabMirror.icon) return;
+  tabMirror.icon = key;
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#4a8df8';
+  const color = { paused: '#d9a400', error: '#e5483e', complete: '#2fa84f' }[s] || accent;
+  const frac = s === 'printing' || s === 'paused' ? Math.max(0.02, pct / 100) : s === 'complete' ? 1 : 0;
+  const c = 2 * Math.PI * 12;
+  const ring = frac
+    ? `<circle cx='16' cy='16' r='12' fill='none' stroke='${color}' stroke-opacity='.22' stroke-width='5'/>` +
+      `<circle cx='16' cy='16' r='12' fill='none' stroke='${color}' stroke-width='5' stroke-linecap='round' stroke-dasharray='${(c * frac).toFixed(1)} ${c.toFixed(1)}' transform='rotate(-90 16 16)'/>`
+    : `<circle cx='16' cy='16' r='12' fill='none' stroke='${color}' stroke-width='4'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>${ring}<circle cx='16' cy='16' r='5' fill='${color}'/></svg>`;
+  const link = document.querySelector('link[rel="icon"]');
+  if (link) link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 /* ---- accent colour -------------------------------------------------------
@@ -488,7 +558,7 @@ async function loadConnection() {
     $('foot-state').textContent = 'Connected to Moonraker.';
   } else if (demoOn) {
     pill.classList.add('is-demo');
-    label.textContent = 'Demo data';
+    label.textContent = 'Simulated';
     $('foot-state').textContent = 'Demo data — no printer connected, nothing is contacted.';
   } else {
     pill.classList.remove('is-demo');
@@ -555,17 +625,20 @@ function renderStatusRibbon(data) {
     text.textContent = 'No printer connected.';
     bar.hidden = true;
     pct.hidden = true;
+    $('rb-done').hidden = true;
     lastPrinterState = null;
+    mirrorInTab(null);
     return;
   }
 
   lastPrinterState = data;
+  mirrorInTab(data);
   const isPrinting = data.state === 'printing';
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
     text.textContent = data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.';
-    bar.hidden = true; pct.hidden = true;
+    bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
     text.textContent = `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`;
@@ -575,6 +648,9 @@ function renderStatusRibbon(data) {
     const setFill = v => { fill.style.width = `${(v * 100).toFixed(2)}%`; };
     if (window.Workshop && Workshop.tween) Workshop.tween('ribbon', data.progress, setFill); else setFill(data.progress);
     pct.textContent = `${Math.round(data.progress * 100)}%`;
+    const finish = doneAt(hoursLeft(data));
+    $('rb-done').textContent = finish ? `done ${finish}` : '';
+    $('rb-done').hidden = !finish;
   }
 
   renderOverviewControl(data);
@@ -706,17 +782,17 @@ async function loadRings() {
   const data = await getJSON(api('/api/leds'));
 
   if (isModuleDisabled(data)) {
-    $('rings').innerHTML = moduleDisabledEmpty('Dock status rings');
+    paint($('rings'), moduleDisabledEmpty('Dock status rings'));
     $('rings-note').hidden = true;
     return;
   }
   if (!hasData(data) || !data.rings) {
-    $('rings').innerHTML = EMPTY('No signal', 'Ring colours follow live printer state.');
+    paint($('rings'), EMPTY('No signal', 'Ring colours follow live printer state.'));
     $('rings-note').hidden = true;
     return;
   }
 
-  $('rings').innerHTML = data.rings.map(ring => {
+  const firstPaint = paint($('rings'), data.rings.map(ring => {
     const effect = ring.effect === 'solid' ? '' : ring.effect;
     const pct = ring.state === 'active' ? `<div class="ring-pct">${Math.round(ring.progress * 100)}%</div>` : '';
     return `
@@ -726,9 +802,9 @@ async function loadRings() {
         <div class="ring-label">${esc(ring.label)}</div>
         ${pct}
       </div>`;
-  }).join('');
+  }).join(''));
 
-  stagger([...document.querySelectorAll('.ring-cell')], 60);
+  if (firstPaint) stagger([...document.querySelectorAll('.ring-cell')], 60);
   $('rings-note').hidden = false;
 }
 
@@ -739,19 +815,19 @@ async function loadColorCheck() {
 
   if (isModuleDisabled(data)) {
     $('colorfile').hidden = true;
-    $('colors').innerHTML = moduleDisabledEmpty('Right colour loaded?');
+    paint($('colors'), moduleDisabledEmpty('Right colour loaded?'));
     $('colors-note').hidden = true;
     return;
   }
   if (data.overall === 'no_sensor') {
     $('colorfile').hidden = true;
-    $('colors').innerHTML = EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.');
+    paint($('colors'), EMPTY('No colour sensor fitted', data.note || 'Nothing was measured.'));
     $('colors-note').hidden = true;
     return;
   }
   if (!hasData(data) || !data.checks) {
     $('colorfile').hidden = true;
-    $('colors').innerHTML = EMPTY('Nothing to check', 'Needs a print file and a sensor reading.');
+    paint($('colors'), EMPTY('Nothing to check', 'Needs a print file and a sensor reading.'));
     $('colors-note').hidden = true;
     return;
   }
@@ -759,7 +835,7 @@ async function loadColorCheck() {
   $('colorfile').textContent = data.filename;
   $('colorfile').hidden = false;
 
-  $('colors').innerHTML = data.checks.map(check => `
+  const firstPaint = paint($('colors'), data.checks.map(check => `
     <div class="crow">
       <div class="crow-top">
         <span class="crow-head">Toolhead ${esc(check.toolhead)}</span>
@@ -771,9 +847,9 @@ async function loadColorCheck() {
         <div class="sw"><span class="chip" style="background:${esc(check.detected_hex)}"></span> detected</div>
       </div>
       <div class="crow-msg">${esc(check.message)}</div>
-    </div>`).join('');
+    </div>`).join(''));
 
-  stagger([...document.querySelectorAll('.crow')], 70);
+  if (firstPaint) stagger([...document.querySelectorAll('#colors .crow')], 70);
   $('colors-note').hidden = false;
 }
 
@@ -1243,7 +1319,7 @@ async function loadCost() {
   ]);
 
   if (isModuleDisabled(current)) {
-    host.innerHTML = moduleDisabledEmpty('Print cost calculator');
+    paint(host, moduleDisabledEmpty('Print cost calculator'));
     return;
   }
 
@@ -1264,7 +1340,7 @@ async function loadCost() {
       </div>`));
   }
 
-  host.innerHTML = rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.');
+  paint(host, rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.'));
 }
 
 function initCostSettings() {
@@ -3189,6 +3265,19 @@ function trackHighlights() {
 }
 
 /* ---- start up ------------------------------------------------------------*/
+
+/* These same files are also published as a plain website (wrangler.jsonc ->
+ * Cloudflare), with no Python server behind them. There the dashboard has
+ * nothing to show, so it hands over to the product page. Only a 404 for
+ * /api/modules means "no Deja Vu1 server here" (a static host answers
+ * that for any file it doesn't have); a server that is down or unreachable
+ * keeps the dashboard and its "Could not reach the backend" message.
+ * ?dashboard skips the hand-over, to look at the empty dashboard anyway. */
+if (!new URLSearchParams(location.search).has('dashboard')) {
+  fetch('/api/modules', { cache: 'no-store' })
+    .then(r => { if (r.status === 404) location.replace('welcome.html'); })
+    .catch(() => {});
+}
 
 async function refreshAll() {
   try {
