@@ -325,7 +325,7 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 }
 .twin-dock.error .td-ring { animation: breathe .9s steps(1) infinite; }
 .td-label { position: absolute; left: 0; right: 0; bottom: -14px; text-align: center; font: 700 9px/1 var(--font-mono); color: var(--text-dim); }
-.twin-readout { font: 600 11.5px/1.4 var(--font-mono); color: var(--text-faint); text-align: center; margin-top: 6px; }
+.twin-readout { font: 600 11.5px/1.4 var(--font-mono); color: var(--text-faint); text-align: center; margin-top: 6px; text-wrap: balance; font-variant-numeric: tabular-nums; }
 
 /* Print health gauge. */
 .gauge-wrap { position: relative; max-width: 240px; margin: 0 auto; text-align: center; }
@@ -348,11 +348,13 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .spark { width: 100%; height: 90px; margin-top: 10px; overflow: visible; }
 .spark path { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .sp-c { stroke: var(--accent); }
-.sp-b { stroke: #7fa4d6; stroke-dasharray: 4 4; }
+/* Bed is the hot plate, so it reads warm; the chamber keeps the accent.
+   Dashed as well as a different hue, so the two never rely on colour alone. */
+.sp-b { stroke: var(--heat, #e0782f); stroke-dasharray: 4 4; }
 .ch-legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--text-faint); margin-top: 6px; flex-wrap: wrap; }
 .ch-legend span::before { content: ""; display: inline-block; width: 14px; height: 2px; margin-right: 6px; vertical-align: middle; }
 .ch-legend .lg-c::before { background: var(--accent); }
-.ch-legend .lg-b::before { background: #7fa4d6; }
+.ch-legend .lg-b::before { background: repeating-linear-gradient(90deg, var(--heat, #e0782f) 0 4px, transparent 4px 7px); }
 .ch-legend span:last-child { margin-left: auto; }
 .ch-legend span:last-child::before { display: none; }
 
@@ -365,6 +367,15 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
   font: inherit; color: var(--text); text-align: left; max-width: min(360px, calc(100vw - 32px));
 }
 .live-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* While the status ribbon is on screen it says the same thing; the pill
+   steps aside (workshop.js) rather than covering the bottom-right corner. */
+body.ribbon-in-view > .live-pill {
+  opacity: 0; transform: translateY(14px) scale(.96); pointer-events: none; visibility: hidden;
+  transition: opacity .2s ease, transform .2s ease, visibility 0s linear .2s;
+}
+body > .live-pill { transition: opacity .25s ease, transform .3s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
+/* Room at the very bottom of the page, so the pill never covers the footer. */
+body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 .lp-ring { width: 40px; height: 40px; flex: 0 0 40px; transform: rotate(-90deg); }
 .lp-track { fill: none; stroke: rgba(0, 0, 0, .08); stroke-width: 3.5; }
 .lp-fill { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }

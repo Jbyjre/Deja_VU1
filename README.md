@@ -62,6 +62,9 @@ machine, and all of it is visible in data the printer already publishes.
 | Feature | What it does |
 |---|---|
 | **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If a network blocks WebSockets, the dashboard notices and asks once a second instead, and says which it's doing. |
+| **Needs you** | The top of the Overview ranks every printer by what wants a person — a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes — each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
+| **Finish time on the clock** | Alongside "2 h 17 min left", every running print says when it will finish — "done 2:42 PM", "tomorrow 1:05 AM" — on the status ribbon, the fleet cards and the live pill, from the same estimate. |
+| **The browser tab follows the print** | With the dashboard in a background tab, its title reads "53% · U1 · Workshop" (or Paused, Finished, Needs attention) and its icon draws the progress ring, so you can check without switching tabs. |
 | **Printer fleet** | Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
 | **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
 | **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer actually reports back. A command the printer refuses is shown as refused, in words — never as done. |
@@ -260,12 +263,14 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 544 cases
+- **Tests:** `unittest` from the standard library, 557 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
 No dependencies. Nothing to install beyond Python itself, and nothing is
-fetched from the internet at runtime — no webfonts, no CDN, no analytics.
+fetched from the internet at runtime — the three typefaces ship inside
+`frontend/fonts` (SIL Open Font License, licences alongside), no CDN, no
+analytics.
 (Reaching it from outside your home uses Cloudflare's own `cloudflared`
 program, which you install separately if you want that — see
 [docs/remote-access.md](docs/remote-access.md). The optional low-latency
@@ -292,6 +297,30 @@ the active tab sliding along the tab bar); the highlight and some surfaces
 **deeper refraction**, so what's underneath visibly bends more than the
 background; and panels **take a tint** from what they're about — the active
 filament's colour, a printer's state, a verdict.
+
+The current look, "Layer lines" (`frontend/theme.css`, loaded last so it
+changes appearance, never layout): behind everything runs a field of fine
+horizontal lines, like the side wall of a print, lit by soft light in the
+colours of the filament actually loaded on the printer you're looking at.
+Glass is kept for the controls — header, tab bar, status ribbon, phone
+dock, live pill, menus, dialogs — and the tab bar and ribbon are clear
+enough that the lines visibly shift where the glass bends them. Cards are
+content, so they sit on a quieter frosted "paper" with no lensing (Apple's
+own rule, and far fewer live filters on a big sandbox farm). Type is
+Bricolage Grotesque for headings and big numbers, Instrument Sans for
+reading and buttons, IBM Plex Mono for readings and labels.
+
+## The public page
+
+`wrangler.jsonc` publishes the `frontend` folder to Cloudflare as a plain
+website, with no Python server behind it. A dashboard there would have
+nothing to show, so when the page asks for its own API and gets the
+"404 Not Found" a static host gives (Cloudflare's documented behaviour with
+no Worker script), it opens `welcome.html` instead: a product page with
+real screenshots from the simulated farm, what's in the dashboard, what is
+and isn't verified yet, and how to run it. Running locally nothing changes,
+and a local server that is down still shows "Could not reach the backend".
+`/?dashboard` skips the hand-over.
 
 ## Roadmap
 
