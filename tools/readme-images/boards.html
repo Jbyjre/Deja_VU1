@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Deja Vu1 README boards</title>
+<style>
+@font-face{font-family:"Bricolage Grotesque";src:url("../../frontend/fonts/BricolageGrotesque-var.woff2") format("woff2");font-weight:200 800}
+@font-face{font-family:"Instrument Sans";src:url("../../frontend/fonts/InstrumentSans-var.woff2") format("woff2");font-weight:400 700}
+@font-face{font-family:"IBM Plex Mono";src:url("../../frontend/fonts/IBMPlexMono-500.woff2") format("woff2");font-weight:500}
+@font-face{font-family:"IBM Plex Mono";src:url("../../frontend/fonts/IBMPlexMono-600.woff2") format("woff2");font-weight:600}
+:root{
+  --bg:oklch(95.4% .004 250); --paper:oklch(99.2% .002 250); --text:oklch(22% .014 265); --dim:oklch(37% .014 265);
+  --faint:oklch(47% .012 265); --hair:oklch(30% .02 265 / .12); --ink:oklch(30% .03 265 / .075);
+  --accent:#4a8df8; --heat:oklch(66% .17 48);
+  --g-ready:#178f7d; --g-live:#2f6fd6; --g-farm:#d9622b; --g-opt:#8a55e8; --g-pend:#b8860b; --g-games:#c2416c;
+  --st-docked:#c9ccd2; --st-active:#00c83c; --st-heating:#ff9600; --st-paused:#0078ff; --st-error:#ff1e1e;
+  --ok-ink:oklch(42% .12 150); --bad-ink:oklch(47% .19 27); --warn-ink:oklch(44% .1 75);
+  --shadow:0 1px 2px oklch(25% .02 265 / .06),0 12px 30px oklch(25% .02 265 / .09);
+}
+*{box-sizing:border-box;margin:0}
+body{background:#fff;font-family:"Instrument Sans",sans-serif;color:var(--text);padding:0}
+.board{position:relative;width:1200px;padding:44px 48px 40px;background:var(--bg);overflow:hidden;isolation:isolate}
+.board::before{content:"";position:absolute;inset:0;z-index:-2;background:
+  radial-gradient(50% 60% at 0% 0%,oklch(72% .15 48 / .22),transparent 70%),
+  radial-gradient(50% 70% at 100% 100%,oklch(66% .15 257 / .18),transparent 70%)}
+.board::after{content:"";position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(180deg,var(--ink) 0 1px,transparent 1px 5px)}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font:600 13px/1 "IBM Plex Mono";letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+  padding:9px 14px;border-radius:999px;position:relative;isolation:isolate;
+  background:oklch(99% .003 250 / .55);border:1px solid oklch(100% 0 0 / .8);
+  box-shadow:0 1px 2px oklch(25% .02 265 / .06),0 6px 16px oklch(25% .02 265 / .08);
+  backdrop-filter:blur(1px) saturate(1.5) url(#lens)}
+.eyebrow i{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18px;max-width:1000px;text-wrap:balance}
+.lede{font-size:18px;line-height:1.5;color:var(--dim);margin-top:12px;max-width:900px}
+.card{background:var(--paper);border:1px solid var(--hair);border-radius:22px;box-shadow:var(--shadow);padding:22px}
+.mono{font-family:"IBM Plex Mono"}
+.foot{margin-top:22px;font:500 12.5px/1.5 "IBM Plex Mono";color:var(--faint);letter-spacing:.01em}
+.label{font:600 12px/1 "IBM Plex Mono";letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+
+/* problem */
+.duo{display:grid;grid-template-columns:1fr 64px 1.25fr;gap:0;margin-top:28px;align-items:start}
+.arrow{display:grid;place-items:center}
+.docks{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.bay{display:grid;justify-items:center;gap:10px}
+.bay svg{width:100%;height:auto}
+.bay span{font:600 15px/1 "IBM Plex Mono";color:var(--dim)}
+.cap{font-size:15px;line-height:1.5;color:var(--dim);margin-top:16px}
+.rows{display:grid;gap:10px;margin-top:16px}
+.row{display:grid;grid-template-columns:38px 44px 1fr auto;gap:12px;align-items:center;padding:11px 14px;border-radius:14px;border:1px solid var(--hair);background:oklch(98.5% .003 250)}
+.ring{width:30px;height:30px;border-radius:50%;border:5px solid var(--c);box-shadow:0 0 12px color-mix(in oklch,var(--c) 45%,transparent)}
+.ring.dull{box-shadow:none}
+.tool{font:600 17px/1 "IBM Plex Mono"}
+.what b{display:block;font:650 17px/1.2 "Bricolage Grotesque"}
+.what small{font-size:13.5px;color:var(--dim)}
+.fil{display:inline-flex;align-items:center;gap:7px;font:500 13px/1 "IBM Plex Mono";color:var(--dim)}
+.fil i{width:14px;height:14px;border-radius:50%;background:var(--f);border:1px solid var(--hair)}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.legend.in{display:grid;gap:8px;margin-top:12px}
+.legend.in span{padding:8px 12px;font-size:14px}
+.legend span{display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border-radius:999px;background:var(--paper);border:1px solid var(--hair);font-size:14px;color:var(--dim)}
+.legend span b{color:var(--text);font-weight:650}
+.legend i{width:14px;height:14px;border-radius:50%;background:var(--c)}
+
+/* confirm */
+.checks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px}
+.check{display:grid;gap:8px;align-content:start;padding:18px 18px 16px;border-radius:18px;background:var(--paper);border:1px solid var(--hair);box-shadow:var(--shadow)}
+.check .n{font:600 12px/1 "IBM Plex Mono";color:var(--faint);letter-spacing:.08em}
+.check h3{font:680 21px/1.15 "Bricolage Grotesque";letter-spacing:-.01em}
+.check p{font-size:14.5px;line-height:1.45;color:var(--dim)}
+.tag{justify-self:start;font:600 11.5px/1 "IBM Plex Mono";letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;border-radius:999px;border:1px solid}
+.tag.block{color:var(--bad-ink);border-color:color-mix(in oklch,var(--bad-ink) 40%,transparent);background:oklch(97% .02 27)}
+.tag.ask{color:var(--warn-ink);border-color:color-mix(in oklch,var(--warn-ink) 40%,transparent);background:oklch(97.5% .03 85)}
+.tag.info{color:var(--dim);border-color:var(--hair);background:oklch(97% .004 250)}
+.flow{display:grid;grid-template-columns:1fr auto 1.15fr auto 1fr auto 1.15fr auto 1.1fr;align-items:center;gap:8px;margin-top:24px}
+.step{padding:12px 14px;border-radius:14px;background:var(--paper);border:1px solid var(--hair);font:600 15px/1.25 "Instrument Sans"}
+.step small{display:block;font:500 12px/1.3 "IBM Plex Mono";color:var(--faint);margin-top:4px}
+.step.hot{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 18%,transparent)}
+.chev{color:var(--faint);font:600 18px/1 "IBM Plex Mono"}
+.split{display:grid;gap:6px}
+.step.go{border-color:color-mix(in oklch,var(--ok-ink) 45%,transparent);color:var(--ok-ink)}
+.step.no{border-color:color-mix(in oklch,var(--bad-ink) 45%,transparent);color:var(--bad-ink)}
+.example{margin-top:22px;border-radius:18px;background:oklch(98.6% .012 20);border:1px solid oklch(85% .06 25);padding:18px 20px}
+.example .label{color:var(--bad-ink)}
+.example h4{font:680 20px/1.2 "Bricolage Grotesque";color:var(--bad-ink);margin:10px 0 10px}
+.example ul{list-style:none;padding:0;display:grid;gap:7px}
+.example li{font:500 14px/1.45 "IBM Plex Mono";color:var(--text);padding:8px 12px;border-radius:10px;background:var(--paper);border:1px solid oklch(88% .04 25)}
+
+/* architecture */
+.diagram{margin-top:22px}
+.diagram svg{width:100%;height:auto;display:block}
+
+/* features */
+.groups{column-count:3;column-gap:14px;margin-top:26px}
+.groups .group{break-inside:avoid;margin-bottom:14px;display:block}
+.group{position:relative;padding:20px 20px 18px;border-radius:20px;background:var(--paper);border:1px solid var(--hair);box-shadow:var(--shadow);overflow:hidden}
+.group::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:var(--c)}
+.group header{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.group h3{font:700 21px/1.15 "Bricolage Grotesque";letter-spacing:-.01em}
+.group .count{font:700 30px/1 "Bricolage Grotesque";color:var(--text);letter-spacing:-.03em}
+.group .needs{display:inline-flex;align-items:center;gap:7px;margin-top:6px;font:600 11.5px/1 "IBM Plex Mono";letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.group .needs i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.group ul{list-style:none;padding:0;margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+.group li{font-size:13.5px;line-height:1.2;padding:6px 9px;border-radius:9px;background:oklch(97.5% .004 250);border:1px solid var(--hair);color:var(--text)}
+
+/* numbers */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
+.tile{padding:20px 20px 18px;border-radius:18px;background:var(--paper);border:1px solid var(--hair);box-shadow:var(--shadow);display:grid;gap:8px}
+.tile b{font:700 46px/1 "Bricolage Grotesque";letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.tile b small{font-size:22px;letter-spacing:-.02em;margin-left:3px}
+.tile span{font-size:15px;line-height:1.35;color:var(--dim)}
+.tile em{font:500 11.5px/1.3 "IBM Plex Mono";color:var(--faint);font-style:normal}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.009" numOctaves="1" seed="4" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<!-- ============ 1. The problem ============ -->
+<section class="board" id="b-problem">
+  <span class="eyebrow"><i></i>The problem</span>
+  <h2>A docked toolhead looks the same whether it's ready, out of filament or faulted.</h2>
+  <div class="duo">
+    <div class="card">
+      <span class="label">At the printer</span>
+      <div class="docks">
+        <div class="bay"><svg viewBox="0 0 120 150" role="img" aria-label="A grey docked toolhead"><rect x="8" y="6" width="104" height="138" rx="16" fill="#e4e6ea" stroke="#c4c8cf" stroke-width="2"/><rect x="26" y="26" width="68" height="70" rx="10" fill="#9aa0a9"/><rect x="40" y="38" width="40" height="10" rx="4" fill="#7f858f"/><path d="M52 96 h16 l-5 22 h-6 z" fill="#7f858f"/><rect x="26" y="128" width="68" height="6" rx="3" fill="#c4c8cf"/></svg><span>T0</span></div>
+        <div class="bay"><svg viewBox="0 0 120 150" role="img" aria-label="A grey docked toolhead"><rect x="8" y="6" width="104" height="138" rx="16" fill="#e4e6ea" stroke="#c4c8cf" stroke-width="2"/><rect x="26" y="26" width="68" height="70" rx="10" fill="#9aa0a9"/><rect x="40" y="38" width="40" height="10" rx="4" fill="#7f858f"/><path d="M52 96 h16 l-5 22 h-6 z" fill="#7f858f"/><rect x="26" y="128" width="68" height="6" rx="3" fill="#c4c8cf"/></svg><span>T1</span></div>
+        <div class="bay"><svg viewBox="0 0 120 150" role="img" aria-label="A grey docked toolhead"><rect x="8" y="6" width="104" height="138" rx="16" fill="#e4e6ea" stroke="#c4c8cf" stroke-width="2"/><rect x="26" y="26" width="68" height="70" rx="10" fill="#9aa0a9"/><rect x="40" y="38" width="40" height="10" rx="4" fill="#7f858f"/><path d="M52 96 h16 l-5 22 h-6 z" fill="#7f858f"/><rect x="26" y="128" width="68" height="6" rx="3" fill="#c4c8cf"/></svg><span>T2</span></div>
+        <div class="bay"><svg viewBox="0 0 120 150" role="img" aria-label="A grey docked toolhead"><rect x="8" y="6" width="104" height="138" rx="16" fill="#e4e6ea" stroke="#c4c8cf" stroke-width="2"/><rect x="26" y="26" width="68" height="70" rx="10" fill="#9aa0a9"/><rect x="40" y="38" width="40" height="10" rx="4" fill="#7f858f"/><path d="M52 96 h16 l-5 22 h-6 z" fill="#7f858f"/><rect x="26" y="128" width="68" height="6" rx="3" fill="#c4c8cf"/></svg><span>T3</span></div>
+      </div>
+      <p class="cap">Four docks, four identical shapes. To find out which one is ready, you walk over and read the screen.</p>
+      <span class="label" style="display:block;margin-top:22px">The five states Deja Vu1 shows</span>
+  <div class="legend in">
+    <span><i style="--c:var(--st-docked)"></i><b>Docked / ready</b> soft white, steady</span>
+    <span><i style="--c:var(--st-active)"></i><b>Printing</b> green, slow pulse</span>
+    <span><i style="--c:var(--st-heating)"></i><b>Heating up</b> amber, pulse</span>
+    <span><i style="--c:var(--st-paused)"></i><b>Paused</b> blue, steady</span>
+    <span><i style="--c:var(--st-error)"></i><b>Needs attention</b> red, blinking</span>
+      </div>
+    </div>
+    <div class="arrow"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M6 20 H32 M23 11 L32 20 L23 29" fill="none" stroke="#5c6470" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="card">
+      <span class="label">In Deja Vu1</span>
+      <div class="rows">
+        <div class="row"><span class="ring" style="--c:var(--st-docked)"></span><span class="tool">T0</span><span class="what"><b>Docked / ready</b><small>Parked, nothing wrong</small></span><span class="fil" style="--f:#f07a1e"><i></i>Orange</span></div>
+        <div class="row"><span class="ring" style="--c:var(--st-active)"></span><span class="tool">T1</span><span class="what"><b>Printing</b><small>The active toolhead</small></span><span class="fil" style="--f:#1d1f23"><i></i>Black</span></div>
+        <div class="row"><span class="ring" style="--c:var(--st-heating)"></span><span class="tool">T2</span><span class="what"><b>Heating up</b><small>Coming up to temperature</small></span><span class="fil" style="--f:#3b82f6"><i></i>Blue</span></div>
+        <div class="row"><span class="ring" style="--c:var(--st-error)"></span><span class="tool">T3</span><span class="what"><b>Needs attention</b><small>Filament runout on T3</small></span><span class="fil" style="--f:#f4f4f2"><i></i>White</span></div>
+      </div>
+      <p class="cap">Every dock's state, from across the room, with the filament each one holds.</p>
+    </div>
+  </div>
+  <p class="foot">Illustration. State names, colours and effects are the ones in backend/led_status.py, which also drives the optional LED dock rings (hardware pending).</p>
+</section>
+
+<!-- ============ 2. Confirm Print ============ -->
+<section class="board" id="b-confirm">
+  <span class="eyebrow"><i></i>Confirm Print</span>
+  <h2>Six checks before a print starts. The server runs them again at the moment it starts.</h2>
+  <div class="checks">
+    <div class="check"><h3>Printer ready?</h3><p>Idle (ready or finished), with no dock reporting an error.</p><span class="tag block">Blocks</span></div>
+    <div class="check"><h3>Pre-flight</h3><p>Every move in the file: outside the 270 × 270 × 270 mm volume, below the bed, an unknown toolhead, too hot.</p><span class="tag block">Errors block · warnings ask</span></div>
+    <div class="check"><h3>Filament match</h3><p>Each toolhead the file uses has filament, in the colour it was sliced for, as the printer reports it.</p><span class="tag block">A mismatch blocks</span></div>
+    <div class="check"><h3>Spool weight</h3><p>Enough left on the matching spool, when the filament inventory is on.</p><span class="tag ask">Warns</span></div>
+    <div class="check"><h3>Maintenance</h3><p>Any overdue task, such as a nozzle check or bed leveling.</p><span class="tag ask">Warns</span></div>
+    <div class="check"><h3>Cost</h3><p>Material plus electricity, estimated from your prices.</p><span class="tag info">Information</span></div>
+  </div>
+  <div class="flow">
+    <div class="step">Your file<small>G-code from the library</small></div><span class="chev">→</span>
+    <div class="step hot">Confirm Print<small>clear · confirm · blocked</small></div><span class="chev">→</span>
+    <div class="step">You press Start<small>only if not blocked</small></div><span class="chev">→</span>
+    <div class="step hot">Server checks again<small>at the moment of starting</small></div><span class="chev">→</span>
+    <div class="split"><div class="step go">Starts</div><div class="step no">Refused, with the reason</div></div>
+  </div>
+  <div class="example">
+    <span class="label">Real output · the built-in unsafe example file, on the simulated farm</span>
+    <h4>This print can't start</h4>
+    <ul>
+      <li>The printer is busy (printing toolhead_cover.gcode)</li>
+      <li>Pre-flight: Extrudes at X290.0 Y20.0 Z0.3, outside the U1's 270 x 270 x 270 mm build volume (line 19)</li>
+      <li>T0 has Snapmaker Orange loaded, but the file was sliced for #C8102E</li>
+      <li>Maintenance overdue: Nozzle check &amp; clean, Bed leveling check</li>
+    </ul>
+  </div>
+  <p class="foot">The six checks and three verdicts are the ones documented in backend/print_gate.py.</p>
+</section>
+
+<!-- ============ 3. Architecture ============ -->
+<section class="board" id="b-arch">
+  <span class="eyebrow"><i></i>How it connects</span>
+  <h2>One connection per printer, shared by every module. Nothing to install on the printer.</h2>
+  <div class="diagram">
+    <svg viewBox="0 0 1104 560" role="img" aria-label="Each U1's Moonraker talks to the Deja Vu1 server on your computer over one WebSocket for live state and plain HTTP for commands. The server pushes a live view to your browsers and sends state outward to Home Assistant, WLED and notification services.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#3d4450"/></marker>
+        <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2f6fd6"/></marker>
+      </defs>
+      <!-- printer -->
+      <rect x="0" y="40" width="250" height="300" rx="22" fill="#fcfcfb" stroke="#d3d6dc" stroke-width="1.5"/>
+      <text x="24" y="78" font-family="Bricolage Grotesque" font-weight="700" font-size="22" fill="#1d2129">Snapmaker U1</text>
+      <text x="24" y="102" font-family="IBM Plex Mono" font-size="13" fill="#6a717d">up to 12 printers</text>
+      <rect x="24" y="124" width="202" height="88" rx="14" fill="#eef3fe" stroke="#9dbcf3" stroke-width="1.5"/>
+      <text x="40" y="154" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Moonraker</text>
+      <text x="40" y="180" font-family="IBM Plex Mono" font-size="12.5" fill="#4a5260">web API, usually</text><text x="40" y="198" font-family="IBM Plex Mono" font-size="12.5" fill="#4a5260">on port 7125</text>
+      <rect x="24" y="226" width="202" height="88" rx="14" fill="#f3f4f6" stroke="#d3d6dc" stroke-width="1.5"/>
+      <text x="40" y="260" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Klipper</text>
+      <text x="40" y="284" font-family="IBM Plex Mono" font-size="12.5" fill="#4a5260">motors, heaters, docks</text>
+      <!-- links printer <-> server -->
+      <line x1="262" y1="150" x2="410" y2="150" stroke="#2f6fd6" stroke-width="3" marker-end="url(#ahb)"/>
+      <text x="270" y="134" font-family="IBM Plex Mono" font-size="12.5" fill="#2f6fd6" font-weight="600">WebSocket</text>
+      <text x="270" y="172" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">live state,</text><text x="270" y="188" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">every 0.25 s</text>
+      <line x1="410" y1="242" x2="262" y2="242" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
+      <text x="270" y="226" font-family="IBM Plex Mono" font-size="12.5" fill="#3d4450" font-weight="600">HTTP</text>
+      <text x="270" y="264" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">commands, history,</text>
+      <text x="270" y="280" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">uploads</text>
+      <!-- server -->
+      <rect x="422" y="20" width="340" height="340" rx="24" fill="#fcfcfb" stroke="#2f6fd6" stroke-width="2"/>
+      <text x="446" y="60" font-family="Bricolage Grotesque" font-weight="700" font-size="22" fill="#1d2129">Deja Vu1 server</text>
+      <text x="446" y="84" font-family="IBM Plex Mono" font-size="13" fill="#6a717d">your computer · Python standard library</text>
+      <g font-family="Instrument Sans" font-weight="600" font-size="15" fill="#1d2129">
+        <rect x="446" y="106" width="144" height="54" rx="12" fill="#eef3fe" stroke="#9dbcf3"/><text x="462" y="130">Live feed</text><text x="462" y="149" font-family="IBM Plex Mono" font-weight="500" font-size="12" fill="#4a5260">every 250 ms</text>
+        <rect x="598" y="106" width="140" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="614" y="139">Confirm Print</text>
+        <rect x="446" y="170" width="144" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="462" y="203">Fleet + queue</text>
+        <rect x="598" y="170" width="140" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="614" y="203">Automations</text>
+        <rect x="446" y="234" width="144" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="462" y="267">Maintenance</text>
+        <rect x="598" y="234" width="140" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="614" y="258">Files +</text><text x="614" y="277">pre-flight</text>
+      </g>
+      <text x="446" y="322" font-family="IBM Plex Mono" font-size="12.5" fill="#6a717d">settings and logs: plain JSON files</text>
+      <text x="446" y="340" font-family="IBM Plex Mono" font-size="12.5" fill="#6a717d">in backend/data/</text>
+      <!-- browsers -->
+      <line x1="774" y1="150" x2="900" y2="150" stroke="#2f6fd6" stroke-width="3" marker-end="url(#ahb)"/>
+      <text x="782" y="134" font-family="IBM Plex Mono" font-size="12.5" fill="#2f6fd6" font-weight="600">WebSocket</text>
+      <text x="782" y="172" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">live view, pushed</text>
+      <line x1="900" y1="242" x2="774" y2="242" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
+      <text x="782" y="226" font-family="IBM Plex Mono" font-size="12.5" fill="#3d4450" font-weight="600">HTTP</text>
+      <text x="782" y="264" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">your commands</text>
+      <rect x="912" y="40" width="192" height="300" rx="22" fill="#fcfcfb" stroke="#d3d6dc" stroke-width="1.5"/>
+      <text x="934" y="78" font-family="Bricolage Grotesque" font-weight="700" font-size="22" fill="#1d2129">Your browsers</text>
+      <rect x="934" y="104" width="148" height="88" rx="14" fill="#f3f4f6" stroke="#d3d6dc"/>
+      <text x="950" y="140" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Laptop</text>
+      <text x="950" y="164" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">the full dashboard</text>
+      <rect x="934" y="206" width="148" height="108" rx="14" fill="#f3f4f6" stroke="#d3d6dc"/>
+      <text x="950" y="242" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Phone</text>
+      <text x="950" y="266" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">paired with a</text>
+      <text x="950" y="283" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">short code, on</text>
+      <text x="950" y="300" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">your network</text>
+      <!-- outbound -->
+      <line x1="592" y1="362" x2="592" y2="402" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
+      <line x1="210" y1="402" x2="974" y2="402" stroke="#3d4450" stroke-width="2.5"/>
+      <line x1="210" y1="402" x2="210" y2="440" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
+      <line x1="592" y1="402" x2="592" y2="440" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
+      <line x1="974" y1="402" x2="974" y2="440" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
+      <text x="606" y="392" font-family="IBM Plex Mono" font-size="12.5" fill="#3d4450" font-weight="600">sends out only, over plain HTTP</text>
+      <rect x="80" y="446" width="260" height="76" rx="16" fill="#fcfcfb" stroke="#d3d6dc" stroke-width="1.5"/>
+      <text x="100" y="478" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Home Assistant</text>
+      <text x="100" y="502" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">28 sensors, no MQTT broker</text>
+      <rect x="462" y="446" width="260" height="76" rx="16" fill="#fcfcfb" stroke="#d3d6dc" stroke-width="1.5"/>
+      <text x="482" y="478" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">WLED light strip</text>
+      <text x="482" y="502" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">dock colours, its JSON API</text>
+      <rect x="844" y="446" width="260" height="76" rx="16" fill="#fcfcfb" stroke="#d3d6dc" stroke-width="1.5"/>
+      <text x="864" y="478" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">ntfy · Discord · Telegram</text>
+      <text x="864" y="502" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">alerts your rules send</text>
+    </svg>
+  </div>
+  <p class="foot">Optional programs you install yourself, all off by default: OrcaSlicer (auto-print), go2rtc (low-latency camera), cloudflared (remote access). Nothing is fetched from the internet while Deja Vu1 runs.</p>
+</section>
+
+<!-- ============ 4. Feature map ============ -->
+<section class="board" id="b-features">
+  <span class="eyebrow"><i></i>What's in it</span>
+  <h2>Every module, grouped by what it needs. Most need nothing but the printer.</h2>
+  <div class="groups">
+    <div class="group" style="--c:var(--g-live)"><header><h3>Live, fleet-wide, hands-on</h3><span class="count">17</span></header><span class="needs"><i></i>No hardware needed</span>
+      <ul><li>Live updates</li><li>Needs you</li><li>Finish time on the clock</li><li>Tab follows the print</li><li>Printer fleet</li><li>Start from your phone</li><li>Honest controls</li><li>File library</li><li>G-code viewer + edits</li><li>3D viewer</li><li>Pre-flight check</li><li>MakerWorld / NexPrint → U1</li><li>View on your desk (AR)</li><li>Automations</li><li>Print queue</li><li>Digital twin</li><li>+ health gauge, chamber, time-lapse and more</li></ul></div>
+    <div class="group" style="--c:var(--g-ready)"><header><h3>Ready today</h3><span class="count">8</span></header><span class="needs"><i></i>No hardware needed</span>
+      <ul><li>Maintenance reminders</li><li>Printer control</li><li>Push notifications</li><li>Update checker</li><li>Config backup</li><li>Camera bridge</li><li>Phone pairing</li><li>Print cost calculator</li></ul></div>
+    <div class="group" style="--c:var(--g-farm)"><header><h3>Running a farm, making things</h3><span class="count">3</span></header><span class="needs"><i></i>No hardware needed</span>
+      <ul><li>Fleet command center</li><li>Photo-to-Print Studio</li><li>Farm sandbox</li></ul></div>
+    <div class="group" style="--c:var(--g-opt)"><header><h3>Optional, on by request</h3><span class="count">7</span></header><span class="needs"><i></i>Off until you switch it on</span>
+      <ul><li>Filament inventory</li><li>What changed?</li><li>Pre-print sanity check</li><li>WLED bridge</li><li>Home Assistant bridge</li><li>Auto-print pipeline</li><li>Low-latency camera</li></ul></div>
+    <div class="group" style="--c:var(--g-pend)"><header><h3>Hardware pending</h3><span class="count">2</span></header><span class="needs"><i></i>Logic built, parts not yet</span>
+      <ul><li>Dock status rings</li><li>"Right colour loaded?" sensor</li></ul></div>
+    <div class="group" style="--c:var(--g-games)"><header><h3>While you wait</h3><span class="count">10</span></header><span class="needs"><i></i>Games for long prints</span>
+      <ul><li>Sky Dash</li><li>Pong</li><li>Minesweeper</li><li>Tetris</li><li>Pac-Man</li><li>Brick Break</li><li>Blackjack</li><li>Asteroids</li><li>Snake</li><li>2048</li></ul></div>
+  </div>
+  <p class="foot">Groups and counts follow the tables in this README. Settings → Modules switches each one on or off, and the server enforces it (three exceptions are listed under "What's in it").</p>
+</section>
+
+<!-- ============ 5. By the numbers ============ -->
+<section class="board" id="b-numbers">
+  <span class="eyebrow"><i></i>By the numbers</span>
+  <h2>Small, checked, and free.</h2>
+  <div class="tiles">
+    <div class="tile"><b>572</b><span>automated tests, run with nothing but Python</span><em>python3 -m unittest discover tests</em></div>
+    <div class="tile"><b>250<small>ms</small></b><span>between live updates, the rate Klipper itself reports at</span><em>backend/live_feed.py</em></div>
+    <div class="tile"><b>12</b><span>printers on one dashboard, each with its own connection</span><em>backend/fleet.py</em></div>
+    <div class="tile"><b>0</b><span>packages to install beyond Python</span><em>standard library only</em></div>
+    <div class="tile"><b>7</b><span>maintenance tasks, tracked by hours, prints and calendar time</span><em>backend/maintenance.py</em></div>
+    <div class="tile"><b>28</b><span>Home Assistant sensors, with no MQTT broker</span><em>backend/home_assistant_bridge.py</em></div>
+    <div class="tile"><b>27</b><span>printers in the farm sandbox: 3 built in, up to 24 added</span><em>backend/sandbox.py</em></div>
+    <div class="tile"><b>270<small>mm</small></b><span>on each axis: the U1 build volume every pre-flight check measures against</span><em>backend/gcode_tools.py</em></div>
+  </div>
+  <p class="foot">Each figure is read from the code or the test runner, not estimated.</p>
+</section>
+</body></html>
