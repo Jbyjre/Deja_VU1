@@ -125,8 +125,9 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 | **File library** | Your G-code, 3MF and STL files, with real thumbnails, estimated time and grams, a pre-flight verdict, and a recent list. |
 | **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command — each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
 | **Interactive 3D viewer** | The toolpath of any G-code file, scrubbable layer by layer, and any STL or 3MF model — drawn with plain WebGL and parsers written for this project, no 3D library. |
-| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. |
-| **MakerWorld / NexPrint → U1** | One click turns a Bambu Studio (MakerWorld) or Elegoo Slicer (NexPrint) project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. |
+| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
+| **MakerWorld / NexPrint / OrcaSlicer → U1** | One click turns a Bambu Studio (MakerWorld), Elegoo Slicer (NexPrint) or OrcaSlicer project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. **Multi-plate projects land on the right plates**: every plate's objects are moved onto the U1's own plate grid, written from Snapmaker Orca's source. When it can't convert, it says why with a code, the step it failed at and what to try, and **Copy report** puts a full report on the clipboard for a bug report. |
+| **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab shows the plate from above with the object printing now; pick one, confirm, and the printer's own read-back says it's skipped. It refuses names the print doesn't have and the last object left (that's what Cancel is for). |
 | **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
@@ -166,7 +167,7 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 | Feature | What it does |
 |---|---|
 | **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately — "Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason ("Nothing is printing right now") in its own row — never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
-| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. It all runs in the browser; the photo is never uploaded. |
+| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. Change a colour, a size or a layer setting and the model rebuilds by itself; until it has, the old one is greyed out and can't be saved, so what you save always matches what's set. When the match is rough it says which colour would help. It all runs in the browser; the photo is never uploaded. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios — a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue — and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
 <table>
@@ -188,13 +189,16 @@ screen, with the print's progress on a line just above them on every tab.
 Pair a phone from **Settings → Pair another device**: it gets a short code,
 and talks straight to your computer over your home network.
 
+**Add to Home Screen** gives it a proper icon and name, opening without the
+browser's bars where the phone allows.
+
 <br clear="right">
 
 ### Optional — on by request
 
 | Module | What it does |
 |---|---|
-| **Filament inventory** | Tracks spools on hand, flags print files needing a colour you don't have, and nudges you if a spool has sat loaded for weeks. |
+| **Filament inventory** | Tracks spools on hand, flags print files needing a colour you don't have, and nudges you if a spool has sat loaded for weeks. **Import from Spoolman** brings in the spools you already track in [Spoolman](https://github.com/Donkie/Spoolman), with their colour and grams left; importing again updates them instead of duplicating. |
 | **What changed?** | Compares the job about to print against your last few runs of that file, and flags a likely cause when the file has failed before and shares a pattern (a filament type in common, say). |
 | **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
 | **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API — no extra hardware to build. |
@@ -388,9 +392,41 @@ Rockchip SoC exposes no GPIO, so this is both a design requirement and the
 only sensible approach. Details in
 [docs/hardware-modules.md](docs/hardware-modules.md).
 
+### Status at a glance
+
+| Part | Works with demo data | Tested against a stand-in built from the real thing's source | Confirmed on real hardware |
+|---|---|---|---|
+| Live dashboard, fleet, controls, start-print interlock | Yes | Yes - Moonraker, Klipper and Snapmaker's U1 source | Not yet - no U1 here |
+| Skip one object | Yes | Yes - Snapmaker's u1-klipper `exclude_object` | Not yet |
+| Filament colours after a touchscreen change | - | Yes - asked for every 30 s as well as pushed | Not yet |
+| MakerWorld / NexPrint / OrcaSlicer converter | Yes | Checked against Snapmaker Orca's loader and plate-grid source | Output not yet opened in Snapmaker Orca |
+| Photo-to-Print Studio | Yes | Runs in the browser; STL checked watertight | 3MF not yet opened in Orca, no print yet |
+| Spoolman import | Yes | Yes - Spoolman's API source | Not against a running Spoolman |
+| WLED, Home Assistant, ntfy, Discord, Telegram | Yes | Yes - each one's own source or docs | Not yet |
+| Auto-print slicing (optional) | Yes | A stand-in that behaves like OrcaSlicer's command line | Not against a real Orca install |
+| Low-latency camera (optional) | - | go2rtc's source | Not yet |
+| LED dock rings, colour sensor | Simulated | Decision logic tested | Hardware pending |
+
+If you have a U1 and want to help close the last column, see
+[docs/beta-testing.md](docs/beta-testing.md).
+
+## Ideas from the Phase 1 winners
+
+Phase 2 builds on what Phase 1 showed works. These ideas came from Phase 1
+winners. Each was rebuilt here from the printer's, slicer's or service's own
+source - no code was copied (several of these projects are GPL or carry
+non-commercial terms, and this one is MIT):
+
+| Idea | From |
+|---|---|
+| Re-place multi-plate projects on the U1's plate grid; coded, copyable conversion errors | [MakerWorld to Snapmaker U1](https://github.com/Dragon2203/makerworld-to-snapmaker-u1) |
+| Skip one object mid-print; ask for filament colours instead of only waiting for pushes; Spoolman import; add-to-home-screen | [U1 Print Hub](https://github.com/dlgambill/u1hub) |
+| Tell multiACE users to post-process T4-T15 before printing | [multiACE](https://github.com/decay71/multiACE) |
+| A status table of what is and isn't verified; a beta-tester guide | Sidecar, FOrcaSlicer, U1 Print Hub |
+
 ## Tech stack
 
-![By the numbers: 572 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 597 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only — written for 3.8 or newer;
   tested on 3.11 and 3.13 (3.8 itself hasn't been run)
@@ -400,7 +436,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 572 cases
+- **Tests:** `unittest` from the standard library, 597 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -592,7 +628,7 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 572
+python3 -m unittest discover tests          # all 597
 python3 -m unittest tests.test_api          # one file
 ```
 
@@ -617,6 +653,9 @@ version.
 
 - [CLAUDE.md](CLAUDE.md) — working context for developers and AI coding
   sessions: commands, file map, rules, pitfalls, known open issues
+- [docs/beta-testing.md](docs/beta-testing.md) — trying it on your own U1:
+  what to check first, what to send back
+- [CHANGELOG.md](CHANGELOG.md) — what changed, newest first
 - [docs/real-printer.md](docs/real-printer.md) — connecting a real printer:
   what was checked against Moonraker's and Snapmaker's source, what can't
   be without the machine, and what the first run will tell you

@@ -101,6 +101,43 @@ def add_spool(material, color_name, color_hex, grams_remaining):
     return spool
 
 
+def merge_external(source, rows):
+    """
+    Spools from another tracker (Spoolman): each row carries the other
+    tracker's id under "<source>_id". A spool already imported is updated in
+    place; a new one is added; spools added by hand are left alone. Grams
+    of None mean the other tracker doesn't know them - kept as they were for
+    an update, 0 for a new spool.
+    """
+    key = f"{source}_id"
+    added = updated = 0
+    with _lock:
+        inventory = _load()
+        by_ext = {s.get(key): s for s in inventory if s.get(key)}
+        for row in rows:
+            existing = by_ext.get(row[key])
+            fields = {k: row[k] for k in ("material", "color_name", "color_hex")}
+            if existing:
+                existing.update(fields)
+                if row["grams_remaining"] is not None:
+                    existing["grams_remaining"] = _grams(row["grams_remaining"])
+                updated += 1
+                continue
+            if len(inventory) >= MAX_SPOOLS:
+                break
+            next_id = f"spool-{len(inventory) + 1}"
+            while any(s["id"] == next_id for s in inventory):
+                next_id = f"{next_id}x"
+            spool = {"id": next_id, **fields, key: row[key],
+                     "grams_remaining": _grams(row["grams_remaining"] or 0),
+                     "loaded_since": datetime.now().isoformat(timespec="seconds")}
+            inventory.append(spool)
+            by_ext[row[key]] = spool
+            added += 1
+        _save(inventory)
+    return {"added": added, "updated": updated, "not_added_full": max(0, len(rows) - added - updated)}
+
+
 def remove_spool(spool_id):
     with _lock:
         inventory = _load()

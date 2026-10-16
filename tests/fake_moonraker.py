@@ -101,6 +101,9 @@ class FakeMoonraker:
             "toolhead": {"extruder": "extruder", "position": [135.0, 135.0, 10.0, 0.0], "homed_axes": "xyz"},
             "gcode_move": {"gcode_position": [135.0, 135.0, 10.0, 0.0]},
             "heater_bed": {"temperature": 24.0, "target": 0.0, "power": 0.0},
+            # extras/exclude_object.py get_status (Snapmaker's u1-klipper fork)
+            "exclude_object": {"objects": [], "excluded_objects": [], "current_object": None,
+                               "in_excluded_region": False},
         }
         for i, name in enumerate(names):
             e = {"temperature": 25.0, "target": 0.0, "power": 0.0, "can_extrude": False}
@@ -164,6 +167,13 @@ class FakeMoonraker:
         self._timers.append(t)
         t.start()
 
+    def define_objects(self, *names):
+        """What a file's EXCLUDE_OBJECT_DEFINE lines leave in Klipper's status."""
+        objects = sorted(({"name": n.upper(), "center": [100.0 + 30 * i, 120.0],
+                           "polygon": [[90.0 + 30 * i, 110.0], [110.0 + 30 * i, 110.0], [110.0 + 30 * i, 130.0]]}
+                          for i, n in enumerate(names)), key=lambda o: o["name"])
+        self.set("exclude_object", objects=objects, excluded_objects=[], current_object=objects[0]["name"])
+
     def begin_print(self, filename, **stats):
         self.set("print_stats", state="printing", filename=filename, **stats)
         self.set("virtual_sdcard", is_active=True, progress=0.1)
@@ -224,6 +234,14 @@ class FakeMoonraker:
             if heater not in self.status or not (heater == "heater_bed" or heater.startswith("extruder")):
                 return 400, f"The value '{heater}' is not valid for HEATER"
             self.set(heater, target=float(args.get("TARGET", 0)))
+        elif word == "EXCLUDE_OBJECT":
+            # Klipper upper-cases the name and adds it whatever it is - it
+            # never checks the object exists (extras/exclude_object.py).
+            args = dict(p.split("=", 1) for p in script.split(" ")[1:] if "=" in p)
+            name = args.get("NAME", "").upper()
+            if name:
+                excluded = sorted(set(self.status["exclude_object"]["excluded_objects"]) | {name})
+                self.set("exclude_object", excluded_objects=excluded)
         elif word == "SDCARD_PRINT_FILE":
             name = script.split('FILENAME="', 1)[1].rsplit('"', 1)[0]
             if name not in self.files:
@@ -473,6 +491,12 @@ class FakeMoonraker:
                 client["sub"] = objects
                 full = self._query(objects)
                 client["last"] = copy.deepcopy(full)
+            return ok({"eventtime": time.monotonic(), "status": full})
+        if method == "printer.objects.query":
+            if self.klippy_state != "ready":
+                return err(503, "Klippy Host not connected")
+            with self.lock:
+                full = self._query(params.get("objects") or {})
             return ok({"eventtime": time.monotonic(), "status": full})
         if method == "printer.emergency_stop":
             self.set("webhooks", state="shutdown", state_message="Shutdown due to M112 command")

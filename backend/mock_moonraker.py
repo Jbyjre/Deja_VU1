@@ -211,7 +211,9 @@ _FLEET_SPEC = [
             "state": "ready", "file": None,
             "progress": 0.0, "hours": 0.0, "total_hours": 0.0,
             "active": None, "layers": 0,
-            "loaded": {"T0": 1, "T1": 2, "T2": 5, "T3": 4},
+            # Orange in T0 and black in T1: what the sample cube and coaster
+            # were sliced for, so the demo tour can really start a print here.
+            "loaded": {"T0": 2, "T1": 0, "T2": 5, "T3": 4},
             "required": [],
             "dock_error": "T3",
         },
@@ -313,6 +315,7 @@ class SimulatedPrinter:
             "layer": {"current": layer, "total": s["layers"]},
             "printer_id": self.id,
             "printer_name": self.name,
+            **({"objects": _plate(_demo_objects(s["file"]))} if printing else {}),
         }
 
     # -- helpers ------------------------------------------------------------
@@ -391,6 +394,12 @@ class SimulatedPrinter:
                 if layer != live["layer"]["current"]:
                     live["layer"]["current"] = layer
                     self._maybe_tool_change(layer)
+                plate = live.get("objects")
+                if plate:
+                    # Each layer prints the objects in turn; skipped ones are passed over.
+                    left = [o["name"] for o in plate["list"] if o["name"] not in plate["excluded"]]
+                    within = (live["progress"] * layers) % 1.0
+                    plate["current"] = left[min(len(left) - 1, int(within * len(left)))] if left else None
                 live["state_message"] = f"Printing layer {layer} of {layers}"
 
                 # Travel the layer outline at ~120 mm/s of simulated time.
@@ -431,6 +440,7 @@ class SimulatedPrinter:
 
     def _finish(self):
         live = self.live
+        live.pop("objects", None)
         live["state"] = "complete"
         live["progress"] = 1.0
         live["state_message"] = f"Finished {live['current_file']}"
@@ -460,6 +470,27 @@ class SimulatedPrinter:
         live["active_toolhead"] = None
         self.log("complete", live["current_file"])
         return {"type": "print_finished", "job": job}
+
+
+def _demo_objects(filename, count=3):
+    """
+    A plate of labelled objects for the demo farm's prints that were already
+    running at start-up: named the way Orca names them (Klipper upper-cases
+    them), side by side around the bed's middle, each with an outline.
+    """
+    stem = (filename or "part").rsplit(".", 1)[0].upper()
+    out = []
+    for i in range(count):
+        cx, cy = 135.0 + (i - (count - 1) / 2) * 48.0, 135.0 + (12.0 if i % 2 else -12.0)
+        w, d = 34.0, 26.0 + 6 * (i % 2)
+        out.append({"name": f"{stem}.STL_ID_{i}_COPY_0", "center": [cx, cy],
+                    "polygon": [[cx - w / 2, cy - d / 2], [cx + w / 2, cy - d / 2],
+                                [cx + w / 2, cy + d / 2], [cx - w / 2, cy + d / 2]]})
+    return out
+
+
+def _plate(objects):
+    return {"list": copy.deepcopy(objects), "excluded": [], "current": None} if objects else None
 
 
 def _approach(value, target, seconds, tau):
@@ -700,6 +731,7 @@ def cancel_print():
             raise ValueError("Nothing to cancel")
         printer.check_failure("cancel")
         cancelled_file = live["current_file"]
+        live.pop("objects", None)
         live["state"] = "ready"
         live["state_message"] = "Idle"
         live["progress"] = 0.0
@@ -772,6 +804,12 @@ def start_print(filename, job=None):
             "bed_target": float(job.get("bed_temperature") or 60.0),
             "layer": {"current": 1, "total": printer.job["layers"]},
         })
+        # The file's own EXCLUDE_OBJECT_DEFINE lines, as Klipper would read them.
+        plate = _plate(job.get("objects"))
+        if plate:
+            live["objects"] = plate
+        else:
+            live.pop("objects", None)
         for th, data in live["toolheads"].items():
             if data["status"] != "error":
                 data["status"] = "active" if th == first_tool else "docked"
@@ -824,6 +862,25 @@ def home_axes(axes):
         printer.check_failure("home")
         printer.log("home", "".join(axes))
     return {"homed": list(axes)}
+
+
+def exclude_object(name):
+    """POST /printer/gcode/script with EXCLUDE_OBJECT NAME=... (Klipper's skip-one-object)."""
+    printer = _current()
+    if printer.real:
+        return printer.exclude_object(name)
+    with printer.lock:
+        printer.check_link("exclude")
+        refusal = moonraker_client.exclude_refusal(printer.live, name)
+        if refusal:
+            raise ValueError(refusal)
+        printer.check_failure("exclude")
+        plate = printer.live["objects"]
+        plate["excluded"] = sorted(plate["excluded"] + [name])       # Klipper keeps it sorted
+        if plate["current"] == name:
+            plate["current"] = None
+        printer.log("exclude", name)
+        return printer.snapshot()
 
 
 def run_gcode(command):
@@ -915,7 +972,7 @@ def fail_next(action, message="Moonraker did not accept the command"):
     failed command as failed, never as done.
     """
     if action not in {"pause", "resume", "cancel", "start", "upload",
-                      "temperature", "home", "gcode"}:
+                      "temperature", "home", "gcode", "exclude"}:
         raise ValueError(f"Unknown action: {action}")
     printer = _sim()
     with printer.lock:

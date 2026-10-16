@@ -1116,7 +1116,8 @@ const Workshop = (() => {
           <button class="btn" id="fd-forget" type="button">Close and forget</button></div>
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>` : `
         <div class="fd-actions">
-          ${is3mf && !modGate.off.has('converter') ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          ${is3mf && !modGate.off.has('converter') && !['converted', 'studio'].includes(entry.origin) ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          ${is3mf && ['converted', 'studio'].includes(entry.origin) ? '<span class="fd-u1-ready">Set up for the Snapmaker U1 - open it in Snapmaker Orca</span>' : ''}
           <span id="fd-slice-slot" class="fd-slice-slot"></span>
           <span id="fd-ar-slot" class="fd-ar-slot"></span>
           <a class="btn" href="/api/files/raw?name=${enc(entry.name)}&download=1">Download</a>
@@ -1140,6 +1141,37 @@ const Workshop = (() => {
     }
   }
 
+  /* A plain-text report of one conversion, to paste into a bug report. */
+  function conversionReport(name, r) {
+    const b = r.body || {};
+    const lines = ['Deja Vu1 - conversion report', `When: ${new Date().toISOString()}`, `File: ${name}`,
+                   `Browser: ${navigator.userAgent}`];
+    if (!r.ok) {
+      lines.push(`Result: failed`, `Code: ${b.code || 'none'}`, `Stage: ${b.stage || 'unknown'}`,
+                 `Message: ${b.error || `HTTP ${r.status}`}`);
+      if (b.action) lines.push(`Suggested: ${b.action}`);
+    } else {
+      const rep = b.report;
+      lines.push('Result: converted', `Saved as: ${b.file.name}`, `Source: ${rep.source_label} (${rep.application || 'no application name'})`,
+                 `Original printer: ${rep.original_printer}`, `Printer profile: ${rep.printer_profile}`,
+                 `Print profile: ${rep.print_profile} (layer height ${rep.layer_height})`,
+                 `Filament profiles: ${rep.filament_profiles.join(', ')}`,
+                 `Kept settings: ${rep.kept.join(', ') || 'none'}`);
+      if (rep.plates) lines.push(`Plates: ${rep.plates.count}, moved ${rep.plates.moved.join(', ') || 'none'}, left as they were ${rep.plates.skipped.join(', ') || 'none'}`);
+      rep.warnings.forEach(w => lines.push(`Warning: ${w}`));
+      (rep.removed_parts || []).forEach(p => lines.push(`Removed: ${p}`));
+    }
+    return lines.join('\n');
+  }
+
+  function plateSummary(plates) {
+    if (!plates || !plates.count) return '';
+    if (!plates.moved.length) return '';
+    const n = plates.count;
+    return `<p>${n === 1 ? 'The plate was' : `All ${n} plates were`}${plates.skipped.length ? ` (except ${plates.skipped.map(esc).join(', ')})` : ''}
+      re-placed on the U1's 270 mm bed, each object keeping its spot, height and turn${n > 1 ? ' - so every plate opens where it belongs in Snapmaker Orca' : ''}.</p>`;
+  }
+
   async function convertFile(name, button) {
     button.disabled = true;
     button.textContent = 'Converting…';
@@ -1147,20 +1179,40 @@ const Workshop = (() => {
     button.disabled = false;
     button.textContent = 'Convert for Snapmaker U1';
     const host = $('fd-convert-report');
-    if (!r.ok) { host.innerHTML = `<p class="convert-fail">${esc(r.body.error)}</p>`; toast('Conversion not possible', 'warn'); return; }
-    const rep = r.body.report;
-    host.innerHTML = `
-      <div class="convert-report">
-        <h3 class="fd-h">Converted from ${esc(rep.source_label)}</h3>
-        <p>Saved as <button class="chip-btn" data-open-file="${esc(r.body.file.name)}" type="button">${esc(r.body.file.name)}</button>. Printer <b>${esc(rep.printer_profile)}</b>, print profile <b>${esc(rep.print_profile)}</b>, filaments ${rep.filament_profiles.map(esc).join(', ')}.</p>
-        ${rep.kept.length ? `<p>Kept the creator's own changes: ${rep.kept.map(k => `<code>${esc(k)}</code>`).join(' ')}</p>` : ''}
-        ${rep.warnings.length ? `<ul class="pf-list">${rep.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
-        <p class="log-empty">${esc(rep.unverified)}</p>
-      </div>`;
-    toast(`Converted — saved as ${r.body.file.name}`, 'ok');
-    await loadFiles();
-    if (files.open) renderCompare(files.open);
-    qsa('[data-open-file]', host).forEach(b => b.onclick = () => openFile(b.dataset.openFile));
+    const copyBtn = '<button class="btn small" type="button" data-copy-report>Copy report</button>';
+    if (!r.ok) {
+      const b = r.body || {};
+      host.innerHTML = `
+        <div class="convert-fail" role="alert">
+          <p class="convert-fail-head">${b.code ? `<b class="convert-code">${esc(b.code)}</b>` : ''}${b.stage ? `<span>${esc(b.stage)}</span>` : ''}</p>
+          <p>${esc(b.error || 'Conversion failed')}</p>
+          ${b.action ? `<p class="convert-action"><b>Try:</b> ${esc(b.action)}</p>` : ''}
+          <div class="convert-actions">${copyBtn}<span class="log-empty">Paste it into a bug report - it has everything needed to look into it.</span></div>
+        </div>`;
+      toast('Conversion not possible', 'warn');
+    } else {
+      const rep = r.body.report;
+      host.innerHTML = `
+        <div class="convert-report">
+          <h3 class="fd-h">Converted from ${esc(rep.source_label)}</h3>
+          <p>Saved as <button class="chip-btn" data-open-file="${esc(r.body.file.name)}" type="button">${esc(r.body.file.name)}</button>. Printer <b>${esc(rep.printer_profile)}</b>, print profile <b>${esc(rep.print_profile)}</b>, filaments ${rep.filament_profiles.map(esc).join(', ')}.</p>
+          ${plateSummary(rep.plates)}
+          ${rep.kept.length ? `<p>Kept the creator's own changes: ${rep.kept.map(k => `<code>${esc(k)}</code>`).join(' ')}</p>` : ''}
+          ${rep.warnings.length ? `<ul class="pf-list">${rep.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
+          <p class="log-empty">${esc(rep.unverified)}</p>
+          <div class="convert-actions">${copyBtn}</div>
+        </div>`;
+      toast(`Converted — saved as ${r.body.file.name}`, 'ok');
+      await loadFiles();
+      if (files.open) renderCompare(files.open);
+      qsa('[data-open-file]', host).forEach(b => b.onclick = () => openFile(b.dataset.openFile));
+    }
+    const text = conversionReport(name, r);
+    qsa('[data-copy-report]', host).forEach(b => b.addEventListener('click', async () => {
+      const ok = await copyText(text);
+      toast(ok ? 'Report copied' : "This browser wouldn't copy it - select the text and copy by hand", ok ? 'ok' : 'warn');
+      if (!ok) host.insertAdjacentHTML('beforeend', `<textarea class="convert-report-text" readonly rows="8">${esc(text)}</textarea>`);
+    }));
   }
 
   /* G-code lines: a window of 200 at a time, searchable, with small edits. */

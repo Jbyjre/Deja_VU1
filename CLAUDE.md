@@ -34,7 +34,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 572 tests, about 130 s
+python3 -m unittest discover tests          # 597 tests, about 135 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"

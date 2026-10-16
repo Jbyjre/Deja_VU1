@@ -172,6 +172,7 @@ def summary(filename, printer_state=None):
                                    "expected_color_name": r.get("loaded_name"),
                                    "expected_material": r.get("expected_material")} for r in rows],
             "footprint_mm": analysis["footprint_mm"],
+            "objects": analysis.get("objects") or [],
         },
     }
 

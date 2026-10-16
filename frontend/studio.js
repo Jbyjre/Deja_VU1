@@ -373,8 +373,9 @@ const Studio = (() => {
   const MAX_COLOURS = 4;            // one per U1 toolhead: tool changes, not manual swaps
   const s = {
     image: null, imageName: 'photo', palette: null, stack: [], auto: true, starts: null,
-    result: null, viewer: null, busy: false, loaded: false,
+    result: null, viewer: null, busy: false, loaded: false, pending: false,
   };
+  let rebuildTimer = 0;
   const val = (id) => $(id).value;
   const num = (id) => +$(id).value;
 
@@ -429,6 +430,7 @@ const Studio = (() => {
     s.stack.sort((a, b) => C.luminance(a.hex) - C.luminance(b.hex));
     s.starts = null;
     renderStack();
+    changed();
   }
 
   function renderStack() {
@@ -443,10 +445,13 @@ const Studio = (() => {
       </li>`).reverse().join('')
       : '<li class="log-empty">Add two to four colours, dark and light. They stack darkest first.</li>';
     host.querySelectorAll('[data-td-index]').forEach(inp => inp.addEventListener('change', () => {
-      s.stack[+inp.dataset.tdIndex].td = Math.min(20, Math.max(0.1, +inp.value || 1));
+      const td = Math.min(20, Math.max(0.1, +inp.value || 1));
+      inp.value = td;
+      s.stack[+inp.dataset.tdIndex].td = td;
+      changed();
     }));
     host.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', () => {
-      s.stack.splice(+b.dataset.remove, 1); s.starts = null; renderStack();
+      s.stack.splice(+b.dataset.remove, 1); s.starts = null; renderStack(); changed();
     }));
     $('st-build').disabled = s.stack.length < 2 || !s.image;
     buildHint();
@@ -462,13 +467,39 @@ const Studio = (() => {
     if (inPreview) { inPreview.textContent = s.image ? hint : ''; inPreview.hidden = !(s.image && hint); }
   }
 
+  /* Anything that changes the model - a colour, a TD, a size, a new photo -
+   * makes the model on screen out of date. It is greyed out and can't be
+   * saved until it has been rebuilt, which happens by itself a moment
+   * later, so what you see and what you save always match what's set. */
+  function changed() {
+    markStale();
+    clearTimeout(rebuildTimer);
+    if (s.image && s.stack.length >= 2) rebuildTimer = setTimeout(() => build({ quiet: true }), 350);
+  }
+
+  function markStale(reason) {
+    if (!s.result) return;
+    s.result.stale = true;
+    $('st-preview').classList.add('is-stale');
+    $('st-save-row').hidden = true;
+    $('st-saved').textContent = '';
+    $('st-status').textContent = reason
+      || (!s.image ? '' : s.stack.length < 2 ? 'Add at least two colours to rebuild the model.' : 'Updating the model…');
+  }
+
   /* ---- the photo ---- */
 
   async function loadImage(file) {
-    if (!file || !/^image\//.test(file.type)) { toast('Choose an image file (JPEG, PNG, WebP…)', 'warn'); return; }
+    // iPhone photos are often HEIC, which most browsers away from Apple can't open.
+    const heic = file && (/\.(heic|heif)$/i.test(file.name) || /hei[cf]/i.test(file.type));
+    const heicHelp = 'This is an HEIC photo, which this browser can\'t open - save or export it as a JPEG and choose that';
+    if (!file || (!heic && !/^image\//.test(file.type))) { toast('Choose an image file (JPEG, PNG, WebP…)', 'warn'); return; }
     try {
       s.image = await createImageBitmap(file);
-    } catch (e) { toast(`Couldn't read that image: ${e.message || 'unsupported format'}`, 'bad'); return; }
+    } catch (e) {
+      toast(heic ? heicHelp : `Couldn't read that image: ${e.message || 'unsupported format'}`, 'bad', 7000);
+      return;
+    }
     s.imageName = file.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9 _-]/g, '').slice(0, 60) || 'photo';
     $('st-name').value = `${s.imageName}-relief`;
     photoReady();
@@ -500,7 +531,7 @@ const Studio = (() => {
     $('st-preview').classList.remove('is-empty');
     $('st-drop-text').textContent = `${s.imageName} · ${s.image.width} × ${s.image.height} px`;
     renderStack();
-    if (s.stack.length >= 2) build();
+    if (s.stack.length >= 2) { markStale(); clearTimeout(rebuildTimer); build({ quiet: true }); }
   }
 
   /* ---- build ---- */
@@ -532,16 +563,23 @@ const Studio = (() => {
     if (s.stack.length < 2) return 'Add at least two colours';
     if (!(set.widthMM >= 20 && set.widthMM <= 250)) return 'Width must be between 20 and 250 mm';
     if (grid.h * grid.pitch > 250) return `At this width the print would be ${(grid.h * grid.pitch).toFixed(0)} mm deep - make it narrower`;
-    if (!(set.maxLayers >= s.stack.length + 2)) return `Allow at least ${s.stack.length + 2} colour layers`;
+    if (!(set.maxLayers >= s.stack.length + 2 && set.maxLayers <= 80)) return `Colour layers must be between ${s.stack.length + 2} and 80`;
+    if (!(set.baseLayers >= 1 && set.baseLayers <= 20)) return 'Base layers must be between 1 and 20';
     return null;
   }
 
-  async function build() {
-    if (s.busy) return;
+  async function build({ quiet = false } = {}) {
+    clearTimeout(rebuildTimer);
+    // A change that lands mid-build is built straight after, never dropped.
+    if (s.busy) { s.pending = true; return; }
     const set = settings();
     const grid = s.image ? gridFor(set) : null;
     const problem = validate(set, grid);
-    if (problem) { toast(problem, 'warn'); return; }
+    if (problem) {
+      markStale(`${problem} - the model updates once it is.`);
+      if (!quiet) toast(problem, 'warn');
+      return;
+    }
     s.busy = true;
     const btn = $('st-build');
     btn.disabled = true; btn.textContent = 'Building…';
@@ -552,7 +590,9 @@ const Studio = (() => {
       const target = targetLab(grid);
       const colours = s.stack.map(c => ({ ...c }));
       let plan = { ...set, colours, starts: C.evenStarts(colours.length, set.maxLayers) };
-      if (s.auto || !s.starts || s.starts.length !== colours.length) plan.starts = C.optimiseStarts(target, plan);
+      const manualOk = s.starts && s.starts.length === colours.length
+        && s.starts.every((v, k) => k === 0 ? v === 0 : v > s.starts[k - 1] && v <= set.maxLayers);
+      if (s.auto || !manualOk) plan.starts = C.optimiseStarts(target, plan);
       else plan.starts = s.starts.slice();
       s.starts = plan.starts.slice();
       const rows = C.table(plan);
@@ -560,7 +600,16 @@ const Studio = (() => {
       const zOf = (i, j) => C.zTop(plan.baseLayers + heights[j * grid.w + i], plan);
       const tris = C.buildMesh(grid, zOf);
       const stl = C.toSTL(tris);
-      s.result = { plan, grid, heights, rows, tris, stl, meanDeltaE, ms: Math.round(performance.now() - started) };
+      // How light and dark the photo goes, against what these filaments can show.
+      let photoMin = Infinity, photoMax = -Infinity;
+      for (let q = 0; q < target.length; q += 3) { photoMin = Math.min(photoMin, target[q]); photoMax = Math.max(photoMax, target[q]); }
+      const reach = rows.map(row => row.lab[0]);
+      // Lightness of the palest and darkest filament: a stack that already
+      // has near-white or near-black can't be helped by adding more of it.
+      const filL = colours.map(c => C.oklab(...C.hexRGB(c.hex).map(C.toLin))[0]);
+      const range = { photoMin, photoMax, min: Math.min(...reach), max: Math.max(...reach),
+                      palest: Math.max(...filL), darkest: Math.min(...filL) };
+      s.result = { plan, grid, heights, rows, tris, stl, meanDeltaE, range, ms: Math.round(performance.now() - started) };
       renderResult();
     } catch (err) {
       console.error(err);
@@ -571,6 +620,7 @@ const Studio = (() => {
       btn.textContent = 'Build model';
       btn.disabled = s.stack.length < 2 || !s.image;
       buildHint();
+      if (s.pending) { s.pending = false; build({ quiet: true }); }
     }
   }
 
@@ -588,16 +638,25 @@ const Studio = (() => {
     }
     g.putImageData(img, 0, 0);
 
-    const tallest = Math.max(...r.heights);
+    let tallest = 0;
+    for (const v of r.heights) if (v > tallest) tallest = v;
     const height = C.zTop(plan.baseLayers + tallest, plan);
     const match = r.meanDeltaE < 5 ? 'close' : r.meanDeltaE < 10 ? 'fair' : 'rough';
+    // A rough match nearly always means the stack can't reach the photo's
+    // lightest or darkest tones - say which, so the fix is one tap away.
+    const advice = r.meanDeltaE < 5 ? '' : [
+      r.range.photoMax - r.range.max > 0.08 && r.range.palest < 0.9 ? 'a lighter colour (white or a pale tone) for the bright areas' : '',
+      r.range.min - r.range.photoMin > 0.08 && r.range.darkest > 0.3 ? 'a darker colour (black or a deep tone) for the shadows' : '',
+    ].filter(Boolean).join(' and ');
     $('st-metrics').innerHTML = `
       <div class="stat"><span class="stat-key">Size</span><span class="stat-val">${(grid.w * grid.pitch).toFixed(0)} × ${(grid.h * grid.pitch).toFixed(0)}</span><span class="stat-foot">mm, ${height.toFixed(2)} mm tall</span></div>
       <div class="stat"><span class="stat-key">Columns</span><span class="stat-val">${grid.w} × ${grid.h}</span><span class="stat-foot">${grid.pitch.toFixed(2)} mm each</span></div>
       <div class="stat"><span class="stat-key">Triangles</span><span class="stat-val">${(r.tris.length / 3).toLocaleString()}</span><span class="stat-foot">built in ${r.ms} ms</span></div>
-      <div class="stat"><span class="stat-key">Colour match</span><span class="stat-val">${match}</span><span class="stat-foot">average ΔE ${r.meanDeltaE.toFixed(1)} (OKLab ×100)</span></div>`;
+      <div class="stat"><span class="stat-key">Colour match</span><span class="stat-val">${match}</span><span class="stat-foot">average ΔE ${r.meanDeltaE.toFixed(1)} (OKLab ×100)</span></div>
+      ${advice ? `<p class="st-advice">To get closer, add ${esc(advice)}.</p>` : ''}`;
     renderLadder();
     $('st-status').textContent = '';
+    $('st-preview').classList.remove('is-stale');
     $('st-save-row').hidden = false;
     show3D();
   }
@@ -668,7 +727,7 @@ const Studio = (() => {
 
   async function save(kind, btn) {
     const r = s.result;
-    if (!r) return;
+    if (!r || r.stale || s.busy) { toast('The model is still updating - save it in a moment', 'info'); return; }
     const base = val('st-name').trim().replace(/[^A-Za-z0-9 ._()+-]/g, '_').replace(/\.(stl|3mf)$/i, '') || 'photo-relief';
     const name = `${base}.${kind}`;
     btn.disabled = true;
@@ -759,7 +818,8 @@ const Studio = (() => {
     drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('is-over'); loadImage(e.dataTransfer.files[0]); });
     $('st-test').addEventListener('click', testPattern);
     $('st-build').addEventListener('click', build);
-    $('st-auto').addEventListener('change', (e) => { s.auto = e.target.checked; if (s.result) renderLadder(); if (s.auto && s.result) build(); });
+    $('st-auto').addEventListener('change', (e) => { s.auto = e.target.checked; if (s.result) renderLadder(); if (s.auto && s.result) build({ quiet: true }); });
+    ['st-width', 'st-detail', 'st-layer', 'st-first', 'st-base', 'st-max'].forEach(id => $(id).addEventListener('change', changed));
     $('st-save-3mf').addEventListener('click', (e) => save('3mf', e.currentTarget));
     $('st-save-stl').addEventListener('click', (e) => save('stl', e.currentTarget));
     window.addEventListener('dv-tab', (e) => { if (e.detail === 'studio') load(); });
