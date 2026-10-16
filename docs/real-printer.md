@@ -17,8 +17,10 @@ install on the printer.
 `Details` on the printer's row shows everything a first connection needs
 someone to see: whether the link is open, Klipper's state, which toolheads
 and chamber sensor were found, how much print history was read, and the
-last few hundred exchanges with Moonraker — what was sent and what came
-back. The same is at `GET /api/printers/diagnostics?printer=<id>`. The
+newest 14 exchanges with Moonraker — what was sent and what came back. The
+full record, with the last 300 exchanges, is at
+`GET /api/printers/diagnostics?printer=<id>` (the id is listed at
+`GET /api/fleet/registry`). The
 server's terminal prints every command sent and every failure; start it
 with `DEJAVU_MOONRAKER_LOG=1` to print every exchange, WebSocket messages
 included.
@@ -27,14 +29,14 @@ included.
 
 | What's wrong | What you see |
 |---|---|
-| Wrong address or port | "…refused the connection - is Moonraker running there, and is 7125 its port?" |
+| Wrong address or port | "…refused the connection - is Moonraker running there, and is <port> its port? (Moonraker usually uses 7125)" |
 | Printer off / not on this network | "No answer from … within 5 s - is the printer on and on this network?" |
 | A name that doesn't resolve | "Can't find 'u1.local' on the network - check the printer's address" |
-| Moonraker wants a key | "Moonraker refused the dashboard (401) … Add this printer's API key in Settings, or add this computer's address to [authorization] trusted_clients" |
+| Moonraker wants a key | "Not connected: Unauthorized", or "Moonraker refused the live connection (401) - it needs an API key, or this computer added to trusted_clients". Remove the printer and add it again with its key (**Fleet → Add a printer**), or add this computer to `[authorization] trusted_clients` |
 | Moonraker up, Klipper not | "Moonraker is running, but Klipper isn't connected to it" (retried every 2 s, as Moonraker's docs say) |
-| Klipper restarting | The printer shows "error: Klipper stopped talking to Moonraker (restarting?)", then recovers by itself |
-| Wi-Fi drops | Its last reading stays on screen, labelled "No answer since 14:02"; commands are refused in words; it reconnects by itself (1 s, 2 s, 4 s … up to 30 s apart) |
-| The address is some other web page | "…answered 200, but not with JSON (it began "<!DOCTYPE html>") - is that address Moonraker itself?" |
+| Klipper restarting | The printer shows an error ("Moonraker is running, but Klipper isn't connected to it", or "Klipper is starting up"), then recovers by itself |
+| Wi-Fi drops | Its last reading stays on screen, labelled "No answer since 14:02"; commands are refused (the dashboard says no printer is connected); it reconnects by itself (1 s, 2 s, 4 s … up to 30 s apart) |
+| The address is some other web page | "…answered "HTTP/1.1 200 OK" instead of opening a live connection - is that address Moonraker?" (or "… has no /websocket" when it answers 404) |
 
 A printer that isn't connected never shows numbers, and demo data never
 fills it in: demo data only ever means the simulation.

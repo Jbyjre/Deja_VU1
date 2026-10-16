@@ -10,6 +10,10 @@ env/
 # specific to whoever is running it, so it does not belong in the repo.
 backend/data/
 
+# Renders from tools/readme-images/render.js; the finished, resized copies
+# live in docs/img/ and frontend/img/.
+tools/readme-images/out/
+
 # Editors
 .vscode/
 .idea/
