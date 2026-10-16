@@ -90,7 +90,9 @@ const Workshop = (() => {
   }
 
   function empty(title, sub) { return EMPTY(title, sub); }
-  function demoNeeded(what) { return empty(`No printer connected`, `Turn on demo data to see ${what} on the simulated printers.`); }
+  function demoNeeded(what) {
+    return serverMissing() ? needsServerEmpty(what) : empty(`No printer connected`, `Turn on demo data to see ${what} on the simulated printers.`);
+  }
 
   /* ================================================================
    * 2. the live connection
@@ -112,7 +114,7 @@ const Workshop = (() => {
   }
 
   function connect() {
-    if (!liveData()) { live.mode = 'off'; badge(); return; }
+    if (!liveData()) { live.mode = 'off'; badge(); tintRoom({}); return; }
     if (!('WebSocket' in window)) { startPolling(); return; }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     // demo=1 only when demo data is on: a real printer's live feed must
@@ -123,7 +125,7 @@ const Workshop = (() => {
     try { ws = new WebSocket(`${proto}://${location.host}/api/live?${params.join('&')}`); }
     catch (e) { startPolling(); return; }
     live.ws = ws;
-    ws.onopen = () => { live.mode = 'ws'; live.retries = 0; badge(); };
+    ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; badge(); };
     ws.onmessage = (e) => {
       let msg;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
@@ -166,6 +168,10 @@ const Workshop = (() => {
         const fleet = await getJSON(api('/api/fleet')).catch(() => null);
         if (fleet && fleet.printers) renderFleet(fleet.printers);
       }
+      // Polling started because the WebSocket failed - often just a server
+      // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
+      // stops this polling (ws.onopen).
+      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws) connect();
     };
     once();
     live.poll = setInterval(once, 1000);
@@ -201,7 +207,37 @@ const Workshop = (() => {
     renderQuickActions(state);
     updateChamberNow(state);
     renderChip();
+    tintRoom(state);
     if (fromCommand) refreshSoon();
+  }
+
+  /* The light behind the glass takes the colours of the filament loaded on
+   * the printer you're looking at (theme.css, --fil-a / --fil-b): the active
+   * toolhead's first, then the most colourful of the rest. Black, white and
+   * greys have no colour to give, so they're skipped, and with nothing
+   * colourful loaded the room keeps its default light. */
+  let roomKey = null;
+  function tintRoom(state) {
+    const chroma = (hex) => {
+      const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+      if (!m) return 0;
+      const v = [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16));
+      return (Math.max(...v) - Math.min(...v)) / 255;
+    };
+    const heads = state.toolheads || {};
+    const active = state.active_toolhead && heads[state.active_toolhead];
+    const ranked = Object.values(heads)
+      .map(t => t.filament_color_hex)
+      .filter(hex => chroma(hex) > 0.28)
+      .sort((a, b) => chroma(b) - chroma(a));
+    const first = active && chroma(active.filament_color_hex) > 0.28 ? active.filament_color_hex : ranked[0];
+    const second = ranked.find(hex => hex !== first);
+    const key = `${first || ''}|${second || ''}`;
+    if (key === roomKey) return;
+    roomKey = key;
+    const root = document.documentElement.style;
+    if (first) root.setProperty('--fil-a', first); else root.removeProperty('--fil-a');
+    if (second) root.setProperty('--fil-b', second); else root.removeProperty('--fil-b');
   }
 
   async function refreshPrinter() {
@@ -299,6 +335,16 @@ const Workshop = (() => {
 
   function renderFleet(printers) {
     live.fleet = printers || [];
+    // The remembered printer can be gone (removed, or a sandbox printer torn
+    // down). Every request would then ask for an unknown printer and every
+    // panel would say nothing is connected, so fall back to the default.
+    if (currentPrinter && live.fleet.length && !live.fleet.some(p => p.id === currentPrinter)) {
+      currentPrinter = '';
+      store.set(PRINTER_KEY, '');
+      reconnect();
+      refreshAll();
+      return;
+    }
     renderChip();
     const grid = $('fleet-grid');
     if (!grid) return;
@@ -348,7 +394,8 @@ const Workshop = (() => {
       setVar(arc, 'stroke-dashoffset', String(circ * (1 - progress)));
       setText(qs('.fc-pct', ring), `${Math.round(progress * 100)}%`);
       setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'No job'));
-      setText(f('meta'), p.remaining_hours != null ? `${fmtHours(p.remaining_hours)} left` : (p.state_message || ''));
+      setText(f('meta'), p.remaining_hours != null
+        ? `${fmtHours(p.remaining_hours)} left · done ${doneAt(p.remaining_hours)}` : (p.state_message || ''));
       setHTML(f('docks'), Object.entries(p.docks || {}).map(([th, d]) => `
         <span class="fc-dock ${d.status}" title="${esc(th)}: ${esc(d.status)}">
           <span class="fc-dock-chip" style="background:${esc(d.color)}"></span>${esc(th)}
@@ -366,7 +413,99 @@ const Workshop = (() => {
     });
     // The fleet command center (farm.js) adds selection, queues and drop targets.
     window.dispatchEvent(new CustomEvent('dv-fleet', { detail: live.fleet }));
+    renderAttention(live.fleet);
   }
+
+  /* ================================================================
+   * Needs you: the whole farm, ranked by what wants a person
+   * ================================================================
+   * Read straight from the fleet rows the server already sends (their
+   * alerts, state and time left) plus each printer's queue. Nothing here
+   * is inferred beyond that: a fault is a fault the printer reported, a
+   * queue is files really waiting. */
+
+  const attention = { queues: {}, queuesAt: 0, queueOff: false };
+  const TAB_LABEL = { control: 'Control', files: 'Files', maintenance: 'Care' };
+  const SOON_HOURS = 0.25;   // "about to finish" means within 15 minutes
+
+  async function refreshAttentionQueues() {
+    if (Date.now() - attention.queuesAt < 15000) return;
+    attention.queuesAt = Date.now();
+    const data = await getJSON(api('/api/fleet/queues')).catch(() => null);
+    attention.queueOff = !data || isModuleDisabled(data) || !!data.queue_disabled;
+    attention.queues = (!attention.queueOff && data.queues) || {};
+  }
+
+  function attentionItems(printers) {
+    const items = [];
+    printers.forEach(p => {
+      const add = (rank, level, title, sub, go) => items.push({ rank, level, title, sub, go, id: p.id, name: p.name });
+      // Faults the printer reported: dock errors, a printer error, lost link.
+      (p.alerts || []).filter(a => a.level === 'error').forEach(a => {
+        const said = p.state_message && p.state_message !== a.text ? p.state_message : '';
+        const detail = [said, p.current_file ? `during ${p.current_file}` : ''].filter(Boolean).join(' · ') || 'see it in Control';
+        add(0, 'error', `${p.name}: ${a.text}`, detail[0].toUpperCase() + detail.slice(1), 'control');
+      });
+      if (p.state === 'paused') {
+        add(1, 'warning', `${p.name} is paused`, `${p.current_file || 'Current print'} · ${Math.round(p.progress * 100)}% done`, 'control');
+      } else if (p.state === 'complete') {
+        add(1, 'done', `${p.name} finished ${p.current_file || 'its print'}`, 'Ready for the next print once the bed is clear', 'control');
+      }
+      const q = attention.queues[p.id];
+      const waiting = q ? q.items.filter(i => i.status === 'queued' || i.status === 'held').length : 0;
+      if (p.state === 'ready' && waiting && !p.link_lost) {
+        add(2, 'warning', `${p.name} is idle with ${waiting} file${waiting === 1 ? '' : 's'} waiting`, 'Start the next one from Files', 'files');
+      }
+      (p.alerts || []).filter(a => a.level === 'warning' && a.text !== 'Paused').forEach(a =>
+        add(3, 'warning', `${p.name}: ${a.text}`, 'See what is due in Care', 'maintenance'));
+      if (p.state === 'printing' && p.remaining_hours != null && p.remaining_hours <= SOON_HOURS) {
+        add(4, 'info', `${p.name} finishes in ${fmtHours(p.remaining_hours)}`, `${p.current_file || 'Current print'} · done ${doneAt(p.remaining_hours)}`, 'control');
+      }
+    });
+    return items.sort((a, b) => a.rank - b.rank);
+  }
+
+  function attentionSummary(printers) {
+    const printing = printers.filter(p => p.state === 'printing');
+    const next = printing.filter(p => p.remaining_hours != null).sort((a, b) => a.remaining_hours - b.remaining_hours)[0];
+    const parts = [];
+    if (printing.length) parts.push(`${printing.length} printing`);
+    const idle = printers.filter(p => p.state === 'ready').length;
+    if (idle) parts.push(`${idle} idle`);
+    const head = parts.length ? parts.join(', ') : `${printers.length} printer${printers.length === 1 ? '' : 's'}`;
+    return next ? `${head} · next one done ${doneAt(next.remaining_hours)} (${next.name})` : head;
+  }
+
+  function renderAttention(printers) {
+    const card = $('attention');
+    if (!card) return;
+    if (!liveData() || !printers.length) { card.hidden = true; return; }
+    card.hidden = false;
+    refreshAttentionQueues();
+    const items = attentionItems(printers);
+    const worst = items.length ? items[0].level : 'clear';
+    card.dataset.level = worst;
+    $('attention-count').textContent = items.length ? String(items.length) : '';
+    $('attention-sub').textContent = items.length
+      ? `${items.length} thing${items.length === 1 ? '' : 's'} across ${printers.length} printer${printers.length === 1 ? '' : 's'} · ${attentionSummary(printers)}`
+      : `All clear · ${attentionSummary(printers)}`;
+    paint($('attention-list'), items.length ? items.slice(0, 6).map(it => `
+      <li class="att-item ${it.level}">
+        <span class="att-dot" aria-hidden="true"></span>
+        <span class="att-text"><b>${esc(it.title)}</b><small>${esc(it.sub)}</small></span>
+        <button class="btn small" type="button" data-att-printer="${esc(it.id)}" data-att-tab="${esc(it.go)}"
+                aria-label="Open ${esc(it.name)} in ${esc(TAB_LABEL[it.go])}">${esc(TAB_LABEL[it.go])}</button>
+      </li>`).join('') + (items.length > 6 ? `<li class="att-more">+${items.length - 6} more on the Fleet tab</li>` : '')
+      : `<li class="att-item clear"><span class="att-dot" aria-hidden="true"></span>
+          <span class="att-text"><b>Nothing needs you right now</b><small>Faults, paused or finished prints, idle printers with work waiting and overdue care show up here as they happen.</small></span></li>`);
+  }
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-att-printer]');
+    if (!btn) return;
+    const id = btn.dataset.attPrinter, tab = btn.dataset.attTab;
+    if (id !== (currentPrinter || (live.fleet[0] && live.fleet[0].id))) selectPrinter(id, null, true);
+    showTab(tab);
+  });
 
   let registry = [];
   async function loadRegistry() {
@@ -462,10 +601,12 @@ const Workshop = (() => {
       twin.yaw = drag.yaw + (e.clientX - drag.x) * 0.5;
       $('twin-world').style.setProperty('--yaw', `${twin.yaw}deg`);
     });
-    // Released anywhere - a finger can leave the scene mid-drag.
+    // Released anywhere: the scene holds pointer capture during a drag, so
+    // the release arrives here even when a finger has left the scene. On the
+    // scene rather than the document, a rebuilt twin doesn't leave old
+    // listeners behind.
     const release = () => { drag = null; };
-    document.addEventListener('pointerup', release);
-    document.addEventListener('pointercancel', release);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => scene.addEventListener(type, release));
     twin.built = true;
   }
 
@@ -498,8 +639,11 @@ const Workshop = (() => {
       <div class="twin-dock ${d.status}" style="--ring:${d.status === 'error' ? '#ff3b30' : (d.status === 'active' ? '#34c759' : '#f5f5f7')};--fil:${esc(d.filament_color_hex)}">
         <span class="td-ring"></span><span class="td-label">${esc(th)}</span>
       </div>`).join(''));
-    setText($('twin-readout'), `X ${x.toFixed(1)} · Y ${y.toFixed(1)} · Z ${z.toFixed(2)} mm` +
-      (active ? ` · ${active} active` : '') + (layer.total ? ` · layer ${layer.current}/${layer.total}` : ''));
+    // Non-breaking spaces inside each reading, so a narrow card wraps
+    // between readings ("Z 33.20 mm") and never inside one.
+    const nb = '\u00a0';
+    setText($('twin-readout'), `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
+      (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
     setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}`);
   }
 
@@ -586,11 +730,26 @@ const Workshop = (() => {
       `${i ? 'L' : 'M'}${((s.t - t0) / (t1 - t0) * 300).toFixed(1)} ${(80 - (s[key] - lo) / (hi - lo) * 76 - 2).toFixed(1)}`).join(' ');
     svg.innerHTML = `<path class="sp-b" d="${path('b')}"/><path class="sp-c" d="${path('c')}"/>`;
     $('ch-range').textContent = `${formatTemp(lo)} – ${formatTemp(hi)}`;
+    // Say how much the line actually covers: right after opening the page
+    // it holds a few minutes, not the 30 the window grows to.
+    const mins = Math.round((t1 - t0) / 60);
+    $('ch-sub').textContent = mins >= 29 ? 'Last 30 minutes'
+      : mins < 1 ? 'Recording — the line fills in over 30 minutes'
+      : `Last ${mins} min · fills in to 30`;
   }
 
   /* ================================================================
    * 5. the live print pill
    * ================================================================ */
+
+  /* The status ribbon at the top of the page already carries the print's
+   * progress, so the floating pill only appears once the ribbon has been
+   * scrolled out of view — otherwise the two say the same thing and the
+   * pill sits on top of whatever is in the bottom-right corner. */
+  if ('IntersectionObserver' in window && $('status-ribbon')) {
+    new IntersectionObserver(([entry]) => document.body.classList.toggle('ribbon-in-view', entry.isIntersecting))
+      .observe($('status-ribbon'));
+  }
 
   function renderPill(state) {
     const pill = $('live-pill');
@@ -598,23 +757,25 @@ const Workshop = (() => {
     if (pill.hidden !== !show) pill.hidden = !show;
     if (!show) return;
     const pct = Math.round(state.progress * 100);
-    const elapsed = state.print_duration_hours || 0;
-    const left = state.progress > 0 && state.progress < 1 ? elapsed / state.progress - elapsed : null;
+    const left = hoursLeft(state);
     const active = state.active_toolhead;
     setVar(pill, '--glass-tint', active ? state.toolheads[active].filament_color_hex : STATE_HEX[state.state]);
     if (pill.dataset.state !== state.state) pill.dataset.state = state.state;
     const title = `${state.printer_name ? state.printer_name + ' · ' : ''}${state.state === 'complete' ? 'Done' : pct + '%'}`;
     const sub = state.state === 'paused' ? `Paused — ${state.current_file || ''}` :
-      state.state === 'complete' ? `${state.current_file || ''} finished` : `${state.current_file || ''} · ${fmtHours(left)} left`;
+      state.state === 'complete' ? `${state.current_file || ''} finished`
+      : left != null ? `${fmtHours(left)} left · done ${doneAt(left)}` : (state.current_file || '');
     setText($('lp-title'), title);
     setText($('lp-sub'), sub);
+    if (pill.title !== (state.current_file || '')) pill.title = state.current_file || '';
     const c = 2 * Math.PI * 15.5;
     tween('pill', state.progress, (v) => {
       $('lp-fill').style.strokeDashoffset = `${c * (1 - v)}`;
       $('qa-status-fill').style.transform = `scaleX(${v})`;
     });
     setVar($('lp-fill'), 'stroke-dasharray', String(c));
-    const label = `${state.printer_name || 'Printer'}: ${STATE_WORD[state.state]}, ${pct} percent. Open printer control.`;
+    const label = `${state.printer_name || 'Printer'}: ${STATE_WORD[state.state]}, ${pct} percent` +
+      `${state.current_file ? `, ${state.current_file}` : ''}${left != null ? `, done about ${doneAt(left)}` : ''}. Open printer control.`;
     if (pill.getAttribute('aria-label') !== label) {
       pill.setAttribute('aria-label', label);
       $('qa-status').setAttribute('aria-label', label);
@@ -627,12 +788,51 @@ const Workshop = (() => {
    * 6. files
    * ================================================================ */
 
-  const files = { list: [], viewer: null, open: null, analysis: null, lines: { offset: 0, q: '' }, selectedLine: null };
+  const files = { list: [], local: [], viewer: null, open: null, analysis: null, lines: { offset: 0, q: '' }, selectedLine: null };
+
+  /* Without the server there's no library, but a file from this device can
+   * still be looked at: it's read here, in the browser, and never sent
+   * anywhere. The same 64 MB limit as the library (file_library.MAX_BYTES). */
+  const LOCAL_MAX_BYTES = 64 * 1024 * 1024;
+  const kindOf = (name) => /\.stl$/i.test(name) ? 'stl' : /\.3mf$/i.test(name) ? '3mf' : /\.(gcode|gco|g)$/i.test(name) ? 'gcode' : null;
+
+  function renderLocalFiles() {
+    const grid = $('file-grid');
+    files.list = files.local;
+    $('file-recent').innerHTML = '';
+    const label = qs('.file-upload');
+    if (label && label.firstChild.nodeType === 3) label.firstChild.textContent = 'Open a file ';
+    grid.innerHTML = `<p class="log-empty file-local-note">Files open here, in your browser only - nothing is uploaded. Keeping a library,
+        the pre-flight check, edits, converting and printing need the Deja Vu1 server.</p>` +
+      (files.local.length ? files.local.map(f => `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
+          <span class="fcd-thumb"><span class="fcd-kind">${esc(f.kind.toUpperCase())}</span></span>
+          <span class="fcd-name">${esc(f.name)}</span>
+          <span class="fcd-meta">${f.local.size < 1048576 ? `${Math.max(1, Math.round(f.local.size / 1024))} KB` : `${(f.local.size / 1048576).toFixed(1)} MB`}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span><span class="origin-tag">on this device</span></span>
+        </button>`).join('')
+        : empty('No file open', 'Choose a G-code, STL or 3MF file from this device to see it in 3D.'));
+    qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b));
+  }
+
+  function openLocalFiles(list) {
+    let last = null;
+    for (const file of list) {
+      const kind = kindOf(file.name);
+      if (!kind) { toast(`${file.name} isn't a G-code, STL or 3MF file`, 'warn'); continue; }
+      if (file.size > LOCAL_MAX_BYTES) { toast(`${file.name} is over 64 MB - too big to open here`, 'warn'); continue; }
+      files.local = files.local.filter(f => f.name !== file.name);
+      files.local.unshift({ name: file.name, kind, local: file, origin: 'local', note: 'On this device - not uploaded' });
+      last = file.name;
+    }
+    renderLocalFiles();
+    if (last) openFile(last);
+  }
 
   async function loadFiles() {
     const grid = $('file-grid');
     if (!grid) return;
     const data = await getJSON('/api/files').catch(() => null);
+    if (data && data.server_missing) { renderLocalFiles(); return; }
     if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; return; }
     files.list = (data && data.files) || [];
     $('file-recent').innerHTML = data && data.recent && data.recent.length
@@ -654,6 +854,7 @@ const Workshop = (() => {
   }
 
   async function uploadFiles(list) {
+    if (serverMissing()) { openLocalFiles(list); return; }
     for (const file of list) {
       const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file });
       const body = await res.json().catch(() => ({}));
@@ -696,7 +897,7 @@ const Workshop = (() => {
     files.open = entry;
     files.lines = { offset: 0, q: '' };
     files.selectedLine = null;
-    postJSON('/api/files/opened', { name });
+    if (!entry.local) postJSON('/api/files/opened', { name });
     const panel = $('file-detail');
     const reveal = (instant) => {
       panel.hidden = false;
@@ -725,7 +926,52 @@ const Workshop = (() => {
     else await openModel(entry, viewer);
   }
 
+  /* A G-code file from this device: the toolpath and a few plain facts,
+   * read in the browser. No verdict - that's the server's pre-flight. */
+  async function openLocalGcode(entry, viewer) {
+    let a;
+    try {
+      const text = await entry.local.text();
+      entry.localLines = text.split(/\r?\n/);
+      a = DV3D.parseGcode(text);
+    } catch (err) {
+      $('fd-side').innerHTML = `<p class="log-empty">Couldn't read this file: ${esc(err.message || err)}</p>`;
+      return;
+    }
+    if (files.open !== entry) return;
+    if (viewer && a.toolpath.segments.length) {
+      const { zmax } = viewer.setToolpath(a.toolpath.segments, a.colours);
+      $('fd-view-tools').innerHTML = `
+        <label class="vt-layer">Up to <span id="vt-z">${zmax.toFixed(2)}</span> mm
+          <input type="range" id="vt-range" min="0" max="${zmax}" step="0.01" value="${zmax}" aria-label="Show layers up to this height">
+        </label>
+        <label class="vt-travel"><input type="checkbox" id="vt-travel"> Show travel moves</label>
+        ${a.toolpath.downsampled ? `<span class="vt-note">Showing ${a.toolpath.segments.length.toLocaleString()} of ${a.toolpath.total_segments.toLocaleString()} moves</span>` : ''}`;
+      $('vt-range').addEventListener('input', (e) => { viewer.setLayerLimit(+e.target.value); $('vt-z').textContent = (+e.target.value).toFixed(2); });
+      $('vt-travel').addEventListener('change', (e) => { viewer.showTravel = e.target.checked; viewer.draw(); });
+    }
+    $('fd-side').innerHTML = `
+      <div class="fd-facts divider-row cols-2">
+        <div><span class="stat-key">Lines</span><b>${a.lines.toLocaleString()}</b><small>in the file</small></div>
+        <div><span class="stat-key">Layers</span><b>${a.layers || '—'}</b><small>heights that print plastic</small></div>
+        <div><span class="stat-key">Toolheads</span><b>${a.tools_used.join(' ') || '—'}</b><small>that extrude</small></div>
+        <div><span class="stat-key">Footprint</span><b>${a.footprint_mm ? a.footprint_mm.join(' × ') : '—'}</b><small>${a.footprint_mm ? 'mm' : 'no extrusion found'}</small></div>
+      </div>
+      <p class="log-empty">Read in this browser - the file isn't uploaded. The pre-flight check, time and filament estimates,
+        edits and printing need the Deja Vu1 server.</p>
+      <div class="fd-actions"><button class="btn" id="fd-forget" type="button">Close and forget</button></div>`;
+    $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
+    loadLines();
+  }
+
+  function forgetLocal(name) {
+    files.local = files.local.filter(f => f.name !== name);
+    closeFile();
+    renderLocalFiles();
+  }
+
   async function openGcode(entry, viewer) {
+    if (entry.local) { await openLocalGcode(entry, viewer); return; }
     const res = await fetch(`/api/files/analysis?name=${enc(entry.name)}`);
     const a = await res.json();
     if (!res.ok) { $('fd-side').innerHTML = `<p class="log-empty">${esc(a.error || 'Could not read the file')}</p>`; return; }
@@ -761,7 +1007,7 @@ const Workshop = (() => {
         <div><span class="stat-key">Time</span><b>${fmtHours(a.estimated_hours)}</b><small>${esc(a.estimated_hours_source)}</small></div>
         <div><span class="stat-key">Filament</span><b>${a.filament_grams.toFixed(1)} g</b><small>${esc(a.filament_grams_source)}</small></div>
         <div><span class="stat-key">Layers</span><b>${a.layers}</b><small>${a.footprint_mm ? a.footprint_mm.join(' × ') + ' mm footprint' : ''}</small></div>
-        <div><span class="stat-key">Toolheads</span><b>${a.tools_used.join(' ') || '—'}</b><small>${(a.meta.filament_types || []).join(', ')}</small></div>
+        <div><span class="stat-key">Toolheads</span><b>${esc(a.tools_used.join(' ')) || '—'}</b><small>${esc((a.meta.filament_types || []).join(', '))}</small></div>
       </div>
       <h3 class="fd-h pf-head ${a.preflight.verdict}">${verdictText}</h3>
       ${preflightList(a.preflight)}
@@ -818,8 +1064,10 @@ const Workshop = (() => {
   async function setupAR(entry, mesh) {
     const slot = $('fd-ar-slot'), note = $('fd-ar-note');
     if (!slot || typeof DVAR === 'undefined') return;
+    // Without the server there's no module switch to read; AR runs in the
+    // browser alone, so it's offered on the same terms as anything else here.
     const mods = await getJSON('/api/modules').catch(() => null);
-    if (!mods || !(mods.modules || []).some(m => m.id === 'ar_preview' && m.enabled)) return;
+    if (!serverMissing() && (!mods || !(mods.modules || []).some(m => m.id === 'ar_preview' && m.enabled))) return;
     const can = await DVAR.support();
     if (files.open !== entry || !document.body.contains(slot)) return;
     if (!can.ok) {
@@ -855,17 +1103,23 @@ const Workshop = (() => {
   async function openModel(entry, viewer) {
     const side = $('fd-side');
     try {
-      const res = await fetch(`/api/files/raw?name=${enc(entry.name)}`);
-      if (!res.ok) throw new Error((await res.json()).error || res.status);
+      let buffer;
+      if (entry.local) buffer = await entry.local.arrayBuffer();
+      else {
+        const res = await fetch(`/api/files/raw?name=${enc(entry.name)}`);
+        if (!res.ok) throw new Error((await res.json()).error || res.status);
+        buffer = await res.arrayBuffer();
+      }
       const started = performance.now();
-      const mesh = await DV3D.parseModel(await res.arrayBuffer(), entry.name);
+      const mesh = await DV3D.parseModel(buffer, entry.name);
+      if (files.open !== entry) return;
       const ms = Math.round(performance.now() - started);
       if (viewer) viewer.setMesh(mesh, getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
       const is3mf = entry.kind === '3mf';
       // A project already set up for a Snapmaker printer (one this
       // dashboard converted, or saved by Snapmaker Orca) has nothing to
       // convert; the server refuses it, so the button isn't offered.
-      const alreadyU1 = entry.origin === 'converted' || /^snapmaker/i.test(mesh.application || '');
+      const alreadyU1 = ['converted', 'studio'].includes(entry.origin) || /^snapmaker/i.test(mesh.application || '');
       side.innerHTML = `
         <div class="fd-facts divider-row cols-2">
           <div><span class="stat-key">Size</span><b>${mesh.size.map(v => v.toFixed(1)).join(' × ')}</b><small>mm (X × Y × Z)</small></div>
@@ -874,8 +1128,14 @@ const Workshop = (() => {
           <div><span class="stat-key">Fits the U1?</span><b>${mesh.size[0] <= 270 && mesh.size[1] <= 270 && mesh.size[2] <= 270 ? 'Yes' : 'No'}</b><small>270 × 270 × 270 mm</small></div>
         </div>
         <p class="log-empty">Models need slicing (in Snapmaker Orca) before they can be printed.</p>
+        ${entry.local ? `<p class="log-empty">Read in this browser - the file isn't uploaded. Converting for the U1 and
+          slicing need the Deja Vu1 server.</p>
+        <div class="fd-actions"><span id="fd-ar-slot" class="fd-ar-slot"></span>
+          <button class="btn" id="fd-forget" type="button">Close and forget</button></div>
+        <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>` : `
         <div class="fd-actions">
           ${is3mf && !alreadyU1 && !modGate.off.has('converter') ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          ${is3mf && alreadyU1 ? '<span class="fd-u1-ready">Set up for the Snapmaker U1 - open it in Snapmaker Orca</span>' : ''}
           <span id="fd-slice-slot" class="fd-slice-slot"></span>
           <span id="fd-ar-slot" class="fd-ar-slot"></span>
           <a class="btn" href="/api/files/raw?name=${enc(entry.name)}&download=1">Download</a>
@@ -883,7 +1143,12 @@ const Workshop = (() => {
         </div>
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
         <div id="fd-compare-host"></div>
-        <div id="fd-convert-report"></div>`;
+        <div id="fd-convert-report"></div>`}`;
+      if (entry.local) {
+        $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
+        setupAR(entry, mesh);
+        return;
+      }
       $('fd-delete').addEventListener('click', () => deleteFile(entry.name));
       if ($('fd-convert')) $('fd-convert').addEventListener('click', (e) => convertFile(entry.name, e.currentTarget));
       renderCompare(entry);
@@ -894,6 +1159,37 @@ const Workshop = (() => {
     }
   }
 
+  /* A plain-text report of one conversion, to paste into a bug report. */
+  function conversionReport(name, r) {
+    const b = r.body || {};
+    const lines = ['Deja Vu1 - conversion report', `When: ${new Date().toISOString()}`, `File: ${name}`,
+                   `Browser: ${navigator.userAgent}`];
+    if (!r.ok) {
+      lines.push(`Result: failed`, `Code: ${b.code || 'none'}`, `Stage: ${b.stage || 'unknown'}`,
+                 `Message: ${b.error || `HTTP ${r.status}`}`);
+      if (b.action) lines.push(`Suggested: ${b.action}`);
+    } else {
+      const rep = b.report;
+      lines.push('Result: converted', `Saved as: ${b.file.name}`, `Source: ${rep.source_label} (${rep.application || 'no application name'})`,
+                 `Original printer: ${rep.original_printer}`, `Printer profile: ${rep.printer_profile}`,
+                 `Print profile: ${rep.print_profile} (layer height ${rep.layer_height})`,
+                 `Filament profiles: ${rep.filament_profiles.join(', ')}`,
+                 `Kept settings: ${rep.kept.join(', ') || 'none'}`);
+      if (rep.plates) lines.push(`Plates: ${rep.plates.count}, moved ${rep.plates.moved.join(', ') || 'none'}, left as they were ${rep.plates.skipped.join(', ') || 'none'}`);
+      rep.warnings.forEach(w => lines.push(`Warning: ${w}`));
+      (rep.removed_parts || []).forEach(p => lines.push(`Removed: ${p}`));
+    }
+    return lines.join('\n');
+  }
+
+  function plateSummary(plates) {
+    if (!plates || !plates.count) return '';
+    if (!plates.moved.length) return '';
+    const n = plates.count;
+    return `<p>${n === 1 ? 'The plate was' : `All ${n} plates were`}${plates.skipped.length ? ` (except ${plates.skipped.map(esc).join(', ')})` : ''}
+      re-placed on the U1's 270 mm bed, each object keeping its spot, height and turn${n > 1 ? ' - so every plate opens where it belongs in Snapmaker Orca' : ''}.</p>`;
+  }
+
   async function convertFile(name, button) {
     button.disabled = true;
     button.textContent = 'Converting…';
@@ -901,20 +1197,40 @@ const Workshop = (() => {
     button.disabled = false;
     button.textContent = 'Convert for Snapmaker U1';
     const host = $('fd-convert-report');
-    if (!r.ok) { host.innerHTML = `<p class="convert-fail">${esc(r.body.error)}</p>`; toast('Conversion not possible', 'warn'); return; }
-    const rep = r.body.report;
-    host.innerHTML = `
-      <div class="convert-report">
-        <h3 class="fd-h">Converted from ${esc(rep.source_label)}</h3>
-        <p>Saved as <button class="chip-btn" data-open-file="${esc(r.body.file.name)}" type="button">${esc(r.body.file.name)}</button>. Printer <b>${esc(rep.printer_profile)}</b>, print profile <b>${esc(rep.print_profile)}</b>, filaments ${rep.filament_profiles.map(esc).join(', ')}.</p>
-        ${rep.kept.length ? `<p>Kept the creator's own changes: ${rep.kept.map(k => `<code>${esc(k)}</code>`).join(' ')}</p>` : ''}
-        ${rep.warnings.length ? `<ul class="pf-list">${rep.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
-        <p class="log-empty">${esc(rep.unverified)}</p>
-      </div>`;
-    toast(`Converted — saved as ${r.body.file.name}`, 'ok');
-    await loadFiles();
-    if (files.open) renderCompare(files.open);
-    qsa('[data-open-file]', host).forEach(b => b.onclick = () => openFile(b.dataset.openFile));
+    const copyBtn = '<button class="btn small" type="button" data-copy-report>Copy report</button>';
+    if (!r.ok) {
+      const b = r.body || {};
+      host.innerHTML = `
+        <div class="convert-fail" role="alert">
+          <p class="convert-fail-head">${b.code ? `<b class="convert-code">${esc(b.code)}</b>` : ''}${b.stage ? `<span>${esc(b.stage)}</span>` : ''}</p>
+          <p>${esc(b.error || 'Conversion failed')}</p>
+          ${b.action ? `<p class="convert-action"><b>Try:</b> ${esc(b.action)}</p>` : ''}
+          <div class="convert-actions">${copyBtn}<span class="log-empty">Paste it into a bug report - it has everything needed to look into it.</span></div>
+        </div>`;
+      toast('Conversion not possible', 'warn');
+    } else {
+      const rep = r.body.report;
+      host.innerHTML = `
+        <div class="convert-report">
+          <h3 class="fd-h">Converted from ${esc(rep.source_label)}</h3>
+          <p>Saved as <button class="chip-btn" data-open-file="${esc(r.body.file.name)}" type="button">${esc(r.body.file.name)}</button>. Printer <b>${esc(rep.printer_profile)}</b>, print profile <b>${esc(rep.print_profile)}</b>, filaments ${rep.filament_profiles.map(esc).join(', ')}.</p>
+          ${plateSummary(rep.plates)}
+          ${rep.kept.length ? `<p>Kept the creator's own changes: ${rep.kept.map(k => `<code>${esc(k)}</code>`).join(' ')}</p>` : ''}
+          ${rep.warnings.length ? `<ul class="pf-list">${rep.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
+          <p class="log-empty">${esc(rep.unverified)}</p>
+          <div class="convert-actions">${copyBtn}</div>
+        </div>`;
+      toast(`Converted — saved as ${r.body.file.name}`, 'ok');
+      await loadFiles();
+      if (files.open) renderCompare(files.open);
+      qsa('[data-open-file]', host).forEach(b => b.onclick = () => openFile(b.dataset.openFile));
+    }
+    const text = conversionReport(name, r);
+    qsa('[data-copy-report]', host).forEach(b => b.addEventListener('click', async () => {
+      const ok = await copyText(text);
+      toast(ok ? 'Report copied' : "This browser wouldn't copy it - select the text and copy by hand", ok ? 'ok' : 'warn');
+      if (!ok) host.insertAdjacentHTML('beforeend', `<textarea class="convert-report-text" readonly rows="8">${esc(text)}</textarea>`);
+    }));
   }
 
   /* G-code lines: a window of 200 at a time, searchable, with small edits. */
@@ -922,8 +1238,9 @@ const Workshop = (() => {
     const host = $('fd-gcode');
     if (!files.open || files.open.kind !== 'gcode') return;
     const { offset, q } = files.lines;
-    const url = `/api/files/lines?name=${enc(files.open.name)}&offset=${offset}&limit=200${q ? `&q=${enc(q)}` : ''}`;
-    const data = await getJSON(url);
+    const data = files.open.local ? localLines(files.open, offset, q)
+      : await getJSON(`/api/files/lines?name=${enc(files.open.name)}&offset=${offset}&limit=200${q ? `&q=${enc(q)}` : ''}`);
+    if (!data.lines) { host.innerHTML = `<p class="log-empty">${esc(data.error || "Couldn't read the lines")}</p>`; delete host.dataset.built; return; }
     if (!host.dataset.built) {
       host.dataset.built = '1';
       host.innerHTML = `
@@ -948,6 +1265,17 @@ const Workshop = (() => {
     qsa('.gc-line', host).forEach(b => b.addEventListener('click', () => selectLine(+b.dataset.line, b.querySelector('.gc-t').textContent)));
   }
 
+  // The same answer as the server's gcode_tools.view_lines, for a local file.
+  function localLines(entry, offset, q) {
+    const lines = entry.localLines || [];
+    if (q) {
+      const needle = q.toLowerCase(), hits = [];
+      lines.forEach((l, i) => { if (l.toLowerCase().includes(needle)) hits.push(i); });
+      return { total: lines.length, matches: hits.length, lines: hits.slice(0, 200).map(i => ({ n: i + 1, text: lines[i] })) };
+    }
+    return { total: lines.length, offset, lines: lines.slice(offset, offset + 200).map((text, i) => ({ n: offset + i + 1, text })) };
+  }
+
   function gotoLine(n) {
     files.lines = { offset: Math.max(0, n - 20), q: '' };
     files.selectedLine = n;
@@ -966,6 +1294,11 @@ const Workshop = (() => {
     const editable = /^[GM]\d+/i.test(code) && params.length;
     const box = $('gc-edit');
     box.hidden = false;
+    if (files.open && files.open.local) {
+      box.innerHTML = `<div class="gc-edit-title">Line ${n}: <code>${esc(text.trim() || '(blank)')}</code></div>
+        <p class="log-empty">Editing a line (checked first, original kept) needs the Deja Vu1 server - this file is only being viewed here.</p>`;
+      return;
+    }
     box.innerHTML = `
       <div class="gc-edit-title">Line ${n}: <code>${esc(text.trim() || '(blank)')}</code></div>
       <div class="gc-edit-row">
@@ -1209,7 +1542,7 @@ const Workshop = (() => {
     const aparams = () => {
       const a = $('rf-action').value, host = $('rf-aparams');
       host.innerHTML = a === 'notify' ? `<input type="text" id="rf-message" placeholder="Message" value="Check the printer" aria-label="Notification message"><select id="rf-priority" aria-label="Priority"><option value="normal">Normal (respects quiet hours)</option><option value="high">Urgent (always sends)</option></select>`
-        : a === 'light' ? `<input type="color" id="rf-color" value="#ffaa00" aria-label="Light colour"> <span class="log-empty">Sent to the WLED strip in Modules &amp; devices</span>`
+        : a === 'light' ? `<input type="color" id="rf-color" value="#ffaa00" aria-label="Light colour"> <span class="log-empty">Sent to the WLED strip set up in Settings</span>`
           : a === 'home_assistant' ? `<input type="text" id="rf-entity" value="sensor.dejavu1_alert" aria-label="Entity"> <input type="text" id="rf-state" value="on" aria-label="State" style="width:90px">`
             : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
     };

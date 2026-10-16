@@ -66,6 +66,7 @@ API endpoints
   POST /api/printer/control/pause
   POST /api/printer/control/resume
   POST /api/printer/control/cancel
+  POST /api/printer/control/exclude   {"name"} skip one labelled object, the rest keep printing
   POST /api/printer/control/temperature  {"toolhead": "T0", "target": 220}
   POST /api/printer/control/home         {"axes": ["X","Y","Z"]}
   POST /api/printer/control/gcode        {"command": "G28"}
@@ -112,6 +113,7 @@ API endpoints
 
   GET  /api/filament                 spool inventory + idle-spool flags
   GET  /api/filament/check           does inventory cover the current job?
+  POST /api/filament/spoolman        {"url"} import spools from Spoolman (updates ones imported before)
   GET  /api/filament/forecast        grams left and prints left per spool
   POST /api/filament/spools          add a spool
   POST /api/filament/spools/<id>/remove
@@ -215,6 +217,7 @@ import converter_3mf
 import cost_calculator
 import file_library
 import filament_inventory
+import spoolman_bridge
 import fleet
 import handoff
 import webrtc_camera
@@ -366,6 +369,7 @@ _APP_ROUTES = {
     "/api/filament": ("filament_inventory", lambda q: {
         "spools": filament_inventory.get_inventory(),
         "idle_spools": filament_inventory.idle_spools(),
+        "spoolman": spoolman_bridge.get_settings(),
     }),
     "/api/notifications/settings": ("notifications", lambda q: notifications.public_settings()),
     "/api/notifications/queue": ("notifications", lambda q: {"queue": notifications.get_queue()}),
@@ -413,6 +417,7 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/pause": lambda body: printer_control.pause_print(),
     "/api/printer/control/resume": lambda body: printer_control.resume_print(),
     "/api/printer/control/cancel": lambda body: printer_control.cancel_print(),
+    "/api/printer/control/exclude": lambda body: printer_control.exclude_object(body.get("name")),
     "/api/printer/control/temperature": lambda body: printer_control.set_temperature(
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
@@ -454,6 +459,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     # a byte at a time) would otherwise hold a thread forever. Live
     # connections raise this once they are set up (see _handle_websocket).
     timeout = 60
+    # Named here rather than left to the system's mime table, which not
+    # every Python install has these in.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map,
+                      ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml",
+                      ".js": "text/javascript", ".css": "text/css"}
 
     def __init__(self, *args, **kwargs):
         # Tell the built-in file server to serve out of the frontend folder.
@@ -550,14 +560,19 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         while remaining:
             chunk = self.rfile.read(min(remaining, 1 << 20))
             if not chunk:
-                break
+                # The browser went away part-way through (cancelled, Wi-Fi
+                # dropped): what arrived is half a file, so nothing is saved
+                # and an existing copy with the same name is left alone.
+                raise _Gone()
             data.append(chunk)
             remaining -= len(chunk)
         return b"".join(data)
 
     def log_message(self, fmt, *args):
         """Keep the terminal quiet — one tidy line per request."""
-        path = self.path.split("?")[0]
+        # A garbled request line (https:// sent to this plain-HTTP port, a
+        # port scanner) is logged before self.path exists.
+        path = getattr(self, "path", "").split("?")[0]
         if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff",
                     "/api/fleet/queues", "/api/sandbox", "/api/slicer/jobs"):
             return
@@ -618,20 +633,17 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         Refuse requests addressed to a name that isn't this dashboard's.
 
         Allowed: any local-looking name (host_is_local), anything in
-        DEJAVU_ALLOWED_HOSTS, no Host header at all (not a browser), and a
-        request that cloudflared forwarded from this same machine - the
-        Cloudflare Tunnel set-up in docs/remote-access.md - which keeps your
-        own domain in the Host header.
+        DEJAVU_ALLOWED_HOSTS, and no Host header at all (not a browser).
+
+        A Cloudflare Tunnel keeps your own domain in the Host header, so its
+        name goes in DEJAVU_ALLOWED_HOSTS (docs/remote-access.md). There is
+        deliberately no exception for requests that *look* forwarded by
+        cloudflared (a Cf-Connecting-Ip header from this machine): a web
+        page on this computer can add that header itself, so it would let
+        the DNS-rebinding attack this check exists for straight through.
         """
         host = self.headers.get("Host", "")
         if not host or host_is_local(host):
-            return True
-        peer = self.client_address[0] if self.client_address else ""
-        try:
-            from_this_machine = ipaddress.ip_address(peer.split("%")[0]).is_loopback
-        except ValueError:
-            from_this_machine = False
-        if from_this_machine and self.headers.get("Cf-Connecting-Ip"):
             return True
         self._send_json({"error": f"Refused: this dashboard doesn't answer to \"{_host_name(host)}\". "
                                   "If that is your own address for it, start the server with "
@@ -1000,7 +1012,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             body = self._read_json_body()
             name = body.get("name")
-            data, report = converter_3mf.convert(file_library.read_bytes(name))
+            try:
+                data, report = converter_3mf.convert(file_library.read_bytes(name))
+            except converter_3mf.ConversionError as exc:
+                return self._send_json(exc.as_dict(), status=400)
             new_name = converter_3mf.converted_name(file_library.clean_name(name))
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
@@ -1069,6 +1084,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 body.get("material"), body.get("color_name"),
                 body.get("color_hex"), body.get("grams_remaining", 0))
             return self._send_json(spool)
+
+        if route == "/api/filament/spoolman":
+            if self._module_blocked("filament_inventory"):
+                return None
+            body = self._read_json_body()
+            return self._send_json(spoolman_bridge.import_spools(body.get("url")))
 
         if route.startswith("/api/filament/spools/") and route.endswith("/remove"):
             if self._module_blocked("filament_inventory"):

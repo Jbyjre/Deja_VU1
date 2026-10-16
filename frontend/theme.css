@@ -1,0 +1,347 @@
+/* ==========================================================================
+   Deja Vu1 — "Layer lines"
+
+   The design layer, loaded last. It changes how the dashboard looks, never
+   how it is laid out, so every component keeps the structure style.css,
+   workshop.css and farm.css give it.
+
+   Direction: a well-lit print bench. Three decisions carry it:
+
+   1. The room is made of layer lines. Behind everything runs a field of
+      fine horizontal lines — the side wall of an FDM print — lit by soft
+      pools of light in the colours of the filament actually loaded on the
+      printer (workshop.js tintRoom sets --fil-a / --fil-b). When you load
+      red, the room turns warm. Straight lines are also the clearest thing
+      glass can bend, so the refraction in the header and tab bar is
+      visible rather than claimed.
+
+   2. Glass is for controls; content sits on paper. The header, tab bar,
+      status ribbon, phone dock, live pill, menus, toasts and dialogs keep
+      the full Liquid Glass treatment (blur, edge lensing, moving
+      highlight, rim, elevation). Cards are content, so they become a
+      quieter frosted pane: no lensing, no drifting highlight, a tier-2
+      shadow. That is Apple's own rule (glass defers to content), and on a
+      27-printer sandbox it is dozens fewer live displacement filters.
+
+   3. Three typefaces with three jobs, bundled in fonts/ (SIL OFL, licences
+      alongside) so nothing is fetched from the internet:
+        Bricolage Grotesque — headings and big numbers
+        Instrument Sans     — reading text, buttons, tabs
+        IBM Plex Mono       — readings, labels, anything measured
+   ========================================================================== */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("fonts/BricolageGrotesque-var.woff2") format("woff2");
+  font-weight: 200 800; font-stretch: 75% 100%; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("fonts/InstrumentSans-var.woff2") format("woff2");
+  font-weight: 400 700; font-stretch: 75% 100%; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-400.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-500.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-600.woff2") format("woff2");
+  font-weight: 600 800; font-style: normal; font-display: swap;
+}
+
+/* The loaded filaments' colours, animatable so the room fades between them. */
+@property --fil-a { syntax: "<color>"; inherits: true; initial-value: #7db2ff; }
+@property --fil-b { syntax: "<color>"; inherits: true; initial-value: #9ab8e8; }
+
+:root {
+  /* ---- type ---- */
+  --font-display: "Bricolage Grotesque", "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", -apple-system, "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---- surfaces and ink (contrast measured: text-faint is 5.5:1 on the
+          page and 6.0:1 on a card; text-dim 9.2:1; text 15:1) ---- */
+  --bg:         oklch(95.4% 0.004 250);
+  --text:       oklch(22% 0.014 265);
+  --text-dim:   oklch(37% 0.014 265);
+  --text-faint: oklch(49% 0.012 265);
+  --hair:       oklch(30% 0.02 265 / .08);   /* dividers inside a card */
+  --layer-ink:  oklch(30% 0.03 265 / .06);  /* the layer lines */
+  --heat:       oklch(66% 0.17 48);          /* the hot bed; 3.2:1 as a line */
+
+  /* ---- content panes ("paper") ---- */
+  --paper:       oklch(99% 0.002 250 / .8);
+  --paper-solid: oklch(98.6% 0.002 250);
+  --shadow-card:
+    0 1px 2px oklch(25% 0.02 265 / .05),
+    0 10px 28px oklch(25% 0.02 265 / .075);
+
+  /* ---- chrome glass: a touch clearer than before, so the lines it bends
+          read through it ---- */
+  --lg-tint-alpha: .4;
+}
+
+body {
+  background: var(--bg);
+  font: 15px/1.55 var(--font-sans);
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+}
+
+/* ==========================================================================
+   1. The room
+   ========================================================================== */
+
+.bg::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: repeating-linear-gradient(180deg, var(--layer-ink) 0 1px, transparent 1px 5px);
+  /* Brightest under the header, where the glass that bends them lives;
+     fading out lower down so long pages stay calm. */
+  -webkit-mask: radial-gradient(140% 85% at 50% 0%, #000 25%, rgba(0, 0, 0, .35) 60%, transparent 92%);
+          mask: radial-gradient(140% 85% at 50% 0%, #000 25%, rgba(0, 0, 0, .35) 60%, transparent 92%);
+}
+.pool { transition: --fil-a 1.4s ease, --fil-b 1.4s ease; }
+.pool-a { background: radial-gradient(circle, var(--fil-a) 0%, transparent 66%); opacity: .3; }
+.pool-b { background: radial-gradient(circle, var(--fil-b) 0%, transparent 68%); opacity: .24; }
+.ring-motif { display: none; }   /* the lines are the motif now */
+
+/* ==========================================================================
+   2. Material: glass for controls, paper for content
+   ========================================================================== */
+
+.liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target) {
+  background: var(--paper);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  box-shadow: var(--shadow-card);
+  animation: none;
+}
+.liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice)::before { display: none; }
+.liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice)::after {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .95) 0%, rgba(255, 255, 255, .2) 40%,
+                                      rgba(255, 255, 255, .1) 70%, rgba(255, 255, 255, .55) 100%);
+}
+/* Panels that take a colour from what they're about keep it, on paper. */
+.liquid-glass:is(.card, .fleet-card)[data-tint] {
+  background:
+    linear-gradient(160deg,
+      color-mix(in srgb, var(--glass-tint) 16%, transparent),
+      color-mix(in srgb, var(--glass-tint) 4%, transparent) 70%),
+    var(--paper);
+}
+/* A row of figures inside a card is part of that card, not another pane. */
+.card .divider-row, .divider-row.liquid-glass { border-color: var(--hair); }
+.divider-row > * { border-right-color: var(--hair); }
+.divider-col > * { border-bottom-color: var(--hair); }
+
+/* Chrome: the bar at the top sits a little clearer and lifts on the
+   tier-4 shadow (anchored, not floating); the live pill is tier 3. */
+.topbar.liquid-glass, .tabbar.liquid-glass, .status-ribbon.liquid-glass {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, .9) inset,
+    0 1px 2px oklch(25% 0.02 265 / .05),
+    0 10px 26px oklch(25% 0.02 265 / .08);
+}
+/* The tab bar and the ribbon only ever sit over the room (nothing scrolls
+   beneath them), so they can be clear glass: a light blur that keeps the
+   layer lines visible, bent by the lensing filter at the edges. The header
+   is sticky with cards passing under it, so it keeps the stronger blur.
+   First the blur-only line every browser understands, then the lensed one
+   (Chromium); a browser that can't read url(#…) here drops only the second. */
+.tabbar.liquid-glass, .status-ribbon.liquid-glass {
+  backdrop-filter: blur(8px) saturate(1.5);
+  -webkit-backdrop-filter: blur(8px) saturate(1.5);
+}
+.tabbar.liquid-glass, .status-ribbon.liquid-glass {
+  backdrop-filter: blur(.4px) saturate(1.5) url(#lg-lens-clear);
+  background: rgba(255, 255, 255, .2);
+}
+/* A softer highlight, so it glints instead of whitening the whole bar. */
+.tabbar.liquid-glass::before, .status-ribbon.liquid-glass::before { opacity: .32; }
+.tabbar.liquid-glass:hover::before, .status-ribbon.liquid-glass:hover::before { opacity: .5; }
+.live-pill.liquid-glass {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, .9) inset,
+    0 2px 4px oklch(25% 0.02 265 / .16),
+    0 14px 34px oklch(25% 0.02 265 / .26);
+}
+
+/* ==========================================================================
+   3. Type
+   ========================================================================== */
+
+.brand h1 { font: 700 20px/1.1 var(--font-display); letter-spacing: -.025em; font-stretch: 92%; }
+.brand-text p { font-size: 12.5px; color: var(--text-faint); }
+
+.card h2, .dialog-panel h2 {
+  font: 650 17.5px/1.2 var(--font-display);
+  letter-spacing: -.012em;
+  text-wrap: balance;
+}
+.card-sub { font-size: 13.5px; color: var(--text-faint); text-wrap: pretty; }
+.tab-sub-title { font: 700 22px/1.15 var(--font-display); letter-spacing: -.02em; }
+.fc-name { font: 650 16px/1.2 var(--font-display); letter-spacing: -.01em; }
+.empty-title { font: 650 15px/1.3 var(--font-display); letter-spacing: -.005em; }
+
+/* Big numbers are display type; live readings stay mono (they change
+   several times a second, and mono digits don't shuffle sideways). */
+.stat-val { font: 520 34px/1.05 var(--font-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.g-num span { font: 600 38px/1 var(--font-display); letter-spacing: -.035em; }
+.ch-now span { font: 560 36px/1 var(--font-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.game-stat .g-val { font: 520 24px/1.3 var(--font-display); letter-spacing: -.02em; }
+
+.stat-key, .crow-head, .device-count, .badge, .pill, .verdict {
+  letter-spacing: .08em;
+}
+.task-meta, .rb-pct, .twin-readout, .fc-temps, .sb-at, .stat-foot { font-variant-numeric: tabular-nums; }
+
+/* Things you press read as words, not code. */
+.btn, .navtab, .bottom-nav button, .more-sheet button, .qa-btn, .chip-btn, .switch-label {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+.btn { font-weight: 600; font-size: 13.5px; }
+.btn.small { font-size: 12.5px; }
+.navtab { font-weight: 600; font-size: 13.5px; }
+.switch-label { font-weight: 600; font-size: 12.5px; text-transform: none; }
+
+/* Choices are sentences ("A temperature crosses a line"); figures and
+   addresses stay mono. */
+select, input[type="text"]:not([inputmode]), textarea { font-family: var(--font-sans); font-size: 14px; }
+input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font-family: var(--font-mono); }
+
+/* ==========================================================================
+   4. Controls
+   ========================================================================== */
+
+/* The accent fill is one flat colour with a lit top edge, not a gradient:
+   the glass around it does the shading. */
+.btn.primary, .navtab.active, .tab-blob,
+.switch input:checked + .switch-track, .switch-track.is-on {
+  background: var(--accent);
+}
+.btn.primary {
+  border-color: color-mix(in srgb, var(--accent) 70%, white);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .38),
+    inset 0 -1px 0 rgba(0, 0, 0, .1),
+    0 6px 16px color-mix(in srgb, var(--accent) 32%, transparent);
+}
+.btn.primary:hover { background: color-mix(in oklch, var(--accent) 88%, white); }
+.tab-blob {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .38),
+    0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.status-ribbon .rb-bar > span {
+  /* The ribbon's progress fills like a print: in layers. */
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, .28) 0 1px, transparent 1px 2px),
+    var(--accent);
+}
+
+/* When the running print should finish, beside its percentage. On a phone
+   the dock at the bottom already says it, and the ribbon needs the room. */
+.status-ribbon .rb-done {
+  font: 500 11px/1 var(--font-mono); color: var(--text-dim);
+  flex: 0 0 auto; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+@media (max-width: 620px) { .status-ribbon .rb-done { display: none; } }
+
+/* ==========================================================================
+   5. Needs you (Overview)
+   ========================================================================== */
+
+.attention { padding-bottom: 14px; }
+.attention .card-head { margin-bottom: 8px; }
+.attention[data-level="error"]   { --lvl: var(--bad); }
+.attention[data-level="warning"] { --lvl: var(--warn); }
+.attention[data-level="done"]    { --lvl: var(--ok); }
+.attention[data-level="info"]    { --lvl: var(--accent); }
+.attention[data-level="clear"]   { --lvl: var(--ok); }
+.att-count {
+  min-width: 34px; height: 34px; padding: 0 10px; border-radius: 999px;
+  display: grid; place-items: center;
+  font: 600 14px/1 var(--font-mono);
+  color: color-mix(in srgb, var(--lvl) 45%, black);
+  background: color-mix(in srgb, var(--lvl) 16%, white);
+  border: 1px solid color-mix(in srgb, var(--lvl) 35%, white);
+}
+.att-count:empty { display: none; }
+.att-list { list-style: none; }
+.att-item {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center; gap: 4px 14px;
+  padding: 11px 2px;
+  border-top: 1px solid var(--hair);
+}
+.att-item:first-child { border-top: 0; padding-top: 4px; }
+.att-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 20%, transparent);
+}
+.att-item.error   { --dot: var(--bad); }
+.att-item.warning { --dot: var(--warn); }
+.att-item.done    { --dot: var(--ok); }
+.att-item.info    { --dot: var(--accent); }
+.att-item.clear   { --dot: var(--ok); }
+.att-text { min-width: 0; }
+.att-text b { display: block; font-weight: 600; font-size: 14.5px; line-height: 1.35; color: var(--text); }
+.att-text small { display: block; font-size: 12.5px; line-height: 1.45; color: var(--text-faint); }
+.att-more { font-size: 12.5px; color: var(--text-faint); padding: 8px 2px 0; }
+.att-item.error .att-dot { animation: att-pulse 2.4s ease-in-out infinite; }
+@keyframes att-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 20%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--dot) 8%, transparent); }
+}
+@media (max-width: 620px) {
+  .att-item { grid-template-columns: 10px minmax(0, 1fr); }
+  .att-item .btn { grid-column: 2; justify-self: start; margin-top: 4px; }
+}
+
+/* ==========================================================================
+   6. The settings people rely on
+   ========================================================================== */
+
+/* theme.css loads last, so each rule above that the older stylesheets'
+   own accessibility blocks would have overridden is repeated here, with
+   selectors at least as specific as the rules they override (the base card
+   rule carries :not(.is-morph-target), so these do too). */
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
+  .liquid-glass:is(.card, .fleet-card)[data-tint]:not(.is-morph-target),
+  .tabbar.liquid-glass, .status-ribbon.liquid-glass {
+    background: var(--paper-solid);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  .bg::before { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pool { transition: none; }
+  .att-item.error .att-dot { animation: none; }
+}
+@media (prefers-contrast: more) {
+  :root { --hair: oklch(30% 0.02 265 / .3); --text-faint: oklch(38% 0.012 265); }
+  .bg::before { display: none; }
+  .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
+  .liquid-glass:is(.card, .fleet-card)[data-tint]:not(.is-morph-target),
+  .tabbar.liquid-glass, .status-ribbon.liquid-glass {
+    background: var(--paper-solid);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    border: 1.5px solid oklch(30% 0.02 265 / .45);
+  }
+  .att-count { border-color: currentColor; }
+}
+@media (forced-colors: active) {
+  .bg::before, .pool { display: none; }
+  .att-dot { forced-color-adjust: none; border: 1px solid CanvasText; }
+}

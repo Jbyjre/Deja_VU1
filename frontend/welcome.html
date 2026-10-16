@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deja Vu1 — the dashboard your Snapmaker U1 is missing</title>
+<meta name="description" content="Deja Vu1 is a free, open-source dashboard for the Snapmaker U1. It reads the printer's own Moonraker API and shows which toolheads are ready, whether the right filament is loaded, what maintenance is due, and whether it's safe to press print. Runs on your own network with Python, nothing else.">
+<meta property="og:title" content="Deja Vu1 — the dashboard your Snapmaker U1 is missing">
+<meta property="og:description" content="Free and open source. Toolhead status, filament checks, maintenance reminders, a pre-flight check before every print, and a whole farm at a glance. Runs on your own network.">
+<meta property="og:type" content="website">
+<!-- Link previews: crawlers need an absolute address, so this points at the
+     published copy (wrangler.jsonc). 1200 x 630 is Meta's recommended size. -->
+<meta property="og:image" content="https://deja-vu1.jmath1110.workers.dev/img/social-card.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Deja Vu1: 'Docked toolheads are silent.' beside the Needs you list and three printer cards from the simulated farm.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#eff1f4">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e8692a' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23e8692a'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* ==========================================================================
+   Deja Vu1 — product page. Same materials as the dashboard (theme.css):
+   layer lines lit by filament colour, glass only on the controls, paper
+   for content, three bundled typefaces. Nothing loads from another site.
+   ========================================================================== */
+
+@font-face { font-family: "Bricolage Grotesque"; src: url("fonts/BricolageGrotesque-var.woff2") format("woff2");
+  font-weight: 200 800; font-stretch: 75% 100%; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("fonts/InstrumentSans-var.woff2") format("woff2");
+  font-weight: 400 700; font-stretch: 75% 100%; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-500.woff2") format("woff2");
+  font-weight: 400 500; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-600.woff2") format("woff2");
+  font-weight: 600 700; font-display: swap; }
+
+:root {
+  color-scheme: light;
+  --display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --sans: "Instrument Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --bg: oklch(95.4% 0.004 250);
+  --ink: oklch(22% 0.014 265);         /* 15:1 on --bg */
+  --ink-dim: oklch(37% 0.014 265);     /* 9.2:1 */
+  --ink-faint: oklch(49% 0.012 265);   /* 5.5:1 */
+  --hair: oklch(30% 0.02 265 / .1);
+  --layer: oklch(30% 0.03 265 / .06);
+  --paper: oklch(99% 0.002 250 / .82);
+  --paper-solid: oklch(98.6% 0.002 250);
+
+  /* Two filament colours light the room; the hot-end orange is also the
+     one accent (buttons, links, the active thing). Dark text on it: 6.1:1. */
+  --fil-a: oklch(68% 0.18 45);
+  --fil-b: oklch(62% 0.17 255);
+  --accent: oklch(68% 0.17 45);
+  --accent-ink: oklch(20% 0.04 45);
+  --accent-text: oklch(50% 0.15 45);   /* 4.9:1 on --bg, for links */
+
+  --radius: 28px;
+  --shadow-card: 0 1px 2px oklch(25% 0.02 265 / .05), 0 10px 28px oklch(25% 0.02 265 / .08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 96px; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 17px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+img { max-width: 100%; display: block; }
+a { color: var(--accent-text); text-underline-offset: 3px; }
+:focus-visible { outline: 2.5px solid var(--accent-text); outline-offset: 3px; border-radius: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---- the room ---------------------------------------------------------- */
+.room { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.room::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(180deg, var(--layer) 0 1px, transparent 1px 5px);
+  -webkit-mask: radial-gradient(150% 95% at 50% 0%, #000 30%, rgba(0, 0, 0, .3) 65%, transparent 95%);
+          mask: radial-gradient(150% 95% at 50% 0%, #000 30%, rgba(0, 0, 0, .3) 65%, transparent 95%);
+}
+.glow { position: absolute; border-radius: 50%; filter: blur(110px); }
+.glow.a { width: 58vw; height: 58vw; top: -22vw; left: -6vw; opacity: .34;
+  background: radial-gradient(circle, var(--fil-a), transparent 66%); animation: drift 38s ease-in-out infinite alternate; }
+.glow.b { width: 46vw; height: 46vw; top: 18vh; right: -16vw; opacity: .22;
+  background: radial-gradient(circle, var(--fil-b), transparent 68%); animation: drift 46s ease-in-out infinite alternate-reverse; }
+@keyframes drift { to { transform: translate3d(5vw, 4vh, 0) scale(1.08); } }
+
+/* ---- glass (controls only) ------------------------------------------------ */
+.glass {
+  position: relative; isolation: isolate;
+  background: rgba(255, 255, 255, .34);
+  border: 1px solid rgba(255, 255, 255, .7);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+}
+/* Chromium understands the lens inside backdrop-filter; others drop this
+   declaration whole and keep the blur above. */
+.glass { backdrop-filter: blur(.5px) saturate(1.5) url(#lens); }
+.glass::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: radial-gradient(220px 220px at var(--mx, 30%) var(--my, 10%), rgba(255, 255, 255, .8), transparent 70%);
+  mix-blend-mode: overlay; opacity: .5; transition: opacity .3s ease;
+}
+.glass:hover::before { opacity: .8; }
+.glass::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; padding: 1px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, .15) 40%, rgba(255, 255, 255, .1) 62%, rgba(255, 255, 255, .7));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* ---- layout -------------------------------------------------------------- */
+.wrap { width: min(1180px, 100% - 32px); margin-inline: auto; }
+
+.nav {
+  position: sticky; top: 14px; z-index: 20;
+  width: min(1180px, 100% - 32px); margin: 14px auto 0;
+  display: flex; align-items: center; gap: 18px;
+  padding: 8px 8px 8px 18px; border-radius: 999px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 1px 2px oklch(25% 0.02 265 / .05), 0 10px 26px oklch(25% 0.02 265 / .09);
+  background: rgba(255, 255, 255, .55);
+}
+/* The nav is sticky, so page text passes under it: it keeps a real frost
+   (lensing on top in Chromium) instead of the clear glass used on the
+   screenshots, or the words behind would compete with its own. */
+.nav.glass { backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); }
+.nav.glass { backdrop-filter: blur(14px) saturate(1.6) url(#lens); }
+.mark { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); margin-right: auto; }
+.mark-ring { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--accent); display: grid; place-items: center; flex: 0 0 auto; }
+.mark-ring::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.mark b { font: 700 19px/1 var(--display); letter-spacing: -.025em; font-stretch: 92%; }
+.nav-links { display: flex; gap: 4px; list-style: none; }
+.nav-links a {
+  display: block; padding: 10px 14px; border-radius: 999px;
+  color: var(--ink-dim); text-decoration: none; font: 600 14.5px/1 var(--sans);
+}
+.nav-links a:hover { background: rgba(255, 255, 255, .55); color: var(--ink); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  min-height: 44px; padding: 12px 20px; border-radius: 999px;
+  font: 650 15px/1 var(--sans); text-decoration: none; white-space: nowrap; cursor: pointer;
+  color: var(--ink); background: rgba(255, 255, 255, .6); border: 1px solid rgba(255, 255, 255, .9);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 6px 16px oklch(25% 0.02 265 / .08);
+  transition: transform .18s cubic-bezier(.2, .8, .2, 1), box-shadow .18s ease, background .18s ease;
+}
+.btn:hover { transform: translateY(-1px); background: rgba(255, 255, 255, .85); }
+.btn:active { transform: scale(.97); }
+.btn.primary {
+  color: var(--accent-ink); background: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 70%, white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), inset 0 -1px 0 rgba(0, 0, 0, .1), 0 8px 20px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.btn.primary:hover { background: color-mix(in oklch, var(--accent) 88%, white); }
+.btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+
+/* ---- hero ------------------------------------------------------------------ */
+.hero { padding: clamp(56px, 9vw, 120px) 0 0; }
+.kicker {
+  display: inline-flex; align-items: center; gap: 10px;
+  font: 600 12px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-dim);
+}
+.kicker::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: oklch(68% 0.17 150); box-shadow: 0 0 0 4px oklch(68% 0.17 150 / .18); }
+.hero h1 {
+  margin-top: 22px; max-width: 14ch;
+  font: 700 clamp(46px, 8vw, 108px)/.96 var(--display);
+  letter-spacing: -.028em; font-stretch: 90%;
+  text-wrap: balance;
+}
+.hero h1 em { font-style: normal; color: var(--accent-text); }
+.hero-lede {
+  margin-top: 26px; max-width: 58ch;
+  font-size: clamp(18px, 1.6vw, 21px); line-height: 1.55; color: var(--ink-dim); text-wrap: pretty;
+}
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; align-items: center; }
+.hero-note { font: 500 13px/1.4 var(--mono); color: var(--ink-faint); }
+
+.shot {
+  margin-top: clamp(44px, 6vw, 72px);
+  padding: 10px; border-radius: var(--radius);
+  box-shadow: 0 2px 4px oklch(25% 0.02 265 / .08), 0 30px 80px oklch(25% 0.02 265 / .18);
+}
+.shot img { border-radius: calc(var(--radius) - 10px); width: 100%; height: auto; background: var(--paper-solid); }
+.caption { margin-top: 12px; font: 500 12.5px/1.5 var(--mono); color: var(--ink-faint); text-align: center; }
+
+/* ---- sections ------------------------------------------------------------- */
+section.band { padding: clamp(72px, 10vw, 132px) 0 0; }
+.eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--accent-text); }
+.band h2 {
+  margin-top: 14px; max-width: 20ch;
+  font: 700 clamp(32px, 4.6vw, 58px)/1.02 var(--display); letter-spacing: -.026em; font-stretch: 92%;
+  text-wrap: balance;
+}
+.band .intro { margin-top: 18px; max-width: 60ch; color: var(--ink-dim); text-wrap: pretty; }
+
+/* Problems: a ledger, not a card grid. */
+.ledger { margin-top: 40px; border-top: 1px solid var(--hair); }
+.ledger-row {
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 12px 48px;
+  padding: 28px 0; border-bottom: 1px solid var(--hair);
+}
+.ledger-row h3 { font: 650 clamp(22px, 2.4vw, 30px)/1.12 var(--display); letter-spacing: -.02em; }
+.ledger-row p { color: var(--ink-dim); }
+.ledger-row p b { color: var(--ink); font-weight: 650; }
+
+/* Features: a spec sheet on paper. */
+.sheet {
+  margin-top: 40px; padding: clamp(22px, 3vw, 36px);
+  border-radius: var(--radius); background: var(--paper);
+  border: 1px solid rgba(255, 255, 255, .8); box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 30px 34px;
+}
+.sheet h3 {
+  font: 600 12px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+  padding-bottom: 12px; border-bottom: 1px solid var(--hair);
+}
+.sheet ul { list-style: none; margin-top: 4px; }
+.sheet li { padding: 12px 0; border-bottom: 1px solid var(--hair); }
+.sheet li:last-child { border-bottom: 0; }
+.sheet li b { display: block; font: 650 16.5px/1.3 var(--display); letter-spacing: -.01em; }
+.sheet li span { display: block; margin-top: 3px; font-size: 14.5px; line-height: 1.5; color: var(--ink-dim); }
+
+/* Screens: one wide, one phone, overlapping. */
+.screens { margin-top: 40px; display: grid; grid-template-columns: minmax(0, 1fr) clamp(200px, 24vw, 290px); gap: 28px; align-items: end; }
+.screens .shot { margin-top: 0; }
+.screens .phone { padding: 8px; border-radius: 38px; }
+.screens .phone img { border-radius: 30px; }
+
+/* Honesty: two columns of plain statements. */
+.truth { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.truth > div {
+  padding: clamp(22px, 3vw, 32px); border-radius: var(--radius);
+  background: var(--paper); border: 1px solid rgba(255, 255, 255, .8); box-shadow: var(--shadow-card);
+}
+.truth h3 { display: flex; align-items: center; gap: 10px; font: 650 21px/1.2 var(--display); letter-spacing: -.015em; }
+.truth h3 i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot) 20%, transparent); }
+.truth .yes { --dot: oklch(62% 0.16 150); }
+.truth .not-yet { --dot: oklch(72% 0.15 85); }
+.truth ul { list-style: none; margin-top: 14px; }
+.truth li { padding: 10px 0 10px 18px; position: relative; color: var(--ink-dim); font-size: 15.5px; border-top: 1px solid var(--hair); }
+.truth li::before { content: ""; position: absolute; left: 0; top: 19px; width: 6px; height: 1.5px; background: var(--ink-faint); }
+
+/* Run it. */
+.run { margin-top: 40px; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
+.terminal {
+  border-radius: var(--radius); overflow: hidden;
+  background: oklch(21% 0.015 265); color: oklch(93% 0.01 265);
+  box-shadow: 0 2px 4px oklch(25% 0.02 265 / .1), 0 24px 60px oklch(25% 0.02 265 / .22);
+}
+.term-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px 12px 20px; border-bottom: 1px solid oklch(100% 0 0 / .08); }
+.term-bar span { font: 500 12.5px/1 var(--mono); color: oklch(75% 0.01 265); }
+.copy {
+  font: 600 13px/1 var(--sans); color: oklch(93% 0.01 265); cursor: pointer;
+  padding: 9px 14px; min-height: 34px; border-radius: 999px;
+  background: oklch(100% 0 0 / .08); border: 1px solid oklch(100% 0 0 / .14);
+}
+.copy:hover { background: oklch(100% 0 0 / .14); }
+.terminal pre { padding: 22px 22px 26px; overflow-x: auto; font: 500 15px/1.85 var(--mono); }
+.terminal pre .p { color: var(--fil-a); user-select: none; }
+.terminal pre .c { color: oklch(68% 0.01 265); }
+.steps { list-style: none; counter-reset: step; }
+.steps li { counter-increment: step; position: relative; padding: 0 0 22px 46px; color: var(--ink-dim); }
+.steps li::before {
+  content: counter(step); position: absolute; left: 0; top: 0;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 13px/1 var(--mono); color: var(--ink); background: var(--paper-solid); border: 1px solid var(--hair);
+}
+.steps b { color: var(--ink); }
+.steps code { font: 500 .9em var(--mono); background: oklch(100% 0 0 / .7); padding: 1px 6px; border-radius: 6px; border: 1px solid var(--hair); }
+
+/* Closing call and footer. */
+.closer { padding: clamp(80px, 11vw, 140px) 0 clamp(48px, 6vw, 72px); text-align: center; }
+.closer h2 { margin: 0 auto; max-width: 18ch; font: 700 clamp(36px, 5.6vw, 72px)/1 var(--display); letter-spacing: -.028em; font-stretch: 90%; text-wrap: balance; }
+.closer .hero-cta { justify-content: center; }
+footer { border-top: 1px solid var(--hair); padding: 28px 0 40px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 28px; justify-content: space-between; font-size: 13.5px; color: var(--ink-faint); }
+footer p { max-width: 70ch; }
+
+/* ---- motion: one entrance, then stillness ---------------------------------- */
+.rise { animation: rise .8s cubic-bezier(.2, .8, .2, 1) both; }
+.rise.d1 { animation-delay: .06s; } .rise.d2 { animation-delay: .14s; } .rise.d3 { animation-delay: .22s; } .rise.d4 { animation-delay: .34s; }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+
+/* ---- small screens ---------------------------------------------------------- */
+@media (max-width: 960px) {
+  .sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .run { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .nav { padding-left: 14px; gap: 8px; }
+  .nav-links { display: none; }
+  .ledger-row { grid-template-columns: 1fr; padding: 22px 0; }
+  .sheet { grid-template-columns: 1fr; }
+  .truth { grid-template-columns: 1fr; }
+  .screens { grid-template-columns: 1fr; }
+  .screens .phone { width: min(300px, 78%); margin-inline: auto; }
+  .shot { padding: 6px; border-radius: 22px; }
+  .shot img { border-radius: 16px; }
+  .terminal pre { font-size: 13.5px; padding: 18px; }
+}
+
+/* ---- the settings people rely on ---------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .glow, .rise { animation: none; }
+  .btn, .glass::before { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .sheet { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--paper-solid); }
+  .glass::before { display: none; }
+  .room::before { display: none; }
+}
+@media (prefers-contrast: more) {
+  :root { --ink-faint: oklch(38% 0.012 265); --hair: oklch(30% 0.02 265 / .35); }
+  .room::before { display: none; }
+  .glass, .sheet, .truth > div { background: var(--paper-solid); border: 1.5px solid oklch(30% 0.02 265 / .5); backdrop-filter: none; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- Edge lensing for the glass: one slow octave of noise, so the layer
+         lines behind it stay lines and visibly shift where the glass bends. -->
+    <filter id="lens" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0035 0.009" numOctaves="1" seed="4" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="room" aria-hidden="true"><div class="glow a"></div><div class="glow b"></div></div>
+
+<header class="nav glass">
+  <a class="mark" href="#top" aria-label="Deja Vu1, back to top"><span class="mark-ring" aria-hidden="true"></span><b>Deja&nbsp;Vu1</b></a>
+  <nav aria-label="Page sections">
+    <ul class="nav-links">
+      <li><a href="#problems">Why</a></li>
+      <li><a href="#inside">What's inside</a></li>
+      <li><a href="#honest">Status</a></li>
+      <li><a href="#run">Run it</a></li>
+    </ul>
+  </nav>
+  <a class="btn primary" href="https://github.com/Jbyjre/Deja_VU1">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.88.87 2.34.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+    GitHub
+  </a>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <p class="kicker rise">Free · open source · for the Snapmaker U1</p>
+    <h1 class="rise d1">Docked toolheads are <em>silent.</em></h1>
+    <p class="hero-lede rise d2">
+      A toolhead parked in its dock looks the same whether it's ready, out of filament or faulted.
+      Deja Vu1 is a dashboard that reads the printer's own Moonraker API and says it out loud:
+      which toolheads are ready, whether the right filament is loaded, what maintenance is due, and
+      whether it's safe to press print. It runs on your own network — no account, no cloud.
+    </p>
+    <div class="hero-cta rise d3">
+      <a class="btn primary" href="#run">Run it in one command</a>
+      <a class="btn" href="https://github.com/Jbyjre/Deja_VU1">Read the code</a>
+      <span class="hero-note">Python 3.8+ · nothing else to install · MIT licence</span>
+    </div>
+
+    <figure class="shot glass rise d4">
+      <img src="img/overview.jpg" width="1440" height="900"
+           alt="The Deja Vu1 Overview: a 'Needs you' list ranking a dock error, a paused print and overdue maintenance across three printers, print totals, and a status bar showing the running print's progress and the time it will finish.">
+    </figure>
+    <p class="caption">The Overview, running on the built-in simulated farm (Demo data). Every figure in these pictures is simulated.</p>
+  </div>
+
+  <section class="band" id="problems" aria-labelledby="problems-title">
+    <div class="wrap">
+      <p class="eyebrow">Why it exists</p>
+      <h2 id="problems-title">Four small problems that cost whole prints.</h2>
+      <p class="intro">Each is small. Together they are most of the routine friction of running a multi-toolhead machine — and all of it is visible in data the printer already publishes.</p>
+      <div class="ledger">
+        <div class="ledger-row">
+          <h3>Is that toolhead ready, or stuck?</h3>
+          <p>Every dock shows its state — <b>ready, heating up, printing, paused or needing attention</b> — on screen, and on LED rings or a WLED strip if you add them.</p>
+        </div>
+        <div class="ledger-row">
+          <h3>Is the right filament loaded?</h3>
+          <p>Four toolheads mean four chances to load the wrong spool. Deja Vu1 compares <b>the colour each toolhead was sliced for with what the printer reports is loaded</b>, and stops the start on a mismatch — before the time and material are spent.</p>
+        </div>
+        <div class="ledger-row">
+          <h3>Is anything due for maintenance?</h3>
+          <p>Nozzle, bed, belts, rails, dock alignment and fans are tracked against <b>real print hours, print counts and calendar time</b>, so the job gets done before a print fails instead of after.</p>
+        </div>
+        <div class="ledger-row">
+          <h3>Is it safe to hit print?</h3>
+          <p>One <b>Confirm Print</b> check pulls it all together — pre-flight, filament match, spool weight, maintenance, time, grams and cost — and the server re-checks at the moment of starting and refuses if something is wrong.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="inside" aria-labelledby="inside-title">
+    <div class="wrap">
+      <p class="eyebrow">What's inside</p>
+      <h2 id="inside-title">One dashboard instead of five tabs and a walk to the printer.</h2>
+      <div class="sheet">
+        <div>
+          <h3>Watch</h3>
+          <ul>
+            <li><b>Live, four times a second</b><span>Pushed over a WebSocket; it falls back to asking once a second if a network blocks that, and says which.</span></li>
+            <li><b>Needs you</b><span>Every printer ranked by what wants a person: faults, paused or finished prints, idle printers with work waiting.</span></li>
+            <li><b>Whole fleet</b><span>State, progress, docks, temperatures and a health score for every printer, and when each will finish.</span></li>
+            <li><b>Digital twin</b><span>The toolhead, the part growing layer by layer, and the four docks, live.</span></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Print</h3>
+          <ul>
+            <li><b>Start from your phone</b><span>Behind the Confirm Print check, so nothing starts that shouldn't.</span></li>
+            <li><b>Pre-flight check</b><span>Flags extrusion outside the 270 × 270 × 270 mm build volume, unknown toolheads, unsafe temperatures — with line numbers.</span></li>
+            <li><b>Files, queue, 3D viewer</b><span>Thumbnails, estimates, a print queue, and the toolpath of any G-code file, layer by layer.</span></li>
+            <li><b>Honest controls</b><span>A command the printer refuses is shown as refused, in words — never as done.</span></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Make</h3>
+          <ul>
+            <li><b>Photo-to-Print Studio</b><span>A photo becomes a colour-layered relief in up to four of your filaments. The photo never leaves your browser.</span></li>
+            <li><b>MakerWorld and NexPrint to U1</b><span>Converts Bambu Studio and Elegoo Slicer projects for the U1 in Snapmaker Orca, keeping the creator's settings.</span></li>
+            <li><b>View on your desk</b><span>Places a model on your real desk at its printed size, through an Android phone's camera.</span></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Run</h3>
+          <ul>
+            <li><b>Automations</b><span>When this happens, do that — notify, set a light, pause the print. Every firing logged with what really happened.</span></li>
+            <li><b>Notifications</b><span>ntfy, Discord or Telegram, for the events you pick in Automations. Urgent ones always arrive; routine ones wait out your quiet hours.</span></li>
+            <li><b>Smart home</b><span>WLED lights and Home Assistant sensors, through their own APIs.</span></li>
+            <li><b>Cost per print</b><span>Filament by material plus electricity, as the print runs.</span></li>
+            <li><b>Ten games</b><span>For while a long print runs.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="screens">
+        <figure class="shot glass">
+          <img src="img/fleet.jpg" width="1440" height="900" loading="lazy"
+               alt="The Fleet tab: three printer cards — one printing with its finish time, one paused, one idle with a dock error — above a 30-day farm history chart.">
+        </figure>
+        <figure class="shot glass phone">
+          <img src="img/phone.jpg" width="390" height="844" loading="lazy"
+               alt="Deja Vu1 on a phone: the Needs you list at the top, and the print's progress with Pause and Hold to cancel in a dock at the bottom of the screen.">
+        </figure>
+      </div>
+      <p class="caption">Fleet on a laptop, Overview on a phone — the same dashboard, laid out for a thumb. Simulated farm.</p>
+    </div>
+  </section>
+
+  <section class="band" id="honest" aria-labelledby="honest-title">
+    <div class="wrap">
+      <p class="eyebrow">Where it stands</p>
+      <h2 id="honest-title">What's checked, and what isn't yet.</h2>
+      <p class="intro">You should know exactly what you're running. This is the same status the README keeps.</p>
+      <div class="truth">
+        <div class="yes">
+          <h3><i aria-hidden="true"></i>Checked</h3>
+          <ul>
+            <li>The printer connection was written from the Moonraker, Klipper and U1 source code Snapmaker publishes, and tested against a stand-in Moonraker built from that source, over real network connections.</li>
+            <li>608 automated tests, run with nothing but Python.</li>
+            <li>Every tab driven in a real (headless) browser, at laptop and phone sizes, including touch.</li>
+            <li>WLED, Home Assistant, ntfy, Discord and Telegram checked against each service's own source or documentation.</li>
+          </ul>
+        </div>
+        <div class="not-yet">
+          <h3><i aria-hidden="true"></i>Not yet</h3>
+          <ul>
+            <li>It has not talked to a physical U1. The first real connection is where any difference from the published source will show up — the printer's Details panel and the server log are built to make that easy to debug.</li>
+            <li>The LED dock rings and the optical colour sensor have tested logic waiting on physical parts.</li>
+            <li>The converter's output hasn't been opened in Snapmaker Orca itself; it is checked against the rules in Orca's loader source instead.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="run" aria-labelledby="run-title">
+    <div class="wrap">
+      <p class="eyebrow">Run it</p>
+      <h2 id="run-title">Three lines. Then open a browser.</h2>
+      <div class="run">
+        <div class="terminal">
+          <div class="term-bar"><span>Terminal</span><button class="copy" type="button" data-copy="git clone https://github.com/Jbyjre/Deja_VU1.git
+cd Deja_VU1
+python3 backend/app.py">Copy</button></div>
+<pre><code><span class="p">$ </span>git clone https://github.com/Jbyjre/Deja_VU1.git
+<span class="p">$ </span>cd Deja_VU1
+<span class="p">$ </span>python3 backend/app.py
+<span class="c"># then open http://localhost:8000</span></code></pre>
+        </div>
+        <ol class="steps">
+          <li><b>Python 3.8 or newer is all it needs.</b> No packages, no build step, and nothing is fetched from the internet while it runs.</li>
+          <li><b>Try it with no printer.</b> Flip <code>Demo data</code> in the header for a simulated farm of three U1s that heat, print and finish.</li>
+          <li><b>Add your U1.</b> Fleet → Add a printer, with its Moonraker address — usually <code>http://&lt;printer-ip&gt;:7125</code>.</li>
+          <li><b>Open it on your phone.</b> Settings → Pair another device gives a short code. It talks straight to your computer over your home network.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="closer wrap" aria-labelledby="closer-title">
+    <h2 id="closer-title">Stop walking over to read the screen.</h2>
+    <div class="hero-cta">
+      <a class="btn primary" href="https://github.com/Jbyjre/Deja_VU1">Get Deja Vu1 on GitHub</a>
+      <a class="btn" href="#run">How to run it</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>Deja Vu1 is an open-source project under the MIT licence.</p>
+    <p>Typefaces: Bricolage Grotesque, Instrument Sans and IBM Plex Mono, under the SIL Open Font License.</p>
+  </div>
+</footer>
+
+<script>
+/* The glass highlight follows the pointer (skipped when reduced motion is on),
+   and the Copy button copies the three commands. That's all the script does. */
+(() => {
+  const glass = [...document.querySelectorAll('.glass')];
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    let queued = false;
+    addEventListener('pointermove', (e) => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        for (const el of glass) {
+          const r = el.getBoundingClientRect();
+          if (e.clientX < r.left - 80 || e.clientX > r.right + 80 || e.clientY < r.top - 80 || e.clientY > r.bottom + 80) continue;
+          el.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+          el.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+        }
+      });
+    }, { passive: true });
+  }
+  for (const btn of document.querySelectorAll('[data-copy]')) {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copy;
+      let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; }
+      catch (err) {
+        const area = Object.assign(document.createElement('textarea'), { value: text });
+        area.style.position = 'fixed'; area.style.opacity = '0';
+        document.body.appendChild(area); area.select();
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        area.remove();
+      }
+      btn.textContent = ok ? 'Copied' : 'Select and copy';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1800);
+    });
+  }
+})();
+</script>
+</body>
+</html>

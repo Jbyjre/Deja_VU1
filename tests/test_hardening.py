@@ -12,6 +12,7 @@ Tests for the robustness and security hardening:
 """
 
 import http.client
+import importlib
 import json
 import math
 import os
@@ -63,9 +64,19 @@ class Storage(unittest.TestCase):
         # at backend/data they wiped the real setup of whoever ran them.
         real = os.path.join(os.path.dirname(os.path.abspath(storage.__file__)), "data")
         self.assertNotEqual(os.path.abspath(storage.DATA_DIR), os.path.abspath(real))
-        for module in (dv_app.fleet, dv_app.maintenance, dv_app.cost_calculator,
-                       dv_app.filament_inventory, dv_app.file_library, dv_app.modules):
-            self.assertEqual(module._DATA_DIR, storage.DATA_DIR, module.__name__)
+        # Every backend module that keeps files, not a hand-kept list: a
+        # module added later with its own path would slip past a list.
+        backend = os.path.dirname(os.path.abspath(storage.__file__))
+        checked = []
+        for name in sorted(f[:-3] for f in os.listdir(backend) if f.endswith(".py")):
+            if name == "app":
+                continue
+            module = importlib.import_module(name)
+            if hasattr(module, "_DATA_DIR"):
+                checked.append(name)
+                self.assertEqual(module._DATA_DIR, storage.DATA_DIR, name)
+        self.assertIn("spoolman_bridge", checked)
+        self.assertIn("fleet", checked)
 
     def test_the_dashboard_uses_backend_data_unless_told_otherwise(self):
         backend = os.path.dirname(os.path.abspath(storage.__file__))
@@ -318,9 +329,17 @@ class ServerHardening(unittest.TestCase):
                                      "Origin": "http://attacker.example.com"})
         self.assertEqual(status, 421)
 
-    def test_cloudflare_tunnel_on_this_machine_is_allowed(self):
+    def test_a_forwarding_header_does_not_bypass_the_host_check(self):
+        # A page doing DNS rebinding from this same computer can add
+        # Cf-Connecting-Ip itself, so the header alone must not be trusted.
         status, _, _ = self.request("GET", "/api/modules", headers={
             "Host": "printer.example.com", "Cf-Connecting-Ip": "203.0.113.9"})
+        self.assertEqual(status, 421)
+
+    def test_cloudflare_tunnel_name_listed_in_allowed_hosts(self):
+        with mock.patch.object(dv_app, "EXTRA_HOSTS", {"printer.example.com"}):
+            status, _, _ = self.request("GET", "/api/modules", headers={
+                "Host": "printer.example.com", "Cf-Connecting-Ip": "203.0.113.9"})
         self.assertEqual(status, 200)
 
     def test_protective_headers_on_pages_and_api(self):

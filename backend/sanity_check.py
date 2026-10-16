@@ -42,6 +42,9 @@ def check():
 
     reasons = blocking + warnings
     return {
+        # False when nothing measured the colour (no sensor fitted, or the
+        # file names no colours), so the panel doesn't claim it checked out.
+        "colour_measured": colors["overall"] in ("match", "close", "mismatch"),
         "safe_to_print": len(reasons) == 0,
         "can_start": len(blocking) == 0,
         "reasons": reasons,

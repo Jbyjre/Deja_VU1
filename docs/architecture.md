@@ -319,6 +319,71 @@ its profiles. The check found one real bug, now fixed: a project with more
 filament types than colours made Orca read a filament's name as the printer.
 Missing colours are now filled with white, with a warning.
 
+**Plates.** Bambu Studio, OrcaSlicer and Snapmaker Orca lay a project's
+plates out on a grid: plate *i* sits at column `i % cols`, row `i // cols`,
+`cols = ceil(sqrt(plate count))`, each plate the bed's size × 1.2 from the
+last (`PartPlate.cpp`: `LOGICAL_PART_PLATE_GAP = 1/5`, `compute_shape_position`,
+`compute_colum_count`; the plate size is the bed's extent in whole mm,
+`Plater.cpp` `reset_size`). On opening a project Orca rebuilds which plate an
+object is on from where the object is (`load_from_3mf_structure`: "we will
+rebuild later"), not from the plate list in the file. A MakerWorld bed is
+256 mm and the U1's 270 mm, so from plate 2 on, objects used to land between
+plates or on the wrong one. `reposition_plates` now moves every object on a
+plate by the same amount - to the same spot on the matching U1 plate,
+centred the same way - keeping height, rotation, scale and spacing. Objects
+are matched to plates the way Orca writes them (`model_settings.config`'s
+`object_id` is the build item's `objectid`; `instance_id` counts that
+object's build items in order, `bbs_3mf.cpp`). A plate whose objects can't
+all be matched, or that straddles two grid cells, is left exactly as it was
+and named in the report; an object whose centre would fall off the U1's bed
+(a bigger source bed) is warned about. The idea came from the "MakerWorld to
+Snapmaker U1" browser extension (a Snapmaker Innovation Fund Phase 1 winner);
+the code is this project's own, written from Orca's source at commit
+`4996d50`. `tests/test_converter_3mf.py` checks the result against the grid
+formula computed independently from the plate index.
+
+**When it can't convert.** Every refusal carries a code (`CV-101`...), the
+stage it failed at and what to try (`converter_3mf.ERRORS`), and the Files
+view has a **Copy report** button that puts a plain-text report - file,
+source program, profiles chosen, plates moved, warnings - on the clipboard
+for a bug report. OrcaSlicer projects are accepted too: OrcaSlicer writes
+the same project layout Snapmaker Orca reads.
+
+### Skip one object (`exclude_object`)
+When a print's objects are labelled - Snapmaker's U1 process profile turns
+`exclude_object` on (`fdm_process_U1_common.json`), so Orca writes an
+`EXCLUDE_OBJECT_DEFINE` per object - the Control tab shows them on a map of
+the bed and lets one be skipped while the rest carry on. Klipper's status
+fields (`objects` with name/center/polygon, `excluded_objects`,
+`current_object`) and the `EXCLUDE_OBJECT NAME=` command were read from
+`klippy/extras/exclude_object.py` in Snapmaker's u1-klipper fork. That
+command accepts any name without complaint, so the dashboard checks first:
+something is printing, the name is one the file defined, it isn't already
+skipped, and it isn't the last object left (that's what Cancel is for). The
+result is read back; anything short of the printer listing it as skipped is
+reported as failed. The simulation reads the same labels from the file it
+was started with (`gcode_tools.object_definition`), so the demo behaves like
+the printer. The idea comes from U1 Print Hub.
+
+### Filament: asked for, not only waited for
+U1 Print Hub, tested on real U1s, found `print_task_config` doesn't always
+push an update when filament is changed on the touchscreen. The real
+client now also asks for it directly every 30 s
+(`MoonrakerPrinter._requery_filament`, `printer.objects.query`), so a
+touchscreen change shows up even if no push arrives.
+
+### Spoolman
+`spoolman_bridge.py` imports the spools you track in
+[Spoolman](https://github.com/Donkie/Spoolman) into the filament inventory
+(Care tab → Import from Spoolman). `GET <base>/api/v1/spool` returns every
+spool that isn't archived; colour comes from the filament's `color_hex`
+(alpha dropped; the first of `multi_color_hexes` for multi-colour), grams
+from `remaining_weight` (null when Spoolman doesn't know the starting
+weight). Read from Spoolman's source (`spoolman/api/v1`, commit `d102f94`).
+Each spool keeps its Spoolman id, so importing again updates it rather than
+adding a duplicate, and spools added by hand are never touched. One way,
+on request; nothing is written back to Spoolman.
+
 ### Smaller pieces
 `fleet.py` (registered printers + the overview rows), `timelapse.py` (a
 frame every two layers, simulated frames drawn as labelled SVG),
@@ -441,18 +506,40 @@ the connection; every route that reads the dashboard's own settings checks
 only its module state. No framework, so there is nothing to install.
 
 ### `frontend/`
-Nine files — `index.html`, `style.css` and `app.js` (the original dashboard
-and the games), `workshop.css` and `workshop.js` (live connection, fleet,
-files, automations, phone layout, Liquid Glass 2.0), `viewer3d.js`
-(the STL / 3MF parsers and the WebGL renderer), `studio.js` (the
-Photo-to-Print Studio) and `farm.js` + `farm.css` (fleet command center,
-fleet history, farm sandbox, auto-print pipeline). `workshop.js` tells the
+Twelve files plus two folders — `index.html`, `style.css` and `app.js`
+(the original dashboard and the games, and the shared helpers the other
+scripts use), `workshop.css` and `workshop.js` (live connection, fleet, the
+"Needs you" list, files, automations, phone layout, Liquid Glass 2.0),
+`viewer3d.js` (the STL / 3MF parsers and the WebGL renderer), `ar.js`
+(the WebXR "view on your desk" preview), `studio.js` (the Photo-to-Print
+Studio), `farm.js` + `farm.css` (fleet command center, fleet history, farm
+sandbox, auto-print pipeline), `theme.css` (the "Layer lines" design layer,
+loaded last; also the only stylesheet for the "Needs you" card) and
+`welcome.html` (the product page a static host shows instead of the
+dashboard). `fonts/` holds the three bundled typefaces with their SIL Open
+Font License files, and `img/` the product page's screenshots, taken from
+the simulated farm. `workshop.js` tells the
 newer files what happens through window events — `dv-tab`, `dv-refresh`,
 `dv-fleet`, `dv-live-event`, `dv-model-open` — rather than them reaching
 into its internals. No framework, no build
 step, and nothing fetched from any external host: no webfonts, no CDN. The
 dashboard runs fully offline, including phone pairing, which talks
 directly to this server over the local network.
+
+**No server behind the pages.** The pages can be served without
+`backend/app.py` (the public Cloudflare link publishes `frontend/` alone as
+static files). `app.js` asks `/api/health` once before any other request;
+a network error, a 404 or a non-JSON answer means the server isn't there.
+Then `getJSON` / `postJSON` stop sending requests and answer at once with
+`{server_missing: true, connected: false}`, `showServerMissing()` shows
+the banner, switches Demo data off (the remembered choice is kept), and
+gives every card without `data-browser-only` a one-line "needs the Deja Vu1
+server" note in place of its body. The browser-only parts: the Studio
+(built-in palette, download instead of save), local G-code / STL / 3MF
+viewing (`DV3D.parseGcode` in `viewer3d.js` reads the toolpath in the
+browser — moves, arcs, G92, T0–T3; its footprint includes every extrusion,
+where the server's pre-flight leaves out-of-bounds points out of the
+footprint and reports them instead), AR, the games and the preferences.
 
 **Honest commands.** Every control button goes through one function
 (`runCommand` in `app.js`): it shows "Pausing…" at once, sends the command,
@@ -616,7 +703,7 @@ Everything that calls them already works.
 
 ## Testing
 
-566 tests, using Python's built-in `unittest`:
+608 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests

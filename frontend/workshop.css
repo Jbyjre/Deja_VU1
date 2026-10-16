@@ -333,7 +333,7 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 }
 .twin-dock.error .td-ring { animation: breathe .9s steps(1) infinite; }
 .td-label { position: absolute; left: 0; right: 0; bottom: -14px; text-align: center; font: 700 9px/1 var(--font-mono); color: var(--text-dim); }
-.twin-readout { font: 600 11.5px/1.4 var(--font-mono); color: var(--text-faint); text-align: center; margin-top: 6px; }
+.twin-readout { font: 600 11.5px/1.4 var(--font-mono); color: var(--text-faint); text-align: center; margin-top: 6px; text-wrap: balance; font-variant-numeric: tabular-nums; }
 
 /* Print health gauge. */
 .gauge-wrap { position: relative; max-width: 240px; margin: 0 auto; text-align: center; }
@@ -356,13 +356,13 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .spark { width: 100%; height: 90px; margin-top: 10px; overflow: visible; }
 .spark path { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .sp-c { stroke: var(--accent); }
-.sp-b { stroke: #c8672a; stroke-dasharray: 4 4; }
+/* Bed is the hot plate, so it reads warm; the chamber keeps the accent.
+   Dashed as well as a different hue, so the two never rely on colour alone. */
+.sp-b { stroke: var(--heat, #e0782f); stroke-dasharray: 4 4; }
 .ch-legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--text-faint); margin-top: 6px; flex-wrap: wrap; }
 .ch-legend span::before { content: ""; display: inline-block; width: 14px; height: 2px; margin-right: 6px; vertical-align: middle; }
 .ch-legend .lg-c::before { background: var(--accent); }
-/* The legend draws each line the way the chart does: chamber solid in the
-   accent, bed dashed in a warm colour, so the two can't be mistaken. */
-.ch-legend .lg-b::before { background: repeating-linear-gradient(90deg, #c8672a 0 4px, transparent 4px 7px); }
+.ch-legend .lg-b::before { background: repeating-linear-gradient(90deg, var(--heat, #e0782f) 0 4px, transparent 4px 7px); }
 .ch-legend span:last-child { margin-left: auto; }
 .ch-legend span:last-child::before { display: none; }
 
@@ -375,6 +375,15 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
   font: inherit; color: var(--text); text-align: left; max-width: min(360px, calc(100vw - 32px));
 }
 .live-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* While the status ribbon is on screen it says the same thing; the pill
+   steps aside (workshop.js) rather than covering the bottom-right corner. */
+body.ribbon-in-view > .live-pill {
+  opacity: 0; transform: translateY(14px) scale(.96); pointer-events: none; visibility: hidden;
+  transition: opacity .2s ease, transform .2s ease, visibility 0s linear .2s;
+}
+body > .live-pill { transition: opacity .25s ease, transform .3s cubic-bezier(.2, .8, .2, 1), visibility 0s; }
+/* Room at the very bottom of the page, so the pill never covers the footer. */
+body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 .lp-ring { width: 40px; height: 40px; flex: 0 0 40px; transform: rotate(-90deg); }
 .lp-track { fill: none; stroke: rgba(0, 0, 0, .08); stroke-width: 3.5; }
 .lp-fill { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; }
@@ -475,6 +484,17 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .convert-report { padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, .5); font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
 .convert-report code, .diff-key code { font-size: 11.5px; }
 .convert-fail { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--bad) 8%, white); color: color-mix(in srgb, var(--bad) 70%, black); font-size: 13px; }
+.fd-u1-ready { align-self: center; font-size: 13px; color: var(--text-dim); }
+.convert-fail { display: flex; flex-direction: column; gap: 6px; }
+.convert-fail p { margin: 0; }
+.convert-fail-head { display: flex; gap: 8px; align-items: baseline; font-size: 12px; }
+.convert-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: .02em;
+  padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--bad) 14%, white); }
+.convert-action { color: var(--text-dim); }
+.convert-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 2px; }
+.convert-actions .log-empty { margin: 0; font-size: 12px; }
+.convert-report-text { width: 100%; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; border-radius: 10px;
+  padding: 10px; border: 1px solid rgba(0, 0, 0, .12); background: rgba(255, 255, 255, .7); color: var(--text); resize: vertical; }
 
 .fd-gcode { margin-top: 20px; }
 .gc-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
@@ -846,3 +866,60 @@ body.is-scrolled .topbar {
   .bottom-nav .tab-blob { background: #fff; box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, .35); }
   .glass-menu { border: 1.5px solid var(--text); }
 }
+
+/* ---- Objects on the plate (Control tab) ---------------------------------
+ * The bed is content, so it's a matte surface, not glass: glass stays on
+ * the card around it. One colour carries meaning at a time - the accent
+ * for the object printing now, red only for the one you're about to skip. */
+.plate-card { margin-bottom: 20px; }
+.plate-layout { display: grid; grid-template-columns: minmax(180px, 300px) 1fr; gap: 20px; align-items: start; }
+.plate-map { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.plate-bed { fill: rgba(255, 255, 255, .62); stroke: rgba(28, 28, 30, .14); stroke-width: 1; }
+.plate-grid line { stroke: rgba(28, 28, 30, .07); stroke-width: .6; }
+.plate-front { font: 600 8px var(--font-mono); fill: var(--text-faint); letter-spacing: .08em; text-transform: uppercase; }
+.plate-obj { fill: rgba(28, 28, 30, .14); stroke: var(--text-dim); stroke-width: 1.2; stroke-linejoin: round; cursor: pointer;
+  transition: fill .2s ease, stroke .2s ease, opacity .2s ease; }
+.plate-obj:hover { fill: rgba(28, 28, 30, .22); }
+.plate-obj.is-current { fill: color-mix(in srgb, var(--accent) 34%, transparent); stroke: var(--accent-text); stroke-width: 1.6;
+  stroke-dasharray: 5 3; animation: plate-printing 1.4s linear infinite; }
+.plate-obj.is-skipped { fill: url(#plate-hatch); stroke: var(--text-faint); stroke-dasharray: 2 2; opacity: .7; cursor: default; }
+.plate-hatch-line { stroke: var(--text-faint); stroke-width: 1.4; }
+.plate-obj.is-selected { stroke: var(--bad-text); stroke-width: 2.6; stroke-dasharray: none; }
+@keyframes plate-printing { to { stroke-dashoffset: -16; } }
+
+.plate-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.plate-list { list-style: none; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden;
+  background: rgba(255, 255, 255, .45); border: 1px solid rgba(255, 255, 255, .6); }
+.plate-list li + li { border-top: 1px solid rgba(0, 0, 0, .06); }
+.plate-item { width: 100%; min-height: 44px; display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 10px;
+  padding: 10px 14px; background: none; border: 0; text-align: left; font: 500 14px/1.3 var(--font-sans); color: var(--text); cursor: pointer; }
+.plate-item:hover:not(:disabled) { background: rgba(255, 255, 255, .55); }
+.plate-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+.plate-item.is-selected { background: color-mix(in srgb, var(--bad) 9%, white); box-shadow: inset 3px 0 0 var(--bad-text); }
+.plate-item:disabled { cursor: default; color: var(--text-faint); }
+.plate-item.is-skipped .plate-name { text-decoration: line-through; text-decoration-thickness: 1px; }
+.plate-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plate-state { font: 600 11px var(--font-mono); color: var(--text-faint); letter-spacing: .02em; }
+.plate-dot { width: 10px; height: 10px; border-radius: 3px; background: rgba(28, 28, 30, .22); border: 1px solid var(--text-dim); }
+.plate-dot.is-current { background: color-mix(in srgb, var(--accent) 45%, white); border-color: var(--accent-text); }
+.plate-dot.is-skipped { background: transparent; border-style: dashed; border-color: var(--text-faint); }
+.plate-confirm-text { margin: 0 0 10px; font-size: 14px; color: var(--text); text-wrap: pretty; }
+.plate-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.plate-action .log-empty { margin: 0; }
+
+@media (max-width: 720px) {
+  .plate-layout { grid-template-columns: 1fr; }
+  .plate-map { max-width: 320px; margin: 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) { .plate-obj.is-current { animation: none; } }
+@media (prefers-contrast: more) {
+  .plate-obj { stroke: var(--text); }
+  .plate-grid line { stroke: rgba(28, 28, 30, .2); }
+}
+
+/* Spoolman import (Care tab) */
+.spoolman-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+.spoolman-form input { flex: 1; min-width: 200px; }
+#spoolman-result.is-bad { color: var(--bad-text); }
+.spool-src { font: 600 10px var(--font-mono); letter-spacing: .03em; padding: 1px 6px; border-radius: 999px;
+  background: rgba(28, 28, 30, .07); color: var(--text-dim); vertical-align: 1px; }

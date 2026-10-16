@@ -53,7 +53,7 @@ If the WebRTC connection drops later, it switches to MJPEG on its own.
 3. **Check it in go2rtc first.** Open `http://<that computer>:1984`, find
    `u1` and play it. If it doesn't play there, it won't play in the
    dashboard either.
-4. **Turn it on in Deja Vu1.** Go to **Modules & devices**, switch on
+4. **Turn it on in Deja Vu1.** Go to **Settings → Modules**, switch on
    **Low-latency camera (WebRTC)**, open **Low-latency camera** under the
    camera, and enter go2rtc's address (like `http://192.168.1.60:1984`) and
    the stream name (`u1`). Save.
