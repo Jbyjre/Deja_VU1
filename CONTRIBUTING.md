@@ -45,3 +45,15 @@ very good reason.
 3. For anything on screen, try it at desktop width and at phone width
    (390 px), with demo data on and off.
 4. Add a line to [CHANGELOG.md](CHANGELOG.md) under *Unreleased*.
+5. GitHub runs the whole suite on Python 3.8, 3.10, 3.12 and 3.13 for every
+   pull request (`.github/workflows/tests.yml`).
+
+## Good places to help
+
+- Reports from a real Snapmaker U1: what Moonraker sends, what the
+  dashboard got right and wrong ([docs/first-connection.md](docs/first-connection.md)).
+- Drivers for the LED dock rings and the colour sensor, once the hardware
+  exists ([docs/hardware-modules.md](docs/hardware-modules.md)).
+- Maintenance intervals backed by Snapmaker's documentation or measured
+  wear.
+- Accessibility fixes, clearer error messages, and tests for edge cases.

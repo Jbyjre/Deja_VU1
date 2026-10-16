@@ -122,7 +122,9 @@ worker in `wrangler.jsonc` and those tags must change too.
 
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
-comment from Cloudflare's bot. `*.workers.dev` is blocked from the cloud
+comment from Cloudflare's bot. GitHub Actions also runs the test suite on Python
+3.8, 3.10, 3.12 and 3.13 (`.github/workflows/tests.yml`, pinned to Ubuntu
+24.04 because Python 3.8 builds stop there). `*.workers.dev` is blocked from the cloud
 sandbox, so you can't fetch the preview from here.
 
 ## Rules the code depends on
