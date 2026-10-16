@@ -297,9 +297,17 @@ class ServerHardening(unittest.TestCase):
                                      "Origin": "http://attacker.example.com"})
         self.assertEqual(status, 421)
 
-    def test_cloudflare_tunnel_on_this_machine_is_allowed(self):
+    def test_a_forwarding_header_does_not_bypass_the_host_check(self):
+        # A page doing DNS rebinding from this same computer can add
+        # Cf-Connecting-Ip itself, so the header alone must not be trusted.
         status, _, _ = self.request("GET", "/api/modules", headers={
             "Host": "printer.example.com", "Cf-Connecting-Ip": "203.0.113.9"})
+        self.assertEqual(status, 421)
+
+    def test_cloudflare_tunnel_name_listed_in_allowed_hosts(self):
+        with mock.patch.object(dv_app, "EXTRA_HOSTS", {"printer.example.com"}):
+            status, _, _ = self.request("GET", "/api/modules", headers={
+                "Host": "printer.example.com", "Cf-Connecting-Ip": "203.0.113.9"})
         self.assertEqual(status, 200)
 
     def test_protective_headers_on_pages_and_api(self):

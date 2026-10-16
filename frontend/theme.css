@@ -313,10 +313,12 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
    ========================================================================== */
 
 /* theme.css loads last, so each rule above that the older stylesheets'
-   own accessibility blocks would have overridden is repeated here. */
+   own accessibility blocks would have overridden is repeated here, with
+   selectors at least as specific as the rules they override (the base card
+   rule carries :not(.is-morph-target), so these do too). */
 @media (prefers-reduced-transparency: reduce) {
-  .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice),
-  .liquid-glass:is(.card, .fleet-card)[data-tint],
+  .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
+  .liquid-glass:is(.card, .fleet-card)[data-tint]:not(.is-morph-target),
   .tabbar.liquid-glass, .status-ribbon.liquid-glass {
     background: var(--paper-solid);
     backdrop-filter: none; -webkit-backdrop-filter: none;
@@ -330,8 +332,8 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 @media (prefers-contrast: more) {
   :root { --hair: oklch(30% 0.02 265 / .3); --text-faint: oklch(38% 0.012 265); }
   .bg::before { display: none; }
-  .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice),
-  .liquid-glass:is(.card, .fleet-card)[data-tint],
+  .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
+  .liquid-glass:is(.card, .fleet-card)[data-tint]:not(.is-morph-target),
   .tabbar.liquid-glass, .status-ribbon.liquid-glass {
     background: var(--paper-solid);
     backdrop-filter: none; -webkit-backdrop-filter: none;

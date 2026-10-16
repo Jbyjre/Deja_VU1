@@ -66,13 +66,15 @@ def redeem_code(code, device_name):
                 _current_code = _code_expires_at = None
                 raise ValueError("Too many wrong codes - show a new pairing code and try again")
             raise ValueError("Incorrect pairing code")
+        devices = _load_devices()
+        if len(devices) >= MAX_DEVICES:
+            # Checked before the code is used up, so after unpairing one
+            # device the same code still works.
+            raise ValueError(f"At most {MAX_DEVICES} paired devices - unpair one first")
         # Each code pairs one device, then it is used up.
         _current_code = _code_expires_at = None
 
         device_name = str(device_name or "").strip()[:40] or "New device"
-        devices = _load_devices()
-        if len(devices) >= MAX_DEVICES:
-            raise ValueError(f"At most {MAX_DEVICES} paired devices - unpair one first")
         device = {
             "id": f"device-{secrets.token_hex(4)}",
             "name": device_name,

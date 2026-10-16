@@ -91,14 +91,16 @@ def decide_ring_state(toolhead_id, toolhead_data, printer_state):
         status = "docked"
     temperature = toolhead_data.get("temperature") or 0
 
+    if printer_state.get("state") == "error" and status == "active":
+        # Checked first: a heater fault leaves the head cooling below 180 C,
+        # which would otherwise read as amber "heating up".
+        state = "error"
     # A toolhead that is actively printing but still below temperature is
     # heating, not printing. Show amber so the user knows to wait.
-    if status == "active" and temperature < 180:
+    elif status == "active" and temperature < 180:
         state = "heating"
     elif printer_state.get("state") == "paused" and status == "active":
         state = "paused"
-    elif printer_state.get("state") == "error" and status == "active":
-        state = "error"
     else:
         state = status if status in STATE_COLORS else "docked"
 

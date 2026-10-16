@@ -206,6 +206,8 @@ def check_current_job():
 
     for requirement in job["required_filament"]:
         toolhead = requirement["toolhead"]
+        if not requirement.get("expected_color_hex"):
+            continue   # the file doesn't say which colour: nothing to compare
         reading = read_sensor(toolhead)
 
         result = compare(requirement["expected_color_hex"], reading["detected_hex"])
@@ -217,8 +219,11 @@ def check_current_job():
         })
         results.append(result)
 
-    # The whole job is only OK if every toolhead is OK.
-    if any(r["verdict"] == "mismatch" for r in results):
+    # The whole job is only OK if every toolhead is OK. A file that names no
+    # colour for any toolhead has nothing to compare, which isn't a match.
+    if not results:
+        overall = "nothing_to_check"
+    elif any(r["verdict"] == "mismatch" for r in results):
         overall = "mismatch"
     elif any(r["verdict"] == "close" for r in results):
         overall = "close"
