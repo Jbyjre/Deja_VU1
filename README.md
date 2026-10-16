@@ -11,8 +11,13 @@ of printers, updates live four times a second, starts prints from your
 phone behind a real safety check, reads and edits print files in 2D and 3D,
 converts MakerWorld and NexPrint projects for the U1, and runs local
 "when this happens, do that" automations. It runs on Moonraker, the web API
-that already sits in front of the printer, and reads it through one
-connection rather than three.
+that already sits in front of the printer: one application and one
+connection per printer (a WebSocket for live state, plain HTTP requests for
+commands, history and uploads), shared by every module.
+
+**Quick links:** [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
+[current status](#current-status) · [security](#security-and-your-network) ·
+[for developers](#for-developers-and-ai-coding-sessions)
 
 It connects to a real printer by its Moonraker address, and has a
 simulated farm for trying everything without one. The real connection was
@@ -48,23 +53,23 @@ machine, and all of it is visible in data the printer already publishes.
 
 | Module | What it does |
 |---|---|
-| **Maintenance reminders** | Tracks cumulative hours, print counts, and calendar time since each of six tasks (nozzle, bed, belts, rails, dock alignment, fans) was last done. Resets when you mark it complete. |
+| **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
 | **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
-| **Push notifications** | Alerts on print finish/fail via ntfy.sh, Discord, or Telegram — plain webhooks, no SDK, no account. A failed print always notifies right away; a finished one respects configured quiet hours instead of buzzing your phone at 3am. |
+| **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram — plain webhooks, no SDK, no account. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
 | **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
-| **Config backup** | One-click download of this dashboard's own settings and history as a zip. |
+| **Config backup** | One-click zip of the module switches, the filament list, notification settings (secrets blanked) and the default simulated printer's maintenance log. Not yet included: real printers' maintenance logs, the printer list, automations, the queue and the other settings; there is no restore yet. |
 | **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
-| **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. |
+| **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
 | **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history — editable $/kg per material, $/kWh, and printer wattage. |
 
 ### Live, fleet-wide, and hands-on — no hardware needed
 
 | Feature | What it does |
 |---|---|
-| **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If a network blocks WebSockets, the dashboard notices and asks once a second instead, and says which it's doing. |
+| **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If the WebSocket fails three times (a network that blocks it, or a server restart), the dashboard asks once a second instead, says so, and tries the WebSocket again every 30 seconds. |
 | **Needs you** | The top of the Overview ranks every printer by what wants a person — a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes — each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
 | **Finish time on the clock** | Alongside "2 h 17 min left", every running print says when it will finish — "done 2:42 PM", "tomorrow 1:05 AM" — on the status ribbon, the fleet cards and the live pill, from the same estimate. |
-| **The browser tab follows the print** | With the dashboard in a background tab, its title reads "53% · U1 · Workshop" (or Paused, Finished, Needs attention) and its icon draws the progress ring, so you can check without switching tabs. |
+| **The browser tab follows the print** | The page title mirrors the selected printer — "53% · U1 · Workshop — Deja Vu1" (or Paused, Finished, Needs attention) — and the tab's icon draws the progress ring, so a background tab still tells you how it's going. |
 | **Printer fleet** | Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
 | **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
 | **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer actually reports back. A command the printer refuses is shown as refused, in words — never as done. |
@@ -83,7 +88,7 @@ machine, and all of it is visible in data the printer already publishes.
 
 | Feature | What it does |
 |---|---|
-| **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately — "2 of 3 confirmed; failed on Garage: nothing is printing" — never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
+| **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately — "Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason ("Nothing is printing right now") in its own row — never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
 | **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. It all runs in the browser; the photo is never uploaded. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios — a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue — and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
@@ -107,13 +112,17 @@ screen, with the print's progress on a line just above them on every tab.
 
 | Module | What it does |
 |---|---|
-| **Dock status rings** | A ring of light beside each toolhead dock — white for ready, green for printing, amber for heating, red for a fault — readable across the room. Two ways to build it: WS2812 rings, or push the same state to a WLED-controlled strip you already own. |
+| **Dock status rings** | A ring of light beside each toolhead dock — soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault — readable across the room. Two ways to build it: WS2812 rings, or push the same state to a WLED-controlled strip you already own. |
 | **"Right colour loaded?"** | An optical sensor in the filament path, compared against what the print file expects, catching the wrong spool before the print starts. |
 
-Every module can be switched on or off from **Settings** — the
+Every module can be switched on or off from **Settings → Modules** — the
 toggle you see there is enforced by the server, not just hidden in the
 interface: a disabled module's API routes refuse to answer rather than
-silently doing nothing.
+silently doing nothing. Three exceptions, said plainly: switching a module
+off doesn't yet stop work already running in the background (automation
+rules, queue auto-advance, time-lapse capture, filament deduction); "View on
+your desk" has no server routes, so its switch is enforced in the browser;
+and phone pairing can't be switched off.
 
 ### While you wait (the Games tab)
 
@@ -169,6 +178,22 @@ first connection is where any difference between the published source and
 a real machine shows up, and the printer's **Details** panel and the server
 log are built to make that first run easy to debug. Everything checked,
 everything not yet checkable, and why: [docs/real-printer.md](docs/real-printer.md).
+
+**October 2026 audit.** A full read of the code against this README
+found and fixed: a way for a crafted print file's metadata to run script in
+the dashboard (now escaped, and file colours validated); a gap that let a
+web page on the same computer slip past the address check with a forged
+header (a Cloudflare Tunnel's domain now has to be listed, see
+[security](#security-and-your-network)); a real printer's maintenance
+reading as overdue on its very first connection; a print already running
+when the dashboard connects being announced as "started" (firing
+time-lapse and "print starts" rules); an upload cut off part-way being
+saved as a file; dock rings showing "heating" for a faulted printer; the
+hidden game swallowing the space bar in every text box; a removed printer
+staying selected; the live feed staying on slow polling after a server
+restart; the accessibility settings not reaching the cards; and several
+smaller ones. Each has a test in `tests/test_audit_fixes.py`. What it found
+and didn't fix yet is listed in [CLAUDE.md](CLAUDE.md#known-open-issues-found-in-the-october-2026-audit-not-fixed-yet).
 
 The same pass hardened the rest for real conditions:
 
@@ -228,7 +253,8 @@ The same pass hardened the rest for real conditions:
   watchdog, pairing, and the print cost calculator are complete and tested,
   against the simulation and (through the real Moonraker client) against
   the stand-in Moonraker. Nothing outside `backend/mock_moonraker.py` and
-  `backend/moonraker_client.py` talks to the printer directly.
+  `backend/moonraker_client.py` talks to Moonraker (the camera relay reads
+  the stream address you set in the camera settings).
 - Filament inventory, the What-changed check, and the pre-print sanity check
   are complete and tested; they're optional and off by default.
 - The WLED and Home Assistant bridges are complete outbound HTTP clients,
@@ -256,14 +282,15 @@ only sensible approach. Details in
 
 ## Tech stack
 
-- **Backend:** Python 3.8+, standard library only
+- **Backend:** Python, standard library only — written for 3.8 or newer;
+  tested on 3.11 and 3.13 (3.8 itself hasn't been run)
 - **Web server:** `http.server` from the standard library (the threading
   version), plus a hand-written RFC 6455 WebSocket for live updates
 - **Frontend:** HTML, CSS, and JavaScript — no framework, no build step;
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 557 cases
+- **Tests:** `unittest` from the standard library, 571 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -309,6 +336,49 @@ content, so they sit on a quieter frosted "paper" with no lensing (Apple's
 own rule, and far fewer live filters on a big sandbox farm). Type is
 Bricolage Grotesque for headings and big numbers, Instrument Sans for
 reading and buttons, IBM Plex Mono for readings and labels.
+
+## Security and your network
+
+**Deja Vu1 has no login.** Anyone who can reach its port can pause or
+cancel a print and send G-code, so keep it on a network you trust. Phone
+pairing is a list of remembered devices, not a lock. What it does defend
+against:
+
+- **Other names pointed at it.** It only answers requests addressed to a
+  name that belongs to your own network — an IP address, `localhost`, a
+  plain machine name, or one ending in `.local`, `.lan`, `.home`,
+  `.internal`, `.home.arpa`, `.localdomain` or `.ts.net` — plus any name you
+  list in `DEJAVU_ALLOWED_HOSTS`. Anything else gets "Refused" (HTTP 421).
+  This blocks *DNS rebinding*, where a web page you visit points its own
+  domain at your dashboard to control it from your browser.
+- **Other sites sending commands.** Every command and the live connection
+  are refused (HTTP 403) when the browser says they come from another site.
+- **Being framed.** No other site can load the dashboard invisibly inside
+  its own page.
+
+To reach it away from home, use a Cloudflare Tunnel with Cloudflare Access
+in front, and list the tunnel's name in `DEJAVU_ALLOWED_HOSTS` — see
+[docs/remote-access.md](docs/remote-access.md).
+
+## Settings and your data
+
+The server listens on every network interface of the computer, on port
+8000. It has no command-line options; four environment variables change it:
+
+| Variable | What it does |
+|---|---|
+| `PORT` | Listen on another port, e.g. `PORT=8080 python3 backend/app.py` |
+| `DEJAVU_ALLOWED_HOSTS` | Extra names it answers to, comma-separated — your tunnel's domain, say |
+| `DEJAVU_MOONRAKER_LOG` | `1` prints every exchange with a real printer, for debugging a first connection |
+| `DEJAVU_SLICER_PATH` | Where OrcaSlicer is, for the optional auto-print pipeline |
+
+Everything the dashboard saves — module switches, the printer list (up to
+12 printers added by address, in `fleet.json`), maintenance logs, the file
+library, settings, paired devices — lives in `backend/data/` as plain JSON
+and files. It's created on first use and never committed. To change a
+printer's address or API key, remove it and add it again. **The test suite
+writes to that folder**, so copy it somewhere safe before running the tests
+on a computer that manages real printers.
 
 ## The public page
 
@@ -358,8 +428,8 @@ and a local server that is down still shows "Could not reach the backend".
 You need Python 3.8 or newer. Nothing else.
 
 ```bash
-git clone https://github.com/jbyjre/deja_vu1.git
-cd deja_vu1
+git clone https://github.com/Jbyjre/Deja_VU1.git
+cd Deja_VU1
 python3 backend/app.py
 ```
 
@@ -379,7 +449,7 @@ file is refused on purpose); **Automations** to build a rule and watch it
 fire; and **Settings → Demo controls** to fast-forward a print to
 its finish, or to make the next Pause fail and see how that is reported.
 
-(Developed and tested on Python 3.11.)
+(Tested on Python 3.11 and 3.13.)
 
 To see the maintenance module on its own, printed to the terminal:
 
@@ -394,19 +464,35 @@ python3 backend/led_status.py
 python3 backend/color_check.py
 ```
 
-To run the tests:
+To run the tests (about two minutes; they write to `backend/data/`, see
+[Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests
+python3 -m unittest discover tests          # all 571
+python3 -m unittest tests.test_api          # one file
 ```
 
-With no printer added, everything runs on simulated data and no printer is
-contacted at any point. Add one by address and the dashboard connects to
-it; `DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py` prints every exchange
-with it.
+The tests use the simulation and a stand-in Moonraker; no printer is
+contacted. With no printer added, the dashboard contacts none either, and
+shows simulated figures only while **Demo data** is on. Add one by address
+and the dashboard connects to it; `DEJAVU_MOONRAKER_LOG=1 python3
+backend/app.py` prints every exchange with it.
+
+## For developers and AI coding sessions
+
+[CLAUDE.md](CLAUDE.md) is the working context: the commands, a map of
+every file and what it owns, the rules the code depends on (no invented
+figures, demo data never reaching a real printer, server-enforced module
+switches, escaping, the host check), the pitfalls that have cost time
+before, and the known open issues. Claude Code reads it automatically at the
+start of a session in this repository; it's written to be useful to a
+person too. [docs/architecture.md](docs/architecture.md) is the long
+version.
 
 ## Documentation
 
+- [CLAUDE.md](CLAUDE.md) — working context for developers and AI coding
+  sessions: commands, file map, rules, pitfalls, known open issues
 - [docs/real-printer.md](docs/real-printer.md) — connecting a real printer:
   what was checked against Moonraker's and Snapmaker's source, what can't
   be without the machine, and what the first run will tell you

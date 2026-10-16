@@ -123,7 +123,7 @@ const Workshop = (() => {
     try { ws = new WebSocket(`${proto}://${location.host}/api/live?${params.join('&')}`); }
     catch (e) { startPolling(); return; }
     live.ws = ws;
-    ws.onopen = () => { live.mode = 'ws'; live.retries = 0; badge(); };
+    ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; badge(); };
     ws.onmessage = (e) => {
       let msg;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
@@ -166,6 +166,10 @@ const Workshop = (() => {
         const fleet = await getJSON(api('/api/fleet')).catch(() => null);
         if (fleet && fleet.printers) renderFleet(fleet.printers);
       }
+      // Polling started because the WebSocket failed - often just a server
+      // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
+      // stops this polling (ws.onopen).
+      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws) connect();
     };
     once();
     live.poll = setInterval(once, 1000);
@@ -329,6 +333,16 @@ const Workshop = (() => {
 
   function renderFleet(printers) {
     live.fleet = printers || [];
+    // The remembered printer can be gone (removed, or a sandbox printer torn
+    // down). Every request would then ask for an unknown printer and every
+    // panel would say nothing is connected, so fall back to the default.
+    if (currentPrinter && live.fleet.length && !live.fleet.some(p => p.id === currentPrinter)) {
+      currentPrinter = '';
+      store.set(PRINTER_KEY, '');
+      reconnect();
+      refreshAll();
+      return;
+    }
     renderChip();
     const grid = $('fleet-grid');
     if (!grid) return;
@@ -381,7 +395,7 @@ const Workshop = (() => {
         <span>Nozzle <b>${p.nozzle_temperature != null ? formatTemp(p.nozzle_temperature) : '—'}</b></span>
         <span>Bed <b>${formatTemp(p.bed_temperature)}</b></span>
         <span>Chamber <b>${p.chamber_temperature != null ? formatTemp(p.chamber_temperature) : '—'}</b></span>
-        <span>Health <b>${p.health}</b></span>`;
+        <span>Health <b>${p.health ?? '—'}</b></span>`;
       f('alerts').innerHTML = p.alerts.length
         ? p.alerts.map(a => `<li class="fc-alert ${a.level}">${esc(a.text)}</li>`).join('')
         : '<li class="fc-alert ok">No alerts</li>';
@@ -577,10 +591,12 @@ const Workshop = (() => {
       twin.yaw = drag.yaw + (e.clientX - drag.x) * 0.5;
       $('twin-world').style.setProperty('--yaw', `${twin.yaw}deg`);
     });
-    // Released anywhere - a finger can leave the scene mid-drag.
+    // Released anywhere: the scene holds pointer capture during a drag, so
+    // the release arrives here even when a finger has left the scene. On the
+    // scene rather than the document, a rebuilt twin doesn't leave old
+    // listeners behind.
     const release = () => { drag = null; };
-    document.addEventListener('pointerup', release);
-    document.addEventListener('pointercancel', release);
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => scene.addEventListener(type, release));
     twin.built = true;
   }
 
@@ -890,7 +906,7 @@ const Workshop = (() => {
         <div><span class="stat-key">Time</span><b>${fmtHours(a.estimated_hours)}</b><small>${esc(a.estimated_hours_source)}</small></div>
         <div><span class="stat-key">Filament</span><b>${a.filament_grams.toFixed(1)} g</b><small>${esc(a.filament_grams_source)}</small></div>
         <div><span class="stat-key">Layers</span><b>${a.layers}</b><small>${a.footprint_mm ? a.footprint_mm.join(' × ') + ' mm footprint' : ''}</small></div>
-        <div><span class="stat-key">Toolheads</span><b>${a.tools_used.join(' ') || '—'}</b><small>${(a.meta.filament_types || []).join(', ')}</small></div>
+        <div><span class="stat-key">Toolheads</span><b>${esc(a.tools_used.join(' ')) || '—'}</b><small>${esc((a.meta.filament_types || []).join(', '))}</small></div>
       </div>
       <h3 class="fd-h pf-head ${a.preflight.verdict}">${verdictText}</h3>
       ${preflightList(a.preflight)}

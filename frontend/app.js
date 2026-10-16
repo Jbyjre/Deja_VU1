@@ -175,7 +175,7 @@ function newBreakoutDeep(){
   const down=e=>{if(['ArrowLeft','ArrowRight','KeyA','KeyD','Space','KeyP'].includes(e.code))e.preventDefault();keys[e.code]=true;if(e.code==='Space')launch();if(e.code==='KeyP'&&status==='playing'){status='paused';setMessage('Paused · press P or the button to resume');}};const up=e=>{keys[e.code]=false;};t.on(document,'keydown',down);t.on(document,'keyup',up);t.on(document,'pointerup',()=>{keys.ArrowLeft=false;keys.ArrowRight=false;});t.on(document,'pointercancel',()=>{keys.ArrowLeft=false;keys.ArrowRight=false;});t.on(canvas,'pointermove',e=>movePaddle(e.clientX));t.on(canvas,'pointerdown',e=>{e.preventDefault();movePaddle(e.clientX);launch();});t.on($('dbd-pause'),'click',()=>{if(status==='playing'){status='paused';setMessage('Paused');}else if(status==='paused')launch();});t.on($('dbd-overlay'),'click',e=>{if(e.target.closest('button')){if(status==='over')resetRun();launch();}});const drive=()=>{if(keys.ArrowLeft||keys.KeyA)paddleX-=8;if(keys.ArrowRight||keys.KeyD)paddleX+=8;paddleX=Math.max(width()/2,Math.min(W-width()/2,paddleX));};t.every(drive,16);resetRun();
 }
 
-function installArcadePlus(){const games={skydash:skyDashV2,pong:newSmartPong,mines:newMines,tetris:newTetris,pacman:newPacmanPlus,breakout:newDoodleBreak,blackjack:newBlackjack,asteroids:newAsteroids,snake:newSnake,twenty48:new2048};const legacyStop=stopCurrentGame;gameFullscreenV2=(host,tools)=>{const button=document.createElement('button');button.className='btn small game-fullscreen';button.type='button';button.textContent='⛶ Fullscreen';tools.on(button,'click',()=>{const frame=host.querySelector('.game-frame')||host;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else frame.requestFullscreen?.().catch?.(()=>{});});tools.on(document,'fullscreenchange',()=>{button.textContent=document.fullscreenElement?'× Exit fullscreen':'⛶ Fullscreen';});host.querySelector('.game-toolbar').appendChild(button);};stopCurrentGame=()=>{legacyStop();plusStop();gamesCleanupV2?.();gamesCleanupV2=()=>{};activeGame=null;};renderGame=name=>{stopCurrentGame();activeGame=name;(games[name]||games.skydash)();};const picker=$('game-picker');if(picker){const clean=picker.cloneNode(true);picker.replaceWith(clean);clean.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{clean.querySelectorAll('button').forEach(i=>i.classList.toggle('active',i===b));renderGame(b.dataset.game);}));renderGame(clean.querySelector('button.active')?.dataset.game||'skydash');}}
+function installArcadePlus(){const games={skydash:skyDashV2,pong:newSmartPong,mines:newMines,tetris:newTetris,pacman:newPacmanPlus,breakout:newDoodleBreak,blackjack:newBlackjack,asteroids:newAsteroids,snake:newSnake,twenty48:new2048};const legacyStop=stopCurrentGame;gameFullscreenV2=(host,tools)=>{const button=document.createElement('button');button.className='btn small game-fullscreen';button.type='button';button.textContent='⛶ Fullscreen';tools.on(button,'click',()=>{const frame=host.querySelector('.game-frame')||host;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else frame.requestFullscreen?.().catch?.(()=>{});});tools.on(document,'fullscreenchange',()=>{button.textContent=document.fullscreenElement?'× Exit fullscreen':'⛶ Fullscreen';});host.querySelector('.game-toolbar').appendChild(button);};stopCurrentGame=()=>{legacyStop();plusStop();gamesCleanupV2?.();gamesCleanupV2=()=>{};activeGame=null;};renderGame=name=>{stopCurrentGame();activeGame=name;(games[name]||games.skydash)();};const picker=$('game-picker');if(picker){const clean=picker.cloneNode(true);picker.replaceWith(clean);clean.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{clean.querySelectorAll('button').forEach(i=>i.classList.toggle('active',i===b));renderGame(b.dataset.game);}));if(!$('tab-games').hidden)renderGame(clean.querySelector('button.active')?.dataset.game||'skydash');}}
 setTimeout(installArcadePlus,50);
 
 const $ = id => document.getElementById(id);
@@ -825,7 +825,7 @@ async function loadColorCheck() {
     $('colors-note').hidden = true;
     return;
   }
-  if (!hasData(data) || !data.checks) {
+  if (!hasData(data) || !data.checks || !data.checks.length) {
     $('colorfile').hidden = true;
     paint($('colors'), EMPTY('Nothing to check', 'Needs a print file and a sensor reading.'));
     $('colors-note').hidden = true;
@@ -1099,7 +1099,9 @@ async function loadCompare() {
 
   if (hasData(sanityData) && !isModuleDisabled(sanityData) && sanityData.reasons) {
     if (sanityData.safe_to_print) {
-      rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">Safe to print — maintenance, dock, and colour all check out.</div>`);
+      rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">${sanityData.colour_measured === false
+        ? 'Safe to print — maintenance and docks check out. Colour wasn’t measured (no sensor fitted); Confirm Print still compares the file with what the printer reports loaded.'
+        : 'Safe to print — maintenance, dock, and colour all check out.'}</div>`);
     } else {
       sanityData.reasons.forEach(msg => rows.push(`<div class="crow" style="border-left:3px solid var(--bad);">${esc(msg)}</div>`));
     }
@@ -1301,7 +1303,9 @@ async function loadUpdates() {
     host.textContent = 'Turn on demo data, or connect a printer, to check for updates.';
     return;
   }
-  if (data.updates_available === 0) {
+  if (!data.packages.length && data.note) {
+    host.textContent = data.note;
+  } else if (data.updates_available === 0) {
     host.textContent = 'Everything is up to date.';
   } else {
     const names = data.packages.filter(p => p.update_available).map(p => p.name).join(', ');
@@ -1460,7 +1464,10 @@ setTimeout(() => {
   if (picker) {
     const cleanPicker = picker.cloneNode(true); picker.replaceWith(cleanPicker);
     cleanPicker.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { cleanPicker.querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button)); renderGame(button.dataset.game); }));
-    renderGame(cleanPicker.querySelector('button.active')?.dataset.game || 'asteroids');
+    // Only when the Games tab is open: a game started while hidden keeps its
+    // keyboard handlers, and Sky Dash's would swallow every Space typed
+    // anywhere on the page. Opening the tab starts it (showTab).
+    if (!$('tab-games').hidden) renderGame(cleanPicker.querySelector('button.active')?.dataset.game || 'asteroids');
   }
 }, 0);
 function arcadeShell(host, title, help, body, stats, tools) { gameStats(stats); host.innerHTML = gameFrame(title, help, body); gameFull(host, tools); }

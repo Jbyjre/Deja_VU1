@@ -108,16 +108,18 @@ either way, but unset is the default and the simplest.
 
 Deja Vu1 only answers requests addressed to a name that belongs to your own
 network: an IP address, `localhost`, a plain machine name like
-`raspberrypi`, or a home-network name ending in `.local`, `.lan`, `.home`,
-`.home.arpa` or `.internal`. Anything else gets a "Refused" message. This
+`raspberrypi`, a home-network name ending in `.local`, `.lan`, `.home`,
+`.home.arpa`, `.internal` or `.localdomain`, a Tailscale name ending in
+`.ts.net`, or a name listed in `DEJAVU_ALLOWED_HOSTS`. Anything else gets a
+"Refused" message. This
 blocks a trick called *DNS rebinding*, where a web page you happen to visit
 points its own domain at your dashboard's address to control it from your
 browser.
 
-Requests that `cloudflared` forwards from the same computer are recognised
-and allowed, so the tunnel above works without extra set-up. If you run
-`cloudflared` on a *different* computer, or reach the dashboard through some
-other domain name of your own, list the name when starting the server:
+So the tunnel's name has to be listed when starting the server, whether
+`cloudflared` runs on the same computer or another one (a header that only
+*looks* forwarded by Cloudflare isn't trusted, because a web page can add it
+itself):
 
 ```
 DEJAVU_ALLOWED_HOSTS=printer.example.com python3 backend/app.py

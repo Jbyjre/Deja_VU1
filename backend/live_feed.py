@@ -190,7 +190,11 @@ def _detect(printer_id, state, finish_event=None):
 
 def _detect_locked(printer_id, state, finish_event):
     before = _prev_state.get(printer_id)
-    _prev_state[printer_id] = state["state"]
+    # Until a real printer has answered, its state is a placeholder ("error",
+    # never_connected) with nothing behind it. Its first real report becomes
+    # the baseline, so a print already running when the dashboard connects
+    # (or restarts) isn't announced as "started".
+    _prev_state[printer_id] = None if state.get("never_connected") else state["state"]
     events = _print_events(before, state["state"])
     simulated = not mock_moonraker.is_connected(printer_id)
     side_effects = (not simulated) or demo_active()
