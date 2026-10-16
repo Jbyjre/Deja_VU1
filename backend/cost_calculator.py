@@ -20,12 +20,13 @@ reading. That's stated in the API, not hidden behind a precise-looking number.
 """
 
 import json
+import math
 import os
 
 import mock_moonraker
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "cost_settings.json")
 
 _DEFAULT_SETTINGS = {
@@ -68,6 +69,25 @@ def get_settings():
     return _load_settings()
 
 
+def _amount(value, what):
+    """A price or rate as a number of zero or more, or a refusal in words."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = math.nan
+    if not math.isfinite(number):
+        raise ValueError(f"{what} must be a number")
+    if number < 0:
+        raise ValueError(f"{what} can't be negative")
+    return number
+
+
+def _price_key(prices, material):
+    """The table's own spelling of a material, matched ignoring case and spaces."""
+    want = str(material or "").strip().lower()
+    return next((k for k in prices if k.strip().lower() == want), None)
+
+
 def save_settings(updates):
     """
     Only known keys are applied. `filament_price_per_kg` merges by material
@@ -76,19 +96,26 @@ def save_settings(updates):
     """
     settings = _load_settings()
     if "electricity_rate_per_kwh" in updates:
-        settings["electricity_rate_per_kwh"] = float(updates["electricity_rate_per_kwh"])
+        settings["electricity_rate_per_kwh"] = _amount(updates["electricity_rate_per_kwh"], "The electricity rate")
     if "printer_watts" in updates:
-        settings["printer_watts"] = float(updates["printer_watts"])
+        settings["printer_watts"] = _amount(updates["printer_watts"], "The printer's wattage")
     if "filament_price_per_kg" in updates and isinstance(updates["filament_price_per_kg"], dict):
         for material, price in updates["filament_price_per_kg"].items():
-            settings["filament_price_per_kg"][material] = float(price)
+            material = str(material).strip()
+            if not material:
+                continue
+            # "pla" updates PLA rather than adding a second, never-used entry.
+            key = _price_key(settings["filament_price_per_kg"], material) or material.upper()
+            settings["filament_price_per_kg"][key] = _amount(price, f"The price of {key}")
     _save_settings(settings)
     return settings
 
 
 def compute_job_cost(filament_type, filament_grams, duration_hours, settings=None):
     settings = settings or get_settings()
-    price_per_kg = settings["filament_price_per_kg"].get(filament_type, _FALLBACK_PRICE_PER_KG)
+    prices = settings["filament_price_per_kg"]
+    key = _price_key(prices, filament_type)
+    price_per_kg = prices[key] if key else _FALLBACK_PRICE_PER_KG
     material_cost = (filament_grams / 1000.0) * price_per_kg
     energy_kwh = (settings["printer_watts"] / 1000.0) * duration_hours
     energy_cost = energy_kwh * settings["electricity_rate_per_kwh"]

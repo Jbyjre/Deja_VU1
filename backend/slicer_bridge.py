@@ -61,7 +61,7 @@ import file_library
 import gcode_tools
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "slicer.json")
 ENV_PATH = "DEJAVU_SLICER_PATH"
 

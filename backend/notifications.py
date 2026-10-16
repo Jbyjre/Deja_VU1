@@ -25,7 +25,7 @@ import storage
 
 _queue_lock = threading.Lock()
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "notification_settings.json")
 _QUEUE_PATH = os.path.join(_DATA_DIR, "notification_queue.json")
 

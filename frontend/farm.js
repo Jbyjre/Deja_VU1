@@ -56,6 +56,9 @@ const Farm = (() => {
       box.closest('.fleet-card').classList.toggle('is-picked', box.checked);
     });
     renderBar();
+    // The queues are only drawn on the Fleet tab, and opening it loads them
+    // fresh (onTab), so there's no need to keep asking while it's closed.
+    if (!visible('tab-fleet')) return;
     if (Date.now() - cmd.queuesAt > 3000) loadQueues(); else renderQueues();
   }
 

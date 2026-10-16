@@ -94,27 +94,32 @@ body {
 
 .bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
 
-.pool { position: absolute; border-radius: 50%; filter: blur(120px); }
+/* The glows stay still, and are soft many-stop gradients rather than a
+   blur() filter. They used to drift under a 120 px blur: every glass panel
+   blurs and bends what's behind it, so a moving, heavily filtered
+   background made every panel redo that work on every frame, forever -
+   the main source of stutter. Still gradients keep the same atmosphere at
+   no running cost. */
+.pool { position: absolute; border-radius: 50%; }
 .pool-a {
   width: 62vw; height: 62vw; top: -26vw; left: 6vw;
-  background: radial-gradient(circle, var(--accent-light) 0%, transparent 66%);
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--accent-light) 100%, transparent) 0%,
+    color-mix(in srgb, var(--accent-light) 78%, transparent) 16%,
+    color-mix(in srgb, var(--accent-light) 46%, transparent) 34%,
+    color-mix(in srgb, var(--accent-light) 18%, transparent) 52%,
+    color-mix(in srgb, var(--accent-light) 5%, transparent) 64%,
+    transparent 72%);
   opacity: .32;
-  animation: drift-a 36s ease-in-out infinite;
+  transform: translate3d(2vw, 1.5vh, 0) scale(1.04);
 }
 .pool-b {
   width: 42vw; height: 42vw; bottom: -18vw; right: -10vw;
-  background: radial-gradient(circle, #7fb2ff 0%, transparent 68%);
+  background: radial-gradient(circle,
+    rgba(127, 178, 255, 1) 0%, rgba(127, 178, 255, .78) 16%, rgba(127, 178, 255, .46) 34%,
+    rgba(127, 178, 255, .18) 52%, rgba(127, 178, 255, .05) 64%, transparent 72%);
   opacity: .22;
-  animation: drift-b 44s ease-in-out infinite;
-}
-
-@keyframes drift-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(4vw, 3vh, 0) scale(1.08); }
-}
-@keyframes drift-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(-4vw, -3vh, 0) scale(1.06); }
+  transform: translate3d(-2vw, -1.5vh, 0) scale(1.03);
 }
 
 .ring-motif {
@@ -148,6 +153,22 @@ body {
    Safari and Firefox get clean blurred glass rather than a broken panel. */
 .liquid-glass {
   backdrop-filter: blur(calc(var(--lg-blur) * .6)) saturate(var(--lg-saturate)) url(#lg-distort);
+}
+
+/* Content panels keep the whole material (tint, highlight, rim, shadow) but
+   don't sample the backdrop. Behind them is only the soft background glow,
+   and blurring something already that soft looks the same as not blurring
+   it, while each live backdrop blur and bend is real per-frame work. The
+   navigation and floating layer (top bar, tab bar, live pill, sticky fleet
+   bar, menus, sheets, dialogs) is what scrolls over content, so that is
+   where the real refracting glass stays. A slightly stronger tint makes up
+   for the colour boost the backdrop's saturate() used to give. */
+.card.liquid-glass, .status-ribbon.liquid-glass, .stats.liquid-glass,
+.divider-row.liquid-glass, .notice.liquid-glass, .fleet-card.liquid-glass,
+.game-picker.liquid-glass {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background-color: rgba(255, 255, 255, calc(var(--lg-tint-alpha) + .08));
 }
 
 /* Layer 3 — specular highlight. Follows the pointer via --mx/--my, which
@@ -294,7 +315,9 @@ body {
 .conn.is-demo .conn-dot {
   background: var(--warn);
   box-shadow: 0 0 0 3px rgba(255, 204, 0, .2);
-  animation: breathe 2.4s ease-in-out infinite;
+  /* Steady, not pulsing: it sits inside the refracting top bar, and any
+     animation in there re-runs the bar's blur and bend on every frame,
+     forever - it alone cost about a third of the frame rate. */
 }
 @keyframes breathe { 50% { opacity: .4; } }
 
@@ -565,8 +588,10 @@ body {
 }
 .bar span {
   display: block; height: 100%; border-radius: 3px;
-  background: var(--task-color);
-  box-shadow: 0 0 10px -2px var(--task-color);
+  /* Maintenance rows set --task-color; anywhere else (the overview's print
+     bar) the fill had no colour at all and the bar always looked empty. */
+  background: var(--task-color, var(--accent));
+  box-shadow: 0 0 10px -2px var(--task-color, var(--accent));
   transform-origin: left;
   animation: fill .75s cubic-bezier(.2, .9, .3, 1) both;
 }
@@ -627,6 +652,11 @@ input::placeholder { color: var(--text-faint); }
 .field-row > .field-hour { flex: 0 0 76px; }
 .field-row-end { align-items: flex-end; }
 .field-hint { font-size: 12px; color: var(--text-faint); align-self: center; flex: 1 1 140px; }
+/* In a stacked column the 140 px basis above became 140 px of height per
+   hint - an empty gap. Stacked, a hint is only as tall as its text. */
+.field-stack > .field-hint { flex: none; align-self: stretch; }
+.field-hint:empty { display: none; }
+.home-why { margin-top: 12px; }
 p.field-hint { margin-top: 6px; }
 .field-hint code { font: 500 11.5px var(--font-mono); overflow-wrap: anywhere; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1255,6 +1285,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
     -webkit-backdrop-filter: none;
     background: #f4f5f8;
   }
+  /* The content panels' own tint rule is more specific; solid wins here. */
+  .card.liquid-glass, .status-ribbon.liquid-glass, .stats.liquid-glass,
+  .divider-row.liquid-glass, .notice.liquid-glass, .fleet-card.liquid-glass,
+  .game-picker.liquid-glass { background-color: #f4f5f8; }
   .liquid-glass::before { display: none; }
   .bg { display: none; }
   body { background: #eceef2; }
@@ -1266,7 +1300,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: .001ms !important;
   }
-  .pool { animation: none; }
   .liquid-glass::before {
     background: radial-gradient(180px 180px at 50% 14%, rgba(255, 255, 255, .8), transparent 72%);
   }
@@ -1280,6 +1313,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
+  .card.liquid-glass, .status-ribbon.liquid-glass, .stats.liquid-glass,
+  .divider-row.liquid-glass, .notice.liquid-glass, .fleet-card.liquid-glass,
+  .game-picker.liquid-glass { background-color: #fdfdfe; }
   .liquid-glass::before { display: none; }
   .task, .crow { border-color: rgba(0, 0, 0, .3); }
   .btn { border-color: rgba(0, 0, 0, .35); }

@@ -12,6 +12,7 @@ Tests for the robustness and security hardening:
 """
 
 import http.client
+import importlib
 import json
 import math
 import os
@@ -57,6 +58,37 @@ class Storage(unittest.TestCase):
 
     def test_missing_file_gives_default(self):
         self.assertEqual(storage.load_json(self.path, []), [])
+
+    def test_tests_never_touch_the_real_data_folder(self):
+        # The tests replace printers, prices and spools on purpose; pointed
+        # at backend/data they wiped the real setup of whoever ran them.
+        real = os.path.join(os.path.dirname(os.path.abspath(storage.__file__)), "data")
+        self.assertNotEqual(os.path.abspath(storage.DATA_DIR), os.path.abspath(real))
+        # Every backend module that keeps files, not a hand-kept list: a
+        # module added later with its own path would slip past a list.
+        backend = os.path.dirname(os.path.abspath(storage.__file__))
+        checked = []
+        for name in sorted(f[:-3] for f in os.listdir(backend) if f.endswith(".py")):
+            if name == "app":
+                continue
+            module = importlib.import_module(name)
+            if hasattr(module, "_DATA_DIR"):
+                checked.append(name)
+                self.assertEqual(module._DATA_DIR, storage.DATA_DIR, name)
+        self.assertIn("spoolman_bridge", checked)
+        self.assertIn("fleet", checked)
+
+    def test_the_dashboard_uses_backend_data_unless_told_otherwise(self):
+        backend = os.path.dirname(os.path.abspath(storage.__file__))
+        script = ("import os, sys; os.environ.pop('DEJAVU_DATA_DIR', None); "
+                  f"sys.path.insert(0, {backend!r}); import storage; print(storage.DATA_DIR)")
+        import subprocess
+        out = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True)
+        self.assertEqual(out.stdout.strip(), os.path.join(backend, "data"))
+        out = subprocess.run([sys.executable, "-c", script.replace(
+            "os.environ.pop('DEJAVU_DATA_DIR', None)", f"os.environ['DEJAVU_DATA_DIR'] = {self.dir!r}")],
+            capture_output=True, text=True, check=True)
+        self.assertEqual(out.stdout.strip(), self.dir)
 
     def test_damaged_file_is_set_aside_and_default_returned(self):
         os.makedirs(os.path.dirname(self.path))
@@ -318,6 +350,28 @@ class ServerHardening(unittest.TestCase):
             self.assertEqual(headers["X-Frame-Options"], "SAMEORIGIN")
             self.assertIn("frame-ancestors 'self'", headers["Content-Security-Policy"])
 
+    def test_page_files_are_rechecked_and_api_is_never_cached(self):
+        # The page's own files must be re-checked on every load, so an update
+        # can't leave a browser running old scripts against a new page; an
+        # unchanged file then costs only a 304. API answers stay uncached.
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        try:
+            for path, rule in (("/app.js", "no-cache"), ("/style.css", "no-cache"),
+                               ("/", "no-cache"), ("/api/modules", "no-store")):
+                conn.request("GET", path)
+                resp = conn.getresponse()
+                resp.read()
+                rules = [v for k, v in resp.getheaders() if k.lower() == "cache-control"]
+                self.assertEqual(rules, [rule], path)
+                conn.close()
+        finally:
+            conn.close()
+        status, headers, _ = self.request("GET", "/app.js")
+        status, _, data = self.request("GET", "/app.js",
+                                       headers={"If-Modified-Since": headers["Last-Modified"]})
+        self.assertEqual(status, 304)
+        self.assertEqual(data, b"")
+
     def test_secrets_never_leave_through_the_api(self):
         was_on = modules.is_enabled("home_assistant_bridge")
         modules.set_enabled("home_assistant_bridge", True)
@@ -329,6 +383,26 @@ class ServerHardening(unittest.TestCase):
         status, _, data = self.request("GET", "/api/homeassistant/settings")
         self.assertNotIn("t" * 40, data.decode())
         self.assertTrue(json.loads(data)["token_set"])
+
+    def test_odd_inputs_are_refused_in_words_not_crashes(self):
+        # Each of these used to answer 500 ("Something went wrong") - a
+        # missing file name or a list where a word belonged reached code
+        # that called .lower() or looked the value up in a set.
+        cases = [
+            ("/api/queue/add?demo=1", {}, "Choose a G-code file"),
+            ("/api/queue/add?demo=1", {"filename": ["x.gcode"]}, "Choose a G-code file"),
+            ("/api/files/edit", {"name": {"a": 1}, "edits": []}, None),
+            ("/api/demo/fail-next?demo=1", {"action": []}, "Unknown action"),
+            ("/api/demo/time-scale?demo=1", {"scale": None}, "must be a number"),
+            ("/api/maintenance/done?demo=1", {"task_id": [1]}, "Unknown maintenance task"),
+            ("/api/sandbox/fire?demo=1", {"event": {}}, "Unknown event"),
+            ("/api/sandbox/scenario?demo=1", {"steps": [{"event": []}]}, "Unknown event"),
+        ]
+        for path, body, words in cases:
+            status, _, data = self.request("POST", path, json.dumps(body).encode())
+            self.assertIn(status, (400, 403, 404), f"{path} {body}: {status} {data[:120]}")
+            if words and status == 400:
+                self.assertIn(words, json.loads(data)["error"], path)
 
     def test_crash_details_stay_in_the_terminal(self):
         with mock.patch.object(dv_app.pairing, "list_devices", side_effect=KeyError("secret-path")), \

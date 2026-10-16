@@ -971,8 +971,8 @@ def fail_next(action, message="Moonraker did not accept the command"):
     selected printer fail with `message`. Used to prove the dashboard shows a
     failed command as failed, never as done.
     """
-    if action not in {"pause", "resume", "cancel", "start", "upload",
-                      "temperature", "home", "gcode", "exclude"}:
+    if not isinstance(action, str) or action not in {"pause", "resume", "cancel", "start", "upload",
+                                                     "temperature", "home", "gcode", "exclude"}:
         raise ValueError(f"Unknown action: {action}")
     printer = _sim()
     with printer.lock:
@@ -982,7 +982,10 @@ def fail_next(action, message="Moonraker did not accept the command"):
 
 def set_time_scale(scale):
     """Demo fast-forward: 1 is real time, 60 runs a minute per second."""
-    scale = float(scale)
+    try:
+        scale = float(scale)
+    except (TypeError, ValueError):
+        raise ValueError("Time scale must be a number from 1 to 600") from None
     if not 1 <= scale <= 600:
         raise ValueError("Time scale must be between 1 and 600")
     printer = _sim()

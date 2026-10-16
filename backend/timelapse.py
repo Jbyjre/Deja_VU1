@@ -25,7 +25,7 @@ import threading
 from datetime import datetime
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _ROOT = os.path.join(_DATA_DIR, "timelapse")
 MAX_FRAMES = 400
 KEEP_SESSIONS = 5

@@ -7,6 +7,7 @@ Tests for the smaller support modules: updates, backup, camera, pairing.
 import os
 import sys
 import unittest
+from unittest import mock
 import zipfile
 from io import BytesIO
 
@@ -99,6 +100,20 @@ class TestPairing(unittest.TestCase):
     def test_no_code_generated_yet_is_rejected(self):
         with self.assertRaises(ValueError):
             pairing.redeem_code("123456", "My Phone")
+
+    def test_a_used_code_says_so(self):
+        code = pairing.generate_code()["code"]
+        pairing.redeem_code(code, "My Phone")
+        with self.assertRaisesRegex(ValueError, "already used"):
+            pairing.redeem_code(code, "Second Phone")
+
+    def test_a_full_list_does_not_use_up_the_code(self):
+        code = pairing.generate_code()["code"]
+        with mock.patch.object(pairing, "MAX_DEVICES", 0):
+            with self.assertRaisesRegex(ValueError, "unpair one first"):
+                pairing.redeem_code(code, "My Phone")
+        # Room again (one was unpaired): the same code still works.
+        self.assertEqual(pairing.redeem_code(code, "My Phone")["name"], "My Phone")
 
     def test_blank_device_name_gets_a_default(self):
         generated = pairing.generate_code()

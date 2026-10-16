@@ -34,7 +34,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 597 tests, about 135 s
+python3 -m unittest discover tests          # 608 tests, about 135 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
@@ -44,7 +44,8 @@ python3 backend/maintenance.py              # console demos (also led_status.py,
 Environment variables (the only ones read): `PORT` (default 8000),
 `DEJAVU_ALLOWED_HOSTS` (comma-separated extra host names, e.g. a Cloudflare
 Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
-`DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print).
+`DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
+(where settings and files live; default `backend/data/`).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
 (`NODE_PATH=/opt/node22/lib/node_modules node script.js`, then
@@ -148,10 +149,12 @@ sandbox, so you can't fetch the preview from here.
 
 ## Pitfalls
 
-- The test suite writes to the real `backend/data/` (module toggles,
-  maintenance logs, pairing, notifications, `fleet.json`). Back it up first
-  on a machine with real printers. Don't run a demo server while the full
-  suite runs: one run failed an automation test that passed on its own.
+- The tests run in a temporary data folder (`storage.DATA_DIR`, set when
+  the test runner imports `storage`), never the real `backend/data/`. A new
+  module that keeps files must set `_DATA_DIR = storage.DATA_DIR`;
+  `test_tests_never_touch_the_real_data_folder` checks every module. Don't
+  run a demo server while the full suite runs: one run failed an
+  automation test that passed on its own.
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line
   contains that text, because it kills the shell. Kill by PID.
 - The selected printer is thread-local. Code on a worker thread answers for

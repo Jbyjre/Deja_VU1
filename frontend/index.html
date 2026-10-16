@@ -48,8 +48,10 @@
                          xChannelSelector="R" yChannelSelector="G"/>
       <feGaussianBlur stdDeviation="0.6"/>
     </filter>
-    <!-- Liquid Glass 2.0. "live" breathes slowly even at rest (ambient
-         refraction) and is used only on a few hero surfaces; "deep" bends
+    <!-- Liquid Glass 2.0. "live" bends a little harder and is used only on
+         a few hero surfaces. It used to "breathe" with an SVG animation,
+         but an animated filter has to be re-run under those surfaces on
+         every frame forever, which made the whole page stutter. "deep" bends
          harder and wider, for glass that sits on top of other glass
          (dialogs), so the layer underneath visibly refracts more than the
          background does. The morph animation drives the scale of both. -->
@@ -57,10 +59,8 @@
             color-interpolation-filters="sRGB">
       <feTurbulence type="fractalNoise" baseFrequency="0.009 0.012"
                     numOctaves="2" seed="11" result="noise"/>
-      <feDisplacementMap id="lg-live-map" in="SourceGraphic" in2="noise" scale="20"
-                         xChannelSelector="R" yChannelSelector="G">
-        <animate attributeName="scale" values="16;26;16" dur="9s" repeatCount="indefinite"/>
-      </feDisplacementMap>
+      <feDisplacementMap id="lg-live-map" in="SourceGraphic" in2="noise" scale="22"
+                         xChannelSelector="R" yChannelSelector="G"/>
       <feGaussianBlur stdDeviation="0.6"/>
     </filter>
     <!-- "clear": for glass that only ever sits over the background (the
@@ -467,6 +467,7 @@
           <button class="btn" data-home="Z" disabled>Home Z</button>
           <button class="btn primary" data-home="all" disabled>Home all</button>
         </div>
+        <p class="log-empty home-why" id="home-why" hidden>Homing waits until no print is running or paused - it would drive the toolhead through the print.</p>
       </section>
 
       <section class="card liquid-glass">
@@ -892,6 +893,7 @@
               <label class="field">Its price ($ per kg)<input type="number" id="cost-price" step="0.01" min="0" placeholder="20"></label>
             </div>
             <span class="field-hint">Leave Material empty to save only the electricity figures.</span>
+            <span class="field-hint" id="cost-prices" aria-live="polite"></span>
             <button class="btn block" id="cost-save-btn">Save pricing</button>
           </div>
           <div data-module-off="cost_calculator" hidden></div>

@@ -30,7 +30,7 @@ import urllib.request
 
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "webrtc_settings.json")
 _URL = re.compile(r"^https?://[^\s/?#]{1,200}(/[^\s?#]{0,200})?$")
 _STREAM = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")

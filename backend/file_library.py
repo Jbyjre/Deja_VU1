@@ -30,7 +30,7 @@ import safe_zip
 import sample_files
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 FILES_DIR = os.path.join(_DATA_DIR, "files")
 _INDEX_PATH = os.path.join(_DATA_DIR, "file_index.json")
 _THUMB_DIR = os.path.join(_DATA_DIR, "thumbs")
@@ -55,6 +55,10 @@ def _save_index(index):
 
 
 def kind_of(name):
+    # Anything but a file name (missing, a number, a list - an odd request)
+    # is no kind of file, rather than a crash.
+    if not isinstance(name, str):
+        return None
     lower = name.lower()
     if lower.endswith((".gcode", ".gco", ".g")):
         return "gcode"

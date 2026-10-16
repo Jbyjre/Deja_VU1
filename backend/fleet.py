@@ -49,7 +49,7 @@ import print_queue
 import printer_control
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "fleet.json")
 _URL = re.compile(r"^https?://[A-Za-z0-9.-]{1,253}(:\d{1,5})?/?$")
 _lock = threading.RLock()

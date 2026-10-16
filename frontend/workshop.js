@@ -381,26 +381,34 @@ const Workshop = (() => {
       if (!card) return;
       const f = (k) => qs(`[data-f="${k}"]`, card);
       card.classList.toggle('is-selected', p.id === (currentPrinter || live.fleet[0].id));
-      card.style.setProperty('--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : STATE_HEX[p.state] || '#ffffff');
+      setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : STATE_HEX[p.state] || '#ffffff');
       const st = f('state');
-      st.textContent = STATE_WORD[p.state] || p.state;
-      st.style.setProperty('--dot', STATE_COLOR[p.state]);
-      f('ring').innerHTML = `${ringSVG(p.progress, STATE_HEX[p.state])}<span class="fc-pct">${Math.round(p.progress * 100)}%</span>`;
-      f('file').textContent = p.current_file || (p.state === 'error' ? p.state_message : 'No job');
-      f('meta').textContent = p.remaining_hours != null
-        ? `${fmtHours(p.remaining_hours)} left · done ${doneAt(p.remaining_hours)}` : (p.state_message || '');
-      f('docks').innerHTML = Object.entries(p.docks).map(([th, d]) => `
+      setText(st, STATE_WORD[p.state] || p.state);
+      setVar(st, '--dot', STATE_COLOR[p.state] || '');
+      // The ring is drawn once and then only its arc moves, so its CSS
+      // transition can glide between readings instead of jumping.
+      const ring = f('ring'), progress = Math.max(0, Math.min(1, p.progress || 0));
+      if (!ring.firstElementChild) ring.innerHTML = `${ringSVG(progress, STATE_HEX[p.state])}<span class="fc-pct"></span>`;
+      const arc = qs('.rs-fill', ring), circ = 2 * Math.PI * 15.5;
+      setVar(arc, 'stroke', STATE_HEX[p.state] || '#8e8e93');
+      setVar(arc, 'stroke-dashoffset', String(circ * (1 - progress)));
+      setText(qs('.fc-pct', ring), `${Math.round(progress * 100)}%`);
+      setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'No job'));
+      setText(f('meta'), p.remaining_hours != null
+        ? `${fmtHours(p.remaining_hours)} left · done ${doneAt(p.remaining_hours)}` : (p.state_message || ''));
+      setHTML(f('docks'), Object.entries(p.docks || {}).map(([th, d]) => `
         <span class="fc-dock ${d.status}" title="${esc(th)}: ${esc(d.status)}">
           <span class="fc-dock-chip" style="background:${esc(d.color)}"></span>${esc(th)}
-        </span>`).join('');
-      f('temps').innerHTML = `
+        </span>`).join(''));
+      setHTML(f('temps'), `
         <span>Nozzle <b>${p.nozzle_temperature != null ? formatTemp(p.nozzle_temperature) : '—'}</b></span>
         <span>Bed <b>${formatTemp(p.bed_temperature)}</b></span>
         <span>Chamber <b>${p.chamber_temperature != null ? formatTemp(p.chamber_temperature) : '—'}</b></span>
-        <span>Health <b>${p.health ?? '—'}</b></span>`;
-      f('alerts').innerHTML = p.alerts.length
-        ? p.alerts.map(a => `<li class="fc-alert ${a.level}">${esc(a.text)}</li>`).join('')
-        : '<li class="fc-alert ok">No alerts</li>';
+        <span>Health <b>${p.health ?? '—'}</b></span>`);
+      const alerts = p.alerts || [];
+      setHTML(f('alerts'), alerts.length
+        ? alerts.map(a => `<li class="fc-alert ${esc(a.level)}">${esc(a.text)}</li>`).join('')
+        : '<li class="fc-alert ok">No alerts</li>');
       card.classList.toggle('is-stale', !!p.link_lost);
     });
     // The fleet command center (farm.js) adds selection, queues and drop targets.
@@ -607,8 +615,7 @@ const Workshop = (() => {
     if (!host) return;
     if (!state) { host.innerHTML = demoNeeded('the digital twin'); twin.built = false; return; }
     if (!twin.built) buildTwin();
-    const world = $('twin-world');
-    world.style.setProperty('--yaw', `${twin.yaw}deg`);
+    setVar($('twin-world'), '--yaw', `${twin.yaw}deg`);
     const [x, y, z] = state.toolhead_position || [135, 135, 0];
     tween('twin-head', [x, y, z], ([hx, hy, hz]) => {
       const head = $('twin-head'), gantry = $('twin-gantry');
@@ -622,20 +629,22 @@ const Workshop = (() => {
     const color = active ? state.toolheads[active].filament_color_hex : '#9aa3b5';
     const part = $('twin-part');
     const printing = ['printing', 'paused', 'complete'].includes(state.state);
-    part.hidden = !printing;
-    part.style.setProperty('--part-color', color);
-    tween('twin-part-h', printing ? Math.max(2, frac * 70) : 0, (h) => part.style.setProperty('--part-h', `${h}px`));
-    $('twin-card').style.setProperty('--glass-tint', color);
-    $('twin-docks').innerHTML = Object.entries(state.toolheads).map(([th, d]) => `
+    if (part.hidden !== !printing) part.hidden = !printing;
+    setVar(part, '--part-color', color);
+    tween('twin-part-h', printing ? Math.max(2, frac * 70) : 0, (h) => part.style.setProperty('--part-h', `${h.toFixed(1)}px`));
+    setVar($('twin-card'), '--glass-tint', color);
+    // Rebuilt only when a dock changes; rebuilding it every reading also
+    // restarted the error ring's blink four times a second, so it never blinked.
+    setHTML($('twin-docks'), Object.entries(state.toolheads).map(([th, d]) => `
       <div class="twin-dock ${d.status}" style="--ring:${d.status === 'error' ? '#ff3b30' : (d.status === 'active' ? '#34c759' : '#f5f5f7')};--fil:${esc(d.filament_color_hex)}">
         <span class="td-ring"></span><span class="td-label">${esc(th)}</span>
-      </div>`).join('');
+      </div>`).join(''));
     // Non-breaking spaces inside each reading, so a narrow card wraps
     // between readings ("Z 33.20 mm") and never inside one.
     const nb = '\u00a0';
-    $('twin-readout').textContent = `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
-      (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : '');
-    $('twin-sub').textContent = `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}`;
+    setText($('twin-readout'), `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
+      (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
+    setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}`);
   }
 
   /* Print health: one animated dial. */
@@ -666,11 +675,11 @@ const Workshop = (() => {
     tween('gauge', data.score, (v) => {
       fill.style.strokeDashoffset = `${arcLen * (1 - v / 100)}`;
       $('g-needle').setAttribute('transform', `rotate(${-90 + v * 1.8} 100 100)`);
-      $('g-score').textContent = Math.round(v);
+      setText($('g-score'), Math.round(v));
     });
     host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band}`);
     $('g-band').textContent = { good: 'Good', fair: 'Fair', poor: 'Needs attention' }[data.band];
-    $('g-deductions').innerHTML = data.deductions.length
+    $('g-deductions').innerHTML = (data.deductions || []).length
       ? data.deductions.map(d => `<li><b>${d.points}</b> ${esc(d.reason)}</li>`).join('')
       : '<li class="ok">Nothing is pulling the score down.</li>';
   }
@@ -701,7 +710,7 @@ const Workshop = (() => {
   function updateChamberNow(state) {
     const val = $('ch-val');
     if (!val || state.chamber_temperature == null) return;
-    tween('chamber', state.chamber_temperature, (v) => { val.textContent = formatTemp(v); });
+    tween('chamber', state.chamber_temperature, (v) => setText(val, formatTemp(v)));
     const last = chamberHistory[chamberHistory.length - 1];
     const now = Date.now() / 1000;
     if (!last || now - last.t >= 5) {
@@ -745,29 +754,34 @@ const Workshop = (() => {
   function renderPill(state) {
     const pill = $('live-pill');
     const show = ['printing', 'paused', 'complete'].includes(state.state);
-    pill.hidden = !show;
+    if (pill.hidden !== !show) pill.hidden = !show;
     if (!show) return;
     const pct = Math.round(state.progress * 100);
     const left = hoursLeft(state);
     const active = state.active_toolhead;
-    pill.style.setProperty('--glass-tint', active ? state.toolheads[active].filament_color_hex : STATE_HEX[state.state]);
-    pill.dataset.state = state.state;
-    $('lp-title').textContent = `${state.printer_name ? state.printer_name + ' · ' : ''}${state.state === 'complete' ? 'Done' : pct + '%'}`;
-    $('lp-sub').textContent = state.state === 'paused' ? `Paused — ${state.current_file || ''}` :
+    setVar(pill, '--glass-tint', active ? state.toolheads[active].filament_color_hex : STATE_HEX[state.state]);
+    if (pill.dataset.state !== state.state) pill.dataset.state = state.state;
+    const title = `${state.printer_name ? state.printer_name + ' · ' : ''}${state.state === 'complete' ? 'Done' : pct + '%'}`;
+    const sub = state.state === 'paused' ? `Paused — ${state.current_file || ''}` :
       state.state === 'complete' ? `${state.current_file || ''} finished`
       : left != null ? `${fmtHours(left)} left · done ${doneAt(left)}` : (state.current_file || '');
-    pill.title = state.current_file || '';
+    setText($('lp-title'), title);
+    setText($('lp-sub'), sub);
+    if (pill.title !== (state.current_file || '')) pill.title = state.current_file || '';
     const c = 2 * Math.PI * 15.5;
     tween('pill', state.progress, (v) => {
       $('lp-fill').style.strokeDashoffset = `${c * (1 - v)}`;
       $('qa-status-fill').style.transform = `scaleX(${v})`;
     });
-    $('lp-fill').style.strokeDasharray = `${c}`;
-    pill.setAttribute('aria-label', `${state.printer_name || 'Printer'}: ${STATE_WORD[state.state]}, ${pct} percent` +
-      `${state.current_file ? `, ${state.current_file}` : ''}${left != null ? `, done about ${doneAt(left)}` : ''}. Open printer control.`);
+    setVar($('lp-fill'), 'stroke-dasharray', String(c));
+    const label = `${state.printer_name || 'Printer'}: ${STATE_WORD[state.state]}, ${pct} percent` +
+      `${state.current_file ? `, ${state.current_file}` : ''}${left != null ? `, done about ${doneAt(left)}` : ''}. Open printer control.`;
+    if (pill.getAttribute('aria-label') !== label) {
+      pill.setAttribute('aria-label', label);
+      $('qa-status').setAttribute('aria-label', label);
+    }
     // The phone dock's status line carries the same reading.
-    $('qa-status-text').textContent = `${$('lp-title').textContent} · ${$('lp-sub').textContent}`;
-    $('qa-status').setAttribute('aria-label', pill.getAttribute('aria-label'));
+    setText($('qa-status-text'), `${title} · ${sub}`);
   }
 
   /* ================================================================
@@ -1102,6 +1116,10 @@ const Workshop = (() => {
       const ms = Math.round(performance.now() - started);
       if (viewer) viewer.setMesh(mesh, getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
       const is3mf = entry.kind === '3mf';
+      // A project already set up for a Snapmaker printer (one this
+      // dashboard converted, or saved by Snapmaker Orca) has nothing to
+      // convert; the server refuses it, so the button isn't offered.
+      const alreadyU1 = ['converted', 'studio'].includes(entry.origin) || /^snapmaker/i.test(mesh.application || '');
       side.innerHTML = `
         <div class="fd-facts divider-row cols-2">
           <div><span class="stat-key">Size</span><b>${mesh.size.map(v => v.toFixed(1)).join(' × ')}</b><small>mm (X × Y × Z)</small></div>
@@ -1116,8 +1134,8 @@ const Workshop = (() => {
           <button class="btn" id="fd-forget" type="button">Close and forget</button></div>
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>` : `
         <div class="fd-actions">
-          ${is3mf && !modGate.off.has('converter') && !['converted', 'studio'].includes(entry.origin) ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
-          ${is3mf && ['converted', 'studio'].includes(entry.origin) ? '<span class="fd-u1-ready">Set up for the Snapmaker U1 - open it in Snapmaker Orca</span>' : ''}
+          ${is3mf && !alreadyU1 && !modGate.off.has('converter') ? '<button class="btn primary" id="fd-convert" type="button">Convert for Snapmaker U1</button>' : ''}
+          ${is3mf && alreadyU1 ? '<span class="fd-u1-ready">Set up for the Snapmaker U1 - open it in Snapmaker Orca</span>' : ''}
           <span id="fd-slice-slot" class="fd-slice-slot"></span>
           <span id="fd-ar-slot" class="fd-ar-slot"></span>
           <a class="btn" href="/api/files/raw?name=${enc(entry.name)}&download=1">Download</a>
@@ -1671,7 +1689,7 @@ const Workshop = (() => {
    * low-latency module is on and go2rtc is set up, WebRTC is tried first
    * (the browser's own RTCPeerConnection, signalled through this server)
    * and anything that goes wrong falls back to MJPEG, saying which is on. */
-  const cam = { built: false, mjpeg: '', webrtc: false, pc: null, run: 0 };
+  const cam = { built: false, mjpeg: '', webrtc: false, pc: null, run: 0, watch: null };
   async function loadCamera() {
     const host = $('camera-host');
     if (!host) return;
@@ -1708,7 +1726,8 @@ const Workshop = (() => {
     const pill = $('cam-mode'), note = $('cam-why');
     if (!pill) return;
     pill.dataset.mode = mode;
-    pill.textContent = { webrtc: 'Low latency · WebRTC', mjpeg: 'MJPEG', connecting: 'Connecting…', none: 'No camera' }[mode];
+    pill.textContent = { webrtc: 'Low latency · WebRTC', mjpeg: 'MJPEG', connecting: 'Connecting…', none: 'No camera',
+                         trouble: 'Camera not answering', frozen: 'Picture frozen' }[mode];
     note.hidden = !why;
     note.textContent = why || '';
   }
@@ -1719,8 +1738,45 @@ const Workshop = (() => {
     video.hidden = true;
     if (!cam.mjpeg) { img.hidden = true; setCamMode('none', `${why} There's no MJPEG address to fall back to — add one above.`); return; }
     img.hidden = false;
+    const run = cam.run;
+    const note = why ? `Using the normal camera feed: ${why}` : '';
+    img.onload = () => { if (run === cam.run && $('cam-mode').dataset.mode === 'trouble') setCamMode('mjpeg', note); };
+    img.onerror = async () => { if (run === cam.run) setCamMode('trouble', `${await streamProblem()} Reconnect to try again.`); };
     img.src = `/api/camera/stream?t=${Date.now()}`;
-    setCamMode('mjpeg', why ? `Using the normal camera feed: ${why}` : '');
+    setCamMode('mjpeg', note);
+    watchCamera(run, note);
+  }
+
+  /* An <img> can't read why its stream failed, so ask the relay once: when
+   * the camera can't be reached it answers at once with the reason in words.
+   * If it starts streaming instead, the request is dropped straight away. */
+  async function streamProblem() {
+    const stop = new AbortController();
+    try {
+      const r = await fetch(`/api/camera/stream?t=${Date.now()}`, { signal: stop.signal });
+      if (!r.ok) { const b = await r.json().catch(() => ({})); const why = b.error || `The relay answered ${r.status}`; return /[.?!]$/.test(why) ? why : `${why}.`; }
+      return 'The picture stopped loading.';
+    } catch (e) {
+      return 'The dashboard server could not be reached.';
+    } finally { stop.abort(); }
+  }
+
+  /* The relay's watchdog counts frames (camera.py). While the picture is on
+   * screen, read it every 5 s and say so when no new frame has arrived for
+   * a while - a frozen MJPEG image otherwise looks exactly like a live one. */
+  function watchCamera(run, note) {
+    clearInterval(cam.watch);
+    cam.watch = setInterval(async () => {
+      if (run !== cam.run) { clearInterval(cam.watch); return; }
+      const s = await getJSON('/api/camera').catch(() => null);
+      if (!s || run !== cam.run || s.frozen === undefined) return;
+      const mode = $('cam-mode') && $('cam-mode').dataset.mode;
+      if (s.frozen && mode !== 'trouble') {
+        setCamMode('frozen', `No new picture for ${Math.round(s.seconds_since_last_frame)} s, so what's shown may be out of date. Reconnect to try again.`);
+      } else if (!s.frozen && mode === 'frozen') {
+        setCamMode('mjpeg', note);
+      }
+    }, 5000);
   }
 
   async function startCamera() {
@@ -1787,6 +1843,7 @@ const Workshop = (() => {
 
   function stopCamera() {
     cam.run++;
+    clearInterval(cam.watch);
     closePeer();
     const img = $('camera-img');
     if (img) img.removeAttribute('src');
@@ -1919,11 +1976,11 @@ const Workshop = (() => {
   function renderQuickActions(state) {
     const bar = $('quick-actions');
     const running = state.state === 'printing' || state.state === 'paused';
-    bar.hidden = !running;
+    if (bar.hidden !== !running) bar.hidden = !running;
     const pause = $('qa-pause');
     if (pause.dataset.phase !== 'sending') {
-      pause.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
-      pause.disabled = !running;
+      setText(pause, state.state === 'paused' ? 'Resume' : 'Pause');
+      if (pause.disabled !== !running) pause.disabled = !running;
     }
     pause.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pause);
   }
@@ -2051,7 +2108,11 @@ const Workshop = (() => {
    * same spring, so glass "bends harder" while it is moving. */
   function pulseRefraction(duration = 620) {
     const maps = [qs('#lg-deep-map'), qs('#lg-distort feDisplacementMap')].filter(Boolean);
-    const base = maps.map(m => +m.getAttribute('scale'));
+    // The resting scale is read once and kept: a second pulse starting
+    // while one is still running must not take the bent value as its base,
+    // or quick taps would ratchet the refraction up for good.
+    maps.forEach(m => { if (!m.dataset.restScale) m.dataset.restScale = m.getAttribute('scale'); });
+    const base = maps.map(m => +m.dataset.restScale);
     const t0 = performance.now();
     const step = (now) => {
       const t = Math.min(1, (now - t0) / duration);

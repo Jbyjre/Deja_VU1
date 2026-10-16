@@ -7,8 +7,8 @@
    adds to the glass itself:
      1. morphing   - a sheet of glass deforms from one element into another
                      on a spring (workshop.js: morph, moveTabBlob, openDialog)
-     2. ambient    - the specular highlight drifts slowly even at rest, and
-                     hero surfaces use a refraction filter that "breathes"
+     2. ambient    - on the hero surfaces the specular highlight drifts
+                     slowly even at rest, and they refract a little harder
      3. depth      - glass laid over glass (dialogs) uses a deeper filter,
                      so what's under it bends more than the background does
      4. tint       - panels pick up the colour of what they're about: the
@@ -36,14 +36,20 @@
   transition: --glass-tint .8s ease, transform .22s cubic-bezier(.2, .8, .2, 1), box-shadow .22s ease;
 }
 
-/* ---- 2. ambient motion ----------------------------------------------------- */
+/* ---- 2. ambient motion -----------------------------------------------------
+   The highlight drifts slowly at rest, but only on the two hero surfaces
+   (the live print pill and the digital twin); every other panel's
+   highlight follows the pointer instead (app.js: trackHighlights).
+   The drift is animated on the ::before layer itself, with properties that
+   don't inherit. Animating an inheriting property on the panel (as this
+   used to) restyled every element inside every panel on every frame, which
+   was the single biggest reason the dashboard felt sluggish. */
 
-@property --amb-x { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
-@property --amb-y { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+@property --amb-x { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@property --amb-y { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 
-.liquid-glass { animation: glass-ambient 17s ease-in-out infinite alternate; }
-.liquid-glass:nth-of-type(2n) { animation-duration: 21s; animation-delay: -7s; }
-.liquid-glass:nth-of-type(3n) { animation-duration: 25s; animation-delay: -13s; }
+.live-pill::before, .twin-card::before { animation: glass-ambient 17s ease-in-out infinite alternate; }
+.twin-card::before { animation-duration: 23s; animation-delay: -9s; }
 @keyframes glass-ambient {
   0%   { --amb-x: -6%; --amb-y: 0%; }
   50%  { --amb-x: 5%;  --amb-y: 5%; }
@@ -57,7 +63,7 @@
     transparent 68%
   );
 }
-/* Hero surfaces refract with the breathing filter. */
+/* Hero surfaces refract a little harder. */
 .live-pill, .twin-card {
   backdrop-filter: blur(calc(var(--lg-blur) * .6)) saturate(var(--lg-saturate)) url(#lg-distort-live);
 }
@@ -205,11 +211,13 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
   font: 600 10.5px/1 var(--font-mono); letter-spacing: .4px; text-transform: uppercase;
   color: color-mix(in srgb, var(--ok) 60%, black);
 }
-.rb-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); animation: breathe 1s ease-in-out infinite; }
+/* A steady dot: the "Live · 0.2 s" count beside it already shows readings
+   arriving, and an endless pulse here kept the page redrawing every frame. */
+.rb-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
 .rb-live[data-mode="poll"] { color: color-mix(in srgb, var(--warn) 50%, black); }
-.rb-live[data-mode="poll"] .rb-live-dot { background: var(--warn); }
+.rb-live[data-mode="poll"] .rb-live-dot { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 22%, transparent); }
 .rb-live[data-mode="reconnecting"], .rb-live.is-stale { color: var(--text-faint); }
-.rb-live[data-mode="reconnecting"] .rb-live-dot, .rb-live.is-stale .rb-live-dot { background: var(--text-faint); animation: none; }
+.rb-live[data-mode="reconnecting"] .rb-live-dot, .rb-live.is-stale .rb-live-dot { background: var(--text-faint); box-shadow: none; }
 
 /* ---- fleet ------------------------------------------------------------------- */
 
@@ -733,7 +741,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 }
 .cam-mode[data-mode="webrtc"] { --glass-tint: var(--ok); }
 .cam-mode[data-mode="connecting"] { --glass-tint: var(--accent); }
-.cam-mode[data-mode="none"] { --glass-tint: var(--bad); }
+.cam-mode[data-mode="none"], .cam-mode[data-mode="trouble"], .cam-mode[data-mode="frozen"] { --glass-tint: var(--bad); }
 .cam-why { margin: 8px 0 0; font-size: 12.5px; }
 .webrtc-setup { margin-top: 12px; }
 .webrtc-setup summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-dim); padding: 4px 0; }
@@ -769,7 +777,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 /* ---- system settings ---------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass { animation: none; }
+  .live-pill::before, .twin-card::before { animation: none; }
   .hold.is-holding .hold-fill { transition: none; transform: scaleX(.5); }
   .ar-bar { animation: none; }
 }

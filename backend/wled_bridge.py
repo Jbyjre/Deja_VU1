@@ -25,7 +25,7 @@ import storage
 
 _HOST = re.compile(r"^[A-Za-z0-9.-]{1,253}(:\d{1,5})?$")
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "wled_settings.json")
 
 _DEFAULT_SETTINGS = {
