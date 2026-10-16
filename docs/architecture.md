@@ -546,6 +546,17 @@ footprint and reports them instead), AR, the games and the preferences.
 and then shows only what the printer reports back — or the failure, in
 words. The UI never switches to "Paused" because a button was pressed.
 
+**The digital twin is a drawing.** `renderTwin`/`drawTwin` in `workshop.js`
+project real millimetres (X right, Y back, Z up) onto an SVG sized in CSS
+pixels, so the labels stay readable on a phone. The bed drops as Z rises
+(the U1's bed rides a timing belt, per Snapmaker's wiki), the 270 mm build
+volume is a dash-dot envelope, the parts are the file's own
+`exclude_object` outlines extruded from the bed to the nozzle, and the four
+docks sit on the rear beam. Klipper keeps each dock's exact position in the
+printer's config, not in anything Moonraker reports, so the docks are spread
+evenly: right side and order, approximate spacing. Redraws are coalesced and
+capped at about 30 a second, and only the moving labels are touched.
+
 **Smooth, not snapping.** Continuous visuals (the digital twin's toolhead,
 the progress rings, the status strip's bar, the gauge needle) ease toward each new reading with the
 same easing Block World uses for movement — each frame closes a fixed

@@ -280,59 +280,81 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .live-row { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 .live-row .card { margin-bottom: 0; }
 
-/* Digital twin - plain CSS 3D, the Echo Maze / Block World technique. */
+/* Digital twin - a live engineering drawing (workshop.js, drawTwin).
+   Line weights follow drafting practice: the parts that move (head, bed,
+   the print) are the heaviest lines, the machine around them is thin,
+   the build volume is a dash-dot envelope, and dimensions are hairlines.
+   Ink comes from the page's own text colours, so it sits on the paper. */
 .twin-host { min-height: 250px; }
-.twin-scene {
-  height: 230px; perspective: 720px; perspective-origin: 50% 20%;
-  display: grid; place-items: center; cursor: grab; touch-action: none; user-select: none;
+.wf {
+  --wf-active: #9aa3b5;
+  --wf-ink: var(--text);
+  --wf-head: color-mix(in oklch, var(--wf-active) 78%, var(--text));
+  position: relative; height: 300px; margin: -4px -6px 0;
 }
-.twin-scene:active { cursor: grabbing; }
-.twin-world {
-  --yaw: -28deg;
-  position: relative; width: 200px; height: 200px; transform-style: preserve-3d;
-  transform: translateY(18px) rotateX(58deg) rotateZ(var(--yaw));
+.wf-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible;
+  cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  border-radius: 14px;
 }
-.twin-bed {
-  position: absolute; inset: 0; border-radius: 6px;
-  background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, .06) 0 1px, transparent 1px 20px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, .06) 0 1px, transparent 1px 20px),
-    linear-gradient(145deg, #3b4150, #262a34);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, .6), 0 30px 40px rgba(31, 38, 56, .25);
+.wf-svg:active { cursor: grabbing; }
+.wf-svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wf-ink path { fill: none; stroke: var(--wf-ink); stroke-linecap: round; stroke-linejoin: round; }
+.wf-env        { stroke-width: .75; opacity: .42; stroke-dasharray: 12 3 2 3; }
+.wf-grid       { stroke-width: .6;  opacity: .14; }
+.wf-bed        { stroke-width: 1.35; opacity: .78; }
+.wf-hatch      { stroke-width: .6;  opacity: .26; }
+.wf-part       { stroke-width: 1.2; opacity: .72; }
+.wf-part.current { stroke: var(--accent); opacity: 1; stroke-width: 1.5; }
+.wf-part.skipped { stroke: var(--bad-text); opacity: .7; stroke-dasharray: 4 3; }
+.wf-trail      { stroke: var(--wf-head); stroke-width: 2; opacity: .55; }
+.wf-rail       { stroke-width: 1;   opacity: .5; }
+.wf-dock       { stroke-width: .9;  opacity: .5; }
+.wf-parked     { stroke-width: 1;   opacity: .62; }
+.wf-parked.fault { stroke: var(--bad-text); opacity: 1; stroke-width: 1.4; }
+.wf-head       { stroke: var(--wf-head); stroke-width: 1.7; }
+.wf-dim        { stroke-width: .75; opacity: .7; }
+.wf-leader     { fill: none; stroke: var(--wf-ink); stroke-width: .75; opacity: .7; }
+.wf-tip        { fill: var(--wf-head); stroke: var(--paper-solid); stroke-width: 1.5; }
+/* Balloons: a ring in the filament's colour (darkened toward the ink so a
+   white spool still shows), the head's name inside. */
+.wf-balloon {
+  fill: var(--paper-solid);
+  stroke: color-mix(in oklch, var(--ring) 72%, var(--text)); stroke-width: 2.5;
 }
-.twin-part {
-  --part-h: 20px; --part-color: var(--accent);
-  position: absolute; left: 78px; top: 85px; width: 44px; height: 30px; transform-style: preserve-3d;
+.wf-balloon.out { stroke-dasharray: 3 2.5; opacity: .5; }
+.wf-balloon.fault { stroke: var(--bad-text); }
+.wf-balloon.on { stroke-width: 3; }
+.wf-bn { font: 700 9.5px/1 var(--font-mono); fill: var(--text); }
+.wf-bn.out { fill: var(--text-faint); }
+.wf-bn.fault { fill: var(--bad-text); }
+.wf-note, .wf-dimtext { font: 600 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; fill: var(--text-dim); }
+.wf-note.fault { fill: var(--bad-text); font-weight: 700; }
+
+/* View buttons, in the card's header: one inline glass group (a tier-1
+   segmented control - a light blur, no lifted shadow), sharing one
+   surface rather than three separate panes. */
+.wf-views {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, .38);
+  border-color: rgba(255, 255, 255, .75);
+  -webkit-backdrop-filter: blur(10px) saturate(1.35);
+  backdrop-filter: blur(10px) saturate(1.35);
+  box-shadow: 0 1px 2px oklch(25% 0.02 265 / .04), 0 2px 6px oklch(25% 0.02 265 / .06);
 }
-.twin-part > i { position: absolute; display: block; background: var(--part-color); }
-.twin-part .tp-top { inset: 0; transform: translateZ(var(--part-h)); filter: brightness(1.12); }
-.twin-part .tp-f { left: 0; bottom: 0; width: 44px; height: var(--part-h); transform-origin: bottom; transform: rotateX(-90deg); filter: brightness(.9); }
-.twin-part .tp-b { left: 0; top: 0; width: 44px; height: var(--part-h); transform-origin: top; transform: rotateX(90deg); filter: brightness(.75); }
-.twin-part .tp-l { left: 0; top: 0; width: var(--part-h); height: 30px; transform-origin: left; transform: rotateY(-90deg); filter: brightness(.8); }
-.twin-part .tp-r { right: 0; top: 0; width: var(--part-h); height: 30px; transform-origin: right; transform: rotateY(90deg); filter: brightness(.95); }
-.twin-gantry {
-  position: absolute; left: -12px; top: -3px; width: 224px; height: 6px; border-radius: 3px;
-  background: linear-gradient(90deg, #8a93a6, #c8ced9, #8a93a6);
+.wf-views button { padding: 7px 12px; min-height: 28px; }
+
+/* A drafting title block, one line, bottom left. */
+.wf-title {
+  position: absolute; left: 6px; bottom: 2px; display: flex; gap: 0;
+  border: 1px solid oklch(30% 0.02 265 / .24); border-radius: 3px; overflow: hidden;
+  font: 600 9.5px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-faint); background: oklch(99% 0.002 250 / .6); pointer-events: none;
 }
-.twin-head { position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; transform-style: preserve-3d; }
-.twin-head > i { position: absolute; display: block; background: #eef1f6; border: 1px solid rgba(0, 0, 0, .12); }
-.twin-head .th-top { inset: 0; transform: translateZ(18px); background: #fff; }
-.twin-head .th-f { left: 0; bottom: 0; width: 16px; height: 18px; transform-origin: bottom; transform: rotateX(-90deg); }
-.twin-head .th-b { left: 0; top: 0; width: 16px; height: 18px; transform-origin: top; transform: rotateX(90deg); background: #cfd5df; }
-.twin-head .th-l { left: 0; top: 0; width: 18px; height: 16px; transform-origin: left; transform: rotateY(-90deg); background: #dde2ea; }
-.twin-head .th-r { right: 0; top: 0; width: 18px; height: 16px; transform-origin: right; transform: rotateY(90deg); background: #e7ebf1; }
-.twin-docks {
-  position: absolute; left: 12px; top: -34px; width: 176px; height: 24px; display: flex; justify-content: space-between;
-  transform-style: preserve-3d;
-}
-.twin-dock { width: 34px; height: 34px; transform-origin: bottom; transform: rotateX(-90deg) translateY(-2px); position: relative; }
-.td-ring {
-  position: absolute; inset: 3px; border-radius: 50%; border: 4px solid var(--ring);
-  background: radial-gradient(circle, var(--fil) 0 38%, rgba(20, 24, 32, .85) 40%);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--ring) 70%, transparent);
-}
-.twin-dock.error .td-ring { animation: breathe .9s steps(1) infinite; }
-.td-label { position: absolute; left: 0; right: 0; bottom: -14px; text-align: center; font: 700 9px/1 var(--font-mono); color: var(--text-dim); }
+.wf-title > * { padding: 5px 7px; }
+.wf-title > * + * { border-left: 1px solid oklch(30% 0.02 265 / .18); }
+.wf-title b { color: var(--text); font-weight: 700; }
+@media (max-width: 720px) { .wf { height: 280px; } }
 .twin-readout { font: 600 11.5px/1.4 var(--font-mono); color: var(--text-faint); text-align: center; margin-top: 6px; text-wrap: balance; font-variant-numeric: tabular-nums; }
 
 /* Print health gauge. */
@@ -783,6 +805,8 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .liquid-glass.deep, .morph-ghost, .live-pill, .twin-card { backdrop-filter: none; background: #f4f5f8; }
+  .wf-views { backdrop-filter: none; -webkit-backdrop-filter: none; background: #f4f5f8; }
+  .wf-title { background: #fdfdfe; }
   [data-tint] { background: #f4f5f8; }
   .cam-mode { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
@@ -790,6 +814,17 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
   .liquid-glass.deep, [data-tint] { background: #fdfdfe; backdrop-filter: none; }
   .file-card, .chip-btn, .qa-btn, .printer-chip { border-color: rgba(0, 0, 0, .35); }
   .rb-live { color: #1f5f2c; }
+  .wf-env, .wf-grid, .wf-hatch, .wf-rail, .wf-dock, .wf-parked, .wf-dim, .wf-leader { opacity: 1; }
+  .wf-grid, .wf-hatch { opacity: .5; }
+  .wf-views { backdrop-filter: none; -webkit-backdrop-filter: none; background: #fdfdfe; border-color: rgba(0, 0, 0, .35); }
+  .wf-title { border-color: rgba(0, 0, 0, .45); color: var(--text-dim); }
+}
+@media (forced-colors: active) {
+  .wf-ink path, .wf-leader { stroke: CanvasText; }
+  .wf-note, .wf-dimtext { fill: CanvasText; }
+  .wf-tip { fill: CanvasText; }
+  .wf-balloon { stroke: CanvasText; fill: Canvas; }
+  .wf-bn { fill: CanvasText; }
 }
 
 /* ---- 5. touch: glass that answers a press ------------------------------------------------ */
