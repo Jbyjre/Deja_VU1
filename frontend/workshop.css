@@ -329,6 +329,9 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .wf-bn.out { fill: var(--text-faint); }
 .wf-bn.fault { fill: var(--bad-text); }
 .wf-note, .wf-dimtext { font: 600 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; fill: var(--text-dim); }
+/* A paper-coloured halo, so a figure crossing a line stays readable - the
+   gap a draftsman leaves in a line where text sits. */
+.wf-note, .wf-dimtext, .wf-bn { paint-order: stroke; stroke: var(--paper-solid); stroke-width: 3px; stroke-linejoin: round; }
 .wf-note.fault { fill: var(--bad-text); font-weight: 700; }
 
 /* View buttons, in the card's header: one inline glass group (a tier-1
