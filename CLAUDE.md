@@ -106,6 +106,13 @@ source. `tests/test_audit_fixes.py` holds regression tests for the October
 `remote-access.md`, `hardware-modules.md`, `low-latency-camera.md`,
 `ar-preview.md`.
 
+`docs/img/`: the README's pictures (screenshots from the simulated farm, five
+explainer boards, a GIF). `tools/readme-images/README.md` says how each was
+made; the boards and the social card are HTML in that folder, rendered by
+`tools/readme-images/render.js` (needs Playwright). Boards quote figures from
+the code (test count, sensor count, Confirm Print checks): update them when
+those change.
+
 `frontend/img/social-card.png` is the link-preview card (1200 × 630). Both
 `index.html` and `welcome.html` name it by absolute URL on the published
 worker (`deja-vu1.jmath1110.workers.dev`), because crawlers need a full

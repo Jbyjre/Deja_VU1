@@ -9,8 +9,7 @@ account and nothing to install but Python.
 
 ![Deja Vu1: "Docked toolheads are silent." beside the Needs you list and three printer cards from the simulated farm](frontend/img/social-card.png)
 
-<sub>Every figure in the picture comes from the built-in simulated farm. Deja
-Vu1 is an independent open-source project, not affiliated with Snapmaker.</sub>
+<sub>Every figure in the picture comes from the built-in simulated farm.</sub>
 
 > **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
 > one and can spare 30 to 45 minutes, help run its first real connection. It's
@@ -29,9 +28,13 @@ python3 backend/app.py
 Then open **http://localhost:8000** and flip **Demo data** in the header for a
 simulated farm of three U1s that heat, print and finish.
 
+![The simulated farm, live: a filament jam is fired from the farm sandbox, the status ribbon turns to an error and the jam goes to the top of the Needs you list](docs/img/live-jam.gif)
+
+<sub>Live, on the simulated farm: a filament jam fired from the farm sandbox. The status ribbon turns to an error, a "print failed" alert appears, and the jam goes to the top of **Needs you**.</sub>
+
 **Quick links:** [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
-[current status](#current-status) · [security](#security-and-your-network) ·
-[first connection](docs/first-connection.md) ·
+[how it connects](#why-one-dashboard-not-several-tools) · [current status](#current-status) ·
+[security](#security-and-your-network) · [first connection](docs/first-connection.md) ·
 [for developers](#for-developers-and-ai-coding-sessions)
 
 Deja Vu1 started as an answer to three questions you currently have to walk
@@ -66,6 +69,8 @@ and every change is in the public history.
 the same whether it is ready, out of filament, or faulted. On a multi-toolhead
 machine you find out by walking over and reading the screen.
 
+![Four identical grey docked toolheads beside Deja Vu1's view of the same docks: T0 docked and ready, T1 printing, T2 heating up, T3 needs attention with a filament runout, plus the five dock states and their colours](docs/img/explainer-silent-docks.jpg)
+
 **Wrong filament, discovered too late.** Four toolheads means four chances to
 load the wrong spool. Nothing checks. You notice when the print comes out in
 the wrong color, which is after the time and material are spent.
@@ -82,6 +87,10 @@ machine, and all of it is visible in data the printer already publishes.
 
 ## What's in it
 
+![Every module grouped by what it needs: 8 ready today, 17 live and fleet-wide, 3 for farms and making, 7 optional, 2 waiting on hardware, and 10 games](docs/img/explainer-whats-in-it.jpg)
+
+Every screenshot in this section comes from the built-in simulated farm (the **Demo data** switch), so every figure in them is simulated. The yellow banner and the **SIMULATED** badge in the app say the same.
+
 ### Ready today — no hardware needed
 
 | Module | What it does |
@@ -94,6 +103,13 @@ machine, and all of it is visible in data the printer already publishes.
 | **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
 | **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
 | **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history — editable $/kg per material, $/kWh, and printer wattage. |
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/care.jpg" alt="The Care tab: maintenance tasks with progress bars, two marked overdue in red and one due soon"><br><sub><b>Care:</b> each maintenance task with how far it has run, overdue ones in red.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Control tab: the running print with Pause and Cancel, four toolhead temperatures, Home buttons and a G-code console"><br><sub><b>Control:</b> the running print, all four toolheads' temperatures, homing and a G-code console.</sub></td>
+</tr>
+</table>
 
 ### Live, fleet-wide, and hands-on — no hardware needed
 
@@ -117,6 +133,34 @@ machine, and all of it is visible in data the printer already publishes.
 | **Digital twin** | A live 3D view of the toolhead, the part growing layer by layer, and the four docks — pure CSS 3D, the same technique as the games' 3D scenes. |
 | **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast — see [docs/architecture.md](docs/architecture.md). |
 
+![The Overview: header with the printer picker and SIMULATED badge, the status ribbon with progress and finish time, the Needs you list ranking a dock error, a paused print and overdue maintenance, and totals for print hours, prints, filament and overdue tasks](docs/img/overview.jpg)
+
+<sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
+
+![The Fleet tab: three printer cards, Workshop printing at 47 percent, Studio paused at 72 percent, Garage idle with a T3 dock error, each with its four toolhead filament colours, temperatures and health score, above controls to command several printers together](docs/img/fleet.jpg)
+
+<sub>**Fleet:** every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
+
+![Confirm Print explained: six checks (printer ready, pre-flight, filament match, spool weight, maintenance, cost), what each one does when it fails, the path from your file to a start or a refusal, and a real refusal from the built-in unsafe example file](docs/img/explainer-confirm-print.jpg)
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/confirm-print-refused.jpg" alt="The Confirm print dialog refusing the unsafe example file: printer busy, extrusion outside the 270 mm build volume on line 19, T0 has Snapmaker Orange loaded but the file was sliced for a red, and two maintenance tasks overdue"><br><sub><b>Confirm Print, refusing:</b> the built-in unsafe example file, with every reason in words and the start button disabled.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/file-detail.jpg" alt="A G-code file opened in the library: the 3D toolpath of a two-colour coaster, time, filament, layers and toolheads, a clear pre-flight, and the G-code itself below with search"><br><sub><b>A file, opened:</b> the toolpath in 3D, the slicer's estimates, the pre-flight verdict and the G-code, searchable and editable.</sub></td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/files.jpg" alt="The file library with thumbnails of six sample files, the G-code ones marked PRE-FLIGHT CLEAR or BLOCKED, next to the print queue"><br><sub><b>Files:</b> thumbnails and estimates, a pre-flight badge on every G-code file, and the print queue beside them.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/automations.jpg" alt="The Automations tab building a rule from the "Tell me when a print finishes" example: when a print finishes, send a notification, on any printer, with a log of what fired"><br><sub><b>Automations:</b> "when this happens, do that", built from a ready-made example, with every firing logged.</sub></td>
+</tr>
+</table>
+
+![Three Overview cards: the digital twin of the toolhead over the bed with four docks, a print health gauge reading 65 with its deductions listed, and a chamber temperature chart](docs/img/twin-health-chamber.jpg)
+
+<sub>**Digital twin, print health and chamber climate:** the toolhead and docks live, one health score with every deduction listed, and the chamber temperature over time.</sub>
+
 ### Running a farm, and making new things — no hardware needed
 
 | Feature | What it does |
@@ -125,9 +169,26 @@ machine, and all of it is visible in data the printer already publishes.
 | **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. It all runs in the browser; the photo is never uploaded. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios — a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue — and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/sandbox-farm.jpg" alt="The Fleet tab with nine printers: the three built-in U1s and six added simulated printers, some printing, some idle"><br><sub><b>A bigger farm:</b> the three built-in printers plus six added in the sandbox.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/sandbox.jpg" alt="The farm sandbox: a scenario clock at plus 11 minutes running the "Jam mid-print" scenario, the farm list, an event picker and a log of what happened, with preset scenarios below"><br><sub><b>Farm sandbox:</b> the "Jam mid-print" scenario on its clock, one-off events, and a log of what happened.</sub></td>
+</tr>
+</table>
+
+![The Photo-to-Print Studio with its built-in test pattern: the original image, the relief as it would print, modelled in white and black filament, its size and colour settings, and the 3D preview](docs/img/photo-studio.jpg)
+
+<sub>**Photo-to-Print Studio:** the built-in test pattern turned into a layered relief. The right-hand preview is modelled, not photographed.</sub>
+
+<img align="right" width="230" src="docs/img/phone.jpg" alt="Deja Vu1 on a phone: the printer picker, the demo banner, the progress line, the Needs you list, and Pause and Hold to cancel above the bottom tab bar">
+
 On a phone the layout is rebuilt thumb-first: the main sections and the
 Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
 screen, with the print's progress on a line just above them on every tab.
+Pair a phone from **Settings → Pair another device**: it gets a short code,
+and talks straight to your computer over your home network.
+
+<br clear="right">
 
 ### Optional — on by request
 
@@ -148,6 +209,12 @@ screen, with the print's progress on a line just above them on every tab.
 | **Dock status rings** | A ring of light beside each toolhead dock — soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault — readable across the room. Two ways to build it: WS2812 rings, or push the same state to a WLED-controlled strip you already own. |
 | **"Right colour loaded?"** | An optical sensor in the filament path, compared against what the print file expects, catching the wrong spool before the print starts. |
 
+![The Dock status rings panel: four rings for T0 to T3, three soft white for docked and ready and one red for needs attention, marked HARDWARE PENDING, with the note that it shows what the LEDs would display](docs/img/dock-rings.jpg)
+
+<sub>**Dock status rings, on screen today:** what each LED ring would show. The physical rings are waiting on hardware.</sub>
+
+<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: switches for Maintenance reminders, Printer control, Dock status rings, Right colour loaded, Push notifications, Filament inventory and Pre-print sanity check, each tagged READY TODAY, HARDWARE PENDING or OPTIONAL">
+
 Every module can be switched on or off from **Settings → Modules** — the
 toggle you see there is enforced by the server, not just hidden in the
 interface: a disabled module's API routes refuse to answer rather than
@@ -156,6 +223,8 @@ off doesn't yet stop work already running in the background (automation
 rules, queue auto-advance, time-lapse capture, filament deduction); "View on
 your desk" has no server routes, so its switch is enforced in the browser;
 and phone pairing can't be switched off.
+
+<br clear="right">
 
 ### While you wait (the Games tab)
 
@@ -166,7 +235,11 @@ printer; the status strip and the live print pill stay visible on every
 tab, including mid-game, so a finished or failed print is never missed.
 Best scores are remembered per browser.
 
+<img src="docs/img/games.jpg" width="720" alt="The Games tab with Sky Dash ready to start, the list of ten games above it, and the note that none of them read the printer">
+
 ## Why one dashboard, not several tools
+
+![How it connects: each Snapmaker U1 runs Moonraker in front of Klipper; the Deja Vu1 server on your computer holds one WebSocket per printer for live state every 0.25 seconds and uses plain HTTP for commands, history and uploads; it pushes a live view to your laptop and paired phone, and only sends state outward to Home Assistant, a WLED strip and ntfy, Discord or Telegram](docs/img/explainer-how-it-connects.jpg)
 
 Everything reads from the same Moonraker connection and the same print
 history. Splitting that into separate tools would mean separate connections,
@@ -316,6 +389,8 @@ only sensible approach. Details in
 [docs/hardware-modules.md](docs/hardware-modules.md).
 
 ## Tech stack
+
+![By the numbers: 572 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only — written for 3.8 or newer;
   tested on 3.11 and 3.13 (3.8 itself hasn't been run)
@@ -542,6 +617,8 @@ version.
   works, and what was and wasn't tested
 - [docs/low-latency-camera.md](docs/low-latency-camera.md) — the optional
   WebRTC camera through go2rtc (an extra program you install)
+- [tools/readme-images/README.md](tools/readme-images/README.md) — where every
+  picture in this README comes from, and how to make it again
 
 ## License
 
