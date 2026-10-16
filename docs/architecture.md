@@ -506,18 +506,40 @@ the connection; every route that reads the dashboard's own settings checks
 only its module state. No framework, so there is nothing to install.
 
 ### `frontend/`
-Nine files — `index.html`, `style.css` and `app.js` (the original dashboard
-and the games), `workshop.css` and `workshop.js` (live connection, fleet,
-files, automations, phone layout, Liquid Glass 2.0), `viewer3d.js`
-(the STL / 3MF parsers and the WebGL renderer), `studio.js` (the
-Photo-to-Print Studio) and `farm.js` + `farm.css` (fleet command center,
-fleet history, farm sandbox, auto-print pipeline). `workshop.js` tells the
+Twelve files plus two folders — `index.html`, `style.css` and `app.js`
+(the original dashboard and the games, and the shared helpers the other
+scripts use), `workshop.css` and `workshop.js` (live connection, fleet, the
+"Needs you" list, files, automations, phone layout, Liquid Glass 2.0),
+`viewer3d.js` (the STL / 3MF parsers and the WebGL renderer), `ar.js`
+(the WebXR "view on your desk" preview), `studio.js` (the Photo-to-Print
+Studio), `farm.js` + `farm.css` (fleet command center, fleet history, farm
+sandbox, auto-print pipeline), `theme.css` (the "Layer lines" design layer,
+loaded last; also the only stylesheet for the "Needs you" card) and
+`welcome.html` (the product page a static host shows instead of the
+dashboard). `fonts/` holds the three bundled typefaces with their SIL Open
+Font License files, and `img/` the product page's screenshots, taken from
+the simulated farm. `workshop.js` tells the
 newer files what happens through window events — `dv-tab`, `dv-refresh`,
 `dv-fleet`, `dv-live-event`, `dv-model-open` — rather than them reaching
 into its internals. No framework, no build
 step, and nothing fetched from any external host: no webfonts, no CDN. The
 dashboard runs fully offline, including phone pairing, which talks
 directly to this server over the local network.
+
+**No server behind the pages.** The pages can be served without
+`backend/app.py` (the public Cloudflare link publishes `frontend/` alone as
+static files). `app.js` asks `/api/health` once before any other request;
+a network error, a 404 or a non-JSON answer means the server isn't there.
+Then `getJSON` / `postJSON` stop sending requests and answer at once with
+`{server_missing: true, connected: false}`, `showServerMissing()` shows
+the banner, switches Demo data off (the remembered choice is kept), and
+gives every card without `data-browser-only` a one-line "needs the Deja Vu1
+server" note in place of its body. The browser-only parts: the Studio
+(built-in palette, download instead of save), local G-code / STL / 3MF
+viewing (`DV3D.parseGcode` in `viewer3d.js` reads the toolpath in the
+browser — moves, arcs, G92, T0–T3; its footprint includes every extrusion,
+where the server's pre-flight leaves out-of-bounds points out of the
+footprint and reports them instead), AR, the games and the preferences.
 
 **Honest commands.** Every control button goes through one function
 (`runCommand` in `app.js`): it shows "Pausing…" at once, sends the command,
@@ -670,7 +692,7 @@ Everything that calls them already works.
 
 ## Testing
 
-581 tests, using Python's built-in `unittest`:
+597 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests

@@ -33,6 +33,8 @@ TRAVEL_SLACK = 5.0
 VALID_TOOLS = {0, 1, 2, 3}
 MAX_NOZZLE_C = 300
 MAX_COMMAND_LENGTH = 200
+# A colour from a file's metadata: #RRGGBB, optionally with alpha (#RRGGBBAA).
+_HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?")
 MAX_SEGMENTS = 60000
 FILAMENT_DIAMETER_MM = 1.75
 
@@ -101,7 +103,9 @@ def parse_metadata(text):
         meta["filament_types"] = _split_list(settings["filament_type"])
     for key in ("filament_colour", "filament_color", "extruder_colour"):
         if key in settings:
-            meta["filament_colours"] = [c for c in _split_list(settings[key]) if c.startswith("#")]
+            # Only real hex colours: the value ends up in style attributes in
+            # the browser, so anything else (a url(...), say) is dropped here.
+            meta["filament_colours"] = [c for c in _split_list(settings[key]) if _HEX_COLOUR.fullmatch(c)]
             break
     for key in ("total layer number", "total layers count", "total_layer_count"):
         if key in settings and settings[key].isdigit():

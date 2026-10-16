@@ -550,5 +550,93 @@ const DV3D = (() => {
     }
   }
 
-  return { parseSTL, parse3MF, parseModel, Viewer, BED };
+  /* A G-code toolpath read in the browser, for viewing a file from this
+   * device when the dashboard server isn't there to analyse it. Only what the
+   * viewer needs: moves (G0/G1, and G2/G3 arcs by I/J as Klipper runs them),
+   * absolute/relative positioning and extrusion, G92, and T0-T3. It is not
+   * the pre-flight check (backend/gcode_tools.py) and doesn't claim to be:
+   * no time, weight or safety verdict comes from here. Segments are
+   * [x0, y0, z0, x1, y1, z1, tool, extruding] like the server's, and at
+   * most MAX_SEGMENTS are kept, spread evenly through the file. */
+  const MAX_SEGMENTS = 60000;
+
+  function parseGcode(text) {
+    const pos = { X: 0, Y: 0, Z: 0, E: 0 };
+    let absolute = true, absE = true, tool = 0;
+    const segments = [], tools = new Set(), zs = new Set();
+    const min = [Infinity, Infinity], max = [-Infinity, -Infinity];
+    let colours = [];
+    const lines = text.split('\n');
+    for (const raw of lines) {
+      const semi = raw.indexOf(';');
+      if (semi >= 0 && !colours.length) {
+        const m = raw.slice(semi).match(/^;\s*(?:filament_colou?r|extruder_colou?r)\s*=\s*(.+)$/i);
+        if (m) colours = m[1].split(/[;,]/).map(c => c.trim().replace(/^"|"$/g, '')).filter(c => /^#[0-9a-f]{6}$/i.test(c));
+      }
+      const code = (semi >= 0 ? raw.slice(0, semi) : raw).trim().toUpperCase();
+      if (!code) continue;
+      const words = code.split(/\s+/);
+      const head = words[0];
+      if (/^T\d+$/.test(head)) { tool = +head.slice(1); continue; }
+      if (head === 'G90') { absolute = true; continue; }
+      if (head === 'G91') { absolute = false; continue; }
+      if (head === 'M82') { absE = true; continue; }
+      if (head === 'M83') { absE = false; continue; }
+      const p = {};
+      for (const w of words.slice(1)) {
+        const v = parseFloat(w.slice(1));
+        if (/^[XYZEIJ]$/.test(w[0]) && Number.isFinite(v)) p[w[0]] = v;
+      }
+      if (head === 'G92') { for (const k of ['X', 'Y', 'Z', 'E']) if (k in p) pos[k] = p[k]; continue; }
+      if (!/^G[0-3]$/.test(head)) continue;
+      const to = { ...pos };
+      for (const k of ['X', 'Y', 'Z']) if (k in p) to[k] = absolute ? p[k] : pos[k] + p[k];
+      let extruding = false;
+      if ('E' in p) {
+        const e = absE ? p.E : pos.E + p.E;
+        extruding = e > pos.E + 1e-9;
+        to.E = e;
+      }
+      const moved = to.X !== pos.X || to.Y !== pos.Y || to.Z !== pos.Z;
+      if (moved) {
+        const points = [];
+        if ((head === 'G2' || head === 'G3') && ('I' in p || 'J' in p)) {
+          const cx = pos.X + (p.I || 0), cy = pos.Y + (p.J || 0), r = Math.hypot(pos.X - cx, pos.Y - cy);
+          let a0 = Math.atan2(pos.Y - cy, pos.X - cx), a1 = Math.atan2(to.Y - cy, to.X - cx);
+          let sweep = a1 - a0;
+          if (head === 'G2' && sweep >= 0) sweep -= 2 * Math.PI;      // clockwise
+          if (head === 'G3' && sweep <= 0) sweep += 2 * Math.PI;      // counter-clockwise
+          const n = Math.max(1, Math.min(64, Math.ceil(Math.abs(sweep) * r / 1.5)));
+          for (let i = 1; i <= n; i++) {
+            const a = a0 + sweep * i / n;
+            points.push(i === n ? [to.X, to.Y, to.Z] : [cx + r * Math.cos(a), cy + r * Math.sin(a), pos.Z + (to.Z - pos.Z) * i / n]);
+          }
+        } else points.push([to.X, to.Y, to.Z]);
+        let prev = [pos.X, pos.Y, pos.Z];
+        for (const q of points) {
+          segments.push([prev[0], prev[1], prev[2], q[0], q[1], q[2], tool, extruding ? 1 : 0]);
+          if (extruding) {
+            for (let k = 0; k < 2; k++) { min[k] = Math.min(min[k], prev[k], q[k]); max[k] = Math.max(max[k], prev[k], q[k]); }
+            zs.add(Math.round(q[2] * 1000));
+            tools.add(tool);
+          }
+          prev = q;
+        }
+      }
+      Object.assign(pos, to);
+    }
+    const total = segments.length;
+    const kept = total <= MAX_SEGMENTS ? segments
+      : Array.from({ length: MAX_SEGMENTS }, (_, i) => segments[Math.floor(i * total / MAX_SEGMENTS)]);
+    return {
+      toolpath: { segments: kept, total_segments: total, downsampled: total > MAX_SEGMENTS },
+      lines: lines.length,
+      layers: zs.size,
+      tools_used: [...tools].sort().map(t => `T${t}`),
+      footprint_mm: isFinite(min[0]) ? [+(max[0] - min[0]).toFixed(1), +(max[1] - min[1]).toFixed(1)] : null,
+      colours,
+    };
+  }
+
+  return { parseSTL, parse3MF, parseModel, parseGcode, Viewer, BED };
 })();

@@ -736,9 +736,9 @@ class HttpTransport:
             err = decoded.get("error") if isinstance(decoded, dict) else None
             message = clean_error(err.get("message") if isinstance(err, dict) else err)
             if status in (401, 403):
-                words = (f"Moonraker refused the dashboard ({status}: {message}). Add this printer's API key "
-                         "in Settings, or add this computer's address to [authorization] trusted_clients "
-                         "in moonraker.conf")
+                words = (f"Moonraker refused the dashboard ({status}: {message}). Remove this printer and add "
+                         "it again with its API key (Fleet -> Add a printer), or add this computer's address "
+                         "to [authorization] trusted_clients in moonraker.conf")
             elif status == 404:
                 words = f"Moonraker has no {path} ({message})"
             elif status == 503:
@@ -1412,6 +1412,11 @@ class MoonrakerPrinter:
             self._history_error = None
 
     # -- reading ------------------------------------------------------------
+
+    def history_loaded(self):
+        """True once the first history fetch has succeeded."""
+        with self.lock:
+            return self._history_at is not None
 
     def get_print_history(self):
         """

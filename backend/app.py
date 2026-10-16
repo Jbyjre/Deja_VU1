@@ -544,14 +544,19 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         while remaining:
             chunk = self.rfile.read(min(remaining, 1 << 20))
             if not chunk:
-                break
+                # The browser went away part-way through (cancelled, Wi-Fi
+                # dropped): what arrived is half a file, so nothing is saved
+                # and an existing copy with the same name is left alone.
+                raise _Gone()
             data.append(chunk)
             remaining -= len(chunk)
         return b"".join(data)
 
     def log_message(self, fmt, *args):
         """Keep the terminal quiet — one tidy line per request."""
-        path = self.path.split("?")[0]
+        # A garbled request line (https:// sent to this plain-HTTP port, a
+        # port scanner) is logged before self.path exists.
+        path = getattr(self, "path", "").split("?")[0]
         if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff",
                     "/api/fleet/queues", "/api/sandbox", "/api/slicer/jobs"):
             return
@@ -612,20 +617,17 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         Refuse requests addressed to a name that isn't this dashboard's.
 
         Allowed: any local-looking name (host_is_local), anything in
-        DEJAVU_ALLOWED_HOSTS, no Host header at all (not a browser), and a
-        request that cloudflared forwarded from this same machine - the
-        Cloudflare Tunnel set-up in docs/remote-access.md - which keeps your
-        own domain in the Host header.
+        DEJAVU_ALLOWED_HOSTS, and no Host header at all (not a browser).
+
+        A Cloudflare Tunnel keeps your own domain in the Host header, so its
+        name goes in DEJAVU_ALLOWED_HOSTS (docs/remote-access.md). There is
+        deliberately no exception for requests that *look* forwarded by
+        cloudflared (a Cf-Connecting-Ip header from this machine): a web
+        page on this computer can add that header itself, so it would let
+        the DNS-rebinding attack this check exists for straight through.
         """
         host = self.headers.get("Host", "")
         if not host or host_is_local(host):
-            return True
-        peer = self.client_address[0] if self.client_address else ""
-        try:
-            from_this_machine = ipaddress.ip_address(peer.split("%")[0]).is_loopback
-        except ValueError:
-            from_this_machine = False
-        if from_this_machine and self.headers.get("Cf-Connecting-Ip"):
             return True
         self._send_json({"error": f"Refused: this dashboard doesn't answer to \"{_host_name(host)}\". "
                                   "If that is your own address for it, start the server with "

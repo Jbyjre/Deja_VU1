@@ -175,7 +175,7 @@ function newBreakoutDeep(){
   const down=e=>{if(['ArrowLeft','ArrowRight','KeyA','KeyD','Space','KeyP'].includes(e.code))e.preventDefault();keys[e.code]=true;if(e.code==='Space')launch();if(e.code==='KeyP'&&status==='playing'){status='paused';setMessage('Paused · press P or the button to resume');}};const up=e=>{keys[e.code]=false;};t.on(document,'keydown',down);t.on(document,'keyup',up);t.on(document,'pointerup',()=>{keys.ArrowLeft=false;keys.ArrowRight=false;});t.on(document,'pointercancel',()=>{keys.ArrowLeft=false;keys.ArrowRight=false;});t.on(canvas,'pointermove',e=>movePaddle(e.clientX));t.on(canvas,'pointerdown',e=>{e.preventDefault();movePaddle(e.clientX);launch();});t.on($('dbd-pause'),'click',()=>{if(status==='playing'){status='paused';setMessage('Paused');}else if(status==='paused')launch();});t.on($('dbd-overlay'),'click',e=>{if(e.target.closest('button')){if(status==='over')resetRun();launch();}});const drive=()=>{if(keys.ArrowLeft||keys.KeyA)paddleX-=8;if(keys.ArrowRight||keys.KeyD)paddleX+=8;paddleX=Math.max(width()/2,Math.min(W-width()/2,paddleX));};t.every(drive,16);resetRun();
 }
 
-function installArcadePlus(){const games={skydash:skyDashV2,pong:newSmartPong,mines:newMines,tetris:newTetris,pacman:newPacmanPlus,breakout:newDoodleBreak,blackjack:newBlackjack,asteroids:newAsteroids,snake:newSnake,twenty48:new2048};const legacyStop=stopCurrentGame;gameFullscreenV2=(host,tools)=>{const button=document.createElement('button');button.className='btn small game-fullscreen';button.type='button';button.textContent='⛶ Fullscreen';tools.on(button,'click',()=>{const frame=host.querySelector('.game-frame')||host;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else frame.requestFullscreen?.().catch?.(()=>{});});tools.on(document,'fullscreenchange',()=>{button.textContent=document.fullscreenElement?'× Exit fullscreen':'⛶ Fullscreen';});host.querySelector('.game-toolbar').appendChild(button);};stopCurrentGame=()=>{legacyStop();plusStop();gamesCleanupV2?.();gamesCleanupV2=()=>{};activeGame=null;};renderGame=name=>{stopCurrentGame();activeGame=name;(games[name]||games.skydash)();};const picker=$('game-picker');if(picker){const clean=picker.cloneNode(true);picker.replaceWith(clean);clean.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{clean.querySelectorAll('button').forEach(i=>i.classList.toggle('active',i===b));renderGame(b.dataset.game);}));renderGame(clean.querySelector('button.active')?.dataset.game||'skydash');}}
+function installArcadePlus(){const games={skydash:skyDashV2,pong:newSmartPong,mines:newMines,tetris:newTetris,pacman:newPacmanPlus,breakout:newDoodleBreak,blackjack:newBlackjack,asteroids:newAsteroids,snake:newSnake,twenty48:new2048};const legacyStop=stopCurrentGame;gameFullscreenV2=(host,tools)=>{const button=document.createElement('button');button.className='btn small game-fullscreen';button.type='button';button.textContent='⛶ Fullscreen';tools.on(button,'click',()=>{const frame=host.querySelector('.game-frame')||host;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else frame.requestFullscreen?.().catch?.(()=>{});});tools.on(document,'fullscreenchange',()=>{button.textContent=document.fullscreenElement?'× Exit fullscreen':'⛶ Fullscreen';});host.querySelector('.game-toolbar').appendChild(button);};stopCurrentGame=()=>{legacyStop();plusStop();gamesCleanupV2?.();gamesCleanupV2=()=>{};activeGame=null;};renderGame=name=>{stopCurrentGame();activeGame=name;(games[name]||games.skydash)();};const picker=$('game-picker');if(picker){const clean=picker.cloneNode(true);picker.replaceWith(clean);clean.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{clean.querySelectorAll('button').forEach(i=>i.classList.toggle('active',i===b));renderGame(b.dataset.game);}));if(!$('tab-games').hidden)renderGame(clean.querySelector('button.active')?.dataset.game||'skydash');}}
 setTimeout(installArcadePlus,50);
 
 const $ = id => document.getElementById(id);
@@ -226,7 +226,47 @@ function freshModules() {
   return modGate.pending;
 }
 
+/* ---- is the dashboard server here? ----------------------------------------
+ * These pages can be published on their own, with no Deja Vu1 server behind
+ * them (a static host such as the public Cloudflare link). Then every /api
+ * request fails, and without this check each card would quietly show
+ * "No printer connected" and offer demo data that can't run. So one request
+ * asks first: a JSON answer from /api/health means the server is here; a
+ * network error, a 404 or a web page instead means it isn't. After that,
+ * requests aren't sent at all - each caller gets the same answer at once. */
+const server = { missing: false, checked: null };
+const SERVER_MISSING = "The Deja Vu1 server isn't running at this address, so this part can't work here.";
+
+function serverMissing() { return server.missing; }
+
+function serverMissingBody() {
+  return { error: SERVER_MISSING, server_missing: true, connected: false, demo: false };
+}
+
+async function checkServer() {
+  let here = false;
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 8000);
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store', signal: stop.signal });
+    here = response.status !== 404 && (response.headers.get('content-type') || '').includes('application/json');
+  } catch (_) {
+    here = false;
+  } finally {
+    clearTimeout(timer);
+  }
+  server.missing = !here;
+  if (server.missing) showServerMissing();
+  return here;
+}
+
+function serverReady() {
+  if (!server.checked) server.checked = checkServer();
+  return server.checked;
+}
+
 async function getJSON(url) {
+  if (!await serverReady()) return serverMissingBody();
   const path = url.split('?')[0];
   if (path !== '/api/modules') {
     await freshModules();
@@ -240,6 +280,7 @@ async function getJSON(url) {
 }
 
 async function postJSON(url, payload) {
+  if (!await serverReady()) return { ok: false, status: 0, body: serverMissingBody() };
   let response;
   try {
     response = await fetch(url, {
@@ -386,7 +427,7 @@ function moduleDisabledEmpty(name) {
   <div class="empty is-off">
     <span class="empty-mark" aria-hidden="true"></span>
     <p class="empty-title">${esc(name)}</p>
-    <p class="empty-sub">Switched off in Modules &amp; devices.</p>
+    <p class="empty-sub">Switched off in Settings → Modules.</p>
     ${id ? `<button class="btn small" type="button" data-turn-on="${esc(id)}">Turn on</button>` : ''}
   </div>`;
 }
@@ -411,20 +452,24 @@ document.addEventListener('click', async (e) => {
 
 const STATUS_TEXT = { overdue: 'Overdue', due_soon: 'Due soon', ok: 'OK' };
 
-/* Panels that refresh on a timer are redrawn only when what they show has
- * changed, and their entrance animation plays the first time only - played
- * on every refresh it read as the rows blinking out and back every 5 s. */
-const paintedHTML = new WeakMap();
-function paint(host, html) {
-  if (!host || paintedHTML.get(host) === html) return false;
-  if (paintedHTML.has(host)) host.classList.add('is-settled');
-  paintedHTML.set(host, html);
-  host.innerHTML = html;
-  return true;
-}
-
 function stagger(nodes, step = 45) {
   nodes.forEach((node, i) => { node.style.animationDelay = `${i * step}ms`; });
+}
+
+/* Panels on the five-second refresh used to rebuild their rows every time,
+ * so each row replayed its entrance animation and the panel visibly
+ * flickered. paint() leaves an unchanged panel alone, and once a panel has
+ * shown its rows it marks itself settled, which turns the entrance
+ * animation off for later updates (style.css, .is-settled). Returns true
+ * when it painted for the first time, so callers stagger only then. */
+const painted = new WeakMap();
+function paint(host, html) {
+  if (!host || painted.get(host) === html) return false;
+  const first = !painted.has(host);
+  host.classList.toggle('is-settled', !first);
+  host.innerHTML = html;
+  painted.set(host, html);
+  return first;
 }
 
 const EMPTY = (title, sub) => `
@@ -445,6 +490,60 @@ function formatTemp(celsius) {
   if (celsius === null || celsius === undefined) return '—';
   const value = tempUnit === 'F' ? (celsius * 9 / 5) + 32 : celsius;
   return `${value.toFixed(0)}°${tempUnit}`;
+}
+
+/* When a print should finish, as a time on the clock rather than a duration:
+ * "4:12 PM", "tomorrow 1:05 AM", or "Sat 9:40 AM" further out. Empty when
+ * there is no estimate. The estimate is the one used everywhere else here
+ * (elapsed time scaled by progress), so it is only as good as that. */
+function doneAt(hoursLeft) {
+  if (hoursLeft == null || !isFinite(hoursLeft) || hoursLeft < 0) return '';
+  const at = new Date(Date.now() + hoursLeft * 3600e3);
+  const clock = at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const day = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((day(at) - day(new Date())) / 864e5);
+  if (days === 0) return clock;
+  if (days === 1) return `tomorrow ${clock}`;
+  return `${at.toLocaleDateString([], { weekday: 'short' })} ${clock}`;
+}
+
+/* Time left from a printer state: elapsed time scaled by progress, the same
+ * estimate the fleet uses (backend/fleet.py). Null when there isn't one. */
+function hoursLeft(state) {
+  const p = state && state.progress, elapsed = state && state.print_duration_hours;
+  return state && state.state === 'printing' && p > 0 && p < 1 && elapsed != null ? elapsed / p - elapsed : null;
+}
+
+/* ---- the browser tab mirrors the print -------------------------------------
+ * With the dashboard in a background tab, its title and icon still say how
+ * the print is going: "46% · U1 · Workshop", "Paused · …", "Finished · …".
+ * The icon draws the same progress ring. Both change only when what they
+ * show changes, not on every live update. */
+const BASE_TITLE = document.title;
+const tabMirror = { title: null, icon: null };
+function mirrorInTab(data) {
+  const s = data && data.state;
+  const name = (data && data.printer_name) || 'Printer';
+  const pct = s ? Math.round((data.progress || 0) * 100) : 0;
+  const lead = { printing: `${pct}%`, paused: 'Paused', complete: 'Finished', error: 'Needs attention' }[s];
+  const title = lead ? `${lead} · ${name} — Deja Vu1` : BASE_TITLE;
+  if (title !== tabMirror.title) { document.title = title; tabMirror.title = title; }
+
+  // Redrawn per whole percent, not per live update.
+  const key = `${s}|${pct}|${document.documentElement.style.getPropertyValue('--accent')}`;
+  if (key === tabMirror.icon) return;
+  tabMirror.icon = key;
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#4a8df8';
+  const color = { paused: '#d9a400', error: '#e5483e', complete: '#2fa84f' }[s] || accent;
+  const frac = s === 'printing' || s === 'paused' ? Math.max(0.02, pct / 100) : s === 'complete' ? 1 : 0;
+  const c = 2 * Math.PI * 12;
+  const ring = frac
+    ? `<circle cx='16' cy='16' r='12' fill='none' stroke='${color}' stroke-opacity='.22' stroke-width='5'/>` +
+      `<circle cx='16' cy='16' r='12' fill='none' stroke='${color}' stroke-width='5' stroke-linecap='round' stroke-dasharray='${(c * frac).toFixed(1)} ${c.toFixed(1)}' transform='rotate(-90 16 16)'/>`
+    : `<circle cx='16' cy='16' r='12' fill='none' stroke='${color}' stroke-width='4'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>${ring}<circle cx='16' cy='16' r='5' fill='${color}'/></svg>`;
+  const link = document.querySelector('link[rel="icon"]');
+  if (link) link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 /* ---- accent colour -------------------------------------------------------
@@ -505,6 +604,7 @@ function initPreferences() {
 
 async function loadConnection() {
   const data = await getJSON('/api/connection');
+  if (data.server_missing) return;          // showServerMissing() has said so already
   const pill = $('conn');
   const label = $('conn-label');
   const wasReal = realOn;
@@ -519,7 +619,7 @@ async function loadConnection() {
     $('foot-state').textContent = 'Connected to Moonraker.';
   } else if (demoOn) {
     pill.classList.add('is-demo');
-    label.textContent = 'Demo data';
+    label.textContent = 'Simulated';
     $('foot-state').textContent = 'Demo data — no printer connected, nothing is contacted.';
   } else {
     pill.classList.remove('is-demo');
@@ -529,6 +629,81 @@ async function loadConnection() {
   }
 
   $('notice').hidden = !(demoOn && !data.connected);
+}
+
+/* ---- no server: a browser-only preview ----------------------------------
+ * One banner says what's missing and what still works. Every card that
+ * needs the server keeps its heading (so you can see what the dashboard
+ * does) and says so in one line, instead of an empty box or an offer of
+ * demo data that can't run. Demo data is switched off, not hidden: the
+ * simulated printers live on the server too. */
+const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#how-to-run-it';
+const BROWSER_ONLY = '[data-browser-only], [data-module-off], #sb-off, #ap-off, #demo-tools-card, #file-detail';
+
+function needsServerNote(what) {
+  return `<p class="needs-server-note">${what ? `${esc(what)} needs` : 'Needs'} the Deja Vu1 server, which isn't running at this address.
+    <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>`;
+}
+
+function needsServerEmpty(what) {
+  return `
+  <div class="empty is-off">
+    <span class="empty-mark" aria-hidden="true"></span>
+    <p class="empty-title">Needs the Deja Vu1 server</p>
+    <p class="empty-sub">${esc(what ? `${what[0].toUpperCase()}${what.slice(1)} runs` : 'This runs')} on the server, which isn't running at this address.
+      <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>
+  </div>`;
+}
+
+/* "No printer" wording, unless there's no server to have a printer at all. */
+function noPrinterEmpty(sub, what) {
+  return serverMissing() ? needsServerEmpty(what) : EMPTY('No printer connected', sub);
+}
+
+function showServerMissing() {
+  document.body.classList.add('no-server');
+  $('server-banner').hidden = false;
+  $('notice').hidden = true;
+
+  const toggle = $('demo-toggle');
+  demoOn = false;                       // the remembered choice is kept for when the server is back
+  toggle.checked = false;
+  toggle.disabled = true;
+  toggle.closest('.switch').title = 'Demo data runs on the Deja Vu1 server, which isn\'t running at this address.';
+  toggle.setAttribute('aria-describedby', 'server-banner-text');
+
+  const pill = $('conn');
+  pill.classList.remove('is-demo');
+  pill.classList.add('is-offline');
+  $('conn-label').textContent = 'No server';
+  $('printer-chip').hidden = true;
+  $('foot-state').textContent = 'Browser-only preview: the Deja Vu1 server isn\'t running at this address.';
+  $('rb-text').textContent = 'Browser-only preview - no printer or demo farm without the server.';
+
+  document.querySelectorAll('.tab-panel section.card').forEach(card => {
+    if (card.matches(BROWSER_ONLY) || card.querySelector(':scope > .needs-server-note')) return;
+    card.classList.add('needs-server');
+    const head = card.querySelector(':scope > .card-head');
+    if (head) head.insertAdjacentHTML('afterend', needsServerNote());
+    else card.insertAdjacentHTML('afterbegin', needsServerNote(card.dataset.serverWhat || card.querySelector('h2')?.textContent.trim()));
+  });
+  if (window.Workshop) Workshop.reconnect();
+}
+
+function initServerBanner() {
+  document.querySelectorAll('#server-banner [data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+  $('server-retry').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.textContent = 'Checking…';
+    let here = false;
+    try {
+      const r = await fetch('/api/health', { cache: 'no-store' });
+      here = r.status !== 404 && (r.headers.get('content-type') || '').includes('application/json');
+    } catch (_) { here = false; }
+    if (here) { location.reload(); return; }
+    btn.disabled = false; btn.textContent = 'Check again';
+    toast('Still no server at this address.', 'warn');
+  });
 }
 
 /* ---- tabs -----------------------------------------------------------------*/
@@ -583,20 +758,23 @@ function renderStatusRibbon(data) {
 
   if (!hasData(data) || !data.state) {
     ribbon.classList.remove('is-live');
-    text.textContent = 'No printer connected.';
+    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.' : 'No printer connected.';
     bar.hidden = true;
     pct.hidden = true;
+    $('rb-done').hidden = true;
     lastPrinterState = null;
+    mirrorInTab(null);
     return;
   }
 
   lastPrinterState = data;
+  mirrorInTab(data);
   const isPrinting = data.state === 'printing';
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
     text.textContent = data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.';
-    bar.hidden = true; pct.hidden = true;
+    bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
     text.textContent = `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`;
@@ -606,6 +784,9 @@ function renderStatusRibbon(data) {
     const setFill = v => { fill.style.width = `${(v * 100).toFixed(2)}%`; };
     if (window.Workshop && Workshop.tween) Workshop.tween('ribbon', data.progress, setFill); else setFill(data.progress);
     pct.textContent = `${Math.round(data.progress * 100)}%`;
+    const finish = doneAt(hoursLeft(data));
+    $('rb-done').textContent = finish ? `done ${finish}` : '';
+    $('rb-done').hidden = !finish;
   }
 
   renderOverviewControl(data);
@@ -658,7 +839,7 @@ async function loadMaintenance() {
     $('tasks').innerHTML = EMPTY('No printer connected',
       'Maintenance reminders appear once print history is available. Turn on demo data to preview them.');
     $('log-wrap').hidden = true;
-    paint($('overview-maintenance'), EMPTY('No printer connected', 'Turn on demo data to preview.'));
+    paint($('overview-maintenance'), noPrinterEmpty('Turn on demo data to preview.', 'maintenance'));
     return;
   }
 
@@ -747,7 +928,7 @@ async function loadRings() {
     return;
   }
 
-  paint($('rings'), data.rings.map(ring => {
+  const firstPaint = paint($('rings'), data.rings.map(ring => {
     const effect = ring.effect === 'solid' ? '' : ring.effect;
     const pct = ring.state === 'active' ? `<div class="ring-pct">${Math.round(ring.progress * 100)}%</div>` : '';
     return `
@@ -759,7 +940,7 @@ async function loadRings() {
       </div>`;
   }).join(''));
 
-  stagger([...document.querySelectorAll('.ring-cell')], 60);
+  if (firstPaint) stagger([...document.querySelectorAll('.ring-cell')], 60);
   $('rings-note').hidden = false;
 }
 
@@ -780,7 +961,7 @@ async function loadColorCheck() {
     $('colors-note').hidden = true;
     return;
   }
-  if (!hasData(data) || !data.checks) {
+  if (!hasData(data) || !data.checks || !data.checks.length) {
     $('colorfile').hidden = true;
     paint($('colors'), EMPTY('Nothing to check', 'Needs a print file and a sensor reading.'));
     $('colors-note').hidden = true;
@@ -790,7 +971,7 @@ async function loadColorCheck() {
   $('colorfile').textContent = data.filename;
   $('colorfile').hidden = false;
 
-  paint($('colors'), data.checks.map(check => `
+  const firstPaint = paint($('colors'), data.checks.map(check => `
     <div class="crow">
       <div class="crow-top">
         <span class="crow-head">Toolhead ${esc(check.toolhead)}</span>
@@ -804,7 +985,7 @@ async function loadColorCheck() {
       <div class="crow-msg">${esc(check.message)}</div>
     </div>`).join(''));
 
-  stagger([...document.querySelectorAll('.crow')], 70);
+  if (firstPaint) stagger([...document.querySelectorAll('#colors .crow')], 70);
   $('colors-note').hidden = false;
 }
 
@@ -1033,7 +1214,7 @@ function renderOverviewControl(state) {
   const host = $('overview-control');
   if (!host) return;
   if (!state || !state.state) {
-    host.innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    host.innerHTML = noPrinterEmpty('Turn on demo data to preview.');
     host.dataset.built = '';
     return;
   }
@@ -1195,7 +1376,9 @@ async function loadCompare() {
 
   if (hasData(sanityData) && !isModuleDisabled(sanityData) && sanityData.reasons) {
     if (sanityData.safe_to_print) {
-      rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">Safe to print — maintenance, dock, and colour all check out.</div>`);
+      rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">${sanityData.colour_measured === false
+        ? 'Safe to print — maintenance and docks check out. Colour wasn’t measured (no sensor fitted); Confirm Print still compares the file with what the printer reports loaded.'
+        : 'Safe to print — maintenance, dock, and colour all check out.'}</div>`);
     } else {
       sanityData.reasons.forEach(msg => rows.push(`<div class="crow" style="border-left:3px solid var(--bad);">${esc(msg)}</div>`));
     }
@@ -1397,7 +1580,9 @@ async function loadUpdates() {
     host.textContent = 'Turn on demo data, or connect a printer, to check for updates.';
     return;
   }
-  if (data.updates_available === 0) {
+  if (!data.packages.length && data.note) {
+    host.textContent = data.note;
+  } else if (data.updates_available === 0) {
     host.textContent = 'Everything is up to date.';
   } else {
     const names = data.packages.filter(p => p.update_available).map(p => p.name).join(', ');
@@ -1556,7 +1741,10 @@ setTimeout(() => {
   if (picker) {
     const cleanPicker = picker.cloneNode(true); picker.replaceWith(cleanPicker);
     cleanPicker.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { cleanPicker.querySelectorAll('button').forEach(item => item.classList.toggle('active', item === button)); renderGame(button.dataset.game); }));
-    renderGame(cleanPicker.querySelector('button.active')?.dataset.game || 'asteroids');
+    // Only when the Games tab is open: a game started while hidden keeps its
+    // keyboard handlers, and Sky Dash's would swallow every Space typed
+    // anywhere on the page. Opening the tab starts it (showTab).
+    if (!$('tab-games').hidden) renderGame(cleanPicker.querySelector('button.active')?.dataset.game || 'asteroids');
   }
 }, 0);
 function arcadeShell(host, title, help, body, stats, tools) { gameStats(stats); host.innerHTML = gameFrame(title, help, body); gameFull(host, tools); }
@@ -3362,6 +3550,19 @@ function trackHighlights() {
 
 /* ---- start up ------------------------------------------------------------*/
 
+/* These same files are also published as a plain website (wrangler.jsonc ->
+ * Cloudflare), with no Python server behind them. There the dashboard has
+ * nothing to show, so it hands over to the product page. Only a 404 for
+ * /api/modules means "no Deja Vu1 server here" (a static host answers
+ * that for any file it doesn't have); a server that is down or unreachable
+ * keeps the dashboard and its "Could not reach the backend" message.
+ * ?dashboard skips the hand-over, to look at the empty dashboard anyway. */
+if (!new URLSearchParams(location.search).has('dashboard')) {
+  fetch('/api/modules', { cache: 'no-store' })
+    .then(r => { if (r.status === 404) location.replace('welcome.html'); })
+    .catch(() => {});
+}
+
 async function refreshAll() {
   try {
     await loadConnection();
@@ -3401,6 +3602,8 @@ function initDemoToggle() {
   });
 }
 
+serverReady();
+initServerBanner();
 initDemoToggle();
 initPressedSync();
 initTabs();

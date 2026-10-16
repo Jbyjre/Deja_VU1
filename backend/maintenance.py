@@ -151,6 +151,25 @@ def _default_log():
     """
     history = get_print_history()
 
+    if history and mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        # A real printer: when each task was really last done isn't known,
+        # so counting starts now, from the printer's current totals. The
+        # "maintenance pass halfway through" story below is for the
+        # simulated printers only - it would invent a past for a real one.
+        now = datetime.now().isoformat(timespec="seconds")
+        hours = sum(job["print_duration_hours"] for job in history)
+        return {
+            "tasks": {
+                t["id"]: {
+                    "last_done_at": now,
+                    "hours_at_last_done": round(hours, 2),
+                    "prints_at_last_done": len(history),
+                }
+                for t in TASKS
+            },
+            "history": [],
+        }
+
     if not history:
         # No prints at all yet: treat everything as done right now.
         now = datetime.now().isoformat(timespec="seconds")
@@ -190,7 +209,12 @@ def _load_log():
     """Read the saved log from disk, creating it on the first run."""
     if not os.path.exists(_log_path()):
         log = _default_log()
-        _save_log(log)
+        # A real printer's log starts from its history. Until that has
+        # loaded the starting point isn't saved: saved early (at 0 hours),
+        # every hour already on the printer would later count as "since last
+        # done" and show every task overdue on the first connection.
+        if mock_moonraker.history_loaded():
+            _save_log(log)
         return log
 
     log = storage.load_json(_log_path(), None)

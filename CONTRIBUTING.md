@@ -19,7 +19,8 @@ These are what the project is built on; a change that breaks one needs a
 very good reason.
 
 - **No dependencies.** Standard-library Python, plain HTML, CSS and
-  JavaScript. No build step, no CDN, no webfonts - it must work offline.
+  JavaScript. No build step and no CDN: the fonts are bundled in
+  `frontend/fonts/`, so it works offline.
 - **No invented numbers.** With no printer and no demo data, panels show
   empty states, never zeros or placeholders. Demo data is always labelled.
 - **Honest controls.** A button says what it sent, then shows only what the

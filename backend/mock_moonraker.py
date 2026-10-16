@@ -646,6 +646,16 @@ def any_connected():
     return any(p.is_connected() for p in printers)
 
 
+def history_loaded():
+    """
+    Whether the selected printer's print history is known yet: always for a
+    simulated printer; for a real one, once its first history fetch (which
+    runs in the background after the connection opens) has succeeded.
+    """
+    printer = _current()
+    return printer.history_loaded() if printer.real else True
+
+
 def get_print_history():
     """
     Moonraker's GET /server/history/list: every finished job, oldest first.
