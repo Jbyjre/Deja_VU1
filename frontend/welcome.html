@@ -8,6 +8,14 @@
 <meta property="og:title" content="Deja Vu1 — the dashboard your Snapmaker U1 is missing">
 <meta property="og:description" content="Free and open source. Toolhead status, filament checks, maintenance reminders, a pre-flight check before every print, and a whole farm at a glance. Runs on your own network.">
 <meta property="og:type" content="website">
+<!-- Link previews: crawlers need an absolute address, so this points at the
+     published copy (wrangler.jsonc). 1200 x 630 is Meta's recommended size. -->
+<meta property="og:image" content="https://deja-vu1.jmath1110.workers.dev/img/social-card.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Deja Vu1: 'Docked toolheads are silent.' beside the Needs you list and three printer cards from the simulated farm.">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#eff1f4">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e8692a' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23e8692a'/%3E%3C/svg%3E">
 <link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -464,7 +472,7 @@ footer p { max-width: 70ch; }
           <h3><i aria-hidden="true"></i>Checked</h3>
           <ul>
             <li>The printer connection was written from the Moonraker, Klipper and U1 source code Snapmaker publishes, and tested against a stand-in Moonraker built from that source, over real network connections.</li>
-            <li>571 automated tests, run with nothing but Python.</li>
+            <li>572 automated tests, run with nothing but Python.</li>
             <li>Every tab driven in a real (headless) browser, at laptop and phone sizes, including touch.</li>
             <li>WLED, Home Assistant, ntfy, Discord and Telegram checked against each service's own source or documentation.</li>
           </ul>

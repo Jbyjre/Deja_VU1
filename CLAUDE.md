@@ -34,7 +34,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 571 tests, about 130 s
+python3 -m unittest discover tests          # 572 tests, about 130 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
@@ -102,8 +102,15 @@ source. `tests/test_audit_fixes.py` holds regression tests for the October
 2026 audit.
 
 `docs/`: `architecture.md` (the long version), `real-printer.md`,
+`first-connection.md` (the U1-owner tester call the README links to),
 `remote-access.md`, `hardware-modules.md`, `low-latency-camera.md`,
 `ar-preview.md`.
+
+`frontend/img/social-card.png` is the link-preview card (1200 × 630). Both
+`index.html` and `welcome.html` name it by absolute URL on the published
+worker (`deja-vu1.jmath1110.workers.dev`), because crawlers need a full
+address; `test_link_preview_image_is_the_bundled_card` checks it. Rename the
+worker in `wrangler.jsonc` and those tags must change too.
 
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL

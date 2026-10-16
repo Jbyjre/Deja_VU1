@@ -1,7 +1,40 @@
 # Deja Vu1
 
-A dashboard and companion app for the Snapmaker U1. It started as an answer
-to three questions you currently have to walk over and figure out yourself —
+**Docked toolheads are silent.** A toolhead parked in its dock looks the same
+whether it's ready, out of filament or faulted. Deja Vu1 is a free,
+open-source dashboard for the Snapmaker U1 that says it out loud: which
+toolheads are ready, whether the right filament is loaded, what maintenance is
+due, and whether it's safe to press print. It runs on your own network, with no
+account and nothing to install but Python.
+
+![Deja Vu1: "Docked toolheads are silent." beside the Needs you list and three printer cards from the simulated farm](frontend/img/social-card.png)
+
+<sub>Every figure in the picture comes from the built-in simulated farm. Deja
+Vu1 is an independent open-source project, not affiliated with Snapmaker.</sub>
+
+> **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
+> one and can spare 30 to 45 minutes, help run its first real connection. It's
+> watch-only: you watch a print you're already running, and nothing is started
+> or paused from Deja Vu1. **[How it works, and how to sign up](docs/first-connection.md)**
+
+**Try it in three lines** (Python 3.8 or newer, nothing else):
+
+```bash
+git clone https://github.com/Jbyjre/Deja_VU1.git
+cd Deja_VU1
+python3 backend/app.py
+```
+
+Then open **http://localhost:8000** and flip **Demo data** in the header for a
+simulated farm of three U1s that heat, print and finish.
+
+**Quick links:** [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
+[current status](#current-status) · [security](#security-and-your-network) ·
+[first connection](docs/first-connection.md) ·
+[for developers](#for-developers-and-ai-coding-sessions)
+
+Deja Vu1 started as an answer to three questions you currently have to walk
+over and figure out yourself —
 is that docked toolhead ready or stuck, is the right filament loaded, is
 anything due for maintenance — and has grown into a fuller companion:
 printer control, phone pairing, filament tracking, smart notifications, a
@@ -15,10 +48,6 @@ that already sits in front of the printer: one application and one
 connection per printer (a WebSocket for live state, plain HTTP requests for
 commands, history and uploads), shared by every module.
 
-**Quick links:** [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
-[current status](#current-status) · [security](#security-and-your-network) ·
-[for developers](#for-developers-and-ai-coding-sessions)
-
 It connects to a real printer by its Moonraker address, and has a
 simulated farm for trying everything without one. The real connection was
 written against Moonraker's, Klipper's and Snapmaker's own U1 source code
@@ -26,6 +55,9 @@ and tested against a stand-in built from that source — but it has not yet
 talked to a physical U1 (see [Current status](#current-status)). Two
 modules (the LED dock rings and the optical colour sensor) have complete,
 tested logic waiting on physical parts.
+
+Much of the code is written with [Claude Code](https://claude.com/claude-code),
+and every change is in the public history.
 
 ## The problem
 
@@ -268,10 +300,12 @@ The same pass hardened the rest for real conditions:
   about two months for the first printer) and live state that pause /
   resume / cancel / start and temperature changes genuinely change.
 
-I do not own a Snapmaker U1. This project is part of an application to the
-Snapmaker Innovation Fund, partly to request a unit. Everything that can be
-built without the machine has been built; the rest is designed and documented
-so it can be finished quickly once hardware is available.
+I do not own a Snapmaker U1. The project hasn't been entered in the Snapmaker
+Innovation Fund yet; the plan is to enter Phase 2, partly to request a unit.
+Until then, [first connections](docs/first-connection.md) on owners' printers
+are how it gets tested on real hardware. Everything that can be built without
+the machine has been built; the rest is designed and documented so it can be
+finished quickly once hardware is available.
 
 Both hardware modules are deliberately non-invasive — external add-ons that
 mount to the frame and read printer state over the network. Nothing is
@@ -290,7 +324,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 571 cases
+- **Tests:** `unittest` from the standard library, 572 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -468,7 +502,7 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 571
+python3 -m unittest discover tests          # all 572
 python3 -m unittest tests.test_api          # one file
 ```
 
@@ -496,6 +530,8 @@ version.
 - [docs/real-printer.md](docs/real-printer.md) — connecting a real printer:
   what was checked against Moonraker's and Snapmaker's source, what can't
   be without the machine, and what the first run will tell you
+- [docs/first-connection.md](docs/first-connection.md) — for U1 owners: how to
+  help run Deja Vu1's first real connection (watch-only), and how to sign up
 - [docs/architecture.md](docs/architecture.md) — how the pieces fit together
 - [docs/hardware-modules.md](docs/hardware-modules.md) — parts lists, wiring,
   and the non-invasive design constraint
