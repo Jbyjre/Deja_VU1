@@ -85,15 +85,22 @@ def decide_ring_state(toolhead_id, toolhead_data, printer_state):
         A dictionary describing what to show on that ring.
     """
     status = toolhead_data.get("status", "docked")
+    if status == "active" and printer_state.get("state") not in ("printing", "paused", "error"):
+        # A real U1 reports which head sits on the carriage even when idle;
+        # an idle head is ready, not printing.
+        status = "docked"
+    temperature = toolhead_data.get("temperature") or 0
 
+    if printer_state.get("state") == "error" and status == "active":
+        # Checked first: a heater fault leaves the head cooling below 180 C,
+        # which would otherwise read as amber "heating up".
+        state = "error"
     # A toolhead that is actively printing but still below temperature is
     # heating, not printing. Show amber so the user knows to wait.
-    if status == "active" and toolhead_data.get("temperature", 0) < 180:
+    elif status == "active" and temperature < 180:
         state = "heating"
     elif printer_state.get("state") == "paused" and status == "active":
         state = "paused"
-    elif printer_state.get("state") == "error" and status == "active":
-        state = "error"
     else:
         state = status if status in STATE_COLORS else "docked"
 
@@ -139,7 +146,9 @@ def get_all_ring_states():
     return {
         "simulated": True,      # the dashboard uses this to show its "sim" badge
         "hardware_connected": False,
-        "note": "Simulated output. No LED hardware connected.",
+        # The ring states come from the printer's own state; only the LEDs are missing.
+        "note": "No LED rings fitted - this is what they would show." if printer_state.get("real")
+        else "Simulated output. No LED hardware connected.",
         "printer_state": printer_state["state"],
         "rings": rings,
     }

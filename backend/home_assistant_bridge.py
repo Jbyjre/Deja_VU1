@@ -1,0 +1,230 @@
+"""
+home_assistant_bridge.py
+=========================
+
+Pushes printer state into Home Assistant as a handful of REST sensors, so it
+shows up on an existing HA dashboard alongside everything else in the house.
+No MQTT broker, no custom component, no dependency — Home Assistant's REST
+API accepts a plain `POST /api/states/<entity_id>` with a long-lived access
+token in the Authorization header, which is all this file does.
+
+This only pushes state outward. It never reads anything back from Home
+Assistant, and never controls the printer from it — the dashboard's own
+printer_control.py stays the only thing that can do that.
+"""
+
+import os
+import re
+
+import mock_moonraker
+import outbound
+import storage
+
+_BASE_URL = re.compile(r"^https?://[A-Za-z0-9.\-\[\]:]{1,260}(/[^\s?#]{0,200})?$")
+_PREFIX = re.compile(r"^[a-z_]{1,30}\.[a-z0-9_]{1,60}$")
+
+_DATA_DIR = storage.DATA_DIR
+_SETTINGS_PATH = os.path.join(_DATA_DIR, "home_assistant_settings.json")
+
+_DEFAULT_SETTINGS = {
+    "base_url": "",          # e.g. "http://homeassistant.local:8123"
+    "token": "",             # a long-lived access token from HA's profile page
+    "entity_prefix": "sensor.dejavu1",
+}
+
+
+def _load_settings():
+    if not os.path.exists(_SETTINGS_PATH):
+        _save_settings(_DEFAULT_SETTINGS)
+        return dict(_DEFAULT_SETTINGS)
+    settings = storage.load_json(_SETTINGS_PATH, {})
+    merged = dict(_DEFAULT_SETTINGS)
+    merged.update(settings)
+    return merged
+
+
+def _save_settings(settings):
+    storage.save_json(_SETTINGS_PATH, settings)
+
+
+def get_settings():
+    return _load_settings()
+
+
+def public_settings(settings=None):
+    """The settings as the dashboard page sees them: the token masked."""
+    settings = dict(settings or _load_settings())
+    settings["token_set"] = bool(settings.get("token"))
+    settings["token"] = storage.mask_secret(settings.get("token"))
+    return settings
+
+
+def save_settings(updates):
+    settings = _load_settings()
+    if "base_url" in updates:
+        base_url = str(updates["base_url"] or "").strip().rstrip("/")
+        if base_url and not _BASE_URL.match(base_url):
+            raise ValueError("Enter Home Assistant's address, like http://homeassistant.local:8123")
+        settings["base_url"] = base_url
+    if "token" in updates and not storage.is_masked(updates["token"]):
+        # A masked stand-in means "unchanged" - keep the saved token.
+        token = str(updates["token"] or "").strip()
+        if len(token) > 1024 or any(c.isspace() for c in token):
+            raise ValueError("That doesn't look like a Home Assistant access token")
+        settings["token"] = token
+    if "entity_prefix" in updates:
+        prefix = str(updates["entity_prefix"] or "").strip()
+        if not _PREFIX.match(prefix):
+            raise ValueError("Entity prefix must look like sensor.dejavu1")
+        settings["entity_prefix"] = prefix
+    _save_settings(settings)
+    return settings
+
+
+# Home Assistant refuses a state longer than this (homeassistant/const.py
+# MAX_LENGTH_STATE_STATE; the REST API answers 400 "Invalid state specified").
+# A Klipper error message can be longer, so text states are shortened.
+MAX_STATE_LENGTH = 255
+
+
+def _put_state(base_url, token, entity_id, state, attributes):
+    if isinstance(state, str):
+        state = outbound.clip(state, MAX_STATE_LENGTH)
+    result = outbound.send(f"{base_url}/api/states/{entity_id}", "Home Assistant",
+                           payload={"state": state, "attributes": attributes},
+                           headers={"Authorization": f"Bearer {token}"})
+    if result.get("status") == 401:
+        # homeassistant/components/api: only an administrator's token may set states.
+        result["error"] = ("Home Assistant refused the token (401) - it must be a long-lived access token "
+                           "made by an administrator (Profile > Security)")
+    result.pop("body", None)
+    return result
+
+
+def _sensors_from_state(state, prefix, extras=None):
+    """
+    Every entity this bridge publishes. Each is an ordinary REST sensor
+    (POST /api/states/<entity_id>), so Home Assistant needs no add-on.
+    """
+    extras = extras or {}
+    name = "Deja Vu1"
+
+    def s(value, friendly, unit=None, device_class=None, icon=None):
+        attrs = {"friendly_name": f"{name} {friendly}"}
+        if unit:
+            attrs["unit_of_measurement"] = unit
+        if device_class:
+            attrs["device_class"] = device_class
+            attrs["state_class"] = "measurement"
+        if icon:
+            attrs["icon"] = icon
+        return (value, attrs)
+
+    progress = state.get("progress") or 0.0
+    elapsed = state.get("print_duration_hours") or 0.0
+    remaining = (elapsed / progress - elapsed) if 0 < progress < 1 else 0.0
+    layer = state.get("layer") or {}
+    sensors = {
+        f"{prefix}_state": s(state["state"], "printer state", icon="mdi:printer-3d"),
+        f"{prefix}_state_message": s(state.get("state_message") or "", "status message"),
+        f"{prefix}_progress": s(round(progress * 100, 1), "print progress", "%", icon="mdi:progress-clock"),
+        f"{prefix}_current_file": s(state["current_file"] or "none", "current file", icon="mdi:file"),
+        f"{prefix}_active_toolhead": s(state["active_toolhead"] or "none", "active toolhead"),
+        f"{prefix}_print_duration": s(round(elapsed * 60, 1), "print time so far", "min", "duration"),
+        f"{prefix}_time_remaining": s(round(remaining * 60, 1), "time remaining (estimate)", "min", "duration"),
+        f"{prefix}_current_layer": s(layer.get("current") or 0, "current layer", icon="mdi:layers"),
+        f"{prefix}_total_layers": s(layer.get("total") or 0, "total layers", icon="mdi:layers-triple"),
+        f"{prefix}_bed_target": s(round(state.get("bed_target") or 0.0, 1), "bed target", "°C", "temperature"),
+    }
+    # A reading the printer doesn't give (no heated bed, no chamber sensor)
+    # is left out rather than published as 0 °C.
+    if state.get("bed_temperature") is not None:
+        sensors[f"{prefix}_bed_temperature"] = s(
+            round(state["bed_temperature"], 1), "bed temperature", "°C", "temperature")
+    if state.get("chamber_temperature") is not None:
+        sensors[f"{prefix}_chamber_temperature"] = s(
+            round(state["chamber_temperature"], 1), "chamber temperature", "°C", "temperature")
+    for th, data in sorted(state.get("toolheads", {}).items()):
+        key = f"{prefix}_{th.lower()}"
+        if data.get("temperature") is not None:
+            sensors[f"{key}_temperature"] = s(round(data["temperature"], 1), f"{th} temperature", "°C", "temperature")
+        sensors[f"{key}_target"] = s(round(data.get("target_temperature") or 0.0, 1), f"{th} target", "°C",
+                                     "temperature")
+        sensors[f"{key}_status"] = s(data["status"], f"{th} dock status", icon="mdi:printer-3d-nozzle")
+        loaded = data.get("filament_loaded")
+        filament = ("unknown" if loaded is None else
+                    (data.get("filament_color_name") or "loaded, colour unknown") if loaded else "empty")
+        sensors[f"{key}_filament"] = (filament,
+                                      {"friendly_name": f"{name} {th} filament",
+                                       "color_hex": data.get("filament_color_hex"),
+                                       "icon": "mdi:printer-3d-nozzle"})
+    if "maintenance_overdue" in extras:
+        sensors[f"{prefix}_maintenance_overdue"] = s(extras["maintenance_overdue"], "maintenance tasks overdue", icon="mdi:wrench-clock")
+    if "health_score" in extras:
+        sensors[f"{prefix}_print_health"] = s(extras["health_score"], "print health", "%", icon="mdi:heart-pulse")
+    if "queue_length" in extras:
+        sensors[f"{prefix}_queue_length"] = s(extras["queue_length"], "print queue length", icon="mdi:tray-full")
+    if "last_automation" in extras:
+        sensors[f"{prefix}_last_automation"] = s(extras["last_automation"], "last automation fired", icon="mdi:robot")
+    return sensors
+
+
+def push_sensors(settings=None, extras=None, only=None):
+    """
+    Push the printer's current state to Home Assistant as several sensor
+    entities. Returns {"ok": False, "error": ...} for a missing or
+    unreachable configuration rather than raising.
+    """
+    settings = settings or get_settings()
+    base_url = settings.get("base_url")
+    token = settings.get("token")
+    if not base_url or not token:
+        return {"ok": False, "error": "Home Assistant URL and token must both be set"}
+
+    state = mock_moonraker.get_printer_state()
+    sensors = _sensors_from_state(state, settings["entity_prefix"], extras)
+    if only:
+        sensors = {k: v for k, v in sensors.items() if k in only}
+
+    results = {}
+    unreachable = None
+    for entity_id, (value, attributes) in sensors.items():
+        if unreachable:
+            # One failed connection is enough to know; don't wait out a
+            # timeout for each of the remaining entities.
+            results[entity_id] = {"ok": False, "error": f"Skipped: {unreachable}"}
+            continue
+        results[entity_id] = _put_state(base_url, token, entity_id, value, attributes)
+        r = results[entity_id]
+        if not r["ok"] and (r.get("status") is None or r.get("status") in (401, 403)):
+            # Unreachable, or the token refused: every other entity would
+            # meet the same, so say it once instead of waiting it out each time.
+            unreachable = r["error"]
+
+    out = {"ok": all(r["ok"] for r in results.values()), "results": results,
+           "entities": len(results)}
+    if not out["ok"]:
+        # One reason in words for the whole push: the dashboard shows this,
+        # not "unknown error", when Home Assistant can't be reached or some
+        # sensors are refused.
+        failed = [r for r in results.values() if not r["ok"]]
+        out["error"] = unreachable or (
+            f"{len(failed)} of {len(results)} sensors were refused - the first said: {failed[0]['error']}")
+    return out
+
+
+def publish_entity(entity_id, state, attributes=None, settings=None):
+    """Publish one entity (used by automations to set a custom sensor)."""
+    settings = settings or get_settings()
+    base_url, token = settings.get("base_url"), settings.get("token")
+    if not base_url or not token:
+        return {"ok": False, "error": "Home Assistant URL and token must both be set"}
+    if not re.fullmatch(r"sensor\.[a-z0-9_]{1,64}", entity_id or ""):
+        raise ValueError("Entity must look like sensor.name_with_underscores")
+    return _put_state(base_url, token, entity_id, state, attributes or {})
+
+
+def reset():
+    """Restore default settings. Useful for tests."""
+    _save_settings(_DEFAULT_SETTINGS)
+    return get_settings()

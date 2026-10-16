@@ -22,8 +22,15 @@ from urllib.request import Request, urlopen
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
 
-import app as dv_app        # noqa: E402
-import maintenance          # noqa: E402
+import app as dv_app         # noqa: E402
+import cost_calculator       # noqa: E402
+import home_assistant_bridge  # noqa: E402
+import maintenance           # noqa: E402
+import mock_moonraker        # noqa: E402
+import modules               # noqa: E402
+import notifications         # noqa: E402
+import pairing                # noqa: E402
+import wled_bridge            # noqa: E402
 
 
 class APITestCase(unittest.TestCase):
@@ -51,8 +58,11 @@ class APITestCase(unittest.TestCase):
         maintenance.reset_log()
 
     def get(self, path):
-        with urlopen(self.base + path, timeout=10) as response:
-            return response.status, json.loads(response.read())
+        try:
+            with urlopen(self.base + path, timeout=10) as response:
+                return response.status, json.loads(response.read())
+        except HTTPError as err:
+            return err.code, json.loads(err.read())
 
     def post(self, path, payload):
         request = Request(
@@ -149,11 +159,8 @@ class TestDemoMode(APITestCase):
 class TestRoutingAndErrors(APITestCase):
 
     def test_unknown_endpoint_is_404(self):
-        try:
-            self.get("/api/nope")
-            self.fail("expected a 404")
-        except HTTPError as err:
-            self.assertEqual(err.code, 404)
+        status, _ = self.get("/api/nope")
+        self.assertEqual(status, 404)
 
     def test_unknown_task_is_rejected(self):
         status, body = self.post("/api/maintenance/done?demo=1",
@@ -171,6 +178,329 @@ class TestRoutingAndErrors(APITestCase):
                 with urlopen(self.base + path, timeout=10) as response:
                     self.assertEqual(response.status, 200)
                     self.assertTrue(len(response.read()) > 0)
+
+    def test_every_file_the_pages_load_is_served(self):
+        # The dashboard and the public product page load their stylesheets,
+        # scripts, bundled fonts and screenshots by relative path. A file
+        # renamed or forgotten would only show up as a missing font or a
+        # broken picture, so each reference is fetched here, with the type
+        # a browser needs to use it.
+        import re
+        expected = {".css": "text/css", ".js": "javascript", ".woff2": "font/woff2",
+                    ".jpg": "image/jpeg", ".html": "text/html"}
+        for page in ("/", "/welcome.html"):
+            with urlopen(self.base + page, timeout=10) as response:
+                html = response.read().decode("utf-8")
+            refs = set(re.findall(r'(?:href|src)="([^"#:]+\.(?:css|js|woff2|jpg|html))"', html))
+            refs |= set(re.findall(r'url\("([^"]+\.woff2)"\)', html))
+            if page == "/":
+                with urlopen(self.base + "/theme.css", timeout=10) as response:
+                    refs |= set(re.findall(r'url\("([^"]+\.woff2)"\)', response.read().decode("utf-8")))
+            self.assertTrue(refs, f"{page} references no local files - the pattern is wrong")
+            for ref in sorted(refs):
+                with self.subTest(page=page, ref=ref):
+                    with urlopen(self.base + "/" + ref.lstrip("/"), timeout=10) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertIn(expected[os.path.splitext(ref)[1]],
+                                      response.headers.get("Content-Type", ""))
+                        self.assertTrue(len(response.read()) > 0)
+
+    def test_link_preview_image_is_the_bundled_card(self):
+        # Both pages name an absolute og:image on the published copy, because
+        # crawlers need a full address. The test above skips absolute URLs, so
+        # this one checks the file behind the address ships in frontend/, is
+        # served as a PNG, matches the size the tags declare, and sits on the
+        # worker wrangler.jsonc publishes; otherwise shared links show no picture.
+        import re
+        import struct
+        from urllib.parse import urlparse
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, "wrangler.jsonc"), encoding="utf-8") as fh:
+            worker = re.search(r'"name"\s*:\s*"([^"]+)"', fh.read()).group(1)
+        for page in ("/", "/welcome.html"):
+            with urlopen(self.base + page, timeout=10) as response:
+                html = response.read().decode("utf-8")
+            meta = dict(re.findall(r'<meta property="(og:image(?::\w+)?)" content="([^"]*)"', html))
+            with self.subTest(page=page):
+                self.assertIn("og:image", meta, f"{page} has no og:image")
+                url = urlparse(meta["og:image"])
+                self.assertEqual(url.scheme, "https")
+                self.assertTrue(url.hostname.startswith(worker + "."), url.hostname)
+                with urlopen(self.base + url.path, timeout=10) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertIn("image/png", response.headers.get("Content-Type", ""))
+                    data = response.read()
+                self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+                width, height = struct.unpack(">II", data[16:24])
+                self.assertEqual((str(width), str(height)),
+                                 (meta.get("og:image:width"), meta.get("og:image:height")))
+
+
+class TestModuleGating(APITestCase):
+    """Disabling a module should make its routes refuse, not error out."""
+
+    def setUp(self):
+        super().setUp()
+        modules.reset_state()
+        mock_moonraker.reset_live_state()
+
+    def tearDown(self):
+        super().tearDown()
+        modules.reset_state()
+        mock_moonraker.reset_live_state()
+
+    def test_modules_list_is_always_available(self):
+        status, body = self.get("/api/modules")
+        self.assertEqual(status, 200)
+        self.assertGreater(len(body["modules"]), 0)
+
+    def test_modules_list_names_the_routes_each_module_owns(self):
+        # The dashboard uses this to skip asking a switched-off module.
+        _, body = self.get("/api/modules")
+        routes = body["routes"]
+        self.assertEqual(routes["/api/filament"], "filament_inventory")
+        self.assertEqual(routes["/api/slicer/settings"], "auto_print")
+        self.assertNotIn("/api/printer", routes)          # no owning module
+        ids = {m["id"] for m in body["modules"]}
+        self.assertTrue(set(routes.values()) <= ids)
+
+    def test_a_listed_route_really_is_refused_when_its_module_is_off(self):
+        _, body = self.get("/api/modules")
+        self.assertEqual(body["routes"]["/api/compare"], "compare")
+        self.post("/api/modules/compare/toggle", {"enabled": False})
+        status, blocked = self.get("/api/compare?demo=1")
+        self.assertEqual(status, 403)
+        self.assertTrue(blocked["module_disabled"])
+
+    def test_disabling_a_module_blocks_its_routes(self):
+        self.post("/api/modules/printer_control/toggle", {"enabled": False})
+        status, body = self.get("/api/printer/control/capabilities?demo=1")
+        self.assertEqual(status, 403)
+        self.assertTrue(body["module_disabled"])
+
+    def test_re_enabling_restores_access(self):
+        self.post("/api/modules/printer_control/toggle", {"enabled": False})
+        self.post("/api/modules/printer_control/toggle", {"enabled": True})
+        status, _ = self.get("/api/printer/control/capabilities?demo=1")
+        self.assertEqual(status, 200)
+
+    def test_unknown_module_toggle_is_rejected(self):
+        status, body = self.post("/api/modules/not_real/toggle", {"enabled": True})
+        self.assertEqual(status, 400)
+        self.assertIn("error", body)
+
+
+class TestPrinterControlRoutes(APITestCase):
+
+    def setUp(self):
+        super().setUp()
+        mock_moonraker.reset_live_state()
+
+    def tearDown(self):
+        super().tearDown()
+        mock_moonraker.reset_live_state()
+
+    def test_control_actions_require_connection_or_demo(self):
+        status, body = self.post("/api/printer/control/pause", {})
+        self.assertEqual(status, 409)
+        self.assertFalse(body["connected"])
+
+    def test_pause_and_resume_in_demo(self):
+        status, body = self.post("/api/printer/control/pause?demo=1", {})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["state"], "paused")
+
+        status, body = self.post("/api/printer/control/resume?demo=1", {})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["state"], "printing")
+
+    def test_set_temperature_validates_range(self):
+        status, body = self.post(
+            "/api/printer/control/temperature?demo=1",
+            {"toolhead": "T0", "target": 1000})
+        self.assertEqual(status, 400)
+        self.assertIn("error", body)
+
+    def test_gcode_console_reflects_sent_commands(self):
+        self.post("/api/printer/control/gcode?demo=1", {"command": "G28"})
+        status, body = self.get("/api/printer/control/console?demo=1")
+        self.assertEqual(status, 200)
+        self.assertTrue(any(entry["detail"] == "G28" for entry in body["log"]))
+
+
+class TestPairingRoutes(APITestCase):
+
+    def setUp(self):
+        super().setUp()
+        pairing.reset()
+
+    def tearDown(self):
+        super().tearDown()
+        pairing.reset()
+
+    def test_full_pairing_flow(self):
+        status, body = self.post("/api/pairing/code", {})
+        self.assertEqual(status, 200)
+        code = body["code"]
+
+        status, body = self.post(
+            "/api/pairing/redeem", {"code": code, "device_name": "My Phone"})
+        self.assertEqual(status, 200)
+        device_id = body["id"]
+
+        status, body = self.get("/api/pairing/devices")
+        self.assertEqual(status, 200)
+        self.assertIn(device_id, [d["id"] for d in body["devices"]])
+
+    def test_wrong_code_is_rejected(self):
+        self.post("/api/pairing/code", {})
+        status, body = self.post(
+            "/api/pairing/redeem", {"code": "000000", "device_name": "X"})
+        self.assertEqual(status, 400)
+        self.assertIn("error", body)
+
+    def test_pairing_works_without_a_printer_connected(self):
+        # Pairing is dashboard-level, not printer data, so it is never
+        # gated behind connected/demo the way /api/maintenance is.
+        status, _ = self.post("/api/pairing/code", {})
+        self.assertEqual(status, 200)
+
+
+class TestAppLevelRoutesIgnoreConnectionState(APITestCase):
+    """Settings and inventory routes work with no printer connected at all."""
+
+    def setUp(self):
+        super().setUp()
+        notifications.reset()
+        modules.set_enabled("filament_inventory", True)
+
+    def tearDown(self):
+        super().tearDown()
+        notifications.reset()
+        modules.reset_state()
+
+    def test_notification_settings_readable_without_a_printer(self):
+        status, body = self.get("/api/notifications/settings")
+        self.assertEqual(status, 200)
+        self.assertIn("quiet_hours_start", body)
+
+    def test_notification_settings_writable_without_a_printer(self):
+        status, body = self.post(
+            "/api/notifications/settings", {"ntfy_topic": "my-topic"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["ntfy_topic"], "my-topic")
+
+    def test_filament_inventory_readable_without_a_printer(self):
+        status, body = self.get("/api/filament")
+        self.assertEqual(status, 200)
+        self.assertIn("spools", body)
+
+
+class TestCostCalculatorRoutes(APITestCase):
+
+    def setUp(self):
+        super().setUp()
+        cost_calculator.reset()
+        mock_moonraker.reset_live_state()
+
+    def tearDown(self):
+        super().tearDown()
+        cost_calculator.reset()
+        mock_moonraker.reset_live_state()
+
+    def test_settings_readable_and_writable_without_a_printer(self):
+        status, body = self.get("/api/cost/settings")
+        self.assertEqual(status, 200)
+        self.assertIn("printer_watts", body)
+
+        status, body = self.post("/api/cost/settings", {"printer_watts": 300})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["printer_watts"], 300)
+
+    def test_history_requires_connection_or_demo(self):
+        status, body = self.get("/api/cost/history")
+        self.assertEqual(status, 200)
+        self.assertEqual(body, {"connected": False, "demo": False})
+
+    def test_history_in_demo_mode(self):
+        status, body = self.get("/api/cost/history?demo=1")
+        self.assertEqual(status, 200)
+        self.assertIn("jobs", body)
+        self.assertGreater(len(body["jobs"]), 0)
+
+    def test_current_job_estimate_in_demo_mode(self):
+        status, body = self.get("/api/cost/current?demo=1")
+        self.assertEqual(status, 200)
+        self.assertIn("total_cost", body)
+        self.assertTrue(body["printing"])
+
+    def test_current_job_on_an_idle_printer_is_not_an_error(self):
+        # Idle is an ordinary state: a plain answer with no figures, not a
+        # 400 the browser would log as an error on every refresh.
+        status, body = self.get("/api/cost/current?demo=1&printer=u1-garage")
+        self.assertEqual(status, 200)
+        self.assertFalse(body["printing"])
+        self.assertNotIn("total_cost", body)
+        self.assertNotIn("cost_so_far", body)
+
+
+class TestBridgeRoutes(APITestCase):
+
+    def setUp(self):
+        super().setUp()
+        wled_bridge.reset()
+        home_assistant_bridge.reset()
+        modules.set_enabled("wled_bridge", True)
+        modules.set_enabled("home_assistant_bridge", True)
+
+    def tearDown(self):
+        super().tearDown()
+        wled_bridge.reset()
+        home_assistant_bridge.reset()
+        modules.reset_state()
+
+    def test_wled_settings_roundtrip(self):
+        status, body = self.post("/api/wled/settings", {"host": "192.0.2.9"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["host"], "192.0.2.9")
+
+        status, body = self.get("/api/wled/settings")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["host"], "192.0.2.9")
+
+    def test_wled_push_without_host_fails_cleanly(self):
+        status, body = self.post("/api/wled/push", {})
+        self.assertEqual(status, 200)
+        self.assertFalse(body["ok"])
+
+    def test_wled_routes_respect_module_gating(self):
+        self.post("/api/modules/wled_bridge/toggle", {"enabled": False})
+        status, body = self.get("/api/wled/settings")
+        self.assertEqual(status, 403)
+        self.assertTrue(body["module_disabled"])
+        self.post("/api/modules/wled_bridge/toggle", {"enabled": True})
+
+    def test_home_assistant_settings_roundtrip(self):
+        status, body = self.post(
+            "/api/homeassistant/settings",
+            {"base_url": "http://ha.local:8123", "token": "abc"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["base_url"], "http://ha.local:8123")
+
+    def test_home_assistant_push_without_config_fails_cleanly(self):
+        status, body = self.post("/api/homeassistant/push", {})
+        self.assertEqual(status, 200)
+        self.assertFalse(body["ok"])
+
+
+class TestBackupDownload(APITestCase):
+
+    def test_backup_returns_a_zip_file(self):
+        request = Request(self.base + "/api/backup")
+        with urlopen(request, timeout=10) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers["Content-Type"], "application/zip")
+            self.assertGreater(len(response.read()), 0)
 
 
 if __name__ == "__main__":

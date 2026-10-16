@@ -1,0 +1,7 @@
+{
+  "name": "deja-vu1",
+  "compatibility_date": "2026-09-19",
+  "assets": {
+    "directory": "./frontend"
+  }
+}

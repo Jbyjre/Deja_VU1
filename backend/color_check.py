@@ -35,6 +35,7 @@ module. See docs/hardware-modules.md.
 
 import random
 
+import mock_moonraker
 from mock_moonraker import get_current_job_requirements, get_printer_state
 
 # Same fixed seed idea as the mock printer: consistent demos.
@@ -188,10 +189,25 @@ def check_current_job():
     compares them. Returns one result per toolhead plus an overall verdict.
     """
     job = get_current_job_requirements()
+    if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        # A real printer and no sensor fitted: nothing was measured, so
+        # nothing is reported - the simulated reading (with its deliberate
+        # demo mismatch) must never be passed off as this printer's.
+        return {
+            "simulated": False,
+            "hardware_connected": False,
+            "note": "No colour sensor is fitted, so nothing was measured. Confirm Print still compares "
+                    "the file with what the printer itself reports loaded.",
+            "filename": job["filename"],
+            "overall": "no_sensor",
+            "checks": [],
+        }
     results = []
 
     for requirement in job["required_filament"]:
         toolhead = requirement["toolhead"]
+        if not requirement.get("expected_color_hex"):
+            continue   # the file doesn't say which colour: nothing to compare
         reading = read_sensor(toolhead)
 
         result = compare(requirement["expected_color_hex"], reading["detected_hex"])
@@ -203,8 +219,11 @@ def check_current_job():
         })
         results.append(result)
 
-    # The whole job is only OK if every toolhead is OK.
-    if any(r["verdict"] == "mismatch" for r in results):
+    # The whole job is only OK if every toolhead is OK. A file that names no
+    # colour for any toolhead has nothing to compare, which isn't a match.
+    if not results:
+        overall = "nothing_to_check"
+    elif any(r["verdict"] == "mismatch" for r in results):
         overall = "mismatch"
     elif any(r["verdict"] == "close" for r in results):
         overall = "close"

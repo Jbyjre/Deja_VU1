@@ -20,16 +20,29 @@ Nothing here talks to a printer directly. It asks mock_moonraker for history,
 so swapping in a real printer later changes nothing in this file.
 """
 
-import json
 import os
 from datetime import datetime, timedelta
 
+import mock_moonraker
 from mock_moonraker import get_print_history
+import storage
 
 # Where the "when did I last do this task" records are saved. A plain JSON
 # file keeps this dependency-free — no database to install.
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _LOG_PATH = os.path.join(_DATA_DIR, "maintenance_log.json")
+
+
+def _log_path():
+    """
+    Each printer in the fleet keeps its own maintenance log. The original
+    (default) printer keeps the original file name, so an existing log is
+    never lost when the fleet feature arrives.
+    """
+    printer_id = mock_moonraker.selected_printer_id()
+    if printer_id == mock_moonraker.DEFAULT_PRINTER_ID:
+        return _LOG_PATH
+    return os.path.join(_DATA_DIR, f"maintenance_log.{printer_id}.json")
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +116,21 @@ TASKS = [
         "severity": "routine",
         "est_minutes": 10,
     },
+    {
+        # Not on a timer: this one comes due the moment a nozzle or hotend
+        # is swapped (record_swap), because offsets and flow calibration no
+        # longer describe the hardware that's installed.
+        "id": "calibration",
+        "name": "Recalibrate after a nozzle/hotend swap",
+        "description": "Re-run toolhead offset and flow calibration so the new "
+                       "nozzle lines up with the other toolheads.",
+        "hours_threshold": None,
+        "prints_threshold": None,
+        "days_threshold": None,
+        "event_triggered": True,
+        "severity": "important",
+        "est_minutes": 15,
+    },
 ]
 
 _TASKS_BY_ID = {t["id"]: t for t in TASKS}
@@ -122,6 +150,25 @@ def _default_log():
     — instead of everything reading either "brand new" or "all overdue".
     """
     history = get_print_history()
+
+    if history and mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        # A real printer: when each task was really last done isn't known,
+        # so counting starts now, from the printer's current totals. The
+        # "maintenance pass halfway through" story below is for the
+        # simulated printers only - it would invent a past for a real one.
+        now = datetime.now().isoformat(timespec="seconds")
+        hours = sum(job["print_duration_hours"] for job in history)
+        return {
+            "tasks": {
+                t["id"]: {
+                    "last_done_at": now,
+                    "hours_at_last_done": round(hours, 2),
+                    "prints_at_last_done": len(history),
+                }
+                for t in TASKS
+            },
+            "history": [],
+        }
 
     if not history:
         # No prints at all yet: treat everything as done right now.
@@ -160,13 +207,21 @@ def _default_log():
 
 def _load_log():
     """Read the saved log from disk, creating it on the first run."""
-    if not os.path.exists(_LOG_PATH):
+    if not os.path.exists(_log_path()):
+        log = _default_log()
+        # A real printer's log starts from its history. Until that has
+        # loaded the starting point isn't saved: saved early (at 0 hours),
+        # every hour already on the printer would later count as "since last
+        # done" and show every task overdue on the first connection.
+        if mock_moonraker.history_loaded():
+            _save_log(log)
+        return log
+
+    log = storage.load_json(_log_path(), None)
+    if not isinstance(log, dict) or not isinstance(log.get("tasks"), dict):
         log = _default_log()
         _save_log(log)
         return log
-
-    with open(_LOG_PATH, "r", encoding="utf-8") as fh:
-        log = json.load(fh)
 
     # If a new task was added to TASKS after the log was created, give it a
     # sensible starting point rather than crashing.
@@ -179,9 +234,7 @@ def _load_log():
 
 def _save_log(log):
     """Write the log back to disk."""
-    os.makedirs(_DATA_DIR, exist_ok=True)
-    with open(_LOG_PATH, "w", encoding="utf-8") as fh:
-        json.dump(log, fh, indent=2)
+    storage.save_json(_log_path(), log)
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +303,9 @@ def _evaluate_task(task, entry):
     """
     usage = _usage_since(entry)
 
+    if task.get("event_triggered"):
+        return _evaluate_event_task(task, entry, usage)
+
     # Each entry is (percent_through_interval, human readable reason).
     ratios = []
 
@@ -288,6 +344,48 @@ def _evaluate_task(task, entry):
         "last_done_at": entry["last_done_at"],
         "usage_since": usage,
     }
+
+
+def _evaluate_event_task(task, entry, usage):
+    """A task that is due only after something happened (a hardware swap)."""
+    swap = entry.get("swap_pending")
+    if swap:
+        status, percent = "overdue", 100.0
+        reason = (f"{swap['kind'].capitalize()} swapped on {swap['toolhead']} "
+                  f"{swap['at'][:10]} - not recalibrated since")
+    else:
+        status, percent = "ok", 0.0
+        reason = "No nozzle or hotend swap recorded since the last calibration"
+    return {
+        "id": task["id"], "name": task["name"], "description": task["description"],
+        "severity": task["severity"], "est_minutes": task["est_minutes"],
+        "status": status, "percent": percent, "reason": reason, "all_reasons": [reason],
+        "last_done_at": entry["last_done_at"], "usage_since": usage,
+        "event_triggered": True, "swap": swap,
+    }
+
+
+def record_swap(kind, toolhead, note=""):
+    """
+    Record that a nozzle or hotend was swapped. The calibration task becomes
+    due straight away and stays due until it is marked done.
+    """
+    if kind not in ("nozzle", "hotend"):
+        raise ValueError("kind must be 'nozzle' or 'hotend'")
+    if toolhead not in mock_moonraker.TOOLHEADS:
+        raise ValueError(f"Unknown toolhead: {toolhead}")
+    log = _load_log()
+    now = datetime.now().isoformat(timespec="seconds")
+    log["tasks"]["calibration"]["swap_pending"] = {"kind": kind, "toolhead": toolhead, "at": now}
+    log["history"].append({
+        "task_id": "hardware_swap",
+        "task_name": f"{kind.capitalize()} swapped on {toolhead}",
+        "completed_at": now,
+        "printer_hours_at_completion": get_printer_totals()["total_print_hours"],
+        "note": note,
+    })
+    _save_log(log)
+    return get_status()
 
 
 # ---------------------------------------------------------------------------
@@ -331,7 +429,7 @@ def mark_done(task_id, note=""):
     printer's current totals, so the countdown for that task starts over from
     here. Returns the freshly recalculated status.
     """
-    if task_id not in _TASKS_BY_ID:
+    if not isinstance(task_id, str) or task_id not in _TASKS_BY_ID:
         raise ValueError(f"Unknown maintenance task: {task_id}")
 
     log = _load_log()
@@ -371,6 +469,22 @@ def reset_log():
     log = _default_log()
     _save_log(log)
     return log
+
+
+def forget_printer(printer_id):
+    """Delete a removed simulated printer's log (never the default printer's)."""
+    if printer_id == mock_moonraker.DEFAULT_PRINTER_ID:
+        return
+    path = os.path.join(_DATA_DIR, f"maintenance_log.{printer_id}.json")
+    if os.path.exists(path):
+        os.remove(path)
+
+
+def reset_all_logs():
+    """Reset every printer's log, not just the selected one's."""
+    for printer_id in mock_moonraker.printer_ids():
+        with mock_moonraker.use_printer(printer_id):
+            reset_log()
 
 
 # ---------------------------------------------------------------------------

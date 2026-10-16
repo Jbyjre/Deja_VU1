@@ -1,0 +1,260 @@
+"""
+print_queue.py
+==============
+
+A short, ordered list of files to print one after another on a printer.
+
+Every start goes through the same Confirm Print gate as a manual start
+(print_gate.py): when a print finishes and the queue is set to advance on
+its own, the next file is checked first -
+  clear    -> it starts
+  confirm  -> it is held: there are warnings a person has to read
+  blocked  -> it is held, with the reasons
+so the queue can never start a print a person couldn't have started from
+the confirm screen. Held items say exactly why they are waiting.
+
+Stored per printer in backend/data/print_queue.json.
+"""
+
+import os
+import threading
+import uuid
+from datetime import datetime
+
+import file_library
+import mock_moonraker
+import print_gate
+import printer_control
+import storage
+
+_DATA_DIR = storage.DATA_DIR
+_PATH = os.path.join(_DATA_DIR, "print_queue.json")
+MAX_ITEMS = 20
+_lock = threading.RLock()
+
+
+def _load():
+    if not os.path.exists(_PATH):
+        return {}
+    return storage.load_json(_PATH, {})
+
+
+def _save(data):
+    storage.save_json(_PATH, data)
+
+
+def _queue(data, printer_id):
+    return data.setdefault(printer_id, {"items": [], "auto_advance": False})
+
+
+def get(printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    with _lock:
+        q = _queue(_load(), printer_id)
+    return {"printer": printer_id, **q}
+
+
+def add(filename, printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    if not isinstance(filename, str) or not filename.strip():
+        raise ValueError("Choose a G-code file to queue")
+    if file_library.kind_of(filename) != "gcode":
+        raise ValueError("Only G-code files can be queued")
+    if not file_library.exists(filename):
+        raise ValueError(f"No file called {filename} in the library")
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        waiting = [i for i in q["items"] if i["status"] in ("queued", "held")]
+        if len(waiting) >= MAX_ITEMS:
+            raise ValueError(f"The queue holds at most {MAX_ITEMS} files")
+        q["items"].append({"id": uuid.uuid4().hex[:8], "filename": filename, "status": "queued",
+                           "added_at": datetime.now().isoformat(timespec="seconds"), "note": None})
+        _save(data)
+    return get(printer_id)
+
+
+def transfer(item_id, from_printer, to_printer):
+    """
+    Move a waiting item to another printer's queue, all at once: it is
+    either on the new queue and gone from the old one, or (on any refusal)
+    exactly where it was. Returns (filename, the new queue).
+    """
+    with _lock:
+        data = _load()
+        source = _queue(data, from_printer)
+        item = next((i for i in source["items"] if i["id"] == item_id), None)
+        if item is None:
+            raise ValueError("That item isn't in the queue any more")
+        if item["status"] not in ("queued", "held"):
+            raise ValueError("Only waiting items can be moved - that one has started or finished")
+        filename = item["filename"]
+        if file_library.kind_of(filename) != "gcode" or not file_library.exists(filename):
+            raise ValueError(f"No G-code file called {filename} in the library")
+        target = _queue(data, to_printer)
+        if len([i for i in target["items"] if i["status"] in ("queued", "held")]) >= MAX_ITEMS:
+            raise ValueError(f"The queue holds at most {MAX_ITEMS} files")
+        source["items"] = [i for i in source["items"] if i["id"] != item_id]
+        target["items"].append({"id": uuid.uuid4().hex[:8], "filename": filename, "status": "queued",
+                                "added_at": datetime.now().isoformat(timespec="seconds"), "note": None})
+        _save(data)
+    return filename, get(to_printer)
+
+
+def remove(item_id, printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        before = len(q["items"])
+        if any(i["id"] == item_id and i["status"] == "starting" for i in q["items"]):
+            raise ValueError("That file is being started on the printer right now")
+        q["items"] = [i for i in q["items"] if i["id"] != item_id]
+        if len(q["items"]) == before:
+            raise ValueError("That item isn't in the queue")
+        _save(data)
+    return get(printer_id)
+
+
+def move(item_id, direction, printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    if direction not in ("up", "down"):
+        raise ValueError("direction must be up or down")
+    with _lock:
+        data = _load()
+        items = _queue(data, printer_id)["items"]
+        idx = next((n for n, i in enumerate(items) if i["id"] == item_id), None)
+        if idx is None:
+            raise ValueError("That item isn't in the queue")
+        swap = idx - 1 if direction == "up" else idx + 1
+        if 0 <= swap < len(items):
+            items[idx], items[swap] = items[swap], items[idx]
+            _save(data)
+    return get(printer_id)
+
+
+def set_auto_advance(enabled, printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    with _lock:
+        data = _load()
+        _queue(data, printer_id)["auto_advance"] = bool(enabled)
+        _save(data)
+    return get(printer_id)
+
+
+def clear_done(printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        q["items"] = [i for i in q["items"] if i["status"] in ("queued", "held")]
+        _save(data)
+    return get(printer_id)
+
+
+STALE_CLAIM_S = 15 * 60
+
+
+def _find(data, printer_id, item_id):
+    return next((i for i in _queue(data, printer_id)["items"] if i["id"] == item_id), None)
+
+
+def _settle(printer_id, item_id, **fields):
+    """Record how a start ended, on the item as it is now (the queue may have changed meanwhile)."""
+    with _lock:
+        data = _load()
+        item = _find(data, printer_id, item_id)
+        if item is None:
+            return None
+        item.update(fields)
+        _save(data)
+        return dict(item)
+
+
+def start_next(printer_id=None, confirmed=False, automatic=False):
+    """
+    Try to start the first waiting file. Returns what happened:
+    {"started": item} or {"held": item, "gate": ...} or {"empty": True},
+    or {"busy": True} when a start is already under way on this printer.
+
+    The item is claimed ("starting") under the queue's lock, then the slow
+    part - the gate, the upload to the printer, the start and its read-back,
+    which with a real printer take seconds to minutes - runs without it, so
+    no other queue (or this one's list) waits on a network. Two devices
+    pressing "start next" at once start one print, not two.
+    """
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    now = datetime.now()
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        for i in q["items"]:
+            if i["status"] == "starting":
+                claimed = datetime.fromisoformat(i.get("claimed_at") or now.isoformat())
+                if (now - claimed).total_seconds() < STALE_CLAIM_S:
+                    return {"busy": True, "note": "A start is already under way on this printer",
+                            **get(printer_id)}
+                i.update(status="held", note="The dashboard stopped while starting this - check the printer "
+                                             "before starting it again")
+        item = next((i for i in q["items"] if i["status"] in ("queued", "held")), None)
+        if item is None:
+            _save(data)
+            return {"empty": True, **get(printer_id)}
+        previous = {"status": item["status"], "note": item.get("note")}
+        item.update(status="starting", claimed_at=now.isoformat(timespec="seconds"))
+        _save(data)
+        item_id, filename = item["id"], item["filename"]
+
+    try:
+        with mock_moonraker.use_printer(printer_id):
+            if not file_library.exists(filename):
+                held = _settle(printer_id, item_id, status="held", note="The file is no longer in the library")
+                return {"held": held, **get(printer_id)}
+            gate = print_gate.summary(filename)
+            if gate["verdict"] == "blocked" or (gate["verdict"] == "confirm" and not confirmed):
+                why = gate["blocking"] or gate["warnings"]
+                held = _settle(printer_id, item_id, status="held",
+                               note=("Blocked: " if gate["verdict"] == "blocked" else
+                                     "Waiting for you to confirm: ") + "; ".join(why)[:300])
+                return {"held": held, "gate": gate, **get(printer_id)}
+            try:
+                printer_control.start_print(filename, confirmed=True)
+            except (ValueError, mock_moonraker.PrinterCommandError, printer_control.PrintBlocked) as exc:
+                held = _settle(printer_id, item_id, status="held", note=f"The printer refused to start: {exc}")
+                return {"held": held, **get(printer_id)}
+    except BaseException:
+        # Anything unexpected: put the item back as it was, never stuck "starting".
+        _settle(printer_id, item_id, **previous)
+        raise
+    started = _settle(printer_id, item_id, status="started",
+                      started_at=datetime.now().isoformat(timespec="seconds"),
+                      note="Started automatically after the last print" if automatic else None)
+    return {"started": started, **get(printer_id)}
+
+
+def on_print_finished(printer_id):
+    """Called by the live feed when a print completes."""
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        for item in q["items"]:
+            if item["status"] == "started":
+                item["status"] = "done"
+        _save(data)
+        auto = q["auto_advance"]
+    if auto:
+        return start_next(printer_id, automatic=True)
+    return None
+
+
+def forget(printer_id):
+    """Drop a removed printer's queue (the sandbox tidying up after itself)."""
+    with _lock:
+        data = _load()
+        if data.pop(printer_id, None) is not None:
+            _save(data)
+
+
+def reset():
+    with _lock:
+        _save({})

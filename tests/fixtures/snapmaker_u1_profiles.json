@@ -1,0 +1,1963 @@
+{
+ "filaments": {
+  "Generic ABS": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Generic ABS @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Generic ABS @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Generic ABS @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Generic ASA @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Generic ASA @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Generic ASA @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Generic ASA @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Generic BVOH": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "BVOH"
+  },
+  "Generic PA": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PA"
+  },
+  "Generic PA-CF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PA-CF"
+  },
+  "Generic PC": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PC"
+  },
+  "Generic PC @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PC"
+  },
+  "Generic PC @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PC"
+  },
+  "Generic PCTG": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PCTG"
+  },
+  "Generic PETG": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG HF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG HF @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG HF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG HF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Generic PETG-CF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG-CF"
+  },
+  "Generic PETG-CF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG-CF"
+  },
+  "Generic PETG-CF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG-CF"
+  },
+  "Generic PETG-GF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG-GF"
+  },
+  "Generic PETG-GF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG-GF"
+  },
+  "Generic PETG-GF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG-GF"
+  },
+  "Generic PLA": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA High Speed": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA High Speed @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA High Speed @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA High Speed @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA Silk": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA Silk @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA Silk @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA Silk @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic PLA-CF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA-CF"
+  },
+  "Generic PLA-CF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA-CF"
+  },
+  "Generic PLA-CF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA-CF"
+  },
+  "Generic PVA": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PVA"
+  },
+  "Generic Support For PLA": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic Support For PLA @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic Support For PLA @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic Support For PLA @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Generic TPU": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Generic TPU 95A HF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Generic TPU 95A HF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Generic TPU 95A HF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Generic TPU @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Generic TPU @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Polymaker General PLA Family @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Polymaker Silk PLA Family @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Polymaker Tough PLA Family @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker ABS @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Snapmaker ABS @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Snapmaker ABS @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Snapmaker ABS @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "ABS"
+  },
+  "Snapmaker ASA @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Snapmaker ASA @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Snapmaker ASA @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Snapmaker ASA @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "ASA"
+  },
+  "Snapmaker PEBA 90A @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PEBA"
+  },
+  "Snapmaker PEBA 90A @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PEBA"
+  },
+  "Snapmaker PEBA 90A @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PEBA"
+  },
+  "Snapmaker PETG HF": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG HF @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG HF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG HF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG Translucent @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG Translucent @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG Translucent @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG Translucent @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG"
+  },
+  "Snapmaker PETG-CF @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PETG-CF"
+  },
+  "Snapmaker PETG-CF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PETG-CF"
+  },
+  "Snapmaker PETG-CF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PETG-CF"
+  },
+  "Snapmaker PLA Basic @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Full Spectrum @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Full Spectrum @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Full Spectrum @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Glow @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Glow @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Glow @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Matte @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Matte @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Matte @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Matte @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Rainbow @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Rainbow @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Rainbow @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Rainbow @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Silk @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Silk @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Silk @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Silk @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA SnapSpeed @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA SnapSpeed @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA SnapSpeed @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA SnapSpeed @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Translucent @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Translucent @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Translucent @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Translucent @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Wood @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Wood @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA Wood @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker PLA-CF @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA-CF"
+  },
+  "Snapmaker PLA-CF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA-CF"
+  },
+  "Snapmaker PLA-CF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA-CF"
+  },
+  "Snapmaker PVA @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PVA"
+  },
+  "Snapmaker PVA @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PVA"
+  },
+  "Snapmaker PVA @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PVA"
+  },
+  "Snapmaker Support For PLA @U1 0.2 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker Support For PLA @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker Support For PLA @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker Support For PLA @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "PLA"
+  },
+  "Snapmaker TPU 90A @U1": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU 90A @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU 90A @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU 95A HF @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU 95A HF @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU 95A HF @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU @U1 0.4 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU @U1 0.6 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "filament_type": "TPU"
+  },
+  "Snapmaker TPU @U1 0.8 nozzle": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "filament_type": "TPU"
+  }
+ },
+ "keys": {
+  "filament": [
+   "activate_air_filtration",
+   "activate_chamber_temp_control",
+   "adaptive_pressure_advance",
+   "adaptive_pressure_advance_bridges",
+   "adaptive_pressure_advance_model",
+   "adaptive_pressure_advance_overhangs",
+   "additional_cooling_fan_speed",
+   "bed_type",
+   "chamber_temperature",
+   "chamber_temperatures",
+   "circle_compensation_speed",
+   "close_fan_the_first_x_layers",
+   "compatible_printers",
+   "compatible_printers_condition",
+   "compatible_prints",
+   "compatible_prints_condition",
+   "complete_print_exhaust_fan_speed",
+   "cool_plate_temp",
+   "cool_plate_temp_initial_layer",
+   "counter_coef_1",
+   "counter_coef_2",
+   "counter_coef_3",
+   "counter_limit_max",
+   "counter_limit_min",
+   "default_filament_colour",
+   "diameter_limit",
+   "dont_slow_down_outer_wall",
+   "during_print_exhaust_fan_speed",
+   "enable_overhang_bridge_fan",
+   "enable_pressure_advance",
+   "eng_plate_temp",
+   "eng_plate_temp_initial_layer",
+   "fan_cooling_layer_time",
+   "fan_max_speed",
+   "fan_min_speed",
+   "filament_adaptive_volumetric_speed",
+   "filament_adhesiveness_category",
+   "filament_change_length",
+   "filament_cooling_before_tower",
+   "filament_cooling_final_speed",
+   "filament_cooling_initial_speed",
+   "filament_cooling_moves",
+   "filament_cost",
+   "filament_density",
+   "filament_deretraction_speed",
+   "filament_dev_ams_drying_ams_limitations",
+   "filament_dev_ams_drying_heat_distortion_temperature",
+   "filament_dev_ams_drying_temperature",
+   "filament_dev_ams_drying_time",
+   "filament_dev_chamber_drying_bed_temperature",
+   "filament_dev_chamber_drying_time",
+   "filament_dev_drying_cooling_temperature",
+   "filament_dev_drying_softening_temperature",
+   "filament_diameter",
+   "filament_end_gcode",
+   "filament_extruder_variant",
+   "filament_flow_ratio",
+   "filament_flow_support",
+   "filament_flush_temp",
+   "filament_flush_volumetric_speed",
+   "filament_is_high_temperature",
+   "filament_is_support",
+   "filament_load_time",
+   "filament_loading_speed",
+   "filament_loading_speed_start",
+   "filament_long_retractions_when_cut",
+   "filament_long_retractions_when_ec",
+   "filament_max_volumetric_speed",
+   "filament_minimal_purge_on_wipe_tower",
+   "filament_multitool_ramming",
+   "filament_multitool_ramming_flow",
+   "filament_multitool_ramming_volume",
+   "filament_notes",
+   "filament_pre_cooling_temperature",
+   "filament_pre_cooling_temperature_nc",
+   "filament_prime_volume",
+   "filament_prime_volume_nc",
+   "filament_printable",
+   "filament_ramming_parameters",
+   "filament_ramming_travel_time",
+   "filament_ramming_travel_time_nc",
+   "filament_ramming_volumetric_speed",
+   "filament_ramming_volumetric_speed_nc",
+   "filament_retract_before_wipe",
+   "filament_retract_length_nc",
+   "filament_retract_length_toolchange",
+   "filament_retract_lift_above",
+   "filament_retract_lift_below",
+   "filament_retract_lift_enforce",
+   "filament_retract_restart_extra",
+   "filament_retract_restart_extra_toolchange",
+   "filament_retract_when_changing_layer",
+   "filament_retraction_distances_when_cut",
+   "filament_retraction_distances_when_ec",
+   "filament_retraction_length",
+   "filament_retraction_minimum_travel",
+   "filament_retraction_speed",
+   "filament_scarf_gap",
+   "filament_scarf_height",
+   "filament_scarf_length",
+   "filament_scarf_seam_type",
+   "filament_settings_id",
+   "filament_shrink",
+   "filament_shrinkage_compensation_z",
+   "filament_soluble",
+   "filament_stamping_distance",
+   "filament_stamping_loading_speed",
+   "filament_start_gcode",
+   "filament_toolchange_delay",
+   "filament_tower_ironing_area",
+   "filament_type",
+   "filament_unload_time",
+   "filament_unloading_speed",
+   "filament_unloading_speed_start",
+   "filament_velocity_adaptation_factor",
+   "filament_vendor",
+   "filament_wipe",
+   "filament_wipe_distance",
+   "filament_z_hop",
+   "filament_z_hop_types",
+   "full_fan_speed_layer",
+   "graphic_effect_plate_temp",
+   "graphic_effect_plate_temp_initial_layer",
+   "hole_coef_1",
+   "hole_coef_2",
+   "hole_coef_3",
+   "hole_limit_max",
+   "hole_limit_min",
+   "hot_plate_temp",
+   "hot_plate_temp_initial_layer",
+   "idle_temperature",
+   "impact_strength_z",
+   "internal_bridge_fan_speed",
+   "ironing_fan_speed",
+   "long_retractions_when_ec",
+   "no_slow_down_for_cooling_on_outwalls",
+   "nozzle_temperature",
+   "nozzle_temperature_initial_layer",
+   "nozzle_temperature_range_high",
+   "nozzle_temperature_range_low",
+   "overhang_fan_speed",
+   "overhang_fan_threshold",
+   "pellet_flow_coefficient",
+   "pressure_advance",
+   "reduce_fan_stop_start_freq",
+   "required_nozzle_HRC",
+   "retraction_distances_when_ec",
+   "slow_down_for_layer_cooling",
+   "slow_down_layer_time",
+   "slow_down_min_speed",
+   "supertack_plate_temp",
+   "supertack_plate_temp_initial_layer",
+   "support_material_interface_fan_speed",
+   "temperature_vitrification",
+   "textured_cool_plate_temp",
+   "textured_cool_plate_temp_initial_layer",
+   "textured_plate_temp",
+   "textured_plate_temp_initial_layer",
+   "volumetric_speed_coefficients"
+  ],
+  "machine": [
+   "auxiliary_fan",
+   "bed_exclude_area",
+   "bed_model",
+   "bed_texture",
+   "before_layer_change_gcode",
+   "change_filament_gcode",
+   "cooling_tube_length",
+   "cooling_tube_retraction",
+   "default_bed_type",
+   "default_filament_profile",
+   "default_print_profile",
+   "deretraction_speed",
+   "enable_filament_ramming",
+   "extra_loading_move",
+   "extruder_clearance_height_to_lid",
+   "extruder_clearance_height_to_rod",
+   "extruder_clearance_radius",
+   "extruder_colour",
+   "extruder_offset",
+   "fan_speedup_overhangs",
+   "fan_speedup_time",
+   "gcode_flavor",
+   "high_current_on_filament_swap",
+   "host_type",
+   "layer_change_gcode",
+   "long_retractions_when_cut",
+   "machine_end_gcode",
+   "machine_load_filament_time",
+   "machine_max_acceleration_e",
+   "machine_max_acceleration_extruding",
+   "machine_max_acceleration_retracting",
+   "machine_max_acceleration_travel",
+   "machine_max_acceleration_x",
+   "machine_max_acceleration_y",
+   "machine_max_acceleration_z",
+   "machine_max_jerk_e",
+   "machine_max_jerk_x",
+   "machine_max_jerk_y",
+   "machine_max_jerk_z",
+   "machine_max_speed_e",
+   "machine_max_speed_x",
+   "machine_max_speed_y",
+   "machine_max_speed_z",
+   "machine_min_extruding_rate",
+   "machine_min_travel_rate",
+   "machine_pause_gcode",
+   "machine_start_gcode",
+   "machine_tool_change_time",
+   "machine_unload_filament_time",
+   "max_layer_height",
+   "min_layer_height",
+   "nozzle_diameter",
+   "nozzle_type",
+   "nozzle_volume",
+   "parking_pos_retraction",
+   "pause_gcode",
+   "printable_area",
+   "printable_height",
+   "printer_flow_support",
+   "printer_model",
+   "printer_notes",
+   "printer_settings_id",
+   "printer_technology",
+   "printer_variant",
+   "purge_in_prime_tower",
+   "ramming_pressure_advance_value",
+   "remaining_times",
+   "retract_before_wipe",
+   "retract_length_toolchange",
+   "retract_lift_above",
+   "retract_lift_below",
+   "retract_lift_enforce",
+   "retract_restart_extra",
+   "retract_restart_extra_toolchange",
+   "retract_when_changing_layer",
+   "retraction_distances_when_cut",
+   "retraction_length",
+   "retraction_minimum_travel",
+   "retraction_speed",
+   "scan_first_layer",
+   "silent_mode",
+   "single_extruder_multi_material",
+   "support_multi_bed_types",
+   "thumbnails",
+   "tool_change_temprature_wait",
+   "travel_slope",
+   "use_relative_e_distances",
+   "wipe",
+   "wipe_distance",
+   "z_hop",
+   "z_hop_types",
+   "z_hop_when_prime"
+  ],
+  "process": [
+   "adaptive_layer_height",
+   "bottom_shell_layers",
+   "bottom_shell_thickness",
+   "bottom_solid_infill_flow_ratio",
+   "bottom_surface_pattern",
+   "bridge_acceleration",
+   "bridge_angle",
+   "bridge_density",
+   "bridge_flow",
+   "bridge_no_support",
+   "bridge_speed",
+   "brim_object_gap",
+   "brim_type",
+   "brim_width",
+   "compatible_printers",
+   "compatible_printers_condition",
+   "default_acceleration",
+   "default_jerk",
+   "detect_narrow_internal_solid_infill",
+   "detect_overhang_wall",
+   "detect_thin_wall",
+   "draft_shield",
+   "elefant_foot_compensation",
+   "enable_arc_fitting",
+   "enable_overhang_speed",
+   "enable_prime_tower",
+   "enable_support",
+   "enforce_support_layers",
+   "ensure_vertical_shell_thickness",
+   "exclude_object",
+   "filename_format",
+   "filter_out_gap_fill",
+   "flush_into_infill",
+   "flush_into_objects",
+   "flush_into_support",
+   "fuzzy_skin",
+   "fuzzy_skin_point_distance",
+   "fuzzy_skin_thickness",
+   "gap_fill_enabled",
+   "gap_fill_target",
+   "gap_infill_speed",
+   "gcode_add_line_number",
+   "gcode_comments",
+   "gcode_label_objects",
+   "independent_support_layer_height",
+   "infill_combination",
+   "infill_direction",
+   "infill_jerk",
+   "infill_wall_overlap",
+   "initial_layer_acceleration",
+   "initial_layer_infill_speed",
+   "initial_layer_jerk",
+   "initial_layer_line_width",
+   "initial_layer_print_height",
+   "initial_layer_speed",
+   "initial_layer_travel_speed",
+   "inner_wall_acceleration",
+   "inner_wall_jerk",
+   "inner_wall_line_width",
+   "inner_wall_speed",
+   "interface_shells",
+   "internal_bridge_speed",
+   "internal_bridge_support_thickness",
+   "internal_solid_infill_acceleration",
+   "internal_solid_infill_line_width",
+   "internal_solid_infill_pattern",
+   "internal_solid_infill_speed",
+   "ironing_flow",
+   "ironing_spacing",
+   "ironing_speed",
+   "ironing_type",
+   "layer_height",
+   "line_width",
+   "max_bridge_length",
+   "max_travel_detour_distance",
+   "min_bead_width",
+   "min_feature_size",
+   "min_width_top_surface",
+   "minimum_sparse_infill_area",
+   "only_one_wall_first_layer",
+   "only_one_wall_top",
+   "ooze_prevention",
+   "outer_wall_acceleration",
+   "outer_wall_jerk",
+   "outer_wall_line_width",
+   "outer_wall_speed",
+   "overhang_1_4_speed",
+   "overhang_2_4_speed",
+   "overhang_3_4_speed",
+   "overhang_4_4_speed",
+   "overhang_speed_classic",
+   "overhang_totally_speed",
+   "post_process",
+   "precise_outer_wall",
+   "precise_z_height",
+   "preheat_steps",
+   "preheat_time",
+   "prime_tower_brim_width",
+   "prime_tower_width",
+   "prime_volume",
+   "print_flow_ratio",
+   "print_sequence",
+   "print_settings_id",
+   "process_flow_support",
+   "raft_contact_distance",
+   "raft_expansion",
+   "raft_first_layer_density",
+   "raft_first_layer_expansion",
+   "raft_layers",
+   "reduce_crossing_wall",
+   "reduce_infill_retraction",
+   "resolution",
+   "role_based_wipe_speed",
+   "seam_gap",
+   "seam_position",
+   "single_extruder_multi_material_priming",
+   "skirt_distance",
+   "skirt_height",
+   "skirt_loops",
+   "slice_closing_radius",
+   "slicing_mode",
+   "slowdown_for_curled_perimeters",
+   "small_perimeter_speed",
+   "small_perimeter_threshold",
+   "smooth_coefficient",
+   "sparse_infill_acceleration",
+   "sparse_infill_density",
+   "sparse_infill_line_width",
+   "sparse_infill_pattern",
+   "sparse_infill_speed",
+   "spiral_mode",
+   "standby_temperature_delta",
+   "support_angle",
+   "support_base_pattern",
+   "support_base_pattern_spacing",
+   "support_bottom_interface_spacing",
+   "support_bottom_z_distance",
+   "support_critical_regions_only",
+   "support_expansion",
+   "support_filament",
+   "support_interface_bottom_layers",
+   "support_interface_filament",
+   "support_interface_loop_pattern",
+   "support_interface_pattern",
+   "support_interface_spacing",
+   "support_interface_speed",
+   "support_interface_top_layers",
+   "support_line_width",
+   "support_material_synchronize_layers",
+   "support_object_xy_distance",
+   "support_on_build_plate_only",
+   "support_speed",
+   "support_style",
+   "support_threshold_angle",
+   "support_top_z_distance",
+   "support_type",
+   "thick_bridges",
+   "timelapse_type",
+   "top_shell_layers",
+   "top_shell_thickness",
+   "top_solid_infill_flow_ratio",
+   "top_surface_acceleration",
+   "top_surface_jerk",
+   "top_surface_line_width",
+   "top_surface_pattern",
+   "top_surface_speed",
+   "travel_acceleration",
+   "travel_jerk",
+   "travel_speed",
+   "tree_support_adaptive_layer_height",
+   "tree_support_auto_brim",
+   "tree_support_branch_angle",
+   "tree_support_branch_diameter",
+   "tree_support_branch_distance",
+   "tree_support_brim_width",
+   "tree_support_wall_count",
+   "tree_support_with_infill",
+   "wall_distribution_count",
+   "wall_generator",
+   "wall_infill_order",
+   "wall_loops",
+   "wall_transition_angle",
+   "wall_transition_filter_deviation",
+   "wall_transition_length",
+   "wipe_on_loops",
+   "wipe_speed",
+   "wipe_tower_cone_angle",
+   "wipe_tower_extra_rib_length",
+   "wipe_tower_extra_spacing",
+   "wipe_tower_filament",
+   "wipe_tower_no_sparse_layers",
+   "wipe_tower_rotation_angle",
+   "wipe_tower_wall_type",
+   "xy_contour_compensation",
+   "xy_hole_compensation"
+  ]
+ },
+ "machines": {
+  "Snapmaker U1 (0.2 nozzle)": {
+   "nozzle_diameter": [
+    "0.2",
+    "0.2",
+    "0.2",
+    "0.2"
+   ],
+   "printable_area": [
+    "0.5x1",
+    "270.5x1",
+    "270.5x271",
+    "0.5x271"
+   ],
+   "printable_height": "270.05",
+   "printer_model": "Snapmaker U1",
+   "printer_variant": "0.2"
+  },
+  "Snapmaker U1 (0.4 nozzle)": {
+   "nozzle_diameter": [
+    "0.4",
+    "0.4",
+    "0.4",
+    "0.4"
+   ],
+   "printable_area": [
+    "0.5x1",
+    "270.5x1",
+    "270.5x271",
+    "0.5x271"
+   ],
+   "printable_height": "270.05",
+   "printer_model": "Snapmaker U1",
+   "printer_variant": "0.4"
+  },
+  "Snapmaker U1 (0.6 nozzle)": {
+   "nozzle_diameter": [
+    "0.6",
+    "0.6",
+    "0.6",
+    "0.6"
+   ],
+   "printable_area": [
+    "0.5x1",
+    "270.5x1",
+    "270.5x271",
+    "0.5x271"
+   ],
+   "printable_height": "270.05",
+   "printer_model": "Snapmaker U1",
+   "printer_variant": "0.6"
+  },
+  "Snapmaker U1 (0.8 nozzle)": {
+   "nozzle_diameter": [
+    "0.8",
+    "0.8",
+    "0.8",
+    "0.8"
+   ],
+   "printable_area": [
+    "0.5x1",
+    "270.5x1",
+    "270.5x271",
+    "0.5x271"
+   ],
+   "printable_height": "270.05",
+   "printer_model": "Snapmaker U1",
+   "printer_variant": "0.8"
+  }
+ },
+ "options": {
+  "filament": [
+   "activate_air_filtration",
+   "activate_chamber_temp_control",
+   "adaptive_pressure_advance",
+   "adaptive_pressure_advance_bridges",
+   "adaptive_pressure_advance_model",
+   "adaptive_pressure_advance_overhangs",
+   "additional_cooling_fan_speed",
+   "chamber_temperature",
+   "close_fan_the_first_x_layers",
+   "compatible_printers",
+   "compatible_printers_condition",
+   "compatible_prints",
+   "compatible_prints_condition",
+   "complete_print_exhaust_fan_speed",
+   "cool_plate_temp",
+   "cool_plate_temp_initial_layer",
+   "default_filament_colour",
+   "dont_slow_down_outer_wall",
+   "during_print_exhaust_fan_speed",
+   "enable_overhang_bridge_fan",
+   "enable_pressure_advance",
+   "eng_plate_temp",
+   "eng_plate_temp_initial_layer",
+   "fan_cooling_layer_time",
+   "fan_max_speed",
+   "fan_min_speed",
+   "filament_cooling_final_speed",
+   "filament_cooling_initial_speed",
+   "filament_cooling_moves",
+   "filament_cost",
+   "filament_density",
+   "filament_deretraction_speed",
+   "filament_diameter",
+   "filament_end_gcode",
+   "filament_flow_ratio",
+   "filament_flow_support",
+   "filament_is_high_temperature",
+   "filament_is_support",
+   "filament_loading_speed",
+   "filament_loading_speed_start",
+   "filament_long_retractions_when_cut",
+   "filament_max_volumetric_speed",
+   "filament_minimal_purge_on_wipe_tower",
+   "filament_multitool_ramming",
+   "filament_multitool_ramming_flow",
+   "filament_multitool_ramming_volume",
+   "filament_notes",
+   "filament_ramming_parameters",
+   "filament_retract_before_wipe",
+   "filament_retract_length_toolchange",
+   "filament_retract_lift_above",
+   "filament_retract_lift_below",
+   "filament_retract_lift_enforce",
+   "filament_retract_restart_extra",
+   "filament_retract_restart_extra_toolchange",
+   "filament_retract_when_changing_layer",
+   "filament_retraction_distances_when_cut",
+   "filament_retraction_length",
+   "filament_retraction_minimum_travel",
+   "filament_retraction_speed",
+   "filament_shrink",
+   "filament_shrinkage_compensation_z",
+   "filament_soluble",
+   "filament_stamping_distance",
+   "filament_stamping_loading_speed",
+   "filament_start_gcode",
+   "filament_toolchange_delay",
+   "filament_tower_ironing_area",
+   "filament_type",
+   "filament_unloading_speed",
+   "filament_unloading_speed_start",
+   "filament_vendor",
+   "filament_wipe",
+   "filament_wipe_distance",
+   "filament_z_hop",
+   "filament_z_hop_types",
+   "full_fan_speed_layer",
+   "graphic_effect_plate_temp",
+   "graphic_effect_plate_temp_initial_layer",
+   "hot_plate_temp",
+   "hot_plate_temp_initial_layer",
+   "idle_temperature",
+   "inherits",
+   "internal_bridge_fan_speed",
+   "ironing_fan_speed",
+   "nozzle_temperature",
+   "nozzle_temperature_initial_layer",
+   "nozzle_temperature_range_high",
+   "nozzle_temperature_range_low",
+   "overhang_fan_speed",
+   "overhang_fan_threshold",
+   "pellet_flow_coefficient",
+   "pressure_advance",
+   "reduce_fan_stop_start_freq",
+   "required_nozzle_HRC",
+   "slow_down_for_layer_cooling",
+   "slow_down_layer_time",
+   "slow_down_min_speed",
+   "supertack_plate_temp",
+   "supertack_plate_temp_initial_layer",
+   "support_material_interface_fan_speed",
+   "temperature_vitrification",
+   "textured_cool_plate_temp",
+   "textured_cool_plate_temp_initial_layer",
+   "textured_plate_temp",
+   "textured_plate_temp_initial_layer"
+  ],
+  "machine": [
+   "adaptive_bed_mesh_margin",
+   "auxiliary_fan",
+   "bbl_use_printhost",
+   "bed_custom_model",
+   "bed_custom_texture",
+   "bed_exclude_area",
+   "bed_mesh_max",
+   "bed_mesh_min",
+   "bed_mesh_probe_distance",
+   "before_layer_change_gcode",
+   "best_object_pos",
+   "change_extrusion_role_gcode",
+   "change_filament_gcode",
+   "cooling_tube_length",
+   "cooling_tube_retraction",
+   "default_bed_type",
+   "default_print_profile",
+   "disable_m73",
+   "emit_machine_limits_to_gcode",
+   "enable_change_pressure_when_wiping",
+   "enable_filament_ramming",
+   "enable_long_retraction_when_cut",
+   "extra_loading_move",
+   "extruder_clearance_height_to_lid",
+   "extruder_clearance_height_to_rod",
+   "extruder_clearance_radius",
+   "fan_kickstart",
+   "fan_speedup_overhangs",
+   "fan_speedup_time",
+   "gcode_flavor",
+   "head_wrap_detect_zone",
+   "high_current_on_filament_swap",
+   "host_type",
+   "inherits",
+   "layer_change_gcode",
+   "long_retractions_when_cut",
+   "machine_end_gcode",
+   "machine_load_filament_time",
+   "machine_max_acceleration_e",
+   "machine_max_acceleration_extruding",
+   "machine_max_acceleration_retracting",
+   "machine_max_acceleration_travel",
+   "machine_max_acceleration_x",
+   "machine_max_acceleration_y",
+   "machine_max_acceleration_z",
+   "machine_max_jerk_e",
+   "machine_max_jerk_x",
+   "machine_max_jerk_y",
+   "machine_max_jerk_z",
+   "machine_max_junction_deviation",
+   "machine_max_speed_e",
+   "machine_max_speed_x",
+   "machine_max_speed_y",
+   "machine_max_speed_z",
+   "machine_min_extruding_rate",
+   "machine_min_travel_rate",
+   "machine_pause_gcode",
+   "machine_start_gcode",
+   "machine_tool_change_time",
+   "machine_unload_filament_time",
+   "manual_filament_change",
+   "max_resonance_avoidance_speed",
+   "min_resonance_avoidance_speed",
+   "nozzle_height",
+   "nozzle_hrc",
+   "nozzle_type",
+   "nozzle_volume",
+   "parking_pos_retraction",
+   "pellet_modded_printer",
+   "preferred_orientation",
+   "print_host",
+   "print_host_webui",
+   "printable_area",
+   "printable_height",
+   "printer_flow_support",
+   "printer_model",
+   "printer_notes",
+   "printer_structure",
+   "printer_technology",
+   "printer_variant",
+   "printhost_apikey",
+   "printhost_authorization_type",
+   "printhost_cafile",
+   "printhost_password",
+   "printhost_port",
+   "printhost_ssl_ignore_revoke",
+   "printhost_user",
+   "printing_by_object_gcode",
+   "purge_in_prime_tower",
+   "ramming_line_width_ratio",
+   "ramming_pressure_advance_value",
+   "resonance_avoidance",
+   "retract_lift_enforce",
+   "retraction_distances_when_cut",
+   "scan_first_layer",
+   "silent_mode",
+   "single_extruder_multi_material",
+   "support_air_filtration",
+   "support_chamber_temp_control",
+   "support_multi_bed_types",
+   "template_custom_gcode",
+   "thumbnails",
+   "thumbnails_format",
+   "time_cost",
+   "time_lapse_gcode",
+   "tool_change_temprature_wait",
+   "travel_slope",
+   "upward_compatible_machine",
+   "use_firmware_retraction",
+   "use_relative_e_distances",
+   "z_hop_types",
+   "z_hop_when_prime",
+   "z_offset"
+  ],
+  "process": [
+   "accel_to_decel_enable",
+   "accel_to_decel_factor",
+   "align_infill_direction_to_model",
+   "alternate_extra_wall",
+   "bottom_shell_layers",
+   "bottom_shell_thickness",
+   "bottom_solid_infill_flow_ratio",
+   "bottom_surface_density",
+   "bottom_surface_pattern",
+   "bridge_acceleration",
+   "bridge_angle",
+   "bridge_density",
+   "bridge_flow",
+   "bridge_no_support",
+   "bridge_speed",
+   "brim_ears_detection_length",
+   "brim_ears_max_angle",
+   "brim_object_gap",
+   "brim_type",
+   "brim_width",
+   "calib_flowrate_topinfill_special_order",
+   "compatible_printers",
+   "compatible_printers_condition",
+   "counterbore_hole_bridging",
+   "default_acceleration",
+   "default_jerk",
+   "default_junction_deviation",
+   "delta_temperature",
+   "detect_narrow_internal_solid_infill",
+   "detect_overhang_wall",
+   "detect_thin_wall",
+   "dithering_local_z_infill",
+   "dithering_local_z_mode",
+   "dithering_local_z_whole_objects",
+   "dont_filter_internal_bridges",
+   "draft_shield",
+   "elefant_foot_compensation",
+   "elefant_foot_compensation_layers",
+   "enable_arc_fitting",
+   "enable_extra_bridge_layer",
+   "enable_overhang_speed",
+   "enable_prime_tower",
+   "enable_support",
+   "enforce_support_layers",
+   "ensure_vertical_shell_thickness",
+   "exclude_object",
+   "extra_perimeters_on_overhangs",
+   "extra_solid_infills",
+   "extrusion_rate_smoothing_external_perimeter_only",
+   "filename_format",
+   "fill_multiline",
+   "filter_out_gap_fill",
+   "flush_into_infill",
+   "flush_into_objects",
+   "flush_into_support",
+   "fuzzy_skin",
+   "fuzzy_skin_first_layer",
+   "fuzzy_skin_mode",
+   "fuzzy_skin_noise_type",
+   "fuzzy_skin_octaves",
+   "fuzzy_skin_persistence",
+   "fuzzy_skin_point_distance",
+   "fuzzy_skin_scale",
+   "fuzzy_skin_thickness",
+   "gap_fill_target",
+   "gap_infill_speed",
+   "gcode_add_line_number",
+   "gcode_comments",
+   "gcode_label_objects",
+   "hole_to_polyhole",
+   "hole_to_polyhole_threshold",
+   "hole_to_polyhole_twisted",
+   "independent_support_layer_height",
+   "infill_anchor",
+   "infill_anchor_max",
+   "infill_combination",
+   "infill_combination_max_layer_height",
+   "infill_direction",
+   "infill_jerk",
+   "infill_lock_depth",
+   "infill_overhang_angle",
+   "infill_shift_step",
+   "infill_wall_overlap",
+   "inherits",
+   "initial_layer_acceleration",
+   "initial_layer_infill_speed",
+   "initial_layer_jerk",
+   "initial_layer_line_width",
+   "initial_layer_min_bead_width",
+   "initial_layer_print_height",
+   "initial_layer_speed",
+   "initial_layer_travel_speed",
+   "inner_wall_acceleration",
+   "inner_wall_jerk",
+   "inner_wall_line_width",
+   "inner_wall_speed",
+   "interface_shells",
+   "interlocking_beam",
+   "interlocking_beam_layer_count",
+   "interlocking_beam_width",
+   "interlocking_boundary_avoidance",
+   "interlocking_depth",
+   "interlocking_orientation",
+   "internal_bridge_angle",
+   "internal_bridge_density",
+   "internal_bridge_flow",
+   "internal_bridge_speed",
+   "internal_solid_infill_acceleration",
+   "internal_solid_infill_line_width",
+   "internal_solid_infill_pattern",
+   "internal_solid_infill_speed",
+   "ironing_angle",
+   "ironing_flow",
+   "ironing_inset",
+   "ironing_pattern",
+   "ironing_spacing",
+   "ironing_speed",
+   "ironing_type",
+   "is_infill_first",
+   "lateral_lattice_angle_1",
+   "lateral_lattice_angle_2",
+   "layer_height",
+   "line_width",
+   "local_z_wipe_tower_purge_lines",
+   "make_overhang_printable",
+   "make_overhang_printable_angle",
+   "make_overhang_printable_hole_size",
+   "max_bridge_length",
+   "max_travel_detour_distance",
+   "max_volumetric_extrusion_rate_slope",
+   "max_volumetric_extrusion_rate_slope_segment_length",
+   "min_bead_width",
+   "min_feature_size",
+   "min_length_factor",
+   "min_skirt_length",
+   "min_width_top_surface",
+   "minimum_sparse_infill_area",
+   "mmu_segmented_region_interlocking_depth",
+   "mmu_segmented_region_max_width",
+   "notes",
+   "only_one_wall_first_layer",
+   "only_one_wall_top",
+   "ooze_prevention",
+   "outer_wall_acceleration",
+   "outer_wall_jerk",
+   "outer_wall_line_width",
+   "outer_wall_speed",
+   "overhang_1_4_speed",
+   "overhang_2_4_speed",
+   "overhang_3_4_speed",
+   "overhang_4_4_speed",
+   "overhang_reverse",
+   "overhang_reverse_internal_only",
+   "overhang_reverse_threshold",
+   "post_process",
+   "precise_outer_wall",
+   "precise_z_height",
+   "preheat_steps",
+   "preheat_time",
+   "prime_tower_brim_chamfer",
+   "prime_tower_brim_chamfer_max_width",
+   "prime_tower_brim_width",
+   "prime_tower_width",
+   "prime_volume",
+   "print_flow_ratio",
+   "print_order",
+   "print_sequence",
+   "process_flow_support",
+   "raft_contact_distance",
+   "raft_expansion",
+   "raft_first_layer_density",
+   "raft_first_layer_expansion",
+   "raft_layers",
+   "reduce_crossing_wall",
+   "reduce_infill_retraction",
+   "resolution",
+   "role_based_wipe_speed",
+   "scarf_angle_threshold",
+   "scarf_joint_flow_ratio",
+   "scarf_joint_speed",
+   "scarf_overhang_threshold",
+   "seam_gap",
+   "seam_position",
+   "seam_slope_conditional",
+   "seam_slope_entire_loop",
+   "seam_slope_inner_walls",
+   "seam_slope_min_length",
+   "seam_slope_start_height",
+   "seam_slope_steps",
+   "seam_slope_type",
+   "single_extruder_multi_material_priming",
+   "single_loop_draft_shield",
+   "skeleton_infill_density",
+   "skeleton_infill_line_width",
+   "skin_infill_density",
+   "skin_infill_depth",
+   "skin_infill_line_width",
+   "skirt_distance",
+   "skirt_height",
+   "skirt_loops",
+   "skirt_speed",
+   "skirt_start_angle",
+   "skirt_type",
+   "slice_closing_radius",
+   "slicing_mode",
+   "slow_down_layers",
+   "slowdown_for_curled_perimeters",
+   "small_area_infill_flow_compensation",
+   "small_area_infill_flow_compensation_model",
+   "small_perimeter_speed",
+   "small_perimeter_threshold",
+   "solid_infill_direction",
+   "solid_infill_filament",
+   "solid_infill_rotate_template",
+   "sparse_infill_acceleration",
+   "sparse_infill_density",
+   "sparse_infill_filament",
+   "sparse_infill_line_width",
+   "sparse_infill_pattern",
+   "sparse_infill_rotate_template",
+   "sparse_infill_speed",
+   "spiral_finishing_flow_ratio",
+   "spiral_mode",
+   "spiral_mode_max_xy_smoothing",
+   "spiral_mode_smooth",
+   "spiral_starting_flow_ratio",
+   "staggered_inner_seams",
+   "standby_temperature_delta",
+   "support_angle",
+   "support_base_pattern",
+   "support_base_pattern_spacing",
+   "support_bottom_interface_spacing",
+   "support_bottom_z_distance",
+   "support_critical_regions_only",
+   "support_expansion",
+   "support_filament",
+   "support_interface_bottom_layers",
+   "support_interface_filament",
+   "support_interface_loop_pattern",
+   "support_interface_not_for_body",
+   "support_interface_pattern",
+   "support_interface_spacing",
+   "support_interface_speed",
+   "support_interface_top_layers",
+   "support_ironing",
+   "support_ironing_flow",
+   "support_ironing_pattern",
+   "support_ironing_spacing",
+   "support_line_width",
+   "support_object_first_layer_gap",
+   "support_object_xy_distance",
+   "support_on_build_plate_only",
+   "support_remove_small_overhang",
+   "support_speed",
+   "support_style",
+   "support_threshold_angle",
+   "support_threshold_overlap",
+   "support_top_z_distance",
+   "support_type",
+   "symmetric_infill_y_axis",
+   "thick_bridges",
+   "thick_internal_bridges",
+   "timelapse_type",
+   "top_bottom_infill_wall_overlap",
+   "top_shell_layers",
+   "top_shell_thickness",
+   "top_solid_infill_flow_ratio",
+   "top_surface_acceleration",
+   "top_surface_density",
+   "top_surface_jerk",
+   "top_surface_line_width",
+   "top_surface_pattern",
+   "top_surface_speed",
+   "travel_acceleration",
+   "travel_jerk",
+   "travel_speed",
+   "travel_speed_z",
+   "tree_support_adaptive_layer_height",
+   "tree_support_angle_slow",
+   "tree_support_auto_brim",
+   "tree_support_branch_angle",
+   "tree_support_branch_angle_organic",
+   "tree_support_branch_diameter",
+   "tree_support_branch_diameter_angle",
+   "tree_support_branch_diameter_organic",
+   "tree_support_branch_distance",
+   "tree_support_branch_distance_organic",
+   "tree_support_brim_width",
+   "tree_support_tip_diameter",
+   "tree_support_top_rate",
+   "tree_support_wall_count",
+   "wall_direction",
+   "wall_distribution_count",
+   "wall_filament",
+   "wall_generator",
+   "wall_loops",
+   "wall_sequence",
+   "wall_transition_angle",
+   "wall_transition_filter_deviation",
+   "wall_transition_length",
+   "wipe_before_external_loop",
+   "wipe_on_loops",
+   "wipe_speed",
+   "wipe_tower_bridging",
+   "wipe_tower_cone_angle",
+   "wipe_tower_extra_flow",
+   "wipe_tower_extra_rib_length",
+   "wipe_tower_extra_spacing",
+   "wipe_tower_filament",
+   "wipe_tower_fillet_wall",
+   "wipe_tower_max_purge_speed",
+   "wipe_tower_no_sparse_layers",
+   "wipe_tower_rib_width",
+   "wipe_tower_rotation_angle",
+   "wipe_tower_wall_gap",
+   "wipe_tower_wall_type",
+   "wiping_volumes_extruders",
+   "xy_contour_compensation",
+   "xy_hole_compensation"
+  ]
+ },
+ "processes": {
+  "0.08mm High Quality @Snapmaker U1 (0.2 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "layer_height": "0.08"
+  },
+  "0.08mm Standard @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.08"
+  },
+  "0.10mm Color Mixing @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.1"
+  },
+  "0.10mm High Quality @Snapmaker U1 (0.2 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "layer_height": "0.1"
+  },
+  "0.12mm Standard @Snapmaker U1 (0.2 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.2 nozzle)"
+   ],
+   "layer_height": "0.12"
+  },
+  "0.12mm Standard @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.12"
+  },
+  "0.16mm Standard @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.16"
+  },
+  "0.18mm Standard @Snapmaker U1 (0.6 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "layer_height": "0.18"
+  },
+  "0.20mm High Quality @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.2"
+  },
+  "0.20mm Standard @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.2"
+  },
+  "0.24mm Standard @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.24"
+  },
+  "0.24mm Standard @Snapmaker U1 (0.6 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "layer_height": "0.24"
+  },
+  "0.24mm Standard @Snapmaker U1 (0.8 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "layer_height": "0.24"
+  },
+  "0.28mm Standard @Snapmaker U1 (0.4 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.4 nozzle)"
+   ],
+   "layer_height": "0.28"
+  },
+  "0.30mm Standard @Snapmaker U1 (0.6 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.6 nozzle)"
+   ],
+   "layer_height": "0.3"
+  },
+  "0.32mm Standard @Snapmaker U1 (0.8 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "layer_height": "0.32"
+  },
+  "0.40mm Standard @Snapmaker U1 (0.8 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "layer_height": "0.4"
+  },
+  "0.40mm Strength @Snapmaker U1 (0.8 nozzle)": {
+   "compatible_printers": [
+    "Snapmaker U1 (0.8 nozzle)"
+   ],
+   "layer_height": "0.4"
+  }
+ },
+ "source": {
+  "commit": "da53bc5ffe47d7837ccdfde5f59a5ba1e9ec35f1",
+  "repository": "https://github.com/Snapmaker/OrcaSlicer",
+  "vendor_profile_version": "02.03.03.03"
+ }
+}
