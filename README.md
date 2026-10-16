@@ -17,7 +17,8 @@ Vu1 is an independent open-source project, not affiliated with Snapmaker.</sub>
 > watch-only: you watch a print you're already running, and nothing is started
 > or paused from Deja Vu1. **[How it works, and how to sign up](docs/first-connection.md)**
 
-**Try it in three lines** (Python 3.8 or newer, nothing else):
+**Try it in three lines** (Python 3.8 or newer; the first line needs git, or
+use GitHub's **Code → Download ZIP** instead):
 
 ```bash
 git clone https://github.com/Jbyjre/Deja_VU1.git

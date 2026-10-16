@@ -17,8 +17,10 @@ install on the printer.
 `Details` on the printer's row shows everything a first connection needs
 someone to see: whether the link is open, Klipper's state, which toolheads
 and chamber sensor were found, how much print history was read, and the
-last few hundred exchanges with Moonraker — what was sent and what came
-back. The same is at `GET /api/printers/diagnostics?printer=<id>`. The
+newest 14 exchanges with Moonraker — what was sent and what came back. The
+full record, with the last 300 exchanges, is at
+`GET /api/printers/diagnostics?printer=<id>` (the id is listed at
+`GET /api/fleet/registry`). The
 server's terminal prints every command sent and every failure; start it
 with `DEJAVU_MOONRAKER_LOG=1` to print every exchange, WebSocket messages
 included.

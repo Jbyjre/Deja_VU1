@@ -4,8 +4,8 @@ Deja Vu1 has never talked to a physical Snapmaker U1. Its printer connection
 was written against Snapmaker's published `u1-klipper` and `u1-moonraker`
 source and tested against a stand-in built from that source, over real network
 connections ([real-printer.md](real-printer.md) has the details). Reading the
-source already turned up about a dozen things that would each have broken a
-first connection. The first real connection is where anything the source
+source already turned up about a dozen things that would each have been a bug
+on a first real connection. The first real connection is where anything the source
 doesn't show will turn up, and this page is how to help find it.
 
 ## What it involves
@@ -39,10 +39,16 @@ its controls. Keep it on your home network for the session (see
 ## Steps
 
 1. Get the code: `git clone https://github.com/Jbyjre/Deja_VU1.git`, then
-   `cd Deja_VU1`. Or use GitHub's **Code → Download ZIP** and unzip it.
-2. Start it with every exchange printed to the terminal:
-   - macOS or Linux: `DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py`
-   - Windows PowerShell: `$env:DEJAVU_MOONRAKER_LOG = "1"; python backend\app.py`
+   `cd Deja_VU1`. Or use GitHub's **Code → Download ZIP**, unzip it, and open a
+   terminal in the unzipped folder (GitHub names it `Deja_VU1-main`).
+2. Start it with every exchange recorded, saved to a file:
+   - macOS or Linux: `DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py 2> dejavu-log.txt`
+   - Windows PowerShell: `$env:DEJAVU_MOONRAKER_LOG = "1"; python backend\app.py 2> dejavu-log.txt`
+
+   While a print runs, Klipper reports several times a second, so the detailed
+   log is long. The `2> dejavu-log.txt` part puts it in a file in that folder
+   instead of the terminal; the terminal still shows the address to open. If
+   the dashboard doesn't start, the reason is in that file.
 3. Open **http://localhost:8000** in a browser on that computer. It will say
    no printer is connected.
 4. **Fleet → Add a printer.** Give it a name, paste the address, and add an API
@@ -54,15 +60,23 @@ its controls. Keep it on your home network for the session (see
    progress and finish time with the printer's own screen.
 7. Open **Details** on the printer's row. It shows whether the link is open,
    Klipper's state, which toolheads and chamber sensor were found, how much
-   print history was read, and the last few hundred exchanges with Moonraker.
+   print history was read, and the newest 14 exchanges with Moonraker.
+8. Save the full record, once right after connecting and again at the end:
+   open **http://localhost:8000/api/fleet/registry**, find your printer's `id`
+   (it looks like `printer-1a2b3c`), then open
+   `http://localhost:8000/api/printers/diagnostics?printer=` followed by that
+   id, and save the page (File → Save Page As). It holds the last 300
+   exchanges; with detailed logging on, live updates fill those quickly, which
+   is why the first save matters.
 
 ## What to send back
 
 - What looked right and what looked wrong, compared with the printer's screen.
-- The **Details** output and the terminal log.
-- **Read both before you share them.** They can include addresses on your
-  network and the names of your print files. Remove anything you'd rather keep
-  private.
+- The saved diagnostics pages from step 8 and `dejavu-log.txt` from step 2.
+- **Read them before you share them.** They include the printer's address on
+  your network and can include the names of your print files. They never
+  contain your API key (only whether one is set). Remove anything you'd rather
+  keep private.
 
 ## Sign up
 
