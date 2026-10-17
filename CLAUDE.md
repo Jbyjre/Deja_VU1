@@ -20,7 +20,7 @@ trust the code and fix this file.
   mechanically everywhere: "bring back the laptop and phone" meant about half
   the scenes, not every one. Re-read every earlier request in the thread
   before finishing, and go a step beyond each one.
-- Launch video: 90 seconds at most unless the owner says otherwise
+- Launch video: 75 seconds for the marketing cuts (the owner, version 8) unless the owner says otherwise
   (`promo-video/README.md` holds the owner's other video preferences).
 - Read before editing. Grep first, then read with offset and limit. Cap
   command output.

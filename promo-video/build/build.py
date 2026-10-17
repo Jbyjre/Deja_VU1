@@ -24,16 +24,24 @@ def shot(name):
     return json.load(open(os.path.join(ROOT, 'footage', name + '.json')))
 
 
-# Version 7: one timeline for both cuts, 90 s (the owner's limit). SEG says when each feature
-# starts and ends on screen; scene.js follows it, and music/compose7.py is laid out to it
-# (two bars of intro, the band coming in at 5 s as the laptop lands). Time-lapse and AR
-# preview (drawings in version 6) are left out so the filmed features can move faster.
-SEG = {'fl': (5.0, 11.0), 'ov': (11.0, 16.5), 'ok': (16.5, 25.0), 'cv': (25.0, 30.5), 'sk': (30.5, 37.0),
-       'tw': (37.0, 44.0), 'st': (44.0, 49.0), 'au': (49.0, 54.0), 'ca': (54.0, 59.0), 'fi': (59.0, 64.5),
-       'co': (64.5, 69.5), 'ha': (69.5, 75.0), 'ga': (75.0, 80.5)}
-PHONE_AT = 22.4                   # inside Confirm Print: the phone takes over
-TWIN_CUT = 40.6                   # the twin: 3D (turned by hand) until here, then front and top
-VALUES, END = 80.5, 83.5
+# Version 8: 75 s (the owner: "edit the videos to 75 seconds"), laid out in bars of the 132 BPM
+# music (music/compose8.py), so every feature change lands on a bar line (a half bar = beat 3).
+# The band comes in at bar 2 as the laptop lands. Lengths in bars: a feature gets 2 to 3.5 bars
+# (3.6 to 6.4 s); Confirm Print, with the phone inside it, 4.5.
+BPM = 132
+BEAT = 60 / BPM
+BAR = 4 * BEAT                    # 1.818 s
+ORDER = [('fl', 3), ('ov', 2.5), ('ok', 4.5), ('cv', 2.5), ('sk', 3), ('tw', 3.5), ('au', 3),
+         ('ca', 2.5), ('fi', 2.5), ('co', 2), ('ha', 2.5), ('ga', 3)]
+SEG, _b = {}, 2.0
+for _k, _n in ORDER:
+    SEG[_k] = (round(_b * BAR, 3), round((_b + _n) * BAR, 3))
+    _b += _n
+PHONE_AT = round((SEG['ok'][0] / BAR + 3) * BAR, 3)       # inside Confirm Print: the phone takes over
+TWIN_CUT = round((SEG['tw'][0] / BAR + 2) * BAR, 3)     # the twin: 3D (turned by hand) until here, then front and top
+VALUES = SEG['ga'][1]                                  # bar 36.5: the values, one per beat
+END = round(38 * BAR, 3)                               # bar 38: the end card, as the music's ending starts
+LENGTH = 75.0
 
 
 # Each entry: (video id, shot, composition time of the shot's t=0, visible from, visible to).
@@ -43,18 +51,17 @@ def plan_main(S):
     c = lambda s, i: S[s]['clicks'][i]
     win = lambda k, src: (SEG[k][0] - src, SEG[k][0] - .6, SEG[k][1] + .1)   # footage time src lands on the feature's start
     return [
-        ('v-fl', 'fleet', 4.7 - m('fleet', 'tab'), 4.0, SEG['fl'][1] + .1),       # Fleet is clicked as the laptop lands
+        ('v-fl', 'fleet', SEG['fl'][0] - 2.7, SEG['fl'][0] - .8, SEG['fl'][1] + .1),  # already on Fleet as the laptop rises
         ('v-ov', 'overview_jam', *win('ov', .5)),
-        ('v-ok', 'confirm_ok', *win('ok', 2.6)),                                   # starts on the open file
+        ('v-ok', 'confirm_ok', *win('ok', 3.0)),                                     # starts on the open file
         ('v-ph', 'phone', PHONE_AT + 1.5 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),  # hold to cancel 1.5 s in
         ('v-cv', 'convert', *win('cv', 1.4)),
-        ('v-sk', 'skip_object', *win('sk', 3.0)),
+        ('v-sk', 'skip_object', *win('sk', 3.5)),
         ('v-tw', 'twin', SEG['tw'][0] - 1.4, SEG['tw'][0] - .6, TWIN_CUT + .3),     # part 1: the 3D drawing, turned
         ('v-tw2', 'twin', TWIN_CUT - 5.9, TWIN_CUT - .3, SEG['tw'][1] + .1),        # part 2: front, then top
-        ('v-st', 'studio', *win('st', 2.4)),
         ('v-au', 'automations', *win('au', 1.9)),
-        ('v-ca', 'care', *win('ca', .9)),
-        ('v-fi', 'filament', *win('fi', .8)),
+        ('v-ca', 'care', *win('ca', 1.4)),
+        ('v-fi', 'filament', *win('fi', 1.3)),
         ('v-co', 'cost', *win('co', 1.0)),
         ('v-ha', 'ha', *win('ha', .8)),
         ('v-ga', 'games', *win('ga', 1.0)),
@@ -62,7 +69,7 @@ def plan_main(S):
 
 
 plan_vertical = plan_main
-MAIN_LENGTH = VERT_LENGTH = 90.0
+MAIN_LENGTH = VERT_LENGTH = LENGTH
 
 plans = {'main': (plan_main, MAIN_LENGTH), 'vertical': (plan_vertical, VERT_LENGTH)}
 plan_fn, LENGTH = plans[FMT]
@@ -99,12 +106,13 @@ for vid, name, start, vfrom, vto in plan:
             cues.append({'t': t, 'type': 'key', 'gain': .85 if space else random.uniform(.5, .7), 'pan': -.05,
                          'pitch': .8 if space else random.uniform(.94, 1.06)})
 
-# End-card typing (version 7: at a person's pace, about ten keys a second, each a little
-# uneven). The clone line is already there (pasted: one keystroke); the next two are typed.
+# End-card typing (version 8: a quick typist, about thirteen keys a second, each a little uneven,
+# so it finishes with a second to spare before the 75 s end). The clone line is pasted (one
+# keystroke); the next two are typed.
 random.seed(4)
-typing = [[round(END + 1.0, 3)] * 49]
-cues.append({'t': round(END + 1.0, 3), 'type': 'key', 'gain': .8, 'pan': 0, 'pitch': 1.0})
-t = END + 1.5
+typing = [[round(END + .7, 3)] * 49]
+cues.append({'t': round(END + .7, 3), 'type': 'key', 'gain': .8, 'pan': 0, 'pitch': 1.0})
+t = END + 1.1
 for n in (11, 22):
     per = []
     for i in range(n + 1):
@@ -112,9 +120,10 @@ for n in (11, 22):
         last = i == n
         cues.append({'t': round(t, 3), 'type': 'key', 'gain': .8 if last else random.uniform(.55, .75),
                      'pan': random.uniform(-.15, .15), 'pitch': .85 if last else random.uniform(.94, 1.06)})
-        t += random.uniform(.07, .12) if i < n - 1 else .2
+        t += random.uniform(.06, .09) if i < n - 1 else .18
     typing.append(per)
-    t += .3
+    t += .25
+assert t < LENGTH - .8, t
 
 W, H = (1920, 1080) if FMT == 'main' else (1080, 1920)
 tpl = open(os.path.join(HERE, 'scene.html')).read()
@@ -124,7 +133,7 @@ tpl = tpl.replace('/*LAYOUT_CSS*/', open(os.path.join(HERE, FMT + '.layout.css')
 html = tpl.replace('/*SHARED_CSS*/', SHARED_CSS).replace('<!--VIDEOS-->', '\n'.join(videos)) \
           .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing)) \
           .replace('/*SEGS*/{}/*END*/', json.dumps({**{k: {'t0': a, 't1': b} for k, (a, b) in SEG.items()},
-                                                     'values': VALUES, 'end': END, 'twinCut': TWIN_CUT,
+                                                     'values': VALUES, 'end': END, 'twinCut': TWIN_CUT, 'beat': BEAT,
                                                      'ok': {'t0': SEG['ok'][0], 't1': SEG['ok'][1], 'phone': PHONE_AT}}))
 open(os.path.join(PROJ, 'index.html'), 'w').write(html)
 
@@ -132,8 +141,8 @@ cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
 audio = os.path.join(PROJ, 'assets', 'audio')
 os.makedirs(audio, exist_ok=True)
-music_wav = os.path.join(audio, f'music7_{FMT}.wav')
-composer = os.path.join(ROOT, 'music', 'compose7.py')
+music_wav = os.path.join(audio, f'music8_{FMT}.wav')
+composer = os.path.join(ROOT, 'music', 'compose8.py')
 if not os.path.exists(music_wav) or os.path.getmtime(music_wav) < os.path.getmtime(composer):
     subprocess.run(['python3', composer, music_wav, FMT], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')
