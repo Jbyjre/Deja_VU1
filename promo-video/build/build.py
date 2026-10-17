@@ -16,7 +16,6 @@ ROOT = os.path.dirname(HERE)
 FMT = sys.argv[1]
 PROJ = os.path.join(ROOT, FMT)
 PAD_START, PAD_END = 4.0, 4.0     # seconds of held first / last frame added to every clip
-BEAT = 0.4                        # 150 BPM
 
 SHARED_CSS = open(os.path.join(HERE, 'shared.css')).read()
 
@@ -25,29 +24,46 @@ def shot(name):
     return json.load(open(os.path.join(ROOT, 'footage', name + '.json')))
 
 
+# Version 6: one timeline for both cuts (both 120 s). SEG says when each feature starts and
+# ends on screen; scene.js and music/compose6.py follow it (compose6.py repeats the few times
+# the music needs: the groove at 6 s, the key change at 60 s, the values at 110 s, the end at 114 s).
+SEG = {'fl': (6.0, 13.0), 'ov': (13.0, 19.5), 'ok': (19.5, 28.5), 'cv': (28.5, 35.0), 'sk': (35.0, 44.0),
+       'tw': (44.0, 54.0), 'st': (54.0, 60.5), 'au': (60.5, 67.0), 'ca': (67.0, 73.0), 'fi': (73.0, 79.5),
+       'co': (79.5, 85.5), 'ha': (85.5, 92.0), 'tl': (92.0, 98.0), 'ar': (98.0, 104.0), 'ga': (104.0, 110.0)}
+PHONE_AT = 26.0                   # inside Confirm Print: the phone takes over
+VALUES, END = 110.0, 114.0
+
+
 # Each entry: (video id, shot, composition time of the shot's t=0, visible from, visible to).
-# One shot can appear more than once (the opening montage reuses the best moment of four).
 def plan_main(S):
-    """Version 5: one plan for both cuts (both 75 s, the same scenes and timing)."""
     m = lambda s, k: S[s]['marks'][k]
     c = lambda s, i: S[s]['clicks'][i]
+    seg = lambda k, a=-.6, b=.1: (SEG[k][0] + a, SEG[k][1] + b)
     return [
-        ('v-fl', 'fleet', 12.2 - m('fleet', 'hover'), 7.6, 16.1),          # the card hover at 12.2
-        ('v-ov', 'overview_jam', 17.6 - m('overview_jam', 'jam'), 15.8, 23.1),
-        ('v-ok', 'confirm_ok', 21.3, 22.8, 29.8),                           # opens on the open file
-        ('v-ph', 'phone', 31.0 - c('phone', 2), 29.6, 32.0),                # hold to cancel at 31.0
-        ('v-cv', 'convert', 33.42 - c('convert', 1), 31.8, 39.1),           # opens on the open file
-        ('v-sk', 'skip_object', 44.0 - m('skip_object', 'skip'), 38.8, 47.1),
-        ('v-tw', 'twin', 49.33 - m('twin', 'front'), 46.8, 55.1),
-        ('v-st', 'studio', 56.38 - c('studio', 0), 54.8, 62.1),
+        ('v-fl', 'fleet', 6.35 - m('fleet', 'tab'), 5.2, SEG['fl'][1] + .1),       # the tab click at 6.35
+        ('v-ov', 'overview_jam', 14.5 - m('overview_jam', 'jam'), *seg('ov')),       # the jam at 14.5
+        ('v-ok', 'confirm_ok', 19.5 - 1.15, SEG['ok'][0] - .6, SEG['ok'][1] + .1),  # opens on the open file
+        ('v-ph', 'phone', 27.6 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),   # hold to cancel at 27.6
+        ('v-cv', 'convert', 30.5 - m('convert', 'convert'), *seg('cv')),
+        ('v-sk', 'skip_object', 35.4 - m('skip_object', 'tab'), *seg('sk')),
+        ('v-tw', 'twin', 44.32 - m('twin', 'orbit'), *seg('tw')),                    # the 3D drag starts as it arrives
+        ('v-st', 'studio', 54.4 - m('studio', 'tab'), *seg('st')),
+        ('v-au', 'automations', 60.9 - m('automations', 'tab'), *seg('au')),
+        ('v-ca', 'care', 67.4 - m('care', 'tab'), *seg('ca')),
+        ('v-fi', 'filament', 73.5 - m('filament', 'on'), *seg('fi')),
+        ('v-co', 'cost', 79.4, *seg('co')),
+        ('v-ha', 'ha', 86.0 - m('ha', 'on'), *seg('ha')),
+        ('v-ga', 'games', 104.4 - m('games', 'tab'), SEG['ga'][0] - .9, SEG['ga'][1] + .1),
     ]
 
 
 plan_vertical = plan_main
-MAIN_WHOOSH = [8.0, 16.0, 23.0, 29.6, 32.0, 39.0, 47.0, 55.0, 62.0, 68.0]
+MAIN_WHOOSH = [2.55, 5.4] + [SEG[k][0] for k in list(SEG)[1:]] + [VALUES, END]
 VERT_WHOOSH = MAIN_WHOOSH
-MAIN_TERM = VERT_TERM = (69.6, [48, 11, 22])     # typing starts, characters per line (end card)
-MAIN_LENGTH = VERT_LENGTH = 75.0
+MAIN_TERM = VERT_TERM = (END + .75, [48, 11, 22])     # typing starts, characters per line (end card)
+MAIN_LENGTH = VERT_LENGTH = 120.0
+# taps drawn in the illustrations (no footage there): the AR placement tap
+EXTRA_CLICKS = [SEG['ar'][0] + 3.2]
 
 plans = {'main': (plan_main, MAIN_WHOOSH, MAIN_TERM, MAIN_LENGTH),
          'vertical': (plan_vertical, VERT_WHOOSH, VERT_TERM, VERT_LENGTH)}
@@ -94,6 +110,7 @@ for n in lines:
     typing.append(per)
     t += .22
 
+cues += [{'t': t, 'type': 'click', 'gain': 1.0, 'pan': -.1} for t in EXTRA_CLICKS]
 cues += [{'t': t, 'type': 'whoosh', 'gain': .5, 'pan': -.2 + .4 * (i % 2)} for i, t in enumerate(whooshes)]
 
 W, H = (1920, 1080) if FMT == 'main' else (1080, 1920)
@@ -102,15 +119,17 @@ tpl = tpl.replace('/*LAYOUT_CSS*/', open(os.path.join(HERE, FMT + '.layout.css')
          .replace('/*SCENE_JS*/', open(os.path.join(HERE, 'scene.js')).read()) \
          .replace('__FMT__', FMT).replace('__W__', str(W)).replace('__H__', str(H)).replace('__DUR__', f'{LENGTH:g}')
 html = tpl.replace('/*SHARED_CSS*/', SHARED_CSS).replace('<!--VIDEOS-->', '\n'.join(videos)) \
-          .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing))
+          .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing)) \
+          .replace('/*SEGS*/{}/*END*/', json.dumps({**{k: {'t0': a, 't1': b} for k, (a, b) in SEG.items()},
+                                                     'values': VALUES, 'end': END, 'ok': {'t0': SEG['ok'][0], 't1': SEG['ok'][1], 'phone': PHONE_AT}}))
 open(os.path.join(PROJ, 'index.html'), 'w').write(html)
 
 cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
 audio = os.path.join(PROJ, 'assets', 'audio')
 os.makedirs(audio, exist_ok=True)
-music_wav = os.path.join(audio, f'music5_{FMT}.wav')
-composer = os.path.join(ROOT, 'music', 'compose5.py')
+music_wav = os.path.join(audio, f'music6_{FMT}.wav')
+composer = os.path.join(ROOT, 'music', 'compose6.py')
 if not os.path.exists(music_wav) or os.path.getmtime(music_wav) < os.path.getmtime(composer):
     subprocess.run(['python3', composer, music_wav, FMT], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')

@@ -1,19 +1,18 @@
-      /* 9:16: the step's text on top, the app below it; the bottom stays clear for the
-         Reels / TikTok buttons. */
-      :root { --title-size: 74px; --body-size: 31px; --hook-size: 88px; --brand-size: 160px; --more-size: 88px; --values-size: 104px; --chips-w: 900px; --term-size: 26px; }
-      #panel { left: 60px; top: 150px; width: 960px; height: 650px; }
-      .tp { gap: 20px; }
-      .tp .ill { height: 220px; }
-      #W { left: 50px; top: 730px; width: 980px; height: 820px; }
-      #Wchip { left: 24px; bottom: 24px; }
-      #ph { left: 325px; top: 690px; transform-origin: 50% 0; }
-      #phchip { right: calc(100% + 26px); bottom: 60px; white-space: nowrap; }
-      #corner { left: 60px; top: 64px; }
-      #rail { left: 60px; top: 1585px; width: 960px; }
-      #rail .seg { font-size: 12px; letter-spacing: .06em; }
-      #hq1 { top: 330px; left: 60px; right: 60px; }
-      #hk-ill { position: absolute; left: 90px; top: 700px; width: 900px; height: 400px; opacity: 0; }
-      #hq2 { top: 1180px; left: 60px; right: 60px; }
+      /* 9:16: the caption on top, the laptop (or the phone, or the drawing) below it; the bottom
+         stays clear for the Reels / TikTok buttons. */
+      :root { --tile: 150px; --tile-label: 21px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
+        --values-size: 104px; --term-size: 26px; }
+      #grid { left: 40px; top: 388px; grid-template-columns: repeat(3, 320px); column-gap: 20px; row-gap: 46px; }
+      #brand { padding: 0 50px; }
+      .cap { left: 60px; right: 60px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
+      .cap .card { width: 100%; }
+      #corner { left: 60px; top: 56px; }
+      #ph, #ar-ph { left: 325px; top: 770px; scale: .86; transform-origin: 50% 0; }
+      #phchip, #archip { left: 50%; bottom: -64px; translate: -50% 0; }
+      #ha-card { left: 470px; top: 1290px; width: 540px; }
+      #tl-card { left: 50px; top: 820px; width: 980px; }
+      #tl-svg { width: 936px; height: 617px; }
+      #tlchip { left: 24px; bottom: -54px; }
       #end-row { top: 300px; flex-direction: column; gap: 22px; }
       #end-word { font-size: 140px; }
       #end-tag { top: 700px; }

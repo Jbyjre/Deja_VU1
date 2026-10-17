@@ -4,6 +4,7 @@
 const r = require('./rec');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs'), os = require('os');
 
 const ROOT = path.join(__dirname, '..', '..');
 const PORT = +(process.env.APP_PORT || 8791);
@@ -11,13 +12,18 @@ let server = null;
 
 async function restartServer() {
   if (server) { server.kill('SIGTERM'); await new Promise(res => server.once('exit', res)); }
-  server = spawn('python3', ['backend/app.py'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
+  // Version 6: every shot gets its own empty data folder, so nothing it changes (spools, modules,
+  // maintenance) carries into the next shot or into the app's real backend/data/.
+  const data = fs.mkdtempSync(path.join(os.tmpdir(), 'dejavu-film-'));
+  server = spawn('python3', ['backend/app.py'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), DEJAVU_DATA_DIR: data }, stdio: 'ignore' });
   for (let i = 0; i < 50; i++) {
     try { const res = await fetch(`http://localhost:${PORT}/api/modules`); if (res.ok) return; } catch (e) {}
     await new Promise(res => setTimeout(res, 200));
   }
   throw new Error('server did not start');
 }
+// A tab button, clicked on film (the cursor travels to it and the click is logged for the sound).
+const TAB = name => `.navtab[data-tab="${name}"]`;
 async function tab(st, name) { await st.page.locator(`[data-tab="${name}"]`).first().click(); await r.settle(st, 1200); }
 async function samples(st) {
   await tab(st, 'files');
@@ -102,24 +108,36 @@ const SHOTS = {
     const [x0, y0] = await r.center(st, '#twin-host');
     await st.page.mouse.move(x0 + 160, y0 + 120); st.mx = x0 + 160; st.my = y0 + 120;
     r.start(st, 'twin');
-    await r.wait(st, 1500);
+    await r.wait(st, 900);
+    // Version 6: the 3D view stays on screen longer than the flat views. The cursor grabs the
+    // drawing and turns it slowly (the twin can be orbited by dragging), then lets go.
+    await r.move(st, x0 + 90, y0 + 40, MV);
+    await r.wait(st, 200); r.mark(st, 'orbit');
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); await r.frame(st);
+    await r.move(st, x0 - 150, y0 + 55, 1700);
+    await r.move(st, x0 - 40, y0 + 30, 900);
+    await st.page.mouse.up(); await r.frame(st); r.mark(st, 'orbited');
+    await r.wait(st, 900);
     await r.click(st, '#wf-views [data-view="front"]', MV, PA); r.mark(st, 'front');
-    await r.wait(st, 1500);
+    await r.wait(st, 1300);
     await r.click(st, '#wf-views [data-view="top"]', 400, PA); r.mark(st, 'top');
-    await r.wait(st, 1500);
+    await r.wait(st, 1300);
     await r.click(st, '#wf-views [data-view="iso"]', 400, PA); r.mark(st, 'iso');
     await r.move(st, x0 + 170, y0 + 150, MV);
-    await r.wait(st, 1200);
+    await r.wait(st, 1600);
     r.stop(st); return st;
   },
   // Control: Skip one object. Pick a part on the plate, skip it, confirm; the rest keep printing.
   async skip_object() {
-    const st = await r.open(); await r.demoOn(st); await tab(st, 'control');
-    await r.scrollTo(st, '#ctrl-plate', 110, 1);
-    await r.settle(st, 1500);
+    const st = await r.open(); await r.demoOn(st);
     await st.page.mouse.move(1000, 560); st.mx = 1000; st.my = 560;
     r.start(st, 'skip_object');
-    await r.wait(st, 150);
+    await r.wait(st, 300);
+    await r.click(st, TAB('control'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 900);
+    await r.scrollTo(st, '#ctrl-plate', 110, 900);
+    await r.wait(st, 300); r.mark(st, 'plate');
     await r.click(st, '[data-plate-pick="' + (await st.page.locator('[data-plate-pick]').nth(1).getAttribute('data-plate-pick')) + '"]', MV, PA); r.mark(st, 'pick');
     await r.wait(st, 1000);
     await r.click(st, '#plate-skip', MV, PA); r.mark(st, 'ask');
@@ -136,11 +154,12 @@ const SHOTS = {
   async fleet() {
     const st = await r.open(); await r.demoOn(st);
     await r.api(st, '/api/sandbox/farm?demo=1', { count: 24, busy_fraction: 0.5 });
-    await tab(st, 'fleet');
-    await r.settle(st, 4000);
-    await st.page.mouse.move(1100, 600); st.mx = 1100; st.my = 600;
+    await r.settle(st, 2500);
+    await st.page.mouse.move(700, 520); st.mx = 700; st.my = 520;
     r.start(st, 'fleet');
-    await r.wait(st, 700);
+    await r.wait(st, 300);
+    await r.click(st, TAB('fleet'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 900);
     await r.scrollTo(st, '.fleet-card >> nth=0', 380, 1000);
     r.mark(st, 'cards');
     await r.wait(st, 1100);
@@ -201,34 +220,105 @@ const SHOTS = {
   },
   // Photo-to-Print Studio: the built-in test pattern becomes a layered relief.
   async studio() {
-    const st = await r.open(); await r.demoOn(st); await tab(st, 'studio');
-    await st.page.mouse.move(700, 700); st.mx = 700; st.my = 700;
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.mouse.move(700, 520); st.mx = 700; st.my = 520;
     r.start(st, 'studio');
-    await r.wait(st, 100);
+    await r.wait(st, 300);
+    await r.click(st, TAB('studio'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 900);
     await r.click(st, '#st-test', MV, PA); r.mark(st, 'test');
     for (let i = 0; i < 8; i++) { await sleep(400); await r.wait(st, 250); }
     await r.move(st, 1050, 420, 900); r.mark(st, 'result');
     await r.wait(st, 2000);
     r.stop(st); return st;
   },
-  // Automations: a ready-made rule in one click.
+  // Version 6: the "And there's more" features each get their own shot. Each starts on the
+  // Overview and clicks its way to the feature, like a person would.
+  // Automations: a ready-made rule in one click, then saved.
   async automations() {
-    const st = await r.open(); await r.demoOn(st); await tab(st, 'automations');
-    await st.page.mouse.move(800, 700); st.mx = 800; st.my = 700;
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.mouse.move(820, 520); st.mx = 820; st.my = 520;
     r.start(st, 'automations');
-    await r.wait(st, 100);
-    await r.click(st, 'text=Tell me when a print finishes', MV, PA);
+    await r.wait(st, 300);
+    await r.click(st, TAB('automations'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 800);
+    await r.click(st, 'text=Tell me when a print finishes', MV, PA); r.mark(st, 'template');
+    await r.wait(st, 1100);
+    await intoView(st, '#rule-form button:has-text("Save rule")', true);
+    await r.click(st, '#rule-form button:has-text("Save rule")', MV, PA); r.mark(st, 'save');
+    await sleep(800);
+    await r.wait(st, 1500);
+    r.stop(st); return st;
+  },
+  // Care: maintenance from print history; one overdue task marked done.
+  async care() {
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.mouse.move(820, 520); st.mx = 820; st.my = 520;
+    r.start(st, 'care');
+    await r.wait(st, 300);
+    await r.click(st, TAB('maintenance'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 900);
+    await r.move(st, 700, 470, MV); r.mark(st, 'overdue');
+    await r.wait(st, 900);
+    await r.click(st, '#tasks button', MV, PA); r.mark(st, 'done');
+    await sleep(600);
+    await r.wait(st, 1600);
+    r.stop(st); return st;
+  },
+  // Filament: the inventory switched on, its spools, and how many prints each one has left.
+  async filament() {
+    const st = await r.open(); await r.demoOn(st); await tab(st, 'maintenance');
+    await r.scrollTo(st, '#tab-filament', 30, 1); await r.settle(st, 900);
+    const card = '#tab-filament .card:has(#spool-list) button:has-text("Turn on")';
+    await intoView(st, card, false);
+    await st.page.mouse.move(900, 600); st.mx = 900; st.my = 600;
+    r.start(st, 'filament');
+    await r.wait(st, 300);
+    await r.click(st, card, MV, PA); r.mark(st, 'on');
+    await sleep(800);
+    await r.wait(st, 1000); r.mark(st, 'spools');
+    await intoView(st, '#forecast-wrap summary', true);
+    await r.click(st, '#forecast-wrap summary', MV, PA); r.mark(st, 'forecast');
+    await sleep(600);
+    await r.wait(st, 500);
+    await intoView(st, '#forecast-body', true);
+    await r.wait(st, 300);
+    await r.move(st, 640, 520, MV);
     await r.wait(st, 1300);
     r.stop(st); return st;
   },
-  // Care: maintenance, two overdue.
-  async care() {
-    const st = await r.open(); await r.demoOn(st); await tab(st, 'maintenance');
-    await st.page.mouse.move(1150, 700); st.mx = 1150; st.my = 700;
-    r.start(st, 'care');
-    await r.wait(st, 100);
-    await r.move(st, 820, 500, 450);
-    await r.wait(st, 1100);
+  // Print cost: filament plus electricity, for the print running now and for past prints.
+  async cost() {
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.mouse.move(820, 560); st.mx = 820; st.my = 560;
+    r.start(st, 'cost');
+    await r.wait(st, 400);
+    await r.scrollTo(st, '#cost-body', 330, 1300); r.mark(st, 'card');
+    await r.wait(st, 300);
+    const [x, y] = await r.center(st, '#cost-body');
+    await r.move(st, x - 120, y - 70, MV); r.mark(st, 'now');
+    await r.wait(st, 1200);
+    await r.move(st, x + 380, y + 40, 900); r.mark(st, 'past');
+    await r.wait(st, 1300);
+    r.stop(st); return st;
+  },
+  // Home Assistant: the bridge switched on and its address typed in.
+  async ha() {
+    const st = await r.open(); await r.demoOn(st); await tab(st, 'modules');
+    const card = 'section.card:has(#ha-url) button:has-text("Turn on")';
+    await intoView(st, card, false);
+    await st.page.mouse.move(900, 560); st.mx = 900; st.my = 560;
+    r.start(st, 'ha');
+    await r.wait(st, 300);
+    await r.click(st, card, MV, PA); r.mark(st, 'on');
+    await sleep(600);
+    await r.wait(st, 700);
+    await r.click(st, '#ha-url', MV, PA); r.mark(st, 'field');
+    await r.wait(st, 150);
+    await r.type(st, 'http://homeassistant.local:8123', 62); r.mark(st, 'typed');
+    await r.wait(st, 300);
+    await r.move(st, ...(await r.center(st, '#ha-push-btn')), MV);
+    await r.wait(st, 1000);
     r.stop(st); return st;
   },
   // Phone: the thumb-first layout, the bottom bar, and Hold to cancel (released early, so nothing is cancelled).
@@ -256,10 +346,12 @@ const SHOTS = {
   },
   // Games: Sky Dash, actually played (every Space press is logged as a keystroke).
   async games() {
-    const st = await r.open(); await r.demoOn(st); await tab(st, 'games');
-    await st.page.mouse.move(800, 760); st.mx = 800; st.my = 760;
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.mouse.move(820, 520); st.mx = 820; st.my = 520;
     r.start(st, 'games');
-    await r.wait(st, 100);
+    await r.wait(st, 300);
+    await r.click(st, TAB('games'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 900);
     await r.click(st, 'text=Start flight', MV, PA);
     for (let i = 0; i < 5; i++) { await r.wait(st, 633); await r.key(st, 'Space'); }   // 0.65 s flaps fly clean (tested)
     await r.wait(st, 200);

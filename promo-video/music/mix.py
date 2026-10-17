@@ -3,7 +3,7 @@
 The music dips briefly under every click (about 9 dB) and keystroke (about 6 dB) for a tenth of a
 second, and in the same moments loses most of its 2-6 kHz band (a dynamic EQ: the clap and
 the clicks share that band), so each one cuts through clearly while the bass keeps going.
-Usage: python3 mix.py music.wav sfx.wav cues.json OUT.wav
+Usage: python3 mix.py music.wav sfx.wav cues.json OUT.wav [STEM_PREFIX]
 """
 import json
 import sys
@@ -33,8 +33,15 @@ for c in cues:
 b, a = signal.butter(2, [2000 / (SR / 2), 6000 / (SR / 2)], 'band')
 mid = signal.filtfilt(b, a, mus, axis=0)                    # zero-phase, so subtracting it is clean
 mus = mus - mid * band[:, None]
-out = mus * .78 * gain[:, None] + fx * 1.6
-out = np.tanh(out * 1.05) / np.tanh(1.05)
-out *= .9 / (np.max(np.abs(out)) or 1)
+# Version 6: the music sits lower (it is background music; the owner could not hear the
+# clicks over version 5's mix) and the clicks and keystrokes higher.
+MUSIC, FX = .5, 1.7
+m_part, f_part = mus * MUSIC * gain[:, None], fx * FX
+out = m_part + f_part
+norm = .9 / (np.max(np.abs(np.tanh(out * 1.05) / np.tanh(1.05))) or 1)
+out = np.tanh(out * 1.05) / np.tanh(1.05) * norm
 wavfile.write(sys.argv[4], SR, (out * 32767).astype(np.int16))
+if len(sys.argv) > 5:          # stems, for measuring: the music and the effects as they sit in the mix
+    for name, part in (('music', m_part), ('fx', f_part)):
+        wavfile.write(sys.argv[5] + f'_{name}.wav', SR, (np.clip(part * norm, -1, 1) * 32767).astype(np.int16))
 print('mixed', sys.argv[4], f'{n / SR:.2f} s')

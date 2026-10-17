@@ -1,17 +1,18 @@
-      /* 16:9: the step's text on the left, the app on the right, the progress rail under it. */
-      :root { --title-size: 76px; --body-size: 29px; --hook-size: 92px; --brand-size: 168px; --more-size: 92px; --values-size: 110px; --chips-w: 1300px; --term-size: 28px; }
-      #panel { left: 110px; top: 190px; width: 600px; height: 770px; }
-      .tp { gap: 26px; }
-      .tp .ill { height: 290px; margin-top: 6px; }
-      #W { left: 776px; top: 150px; width: 1070px; height: 760px; }
-      #Wchip { left: 24px; bottom: 24px; }
-      #ph { left: 1096px; top: 80px; }
-      #phchip { right: calc(100% + 26px); bottom: 60px; white-space: nowrap; }
-      #corner { left: 110px; top: 70px; }
-      #rail { left: 776px; top: 950px; width: 1070px; }
-      #hq1 { top: 190px; }
-      #hk-ill { position: absolute; left: 610px; top: 360px; width: 700px; height: 320px; opacity: 0; }
-      #hq2 { top: 770px; }
+      /* 16:9: the caption on one side, the laptop (or the drawing) on the other, turned towards it. */
+      :root { --tile: 128px; --tile-label: 17px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 26px; --co-size: 30px;
+        --values-size: 110px; --term-size: 28px; }
+      #grid { left: 287px; top: 251px; grid-template-columns: repeat(5, 250px); column-gap: 24px; row-gap: 40px; }
+      .cap { top: 0; bottom: 0; width: 650px; display: flex; align-items: center; }
+      .cap.L { left: 90px; } .cap.R { right: 90px; }
+      #corner { left: 90px; top: 56px; }
+      #ph { left: 1150px; top: 80px; }
+      #phchip { right: calc(100% + 26px); bottom: 60px; }
+      #ar-ph { left: 470px; top: 80px; }
+      #archip { left: calc(100% + 26px); bottom: 60px; }
+      #ha-card { left: 110px; top: 560px; width: 480px; }
+      #tl-card { left: 810px; top: 170px; width: 980px; }
+      #tl-svg { width: 936px; height: 617px; }
+      #tlchip { left: 24px; bottom: -54px; }
       #end-row { top: 150px; }
       #end-word { font-size: 132px; }
       #end-tag { top: 340px; }
