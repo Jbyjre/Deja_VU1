@@ -29,7 +29,9 @@ simulated:
 | `dock-rings.jpg` | The "Dock status rings" card (`#rings`) |
 | `modules.jpg` | Settings: the Modules card |
 | `photo-studio.jpg` | Photo studio → Try a test pattern |
-| `twin-health-chamber.jpg` | Overview: the digital twin row |
+| `twin-health-chamber.jpg` | Overview: the digital twin row (`.live-row`), printer U1 · Workshop |
+| `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |
+| `converter.jpg` | Files → `sample_makerworld_three_plates.3mf` → Convert for Snapmaker U1: the report |
 | `sandbox.jpg`, `sandbox-farm.jpg` | Fleet → farm sandbox: add 6 printers, load "Jam mid-print", step 660 s |
 | `games.jpg` | Games |
 | `phone.jpg` | Overview at 390 × 844 |
@@ -57,7 +59,9 @@ Reset the sandbox afterwards (`POST /api/sandbox/reset?demo=1`).
 ## Explainers and the social card
 
 `boards.html` holds the five explainer boards (one `<section>` each) and
-`card.html` the social card. Every fact on them comes from the code: the
+`card.html` the social card. The card's pictures are `img/twin.jpg` (the
+digital twin card, captured like the screenshots above) and
+`img/fleet-cards.jpg`. Every fact on them comes from the code: the
 dock states from `backend/led_status.py`, the six checks from
 `backend/print_gate.py`, the counts from the README tables and the test
 runner. Change them when the code changes.

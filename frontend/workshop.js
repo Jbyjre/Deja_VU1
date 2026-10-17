@@ -568,80 +568,403 @@ const Workshop = (() => {
    * 4. overview: digital twin, health gauge, chamber
    * ================================================================ */
 
-  /* The digital twin is plain CSS 3D — the same preserve-3d scene
-   * technique as Echo Maze and Block World in the games tab, not WebGL:
-   * a tilted bed, the part growing layer by layer, the gantry and the
-   * toolhead at its reported X/Y/Z, and the four docks with their ring
-   * colours. Drag to turn it. */
-  const TWIN_PX = 200 / 270;       // 200 px across a 270 mm bed
-  const twin = { yaw: -28, built: false };
+  /* The digital twin is a live engineering drawing: thin ink lines,
+   * projected from real millimetres, redrawn only when something moves.
+   *
+   * What it draws, and where each fact comes from:
+   * - The 270 x 270 x 270 mm build volume (Snapmaker's spec page), as a
+   *   dash-dot envelope - the drafting symbol for a travel limit.
+   * - The bed DROPS as Z rises and the toolhead stays at the top. The U1's
+   *   bed rides a timing belt (Snapmaker's wiki: removing the transport
+   *   screws "releases the tension between the timing belt and the heated
+   *   bed"), so Z is the bed going down, as on most enclosed CoreXY printers.
+   * - CoreXY: the X beam slides along two Y rails; the head rides the beam.
+   * - Four docks on the rear beam (Snapmaker's wiki: the docking bracket
+   *   "is located on the rear beam"). Klipper keeps each dock's exact
+   *   position in the printer's own config, not in anything Moonraker
+   *   reports, so the docks are spread evenly across the width: right
+   *   order and side, approximate spacing.
+   * - The parts on the plate are the file's own object outlines (Klipper's
+   *   exclude_object, the same data as Skip one object), extruded from the
+   *   bed to the nozzle. Skipped ones are dashed and crossed out.
+   *
+   * Drag (or use the arrow keys) to turn it; the view buttons jump to the
+   * standard 3D, front and top views. */
+  const WF = {
+    BED: 270,                       // build volume, mm, each way
+    TOP: 270,                       // world height of the nozzle tip
+    DOCK_Y: 312,                    // rear beam, behind the bed
+    HEAD: { w: 42, d: 44, h: 54, cone: 9 },
+    VIEWS: { iso: [-34, 27], front: [0, 0], top: [0, 90] },
+    VIEW_WORD: { iso: '3D', front: 'Front', top: 'Top' },
+  };
+  const twin = {
+    built: false, yaw: WF.VIEWS.iso[0], pitch: WF.VIEWS.iso[1], view: 'iso',
+    pos: [135, 135, 0], state: null, trail: [], trailZ: null,
+    w: 0, h: 0, queued: false, label: '', paths: {},
+  };
 
   function buildTwin() {
     const host = $('twin-host');
     host.innerHTML = `
-      <div class="twin-scene" id="twin-scene" aria-label="Digital twin of the printer. Drag to turn." role="img">
-        <div class="twin-world" id="twin-world">
-          <div class="twin-bed"></div>
-          <div class="twin-part" id="twin-part">
-            <i class="tp-top"></i><i class="tp-f"></i><i class="tp-b"></i><i class="tp-l"></i><i class="tp-r"></i>
-          </div>
-          <div class="twin-gantry" id="twin-gantry"></div>
-          <div class="twin-head" id="twin-head">
-            <i class="th-top"></i><i class="th-f"></i><i class="th-b"></i><i class="th-l"></i><i class="th-r"></i>
-          </div>
-          <div class="twin-docks" id="twin-docks"></div>
-        </div>
+      <div class="wf" id="wf">
+        <svg class="wf-svg" id="wf-svg" role="img" tabindex="0" aria-roledescription="drawing"
+             aria-describedby="twin-readout" aria-label="Line drawing of the printer">
+          <g class="wf-ink">
+            <path class="wf-env" data-k="env"/>
+            <path class="wf-grid" data-k="grid"/><path class="wf-bed" data-k="bed"/>
+            <path class="wf-hatch" data-k="hatch"/><path class="wf-part" data-k="part"/>
+            <path class="wf-part skipped" data-k="skipped"/><path class="wf-part current" data-k="current"/>
+            <path class="wf-trail" data-k="trail"/>
+            <path class="wf-rail" data-k="rail"/>
+            <path class="wf-dock" data-k="dock"/><path class="wf-parked" data-k="parked"/>
+            <path class="wf-parked fault" data-k="fault"/>
+            <path class="wf-head" data-k="head"/>
+            <path class="wf-dim" data-k="dim"/>
+          </g>
+          <g class="wf-docktags" id="wf-docktags"></g>
+          <g class="wf-live">
+            <path class="wf-leader" id="wf-leader"/>
+            <circle class="wf-balloon on" id="wf-on-ring" r="10.5"/>
+            <text class="wf-bn on" id="wf-on-name" text-anchor="middle"></text>
+            <text class="wf-note" id="wf-on-temp"></text>
+            <circle class="wf-tip" id="wf-tip" r="2.4"/>
+            <text class="wf-dimtext" id="wf-ztext"></text>
+          </g>
+        </svg>
+        <div class="wf-title" id="wf-title" aria-hidden="true"></div>
       </div>
       <div class="twin-readout" id="twin-readout"></div>`;
-    const scene = $('twin-scene');
+    const svg = $('wf-svg');
+    twin.paths = {};
+    svg.querySelectorAll('path[data-k]').forEach(p => { twin.paths[p.dataset.k] = p; });
+    twin.w = 0;
+
     let drag = null;
-    scene.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, yaw: twin.yaw }; scene.setPointerCapture?.(e.pointerId); });
-    scene.addEventListener('pointermove', (e) => {
-      if (!drag) return;
-      twin.yaw = drag.yaw + (e.clientX - drag.x) * 0.5;
-      $('twin-world').style.setProperty('--yaw', `${twin.yaw}deg`);
+    svg.addEventListener('pointerdown', (e) => {
+      drag = { x: e.clientX, y: e.clientY, yaw: twin.yaw, pitch: twin.pitch };
+      svg.setPointerCapture?.(e.pointerId);
     });
-    // Released anywhere: the scene holds pointer capture during a drag, so
-    // the release arrives here even when a finger has left the scene. On the
-    // scene rather than the document, a rebuilt twin doesn't leave old
-    // listeners behind.
+    svg.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      setView(drag.yaw + (e.clientX - drag.x) * 0.5, drag.pitch + (e.clientY - drag.y) * 0.4, null, true);
+    });
+    // Released anywhere: the drawing holds pointer capture during a drag, so
+    // the release arrives here even when a finger has left it. On the
+    // drawing rather than the document, a rebuilt twin leaves no listeners.
     const release = () => { drag = null; };
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => scene.addEventListener(type, release));
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => svg.addEventListener(type, release));
+    svg.addEventListener('dblclick', () => setView(...WF.VIEWS.iso, 'iso'));
+    svg.addEventListener('keydown', (e) => {
+      const turn = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 8], ArrowDown: [0, -8] }[e.key];
+      if (!turn) return;
+      e.preventDefault();
+      setView(twin.yaw + turn[0], twin.pitch + turn[1], null, true);
+    });
+    // The view buttons live in the card's header (index.html), wired once.
+    document.querySelectorAll('#wf-views button').forEach(b => {
+      if (b.dataset.wired) return;
+      b.dataset.wired = '1';
+      b.addEventListener('click', () => setView(...WF.VIEWS[b.dataset.view], b.dataset.view));
+    });
+    // The drawing works in CSS pixels (so its labels stay a readable size
+    // on a phone), which means it is redrawn when the card changes width.
+    if (window.ResizeObserver) new ResizeObserver(() => drawTwin(true)).observe($('wf'));
     twin.built = true;
+  }
+
+  /* Turn to a view. `now` skips the glide (dragging follows the finger). */
+  function setView(yaw, pitch, name, now) {
+    pitch = Math.max(0, Math.min(90, pitch));
+    twin.view = name;
+    document.querySelectorAll('#wf-views button').forEach(b => {
+      const on = b.dataset.view === name;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    if (now) { twin.yaw = yaw; twin.pitch = pitch; smooth.delete('wf-view'); drawTwin(); return; }
+    // Take the short way round, so 3D -> Front turns 34 degrees, not 326.
+    const start = yaw + (((twin.yaw - yaw) % 360) + 540) % 360 - 180;
+    smooth.set('wf-view', { value: [start, twin.pitch], target: [start, twin.pitch], apply: () => {} });
+    tween('wf-view', [yaw, pitch], ([y, p]) => { twin.yaw = y; twin.pitch = p; queueTwin(); });
+  }
+
+  /* Many readings can arrive in one animation frame (position, view);
+   * they all land here and the drawing is made once, after them - and at
+   * most about 30 times a second, which is plenty for a line drawing of a
+   * machine moving at printing speed, and leaves the rest of the page its
+   * frames. Dragging draws straight away (setView), so turning stays live. */
+  function queueTwin() {
+    if (twin.queued) return;
+    twin.queued = true;
+    const go = () => { twin.queued = false; drawTwin(); };
+    const wait = 32 - (performance.now() - (twin.drawnAt || 0));
+    if (wait <= 0) queueMicrotask(go); else setTimeout(go, wait);
+  }
+
+  /* ---- geometry, in printer millimetres (X right, Y back, Z up) ---- */
+  function box(segs, x0, y0, z0, x1, y1, z1) {
+    const c = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    for (let i = 0; i < 4; i++) {
+      const [ax, ay] = c[i], [bx, by] = c[(i + 1) % 4];
+      segs.push([ax, ay, z0, bx, by, z0], [ax, ay, z1, bx, by, z1], [ax, ay, z0, ax, ay, z1]);
+    }
+  }
+  /* A toolhead: body, the cone down to the nozzle, and the coupling plate
+   * on top that the dock's kinematic balls seat into. */
+  function head(segs, x, y, zTip) {
+    const { w, d, h, cone } = WF.HEAD, hw = w / 2, hd = d / 2, base = zTip + cone;
+    box(segs, x - hw, y - hd, base, x + hw, y + hd, base + h);
+    box(segs, x - hw + 6, y - hd + 6, base + h, x + hw - 6, y + hd - 6, base + h + 5);
+    const c = [[-4, -4], [4, -4], [4, 4], [-4, 4]];
+    c.forEach(([dx, dy], i) => {
+      const [ex, ey] = c[(i + 1) % 4];
+      segs.push([x, y, zTip, x + dx, y + dy, base], [x + dx, y + dy, base, x + ex, y + ey, base]);
+    });
+  }
+  function dockX(i, n) { return WF.BED * (i + 0.5) / n; }
+
+  /* ---- projection: orthographic, turned by yaw, tipped by pitch ---- */
+  function projector() {
+    const yaw = twin.yaw * Math.PI / 180, pitch = twin.pitch * Math.PI / 180;
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+    const C = [135, 165, 150];
+    const raw = (x, y, z) => {
+      const px = x - C[0], py = y - C[1], pz = z - C[2];
+      const x1 = px * cy - py * sy, y1 = px * sy + py * cy;
+      return [x1, -(pz * cp + y1 * sp), y1 * cp - pz * sp];   // screen x, screen y, depth (bigger = farther)
+    };
+    // Fit the machine (build volume, rails, docks and their balloons) to
+    // the drawing area for this view.
+    const pts = [];
+    for (const x of [-26, 296]) for (const y of [-22, 346]) for (const z of [0, WF.TOP + 104]) pts.push(raw(x, y, z));
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), ds = pts.map(p => p[2]);
+    const padX = 14, padTop = 16, padBottom = 34;
+    const s = Math.min((twin.w - 2 * padX) / (Math.max(...xs) - Math.min(...xs)),
+      (twin.h - padTop - padBottom) / (Math.max(...ys) - Math.min(...ys)));
+    const ox = twin.w / 2 - s * (Math.max(...xs) + Math.min(...xs)) / 2;
+    const oy = padTop + (twin.h - padTop - padBottom) / 2 - s * (Math.max(...ys) + Math.min(...ys)) / 2;
+    const midDepth = (Math.max(...ds) + Math.min(...ds)) / 2;
+    const P = (x, y, z) => { const r = raw(x, y, z); return [ox + s * r[0], oy + s * r[1], r[2]]; };
+    return { P };
+  }
+
+  function pathOf(segs, P) {
+    let d = '';
+    for (const [ax, ay, az, bx, by, bz] of segs) {
+      const a = P(ax, ay, az), b = P(bx, by, bz);
+      d += `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}`;
+    }
+    return d;
+  }
+  function setPath(key, d) {
+    const p = twin.paths[key];
+    if (p && p.getAttribute('d') !== d) p.setAttribute('d', d);
+  }
+
+  function drawTwin(measure) {
+    const svg = $('wf-svg');
+    if (!svg || !twin.state) return;
+    if (measure || !twin.w) {
+      const r = svg.getBoundingClientRect();
+      if (!r.width || !r.height) return;              // a hidden tab: drawn when it is shown
+      twin.w = Math.round(r.width); twin.h = Math.round(r.height);
+      svg.setAttribute('viewBox', `0 0 ${twin.w} ${twin.h}`);
+    }
+    twin.drawnAt = performance.now();
+    const st = twin.state, [x, y, z] = twin.pos, T = WF.TOP, B = WF.BED;
+    const { P } = projector();
+    const bedZ = T - Math.max(0, Math.min(B, z));
+    const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
+    const heads = Object.entries(st.toolheads || {});
+
+    // Build volume envelope, the bed plate at its height, a 45 mm grid.
+    const env = [];
+    box(env, 0, 0, 0, B, B, T);
+    setPath('env', pathOf(env, P));
+    const bed = [];
+    box(bed, -6, -6, bedZ - 9, B + 6, B + 6, bedZ);
+    setPath('bed', pathOf(bed, P));
+    const grid = [];
+    for (let g = 45; g < B; g += 45) grid.push([g, 0, bedZ, g, B, bedZ], [0, g, bedZ, B, g, bedZ]);
+    setPath('grid', pathOf(grid, P));
+
+    // The parts: each object's outline, from the bed up to the nozzle.
+    const printing = ['printing', 'paused'].includes(st.state);
+    const plate = st.objects && Array.isArray(st.objects.list) ? st.objects : null;
+    const parts = { part: [], skipped: [], current: [], hatch: [] };
+    if (plate && printing) {
+      const excluded = new Set(plate.excluded || []);
+      for (const o of plate.list) {
+        const poly = Array.isArray(o.polygon) && o.polygon.length >= 3 ? o.polygon : null;
+        if (!poly) continue;
+        const key = excluded.has(o.name) ? 'skipped' : (o.name === plate.current ? 'current' : 'part');
+        const segs = parts[key];
+        // A skipped object stops growing; drawn as a thin outline at the bed.
+        const zTop = key === 'skipped' ? bedZ + Math.min(z, 2) : T;
+        const every = poly.length <= 16 ? 1 : Math.ceil(poly.length / 8);
+        poly.forEach((p, i) => {
+          const q = poly[(i + 1) % poly.length];
+          segs.push([p[0], p[1], bedZ, q[0], q[1], bedZ], [p[0], p[1], zTop, q[0], q[1], zTop]);
+          if (i % every === 0) segs.push([p[0], p[1], bedZ, p[0], p[1], zTop]);
+        });
+        if (key === 'skipped') {
+          const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+          const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+          segs.push([x0, y0, zTop, x1, y1, zTop], [x0, y1, zTop, x1, y0, zTop]);
+        } else {
+          // Layer lines on the walls: at most ten, evenly up the part.
+          const h = zTop - bedZ, n = Math.min(10, Math.floor(h / 4));
+          for (let k = 1; k < n; k++) {
+            const lz = bedZ + h * k / n;
+            poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; parts.hatch.push([p[0], p[1], lz, q[0], q[1], lz]); });
+          }
+        }
+      }
+    }
+    Object.entries(parts).forEach(([k, segs]) => setPath(k, pathOf(segs, P)));
+
+    // Where the nozzle has just been, on the layer it is printing.
+    const trail = twin.trail.length > 1 && printing
+      ? twin.trail.slice(1).map((p, i) => [twin.trail[i][0], twin.trail[i][1], T, p[0], p[1], T]) : [];
+    setPath('trail', pathOf(trail, P));
+
+    // CoreXY motion: two Y rails, the X beam at the head's Y.
+    const rz = T + WF.HEAD.cone + WF.HEAD.h * 0.7;
+    setPath('rail', pathOf([
+      [-24, -20, rz, -24, 334, rz], [294, -20, rz, 294, 334, rz],
+      [-24, y - 5, rz, 294, y - 5, rz], [-24, y + 5, rz, 294, y + 5, rz],
+    ], P));
+
+    // Rear beam and the four docks; a parked head sits in its dock.
+    const dock = [], parked = [], fault = [], headSegs = [];
+    const by = WF.DOCK_Y, bz = T + WF.HEAD.cone;
+    box(dock, -24, by + 26, bz + 10, 294, by + 34, bz + 22);
+    heads.forEach(([name, d], i) => {
+      const dx = dockX(i, heads.length);
+      dock.push([dx - 26, by + 26, bz, dx - 26, by + 26, bz + 46], [dx + 26, by + 26, bz, dx + 26, by + 26, bz + 46],
+        [dx - 26, by + 26, bz, dx - 26, by + 10, bz], [dx + 26, by + 26, bz, dx + 26, by + 10, bz]);
+      if (name !== active) head(d.status === 'error' ? fault : parked, dx, by, T);
+    });
+    setPath('dock', pathOf(dock, P));
+    setPath('parked', pathOf(parked, P));
+    setPath('fault', pathOf(fault, P));
+    if (active) head(headSegs, x, y, T);
+    else box(headSegs, x - 20, y - 12, rz - 6, x + 20, y + 12, rz + 6);   // the empty carriage
+    setPath('head', pathOf(headSegs, P));
+
+    // Z, dimensioned like a drawing: bed surface to the nozzle tip.
+    const dimX = B + 22;
+    const a = P(dimX, 0, bedZ), b = P(dimX, 0, T);
+    let dd = pathOf([[B + 2, 0, bedZ, dimX + 8, 0, bedZ], [B + 2, 0, T, dimX + 8, 0, T], [dimX, 0, bedZ, dimX, 0, T]], P);
+    if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 14) {
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      const tick = (p, dir) => [0.45, -0.45].map(t =>
+        `M${p[0].toFixed(1)} ${p[1].toFixed(1)}l${(Math.cos(ang + dir + t) * 6).toFixed(1)} ${(Math.sin(ang + dir + t) * 6).toFixed(1)}`).join('');
+      dd += tick(a, 0) + tick(b, Math.PI);
+    }
+    setPath('dim', dd);
+
+    drawLabels(P, { x, y, z, heads, active, a, b });
+  }
+
+  /* Set attributes and text only when they change: the labels that move
+   * are kept as elements and updated in place, not rebuilt every frame. */
+  function attrs(el, values) {
+    if (!el) return;
+    for (const [k, v] of Object.entries(values)) {
+      if (k === 'text') { if (el.textContent !== v) el.textContent = v; }
+      else if (el.getAttribute(k) !== String(v)) el.setAttribute(k, v);
+    }
+  }
+
+  function drawLabels(P, { x, y, z, heads, active, a, b }) {
+    const st = twin.state, T = WF.TOP, nb = '\u00a0';
+    // A balloon over each dock - the drafting way to name a part - ringed
+    // in its filament's colour, with a note above it when hot or faulty.
+    // These only move when the view turns, so the group is rebuilt only
+    // when its markup changes.
+    const tags = heads.map(([name, d], i) => {
+      const p = P(dockX(i, heads.length), WF.DOCK_Y + 30, T + WF.HEAD.cone + 70);
+      const cx = p[0].toFixed(1), cy = (p[1] - 4).toFixed(1);
+      const cls = d.status === 'error' ? 'fault' : (name === active ? 'out' : '');
+      const hot = d.target_temperature > 0 || d.temperature >= 50;
+      // The head on the carriage shows its temperature there, not here.
+      const note = d.status === 'error' ? 'fault' : (hot && name !== active ? `${Math.round(d.temperature)}°` : '');
+      return `<circle class="wf-balloon ${cls}" cx="${cx}" cy="${cy}" r="10.5" style="--ring:${esc(d.filament_color_hex || '#9aa3b5')}"/>` +
+        `<text class="wf-bn ${cls}" x="${cx}" y="${(p[1] - 0.4).toFixed(1)}" text-anchor="middle">${esc(name)}</text>` +
+        (note ? `<text class="wf-note ${cls}" x="${cx}" y="${(p[1] - 19).toFixed(1)}" text-anchor="middle">${note}</text>` : '');
+    });
+    setHTML($('wf-docktags'), tags.join(''));
+
+    // The head on the carriage gets the same balloon, on a leader from its
+    // nozzle tip, down and to the left: the Z dimension owns the right.
+    const tip = P(x, y, T);
+    attrs($('wf-tip'), { cx: tip[0].toFixed(1), cy: tip[1].toFixed(1) });
+    const on = active ? (heads.find(([n]) => n === active) || [0, {}])[1] : null;
+    const right = tip[0] < twin.w * 0.3;
+    const bx = tip[0] + (right ? 34 : -34), byy = Math.min(twin.h - 46, tip[1] + 30);
+    const show = on ? '' : 'display:none';
+    attrs($('wf-leader'), { d: `M${tip[0].toFixed(1)} ${tip[1].toFixed(1)}L${(bx + (right ? -10.5 : 10.5)).toFixed(1)} ${byy.toFixed(1)}`, style: show });
+    attrs($('wf-on-ring'), { cx: bx.toFixed(1), cy: byy.toFixed(1), style: on ? `--ring:${on.filament_color_hex || '#9aa3b5'}` : show });
+    attrs($('wf-on-name'), { x: bx.toFixed(1), y: (byy + 3.6).toFixed(1), text: active || '', style: show });
+    attrs($('wf-on-temp'), {
+      x: (bx + (right ? 14 : -14)).toFixed(1), y: (byy + 3.5).toFixed(1), 'text-anchor': right ? 'start' : 'end',
+      text: on && on.temperature >= 50 ? `${Math.round(on.temperature)}°` : '',
+    });
+    // The Z dimension's figure, beside its line.
+    const zShown = Math.hypot(b[0] - a[0], b[1] - a[1]) > 10;
+    attrs($('wf-ztext'), {
+      x: ((a[0] + b[0]) / 2 + 7).toFixed(1), y: ((a[1] + b[1]) / 2 + 4).toFixed(1),
+      text: zShown ? `Z${nb}${z.toFixed(2)}` : '',
+    });
+
+    setHTML($('wf-title'), `<b>${esc(st.printer_name || 'Printer')}</b><span>${twin.view ? WF.VIEW_WORD[twin.view] : 'Turned'} view</span><span>mm</span>`);
+
+    // A sentence for screen readers, changed only when its words change.
+    const skipped = st.objects && Array.isArray(st.objects.excluded) ? st.objects.excluded.length : 0;
+    const parkedNames = heads.filter(([n]) => n !== active).map(([n, d]) => d.status === 'error' ? `${n} (fault)` : n);
+    const label = `Line drawing of ${st.printer_name || 'the printer'}, ${(STATE_WORD[st.state] || st.state).toLowerCase()}. ` +
+      (active ? `${active} is on the carriage at X ${Math.round(x)}, Y ${Math.round(y)}, Z ${z.toFixed(1)} millimetres. ` : 'No toolhead is picked up. ') +
+      (parkedNames.length ? `Parked in the rear docks: ${parkedNames.join(', ')}. ` : '') +
+      (skipped ? `${skipped} object${skipped === 1 ? '' : 's'} skipped. ` : '') +
+      'Drag, or use the arrow keys, to turn it.';
+    if (label !== twin.label) { twin.label = label; $('wf-svg').setAttribute('aria-label', label); }
   }
 
   function renderTwin(state) {
     const host = $('twin-host');
     if (!host) return;
-    if (!state) { host.innerHTML = demoNeeded('the digital twin'); twin.built = false; return; }
+    const views = $('wf-views');
+    if (!state) {
+      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null;
+      if (views) views.hidden = true;
+      return;
+    }
+    if (views && views.hidden) views.hidden = false;
     if (!twin.built) buildTwin();
-    setVar($('twin-world'), '--yaw', `${twin.yaw}deg`);
+    twin.state = state;
     const [x, y, z] = state.toolhead_position || [135, 135, 0];
-    tween('twin-head', [x, y, z], ([hx, hy, hz]) => {
-      const head = $('twin-head'), gantry = $('twin-gantry');
-      if (!head) return;
-      head.style.transform = `translate3d(${hx * TWIN_PX}px, ${hy * TWIN_PX}px, ${hz * TWIN_PX + 10}px)`;
-      gantry.style.transform = `translate3d(0, ${hy * TWIN_PX}px, ${hz * TWIN_PX + 22}px)`;
+    // A new layer (or no print running) starts a fresh trail.
+    if (twin.trailZ === null || Math.abs(z - twin.trailZ) > 0.05 || state.state !== 'printing') { twin.trail = []; twin.trailZ = z; }
+    tween('twin-head', [x, y, z], (pos) => {
+      twin.pos = pos;
+      if (twin.state && twin.state.state === 'printing') {
+        const last = twin.trail[twin.trail.length - 1];
+        if (!last || Math.hypot(pos[0] - last[0], pos[1] - last[1]) > 0.6) twin.trail.push([pos[0], pos[1]]);
+        if (twin.trail.length > 90) twin.trail.shift();
+      }
+      queueTwin();
     });
-    const layer = state.layer || { current: 0, total: 0 };
-    const frac = layer.total ? Math.min(1, layer.current / layer.total) : 0;
-    const active = state.active_toolhead;
+    queueTwin();
+    const active = state.toolheads && state.toolheads[state.active_toolhead] ? state.active_toolhead : null;
     const color = active ? state.toolheads[active].filament_color_hex : '#9aa3b5';
-    const part = $('twin-part');
-    const printing = ['printing', 'paused', 'complete'].includes(state.state);
-    if (part.hidden !== !printing) part.hidden = !printing;
-    setVar(part, '--part-color', color);
-    tween('twin-part-h', printing ? Math.max(2, frac * 70) : 0, (h) => part.style.setProperty('--part-h', `${h.toFixed(1)}px`));
     setVar($('twin-card'), '--glass-tint', color);
-    // Rebuilt only when a dock changes; rebuilding it every reading also
-    // restarted the error ring's blink four times a second, so it never blinked.
-    setHTML($('twin-docks'), Object.entries(state.toolheads).map(([th, d]) => `
-      <div class="twin-dock ${d.status}" style="--ring:${d.status === 'error' ? '#ff3b30' : (d.status === 'active' ? '#34c759' : '#f5f5f7')};--fil:${esc(d.filament_color_hex)}">
-        <span class="td-ring"></span><span class="td-label">${esc(th)}</span>
-      </div>`).join(''));
+    setVar($('wf'), '--wf-active', color);
+    const layer = state.layer || { current: 0, total: 0 };
     // Non-breaking spaces inside each reading, so a narrow card wraps
     // between readings ("Z 33.20 mm") and never inside one.
-    const nb = '\u00a0';
+    const nb = ' ';
     setText($('twin-readout'), `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
       (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
     setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}`);

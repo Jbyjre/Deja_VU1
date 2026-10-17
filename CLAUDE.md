@@ -89,7 +89,8 @@ root should hand over to `welcome.html`.
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
   every 30 s), fleet cards, the "Needs you" list, room tint, live pill,
-  digital twin, files, dialogs, morph animations.
+  digital twin (an SVG engineering drawing projected from millimetres,
+  `drawTwin`), files, dialogs, morph animations.
 - CSS order: `style.css` → `workshop.css` → `farm.css` → `theme.css`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
@@ -119,6 +120,11 @@ those change.
 worker (`deja-vu1.jmath1110.workers.dev`), because crawlers need a full
 address; `test_link_preview_image_is_the_bundled_card` checks it. Rename the
 worker in `wrangler.jsonc` and those tags must change too.
+
+`marketing-library/` and `build-prompts/` are temporary, for the owner:
+copies of every marketing picture plus `MESSAGING.md` (the agreed feature
+order and wording), and one prompt per planned build session. Nothing reads
+them; both go before the launch post (`build-prompts/08-launch-prep.md`).
 
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
