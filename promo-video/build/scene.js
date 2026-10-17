@@ -259,7 +259,7 @@
         callout(v, CO.ok_pre, 'Pre-flight: clear', 't', P - .2, P + .25, k1);
         const k = camTo(v, P + .25, .6, [350, 250, 740, 400]);
         // the checklist ticks itself off, in time with the dialog
-        draw('#ill-ok .tick', P + .7, .35, .3); draw('#ill-ok .shield .d', G + .1, .6); draw('#ill-ok .shield .tick', G + .5, .35);
+        draw('#ill-ok .pop:not(.shield) .tick', P + .7, .35, .3); draw('#ill-ok .shield .d', P + 2.0, .6); draw('#ill-ok .shield .tick', P + 2.45, .35);
         spot(v, [383, 364, 674, 50], P + .8, G - .3);
         callout(v, CO.ok_all, 'Every check passed', 'b', P + 1.0, G - .3, k);
         callout(v, CO.ok_go, 'Start print', 'l', G - .9, G + .1, k);
