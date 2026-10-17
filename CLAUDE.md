@@ -192,8 +192,6 @@ sandbox, so you can't fetch the preview from here.
   is no restore (`backup.py`).
 - A start the real printer refuses still replaces the current job and erases
   the last finish summary (`moonraker_client.start_print`).
-- `fleet.add()` accepts a port outside 1-65535; the printer then shows
-  "Connecting..." forever.
 - A missing API key over the WebSocket shows only "Not connected:
   Unauthorized" (`moonraker_client._call`).
 - A simulated cancel records no history entry and keeps the active toolhead

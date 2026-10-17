@@ -550,8 +550,54 @@ const Workshop = (() => {
     renderChip();
   }
 
+  /* ---- finding and testing printers (backend/discovery.py) ---- */
+  function describeProbe(r) {
+    if (r.ok && !r.error) return `Moonraker ${r.moonraker_version || ''} answered, Klipper is ready${r.u1 ? ', and it reports Snapmaker\'s U1 objects' : ''}${r.toolheads ? ` · ${r.toolheads} toolhead${r.toolheads === 1 ? '' : 's'}` : ''}.`;
+    return r.error || 'No answer';
+  }
+
+  async function findPrinters(btn) {
+    btn.disabled = true; btn.textContent = 'Looking…';
+    $('fleet-find-note').textContent = 'Asking the network, then trying port 7125 on each address - a few seconds.';
+    const r = await postJSON('/api/printers/discover', {});
+    btn.disabled = false; btn.textContent = 'Find printers on my network';
+    const list = $('fleet-found');
+    if (!r.ok) { $('fleet-find-note').textContent = r.body.error || 'Couldn\'t look'; list.hidden = true; return; }
+    const found = r.body.printers || [];
+    $('fleet-find-note').textContent = `${found.length ? `Found ${found.length}` : 'Found nothing'} in ${r.body.seconds} s (${(r.body.how || []).join('; ')}).`
+      + (found.length ? '' : ' Check the printer is on and on the same network, or type its address below.');
+    list.hidden = !found.length;
+    list.innerHTML = found.map((p, i) => `<li class="found">
+      <span class="found-main"><b>${esc(p.name || p.ip)}</b>${p.u1 ? '<span class="found-tag">U1</span>' : ''}
+        <small>http://${esc(p.ip)}:${p.port} · ${esc(p.source)}</small>
+        <small class="${p.ok && !p.error ? 'is-ok' : 'is-warn'}">${esc(describeProbe(p))}</small></span>
+      ${p.added ? '<span class="found-added">Added</span>' : `<button class="btn small" type="button" data-use="${i}">Use this</button>`}</li>`).join('');
+    list.querySelectorAll('[data-use]').forEach(b => b.addEventListener('click', () => {
+      const p = found[+b.dataset.use];
+      $('fleet-add-url').value = `http://${p.ip}:${p.port}`;
+      if (!$('fleet-add-name').value) $('fleet-add-name').value = (p.name || `U1 ${p.ip.split('.').pop()}`).slice(0, 40);
+      if (p.needs_key) $('fleet-add-key').focus(); else $('fleet-add-name').focus();
+      showTest(p);
+    }));
+  }
+
+  function showTest(r) {
+    const out = $('fleet-test-result');
+    out.hidden = false;
+    out.className = `test-result ${r.ok && !r.error ? 'is-ok' : 'is-warn'}`;
+    out.textContent = describeProbe(r);
+  }
+
   function initFleet() {
     $('printer-chip').addEventListener('click', (e) => openPrinterMenu(e.currentTarget, e.detail === 0));
+    $('fleet-find').addEventListener('click', (e) => findPrinters(e.currentTarget));
+    $('fleet-add-test').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true; btn.textContent = 'Testing…';
+      const r = await postJSON('/api/printers/test', { moonraker_url: $('fleet-add-url').value, api_key: $('fleet-add-key').value });
+      btn.disabled = false; btn.textContent = 'Test';
+      showTest(r.ok ? r.body : { ok: false, error: r.body.error });
+    });
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,

@@ -25,6 +25,31 @@ server's terminal prints every command sent and every failure; start it
 with `DEJAVU_MOONRAKER_LOG=1` to print every exchange, WebSocket messages
 included.
 
+## Finding it without typing an address
+
+**Fleet → Add a printer → Find printers on my network** (`backend/discovery.py`):
+
+1. It asks the network over multicast DNS (mDNS). Snapmaker's U1 build of
+   Moonraker announces `_snapmaker._tcp.local.`, with its IP address in the
+   record's text and a host name `U1-<serial>.local.`
+   ([Snapmaker/u1-moonraker](https://github.com/Snapmaker/u1-moonraker)
+   `a308cfa`, `moonraker/components/zeroconf.py`; `lava/moonraker.conf`
+   turns `[zeroconf]` on). Stock Moonraker announces `_moonraker._tcp.local.`.
+2. Where a router drops multicast, it tries port 7125 (the port in the
+   U1's shipped `lava/moonraker.conf`) on every address of this computer's
+   own home network: 10.x, 172.16-31.x or 192.168.x only, never anything
+   else.
+3. Each answer is checked with `GET /server/info` and
+   `GET /printer/objects/list`: only real Moonrakers are listed, a U1 is
+   recognised by Snapmaker's `print_task_config` object, and one that
+   needs an API key says so.
+
+**Test** (`POST /api/printers/test`) runs step 3 on a typed address before
+it's added. A port outside 1-65535 is refused in words.
+
+Not yet confirmed on a real U1: that its announcement reaches a computer
+on the same network (some routers block multicast; step 2 covers that).
+
 ## What happens if something is wrong
 
 | What's wrong | What you see |

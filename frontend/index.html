@@ -233,6 +233,11 @@
         <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. It connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p></div>
       </div>
       <div id="fleet-registry"></div>
+      <div class="find-row">
+        <button class="btn" type="button" id="fleet-find">Find printers on my network</button>
+        <span class="find-note" id="fleet-find-note">Asks the network who runs Moonraker, then tries port 7125 on your home network. Nothing leaves your network.</span>
+      </div>
+      <ul class="found-list" id="fleet-found" hidden></ul>
       <form id="fleet-add-form" class="inline-form">
         <label class="sr-only" for="fleet-add-name">Printer name</label>
         <input type="text" id="fleet-add-name" placeholder="Name (Bench U1)" maxlength="40" required>
@@ -240,8 +245,10 @@
         <input type="url" id="fleet-add-url" placeholder="http://192.168.1.50:7125" required>
         <label class="sr-only" for="fleet-add-key">Moonraker API key (only if your Moonraker asks for one)</label>
         <input type="password" id="fleet-add-key" placeholder="API key (only if needed)" autocomplete="off" maxlength="128">
+        <button class="btn" type="button" id="fleet-add-test">Test</button>
         <button class="btn primary" type="submit">Add printer</button>
       </form>
+      <p class="test-result" id="fleet-test-result" role="status" hidden></p>
     </section>
 
     <!-- Folded into this tab so every section is always in the tab bar. -->

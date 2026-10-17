@@ -105,14 +105,23 @@ def sync_real_printers():
                 continue                  # an address saved before validation was this strict
 
 
+def check_url(url):
+    """A Moonraker address the dashboard can connect to, or a reason in words."""
+    if not _URL.match(str(url or "").strip()):
+        raise ValueError("Enter the printer's Moonraker address, like http://192.168.1.50:7125")
+    m = re.search(r":(\d+)/?$", str(url).strip())
+    port = int(m.group(1)) if m else None
+    if port is not None and not 1 <= port <= 65535:
+        raise ValueError(f"{port} isn't a port number - ports run from 1 to 65535 (Moonraker usually uses 7125)")
+
+
 def add(name, moonraker_url, api_key=None):
     name = str(name or "").strip()[:40]
     url = str(moonraker_url or "").strip()
     api_key = str(api_key or "").strip()
     if not name:
         raise ValueError("Give the printer a name")
-    if not _URL.match(url):
-        raise ValueError("Enter the printer's Moonraker address, like http://192.168.1.50:7125")
+    check_url(url)
     if api_key and not re.fullmatch(r"[A-Za-z0-9_\-]{8,128}", api_key):
         raise ValueError("That doesn't look like a Moonraker API key (letters and digits, 32 of them usually)")
     with _lock:

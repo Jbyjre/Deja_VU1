@@ -52,6 +52,8 @@ API endpoints
   GET  /api/maintenance              what's due
   GET  /api/maintenance/history      completed maintenance log
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
+  POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125)
+  POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
 
@@ -217,6 +219,7 @@ import color_check
 import comparison
 import converter_3mf
 import cost_calculator
+import discovery
 import file_library
 import filament_inventory
 import spoolman_bridge
@@ -1053,6 +1056,23 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                     return self._send_json(automations.test_fire(rule_id, target))
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
+        if route == "/api/printers/discover":
+            # Looks for Moonraker on this computer's own home network only.
+            if self._module_blocked("fleet"):
+                return None
+            self._read_json_body()
+            urls = [p["moonraker_url"] for p in fleet.registered()]
+            return self._send_json(discovery.discover(urls))
+
+        if route == "/api/printers/test":
+            # Tries an address before it is added; nothing is saved.
+            if self._module_blocked("fleet"):
+                return None
+            body = self._read_json_body()
+            url = str(body.get("moonraker_url") or "").strip()
+            fleet.check_url(url)
+            return self._send_json(discovery.probe(url, str(body.get("api_key") or "").strip() or None))
+
         if route == "/api/fleet/registry":
             if self._module_blocked("fleet"):
                 return None
@@ -1365,6 +1385,9 @@ def main():
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")
+    lan = discovery.home_address()
+    if lan:
+        print(f"  From a phone on the same Wi-Fi:  http://{lan}:{PORT}")
     real = fleet.registered()
     if real and modules.is_enabled("printer_link"):
         print(f"  Connecting to {len(real)} printer(s) added by address;")

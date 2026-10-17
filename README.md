@@ -593,19 +593,27 @@ and a local server that is down still shows "Could not reach the backend".
 
 ## How to run it
 
-You need Python 3.8 or newer. Nothing else.
+You need Python 3.8 or newer. Nothing else. **New to this? Follow
+[docs/getting-started.md](docs/getting-started.md)**: install Python,
+download the ZIP, double-click `start-windows.bat`, `start-mac.command` or
+`start-linux.sh`, and the dashboard opens in your browser.
+
+From a terminal:
 
 ```bash
 git clone https://github.com/Jbyjre/Deja_VU1.git
 cd Deja_VU1
-python3 backend/app.py
+python3 start.py          # or: python3 backend/app.py, then open http://localhost:8000
 ```
 
-Then open **http://localhost:8000** in a browser.
+The window prints the address to open from a phone on the same Wi-Fi.
 
 The dashboard will report that no printer is connected and show empty panels.
-To connect one: **Fleet → Add a printer**, with its Moonraker address (usually
-`http://<printer-ip>:7125`) — see [docs/real-printer.md](docs/real-printer.md).
+To connect one: **Fleet → Add a printer → Find printers on my network**
+(it asks the network, then tries Moonraker's port 7125 on your home
+network, and checks each one), or type its Moonraker address (usually
+`http://<printer-ip>:7125`) and press **Test** first — see
+[docs/real-printer.md](docs/real-printer.md).
 Or flip the **Demo data** switch in the header to fill it with the simulated
 print history. To try it from a phone on the same network, open
 **Settings → Pair another device** to get a code.
@@ -617,7 +625,7 @@ file is refused on purpose); **Automations** to build a rule and watch it
 fire; and **Settings → Demo controls** to fast-forward a print to
 its finish, or to make the next Pause fail and see how that is reported.
 
-(Tested on Python 3.11 and 3.13.)
+(GitHub Actions runs every test on Python 3.8, 3.10, 3.12 and 3.13.)
 
 **Opened the pages without the server?** The `frontend/` folder can be
 published on its own (for example as static files on Cloudflare — see
