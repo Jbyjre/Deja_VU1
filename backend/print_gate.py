@@ -34,6 +34,7 @@ import cost_calculator
 import file_library
 import filament_inventory
 import gcode_tools
+import layer_planner
 import maintenance
 import mock_moonraker
 import modules
@@ -131,6 +132,12 @@ def summary(filename, printer_state=None):
             elif s["status"] == "no_spool":
                 info.append(f"{s['toolhead']}: no matching spool in your filament inventory to check weight against")
 
+    # -- nozzles: what each used toolhead was sliced for, against what the
+    # printer reports fitted (matters most for mixed-nozzle prints) --------
+    noz_block, noz_info, nozzles = layer_planner.check_nozzles(analysis["meta"], used, state["toolheads"])
+    blocking += noz_block
+    info += noz_info
+
     # -- maintenance ----------------------------------------------------------
     maint = maintenance.get_status()
     overdue = [t["name"] for t in maint["tasks"] if t["status"] == "overdue"]
@@ -157,6 +164,7 @@ def summary(filename, printer_state=None):
         "layers": analysis["layers"],
         "preflight": pre,
         "filament": rows,
+        "nozzles": nozzles,
         "spools": spools,
         "maintenance": {"overdue": overdue, "due_soon": [t["name"] for t in maint["tasks"]
                                                          if t["status"] == "due_soon"]},

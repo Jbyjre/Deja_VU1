@@ -111,8 +111,10 @@ def parse_metadata(text):
         if key in settings and settings[key].isdigit():
             meta["layers"] = int(settings[key])
             break
-    for key in ("layer_height", "nozzle_diameter", "printer_model", "printer_settings_id",
-                "print_settings_id"):
+    # extruder_layer_height: per-toolhead layer heights, written by the
+    # mixed-nozzle slicer forks (see layer_planner.py).
+    for key in ("layer_height", "nozzle_diameter", "extruder_layer_height", "printer_model",
+                "printer_settings_id", "print_settings_id"):
         if key in settings:
             meta[key] = settings[key]
     return meta

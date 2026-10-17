@@ -825,3 +825,200 @@ const Farm = (() => {
 })();
 
 window.Farm = Farm;
+
+/* ---- Mixed-nozzle planner (Files tab) --------------------------------------
+ * Each toolhead's nozzle and preferred layer height in; the shared grid,
+ * each head's real height and a section view of the layers out (the maths
+ * is backend/layer_planner.py, behind POST /api/tools/layer-plan). The view
+ * is drawn like the digital twin: one ink, hairline grid, dimensions. */
+const LayerPlanner = (() => {
+  if (typeof document === 'undefined' || !document.getElementById('lp-form')) return null;
+  const NOZZLES = [0.2, 0.4, 0.6, 0.8];
+  const HEADS = ['T0', 'T1', 'T2', 'T3'];
+  let timer = null, seq = 0, seeded = false;
+
+  function rows(values) {
+    $('lp-rows').innerHTML = `<div class="lp-row lp-row-head" aria-hidden="true"><span>Head</span><span>Nozzle</span><span>Layer height</span></div>` +
+      HEADS.map(th => {
+        const v = values[th] || {};
+        return `<div class="lp-row" role="group" aria-label="${th}">
+          <b>${th}</b>
+          <select id="lp-n-${th}" aria-label="${th} nozzle">${NOZZLES.map(n => `<option value="${n}"${n === v.nozzle ? ' selected' : ''}>${n} mm</option>`).join('')}</select>
+          <span class="lp-unit"><input type="number" id="lp-h-${th}" min="0.01" max="1" step="0.01" inputmode="decimal"
+            value="${v.height ?? ''}" placeholder="not used" aria-label="${th} layer height"> mm</span>
+        </div>`;
+      }).join('');
+  }
+
+  /* Start from what the selected printer reports fitted, else 0.4 mm. */
+  function seed() {
+    const st = typeof lastPrinterState !== 'undefined' ? lastPrinterState : null;
+    const values = {};
+    HEADS.forEach((th, i) => {
+      const n = st && st.toolheads && st.toolheads[th] && NOZZLES.includes(st.toolheads[th].nozzle_diameter) ? st.toolheads[th].nozzle_diameter : 0.4;
+      values[th] = { nozzle: n, height: i === 0 ? +(n / 2).toFixed(2) : '' };
+    });
+    rows(values);
+    seeded = !!(st && st.toolheads);        // try again once the printer has reported
+  }
+
+  function read() {
+    return HEADS.map(th => ({ toolhead: th, nozzle: +$(`lp-n-${th}`).value, height: $(`lp-h-${th}`).value.trim() }))
+      .filter(h => h.height !== '').map(h => ({ ...h, height: +h.height }));
+  }
+
+  async function run() {
+    const heads = read(), mine = ++seq;
+    if (!heads.length) { $('lp-out').innerHTML = `<p class="log-empty">Give at least one toolhead a layer height.</p>`; return; }
+    const r = await postJSON('/api/tools/layer-plan', { heads, exact: $('lp-exact').checked, part_height: $('lp-part').value });
+    if (mine !== seq) return;
+    if (!r.ok) { $('lp-out').innerHTML = `<p class="lp-error">${esc(r.body.error || 'The planner is not available')}</p>`; return; }
+    render(r.body);
+  }
+
+  /* A section through the layers: one column per toolhead, its layer
+   * boundaries over two of the coarsest head's layers, the grid behind. */
+  function section(p) {
+    const heads = p.heads, span = Math.max(...heads.map(h => h.height)) * 2;
+    const W = 96 + heads.length * 74, H = 196, top = 22, bottom = H - 30, scale = (bottom - top) / span;
+    const y = (z) => (bottom - z * scale);
+    let g = '';
+    for (let z = 0; z <= span + 1e-9; z += p.grid) g += `<path class="lp-grid" d="M64 ${y(z).toFixed(1)}H${W - 10}"/>`;
+    const cols = heads.map((h, i) => {
+      const x = 76 + i * 74;
+      let lines = '';
+      for (let z = h.height; z < span - 1e-9; z += h.height) lines += `<path class="lp-layer" d="M${x} ${y(z).toFixed(1)}h56"/>`;
+      return `<rect class="lp-col${h.ok ? '' : ' is-bad'}" x="${x}" y="${y(span).toFixed(1)}" width="56" height="${(span * scale).toFixed(1)}"/>${lines}
+        <text class="lp-col-t" x="${x + 28}" y="${H - 12}" text-anchor="middle">${esc(h.toolhead)} · ${h.nozzle}</text>
+        <text class="lp-col-h" x="${x + 28}" y="${(y(h.height) + y(0)) / 2 + 3.5}" text-anchor="middle">${h.height.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}</text>`;
+    }).join('');
+    // The grid dimensioned on the left: one grid layer.
+    const dim = `<path class="lp-dim" d="M40 ${y(0)}H62M40 ${y(p.grid)}H62M50 ${y(0) + 9}V${y(p.grid) - 9}" marker-start="url(#lp-arrow)" marker-end="url(#lp-arrow)"/>
+      <text class="lp-dim-t" x="36" y="${(y(0) + y(p.grid)) / 2 + 3}" text-anchor="end">${p.grid}</text>`;
+    return `<svg class="lp-svg" viewBox="0 0 ${W} ${H}" style="width:${Math.round(W * 1.35)}px" role="img" aria-label="Section through the layers: ${heads.map(h => `${h.toolhead} prints ${h.height} millimetre layers`).join(', ')}; the shared grid is ${p.grid} millimetres.">
+      <defs><marker id="lp-arrow" viewBox="0 0 8 3" refX="8" refY="1.5" markerWidth="8" markerHeight="3" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L8 1.5L0 3z" class="lp-arrowhead"/></marker></defs>
+      <rect class="lp-sheet" x="0.5" y="0.5" width="${W - 1}" height="${H - 1}"/>
+      <text class="lp-title" x="10" y="15">SECTION · mm</text>${g}${cols}${dim}</svg>`;
+  }
+
+  function render(p) {
+    const saved = p.grid_layers && p.heads.length ? Math.max(0, ...p.heads.map(h => p.grid_layers - h.layers)) : 0;
+    $('lp-out').innerHTML = `${section(p)}
+      <dl class="lp-facts">
+        <div><dt>Shared grid</dt><dd>${p.grid} mm${p.exact ? ' (exact)' : ''}</dd></div>
+        ${p.heads.map(h => `<div><dt>${esc(h.toolhead)} · ${h.nozzle} mm nozzle</dt><dd>${h.height} mm${h.every > 1 ? `, every ${h.every} grid layers` : ''}${h.layers ? ` · ${h.layers} layers` : ''}<small>${h.limits[0]}–${h.limits[1]} mm allowed</small></dd></div>`).join('')}
+        ${saved ? `<div><dt>Coarsest head</dt><dd>${saved} fewer layers than printing it at the grid</dd></div>` : ''}
+      </dl>
+      ${p.notes.length ? `<ul class="lp-notes">${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}`;
+  }
+
+  function changed() { clearTimeout(timer); timer = setTimeout(run, 250); }
+
+  function init() {
+    seed();
+    $('lp-form').addEventListener('input', changed);
+    $('lp-form').addEventListener('change', changed);
+    $('lp-form').addEventListener('submit', (e) => e.preventDefault());
+    $('lp-example').addEventListener('click', () => {
+      rows({ T0: { nozzle: 0.2, height: 0.08 }, T1: { nozzle: 0.8, height: 0.56 }, T2: { nozzle: 0.4 }, T3: { nozzle: 0.4 } });
+      run();
+    });
+    window.addEventListener('dv-tab', (e) => { if (e.detail === 'files') { if (!seeded) seed(); run(); } });
+    run();
+  }
+  init();
+  return { run };
+})();
+
+/* ---- the planner's maths, in the browser ------------------------------------
+ * The same rule as backend/layer_planner.plan(), line for line, for the
+ * online demo (app.js, "the online demo"), where there's no server to ask.
+ * tests/test_layer_planner.py runs both on the same inputs and checks the
+ * answers match, words included, so change both together. */
+function planLayers(body) {
+  const LIMITS = { 0.2: [0.04, 0.14], 0.4: [0.08, 0.32], 0.6: [0.12, 0.42], 0.8: [0.16, 0.56] };
+  const TOL = 0.01;
+  // Python's round(): halves that are exact go to the even neighbour.
+  const pyRound = (x, d = 0) => {
+    const s = Math.abs(x).toFixed(Math.min(100, d + 30)), dot = s.indexOf('.');
+    if (/^50*$/.test(s.slice(dot + 1 + d))) {
+      const kept = s.slice(0, d ? dot + 1 + d : dot), last = +kept[kept.length - 1];
+      const t = Number(kept) + (last % 2 ? 10 ** -d : 0);
+      return Number((Math.sign(x) * t).toFixed(d));
+    }
+    return Number(x.toFixed(d));
+  };
+  const g6 = x => String(Number(x.toPrecision(6)));                   // Python {:g}
+  const g3 = x => String(Number(x.toPrecision(3)));                   // Python {:.3g}
+  const py = x => Number.isInteger(x) ? `${x}.0` : String(x);         // Python str(float)
+  const num = v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) ? Number(v) : NaN;
+  const nozzleOf = v => {
+    const n = num(v);
+    if (Number.isNaN(n)) throw new Error(`'${v}' isn't a nozzle size`);
+    const r = pyRound(n, 2);
+    if (!LIMITS[r]) throw new Error(`The U1 has no ${py(r)} mm nozzle profile (0.2, 0.4, 0.6 and 0.8 mm exist)`);
+    return r;
+  };
+  const heightOf = v => {
+    const h = num(v);
+    if (Number.isNaN(h) && !(typeof v === 'string' && v.trim().toLowerCase() === 'nan')) throw new Error(`'${v}' isn't a layer height`);
+    if (!(h >= 0.01 && h <= 1.0)) throw new Error('Layer heights must be between 0.01 and 1 mm');
+    return h;
+  };
+  const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+  const sharedGrid = (heights, exact) => {
+    const hs = heights.map(h => pyRound(h, 2));
+    if (exact) return hs.reduce((g, h) => gcd(g, pyRound(h * 100)), 0) / 100;
+    const finest = Math.min(...hs), steps = pyRound(finest * 1000);
+    for (let k = steps; k >= Math.ceil(steps / 4); k--) {
+      const g = k / 1000;
+      if (hs.every(h => Math.abs(h - Math.max(1, pyRound(h / g)) * g) <= TOL + 1e-9)) return g;
+    }
+    return pyRound(finest / 4, 3);
+  };
+
+  const heads = body.heads || [];
+  if (!heads.length) throw new Error('Add at least one toolhead');
+  const rows = heads.map(h => {
+    const th = String(h.toolhead || '').trim().toUpperCase();
+    if (!(th.length === 2 && th[0] === 'T' && '0123'.includes(th[1]))) throw new Error(`'${h.toolhead}' isn't a U1 toolhead (T0 to T3)`);
+    const nozzle = nozzleOf(h.nozzle);
+    const height = h.height === null || h.height === undefined || h.height === '' ? null : heightOf(h.height);
+    return { toolhead: th, nozzle, preferred: height };
+  });
+  if (new Set(rows.map(r => r.toolhead)).size !== rows.length) throw new Error('Each toolhead can appear once');
+  const preferred = rows.map(r => r.preferred).filter(Boolean);
+  if (!preferred.length) throw new Error('Give at least one toolhead a layer height');
+  const grid = sharedGrid(preferred, !!body.exact);
+  const notes = [];
+  let tall = null;
+  if (body.part_height !== null && body.part_height !== undefined && body.part_height !== '') {
+    tall = num(body.part_height);
+    if (Number.isNaN(tall)) throw new Error(`could not convert string to float: '${body.part_height}'`);
+    if (!(tall > 0 && tall <= 270)) throw new Error('Part height must be between 0 and 270 mm');
+  }
+  rows.forEach(r => {
+    const k = !r.preferred ? 1 : Math.max(1, pyRound(r.preferred / grid));
+    r.every = k;
+    r.height = pyRound(k * grid, 3);
+    const [lo, hi] = LIMITS[r.nozzle];
+    r.limits = [lo, hi];
+    r.ok = lo - 1e-9 <= r.height && r.height <= hi + 1e-9;
+    if (r.height > hi + 1e-9) {
+      notes.push(`${r.toolhead}: ${g3(r.height)} mm layers are thicker than the ${py(r.nozzle)} mm nozzle's ${py(hi)} mm maximum in Snapmaker's U1 profile`);
+    } else if (r.height < lo - 1e-9) {
+      notes.push(`${r.toolhead}: ${g3(r.height)} mm layers are thinner than the ${py(r.nozzle)} mm nozzle's ${py(lo)} mm minimum in Snapmaker's U1 profile`);
+    }
+    if (r.preferred && Math.abs(r.height - r.preferred) > 1e-6) {
+      notes.push(`${r.toolhead}: ${g6(r.preferred)} mm prints as ${g3(r.height)} mm, ${k} grid layer${k > 1 ? 's' : ''} of ${g6(grid)} mm`);
+    }
+    r.layers = tall ? Math.ceil(pyRound(tall / r.height, 6)) : null;
+  });
+  const thin = rows.filter(r => grid < r.limits[0] - 1e-9);
+  if (thin.length) {
+    notes.push(`The shared grid (${g6(grid)} mm) is below the minimum of `
+      + thin.map(r => `${r.toolhead}'s ${py(r.nozzle)} mm nozzle (${py(r.limits[0])} mm)`).join(', ')
+      + '; its prime-tower slabs print that thin, and the slicer reports it');
+  }
+  return { grid, exact: !!body.exact, heads: rows, notes, part_height: tall, grid_layers: tall ? Math.ceil(pyRound(tall / grid, 6)) : null };
+}

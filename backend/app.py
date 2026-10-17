@@ -52,11 +52,15 @@ API endpoints
   GET  /api/maintenance              what's due
   GET  /api/maintenance/history      completed maintenance log
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
+  POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125)
+  POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
+  POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
 
   GET  /api/leds                     simulated LED ring states
   GET  /api/colorcheck               simulated filament color check
   GET  /api/printer                  raw mock printer state
+  GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints
   GET  /api/chamber                  chamber temperature now + last 30 minutes
   GET  /api/health                   the print health gauge
 
@@ -215,6 +219,7 @@ import color_check
 import comparison
 import converter_3mf
 import cost_calculator
+import discovery
 import file_library
 import filament_inventory
 import spoolman_bridge
@@ -224,6 +229,7 @@ import webrtc_camera
 import home_assistant_bridge
 import led_status
 import live_feed
+import layer_planner
 import maintenance
 import mock_moonraker
 import modules
@@ -329,6 +335,7 @@ _DATA_ROUTES = {
     "/api/leds": ("led_status", lambda q: led_status.get_all_ring_states()),
     "/api/colorcheck": ("color_check", lambda q: color_check.check_current_job()),
     "/api/printer": (None, lambda q: mock_moonraker.get_printer_state()),
+    "/api/printer/job": (None, lambda q: dict(mock_moonraker.get_current_job() or {})),
     "/api/printer/control/capabilities": ("printer_control", lambda q: printer_control.get_capabilities()),
     "/api/printer/control/console": ("printer_control", lambda q: {"log": printer_control.get_console_log()}),
     "/api/filament/check": ("filament_inventory", lambda q: filament_inventory.check_job_requirements()),
@@ -850,6 +857,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
 
+        if route == "/api/tools/layer-plan":
+            # A calculator: no printer needed, nothing stored.
+            body = self._read_json_body()
+            return self._send_json(layer_planner.plan(body.get("heads") or [], bool(body.get("exact")),
+                                                      body.get("part_height")))
+
         if route == "/api/maintenance/done":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.mark_done(
                 body.get("task_id") or "", note=body.get("note", "")), require="task_id")
@@ -1042,6 +1055,23 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                     target = printer_id if mock_moonraker.has_printer(printer_id) else mock_moonraker.default_printer_id()
                     return self._send_json(automations.test_fire(rule_id, target))
             return self._send_json({"error": "Unknown endpoint"}, status=404)
+
+        if route == "/api/printers/discover":
+            # Looks for Moonraker on this computer's own home network only.
+            if self._module_blocked("fleet"):
+                return None
+            self._read_json_body()
+            urls = [p["moonraker_url"] for p in fleet.registered()]
+            return self._send_json(discovery.discover(urls))
+
+        if route == "/api/printers/test":
+            # Tries an address before it is added; nothing is saved.
+            if self._module_blocked("fleet"):
+                return None
+            body = self._read_json_body()
+            url = str(body.get("moonraker_url") or "").strip()
+            fleet.check_url(url)
+            return self._send_json(discovery.probe(url, str(body.get("api_key") or "").strip() or None))
 
         if route == "/api/fleet/registry":
             if self._module_blocked("fleet"):
@@ -1355,6 +1385,9 @@ def main():
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")
+    lan = discovery.home_address()
+    if lan:
+        print(f"  From a phone on the same Wi-Fi:  http://{lan}:{PORT}")
     real = fleet.registered()
     if real and modules.is_enabled("printer_link"):
         print(f"  Connecting to {len(real)} printer(s) added by address;")

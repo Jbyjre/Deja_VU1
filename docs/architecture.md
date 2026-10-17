@@ -266,7 +266,31 @@ raises `PrintBlocked` when the verdict is "blocked", or "confirm" without
 an explicit confirmation. `print_queue.py` runs every queued start through
 the same gate. `sanity_check.py` now separates blocking reasons (dock
 error, colour mismatch) from warnings (overdue maintenance, a close colour
-call), keeping its original `safe_to_print` / `reasons` fields.
+call), keeping its original `safe_to_print` / `reasons` fields. Since October
+2026 it also checks nozzles (`layer_planner.check_nozzles`): the file's
+`nozzle_diameter` per tool against what each toolhead reports, blocking a
+mismatch and naming mixed layer heights; a printer that doesn't report its
+nozzles is never guessed at.
+
+### Mixed-nozzle planner (`backend/layer_planner.py`)
+A calculator behind `POST /api/tools/layer-plan`: each toolhead's nozzle and
+preferred layer height in; the shared layer grid (the coarsest height every
+preferred height is a whole multiple of, within 0.01 mm, or exactly in
+"exact" mode), each head's real height and multiple, layer counts for a part
+height, and Snapmaker's own U1 limits per nozzle (from Snapmaker/OrcaSlicer
+`8931178`) out. The rule is LixNix's `extruder_layer_height`, rewritten from
+the option's description (fork commit `8fa80da`, AGPL; no code copied).
+`farm.js` draws the result as a section view and keeps a browser copy of the
+maths for the online demo.
+
+### Finding printers (`backend/discovery.py`)
+`POST /api/printers/discover` asks the network over multicast DNS
+(`_snapmaker._tcp`, which u1-moonraker `a308cfa` announces with its address
+in the TXT record, and stock `_moonraker._tcp`), then tries port 7125 on
+every address of this computer's own private /24 (RFC 1918 ranges only).
+Each hit is checked with `GET /server/info` and `/printer/objects/list`
+(`print_task_config` marks a U1). `POST /api/printers/test` runs the same
+check on one address, saying in words what's wrong. One search at a time.
 
 ### Automations
 `automations.py` stores rules as JSON, validates each completely before
@@ -541,6 +565,28 @@ browser — moves, arcs, G92, T0–T3; its footprint includes every extrusion,
 where the server's pre-flight leaves out-of-bounds points out of the
 footprint and reports them instead), AR, the games and the preferences.
 
+**The online demo.** Where `frontend/demo/recording.json` exists (it's
+published with the pages), that same "no server" check loads it instead of
+showing the banner, and the dashboard plays the simulated farm from it.
+`tools/online-demo/record.py` makes it: the real server, run in a temporary
+data folder with every module on and the sample files added, asked every
+GET route for each of the three simulated printers (each distinct answer
+stored once, looked up by path plus sorted parameters, leaving out `demo`,
+`since`, `v`, `t`, `_` and `device`), then 150 one-second frames of the
+live feed (`/api/live/snapshot` per printer and `/api/fleet`) with a
+sandbox jam at 75 s, plus the sample files themselves. In the page,
+`startTour()` replaces `window.fetch` for `/api/` addresses only: GETs are
+answered from the recording, the live routes from the frame for the
+current second (looping, with replayed events given fresh ids and times),
+`/api/files/raw` and `/api/files/lines` from the saved files, and the
+mixed-nozzle planner by `planLayers()` in `farm.js`, a line-for-line copy of
+`layer_planner.plan()` that `tests/test_layer_planner.py` checks against the
+Python on 409 inputs. Every other POST answers 409 with "This is the online
+demo...". Workshop's live connection uses its polling path (no WebSocket to
+open) and its badge reads "Recording". Demo data is forced on and locked.
+`tests/test_online_demo.py` fails when a GET route is missing from the
+recording, or when anything in it isn't simulated.
+
 **Honest commands.** Every control button goes through one function
 (`runCommand` in `app.js`): it shows "Pausing…" at once, sends the command,
 and then shows only what the printer reports back — or the failure, in
@@ -714,7 +760,7 @@ Everything that calls them already works.
 
 ## Testing
 
-608 tests, using Python's built-in `unittest`:
+638 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests

@@ -272,9 +272,154 @@ async function checkServer() {
   } finally {
     clearTimeout(timer);
   }
+  if (!here) here = await startTour();
   server.missing = !here;
   if (server.missing) showServerMissing();
   return here;
+}
+
+/* ---- the online demo -------------------------------------------------------
+ * The public Cloudflare link has no server, so instead of an empty dashboard
+ * it plays a recording of the simulated farm (frontend/demo/, made by
+ * tools/online-demo/record.py): every answer the dashboard asks for, for
+ * each of the three simulated printers, and 150 seconds of the live feed on
+ * a loop, with a jam halfway. The page answers its own /api requests from
+ * the recording; anything that would change something says it's a
+ * recording. It starts only where no Deja Vu1 server answers /api/health,
+ * so a real install never plays it and never shows its figures as real. */
+const realFetch = window.fetch.bind(window);
+const tour = { on: false, rec: null, started: 0, misses: new Set() };
+const TOUR_REFUSED = "This is the online demo: a recording of the simulated farm, so nothing here reaches a printer. "
+  + "Run Deja Vu1 on your own computer to use this.";
+const TOUR_IGNORED = new Set(['demo', 'since', 'v', 't', '_', 'device']);
+
+function tourOn() { return tour.on; }
+
+async function startTour() {
+  try {
+    const r = await realFetch('demo/recording.json', { cache: 'no-cache' });
+    if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) return false;
+    tour.rec = await r.json();
+  } catch (_) {
+    return false;
+  }
+  tour.on = true;
+  tour.started = Date.now();
+  demoOn = true;
+  window.fetch = tourFetch;
+  document.documentElement.classList.add('is-tour');
+  showTourBar();
+  setTimeout(() => {
+    const toggle = $('demo-toggle');
+    if (toggle) { toggle.checked = true; toggle.disabled = true; toggle.title = 'The online demo always shows the simulated farm'; }
+    if (window.Workshop) Workshop.reconnect();
+  }, 0);
+  return true;
+}
+
+/* The same key as tools/online-demo/record.py key_for(). */
+function tourKey(path, params) {
+  const kept = [...params.entries()].filter(([k]) => !TOUR_IGNORED.has(k)).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  return path + (kept.length ? '?' + kept.map(([k, v]) => `${k}=${v}`).join('&') : '');
+}
+
+function tourReply(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+function tourFrame() {
+  const frames = tour.rec.frames, step = (tour.rec.step || 1) * 1000;
+  const n = Math.floor((Date.now() - tour.started) / step);
+  return { at: n, i: n % frames.length, loop: Math.floor(n / frames.length), frame: frames[n % frames.length] };
+}
+
+// Events replay each time round the loop, with fresh ids so the dashboard
+// treats them as new.
+function tourEvents(since) {
+  const { at, loop } = tourFrame(), len = tour.rec.frames.length, out = [];
+  [loop - 1, loop].forEach(l => {
+    if (l < 0) return;
+    tour.rec.events.forEach(({ frame, event }) => {
+      const id = l * 100000 + event.id;
+      // Stamped with the time it happens in this playback, not when it was recorded.
+      const when = new Date(tour.started + (l * len + frame) * (tour.rec.step || 1) * 1000);
+      const local = new Date(when.getTime() - when.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+      if (l * len + frame <= at && id > since) out.push({ ...event, id, time: local });
+    });
+  });
+  return out;
+}
+
+async function tourText(name) {
+  const r = await realFetch(`demo/files/${encodeURIComponent(name)}`);
+  return r.ok ? r.text() : null;
+}
+
+async function tourGet(url) {
+  const path = url.pathname, q = url.searchParams;
+  const printer = q.get('printer') || tour.rec.default_printer;
+  if (path === '/api/live/snapshot') return tourReply({ seq: tourFrame().at, t: Date.now() / 1000, state: tourFrame().frame.state[printer], event_id: 0, time_scale: 1 });
+  if (path === '/api/printer') return tourReply({ ...tourFrame().frame.state[printer], connected: true, demo: true });
+  if (path === '/api/fleet') return tourReply({ printers: tourFrame().frame.fleet });
+  if (path === '/api/live/events') return tourReply({ events: tourEvents(+(q.get('since') || 0)) });
+  if (path === '/api/files/raw') return realFetch(`demo/files/${encodeURIComponent(q.get('name') || '')}`);
+  if (path === '/api/files/thumb') return realFetch(`demo/thumbs/${encodeURIComponent(q.get('name') || '')}.png`);
+  if (path === '/api/files/lines') {
+    // The same answer as gcode_tools.view_lines on the server.
+    const text = await tourText(q.get('name') || '');
+    if (text === null) return tourReply({ error: 'File not found' }, 404);
+    const lines = text.split(/\r\n|\r|\n/);
+    if (lines.length && lines[lines.length - 1] === '') lines.pop();
+    const offset = Math.max(0, +(q.get('offset') || 0)), limit = Math.max(1, Math.min(1000, +(q.get('limit') || 200)));
+    const find = (q.get('q') || '').toLowerCase();
+    if (find) {
+      const hits = [];
+      lines.forEach((l, i) => { if (l.toLowerCase().includes(find)) hits.push(i); });
+      return tourReply({ total: lines.length, matches: hits.length, lines: hits.slice(0, limit).map(i => ({ n: i + 1, text: lines[i] })) });
+    }
+    return tourReply({ total: lines.length, offset, lines: lines.slice(offset, offset + limit).map((text, i) => ({ n: offset + i + 1, text })) });
+  }
+  const params = new URLSearchParams(q);
+  params.set('printer', printer);
+  const hit = tour.rec.get[tourKey(path, params)];
+  if (hit === undefined) tour.misses.add(tourKey(path, params));
+  if (hit === undefined) return tourReply({ error: "This part isn't in the online demo's recording", connected: false, demo: false }, 404);
+  const { status, body } = tour.rec.bodies[hit];
+  return tourReply(body, status);
+}
+
+function tourPost(url, body) {
+  if (url.pathname === '/api/tools/layer-plan' && typeof planLayers === 'function') {
+    try { return tourReply(planLayers(JSON.parse(body || '{}'))); }
+    catch (err) { return tourReply({ error: err.message }, 400); }
+  }
+  return tourReply({ error: TOUR_REFUSED, online_demo: true }, 409);
+}
+
+function tourFetch(input, init) {
+  const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+  if (url.origin !== location.origin || !url.pathname.startsWith('/api/')) return realFetch(input, init);
+  const method = ((init && init.method) || 'GET').toUpperCase();
+  return Promise.resolve(method === 'GET' ? tourGet(url) : tourPost(url, init && init.body));
+}
+
+function showTourBar() {
+  if ($('tour-bar')) return;
+  const bar = document.createElement('section');
+  bar.id = 'tour-bar';
+  bar.className = 'server-banner tour-bar liquid-glass';
+  bar.setAttribute('aria-label', 'Online demo');
+  const r = tour.rec, minutes = Math.round(r.frames.length * (r.step || 1) / 6) / 10;
+  bar.innerHTML = `<span class="notice-mark" aria-hidden="true">i</span>
+    <div class="sbn-body">
+      <p><strong>Online demo.</strong> A recording of ${r.printers.length} simulated U1s that loops every
+        ${minutes} minutes, and one jams halfway. Click anything: what would change something says so,
+        because nothing here reaches a printer. Every figure is simulated.</p>
+      <p><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md">Run it with your own printer</a>
+        &middot; <a href="welcome.html">What Deja Vu1 is</a></p>
+    </div>`;
+  const anchor = $('server-banner');
+  if (anchor) anchor.before(bar); else document.body.prepend(bar);
 }
 
 function serverReady() {
@@ -1164,28 +1309,44 @@ function renderPlate(state) {
   const words = (s) => { const w = s.replace(/_/g, ' ').toLowerCase().trim(); return w ? w[0].toUpperCase() + w.slice(1) : s; };
   const label = (n) => `${words(short(n))} ${copies(n)}`.trim();
 
-  // The map: bed coordinates have Y pointing away from you; SVG's points down.
+  // The map is a top-view drawing, like the digital twin: the bed in a
+  // heavy line, a 30 mm grid, each object outlined with a numbered balloon
+  // that matches the list, skipped ones section-hatched, and the bed's
+  // size dimensioned. Bed Y points away from you; SVG's points down.
   const grid = [30, 60, 90, 120, 150, 180, 210, 240].map(v =>
     `<line x1="${v}" y1="0" x2="${v}" y2="270"/><line x1="0" y1="${v}" x2="270" y2="${v}"/>`).join('');
+  const number = new Map(plate.list.map((o, i) => [o.name, i + 1]));
   const shapes = plate.list.map(o => {
     const pts = plateShape(o);
     if (!pts) return '';
     const cls = excluded.has(o.name) ? 'is-skipped' : o.name === plate.current ? 'is-current' : '';
     const sel = o.name === plateUI.selected ? ' is-selected' : '';
-    return `<polygon class="plate-obj ${cls}${sel}" data-plate-obj="${esc(o.name)}" points="${pts.map(([x, y]) => `${x},${270 - y}`).join(' ')}"><title>${esc(label(o.name))}</title></polygon>`;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => 270 - p[1]);
+    const bx = Math.max(...xs) + 2, by = Math.min(...ys) - 2;
+    return `<g class="plate-part ${cls}${sel}" data-plate-obj="${esc(o.name)}"><title>${esc(label(o.name))}</title>
+      <polygon class="plate-obj" points="${pts.map(([x, y]) => `${x},${270 - y}`).join(' ')}"/>
+      <circle class="plate-balloon" cx="${bx + 5}" cy="${by - 5}" r="6.5"/><text class="plate-num" x="${bx + 5}" y="${by - 2.4}" text-anchor="middle">${number.get(o.name)}</text></g>`;
   }).join('');
+  const arrow = (x1, y1, x2, y2) => `<line class="plate-dim" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-start="url(#plate-arrow)" marker-end="url(#plate-arrow)"/>`;
   $('plate-map').innerHTML = `<title id="plate-map-title">The 270 by 270 mm bed, seen from above, with each object on it</title>
-    <defs><pattern id="plate-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <line x1="0" y1="0" x2="0" y2="6" class="plate-hatch-line"/></pattern></defs>
-    <rect class="plate-bed" x="0" y="0" width="270" height="270" rx="10"/>
+    <defs><pattern id="plate-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="5" class="plate-hatch-line"/></pattern>
+      <marker id="plate-arrow" viewBox="0 0 8 3" refX="8" refY="1.5" markerWidth="8" markerHeight="3" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0 0L8 1.5L0 3z" class="plate-arrowhead"/></marker></defs>
+    <rect class="plate-sheet" x="-29" y="-5" width="306" height="320"/>
+    <rect class="plate-bed" x="0" y="0" width="270" height="270"/>
     <g class="plate-grid">${grid}</g>${shapes}
-    <text class="plate-front" x="135" y="285" text-anchor="middle">front</text>`;
+    <path class="plate-ext" d="M0 273V292M270 273V292M-3 0H-22M-3 270H-22"/>
+    ${arrow(0, 288, 270, 288)}<text class="plate-dimtext" x="135" y="285" text-anchor="middle">270</text>
+    ${arrow(-18, 0, -18, 270)}<text class="plate-dimtext" x="-21" y="135" text-anchor="middle" transform="rotate(-90 -21 135)">270</text>
+    <path class="plate-axis" d="M6 264h16M6 264v-16"/><text class="plate-axis-t" x="25" y="267">X</text><text class="plate-axis-t" x="3" y="244">Y</text>
+    <text class="plate-front" x="135" y="306" text-anchor="middle">front</text>`;
 
   $('plate-list').innerHTML = plate.list.map(o => {
     const skipped = excluded.has(o.name), current = o.name === plate.current;
     return `<li><button type="button" class="plate-item${o.name === plateUI.selected ? ' is-selected' : ''}${skipped ? ' is-skipped' : ''}"
         data-plate-pick="${esc(o.name)}" ${skipped ? 'disabled' : ''} aria-pressed="${o.name === plateUI.selected}">
-      <span class="plate-dot ${skipped ? 'is-skipped' : current ? 'is-current' : ''}" aria-hidden="true"></span>
+      <span class="plate-dot ${skipped ? 'is-skipped' : current ? 'is-current' : ''}" aria-hidden="true">${plate.list.indexOf(o) + 1}</span>
       <span class="plate-name">${esc(label(o.name))}</span>
       <span class="plate-state">${skipped ? 'skipped' : current ? 'printing now' : 'waiting'}</span></button></li>`;
   }).join('');
@@ -3633,8 +3794,9 @@ function trackHighlights() {
  * /api/modules means "no Deja Vu1 server here" (a static host answers
  * that for any file it doesn't have); a server that is down or unreachable
  * keeps the dashboard and its "Could not reach the backend" message.
- * ?dashboard skips the hand-over, to look at the empty dashboard anyway. */
-if (!new URLSearchParams(location.search).has('dashboard')) {
+ * ?demo (the online demo: a recording of the simulated farm, see "the
+ * online demo" above) and ?dashboard skip the hand-over. */
+if (!['dashboard', 'demo'].some(k => new URLSearchParams(location.search).has(k))) {
   fetch('/api/modules', { cache: 'no-store' })
     .then(r => { if (r.status === 404) location.replace('welcome.html'); })
     .catch(() => {});

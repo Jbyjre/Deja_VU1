@@ -96,9 +96,15 @@ class TestNoPrinterNoFigures(APITestCase):
         self.assertTrue(body["demo_available"])
 
     def test_data_routes_return_no_figures(self):
-        for route in self.DATA_ROUTES:
+        # Every printer-data route, not a hand-kept list: a route added later
+        # is held to the same promise. A switched-off module answers 403.
+        routes = sorted(set(self.DATA_ROUTES) | set(dv_app._DATA_ROUTES))
+        self.assertIn("/api/printer/job", routes)
+        for route in routes:
             with self.subTest(route=route):
                 status, body = self.get(route)
+                if status == 403:
+                    continue
                 self.assertEqual(status, 200)
                 self.assertFalse(body["connected"])
                 self.assertFalse(body["demo"])

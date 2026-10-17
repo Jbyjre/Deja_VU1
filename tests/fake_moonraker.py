@@ -109,6 +109,9 @@ class FakeMoonraker:
             e = {"temperature": 25.0, "target": 0.0, "power": 0.0, "can_extrude": False}
             if u1:
                 e["state"] = "ACTIVATE" if i == 0 else "PARKED"
+                # u1-klipper extruder.get_status: nozzle and swap counters
+                e.update({"nozzle_diameter": 0.4, "switch_count": 120 + i, "retry_count": i % 2,
+                          "error_count": 0})
             self.status[name] = e
         if u1:
             self.status["print_task_config"] = {
@@ -309,6 +312,18 @@ class FakeMoonraker:
                 if not self._authorised():
                     return self._error(401, "Unauthorized")
                 q = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+                # Moonraker serves its JSON-RPC methods over HTTP as well
+                # (server.info -> GET /server/info), with the same result.
+                if parsed.path == "/server/info":
+                    return self._reply(200, {"result": {
+                        "klippy_connected": fake.klippy_state != "disconnected", "klippy_state": fake.klippy_state,
+                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],
+                        "warnings": [], "websocket_count": len(fake._clients), "moonraker_version": "fake",
+                        "api_version": [1, 5, 0], "api_version_string": "1.5.0"}})
+                if parsed.path == "/printer/objects/list":
+                    if fake.klippy_state != "ready":
+                        return self._error(503, "Klippy Host not connected")
+                    return self._reply(200, {"result": {"objects": list(fake.objects)}})
                 if parsed.path == "/server/history/list":
                     limit, start = int(q.get("limit", 50)), int(q.get("start", 0))
                     jobs = list(fake.history)
