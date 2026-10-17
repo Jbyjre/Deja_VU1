@@ -119,6 +119,12 @@ worker (`deja-vu1.jmath1110.workers.dev`), because crawlers need a full
 address; `test_link_preview_image_is_the_bundled_card` checks it. Rename the
 worker in `wrangler.jsonc` and those tags must change too.
 
+`promo-video/`: the launch video (HyperFrames compositions, frame-by-frame filming
+scripts that drive the real app on the simulated farm, synthesised music);
+`promo-video/README.md` is its working guide. `marketing/`: finished marketing assets
+(the two launch videos, about 45 MB), indexed in `marketing/README.md`. Neither folder
+is published by Cloudflare, but the repo is public.
+
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
 comment from Cloudflare's bot. `*.workers.dev` is blocked from the cloud

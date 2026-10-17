@@ -1,0 +1,28 @@
+      @font-face { font-family: "Bricolage Grotesque"; src: url("fonts/BricolageGrotesque-var.woff2") format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; }
+      @font-face { font-family: "Instrument Sans"; src: url("fonts/InstrumentSans-var.woff2") format("woff2"); font-weight: 400 700; font-stretch: 75% 100%; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-400.woff2") format("woff2"); font-weight: 400; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-500.woff2") format("woff2"); font-weight: 500; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; }
+      /* Tokens: the app's own "Layer lines" palette (frontend/theme.css, style.css). */
+      :root {
+        --bg: oklch(95.4% 0.004 250); --ink: oklch(22% 0.014 265); --ink-dim: oklch(37% 0.014 265); --ink-faint: oklch(49% 0.012 265);
+        --layer-ink: oklch(30% 0.03 265 / .075); --heat: oklch(66% 0.17 48); --heat-ink: oklch(50% 0.15 45); --paper: oklch(99% 0.002 250);
+        --accent: #4a8df8; --accent-text: #1d5fc8; --ok: #34c759; --warn: #ffcc00; --bad: #ff3b30;
+        --display: "Bricolage Grotesque", sans-serif; --sans: "Instrument Sans", sans-serif; --mono: "IBM Plex Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { overflow: hidden; background: var(--bg); }
+      body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+      #bench { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+      .pool { position: absolute; border-radius: 50%; }
+      #pool-a { width: 1500px; height: 1500px; left: -520px; top: -760px; background: radial-gradient(circle, #7db2ff 0%, transparent 66%); opacity: .34; }
+      #pool-b { width: 1400px; height: 1400px; right: -560px; bottom: -760px; background: radial-gradient(circle, oklch(72% 0.15 48) 0%, transparent 68%); opacity: .26; }
+      #lines { position: absolute; inset: 0; background: repeating-linear-gradient(180deg, var(--layer-ink) 0 1px, transparent 1px 6px);
+        -webkit-mask: radial-gradient(130% 95% at 50% 10%, #000 30%, rgba(0,0,0,.45) 65%, transparent 100%);
+                mask: radial-gradient(130% 95% at 50% 10%, #000 30%, rgba(0,0,0,.45) 65%, transparent 100%); }
+      .kicker { font: 500 18px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--heat-ink); display: flex; align-items: center; gap: 12px; }
+      .kicker::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--heat); }
+      .sub { font: 500 25px/1.42 var(--sans); color: var(--ink-dim); }
+      .note { font: 400 16px/1.5 var(--mono); color: var(--ink-faint); letter-spacing: .02em; }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }

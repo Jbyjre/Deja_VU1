@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Deja Vu1 launch film, vertical</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+/*SHARED_CSS*/
+      html, body { width: 1080px; height: 1920px; }
+      /* ---------- the laptop (no brand marks) ---------- */
+      #stage { position: absolute; inset: 0; perspective: 2600px; perspective-origin: 50% 42%; }
+      #rig { position: absolute; left: 50%; top: 50%; width: 1480px; height: 880px; margin: -440px 0 0 -740px; opacity: 0; }
+      .lid { position: absolute; left: 104px; top: 0; width: 1272px; height: 817px; border-radius: 26px 26px 10px 10px;
+        background: linear-gradient(180deg, #22252c, #14161b); box-shadow: inset 0 0 0 1.5px #3a3e47, inset 0 0 0 3px #0b0c0f; }
+      .cam-dot { position: absolute; left: 50%; top: 7px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #2c3038; }
+      .screen { position: absolute; left: 16px; top: 18px; width: 1240px; height: 775px; border-radius: 6px; overflow: hidden; background: var(--bg); }
+      .glare { position: absolute; inset: 0; background: linear-gradient(118deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.03) 32%, transparent 46%); z-index: 5; }
+      .base { position: absolute; left: 0; top: 817px; width: 1480px; height: 30px; border-radius: 2px 2px 26px 26px / 2px 2px 22px 22px;
+        background: linear-gradient(180deg, #f4f5f8 0%, #d7dae0 30%, #b9bdc5 75%, #9fa4ad 100%); box-shadow: inset 0 1px 0 #fff, inset 0 -2px 3px rgba(0,0,0,.18); }
+      .notch { position: absolute; left: 50%; top: 0; width: 230px; height: 9px; margin-left: -115px; border-radius: 0 0 12px 12px; background: linear-gradient(180deg, #a7acb4, #c6c9cf); }
+      .lshadow { position: absolute; left: 60px; top: 840px; width: 1360px; height: 60px; border-radius: 50%; background: radial-gradient(closest-side, rgba(20,24,34,.38), transparent); }
+      .layer { position: absolute; inset: 0; opacity: 0; }
+
+      /* ---------- captions: one system, a glass card bottom-left ---------- */
+      .cap { position: absolute; left: 80px; bottom: 80px; opacity: 0; transform-origin: 0 100%; }
+      .cap .card { position: relative; padding: 26px 34px 28px; border-radius: 30px; max-width: 980px;
+        background: oklch(99% 0.003 250 / .72); backdrop-filter: blur(22px) saturate(1.6) url(#lg-distort);
+        box-shadow: 0 1px 2px rgba(20,25,40,.08), 0 18px 48px rgba(20,25,40,.18), inset 0 0 0 1px rgba(255,255,255,.75); }
+      .cap .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+        background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(255,255,255,.08) 40%, rgba(255,255,255,.08) 60%, rgba(255,255,255,.5));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+      .cap .in { display: flex; flex-direction: column; gap: 12px; }
+      .cap .h { font: 700 62px/1.02 var(--display); font-stretch: 92%; letter-spacing: -.03em; color: var(--ink); white-space: nowrap; }
+      .cap .s { font: 500 23px/1.35 var(--sans); color: var(--ink-dim); }
+      .cap .kicker { font-size: 16px; }
+
+      /* hook + brand + values + end */
+      .big { font: 720 124px/1.0 var(--display); font-stretch: 90%; letter-spacing: -.04em; color: var(--ink); text-align: center; white-space: nowrap; }
+      .center-abs { position: absolute; left: 0; right: 0; display: flex; justify-content: center; }
+      #docks { position: absolute; left: 0; right: 0; top: 470px; display: flex; justify-content: center; gap: 56px; }
+      .dock { width: 232px; display: flex; flex-direction: column; align-items: center; gap: 20px; opacity: 0; }
+      .tile { position: relative; width: 196px; height: 236px; border-radius: 30px; background: linear-gradient(180deg, oklch(92% 0.004 260), oklch(88.5% 0.005 260));
+        box-shadow: inset 0 0 0 2px oklch(80% 0.006 260), 0 18px 40px oklch(25% 0.02 265 / .10); }
+      .tile .glow { position: absolute; inset: -3px; border-radius: 33px; opacity: 0; }
+      .tile .body { position: absolute; left: 38px; top: 34px; width: 120px; height: 98px; border-radius: 18px; background: linear-gradient(180deg, oklch(70% 0.006 260), oklch(63% 0.006 260)); }
+      .tile .body::after { content: ""; position: absolute; left: 22px; right: 22px; top: 22px; height: 12px; border-radius: 6px; background: oklch(55% 0.006 260); }
+      .tile .noz { position: absolute; left: 86px; top: 130px; width: 24px; height: 34px; background: oklch(58% 0.006 260); clip-path: polygon(0 0, 100% 0, 66% 100%, 34% 100%); }
+      .tile .rail { position: absolute; left: 34px; right: 34px; bottom: 30px; height: 8px; border-radius: 4px; background: oklch(80% 0.005 260); }
+      .tname { font: 600 26px/1 var(--mono); color: var(--ink); }
+      .state { height: 30px; display: flex; align-items: center; gap: 10px; font: 600 22px/1 var(--sans); color: var(--ink); opacity: 0; white-space: nowrap; }
+      .state .ring { width: 22px; height: 22px; border-radius: 50%; border: 4px solid currentColor; flex: none; }
+      #brand { position: absolute; left: 0; right: 0; top: 0; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; opacity: 0; }
+      #brand-row { display: flex; align-items: center; gap: 38px; }
+      #logo { width: 150px; height: 150px; flex: none; }
+      #wordmark { font: 720 168px/1 var(--display); font-stretch: 90%; letter-spacing: -.045em; color: var(--ink); }
+      .card-win { position: absolute; border-radius: 22px; overflow: hidden; background: var(--paper); opacity: 0;
+        box-shadow: 0 1px 2px oklch(25% 0.02 265 / .07), 0 30px 80px oklch(25% 0.02 265 / .2), 0 0 0 1px oklch(30% 0.02 265 / .07); }
+      .card-win .view { position: relative; overflow: hidden; width: 100%; height: 100%; }
+      .card-win .cam, .layer .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+      .chip { position: absolute; display: flex; align-items: center; gap: 10px; padding: 9px 15px 9px 13px; border-radius: 99px; z-index: 6;
+        font: 500 13px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: oklch(40% 0.08 85);
+        background: oklch(99% 0.02 95 / .75); backdrop-filter: blur(14px) saturate(1.5);
+        box-shadow: 0 1px 2px rgba(20,25,40,.08), 0 8px 22px rgba(20,25,40,.14), inset 0 0 0 1px rgba(255,255,255,.7); }
+      .chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+      .phone { position: absolute; width: 430px; height: 920px; border-radius: 62px; background: oklch(22% 0.014 265); padding: 14px; opacity: 0;
+        box-shadow: 0 1px 2px rgba(20,25,40,.12), 0 40px 90px oklch(25% 0.02 265 / .28), inset 0 0 0 2px #3a3e47; }
+      .phone .pscreen { position: relative; width: 402px; height: 870px; border-radius: 50px; overflow: hidden; background: var(--bg); }
+      .phone .island { position: absolute; left: 50%; top: 12px; width: 112px; height: 32px; margin-left: -56px; border-radius: 20px; background: #0b0d12; z-index: 3; }
+      .mchips { position: absolute; left: 160px; right: 160px; top: 470px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+      .mchip { font: 500 24px/1 var(--sans); color: var(--ink); padding: 18px 26px; border-radius: 99px; background: oklch(99% 0.002 250 / .85); opacity: 0;
+        box-shadow: 0 1px 2px rgba(20,25,40,.06), 0 10px 26px rgba(20,25,40,.09), inset 0 0 0 1px rgba(255,255,255,.8); }
+      #values { position: absolute; left: 0; right: 0; top: 200px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+      #values .big { font-size: 112px; opacity: 0; }
+      #values .faint { color: var(--ink-faint); }
+      #end { position: absolute; inset: 0; opacity: 0; }
+      #term { position: absolute; left: 50%; top: 540px; width: 1080px; margin-left: -540px; border-radius: 22px; background: oklch(21% 0.014 265); padding: 22px 30px 30px; opacity: 0;
+        box-shadow: 0 30px 80px oklch(25% 0.02 265 / .3), inset 0 0 0 1px #343842; }
+      #term .tbar { display: flex; gap: 8px; margin-bottom: 20px; }
+      #term .tbar i { width: 12px; height: 12px; border-radius: 50%; background: #3a3e47; display: block; }
+      #term .ln { font: 500 27px/1.75 var(--mono); color: #e9ebf0; white-space: nowrap; overflow: hidden; width: 0; }
+      #term .ln b { color: var(--heat); font-weight: 500; }
+    
+      /* ---------- vertical overrides ---------- */
+      .cap { left: 50px; right: 50px; top: 300px; bottom: auto; transform-origin: 0 0; }
+      .cap.top { top: 150px; bottom: auto; }
+      .cap .card { max-width: none; padding: 24px 30px 26px; }
+      .cap .h { font-size: 56px; white-space: normal; }
+      .cap .s { font-size: 24px; }
+      .big { font-size: 112px; white-space: normal; }
+      #docks { top: 760px; display: grid; grid-template-columns: repeat(2, 232px); justify-content: center; gap: 40px 90px; }
+      #brand-row { flex-direction: column; gap: 30px; }
+      #wordmark { font-size: 176px; }
+      #values { top: 520px; }
+      #values .big { font-size: 104px; }
+      #term { left: 40px; right: 40px; width: auto; margin-left: 0; top: 860px; padding: 20px 26px 26px; }
+      #term .ln { font-size: 25px; }
+      .phone { width: 560px; height: 1198px; border-radius: 80px; padding: 18px; }
+      .phone .pscreen { width: 524px; height: 1162px; border-radius: 64px; }
+      .phone .island { width: 140px; height: 40px; margin-left: -70px; top: 16px; }
+</style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="lg-distort" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <div id="root" data-composition-id="vertical" data-start="0" data-width="1080" data-height="1920" data-duration="40">
+      <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="lines"></div></div>
+
+      <div class="center-abs" style="top:300px;height:260px">
+        <div class="big" id="h1" style="position:absolute;opacity:0;width:960px">Four toolheads.</div>
+        <div class="big" id="h2" style="position:absolute;opacity:0;width:960px">Which one is ready?</div>
+        <div class="big" id="h3" style="position:absolute;opacity:0;width:960px">Deja Vu1 tells you.</div>
+      </div>
+      <div id="docks"></div>
+
+      <div id="brand" style="height:1920px">
+        <div id="brand-row">
+          <svg id="logo" viewBox="0 0 150 150" aria-hidden="true">
+            <circle cx="75" cy="75" r="66" fill="oklch(99% 0.002 250)" />
+            <circle id="logo-ring" cx="75" cy="75" r="62" fill="none" stroke="#4a8df8" stroke-width="7" stroke-linecap="round" transform="rotate(-90 75 75)" stroke-dasharray="389.6" stroke-dashoffset="389.6" />
+            <circle id="logo-dot" cx="75" cy="75" r="24" fill="#4a8df8" />
+          </svg>
+          <div id="wordmark">Deja Vu1</div>
+        </div>
+        <div class="sub" id="brand-sub" style="font-size:36px;color:var(--ink-dim);text-align:center;width:860px">The free, open-source dashboard for your Snapmaker U1.</div>
+      </div>
+
+      <div id="stage"><div id="rig">
+        <div class="lshadow"></div>
+        <div class="lid"><div class="cam-dot"></div><div class="screen" id="screen">
+          <div class="layer" id="L-ov"><div class="cam"></div></div>
+          <div class="layer" id="L-cf"><div class="cam"></div></div>
+          <div class="layer" id="L-fl"><div class="cam"></div></div>
+          <div class="chip" id="lchip" style="left:14px;bottom:14px">Simulated farm</div>
+          <div class="glare"></div>
+        </div></div>
+        <div class="base"><div class="notch"></div></div>
+      </div></div>
+
+      <div class="phone" id="ph" style="left:260px;top:430px"><div class="pscreen" id="ph-screen"><div class="island"></div></div></div>
+
+      <div class="card-win" id="Q1" style="left:50px;top:500px;width:980px;height:1000px" data-crop="580,240,580,592"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
+      <div class="card-win" id="Q2" style="left:50px;top:500px;width:980px;height:1000px" data-crop="170,40,750,765"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
+      <div class="card-win" id="Q5" style="left:50px;top:500px;width:980px;height:1000px" data-crop="330,100,700,714"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
+
+      <div id="values" style="top:560px">
+        <div class="big">Free.</div>
+        <div class="big">Open source.</div>
+        <div class="big">No account.</div>
+        <div class="big faint">Just Python.</div>
+      </div>
+
+      <div id="end">
+        <div class="center-abs" style="top:330px;flex-direction:column;align-items:center;gap:26px" id="end-row">
+          <svg viewBox="0 0 150 150" style="width:130px;height:130px" aria-hidden="true">
+            <circle cx="75" cy="75" r="66" fill="oklch(99% 0.002 250)" /><circle cx="75" cy="75" r="62" fill="none" stroke="#4a8df8" stroke-width="7" /><circle cx="75" cy="75" r="24" fill="#4a8df8" />
+          </svg>
+          <div style="font:720 150px/1 var(--display);font-stretch:90%;letter-spacing:-.045em">Deja Vu1</div>
+        </div>
+        <div class="center-abs" style="top:770px"><div class="sub" id="end-try" style="font:600 38px/1 var(--sans);color:var(--ink)">Try it in three lines.</div></div>
+        <div id="term">
+          <div class="tbar"><i></i><i></i><i></i></div>
+          <div class="ln" data-n="52"><b>$</b> git clone https://github.com/Jbyjre/Deja_VU1.git</div>
+          <div class="ln" data-n="14"><b>$</b> cd Deja_VU1</div>
+          <div class="ln" data-n="24"><b>$</b> python3 backend/app.py</div>
+        </div>
+        <div class="center-abs" style="top:1190px"><div class="note" id="end-meta" style="font-size:21px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)">Free · MIT licence · Python 3.8+</div></div>
+        <div class="center-abs" style="top:1500px;left:60px;right:60px;flex-direction:column;align-items:center;text-align:center" id="end-fine">
+          <div class="note" style="font-size:20px">Every figure shown comes from Deja Vu1's built-in simulated farm.</div>
+          <div class="note" style="font-size:20px">Deja Vu1 is an independent project and is not affiliated with Snapmaker.</div>
+        </div>
+      </div>
+
+      <div class="cap" id="c-needs"><div class="card"><div class="in"><div class="kicker">Needs you</div><div class="h">See what needs you, ranked.</div></div></div></div>
+      <div class="cap" id="c-live"><div class="card"><div class="in"><div class="kicker">Live · 4 updates a second</div><div class="h">Problems show up the moment they happen.</div><div class="s">A filament jam, fired from the farm sandbox.</div></div></div></div>
+      <div class="cap" id="c-check"><div class="card"><div class="in"><div class="kicker">Confirm print</div><div class="h">It checks before you print.</div></div></div></div>
+      <div class="cap" id="c-no"><div class="card"><div class="in"><div class="kicker">Refused, in words</div><div class="h">Something wrong? It won't start.</div><div class="s">And it tells you exactly why.</div></div></div></div>
+      <div class="cap top" id="c-phone"><div class="card"><div class="in"><div class="kicker">On your phone</div><div class="h">Control it from your phone.</div></div></div></div>
+      <div class="cap" id="c-farm"><div class="card"><div class="in"><div class="kicker">Fleet · 27 simulated printers</div><div class="h">Run your whole farm.</div></div></div></div>
+      <div class="cap" id="c-pause"><div class="card"><div class="in"><div class="kicker">Fleet command center</div><div class="h">Pause them all. Each one reports back.</div></div></div></div>
+      <div class="cap" id="c-q1"><div class="card"><div class="in"><div class="kicker">Photo-to-Print Studio</div><div class="h">Turn a photo into a print.</div></div></div></div>
+      <div class="cap" id="c-q2"><div class="card"><div class="in"><div class="kicker">MakerWorld → U1</div><div class="h">Convert projects in one click.</div></div></div></div>
+      <div class="cap" id="c-q5"><div class="card"><div class="in"><div class="kicker">Games tab</div><div class="h">Ten games for the long prints.</div></div></div></div>
+
+<!--VIDEOS-->
+      <audio id="music" src="assets/audio/bed2_vertical.wav" data-start="0" data-duration="40" data-track-index="9" data-volume="1"></audio>
+      <audio id="sfx" src="assets/audio/sfx_vertical.wav" data-start="0" data-duration="40" data-track-index="10" data-volume="1"></audio>
+    </div>
+    <script>
+      const M = /*MARKS*/{}/*END*/;
+      const $ = (s) => document.querySelector(s);
+      const FW = 1440, FH = 900, SW = 1240, SH = 775;
+      const at = (shot, mark) => M[shot].start + (mark in M[shot].marks ? M[shot].marks[mark] : 0);
+
+      // --- static DOM prep ---
+      const VIEWS = {};
+      function mount(viewEl, videoId, crop, vw, vh) {
+        const [cx, cy, cw, ch] = crop || [0, 0, FW, FH];
+        const s = vw / cw, cam = viewEl.querySelector('.cam');
+        Object.assign(cam.style, { width: FW * s + 'px', height: FH * s + 'px' });
+        cam.appendChild(document.getElementById(videoId));
+        return { cam, vw, vh, s, base: [cx, cy, cw, ch] };
+      }
+      VIEWS.ov = mount($('#L-ov'), 'v-ov', null, SW, SH);
+      VIEWS.cf = mount($('#L-cf'), 'v-cf', null, SW, SH);
+      VIEWS.fl = mount($('#L-fl'), 'v-fl', null, SW, SH);
+      const cw = (id) => { const el = $(id); return [el, el.dataset.crop.split(',').map(Number), parseFloat(el.style.width), parseFloat(el.style.height)]; };
+      for (const [k, id, vid] of [['q1', '#Q1', 'v-q1'], ['q2', '#Q2', 'v-q2'], ['q5', '#Q5', 'v-q5']]) {
+        const [el, crop, w, h] = cw(id); VIEWS[k] = mount(el.querySelector('.view'), vid, crop, w, h);
+      }
+      (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { position: 'absolute', inset: '0' });
+        cam.appendChild($('#v-ph')); $('#ph-screen').appendChild(cam); })();
+
+      const DOCKS = [
+        { t: 'T0', label: 'Ready', color: 'oklch(78% 0.01 260)', glow: 'oklch(97% 0.01 250)' },
+        { t: 'T1', label: 'Printing', color: '#34c759', glow: '#34c759' },
+        { t: 'T2', label: 'Heating up', color: '#ff9f0a', glow: '#ff9f0a' },
+        { t: 'T3', label: 'Out of filament', color: '#ff3b30', glow: '#ff3b30' },
+      ];
+      $('#docks').innerHTML = DOCKS.map((d, i) => `
+        <div class="dock" id="dock${i}">
+          <div class="tile"><div class="glow" style="box-shadow:0 0 0 4px ${d.glow}, 0 0 46px 6px ${d.glow}"></div><div class="body"></div><div class="noz"></div><div class="rail"></div></div>
+          <div class="tname">${d.t}</div>
+          <div class="state" style="color:${d.color}"><span class="ring"></span><span style="color:var(--ink)">${d.label}</span></div>
+        </div>`).join('');
+
+      // --- motion vocabulary (cut-the-curve, zoom-through; smooth long-tail eases) ---
+      const tl = gsap.timeline({ paused: true });
+      function camTo(v, t, d, r, ease = 'expo.inOut') {
+        const k = Math.min(v.vw / (r[2] * v.s), v.vh / (r[3] * v.s));
+        const cx = (r[0] + r[2] / 2) * v.s, cy = (r[1] + r[3] / 2) * v.s;
+        let x = v.vw / 2 - k * cx, y = v.vh / 2 - k * cy;
+        x = Math.min(0, Math.max(v.vw - k * FW * v.s, x)); y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
+        if (d === 0) tl.set(v.cam, { scale: k, x, y }, t); else tl.to(v.cam, { scale: k, x, y, duration: d, ease }, t);
+      }
+      // zoom-through: in from behind (0.75 -> 1, blur 10 -> 0), out toward the viewer (1 -> 1.2, blur 0 -> 10)
+      function zin(el, t, d = .5) {
+        tl.fromTo(el, { opacity: .15, scale: .75, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: d, ease: 'expo.out', immediateRender: false }, t);
+      }
+      function zout(el, t, d = .2) {
+        tl.to(el, { scale: 1.2, filter: 'blur(10px)', duration: d, ease: 'power3.in' }, t);
+        tl.to(el, { opacity: 0, duration: d, ease: 'none' }, t);
+      }
+      // captions: the glass card itself can't take a filter (it would break its backdrop), so the text blurs inside
+      function capIn(id, t) {
+        tl.fromTo(id, { opacity: 0, scale: .9, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: .55, ease: 'expo.out' }, t);
+        tl.fromTo(`${id} .in`, { filter: 'blur(10px)' }, { filter: 'blur(0px)', duration: .45, ease: 'expo.out' }, t);
+      }
+      function capOut(id, t) {
+        tl.to(id, { opacity: 0, scale: 1.04, y: -10, duration: .2, ease: 'power3.in' }, t);
+        tl.to(`${id} .in`, { filter: 'blur(10px)', duration: .2, ease: 'power3.in' }, t);
+      }
+      function capSwap(a, b, t) { capOut(a, t - .2); capIn(b, t); }
+      // the rig (laptop) camera
+      const POSE = {
+        center: { x: 0, y: 60, scale: .68, rotationY: 0, rotationX: 8 },
+        tilt: { x: 0, y: 60, scale: .68, rotationY: -14, rotationX: 8 },
+        fill: { x: 0, y: 150, scale: .87, rotationY: 0, rotationX: 0 },
+      };
+      function rig(t, d, pose, extra = {}) {
+        tl.to('#rig', { ...POSE[pose], ...extra, duration: d, ease: 'expo.inOut' }, t);
+        tl.fromTo('#stage', { filter: 'blur(0px)' }, { filter: 'blur(3px)', duration: d * .45, ease: 'power2.in', immediateRender: false }, t + d * .05);
+        tl.to('#stage', { filter: 'blur(0px)', duration: d * .5, ease: 'power2.out' }, t + d * .5);
+      }
+      // swap the laptop screen from layer a to layer b: a accelerates left, b continues left into place
+      function screenSwap(a, b, t) {
+        tl.to(a, { x: -260, filter: 'blur(14px)', duration: .22, ease: 'power4.in' }, t - .22);
+        tl.to(a, { opacity: 0, duration: .22, ease: 'none' }, t - .22);
+        tl.fromTo(b, { x: 260, opacity: .2, filter: 'blur(14px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, t);
+      }
+      function cardSwap(a, b, t) {   // big cards, cut the curve leftward
+        if (a) { tl.to(a, { x: -300, filter: 'blur(18px)', duration: .22, ease: 'power4.in' }, t - .22); tl.to(a, { opacity: 0, duration: .22, ease: 'none' }, t - .22); }
+        tl.fromTo(b, { x: 300, opacity: .2, filter: 'blur(18px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, t);
+      }
+
+      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 120, y: 160, duration: 40, ease: 'none' }, 0);
+      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -120, y: -140, duration: 40, ease: 'none' }, 0);
+      gsap.set('#rig', { ...POSE.center, y: 900, rotationX: 40 });
+      tl.set('#rig', { ...POSE.center, y: 900, rotationX: 40 }, 0);
+
+      // 0-4 hook
+      zin('#h1', 0.05, .45);
+      DOCKS.forEach((d, i) => tl.fromTo(`#dock${i}`, { opacity: 0, y: 60, scale: .9 }, { opacity: 1, y: 0, scale: 1, duration: .6, ease: 'expo.out' }, .15 + i * .07));
+      zout('#h1', .8); zin('#h2', 1.0);
+      DOCKS.forEach((d, i) => {
+        const t = 2.0 + i * .25;
+        tl.fromTo(`#dock${i} .glow`, { opacity: 0 }, { opacity: 1, duration: .14, ease: 'power1.out' }, t);
+        tl.fromTo(`#dock${i} .state`, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .35, ease: 'expo.out' }, t);
+        tl.fromTo(`#dock${i} .tile`, { scale: 1 }, { scale: 1.06, duration: .1, yoyo: true, repeat: 1, ease: 'power1.out' }, t);
+      });
+      tl.fromTo('#dock3 .glow', { opacity: 1 }, { opacity: .15, duration: .125, yoyo: true, repeat: 5, ease: 'steps(1)', immediateRender: false }, 2.85);
+      zout('#h2', 2.8); zin('#h3', 3.0, .45);
+      zout('#h3', 3.8); tl.to('#docks', { scale: 1.15, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power3.in' }, 3.8);
+
+      // 4-6 brand, then the laptop
+      tl.set('#brand', { opacity: 1 }, 3.98);
+      tl.fromTo('#brand-row', { opacity: .15, scale: 1.25, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .55, ease: 'expo.out', immediateRender: false }, 4.0);
+      tl.to('#logo-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .7, ease: 'expo.out' }, 4.0);
+      tl.fromTo('#logo-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .45, ease: 'back.out(2.2)' }, 4.15);
+      tl.fromTo('#brand-sub', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out' }, 4.45);
+      tl.to('#brand', { y: -560, scale: .55, duration: .8, ease: 'expo.inOut' }, 5.4);
+      tl.to('#brand-sub', { opacity: 0, duration: .3 }, 5.4);
+      tl.set('#L-ov', { opacity: 1 }, 5.3); camTo(VIEWS.ov, 5.3, 0, [0, 0, FW, FH]);
+      tl.to('#rig', { opacity: 1, duration: .3 }, 5.5);
+      tl.to('#rig', { ...POSE.center, duration: .9, ease: 'expo.out' }, 5.5);
+      tl.to('#brand', { opacity: 0, y: -620, duration: .3, ease: 'power3.in' }, 6.5);
+
+      // 6-12 Needs you, live
+      rig(6.4, .8, 'fill');
+      camTo(VIEWS.ov, 6.4, .8, [150, 230, 1140, 712]);
+      capIn('#c-needs', 6.9);
+      const JAM = at('overview_jam', 'jam');
+      capSwap('#c-needs', '#c-live', JAM + .25);
+      camTo(VIEWS.ov, JAM + .2, .7, [150, 250, 1140, 600]);
+
+      // 12-17 Confirm Print
+      capOut('#c-live', 11.75);
+      screenSwap('#L-ov', '#L-cf', 12.0); camTo(VIEWS.cf, 11.7, 0, [130, 60, 1180, 737]);
+      capIn('#c-check', 12.3);
+      const DLG = at('confirm_refuse', 'dialog');
+      camTo(VIEWS.cf, DLG - .5, .75, [360, 170, 720, 560]);
+      capSwap('#c-check', '#c-no', DLG + .15);
+
+      // 17-23 phone
+      capOut('#c-no', 16.75);
+      tl.to('#rig', { x: -1100, opacity: 0, filter: 'blur(18px)', duration: .3, ease: 'power4.in' }, 16.75);
+      tl.fromTo('#ph', { opacity: .2, x: 600, rotationY: -28, filter: 'blur(18px)', transformPerspective: 1800 },
+                       { opacity: 1, x: 0, rotationY: -6, filter: 'blur(0px)', duration: .7, ease: 'power4.out', immediateRender: false }, 17.05);
+      tl.to('#ph', { rotationY: 6, duration: 5.2, ease: 'none' }, 17.75);
+      capIn('#c-phone', 17.3);
+
+      // 23-29 fleet
+      capOut('#c-phone', 22.55);
+      tl.to('#ph', { x: -700, opacity: 0, filter: 'blur(18px)', duration: .25, ease: 'power4.in' }, 22.6);
+      tl.set('#L-ov', { opacity: 0 }, 22.6); tl.set('#L-cf', { opacity: 0 }, 22.6); tl.set('#L-fl', { opacity: 1 }, 22.6);
+      camTo(VIEWS.fl, 22.6, 0, [0, 0, FW, FH]);
+      tl.set('#rig', { ...POSE.tilt, x: 900, opacity: .2, filter: 'blur(18px)' }, 22.8);
+      tl.to('#rig', { x: 0, opacity: 1, filter: 'blur(0px)', duration: .6, ease: 'power4.out' }, 22.85);
+      capIn('#c-farm', 23.2);
+      const PAUSE = at('fleet', 'pause');
+      rig(PAUSE - .9, .8, 'fill');
+      camTo(VIEWS.fl, PAUSE - .9, .8, [150, 40, 1140, 712]);
+      camTo(VIEWS.fl, PAUSE + .25, .8, [160, 230, 900, 562]);
+      capSwap('#c-farm', '#c-pause', PAUSE + .35);
+
+      // 29-34 quick fire
+      capOut('#c-pause', 28.55);
+      tl.to('#rig', { x: -1100, opacity: 0, filter: 'blur(18px)', duration: .25, ease: 'power4.in' }, 28.55);
+      const Q = ['q1', 'q2', 'q5'];
+      Q.forEach((k, i) => {
+        const t = 29.0 + i * 1.6, el = '#' + k.toUpperCase();
+        camTo(VIEWS[k], t - .3, 0, VIEWS[k].base);
+        cardSwap(i ? '#' + Q[i - 1].toUpperCase() : null, el, t);
+        if (i) capOut('#c-' + Q[i - 1], t - .2);
+        capIn('#c-' + k, t + .05);
+      });
+
+      // 34-36 values
+      capOut('#c-q5', 33.8);
+      tl.to('#Q5', { x: -300, opacity: 0, filter: 'blur(18px)', duration: .22, ease: 'power4.in' }, 33.8);
+      gsap.utils.toArray('#values .big').forEach((el, i) => zin(el, 34.0 + i * .4, .4));
+      tl.to('#values', { opacity: 0, scale: 1.08, filter: 'blur(12px)', duration: .22, ease: 'power3.in' }, 35.75);
+
+      // 36-40 end
+      tl.set('#end', { opacity: 1 }, 35.95);
+      tl.fromTo('#end-row', { opacity: .15, scale: 1.25, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .55, ease: 'expo.out', immediateRender: false }, 36.0);
+      tl.fromTo('#end-try', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out' }, 36.3);
+      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out' }, 36.4);
+      let tt = 36.6;
+      gsap.utils.toArray('#term .ln').forEach((ln) => {
+        const n = +ln.dataset.n, d = n * .012;
+        tl.fromTo(ln, { width: '0ch' }, { width: (n + 1) + 'ch', duration: d, ease: `steps(${n + 1})` }, tt);
+        tt += d + .12;
+      });
+      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .4 }, 36.5);
+      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .4 }, 36.6);
+
+      window.__timelines["vertical"] = tl;
+    </script>
+  </body>
+</html>
