@@ -1,0 +1,11 @@
+# Large or generated files: keep them out of git
+footage/
+renders/
+capture/frames/
+capture/*.log
+*/assets/footage/
+*/assets/audio/
+music/*.wav
+*/.hyperframes/
+node_modules/
+build/sfx_*.json

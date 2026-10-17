@@ -126,6 +126,11 @@ copies of every marketing picture plus `MESSAGING.md` (the agreed feature
 order and wording), and one prompt per planned build session. Nothing reads
 them; both go before the launch post (`build-prompts/08-launch-prep.md`).
 
+`promo-video/`: the launch video (HyperFrames compositions, frame-by-frame filming
+scripts that drive the real app on the simulated farm, synthesised music);
+`promo-video/README.md` is its working guide. The finished videos are copied into
+`marketing-library/07-videos/`.
+
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
 comment from Cloudflare's bot. GitHub Actions also runs the test suite on Python

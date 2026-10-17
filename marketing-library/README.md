@@ -87,6 +87,35 @@ version phones crop into a circle or rounded square).
 
 <img src="06-app-icon/icon-512.png" width="96" alt="The Deja Vu1 icon">
 
+## 07 · Videos
+
+The launch video, filmed from the app with demo data on, in two cuts. Both are
+H.264 MP4 at 60 frames a second, with sound set to -14 LUFS (the usual level for
+YouTube and social).
+
+| File | Size | Length | Where it goes |
+|---|---|---|---|
+| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 60 s | YouTube, the forum, X, LinkedIn, the README or product page |
+| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 40 s | Shorts, Reels, TikTok |
+
+The story: four docked toolheads that look the same, then Deja Vu1 on a laptop:
+Needs you with a jam arriving live, Confirm Print refusing an unsafe file, a
+27-printer sandbox farm paused at once with each printer's result, the 3D viewer
+and digital twin, the phone layout, Photo-to-Print Studio, the MakerWorld
+converter, automations, maintenance and games, then "Free. Open source. Runs on
+your own network. No account. Just Python." and the three install lines.
+
+Every app view is labelled "Simulated farm", and the end card says every figure
+comes from the simulated farm and that Deja Vu1 is not affiliated with Snapmaker.
+The music and sound effects are original, synthesised in code, with no
+third-party audio.
+
+**Made before this folder's `MESSAGING.md`, so check it against that before
+posting.** It opens on the docks (MESSAGING says not to lead with the dock
+rings), doesn't use the one line "One screen for every U1 you run.", and doesn't
+show Skip one object. It was also filmed before the digital twin redesign.
+How to change or re-film it: `promo-video/README.md`.
+
 ---
 
 ## Keeping it current
