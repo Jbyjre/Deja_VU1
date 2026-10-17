@@ -155,7 +155,7 @@
       const HOOK = [
         { id: 'h-fl', k: 'Fleet', w: ['Every printer,', 'live.'], crop: [170, 250, 900, 640], W: 940, H: 668 },
         { id: 'h-cf', k: 'Confirm Print', w: ['Unsafe starts,', 'refused.'], crop: [355, 170, 730, 560], W: 900, H: 690 },
-        { id: 'h-sk', k: 'Skip one object', w: ['One part fails.', 'Skip just it.'], crop: [460, 150, 830, 420], W: 940, H: 476 },
+        { id: 'h-sk', k: 'Skip one object', w: ['One part fails.', 'Skip just it.'], crop: [150, 118, 1140, 425], W: 940, H: 368 },
         { id: 'h-tw', k: 'Digital twin', w: ['A live drawing', 'of every printer.'], crop: [150, 115, 440, 500], W: 640, H: 727 },
       ];
       $('#hook').innerHTML = HOOK.map((h, i) => `<div class="hs" id="hs${i}">
@@ -335,7 +335,7 @@
       // ===== 07 digital twin (20.0-22.4) =====
       camTo(V.tw, 19.8, 0, [140, 100, 900, 900]);
       hop('#L-sk', '#L-tw', 20.0);
-      camTo(V.tw, 20.2, .5, [150, 112, 446, 506]);
+      camTo(V.tw, 20.2, .5, [146, 112, 470, 560]);
       cap('c7', 20.15, 22.2);
       tl.to('#W', { scale: .8, opacity: 0, duration: .25, ease: 'power3.in' }, 22.2);
       tl.to('#W .view', { filter: 'blur(14px)', duration: .25, ease: 'power3.in' }, 22.2);
