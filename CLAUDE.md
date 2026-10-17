@@ -29,16 +29,39 @@ trust the code and fix this file.
   merge commit (the repo's convention) when there are no conflicts and checks
   are green or absent. Don't wait on pending CI. Never force-push.
 
+## How to work here (the method that has worked)
+
+1. Turn the request into a checklist, item by item, and re-read the
+   original message before finishing. Counts and formats exactly.
+2. Research from primary sources: shallow or sparse `git clone` of the
+   upstream repo (Snapmaker's u1-klipper, u1-moonraker, OrcaSlicer, the
+   winning forks), read the actual file, and cite repo plus commit in the
+   code comment. Product pages only for specs. Say what's unverified.
+3. Build the smallest real version end to end (backend, both printer paths,
+   frontend, tests) before polishing. Borrowed ideas are rewritten, never
+   copied (licences), and credited in README's winners table.
+4. Verify three ways: the unit tests for the module, the full suite once
+   before pushing, and Playwright screenshots at 1366 px and 390 px (look
+   at them). For anything animated, measure frame time before and after.
+5. One commit per feature with a plain-language message, then README
+   ("What's new", status table), CHANGELOG, this file, and the pictures
+   (`tools/readme-images/`) and the online demo recording if screens or
+   routes changed.
+6. Work too big for the session goes in `build-prompts/` as a prompt that
+   gives the next session goals and freedom, not steps.
+7. No subagents; keep output short; read files with offset and limit.
+
 ## Commands
 
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 608 tests, about 135 s
+python3 -m unittest discover tests          # 638 tests, about 140 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
 python3 backend/maintenance.py              # console demos (also led_status.py, color_check.py)
+python3 tools/online-demo/record.py         # re-record the online demo (about 3 min)
 ```
 
 Environment variables (the only ones read): `PORT` (default 8000),
@@ -75,6 +98,12 @@ root should hand over to `welcome.html`.
 - `fleet.py` (printer registry: at most 12, in `backend/data/fleet.json`),
   `live_feed.py` (250 ms tick, print-event detection, side effects),
   `sandbox.py` (up to 24 added simulated printers plus the 3 built in).
+- `layer_planner.py` (mixed-nozzle planner behind `POST /api/tools/layer-plan`,
+  and Confirm Print's nozzle check; `frontend/farm.js` `planLayers()` is a
+  browser copy for the online demo, kept identical by
+  `tests/test_layer_planner.py`), `discovery.py` (Find printers: mDNS, then
+  port 7125 on the private /24; `POST /api/printers/discover` and
+  `/api/printers/test`).
 - `print_gate.py` (Confirm Print, re-checked by the server at start),
   `printer_control.py`, `maintenance.py` (7 tasks), `automations.py`,
   `notifications.py` (sent only by automation rules), `gcode_tools.py`
@@ -94,7 +123,12 @@ root should hand over to `welcome.html`.
 - CSS order: `style.css` → `workshop.css` → `farm.css` → `theme.css`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
-  404 and `app.js` hands over to it; `/?dashboard` skips that.
+  404 and `app.js` hands over to it; `/?demo` and `/?dashboard` skip that.
+- `demo/`: the online demo's recording (`recording.json`, sample files),
+  made by `tools/online-demo/record.py` (about 3 minutes). Where no server
+  answers `/api/health`, `app.js` `startTour()` swaps `window.fetch` for
+  `/api/` addresses and answers from it. Re-run the recorder when routes or
+  screens change; `tests/test_online_demo.py` fails on a missing route.
 - `fonts/`: Bricolage Grotesque, Instrument Sans, IBM Plex Mono (OFL).
   `img/`: screenshots from the simulated farm.
 
@@ -103,7 +137,12 @@ root should hand over to `welcome.html`.
 source. `tests/test_audit_fixes.py` holds regression tests for the October
 2026 audit.
 
-`docs/`: `architecture.md` (the long version), `real-printer.md`,
+Root: `start.py` (checks the Python version, starts the server, opens the
+browser; `DEJAVU_NO_BROWSER=1` skips that) and the double-click wrappers
+`start-windows.bat`, `start-mac.command`, `start-linux.sh`.
+
+`docs/`: `getting-started.md` (download to printer on screen, for
+non-programmers), `architecture.md` (the long version), `real-printer.md`,
 `first-connection.md` (the U1-owner tester call the README links to),
 `remote-access.md`, `hardware-modules.md`, `low-latency-camera.md`,
 `ar-preview.md`.
@@ -124,7 +163,7 @@ worker in `wrangler.jsonc` and those tags must change too.
 `marketing-library/` and `build-prompts/` are temporary, for the owner:
 copies of every marketing picture plus `MESSAGING.md` (the agreed feature
 order and wording), and one prompt per planned build session. Nothing reads
-them; both go before the launch post (`build-prompts/08-launch-prep.md`).
+them; both go before the launch post (`build-prompts/04-real-u1-and-launch.md`).
 
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
