@@ -126,6 +126,24 @@ const StudioCore = (() => {
     return total;
   }
 
+  /* Fit the photo's light and dark to what this stack can print. A phone
+   * photo rarely spans the same range as a column of filament: a hazy one
+   * would use only the middle heights and print flat, a contrasty one
+   * would clip. The photo's 1st and 99th percentile lightness (OKLab L)
+   * are mapped linearly onto the darkest and lightest the stack reaches;
+   * hue and chroma are left alone. Returns a new array, and the ranges. */
+  function fitTones(target, lo, hi) {
+    const n = target.length / 3, bins = new Uint32Array(1001);
+    for (let p = 0; p < n; p++) bins[Math.max(0, Math.min(1000, Math.round(target[p * 3] * 1000)))]++;
+    const at = (q) => { let acc = 0; for (let b = 0; b <= 1000; b++) { acc += bins[b]; if (acc >= q * n) return b / 1000; } return 1; };
+    const from = [at(0.01), at(0.99)];
+    const out = Float32Array.from(target);
+    if (from[1] - from[0] < 0.02 || hi - lo < 0.02) return { target: out, from, to: from };
+    const k = (hi - lo) / (from[1] - from[0]);
+    for (let p = 0; p < n; p++) out[p * 3] = Math.max(lo, Math.min(hi, lo + (target[p * 3] - from[0]) * k));
+    return { target: out, from, to: [lo, hi] };
+  }
+
   /* ---------------- 4. bands ---------------- */
 
   function evenStarts(k, maxLayers) {
@@ -351,15 +369,18 @@ const StudioCore = (() => {
 
   /* Heights for a solved image, and the tool changes that go with them. */
   function zTop(layers, plan) { return +(plan.firstLayerH + (layers - 1) * plan.layerH).toFixed(4); }
-  function swapPlan(plan) {
-    return plan.starts.slice(1).map((start, i) => {
+  /* The tool changes to print. `tallest` (colour layers in the tallest
+   * column) drops changes the model never reaches: a colour whose band
+   * starts above every column would add a pointless swap. */
+  function swapPlan(plan, tallest = Infinity) {
+    return plan.starts.slice(1).filter(start => start < tallest).map((start, i) => {
       const layerIndex = plan.baseLayers + start;              // 0-based: the first layer in the new colour
       return { colour: i + 1, extruder: i + 2, toolhead: `T${i + 1}`, hex: plan.colours[i + 1].hex.toUpperCase(),
                name: plan.colours[i + 1].name, layer: layerIndex + 1, topZ: zTop(layerIndex + 1, plan) };
     });
   }
 
-  return { hexRGB, toLin, toSRGB, clamp01, oklab, luminance, colourAt, simulate, table, solve, errorOf,
+  return { hexRGB, toLin, toSRGB, clamp01, oklab, luminance, colourAt, simulate, table, solve, errorOf, fitTones,
            evenStarts, optimiseStarts, buildMesh, toSTL, modelXML, swapsXML, crc32, zip, to3MF, zTop, swapPlan };
 })();
 
@@ -381,7 +402,8 @@ const Studio = (() => {
 
   function settings() {
     return { widthMM: num('st-width'), detail: num('st-detail'), layerH: num('st-layer'),
-             firstLayerH: num('st-first'), baseLayers: num('st-base'), maxLayers: num('st-max') };
+             firstLayerH: num('st-first'), baseLayers: num('st-base'), maxLayers: num('st-max'),
+             fit: !$('st-fit') || $('st-fit').checked };
   }
 
   /* ---- colours ---- */
@@ -587,9 +609,17 @@ const Studio = (() => {
     await new Promise(r => setTimeout(r, 30));          // let the button repaint first
     try {
       const started = performance.now();
-      const target = targetLab(grid);
+      let target = targetLab(grid);
       const colours = s.stack.map(c => ({ ...c }));
       let plan = { ...set, colours, starts: C.evenStarts(colours.length, set.maxLayers) };
+      let fitted = null;
+      if (set.fit) {
+        // The darkest and lightest this stack can print, with colours
+        // spread evenly - before the bands are tuned to the photo.
+        const reach = C.table(plan).map(row => row.lab[0]);
+        fitted = C.fitTones(target, Math.min(...reach), Math.max(...reach));
+        target = fitted.target;
+      }
       const manualOk = s.starts && s.starts.length === colours.length
         && s.starts.every((v, k) => k === 0 ? v === 0 : v > s.starts[k - 1] && v <= set.maxLayers);
       if (s.auto || !manualOk) plan.starts = C.optimiseStarts(target, plan);
@@ -609,7 +639,12 @@ const Studio = (() => {
       const filL = colours.map(c => C.oklab(...C.hexRGB(c.hex).map(C.toLin))[0]);
       const range = { photoMin, photoMax, min: Math.min(...reach), max: Math.max(...reach),
                       palest: Math.max(...filL), darkest: Math.min(...filL) };
-      s.result = { plan, grid, heights, rows, tris, stl, meanDeltaE, range, ms: Math.round(performance.now() - started) };
+      let tallest = 0;
+      for (const v of heights) if (v > tallest) tallest = v;
+      // Colours no column reaches: said in words, and left out of the 3MF.
+      const unused = colours.filter((c, i) => i > 0 && plan.starts[i] >= tallest).map(c => c.name);
+      s.result = { plan, grid, heights, rows, tris, stl, meanDeltaE, range, fitted, tallest, unused,
+                   ms: Math.round(performance.now() - started) };
       renderResult();
     } catch (err) {
       console.error(err);
@@ -638,9 +673,7 @@ const Studio = (() => {
     }
     g.putImageData(img, 0, 0);
 
-    let tallest = 0;
-    for (const v of r.heights) if (v > tallest) tallest = v;
-    const height = C.zTop(plan.baseLayers + tallest, plan);
+    const height = C.zTop(plan.baseLayers + r.tallest, plan);
     const match = r.meanDeltaE < 5 ? 'close' : r.meanDeltaE < 10 ? 'fair' : 'rough';
     // A rough match nearly always means the stack can't reach the photo's
     // lightest or darkest tones - say which, so the fix is one tap away.
@@ -652,8 +685,11 @@ const Studio = (() => {
       <div class="stat"><span class="stat-key">Size</span><span class="stat-val">${(grid.w * grid.pitch).toFixed(0)} × ${(grid.h * grid.pitch).toFixed(0)}</span><span class="stat-foot">mm, ${height.toFixed(2)} mm tall</span></div>
       <div class="stat"><span class="stat-key">Columns</span><span class="stat-val">${grid.w} × ${grid.h}</span><span class="stat-foot">${grid.pitch.toFixed(2)} mm each</span></div>
       <div class="stat"><span class="stat-key">Triangles</span><span class="stat-val">${(r.tris.length / 3).toLocaleString()}</span><span class="stat-foot">built in ${r.ms} ms</span></div>
-      <div class="stat"><span class="stat-key">Colour match</span><span class="stat-val">${match}</span><span class="stat-foot">average ΔE ${r.meanDeltaE.toFixed(1)} (OKLab ×100)</span></div>
-      ${advice ? `<p class="st-advice">To get closer, add ${esc(advice)}.</p>` : ''}`;
+      <div class="stat"><span class="stat-key">Colour match</span><span class="stat-val">${match}</span><span class="stat-foot">average ΔE ${r.meanDeltaE.toFixed(1)} (OKLab ×100)${r.fitted ? ', to the fitted photo' : ''}</span></div>
+      ${advice ? `<p class="st-advice">To get closer, add ${esc(advice)}.</p>` : ''}
+      ${r.fitted && Math.abs((r.fitted.from[1] - r.fitted.from[0]) - (r.fitted.to[1] - r.fitted.to[0])) > 0.05
+        ? `<p class="st-advice is-info">The photo's light and dark were ${(r.fitted.to[1] - r.fitted.to[0]) > (r.fitted.from[1] - r.fitted.from[0]) ? 'stretched' : 'compressed'} to what these filaments can show. Turn off "Fit the photo's light and dark" to keep them as they are.</p>` : ''}
+      ${r.unused.length ? `<p class="st-advice">${esc(r.unused.join(' and '))} ${r.unused.length === 1 ? 'isn\'t' : 'aren\'t'} used: no part of this photo is tall enough to reach ${r.unused.length === 1 ? 'its band' : 'their bands'}, so the 3MF leaves ${r.unused.length === 1 ? 'that tool change' : 'those tool changes'} out. Remove ${r.unused.length === 1 ? 'it' : 'them'}, or turn off automatic colour changes and start ${r.unused.length === 1 ? 'it' : 'them'} lower.</p>` : ''}`;
     renderLadder();
     $('st-status').textContent = '';
     $('st-preview').classList.remove('is-stale');
@@ -666,7 +702,7 @@ const Studio = (() => {
   function renderLadder() {
     const r = s.result, { plan } = r;
     const total = plan.baseLayers + plan.maxLayers;
-    const swaps = C.swapPlan(plan);
+    const swaps = C.swapPlan(plan, r.tallest);
     const bands = plan.colours.map((c, i) => {
       const from = i === 0 ? 0 : plan.baseLayers + plan.starts[i];
       const to = i + 1 < plan.colours.length ? plan.baseLayers + plan.starts[i + 1] : total;
@@ -680,6 +716,7 @@ const Studio = (() => {
           <span class="st-swatch" style="background:${esc(b.c.hex)}"></span>
           <span><b>T${b.i} · ${esc(b.c.name)}</b>
             <small>${b.i === 0 ? `layers 1–${b.to} (the base and the darkest tones)`
+              : plan.starts[b.i] >= r.tallest ? 'not reached by this photo - no tool change'
               : `from layer ${b.from + 1} · ${C.zTop(b.from + 1, plan).toFixed(2)} mm`}</small></span>
           ${b.i === 0 ? '' : `<label class="st-start">start at colour layer
             <input type="number" min="1" max="${plan.maxLayers}" value="${plan.starts[b.i]}" data-start="${b.i}" ${s.auto ? 'disabled' : ''}
@@ -735,7 +772,7 @@ const Studio = (() => {
     btn.textContent = serverMissing() ? 'Preparing…' : 'Saving…';
     let body = null;
     try {
-      body = kind === 'stl' ? r.stl : await C.to3MF(r.tris, C.swapPlan(r.plan));
+      body = kind === 'stl' ? r.stl : await C.to3MF(r.tris, C.swapPlan(r.plan, r.tallest));
       if (serverMissing()) {
         download(body, name);
         $('st-saved').textContent = `Downloaded ${name} to this device. To keep it in a file library and print it, run the Deja Vu1 server.`;
@@ -819,7 +856,7 @@ const Studio = (() => {
     $('st-test').addEventListener('click', testPattern);
     $('st-build').addEventListener('click', build);
     $('st-auto').addEventListener('change', (e) => { s.auto = e.target.checked; if (s.result) renderLadder(); if (s.auto && s.result) build({ quiet: true }); });
-    ['st-width', 'st-detail', 'st-layer', 'st-first', 'st-base', 'st-max'].forEach(id => $(id).addEventListener('change', changed));
+    ['st-width', 'st-detail', 'st-layer', 'st-first', 'st-base', 'st-max', 'st-fit'].forEach(id => $(id) && $(id).addEventListener('change', changed));
     $('st-save-3mf').addEventListener('click', (e) => save('3mf', e.currentTarget));
     $('st-save-stl').addEventListener('click', (e) => save('stl', e.currentTarget));
     window.addEventListener('dv-tab', (e) => { if (e.detail === 'studio') load(); });
