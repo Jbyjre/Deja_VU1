@@ -89,33 +89,53 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The launch video (version 4), filmed from the current app with demo data on, in
-two cuts. Both are H.264 MP4 at 60 frames a second, with sound set to -14 LUFS
-(the usual level for YouTube and social).
+The launch video (version 5), filmed from the current app with demo data on, in two
+cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
+-14 LUFS (the usual level for YouTube and social).
 
 | File | Size | Length | Where it goes |
 |---|---|---|---|
-| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 53 s | YouTube, the forum, X, LinkedIn, the README or product page |
-| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 38.4 s | Shorts, Reels, TikTok |
+| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | YouTube, the forum, X, LinkedIn, the README or product page |
+| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | Shorts, Reels, TikTok |
 
-The story follows `MESSAGING.md`. It opens on four features, one per 1.2 s (every
-printer live, a print checked and started, one failed part skipped, the digital
-twin), then the one line "One screen for every U1 you run.", the app icon, and the
-features in MESSAGING's order, each shown one part at a time: the 27-printer
-sandbox farm live, Needs you with a jam arriving, Confirm Print passing every check
-and starting a print, the phone, a MakerWorld project converted, G-code in 3D, Skip
-one object, automations, the digital twin (3D, front and top), Photo-to-Print
-Studio, then the games. It ends on "Free. Open source. Runs on your network. No
-account. Just Python." and the three install lines typed out. The vertical cut
-keeps the opening, the one line and the first five features plus the twin.
+It works like a product tutorial: one step at a time, each with a numbered label, a
+plain headline, one sentence, a line drawing that explains the idea, and the real app
+with callouts pointing at what matters. It opens on the problem ("Running more than one
+Snapmaker U1?") and the one line "One screen for every U1 you run.", then the seven
+steps, best first and the cherry on top last: every printer live, Needs you, Confirm
+Print (and the phone), projects converted for the U1, Skip one object, the digital
+twin, Photo-to-Print Studio. Then "And there's more" (automations, maintenance,
+filament, cost, Home Assistant, time-lapse, AR preview, ten games), the values, and the
+three install lines typed out.
 
-Every app view is labelled "Simulated farm", and the end card says every figure
-comes from the simulated farm and that Deja Vu1 is not affiliated with Snapmaker.
-It doesn't lead with the dock rings or the colour sensor. The music (a hard 150 BPM
-rap/trap beat: heavy 808 bass, trap drums, a dark synth hook) and every click and
-keystroke are original, synthesised in code, with no third-party audio. Listen to
-it before posting: it was checked by measurement, not by ear.
+Every app view is labelled "Simulated farm", and the end card says every figure comes
+from the simulated farm and that Deja Vu1 is not affiliated with Snapmaker. It doesn't
+lead with the dock rings or the colour sensor. The music (a calm but quick funky
+nu-disco groove led by its bassline) and every click and keystroke are original,
+synthesised in code, with no third-party audio. Listen to it before posting: it was
+checked by measurement, not by ear.
 How to change or re-film it: `promo-video/README.md`.
+
+## 08 · Feature cards
+
+One card per step of the launch video, taken from the video itself at the moment its
+headline, drawing and callouts are all on screen, plus a title card and an end card.
+Each comes in two shapes: `-16x9.jpg` (1920 × 1080: README, forum posts, X, LinkedIn)
+and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories).
+
+| Card | Shows |
+|---|---|
+| `00-title` | "One screen for every U1 you run." with three printers streaming into one screen |
+| `01-every-printer-live` | The 27-printer sandbox farm, one card's progress and finish time called out |
+| `02-needs-you` | A filament jam arriving at the top of Needs you |
+| `03-confirm-print` | Confirm Print passing every check, the checklist ticked |
+| `04-files-for-the-u1` | A MakerWorld (Bambu Studio) project converted for the U1 |
+| `05-skip-one-object` | One part skipped, the rest still printing |
+| `06-digital-twin` | The live engineering drawing, top view |
+| `07-photo-studio` | A test photo and its four-colour relief |
+| `08-get-it` | The end card: the three install lines |
+
+Remade with `promo-video/build/stills.sh` after any change to the video.
 
 ---
 

@@ -28,56 +28,26 @@ def shot(name):
 # Each entry: (video id, shot, composition time of the shot's t=0, visible from, visible to).
 # One shot can appear more than once (the opening montage reuses the best moment of four).
 def plan_main(S):
+    """Version 5: one plan for both cuts (both 75 s, the same scenes and timing)."""
     m = lambda s, k: S[s]['marks'][k]
     c = lambda s, i: S[s]['clicks'][i]
     return [
-        # opening montage: four features, 1.2 s each
-        ('h-fl', 'fleet', 0.0 - (m('fleet', 'hover') - .5), 0.0, 1.25),
-        ('h-ok', 'confirm_ok', 1.2 + .15 - m('confirm_ok', 'dialog'), 1.15, 2.45),
-        ('h-sk', 'skip_object', 2.4 + .35 - m('skip_object', 'skip'), 2.35, 3.65),
-        ('h-tw', 'twin', 3.6 + .25 - m('twin', 'front'), 3.55, 4.85),
-        # the feature scenes (15.5 s of the one line, the app and the laptop come first)
-        ('v-fl', 'fleet', 7.6, 7.0, 12.9),
-        ('v-ov', 'overview_jam', 14.0 - m('overview_jam', 'jam'), 12.5, 16.1),
-        ('v-ok', 'confirm_ok', 16.75 - c('confirm_ok', 1), 15.8, 20.9),     # opens on the file, Print... at 16.75
-        ('v-ph', 'phone', 23.0 - c('phone', 2), 20.8, 24.1),                # hold to cancel at 23.0
-        ('v-cv', 'convert', 25.2 - c('convert', 1), 23.9, 27.3),
-        ('v-3d', 'coaster_3d', 27.1, 27.0, 30.5),
-        ('v-sk', 'skip_object', 32.6 - m('skip_object', 'skip'), 30.2, 33.7),
-        ('v-au', 'automations', 34.3 - c('automations', 0), 33.4, 36.1),
-        ('v-tw', 'twin', 36.9 - m('twin', 'front'), 35.8, 39.3),
-        ('v-st', 'studio', 39.7 - c('studio', 0), 39.0, 41.7),
-        ('v-gm', 'games', 40.7, 41.4, 43.3),
+        ('v-fl', 'fleet', 12.2 - m('fleet', 'hover'), 7.6, 16.1),          # the card hover at 12.2
+        ('v-ov', 'overview_jam', 17.6 - m('overview_jam', 'jam'), 15.8, 23.1),
+        ('v-ok', 'confirm_ok', 21.3, 22.8, 29.8),                           # opens on the open file
+        ('v-ph', 'phone', 31.0 - c('phone', 2), 29.6, 32.0),                # hold to cancel at 31.0
+        ('v-cv', 'convert', 33.42 - c('convert', 1), 31.8, 39.1),           # opens on the open file
+        ('v-sk', 'skip_object', 44.0 - m('skip_object', 'skip'), 38.8, 47.1),
+        ('v-tw', 'twin', 49.33 - m('twin', 'front'), 46.8, 55.1),
+        ('v-st', 'studio', 56.38 - c('studio', 0), 54.8, 62.1),
     ]
 
 
-MAIN_WHOOSH = [6.4, 8.0, 12.8, 20.8, 24.0, 30.4, 36.0, 41.6, 46.4]
-MAIN_TERM = (47.55, [48, 11, 22])     # typing starts, characters per line (end card)
-MAIN_LENGTH = 53.0
-
-
-def plan_vertical(S):
-    m = lambda s, k: S[s]['marks'][k]
-    c = lambda s, i: S[s]['clicks'][i]
-    return [
-        ('h-fl', 'fleet', 0.0 - (m('fleet', 'hover') - .5), 0.0, 1.25),
-        ('h-ok', 'confirm_ok', 1.2 + .15 - m('confirm_ok', 'dialog'), 1.15, 2.45),
-        ('h-sk', 'skip_object', 2.4 + .35 - m('skip_object', 'skip'), 2.35, 3.65),
-        ('h-tw', 'twin', 3.6 + .25 - m('twin', 'front'), 3.55, 4.85),
-        ('v-lap', 'fleet', 7.6, 7.0, 8.3),                                   # on the laptop as it rises
-        ('v-fl', 'fleet', 7.6, 7.9, 11.3),
-        ('v-ov', 'overview_jam', 12.4 - m('overview_jam', 'jam'), 11.0, 14.5),
-        ('v-ok', 'confirm_ok', 14.9 - c('confirm_ok', 1), 14.2, 17.7),       # starts on the open file
-        ('v-ph', 'phone', 19.0 - c('phone', 2), 17.6, 20.1),
-        ('v-cv', 'convert', 21.0 - c('convert', 1), 19.9, 22.5),
-        ('v-sk', 'skip_object', 24.6 - m('skip_object', 'skip'), 22.2, 25.7),
-        ('v-tw', 'twin', 26.5 - m('twin', 'front'), 25.4, 28.9),
-    ]
-
-
-VERT_WHOOSH = [6.4, 8.0, 11.2, 17.6, 20.0, 22.4, 25.6, 28.8, 32.0]
-VERT_TERM = (33.1, [48, 11, 22])
-VERT_LENGTH = 38.4
+plan_vertical = plan_main
+MAIN_WHOOSH = [8.0, 16.0, 23.0, 29.6, 32.0, 39.0, 47.0, 55.0, 62.0, 68.0]
+VERT_WHOOSH = MAIN_WHOOSH
+MAIN_TERM = VERT_TERM = (69.6, [48, 11, 22])     # typing starts, characters per line (end card)
+MAIN_LENGTH = VERT_LENGTH = 75.0
 
 plans = {'main': (plan_main, MAIN_WHOOSH, MAIN_TERM, MAIN_LENGTH),
          'vertical': (plan_vertical, VERT_WHOOSH, VERT_TERM, VERT_LENGTH)}
@@ -126,7 +96,11 @@ for n in lines:
 
 cues += [{'t': t, 'type': 'whoosh', 'gain': .5, 'pan': -.2 + .4 * (i % 2)} for i, t in enumerate(whooshes)]
 
-tpl = open(os.path.join(HERE, FMT + '.tpl.html')).read()
+W, H = (1920, 1080) if FMT == 'main' else (1080, 1920)
+tpl = open(os.path.join(HERE, 'scene.html')).read()
+tpl = tpl.replace('/*LAYOUT_CSS*/', open(os.path.join(HERE, FMT + '.layout.css')).read()) \
+         .replace('/*SCENE_JS*/', open(os.path.join(HERE, 'scene.js')).read()) \
+         .replace('__FMT__', FMT).replace('__W__', str(W)).replace('__H__', str(H)).replace('__DUR__', f'{LENGTH:g}')
 html = tpl.replace('/*SHARED_CSS*/', SHARED_CSS).replace('<!--VIDEOS-->', '\n'.join(videos)) \
           .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing))
 open(os.path.join(PROJ, 'index.html'), 'w').write(html)
@@ -135,8 +109,8 @@ cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
 audio = os.path.join(PROJ, 'assets', 'audio')
 os.makedirs(audio, exist_ok=True)
-music_wav = os.path.join(audio, f'music4_{FMT}.wav')
-composer = os.path.join(ROOT, 'music', 'compose4.py')
+music_wav = os.path.join(audio, f'music5_{FMT}.wav')
+composer = os.path.join(ROOT, 'music', 'compose5.py')
 if not os.path.exists(music_wav) or os.path.getmtime(music_wav) < os.path.getmtime(composer):
     subprocess.run(['python3', composer, music_wav, FMT], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')

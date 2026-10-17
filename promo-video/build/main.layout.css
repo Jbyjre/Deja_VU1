@@ -1,0 +1,20 @@
+      /* 16:9: the step's text on the left, the app on the right, the progress rail under it. */
+      :root { --title-size: 76px; --body-size: 29px; --hook-size: 92px; --brand-size: 168px; --more-size: 92px; --values-size: 110px; --chips-w: 1300px; --term-size: 28px; }
+      #panel { left: 110px; top: 190px; width: 600px; height: 770px; }
+      .tp { gap: 26px; }
+      .tp .ill { height: 290px; margin-top: 6px; }
+      #W { left: 776px; top: 150px; width: 1070px; height: 760px; }
+      #Wchip { left: 24px; bottom: 24px; }
+      #ph { left: 1096px; top: 80px; }
+      #phchip { right: calc(100% + 26px); bottom: 60px; white-space: nowrap; }
+      #corner { left: 110px; top: 70px; }
+      #rail { left: 776px; top: 950px; width: 1070px; }
+      #hq1 { top: 190px; }
+      #hk-ill { position: absolute; left: 610px; top: 360px; width: 700px; height: 320px; opacity: 0; }
+      #hq2 { top: 770px; }
+      #end-row { top: 150px; }
+      #end-word { font-size: 132px; }
+      #end-tag { top: 340px; }
+      #term { left: 50%; width: 1080px; margin-left: -540px; top: 450px; }
+      #end-meta { top: 800px; }
+      #end-fine { top: 930px; }

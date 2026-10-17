@@ -36,22 +36,22 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
 
 // Version 3: every action is quicker (cursor moves of about a third of a second), so the
 // footage itself feels fast; the edit then only has to hold each moment for a beat.
-const MV = 450, PA = 120;   // cursor travel and the pause before a click, in ms (quick, but easy to follow)
+const MV = 620, PA = 260;   // cursor travel and the pause before a click, in ms (v5: calm, tutorial pace)
 const SHOTS = {
   // Overview: Needs you, then a jam fired from the sandbox arrives live.
   async overview_jam() {
     const st = await r.open(); await r.demoOn(st);
     await st.page.mouse.move(1000, 640); st.mx = 1000; st.my = 640;
     r.start(st, 'overview_jam');
-    await r.wait(st, 150);
+    await r.wait(st, 800);
     await r.move(st, 760, 470, MV);
-    await r.wait(st, 150);
-    await r.move(st, 1180, 650, MV);
+    await r.wait(st, 500);
     await r.api(st, '/api/sandbox/fire?demo=1', { event: 'jam', printer: 'u1-workshop' });
     await sleep(700); r.mark(st, 'jam');
-    await r.wait(st, 1300);
-    await r.move(st, 760, 410, MV);
-    await r.wait(st, 900);
+    await r.wait(st, 1600);
+    await r.move(st, 1222, 410, MV);
+    r.mark(st, 'row');
+    await r.wait(st, 1800);
     r.stop(st); return st;
   },
   // Files: open the unsafe example, press Print..., Confirm Print refuses with reasons.
@@ -102,14 +102,14 @@ const SHOTS = {
     const [x0, y0] = await r.center(st, '#twin-host');
     await st.page.mouse.move(x0 + 160, y0 + 120); st.mx = x0 + 160; st.my = y0 + 120;
     r.start(st, 'twin');
-    await r.wait(st, 700);
+    await r.wait(st, 1500);
     await r.click(st, '#wf-views [data-view="front"]', MV, PA); r.mark(st, 'front');
-    await r.wait(st, 900);
-    await r.click(st, '#wf-views [data-view="top"]', 260, PA); r.mark(st, 'top');
-    await r.wait(st, 900);
-    await r.click(st, '#wf-views [data-view="iso"]', 260, PA); r.mark(st, 'iso');
+    await r.wait(st, 1500);
+    await r.click(st, '#wf-views [data-view="top"]', 400, PA); r.mark(st, 'top');
+    await r.wait(st, 1500);
+    await r.click(st, '#wf-views [data-view="iso"]', 400, PA); r.mark(st, 'iso');
     await r.move(st, x0 + 170, y0 + 150, MV);
-    await r.wait(st, 900);
+    await r.wait(st, 1200);
     r.stop(st); return st;
   },
   // Control: Skip one object. Pick a part on the plate, skip it, confirm; the rest keep printing.
@@ -121,12 +121,12 @@ const SHOTS = {
     r.start(st, 'skip_object');
     await r.wait(st, 150);
     await r.click(st, '[data-plate-pick="' + (await st.page.locator('[data-plate-pick]').nth(1).getAttribute('data-plate-pick')) + '"]', MV, PA); r.mark(st, 'pick');
-    await r.wait(st, 450);
+    await r.wait(st, 1000);
     await r.click(st, '#plate-skip', MV, PA); r.mark(st, 'ask');
-    await r.wait(st, 500);
-    await r.click(st, '#plate-skip', 200, PA); r.mark(st, 'skip');
+    await r.wait(st, 1000);
+    await r.click(st, '#plate-skip', 300, PA); r.mark(st, 'skip');
     await sleep(1200);
-    await r.wait(st, 1200); r.mark(st, 'done');
+    await r.wait(st, 1800); r.mark(st, 'done');
     await r.move(st, 900, 700, MV);
     await r.wait(st, 500);
     r.stop(st); return st;
@@ -140,15 +140,19 @@ const SHOTS = {
     await r.settle(st, 4000);
     await st.page.mouse.move(1100, 600); st.mx = 1100; st.my = 600;
     r.start(st, 'fleet');
-    await r.wait(st, 300);
-    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 700);
+    await r.wait(st, 700);
+    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 1000);
     r.mark(st, 'cards');
-    await r.wait(st, 500);
-    await r.scrollTo(st, '.fleet-card[data-printer="sim-08"]', 330, 800);
+    await r.wait(st, 1100);
+    await r.scrollTo(st, '.fleet-card[data-printer="sim-08"]', 330, 1100);
     r.mark(st, 'sandbox');
     const [x, y] = await r.center(st, '.fleet-card[data-printer="sim-08"] .ring-svg');
-    await r.move(st, x + 40, y + 30, 500);
+    await r.move(st, x + 40, y + 30, 750);
     r.mark(st, 'hover');
+    await r.wait(st, 1700);
+    const [x2, y2] = await r.center(st, '.fleet-card[data-printer="sim-09"] .ring-svg');
+    await r.move(st, x2 + 40, y2 + 30, 750);
+    r.mark(st, 'hover2');
     await r.wait(st, 1500);
     r.stop(st); return st;
   },
@@ -168,13 +172,13 @@ const SHOTS = {
     r.start(st, 'confirm_ok');
     await r.wait(st, 300);
     await r.click(st, CUBE, 450, 100); r.mark(st, 'open');
-    await r.wait(st, 800);
-    await intoView(st, '#fd-print', true);
-    await r.click(st, '#fd-print', 450, 100); r.mark(st, 'print');
-    await r.wait(st, 1300); r.mark(st, 'dialog');
-    await r.click(st, '#confirm-go', 500, 150); r.mark(st, 'start');
-    await sleep(800);
     await r.wait(st, 1300);
+    await intoView(st, '#fd-print', true);
+    await r.click(st, '#fd-print', MV, PA); r.mark(st, 'print');
+    await r.wait(st, 2300); r.mark(st, 'dialog');
+    await r.click(st, '#confirm-go', MV, 400); r.mark(st, 'start');
+    await sleep(800);
+    await r.wait(st, 2200);
     r.stop(st); return st;
   },
   // Files: a Bambu Studio (MakerWorld) project, converted for the U1 in one click.
@@ -187,9 +191,12 @@ const SHOTS = {
     await r.click(st, 'text=sample_bambu_studio_layout.3mf', MV, PA);
     await r.wait(st, 600);
     await intoView(st, '#fd-convert', true);
-    await r.click(st, '#fd-convert', MV, PA);
+    await r.click(st, '#fd-convert', MV, PA); r.mark(st, 'convert');
     await sleep(2500);
-    await r.wait(st, 1300);
+    await r.wait(st, 900);
+    const rb = await r.box(st, '#fd-convert-report');
+    await r.move(st, rb.x + 120, rb.y + 22, 800); r.mark(st, 'report');
+    await r.wait(st, 2000);
     r.stop(st); return st;
   },
   // Photo-to-Print Studio: the built-in test pattern becomes a layered relief.
@@ -198,9 +205,10 @@ const SHOTS = {
     await st.page.mouse.move(700, 700); st.mx = 700; st.my = 700;
     r.start(st, 'studio');
     await r.wait(st, 100);
-    await r.click(st, '#st-test', MV, PA);
-    for (let i = 0; i < 6; i++) { await sleep(400); await r.wait(st, 200); }
-    await r.wait(st, 700);
+    await r.click(st, '#st-test', MV, PA); r.mark(st, 'test');
+    for (let i = 0; i < 8; i++) { await sleep(400); await r.wait(st, 250); }
+    await r.move(st, 1050, 420, 900); r.mark(st, 'result');
+    await r.wait(st, 2000);
     r.stop(st); return st;
   },
   // Automations: a ready-made rule in one click.
@@ -231,11 +239,11 @@ const SHOTS = {
     await st.page.mouse.move(250, 600); st.mx = 250; st.my = 600;
     r.start(st, 'phone');
     await r.wait(st, 150);
-    await r.scrollBy(st, 330, 600);
+    await r.scrollBy(st, 330, 900);
     await r.wait(st, 100);
     await r.click(st, '.bottom-nav [data-tab="fleet"]', MV, PA);
     await r.wait(st, 650);
-    await r.scrollBy(st, 280, 600);
+    await r.scrollBy(st, 280, 900);
     await r.wait(st, 100);
     await r.click(st, '.bottom-nav [data-tab="overview"]', MV, PA);
     await r.wait(st, 350);
