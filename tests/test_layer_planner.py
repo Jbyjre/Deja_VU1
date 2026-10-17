@@ -1,6 +1,10 @@
 """Mixed-nozzle layer planning and Confirm Print's nozzle check."""
 
+import json
 import os
+import random
+import shutil
+import subprocess
 import sys
 import unittest
 
@@ -74,6 +78,63 @@ class TestNozzleCheck(unittest.TestCase):
 
     def test_no_nozzle_in_the_file_means_no_check(self):
         self.assertEqual(lp.check_nozzles({}, {"T0"}, self.HEADS), ([], [], []))
+
+
+FARM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "farm.js")
+NODE = shutil.which("node")
+
+
+@unittest.skipUnless(NODE, "Node.js isn't installed")
+class TestTheBrowserCopyMatches(unittest.TestCase):
+    """The online demo plans in the browser (frontend/farm.js planLayers):
+    same inputs, same answers as the server, words included."""
+
+    def cases(self):
+        rnd = random.Random(1)
+        out = [
+            {"heads": [{"toolhead": "T0", "nozzle": 0.2, "height": 0.08}, {"toolhead": "T1", "nozzle": 0.8, "height": 0.56}],
+             "exact": False, "part_height": "30"},
+            {"heads": [{"toolhead": "T0", "nozzle": 0.4, "height": 0.125}], "exact": False, "part_height": ""},
+            {"heads": [{"toolhead": "T0", "nozzle": 0.4, "height": 0.2}, {"toolhead": "T0", "nozzle": 0.4, "height": 0.2}]},
+            {"heads": [{"toolhead": "T5", "nozzle": 0.4, "height": 0.2}]},
+            {"heads": [{"toolhead": "T1", "nozzle": 0.3, "height": 0.2}]},
+            {"heads": [{"toolhead": "T1", "nozzle": 0.4, "height": 2}]},
+            {"heads": [{"toolhead": "T1", "nozzle": 0.4, "height": ""}]},
+            {"heads": []},
+            {"heads": [{"toolhead": "T2", "nozzle": 0.6, "height": 0.3}], "part_height": 300},
+        ]
+        for _ in range(400):
+            n = rnd.randint(1, 4)
+            heads = []
+            for th in rnd.sample(["T0", "T1", "T2", "T3"], n):
+                nozzle = rnd.choice([0.2, 0.4, 0.6, 0.8])
+                height = rnd.choice(["", round(rnd.uniform(0.03, 0.6), rnd.choice([2, 3]))])
+                heads.append({"toolhead": th, "nozzle": nozzle, "height": height})
+            out.append({"heads": heads, "exact": rnd.random() < 0.3,
+                        "part_height": rnd.choice(["", "30", 12.5, 270, "1"])})
+        return out
+
+    def test_every_answer_matches(self):
+        cases = self.cases()
+        expected = []
+        for c in cases:
+            try:
+                expected.append(lp.plan(c.get("heads") or [], bool(c.get("exact")), c.get("part_height")))
+            except ValueError as e:
+                expected.append({"error": str(e)})
+        with open(FARM, encoding="utf-8") as f:
+            source = f.read()
+        fn = source[source.index("function planLayers("):]
+        script = fn + """
+const cases = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+console.log(JSON.stringify(cases.map(c => { try { return planLayers(c); } catch (e) { return { error: e.message }; } })));
+"""
+        got = subprocess.run([NODE, "-e", script], input=json.dumps(cases), capture_output=True, text=True, timeout=60)
+        self.assertEqual(got.returncode, 0, got.stderr)
+        answers = json.loads(got.stdout)
+        for case, want, have in zip(cases, json.loads(json.dumps(expected)), answers):
+            with self.subTest(case=case):
+                self.assertEqual(have, want)
 
 
 if __name__ == "__main__":

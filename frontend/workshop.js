@@ -115,7 +115,9 @@ const Workshop = (() => {
 
   function connect() {
     if (!liveData()) { live.mode = 'off'; badge(); tintRoom({}); return; }
-    if (!('WebSocket' in window)) { startPolling(); return; }
+    // The online demo plays a recording through the same requests polling
+    // makes (app.js, "the online demo"); there is no server to open a socket to.
+    if (!('WebSocket' in window) || tourOn()) { startPolling(); return; }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     // demo=1 only when demo data is on: a real printer's live feed must
     // never be asked for (or labelled as) simulated data.
@@ -171,7 +173,7 @@ const Workshop = (() => {
       // Polling started because the WebSocket failed - often just a server
       // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
       // stops this polling (ws.onopen).
-      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws) connect();
+      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws && !tourOn()) connect();
     };
     once();
     live.poll = setInterval(once, 1000);
@@ -189,7 +191,7 @@ const Workshop = (() => {
   setInterval(() => {
     if (!isLive()) return;
     const age = (performance.now() - live.lastAt) / 1000;
-    const how = live.mode === 'ws' ? 'Live' : 'Polling 1 s';
+    const how = live.mode === 'ws' ? 'Live' : tourOn() ? 'Recording' : 'Polling 1 s';
     $('rb-live-text').textContent = live.lastAt ? `${how} · ${age < 1 ? age.toFixed(1) : Math.round(age)} s` : how;
     $('rb-live').classList.toggle('is-stale', age > 3);
   }, 250);
@@ -1395,7 +1397,7 @@ const Workshop = (() => {
         ? `${fmtHours(s.estimated_hours)} · ${s.filament_grams != null ? s.filament_grams.toFixed(1) + ' g' : '—'} · ${(s.tools_used || []).join(' ')}`
         : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(0)).join(' × ')} mm · ${(s.triangles || 0).toLocaleString()} triangles` : (s.error || ''));
       return `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
-          <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
+          <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
           <span class="fcd-name">${esc(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc(f.origin)}</span>` : ''}</span>

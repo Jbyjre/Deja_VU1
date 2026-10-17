@@ -1364,3 +1364,10 @@ body.no-server [data-module-off] { display: none !important; }
 }
 .st-preview-hint[hidden] { display: none; }
 .file-grid .file-local-note { grid-column: 1 / -1; margin-bottom: 4px; }
+
+/* The online demo's note (app.js showTourBar): the server banner's shape, in
+   the accent colour. */
+.tour-bar { border-color: color-mix(in oklch, var(--accent) 45%, transparent); }
+.tour-bar .notice-mark { background: color-mix(in oklch, var(--accent) 20%, transparent); }
+.is-tour #notice { display: none !important; }   /* the demo note already says it's simulated */
+@media (max-width: 640px) { .tour-bar .notice-mark { display: none; } }
