@@ -1,11 +1,13 @@
 """Builds a composition from its template: places the footage on the timeline from each
-shot's recorded markers, inlines those markers for the animation, and renders the
-sound-effects track (clicks exactly on the filmed clicks, whooshes on the cuts).
+shot's recorded markers, inlines those markers for the animation, renders the sound
+effects (a click on every filmed click, a keystroke on every key press and every typed
+character, whooshes on the big transitions), then mixes them with the music.
 
 Usage: python3 build/build.py main|vertical
 """
 import json
 import os
+import random
 import subprocess
 import sys
 
@@ -14,6 +16,7 @@ ROOT = os.path.dirname(HERE)
 FMT = sys.argv[1]
 PROJ = os.path.join(ROOT, FMT)
 PAD_START, PAD_END = 4.0, 4.0     # seconds of held first / last frame added to every clip
+BEAT = 0.4                        # 150 BPM
 
 SHARED_CSS = open(os.path.join(HERE, 'shared.css')).read()
 
@@ -22,44 +25,63 @@ def shot(name):
     return json.load(open(os.path.join(ROOT, 'footage', name + '.json')))
 
 
-# (video id, shot, composition time of the shot's t=0 as a function of its data, visible from, visible to)
+# Each entry: (video id, shot, composition time of the shot's t=0, visible from, visible to).
+# One shot can appear more than once (the opening montage reuses the best moment of four).
 def plan_main(S):
+    m = lambda s, k: S[s]['marks'][k]
     return [
-        ('v-ov', 'overview_jam', 10.0 - S['overview_jam']['marks']['jam'], 5.4, 14.05),
-        ('v-cf', 'confirm_refuse', 17.0 - S['confirm_refuse']['marks']['dialog'], 13.7, 20.1),
-        ('v-fl', 'fleet', 23.5 - S['fleet']['marks']['pause'], 19.6, 26.1),
-        ('v-3d', 'coaster_3d', 25.9, 25.6, 30.05),
-        ('v-twin', 'twin', 26.0, 26.0, 30.05),
-        ('v-ph', 'phone', 29.4, 30.0, 36.05),
-        ('v-q1', 'studio', 35.7, 35.7, 37.9),
-        ('v-q2', 'convert', 38.0 - S['convert']['clicks'][1], 37.3, 39.5),
-        ('v-q3', 'automations', 39.4 - S['automations']['clicks'][0], 38.9, 41.1),
-        ('v-q4', 'care', 40.3, 40.5, 42.7),
-        ('v-q5', 'games', 42.5 - S['games']['clicks'][0], 42.1, 44.1),
+        # opening montage: four features, 0.8 s each
+        ('h-fl', 'fleet', 0.0 + .3 - m('fleet', 'cards'), 0.0, 0.85),
+        ('h-cf', 'confirm_refuse', 0.8 + .1 - m('confirm_refuse', 'dialog'), 0.75, 1.65),
+        ('h-sk', 'skip_object', 1.6 + .25 - m('skip_object', 'skip'), 1.55, 2.45),
+        ('h-tw', 'twin', 2.4 + .05 - m('twin', 'front'), 2.35, 3.25),
+        # the feature scenes
+        ('v-fl1', 'fleet', 6.4 - m('fleet', 'cards') + .05, 5.4, 8.85),
+        ('v-fl2', 'fleet', 9.6 - m('fleet', 'pause'), 8.75, 11.3),
+        ('v-ov', 'overview_jam', 12.4 - m('overview_jam', 'jam'), 11.0, 14.5),
+        ('v-cf', 'confirm_refuse', 16.0 - m('confirm_refuse', 'dialog'), 14.2, 17.7),
+        ('v-ph', 'phone', 19.2 - S['phone']['clicks'][2], 17.6, 20.1),       # the hold-to-cancel at 19.2
+        ('v-cv', 'convert', 20.4 - S['convert']['clicks'][1], 19.9, 21.7),
+        ('v-3d', 'coaster_3d', 21.5, 21.5, 24.1),
+        ('v-sk', 'skip_object', 26.2 - m('skip_object', 'skip'), 23.9, 27.3),
+        ('v-au', 'automations', 27.6 - S['automations']['clicks'][0], 27.1, 28.9),
+        ('v-tw', 'twin', 29.3 - m('twin', 'front'), 28.7, 31.3),
+        ('v-st', 'studio', 31.0, 31.1, 32.9),
+        ('v-ca', 'care', 32.5, 32.7, 34.1),
+        ('v-gm', 'games', 33.25, 33.95, 35.3),
     ]
 
 
-MAIN_WHOOSH = [7.6, 14.0, 19.75, 25.75, 29.85, 36.0, 37.6, 39.2, 40.8, 42.4, 43.95, 51.85]
-MAIN_TICK = [2.0, 2.25, 2.5, 2.75, 47.0, 47.5, 48.0, 48.5, 49.0]
+MAIN_WHOOSH = [4.8, 6.4, 11.2, 17.6, 20.0, 24.0, 28.8, 32.8, 38.4]
+MAIN_TERM = (39.55, [48, 11, 22])      # typing starts, characters per line (end card)
+MAIN_LENGTH = 45.0
 
 
 def plan_vertical(S):
+    m = lambda s, k: S[s]['marks'][k]
     return [
-        ('v-ov', 'overview_jam', 8.6 - S['overview_jam']['marks']['jam'], 5.6, 12.05),
-        ('v-cf', 'confirm_refuse', 14.6 - S['confirm_refuse']['marks']['dialog'], 11.7, 17.1),
-        ('v-ph', 'phone', 16.5, 17.0, 23.05),
-        ('v-fl', 'fleet', 26.0 - S['fleet']['marks']['pause'], 22.7, 29.1),
-        ('v-q1', 'studio', 28.7, 28.7, 30.9),
-        ('v-q2', 'convert', 31.0 - S['convert']['clicks'][1], 30.3, 32.5),
-        ('v-q5', 'games', 32.5 - S['games']['clicks'][0], 31.9, 34.1),
+        ('h-fl', 'fleet', 0.0 + .3 - m('fleet', 'cards'), 0.0, 0.85),
+        ('h-cf', 'confirm_refuse', 0.8 + .1 - m('confirm_refuse', 'dialog'), 0.75, 1.65),
+        ('h-sk', 'skip_object', 1.6 + .25 - m('skip_object', 'skip'), 1.55, 2.45),
+        ('h-tw', 'twin', 2.4 + .05 - m('twin', 'front'), 2.35, 3.25),
+        ('v-lap', 'fleet', 6.4 - m('fleet', 'cards') + .05, 5.4, 6.7),      # on the laptop as it rises
+        ('v-fl1', 'fleet', 6.4 - m('fleet', 'cards') + .05, 6.3, 8.85),
+        ('v-ov', 'overview_jam', 10.0 - m('overview_jam', 'jam'), 8.6, 11.3),
+        ('v-cf', 'confirm_refuse', 12.6 - m('confirm_refuse', 'dialog'), 11.0, 13.7),
+        ('v-ph', 'phone', 15.2 - S['phone']['clicks'][2], 13.6, 16.1),
+        ('v-cv', 'convert', 16.4 - S['convert']['clicks'][1], 15.9, 17.7),
+        ('v-sk', 'skip_object', 19.3 - m('skip_object', 'skip'), 17.5, 20.1),
+        ('v-tw', 'twin', 20.6 - m('twin', 'front'), 19.9, 22.5),
     ]
 
 
-VERT_WHOOSH = [5.6, 11.75, 16.85, 22.75, 28.75, 30.35, 31.95, 33.9, 35.85]
-VERT_TICK = [2.0, 2.25, 2.5, 2.75, 34.0, 34.4, 34.8, 35.2]
+VERT_WHOOSH = [4.8, 6.4, 8.8, 13.6, 16.0, 17.6, 20.0, 22.4, 25.6]
+VERT_TERM = (26.0, [48, 11, 22])
+VERT_LENGTH = 30.4
 
-plans = {'main': (plan_main, MAIN_WHOOSH, MAIN_TICK, 60.0), 'vertical': (plan_vertical, VERT_WHOOSH, VERT_TICK, 40.0)}
-plan_fn, whooshes, ticks, LENGTH = plans[FMT]
+plans = {'main': (plan_main, MAIN_WHOOSH, MAIN_TERM, MAIN_LENGTH),
+         'vertical': (plan_vertical, VERT_WHOOSH, VERT_TERM, VERT_LENGTH)}
+plan_fn, whooshes, term, LENGTH = plans[FMT]
 S = {f[:-5]: shot(f[:-5]) for f in os.listdir(os.path.join(ROOT, 'footage')) if f.endswith('.json')}
 plan = plan_fn(S)
 
@@ -77,23 +99,53 @@ for vid, name, start, vfrom, vto in plan:
     assert vto - start <= S[name]['seconds'] + PAD_END, (vid, 'runs past the held end')
     videos.append(f'      <video id="{vid}" src="assets/footage/{name}.mp4" muted playsinline data-start="{vfrom:.3f}" '
                   f'data-media-start="{media:.3f}" data-duration="{vto - vfrom:.3f}" data-track-index="2"></video>')
-    marks[name] = {'start': round(start, 3), 'marks': S[name]['marks'], 'clicks': S[name]['clicks']}
+    marks[vid] = {'start': round(start, 3), 'marks': S[name]['marks'], 'clicks': S[name]['clicks']}
     for c in S[name]['clicks']:
         t = start + c
         if vfrom + .05 <= t <= vto - .05:
-            cues.append({'t': round(t, 3), 'type': 'click', 'gain': 1.0, 'pan': .15})
+            cues.append({'t': round(t, 3), 'type': 'click', 'gain': 1.0, 'pan': .12})
+    for k in S[name].get('keys', []):
+        t = start + k
+        if vfrom + .05 <= t <= vto - .05:
+            cues.append({'t': round(t, 3), 'type': 'key', 'gain': 1.1, 'pan': -.05, 'pitch': 1.0})
 
-cues += [{'t': t, 'type': 'whoosh', 'gain': .75, 'pan': -.2 + .4 * (i % 2)} for i, t in enumerate(whooshes)]
-cues += [{'t': t, 'type': 'tick', 'gain': .7} for t in ticks]
+# end-card typing: one keystroke per character, a little uneven like a real hand
+random.seed(4)
+t0, lines = term
+typing = []
+t = t0
+for n in lines:
+    per = []
+    for i in range(n + 1):
+        per.append(round(t, 3))
+        cues.append({'t': round(t, 3), 'type': 'key', 'gain': .9 if i < n else 1.2, 'pan': random.uniform(-.2, .2),
+                     'pitch': 1.6 if i == n else random.uniform(.9, 1.12)})   # the last one is Return
+        t += random.uniform(.03, .045) if i < n - 1 else .11
+    typing.append(per)
+    t += .22
+
+# A keystroke that lands on the clap (beat 3 of every bar) gets a boost, so it isn't masked.
+for c in cues:
+    if c['type'] == 'key' and abs(c['t'] % (4 * BEAT) - 2 * BEAT) < .06:
+        c['gain'] = round(c['gain'] * 1.9, 2)
+
+cues += [{'t': t, 'type': 'whoosh', 'gain': .5, 'pan': -.2 + .4 * (i % 2)} for i, t in enumerate(whooshes)]
 
 tpl = open(os.path.join(HERE, FMT + '.tpl.html')).read()
 html = tpl.replace('/*SHARED_CSS*/', SHARED_CSS).replace('<!--VIDEOS-->', '\n'.join(videos)) \
-          .replace('/*MARKS*/{}/*END*/', json.dumps(marks))
+          .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing))
 open(os.path.join(PROJ, 'index.html'), 'w').write(html)
 
 cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
-os.makedirs(os.path.join(PROJ, 'assets', 'audio'), exist_ok=True)
-subprocess.run(['python3', os.path.join(ROOT, 'music', 'sfx.py'), cue_file, str(LENGTH),
-                os.path.join(PROJ, 'assets', 'audio', f'sfx_{FMT}.wav')], check=True)
+audio = os.path.join(PROJ, 'assets', 'audio')
+os.makedirs(audio, exist_ok=True)
+music_wav = os.path.join(audio, f'music3_{FMT}.wav')
+composer = os.path.join(ROOT, 'music', 'compose3.py')
+if not os.path.exists(music_wav) or os.path.getmtime(music_wav) < os.path.getmtime(composer):
+    subprocess.run(['python3', composer, music_wav, FMT], check=True)
+sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')
+subprocess.run(['python3', os.path.join(ROOT, 'music', 'sfx.py'), cue_file, str(LENGTH), sfx_wav], check=True)
+subprocess.run(['python3', os.path.join(ROOT, 'music', 'mix.py'), music_wav, sfx_wav, cue_file,
+                os.path.join(audio, f'mix_{FMT}.wav')], check=True)
 print('built', FMT, len(videos), 'videos,', len(cues), 'sound cues')

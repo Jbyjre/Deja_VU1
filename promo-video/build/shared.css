@@ -26,3 +26,35 @@
       .sub { font: 500 25px/1.42 var(--sans); color: var(--ink-dim); }
       .note { font: 400 16px/1.5 var(--mono); color: var(--ink-faint); letter-spacing: .02em; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+      /* ---------- version 3: one liquid-glass system (captions, window bezels, chips) ----------
+         Blur + saturation, SVG feDisplacementMap edge lensing, a 1 px rim lit from the top
+         left, a two-layer shadow (contact + ambient) and a specular glint that drifts. */
+      .glass { position: relative; isolation: isolate;
+        background: oklch(99% 0.003 250 / .58); backdrop-filter: blur(20px) saturate(1.7) url(#lg-distort);
+        box-shadow: 0 2px 4px rgba(20,25,40,.10), 0 16px 40px rgba(20,25,40,.20), inset 0 0 0 1px rgba(255,255,255,.55); }
+      .glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+        background: linear-gradient(160deg, rgba(255,255,255,.95), rgba(255,255,255,.08) 40%, rgba(255,255,255,.08) 62%, rgba(255,255,255,.55));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+      .glass::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+        background: radial-gradient(60% 120% at var(--sx, 20%) -10%, rgba(255,255,255,.55), transparent 60%); }
+      .win { position: absolute; border-radius: 30px; padding: 9px; opacity: 0; }
+      .win .view { position: relative; width: 100%; height: 100%; border-radius: 21px; overflow: hidden; background: var(--paper);
+        box-shadow: 0 0 0 1px oklch(30% 0.02 265 / .10); }
+      .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+      .spot { position: absolute; border-radius: 14px; opacity: 0; pointer-events: none;
+        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 9px rgba(74,141,248,.22), 0 0 0 6000px rgba(16,20,32,.34); }
+      .cap { position: absolute; opacity: 0; }
+      .cap .card { border-radius: 32px; padding: 24px 34px 27px; }
+      .cap .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }
+      .cap .k { display: flex; align-items: center; gap: 12px; font: 500 16px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+      .cap .k b { font-weight: 600; color: #fff; background: var(--heat); padding: 6px 9px 5px; border-radius: 8px; letter-spacing: .04em; }
+      .cap .h { font: 700 64px/1.0 var(--display); font-stretch: 90%; letter-spacing: -.035em; color: var(--ink); white-space: nowrap; }
+      .cap .s { font: 500 24px/1.3 var(--sans); color: var(--ink-dim); white-space: nowrap; }
+      .simchip { position: absolute; z-index: 6; display: flex; align-items: center; gap: 9px; padding: 9px 15px 9px 13px; border-radius: 99px;
+        font: 600 13px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: oklch(40% 0.08 85); }
+      .simchip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); position: relative; z-index: 4; }
+      .simchip span { position: relative; z-index: 4; }
+      .word { display: inline-block; }
+      .mask { display: block; overflow: hidden; padding-bottom: .08em; }
+      .mask > span { display: block; }

@@ -34,6 +34,38 @@
       .sub { font: 500 25px/1.42 var(--sans); color: var(--ink-dim); }
       .note { font: 400 16px/1.5 var(--mono); color: var(--ink-faint); letter-spacing: .02em; }
       @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+      /* ---------- version 3: one liquid-glass system (captions, window bezels, chips) ----------
+         Blur + saturation, SVG feDisplacementMap edge lensing, a 1 px rim lit from the top
+         left, a two-layer shadow (contact + ambient) and a specular glint that drifts. */
+      .glass { position: relative; isolation: isolate;
+        background: oklch(99% 0.003 250 / .58); backdrop-filter: blur(20px) saturate(1.7) url(#lg-distort);
+        box-shadow: 0 2px 4px rgba(20,25,40,.10), 0 16px 40px rgba(20,25,40,.20), inset 0 0 0 1px rgba(255,255,255,.55); }
+      .glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+        background: linear-gradient(160deg, rgba(255,255,255,.95), rgba(255,255,255,.08) 40%, rgba(255,255,255,.08) 62%, rgba(255,255,255,.55));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+      .glass::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+        background: radial-gradient(60% 120% at var(--sx, 20%) -10%, rgba(255,255,255,.55), transparent 60%); }
+      .win { position: absolute; border-radius: 30px; padding: 9px; opacity: 0; }
+      .win .view { position: relative; width: 100%; height: 100%; border-radius: 21px; overflow: hidden; background: var(--paper);
+        box-shadow: 0 0 0 1px oklch(30% 0.02 265 / .10); }
+      .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+      .spot { position: absolute; border-radius: 14px; opacity: 0; pointer-events: none;
+        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 9px rgba(74,141,248,.22), 0 0 0 6000px rgba(16,20,32,.34); }
+      .cap { position: absolute; opacity: 0; }
+      .cap .card { border-radius: 32px; padding: 24px 34px 27px; }
+      .cap .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }
+      .cap .k { display: flex; align-items: center; gap: 12px; font: 500 16px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+      .cap .k b { font-weight: 600; color: #fff; background: var(--heat); padding: 6px 9px 5px; border-radius: 8px; letter-spacing: .04em; }
+      .cap .h { font: 700 64px/1.0 var(--display); font-stretch: 90%; letter-spacing: -.035em; color: var(--ink); white-space: nowrap; }
+      .cap .s { font: 500 24px/1.3 var(--sans); color: var(--ink-dim); white-space: nowrap; }
+      .simchip { position: absolute; z-index: 6; display: flex; align-items: center; gap: 9px; padding: 9px 15px 9px 13px; border-radius: 99px;
+        font: 600 13px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: oklch(40% 0.08 85); }
+      .simchip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); position: relative; z-index: 4; }
+      .simchip span { position: relative; z-index: 4; }
+      .word { display: inline-block; }
+      .mask { display: block; overflow: hidden; padding-bottom: .08em; }
+      .mask > span { display: block; }
 
       html, body { width: 1920px; height: 1080px; }
       /* ---------- the laptop (no brand marks) ---------- */
@@ -50,233 +82,214 @@
       .lshadow { position: absolute; left: 60px; top: 840px; width: 1360px; height: 60px; border-radius: 50%; background: radial-gradient(closest-side, rgba(20,24,34,.38), transparent); }
       .layer { position: absolute; inset: 0; opacity: 0; }
 
-      /* ---------- captions: one system, a glass card bottom-left ---------- */
-      .cap { position: absolute; left: 80px; bottom: 80px; opacity: 0; transform-origin: 0 100%; }
-      .cap .card { position: relative; padding: 26px 34px 28px; border-radius: 30px; max-width: 980px;
-        background: oklch(99% 0.003 250 / .72); backdrop-filter: blur(22px) saturate(1.6) url(#lg-distort);
-        box-shadow: 0 1px 2px rgba(20,25,40,.08), 0 18px 48px rgba(20,25,40,.18), inset 0 0 0 1px rgba(255,255,255,.75); }
-      .cap .card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-        background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(255,255,255,.08) 40%, rgba(255,255,255,.08) 60%, rgba(255,255,255,.5));
-        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-      .cap .in { display: flex; flex-direction: column; gap: 12px; }
-      .cap .h { font: 700 62px/1.02 var(--display); font-stretch: 92%; letter-spacing: -.03em; color: var(--ink); white-space: nowrap; }
-      .cap .s { font: 500 23px/1.35 var(--sans); color: var(--ink-dim); }
-      .cap .kicker { font-size: 16px; }
+      /* ---------- opening montage ---------- */
+      .hs { position: absolute; inset: 0; opacity: 0; }
+      .hs .htext { position: absolute; top: 0; height: 1080px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+      .hs .hk { display: flex; align-items: center; gap: 12px; font: 500 20px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--heat-ink); }
+      .hs .hk::before { content: ""; width: 10px; height: 10px; border-radius: 3px; background: var(--heat); }
+      .hs .hw { font: 740 112px/.98 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); white-space: nowrap; }
+      #line { position: absolute; left: 0; right: 0; top: 0; height: 1080px; display: flex; align-items: center; justify-content: center; gap: .26em;
+        font: 760 132px/1 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); white-space: nowrap; }
+      #line .word { opacity: 0; position: relative; }
+      #line .hl { color: var(--accent-text); }
+      #line .ul { position: absolute; left: 2%; right: 2%; bottom: -14px; height: 12px; border-radius: 6px; background: var(--heat); transform-origin: 0 50%; }
 
-      /* hook + brand + values + end */
-      .big { font: 720 124px/1.0 var(--display); font-stretch: 90%; letter-spacing: -.04em; color: var(--ink); text-align: center; white-space: nowrap; }
-      .center-abs { position: absolute; left: 0; right: 0; display: flex; justify-content: center; }
-      #docks { position: absolute; left: 0; right: 0; top: 470px; display: flex; justify-content: center; gap: 56px; }
-      .dock { width: 232px; display: flex; flex-direction: column; align-items: center; gap: 20px; opacity: 0; }
-      .tile { position: relative; width: 196px; height: 236px; border-radius: 30px; background: linear-gradient(180deg, oklch(92% 0.004 260), oklch(88.5% 0.005 260));
-        box-shadow: inset 0 0 0 2px oklch(80% 0.006 260), 0 18px 40px oklch(25% 0.02 265 / .10); }
-      .tile .glow { position: absolute; inset: -3px; border-radius: 33px; opacity: 0; }
-      .tile .body { position: absolute; left: 38px; top: 34px; width: 120px; height: 98px; border-radius: 18px; background: linear-gradient(180deg, oklch(70% 0.006 260), oklch(63% 0.006 260)); }
-      .tile .body::after { content: ""; position: absolute; left: 22px; right: 22px; top: 22px; height: 12px; border-radius: 6px; background: oklch(55% 0.006 260); }
-      .tile .noz { position: absolute; left: 86px; top: 130px; width: 24px; height: 34px; background: oklch(58% 0.006 260); clip-path: polygon(0 0, 100% 0, 66% 100%, 34% 100%); }
-      .tile .rail { position: absolute; left: 34px; right: 34px; bottom: 30px; height: 8px; border-radius: 4px; background: oklch(80% 0.005 260); }
-      .tname { font: 600 26px/1 var(--mono); color: var(--ink); }
-      .state { height: 30px; display: flex; align-items: center; gap: 10px; font: 600 22px/1 var(--sans); color: var(--ink); opacity: 0; white-space: nowrap; }
-      .state .ring { width: 22px; height: 22px; border-radius: 50%; border: 4px solid currentColor; flex: none; }
-      #brand { position: absolute; left: 0; right: 0; top: 0; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; opacity: 0; }
-      #brand-row { display: flex; align-items: center; gap: 38px; }
-      #logo { width: 150px; height: 150px; flex: none; }
-      #wordmark { font: 720 168px/1 var(--display); font-stretch: 90%; letter-spacing: -.045em; color: var(--ink); }
-      .card-win { position: absolute; border-radius: 22px; overflow: hidden; background: var(--paper); opacity: 0;
-        box-shadow: 0 1px 2px oklch(25% 0.02 265 / .07), 0 30px 80px oklch(25% 0.02 265 / .2), 0 0 0 1px oklch(30% 0.02 265 / .07); }
-      .card-win .view { position: relative; overflow: hidden; width: 100%; height: 100%; }
-      .card-win .cam, .layer .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
-      .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
-      .chip { position: absolute; display: flex; align-items: center; gap: 10px; padding: 9px 15px 9px 13px; border-radius: 99px; z-index: 6;
-        font: 500 13px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: oklch(40% 0.08 85);
-        background: oklch(99% 0.02 95 / .75); backdrop-filter: blur(14px) saturate(1.5);
-        box-shadow: 0 1px 2px rgba(20,25,40,.08), 0 8px 22px rgba(20,25,40,.14), inset 0 0 0 1px rgba(255,255,255,.7); }
-      .chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+      /* ---------- brand / values / end ---------- */
+      #brand { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; opacity: 0; }
+      #brand-row { display: flex; align-items: center; gap: 40px; }
+      .icon { flex: none; filter: drop-shadow(0 18px 30px rgba(13,17,24,.28)); }
+      .wordmark { font: 740 172px/1 var(--display); font-stretch: 88%; letter-spacing: -.05em; color: var(--ink); }
+      .brand-sub { font: 500 34px/1 var(--sans); color: var(--ink-dim); }
       .phone { position: absolute; width: 430px; height: 920px; border-radius: 62px; background: oklch(22% 0.014 265); padding: 14px; opacity: 0;
-        box-shadow: 0 1px 2px rgba(20,25,40,.12), 0 40px 90px oklch(25% 0.02 265 / .28), inset 0 0 0 2px #3a3e47; }
-      .phone .pscreen { position: relative; width: 402px; height: 870px; border-radius: 50px; overflow: hidden; background: var(--bg); }
+        box-shadow: 0 2px 4px rgba(20,25,40,.14), 0 40px 90px oklch(25% 0.02 265 / .3), inset 0 0 0 2px #3a3e47; }
+      .phone .pscreen { position: relative; width: 402px; height: 892px; border-radius: 50px; overflow: hidden; background: var(--bg); }
       .phone .island { position: absolute; left: 50%; top: 12px; width: 112px; height: 32px; margin-left: -56px; border-radius: 20px; background: #0b0d12; z-index: 3; }
-      .mchips { position: absolute; left: 160px; right: 160px; top: 470px; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
-      .mchip { font: 500 24px/1 var(--sans); color: var(--ink); padding: 18px 26px; border-radius: 99px; background: oklch(99% 0.002 250 / .85); opacity: 0;
-        box-shadow: 0 1px 2px rgba(20,25,40,.06), 0 10px 26px rgba(20,25,40,.09), inset 0 0 0 1px rgba(255,255,255,.8); }
-      #values { position: absolute; left: 0; right: 0; top: 200px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-      #values .big { font-size: 112px; opacity: 0; }
+      #values { position: absolute; left: 0; right: 0; top: 0; height: 1080px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+      #values .v { font: 740 116px/1.0 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); opacity: 0; white-space: nowrap; }
       #values .faint { color: var(--ink-faint); }
       #end { position: absolute; inset: 0; opacity: 0; }
-      #term { position: absolute; left: 50%; top: 540px; width: 1080px; margin-left: -540px; border-radius: 22px; background: oklch(21% 0.014 265); padding: 22px 30px 30px; opacity: 0;
-        box-shadow: 0 30px 80px oklch(25% 0.02 265 / .3), inset 0 0 0 1px #343842; }
-      #term .tbar { display: flex; gap: 8px; margin-bottom: 20px; }
+      #end-row { position: absolute; left: 0; right: 0; top: 120px; display: flex; justify-content: center; align-items: center; gap: 30px; }
+      #end-row .wordmark { font-size: 132px; }
+      #end-tag { position: absolute; left: 0; right: 0; top: 318px; text-align: center; font: 600 44px/1 var(--display); font-stretch: 92%; letter-spacing: -.02em; color: var(--ink); }
+      #term { position: absolute; left: 50%; top: 430px; width: 1080px; margin-left: -540px; border-radius: 24px; background: oklch(21% 0.014 265); padding: 22px 32px 30px; opacity: 0;
+        box-shadow: 0 2px 4px rgba(20,25,40,.2), 0 30px 80px oklch(25% 0.02 265 / .32), inset 0 0 0 1px #343842; }
+      #term .tbar { display: flex; gap: 8px; margin-bottom: 18px; }
       #term .tbar i { width: 12px; height: 12px; border-radius: 50%; background: #3a3e47; display: block; }
-      #term .ln { font: 500 27px/1.75 var(--mono); color: #e9ebf0; white-space: nowrap; overflow: hidden; width: 0; }
+      #term .ln { font: 500 28px/1.75 var(--mono); color: #e9ebf0; white-space: nowrap; overflow: hidden; width: 0; }
       #term .ln b { color: var(--heat); font-weight: 500; }
+      #caret { display: inline-block; width: 14px; height: 30px; background: var(--heat); vertical-align: -5px; margin-left: 4px; }
+      #end-meta { position: absolute; left: 0; right: 0; top: 790px; text-align: center; font: 500 20px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); opacity: 0; }
+      #end-fine { position: absolute; left: 0; right: 0; top: 930px; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0; }
+      .cap { left: 72px; bottom: 72px; transform-origin: 0 100%; }
     </style>
   </head>
   <body>
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
       <filter id="lg-distort" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
         <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="16" xChannelSelector="R" yChannelSelector="G" />
       </filter>
+      <defs>
+        <linearGradient id="ic-tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2230"/><stop offset="1" stop-color="#0d1118"/></linearGradient>
+        <linearGradient id="ic-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7db2ff"/><stop offset="1" stop-color="#4a8df8"/></linearGradient>
+      </defs>
     </svg>
-    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="60">
+    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="45">
       <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="lines"></div></div>
 
-      <!-- hook -->
-      <div class="center-abs" style="top:200px;height:150px">
-        <div class="big" id="h1" style="position:absolute;opacity:0">Four toolheads.</div>
-        <div class="big" id="h2" style="position:absolute;opacity:0">Which one is ready?</div>
-        <div class="big" id="h3" style="position:absolute;opacity:0">Deja Vu1 tells you.</div>
-      </div>
-      <div id="docks"></div>
+      <div id="hook"></div>
+      <div id="line"></div>
 
-      <!-- brand -->
       <div id="brand">
         <div id="brand-row">
-          <svg id="logo" viewBox="0 0 150 150" aria-hidden="true">
-            <circle cx="75" cy="75" r="66" fill="oklch(99% 0.002 250)" />
-            <circle id="logo-ring" cx="75" cy="75" r="62" fill="none" stroke="#4a8df8" stroke-width="7" stroke-linecap="round" transform="rotate(-90 75 75)" stroke-dasharray="389.6" stroke-dashoffset="389.6" />
-            <circle id="logo-dot" cx="75" cy="75" r="24" fill="#4a8df8" />
+          <!-- the app icon (marketing-library/06-app-icon/icon.svg), with its ring drawn on -->
+          <svg class="icon" id="b-icon" width="176" height="176" viewBox="0 0 512 512" aria-hidden="true">
+            <rect width="512" height="512" rx="112" fill="url(#ic-tile)"/>
+            <circle id="b-ring" cx="256" cy="256" r="150" fill="none" stroke="url(#ic-ring)" stroke-width="44" stroke-dasharray="942.5" stroke-dashoffset="942.5" transform="rotate(-90 256 256)"/>
+            <circle id="b-dot" cx="256" cy="256" r="58" fill="#4a8df8"/>
+            <circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
           </svg>
-          <div id="wordmark">Deja Vu1</div>
+          <div class="wordmark" id="b-word">Deja Vu1</div>
         </div>
-        <div class="sub" id="brand-sub" style="font-size:32px;color:var(--ink-dim)">The free, open-source dashboard for your Snapmaker U1.</div>
+        <div class="brand-sub" id="b-sub">Free and open source. For the Snapmaker U1.</div>
       </div>
 
-      <!-- the laptop -->
       <div id="stage"><div id="rig">
         <div class="lshadow"></div>
         <div class="lid"><div class="cam-dot"></div><div class="screen" id="screen">
+          <div class="layer" id="L-fl1"><div class="cam"></div></div>
+          <div class="layer" id="L-fl2"><div class="cam"></div></div>
           <div class="layer" id="L-ov"><div class="cam"></div></div>
           <div class="layer" id="L-cf"><div class="cam"></div></div>
-          <div class="layer" id="L-fl"><div class="cam"></div></div>
+          <div class="layer" id="L-cv"><div class="cam"></div></div>
           <div class="layer" id="L-3d"><div class="cam"></div></div>
-          <div class="chip" id="lchip" style="left:14px;bottom:14px">Simulated farm</div>
+          <div class="layer" id="L-sk"><div class="cam"></div></div>
+          <div class="layer" id="L-au"><div class="cam"></div></div>
+          <div class="layer" id="L-tw"><div class="cam"></div></div>
+          <div class="layer" id="L-st"><div class="cam"></div></div>
+          <div class="simchip glass" style="left:16px;bottom:16px"><span>Simulated farm</span></div>
           <div class="glare"></div>
         </div></div>
         <div class="base"><div class="notch"></div></div>
       </div></div>
 
-      <!-- floating twin window (3D scene) -->
-      <div class="card-win" id="W-twin" style="left:1140px;top:120px;width:660px;height:340px" data-crop="140,120,790,407"><div class="view"><div class="cam"></div></div></div>
+      <div class="phone" id="ph" style="left:1240px;top:70px"><div class="pscreen" id="ph-screen"><div class="island"></div></div></div>
+      <div class="win glass" id="W-ca" style="left:300px;top:96px;width:1320px;height:760px"><div class="view"><div class="cam"></div></div><div class="simchip glass" style="left:26px;top:26px"><span>Simulated farm</span></div></div>
+      <div class="win glass" id="W-gm" style="left:300px;top:96px;width:1320px;height:760px"><div class="view"><div class="cam"></div></div><div class="simchip glass" style="left:26px;top:26px"><span>Simulated farm</span></div></div>
 
-      <!-- phone -->
-      <div class="phone" id="ph" style="left:1150px;top:80px"><div class="pscreen" id="ph-screen"><div class="island"></div></div></div>
-
-      <!-- quick-fire cards -->
-      <div class="card-win" id="Q1" style="left:260px;top:90px;width:1400px;height:780px" data-crop="520,270,760,423"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
-      <div class="card-win" id="Q2" style="left:260px;top:90px;width:1400px;height:780px" data-crop="160,95,1150,640"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
-      <div class="card-win" id="Q3" style="left:260px;top:90px;width:1400px;height:780px" data-crop="140,300,1030,573"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
-      <div class="card-win" id="Q4" style="left:260px;top:90px;width:1400px;height:780px" data-crop="140,40,1160,646"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
-      <div class="card-win" id="Q5" style="left:260px;top:90px;width:1400px;height:780px" data-crop="150,300,1140,635"><div class="view"><div class="cam"></div></div><div class="chip" style="left:16px;top:16px">Simulated farm</div></div>
-
-      <!-- more -->
-      <div class="center-abs" style="top:300px"><div class="big" id="more-h" style="font-size:88px;opacity:0">And there's more.</div></div>
-      <div class="mchips" id="mchips">
-        <span class="mchip">Pre-flight risk check</span><span class="mchip">Print queue</span><span class="mchip">Print cost calculator</span><span class="mchip">Push notifications</span><span class="mchip">G-code viewer + edits</span><span class="mchip">View on your desk (AR)</span><span class="mchip">Home Assistant</span><span class="mchip">WLED lights</span><span class="mchip">Filament tracking</span>
-      </div>
-
-      <!-- values -->
       <div id="values">
-        <div class="big">Free.</div>
-        <div class="big">Open source.</div>
-        <div class="big">Runs on your own network.</div>
-        <div class="big">No account.</div>
-        <div class="big faint">Just Python.</div>
+        <div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">Just Python.</div>
       </div>
 
-      <!-- end -->
       <div id="end">
-        <div class="center-abs" style="top:170px;gap:30px;align-items:center" id="end-row">
-          <svg viewBox="0 0 150 150" style="width:112px;height:112px" aria-hidden="true">
-            <circle cx="75" cy="75" r="66" fill="oklch(99% 0.002 250)" /><circle cx="75" cy="75" r="62" fill="none" stroke="#4a8df8" stroke-width="7" /><circle cx="75" cy="75" r="24" fill="#4a8df8" />
+        <div id="end-row">
+          <svg class="icon" width="128" height="128" viewBox="0 0 512 512" aria-hidden="true">
+            <rect width="512" height="512" rx="112" fill="url(#ic-tile)"/><circle cx="256" cy="256" r="150" fill="none" stroke="url(#ic-ring)" stroke-width="44"/>
+            <circle cx="256" cy="256" r="58" fill="#4a8df8"/><circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
           </svg>
-          <div style="font:720 128px/1 var(--display);font-stretch:90%;letter-spacing:-.045em">Deja Vu1</div>
+          <div class="wordmark">Deja Vu1</div>
         </div>
-        <div class="center-abs" style="top:430px"><div class="sub" id="end-try" style="font:600 34px/1 var(--sans);color:var(--ink)">Try it in three lines.</div></div>
+        <div id="end-tag">One screen for every U1 you run.</div>
         <div id="term">
           <div class="tbar"><i></i><i></i><i></i></div>
-          <div class="ln" data-n="52"><b>$</b> git clone https://github.com/Jbyjre/Deja_VU1.git</div>
-          <div class="ln" data-n="14"><b>$</b> cd Deja_VU1</div>
-          <div class="ln" data-n="24"><b>$</b> python3 backend/app.py</div>
+          <div class="ln"><b>$</b> git clone https://github.com/Jbyjre/Deja_VU1.git</div>
+          <div class="ln"><b>$</b> cd Deja_VU1</div>
+          <div class="ln"><b>$</b> python3 backend/app.py</div>
         </div>
-        <div class="center-abs" style="top:868px"><div class="note" id="end-meta" style="font-size:19px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim)">Free · MIT licence · Python 3.8 or newer · nothing else</div></div>
-        <div class="center-abs" style="top:960px;flex-direction:column;align-items:center" id="end-fine">
+        <div id="end-meta">Free · MIT licence · Python 3.8 or newer · nothing else to install</div>
+        <div id="end-fine">
           <div class="note">Every figure shown comes from Deja Vu1's built-in simulated farm.</div>
           <div class="note">Deja Vu1 is an independent project and is not affiliated with Snapmaker.</div>
         </div>
       </div>
 
-      <!-- captions -->
-      <div class="cap" id="c-needs"><div class="card"><div class="in"><div class="kicker">Needs you</div><div class="h">See what needs you, ranked.</div><div class="s">Every printer, every problem, in one list.</div></div></div></div>
-      <div class="cap" id="c-live"><div class="card"><div class="in"><div class="kicker">Live · 4 updates a second</div><div class="h">Problems show up the moment they happen.</div><div class="s">Here, a filament jam fired from the farm sandbox.</div></div></div></div>
-      <div class="cap" id="c-check"><div class="card"><div class="in"><div class="kicker">Confirm print</div><div class="h">It checks before you print.</div><div class="s">Filament, maintenance, file safety and cost, in one summary.</div></div></div></div>
-      <div class="cap" id="c-no"><div class="card"><div class="in"><div class="kicker">Refused, in words</div><div class="h">Something wrong? It won't start.</div><div class="s">And it tells you exactly why.</div></div></div></div>
-      <div class="cap" id="c-farm"><div class="card"><div class="in"><div class="kicker">Fleet · 27 simulated printers</div><div class="h">Run your whole farm.</div></div></div></div>
-      <div class="cap" id="c-pause"><div class="card"><div class="in"><div class="kicker">Fleet command center</div><div class="h">Pause them all. Each one reports back.</div><div class="s">13 paused. The other 14 say why not.</div></div></div></div>
-      <div class="cap" id="c-3d"><div class="card"><div class="in"><div class="kicker">3D viewer · digital twin</div><div class="h">See every layer before it prints.</div></div></div></div>
-      <div class="cap" id="c-phone"><div class="card"><div class="in"><div class="kicker">On your phone</div><div class="h">Control it from your phone.</div><div class="s">Pause, or hold to cancel. Right under your thumb.</div></div></div></div>
-      <div class="cap" id="c-q1"><div class="card"><div class="in"><div class="kicker">Photo-to-Print Studio</div><div class="h">Turn a photo into a print.</div></div></div></div>
-      <div class="cap" id="c-q2"><div class="card"><div class="in"><div class="kicker">MakerWorld → U1</div><div class="h">Convert projects in one click.</div></div></div></div>
-      <div class="cap" id="c-q3"><div class="card"><div class="in"><div class="kicker">Automations</div><div class="h">When this happens, do that.</div></div></div></div>
-      <div class="cap" id="c-q4"><div class="card"><div class="in"><div class="kicker">Maintenance</div><div class="h">Know what's due, before it breaks.</div></div></div></div>
-      <div class="cap" id="c-q5"><div class="card"><div class="in"><div class="kicker">Games tab</div><div class="h">Ten games for the long prints.</div></div></div></div>
+      <div id="caps"></div>
 
-      <video id="v-ov" src="assets/footage/overview_jam.mp4" muted playsinline data-start="5.400" data-media-start="0.900" data-duration="8.650" data-track-index="2"></video>
-      <video id="v-cf" src="assets/footage/confirm_refuse.mp4" muted playsinline data-start="13.700" data-media-start="4.667" data-duration="6.400" data-track-index="2"></video>
-      <video id="v-fl" src="assets/footage/fleet.mp4" muted playsinline data-start="19.600" data-media-start="4.917" data-duration="6.500" data-track-index="2"></video>
-      <video id="v-3d" src="assets/footage/coaster_3d.mp4" muted playsinline data-start="25.600" data-media-start="3.700" data-duration="4.450" data-track-index="2"></video>
-      <video id="v-twin" src="assets/footage/twin.mp4" muted playsinline data-start="26.000" data-media-start="4.000" data-duration="4.050" data-track-index="2"></video>
-      <video id="v-ph" src="assets/footage/phone.mp4" muted playsinline data-start="30.000" data-media-start="4.600" data-duration="6.050" data-track-index="2"></video>
-      <video id="v-q1" src="assets/footage/studio.mp4" muted playsinline data-start="35.700" data-media-start="4.000" data-duration="2.200" data-track-index="2"></video>
-      <video id="v-q2" src="assets/footage/convert.mp4" muted playsinline data-start="37.300" data-media-start="5.567" data-duration="2.200" data-track-index="2"></video>
-      <video id="v-q3" src="assets/footage/automations.mp4" muted playsinline data-start="38.900" data-media-start="4.233" data-duration="2.200" data-track-index="2"></video>
-      <video id="v-q4" src="assets/footage/care.mp4" muted playsinline data-start="40.500" data-media-start="4.200" data-duration="2.200" data-track-index="2"></video>
-      <video id="v-q5" src="assets/footage/games.mp4" muted playsinline data-start="42.100" data-media-start="4.333" data-duration="2.000" data-track-index="2"></video>
-      <audio id="music" src="assets/audio/bed2.wav" data-start="0" data-duration="60" data-track-index="9" data-volume="1"></audio>
-      <audio id="sfx" src="assets/audio/sfx_main.wav" data-start="0" data-duration="60" data-track-index="10" data-volume="1"></audio>
+      <video id="h-fl" src="assets/footage/fleet.mp4" muted playsinline data-start="0.000" data-media-start="4.350" data-duration="0.850" data-track-index="2"></video>
+      <video id="h-cf" src="assets/footage/confirm_refuse.mp4" muted playsinline data-start="0.750" data-media-start="6.617" data-duration="0.900" data-track-index="2"></video>
+      <video id="h-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="1.550" data-media-start="6.017" data-duration="0.900" data-track-index="2"></video>
+      <video id="h-tw" src="assets/footage/twin.mp4" muted playsinline data-start="2.350" data-media-start="5.050" data-duration="0.900" data-track-index="2"></video>
+      <video id="v-fl1" src="assets/footage/fleet.mp4" muted playsinline data-start="5.400" data-media-start="3.600" data-duration="3.450" data-track-index="2"></video>
+      <video id="v-fl2" src="assets/footage/fleet.mp4" muted playsinline data-start="8.750" data-media-start="6.550" data-duration="2.550" data-track-index="2"></video>
+      <video id="v-ov" src="assets/footage/overview_jam.mp4" muted playsinline data-start="11.000" data-media-start="3.567" data-duration="3.500" data-track-index="2"></video>
+      <video id="v-cf" src="assets/footage/confirm_refuse.mp4" muted playsinline data-start="14.200" data-media-start="4.967" data-duration="3.500" data-track-index="2"></video>
+      <video id="v-ph" src="assets/footage/phone.mp4" muted playsinline data-start="17.600" data-media-start="6.183" data-duration="2.500" data-track-index="2"></video>
+      <video id="v-cv" src="assets/footage/convert.mp4" muted playsinline data-start="19.900" data-media-start="5.050" data-duration="1.800" data-track-index="2"></video>
+      <video id="v-3d" src="assets/footage/coaster_3d.mp4" muted playsinline data-start="21.500" data-media-start="4.000" data-duration="2.600" data-track-index="2"></video>
+      <video id="v-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="23.900" data-media-start="4.017" data-duration="3.400" data-track-index="2"></video>
+      <video id="v-au" src="assets/footage/automations.mp4" muted playsinline data-start="27.100" data-media-start="4.000" data-duration="1.800" data-track-index="2"></video>
+      <video id="v-tw" src="assets/footage/twin.mp4" muted playsinline data-start="28.700" data-media-start="4.550" data-duration="2.600" data-track-index="2"></video>
+      <video id="v-st" src="assets/footage/studio.mp4" muted playsinline data-start="31.100" data-media-start="4.100" data-duration="1.800" data-track-index="2"></video>
+      <video id="v-ca" src="assets/footage/care.mp4" muted playsinline data-start="32.700" data-media-start="4.200" data-duration="1.400" data-track-index="2"></video>
+      <video id="v-gm" src="assets/footage/games.mp4" muted playsinline data-start="33.950" data-media-start="4.700" data-duration="1.350" data-track-index="2"></video>
+      <audio id="mix" src="assets/audio/mix_main.wav" data-start="0" data-duration="45" data-track-index="9" data-volume="1"></audio>
     </div>
 
     <script>
-      const M = {"overview_jam": {"start": 8.5, "marks": {"jam": 1.5}, "clicks": []}, "confirm_refuse": {"start": 13.033, "marks": {"print": 2.467, "dialog": 3.967}, "clicks": [0.783, 2.417]}, "fleet": {"start": 18.683, "marks": {"all": 3.733, "pause": 4.817, "results": 6.317}, "clicks": [3.683, 4.767]}, "coaster_3d": {"start": 25.9, "marks": {}, "clicks": []}, "twin": {"start": 26.0, "marks": {}, "clicks": []}, "phone": {"start": 29.4, "marks": {}, "clicks": [1.833, 4.367, 5.417]}, "studio": {"start": 35.7, "marks": {}, "clicks": [0.733]}, "convert": {"start": 35.733, "marks": {}, "clicks": [0.733, 2.267]}, "automations": {"start": 38.667, "marks": {}, "clicks": [0.733]}, "care": {"start": 40.3, "marks": {}, "clicks": []}, "games": {"start": 41.767, "marks": {}, "clicks": [0.733]}};
+      const M = {"h-fl": {"start": -0.35, "marks": {"cards": 0.65, "all": 2.65, "pause": 3.4, "results": 4.6}, "clicks": [2.6, 3.35]}, "h-cf": {"start": -1.867, "marks": {"print": 1.667, "dialog": 2.767}, "clicks": [0.517, 1.617]}, "h-sk": {"start": -0.467, "marks": {"pick": 0.6, "ask": 1.5, "skip": 2.317, "done": 3.517}, "clicks": [0.55, 1.45, 2.267]}, "h-tw": {"start": 1.3, "marks": {"front": 1.15, "top": 2.433, "iso": 3.717}, "clicks": [1.1, 2.383, 3.667]}, "v-fl1": {"start": 5.8, "marks": {"cards": 0.65, "all": 2.65, "pause": 3.4, "results": 4.6}, "clicks": [2.6, 3.35]}, "v-fl2": {"start": 6.2, "marks": {"cards": 0.65, "all": 2.65, "pause": 3.4, "results": 4.6}, "clicks": [2.6, 3.35]}, "v-ov": {"start": 11.433, "marks": {"jam": 0.967}, "clicks": []}, "v-cf": {"start": 13.233, "marks": {"print": 1.667, "dialog": 2.767}, "clicks": [0.517, 1.617]}, "v-ph": {"start": 15.417, "marks": {}, "clicks": [1.25, 3.05, 3.783]}, "v-cv": {"start": 18.85, "marks": {}, "clicks": [0.5, 1.55]}, "v-3d": {"start": 21.5, "marks": {"turn": 2.2}, "clicks": []}, "v-sk": {"start": 23.883, "marks": {"pick": 0.6, "ask": 1.5, "skip": 2.317, "done": 3.517}, "clicks": [0.55, 1.45, 2.267]}, "v-au": {"start": 27.1, "marks": {}, "clicks": [0.5]}, "v-tw": {"start": 28.15, "marks": {"front": 1.15, "top": 2.433, "iso": 3.717}, "clicks": [1.1, 2.383, 3.667]}, "v-st": {"start": 31.0, "marks": {}, "clicks": [0.5]}, "v-ca": {"start": 32.5, "marks": {}, "clicks": []}, "v-gm": {"start": 33.25, "marks": {}, "clicks": [0.5]}};
+      const TY = [[39.55, 39.586, 39.622, 39.663, 39.698, 39.731, 39.773, 39.808, 39.85, 39.889, 39.922, 39.966, 40.001, 40.044, 40.08, 40.113, 40.143, 40.177, 40.213, 40.249, 40.283, 40.318, 40.349, 40.391, 40.426, 40.456, 40.501, 40.531, 40.572, 40.612, 40.645, 40.68, 40.711, 40.752, 40.784, 40.817, 40.849, 40.88, 40.925, 40.967, 41.004, 41.034, 41.078, 41.108, 41.141, 41.173, 41.212, 41.255, 41.365], [41.695, 41.729, 41.772, 41.814, 41.852, 41.886, 41.917, 41.957, 41.989, 42.02, 42.059, 42.169], [42.499, 42.529, 42.571, 42.609, 42.649, 42.691, 42.721, 42.759, 42.791, 42.829, 42.871, 42.907, 42.94, 42.972, 43.015, 43.058, 43.101, 43.144, 43.176, 43.208, 43.247, 43.277, 43.387]];
       const $ = (s) => document.querySelector(s);
       const FW = 1440, FH = 900, SW = 1240, SH = 775;
-      const at = (shot, mark) => M[shot].start + (mark in M[shot].marks ? M[shot].marks[mark] : 0);
+      const at = (vid, mark) => M[vid].start + (mark in M[vid].marks ? M[vid].marks[mark] : 0);
 
-      // --- static DOM prep ---
-      const VIEWS = {};
-      function mount(viewEl, videoId, crop, vw, vh) {
-        const [cx, cy, cw, ch] = crop || [0, 0, FW, FH];
-        const s = vw / cw, cam = viewEl.querySelector('.cam');
+      // ---------- static DOM ----------
+      // Opening montage: four features, one per half bar (0.8 s). crop = footage rectangle (CSS px).
+      const HOOK = [
+        { id: 'h-fl', k: 'Fleet', w: ['Every printer,', 'live.'], crop: [170, 250, 1100, 640], W: 1000, H: 582, side: 'R' },
+        { id: 'h-cf', k: 'Confirm Print', w: ['Unsafe starts,', 'refused.'], crop: [355, 170, 730, 560], W: 760, H: 583, side: 'L' },
+        { id: 'h-sk', k: 'Skip one object', w: ['One part fails.', 'Skip just it.'], crop: [150, 118, 1140, 425], W: 1040, H: 388, side: 'R' },
+        { id: 'h-tw', k: 'Digital twin', w: ['A live drawing', 'of every printer.'], crop: [150, 115, 440, 500], W: 470, H: 534, side: 'L' },
+      ];
+      $('#hook').innerHTML = HOOK.map((h, i) => {
+        const wx = h.side === 'R' ? 1800 - h.W : 120, tx = h.side === 'R' ? 'left:120px' : `left:${120 + h.W + 110}px`;
+        return `<div class="hs" id="hs${i}">
+          <div class="win glass" id="hw${i}" style="opacity:1;left:${wx}px;top:${540 - h.H / 2}px;width:${h.W}px;height:${h.H}px"><div class="view"><div class="cam"></div></div>
+            <div class="simchip glass" style="left:22px;bottom:22px"><span>Simulated farm</span></div></div>
+          <div class="htext" style="${tx}"><div class="hk">${h.k}</div><div class="hw">${h.w.map(l => `<span class="mask"><span>${l}</span></span>`).join('')}</div></div>
+        </div>`;
+      }).join('');
+      $('#line').innerHTML = ['One', 'screen', 'for', '<span class="hl">every U1</span><i class="ul"></i>', 'you', 'run.']
+        .map(w => `<span class="word">${w}</span>`).join('');
+
+      // Captions: [number, label, headline, line]
+      const CAPS = {
+        c1a: ['01', 'Every printer, live', 'Your whole farm, live.', 'Up to 12 printers, four updates a second.'],
+        c1b: ['01', 'Fleet commands', 'Pause them all at once.', '13 of 27 paused. The rest say why not.'],
+        c2a: ['02', 'Needs you', 'What needs you, ranked.', 'One list, most urgent first.'],
+        c2b: ['02', 'Live alerts', 'A jam? You know instantly.', 'Fired from the farm sandbox, as it happens.'],
+        c3a: ['03', 'Confirm Print', 'Checked before it prints.', 'Pre-flight, filament colour, maintenance, cost.'],
+        c3b: ['03', 'Refused, in words', 'Unsafe? It won\'t start.', 'And it tells you exactly why.'],
+        c3c: ['03', 'On your phone', 'Run it from your phone.', 'The server checks every start again.'],
+        c4a: ['04', 'Files ready for the U1', 'MakerWorld project? Converted.', 'One click. Multi-plate included.'],
+        c4b: ['04', 'G-code in 3D', 'Every layer, before it prints.', 'Scrub through the file, layer by layer.'],
+        c5: ['05', 'Skip one object', 'One part failed? Skip it.', 'The rest of the plate keeps printing.'],
+        c6: ['06', 'Automations', 'When this happens, do that.', 'ntfy, Discord, Telegram, Home Assistant, WLED.'],
+        c7: ['07', 'Digital twin', 'A live drawing of each printer.', '3D, front and top, updated as it moves.'],
+        c8: ['08', 'Photo-to-Print Studio', 'A photo becomes a relief.', 'Four filament colours, layer on layer.'],
+        c9: ['+', 'Care', 'Know what\'s due.', 'Seven maintenance tasks, tracked by print hours.'],
+        c10: ['+', 'Games tab', 'Ten games for long prints.', 'Plus filament, cost, time-lapse and more.'],
+      };
+      $('#caps').innerHTML = Object.entries(CAPS).map(([id, [n, k, h, s]]) =>
+        `<div class="cap" id="${id}"><div class="card glass"><div class="in"><div class="k"><b>${n}</b>${k}</div><div class="h">${h}</div><div class="s">${s}</div></div></div></div>`).join('');
+
+      // Put each <video> into its camera: a box the size of the footage that the camera moves.
+      const V = {};
+      function mount(viewEl, vid, vw, vh) {
+        const s = vw / FW, cam = viewEl.querySelector('.cam');
         Object.assign(cam.style, { width: FW * s + 'px', height: FH * s + 'px' });
-        cam.appendChild(document.getElementById(videoId));
-        return { cam, vw, vh, s, base: [cx, cy, cw, ch] };
+        cam.appendChild(document.getElementById(vid));
+        return { cam, vw, vh, s };
       }
-      VIEWS.ov = mount($('#L-ov'), 'v-ov', null, SW, SH);
-      VIEWS.cf = mount($('#L-cf'), 'v-cf', null, SW, SH);
-      VIEWS.fl = mount($('#L-fl'), 'v-fl', null, SW, SH);
-      VIEWS.d3 = mount($('#L-3d'), 'v-3d', null, SW, SH);
-      const cw = (id) => { const el = $(id); return [el, el.dataset.crop.split(',').map(Number), parseFloat(el.style.width), parseFloat(el.style.height)]; };
-      for (const [k, id, vid] of [['twin', '#W-twin', 'v-twin'], ['q1', '#Q1', 'v-q1'], ['q2', '#Q2', 'v-q2'], ['q3', '#Q3', 'v-q3'], ['q4', '#Q4', 'v-q4'], ['q5', '#Q5', 'v-q5']]) {
-        const [el, crop, w, h] = cw(id); VIEWS[k] = mount(el.querySelector('.view'), vid, crop, w, h);
-      }
-      (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { position: 'absolute', inset: '0' });
+      for (const k of ['fl1', 'fl2', 'ov', 'cf', 'cv', '3d', 'sk', 'au', 'tw', 'st']) V[k === '3d' ? 'd3' : k] = mount($('#L-' + k), 'v-' + k, SW, SH);
+      HOOK.forEach((h, i) => { V[h.id] = mount($('#hw' + i + ' .view'), h.id, h.W - 18, h.H - 18); });
+      V.ca = mount($('#W-ca .view'), 'v-ca', 1302, 742);
+      V.gm = mount($('#W-gm .view'), 'v-gm', 1302, 742);
+      (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { inset: '0', width: '100%', height: '100%' });
         cam.appendChild($('#v-ph')); $('#ph-screen').appendChild(cam); })();
 
-      const DOCKS = [
-        { t: 'T0', label: 'Ready', color: 'oklch(78% 0.01 260)', glow: 'oklch(97% 0.01 250)' },
-        { t: 'T1', label: 'Printing', color: '#34c759', glow: '#34c759' },
-        { t: 'T2', label: 'Heating up', color: '#ff9f0a', glow: '#ff9f0a' },
-        { t: 'T3', label: 'Out of filament', color: '#ff3b30', glow: '#ff3b30' },
-      ];
-      $('#docks').innerHTML = DOCKS.map((d, i) => `
-        <div class="dock" id="dock${i}">
-          <div class="tile"><div class="glow" style="box-shadow:0 0 0 4px ${d.glow}, 0 0 46px 6px ${d.glow}"></div><div class="body"></div><div class="noz"></div><div class="rail"></div></div>
-          <div class="tname">${d.t}</div>
-          <div class="state" style="color:${d.color}"><span class="ring"></span><span style="color:var(--ink)">${d.label}</span></div>
-        </div>`).join('');
-
-      // --- motion vocabulary (cut-the-curve, zoom-through; smooth long-tail eases) ---
+      // ---------- motion vocabulary ----------
       const tl = gsap.timeline({ paused: true });
+      // Frame a rectangle of the footage (CSS px of the filmed page) inside a view.
       function camTo(v, t, d, r, ease = 'expo.inOut') {
         const k = Math.min(v.vw / (r[2] * v.s), v.vh / (r[3] * v.s));
         const cx = (r[0] + r[2] / 2) * v.s, cy = (r[1] + r[3] / 2) * v.s;
@@ -284,162 +297,217 @@
         x = Math.min(0, Math.max(v.vw - k * FW * v.s, x)); y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
         if (d === 0) tl.set(v.cam, { scale: k, x, y }, t); else tl.to(v.cam, { scale: k, x, y, duration: d, ease }, t);
       }
-      // zoom-through: in from behind (0.75 -> 1, blur 10 -> 0), out toward the viewer (1 -> 1.2, blur 0 -> 10)
-      function zin(el, t, d = .5) {
-        tl.fromTo(el, { opacity: .15, scale: .75, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: d, ease: 'expo.out', immediateRender: false }, t);
+      // A spotlight: dims everything but one rectangle of the footage, and moves with the camera.
+      function spot(v, r, tIn, tOut) {
+        const el = document.createElement('div'); el.className = 'spot';
+        Object.assign(el.style, { left: r[0] * v.s + 'px', top: r[1] * v.s + 'px', width: r[2] * v.s + 'px', height: r[3] * v.s + 'px' });
+        v.cam.appendChild(el);
+        tl.fromTo(el, { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: .3, ease: 'expo.out', immediateRender: false }, tIn);
+        tl.to(el, { opacity: 0, duration: .2, ease: 'power2.in' }, tOut);
       }
-      function zout(el, t, d = .2) {
-        tl.to(el, { scale: 1.2, filter: 'blur(10px)', duration: d, ease: 'power3.in' }, t);
+      function zin(el, t, d = .4) {
+        tl.fromTo(el, { opacity: .15, scale: .8, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: d, ease: 'expo.out', immediateRender: false }, t);
+      }
+      function zout(el, t, d = .18) {
+        tl.to(el, { scale: 1.18, filter: 'blur(10px)', duration: d, ease: 'power3.in' }, t);
         tl.to(el, { opacity: 0, duration: d, ease: 'none' }, t);
       }
-      // captions: the glass card itself can't take a filter (it would break its backdrop), so the text blurs inside
+      // Captions. The glass card can't take a filter (it would stop sampling the page), so its text blurs instead.
       function capIn(id, t) {
-        tl.fromTo(id, { opacity: 0, scale: .9, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: .55, ease: 'expo.out' }, t);
-        tl.fromTo(`${id} .in`, { filter: 'blur(10px)' }, { filter: 'blur(0px)', duration: .45, ease: 'expo.out' }, t);
+        tl.fromTo('#' + id, { opacity: 0, scale: .9, y: 26 }, { opacity: 1, scale: 1, y: 0, duration: .45, ease: 'expo.out' }, t);
+        tl.fromTo(`#${id} .in`, { filter: 'blur(8px)' }, { filter: 'blur(0px)', duration: .35, ease: 'expo.out' }, t);
+        tl.fromTo(`#${id} .card`, { '--sx': '0%' }, { '--sx': '85%', duration: 2.4, ease: 'none' }, t);   // the glint drifts
       }
       function capOut(id, t) {
-        tl.to(id, { opacity: 0, scale: 1.04, y: -10, duration: .2, ease: 'power3.in' }, t);
-        tl.to(`${id} .in`, { filter: 'blur(10px)', duration: .2, ease: 'power3.in' }, t);
+        tl.to('#' + id, { opacity: 0, scale: 1.04, y: -10, duration: .18, ease: 'power3.in' }, t);
+        tl.to(`#${id} .in`, { filter: 'blur(8px)', duration: .18, ease: 'power3.in' }, t);
       }
-      function capSwap(a, b, t) { capOut(a, t - .2); capIn(b, t); }
-      // the rig (laptop) camera
+      function cap(id, tIn, tOut) { capIn(id, tIn); capOut(id, tOut); }
+      // The laptop camera. fill = the screen fills the frame; center / wide = pulled back; right / left3d = turned.
       const POSE = {
-        right: { x: 230, y: 40, scale: .74, rotationY: -12, rotationX: 6 },
+        wide: { x: 0, y: 60, scale: .66, rotationY: 0, rotationX: 6 },
         center: { x: 0, y: 70, scale: .78, rotationY: 0, rotationX: 8 },
         fill: { x: 0, y: 52, scale: 1.58, rotationY: 0, rotationX: 0 },
-        left3d: { x: -200, y: 40, scale: .76, rotationY: 14, rotationX: 6 },
+        right: { x: 250, y: 40, scale: .72, rotationY: -14, rotationX: 6 },
+        left3d: { x: -230, y: 40, scale: .74, rotationY: 15, rotationX: 6 },
       };
-      function rig(t, d, pose, extra = {}) {
-        tl.to('#rig', { ...POSE[pose], ...extra, duration: d, ease: 'expo.inOut' }, t);
-        tl.fromTo('#stage', { filter: 'blur(0px)' }, { filter: 'blur(3px)', duration: d * .45, ease: 'power2.in', immediateRender: false }, t + d * .05);
+      function rig(t, d, pose) {
+        tl.to('#rig', { ...POSE[pose], duration: d, ease: 'expo.inOut' }, t);
+        tl.fromTo('#stage', { filter: 'blur(0px)' }, { filter: 'blur(4px)', duration: d * .45, ease: 'power2.in', immediateRender: false }, t + d * .05);
         tl.to('#stage', { filter: 'blur(0px)', duration: d * .5, ease: 'power2.out' }, t + d * .5);
       }
-      // swap the laptop screen from layer a to layer b: a accelerates left, b continues left into place
+      // Pull back, change the screen while it is small, push back in: a zoom out, cut, zoom in.
+      function hop(a, b, t, pose = 'center') {
+        rig(t - .3, .42, pose);
+        screenSwap(a, b, t);
+        rig(t + .2, .42, 'fill');
+      }
+      // Cut the curve: the old screen accelerates left, the new one carries on left into place.
       function screenSwap(a, b, t) {
-        tl.to(a, { x: -260, filter: 'blur(14px)', duration: .22, ease: 'power4.in' }, t - .22);
-        tl.to(a, { opacity: 0, duration: .22, ease: 'none' }, t - .22);
-        tl.fromTo(b, { x: 260, opacity: .2, filter: 'blur(14px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, t);
+        tl.to(a, { x: -260, filter: 'blur(14px)', duration: .2, ease: 'power4.in' }, t - .2);
+        tl.to(a, { opacity: 0, duration: .2, ease: 'none' }, t - .2);
+        tl.fromTo(b, { x: 260, opacity: .2, filter: 'blur(14px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .42, ease: 'power4.out', immediateRender: false }, t);
       }
-      function cardSwap(a, b, t) {   // big cards, cut the curve leftward
-        if (a) { tl.to(a, { x: -300, filter: 'blur(18px)', duration: .22, ease: 'power4.in' }, t - .22); tl.to(a, { opacity: 0, duration: .22, ease: 'none' }, t - .22); }
-        tl.fromTo(b, { x: 300, opacity: .2, filter: 'blur(18px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, t);
+      function winIn(el, t) {
+        tl.fromTo(el, { opacity: 0, x: 320, scale: .94 }, { opacity: 1, x: 0, scale: 1, duration: .45, ease: 'power4.out', immediateRender: false }, t);
+        tl.fromTo(el + ' .view', { filter: 'blur(14px)' }, { filter: 'blur(0px)', duration: .4, ease: 'power3.out', immediateRender: false }, t);
+      }
+      function winOut(el, t) {
+        tl.to(el, { opacity: 0, x: -320, scale: .96, duration: .2, ease: 'power4.in' }, t - .2);
+        tl.to(el + ' .view', { filter: 'blur(14px)', duration: .2, ease: 'power4.in' }, t - .2);
       }
 
-      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 160, y: 60, duration: 60, ease: 'none' }, 0);
-      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -140, y: -40, duration: 60, ease: 'none' }, 0);
-      gsap.set('#rig', { ...POSE.center, y: 700, rotationX: 40 });
-      tl.set('#rig', { ...POSE.center, y: 700, rotationX: 40 }, 0);
+      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 170, y: 70, duration: 45, ease: 'none' }, 0);
+      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 45, ease: 'none' }, 0);
+      gsap.set('#rig', { ...POSE.center, y: 760, rotationX: 38 });
+      tl.set('#rig', { ...POSE.center, y: 760, rotationX: 38 }, 0);
 
-      // ===== 0-4 hook =====
-      zin('#h1', 0.05, .45);
-      DOCKS.forEach((d, i) => tl.fromTo(`#dock${i}`, { opacity: 0, y: 60, scale: .9 }, { opacity: 1, y: 0, scale: 1, duration: .6, ease: 'expo.out' }, .15 + i * .07));
-      zout('#h1', .8); zin('#h2', 1.0);
-      DOCKS.forEach((d, i) => {
-        const t = 2.0 + i * .25;
-        tl.fromTo(`#dock${i} .glow`, { opacity: 0 }, { opacity: 1, duration: .14, ease: 'power1.out' }, t);
-        tl.fromTo(`#dock${i} .state`, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .35, ease: 'expo.out' }, t);
-        tl.fromTo(`#dock${i} .tile`, { scale: 1 }, { scale: 1.06, duration: .1, yoyo: true, repeat: 1, ease: 'power1.out' }, t);
-      });
-      tl.fromTo('#dock3 .glow', { opacity: 1 }, { opacity: .15, duration: .125, yoyo: true, repeat: 5, ease: 'steps(1)', immediateRender: false }, 2.85);
-      zout('#h2', 2.8); zin('#h3', 3.0, .45);
-      zout('#h3', 3.8); tl.to('#docks', { scale: 1.15, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power3.in' }, 3.8);
-
-      // ===== 4-8 brand, then the laptop =====
-      tl.set('#brand', { opacity: 1 }, 3.98);
-      tl.fromTo('#brand-row', { opacity: .15, scale: 1.25, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .55, ease: 'expo.out', immediateRender: false }, 4.0);
-      tl.to('#logo-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .7, ease: 'expo.out' }, 4.0);
-      tl.fromTo('#logo-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .45, ease: 'back.out(2.2)' }, 4.15);
-      tl.fromTo('#brand-sub', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out' }, 4.5);
-      tl.to('#brand', { y: -385, scale: .52, duration: .9, ease: 'expo.inOut' }, 5.5);
-      tl.to('#brand-sub', { opacity: 0, duration: .3 }, 5.5);
-      tl.set('#L-ov', { opacity: 1 }, 5.4); camTo(VIEWS.ov, 5.4, 0, [0, 0, FW, FH]);
-      tl.to('#rig', { opacity: 1, duration: .3 }, 5.55);
-      tl.to('#rig', { ...POSE.center, duration: 1.1, ease: 'expo.out' }, 5.55);
-      tl.to('#brand', { opacity: 0, y: -440, duration: .35, ease: 'power3.in' }, 7.55);
-
-      // ===== 8-14 Needs you, live =====
-      rig(7.6, .8, 'fill');
-      camTo(VIEWS.ov, 7.6, .8, [130, 220, 1180, 740]);
-      capIn('#c-needs', 8.1);
-      const JAM = at('overview_jam', 'jam');
-      capSwap('#c-needs', '#c-live', JAM + .25);
-      camTo(VIEWS.ov, JAM + .2, .7, [150, 250, 1140, 600]);
-      camTo(VIEWS.ov, 12.3, .9, [130, 220, 1180, 740]);
-
-      // ===== 14-20 Confirm Print =====
-      capOut('#c-live', 13.75);
-      screenSwap('#L-ov', '#L-cf', 14.0); camTo(VIEWS.cf, 13.7, 0, [130, 60, 1180, 740]);
-      capIn('#c-check', 14.3);
-      const DLG = at('confirm_refuse', 'dialog');
-      camTo(VIEWS.cf, DLG - .5, .75, [350, 150, 740, 600]);
-      capSwap('#c-check', '#c-no', DLG + .15);
-      camTo(VIEWS.cf, DLG + 1.4, .8, [360, 270, 720, 460]);
-
-      // ===== 20-26 Fleet =====
-      capOut('#c-no', 19.55);
-      rig(19.6, .9, 'right');
-      screenSwap('#L-cf', '#L-fl', 19.85); camTo(VIEWS.fl, 19.6, 0, [0, 0, FW, FH]);
-      capIn('#c-farm', 20.3);
-      const PAUSE = at('fleet', 'pause');
-      rig(PAUSE - .9, .8, 'fill');
-      camTo(VIEWS.fl, PAUSE - .9, .8, [150, 40, 1140, 560]);
-      camTo(VIEWS.fl, PAUSE + .25, .8, [160, 230, 1140, 600]);
-      capSwap('#c-farm', '#c-pause', PAUSE + .35);
-      camTo(VIEWS.fl, PAUSE + 1.6, .9, [170, 290, 900, 470]);
-
-      // ===== 26-30 3D =====
-      capOut('#c-pause', 25.55);
-      rig(25.6, .9, 'left3d');
-      screenSwap('#L-fl', '#L-3d', 25.85); camTo(VIEWS.d3, 25.6, 0, [140, 120, 1160, 725]);
-      camTo(VIEWS.twin, 26.0, 0, VIEWS.twin.base);
-      tl.fromTo('#W-twin', { opacity: 0, x: 120, y: 30, scale: .9 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: .7, ease: 'expo.out' }, 26.4);
-      capIn('#c-3d', 26.3);
-
-      // ===== 30-36 phone =====
-      capOut('#c-3d', 29.55);
-      tl.to('#rig', { x: -900, opacity: 0, filter: 'blur(18px)', duration: .3, ease: 'power4.in' }, 29.7);
-      tl.to('#W-twin', { x: -700, opacity: 0, filter: 'blur(18px)', duration: .3, ease: 'power4.in' }, 29.7);
-      tl.fromTo('#ph', { opacity: .2, x: 500, rotationY: -28, filter: 'blur(18px)', transformPerspective: 1800 },
-                       { opacity: 1, x: 0, rotationY: -8, filter: 'blur(0px)', duration: .7, ease: 'power4.out', immediateRender: false }, 30.0);
-      tl.to('#ph', { rotationY: 6, duration: 5.2, ease: 'none' }, 30.7);
-      capIn('#c-phone', 30.3);
-
-      // ===== 36-44 quick fire (one every 1.6 s) =====
-      capOut('#c-phone', 35.55);
-      tl.to('#ph', { x: -600, opacity: 0, filter: 'blur(18px)', duration: .25, ease: 'power4.in' }, 35.75);
-      const Q = ['q1', 'q2', 'q3', 'q4', 'q5'];
-      Q.forEach((k, i) => {
-        const t = 36.0 + i * 1.6, el = '#' + k.toUpperCase();
-        camTo(VIEWS[k], t - .3, 0, VIEWS[k].base);
-        cardSwap(i ? '#' + Q[i - 1].toUpperCase() : null, el, t);
-        if (i) capOut('#c-' + Q[i - 1], t - .2);
-        capIn('#c-' + k, t + .05);
+      // ===== 0.0-3.2 opening montage: hard cuts on the beat =====
+      HOOK.forEach((h, i) => {
+        const t = i * .8, v = V[h.id], tight = [h.crop[0] + h.crop[2] * .06, h.crop[1] + h.crop[3] * .06, h.crop[2] * .88, h.crop[3] * .88];
+        tl.set('#hs' + i, { opacity: 1 }, t);
+        tl.set('#hs' + i, { opacity: 0 }, t + .8);
+        tl.fromTo('#hw' + i, { scale: 1.12, y: 24 }, { scale: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+        tl.fromTo(`#hw${i} .view`, { filter: 'blur(10px)' }, { filter: 'blur(0px)', duration: .3, ease: 'expo.out', immediateRender: false }, t);
+        tl.fromTo('#hw' + i, { '--sx': '0%' }, { '--sx': '90%', duration: .8, ease: 'none', immediateRender: false }, t);
+        camTo(v, t, 0, h.crop); camTo(v, t + .02, .78, tight, 'power1.out');           // a slow push in
+        tl.fromTo(`#hs${i} .hk`, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: .3, ease: 'expo.out', immediateRender: false }, t + .02);
+        tl.fromTo(`#hs${i} .mask > span`, { yPercent: 105 }, { yPercent: 0, duration: .38, ease: 'expo.out', stagger: .07, immediateRender: false }, t + .04);
       });
 
-      // ===== 44-47 and more =====
-      capOut('#c-q5', 43.8);
-      tl.to('#Q5', { x: -300, opacity: 0, filter: 'blur(18px)', duration: .22, ease: 'power4.in' }, 43.8);
-      zin('#more-h', 44.0);
-      gsap.utils.toArray('#mchips .mchip').forEach((c, i) => tl.fromTo(c, { opacity: 0, y: 30, scale: .9 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out' }, 44.3 + i * .06));
-      zout('#more-h', 46.75); tl.to('#mchips', { opacity: 0, scale: 1.1, filter: 'blur(12px)', duration: .22, ease: 'power3.in' }, 46.75);
-
-      // ===== 47-52 values, one per beat =====
-      gsap.utils.toArray('#values .big').forEach((el, i) => zin(el, 47.0 + i * .5, .45));
-      tl.to('#values', { opacity: 0, scale: 1.08, filter: 'blur(12px)', duration: .22, ease: 'power3.in' }, 51.75);
-
-      // ===== 52-60 end =====
-      tl.set('#end', { opacity: 1 }, 51.95);
-      tl.fromTo('#end-row', { opacity: .15, scale: 1.25, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .55, ease: 'expo.out', immediateRender: false }, 52.0);
-      tl.fromTo('#end-try', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out' }, 52.5);
-      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .55, ease: 'expo.out' }, 52.6);
-      let tt = 53.2;
-      gsap.utils.toArray('#term .ln').forEach((ln) => {
-        const n = +ln.dataset.n, d = n * .028;
-        tl.fromTo(ln, { width: '0ch' }, { width: (n + 1) + 'ch', duration: d, ease: `steps(${n + 1})` }, tt);
-        tt += d + .25;
+      // ===== 3.2-4.8 the one line, a word on every eighth note =====
+      gsap.utils.toArray('#line .word').forEach((w, i) => {
+        tl.fromTo(w, { opacity: 0, y: 70, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .28, ease: 'expo.out', immediateRender: false }, 3.2 + i * .2);
       });
-      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .5 }, tt);
-      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .5 }, tt + .3);
+      gsap.set('#line .ul', { scaleX: 0 });
+      tl.fromTo('#line .ul', { scaleX: 0 }, { scaleX: 1, duration: .35, ease: 'expo.out', immediateRender: false }, 3.2 + 3 * .2 + .1);
+      tl.fromTo('#line', { scale: 1 }, { scale: 1.05, duration: 1.4, ease: 'none' }, 3.2);
+      zout('#line', 4.62);
+
+      // ===== 4.8-6.4 the app, then the laptop rises =====
+      tl.set('#brand', { opacity: 1 }, 4.8);
+      tl.fromTo('#b-icon', { scale: .5, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: .5, ease: 'back.out(1.8)', immediateRender: false }, 4.8);
+      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'expo.out' }, 4.85);
+      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .4, ease: 'back.out(2.4)', immediateRender: false }, 5.0);
+      tl.fromTo('#b-word', { opacity: 0, x: -30, filter: 'blur(10px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 4.9);
+      tl.fromTo('#b-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 5.1);
+      tl.to('#brand', { y: -300, scale: .62, opacity: 0, filter: 'blur(8px)', duration: .32, ease: 'power3.in' }, 5.5);
+      tl.set('#L-fl1', { opacity: 1 }, 5.4); camTo(V.fl1, 5.4, 0, [0, 0, FW, FH]);
+      tl.to('#rig', { opacity: 1, duration: .25 }, 5.6);
+      tl.to('#rig', { ...POSE.center, duration: .8, ease: 'expo.out' }, 5.6);
+
+      // ===== 01 every printer, live (6.4-11.2) =====
+      rig(6.3, .5, 'fill');
+      camTo(V.fl1, 6.3, .5, [170, 250, 1100, 640]);
+      cap('c1a', 6.6, 8.6);
+      camTo(V.fl1, 7.3, .6, [170, 140, 1100, 600]);
+      // jump cut to the second take of the same moment, punched in on the command bar
+      tl.set('#L-fl1', { opacity: 0 }, 8.8); tl.set('#L-fl2', { opacity: 1 }, 8.8);
+      camTo(V.fl2, 8.8, 0, [180, 160, 900, 420]);
+      camTo(V.fl2, at('v-fl2', 'pause') + .15, .55, [176, 300, 640, 400]);
+      cap('c1b', 9.0, 11.0);
+
+      // ===== 02 needs you (11.2-14.4) =====
+      camTo(V.ov, 11.0, 0, [0, 0, FW, FH]);
+      hop('#L-fl2', '#L-ov', 11.2, 'right');
+      camTo(V.ov, 11.4, .45, [170, 300, 1110, 450]);
+      const JAM = at('v-ov', 'jam');
+      cap('c2a', 11.5, JAM + .1);
+      camTo(V.ov, JAM + .1, .5, [170, 340, 1110, 330]);
+      spot(V.ov, [172, 392, 1106, 94], JAM + .3, 14.15);
+      cap('c2b', JAM + .3, 14.2);
+
+      // ===== 03 confirm print (14.4-17.6) =====
+      camTo(V.cf, 14.2, 0, [740, 300, 600, 300]);
+      screenSwap('#L-ov', '#L-cf', 14.4);
+      cap('c3a', 14.6, 15.85);
+      const DLG = at('v-cf', 'dialog');
+      camTo(V.cf, DLG - .45, .5, [350, 168, 740, 566]);
+      spot(V.cf, [370, 334, 694, 168], DLG + .2, 17.4);
+      cap('c3b', DLG + .1, 17.42);
+
+      // ===== 03 phone (17.6-20.0) =====
+      tl.to('#rig', { x: -1000, opacity: 0, duration: .3, ease: 'power4.in' }, 17.4);
+      tl.to('#stage', { filter: 'blur(16px)', duration: .3, ease: 'power4.in' }, 17.4);
+      tl.set('#stage', { filter: 'blur(0px)' }, 17.75);
+      tl.fromTo('#ph', { opacity: .2, x: 520, rotationY: -30, filter: 'blur(16px)', transformPerspective: 1800 },
+                       { opacity: 1, x: 0, rotationY: -8, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, 17.6);
+      tl.to('#ph', { rotationY: 6, scale: 1.04, duration: 1.9, ease: 'none' }, 18.1);
+      cap('c3c', 17.75, 19.8);
+
+      // ===== 04 files ready (20.0-24.0) =====
+      tl.to('#ph', { x: -700, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power4.in' }, 19.8);
+      tl.set('#L-cf', { opacity: 0 }, 19.9); tl.set('#L-cv', { opacity: 1, x: 0 }, 19.9);
+      camTo(V.cv, 19.9, 0, [640, 250, 700, 400]);
+      tl.set('#rig', { ...POSE.fill, x: 0, scale: 2.3, opacity: 0 }, 19.95);
+      tl.to('#rig', { scale: POSE.fill.scale, opacity: 1, duration: .5, ease: 'expo.out' }, 20.0);
+      tl.fromTo('#stage', { filter: 'blur(14px)' }, { filter: 'blur(0px)', duration: .4, ease: 'expo.out', immediateRender: false }, 20.0);
+      camTo(V.cv, at('v-cv', '') + M['v-cv'].clicks[1] + .25, .55, [760, 600, 560, 300]);
+      cap('c4a', 20.15, 21.42);
+      camTo(V.d3, 21.4, 0, [160, 180, 660, 455]);
+      screenSwap('#L-cv', '#L-3d', 21.6);
+      camTo(V.d3, 22.0, 1.8, [175, 190, 630, 440], 'power1.inOut');
+      cap('c4b', 21.75, 23.82);
+
+      // ===== 05 skip one object (24.0-27.2) =====
+      camTo(V.sk, 23.8, 0, [0, 0, FW, FH]);
+      hop('#L-3d', '#L-sk', 24.0, 'center');
+      camTo(V.sk, 24.2, .45, [150, 118, 1140, 425]);
+      cap('c5', 24.3, 27.0);
+      const PICK = at('v-sk', 'pick');
+      spot(V.sk, [494, 242, 786, 46], PICK + .05, 26.9);
+      camTo(V.sk, at('v-sk', 'ask') - .2, .5, [470, 180, 830, 260]);
+
+      // ===== 06 automations (27.2-28.8) =====
+      camTo(V.au, 27.0, 0, [150, 360, 1000, 470]);
+      screenSwap('#L-sk', '#L-au', 27.2);
+      camTo(V.au, 27.85, .6, [160, 380, 900, 420]);
+      cap('c6', 27.35, 28.6);
+
+      // ===== 07 digital twin (28.8-31.2) =====
+      camTo(V.tw, 28.6, 0, [0, 0, FW, FH]);
+      hop('#L-au', '#L-tw', 28.8, 'left3d');
+      camTo(V.tw, 29.0, .5, [150, 112, 446, 506]);
+      cap('c7', 29.05, 31.0);
+
+      // ===== 08 photo studio (31.2-32.8) =====
+      camTo(V.st, 31.0, 0, [140, 290, 1130, 600]);
+      screenSwap('#L-tw', '#L-st', 31.2);
+      camTo(V.st, 31.75, .6, [520, 300, 760, 430]);
+      cap('c8', 31.35, 32.6);
+
+      // ===== the supporting cast (32.8-35.2) =====
+      tl.to('#rig', { y: -900, scale: .6, opacity: 0, duration: .3, ease: 'power4.in' }, 32.55);
+      tl.to('#stage', { filter: 'blur(16px)', duration: .3, ease: 'power4.in' }, 32.55);
+      camTo(V.ca, 32.6, 0, [170, 320, 1110, 600]);
+      winIn('#W-ca', 32.8);
+      camTo(V.ca, 32.9, 1.1, [170, 330, 1000, 540], 'power1.inOut');
+      cap('c9', 32.95, 33.8);
+      winOut('#W-ca', 34.0);
+      camTo(V.gm, 33.8, 0, [300, 380, 840, 480]);
+      winIn('#W-gm', 34.0);
+      cap('c10', 34.1, 35.0);
+      winOut('#W-gm', 35.2);
+
+      // ===== 35.2-38.4 values: one per beat, on the stop-time hits =====
+      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, 35.2 + i * .4, .35));
+      tl.fromTo('#values', { scale: 1 }, { scale: 1.06, duration: 3, ease: 'none' }, 35.2);
+      zout('#values', 38.2);
+
+      // ===== 38.4-45 end card =====
+      tl.set('#end', { opacity: 1 }, 38.4);
+      tl.fromTo('#end-row', { opacity: .15, scale: 1.2, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 38.4);
+      tl.fromTo('#end-tag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 38.7);
+      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 39.0);
+      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .4 }, 39.2);
+      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .4 }, 39.4);
+      // typing: "$ " shows first, then the line grows one character per logged keystroke (the
+      // same times the sound uses); the last time of each line is Return.
+      gsap.utils.toArray('#term .ln').forEach((ln, i) => {
+        const times = TY[i], n = times.length - 1;
+        tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : 39.0);
+        for (let j = 0; j < n; j++) tl.set(ln, { width: (3 + j) + 'ch' }, times[j]);
+      });
 
       window.__timelines["main"] = tl;
     </script>

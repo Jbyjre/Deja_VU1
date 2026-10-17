@@ -103,6 +103,14 @@ async function press(st) {
   (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
   await st.page.mouse.down(); await frame(st); await frame(st); await st.page.mouse.up(); await frame(st);
 }
+// A key press, logged so the sound track can put a keystroke exactly on it.
+async function key(st, k) {
+  (st.keys = st.keys || []).push(+(st.n / st.fps).toFixed(3));
+  await st.page.keyboard.press(k); await frame(st);
+}
+async function type(st, text, perChar = 70) {
+  for (const ch of text) { await key(st, ch === ' ' ? 'Space' : ch); await wait(st, Math.max(0, perChar - 1000 / st.fps)); }
+}
 async function click(st, sel, ms = 700, pause = 150) {
   const [x, y] = await center(st, sel);
   await move(st, x, y, ms);
@@ -122,7 +130,7 @@ async function scrollTo(st, sel, offset = 120, ms = 900) {
   await scrollBy(st, top - offset, ms);
 }
 function start(st, name) {
-  st.name = name; st.dir = path.join(__dirname, 'frames', name); st.n = 0; st.clicks = [];
+  st.name = name; st.dir = path.join(__dirname, 'frames', name); st.n = 0; st.clicks = []; st.keys = [];
   fs.rmSync(st.dir, { recursive: true, force: true }); fs.mkdirSync(st.dir, { recursive: true });
 }
 function stop(st, outDir = path.join(__dirname, '..', 'footage')) {
@@ -130,7 +138,7 @@ function stop(st, outDir = path.join(__dirname, '..', 'footage')) {
   const out = path.join(outDir, st.name + '.mp4');
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(st.fps), '-i', path.join(st.dir, '%05d.jpg'),
     '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '12', '-r', String(st.fps), '-movflags', '+faststart', out]);
-  fs.writeFileSync(path.join(outDir, st.name + '.json'), JSON.stringify({ fps: st.fps, frames: st.n, seconds: st.n / st.fps, clicks: st.clicks, marks: st.marks || {} }));
+  fs.writeFileSync(path.join(outDir, st.name + '.json'), JSON.stringify({ fps: st.fps, frames: st.n, seconds: st.n / st.fps, clicks: st.clicks, keys: st.keys || [], marks: st.marks || {} }));
   fs.rmSync(st.dir, { recursive: true, force: true });
   console.log(st.name + '.mp4', st.n, 'frames =', (st.n / st.fps).toFixed(2), 's');
   st.dir = null;
@@ -154,4 +162,4 @@ async function still(st, file, clip) {
   fs.writeFileSync(file, Buffer.from(data, 'base64'));
 }
 function mark(st, name) { (st.marks = st.marks || {})[name] = +(st.n / st.fps).toFixed(3); }
-module.exports = { mark, open, frame, wait, move, click, press, box, center, scrollBy, scrollTo, start, stop, settle, demoOn, api, still };
+module.exports = { mark, open, frame, wait, move, click, press, key, type, box, center, scrollBy, scrollTo, start, stop, settle, demoOn, api, still };

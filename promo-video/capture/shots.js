@@ -24,37 +24,50 @@ async function samples(st) {
   await st.page.locator('#file-samples').click();
   await r.settle(st, 4500);
 }
+// Brings a file card (or a button that opened below the fold) into view: the Files tab is a
+// grid of picture cards, so most samples start below the visible area.
+async function intoView(st, sel, filmed) {
+  const b = await r.box(st, sel);
+  if (b.y > 120 && b.y + b.height < st.height - 60) return;
+  if (filmed) await r.scrollBy(st, b.y - st.height * .45, 380);
+  else { await r.scrollBy(st, b.y - st.height * .5, 1); await r.settle(st, 900); }
+}
 const sleep = ms => new Promise(res => setTimeout(res, ms));
 
+// Version 3: every action is quicker (cursor moves of about a third of a second), so the
+// footage itself feels fast; the edit then only has to hold each moment for a beat.
+const MV = 340, PA = 60;   // cursor travel and the pause before a click, in ms
 const SHOTS = {
   // Overview: Needs you, then a jam fired from the sandbox arrives live.
   async overview_jam() {
     const st = await r.open(); await r.demoOn(st);
     await st.page.mouse.move(1000, 640); st.mx = 1000; st.my = 640;
     r.start(st, 'overview_jam');
-    await r.wait(st, 250);
-    await r.move(st, 760, 470, 500);
-    await r.wait(st, 300);
-    await r.move(st, 1180, 650, 450);
+    await r.wait(st, 150);
+    await r.move(st, 760, 470, MV);
+    await r.wait(st, 150);
+    await r.move(st, 1180, 650, MV);
     await r.api(st, '/api/sandbox/fire?demo=1', { event: 'jam', printer: 'u1-workshop' });
     await sleep(700); r.mark(st, 'jam');
-    await r.wait(st, 1900);
-    await r.move(st, 760, 410, 500);
     await r.wait(st, 1300);
+    await r.move(st, 760, 410, MV);
+    await r.wait(st, 900);
     r.stop(st); return st;
   },
   // Files: open the unsafe example, press Print..., Confirm Print refuses with reasons.
   async confirm_refuse() {
     const st = await r.open(); await r.demoOn(st); await samples(st);
     await st.page.mouse.move(900, 560); st.mx = 900; st.my = 560;
+    await intoView(st, 'text=unsafe_example_purge_past_bed.gcode', false);
     r.start(st, 'confirm_refuse');
-    await r.wait(st, 200);
-    await r.click(st, 'text=unsafe_example_purge_past_bed.gcode', 500, 80);
+    await r.wait(st, 120);
+    await r.click(st, 'text=unsafe_example_purge_past_bed.gcode', MV, PA);
+    await r.wait(st, 650);
+    await intoView(st, '#fd-print', true);
+    await r.click(st, '#fd-print', MV, PA); r.mark(st, 'print');
+    await r.wait(st, 1100); r.mark(st, 'dialog');
+    await r.move(st, ...(await r.center(st, '#confirm-go')), MV);
     await r.wait(st, 1000);
-    await r.click(st, '#fd-print', 500, 80); r.mark(st, 'print');
-    await r.wait(st, 1500); r.mark(st, 'dialog');
-    await r.move(st, ...(await r.center(st, '#confirm-go')), 500);
-    await r.wait(st, 1300);
     r.stop(st); return st;
   },
   // Files: the two-colour coaster in 3D, scrubbed layer by layer, then turned.
@@ -65,29 +78,57 @@ const SHOTS = {
     const s = await r.box(st, '#vt-range');
     await st.page.mouse.move(s.x + s.width - 120, s.y + 90); st.mx = s.x + s.width - 120; st.my = s.y + 90;
     r.start(st, 'coaster_3d');
-    await r.wait(st, 150);
-    await r.move(st, s.x + s.width - 6, s.y + s.height / 2, 450);
+    await r.wait(st, 100);
+    await r.move(st, s.x + s.width - 6, s.y + s.height / 2, 300);
     await st.page.mouse.down(); await r.frame(st);
-    await r.move(st, s.x + 4, s.y + s.height / 2, 500);
-    await r.wait(st, 120);
-    await r.move(st, s.x + s.width - 2, s.y + s.height / 2, 1900);
+    await r.move(st, s.x + 4, s.y + s.height / 2, 380);
+    await r.wait(st, 80);
+    await r.move(st, s.x + s.width - 2, s.y + s.height / 2, 1300);
     await st.page.mouse.up(); await r.frame(st);
+    r.mark(st, 'turn');
     const c = await r.box(st, '#fd-canvas');
-    await r.move(st, c.x + c.width * .62, c.y + c.height * .55, 400);
+    await r.move(st, c.x + c.width * .62, c.y + c.height * .55, 300);
     await st.page.mouse.down(); await r.frame(st);
-    await r.move(st, c.x + c.width * .36, c.y + c.height * .5, 1000);
+    await r.move(st, c.x + c.width * .34, c.y + c.height * .5, 750);
     await st.page.mouse.up();
-    await r.wait(st, 400);
+    await r.wait(st, 300);
     r.stop(st); return st;
   },
-  // Overview: the digital twin, print health and chamber climate, live.
+  // Overview: the digital twin (a live engineering drawing), switched 3D -> Front -> Top -> 3D.
   async twin() {
     const st = await r.open(); await r.demoOn(st);
-    await r.scrollTo(st, '#twin-card', 140, 1);
+    await r.scrollTo(st, '#twin-card', 120, 1);
     await r.settle(st, 1500);
-    await st.page.evaluate(() => { document.getElementById('__cur').style.opacity = '0'; });
+    const [x0, y0] = await r.center(st, '#twin-host');
+    await st.page.mouse.move(x0 + 160, y0 + 120); st.mx = x0 + 160; st.my = y0 + 120;
     r.start(st, 'twin');
-    await r.wait(st, 3600);
+    await r.wait(st, 700);
+    await r.click(st, '#wf-views [data-view="front"]', MV, PA); r.mark(st, 'front');
+    await r.wait(st, 900);
+    await r.click(st, '#wf-views [data-view="top"]', 260, PA); r.mark(st, 'top');
+    await r.wait(st, 900);
+    await r.click(st, '#wf-views [data-view="iso"]', 260, PA); r.mark(st, 'iso');
+    await r.move(st, x0 + 170, y0 + 150, MV);
+    await r.wait(st, 900);
+    r.stop(st); return st;
+  },
+  // Control: Skip one object. Pick a part on the plate, skip it, confirm; the rest keep printing.
+  async skip_object() {
+    const st = await r.open(); await r.demoOn(st); await tab(st, 'control');
+    await r.scrollTo(st, '#ctrl-plate', 110, 1);
+    await r.settle(st, 1500);
+    await st.page.mouse.move(1000, 560); st.mx = 1000; st.my = 560;
+    r.start(st, 'skip_object');
+    await r.wait(st, 150);
+    await r.click(st, '[data-plate-pick="' + (await st.page.locator('[data-plate-pick]').nth(1).getAttribute('data-plate-pick')) + '"]', MV, PA); r.mark(st, 'pick');
+    await r.wait(st, 450);
+    await r.click(st, '#plate-skip', MV, PA); r.mark(st, 'ask');
+    await r.wait(st, 500);
+    await r.click(st, '#plate-skip', 200, PA); r.mark(st, 'skip');
+    await sleep(1200);
+    await r.wait(st, 1200); r.mark(st, 'done');
+    await r.move(st, 900, 700, MV);
+    await r.wait(st, 500);
     r.stop(st); return st;
   },
   // Fleet: 27 printers (3 built in + 24 added in the sandbox), select all, pause, read each result.
@@ -98,32 +139,35 @@ const SHOTS = {
     await r.settle(st, 4000);
     await st.page.mouse.move(1100, 600); st.mx = 1100; st.my = 600;
     r.start(st, 'fleet');
-    await r.wait(st, 150);
-    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 800);
-    await r.scrollBy(st, 1100, 1000);
     await r.wait(st, 100);
-    await r.scrollTo(st, '#tab-fleet', 150, 900);   // back up, so the command bar is in place (it sticks under the header lower down)
-    await r.wait(st, 150);
-    await r.click(st, '#fc-all', 500, 80); r.mark(st, 'all');
-    await r.wait(st, 450);
-    await r.click(st, '#fc-bar [data-act="pause"]', 500, 80); r.mark(st, 'pause');
+    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 550);
+    r.mark(st, 'cards');
+    await r.scrollBy(st, 1100, 750);
+    await r.wait(st, 60);
+    await r.scrollTo(st, '#tab-fleet', 150, 650);   // back up, so the command bar is in place (it sticks under the header lower down)
+    await r.wait(st, 80);
+    await r.click(st, '#fc-all', MV, PA); r.mark(st, 'all');
+    await r.wait(st, 300);
+    await r.click(st, '#fc-bar [data-act="pause"]', MV, PA); r.mark(st, 'pause');
     await sleep(2500);
-    await r.wait(st, 1500); r.mark(st, 'results');
-    await r.move(st, 1240, 760, 500);
-    await r.wait(st, 900);
+    await r.wait(st, 1200); r.mark(st, 'results');
+    await r.move(st, 1240, 760, MV);
+    await r.wait(st, 700);
     r.stop(st); return st;
   },
   // Files: a Bambu Studio (MakerWorld) project, converted for the U1 in one click.
   async convert() {
     const st = await r.open(); await r.demoOn(st); await samples(st);
     await st.page.mouse.move(900, 560); st.mx = 900; st.my = 560;
+    await intoView(st, 'text=sample_bambu_studio_layout.3mf', false);
     r.start(st, 'convert');
-    await r.wait(st, 150);
-    await r.click(st, 'text=sample_bambu_studio_layout.3mf', 500, 80);
-    await r.wait(st, 900);
-    await r.click(st, '#fd-convert', 500, 80);
+    await r.wait(st, 100);
+    await r.click(st, 'text=sample_bambu_studio_layout.3mf', MV, PA);
+    await r.wait(st, 600);
+    await intoView(st, '#fd-convert', true);
+    await r.click(st, '#fd-convert', MV, PA);
     await sleep(2500);
-    await r.wait(st, 1500);
+    await r.wait(st, 1300);
     r.stop(st); return st;
   },
   // Photo-to-Print Studio: the built-in test pattern becomes a layered relief.
@@ -131,10 +175,10 @@ const SHOTS = {
     const st = await r.open(); await r.demoOn(st); await tab(st, 'studio');
     await st.page.mouse.move(700, 700); st.mx = 700; st.my = 700;
     r.start(st, 'studio');
-    await r.wait(st, 150);
-    await r.click(st, '#st-test', 500, 80);
+    await r.wait(st, 100);
+    await r.click(st, '#st-test', MV, PA);
     for (let i = 0; i < 6; i++) { await sleep(400); await r.wait(st, 200); }
-    await r.wait(st, 1000);
+    await r.wait(st, 700);
     r.stop(st); return st;
   },
   // Automations: a ready-made rule in one click.
@@ -142,9 +186,9 @@ const SHOTS = {
     const st = await r.open(); await r.demoOn(st); await tab(st, 'automations');
     await st.page.mouse.move(800, 700); st.mx = 800; st.my = 700;
     r.start(st, 'automations');
-    await r.wait(st, 150);
-    await r.click(st, 'text=Tell me when a print finishes', 500, 80);
-    await r.wait(st, 1600);
+    await r.wait(st, 100);
+    await r.click(st, 'text=Tell me when a print finishes', MV, PA);
+    await r.wait(st, 1300);
     r.stop(st); return st;
   },
   // Care: maintenance, two overdue.
@@ -152,9 +196,9 @@ const SHOTS = {
     const st = await r.open(); await r.demoOn(st); await tab(st, 'maintenance');
     await st.page.mouse.move(1150, 700); st.mx = 1150; st.my = 700;
     r.start(st, 'care');
-    await r.wait(st, 150);
-    await r.move(st, 820, 500, 700);
-    await r.wait(st, 1300);
+    await r.wait(st, 100);
+    await r.move(st, 820, 500, 450);
+    await r.wait(st, 1100);
     r.stop(st); return st;
   },
   // Phone: the thumb-first layout, the bottom bar, and Hold to cancel (released early, so nothing is cancelled).
@@ -164,30 +208,30 @@ const SHOTS = {
     await r.settle(st, 3500);
     await st.page.mouse.move(250, 600); st.mx = 250; st.my = 600;
     r.start(st, 'phone');
-    await r.wait(st, 250);
-    await r.scrollBy(st, 330, 800);
-    await r.wait(st, 200);
-    await r.click(st, '.bottom-nav [data-tab="fleet"]', 500, 80);
-    await r.wait(st, 900);
-    await r.scrollBy(st, 280, 800);
-    await r.wait(st, 200);
-    await r.click(st, '.bottom-nav [data-tab="overview"]', 500, 80);
-    await r.wait(st, 500);
+    await r.wait(st, 150);
+    await r.scrollBy(st, 330, 600);
+    await r.wait(st, 100);
+    await r.click(st, '.bottom-nav [data-tab="fleet"]', MV, PA);
+    await r.wait(st, 650);
+    await r.scrollBy(st, 280, 600);
+    await r.wait(st, 100);
+    await r.click(st, '.bottom-nav [data-tab="overview"]', MV, PA);
+    await r.wait(st, 350);
     const [x, y] = await r.center(st, '#qa-cancel');
-    await r.move(st, x, y, 500);
+    await r.move(st, x, y, MV);
     (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
     await st.page.mouse.down(); await r.wait(st, 750); await st.page.mouse.up();
-    await r.wait(st, 800);
+    await r.wait(st, 600);
     r.stop(st); return st;
   },
-  // Games: Sky Dash, actually played.
+  // Games: Sky Dash, actually played (every Space press is logged as a keystroke).
   async games() {
     const st = await r.open(); await r.demoOn(st); await tab(st, 'games');
     await st.page.mouse.move(800, 760); st.mx = 800; st.my = 760;
     r.start(st, 'games');
-    await r.wait(st, 150);
-    await r.click(st, 'text=Start flight', 500, 80);
-    for (let i = 0; i < 5; i++) { await r.wait(st, 650); await st.page.keyboard.press('Space'); }   // 0.65 s flaps fly clean (tested)
+    await r.wait(st, 100);
+    await r.click(st, 'text=Start flight', MV, PA);
+    for (let i = 0; i < 5; i++) { await r.wait(st, 633); await r.key(st, 'Space'); }   // 0.65 s flaps fly clean (tested)
     await r.wait(st, 200);
     r.stop(st); return st;
   },
