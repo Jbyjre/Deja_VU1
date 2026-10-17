@@ -57,6 +57,7 @@ API endpoints
   GET  /api/leds                     simulated LED ring states
   GET  /api/colorcheck               simulated filament color check
   GET  /api/printer                  raw mock printer state
+  GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints
   GET  /api/chamber                  chamber temperature now + last 30 minutes
   GET  /api/health                   the print health gauge
 
@@ -329,6 +330,7 @@ _DATA_ROUTES = {
     "/api/leds": ("led_status", lambda q: led_status.get_all_ring_states()),
     "/api/colorcheck": ("color_check", lambda q: color_check.check_current_job()),
     "/api/printer": (None, lambda q: mock_moonraker.get_printer_state()),
+    "/api/printer/job": (None, lambda q: dict(mock_moonraker.get_current_job() or {})),
     "/api/printer/control/capabilities": ("printer_control", lambda q: printer_control.get_capabilities()),
     "/api/printer/control/console": ("printer_control", lambda q: {"log": printer_control.get_console_log()}),
     "/api/filament/check": ("filament_inventory", lambda q: filament_inventory.check_job_requirements()),

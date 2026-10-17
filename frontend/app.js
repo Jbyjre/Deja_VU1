@@ -1164,28 +1164,44 @@ function renderPlate(state) {
   const words = (s) => { const w = s.replace(/_/g, ' ').toLowerCase().trim(); return w ? w[0].toUpperCase() + w.slice(1) : s; };
   const label = (n) => `${words(short(n))} ${copies(n)}`.trim();
 
-  // The map: bed coordinates have Y pointing away from you; SVG's points down.
+  // The map is a top-view drawing, like the digital twin: the bed in a
+  // heavy line, a 30 mm grid, each object outlined with a numbered balloon
+  // that matches the list, skipped ones section-hatched, and the bed's
+  // size dimensioned. Bed Y points away from you; SVG's points down.
   const grid = [30, 60, 90, 120, 150, 180, 210, 240].map(v =>
     `<line x1="${v}" y1="0" x2="${v}" y2="270"/><line x1="0" y1="${v}" x2="270" y2="${v}"/>`).join('');
+  const number = new Map(plate.list.map((o, i) => [o.name, i + 1]));
   const shapes = plate.list.map(o => {
     const pts = plateShape(o);
     if (!pts) return '';
     const cls = excluded.has(o.name) ? 'is-skipped' : o.name === plate.current ? 'is-current' : '';
     const sel = o.name === plateUI.selected ? ' is-selected' : '';
-    return `<polygon class="plate-obj ${cls}${sel}" data-plate-obj="${esc(o.name)}" points="${pts.map(([x, y]) => `${x},${270 - y}`).join(' ')}"><title>${esc(label(o.name))}</title></polygon>`;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => 270 - p[1]);
+    const bx = Math.max(...xs) + 2, by = Math.min(...ys) - 2;
+    return `<g class="plate-part ${cls}${sel}" data-plate-obj="${esc(o.name)}"><title>${esc(label(o.name))}</title>
+      <polygon class="plate-obj" points="${pts.map(([x, y]) => `${x},${270 - y}`).join(' ')}"/>
+      <circle class="plate-balloon" cx="${bx + 5}" cy="${by - 5}" r="6.5"/><text class="plate-num" x="${bx + 5}" y="${by - 2.4}" text-anchor="middle">${number.get(o.name)}</text></g>`;
   }).join('');
+  const arrow = (x1, y1, x2, y2) => `<line class="plate-dim" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-start="url(#plate-arrow)" marker-end="url(#plate-arrow)"/>`;
   $('plate-map').innerHTML = `<title id="plate-map-title">The 270 by 270 mm bed, seen from above, with each object on it</title>
-    <defs><pattern id="plate-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <line x1="0" y1="0" x2="0" y2="6" class="plate-hatch-line"/></pattern></defs>
-    <rect class="plate-bed" x="0" y="0" width="270" height="270" rx="10"/>
+    <defs><pattern id="plate-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="5" class="plate-hatch-line"/></pattern>
+      <marker id="plate-arrow" viewBox="0 0 8 3" refX="8" refY="1.5" markerWidth="8" markerHeight="3" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0 0L8 1.5L0 3z" class="plate-arrowhead"/></marker></defs>
+    <rect class="plate-sheet" x="-29" y="-5" width="306" height="320"/>
+    <rect class="plate-bed" x="0" y="0" width="270" height="270"/>
     <g class="plate-grid">${grid}</g>${shapes}
-    <text class="plate-front" x="135" y="285" text-anchor="middle">front</text>`;
+    <path class="plate-ext" d="M0 273V292M270 273V292M-3 0H-22M-3 270H-22"/>
+    ${arrow(0, 288, 270, 288)}<text class="plate-dimtext" x="135" y="285" text-anchor="middle">270</text>
+    ${arrow(-18, 0, -18, 270)}<text class="plate-dimtext" x="-21" y="135" text-anchor="middle" transform="rotate(-90 -21 135)">270</text>
+    <path class="plate-axis" d="M6 264h16M6 264v-16"/><text class="plate-axis-t" x="25" y="267">X</text><text class="plate-axis-t" x="3" y="244">Y</text>
+    <text class="plate-front" x="135" y="306" text-anchor="middle">front</text>`;
 
   $('plate-list').innerHTML = plate.list.map(o => {
     const skipped = excluded.has(o.name), current = o.name === plate.current;
     return `<li><button type="button" class="plate-item${o.name === plateUI.selected ? ' is-selected' : ''}${skipped ? ' is-skipped' : ''}"
         data-plate-pick="${esc(o.name)}" ${skipped ? 'disabled' : ''} aria-pressed="${o.name === plateUI.selected}">
-      <span class="plate-dot ${skipped ? 'is-skipped' : current ? 'is-current' : ''}" aria-hidden="true"></span>
+      <span class="plate-dot ${skipped ? 'is-skipped' : current ? 'is-current' : ''}" aria-hidden="true">${plate.list.indexOf(o) + 1}</span>
       <span class="plate-name">${esc(label(o.name))}</span>
       <span class="plate-state">${skipped ? 'skipped' : current ? 'printing now' : 'waiting'}</span></button></li>`;
   }).join('');

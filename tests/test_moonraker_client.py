@@ -169,6 +169,20 @@ class TestStateTranslation(unittest.TestCase):
         self.assertEqual(state["state"], "error")
         self.assertIn("Timer too close", state["state_message"])
 
+    def test_the_u1_reports_each_heads_nozzle_and_swaps(self):
+        # u1-klipper extruder.get_status: nozzle_diameter and the swap counters
+        status = self.fake_status()
+        status["extruder2"].update({"nozzle_diameter": 0.6, "switch_count": 1234, "retry_count": 3, "error_count": 1})
+        t2 = mc.translate_state(status, self.ctx())["toolheads"]["T2"]
+        self.assertEqual((t2["nozzle_diameter"], t2["swaps"], t2["swap_retries"], t2["swap_errors"]), (0.6, 1234, 3, 1))
+        # A printer that doesn't report them says so with None, never 0.
+        for f in ("nozzle_diameter", "switch_count", "retry_count", "error_count"):
+            status["extruder2"].pop(f)
+        status["extruder2"]["switch_count"] = "lots"
+        t2 = mc.translate_state(status, self.ctx())["toolheads"]["T2"]
+        self.assertEqual((t2["nozzle_diameter"], t2["swaps"], t2["swap_retries"], t2["swap_errors"]), (None, None, None, None))
+        self.assertIn("switch_count", mc._EXTRUDER_FIELDS)
+
     def test_the_u1_reports_what_each_head_has_loaded(self):
         state = mc.translate_state(self.fake_status(), self.ctx())
         t0, t2 = state["toolheads"]["T0"], state["toolheads"]["T2"]

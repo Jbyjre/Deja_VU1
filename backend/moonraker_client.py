@@ -407,8 +407,19 @@ def _toolheads(status, extruders, ptc):
             "filament_color_name": label,
             "filament_material": ftype.strip() if known else None,
             "dock_sensor": parked_states.get(th) if isinstance(parked_states.get(th), str) else None,
+            # None = this printer doesn't report it (anything but a U1).
+            "nozzle_diameter": _num(e.get("nozzle_diameter")),
+            "swaps": _count(e.get("switch_count")),
+            "swap_retries": _count(e.get("retry_count")),
+            "swap_errors": _count(e.get("error_count")),
         }
     return out, active
+
+
+def _count(value):
+    """A whole, non-negative count from the printer, or None."""
+    n = _num(value)
+    return int(n) if n is not None and n >= 0 and n == int(n) else None
 
 
 def translate_state(status, ctx):
@@ -919,7 +930,11 @@ _BASE_OBJECTS = {
                           "extruder_map_table"],
     "exclude_object": ["objects", "excluded_objects", "current_object"],
 }
-_EXTRUDER_FIELDS = ["temperature", "target", "state"]
+# state, nozzle_diameter and the swap counters exist only on Snapmaker's
+# U1 Klipper (klippy/kinematics/extruder.py get_status, u1-klipper 10f2f69);
+# Klipper leaves out fields an object doesn't have, so asking costs nothing.
+_EXTRUDER_FIELDS = ["temperature", "target", "state", "nozzle_diameter",
+                    "switch_count", "retry_count", "error_count"]
 
 
 class MoonrakerPrinter:

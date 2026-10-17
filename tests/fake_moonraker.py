@@ -109,6 +109,9 @@ class FakeMoonraker:
             e = {"temperature": 25.0, "target": 0.0, "power": 0.0, "can_extrude": False}
             if u1:
                 e["state"] = "ACTIVATE" if i == 0 else "PARKED"
+                # u1-klipper extruder.get_status: nozzle and swap counters
+                e.update({"nozzle_diameter": 0.4, "switch_count": 120 + i, "retry_count": i % 2,
+                          "error_count": 0})
             self.status[name] = e
         if u1:
             self.status["print_task_config"] = {
