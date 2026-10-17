@@ -89,51 +89,62 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The launch video (version 5), filmed from the current app with demo data on, in two
-cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
+The launch video (version 6), filmed from the current app with demo data on, in two
+cuts of 120 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
 -14 LUFS (the usual level for YouTube and social).
 
 | File | Size | Length | Where it goes |
 |---|---|---|---|
-| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | YouTube, the forum, X, LinkedIn, the README or product page |
-| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | Shorts, Reels, TikTok |
+| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 120 s | YouTube, the forum, X, LinkedIn, the README or product page |
+| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 120 s | Shorts, Reels, TikTok |
 
-It works like a product tutorial: one step at a time, each with a numbered label, a
-plain headline, one sentence, a line drawing that explains the idea, and the real app
-with callouts pointing at what matters. It opens on the problem ("Running more than one
-Snapmaker U1?") and the one line "One screen for every U1 you run.", then the seven
-steps, best first and the cherry on top last: every printer live, Needs you, Confirm
-Print (and the phone), projects converted for the U1, Skip one object, the digital
-twin, Photo-to-Print Studio. Then "And there's more" (automations, maintenance,
-filament, cost, Home Assistant, time-lapse, AR preview, ten games), the values, and the
-three install lines typed out.
+It's a SaaS-style promo. It opens on all fifteen features as icons in under three
+seconds, then the name and "One screen for every U1 you run.", then each feature in
+turn, with the real app on a laptop standing in 3D beside a floating glass caption (the
+feature's icon, a headline, one sentence) and callouts pointing at what matters: every
+printer live, Needs you, Confirm Print (and the phone), projects converted for the U1,
+Skip one object, the digital twin (its 3D view shown longest), Photo-to-Print Studio,
+automations, maintenance, filament and Spoolman, print cost, Home Assistant, time-lapse,
+AR preview and ten games. Then the values and the three install lines typed out. There
+are no step numbers or progress bar.
 
-Every app view is labelled "Simulated farm", and the end card says every figure comes
-from the simulated farm and that Deja Vu1 is not affiliated with Snapmaker. It doesn't
-lead with the dock rings or the colour sensor. The music (a calm but quick funky
-nu-disco groove led by its bassline) and every click and keystroke are original,
-synthesised in code, with no third-party audio. Listen to it before posting: it was
-checked by measurement, not by ear.
+Every app view is labelled "Simulated farm". Time-lapse and AR preview can't be shown on
+the simulated farm (they need a printer camera and an Android phone), so those two are
+drawings, labelled "Illustration". The end card says every figure comes from the
+simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The music (soft
+bossa-nova elevator music: guitar, upright bass, brushes, vibraphone, flute and strings)
+and every click and keystroke are original, synthesised in code, with no third-party
+audio. Listen to it before posting: it was checked by measurement, not by ear.
 How to change or re-film it: `promo-video/README.md`.
 
 ## 08 · Feature cards
 
-One card per step of the launch video, taken from the video itself at the moment its
-headline, drawing and callouts are all on screen, plus a title card and an end card.
-Each comes in two shapes: `-16x9.jpg` (1920 × 1080: README, forum posts, X, LinkedIn)
-and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories).
+One card per feature of the launch video, taken from the finished video at the moment its
+caption and callouts are all on screen, plus the icon opening, a title card and an end
+card. Each comes in two shapes: `-16x9.jpg` (1920 × 1080: README, forum posts, X,
+LinkedIn) and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories). 19 cards, 38 files.
 
 | Card | Shows |
 |---|---|
-| `00-title` | "One screen for every U1 you run." with three printers streaming into one screen |
+| `00-every-feature` | All fifteen features as icons |
+| `00-title` | The app icon, "Deja Vu1" and "One screen for every U1 you run." |
 | `01-every-printer-live` | The 27-printer sandbox farm, one card's progress and finish time called out |
 | `02-needs-you` | A filament jam arriving at the top of Needs you |
-| `03-confirm-print` | Confirm Print passing every check, the checklist ticked |
+| `03-confirm-print` | Confirm Print passing every check |
+| `03b-on-your-phone` | The phone layout in front of the laptop |
 | `04-files-for-the-u1` | A MakerWorld (Bambu Studio) project converted for the U1 |
 | `05-skip-one-object` | One part skipped, the rest still printing |
-| `06-digital-twin` | The live engineering drawing, top view |
+| `06-digital-twin` | The live engineering drawing in 3D, being turned |
 | `07-photo-studio` | A test photo and its four-colour relief |
-| `08-get-it` | The end card: the three install lines |
+| `08-automations` | A ready-made rule saved |
+| `09-maintenance` | An overdue task marked done |
+| `10-filament-and-spoolman` | Spools, grams left and prints left on each |
+| `11-print-cost` | The running print's cost so far and past prints |
+| `12-home-assistant` | The bridge's address typed in, the sensors it sends |
+| `13-time-lapse` | Illustration: a flipbook, a frame every two layers |
+| `14-ar-preview` | Illustration: a model placed on a desk through a phone |
+| `15-ten-games` | Sky Dash being played |
+| `16-get-it` | The end card: the three install lines |
 
 Remade with `promo-video/build/stills.sh` after any change to the video.
 

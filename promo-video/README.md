@@ -154,14 +154,19 @@ had them as chips); the values (110-114) and the end card with the install lines
   22 dB over the music *in the 2-6 kHz band*, but a sound that short is heard as much quieter
   than its peak, and the band says nothing about the whole: with version 5's mix levels even
   version 6's longer click stood only about 4 dB above the music over the whole band
-  (measured here; version 5's own mix was not re-measured). Version 6's click rings for about 15 ms (a press and, 75 ms later, a release), the
-  keystroke has a 450 Hz / 1.6 kHz "thock", `sfx.py` no longer scales everything to its
+  (measured here; version 5's own mix was not re-measured). Version 6's click rings for
+  about 15 ms (a press and, 75 ms later, a release), the keystroke has a 450 Hz / 1.6 kHz "thock", `sfx.py` no longer scales everything to its
   loudest sound, and `mix.py` keeps the music lower (0.5 instead of 0.78). Measured on the
-  stems (`mix.py ... STEM_PREFIX`): every click at least 8.8 dB (median 16 dB) and keystrokes
-  a median 14 dB above the music in the same 60 ms, over the whole band.
+  stems (`mix.py ... STEM_PREFIX`), over the whole band, in the same 60 ms: clicks a median
+  16 dB and keystrokes 14 dB above the music in the mix; after mastering (the limiter in
+  `finish.py` shaves the click peaks) clicks a median 11.6 dB (29 of 30 at least 9.8 dB) and
+  keystrokes 11.1 dB above it. Version 6 also has more of them: 30 clicks (13 in version 5),
+  31 typed keystrokes for the Home Assistant address and 5 Space presses in Sky Dash, plus
+  the end card's typing.
 - (v6) A -14 LUFS master of a mix this dynamic would clip (it measured -18 LUFS with peaks at
-  -0.9 dBFS), so `finish.py` raises it through a limiter at -1 dBFS instead of a plain volume
-  change.
+  -0.9 dBFS), so `finish.py` raises it through a limiter instead of a plain volume change. A
+  limiter at -1 dBFS still gave +0.6 dBFS true peak after AAC encoding; at -2.5 dBFS it
+  measures -14.0 LUFS and -1.1 dBFS true peak.
 - (v6) "Acoustic" instruments without samples: plucked strings (Karplus-Strong, run through
   `scipy.signal.lfilter` with the delay line as the filter, so it is fast), a vibraphone from
   its 1 : 4 : 10 partials and motor tremolo, a breathy sine flute, brushes from shaped noise.
