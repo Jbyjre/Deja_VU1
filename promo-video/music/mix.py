@@ -1,12 +1,14 @@
 """Mixes the music and the sound effects into the one audio track the video plays.
 
 The music dips briefly under every click (about 9 dB) and keystroke (about 6 dB) for a tenth of a
-second), so each one cuts through clearly, the way a voice cuts through a ducked bed.
+second, and in the same moments loses most of its 2-6 kHz band (a dynamic EQ: the clap and
+the clicks share that band), so each one cuts through clearly while the bass keeps going.
 Usage: python3 mix.py music.wav sfx.wav cues.json OUT.wav
 """
 import json
 import sys
 import numpy as np
+from scipy import signal
 from scipy.io import wavfile
 
 SR, mus = wavfile.read(sys.argv[1])
@@ -24,6 +26,13 @@ for c in cues:
         k = np.exp(-((t - c['t'] - .03) / .07) ** 2)          # starts just before, gone 0.15 s later
         dip = np.maximum(dip, k * (.65 if c['type'] == 'click' else .5))
 gain = 1 - dip                                              # 0.35 = about -9 dB at the deepest
+band = np.zeros(n)
+for c in cues:
+    if c['type'] in ('click', 'key'):
+        band = np.maximum(band, np.exp(-((t - c['t'] - .035) / .08) ** 2) * .85)
+b, a = signal.butter(2, [2000 / (SR / 2), 6000 / (SR / 2)], 'band')
+mid = signal.filtfilt(b, a, mus, axis=0)                    # zero-phase, so subtracting it is clean
+mus = mus - mid * band[:, None]
 out = mus * .78 * gain[:, None] + fx * 1.6
 out = np.tanh(out * 1.05) / np.tanh(1.05)
 out *= .9 / (np.max(np.abs(out)) or 1)

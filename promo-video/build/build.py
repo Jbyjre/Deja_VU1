@@ -124,11 +124,6 @@ for n in lines:
     typing.append(per)
     t += .22
 
-# A keystroke that lands on the clap (beat 3 of every bar) gets a boost, so it isn't masked.
-for c in cues:
-    if c['type'] == 'key' and abs(c['t'] % (4 * BEAT) - 2 * BEAT) < .06:
-        c['gain'] = round(c['gain'] * 1.9, 2)
-
 cues += [{'t': t, 'type': 'whoosh', 'gain': .5, 'pan': -.2 + .4 * (i % 2)} for i, t in enumerate(whooshes)]
 
 tpl = open(os.path.join(HERE, FMT + '.tpl.html')).read()

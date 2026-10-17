@@ -81,9 +81,10 @@ real-time recording is unusable. `rec.js` films frame by frame instead:
   `at('v-sk', 'pick')`, and the end-card typing times as `const TY`;
 - writes `sfx_<fmt>.json`: a click on every filmed click that is on screen, a keystroke
   on every logged key press (`r.key()` in `rec.js`) and every typed end-card character
-  (a keystroke that lands on the clap gets a boost), and whooshes on the big transitions;
+  and whooshes on the big transitions;
 - runs `compose3.py` if needed, `sfx.py`, then `mix.py`, which dips the music about 9 dB
-  under each click and 6 dB under each keystroke and writes `assets/audio/mix_<fmt>.wav`,
+  under each click and 6 dB under each keystroke, takes out most of the music's 2-6 kHz
+  band at those moments, and writes `assets/audio/mix_<fmt>.wav`,
   the composition's only audio track.
 The templates (`main.tpl.html`, `vertical.tpl.html`) hold all layout and the GSAP
 timeline; `shared.css` holds the tokens, fonts, the layer-line background and the
@@ -125,9 +126,14 @@ footage stays large on a phone.
 - (v3) The Files tab is now a grid of picture cards, so the sample files start below the
   visible area and the cursor clicked off-screen; `intoView()` in `shots.js` scrolls a
   card or button into view first.
-- (v3) A clap and a mouse click share the 2-5 kHz range: clicks that landed on beat 3 were
-  masked. The deeper dip in `mix.py` and the clap boost for keystrokes fixed it (measured:
-  every click at least 6 dB above the music under it).
+- (v3) A clap and a mouse click share the 2-5 kHz range: clicks and keystrokes that landed
+  on beat 3 were masked. A plain volume dip wasn't enough, and boosting the masked
+  keystrokes made every other effect quieter (`sfx.py` scales the track to its loudest
+  sound). What worked is a dynamic EQ in `mix.py`: around each click and keystroke the
+  music loses most of its 2-6 kHz band while the bass keeps going. Measured: every click
+  at least 15 dB above the music under it, keystrokes 23 dB at the median.
+- (v3) The phone scene had no "Simulated farm" label (the app shows only "Simulated"
+  under its figures); a glass label now sits beside the phone.
 - (v3) `V.3d` is not valid JavaScript (a property name can't start with a digit); the 3D
   view is `V.d3`.
 
