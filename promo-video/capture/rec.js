@@ -58,7 +58,7 @@ const SYNC = `(() => {
   }
 })()`;
 
-async function open({ width = 1440, height = 900, dpr = 2, fps = 60, url = 'http://localhost:' + (process.env.APP_PORT || 8791) + '/?dashboard', mobile = false } = {}) {
+async function open({ width = 1440, height = 900, dpr = 2, fps = +(process.env.FILM_FPS || 60), url = 'http://localhost:' + (process.env.APP_PORT || 8791) + '/?dashboard', mobile = false } = {}) {
   const browser = await chromium.launch({ args: ['--hide-scrollbars'] });
   const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, isMobile: mobile, hasTouch: mobile });
   await ctx.addInitScript(CURSOR);
@@ -133,7 +133,7 @@ function start(st, name) {
   st.name = name; st.dir = path.join(__dirname, 'frames', name); st.n = 0; st.clicks = []; st.keys = [];
   fs.rmSync(st.dir, { recursive: true, force: true }); fs.mkdirSync(st.dir, { recursive: true });
 }
-function stop(st, outDir = path.join(__dirname, '..', 'footage')) {
+function stop(st, outDir = process.env.FOOTAGE_DIR || path.join(__dirname, '..', 'footage')) {
   fs.mkdirSync(outDir, { recursive: true });
   const out = path.join(outDir, st.name + '.mp4');
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(st.fps), '-i', path.join(st.dir, '%05d.jpg'),
