@@ -16,6 +16,13 @@ Python.
 > watch-only: you watch a print you're already running, and nothing is started
 > or paused from Deja Vu1. **[How it works, and how to sign up](docs/first-connection.md)**
 
+**See it first, with nothing to install:** the
+[online demo](https://deja-vu1.jmath1110.workers.dev/?demo) opens the real
+dashboard in your browser, playing a 2.5-minute recording of the simulated
+farm (three U1s; one jams halfway). Click around: the digital twin, Files,
+the mixed-nozzle planner and Photo Studio all work there; anything that would
+change a printer says it's a recording.
+
 **Try it in three lines** (Python 3.8 or newer; the first line needs git, or
 use GitHub's **Code → Download ZIP** instead):
 
@@ -32,7 +39,7 @@ simulated farm of three U1s that heat, print and finish.
 
 <sub>Live, on the simulated farm: a filament jam fired from the farm sandbox. The status ribbon turns to an error, a "print failed" alert appears, and the jam goes to the top of **Needs you**.</sub>
 
-**Quick links:** [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
+**Quick links:** [getting started](docs/getting-started.md) · [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
 [how it connects](#why-one-dashboard-not-several-tools) · [current status](#current-status) ·
 [security](#security-and-your-network) · [first connection](docs/first-connection.md) ·
 [for developers](#for-developers-and-ai-coding-sessions)
@@ -61,6 +68,25 @@ tested logic waiting on physical parts.
 
 Much of the code is written with [Claude Code](https://claude.com/claude-code),
 and every change is in the public history.
+
+## What's new
+
+- **An online demo.** The public Cloudflare link now opens the real
+  dashboard with a recording of the simulated farm, so anyone can see how it
+  looks and works before installing it ([how it works](#the-public-page)).
+- **The digital twin is a real drawing you can click.** Hidden edges,
+  dimensions, a title block; click a toolhead for its nozzle, swaps and
+  what the print needs from it.
+- **Mixed-nozzle planner**, the idea behind a $5,000 Innovation Fund
+  winner: a different nozzle and layer height per toolhead, checked against
+  Snapmaker's own limits, plus a nozzle check in Confirm Print.
+- **Find printers on my network**, **Test** before adding, double-click
+  starters for Windows, Mac and Linux, and a plain-language
+  [getting-started guide](docs/getting-started.md).
+- **Photo Studio** fits the photo's tones to your filaments, so hazy photos
+  stop printing flat.
+
+Everything, with what is and isn't verified: [CHANGELOG.md](CHANGELOG.md).
 
 ## Why it exists
 
@@ -96,16 +122,17 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 
 | Feature | What it does |
 |---|---|
-| **Printer fleet** | Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
+| **Printer fleet** | **Find printers on my network** adds a U1 without typing an address (it asks the network, then tries Moonraker's port on your home network, and checks each one); **Test** checks a typed address first. Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
 | **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If the WebSocket fails three times (a network that blocks it, or a server restart), the dashboard asks once a second instead, says so, and tries the WebSocket again every 30 seconds. |
 | **Needs you** | The top of the Overview ranks every printer by what wants a person — a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes — each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
 | **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
 | **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
+| **Mixed-nozzle planner** | A different nozzle and layer height on each toolhead: fine detail on a 0.2 mm nozzle, thick fast layers on a 0.8. Pick each head's nozzle and height (they start from what the printer reports fitted) and it works out the shared layer grid, how many grid layers each head spans and how many layers a part needs, checks every height against Snapmaker's own U1 profile limits, and draws a section through the layers. The idea of LixNix's Full Multi-Nozzle Printing, a $5,000 Tier 1 winner of Snapmaker's Innovation Fund, rewritten from its description. **Confirm Print** now also refuses a file sliced for a nozzle the toolhead doesn't have fitted. |
 | **MakerWorld / NexPrint / OrcaSlicer → U1** | One click turns a Bambu Studio (MakerWorld), Elegoo Slicer (NexPrint) or OrcaSlicer project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. **Multi-plate projects land on the right plates**: every plate's objects are moved onto the U1's own plate grid, written from Snapmaker Orca's source. When it can't convert, it says why with a code, the step it failed at and what to try, and **Copy report** puts a full report on the clipboard for a bug report. |
-| **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab shows the plate from above with the object printing now; pick one, confirm, and the printer's own read-back says it's skipped. It refuses names the print doesn't have and the last object left (that's what Cancel is for). |
+| **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
-| **Digital twin** | A live engineering drawing of the printer, in thin lines: the bed dropping as each layer is added, the gantry and toolhead moving, the parts on the plate drawn from the file's own object outlines (a skipped one is crossed out), and the four rear docks with each head's filament colour and temperature. Drag to turn it, or jump to the front and top views. |
+| **Digital twin** | A live engineering drawing of each printer, drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. 3D, front and top views; drag to turn. |
 | **File library** | Your G-code, 3MF and STL files, with real thumbnails, estimated time and grams, a pre-flight verdict, and a recent list. |
 | **Interactive 3D viewer** | The toolpath of any G-code file, scrubbable layer by layer, and any STL or 3MF model — drawn with plain WebGL and parsers written for this project, no 3D library. |
 | **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command — each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
@@ -142,6 +169,17 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 ![Three Overview cards: the digital twin of the toolhead over the bed with four docks, a print health gauge reading 65 with its deductions listed, and a chamber temperature chart](docs/img/twin-health-chamber.jpg)
 
 <sub>**Digital twin, print health and chamber climate:** a live engineering drawing of the printer (the bed dropping as layers build, the head moving, the parts on the plate, the four docks), one health score with every deduction listed, and the chamber temperature over time.</sub>
+
+<table>
+<tr>
+<td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The digital twin with T0 picked: its parked head drawn in blue, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
+<td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The mixed-nozzle planner: T0 with a 0.2 mm nozzle at 0.08 mm and T1 with a 0.8 mm nozzle at 0.56 mm, a section view showing seven thin layers for every thick one, 375 layers against 54 for a 30 mm part, and a warning that the 0.08 mm prime-tower slabs are below the 0.8 mm nozzle's minimum"><br><sub><b>Mixed-nozzle planner:</b> the $5,000 winner's idea, checked against Snapmaker's own limits.</sub></td>
+</tr>
+</table>
+
+![Add a printer: Find printers on my network, and a Test result saying Moonraker answered, Klipper is ready, it reports Snapmaker's U1 objects and has 4 toolheads](docs/img/add-printer.jpg)
+
+<sub>**Add a printer:** find it on the network, or test a typed address before adding it.</sub>
 
 ![Objects on the plate: a map of the bed from above with three objects, the one printing now in blue and one selected in red, and the question "Skip Toolhead cover #3 for the rest of this print? It can't be brought back."](docs/img/skip-object.jpg)
 
@@ -181,7 +219,7 @@ Snapmaker Orca itself).
 | Feature | What it does |
 |---|---|
 | **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately — "Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason ("Nothing is printing right now") in its own row — never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
-| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. Change a colour, a size or a layer setting and the model rebuilds by itself; until it has, the old one is greyed out and can't be saved, so what you save always matches what's set. When the match is rough it says which colour would help. It all runs in the browser; the photo is never uploaded. |
+| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. Change a colour, a size or a layer setting and the model rebuilds by itself; until it has, the old one is greyed out and can't be saved, so what you save always matches what's set. It fits the photo's light and dark to what your filaments can actually show (a hazy photo used 11 of 25 possible heights before, all 25 now), says when a colour isn't reached and leaves its pointless tool change out. When the match is rough it says which colour would help. It all runs in the browser; the photo is never uploaded. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios — a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue — and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
 <table>
@@ -416,6 +454,11 @@ only sensible approach. Details in
 |---|---|---|---|
 | Live dashboard, fleet, controls, start-print interlock | Yes | Yes - Moonraker, Klipper and Snapmaker's U1 source | Not yet - no U1 here |
 | Skip one object | Yes | Yes - Snapmaker's u1-klipper `exclude_object` | Not yet |
+| Nozzle sizes and swap counts per toolhead | Yes | Yes - u1-klipper `extruder.get_status` | Not yet |
+| Mixed-nozzle planner, nozzle check in Confirm Print | Yes | Limits from Snapmaker Orca's U1 profiles; grid rule from the LixNix fork's description | Not printed yet |
+| Find printers, Test | - | Yes - u1-moonraker's mDNS announcement and Moonraker's HTTP API | Not on a real network with a U1 yet |
+| Double-click starters | - | Linux | Windows and Mac not run yet |
+| Online demo (Cloudflare link) | Recorded from it | Checked in Chromium on a plain static server, like Cloudflare's | The published link itself not opened from here (the build sandbox can't reach it) |
 | Filament colours after a touchscreen change | - | Yes - asked for every 30 s as well as pushed | Not yet |
 | MakerWorld / NexPrint / OrcaSlicer converter | Yes | Checked against Snapmaker Orca's loader and plate-grid source | Output not yet opened in Snapmaker Orca |
 | Photo-to-Print Studio | Yes | Runs in the browser; STL checked watertight | 3MF not yet opened in Orca, no print yet |
@@ -440,11 +483,12 @@ non-commercial terms, and this one is MIT):
 | Re-place multi-plate projects on the U1's plate grid; coded, copyable conversion errors | [MakerWorld to Snapmaker U1](https://github.com/Dragon2203/makerworld-to-snapmaker-u1) |
 | Skip one object mid-print; ask for filament colours instead of only waiting for pushes; Spoolman import; add-to-home-screen | [U1 Print Hub](https://github.com/dlgambill/u1hub) |
 | Tell multiACE users to post-process T4-T15 before printing | [multiACE](https://github.com/decay71/multiACE) |
+| A different nozzle and layer height per toolhead: the mixed-nozzle planner and the nozzle check | [Full Multi-Nozzle Printing](https://github.com/LixNix-Swap-Org/Snapmaker-Orca) by LixNix |
 | A status table of what is and isn't verified; a beta-tester guide | Sidecar, FOrcaSlicer, U1 Print Hub |
 
 ## Tech stack
 
-![By the numbers: 608 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 638 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only — written for 3.8 or newer;
   tested on 3.11 and 3.13 (3.8 itself hasn't been run)
@@ -454,7 +498,7 @@ non-commercial terms, and this one is MIT):
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 608 cases
+- **Tests:** `unittest` from the standard library, 638 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -551,14 +595,37 @@ on a computer that manages real printers.
 ## The public page
 
 `wrangler.jsonc` publishes the `frontend` folder to Cloudflare as a plain
-website, with no Python server behind it. A dashboard there would have
-nothing to show, so when the page asks for its own API and gets the
-"404 Not Found" a static host gives (Cloudflare's documented behaviour with
-no Worker script), it opens `welcome.html` instead: a product page with
-real screenshots from the simulated farm, what's in the dashboard, what is
-and isn't verified yet, and how to run it. Running locally nothing changes,
-and a local server that is down still shows "Could not reach the backend".
-`/?dashboard` skips the hand-over.
+website, with no Python server behind it. Its front page is `welcome.html`,
+the product page: real screenshots from the simulated farm, what's in the
+dashboard, what is and isn't verified yet, and how to run it. (The page
+asks for its own API, gets the "404 Not Found" a static host gives, and
+hands over.)
+
+**The online demo** is the dashboard itself on that same site, at
+[`/?demo`](https://deja-vu1.jmath1110.workers.dev/?demo) (the product
+page's **Try the demo** buttons go there). With no server to ask, the
+dashboard plays a recording instead:
+
+- `tools/online-demo/record.py` runs the real server with the simulated
+  farm in a throwaway folder, turns every module on, adds the sample files,
+  asks every GET route for each of the three printers, then records the
+  live feed once a second for 150 seconds, firing a filament jam halfway.
+  It saves `frontend/demo/recording.json` (about 1.3 MB, about 60 KB
+  compressed) plus the sample files.
+- In the browser, `app.js` notices there's no server, loads the recording
+  and answers the page's own `/api` requests from it, looping the live
+  feed. The digital twin moves, the jam reaches **Needs you**, files open
+  in 2D and 3D, and the mixed-nozzle planner and Photo Studio really
+  calculate (the planner's maths has a browser copy that a test keeps
+  identical to the server's). Anything that would change a printer or a
+  setting answers, in words, that this is a recording.
+- It never runs where a Deja Vu1 server answers, so a real install never
+  shows recorded figures. `tests/test_online_demo.py` fails when a new
+  route isn't in the recording: re-run the recorder (about 3 minutes) and
+  commit `frontend/demo/`.
+
+Running locally nothing changes, and a local server that is down still
+shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
 
 ## Roadmap
 
@@ -593,19 +660,27 @@ and a local server that is down still shows "Could not reach the backend".
 
 ## How to run it
 
-You need Python 3.8 or newer. Nothing else.
+You need Python 3.8 or newer. Nothing else. **New to this? Follow
+[docs/getting-started.md](docs/getting-started.md)**: install Python,
+download the ZIP, double-click `start-windows.bat`, `start-mac.command` or
+`start-linux.sh`, and the dashboard opens in your browser.
+
+From a terminal:
 
 ```bash
 git clone https://github.com/Jbyjre/Deja_VU1.git
 cd Deja_VU1
-python3 backend/app.py
+python3 start.py          # or: python3 backend/app.py, then open http://localhost:8000
 ```
 
-Then open **http://localhost:8000** in a browser.
+The window prints the address to open from a phone on the same Wi-Fi.
 
 The dashboard will report that no printer is connected and show empty panels.
-To connect one: **Fleet → Add a printer**, with its Moonraker address (usually
-`http://<printer-ip>:7125`) — see [docs/real-printer.md](docs/real-printer.md).
+To connect one: **Fleet → Add a printer → Find printers on my network**
+(it asks the network, then tries Moonraker's port 7125 on your home
+network, and checks each one), or type its Moonraker address (usually
+`http://<printer-ip>:7125`) and press **Test** first — see
+[docs/real-printer.md](docs/real-printer.md).
 Or flip the **Demo data** switch in the header to fill it with the simulated
 print history. To try it from a phone on the same network, open
 **Settings → Pair another device** to get a code.
@@ -617,7 +692,7 @@ file is refused on purpose); **Automations** to build a rule and watch it
 fire; and **Settings → Demo controls** to fast-forward a print to
 its finish, or to make the next Pause fail and see how that is reported.
 
-(Tested on Python 3.11 and 3.13.)
+(GitHub Actions runs every test on Python 3.8, 3.10, 3.12 and 3.13.)
 
 **Opened the pages without the server?** The `frontend/` folder can be
 published on its own (for example as static files on Cloudflare — see
@@ -650,7 +725,7 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 608
+python3 -m unittest discover tests          # all 638
 python3 -m unittest tests.test_api          # one file
 ```
 
@@ -680,6 +755,8 @@ version.
 - [docs/beta-testing.md](docs/beta-testing.md) — trying it on your own U1:
   what to check first, what to send back
 - [CHANGELOG.md](CHANGELOG.md) — what changed, newest first
+- [docs/getting-started.md](docs/getting-started.md) — from download to your U1 on screen,
+  without typing commands
 - [docs/real-printer.md](docs/real-printer.md) — connecting a real printer:
   what was checked against Moonraker's and Snapmaker's source, what can't
   be without the machine, and what the first run will tell you

@@ -281,58 +281,72 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .live-row .card { margin-bottom: 0; }
 
 /* Digital twin - a live engineering drawing (workshop.js, drawTwin).
-   Line weights follow drafting practice: the parts that move (head, bed,
-   the print) are the heaviest lines, the machine around them is thin,
-   the build volume is a dash-dot envelope, and dimensions are hairlines.
-   Ink comes from the page's own text colours, so it sits on the paper. */
+   One ink, line weights after ISO 128: visible edges thick, hidden edges
+   thin and dashed, the build volume a thin phantom line, dimensions and
+   extension lines hairlines. Greys come from the ink's colour, never from
+   transparency, so crossing lines don't go muddy. Blue only marks what
+   you picked; red only marks a fault. */
 .twin-host { min-height: 250px; }
 .wf {
-  --wf-active: #9aa3b5;
-  --wf-ink: var(--text);
-  --wf-head: color-mix(in oklch, var(--wf-active) 78%, var(--text));
-  position: relative; height: 300px; margin: -4px -6px 0;
+  --ink: oklch(24% 0.02 265);
+  --ink-mid: oklch(48% 0.015 265);
+  --ink-light: oklch(68% 0.012 265);
+  --ink-faint: oklch(86% 0.008 265);
+  --pick: oklch(52% 0.19 255);
+  --fault: var(--bad-text);
+  position: relative; height: 320px; margin: -2px -6px 0;
 }
 .wf-svg {
-  position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible;
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
   cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
-  border-radius: 14px;
+  background: var(--paper-solid); border-radius: 12px;
 }
 .wf-svg:active { cursor: grabbing; }
+.wf-svg:focus { outline: none; }
 .wf-svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.wf-ink path { fill: none; stroke: var(--wf-ink); stroke-linecap: round; stroke-linejoin: round; }
-.wf-env        { stroke-width: .75; opacity: .42; stroke-dasharray: 12 3 2 3; }
-.wf-grid       { stroke-width: .6;  opacity: .14; }
-.wf-bed        { stroke-width: 1.35; opacity: .78; }
-.wf-hatch      { stroke-width: .6;  opacity: .26; }
-.wf-part       { stroke-width: 1.2; opacity: .72; }
-.wf-part.current { stroke: var(--accent); opacity: 1; stroke-width: 1.5; }
-.wf-part.skipped { stroke: var(--bad-text); opacity: .7; stroke-dasharray: 4 3; }
-.wf-trail      { stroke: var(--wf-head); stroke-width: 2; opacity: .55; }
-.wf-rail       { stroke-width: 1;   opacity: .5; }
-.wf-dock       { stroke-width: .9;  opacity: .5; }
-.wf-parked     { stroke-width: 1;   opacity: .62; }
-.wf-parked.fault { stroke: var(--bad-text); opacity: 1; stroke-width: 1.4; }
-.wf-head       { stroke: var(--wf-head); stroke-width: 1.7; }
-.wf-dim        { stroke-width: .75; opacity: .7; }
-.wf-leader     { fill: none; stroke: var(--wf-ink); stroke-width: .75; opacity: .7; }
-.wf-tip        { fill: var(--wf-head); stroke: var(--paper-solid); stroke-width: 1.5; }
-/* Balloons: a ring in the filament's colour (darkened toward the ink so a
-   white spool still shows), the head's name inside. */
-.wf-balloon {
-  fill: var(--paper-solid);
-  stroke: color-mix(in oklch, var(--ring) 72%, var(--text)); stroke-width: 2.5;
+.wf-ink path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.wf-grid     { stroke: var(--ink-faint); stroke-width: 1; }
+.wf-env      { stroke: var(--ink-light); stroke-width: 1; stroke-dasharray: 14 3 2 3 2 3; }
+.wf-frame    { stroke: var(--ink-mid); stroke-width: 1; }
+.wf-trail    { stroke: var(--ink-light); stroke-width: 1.5; }
+.wf-hid, .wf-part-hid, .wf-sel-hid { stroke: var(--ink-light); stroke-width: 1; stroke-dasharray: 4 3; }
+.wf-sel-hid  { stroke: color-mix(in oklch, var(--pick) 55%, white); }
+.wf-vis      { stroke: var(--ink); stroke-width: 1.5; }
+.wf-part     { stroke: var(--ink); stroke-width: 1.5; }
+.wf-head     { stroke: var(--ink); stroke-width: 2; }
+.wf-fault    { stroke: var(--fault); stroke-width: 2; }
+.wf-skip     { stroke: var(--ink-mid); stroke-width: 1; stroke-dasharray: 3 3; }
+.wf-sel      { stroke: var(--pick); stroke-width: 2; }
+.wf-axis     { stroke: var(--ink-mid); stroke-width: 1; }
+.wf-ext      { fill: none; stroke: var(--ink-mid); stroke-width: 1; }
+.wf-dimline  { fill: none; stroke: var(--ink-mid); stroke-width: 1; }
+.wf-arrowhead { fill: var(--ink-mid); }
+.wf-leader   { fill: none; stroke: var(--ink-mid); stroke-width: 1; }
+.wf-tip      { fill: var(--ink); stroke: var(--paper-solid); stroke-width: 1.5; }
+.wf-hits polygon { fill: transparent; stroke: none; cursor: pointer; pointer-events: all; }
+.wf-hits polygon:hover { fill: oklch(52% 0.19 255 / .05); }
+.wf-balloon { cursor: pointer; }
+.wf-balloon circle { fill: var(--paper-solid); stroke: var(--ink); stroke-width: 1.25; }
+.wf-balloon text { font: 700 9.5px/1 var(--font-mono); fill: var(--ink); }
+.wf-balloon .wf-swatch { stroke: var(--ink); stroke-width: 1; }
+.wf-balloon.out circle { stroke-dasharray: 3 2.5; stroke: var(--ink-light); }
+.wf-balloon.out text { fill: var(--ink-mid); }
+.wf-balloon.fault circle { stroke: var(--fault); stroke-width: 2; }
+.wf-balloon.fault text { fill: var(--fault); }
+.wf-balloon.is-picked circle { stroke: var(--pick); stroke-width: 2.25; }
+.wf-balloon:hover circle { stroke-width: 2; }
+.wf-note, .wf-dimtext {
+  font: 600 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; fill: var(--ink-mid);
 }
-.wf-balloon.out { stroke-dasharray: 3 2.5; opacity: .5; }
-.wf-balloon.fault { stroke: var(--bad-text); }
-.wf-balloon.on { stroke-width: 3; }
-.wf-bn { font: 700 9.5px/1 var(--font-mono); fill: var(--text); }
-.wf-bn.out { fill: var(--text-faint); }
-.wf-bn.fault { fill: var(--bad-text); }
-.wf-note, .wf-dimtext { font: 600 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; fill: var(--text-dim); }
+.wf-note.fault { fill: var(--fault); font-weight: 700; }
 /* A paper-coloured halo, so a figure crossing a line stays readable - the
    gap a draftsman leaves in a line where text sits. */
-.wf-note, .wf-dimtext, .wf-bn { paint-order: stroke; stroke: var(--paper-solid); stroke-width: 3px; stroke-linejoin: round; }
-.wf-note.fault { fill: var(--bad-text); font-weight: 700; }
+.wf-note, .wf-dimtext, .wf-balloon text { paint-order: stroke; stroke: var(--paper-solid); stroke-width: 3px; stroke-linejoin: round; }
+.wf-border, .wf-tb { fill: none; stroke: var(--ink-mid); stroke-width: 1; }
+.wf-tb { fill: var(--paper-solid); }
+.wf-tb-line { stroke: var(--ink-light); stroke-width: 1; }
+.wf-tb-k { font: 600 7.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; fill: var(--ink-mid); }
+.wf-tb-v { font: 700 10px/1 var(--font-mono); fill: var(--ink); font-variant-numeric: tabular-nums; }
 
 /* View buttons, in the card's header: one inline glass group (a tier-1
    segmented control - a light blur, no lifted shadow), sharing one
@@ -347,17 +361,32 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 }
 .wf-views button { padding: 7px 12px; min-height: 28px; }
 
-/* A drafting title block, one line, bottom left. */
-.wf-title {
-  position: absolute; left: 6px; bottom: 2px; display: flex; gap: 0;
-  border: 1px solid oklch(30% 0.02 265 / .24); border-radius: 3px; overflow: hidden;
-  font: 600 9.5px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase;
-  color: var(--text-faint); background: oklch(99% 0.002 250 / .6); pointer-events: none;
+/* The pick buttons under the drawing, and the details of what's picked. */
+.wf-picks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.wf-pick {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 5px 11px;
+  font: 700 11px/1 var(--font-mono); color: var(--text-dim); cursor: pointer;
+  background: var(--paper-solid); border: 1px solid oklch(30% 0.02 265 / .2); border-radius: 999px;
 }
-.wf-title > * { padding: 5px 7px; }
-.wf-title > * + * { border-left: 1px solid oklch(30% 0.02 265 / .18); }
-.wf-title b { color: var(--text); font-weight: 700; }
-@media (max-width: 720px) { .wf { height: 280px; } }
+.wf-pick i { width: 9px; height: 9px; border-radius: 2px; border: 1px solid oklch(24% 0.02 265 / .6); }
+.wf-pick.is-on { color: var(--text); border-color: oklch(52% 0.19 255); box-shadow: 0 0 0 1px oklch(52% 0.19 255); }
+.wf-pick.is-fault { color: var(--bad-text); }
+.wf-detail {
+  margin-top: 10px; padding: 12px 14px; border-radius: 12px;
+  background: var(--paper-solid); border: 1px solid oklch(30% 0.02 265 / .14);
+}
+.wf-detail-head { display: flex; align-items: center; gap: 8px; }
+.wf-detail-head b { font: 700 14px/1.2 var(--font-display); }
+.wf-detail-sub { color: var(--text-faint); font-size: 12.5px; flex: 1; }
+.wf-detail-swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid oklch(24% 0.02 265 / .6); }
+.wf-x { border: none; background: none; cursor: pointer; color: var(--text-faint); font-size: 14px; min-width: 28px; min-height: 28px; border-radius: 8px; }
+.wf-x:hover { background: oklch(30% 0.02 265 / .06); }
+.wf-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 16px; margin: 10px 0 0; }
+.wf-facts div { min-width: 0; }
+.wf-facts dt { font: 600 10px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+.wf-facts dd { margin: 2px 0 0; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wf-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 720px) { .wf { height: 300px; } }
 .twin-readout { font: 600 11.5px/1.4 var(--font-mono); color: var(--text-faint); text-align: center; margin-top: 6px; text-wrap: balance; font-variant-numeric: tabular-nums; }
 
 /* Print health gauge. */
@@ -809,7 +838,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 @media (prefers-reduced-transparency: reduce) {
   .liquid-glass.deep, .morph-ghost, .live-pill, .twin-card { backdrop-filter: none; background: #f4f5f8; }
   .wf-views { backdrop-filter: none; -webkit-backdrop-filter: none; background: #f4f5f8; }
-  .wf-title { background: #fdfdfe; }
+  .wf-svg { background: #fdfdfe; }
   [data-tint] { background: #f4f5f8; }
   .cam-mode { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
@@ -817,17 +846,17 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
   .liquid-glass.deep, [data-tint] { background: #fdfdfe; backdrop-filter: none; }
   .file-card, .chip-btn, .qa-btn, .printer-chip { border-color: rgba(0, 0, 0, .35); }
   .rb-live { color: #1f5f2c; }
-  .wf-env, .wf-grid, .wf-hatch, .wf-rail, .wf-dock, .wf-parked, .wf-dim, .wf-leader { opacity: 1; }
-  .wf-grid, .wf-hatch { opacity: .5; }
+  .wf { --ink-mid: oklch(30% 0.02 265); --ink-light: oklch(45% 0.015 265); --ink-faint: oklch(75% 0.01 265); }
+  .wf-svg { background: #fdfdfe; }
   .wf-views { backdrop-filter: none; -webkit-backdrop-filter: none; background: #fdfdfe; border-color: rgba(0, 0, 0, .35); }
-  .wf-title { border-color: rgba(0, 0, 0, .45); color: var(--text-dim); }
 }
 @media (forced-colors: active) {
-  .wf-ink path, .wf-leader { stroke: CanvasText; }
-  .wf-note, .wf-dimtext { fill: CanvasText; }
+  .wf-ink path, .wf-leader, .wf-ext, .wf-dimline, .wf-border, .wf-tb, .wf-tb-line { stroke: CanvasText; }
+  .wf-sel, .wf-sel-hid { stroke: Highlight; }
+  .wf-note, .wf-dimtext, .wf-tb-k, .wf-tb-v, .wf-arrowhead { fill: CanvasText; }
   .wf-tip { fill: CanvasText; }
-  .wf-balloon { stroke: CanvasText; fill: Canvas; }
-  .wf-bn { fill: CanvasText; }
+  .wf-balloon circle { stroke: CanvasText; fill: Canvas; }
+  .wf-balloon text { fill: CanvasText; }
 }
 
 /* ---- 5. touch: glass that answers a press ------------------------------------------------ */
@@ -912,24 +941,32 @@ body.is-scrolled .topbar {
 .plate-card { margin-bottom: 20px; }
 .plate-layout { display: grid; grid-template-columns: minmax(180px, 300px) 1fr; gap: 20px; align-items: start; }
 .plate-map { width: 100%; height: auto; display: block; touch-action: manipulation; }
-.plate-bed { fill: rgba(255, 255, 255, .62); stroke: rgba(28, 28, 30, .14); stroke-width: 1; }
-.plate-grid line { stroke: rgba(28, 28, 30, .07); stroke-width: .6; }
+/* A top-view drawing (app.js renderPlate), in the twin's ink. */
+.plate-sheet { fill: var(--paper-solid); stroke: oklch(48% 0.015 265); stroke-width: .8; }
+.plate-bed { fill: none; stroke: oklch(24% 0.02 265); stroke-width: 1.6; }
+.plate-grid line { stroke: oklch(86% 0.008 265); stroke-width: .6; }
 .plate-front { font: 600 8px var(--font-mono); fill: var(--text-faint); letter-spacing: .08em; text-transform: uppercase; }
-.plate-obj { fill: rgba(28, 28, 30, .14); stroke: var(--text-dim); stroke-width: 1.2; stroke-linejoin: round; cursor: pointer;
-  transition: fill .2s ease, stroke .2s ease, opacity .2s ease; }
-.plate-obj:hover { fill: rgba(28, 28, 30, .22); }
-.plate-obj.is-current { fill: color-mix(in srgb, var(--accent) 34%, transparent); stroke: var(--accent-text); stroke-width: 1.6;
-  stroke-dasharray: 5 3; animation: plate-printing 1.4s linear infinite; }
-.plate-obj.is-skipped { fill: url(#plate-hatch); stroke: var(--text-faint); stroke-dasharray: 2 2; opacity: .7; cursor: default; }
-.plate-hatch-line { stroke: var(--text-faint); stroke-width: 1.4; }
-.plate-obj.is-selected { stroke: var(--bad-text); stroke-width: 2.6; stroke-dasharray: none; }
-@keyframes plate-printing { to { stroke-dashoffset: -16; } }
+.plate-ext, .plate-dim, .plate-axis { fill: none; stroke: oklch(48% 0.015 265); stroke-width: .7; }
+.plate-arrowhead { fill: oklch(48% 0.015 265); }
+.plate-dimtext, .plate-axis-t { font: 600 8.5px var(--font-mono); fill: oklch(40% 0.015 265);
+  paint-order: stroke; stroke: var(--paper-solid); stroke-width: 3px; stroke-linejoin: round; }
+.plate-part { cursor: pointer; }
+.plate-obj { fill: var(--paper-solid); stroke: oklch(24% 0.02 265); stroke-width: 1.4; stroke-linejoin: round; }
+.plate-part:hover .plate-obj { fill: oklch(52% 0.19 255 / .07); }
+.plate-balloon { fill: var(--paper-solid); stroke: oklch(24% 0.02 265); stroke-width: .9; }
+.plate-num { font: 700 7.5px var(--font-mono); fill: oklch(24% 0.02 265); pointer-events: none; }
+.plate-part.is-current .plate-obj, .plate-part.is-current .plate-balloon { stroke: var(--accent-text); stroke-width: 2; }
+.plate-part.is-skipped { cursor: default; }
+.plate-part.is-skipped .plate-obj { fill: url(#plate-hatch); stroke: oklch(48% 0.015 265); stroke-width: 1; }
+.plate-part.is-skipped .plate-balloon { stroke-dasharray: 2 1.5; }
+.plate-hatch-line { stroke: oklch(48% 0.015 265); stroke-width: .7; }
+.plate-part.is-selected .plate-obj, .plate-part.is-selected .plate-balloon { stroke: var(--bad-text); stroke-width: 2.4; }
 
 .plate-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .plate-list { list-style: none; display: flex; flex-direction: column; border-radius: 14px; overflow: hidden;
   background: rgba(255, 255, 255, .45); border: 1px solid rgba(255, 255, 255, .6); }
 .plate-list li + li { border-top: 1px solid rgba(0, 0, 0, .06); }
-.plate-item { width: 100%; min-height: 44px; display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 10px;
+.plate-item { width: 100%; min-height: 44px; display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px;
   padding: 10px 14px; background: none; border: 0; text-align: left; font: 500 14px/1.3 var(--font-sans); color: var(--text); cursor: pointer; }
 .plate-item:hover:not(:disabled) { background: rgba(255, 255, 255, .55); }
 .plate-item:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
@@ -938,9 +975,11 @@ body.is-scrolled .topbar {
 .plate-item.is-skipped .plate-name { text-decoration: line-through; text-decoration-thickness: 1px; }
 .plate-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plate-state { font: 600 11px var(--font-mono); color: var(--text-faint); letter-spacing: .02em; }
-.plate-dot { width: 10px; height: 10px; border-radius: 3px; background: rgba(28, 28, 30, .22); border: 1px solid var(--text-dim); }
-.plate-dot.is-current { background: color-mix(in srgb, var(--accent) 45%, white); border-color: var(--accent-text); }
-.plate-dot.is-skipped { background: transparent; border-style: dashed; border-color: var(--text-faint); }
+/* The list's number matches the balloon on the drawing. */
+.plate-dot { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 700 9.5px/1 var(--font-mono);
+  background: var(--paper-solid); border: 1.2px solid oklch(24% 0.02 265); color: oklch(24% 0.02 265); }
+.plate-dot.is-current { border-color: var(--accent-text); color: var(--accent-text); border-width: 2px; }
+.plate-dot.is-skipped { border-style: dashed; border-color: var(--text-faint); color: var(--text-faint); }
 .plate-confirm-text { margin: 0 0 10px; font-size: 14px; color: var(--text); text-wrap: pretty; }
 .plate-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
 .plate-action .log-empty { margin: 0; }
@@ -949,7 +988,7 @@ body.is-scrolled .topbar {
   .plate-layout { grid-template-columns: 1fr; }
   .plate-map { max-width: 320px; margin: 0 auto; }
 }
-@media (prefers-reduced-motion: reduce) { .plate-obj.is-current { animation: none; } }
+
 @media (prefers-contrast: more) {
   .plate-obj { stroke: var(--text); }
   .plate-grid line { stroke: rgba(28, 28, 30, .2); }
@@ -961,3 +1000,23 @@ body.is-scrolled .topbar {
 #spoolman-result.is-bad { color: var(--bad-text); }
 .spool-src { font: 600 10px var(--font-mono); letter-spacing: .03em; padding: 1px 6px; border-radius: 999px;
   background: rgba(28, 28, 30, .07); color: var(--text-dim); vertical-align: 1px; }
+
+/* ---- finding and testing printers (Fleet -> Add a printer) ---------------- */
+.find-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 4px 0 12px; }
+.find-note { font-size: 12.5px; color: var(--text-faint); flex: 1 1 260px; }
+.found-list { list-style: none; margin: 0 0 14px; padding: 0; border-radius: 12px; overflow: hidden;
+  border: 1px solid oklch(30% 0.02 265 / .12); background: var(--paper-solid); }
+.found { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.found + .found { border-top: 1px solid oklch(30% 0.02 265 / .08); }
+.found-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.found-main b { font-size: 14px; }
+.found-main small { font-size: 12px; color: var(--text-faint); overflow-wrap: anywhere; }
+.found-main small.is-ok { color: var(--ok-text, #1f6f3a); }
+.found-main small.is-warn { color: var(--warn-text, #8a5a00); }
+.found-tag { margin-left: 8px; padding: 2px 7px; border-radius: 999px; font: 700 10px/1.4 var(--font-mono);
+  border: 1px solid oklch(24% 0.02 265 / .5); vertical-align: 1px; }
+.found-added { font: 600 12px var(--font-mono); color: var(--text-faint); }
+.test-result { margin: 10px 0 0; font-size: 13px; padding: 8px 12px; border-radius: 10px; background: var(--paper-solid);
+  border: 1px solid oklch(30% 0.02 265 / .12); }
+.test-result.is-ok { border-color: color-mix(in oklch, #1f6f3a 45%, transparent); }
+.test-result.is-warn { border-color: color-mix(in oklch, #8a5a00 45%, transparent); }

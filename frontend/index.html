@@ -233,6 +233,11 @@
         <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. It connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p></div>
       </div>
       <div id="fleet-registry"></div>
+      <div class="find-row">
+        <button class="btn" type="button" id="fleet-find">Find printers on my network</button>
+        <span class="find-note" id="fleet-find-note">Asks the network who runs Moonraker, then tries port 7125 on your home network. Nothing leaves your network.</span>
+      </div>
+      <ul class="found-list" id="fleet-found" hidden></ul>
       <form id="fleet-add-form" class="inline-form">
         <label class="sr-only" for="fleet-add-name">Printer name</label>
         <input type="text" id="fleet-add-name" placeholder="Name (Bench U1)" maxlength="40" required>
@@ -240,8 +245,10 @@
         <input type="url" id="fleet-add-url" placeholder="http://192.168.1.50:7125" required>
         <label class="sr-only" for="fleet-add-key">Moonraker API key (only if your Moonraker asks for one)</label>
         <input type="password" id="fleet-add-key" placeholder="API key (only if needed)" autocomplete="off" maxlength="128">
+        <button class="btn" type="button" id="fleet-add-test">Test</button>
         <button class="btn primary" type="submit">Add printer</button>
       </form>
+      <p class="test-result" id="fleet-test-result" role="status" hidden></p>
     </section>
 
     <!-- Folded into this tab so every section is always in the tab bar. -->
@@ -450,7 +457,7 @@
         <div class="card-head"><div><h2>Objects on the plate</h2>
           <p class="card-sub" id="plate-sub">If one fails, skip just that one - the rest keep printing.</p></div></div>
         <div class="plate-layout" id="plate-body">
-          <svg class="plate-map" id="plate-map" viewBox="-6 -6 282 298" role="img" aria-labelledby="plate-map-title">
+          <svg class="plate-map" id="plate-map" viewBox="-30 -6 308 322" role="img" aria-labelledby="plate-map-title">
             <title id="plate-map-title">The 270 by 270 mm bed, seen from above, with each object on it</title>
           </svg>
           <div class="plate-side">
@@ -587,6 +594,27 @@
         </section>
       </div>
     </section>
+
+    <section id="tab-layerplan" class="tab-sub" aria-labelledby="sub-layerplan-title">
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed-nozzle planner</h2>
+        <p>A different nozzle and layer height on each toolhead: fine detail where it shows, thick fast layers inside</p></div>
+      <section class="card liquid-glass lp-card">
+        <div class="card-head"><div><h2>Plan the layers</h2><p class="card-sub">Pick each toolhead's nozzle and the layer height you'd like. The planner finds the shared layer grid, the way mixed-nozzle slicers do, and checks each height against Snapmaker's U1 profile for that nozzle.</p></div>
+          <button class="btn small" type="button" id="lp-example">Try the winning example</button></div>
+        <div class="lp-layout">
+          <form class="lp-form" id="lp-form" novalidate>
+            <div class="lp-rows" id="lp-rows"></div>
+            <div class="lp-more">
+              <label>Part height <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
+              <label class="switch" for="lp-exact"><span class="switch-label">Exact heights (slower to slice)</span>
+                <input type="checkbox" id="lp-exact"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label>
+            </div>
+          </form>
+          <div class="lp-out" id="lp-out" aria-live="polite"></div>
+        </div>
+        <p class="lp-source">The idea: LixNix's Full Multi-Nozzle Printing, a Tier 1 winner of Snapmaker's Innovation Fund. The grid rule is rewritten here from its description; the slicer has the final word, so check its preview before printing. Layer limits: Snapmaker's U1 machine profiles. Print it with a slicer that supports per-toolhead layer heights; Confirm Print then checks each toolhead's nozzle before it starts.</p>
+      </section>
+    </section>
   </section>
 
 
@@ -630,6 +658,11 @@
           <div id="st-palette"></div>
         </details>
 
+        <label class="switch st-auto" for="st-fit">
+          <span class="switch-label">Fit the photo's light and dark to these filaments</span>
+          <input type="checkbox" id="st-fit" checked>
+          <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
+        </label>
         <label class="switch st-auto" for="st-auto">
           <span class="switch-label">Let the studio choose where colours change</span>
           <input type="checkbox" id="st-auto" checked>

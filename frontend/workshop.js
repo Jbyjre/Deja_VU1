@@ -115,7 +115,9 @@ const Workshop = (() => {
 
   function connect() {
     if (!liveData()) { live.mode = 'off'; badge(); tintRoom({}); return; }
-    if (!('WebSocket' in window)) { startPolling(); return; }
+    // The online demo plays a recording through the same requests polling
+    // makes (app.js, "the online demo"); there is no server to open a socket to.
+    if (!('WebSocket' in window) || tourOn()) { startPolling(); return; }
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     // demo=1 only when demo data is on: a real printer's live feed must
     // never be asked for (or labelled as) simulated data.
@@ -171,7 +173,7 @@ const Workshop = (() => {
       // Polling started because the WebSocket failed - often just a server
       // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
       // stops this polling (ws.onopen).
-      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws) connect();
+      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws && !tourOn()) connect();
     };
     once();
     live.poll = setInterval(once, 1000);
@@ -189,7 +191,7 @@ const Workshop = (() => {
   setInterval(() => {
     if (!isLive()) return;
     const age = (performance.now() - live.lastAt) / 1000;
-    const how = live.mode === 'ws' ? 'Live' : 'Polling 1 s';
+    const how = live.mode === 'ws' ? 'Live' : tourOn() ? 'Recording' : 'Polling 1 s';
     $('rb-live-text').textContent = live.lastAt ? `${how} · ${age < 1 ? age.toFixed(1) : Math.round(age)} s` : how;
     $('rb-live').classList.toggle('is-stale', age > 3);
   }, 250);
@@ -550,8 +552,54 @@ const Workshop = (() => {
     renderChip();
   }
 
+  /* ---- finding and testing printers (backend/discovery.py) ---- */
+  function describeProbe(r) {
+    if (r.ok && !r.error) return `Moonraker ${r.moonraker_version || ''} answered, Klipper is ready${r.u1 ? ', and it reports Snapmaker\'s U1 objects' : ''}${r.toolheads ? ` · ${r.toolheads} toolhead${r.toolheads === 1 ? '' : 's'}` : ''}.`;
+    return r.error || 'No answer';
+  }
+
+  async function findPrinters(btn) {
+    btn.disabled = true; btn.textContent = 'Looking…';
+    $('fleet-find-note').textContent = 'Asking the network, then trying port 7125 on each address - a few seconds.';
+    const r = await postJSON('/api/printers/discover', {});
+    btn.disabled = false; btn.textContent = 'Find printers on my network';
+    const list = $('fleet-found');
+    if (!r.ok) { $('fleet-find-note').textContent = r.body.error || 'Couldn\'t look'; list.hidden = true; return; }
+    const found = r.body.printers || [];
+    $('fleet-find-note').textContent = `${found.length ? `Found ${found.length}` : 'Found nothing'} in ${r.body.seconds} s (${(r.body.how || []).join('; ')}).`
+      + (found.length ? '' : ' Check the printer is on and on the same network, or type its address below.');
+    list.hidden = !found.length;
+    list.innerHTML = found.map((p, i) => `<li class="found">
+      <span class="found-main"><b>${esc(p.name || p.ip)}</b>${p.u1 ? '<span class="found-tag">U1</span>' : ''}
+        <small>http://${esc(p.ip)}:${p.port} · ${esc(p.source)}</small>
+        <small class="${p.ok && !p.error ? 'is-ok' : 'is-warn'}">${esc(describeProbe(p))}</small></span>
+      ${p.added ? '<span class="found-added">Added</span>' : `<button class="btn small" type="button" data-use="${i}">Use this</button>`}</li>`).join('');
+    list.querySelectorAll('[data-use]').forEach(b => b.addEventListener('click', () => {
+      const p = found[+b.dataset.use];
+      $('fleet-add-url').value = `http://${p.ip}:${p.port}`;
+      if (!$('fleet-add-name').value) $('fleet-add-name').value = (p.name || `U1 ${p.ip.split('.').pop()}`).slice(0, 40);
+      if (p.needs_key) $('fleet-add-key').focus(); else $('fleet-add-name').focus();
+      showTest(p);
+    }));
+  }
+
+  function showTest(r) {
+    const out = $('fleet-test-result');
+    out.hidden = false;
+    out.className = `test-result ${r.ok && !r.error ? 'is-ok' : 'is-warn'}`;
+    out.textContent = describeProbe(r);
+  }
+
   function initFleet() {
     $('printer-chip').addEventListener('click', (e) => openPrinterMenu(e.currentTarget, e.detail === 0));
+    $('fleet-find').addEventListener('click', (e) => findPrinters(e.currentTarget));
+    $('fleet-add-test').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true; btn.textContent = 'Testing…';
+      const r = await postJSON('/api/printers/test', { moonraker_url: $('fleet-add-url').value, api_key: $('fleet-add-key').value });
+      btn.disabled = false; btn.textContent = 'Test';
+      showTest(r.ok ? r.body : { ok: false, error: r.body.error });
+    });
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,
@@ -568,12 +616,15 @@ const Workshop = (() => {
    * 4. overview: digital twin, health gauge, chamber
    * ================================================================ */
 
-  /* The digital twin is a live engineering drawing: thin ink lines,
-   * projected from real millimetres, redrawn only when something moves.
+  /* The digital twin is a live engineering drawing: one ink, ISO line
+   * weights, hidden edges dashed, real dimensions, a sheet border and a
+   * title block, projected from the printer's own millimetres and redrawn
+   * as it moves. Click (or tap) a toolhead, a balloon, a part or the bed
+   * for its details.
    *
-   * What it draws, and where each fact comes from:
-   * - The 270 x 270 x 270 mm build volume (Snapmaker's spec page), as a
-   *   dash-dot envelope - the drafting symbol for a travel limit.
+   * Where each fact comes from:
+   * - The 270 x 270 x 270 mm build volume (Snapmaker's spec page), drawn
+   *   as a phantom line - the drafting symbol for a travel limit.
    * - The bed DROPS as Z rises and the toolhead stays at the top. The U1's
    *   bed rides a timing belt (Snapmaker's wiki: removing the transport
    *   screws "releases the tension between the timing belt and the heated
@@ -584,12 +635,12 @@ const Workshop = (() => {
    *   position in the printer's own config, not in anything Moonraker
    *   reports, so the docks are spread evenly across the width: right
    *   order and side, approximate spacing.
-   * - The parts on the plate are the file's own object outlines (Klipper's
+   * - The parts are the file's own object outlines (Klipper's
    *   exclude_object, the same data as Skip one object), extruded from the
-   *   bed to the nozzle. Skipped ones are dashed and crossed out.
-   *
-   * Drag (or use the arrow keys) to turn it; the view buttons jump to the
-   * standard 3D, front and top views. */
+   *   bed to the nozzle. Skipped ones stop growing and are crossed out.
+   * - Nozzle size and the swap counters in a toolhead's details come from
+   *   the U1's firmware (u1-klipper extruder.get_status), when it reports
+   *   them. */
   const WF = {
     BED: 270,                       // build volume, mm, each way
     TOP: 270,                       // world height of the nozzle tip
@@ -597,65 +648,68 @@ const Workshop = (() => {
     HEAD: { w: 42, d: 44, h: 54, cone: 9 },
     VIEWS: { iso: [-34, 27], front: [0, 0], top: [0, 90] },
     VIEW_WORD: { iso: '3D', front: 'Front', top: 'Top' },
+    PX_PER_MM: 96 / 25.4,           // CSS pixels in a millimetre
   };
   const twin = {
     built: false, yaw: WF.VIEWS.iso[0], pitch: WF.VIEWS.iso[1], view: 'iso',
-    pos: [135, 135, 0], state: null, trail: [], trailZ: null,
-    w: 0, h: 0, queued: false, label: '', paths: {},
+    pos: [135, 135, 0], state: null, trail: [], trailZ: null, job: null, jobAt: 0,
+    w: 0, h: 0, queued: false, label: '', paths: {}, pick: null,
   };
+  const BUCKETS = ['grid', 'env', 'frame', 'trail', 'hid', 'part-hid', 'vis', 'part', 'head', 'fault',
+    'skip', 'sel-hid', 'sel', 'dim', 'axis'];
 
   function buildTwin() {
     const host = $('twin-host');
     host.innerHTML = `
       <div class="wf" id="wf">
         <svg class="wf-svg" id="wf-svg" role="img" tabindex="0" aria-roledescription="drawing"
-             aria-describedby="twin-readout" aria-label="Line drawing of the printer">
-          <g class="wf-ink">
-            <path class="wf-env" data-k="env"/>
-            <path class="wf-grid" data-k="grid"/><path class="wf-bed" data-k="bed"/>
-            <path class="wf-hatch" data-k="hatch"/><path class="wf-part" data-k="part"/>
-            <path class="wf-part skipped" data-k="skipped"/><path class="wf-part current" data-k="current"/>
-            <path class="wf-trail" data-k="trail"/>
-            <path class="wf-rail" data-k="rail"/>
-            <path class="wf-dock" data-k="dock"/><path class="wf-parked" data-k="parked"/>
-            <path class="wf-parked fault" data-k="fault"/>
-            <path class="wf-head" data-k="head"/>
-            <path class="wf-dim" data-k="dim"/>
-          </g>
-          <g class="wf-docktags" id="wf-docktags"></g>
-          <g class="wf-live">
-            <path class="wf-leader" id="wf-leader"/>
-            <circle class="wf-balloon on" id="wf-on-ring" r="10.5"/>
-            <text class="wf-bn on" id="wf-on-name" text-anchor="middle"></text>
+             aria-describedby="twin-readout" aria-label="Line drawing of the printer" shape-rendering="geometricPrecision">
+          <defs><marker id="wf-arrow" viewBox="0 0 10 4" refX="10" refY="2" markerWidth="10" markerHeight="4"
+            markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 2L0 4z" class="wf-arrowhead"/></marker></defs>
+          <g class="wf-ink">${BUCKETS.map(k => `<path class="wf-${k}" data-k="${k}"/>`).join('')}</g>
+          <g class="wf-dims" id="wf-dims"></g>
+          <g class="wf-hits" id="wf-hits"></g>
+          <g class="wf-hits"><polygon id="wf-hit-on"><title></title></polygon></g>
+          <g class="wf-tags" id="wf-tags"></g>
+          <g class="wf-tags" id="wf-on">
+            <path class="wf-leader" id="wf-on-leader"/>
+            <g class="wf-balloon on" id="wf-on-balloon"><circle r="10.5"/><text text-anchor="middle"></text><rect class="wf-swatch" width="7" height="7"/></g>
             <text class="wf-note" id="wf-on-temp"></text>
-            <circle class="wf-tip" id="wf-tip" r="2.4"/>
-            <text class="wf-dimtext" id="wf-ztext"></text>
+            <circle class="wf-tip" id="wf-tip" r="2.5"/>
           </g>
+          <g class="wf-sheet" id="wf-sheet" aria-hidden="true"></g>
         </svg>
-        <div class="wf-title" id="wf-title" aria-hidden="true"></div>
       </div>
+      <div class="wf-picks" id="wf-picks" role="group" aria-label="Show details for"></div>
+      <div class="wf-detail" id="wf-detail" hidden></div>
       <div class="twin-readout" id="twin-readout"></div>`;
     const svg = $('wf-svg');
     twin.paths = {};
     svg.querySelectorAll('path[data-k]').forEach(p => { twin.paths[p.dataset.k] = p; });
     twin.w = 0;
 
+    // A press that moves is a turn; one that doesn't is a click on a part.
     let drag = null;
     svg.addEventListener('pointerdown', (e) => {
-      drag = { x: e.clientX, y: e.clientY, yaw: twin.yaw, pitch: twin.pitch };
-      svg.setPointerCapture?.(e.pointerId);
+      drag = { x: e.clientX, y: e.clientY, yaw: twin.yaw, pitch: twin.pitch, moved: false, target: e.target };
     });
     svg.addEventListener('pointermove', (e) => {
       if (!drag) return;
+      if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+      if (!drag.moved) { drag.moved = true; svg.setPointerCapture?.(e.pointerId); }
       setView(drag.yaw + (e.clientX - drag.x) * 0.5, drag.pitch + (e.clientY - drag.y) * 0.4, null, true);
     });
-    // Released anywhere: the drawing holds pointer capture during a drag, so
-    // the release arrives here even when a finger has left it. On the
-    // drawing rather than the document, a rebuilt twin leaves no listeners.
-    const release = () => { drag = null; };
-    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => svg.addEventListener(type, release));
+    svg.addEventListener('pointerup', () => {
+      if (drag && !drag.moved) {
+        const hit = drag.target.closest && drag.target.closest('[data-pick]');
+        choose(hit ? hit.dataset.pick : null);
+      }
+      drag = null;
+    });
+    ['pointercancel', 'lostpointercapture'].forEach(type => svg.addEventListener(type, () => { drag = null; }));
     svg.addEventListener('dblclick', () => setView(...WF.VIEWS.iso, 'iso'));
     svg.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { choose(null); return; }
       const turn = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 8], ArrowDown: [0, -8] }[e.key];
       if (!turn) return;
       e.preventDefault();
@@ -666,6 +720,20 @@ const Workshop = (() => {
       if (b.dataset.wired) return;
       b.dataset.wired = '1';
       b.addEventListener('click', () => setView(...WF.VIEWS[b.dataset.view], b.dataset.view));
+    });
+    $('wf-picks').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pick]');
+      if (b) choose(twin.pick === b.dataset.pick ? null : b.dataset.pick);
+    });
+    $('wf-detail').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act]');
+      if (!b) return;
+      if (b.dataset.act === 'close') choose(null);
+      if (b.dataset.act === 'control') showTab('control');
+      if (b.dataset.act === 'skip' && typeof plateUI !== 'undefined') {
+        plateUI.selected = b.dataset.name; plateUI.confirmUntil = 0; plateUI.sig = '';
+        showTab('control');
+      }
     });
     // The drawing works in CSS pixels (so its labels stay a readable size
     // on a phone), which means it is redrawn when the card changes width.
@@ -689,38 +757,63 @@ const Workshop = (() => {
     tween('wf-view', [yaw, pitch], ([y, p]) => { twin.yaw = y; twin.pitch = p; queueTwin(); });
   }
 
-  /* Many readings can arrive in one animation frame (position, view);
-   * they all land here and the drawing is made once, after them - and at
-   * most about 30 times a second, which is plenty for a line drawing of a
-   * machine moving at printing speed, and leaves the rest of the page its
-   * frames. Dragging draws straight away (setView), so turning stays live. */
+  /* Readings arriving together (position, view) draw once, after them,
+   * at most about 30 times a second: smooth for a machine moving at
+   * printing speed, and it leaves the rest of the page its frames
+   * (measured: drawing every frame cost the Overview ~2 fps more on a
+   * slowed CPU). Dragging draws straight away (setView). */
   function queueTwin() {
     if (twin.queued) return;
     twin.queued = true;
-    const go = () => { twin.queued = false; drawTwin(); };
-    const wait = 32 - (performance.now() - (twin.drawnAt || 0));
-    if (wait <= 0) queueMicrotask(go); else setTimeout(go, wait);
+    const wait = Math.max(0, 32 - (performance.now() - (twin.drawnAt || 0)));
+    setTimeout(() => requestAnimationFrame(() => { twin.queued = false; drawTwin(); }), wait);
   }
 
-  /* ---- geometry, in printer millimetres (X right, Y back, Z up) ---- */
-  function box(segs, x0, y0, z0, x1, y1, z1) {
-    const c = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-    for (let i = 0; i < 4; i++) {
-      const [ax, ay] = c[i], [bx, by] = c[(i + 1) % 4];
-      segs.push([ax, ay, z0, bx, by, z0], [ax, ay, z1, bx, by, z1], [ax, ay, z0, ax, ay, z1]);
+  /* ---- solids, in printer millimetres (X right, Y back, Z up) ----------
+   * Each solid is a list of edges, and each edge knows the outward normals
+   * of the two faces it joins. From the view direction, an edge between
+   * two faces turned away from you is hidden: drawn thin and dashed, the
+   * way a drawing shows the far side of a part. */
+  function boxSolid(x0, y0, z0, x1, y1, z1) {
+    const X = [[-1, 0, 0], [1, 0, 0]], Y = [[0, -1, 0], [0, 1, 0]], Z = [[0, 0, -1], [0, 0, 1]];
+    const xs = [x0, x1], ys = [y0, y1], zs = [z0, z1], edges = [];
+    for (const j of [0, 1]) for (const k of [0, 1]) {
+      edges.push({ a: [x0, ys[j], zs[k]], b: [x1, ys[j], zs[k]], n: [Y[j], Z[k]] });   // along X
+      edges.push({ a: [xs[j], y0, zs[k]], b: [xs[j], y1, zs[k]], n: [X[j], Z[k]] });   // along Y
+      edges.push({ a: [xs[j], ys[k], z0], b: [xs[j], ys[k], z1], n: [X[j], Y[k]] });   // along Z
     }
+    return edges;
   }
-  /* A toolhead: body, the cone down to the nozzle, and the coupling plate
-   * on top that the dock's kinematic balls seat into. */
-  function head(segs, x, y, zTip) {
+  /* A polygon on the bed, extruded from z0 to z1. */
+  function prismSolid(poly, z0, z1) {
+    let area = 0;
+    poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; area += p[0] * q[1] - q[0] * p[1]; });
+    const pts = area < 0 ? poly.slice().reverse() : poly;      // counter-clockwise, seen from above
+    const n = pts.length, side = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], q = pts[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy) || 1;
+      side.push([dy / len, -dx / len, 0]);
+    }
+    const every = n <= 16 ? 1 : Math.ceil(n / 8), edges = [];
+    for (let i = 0; i < n; i++) {
+      const p = pts[i], q = pts[(i + 1) % n];
+      edges.push({ a: [p[0], p[1], z0], b: [q[0], q[1], z0], n: [side[i], [0, 0, -1]] });
+      edges.push({ a: [p[0], p[1], z1], b: [q[0], q[1], z1], n: [side[i], [0, 0, 1]] });
+      if (i % every === 0) edges.push({ a: [p[0], p[1], z0], b: [p[0], p[1], z1], n: [side[(i - 1 + n) % n], side[i]] });
+    }
+    return edges;
+  }
+  /* A toolhead: body, the coupling plate the dock seats into, the nozzle. */
+  function headSolid(x, y, zTip) {
     const { w, d, h, cone } = WF.HEAD, hw = w / 2, hd = d / 2, base = zTip + cone;
-    box(segs, x - hw, y - hd, base, x + hw, y + hd, base + h);
-    box(segs, x - hw + 6, y - hd + 6, base + h, x + hw - 6, y + hd - 6, base + h + 5);
-    const c = [[-4, -4], [4, -4], [4, 4], [-4, 4]];
+    const edges = boxSolid(x - hw, y - hd, base, x + hw, y + hd, base + h)
+      .concat(boxSolid(x - hw + 7, y - hd + 7, base + h, x + hw - 7, y + hd - 7, base + h + 5));
+    const c = [[-5, -5], [5, -5], [5, 5], [-5, 5]];
     c.forEach(([dx, dy], i) => {
       const [ex, ey] = c[(i + 1) % 4];
-      segs.push([x, y, zTip, x + dx, y + dy, base], [x + dx, y + dy, base, x + ex, y + ey, base]);
+      edges.push({ a: [x, y, zTip], b: [x + dx, y + dy, base] }, { a: [x + dx, y + dy, base], b: [x + ex, y + ey, base] });
     });
+    return edges;
   }
   function dockX(i, n) { return WF.BED * (i + 0.5) / n; }
 
@@ -732,34 +825,67 @@ const Workshop = (() => {
     const raw = (x, y, z) => {
       const px = x - C[0], py = y - C[1], pz = z - C[2];
       const x1 = px * cy - py * sy, y1 = px * sy + py * cy;
-      return [x1, -(pz * cp + y1 * sp), y1 * cp - pz * sp];   // screen x, screen y, depth (bigger = farther)
+      return [x1, -(pz * cp + y1 * sp)];
     };
-    // Fit the machine (build volume, rails, docks and their balloons) to
-    // the drawing area for this view.
+    // Fit the machine (build volume, rails, docks, balloons) to the sheet,
+    // leaving the bottom strip for the title block.
     const pts = [];
     for (const x of [-26, 296]) for (const y of [-22, 346]) for (const z of [0, WF.TOP + 104]) pts.push(raw(x, y, z));
-    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), ds = pts.map(p => p[2]);
-    const padX = 14, padTop = 16, padBottom = 34;
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    // Front and top views carry an X dimension under the drawing.
+    const padX = 22, padTop = 18, padBottom = twin.view === 'front' || twin.view === 'top' ? 70 : 46;
     const s = Math.min((twin.w - 2 * padX) / (Math.max(...xs) - Math.min(...xs)),
       (twin.h - padTop - padBottom) / (Math.max(...ys) - Math.min(...ys)));
     const ox = twin.w / 2 - s * (Math.max(...xs) + Math.min(...xs)) / 2;
     const oy = padTop + (twin.h - padTop - padBottom) / 2 - s * (Math.max(...ys) + Math.min(...ys)) / 2;
-    const midDepth = (Math.max(...ds) + Math.min(...ds)) / 2;
-    const P = (x, y, z) => { const r = raw(x, y, z); return [ox + s * r[0], oy + s * r[1], r[2]]; };
-    return { P };
+    // Snap to the half pixel, so 1 px lines land on whole device pixels.
+    const snap = v => Math.round(v - 0.5) + 0.5;
+    const P = (x, y, z) => { const r = raw(x, y, z); return [snap(ox + s * r[0]), snap(oy + s * r[1])]; };
+    // Toward the viewer, in printer coordinates: a face whose outward
+    // normal points this way is seen.
+    const eye = [-sy * cp, -cy * cp, sp];
+    const facing = n => n[0] * eye[0] + n[1] * eye[1] + n[2] * eye[2] > 1e-6;
+    return { P, s, facing };
   }
 
-  function pathOf(segs, P) {
+  /* Split a solid's edges into seen and hidden. */
+  function sortEdges(edges, facing, seen, hidden) {
+    for (const e of edges) {
+      const out = !e.n || facing(e.n[0]) || facing(e.n[1]);
+      (out ? seen : hidden).push(e);
+    }
+  }
+  function pathOf(edges, P) {
     let d = '';
-    for (const [ax, ay, az, bx, by, bz] of segs) {
-      const a = P(ax, ay, az), b = P(bx, by, bz);
-      d += `M${a[0].toFixed(1)} ${a[1].toFixed(1)}L${b[0].toFixed(1)} ${b[1].toFixed(1)}`;
+    for (const e of edges) {
+      const a = P(...e.a), b = P(...e.b);
+      if (a[0] === b[0] && a[1] === b[1]) continue;
+      d += `M${a[0]} ${a[1]}L${b[0]} ${b[1]}`;
     }
     return d;
   }
   function setPath(key, d) {
     const p = twin.paths[key];
     if (p && p.getAttribute('d') !== d) p.setAttribute('d', d);
+  }
+  /* The outline (convex hull) of some projected points: a click target. */
+  function hull(points) {
+    const p = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [], upper = [];
+    for (const q of p) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop(); lower.push(q); }
+    for (const q of p.reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop(); upper.push(q); }
+    return lower.slice(0, -1).concat(upper.slice(0, -1)).map(q => q.join(',')).join(' ');
+  }
+  const hullOf = (edges, P) => hull(edges.flatMap(e => [P(...e.a), P(...e.b)]));
+
+  /* Set attributes (and text) only when they change. */
+  function attrs(el, values) {
+    if (!el) return;
+    for (const [k, v] of Object.entries(values)) {
+      if (k === 'text') { if (el.textContent !== v) el.textContent = v; }
+      else if (el.getAttribute(k) !== String(v)) el.setAttribute(k, v);
+    }
   }
 
   function drawTwin(measure) {
@@ -773,153 +899,194 @@ const Workshop = (() => {
     }
     twin.drawnAt = performance.now();
     const st = twin.state, [x, y, z] = twin.pos, T = WF.TOP, B = WF.BED;
-    const { P } = projector();
+    const { P, s, facing } = projector();
     const bedZ = T - Math.max(0, Math.min(B, z));
-    const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
     const heads = Object.entries(st.toolheads || {});
+    const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
+    const pick = twin.pick || '';
+    const out = Object.fromEntries(BUCKETS.map(k => [k, []]));
+    const hits = [];
 
-    // Build volume envelope, the bed plate at its height, a 45 mm grid.
-    const env = [];
-    box(env, 0, 0, 0, B, B, T);
-    setPath('env', pathOf(env, P));
-    const bed = [];
-    box(bed, -6, -6, bedZ - 9, B + 6, B + 6, bedZ);
-    setPath('bed', pathOf(bed, P));
-    const grid = [];
-    for (let g = 45; g < B; g += 45) grid.push([g, 0, bedZ, g, B, bedZ], [0, g, bedZ, B, g, bedZ]);
-    setPath('grid', pathOf(grid, P));
+    // Build volume (phantom line), the frame's top rails and rear beam.
+    out.env = boxSolid(0, 0, 0, B, B, T);
+    const rz = T + WF.HEAD.cone + WF.HEAD.h * 0.7, by = WF.DOCK_Y, bz = T + WF.HEAD.cone;
+    out.frame.push(
+      { a: [-24, -20, rz], b: [-24, by + 34, rz] }, { a: [294, -20, rz], b: [294, by + 34, rz] },
+      { a: [-24, -20, rz], b: [294, -20, rz] },
+      { a: [-24, y - 5, rz], b: [294, y - 5, rz] }, { a: [-24, y + 5, rz], b: [294, y + 5, rz] });
+    sortEdges(boxSolid(-24, by + 26, bz + 10, 294, by + 34, bz + 22), facing, out.frame, out.hid);
 
-    // The parts: each object's outline, from the bed up to the nozzle.
+    // The bed plate at its height, with a 45 mm grid on its surface.
+    const bedEdges = boxSolid(-6, -6, bedZ - 9, B + 6, B + 6, bedZ);
+    sortEdges(bedEdges, facing, pick === 'bed' ? out.sel : out.vis, pick === 'bed' ? out['sel-hid'] : out.hid);
+    if (facing([0, 0, 1])) for (let g = 45; g < B; g += 45) out.grid.push({ a: [g, 0, bedZ], b: [g, B, bedZ] }, { a: [0, g, bedZ], b: [B, g, bedZ] });
+    hits.push(['bed', hullOf(bedEdges, P), 'The bed']);
+
+    // The parts: each object's outline, from the bed to the nozzle.
     const printing = ['printing', 'paused'].includes(st.state);
     const plate = st.objects && Array.isArray(st.objects.list) ? st.objects : null;
-    const parts = { part: [], skipped: [], current: [], hatch: [] };
     if (plate && printing) {
       const excluded = new Set(plate.excluded || []);
       for (const o of plate.list) {
         const poly = Array.isArray(o.polygon) && o.polygon.length >= 3 ? o.polygon : null;
         if (!poly) continue;
-        const key = excluded.has(o.name) ? 'skipped' : (o.name === plate.current ? 'current' : 'part');
-        const segs = parts[key];
-        // A skipped object stops growing; drawn as a thin outline at the bed.
-        const zTop = key === 'skipped' ? bedZ + Math.min(z, 2) : T;
-        const every = poly.length <= 16 ? 1 : Math.ceil(poly.length / 8);
-        poly.forEach((p, i) => {
-          const q = poly[(i + 1) % poly.length];
-          segs.push([p[0], p[1], bedZ, q[0], q[1], bedZ], [p[0], p[1], zTop, q[0], q[1], zTop]);
-          if (i % every === 0) segs.push([p[0], p[1], bedZ, p[0], p[1], zTop]);
-        });
-        if (key === 'skipped') {
+        const skipped = excluded.has(o.name);
+        const edges = prismSolid(poly, bedZ, skipped ? bedZ + Math.min(z, 2) : T);
+        const id = `obj:${o.name}`;
+        if (pick === id) sortEdges(edges, facing, out.sel, out['sel-hid']);
+        else if (skipped) out.skip.push(...edges);
+        else sortEdges(edges, facing, out.part, out['part-hid']);
+        if (skipped) {
           const xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
-          const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-          segs.push([x0, y0, zTop, x1, y1, zTop], [x0, y1, zTop, x1, y0, zTop]);
-        } else {
-          // Layer lines on the walls: at most ten, evenly up the part.
-          const h = zTop - bedZ, n = Math.min(10, Math.floor(h / 4));
-          for (let k = 1; k < n; k++) {
-            const lz = bedZ + h * k / n;
-            poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; parts.hatch.push([p[0], p[1], lz, q[0], q[1], lz]); });
-          }
+          const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), zt = bedZ + Math.min(z, 2);
+          out.skip.push({ a: [x0, y0, zt], b: [x1, y1, zt] }, { a: [x0, y1, zt], b: [x1, y0, zt] });
         }
+        hits.push([id, hullOf(edges, P), o.name]);
       }
     }
-    Object.entries(parts).forEach(([k, segs]) => setPath(k, pathOf(segs, P)));
 
     // Where the nozzle has just been, on the layer it is printing.
-    const trail = twin.trail.length > 1 && printing
-      ? twin.trail.slice(1).map((p, i) => [twin.trail[i][0], twin.trail[i][1], T, p[0], p[1], T]) : [];
-    setPath('trail', pathOf(trail, P));
+    if (twin.trail.length > 1 && printing) {
+      for (let i = 1; i < twin.trail.length; i++) {
+        out.trail.push({ a: [twin.trail[i - 1][0], twin.trail[i - 1][1], T], b: [twin.trail[i][0], twin.trail[i][1], T] });
+      }
+    }
 
-    // CoreXY motion: two Y rails, the X beam at the head's Y.
-    const rz = T + WF.HEAD.cone + WF.HEAD.h * 0.7;
-    setPath('rail', pathOf([
-      [-24, -20, rz, -24, 334, rz], [294, -20, rz, 294, 334, rz],
-      [-24, y - 5, rz, 294, y - 5, rz], [-24, y + 5, rz, 294, y + 5, rz],
-    ], P));
-
-    // Rear beam and the four docks; a parked head sits in its dock.
-    const dock = [], parked = [], fault = [], headSegs = [];
-    const by = WF.DOCK_Y, bz = T + WF.HEAD.cone;
-    box(dock, -24, by + 26, bz + 10, 294, by + 34, bz + 22);
+    // Docks on the rear beam; a parked head sits in its dock.
     heads.forEach(([name, d], i) => {
       const dx = dockX(i, heads.length);
-      dock.push([dx - 26, by + 26, bz, dx - 26, by + 26, bz + 46], [dx + 26, by + 26, bz, dx + 26, by + 26, bz + 46],
-        [dx - 26, by + 26, bz, dx - 26, by + 10, bz], [dx + 26, by + 26, bz, dx + 26, by + 10, bz]);
-      if (name !== active) head(d.status === 'error' ? fault : parked, dx, by, T);
+      out.frame.push({ a: [dx - 27, by + 26, bz], b: [dx - 27, by + 26, bz + 46] }, { a: [dx + 27, by + 26, bz], b: [dx + 27, by + 26, bz + 46] },
+        { a: [dx - 27, by + 26, bz], b: [dx - 27, by + 10, bz] }, { a: [dx + 27, by + 26, bz], b: [dx + 27, by + 26 - 16, bz] });
+      if (name === active) return;
+      const edges = headSolid(dx, by, T), id = `head:${name}`;
+      const seen = pick === id ? out.sel : (d.status === 'error' ? out.fault : out.vis);
+      sortEdges(edges, facing, seen, pick === id ? out['sel-hid'] : out.hid);
+      hits.push([id, hullOf(edges, P), name]);
     });
-    setPath('dock', pathOf(dock, P));
-    setPath('parked', pathOf(parked, P));
-    setPath('fault', pathOf(fault, P));
-    if (active) head(headSegs, x, y, T);
-    else box(headSegs, x - 20, y - 12, rz - 6, x + 20, y + 12, rz + 6);   // the empty carriage
-    setPath('head', pathOf(headSegs, P));
-
-    // Z, dimensioned like a drawing: bed surface to the nozzle tip.
-    const dimX = B + 22;
-    const a = P(dimX, 0, bedZ), b = P(dimX, 0, T);
-    let dd = pathOf([[B + 2, 0, bedZ, dimX + 8, 0, bedZ], [B + 2, 0, T, dimX + 8, 0, T], [dimX, 0, bedZ, dimX, 0, T]], P);
-    if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 14) {
-      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      const tick = (p, dir) => [0.45, -0.45].map(t =>
-        `M${p[0].toFixed(1)} ${p[1].toFixed(1)}l${(Math.cos(ang + dir + t) * 6).toFixed(1)} ${(Math.sin(ang + dir + t) * 6).toFixed(1)}`).join('');
-      dd += tick(a, 0) + tick(b, Math.PI);
+    // The head on the carriage (or the empty carriage).
+    const onHit = $('wf-hit-on');
+    if (active) {
+      const edges = headSolid(x, y, T), id = `head:${active}`;
+      sortEdges(edges, facing, pick === id ? out.sel : out.head, pick === id ? out['sel-hid'] : out.hid);
+      attrs(onHit, { points: hullOf(edges, P), 'data-pick': id, style: '' });
+      if (onHit.firstChild.textContent !== active) onHit.firstChild.textContent = active;
+    } else {
+      attrs(onHit, { points: '', style: 'display:none' });
+      sortEdges(boxSolid(x - 20, y - 12, rz - 6, x + 20, y + 12, rz + 6), facing, out.vis, out.hid);
     }
-    setPath('dim', dd);
 
-    drawLabels(P, { x, y, z, heads, active, a, b });
+    // A small axis mark at the bed's origin corner.
+    const o = [0, 0, bedZ];
+    out.axis.push({ a: o, b: [24, 0, bedZ] }, { a: o, b: [0, 24, bedZ] }, { a: o, b: [0, 0, bedZ + 24] });
+
+    for (const k of BUCKETS) if (k !== 'dim') setPath(k, pathOf(out[k], P));
+    drawDims(P, { x, y, z, bedZ });
+    setHTML($('wf-hits'), hits.map(([id, pts, title]) =>
+      `<polygon data-pick="${esc(id)}" points="${pts}"><title>${esc(title)}</title></polygon>`).join(''));
+    drawTags(P, { x, y, z, heads, active, s });
   }
 
-  /* Set attributes and text only when they change: the labels that move
-   * are kept as elements and updated in place, not rebuilt every frame. */
-  function attrs(el, values) {
-    if (!el) return;
-    for (const [k, v] of Object.entries(values)) {
-      if (k === 'text') { if (el.textContent !== v) el.textContent = v; }
-      else if (el.getAttribute(k) !== String(v)) el.setAttribute(k, v);
-    }
+  /* Dimensions, drawn the drafting way: extension lines with a gap at the
+   * part, a thin dimension line with filled arrowheads, the figure upright
+   * (unidirectional) beside it. Z in 3D; X and Z from the front; X and Y
+   * from the top. */
+  function drawDims(P, { x, y, z, bedZ }) {
+    const T = WF.TOP, B = WF.BED, v = twin.view, dims = [];
+    const dim = (a, b, off, label) => {
+      const pa = P(...a), pb = P(...b);
+      const da = P(a[0] + off[0], a[1] + off[1], a[2] + off[2]), db = P(b[0] + off[0], b[1] + off[1], b[2] + off[2]);
+      const len = Math.hypot(db[0] - da[0], db[1] - da[1]);
+      const ext = (p, d) => {
+        const ux = d[0] - p[0], uy = d[1] - p[1], l = Math.hypot(ux, uy) || 1;
+        return `M${(p[0] + ux / l * 3).toFixed(1)} ${(p[1] + uy / l * 3).toFixed(1)}L${(d[0] + ux / l * 4).toFixed(1)} ${(d[1] + uy / l * 4).toFixed(1)}`;
+      };
+      const mx = (da[0] + db[0]) / 2, my = (da[1] + db[1]) / 2;
+      dims.push(`<path class="wf-ext" d="${ext(pa, da)}${ext(pb, db)}"/>`);
+      if (len >= 22) dims.push(`<path class="wf-dimline" d="M${da[0]} ${da[1]}L${db[0]} ${db[1]}" marker-start="url(#wf-arrow)" marker-end="url(#wf-arrow)"/>`);
+      const horiz = Math.abs(db[0] - da[0]) > Math.abs(db[1] - da[1]);
+      dims.push(`<text class="wf-dimtext" x="${(mx + (horiz ? 0 : 7)).toFixed(1)}" y="${(my + (horiz ? -5 : 3.5)).toFixed(1)}" text-anchor="${horiz ? 'middle' : 'start'}">${label}</text>`);
+    };
+    const nb = ' ';
+    if (v !== 'top') dim([B + 6, 0, bedZ], [B + 6, 0, T], [26, 0, 0], `Z${nb}${z.toFixed(2)}`);
+    if (v === 'front') dim([0, 0, 0], [x, 0, 0], [0, 0, -22], `X${nb}${x.toFixed(1)}`);
+    if (v === 'top') dim([0, -6, T], [x, -6, T], [0, -30, 0], `X${nb}${x.toFixed(1)}`);
+    if (v === 'top') dim([0, 0, T], [0, y, T], [-34, 0, 0], `Y${nb}${y.toFixed(1)}`);
+    setHTML($('wf-dims'), dims.join(''));
   }
 
-  function drawLabels(P, { x, y, z, heads, active, a, b }) {
-    const st = twin.state, T = WF.TOP, nb = '\u00a0';
-    // A balloon over each dock - the drafting way to name a part - ringed
-    // in its filament's colour, with a note above it when hot or faulty.
-    // These only move when the view turns, so the group is rebuilt only
-    // when its markup changes.
-    const tags = heads.map(([name, d], i) => {
-      const p = P(dockX(i, heads.length), WF.DOCK_Y + 30, T + WF.HEAD.cone + 70);
-      const cx = p[0].toFixed(1), cy = (p[1] - 4).toFixed(1);
+  /* Balloons name the toolheads, the drafting way: a circle with the
+   * item's name, a leader to the part, a swatch of its filament. Then the
+   * sheet's border and title block. */
+  function drawTags(P, { x, y, z, heads, active, s }) {
+    const st = twin.state, T = WF.TOP, nb = ' ', pick = twin.pick || '';
+    const tags = [];
+    // Close together (a phone, or the docks seen end-on), each filament
+    // swatch moves under its balloon instead of beside it.
+    const spots = heads.map((_, i) => P(dockX(i, heads.length), WF.DOCK_Y + 30, T + WF.HEAD.cone + 70));
+    const crowded = spots.some((p, i) => i && Math.hypot(p[0] - spots[i - 1][0], p[1] - spots[i - 1][1]) < 40);
+    const balloon = (cx, cy, name, d, cls) => {
+      const id = `head:${name}`, on = pick === id ? ' is-picked' : '';
+      const sx = crowded ? cx - 3.5 : cx + 12.5, sy = crowded ? cy + 12.5 : cy - 3.5;
+      return `<g class="wf-balloon ${cls}${on}" data-pick="${esc(id)}">` +
+        `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="10.5"/>` +
+        `<text x="${cx.toFixed(1)}" y="${(cy + 3.5).toFixed(1)}" text-anchor="middle">${esc(name)}</text>` +
+        `<rect class="wf-swatch" x="${sx.toFixed(1)}" y="${sy.toFixed(1)}" width="7" height="7" style="fill:${esc(d.filament_color_hex || '#ffffff')}"/></g>`;
+    };
+    heads.forEach(([name, d], i) => {
+      const p = spots[i];
       const cls = d.status === 'error' ? 'fault' : (name === active ? 'out' : '');
+      tags.push(balloon(p[0], p[1] - 4, name, d, cls));
       const hot = d.target_temperature > 0 || d.temperature >= 50;
-      // The head on the carriage shows its temperature there, not here.
-      const note = d.status === 'error' ? 'fault' : (hot && name !== active ? `${Math.round(d.temperature)}°` : '');
-      return `<circle class="wf-balloon ${cls}" cx="${cx}" cy="${cy}" r="10.5" style="--ring:${esc(d.filament_color_hex || '#9aa3b5')}"/>` +
-        `<text class="wf-bn ${cls}" x="${cx}" y="${(p[1] - 0.4).toFixed(1)}" text-anchor="middle">${esc(name)}</text>` +
-        (note ? `<text class="wf-note ${cls}" x="${cx}" y="${(p[1] - 19).toFixed(1)}" text-anchor="middle">${note}</text>` : '');
+      const note = d.status === 'error' ? 'FAULT' : (hot && name !== active ? `${Math.round(d.temperature)}°` : '');
+      if (note) tags.push(`<text class="wf-note ${cls}" x="${p[0].toFixed(1)}" y="${(p[1] - 19).toFixed(1)}" text-anchor="middle">${note}</text>`);
     });
-    setHTML($('wf-docktags'), tags.join(''));
-
-    // The head on the carriage gets the same balloon, on a leader from its
-    // nozzle tip, down and to the left: the Z dimension owns the right.
+    setHTML($('wf-tags'), tags.join(''));
+    // The head on the carriage moves every frame, so its leader, balloon
+    // and figure are kept as elements and updated in place: rebuilt each
+    // frame, a click could land on one just as it was replaced. The leader
+    // runs from the nozzle tip down and to the left (the Z dimension owns
+    // the right).
     const tip = P(x, y, T);
-    attrs($('wf-tip'), { cx: tip[0].toFixed(1), cy: tip[1].toFixed(1) });
-    const on = active ? (heads.find(([n]) => n === active) || [0, {}])[1] : null;
+    attrs($('wf-tip'), { cx: tip[0], cy: tip[1] });
+    const d = active ? st.toolheads[active] : null, hide = d ? '' : 'display:none';
     const right = tip[0] < twin.w * 0.3;
-    const bx = tip[0] + (right ? 34 : -34), byy = Math.min(twin.h - 46, tip[1] + 30);
-    const show = on ? '' : 'display:none';
-    attrs($('wf-leader'), { d: `M${tip[0].toFixed(1)} ${tip[1].toFixed(1)}L${(bx + (right ? -10.5 : 10.5)).toFixed(1)} ${byy.toFixed(1)}`, style: show });
-    attrs($('wf-on-ring'), { cx: bx.toFixed(1), cy: byy.toFixed(1), style: on ? `--ring:${on.filament_color_hex || '#9aa3b5'}` : show });
-    attrs($('wf-on-name'), { x: bx.toFixed(1), y: (byy + 3.6).toFixed(1), text: active || '', style: show });
+    const bx = tip[0] + (right ? 36 : -36), byy = Math.min(twin.h - 62, tip[1] + 30);
+    attrs($('wf-on-leader'), { d: `M${tip[0]} ${tip[1]}L${(bx + (right ? -10.5 : 10.5)).toFixed(1)} ${byy.toFixed(1)}`, style: hide });
+    const g = $('wf-on-balloon');
+    attrs(g, { style: hide, class: `wf-balloon on${active && pick === `head:${active}` ? ' is-picked' : ''}`, 'data-pick': active ? `head:${active}` : '' });
+    attrs(g.children[0], { cx: bx.toFixed(1), cy: byy.toFixed(1) });
+    attrs(g.children[1], { x: bx.toFixed(1), y: (byy + 3.5).toFixed(1), text: active || '' });
+    attrs(g.children[2], { x: (bx + 12.5).toFixed(1), y: (byy - 3.5).toFixed(1), style: `fill:${d ? (d.filament_color_hex || '#ffffff') : '#ffffff'}` });
     attrs($('wf-on-temp'), {
-      x: (bx + (right ? 14 : -14)).toFixed(1), y: (byy + 3.5).toFixed(1), 'text-anchor': right ? 'start' : 'end',
-      text: on && on.temperature >= 50 ? `${Math.round(on.temperature)}°` : '',
-    });
-    // The Z dimension's figure, beside its line.
-    const zShown = Math.hypot(b[0] - a[0], b[1] - a[1]) > 10;
-    attrs($('wf-ztext'), {
-      x: ((a[0] + b[0]) / 2 + 7).toFixed(1), y: ((a[1] + b[1]) / 2 + 4).toFixed(1),
-      text: zShown ? `Z${nb}${z.toFixed(2)}` : '',
+      x: (bx + (right ? 24 : -14)).toFixed(1), y: (byy + 3.5).toFixed(1), 'text-anchor': right ? 'start' : 'end',
+      text: d && d.temperature >= 50 ? `${Math.round(d.temperature)}°` : '',
     });
 
-    setHTML($('wf-title'), `<b>${esc(st.printer_name || 'Printer')}</b><span>${twin.view ? WF.VIEW_WORD[twin.view] : 'Turned'} view</span><span>mm</span>`);
+    // Sheet: a border, and a title block in the bottom-right corner.
+    const layer = st.layer || { current: 0, total: 0 };
+    const scale = Math.max(1, Math.round(WF.PX_PER_MM / s));
+    const cells = [
+      ['Printer', st.printer_name || 'Printer'], ['View', twin.view ? WF.VIEW_WORD[twin.view] : 'Turned'],
+      ['Scale', `1:${scale}`], ['Layer', layer.total ? `${layer.current}/${layer.total}` : '-'],
+    ];
+    const W = twin.w, H = twin.h, bw = Math.min(W - 16, 300), bh = 30, bx0 = W - 8 - bw, by0 = H - 8 - bh;
+    const cw = [0.34, 0.2, 0.2, 0.26].map(f => f * bw);
+    let cx = bx0, cellSvg = '';
+    cells.forEach(([k, val], i) => {
+      cellSvg += `<text class="wf-tb-k" x="${(cx + 5).toFixed(1)}" y="${by0 + 11}">${k}</text>` +
+        `<text class="wf-tb-v" x="${(cx + 5).toFixed(1)}" y="${by0 + 24}">${esc(String(val)).slice(0, 26)}</text>`;
+      cx += cw[i];
+      if (i < 3) cellSvg += `<path class="wf-tb-line" d="M${Math.round(cx) + 0.5} ${by0}V${by0 + bh}"/>`;
+    });
+    setHTML($('wf-sheet'), `<rect class="wf-border" x="3.5" y="3.5" width="${W - 7}" height="${H - 7}"/>` +
+      `<rect class="wf-tb" x="${bx0 + 0.5}" y="${by0 + 0.5}" width="${bw}" height="${bh}"/>${cellSvg}`);
+
+    // The buttons under the drawing (the keyboard and screen-reader way to
+    // pick), and the details of whatever is picked.
+    setHTML($('wf-picks'), heads.map(([n, d]) => `<button type="button" class="wf-pick${pick === `head:${n}` ? ' is-on' : ''}${d.status === 'error' ? ' is-fault' : ''}"
+      data-pick="head:${esc(n)}" aria-pressed="${pick === `head:${n}`}"><i style="background:${esc(d.filament_color_hex || '#ffffff')}"></i>${esc(n)}</button>`).join('') +
+      `<button type="button" class="wf-pick${pick === 'bed' ? ' is-on' : ''}" data-pick="bed" aria-pressed="${pick === 'bed'}">Bed</button>`);
+    renderPick();
 
     // A sentence for screen readers, changed only when its words change.
     const skipped = st.objects && Array.isArray(st.objects.excluded) ? st.objects.excluded.length : 0;
@@ -928,8 +1095,71 @@ const Workshop = (() => {
       (active ? `${active} is on the carriage at X ${Math.round(x)}, Y ${Math.round(y)}, Z ${z.toFixed(1)} millimetres. ` : 'No toolhead is picked up. ') +
       (parkedNames.length ? `Parked in the rear docks: ${parkedNames.join(', ')}. ` : '') +
       (skipped ? `${skipped} object${skipped === 1 ? '' : 's'} skipped. ` : '') +
-      'Drag, or use the arrow keys, to turn it.';
+      'Drag, or use the arrow keys, to turn it; pick a part for its details.';
     if (label !== twin.label) { twin.label = label; $('wf-svg').setAttribute('aria-label', label); }
+  }
+
+  /* ---- picking a part ---------------------------------------------- */
+  function choose(id) {
+    twin.pick = id || null;
+    if (id && id.startsWith('head:') && Date.now() - twin.jobAt > 10000) {
+      twin.jobAt = Date.now();
+      getJSON(api('/api/printer/job')).then(j => { twin.job = j && !j.error ? j : null; renderPick(); }).catch(() => {});
+    }
+    queueTwin();
+  }
+
+  function renderPick() {
+    const box = $('wf-detail'), st = twin.state;
+    if (!box || !st) return;
+    const id = twin.pick || '';
+    let html = '';
+    const row = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
+    const deg = v => (typeof v === 'number' ? `${Math.round(v)}°C` : '—');
+    if (id.startsWith('head:')) {
+      const name = id.slice(5), d = (st.toolheads || {})[name];
+      if (!d) { twin.pick = null; box.hidden = true; return; }
+      const where = d.status === 'error' ? 'Fault at its dock' : name === st.active_toolhead ? 'On the carriage' : 'Parked in its dock';
+      const swaps = d.swaps == null ? 'not reported by this printer'
+        : `${d.swaps.toLocaleString()}${d.swap_retries != null ? ` · ${d.swap_retries} retried` : ''}${d.swap_errors != null ? ` · ${d.swap_errors} failed` : ''}`;
+      const needs = ((twin.job && twin.job.required_filament) || []).filter(r => r.toolhead === name);
+      const job = !st.current_file ? 'No print running'
+        : needs.length ? needs.map(r => `${esc(r.expected_color_name || 'a colour')} ${esc(r.expected_material || '')}`.trim()).join(', ')
+        : twin.job ? 'Not used by this print' : 'Checking…';
+      html = `<div class="wf-detail-head"><span class="wf-detail-swatch" style="background:${esc(d.filament_color_hex || '#ffffff')}"></span>
+          <b>${esc(name)}</b><span class="wf-detail-sub">${where}</span>
+          <button type="button" class="wf-x" data-act="close" aria-label="Close details">✕</button></div>
+        <dl class="wf-facts">
+          ${row('Filament', d.filament_loaded === false ? 'None loaded' : esc(d.filament_color_name || 'Unknown'))}
+          ${row('Temperature', `${deg(d.temperature)}${d.target_temperature ? ` → ${deg(d.target_temperature)}` : ''}`)}
+          ${row('Nozzle', d.nozzle_diameter ? `${d.nozzle_diameter} mm` : 'not reported by this printer')}
+          ${row('Swaps', swaps)}
+          ${row('This print', job)}
+        </dl>
+        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open in Control</button></div>`;
+    } else if (id.startsWith('obj:')) {
+      const name = id.slice(4), plate = st.objects || {}, o = (plate.list || []).find(v => v.name === name);
+      if (!o) { twin.pick = null; box.hidden = true; return; }
+      const skipped = (plate.excluded || []).includes(name);
+      const xs = (o.polygon || []).map(p => p[0]), ys = (o.polygon || []).map(p => p[1]);
+      const size = xs.length ? `${(Math.max(...xs) - Math.min(...xs)).toFixed(1)} × ${(Math.max(...ys) - Math.min(...ys)).toFixed(1)} mm` : '—';
+      // Klipper upper-cases names; show them the way a person would write them.
+      const plain = name.replace(/_ID_(\d+)_COPY_(\d+)$/i, '').replace(/\.(STL|3MF|STEP|OBJ)$/i, '').replace(/_/g, ' ').toLowerCase().trim();
+      const copy = name.match(/_ID_(\d+)_COPY_\d+$/i);
+      const shown = `${plain ? plain[0].toUpperCase() + plain.slice(1) : name}${copy ? ` #${+copy[1] + 1}` : ''}`;
+      html = `<div class="wf-detail-head"><b>${esc(shown)}</b><span class="wf-detail-sub">${skipped ? 'Skipped' : name === plate.current ? 'Printing now' : 'Waiting'}</span>
+          <button type="button" class="wf-x" data-act="close" aria-label="Close details">✕</button></div>
+        <dl class="wf-facts">${row('Footprint', size)}${row('Height so far', skipped ? '—' : `${twin.pos[2].toFixed(2)} mm`)}</dl>
+        ${skipped ? '' : `<div class="wf-actions"><button type="button" class="btn small" data-act="skip" data-name="${esc(name)}">Skip it in Control…</button></div>`}`;
+    } else if (id === 'bed') {
+      html = `<div class="wf-detail-head"><b>Bed</b><span class="wf-detail-sub">${WF.BED} × ${WF.BED} mm</span>
+          <button type="button" class="wf-x" data-act="close" aria-label="Close details">✕</button></div>
+        <dl class="wf-facts">${row('Temperature', `${deg(st.bed_temperature)}${st.bed_target ? ` → ${deg(st.bed_target)}` : ''}`)}
+          ${row('Below the nozzle', `${twin.pos[2].toFixed(2)} mm`)}${row('Chamber', deg(st.chamber_temperature))}</dl>
+        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open in Control</button></div>`;
+    }
+    if (box.hidden !== !html) box.hidden = !html;
+    setHTML(box, html);
   }
 
   function renderTwin(state) {
@@ -937,12 +1167,14 @@ const Workshop = (() => {
     if (!host) return;
     const views = $('wf-views');
     if (!state) {
-      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null;
+      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null;
       if (views) views.hidden = true;
       return;
     }
     if (views && views.hidden) views.hidden = false;
     if (!twin.built) buildTwin();
+    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; }
+    if (twin.state && twin.state.current_file !== state.current_file) { twin.job = null; twin.jobAt = 0; }
     twin.state = state;
     const [x, y, z] = state.toolhead_position || [135, 135, 0];
     // A new layer (or no print running) starts a fresh trail.
@@ -958,9 +1190,7 @@ const Workshop = (() => {
     });
     queueTwin();
     const active = state.toolheads && state.toolheads[state.active_toolhead] ? state.active_toolhead : null;
-    const color = active ? state.toolheads[active].filament_color_hex : '#9aa3b5';
-    setVar($('twin-card'), '--glass-tint', color);
-    setVar($('wf'), '--wf-active', color);
+    setVar($('twin-card'), '--glass-tint', active ? state.toolheads[active].filament_color_hex : '#9aa3b5');
     const layer = state.layer || { current: 0, total: 0 };
     // Non-breaking spaces inside each reading, so a narrow card wraps
     // between readings ("Z 33.20 mm") and never inside one.
@@ -1167,7 +1397,7 @@ const Workshop = (() => {
         ? `${fmtHours(s.estimated_hours)} · ${s.filament_grams != null ? s.filament_grams.toFixed(1) + ' g' : '—'} · ${(s.tools_used || []).join(' ')}`
         : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(0)).join(' × ')} mm · ${(s.triangles || 0).toLocaleString()} triangles` : (s.error || ''));
       return `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
-          <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
+          <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
           <span class="fcd-name">${esc(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc(f.origin)}</span>` : ''}</span>

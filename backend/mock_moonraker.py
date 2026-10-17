@@ -195,6 +195,8 @@ _FLEET_SPEC = [
     },
     {
         "id": "u1-studio", "name": "U1 · Studio", "seed": 7117,
+        # A mixed-nozzle machine: a 0.2 mm detail nozzle on T3.
+        "nozzles": {"T3": 0.2},
         "jobs": 24, "days": 40,
         "scenario": {
             "state": "paused", "file": "gridfinity_bin_2x1.gcode",
@@ -282,7 +284,9 @@ class SimulatedPrinter:
             message = "Idle"
 
         toolheads = {}
-        for th in TOOLHEADS:
+        seed = self._spec.get("seed", 0)
+        nozzles = self._spec.get("nozzles", {})
+        for i, th in enumerate(TOOLHEADS):
             is_active = th == active
             toolheads[th] = {
                 "status": "active" if is_active else "docked",
@@ -291,6 +295,12 @@ class SimulatedPrinter:
                 "filament_loaded": True,
                 "filament_color_hex": loaded[th]["hex"],
                 "filament_color_name": loaded[th]["name"],
+                # What the U1's firmware reports per toolhead (u1-klipper
+                # extruder.get_status); simulated lifetime counts here.
+                "nozzle_diameter": nozzles.get(th, 0.4),
+                "swaps": 180 + (seed // (i + 3)) % 900,
+                "swap_retries": (seed >> i) % 4,
+                "swap_errors": 1 if (seed + i) % 7 == 0 else 0,
             }
         if s.get("dock_error"):
             toolheads[s["dock_error"]]["status"] = "error"
@@ -434,6 +444,7 @@ class SimulatedPrinter:
             old["target_temperature"] = 150.0      # standby while docked
         new = live["toolheads"][nxt]
         new["status"] = "active"
+        new["swaps"] = new.get("swaps", 0) + 1
         new["target_temperature"] = 220.0
         live["active_toolhead"] = nxt
         self.log("toolchange", f"{current} -> {nxt} at layer {layer}")

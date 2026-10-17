@@ -16,17 +16,30 @@ fresh session needs, and leaves the *how* to that session.
 3. Let it work. It will open a pull request and merge it when the checks
    are green, as `CLAUDE.md` says.
 
-Run them one at a time, roughly in this order. Each was written on
-17 October 2026 against the code at that point; a session should re-check
-anything a prompt states before relying on it.
+Four prompts, consolidated on 17 October 2026 from eight (the first,
+multi-nozzle printing, was mostly built in that session; what's left of it
+is in prompt 2). Each gives the goal, what's known, and directions, and
+leaves the *how* to the session. Run them roughly in this order, and let
+each session re-check what a prompt states before relying on it.
 
 | # | Prompt | What it gets you |
 |---|---|---|
-| 1 | [Multi-nozzle printing](01-multi-nozzle-printing.md) | Different nozzle sizes and layer heights per toolhead: the feature behind the $5,000 Tier 1 winner, made safe to print from Deja Vu1 |
-| 2 | [Fix the known open issues](02-reliability-known-issues.md) | Every bug the October audit found, fixed and tested |
-| 3 | [Make every feature work every time](03-feature-backend-audit.md) | An end-to-end audit of the features nobody has audited yet |
-| 4 | [Send each job to the right printer](04-farm-job-routing.md) | A farm queue that picks the printer with the right filament and nozzles loaded |
-| 5 | [multiACE and 16 colours](05-multiace-16-colour.md) | Support for U1s with Anycubic ACE units, the other Tier 1 winner |
-| 6 | [Make the big features lead](06-app-structure.md) | An app that feels as big as it is: navigation, Overview and weak features reworked |
-| 7 | [Install on a real U1](07-real-u1-install.md) | Running Deja Vu1 next to Fluidd/Mainsail, ready for the first real connection |
-| 8 | [Launch prep](08-launch-prep.md) | Fresh pictures, honest copy, temporary folders removed, ready to post |
+| 1 | [Make everything work, every time](01-make-everything-work.md) | Every known bug fixed, the never-audited features (automations, converter, slicer bridge, Studio, queue, camera) tried hard and fixed, and a smarter dashboard |
+| 2 | [More colours, more nozzles, the whole farm](02-multi-material-and-farm.md) | multiACE's 16 colours, mixed nozzles through the converter, slicer and Studio, and jobs that go to the right printer by themselves |
+| 3 | [Make the big features lead](03-structure-and-drawings.md) | An app that feels as big as it is, with the digital twin's drawing style brought to the rest of the screens |
+| 4 | [On a real U1, then launch](04-real-u1-and-launch.md) | An install a U1 owner can follow, the first real connection, then fresh pictures, honest copy and the GitHub page ready to post |
+
+## Asked for, not built yet
+
+From the owner's 17 October requests, these need a session of their own
+and are written into the prompts above:
+
+- The drawing style across the rest of the app (fleet cards, G-code viewer,
+  charts, maintenance, converter previews): prompt 3.
+- "Smarter" behaviour that notices problems before it's asked: prompts 1
+  and 3.
+- Mixed nozzles in the converter, slicer bridge and Photo Studio, and
+  Photo Studio measured against HueForge: prompt 2.
+- Installing next to Moonraker on the printer itself: prompt 4.
+- The GitHub page itself (About text, topics, social preview), which only
+  the owner can change: prompt 4 lists the clicks.
