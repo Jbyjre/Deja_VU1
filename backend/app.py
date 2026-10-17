@@ -52,6 +52,7 @@ API endpoints
   GET  /api/maintenance              what's due
   GET  /api/maintenance/history      completed maintenance log
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
+  POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
 
   GET  /api/leds                     simulated LED ring states
@@ -225,6 +226,7 @@ import webrtc_camera
 import home_assistant_bridge
 import led_status
 import live_feed
+import layer_planner
 import maintenance
 import mock_moonraker
 import modules
@@ -851,6 +853,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         route = self.path.split("?")[0].rstrip("/")
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
+
+        if route == "/api/tools/layer-plan":
+            # A calculator: no printer needed, nothing stored.
+            body = self._read_json_body()
+            return self._send_json(layer_planner.plan(body.get("heads") or [], bool(body.get("exact")),
+                                                      body.get("part_height")))
 
         if route == "/api/maintenance/done":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.mark_done(
