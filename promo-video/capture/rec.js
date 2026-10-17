@@ -9,12 +9,12 @@ const CURSOR = `
   const mk = () => {
     if (document.getElementById('__cur')) return;
     const c = document.createElement('div'); c.id = '__cur';
-    c.innerHTML = '<svg width="26" height="32" viewBox="0 0 26 32"><path d="M3 2 L3 25 L9 19.5 L13 29 L17.2 27.2 L13.2 18 L21 18 Z" fill="#14161c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
+    c.innerHTML = '<svg width="34" height="42" viewBox="0 0 26 32"><path d="M3 2 L3 25 L9 19.5 L13 29 L17.2 27.2 L13.2 18 L21 18 Z" fill="#14161c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
     Object.assign(c.style, {position:'fixed', left:'0', top:'0', zIndex: 2147483647, pointerEvents:'none',
       transform:'translate(-200px,-200px)', filter:'drop-shadow(0 2px 3px rgba(0,0,0,.28))', willChange:'transform'});
     const r = document.createElement('div'); r.id = '__ring';
-    Object.assign(r.style, {position:'fixed', left:'0', top:'0', width:'44px', height:'44px', margin:'-22px 0 0 -22px',
-      borderRadius:'50%', border:'2px solid rgba(74,141,248,.9)', background:'rgba(74,141,248,.16)', zIndex: 2147483646,
+    Object.assign(r.style, {position:'fixed', left:'0', top:'0', width:'64px', height:'64px', margin:'-32px 0 0 -32px',
+      borderRadius:'50%', border:'3px solid rgba(74,141,248,.95)', background:'rgba(74,141,248,.22)', zIndex: 2147483646,
       pointerEvents:'none', opacity:'0', transform:'translate(-200px,-200px) scale(.4)'});
     if (matchMedia('(pointer: coarse)').matches) {   // phone: a fingertip instead of an arrow
       c.innerHTML = '<div style="width:40px;height:40px;margin:-18px 0 0 -18px;border-radius:50%;background:rgba(20,22,28,.16);border:2px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.18)"></div>';
@@ -33,7 +33,7 @@ const CURSOR = `
     addEventListener('mousemove', e => { x = e.clientX; y = e.clientY; c.style.transform = 'translate(' + (x-3) + 'px,' + (y-2) + 'px)'; }, true);
     addEventListener('mousedown', () => {
       r.animate([{opacity: 1, transform: 'translate(' + x + 'px,' + y + 'px) scale(.4)'},
-                 {opacity: 0, transform: 'translate(' + x + 'px,' + y + 'px) scale(1.25)'}], {duration: 520, easing: 'cubic-bezier(.2,.7,.2,1)'});
+                 {opacity: 0, transform: 'translate(' + x + 'px,' + y + 'px) scale(1.25)'}], {duration: 600, easing: 'cubic-bezier(.2,.7,.2,1)'});
       c.animate([{scale: 1}, {scale: .86}, {scale: 1}], {duration: 220});
     }, true);
   };

@@ -89,32 +89,32 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The launch video (version 3), filmed from the current app with demo data on, in
+The launch video (version 4), filmed from the current app with demo data on, in
 two cuts. Both are H.264 MP4 at 60 frames a second, with sound set to -14 LUFS
 (the usual level for YouTube and social).
 
 | File | Size | Length | Where it goes |
 |---|---|---|---|
-| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 45 s | YouTube, the forum, X, LinkedIn, the README or product page |
-| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 30.4 s | Shorts, Reels, TikTok |
+| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 53 s | YouTube, the forum, X, LinkedIn, the README or product page |
+| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 38.4 s | Shorts, Reels, TikTok |
 
-The story follows `MESSAGING.md`. It opens on four features in four beats
-(every printer live, an unsafe start refused, one failed part skipped, the
-digital twin), then the one line "One screen for every U1 you run.", the app
-icon, and the features in MESSAGING's order: the 27-printer sandbox farm live and
-paused at once, Needs you with a jam arriving live, Confirm Print refusing an
-unsafe file, the phone, a MakerWorld project converted, G-code in 3D, Skip one
-object, automations, the digital twin (3D, front and top), Photo-to-Print Studio,
-then maintenance and games. It ends on "Free. Open source. Runs on your network.
-No account. Just Python." and the three install lines typed out. The vertical cut
+The story follows `MESSAGING.md`. It opens on four features, one per 1.2 s (every
+printer live, a print checked and started, one failed part skipped, the digital
+twin), then the one line "One screen for every U1 you run.", the app icon, and the
+features in MESSAGING's order, each shown one part at a time: the 27-printer
+sandbox farm live, Needs you with a jam arriving, Confirm Print passing every check
+and starting a print, the phone, a MakerWorld project converted, G-code in 3D, Skip
+one object, automations, the digital twin (3D, front and top), Photo-to-Print
+Studio, then the games. It ends on "Free. Open source. Runs on your network. No
+account. Just Python." and the three install lines typed out. The vertical cut
 keeps the opening, the one line and the first five features plus the twin.
 
 Every app view is labelled "Simulated farm", and the end card says every figure
 comes from the simulated farm and that Deja Vu1 is not affiliated with Snapmaker.
-It doesn't lead with the dock rings or the colour sensor. The music (a 150 BPM
-hip-hop beat with jazzy electric piano) and every click and keystroke are
-original, synthesised in code, with no third-party audio. Listen to it before
-posting: it was checked by measurement, not by ear.
+It doesn't lead with the dock rings or the colour sensor. The music (a hard 150 BPM
+rap/trap beat: heavy 808 bass, trap drums, a dark synth hook) and every click and
+keystroke are original, synthesised in code, with no third-party audio. Listen to
+it before posting: it was checked by measurement, not by ear.
 How to change or re-film it: `promo-video/README.md`.
 
 ---

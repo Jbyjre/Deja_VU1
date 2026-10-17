@@ -43,7 +43,7 @@
       .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
       .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
       .spot { position: absolute; border-radius: 14px; opacity: 0; pointer-events: none;
-        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 9px rgba(74,141,248,.22), 0 0 0 6000px rgba(16,20,32,.34); }
+        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 10px rgba(74,141,248,.18), 0 0 0 6000px rgba(16,20,32,.16); }
       .cap { position: absolute; opacity: 0; }
       .cap .card { border-radius: 32px; padding: 24px 34px 27px; }
       .cap .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }

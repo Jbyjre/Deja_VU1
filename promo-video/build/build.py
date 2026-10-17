@@ -29,55 +29,55 @@ def shot(name):
 # One shot can appear more than once (the opening montage reuses the best moment of four).
 def plan_main(S):
     m = lambda s, k: S[s]['marks'][k]
+    c = lambda s, i: S[s]['clicks'][i]
     return [
-        # opening montage: four features, 0.8 s each
-        ('h-fl', 'fleet', 0.0 + .3 - m('fleet', 'cards'), 0.0, 0.85),
-        ('h-cf', 'confirm_refuse', 0.8 + .1 - m('confirm_refuse', 'dialog'), 0.75, 1.65),
-        ('h-sk', 'skip_object', 1.6 + .25 - m('skip_object', 'skip'), 1.55, 2.45),
-        ('h-tw', 'twin', 2.4 + .05 - m('twin', 'front'), 2.35, 3.25),
-        # the feature scenes
-        ('v-fl1', 'fleet', 6.4 - m('fleet', 'cards') + .05, 5.4, 8.85),
-        ('v-fl2', 'fleet', 9.6 - m('fleet', 'pause'), 8.75, 11.3),
-        ('v-ov', 'overview_jam', 12.4 - m('overview_jam', 'jam'), 11.0, 14.5),
-        ('v-cf', 'confirm_refuse', 16.0 - m('confirm_refuse', 'dialog'), 14.2, 17.7),
-        ('v-ph', 'phone', 19.2 - S['phone']['clicks'][2], 17.6, 20.1),       # the hold-to-cancel at 19.2
-        ('v-cv', 'convert', 20.4 - S['convert']['clicks'][1], 19.9, 21.7),
-        ('v-3d', 'coaster_3d', 21.5, 21.5, 24.1),
-        ('v-sk', 'skip_object', 26.2 - m('skip_object', 'skip'), 23.9, 27.3),
-        ('v-au', 'automations', 27.6 - S['automations']['clicks'][0], 27.1, 28.9),
-        ('v-tw', 'twin', 29.3 - m('twin', 'front'), 28.7, 31.3),
-        ('v-st', 'studio', 31.0, 31.1, 32.9),
-        ('v-ca', 'care', 32.5, 32.7, 34.1),
-        ('v-gm', 'games', 33.25, 33.95, 35.3),
+        # opening montage: four features, 1.2 s each
+        ('h-fl', 'fleet', 0.0 - (m('fleet', 'hover') - .5), 0.0, 1.25),
+        ('h-ok', 'confirm_ok', 1.2 + .15 - m('confirm_ok', 'dialog'), 1.15, 2.45),
+        ('h-sk', 'skip_object', 2.4 + .35 - m('skip_object', 'skip'), 2.35, 3.65),
+        ('h-tw', 'twin', 3.6 + .25 - m('twin', 'front'), 3.55, 4.85),
+        # the feature scenes (15.5 s of the one line, the app and the laptop come first)
+        ('v-fl', 'fleet', 7.6, 7.0, 12.9),
+        ('v-ov', 'overview_jam', 14.0 - m('overview_jam', 'jam'), 12.5, 16.1),
+        ('v-ok', 'confirm_ok', 16.75 - c('confirm_ok', 1), 15.8, 20.9),     # opens on the file, Print... at 16.75
+        ('v-ph', 'phone', 23.0 - c('phone', 2), 20.8, 24.1),                # hold to cancel at 23.0
+        ('v-cv', 'convert', 25.2 - c('convert', 1), 23.9, 27.3),
+        ('v-3d', 'coaster_3d', 27.1, 27.0, 30.5),
+        ('v-sk', 'skip_object', 32.6 - m('skip_object', 'skip'), 30.2, 33.7),
+        ('v-au', 'automations', 34.3 - c('automations', 0), 33.4, 36.1),
+        ('v-tw', 'twin', 36.9 - m('twin', 'front'), 35.8, 39.3),
+        ('v-st', 'studio', 39.7 - c('studio', 0), 39.0, 41.7),
+        ('v-gm', 'games', 40.7, 41.4, 43.3),
     ]
 
 
-MAIN_WHOOSH = [4.8, 6.4, 11.2, 17.6, 20.0, 24.0, 28.8, 32.8, 38.4]
-MAIN_TERM = (39.55, [48, 11, 22])      # typing starts, characters per line (end card)
-MAIN_LENGTH = 45.0
+MAIN_WHOOSH = [6.4, 8.0, 12.8, 20.8, 24.0, 30.4, 36.0, 41.6, 46.4]
+MAIN_TERM = (47.55, [48, 11, 22])     # typing starts, characters per line (end card)
+MAIN_LENGTH = 53.0
 
 
 def plan_vertical(S):
     m = lambda s, k: S[s]['marks'][k]
+    c = lambda s, i: S[s]['clicks'][i]
     return [
-        ('h-fl', 'fleet', 0.0 + .3 - m('fleet', 'cards'), 0.0, 0.85),
-        ('h-cf', 'confirm_refuse', 0.8 + .1 - m('confirm_refuse', 'dialog'), 0.75, 1.65),
-        ('h-sk', 'skip_object', 1.6 + .25 - m('skip_object', 'skip'), 1.55, 2.45),
-        ('h-tw', 'twin', 2.4 + .05 - m('twin', 'front'), 2.35, 3.25),
-        ('v-lap', 'fleet', 6.4 - m('fleet', 'cards') + .05, 5.4, 6.7),      # on the laptop as it rises
-        ('v-fl1', 'fleet', 6.4 - m('fleet', 'cards') + .05, 6.3, 8.85),
-        ('v-ov', 'overview_jam', 10.0 - m('overview_jam', 'jam'), 8.6, 11.3),
-        ('v-cf', 'confirm_refuse', 12.6 - m('confirm_refuse', 'dialog'), 11.0, 13.7),
-        ('v-ph', 'phone', 15.2 - S['phone']['clicks'][2], 13.6, 16.1),
-        ('v-cv', 'convert', 16.4 - S['convert']['clicks'][1], 15.9, 17.7),
-        ('v-sk', 'skip_object', 19.3 - m('skip_object', 'skip'), 17.5, 20.1),
-        ('v-tw', 'twin', 20.6 - m('twin', 'front'), 19.9, 22.5),
+        ('h-fl', 'fleet', 0.0 - (m('fleet', 'hover') - .5), 0.0, 1.25),
+        ('h-ok', 'confirm_ok', 1.2 + .15 - m('confirm_ok', 'dialog'), 1.15, 2.45),
+        ('h-sk', 'skip_object', 2.4 + .35 - m('skip_object', 'skip'), 2.35, 3.65),
+        ('h-tw', 'twin', 3.6 + .25 - m('twin', 'front'), 3.55, 4.85),
+        ('v-lap', 'fleet', 7.6, 7.0, 8.3),                                   # on the laptop as it rises
+        ('v-fl', 'fleet', 7.6, 7.9, 11.3),
+        ('v-ov', 'overview_jam', 12.4 - m('overview_jam', 'jam'), 11.0, 14.5),
+        ('v-ok', 'confirm_ok', 14.9 - c('confirm_ok', 1), 14.2, 17.7),       # starts on the open file
+        ('v-ph', 'phone', 19.0 - c('phone', 2), 17.6, 20.1),
+        ('v-cv', 'convert', 21.0 - c('convert', 1), 19.9, 22.5),
+        ('v-sk', 'skip_object', 24.6 - m('skip_object', 'skip'), 22.2, 25.7),
+        ('v-tw', 'twin', 26.5 - m('twin', 'front'), 25.4, 28.9),
     ]
 
 
-VERT_WHOOSH = [4.8, 6.4, 8.8, 13.6, 16.0, 17.6, 20.0, 22.4, 25.6]
-VERT_TERM = (26.0, [48, 11, 22])
-VERT_LENGTH = 30.4
+VERT_WHOOSH = [6.4, 8.0, 11.2, 17.6, 20.0, 22.4, 25.6, 28.8, 32.0]
+VERT_TERM = (33.1, [48, 11, 22])
+VERT_LENGTH = 38.4
 
 plans = {'main': (plan_main, MAIN_WHOOSH, MAIN_TERM, MAIN_LENGTH),
          'vertical': (plan_vertical, VERT_WHOOSH, VERT_TERM, VERT_LENGTH)}
@@ -135,8 +135,8 @@ cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
 audio = os.path.join(PROJ, 'assets', 'audio')
 os.makedirs(audio, exist_ok=True)
-music_wav = os.path.join(audio, f'music3_{FMT}.wav')
-composer = os.path.join(ROOT, 'music', 'compose3.py')
+music_wav = os.path.join(audio, f'music4_{FMT}.wav')
+composer = os.path.join(ROOT, 'music', 'compose4.py')
 if not os.path.exists(music_wav) or os.path.getmtime(music_wav) < os.path.getmtime(composer):
     subprocess.run(['python3', composer, music_wav, FMT], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')

@@ -74,7 +74,7 @@
         <linearGradient id="ic-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7db2ff"/><stop offset="1" stop-color="#4a8df8"/></linearGradient>
       </defs>
     </svg>
-    <div id="root" data-composition-id="vertical" data-start="0" data-width="1080" data-height="1920" data-duration="30.4">
+    <div id="root" data-composition-id="vertical" data-start="0" data-width="1080" data-height="1920" data-duration="38.4">
       <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="lines"></div></div>
 
       <div id="hook"></div>
@@ -100,9 +100,9 @@
       <!-- the feature window: one glass bezel, a layer per feature inside -->
       <div class="win glass" id="W" style="left:60px;top:560px;width:960px;height:1000px">
         <div class="view">
-          <div class="layer" id="L-fl1"><div class="cam"></div></div>
+          <div class="layer" id="L-fl"><div class="cam"></div></div>
           <div class="layer" id="L-ov"><div class="cam"></div></div>
-          <div class="layer" id="L-cf"><div class="cam"></div></div>
+          <div class="layer" id="L-ok"><div class="cam"></div></div>
           <div class="layer" id="L-cv"><div class="cam"></div></div>
           <div class="layer" id="L-sk"><div class="cam"></div></div>
           <div class="layer" id="L-tw"><div class="cam"></div></div>
@@ -141,7 +141,7 @@
       <div id="caps"></div>
 
 <!--VIDEOS-->
-      <audio id="mix" src="assets/audio/mix_vertical.wav" data-start="0" data-duration="30.4" data-track-index="9" data-volume="1"></audio>
+      <audio id="mix" src="assets/audio/mix_vertical.wav" data-start="0" data-duration="38.4" data-track-index="9" data-volume="1"></audio>
     </div>
 
     <script>
@@ -153,10 +153,10 @@
 
       // Opening montage: the word on top, the footage window below. crop = footage rectangle (CSS px).
       const HOOK = [
-        { id: 'h-fl', k: 'Fleet', w: ['Every printer,', 'live.'], crop: [170, 250, 900, 640], W: 940, H: 668 },
-        { id: 'h-cf', k: 'Confirm Print', w: ['Unsafe starts,', 'refused.'], crop: [355, 170, 730, 560], W: 900, H: 690 },
-        { id: 'h-sk', k: 'Skip one object', w: ['One part fails.', 'Skip just it.'], crop: [150, 118, 1140, 425], W: 940, H: 368 },
-        { id: 'h-tw', k: 'Digital twin', w: ['A live drawing', 'of every printer.'], crop: [150, 115, 440, 500], W: 640, H: 727 },
+        { id: 'h-fl', k: 'Fleet', w: ['Every printer,', 'live.'], crop: [520, 310, 420, 400], W: 760, H: 724 },
+        { id: 'h-ok', k: 'Confirm Print', w: ['Checked before', 'every print.'], crop: [346, 250, 748, 400], W: 940, H: 503 },
+        { id: 'h-sk', k: 'Skip one object', w: ['One part fails?', 'Skip just it.'], crop: [140, 100, 1160, 450], W: 940, H: 365 },
+        { id: 'h-tw', k: 'Digital twin', w: ['A live drawing', 'of every printer.'], crop: [140, 105, 490, 580], W: 600, H: 710 },
       ];
       $('#hook').innerHTML = HOOK.map((h, i) => `<div class="hs" id="hs${i}">
           <div class="htext"><div class="hk">${h.k}</div><div class="hw">${h.w.map(l => `<span class="mask"><span>${l}</span></span>`).join('')}</div></div>
@@ -167,15 +167,14 @@
         .map(r => `<div class="row">${r.map(w => `<span class="word">${w}</span>`).join('')}</div>`).join('');
 
       const CAPS = {
-        c1: ['01', 'Every printer, live', 'Your whole farm, live.', 'Up to 12 printers, four updates a second.'],
-        c2a: ['02', 'Needs you', 'What needs you, ranked.', 'One list, most urgent first.'],
-        c2b: ['02', 'Live alerts', 'A jam? You know instantly.', 'Fired from the farm sandbox, live.'],
-        c3a: ['03', 'Confirm Print', 'Checked before it prints.', 'Pre-flight, colour, maintenance, cost.'],
-        c3b: ['03', 'Refused, in words', 'Unsafe? It won\'t start.', 'And it tells you exactly why.'],
-        c3c: ['03', 'On your phone', 'Run it from your phone.', 'The server checks every start again.'],
+        c1: ['01', 'Every printer, live', 'Your farm, on one screen.', 'Up to 12 printers, four updates a second.'],
+        c2: ['02', 'Needs you', 'Problems come to you.', 'A jam shows up the moment it happens.'],
+        c3a: ['03', 'Confirm Print', 'Every print is checked.', 'Pre-flight, colour, maintenance, cost.'],
+        c3b: ['03', 'Confirm Print', 'All clear? Start it.', 'The server checks again as it starts.'],
+        c3c: ['03', 'On your phone', 'Run it from your phone.', 'Pause, or hold to cancel.'],
         c4: ['04', 'Files ready for the U1', 'MakerWorld? Converted.', 'One click. Multi-plate included.'],
         c5: ['05', 'Skip one object', 'One part failed? Skip it.', 'The rest of the plate keeps printing.'],
-        c7: ['07', 'Digital twin', 'A live drawing of it.', '3D, front and top, as it moves.'],
+        c7: ['07', 'Digital twin', 'A live drawing of it.', '3D, front and top views.'],
       };
       $('#caps').innerHTML = Object.entries(CAPS).map(([id, [n, k, h, s]]) =>
         `<div class="cap" id="${id}"><div class="card glass"><div class="in"><div class="k"><b>${n}</b>${k}</div><div class="h">${h}</div><div class="s">${s}</div></div></div></div>`).join('');
@@ -188,7 +187,7 @@
         return { cam, vw, vh, s };
       }
       V.lap = mount($('#L-lap'), 'v-lap', 1240, 775);
-      for (const k of ['fl1', 'ov', 'cf', 'cv', 'sk', 'tw']) V[k] = mount($('#L-' + k), 'v-' + k, WV, HV);
+      for (const k of ['fl', 'ov', 'ok', 'cv', 'sk', 'tw']) V[k] = mount($('#L-' + k), 'v-' + k, WV, HV);
       HOOK.forEach((h, i) => { V[h.id] = mount($('#hw' + i + ' .view'), h.id, h.W - 18, h.H - 18); });
       (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { inset: '0', width: '100%', height: '100%' });
         cam.appendChild($('#v-ph')); $('#ph-screen').appendChild(cam); })();
@@ -239,122 +238,125 @@
         tl.to('#W', { scale: 1, duration: .42, ease: 'expo.out' }, t + .12);
       }
 
-      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 140, y: 120, duration: 30.4, ease: 'none' }, 0);
-      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -120, y: -100, duration: 30.4, ease: 'none' }, 0);
+      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 140, y: 120, duration: 38.4, ease: 'none' }, 0);
+      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -120, y: -100, duration: 38.4, ease: 'none' }, 0);
       const CENTER = { x: 0, y: 40, scale: .64, rotationY: 0, rotationX: 8 };
       gsap.set('#rig', { ...CENTER, y: 900, rotationX: 38 });
       tl.set('#rig', { ...CENTER, y: 900, rotationX: 38 }, 0);
 
-      // ===== 0.0-3.2 opening montage =====
+      // ===== 0.0-4.8 opening montage =====
       HOOK.forEach((h, i) => {
-        const t = i * .8, v = V[h.id], tight = [h.crop[0] + h.crop[2] * .06, h.crop[1] + h.crop[3] * .06, h.crop[2] * .88, h.crop[3] * .88];
+        const t = i * 1.2, v = V[h.id], tight = [h.crop[0] + h.crop[2] * .04, h.crop[1] + h.crop[3] * .04, h.crop[2] * .92, h.crop[3] * .92];
         tl.set('#hs' + i, { opacity: 1 }, t);
-        tl.set('#hs' + i, { opacity: 0 }, t + .8);
-        tl.fromTo('#hw' + i, { scale: 1.12, y: 30 }, { scale: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+        tl.set('#hs' + i, { opacity: 0 }, t + 1.2);
+        tl.fromTo('#hw' + i, { scale: 1.1, y: 30 }, { scale: 1, y: 0, duration: .55, ease: 'expo.out', immediateRender: false }, t);
         tl.fromTo(`#hw${i} .view`, { filter: 'blur(10px)' }, { filter: 'blur(0px)', duration: .3, ease: 'expo.out', immediateRender: false }, t);
-        tl.fromTo('#hw' + i, { '--sx': '0%' }, { '--sx': '90%', duration: .8, ease: 'none', immediateRender: false }, t);
-        camTo(v, t, 0, h.crop); camTo(v, t + .02, .78, tight, 'power1.out');
+        tl.fromTo('#hw' + i, { '--sx': '0%' }, { '--sx': '90%', duration: 1.2, ease: 'none', immediateRender: false }, t);
+        camTo(v, t, 0, h.crop); camTo(v, t + .02, 1.18, tight, 'power1.out');
         tl.fromTo(`#hs${i} .hk`, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: .3, ease: 'expo.out', immediateRender: false }, t + .02);
-        tl.fromTo(`#hs${i} .mask > span`, { yPercent: 105 }, { yPercent: 0, duration: .38, ease: 'expo.out', stagger: .07, immediateRender: false }, t + .04);
+        tl.fromTo(`#hs${i} .mask > span`, { yPercent: 105 }, { yPercent: 0, duration: .4, ease: 'expo.out', stagger: .08, immediateRender: false }, t + .05);
       });
 
-      // ===== 3.2-4.8 the one line =====
+      // ===== 4.8-6.4 the one line =====
       gsap.utils.toArray('#line .word').forEach((w, i) => {
-        tl.fromTo(w, { opacity: 0, y: 70, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .28, ease: 'expo.out', immediateRender: false }, 3.2 + i * .2);
+        tl.fromTo(w, { opacity: 0, y: 70, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .28, ease: 'expo.out', immediateRender: false }, 4.8 + i * .2);
       });
       gsap.set('#line .ul', { scaleX: 0 });
-      tl.fromTo('#line .ul', { scaleX: 0 }, { scaleX: 1, duration: .35, ease: 'expo.out', immediateRender: false }, 3.2 + 3 * .2 + .1);
-      tl.fromTo('#line', { scale: 1 }, { scale: 1.05, duration: 1.4, ease: 'none' }, 3.2);
-      zout('#line', 4.62);
+      tl.fromTo('#line .ul', { scaleX: 0 }, { scaleX: 1, duration: .35, ease: 'expo.out', immediateRender: false }, 4.8 + 3 * .2 + .1);
+      tl.fromTo('#line', { scale: 1 }, { scale: 1.05, duration: 1.4, ease: 'none' }, 4.8);
+      zout('#line', 6.22);
 
-      // ===== 4.8-6.4 the app, the laptop rises, then the camera dives into its screen =====
-      tl.set('#brand', { opacity: 1 }, 4.8);
-      tl.fromTo('#b-icon', { scale: .5, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: .5, ease: 'back.out(1.8)', immediateRender: false }, 4.8);
-      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'expo.out' }, 4.85);
-      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .4, ease: 'back.out(2.4)', immediateRender: false }, 5.0);
-      tl.fromTo('#b-word', { opacity: 0, y: 30, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 4.9);
-      tl.fromTo('#b-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 5.1);
-      tl.to('#brand', { y: -420, scale: .7, opacity: 0, filter: 'blur(8px)', duration: .32, ease: 'power3.in' }, 5.5);
-      camTo(V.lap, 5.4, 0, [0, 0, FW, FH]);
-      tl.to('#rig', { opacity: 1, duration: .25 }, 5.6);
-      tl.to('#rig', { ...CENTER, duration: .7, ease: 'expo.out' }, 5.6);
-      tl.to('#rig', { scale: 2.6, y: 220, opacity: 0, duration: .4, ease: 'power3.in' }, 6.25);
-      tl.fromTo('#stage', { filter: 'blur(0px)' }, { filter: 'blur(14px)', duration: .4, ease: 'power3.in', immediateRender: false }, 6.25);
-      tl.set('#L-fl1', { opacity: 1 }, 6.3);
-      camTo(V.fl1, 6.3, 0, [170, 250, 900, 900]);
-      tl.fromTo('#W', { opacity: 0, scale: .7 }, { opacity: 1, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, 6.45);
-      tl.fromTo('#W .view', { filter: 'blur(14px)' }, { filter: 'blur(0px)', duration: .4, ease: 'expo.out', immediateRender: false }, 6.45);
+      // ===== 6.4-8.0 the app, the laptop rises, then the camera dives into its screen =====
+      tl.set('#brand', { opacity: 1 }, 6.4);
+      tl.fromTo('#b-icon', { scale: .5, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: .5, ease: 'back.out(1.8)', immediateRender: false }, 6.4);
+      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'expo.out' }, 6.45);
+      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .4, ease: 'back.out(2.4)', immediateRender: false }, 6.6);
+      tl.fromTo('#b-word', { opacity: 0, y: 30, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 6.5);
+      tl.fromTo('#b-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 6.7);
+      tl.to('#brand', { y: -420, scale: .7, opacity: 0, filter: 'blur(8px)', duration: .32, ease: 'power3.in' }, 7.1);
+      camTo(V.lap, 7.0, 0, [0, 0, FW, FH]);
+      tl.to('#rig', { opacity: 1, duration: .25 }, 7.15);
+      tl.to('#rig', { ...CENTER, duration: .6, ease: 'expo.out' }, 7.15);
+      tl.to('#rig', { scale: 2.6, y: 220, opacity: 0, duration: .35, ease: 'power3.in' }, 7.75);
+      tl.fromTo('#stage', { filter: 'blur(0px)' }, { filter: 'blur(14px)', duration: .35, ease: 'power3.in', immediateRender: false }, 7.75);
+      tl.set('#L-fl', { opacity: 1 }, 7.9);
+      camTo(V.fl, 7.9, 0, [170, 120, 760, 800]);
+      tl.fromTo('#W', { opacity: 0, scale: .7 }, { opacity: 1, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, 8.0);
+      tl.fromTo('#W .view', { filter: 'blur(14px)' }, { filter: 'blur(0px)', duration: .4, ease: 'expo.out', immediateRender: false }, 8.0);
 
-      // ===== 01 every printer (6.4-8.8) =====
-      cap('c1', 6.6, 8.6);
-      camTo(V.fl1, 7.1, .7, [170, 160, 860, 860]);
-      camTo(V.fl1, 7.95, .45, [170, 150, 760, 700]);
+      // ===== 01 every printer (8.0-11.2) =====
+      cap('c1', 8.2, 11.0);
+      camTo(V.fl, at('v-fl', 'cards') - .1, .6, [170, 300, 760, 700]);
+      const HOVER = at('v-fl', 'hover');
+      camTo(V.fl, HOVER - .25, .6, [530, 300, 400, 420]);
+      spot(V.fl, [560, 338, 332, 112], HOVER + .3, 11.0);
 
-      // ===== 02 needs you (8.8-11.2) =====
-      camTo(V.ov, 8.6, 0, [160, 230, 1120, 1000]);
-      hop('#L-fl1', '#L-ov', 8.8);
-      camTo(V.ov, 9.05, .45, [170, 300, 760, 760]);
+      // ===== 02 needs you (11.2-14.4) =====
+      camTo(V.ov, 11.0, 0, [160, 230, 1120, 1000]);
+      hop('#L-fl', '#L-ov', 11.2);
+      camTo(V.ov, 11.45, .45, [170, 300, 760, 760]);
       const JAM = at('v-ov', 'jam');
-      cap('c2a', 9.0, JAM + .1);
-      spot(V.ov, [172, 392, 1106, 94], JAM + .3, 11.0);
-      cap('c2b', JAM + .3, 11.0);
+      spot(V.ov, [172, 391, 1106, 98], JAM + .3, 14.2);
+      cap('c2', 11.4, 14.2);
 
-      // ===== 03 confirm print (11.2-13.6) =====
-      camTo(V.cf, 11.0, 0, [760, 300, 560, 560]);
-      swap('#L-ov', '#L-cf', 11.2);
-      cap('c3a', 11.35, 12.4);
-      const DLG = at('v-cf', 'dialog');
-      camTo(V.cf, DLG - .45, .5, [360, 175, 720, 720]);
-      spot(V.cf, [370, 334, 694, 168], DLG + .2, 13.45);
-      cap('c3b', DLG + .1, 13.42);
+      // ===== 03 confirm print (14.4-17.6), the happy path =====
+      const PRINT = at('v-ok', '') + M['v-ok'].clicks[1], GO = at('v-ok', '') + M['v-ok'].clicks[2];
+      camTo(V.ok, 14.2, 0, [740, 300, 560, 560]);
+      swap('#L-ov', '#L-ok', 14.4);
+      cap('c3a', 14.55, PRINT + .25);
+      camTo(V.ok, PRINT + .02, .45, [350, 250, 740, 740]);
+      spot(V.ok, [383, 364, 674, 50], PRINT + .6, GO - .25);
+      cap('c3b', PRINT + .45, 17.4);
+      camTo(V.ok, GO + .2, .5, [460, 20, 840, 840]);
 
-      // ===== 03 phone (13.6-16.0) =====
-      tl.to('#W', { x: -900, opacity: 0, duration: .25, ease: 'power4.in' }, 13.4);
-      tl.to('#W .view', { filter: 'blur(14px)', duration: .25, ease: 'power4.in' }, 13.4);
+      // ===== 03 phone (17.6-20.0) =====
+      tl.to('#W', { x: -900, opacity: 0, duration: .25, ease: 'power4.in' }, 17.4);
+      tl.to('#W .view', { filter: 'blur(14px)', duration: .25, ease: 'power4.in' }, 17.4);
       tl.fromTo('#ph', { opacity: .2, x: 600, rotationY: -30, scale: 1.12, filter: 'blur(16px)', transformPerspective: 1800 },
-                       { opacity: 1, x: 0, rotationY: -6, scale: 1.12, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, 13.6);
-      tl.to('#ph', { rotationY: 6, scale: 1.18, duration: 1.9, ease: 'none' }, 14.1);
-      cap('c3c', 13.75, 15.8);
+                       { opacity: 1, x: 0, rotationY: -6, scale: 1.12, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, 17.6);
+      tl.to('#ph', { rotationY: 6, scale: 1.18, duration: 1.9, ease: 'none' }, 18.1);
+      cap('c3c', 17.75, 19.8);
 
-      // ===== 04 files ready (16.0-17.6) =====
-      tl.to('#ph', { x: -700, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power4.in' }, 15.8);
-      tl.set('#L-cf', { opacity: 0 }, 15.9); tl.set('#L-cv', { opacity: 1, x: 0 }, 15.9);
-      tl.set('#W .view', { filter: 'blur(0px)' }, 15.9);
-      camTo(V.cv, 15.9, 0, [700, 280, 600, 600]);
-      tl.fromTo('#W', { x: 0, opacity: 0, scale: 1.5 }, { x: 0, opacity: 1, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, 16.0);
-      camTo(V.cv, at('v-cv', '') + M['v-cv'].clicks[1] + .25, .5, [780, 560, 520, 520]);
-      cap('c4', 16.15, 17.42);
+      // ===== 04 files ready (20.0-22.4) =====
+      tl.to('#ph', { x: -700, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power4.in' }, 19.8);
+      tl.set('#L-ok', { opacity: 0 }, 19.9); tl.set('#L-cv', { opacity: 1, x: 0 }, 19.9);
+      tl.set('#W .view', { filter: 'blur(0px)' }, 19.9);
+      const CV = at('v-cv', '') + M['v-cv'].clicks[1];
+      camTo(V.cv, 19.9, 0, [700, 280, 600, 600]);
+      tl.fromTo('#W', { x: 0, opacity: 0, scale: 1.5 }, { x: 0, opacity: 1, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, 20.0);
+      camTo(V.cv, CV + .25, .5, [800, 600, 480, 480]);
+      cap('c4', 20.15, 22.2);
 
-      // ===== 05 skip one object (17.6-20.0) =====
-      camTo(V.sk, 17.4, 0, [150, 118, 1140, 1000]);
-      hop('#L-cv', '#L-sk', 17.6);
-      camTo(V.sk, 17.85, .45, [470, 150, 820, 600]);
-      cap('c5', 17.75, 19.8);
-      spot(V.sk, [494, 242, 786, 46], at('v-sk', 'pick') + .05, 19.85);
+      // ===== 05 skip one object (22.4-25.6) =====
+      camTo(V.sk, 22.2, 0, [140, 100, 1160, 1000]);
+      hop('#L-cv', '#L-sk', 22.4);
+      camTo(V.sk, 22.6, .45, [470, 150, 820, 600]);
+      cap('c5', 22.55, 25.4);
+      spot(V.sk, [492, 243, 772, 46], at('v-sk', 'pick') + .2, 25.45);
 
-      // ===== 07 digital twin (20.0-22.4) =====
-      camTo(V.tw, 19.8, 0, [140, 100, 900, 900]);
-      hop('#L-sk', '#L-tw', 20.0);
-      camTo(V.tw, 20.2, .5, [146, 112, 470, 560]);
-      cap('c7', 20.15, 22.2);
-      tl.to('#W', { scale: .8, opacity: 0, duration: .25, ease: 'power3.in' }, 22.2);
-      tl.to('#W .view', { filter: 'blur(14px)', duration: .25, ease: 'power3.in' }, 22.2);
+      // ===== 07 digital twin (25.6-28.8) =====
+      camTo(V.tw, 25.4, 0, [140, 100, 900, 900]);
+      hop('#L-sk', '#L-tw', 25.6);
+      camTo(V.tw, 25.8, .5, [140, 105, 490, 580]);
+      cap('c7', 25.75, 28.6);
+      tl.to('#W', { scale: .8, opacity: 0, duration: .25, ease: 'power3.in' }, 28.6);
+      tl.to('#W .view', { filter: 'blur(14px)', duration: .25, ease: 'power3.in' }, 28.6);
 
-      // ===== 22.4-25.6 values =====
-      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, 22.4 + i * .4, .35));
-      tl.fromTo('#values', { scale: 1 }, { scale: 1.06, duration: 3, ease: 'none' }, 22.4);
-      zout('#values', 25.4);
+      // ===== 28.8-32.0 values; out on the silent beat =====
+      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, 28.8 + i * .4, .35));
+      tl.fromTo('#values', { scale: 1 }, { scale: 1.06, duration: 2.8, ease: 'none' }, 28.8);
+      zout('#values', 31.6);
 
-      // ===== 25.6-30.4 end card =====
-      tl.set('#end', { opacity: 1 }, 25.6);
-      tl.fromTo('#end-row', { opacity: .15, scale: 1.2, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 25.6);
-      tl.fromTo('#end-tag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 25.8);
-      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 25.85);
-      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .4 }, 26.0);
-      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .4 }, 26.2);
+      // ===== 32.0-38.4 end card, on the last drop =====
+      tl.set('#end', { opacity: 1 }, 32.0);
+      tl.fromTo('#end-row', { opacity: .15, scale: 1.2, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 32.0);
+      tl.fromTo('#end-tag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 32.25);
+      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 32.5);
+      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .4 }, 32.7);
+      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .4 }, 32.9);
       gsap.utils.toArray('#term .ln').forEach((ln, i) => {
         const times = TY[i], n = times.length - 1;
-        tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : 25.9);
+        tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : 32.5);
         for (let j = 0; j < n; j++) tl.set(ln, { width: (3 + j) + 'ch' }, times[j]);
       });
 

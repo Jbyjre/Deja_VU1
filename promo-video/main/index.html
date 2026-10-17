@@ -51,7 +51,7 @@
       .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
       .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
       .spot { position: absolute; border-radius: 14px; opacity: 0; pointer-events: none;
-        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 9px rgba(74,141,248,.22), 0 0 0 6000px rgba(16,20,32,.34); }
+        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 10px rgba(74,141,248,.18), 0 0 0 6000px rgba(16,20,32,.16); }
       .cap { position: absolute; opacity: 0; }
       .cap .card { border-radius: 32px; padding: 24px 34px 27px; }
       .cap .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }
@@ -134,7 +134,7 @@
         <linearGradient id="ic-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7db2ff"/><stop offset="1" stop-color="#4a8df8"/></linearGradient>
       </defs>
     </svg>
-    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="45">
+    <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="53">
       <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="lines"></div></div>
 
       <div id="hook"></div>
@@ -157,10 +157,9 @@
       <div id="stage"><div id="rig">
         <div class="lshadow"></div>
         <div class="lid"><div class="cam-dot"></div><div class="screen" id="screen">
-          <div class="layer" id="L-fl1"><div class="cam"></div></div>
-          <div class="layer" id="L-fl2"><div class="cam"></div></div>
+          <div class="layer" id="L-fl"><div class="cam"></div></div>
           <div class="layer" id="L-ov"><div class="cam"></div></div>
-          <div class="layer" id="L-cf"><div class="cam"></div></div>
+          <div class="layer" id="L-ok"><div class="cam"></div></div>
           <div class="layer" id="L-cv"><div class="cam"></div></div>
           <div class="layer" id="L-3d"><div class="cam"></div></div>
           <div class="layer" id="L-sk"><div class="cam"></div></div>
@@ -174,7 +173,6 @@
       </div></div>
 
       <div class="phone" id="ph" style="left:1240px;top:70px"><div class="pscreen" id="ph-screen"><div class="island"></div></div><div class="simchip glass" style="right:calc(100% + 26px);bottom:60px;white-space:nowrap"><span>Simulated farm</span></div></div>
-      <div class="win glass" id="W-ca" style="left:300px;top:96px;width:1320px;height:760px"><div class="view"><div class="cam"></div></div><div class="simchip glass" style="left:26px;top:26px"><span>Simulated farm</span></div></div>
       <div class="win glass" id="W-gm" style="left:300px;top:96px;width:1320px;height:760px"><div class="view"><div class="cam"></div></div><div class="simchip glass" style="left:26px;top:26px"><span>Simulated farm</span></div></div>
 
       <div id="values">
@@ -205,29 +203,27 @@
 
       <div id="caps"></div>
 
-      <video id="h-fl" src="assets/footage/fleet.mp4" muted playsinline data-start="0.000" data-media-start="4.350" data-duration="0.850" data-track-index="2"></video>
-      <video id="h-cf" src="assets/footage/confirm_refuse.mp4" muted playsinline data-start="0.750" data-media-start="6.617" data-duration="0.900" data-track-index="2"></video>
-      <video id="h-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="1.550" data-media-start="6.017" data-duration="0.900" data-track-index="2"></video>
-      <video id="h-tw" src="assets/footage/twin.mp4" muted playsinline data-start="2.350" data-media-start="5.050" data-duration="0.900" data-track-index="2"></video>
-      <video id="v-fl1" src="assets/footage/fleet.mp4" muted playsinline data-start="5.400" data-media-start="3.600" data-duration="3.450" data-track-index="2"></video>
-      <video id="v-fl2" src="assets/footage/fleet.mp4" muted playsinline data-start="8.750" data-media-start="6.550" data-duration="2.550" data-track-index="2"></video>
-      <video id="v-ov" src="assets/footage/overview_jam.mp4" muted playsinline data-start="11.000" data-media-start="3.567" data-duration="3.500" data-track-index="2"></video>
-      <video id="v-cf" src="assets/footage/confirm_refuse.mp4" muted playsinline data-start="14.200" data-media-start="4.967" data-duration="3.500" data-track-index="2"></video>
-      <video id="v-ph" src="assets/footage/phone.mp4" muted playsinline data-start="17.600" data-media-start="6.183" data-duration="2.500" data-track-index="2"></video>
-      <video id="v-cv" src="assets/footage/convert.mp4" muted playsinline data-start="19.900" data-media-start="5.050" data-duration="1.800" data-track-index="2"></video>
-      <video id="v-3d" src="assets/footage/coaster_3d.mp4" muted playsinline data-start="21.500" data-media-start="4.000" data-duration="2.600" data-track-index="2"></video>
-      <video id="v-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="23.900" data-media-start="4.017" data-duration="3.400" data-track-index="2"></video>
-      <video id="v-au" src="assets/footage/automations.mp4" muted playsinline data-start="27.100" data-media-start="4.000" data-duration="1.800" data-track-index="2"></video>
-      <video id="v-tw" src="assets/footage/twin.mp4" muted playsinline data-start="28.700" data-media-start="4.550" data-duration="2.600" data-track-index="2"></video>
-      <video id="v-st" src="assets/footage/studio.mp4" muted playsinline data-start="31.100" data-media-start="4.100" data-duration="1.800" data-track-index="2"></video>
-      <video id="v-ca" src="assets/footage/care.mp4" muted playsinline data-start="32.700" data-media-start="4.200" data-duration="1.400" data-track-index="2"></video>
-      <video id="v-gm" src="assets/footage/games.mp4" muted playsinline data-start="33.950" data-media-start="4.700" data-duration="1.350" data-track-index="2"></video>
-      <audio id="mix" src="assets/audio/mix_main.wav" data-start="0" data-duration="45" data-track-index="9" data-volume="1"></audio>
+      <video id="h-fl" src="assets/footage/fleet.mp4" muted playsinline data-start="0.000" data-media-start="6.300" data-duration="1.250" data-track-index="2"></video>
+      <video id="h-ok" src="assets/footage/confirm_ok.mp4" muted playsinline data-start="1.150" data-media-start="7.400" data-duration="1.300" data-track-index="2"></video>
+      <video id="h-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="2.350" data-media-start="6.300" data-duration="1.300" data-track-index="2"></video>
+      <video id="h-tw" src="assets/footage/twin.mp4" muted playsinline data-start="3.550" data-media-start="5.017" data-duration="1.300" data-track-index="2"></video>
+      <video id="v-fl" src="assets/footage/fleet.mp4" muted playsinline data-start="7.000" data-media-start="3.400" data-duration="5.900" data-track-index="2"></video>
+      <video id="v-ov" src="assets/footage/overview_jam.mp4" muted playsinline data-start="12.500" data-media-start="3.700" data-duration="3.600" data-track-index="2"></video>
+      <video id="v-ok" src="assets/footage/confirm_ok.mp4" muted playsinline data-start="15.800" data-media-start="5.300" data-duration="5.100" data-track-index="2"></video>
+      <video id="v-ph" src="assets/footage/phone.mp4" muted playsinline data-start="20.800" data-media-start="6.033" data-duration="3.300" data-track-index="2"></video>
+      <video id="v-cv" src="assets/footage/convert.mp4" muted playsinline data-start="23.900" data-media-start="4.583" data-duration="3.400" data-track-index="2"></video>
+      <video id="v-3d" src="assets/footage/coaster_3d.mp4" muted playsinline data-start="27.000" data-media-start="3.900" data-duration="3.500" data-track-index="2"></video>
+      <video id="v-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="30.200" data-media-start="4.300" data-duration="3.500" data-track-index="2"></video>
+      <video id="v-au" src="assets/footage/automations.mp4" muted playsinline data-start="33.400" data-media-start="3.767" data-duration="2.700" data-track-index="2"></video>
+      <video id="v-tw" src="assets/footage/twin.mp4" muted playsinline data-start="35.800" data-media-start="4.217" data-duration="3.500" data-track-index="2"></video>
+      <video id="v-st" src="assets/footage/studio.mp4" muted playsinline data-start="39.000" data-media-start="3.967" data-duration="2.700" data-track-index="2"></video>
+      <video id="v-gm" src="assets/footage/games.mp4" muted playsinline data-start="41.400" data-media-start="4.700" data-duration="1.900" data-track-index="2"></video>
+      <audio id="mix" src="assets/audio/mix_main.wav" data-start="0" data-duration="53" data-track-index="9" data-volume="1"></audio>
     </div>
 
     <script>
-      const M = {"h-fl": {"start": -0.35, "marks": {"cards": 0.65, "all": 2.65, "pause": 3.4, "results": 4.6}, "clicks": [2.6, 3.35]}, "h-cf": {"start": -1.867, "marks": {"print": 1.667, "dialog": 2.767}, "clicks": [0.517, 1.617]}, "h-sk": {"start": -0.467, "marks": {"pick": 0.6, "ask": 1.5, "skip": 2.317, "done": 3.517}, "clicks": [0.55, 1.45, 2.267]}, "h-tw": {"start": 1.3, "marks": {"front": 1.15, "top": 2.433, "iso": 3.717}, "clicks": [1.1, 2.383, 3.667]}, "v-fl1": {"start": 5.8, "marks": {"cards": 0.65, "all": 2.65, "pause": 3.4, "results": 4.6}, "clicks": [2.6, 3.35]}, "v-fl2": {"start": 6.2, "marks": {"cards": 0.65, "all": 2.65, "pause": 3.4, "results": 4.6}, "clicks": [2.6, 3.35]}, "v-ov": {"start": 11.433, "marks": {"jam": 0.967}, "clicks": []}, "v-cf": {"start": 13.233, "marks": {"print": 1.667, "dialog": 2.767}, "clicks": [0.517, 1.617]}, "v-ph": {"start": 15.417, "marks": {}, "clicks": [1.25, 3.05, 3.783]}, "v-cv": {"start": 18.85, "marks": {}, "clicks": [0.5, 1.55]}, "v-3d": {"start": 21.5, "marks": {"turn": 2.2}, "clicks": []}, "v-sk": {"start": 23.883, "marks": {"pick": 0.6, "ask": 1.5, "skip": 2.317, "done": 3.517}, "clicks": [0.55, 1.45, 2.267]}, "v-au": {"start": 27.1, "marks": {}, "clicks": [0.5]}, "v-tw": {"start": 28.15, "marks": {"front": 1.15, "top": 2.433, "iso": 3.717}, "clicks": [1.1, 2.383, 3.667]}, "v-st": {"start": 31.0, "marks": {}, "clicks": [0.5]}, "v-ca": {"start": 32.5, "marks": {}, "clicks": []}, "v-gm": {"start": 33.25, "marks": {}, "clicks": [0.5]}};
-      const TY = [[39.55, 39.586, 39.622, 39.663, 39.698, 39.731, 39.773, 39.808, 39.85, 39.889, 39.922, 39.966, 40.001, 40.044, 40.08, 40.113, 40.143, 40.177, 40.213, 40.249, 40.283, 40.318, 40.349, 40.391, 40.426, 40.456, 40.501, 40.531, 40.572, 40.612, 40.645, 40.68, 40.711, 40.752, 40.784, 40.817, 40.849, 40.88, 40.925, 40.967, 41.004, 41.034, 41.078, 41.108, 41.141, 41.173, 41.212, 41.255, 41.365], [41.695, 41.729, 41.772, 41.814, 41.852, 41.886, 41.917, 41.957, 41.989, 42.02, 42.059, 42.169], [42.499, 42.529, 42.571, 42.609, 42.649, 42.691, 42.721, 42.759, 42.791, 42.829, 42.871, 42.907, 42.94, 42.972, 43.015, 43.058, 43.101, 43.144, 43.176, 43.208, 43.247, 43.277, 43.387]];
+      const M = {"h-fl": {"start": -2.3, "marks": {"cards": 1, "sandbox": 2.3, "hover": 2.8}, "clicks": []}, "h-ok": {"start": -2.25, "marks": {"open": 0.9, "print": 2.3, "dialog": 3.6, "start": 4.3}, "clicks": [0.85, 2.25, 4.25]}, "h-sk": {"start": 0.05, "marks": {"pick": 0.767, "ask": 1.833, "skip": 2.7, "done": 3.9}, "clicks": [0.717, 1.783, 2.65]}, "h-tw": {"start": 2.533, "marks": {"front": 1.317, "top": 2.65, "iso": 3.983}, "clicks": [1.267, 2.6, 3.933]}, "v-fl": {"start": 7.6, "marks": {"cards": 1, "sandbox": 2.3, "hover": 2.8}, "clicks": []}, "v-ov": {"start": 12.8, "marks": {"jam": 1.2}, "clicks": []}, "v-ok": {"start": 14.5, "marks": {"open": 0.9, "print": 2.3, "dialog": 3.6, "start": 4.3}, "clicks": [0.85, 2.25, 4.25]}, "v-ph": {"start": 18.767, "marks": {}, "clicks": [1.417, 3.383, 4.233]}, "v-cv": {"start": 23.317, "marks": {}, "clicks": [0.667, 1.883]}, "v-3d": {"start": 27.1, "marks": {"turn": 2.2}, "clicks": []}, "v-sk": {"start": 29.9, "marks": {"pick": 0.767, "ask": 1.833, "skip": 2.7, "done": 3.9}, "clicks": [0.717, 1.783, 2.65]}, "v-au": {"start": 33.633, "marks": {}, "clicks": [0.667]}, "v-tw": {"start": 35.583, "marks": {"front": 1.317, "top": 2.65, "iso": 3.983}, "clicks": [1.267, 2.6, 3.933]}, "v-st": {"start": 39.033, "marks": {}, "clicks": [0.667]}, "v-gm": {"start": 40.7, "marks": {}, "clicks": [0.667]}};
+      const TY = [[47.55, 47.586, 47.622, 47.663, 47.698, 47.731, 47.773, 47.808, 47.85, 47.889, 47.922, 47.966, 48.001, 48.044, 48.08, 48.113, 48.143, 48.177, 48.213, 48.249, 48.283, 48.318, 48.349, 48.391, 48.426, 48.456, 48.501, 48.531, 48.572, 48.612, 48.645, 48.68, 48.711, 48.752, 48.784, 48.817, 48.849, 48.88, 48.925, 48.967, 49.004, 49.034, 49.078, 49.108, 49.141, 49.173, 49.212, 49.255, 49.365], [49.695, 49.729, 49.772, 49.814, 49.852, 49.886, 49.917, 49.957, 49.989, 50.02, 50.059, 50.169], [50.499, 50.529, 50.571, 50.609, 50.649, 50.691, 50.721, 50.759, 50.791, 50.829, 50.871, 50.907, 50.94, 50.972, 51.015, 51.058, 51.101, 51.144, 51.176, 51.208, 51.247, 51.277, 51.387]];
       const $ = (s) => document.querySelector(s);
       const FW = 1440, FH = 900, SW = 1240, SH = 775;
       const at = (vid, mark) => M[vid].start + (mark in M[vid].marks ? M[vid].marks[mark] : 0);
@@ -235,10 +231,10 @@
       // ---------- static DOM ----------
       // Opening montage: four features, one per half bar (0.8 s). crop = footage rectangle (CSS px).
       const HOOK = [
-        { id: 'h-fl', k: 'Fleet', w: ['Every printer,', 'live.'], crop: [170, 250, 1100, 640], W: 1000, H: 582, side: 'R' },
-        { id: 'h-cf', k: 'Confirm Print', w: ['Unsafe starts,', 'refused.'], crop: [355, 170, 730, 560], W: 760, H: 583, side: 'L' },
-        { id: 'h-sk', k: 'Skip one object', w: ['One part fails.', 'Skip just it.'], crop: [150, 118, 1140, 425], W: 1040, H: 388, side: 'R' },
-        { id: 'h-tw', k: 'Digital twin', w: ['A live drawing', 'of every printer.'], crop: [150, 115, 440, 500], W: 470, H: 534, side: 'L' },
+        { id: 'h-fl', k: 'Fleet', w: ['Every printer,', 'live.'], crop: [176, 320, 1094, 352], W: 1060, H: 400, side: 'R' },
+        { id: 'h-ok', k: 'Confirm Print', w: ['Checked before', 'every print.'], crop: [346, 250, 748, 400], W: 900, H: 500, side: 'L' },
+        { id: 'h-sk', k: 'Skip one object', w: ['One part fails?', 'Skip just it.'], crop: [140, 100, 1160, 450], W: 1040, H: 440, side: 'R' },
+        { id: 'h-tw', k: 'Digital twin', w: ['A live drawing', 'of every printer.'], crop: [140, 105, 490, 580], W: 490, H: 600, side: 'L' },
       ];
       $('#hook').innerHTML = HOOK.map((h, i) => {
         const wx = h.side === 'R' ? 1800 - h.W : 120, tx = h.side === 'R' ? 'left:120px' : `left:${120 + h.W + 110}px`;
@@ -253,21 +249,19 @@
 
       // Captions: [number, label, headline, line]
       const CAPS = {
-        c1a: ['01', 'Every printer, live', 'Your whole farm, live.', 'Up to 12 printers, four updates a second.'],
-        c1b: ['01', 'Fleet commands', 'Pause them all at once.', '13 of 27 paused. The rest say why not.'],
-        c2a: ['02', 'Needs you', 'What needs you, ranked.', 'One list, most urgent first.'],
-        c2b: ['02', 'Live alerts', 'A jam? You know instantly.', 'Fired from the farm sandbox, as it happens.'],
-        c3a: ['03', 'Confirm Print', 'Checked before it prints.', 'Pre-flight, filament colour, maintenance, cost.'],
-        c3b: ['03', 'Refused, in words', 'Unsafe? It won\'t start.', 'And it tells you exactly why.'],
-        c3c: ['03', 'On your phone', 'Run it from your phone.', 'The server checks every start again.'],
+        c1a: ['01', 'Every printer, live', 'Your whole farm, on one screen.', 'Up to 12 printers, four updates a second.'],
+        c1b: ['01', 'Every printer, live', 'Know when each one is done.', 'Progress, the file, and the finish time.'],
+        c2: ['02', 'Needs you', 'Problems come to you.', 'A jam shows up the moment it happens.'],
+        c3a: ['03', 'Confirm Print', 'Every print is checked first.', 'Pre-flight, filament colour, maintenance, cost.'],
+        c3b: ['03', 'Confirm Print', 'All clear? Start it.', 'The server checks again as it starts.'],
+        c3c: ['03', 'On your phone', 'Run it from your phone.', 'Pause, or hold to cancel.'],
         c4a: ['04', 'Files ready for the U1', 'MakerWorld project? Converted.', 'One click. Multi-plate included.'],
-        c4b: ['04', 'G-code in 3D', 'Every layer, before it prints.', 'Scrub through the file, layer by layer.'],
+        c4b: ['04', 'G-code in 3D', 'See every layer first.', 'Scrub through the file, layer by layer.'],
         c5: ['05', 'Skip one object', 'One part failed? Skip it.', 'The rest of the plate keeps printing.'],
         c6: ['06', 'Automations', 'When this happens, do that.', 'ntfy, Discord, Telegram, Home Assistant, WLED.'],
-        c7: ['07', 'Digital twin', 'A live drawing of each printer.', '3D, front and top, updated as it moves.'],
+        c7: ['07', 'Digital twin', 'A live drawing of each printer.', '3D, front and top views.'],
         c8: ['08', 'Photo-to-Print Studio', 'A photo becomes a relief.', 'Four filament colours, layer on layer.'],
-        c9: ['+', 'Care', 'Know what\'s due.', 'Seven maintenance tasks, tracked by print hours.'],
-        c10: ['+', 'Games tab', 'Ten games for long prints.', 'Plus filament, cost, time-lapse and more.'],
+        c9: ['+', 'And more', 'Ten games for long prints.', 'Plus maintenance, filament and cost tracking.'],
       };
       $('#caps').innerHTML = Object.entries(CAPS).map(([id, [n, k, h, s]]) =>
         `<div class="cap" id="${id}"><div class="card glass"><div class="in"><div class="k"><b>${n}</b>${k}</div><div class="h">${h}</div><div class="s">${s}</div></div></div></div>`).join('');
@@ -280,9 +274,8 @@
         cam.appendChild(document.getElementById(vid));
         return { cam, vw, vh, s };
       }
-      for (const k of ['fl1', 'fl2', 'ov', 'cf', 'cv', '3d', 'sk', 'au', 'tw', 'st']) V[k === '3d' ? 'd3' : k] = mount($('#L-' + k), 'v-' + k, SW, SH);
+      for (const k of ['fl', 'ov', 'ok', 'cv', '3d', 'sk', 'au', 'tw', 'st']) V[k === '3d' ? 'd3' : k] = mount($('#L-' + k), 'v-' + k, SW, SH);
       HOOK.forEach((h, i) => { V[h.id] = mount($('#hw' + i + ' .view'), h.id, h.W - 18, h.H - 18); });
-      V.ca = mount($('#W-ca .view'), 'v-ca', 1302, 742);
       V.gm = mount($('#W-gm .view'), 'v-gm', 1302, 742);
       (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { inset: '0', width: '100%', height: '100%' });
         cam.appendChild($('#v-ph')); $('#ph-screen').appendChild(cam); })();
@@ -357,155 +350,153 @@
         tl.to(el + ' .view', { filter: 'blur(14px)', duration: .2, ease: 'power4.in' }, t - .2);
       }
 
-      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 170, y: 70, duration: 45, ease: 'none' }, 0);
-      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 45, ease: 'none' }, 0);
+      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 170, y: 70, duration: 53, ease: 'none' }, 0);
+      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 53, ease: 'none' }, 0);
       gsap.set('#rig', { ...POSE.center, y: 760, rotationX: 38 });
       tl.set('#rig', { ...POSE.center, y: 760, rotationX: 38 }, 0);
 
-      // ===== 0.0-3.2 opening montage: hard cuts on the beat =====
+      // ===== 0.0-4.8 opening montage: four features, 1.2 s each, cut on the beat =====
       HOOK.forEach((h, i) => {
-        const t = i * .8, v = V[h.id], tight = [h.crop[0] + h.crop[2] * .06, h.crop[1] + h.crop[3] * .06, h.crop[2] * .88, h.crop[3] * .88];
+        const t = i * 1.2, v = V[h.id], tight = [h.crop[0] + h.crop[2] * .04, h.crop[1] + h.crop[3] * .04, h.crop[2] * .92, h.crop[3] * .92];
         tl.set('#hs' + i, { opacity: 1 }, t);
-        tl.set('#hs' + i, { opacity: 0 }, t + .8);
-        tl.fromTo('#hw' + i, { scale: 1.12, y: 24 }, { scale: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+        tl.set('#hs' + i, { opacity: 0 }, t + 1.2);
+        tl.fromTo('#hw' + i, { scale: 1.1, y: 24 }, { scale: 1, y: 0, duration: .55, ease: 'expo.out', immediateRender: false }, t);
         tl.fromTo(`#hw${i} .view`, { filter: 'blur(10px)' }, { filter: 'blur(0px)', duration: .3, ease: 'expo.out', immediateRender: false }, t);
-        tl.fromTo('#hw' + i, { '--sx': '0%' }, { '--sx': '90%', duration: .8, ease: 'none', immediateRender: false }, t);
-        camTo(v, t, 0, h.crop); camTo(v, t + .02, .78, tight, 'power1.out');           // a slow push in
+        tl.fromTo('#hw' + i, { '--sx': '0%' }, { '--sx': '90%', duration: 1.2, ease: 'none', immediateRender: false }, t);
+        camTo(v, t, 0, h.crop); camTo(v, t + .02, 1.18, tight, 'power1.out');           // a slow push in
         tl.fromTo(`#hs${i} .hk`, { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: .3, ease: 'expo.out', immediateRender: false }, t + .02);
-        tl.fromTo(`#hs${i} .mask > span`, { yPercent: 105 }, { yPercent: 0, duration: .38, ease: 'expo.out', stagger: .07, immediateRender: false }, t + .04);
+        tl.fromTo(`#hs${i} .mask > span`, { yPercent: 105 }, { yPercent: 0, duration: .4, ease: 'expo.out', stagger: .08, immediateRender: false }, t + .05);
       });
 
-      // ===== 3.2-4.8 the one line, a word on every eighth note =====
+      // ===== 4.8-6.4 the one line, a word on every eighth note (the beat drops on "One") =====
       gsap.utils.toArray('#line .word').forEach((w, i) => {
-        tl.fromTo(w, { opacity: 0, y: 70, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .28, ease: 'expo.out', immediateRender: false }, 3.2 + i * .2);
+        tl.fromTo(w, { opacity: 0, y: 70, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .28, ease: 'expo.out', immediateRender: false }, 4.8 + i * .2);
       });
       gsap.set('#line .ul', { scaleX: 0 });
-      tl.fromTo('#line .ul', { scaleX: 0 }, { scaleX: 1, duration: .35, ease: 'expo.out', immediateRender: false }, 3.2 + 3 * .2 + .1);
-      tl.fromTo('#line', { scale: 1 }, { scale: 1.05, duration: 1.4, ease: 'none' }, 3.2);
-      zout('#line', 4.62);
+      tl.fromTo('#line .ul', { scaleX: 0 }, { scaleX: 1, duration: .35, ease: 'expo.out', immediateRender: false }, 4.8 + 3 * .2 + .1);
+      tl.fromTo('#line', { scale: 1 }, { scale: 1.05, duration: 1.4, ease: 'none' }, 4.8);
+      zout('#line', 6.22);
 
-      // ===== 4.8-6.4 the app, then the laptop rises =====
-      tl.set('#brand', { opacity: 1 }, 4.8);
-      tl.fromTo('#b-icon', { scale: .5, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: .5, ease: 'back.out(1.8)', immediateRender: false }, 4.8);
-      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'expo.out' }, 4.85);
-      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .4, ease: 'back.out(2.4)', immediateRender: false }, 5.0);
-      tl.fromTo('#b-word', { opacity: 0, x: -30, filter: 'blur(10px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 4.9);
-      tl.fromTo('#b-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 5.1);
-      tl.to('#brand', { y: -300, scale: .62, opacity: 0, filter: 'blur(8px)', duration: .32, ease: 'power3.in' }, 5.5);
-      tl.set('#L-fl1', { opacity: 1 }, 5.4); camTo(V.fl1, 5.4, 0, [0, 0, FW, FH]);
-      tl.to('#rig', { opacity: 1, duration: .25 }, 5.6);
-      tl.to('#rig', { ...POSE.center, duration: .8, ease: 'expo.out' }, 5.6);
+      // ===== 6.4-8.0 the app, then the laptop rises =====
+      tl.set('#brand', { opacity: 1 }, 6.4);
+      tl.fromTo('#b-icon', { scale: .5, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: .5, ease: 'back.out(1.8)', immediateRender: false }, 6.4);
+      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'expo.out' }, 6.45);
+      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .4, ease: 'back.out(2.4)', immediateRender: false }, 6.6);
+      tl.fromTo('#b-word', { opacity: 0, x: -30, filter: 'blur(10px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 6.5);
+      tl.fromTo('#b-sub', { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 6.7);
+      tl.to('#brand', { y: -300, scale: .62, opacity: 0, filter: 'blur(8px)', duration: .32, ease: 'power3.in' }, 7.15);
+      tl.set('#L-fl', { opacity: 1 }, 7.0); camTo(V.fl, 7.0, 0, [0, 0, FW, FH]);
+      tl.to('#rig', { opacity: 1, duration: .25 }, 7.2);
+      tl.to('#rig', { ...POSE.center, duration: .75, ease: 'expo.out' }, 7.2);
 
-      // ===== 01 every printer, live (6.4-11.2) =====
-      rig(6.3, .5, 'fill');
-      camTo(V.fl1, 6.3, .5, [170, 250, 1100, 640]);
-      cap('c1a', 6.6, 8.6);
-      camTo(V.fl1, 7.3, .6, [170, 140, 1100, 600]);
-      // jump cut to the second take of the same moment, punched in on the command bar
-      tl.set('#L-fl1', { opacity: 0 }, 8.8); tl.set('#L-fl2', { opacity: 1 }, 8.8);
-      camTo(V.fl2, 8.8, 0, [180, 160, 900, 420]);
-      camTo(V.fl2, at('v-fl2', 'pause') + .15, .55, [176, 300, 640, 400]);
-      cap('c1b', 9.0, 11.0);
+      // ===== 01 every printer, live (8.0-12.8): the page, the first printers, the farm, one card =====
+      rig(7.95, .55, 'fill');
+      camTo(V.fl, 7.95, .55, [150, 90, 1140, 640]);
+      cap('c1a', 8.2, 10.25);
+      camTo(V.fl, at('v-fl', 'cards') - .1, .6, [170, 300, 1110, 520]);
+      const HOVER = at('v-fl', 'hover');
+      camTo(V.fl, HOVER - .25, .6, [520, 300, 420, 400]);
+      spot(V.fl, [560, 338, 332, 112], HOVER + .3, 12.6);
+      cap('c1b', 10.45, 12.6);
 
-      // ===== 02 needs you (11.2-14.4) =====
-      camTo(V.ov, 11.0, 0, [0, 0, FW, FH]);
-      hop('#L-fl2', '#L-ov', 11.2, 'right');
-      camTo(V.ov, 11.4, .45, [170, 300, 1110, 450]);
+      // ===== 02 needs you (12.8-16.0) =====
+      camTo(V.ov, 12.6, 0, [0, 0, FW, FH]);
+      hop('#L-fl', '#L-ov', 12.8, 'right');
+      camTo(V.ov, 13.0, .5, [160, 290, 1130, 470]);
       const JAM = at('v-ov', 'jam');
-      cap('c2a', 11.5, JAM + .1);
-      camTo(V.ov, JAM + .1, .5, [170, 340, 1110, 330]);
-      spot(V.ov, [172, 392, 1106, 94], JAM + .3, 14.15);
-      cap('c2b', JAM + .3, 14.2);
+      camTo(V.ov, JAM + .1, .5, [165, 350, 1120, 300]);
+      spot(V.ov, [172, 391, 1106, 98], JAM + .3, 15.8);
+      cap('c2', 13.0, 15.8);
 
-      // ===== 03 confirm print (14.4-17.6) =====
-      camTo(V.cf, 14.2, 0, [740, 300, 600, 300]);
-      screenSwap('#L-ov', '#L-cf', 14.4);
-      cap('c3a', 14.6, 15.85);
-      const DLG = at('v-cf', 'dialog');
-      camTo(V.cf, DLG - .45, .5, [350, 168, 740, 566]);
-      spot(V.cf, [370, 334, 694, 168], DLG + .2, 17.4);
-      cap('c3b', DLG + .1, 17.42);
+      // ===== 03 confirm print, the happy path (16.0-20.8): a file, Print..., every check, Start =====
+      camTo(V.ok, 15.8, 0, [160, 180, 1120, 560]);
+      screenSwap('#L-ov', '#L-ok', 16.0);
+      const PRINT = at('v-ok', '') + M['v-ok'].clicks[1], GO = at('v-ok', '') + M['v-ok'].clicks[2];
+      camTo(V.ok, 16.15, .5, [740, 320, 560, 200]);                    // pre-flight clear, Print...
+      cap('c3a', 16.2, PRINT + .25);
+      camTo(V.ok, PRINT + .2, .5, [350, 250, 740, 400]);                // the dialog
+      spot(V.ok, [383, 364, 674, 50], PRINT + .6, GO - .25);            // Everything checks out
+      cap('c3b', PRINT + .45, 20.6);
+      camTo(V.ok, GO + .2, .55, [440, 20, 860, 400]);                   // started, confirmed by the printer
 
-      // ===== 03 phone (17.6-20.0) =====
-      tl.to('#rig', { x: -1000, opacity: 0, duration: .3, ease: 'power4.in' }, 17.4);
-      tl.to('#stage', { filter: 'blur(16px)', duration: .3, ease: 'power4.in' }, 17.4);
-      tl.set('#stage', { filter: 'blur(0px)' }, 17.75);
+      // ===== 03 phone (20.8-24.0) =====
+      tl.to('#rig', { x: -1000, opacity: 0, duration: .3, ease: 'power4.in' }, 20.6);
+      tl.to('#stage', { filter: 'blur(16px)', duration: .3, ease: 'power4.in' }, 20.6);
+      tl.set('#stage', { filter: 'blur(0px)' }, 20.95);
       tl.fromTo('#ph', { opacity: .2, x: 520, rotationY: -30, filter: 'blur(16px)', transformPerspective: 1800 },
-                       { opacity: 1, x: 0, rotationY: -8, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, 17.6);
-      tl.to('#ph', { rotationY: 6, scale: 1.04, duration: 1.9, ease: 'none' }, 18.1);
-      cap('c3c', 17.75, 19.8);
+                       { opacity: 1, x: 0, rotationY: -8, filter: 'blur(0px)', duration: .5, ease: 'power4.out', immediateRender: false }, 20.8);
+      tl.to('#ph', { rotationY: 6, scale: 1.04, duration: 2.6, ease: 'none' }, 21.3);
+      cap('c3c', 20.95, 23.8);
 
-      // ===== 04 files ready (20.0-24.0) =====
-      tl.to('#ph', { x: -700, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power4.in' }, 19.8);
-      tl.set('#L-cf', { opacity: 0 }, 19.9); tl.set('#L-cv', { opacity: 1, x: 0 }, 19.9);
-      camTo(V.cv, 19.9, 0, [640, 250, 700, 400]);
-      tl.set('#rig', { ...POSE.fill, x: 0, scale: 2.3, opacity: 0 }, 19.95);
-      tl.to('#rig', { scale: POSE.fill.scale, opacity: 1, duration: .5, ease: 'expo.out' }, 20.0);
-      tl.fromTo('#stage', { filter: 'blur(14px)' }, { filter: 'blur(0px)', duration: .4, ease: 'expo.out', immediateRender: false }, 20.0);
-      camTo(V.cv, at('v-cv', '') + M['v-cv'].clicks[1] + .25, .55, [760, 600, 560, 300]);
-      cap('c4a', 20.15, 21.42);
-      camTo(V.d3, 21.4, 0, [150, 190, 690, 480]);
-      screenSwap('#L-cv', '#L-3d', 21.6);
-      camTo(V.d3, 22.0, 1.8, [160, 200, 660, 465], 'power1.inOut');
-      cap('c4b', 21.75, 23.82);
+      // ===== 04 files ready (24.0-30.4): a MakerWorld project converted, then G-code in 3D =====
+      tl.to('#ph', { x: -700, opacity: 0, filter: 'blur(16px)', duration: .22, ease: 'power4.in' }, 23.8);
+      tl.set('#L-ok', { opacity: 0 }, 23.9); tl.set('#L-cv', { opacity: 1, x: 0 }, 23.9);
+      camTo(V.cv, 23.9, 0, [160, 300, 760, 560]);
+      tl.set('#rig', { ...POSE.fill, x: 0, scale: 2.3, opacity: 0 }, 23.95);
+      tl.to('#rig', { scale: POSE.fill.scale, opacity: 1, duration: .5, ease: 'expo.out' }, 24.0);
+      tl.fromTo('#stage', { filter: 'blur(14px)' }, { filter: 'blur(0px)', duration: .4, ease: 'expo.out', immediateRender: false }, 24.0);
+      const CV = at('v-cv', '') + M['v-cv'].clicks[1];
+      camTo(V.cv, at('v-cv', '') + M['v-cv'].clicks[0] + .15, .55, [170, 180, 1110, 520]);
+      camTo(V.cv, CV - .55, .45, [780, 360, 520, 180]);
+      camTo(V.cv, CV + .3, .6, [800, 640, 480, 260]);
+      cap('c4a', 24.15, 27.0);
+      camTo(V.d3, 27.0, 0, [150, 190, 690, 480]);
+      screenSwap('#L-cv', '#L-3d', 27.2);
+      camTo(V.d3, 28.4, .9, [170, 200, 640, 400]);
+      cap('c4b', 27.35, 30.2);
 
-      // ===== 05 skip one object (24.0-27.2) =====
-      camTo(V.sk, 23.8, 0, [0, 0, FW, FH]);
-      hop('#L-3d', '#L-sk', 24.0, 'center');
-      camTo(V.sk, 24.2, .45, [150, 118, 1140, 425]);
-      cap('c5', 24.3, 27.0);
+      // ===== 05 skip one object (30.4-33.6) =====
+      camTo(V.sk, 30.2, 0, [0, 0, FW, FH]);
+      hop('#L-3d', '#L-sk', 30.4, 'center');
+      camTo(V.sk, 30.55, .45, [140, 100, 1160, 450]);
       const PICK = at('v-sk', 'pick');
-      spot(V.sk, [494, 242, 786, 46], PICK + .05, 26.9);
-      camTo(V.sk, at('v-sk', 'ask') - .2, .5, [470, 180, 830, 260]);
+      camTo(V.sk, PICK + .1, .5, [470, 180, 830, 280]);
+      spot(V.sk, [492, 243, 772, 46], PICK + .2, 33.4);
+      cap('c5', 30.6, 33.4);
 
-      // ===== 06 automations (27.2-28.8) =====
-      camTo(V.au, 27.0, 0, [150, 360, 1000, 470]);
-      screenSwap('#L-sk', '#L-au', 27.2);
-      camTo(V.au, 27.85, .6, [160, 380, 900, 420]);
-      cap('c6', 27.35, 28.6);
+      // ===== 06 automations (33.6-36.0) =====
+      camTo(V.au, 33.4, 0, [150, 360, 1000, 470]);
+      screenSwap('#L-sk', '#L-au', 33.6);
+      camTo(V.au, at('v-au', '') + M['v-au'].clicks[0] + .2, .6, [160, 380, 900, 420]);
+      cap('c6', 33.75, 35.8);
 
-      // ===== 07 digital twin (28.8-31.2) =====
-      camTo(V.tw, 28.6, 0, [0, 0, FW, FH]);
-      hop('#L-au', '#L-tw', 28.8, 'left3d');
-      camTo(V.tw, 29.0, .5, [146, 112, 470, 560]);
-      cap('c7', 29.05, 31.0);
+      // ===== 07 digital twin (36.0-39.2) =====
+      camTo(V.tw, 35.8, 0, [0, 0, FW, FH]);
+      hop('#L-au', '#L-tw', 36.0, 'left3d');
+      camTo(V.tw, 36.2, .5, [140, 105, 490, 580]);
+      cap('c7', 36.25, 39.0);
 
-      // ===== 08 photo studio (31.2-32.8) =====
-      camTo(V.st, 31.0, 0, [140, 290, 1130, 600]);
-      screenSwap('#L-tw', '#L-st', 31.2);
-      camTo(V.st, 31.75, .6, [520, 300, 760, 430]);
-      cap('c8', 31.35, 32.6);
+      // ===== 08 photo studio (39.2-41.6) =====
+      camTo(V.st, 39.0, 0, [140, 290, 1130, 600]);
+      screenSwap('#L-tw', '#L-st', 39.2);
+      camTo(V.st, at('v-st', '') + M['v-st'].clicks[0] + .3, .6, [520, 300, 760, 430]);
+      cap('c8', 39.35, 41.4);
 
-      // ===== the supporting cast (32.8-35.2) =====
-      tl.to('#rig', { y: -900, scale: .6, opacity: 0, duration: .3, ease: 'power4.in' }, 32.55);
-      tl.to('#stage', { filter: 'blur(16px)', duration: .3, ease: 'power4.in' }, 32.55);
-      camTo(V.ca, 32.6, 0, [170, 320, 1110, 600]);
-      winIn('#W-ca', 32.8);
-      camTo(V.ca, 32.9, 1.1, [170, 330, 1000, 540], 'power1.inOut');
-      cap('c9', 32.95, 33.8);
-      winOut('#W-ca', 34.0);
-      camTo(V.gm, 33.8, 0, [300, 380, 840, 480]);
-      winIn('#W-gm', 34.0);
-      cap('c10', 34.1, 35.0);
-      winOut('#W-gm', 35.2);
+      // ===== and more (41.6-43.2) =====
+      tl.to('#rig', { y: -900, scale: .6, opacity: 0, duration: .3, ease: 'power4.in' }, 41.35);
+      tl.to('#stage', { filter: 'blur(16px)', duration: .3, ease: 'power4.in' }, 41.35);
+      camTo(V.gm, 41.4, 0, [300, 380, 840, 480]);
+      winIn('#W-gm', 41.6);
+      cap('c9', 41.75, 43.0);
+      winOut('#W-gm', 43.2);
 
-      // ===== 35.2-38.4 values: one per beat, on the stop-time hits =====
-      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, 35.2 + i * .4, .35));
-      tl.fromTo('#values', { scale: 1 }, { scale: 1.06, duration: 3, ease: 'none' }, 35.2);
-      zout('#values', 38.2);
+      // ===== 43.2-46.4 values: one per beat, on the stop-time hits; out on the silent beat =====
+      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, 43.2 + i * .4, .35));
+      tl.fromTo('#values', { scale: 1 }, { scale: 1.06, duration: 2.8, ease: 'none' }, 43.2);
+      zout('#values', 46.0);
 
-      // ===== 38.4-45 end card =====
-      tl.set('#end', { opacity: 1 }, 38.4);
-      tl.fromTo('#end-row', { opacity: .15, scale: 1.2, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 38.4);
-      tl.fromTo('#end-tag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 38.7);
-      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 39.0);
-      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .4 }, 39.2);
-      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .4 }, 39.4);
+      // ===== 46.4-53 end card, on the last drop =====
+      tl.set('#end', { opacity: 1 }, 46.4);
+      tl.fromTo('#end-row', { opacity: .15, scale: 1.2, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .45, ease: 'expo.out', immediateRender: false }, 46.4);
+      tl.fromTo('#end-tag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, 46.7);
+      tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 47.0);
+      tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .4 }, 47.2);
+      tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .4 }, 47.4);
       // typing: "$ " shows first, then the line grows one character per logged keystroke (the
       // same times the sound uses); the last time of each line is Return.
       gsap.utils.toArray('#term .ln').forEach((ln, i) => {
         const times = TY[i], n = times.length - 1;
-        tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : 39.0);
+        tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : 47.0);
         for (let j = 0; j < n; j++) tl.set(ln, { width: (3 + j) + 'ch' }, times[j]);
       });
 

@@ -36,7 +36,7 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
 
 // Version 3: every action is quicker (cursor moves of about a third of a second), so the
 // footage itself feels fast; the edit then only has to hold each moment for a beat.
-const MV = 340, PA = 60;   // cursor travel and the pause before a click, in ms
+const MV = 450, PA = 120;   // cursor travel and the pause before a click, in ms (quick, but easy to follow)
 const SHOTS = {
   // Overview: Needs you, then a jam fired from the sandbox arrives live.
   async overview_jam() {
@@ -131,7 +131,8 @@ const SHOTS = {
     await r.wait(st, 500);
     r.stop(st); return st;
   },
-  // Fleet: 27 printers (3 built in + 24 added in the sandbox), select all, pause, read each result.
+  // Fleet: 27 printers (3 built in + 24 added in the sandbox), live. The cursor glides over the
+  // cards and rests on a printing one (its ring, file and "done at" time).
   async fleet() {
     const st = await r.open(); await r.demoOn(st);
     await r.api(st, '/api/sandbox/farm?demo=1', { count: 24, busy_fraction: 0.5 });
@@ -139,20 +140,41 @@ const SHOTS = {
     await r.settle(st, 4000);
     await st.page.mouse.move(1100, 600); st.mx = 1100; st.my = 600;
     r.start(st, 'fleet');
-    await r.wait(st, 100);
-    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 550);
-    r.mark(st, 'cards');
-    await r.scrollBy(st, 1100, 750);
-    await r.wait(st, 60);
-    await r.scrollTo(st, '#tab-fleet', 150, 650);   // back up, so the command bar is in place (it sticks under the header lower down)
-    await r.wait(st, 80);
-    await r.click(st, '#fc-all', MV, PA); r.mark(st, 'all');
     await r.wait(st, 300);
-    await r.click(st, '#fc-bar [data-act="pause"]', MV, PA); r.mark(st, 'pause');
-    await sleep(2500);
-    await r.wait(st, 1200); r.mark(st, 'results');
-    await r.move(st, 1240, 760, MV);
-    await r.wait(st, 700);
+    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 700);
+    r.mark(st, 'cards');
+    await r.wait(st, 500);
+    await r.scrollTo(st, '.fleet-card[data-printer="sim-08"]', 330, 800);
+    r.mark(st, 'sandbox');
+    const [x, y] = await r.center(st, '.fleet-card[data-printer="sim-08"] .ring-svg');
+    await r.move(st, x + 40, y + 30, 500);
+    r.mark(st, 'hover');
+    await r.wait(st, 1500);
+    r.stop(st); return st;
+  },
+  // Confirm Print, the happy path: an idle printer, a sliced file, every check passes, Start print.
+  async confirm_ok() {
+    const st = await r.open(); await r.demoOn(st);
+    await r.api(st, '/api/sandbox/farm?demo=1', { count: 24, busy_fraction: 0.5 });
+    await tab(st, 'fleet'); await r.settle(st, 3000);
+    await st.page.evaluate(() => { const c = document.querySelector('.fleet-card[data-printer="sim-04"]');
+      [...c.querySelectorAll('button')].find(x => /^Open/.test(x.textContent.trim())).click(); });
+    await r.settle(st, 3000);
+    await st.page.evaluate(() => scrollTo(0, 0)); await r.settle(st, 500);
+    await samples(st);
+    const CUBE = '.fcd-name:text("calibration_cube_20mm.gcode") >> visible=true';
+    await intoView(st, CUBE, false);
+    await st.page.mouse.move(900, 560); st.mx = 900; st.my = 560;
+    r.start(st, 'confirm_ok');
+    await r.wait(st, 300);
+    await r.click(st, CUBE, 450, 100); r.mark(st, 'open');
+    await r.wait(st, 800);
+    await intoView(st, '#fd-print', true);
+    await r.click(st, '#fd-print', 450, 100); r.mark(st, 'print');
+    await r.wait(st, 1300); r.mark(st, 'dialog');
+    await r.click(st, '#confirm-go', 500, 150); r.mark(st, 'start');
+    await sleep(800);
+    await r.wait(st, 1300);
     r.stop(st); return st;
   },
   // Files: a Bambu Studio (MakerWorld) project, converted for the U1 in one click.
