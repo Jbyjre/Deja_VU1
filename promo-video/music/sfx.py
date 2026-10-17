@@ -14,41 +14,47 @@ SR = 48000
 rng = np.random.default_rng(3)
 
 
+def lowpass(x, fc):
+    b, a = signal.butter(2, fc / (SR / 2), 'low')
+    return signal.lfilter(b, a, x)
+
+
 def bp(x, lo, hi):
     b, a = signal.butter(2, [lo / (SR / 2), hi / (SR / 2)], 'band')
     return signal.lfilter(b, a, x)
 
 
-def ring(t, freqs, taus, amps):
-    return sum(a * np.sin(2 * np.pi * f * t) * np.exp(-t / tau) for f, tau, a in zip(freqs, taus, amps))
+def burst(n, lo, hi, tau, t):
+    """A short noise burst through a band-pass: the sound of plastic hitting plastic. No pure
+    tones, so nothing rings or 'pings'."""
+    return bp(rng.standard_normal(n), lo, hi) * np.exp(-t / tau)
 
 
 def click():
-    """A mouse click you can hear on a phone speaker (version 6: louder, fuller and longer than
-    before, which were 2 to 7 ms ticks that vanished under the music). Two parts, like a real
-    mouse: the press (a sharp transient, then the plastic shell ringing at 1.1, 2.4 and 3.6 kHz
-    for about 10 ms) and, 75 ms later, a lighter, higher release."""
-    n = int(.16 * SR); t = np.arange(n) / SR
+    """A mouse click (version 7): the button snapping down, then lifting about 70 ms later.
+    Made only of short filtered noise (version 6 used ringing sine tones, which sounded
+    synthetic and grating), with a small random change each time, like a real mouse."""
+    n = int(.13 * SR); t = np.arange(n) / SR
+    v = rng.uniform(.9, 1.1); s = rng.uniform(.93, 1.07)
     def part(shift, g):
-        burst = bp(rng.standard_normal(n), 1500, 9000) * np.exp(-t / .0025)
-        shell = ring(t, [1100 * shift, 2400 * shift, 3600 * shift], [.012, .009, .006], [.55, .7, .45])
-        return (burst * .9 + shell) * np.minimum(1, t / .0004) * g
+        snap = burst(n, 1500 * shift * s, 6000 * shift * s, .0016, t)
+        body = burst(n, 350 * s, 1300 * s, .005, t) * .55
+        return (snap + body) * np.minimum(1, t / .0003) * g
     x = part(1.0, 1.0)
-    rel = part(1.18, .55); d = int(.075 * SR)
-    x[d:] += rel[:n - d]
-    return x * .9
+    d = int(rng.uniform(.06, .08) * SR)
+    x[d:] += part(1.15, .42)[:n - d]
+    return lowpass(x, 8000) * .9 * v
 
 
 def key(pitch=1.0):
-    """A mechanical keystroke: the switch's click, the keycap bottoming out (a hollow 'thock'
-    with real body around 450 Hz and 1.6 kHz), and the lighter upstroke 60 ms later."""
-    n = int(.14 * SR); t = np.arange(n) / SR
-    clk = bp(rng.standard_normal(n), 2500, 9000) * np.exp(-t / .002) * .8
-    thock = ring(t, [450 * pitch, 1600 * pitch, 3100 * pitch], [.016, .01, .005], [.6, .55, .3])
-    up = np.zeros(n); d = int(.06 * SR)
-    up[d:] = (bp(rng.standard_normal(n - d), 2000, 8000) * np.exp(-t[:n - d] / .002) * .35
-              + ring(t[:n - d], [1900 * pitch], [.006], [.25]))
-    return (clk + thock + up) * np.minimum(1, t / .0004) * .75
+    """A laptop keystroke: a soft 'tock' as the key bottoms out (a muffled thump with a little
+    click on top), then a quieter lift. Each one a little different, so typing sounds human."""
+    n = int(.12 * SR); t = np.arange(n) / SR
+    s = pitch * rng.uniform(.9, 1.1); v = rng.uniform(.8, 1.15)
+    down = burst(n, 1200 * s, 5000 * s, .0022, t) * .7 + burst(n, 160 * s, 700 * s, .008, t) * .8
+    up = np.zeros(n); d = int(rng.uniform(.045, .07) * SR)
+    up[d:] = burst(n - d, 2000 * s, 6000 * s, .0014, t[:n - d]) * .25
+    return lowpass((down + up) * np.minimum(1, t / .0004), 8000) * 1.4 * v
 
 
 def tick():

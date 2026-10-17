@@ -16,6 +16,12 @@ trust the code and fix this file.
   product has the same rule: it never invents figures.
 - Do every part of what is asked, exactly, including counts and formats.
   Never trim a deliverable to save tokens.
+- Apply the owner's feedback with judgement, the way they would want it, not
+  mechanically everywhere: "bring back the laptop and phone" meant about half
+  the scenes, not every one. Re-read every earlier request in the thread
+  before finishing, and go a step beyond each one.
+- Launch video: 90 seconds at most unless the owner says otherwise
+  (`promo-video/README.md` holds the owner's other video preferences).
 - Read before editing. Grep first, then read with offset and limit. Cap
   command output.
 - Never auto-subscribe to PR or CI activity, enable auto-fix or auto-merge,

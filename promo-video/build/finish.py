@@ -1,6 +1,8 @@
-"""Finishes a rendered cut: brings its soundtrack to -14 LUFS (the usual level for YouTube and
-social), with a limiter at -2.5 dBFS so even after AAC encoding no peak goes over -1 dBFS, and puts it on the rendered picture
-(the picture is copied, not re-encoded).
+"""Finishes a rendered cut: brings its soundtrack to -16 LUFS, with a limiter at -2.5 dBFS so
+even after AAC encoding no peak goes over -1 dBFS, and puts it on the rendered picture (the
+picture is copied, not re-encoded). Version 7 masters 2 dB under the usual -14 LUFS for YouTube
+and social, because the owner wants the music light and in the background; platforms turn
+louder videos down to their level but do not turn quieter ones up.
 
 Usage: python3 build/finish.py main|vertical RENDER.mp4 OUT.mp4
 """
@@ -12,7 +14,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 FMT, RENDER, OUT = sys.argv[1:4]
 WAV = os.path.join(os.path.dirname(HERE), FMT, 'assets', 'audio', f'mix_{FMT}.wav')
-TARGET = -14.0
+TARGET = -16.0
 
 
 def loudness(path, chain=''):

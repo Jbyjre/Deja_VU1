@@ -1,18 +1,13 @@
-      /* 16:9: the caption on one side, the laptop (or the drawing) on the other, turned towards it. */
-      :root { --tile: 128px; --tile-label: 17px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 26px; --co-size: 30px;
+      /* 16:9: the caption on one side, the laptop (or, full screen, the app) behind or beside it. */
+      :root { --tile: 128px; --tile-label: 17px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 27px; --co-size: 32px;
         --values-size: 110px; --term-size: 28px; }
       #grid { left: 287px; top: 251px; grid-template-columns: repeat(5, 250px); column-gap: 24px; row-gap: 40px; }
       .cap { top: 0; bottom: 0; width: 650px; display: flex; align-items: center; }
       .cap.L { left: 90px; } .cap.R { right: 90px; }
       #corner { left: 90px; top: 56px; }
+      #simtag { right: 90px; top: 58px; }
       #ph { left: 1150px; top: 80px; }
-      #phchip { right: calc(100% + 26px); bottom: 60px; }
-      #ar-ph { left: 470px; top: 80px; }
-      #archip { left: calc(100% + 26px); bottom: 60px; }
       #ha-card { left: 110px; top: 560px; width: 480px; }
-      #tl-card { left: 810px; top: 170px; width: 980px; }
-      #tl-svg { width: 936px; height: 617px; }
-      #tlchip { left: 24px; bottom: -54px; }
       #end-row { top: 150px; }
       #end-word { font-size: 132px; }
       #end-tag { top: 340px; }
