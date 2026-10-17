@@ -40,6 +40,12 @@ happens, and the repository is ready to post publicly.
   site when this was written.
 - Two folders are temporary: `marketing-library/` (pictures plus
   `MESSAGING.md`) and `build-prompts/` (these prompts).
+- `marketing-library/` is behind the app. Apart from the launch videos in
+  `07-videos/`, its pictures and `MESSAGING.md` (feature order, paste-ready
+  text, a test count of 608) predate the 17 October work: the clickable
+  twin, the mixed-nozzle planner, Find printers, Studio tone fitting and
+  the online demo. The current pictures are in `docs/img/`. Treat
+  `docs/img/` and the README as the source, not the library.
 
 ## Directions, not steps
 
