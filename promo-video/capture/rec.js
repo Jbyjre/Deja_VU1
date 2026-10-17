@@ -9,12 +9,12 @@ const CURSOR = `
   const mk = () => {
     if (document.getElementById('__cur')) return;
     const c = document.createElement('div'); c.id = '__cur';
-    c.innerHTML = '<svg width="26" height="32" viewBox="0 0 26 32"><path d="M3 2 L3 25 L9 19.5 L13 29 L17.2 27.2 L13.2 18 L21 18 Z" fill="#14161c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
+    c.innerHTML = '<svg width="34" height="42" viewBox="0 0 26 32"><path d="M3 2 L3 25 L9 19.5 L13 29 L17.2 27.2 L13.2 18 L21 18 Z" fill="#14161c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>';
     Object.assign(c.style, {position:'fixed', left:'0', top:'0', zIndex: 2147483647, pointerEvents:'none',
       transform:'translate(-200px,-200px)', filter:'drop-shadow(0 2px 3px rgba(0,0,0,.28))', willChange:'transform'});
     const r = document.createElement('div'); r.id = '__ring';
-    Object.assign(r.style, {position:'fixed', left:'0', top:'0', width:'44px', height:'44px', margin:'-22px 0 0 -22px',
-      borderRadius:'50%', border:'2px solid rgba(74,141,248,.9)', background:'rgba(74,141,248,.16)', zIndex: 2147483646,
+    Object.assign(r.style, {position:'fixed', left:'0', top:'0', width:'64px', height:'64px', margin:'-32px 0 0 -32px',
+      borderRadius:'50%', border:'3px solid rgba(74,141,248,.95)', background:'rgba(74,141,248,.22)', zIndex: 2147483646,
       pointerEvents:'none', opacity:'0', transform:'translate(-200px,-200px) scale(.4)'});
     if (matchMedia('(pointer: coarse)').matches) {   // phone: a fingertip instead of an arrow
       c.innerHTML = '<div style="width:40px;height:40px;margin:-18px 0 0 -18px;border-radius:50%;background:rgba(20,22,28,.16);border:2px solid rgba(255,255,255,.95);box-shadow:0 2px 8px rgba(0,0,0,.18)"></div>';
@@ -33,7 +33,7 @@ const CURSOR = `
     addEventListener('mousemove', e => { x = e.clientX; y = e.clientY; c.style.transform = 'translate(' + (x-3) + 'px,' + (y-2) + 'px)'; }, true);
     addEventListener('mousedown', () => {
       r.animate([{opacity: 1, transform: 'translate(' + x + 'px,' + y + 'px) scale(.4)'},
-                 {opacity: 0, transform: 'translate(' + x + 'px,' + y + 'px) scale(1.25)'}], {duration: 520, easing: 'cubic-bezier(.2,.7,.2,1)'});
+                 {opacity: 0, transform: 'translate(' + x + 'px,' + y + 'px) scale(1.25)'}], {duration: 600, easing: 'cubic-bezier(.2,.7,.2,1)'});
       c.animate([{scale: 1}, {scale: .86}, {scale: 1}], {duration: 220});
     }, true);
   };
@@ -103,6 +103,14 @@ async function press(st) {
   (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
   await st.page.mouse.down(); await frame(st); await frame(st); await st.page.mouse.up(); await frame(st);
 }
+// A key press, logged so the sound track can put a keystroke exactly on it.
+async function key(st, k) {
+  (st.keys = st.keys || []).push(+(st.n / st.fps).toFixed(3));
+  await st.page.keyboard.press(k); await frame(st);
+}
+async function type(st, text, perChar = 70) {
+  for (const ch of text) { await key(st, ch === ' ' ? 'Space' : ch); await wait(st, Math.max(0, perChar - 1000 / st.fps)); }
+}
 async function click(st, sel, ms = 700, pause = 150) {
   const [x, y] = await center(st, sel);
   await move(st, x, y, ms);
@@ -122,7 +130,7 @@ async function scrollTo(st, sel, offset = 120, ms = 900) {
   await scrollBy(st, top - offset, ms);
 }
 function start(st, name) {
-  st.name = name; st.dir = path.join(__dirname, 'frames', name); st.n = 0; st.clicks = [];
+  st.name = name; st.dir = path.join(__dirname, 'frames', name); st.n = 0; st.clicks = []; st.keys = [];
   fs.rmSync(st.dir, { recursive: true, force: true }); fs.mkdirSync(st.dir, { recursive: true });
 }
 function stop(st, outDir = path.join(__dirname, '..', 'footage')) {
@@ -130,7 +138,7 @@ function stop(st, outDir = path.join(__dirname, '..', 'footage')) {
   const out = path.join(outDir, st.name + '.mp4');
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(st.fps), '-i', path.join(st.dir, '%05d.jpg'),
     '-vf', 'format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '12', '-r', String(st.fps), '-movflags', '+faststart', out]);
-  fs.writeFileSync(path.join(outDir, st.name + '.json'), JSON.stringify({ fps: st.fps, frames: st.n, seconds: st.n / st.fps, clicks: st.clicks, marks: st.marks || {} }));
+  fs.writeFileSync(path.join(outDir, st.name + '.json'), JSON.stringify({ fps: st.fps, frames: st.n, seconds: st.n / st.fps, clicks: st.clicks, keys: st.keys || [], marks: st.marks || {} }));
   fs.rmSync(st.dir, { recursive: true, force: true });
   console.log(st.name + '.mp4', st.n, 'frames =', (st.n / st.fps).toFixed(2), 's');
   st.dir = null;
@@ -154,4 +162,4 @@ async function still(st, file, clip) {
   fs.writeFileSync(file, Buffer.from(data, 'base64'));
 }
 function mark(st, name) { (st.marks = st.marks || {})[name] = +(st.n / st.fps).toFixed(3); }
-module.exports = { mark, open, frame, wait, move, click, press, box, center, scrollBy, scrollTo, start, stop, settle, demoOn, api, still };
+module.exports = { mark, open, frame, wait, move, click, press, key, type, box, center, scrollBy, scrollTo, start, stop, settle, demoOn, api, still };

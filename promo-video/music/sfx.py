@@ -1,6 +1,6 @@
 """Sound effects for the promo, synthesised from noise and sine waves (no samples).
 
-Reads a cue list [{"t": seconds, "type": "click"|"whoosh"|"tick", "gain": 1, "pan": 0}, ...]
+Reads a cue list [{"t": seconds, "type": "click"|"key"|"whoosh"|"tick", "gain": 1, "pan": 0}, ...]
 and writes one stereo WAV of the given length.
 Usage: python3 sfx.py cues.json LENGTH_S OUT.wav
 """
@@ -20,11 +20,28 @@ def bp(x, lo, hi):
 
 
 def click():
-    """A soft trackpad click: a short filtered tick plus a tiny high blip."""
-    n = int(.06 * SR); t = np.arange(n) / SR
-    tick = bp(rng.standard_normal(n), 1800, 6000) * np.exp(-t / .004)
-    blip = np.sin(2 * np.pi * 2600 * t) * np.exp(-t / .012) * .25
-    return (tick * .8 + blip) * .5
+    """A mouse click you can hear: a sharp press (noise burst plus a short 3.2 kHz body and a
+    low thock), then a quieter, higher release 55 ms later."""
+    n = int(.12 * SR); t = np.arange(n) / SR
+    def part(f, g):
+        burst = bp(rng.standard_normal(n), 2000, 7500) * np.exp(-t / .0022)
+        body = np.sin(2 * np.pi * f * t) * np.exp(-t / .007) * .45
+        thock = np.sin(2 * np.pi * 900 * t) * np.exp(-t / .005) * .5
+        return (burst + body + thock) * g
+    x = part(3200, 1.0)
+    rel = part(3900, .45); d = int(.055 * SR)
+    x[d:] += rel[:n - d]
+    return x * .55
+
+
+def key(pitch=1.0):
+    """A mechanical keystroke: the click of the switch, the key bottoming out, a light upstroke."""
+    n = int(.11 * SR); t = np.arange(n) / SR
+    clk = bp(rng.standard_normal(n), 3000, 8500) * np.exp(-t / .0018) * .9
+    thock = (np.sin(2 * np.pi * 340 * pitch * t) + .6 * np.sin(2 * np.pi * 1250 * pitch * t)) * np.exp(-t / .011) * .55
+    up = np.zeros(n); d = int(.045 * SR)
+    up[d:] = bp(rng.standard_normal(n - d), 2500, 7000) * np.exp(-t[:n - d] / .0015) * .3
+    return (clk + thock + up) * .5
 
 
 def tick():
@@ -51,7 +68,7 @@ def main():
     n = int(float(sys.argv[2]) * SR)
     mix = np.zeros((2, n))
     for c in cues:
-        x = {'click': click, 'whoosh': whoosh, 'tick': tick}[c['type']]()
+        x = key(c.get('pitch', 1.0)) if c['type'] == 'key' else {'click': click, 'whoosh': whoosh, 'tick': tick}[c['type']]()
         pan = c.get('pan', 0)
         lg, rg = np.cos((pan + 1) * np.pi / 4), np.sin((pan + 1) * np.pi / 4)
         start = int(c['t'] * SR)
