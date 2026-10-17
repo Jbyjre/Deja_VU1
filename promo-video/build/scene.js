@@ -1,8 +1,9 @@
-      // Version 6: a SaaS promo. Every feature as an icon in under three seconds, the name, then
-      // the app itself on a laptop (and a phone) standing in 3D, one feature after another, each
-      // with a floating glass caption. Shared by both cuts; the layout CSS places things, this
-      // file times them. build.py fills in M (each shot's clicks and marks), TY (the end-card
-      // typing) and SEG (when each feature starts and ends).
+      // Version 7: a 90-second SaaS promo. Every feature as an icon in under three seconds, the
+      // name, then the app itself, sometimes on a laptop or phone standing in 3D, sometimes full
+      // screen, one feature after another, each with a floating glass caption, every change one
+      // smooth camera move. Shared by both cuts; the layout CSS places things, this file times
+      // them. build.py fills in M (each shot's clicks and marks), TY (the end-card typing) and
+      // SEG (when each feature starts and ends).
       const FMT = '__FMT__', V9 = FMT === 'vertical';
       const M = /*MARKS*/{}/*END*/;
       const TY = /*TYPING*/[]/*END*/;
@@ -33,59 +34,65 @@
       };
       const svgIcon = (id) => `<svg class="ico" viewBox="0 0 48 48" aria-hidden="true">${IC[id]}</svg>`;
 
-      // ---------- the fifteen features, best first, the cherry on top last ----------
-      // side: which side of the frame the laptop (or the illustration) stands on in 16:9.
+
+      // ---------- the features: thirteen filmed ones, best first, the cherry on top last ----------
+      // shot: D = on a device (the laptop turned towards the caption, its keyboard in view),
+      //       F = the app full screen (the camera dollies into the laptop's screen).
+      // Version 7 (the owner: "not the laptop and phone in every one, maybe half"): the device
+      // shots are where a device says something (the first look at the app, the phone, the
+      // moments that step back for breath, the games); the full-screen shots are where the
+      // detail matters. cap: the caption's side in 16:9 (always on top in 9:16).
       const F = [
-        { id: 'fl', lb: 'Live fleet', k: 'Every printer, live', side: 'R',
-          h: 'See every printer at once.', s: 'Up to <em>12 printers</em> on one screen, updated <em>four times a second</em>.' },
-        { id: 'ov', lb: 'Needs you', k: 'Needs you', side: 'L',
-          h: 'Know what needs you.', s: 'One list across the farm, <em>most urgent first</em>. A jam shows up the moment it happens.' },
-        { id: 'ok', lb: 'Confirm Print', k: 'Confirm Print', side: 'R',
-          h: 'Every print is checked first.', s: 'File, filament colours, maintenance and cost. The server <em>checks again</em> as it starts.' },
-        { id: 'cv', lb: 'Convert for U1', k: 'Files ready for the U1', side: 'L',
-          h: 'Convert projects in one click.', s: '<em>MakerWorld, NexPrint and OrcaSlicer</em> projects, set up for the U1, multi-plate included.' },
-        { id: 'sk', lb: 'Skip one object', k: 'Skip one object', side: 'R',
-          h: 'Skip one failed part.', s: 'One object on the plate failed? Skip just that one. <em>The rest keep printing.</em>' },
-        { id: 'tw', lb: 'Digital twin', k: 'Digital twin', side: 'L',
-          h: 'A live drawing of each printer.', s: 'Toolheads, bed and position <em>drawn to scale</em>, live. Turn it in 3D, or read it front and top.' },
-        { id: 'st', lb: 'Photo studio', k: 'Photo-to-Print Studio', side: 'R',
-          h: 'A photo becomes a relief.', s: 'Pick a photo and the studio models a <em>layered relief in four filament colours</em>.' },
-        { id: 'au', lb: 'Automations', k: 'Automations', side: 'L',
-          h: 'When this happens, do that.', s: 'Alerts to <em>ntfy, Discord or Telegram</em>, a light, Home Assistant, or pause the print. No cloud.' },
-        { id: 'ca', lb: 'Maintenance', k: 'Maintenance', side: 'R',
-          h: 'Maintenance that keeps count.', s: '<em>Seven tasks</em> tracked from real print hours. Mark one done and its counter starts again.' },
-        { id: 'fi', lb: 'Filament & Spoolman', k: 'Filament & Spoolman', side: 'L',
-          h: 'Know what’s on the shelf.', s: 'Every spool, the grams left and <em>how many prints it will last</em>. Import them from Spoolman.' },
-        { id: 'co', lb: 'Print cost', k: 'Print cost', side: 'R',
-          h: 'What each print costs.', s: '<em>Filament plus electricity</em>, for the print running now and every print before it.' },
-        { id: 'ha', lb: 'Home Assistant', k: 'Home Assistant', side: 'L',
-          h: 'Home Assistant, built in.', s: '<em>28 sensors</em> for each U1, sent straight to Home Assistant. No MQTT broker, no add-on.' },
-        { id: 'tl', lb: 'Time-lapse', k: 'Time-lapse', side: 'R',
-          h: 'Every print, as a time-lapse.', s: 'With your printer’s camera: <em>a frame every two layers</em>, played back as a flipbook.' },
-        { id: 'ar', lb: 'AR preview', k: 'AR preview', side: 'L',
-          h: 'See it on your desk first.', s: 'Place an STL or 3MF on your desk <em>at its real printed size</em>, through your phone’s camera.' },
-        { id: 'ga', lb: 'Ten games', k: 'Ten games', side: 'R',
-          h: 'Something to do while it prints.', s: '<em>Ten games</em> built in: Sky Dash, Tetris, Pac-Man, Snake and six more.' },
+        { id: 'fl', lb: 'Live fleet', k: 'Every printer, live', shot: 'D', cap: 'L',
+          h: 'See every printer at once.', s: 'Up to <em>12 printers</em>, live, updated <em>four times a second</em>.' },
+        { id: 'ov', lb: 'Needs you', k: 'Needs you', shot: 'F', cap: 'R',
+          h: 'Know what needs you.', s: 'One list, <em>most urgent first</em>. A jam shows up the moment it happens.' },
+        { id: 'ok', lb: 'Confirm Print', k: 'Confirm Print', shot: 'F', cap: 'L',
+          h: 'Every print is checked first.', s: 'File, colours, maintenance and cost, then the server <em>checks again</em> as it starts.' },
+        { id: 'cv', lb: 'Convert for U1', k: 'Files ready for the U1', shot: 'D', cap: 'R',
+          h: 'Convert projects in one click.', s: '<em>MakerWorld, NexPrint and OrcaSlicer</em> projects, set up for the U1.' },
+        { id: 'sk', lb: 'Skip one object', k: 'Skip one object', shot: 'F', cap: 'R',
+          h: 'Skip one failed part.', s: 'Skip just that object. <em>The rest keep printing.</em>' },
+        { id: 'tw', lb: 'Digital twin', k: 'Digital twin', shot: 'F', cap: 'R',
+          h: 'A live drawing of each printer.', s: '<em>Drawn to scale</em>, live. Turn it in 3D, or read it front and top.' },
+        { id: 'st', lb: 'Photo studio', k: 'Photo-to-Print Studio', shot: 'D', cap: 'L',
+          h: 'A photo becomes a relief.', s: 'A layered relief in <em>four filament colours</em>.' },
+        { id: 'au', lb: 'Automations', k: 'Automations', shot: 'F', cap: 'L',
+          h: 'When this happens, do that.', s: 'Alerts to <em>ntfy, Discord or Telegram</em>, or pause the print. No cloud.' },
+        { id: 'ca', lb: 'Maintenance', k: 'Maintenance', shot: 'F', cap: 'L',
+          h: 'Maintenance that keeps count.', s: '<em>Seven tasks</em>, tracked from real print hours.' },
+        { id: 'fi', lb: 'Filament & Spoolman', k: 'Filament & Spoolman', shot: 'D', cap: 'R',
+          h: 'Know what’s on the shelf.', s: 'Grams left and <em>prints left</em> on every spool. Spoolman import too.' },
+        { id: 'co', lb: 'Print cost', k: 'Print cost', shot: 'F', cap: 'R',
+          h: 'What each print costs.', s: '<em>Filament plus electricity</em>, for every print.' },
+        { id: 'ha', lb: 'Home Assistant', k: 'Home Assistant', shot: 'D', cap: 'R',
+          h: 'Home Assistant, built in.', s: '<em>28 sensors</em> for each U1. No MQTT broker, no add-on.' },
+        { id: 'ga', lb: 'Ten games', k: 'Ten games', shot: 'D', cap: 'L',
+          h: 'Something to do while it prints.', s: '<em>Ten games</em> built in, from Sky Dash to Tetris.' },
       ];
-      const PH = { id: 'ph', side: 'R', k: 'On your phone', h: 'And from your phone.', s: 'The same dashboard, <em>made for thumbs</em>. No account, no cloud: it talks straight to your computer.' };
-      const VIDEO = ['fl', 'ov', 'ok', 'cv', 'sk', 'tw', 'st', 'au', 'ca', 'fi', 'co', 'ha', 'ga'];   // tl and ar are drawn
+      const PH = { id: 'ph', cap: 'L', k: 'On your phone', h: 'And from your phone.', s: 'Made for thumbs. <em>No account, no cloud.</em>' };
+      // The opening shows every feature the app has; time-lapse and AR preview are in the icons
+      // but not explained (they can't be filmed on the simulated farm).
+      const ICONS = [...F.slice(0, 12), { id: 'tl', lb: 'Time-lapse' }, { id: 'ar', lb: 'AR preview' }, F[12]];
 
       // ---------- DOM ----------
-      $('#grid').innerHTML = F.map(f => `<div class="ft" id="ft-${f.id}"><div class="tile glass">${svgIcon(f.id)}</div><div class="lb">${f.lb.replace('&', '&amp;')}</div></div>`).join('');
+      $('#grid').innerHTML = ICONS.map(f => `<div class="ft" id="ft-${f.id}"><div class="tile glass">${svgIcon(f.id)}</div><div class="lb">${f.lb.replace('&', '&amp;')}</div></div>`).join('');
       $('#b-sub').innerHTML = ['One', 'screen', 'for', '<span class="hl">every U1</span>', 'you', 'run.'].map(w => `<span class="word">${w}</span>`).join(' ');
-      $('#caps').innerHTML = [...F, PH].map(f => `<div class="cap ${V9 ? 'T' : f.side === 'R' ? 'L' : 'R'}" id="cap-${f.id}"><div class="card glass"><div class="in">
+      $('#caps').innerHTML = [...F, PH].map(f => `<div class="cap ${V9 ? 'T' : f.cap}" id="cap-${f.id}"><div class="card glass"><div class="in">
           <div class="k"><span class="mini">${svgIcon(f.id)}</span>${f.k.replace('&', '&amp;')}</div><div class="h">${f.h}</div><div class="s">${f.s}</div></div></div></div>`).join('');
+      $('#keys').innerHTML = '<i></i>'.repeat(74) + '<i class="sp"></i>' + '<i></i>'.repeat(4);   // five rows of 14, then the space bar row
       const screen = $('#screen');
-      VIDEO.forEach(id => { const l = document.createElement('div'); l.className = 'layer'; l.id = 'L-' + id; l.innerHTML = '<div class="cam"></div>'; screen.insertBefore(l, $('#Wchip')); });
+      const LAYERS = [...F.map(f => f.id), 'tw2'];
+      LAYERS.forEach(id => { const l = document.createElement('div'); l.className = 'layer'; l.id = 'L-' + id; l.innerHTML = '<div class="cam"></div>'; screen.insertBefore(l, screen.querySelector('.glare')); });
 
       const V = {};
       function mount(viewEl, vid, vw, vh) {
         const s = Math.max(vw / FW, vh / FH), cam = viewEl.querySelector('.cam');
         Object.assign(cam.style, { width: FW * s + 'px', height: FH * s + 'px' });
         cam.appendChild(document.getElementById(vid));
-        return { cam, vw, vh, s };
+        return { cam, vw, vh, s, safe: [0, 0, 1, 1], cs: 1 };
       }
-      VIDEO.forEach(id => { V[id] = mount($('#L-' + id), 'v-' + id, SW, SH); });
+      LAYERS.forEach(id => { V[id] = mount($('#L-' + id), 'v-' + id, SW, SH); });
       (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { inset: '0', width: '100%', height: '100%' });
         cam.appendChild($('#v-ph')); $('#ph-screen').appendChild(cam); })();
       document.querySelectorAll('.ico path, .ico rect, .ico circle:not(.fill)').forEach(el => {
@@ -94,344 +101,340 @@
         el.style.strokeDasharray = n; el.dataset.len = n;
       });
 
-      // ---------- motion vocabulary ----------
-      const tl = gsap.timeline({ paused: true });
-      function camK(v, r) {
-        return Math.max(Math.min(v.vw / (r[2] * v.s), v.vh / (r[3] * v.s)), Math.max(v.vw / (FW * v.s), v.vh / (FH * v.s)));
+      // ---------- the camera ----------
+      // Poses of the laptop. z is a dolly towards (+) or away from (-) the viewer; with the
+      // stage's 2600 px perspective the laptop looks 2600 / (2600 - z) times its size. lid is
+      // the hinge angle (negative = tilted back). R / L: standing right / left of the caption,
+      // seen a little from above so the keyboard shows. full: the screen fills the frame.
+      const PERSP = 2600, look = z => PERSP / (PERSP - z);
+      const POSE = V9 ? {
+        R: { x: 0, y: 150, z: -1500, rotationX: -17, rotationY: -16, lid: -11 },
+        L: { x: 0, y: 150, z: -1500, rotationX: -17, rotationY: 16, lid: -11 },
+        full: { x: 0, y: 160, z: 433, rotationX: 0, rotationY: 0, lid: 0 },
+        back: { x: 0, y: 250, z: -2500, rotationX: -12, rotationY: -12, lid: -11 },
+        rise: { x: 0, y: 1300, z: -1900, rotationX: -55, rotationY: 0, lid: -11 },
+      } : {
+        R: { x: 260, y: -40, z: -1050, rotationX: -16, rotationY: -20, lid: -12 },
+        L: { x: -260, y: -40, z: -1050, rotationX: -16, rotationY: 20, lid: -12 },
+        full: { x: 0, y: 34.5, z: 933, rotationX: 0, rotationY: 0, lid: 0 },
+        back: { x: 220, y: -10, z: -1900, rotationX: -12, rotationY: -26, lid: -12 },
+        rise: { x: 260, y: 1000, z: -1500, rotationX: -55, rotationY: -20, lid: -12 },
+      };
+      // In full screen the caption covers one side of the app, so the camera inside the screen
+      // frames each detail in the part that stays clear (fractions of the screen).
+      const SAFE = V9 ? { T: [.16, .09, .84, .98] } : { L: [.41, .09, .98, .91], R: [.02, .09, .59, .91] };
+      const DEVICE_LOOK = look(POSE.R.z);
+      function shotPose(f) { return f.shot === 'F' ? 'full' : (f.cap === 'L' ? 'R' : 'L'); }
+      function setView(v, pose, cap) {
+        v.safe = pose === 'full' ? SAFE[V9 ? 'T' : cap] : [0, 0, 1, 1];
+        v.cs = DEVICE_LOOK / look(POSE[pose].z);          // callouts keep one size on screen
       }
-      // Frame a rectangle of the footage (CSS px of the filmed page) on the laptop screen; returns the zoom.
-      function camTo(v, t, d, r, ease = 'expo.inOut') {
+
+      const tl = gsap.timeline({ paused: true });
+      // A smooth move of the whole laptop (and its hinge) to a pose.
+      function rigTo(t, d, pose, extra = {}, ease = 'power2.inOut') {
+        const { lid, ...p } = POSE[pose];
+        tl.to('#rig', { ...p, ...extra, duration: d, ease }, t);
+        tl.to('#lid', { rotationX: lid, duration: d, ease }, t);
+      }
+      function camK(v, r) {
+        const sw = v.vw * (v.safe[2] - v.safe[0]), sh = v.vh * (v.safe[3] - v.safe[1]);
+        return Math.max(Math.min(sw / (r[2] * v.s), sh / (r[3] * v.s)), Math.max(v.vw / (FW * v.s), v.vh / (FH * v.s)));
+      }
+      // Frame a rectangle of the footage (CSS px of the filmed page) in the clear part of the screen.
+      function camTo(v, t, d, r, ease = 'power2.inOut') {
         const k = camK(v, r), cx = (r[0] + r[2] / 2) * v.s, cy = (r[1] + r[3] / 2) * v.s;
-        let x = v.vw / 2 - k * cx, y = v.vh / 2 - k * cy;
-        x = Math.min(0, Math.max(v.vw - k * FW * v.s, x)); y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
+        const tx = v.vw * (v.safe[0] + v.safe[2]) / 2, ty = v.vh * (v.safe[1] + v.safe[3]) / 2;
+        let x = tx - k * cx, y = ty - k * cy;
+        // The page may slide out from under the caption (the strip it leaves is the app's own
+        // light background, behind the caption's glass), but never past the clear part's edge.
+        // (9:16 captions sit on top, so there the page never slides sideways.)
+        const slide = V9 ? [0, 0] : [v.vw * v.safe[0], v.vw * (1 - v.safe[2])];
+        x = Math.min(slide[0], Math.max(v.vw - k * FW * v.s - slide[1], x));
+        y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
         if (d === 0) tl.set(v.cam, { scale: k, x, y }, t); else tl.to(v.cam, { scale: k, x, y, duration: d, ease }, t);
         return k;
       }
       // A callout: a dot on the thing, a short stem, a dark label, inside the screen's camera
-      // (it stays on its target through every zoom) and scaled by 1/zoom (one text size).
+      // (it stays on its target through every move) and scaled to keep one size on screen.
       function callout(v, pt, label, dir, tIn, tOut, k) {
         const el = document.createElement('div'); el.className = 'co ' + dir;
         el.innerHTML = `<i class="dot"></i><b class="stem"></b><span class="pill">${label}</span>`;
         Object.assign(el.style, { left: pt[0] * v.s + 'px', top: pt[1] * v.s + 'px' });
         v.cam.appendChild(el);
-        tl.set(el, { scale: 1 / k, transformOrigin: '0 0' }, 0);
-        tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: .25, ease: 'power2.out', immediateRender: false }, tIn);
-        tl.fromTo(el.querySelector('.dot'), { scale: 0 }, { scale: 1, duration: .4, ease: 'back.out(3)', immediateRender: false }, tIn);
-        tl.fromTo(el.querySelector('.stem'), { scale: 0 }, { scale: 1, duration: .3, ease: 'expo.out', immediateRender: false,
+        tl.set(el, { scale: v.cs / k, transformOrigin: '0 0' }, 0);
+        tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: .3, ease: 'power2.out', immediateRender: false }, tIn);
+        tl.fromTo(el.querySelector('.dot'), { scale: 0 }, { scale: 1, duration: .45, ease: 'back.out(2.2)', immediateRender: false }, tIn);
+        tl.fromTo(el.querySelector('.stem'), { scale: 0 }, { scale: 1, duration: .35, ease: 'power3.out', immediateRender: false,
           transformOrigin: { r: '0 50%', l: '100% 50%', t: '50% 100%', b: '50% 0' }[dir] }, tIn + .05);
-        tl.fromTo(el.querySelector('.pill'), { opacity: 0 }, { opacity: 1, duration: .35, ease: 'expo.out', immediateRender: false }, tIn + .12);
-        tl.to(el, { opacity: 0, duration: .2, ease: 'power2.in' }, tOut);
+        tl.fromTo(el.querySelector('.pill'), { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.out', immediateRender: false }, tIn + .12);
+        tl.to(el, { opacity: 0, duration: .25, ease: 'power1.in' }, tOut);
       }
       function spot(v, r, tIn, tOut) {
         const el = document.createElement('div'); el.className = 'spot';
         Object.assign(el.style, { left: r[0] * v.s + 'px', top: r[1] * v.s + 'px', width: r[2] * v.s + 'px', height: r[3] * v.s + 'px' });
         v.cam.appendChild(el);
-        tl.fromTo(el, { opacity: 0, scale: 1.05 }, { opacity: 1, scale: 1, duration: .35, ease: 'expo.out', immediateRender: false }, tIn);
-        tl.to(el, { opacity: 0, duration: .25, ease: 'power2.in' }, tOut);
+        tl.fromTo(el, { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: .45, ease: 'power3.out', immediateRender: false }, tIn);
+        tl.to(el, { opacity: 0, duration: .3, ease: 'power1.in' }, tOut);
       }
       function zin(el, t, d = .4) {
-        tl.fromTo(el, { opacity: .15, scale: .85, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: d, ease: 'expo.out', immediateRender: false }, t);
+        tl.fromTo(el, { opacity: 0, scale: .9, y: 18 }, { opacity: 1, scale: 1, y: 0, duration: d, ease: 'power3.out', immediateRender: false }, t);
       }
-      // the laptop's poses: R / L = standing right / left of the caption, turned towards it
-      const POSE = V9 ? {
-        R: { x: 0, y: 170, scale: .68, rotationY: -12, rotationX: 5 },
-        L: { x: 0, y: 170, scale: .68, rotationY: 12, rotationX: 5 },
-        back: { x: 0, y: 330, scale: .5, rotationY: -6, rotationX: 5 },
-        rise: { x: 0, y: 1100, scale: .6, rotationY: 0, rotationX: 40 },
-      } : {
-        R: { x: 255, y: 26, scale: .79, rotationY: -15, rotationX: 4 },
-        L: { x: -255, y: 26, scale: .79, rotationY: 15, rotationX: 4 },
-        back: { x: 120, y: -10, scale: .62, rotationY: -22, rotationX: 4 },
-        rise: { x: 0, y: 900, scale: .74, rotationY: 0, rotationX: 40 },
-      };
-      const DRIFT = 4;     // degrees the laptop turns towards the viewer during one feature
+      // Captions: the card glides in, then its label, headline and sentence; out, it just fades.
       function capIn(id, t) {
-        const c = '#cap-' + id, dx = V9 ? 0 : $(c).classList.contains('L') ? -50 : 50;
+        const c = '#cap-' + id, dx = V9 ? 0 : $(c).classList.contains('L') ? -36 : 36;
         tl.set(c, { opacity: 1 }, t);
-        tl.fromTo(`${c} .card`, { opacity: 0, x: dx, y: V9 ? -30 : 0, scale: .96 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: .55, ease: 'expo.out', immediateRender: false }, t);
-        tl.fromTo(`${c} .k`, { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .4, ease: 'expo.out', immediateRender: false }, t + .1);
-        tl.fromTo(`${c} .h`, { opacity: 0, y: 26, filter: 'blur(8px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .5, ease: 'expo.out', immediateRender: false }, t + .18);
-        tl.fromTo(`${c} .s`, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, t + .38);
-        tl.fromTo(`${c} .mini .ico *`, { strokeDashoffset: (i, el) => el.dataset.len || 0 }, { strokeDashoffset: 0, duration: .6, ease: 'power2.out', stagger: .05, immediateRender: false }, t + .12);
+        tl.fromTo(`${c} .card`, { opacity: 0, x: dx, y: V9 ? -20 : 0, scale: .97 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: .7, ease: 'power3.out', immediateRender: false }, t);
+        tl.fromTo(`${c} .k`, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .5, ease: 'power3.out', immediateRender: false }, t + .08);
+        tl.fromTo(`${c} .h`, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, t + .14);
+        tl.fromTo(`${c} .s`, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, t + .26);
+        tl.fromTo(`${c} .mini .ico *`, { strokeDashoffset: (i, el) => el.dataset.len || 0 }, { strokeDashoffset: 0, duration: .6, ease: 'power2.out', stagger: .04, immediateRender: false }, t + .1);
         tl.fromTo(`${c} .card`, { '--sx': '0%' }, { '--sx': '90%', duration: 6, ease: 'none', immediateRender: false }, t);
       }
+      // Full screen, the keyboard deck is out of the picture; it fades away on the way in and back
+      // on the way out (left in place, Chrome clips part of the screen when the camera is this
+      // close to a 3D scene that also holds the deck).
+      function deck(show, t) {
+        if (show) { tl.set('.deck', { visibility: 'visible' }, t); tl.to('.deck', { opacity: 1, duration: .5, ease: 'power1.out' }, t); }
+        else { tl.to('.deck', { opacity: 0, duration: .5, ease: 'power1.in' }, t); tl.set('.deck', { visibility: 'hidden' }, t + .5); }
+      }
       function capOut(id, t) {
-        tl.to(`#cap-${id} .card`, { opacity: 0, y: V9 ? -20 : 0, x: 0, scale: .97, duration: .25, ease: 'power3.in' }, t);
-        tl.set('#cap-' + id, { opacity: 0 }, t + .26);
-      }
-      // the laptop turns to its new side while its screen cuts the curve to the next feature
-      function rigTo(t, d, pose, extra = {}) { tl.to('#rig', { ...POSE[pose], ...extra, duration: d, ease: 'expo.inOut' }, t); }
-      function screenSwap(a, b, t) {
-        if (a) { tl.to(a, { x: -240, filter: 'blur(14px)', duration: .22, ease: 'power4.in' }, t - .22); tl.to(a, { opacity: 0, duration: .22, ease: 'none' }, t - .22); }
-        tl.fromTo(b, { x: 240, opacity: .2, filter: 'blur(14px)' }, { x: 0, opacity: 1, filter: 'blur(0px)', duration: .45, ease: 'power4.out', immediateRender: false }, t);
+        tl.to(`#cap-${id} .card`, { opacity: 0, scale: .98, duration: .35, ease: 'power1.inOut' }, t);
+        tl.set('#cap-' + id, { opacity: 0 }, t + .36);
       }
 
-      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 170, y: 70, duration: 117, ease: 'none' }, 0);
-      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 117, ease: 'none' }, 0);
-      gsap.set('#rig', POSE.rise);
+      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 170, y: 70, duration: 90, ease: 'none' }, 0);
+      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 90, ease: 'none' }, 0);
+      { const { lid, ...p } = POSE.rise; gsap.set('#rig', p); gsap.set('#lid', { rotationX: lid }); }
 
-      // ===== 0-2.9 every feature as an icon, one per sixteenth note (a vibraphone note each) =====
-      F.forEach((f, i) => {
-        const t = .1 + i * .125, el = '#ft-' + f.id;
-        tl.fromTo(el, { opacity: 0, scale: .4, y: 30 }, { opacity: 1, scale: 1, y: 0, duration: .45, ease: 'back.out(2)', immediateRender: false }, t);
+      // ===== 0-2.5 every feature as an icon, one every tenth of a second (a piano note each) =====
+      ICONS.forEach((f, i) => {
+        const t = .1 + i * .1, el = '#ft-' + f.id;
+        tl.fromTo(el, { opacity: 0, scale: .5, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: .45, ease: 'back.out(1.7)', immediateRender: false }, t);
         tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .05);
-        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 2.4, ease: 'none', immediateRender: false }, t);
+        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 2.2, ease: 'none', immediateRender: false }, t);
       });
-      tl.fromTo('#grid', { scale: 1 }, { scale: 1.04, duration: 2.5, ease: 'none' }, .1);
-      // ...then they all fly into the middle and become the app icon
+      tl.fromTo('#grid', { scale: 1 }, { scale: 1.035, duration: 2.1, ease: 'none' }, .1);
+      // ...then they gather into the middle and become the app icon
       { const g = $('#grid').getBoundingClientRect(), cx = g.left + g.width / 2, cy = g.top + g.height / 2;
-        F.forEach((f, i) => {
+        ICONS.forEach(f => {
           const r = $('#ft-' + f.id).getBoundingClientRect(), dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
-          const d = Math.hypot(dx, dy);
-          tl.to('#ft-' + f.id, { x: dx, y: dy, scale: .25, opacity: 0, duration: .42, ease: 'power3.in' }, 2.5 + (1 - d / 900) * .12);
+          tl.to('#ft-' + f.id, { x: dx, y: dy, scale: .3, opacity: 0, duration: .5, ease: 'power3.inOut' }, 2.0 + (1 - Math.hypot(dx, dy) / 900) * .1);
         }); }
 
-      // ===== 2.9-5.5 the name and the one line =====
-      tl.set('#brand', { opacity: 1 }, 2.85);
-      tl.fromTo('#b-icon', { scale: .3, opacity: 0, rotation: -20 }, { scale: 1, opacity: 1, rotation: 0, duration: .6, ease: 'back.out(1.8)', immediateRender: false }, 2.85);
-      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .7, ease: 'expo.out' }, 2.9);
-      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .45, ease: 'back.out(2.4)', immediateRender: false }, 3.05);
-      tl.fromTo('#b-word', { opacity: 0, y: 24, filter: 'blur(10px)' }, { opacity: 1, y: 0, filter: 'blur(0px)', duration: .5, ease: 'expo.out', immediateRender: false }, 3.0);
-      gsap.utils.toArray('#b-sub .word').forEach((w, i) => tl.fromTo(w, { opacity: 0, y: 30, filter: 'blur(8px)' },
-        { opacity: 1, y: 0, filter: 'blur(0px)', duration: .3, ease: 'expo.out', immediateRender: false }, 3.45 + i * .14));
-      tl.fromTo('#b-sub2', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 4.35);
-      tl.to('#brand', { y: V9 ? -500 : -320, scale: .7, opacity: 0, duration: .45, ease: 'power3.in' }, 5.3);
+      // ===== 2.45-4.4 the name and the one line =====
+      tl.set('#brand', { opacity: 1 }, 2.4);
+      tl.fromTo('#b-icon', { scale: .4, opacity: 0 }, { scale: 1, opacity: 1, duration: .6, ease: 'back.out(1.6)', immediateRender: false }, 2.4);
+      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .8, ease: 'power3.out' }, 2.45);
+      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .45, ease: 'back.out(2)', immediateRender: false }, 2.6);
+      tl.fromTo('#b-word', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, 2.55);
+      gsap.utils.toArray('#b-sub .word').forEach((w, i) => tl.fromTo(w, { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: .4, ease: 'power3.out', immediateRender: false }, 2.85 + i * .11));
+      tl.fromTo('#b-sub2', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .45, ease: 'power3.out', immediateRender: false }, 3.45);
+      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .55, ease: 'power2.in' }, 3.9);
 
       // ===== the features =====
-      const first = F[0];
-      tl.set('#rig', { opacity: 1 }, 5.35);
-      tl.to('#rig', { ...POSE[V9 ? 'R' : first.side], duration: .95, ease: 'expo.out' }, 5.35);
-      tl.set('#L-fl', { opacity: 1 }, 5.3);
-      tl.fromTo('#corner', { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: .5, ease: 'expo.out', immediateRender: false }, 6.0);
-      let prevVideo = null;
+      // The laptop rises into place as Fleet is clicked on its screen.
+      tl.set('#rig', { opacity: 1 }, 4.15);
+      tl.set('#L-fl', { opacity: 1 }, 4.15);
+      rigTo(4.15, 1.2, shotPose(F[0]), {}, 'power3.out');
+      tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .6, ease: 'power3.out', immediateRender: false }, 5.0);
+      tl.fromTo('#simtag', { opacity: 0 }, { opacity: 1, duration: .6, ease: 'power2.out', immediateRender: false }, 5.0);
+      capIn('fl', 5.1);
+      F.forEach(f => setView(V[f.id], shotPose(f), f.cap));
+      setView(V.tw2, 'full', 'R');
+
+      // Between two features: one continuous move. The caption fades, the laptop turns, dollies
+      // in or steps back while its screen crossfades to the next app view (no cuts, no blur).
       F.forEach((f, i) => {
-        const s = SEG[f.id], side = V9 ? (i % 2 ? 'L' : 'R') : f.side;
-        capIn(f.id, s.t0 + (i ? .2 : .25));
-        if (f.id !== 'ok') capOut(f.id, s.t1 - .3);
-        if (f.id === 'tl' || f.id === 'ar') return;            // drawn, see below
-        if (i) {
-          if (F[i - 1].id === prevVideo) {     // straight from another screen: turn and cut the curve
-            rigTo(s.t0 - .45, .9, side);
-            screenSwap('#L-' + prevVideo, '#L-' + f.id, s.t0);
-          } else {                                              // back from a drawing: the laptop comes back in
-            tl.set('#L-' + prevVideo, { opacity: 0 }, s.t0 - .5); tl.set('#L-' + f.id, { opacity: 1, x: 0, filter: 'blur(0px)' }, s.t0 - .5);
-            tl.fromTo('#rig', { ...POSE[side], x: POSE[side].x + (V9 ? 0 : 500), y: POSE[side].y + (V9 ? 700 : 0), opacity: 0 },
-              { ...POSE[side], opacity: 1, duration: .8, ease: 'expo.out', immediateRender: false }, s.t0 - .35);
-          }
-        }
-        // a slow turn towards the viewer while the feature plays
-        const turn = POSE[side].rotationY > 0 ? -DRIFT : DRIFT;
-        tl.to('#rig', { rotationY: POSE[side].rotationY + turn, scale: POSE[side].scale * 1.025, duration: s.t1 - s.t0 - 1.0, ease: 'sine.inOut' }, s.t0 + .5);
-        prevVideo = f.id;
+        if (!i) return;
+        const p = F[i - 1], t0 = SEG[f.id].t0, from = shotPose(p), to = shotPose(f);
+        capOut(p.id === 'ok' ? 'ph' : p.id, t0 - .5);
+        capIn(f.id, t0 + .15);
+        if (from === to) {                                   // full screen to full screen: a breath
+          const z = POSE[to].z;
+          tl.to('#rig', { z: z - 160, duration: .55, ease: 'power2.inOut' }, t0 - .55);
+          tl.to('#rig', { z, duration: .7, ease: 'power2.inOut' }, t0);
+        } else rigTo(t0 - .55, 1.15, to, p.id === 'ok' ? { opacity: 1 } : {});
+        if (to === 'full' && from !== 'full') deck(false, t0 - .05);
+        if (from === 'full' && to !== 'full' && p.id !== 'ok') deck(true, t0 - .55);
+        // the new screen fades in on top of the old one, which only goes once it is covered
+        tl.set('#L-' + f.id, { zIndex: 2 + i }, t0 - .35);
+        tl.fromTo('#L-' + f.id, { scale: 1.035 }, { scale: 1, duration: 1.0, ease: 'power2.out', immediateRender: false }, t0 - .3);
+        tl.fromTo('#L-' + f.id, { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power1.inOut', immediateRender: false }, t0 - .3);
+        tl.set('#L-' + (p.id === 'tw' ? 'tw2' : p.id), { opacity: 0 }, t0 + .25);
+      });
+      // The small logo shows over device shots only: full screen, it would sit on top of the app.
+      F.forEach((f, i) => {
+        if (!i) return;
+        const was = F[i - 1].shot === 'D' || F[i - 1].id === 'ok', is = f.shot === 'D';
+        if (was !== is) tl.to('#corner', { opacity: is ? 1 : 0, duration: .5, ease: 'power1.inOut' }, SEG[f.id].t0 - .5);
+      });
+      tl.to('#corner', { opacity: 1, duration: .5, ease: 'power1.inOut' }, SEG.ok.phone - .4);
+      tl.to('#corner', { opacity: 0, duration: .5, ease: 'power1.inOut' }, SEG.ga.t0 + (M['v-ga'].start + M['v-ga'].clicks[1] - SEG.ga.t0));
+
+      // While a feature plays the laptop keeps drifting a little closer (and, on the device,
+      // turns towards the viewer), so the frame is never quite still.
+      F.forEach(f => {
+        const s = SEG[f.id], pose = POSE[shotPose(f)];
+        const end = f.id === 'ok' ? s.phone - .6 : f.id === 'ga' ? null : s.t1 - .55;
+        if (end === null) return;
+        const drift = f.shot === 'F' ? { z: pose.z + 40 } : { z: pose.z + 90, rotationY: pose.rotationY * .8 };
+        tl.to('#rig', { ...drift, duration: end - s.t0 - .65, ease: 'sine.inOut' }, s.t0 + .65);
       });
 
       // 1. every printer, live
       { const v = V.fl, H = at('v-fl', 'hover');
-        camTo(v, 5.3, 0, [0, 0, FW, FH]);
-        camTo(v, at('v-fl', 'cards') - .2, .8, [170, 280, 1110, 640]);
-        const k = camTo(v, H - .5, .8, [470, 280, 700, 440]);
-        spot(v, [556, 346, 336, 104], H + .1, SEG.fl.t1 - .3);
-        callout(v, [592, 432], 'Progress', 'b', H + .3, SEG.fl.t1 - .3, k);
-        callout(v, [760, 418], 'Finish time', 't', H + .75, SEG.fl.t1 - .3, k);
+        camTo(v, 4.0, 0, [0, 0, FW, FH]);
+        camTo(v, at('v-fl', 'cards') - .3, 1.0, [170, 280, 1110, 640]);
+        const k = camTo(v, H - .6, 1.0, [470, 280, 700, 440]);
+        spot(v, [556, 346, 336, 104], H + .1, SEG.fl.t1 - .4);
+        callout(v, [592, 432], 'Progress', 'b', H + .2, SEG.fl.t1 - .4, k);
+        callout(v, [760, 418], 'Finish time', 't', H + .55, SEG.fl.t1 - .4, k);
       }
       // 2. needs you
-      { const v = V.ov, J = at('v-ov', 'jam'), R = at('v-ov', 'row');
-        camTo(v, SEG.ov.t0 - .3, 0, [150, 200, 1140, 640]);
-        const k = camTo(v, J + .15, .6, [165, 330, 1120, 420]);
-        spot(v, [172, 391, 1106, 98], J + .35, SEG.ov.t1 - .3);
-        callout(v, [460, 470], 'A jam, the moment it happens', 'b', J + .55, SEG.ov.t1 - .3, k);
-        callout(v, [1195, 406], 'Act on it here', 'l', R + .1, SEG.ov.t1 - .3, k);
+      { const v = V.ov, J = at('v-ov', 'jam');
+        camTo(v, SEG.ov.t0 - .6, 0, [150, 220, 800, 600]);
+        const k = camTo(v, J + .1, .9, [165, 330, 760, 300]);
+        spot(v, [172, 391, 1106, 98], J + .3, SEG.ov.t1 - .4);
+        callout(v, [460, 470], 'A jam, the moment it happens', 'b', J + .5, SEG.ov.t1 - .4, k);
       }
       // 3. confirm print, then the phone
       { const v = V.ok, P = click('v-ok', 1), G = click('v-ok', 2), PH0 = SEG.ok.phone;
-        camTo(v, SEG.ok.t0 - .3, 0, [160, 180, 1120, 600]);
-        const k1 = camTo(v, P - .75, .6, [700, 300, 620, 240]);
-        callout(v, [870, 378], 'Pre-flight: clear', 't', P - .25, P + .25, k1);
-        const k = camTo(v, P + .25, .6, [350, 250, 740, 400]);
+        camTo(v, SEG.ok.t0 - .6, 0, [600, 250, 760, 330]);
+        const k1 = camTo(v, P - .6, .8, [700, 300, 620, 240]);
+        callout(v, [870, 378], 'Pre-flight: clear', 't', P - .45, P + .2, k1);
+        const k = camTo(v, P + .3, .9, [350, 250, 740, 400]);
         spot(v, [383, 364, 674, 50], P + .8, G - .3);
-        callout(v, [720, 410], 'Every check passed', 'b', P + 1.0, G - .3, k);
-        callout(v, [1003, 575], 'Start print', 'l', G - .9, G + .1, k);
-        const k2 = camTo(v, G + .2, .6, [440, 20, 860, 400]);
-        callout(v, [720, 110], 'Confirmed by the printer', 'b', G + .65, PH0 - .2, k2);
+        callout(v, [720, 410], 'Every check passed', 'b', P + .95, G - .3, k);
+        callout(v, [1003, 575], 'Start print', 'l', G - .8, G + .1, k);
+        const k2 = camTo(v, G + .15, .8, [520, 20, 760, 380]);
+        callout(v, [720, 110], 'Confirmed by the printer', 'b', G + .55, PH0 - .5, k2);
         // ...and from your phone: the laptop steps back, the phone comes forward
-        capOut('ok', PH0 - .3);
-        rigTo(PH0 - .35, .8, 'back', { opacity: .55 });
-        tl.fromTo('#ph', { opacity: 0, x: V9 ? 0 : 420, y: V9 ? 500 : 0, rotationY: V9 ? -10 : -30, transformPerspective: 1800 },
-          { opacity: 1, x: 0, y: 0, rotationY: V9 ? -4 : -10, duration: .75, ease: 'power4.out', immediateRender: false }, PH0 - .2);
-        tl.to('#ph', { rotationY: V9 ? 4 : 2, duration: SEG.ok.t1 - PH0 - .2, ease: 'none' }, PH0 + .55);
-        capIn('ph', PH0 + .05); capOut('ph', SEG.ok.t1 - .3);
-        tl.to('#ph', { opacity: 0, x: V9 ? 0 : -260, y: V9 ? 300 : 0, duration: .35, ease: 'power3.in' }, SEG.ok.t1 - .3);
-        tl.to('#rig', { opacity: 1, duration: .6, ease: 'power2.out' }, SEG.ok.t1 - .35);
+        capOut('ok', PH0 - .5);
+        rigTo(PH0 - .6, 1.15, 'back', { opacity: .55 });
+        deck(true, PH0 - .6);
+        tl.fromTo('#ph', { opacity: 0, x: V9 ? 0 : 380, y: V9 ? 420 : 30, rotationY: V9 ? -14 : -34, rotationX: 6, transformPerspective: 1800 },
+          { opacity: 1, x: 0, y: 0, rotationY: V9 ? -5 : -12, rotationX: 2, duration: 1.0, ease: 'power3.out', immediateRender: false }, PH0 - .35);
+        tl.to('#ph', { rotationY: V9 ? 4 : -2, duration: SEG.ok.t1 - PH0 - .3, ease: 'sine.inOut' }, PH0 + .65);
+        capIn('ph', PH0 + .15);
+        tl.to('#ph', { opacity: 0, x: V9 ? 0 : 420, y: V9 ? 380 : 0, rotationY: V9 ? -10 : -30, duration: .75, ease: 'power2.in' }, SEG.ok.t1 - .6);
       }
       // 4. files ready for the U1
       { const v = V.cv, C = click('v-cv', 1), RP = at('v-cv', 'report');
-        camTo(v, SEG.cv.t0 - .3, 0, [170, 180, 1110, 600]);
-        const k = camTo(v, C - .8, .6, [700, 330, 620, 240]);
-        callout(v, [918, 422], 'One click', 't', C - .3, C + .5, k);
-        const k2 = camTo(v, C + .4, .7, [760, 560, 560, 340]);
-        callout(v, [1010, 690], 'Converted for the U1', 't', RP, SEG.cv.t1 - .3, k2);
+        camTo(v, SEG.cv.t0 - .6, 0, [560, 280, 800, 400]);
+        const k = camTo(v, C - .6, .7, [700, 330, 620, 240]);
+        callout(v, [918, 422], 'One click', 't', C - .4, C + .45, k);
+        const k2 = camTo(v, C + .35, .9, [760, 560, 560, 340]);
+        callout(v, [1010, 690], 'Converted for the U1', 't', RP - .1, SEG.cv.t1 - .4, k2);
       }
       // 5. skip one object
       { const v = V.sk, PK = at('v-sk', 'pick'), A = at('v-sk', 'ask'), S = at('v-sk', 'skip');
-        camTo(v, SEG.sk.t0 - .3, 0, [0, 0, FW, FH]);
-        camTo(v, at('v-sk', 'plate') - .5, .8, [140, 100, 1160, 500]);
-        const k = camTo(v, PK - .5, .6, [440, 170, 860, 300]);
-        spot(v, [492, 243, 772, 46], PK + .15, SEG.sk.t1 - .3);
-        callout(v, [640, 278], 'Pick the failed part', 'b', PK + .3, A - .1, k);
-        callout(v, [553, 412], 'Confirm', 'r', A + .2, S - .1, k);
-        callout(v, [640, 278], 'Skipped. The rest keep going.', 'b', S + .4, SEG.sk.t1 - .3, k);
+        camTo(v, SEG.sk.t0 - .6, 0, [300, 140, 800, 420]);
+        const k = camTo(v, PK - .6, .8, [440, 170, 800, 300]);
+        spot(v, [492, 243, 772, 46], PK + .15, SEG.sk.t1 - .4);
+        callout(v, [640, 278], 'Pick the failed part', 'b', PK + .25, A - .1, k);
+        callout(v, [553, 412], 'Confirm', 'r', A + .15, S - .1, k);
+        callout(v, [640, 278], 'Skipped. The rest keep going.', 'b', S + .3, SEG.sk.t1 - .4, k);
       }
-      // 6. the digital twin: the 3D view gets the most time (turned by hand), then front and top
-      { const v = V.tw, O = at('v-tw', 'orbit'), FR = at('v-tw', 'front'), T = at('v-tw', 'top'), I = at('v-tw', 'iso');
-        camTo(v, SEG.tw.t0 - .3, 0, [0, 0, FW, FH]);
-        const k = camTo(v, SEG.tw.t0 + .3, .8, [130, 95, 510, 600]);
-        callout(v, [330, 330], 'Drag to turn it in 3D', 'r', O + .3, FR - .6, k);
-        callout(v, [330, 218], 'Front and top views', 'r', FR + .1, I - .1, k);
-        callout(v, [400, 548], 'Drawn to scale, live', 't', I + .4, SEG.tw.t1 - .3, k);
+      // 6. the digital twin: the 3D view longest (turned by hand), then front, then top
+      { const v = V.tw, v2 = V.tw2, O = at('v-tw', 'orbit'), FR = at('v-tw2', 'front'), CUT = SEG.twinCut;
+        const r = [130, 95, 510, 600];
+        camTo(v, SEG.tw.t0 - .6, 0, r); camTo(v2, SEG.tw.t0 - .6, 0, r);
+        const k = camK(v, r);
+        callout(v, [330, 330], 'Drag to turn it in 3D', 'r', O + .2, CUT - .35, k);
+        tl.set('#L-tw2', { zIndex: 30 }, CUT - .3);
+        tl.fromTo('#L-tw2', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power1.inOut', immediateRender: false }, CUT - .25);
+        tl.set('#L-tw', { opacity: 0 }, CUT + .3);
+        callout(v2, [330, 218], 'Front and top views', 'r', FR + .05, SEG.tw.t1 - .4, k);
+        callout(v2, [400, 548], 'Drawn to scale, live', 't', FR + .5, SEG.tw.t1 - .4, k);
       }
       // 7. photo-to-print studio
       { const v = V.st, TS = click('v-st', 1), RS = at('v-st', 'result');
-        camTo(v, SEG.st.t0 - .3, 0, [0, 0, FW, FH]);
-        const k0 = camTo(v, TS - .9, .6, [150, 380, 520, 380]);
-        callout(v, [470, 563], 'Try it with any photo', 'r', TS - .4, TS + .6, k0);
-        const k = camTo(v, TS + .7, .8, [530, 300, 760, 430]);
-        callout(v, [720, 540], 'Your photo', 'b', RS - .6, SEG.st.t1 - .3, k);
-        callout(v, [1040, 540], 'The relief, layer by layer', 'b', RS, SEG.st.t1 - .3, k);
+        camTo(v, SEG.st.t0 - .6, 0, [150, 330, 700, 460]);
+        const k0 = camTo(v, TS - .5, .6, [150, 380, 520, 380]);
+        callout(v, [470, 563], 'Try it with any photo', 'r', TS - .35, TS + .5, k0);
+        const k = camTo(v, TS + .55, 1.0, [530, 300, 760, 430]);
+        callout(v, [720, 540], 'Your photo', 'b', RS - .9, SEG.st.t1 - .4, k);
+        callout(v, [1040, 540], 'The relief, layer by layer', 'b', RS - .5, SEG.st.t1 - .4, k);
       }
-      // ---------- "and there's more": each one a full feature of its own (version 6) ----------
       // 8. automations: a ready-made rule in one click, saved
       { const v = V.au, T = at('v-au', 'template'), S = at('v-au', 'save');
-        camTo(v, SEG.au.t0 - .3, 0, [0, 0, FW, FH]);
-        const k = camTo(v, T - .7, .7, [160, 310, 760, 520]);
-        callout(v, [575, 410], 'Ready-made rules', 'r', T + .1, S - 1.45, k);
-        const k2 = camTo(v, S - .45, .7, [150, 440, 1150, 380]);
-        callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .45, SEG.au.t1 - .3, k2);
+        camTo(v, SEG.au.t0 - .6, 0, [160, 300, 800, 560]);
+        const k = camTo(v, T - .5, .8, [160, 310, 760, 520]);
+        callout(v, [575, 410], 'Ready-made rules', 'r', T + .05, S - 1.45, k);
+        const k2 = camTo(v, S - .5, .9, [150, 440, 800, 360]);
+        callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .35, SEG.au.t1 - .4, k2);
       }
       // 9. maintenance: overdue tasks, one marked done
       { const v = V.ca, O = at('v-ca', 'overdue'), D = at('v-ca', 'done');
-        camTo(v, SEG.ca.t0 - .3, 0, [0, 0, FW, FH]);
-        const k = camTo(v, O - .8, .7, [170, 300, 1110, 420]);
+        camTo(v, SEG.ca.t0 - .6, 0, [150, 100, 800, 640]);
+        const k = camTo(v, O - .8, .8, [170, 380, 780, 260]);
         spot(v, [178, 396, 1084, 112], O - .1, D - .1);
-        callout(v, [418, 423], 'Overdue, counted from print hours', 't', O + .1, D - .1, k);
-        const k2 = camTo(v, D + .1, .7, [170, 0, 1110, 640]);
-        callout(v, [720, 62], 'Done: its counter starts again', 'b', D + .5, SEG.ca.t1 - .3, k2);
+        callout(v, [418, 423], 'Overdue, counted from print hours', 't', O + .05, D - .1, k);
+        const k2 = camTo(v, D + .1, .8, [420, 0, 700, 420]);
+        callout(v, [720, 62], 'Done: its counter starts again', 'b', D + .4, SEG.ca.t1 - .4, k2);
       }
       // 10. filament: the inventory switched on, then how long each spool will last
       { const v = V.fi, SP = at('v-fi', 'spools'), FO = at('v-fi', 'forecast');
-        camTo(v, SEG.fi.t0 - .3, 0, [0, 0, FW, FH]);
-        const k = camTo(v, SP - .9, .7, [140, 260, 640, 520]);
+        camTo(v, SEG.fi.t0 - .6, 0, [0, 0, FW, FH]);
+        const k = camTo(v, SP - .9, .8, [140, 260, 640, 520]);
         callout(v, [612, 481], 'Running low', 'r', SP, FO - .3, k);
-        const k2 = camTo(v, FO + .5, .7, [130, 420, 700, 400]);
-        callout(v, [350, 458], 'Import from Spoolman', 'r', FO + 1.0, FO + 2.1, k2);
-        callout(v, [645, 534], 'Prints left on each spool', 't', FO + 2.2, SEG.fi.t1 - .3, k2);
+        const k2 = camTo(v, FO + .5, .8, [130, 420, 700, 400]);
+        callout(v, [350, 458], 'Import from Spoolman', 'r', FO + 1.0, FO + 1.9, k2);
+        callout(v, [645, 534], 'Prints left on each spool', 't', FO + 2.0, SEG.fi.t1 - .4, k2);
       }
       // 11. print cost: the print running now, and every print before it
       { const v = V.co, C = at('v-co', 'card'), P = at('v-co', 'past');
-        camTo(v, SEG.co.t0 - .3, 0, [0, 0, FW, FH]);
-        const k = camTo(v, C - .3, .8, [150, 380, 1140, 360]);
-        spot(v, [188, 474, 1074, 36], C + .4, SEG.co.t1 - .3);
-        callout(v, [430, 478], 'This print, so far', 't', C + .6, SEG.co.t1 - .3, k);
-        callout(v, [1150, 536], 'Every past print', 'l', P - .3, SEG.co.t1 - .3, k);
+        camTo(v, SEG.co.t0 - .6, 0, [150, 200, 800, 600]);
+        const k = camTo(v, C - .4, .9, [150, 400, 800, 330]);
+        spot(v, [188, 474, 1074, 36], C + .35, SEG.co.t1 - .4);
+        callout(v, [430, 478], 'This print, so far', 't', C + .5, SEG.co.t1 - .4, k);
+        callout(v, [340, 576], 'Every past print', 'r', P - .4, SEG.co.t1 - .4, k);
       }
-      // 12. Home Assistant: the bridge switched on, its address typed in; 28 sensors float out
+      // 12. Home Assistant: the bridge switched on, its address typed in; the sensors float out
       { const v = V.ha, FL = at('v-ha', 'field'), TY2 = at('v-ha', 'typed');
-        camTo(v, SEG.ha.t0 - .3, 0, [0, 0, FW, FH]);
-        const k = camTo(v, SEG.ha.t0 + .2, .8, [660, 150, 700, 440]);
-        callout(v, [975, 340], 'Just its address', 'b', TY2 + .1, SEG.ha.t1 - .3, k);
+        camTo(v, SEG.ha.t0 - .6, 0, [560, 100, 880, 560]);
+        const k = camTo(v, SEG.ha.t0 + .2, .9, [660, 150, 700, 440]);
+        callout(v, [975, 340], 'Just its address', 'b', TY2 + .05, SEG.ha.t1 - .4, k);
         const rows = ['printer state', 'print progress', 'time remaining (estimate)', 'current layer', 'bed temperature', 'T0 to T3 temperatures', 'maintenance tasks overdue'];
         $('#ha-in').innerHTML = '<div class="t">Home Assistant <b>28 sensors</b></div>' + rows.map(r => `<div class="row"><i></i>${r}</div>`).join('') + '<div class="row more">+ 18 more for each U1</div>';
-        tl.fromTo('#ha-card', { opacity: 0, x: V9 ? 0 : -60, y: V9 ? 60 : 30, rotationY: V9 ? 0 : 18, scale: .9, transformPerspective: 1600 },
-          { opacity: 1, x: 0, y: 0, rotationY: V9 ? 0 : 8, scale: 1, duration: .7, ease: 'expo.out', immediateRender: false }, FL + .4);
-        tl.fromTo('#ha-card', { '--sx': '0%' }, { '--sx': '90%', duration: 4, ease: 'none', immediateRender: false }, FL + .4);
-        tl.fromTo('#ha-card .row', { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: .35, ease: 'expo.out', stagger: .14, immediateRender: false }, FL + .7);
-        tl.to('#ha-card', { opacity: 0, y: -20, duration: .3, ease: 'power3.in' }, SEG.ha.t1 - .3);
+        tl.fromTo('#ha-card', { opacity: 0, x: V9 ? 0 : -50, y: V9 ? 50 : 30, z: -200, rotationY: V9 ? 0 : 16, transformPerspective: 1600 },
+          { opacity: 1, x: 0, y: 0, z: 0, rotationY: V9 ? 0 : 7, duration: .9, ease: 'power3.out', immediateRender: false }, FL + .3);
+        tl.fromTo('#ha-card', { '--sx': '0%' }, { '--sx': '90%', duration: 4, ease: 'none', immediateRender: false }, FL + .3);
+        tl.fromTo('#ha-card .row', { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: .4, ease: 'power3.out', stagger: .12, immediateRender: false }, FL + .6);
+        tl.to('#ha-card', { opacity: 0, y: -16, duration: .4, ease: 'power1.inOut' }, SEG.ha.t1 - .5);
       }
-      // 13. time-lapse (drawn: the simulated farm has no camera). The laptop steps out and a
-      // flipbook plays: a vase growing a layer per frame, the frame counter ticking.
-      { const s = SEG.tl, NL = 24;
-        tl.to('#rig', { opacity: 0, x: V9 ? 0 : POSE.L.x - 420, y: V9 ? 900 : POSE.L.y, duration: .45, ease: 'power3.in' }, s.t0 - .45);
-        const W = 940, Hh = 620, cx = 300, base = 520;
-        let g = `<rect class="ln" x="20" y="20" width="560" height="560" rx="22"/><line class="ln2" x1="70" y1="${base + 2}" x2="530" y2="${base + 2}"/>
-          <g transform="translate(500 50)"><rect class="ln" x="0" y="8" width="52" height="36" rx="7"/><circle class="acs" cx="26" cy="26" r="10"/><path class="ln" d="M16 8 l5 -7 h10 l5 7"/></g>`;
-        for (let i = 0; i < NL; i++) {
-          const w = 150 + 70 * Math.sin(Math.PI * (i / (NL - 1)) * 1.05) - (i > NL - 4 ? (i - NL + 4) * 14 : 0);
-          g += `<rect class="lay" x="${cx - w / 2}" y="${base - (i + 1) * 15}" width="${w}" height="13.5" rx="4" fill="oklch(${68 - (i % 2) * 4}% 0.16 48)" opacity="0"/>`;
-          g += `<text class="svgt fr" x="48" y="62" opacity="0">FRAME ${String(i + 1).padStart(2, '0')} / ${NL}</text>`;
-        }
-        g += `<rect x="48" y="548" width="504" height="8" rx="4" fill="oklch(30% 0.03 265 / .12)"/><rect id="tl-bar" x="48" y="548" width="504" height="8" rx="4" fill="var(--accent)"/>`;
-        [6, 12, 18, 24].forEach((n, j) => {
-          const y = 40 + j * 136;
-          g += `<g class="thumb" opacity="0"><rect class="ln2" x="640" y="${y}" width="260" height="120" rx="14"/>`;
-          for (let i = 0; i < n; i += 2) { const w = (150 + 70 * Math.sin(Math.PI * (i / (NL - 1)) * 1.05)) * .32; g += `<rect x="${770 - w / 2}" y="${y + 104 - (i + 2) * 3.4}" width="${w}" height="6" rx="2" fill="oklch(${68 - (i % 4) * 2}% 0.16 48)"/>`; }
-          g += `<text class="svgt" x="656" y="${y + 26}">LAYER ${n * 2}</text></g>`;
-        });
-        g += `<text class="svgt" x="640" y="608">A FRAME EVERY TWO LAYERS</text>`;
-        $('#tl-svg').setAttribute('viewBox', `0 0 ${W} ${Hh}`); $('#tl-svg').innerHTML = g;
-        const T0 = s.t0 + .5, step = 3.2 / NL;
-        tl.fromTo('#tl-card', { opacity: 0, x: V9 ? 0 : 160, y: V9 ? 120 : 0, rotationY: V9 ? 0 : -20, scale: .92, transformPerspective: 1800 },
-          { opacity: 1, x: 0, y: 0, rotationY: V9 ? 0 : -8, scale: 1, duration: .8, ease: 'expo.out', immediateRender: false }, s.t0 - .2);
-        tl.to('#tl-card', { rotationY: V9 ? 0 : -3, duration: s.t1 - s.t0 - .5, ease: 'sine.inOut' }, s.t0 + .6);
-        tl.fromTo('#tl-card', { '--sx': '0%' }, { '--sx': '90%', duration: 6, ease: 'none', immediateRender: false }, s.t0);
-        const lays = document.querySelectorAll('#tl-svg .lay'), frs = document.querySelectorAll('#tl-svg .fr');
-        lays.forEach((el, i) => { tl.set(el, { opacity: 1 }, T0 + i * step); tl.set(frs[i], { opacity: 1 }, T0 + i * step); if (i) tl.set(frs[i - 1], { opacity: 0 }, T0 + i * step); });
-        tl.fromTo('#tl-bar', { attr: { width: 8 } }, { attr: { width: 504 }, duration: NL * step, ease: 'none', immediateRender: false }, T0);
-        tl.fromTo('#tl-svg .thumb', { opacity: 0, x: 20 }, { opacity: 1, x: 0, duration: .4, ease: 'expo.out', stagger: step * 6, immediateRender: false }, T0 + step * 5);
-        tl.to('#tl-card', { opacity: 0, x: V9 ? 0 : -120, duration: .4, ease: 'power3.in' }, s.t1 - .4);
-      }
-      // 14. AR preview (drawn: it needs an Android phone's camera). A phone over a desk: the app's
-      // own prompt, a tap, and the model standing on the desk at its printed size.
-      { const s = SEG.ar, TAP = s.t0 + 3.2;
-        $('#ar-screen').insertAdjacentHTML('beforeend', `<svg viewBox="0 0 402 892" width="402" height="892" style="position:absolute;inset:0">
-          <defs><linearGradient id="ar-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9d4cb"/><stop offset="1" stop-color="#b9ad9b"/></linearGradient>
-          <linearGradient id="ar-desk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c79a68"/><stop offset="1" stop-color="#9d7246"/></linearGradient></defs>
-          <rect width="402" height="892" fill="url(#ar-sky)"/><path d="M0 420 L402 380 L402 892 L0 892 Z" fill="url(#ar-desk)"/>
-          ${[0, 1, 2, 3, 4, 5].map(i => `<path d="M0 ${470 + i * 80} L402 ${430 + i * 86}" stroke="#8a6238" stroke-width="1.4" opacity=".35"/>`).join('')}
-          <g opacity=".85"><path d="M296 300 v86 a30 10 0 0 0 60 0 v-86" fill="#f4f1ea" stroke="#6b5a48" stroke-width="2"/><ellipse cx="326" cy="300" rx="30" ry="10" fill="#e9e3d8" stroke="#6b5a48" stroke-width="2"/><path d="M356 320 q22 4 18 30 q-4 18 -18 18" fill="none" stroke="#6b5a48" stroke-width="5"/></g>
-          <g id="ar-ret"><ellipse cx="190" cy="610" rx="92" ry="30" fill="none" stroke="#fff" stroke-width="5" opacity=".95"/><ellipse cx="190" cy="610" rx="64" ry="20" fill="rgba(255,255,255,.18)" stroke="#fff" stroke-width="2"/></g>
-          <g id="ar-model"><ellipse cx="190" cy="614" rx="98" ry="32" fill="rgba(40,30,20,.28)"/>
-            <path d="M100 590 v16 a90 28 0 0 0 180 0 v-16" fill="#e8622a" stroke="#7a3112" stroke-width="2"/><ellipse cx="190" cy="590" rx="90" ry="28" fill="#ff7a3c" stroke="#7a3112" stroke-width="2"/>
-            <ellipse cx="190" cy="590" rx="60" ry="18" fill="#1b1d22"/><ellipse cx="190" cy="590" rx="34" ry="10" fill="#ff7a3c"/>
-            <path d="M96 650 h188 M96 642 v16 M284 642 v16" stroke="#fff" stroke-width="3" fill="none"/></g>
-          <g id="ar-bar"><rect x="22" y="790" width="358" height="70" rx="22" fill="rgba(250,250,252,.78)" stroke="rgba(255,255,255,.9)"/>
-            <text x="42" y="832" style="font:600 17px var(--sans);fill:#1d2230" id="ar-msg">Tap to place the model here</text>
-            <rect x="300" y="806" width="64" height="38" rx="19" fill="#fff" stroke="#d5d9e0"/><text x="314" y="831" style="font:600 16px var(--sans);fill:#1d2230">Done</text></g>
-          <circle id="ar-tap" cx="190" cy="610" r="30" fill="rgba(20,22,28,.18)" stroke="#fff" stroke-width="3" opacity="0"/></svg>`);
-        tl.set('#ar-model', { opacity: 0 }, 0);
-        tl.fromTo('#ar-ph', { opacity: 0, x: V9 ? 0 : -260, y: V9 ? 400 : 60, rotationY: V9 ? 0 : 28, rotationX: 8, transformPerspective: 1800 },
-          { opacity: 1, x: 0, y: 0, rotationY: V9 ? -6 : 14, rotationX: 4, duration: .8, ease: 'expo.out', immediateRender: false }, s.t0 - .2);
-        tl.to('#ar-ph', { rotationY: V9 ? 6 : 6, duration: s.t1 - s.t0 - .6, ease: 'sine.inOut' }, s.t0 + .6);
-        tl.fromTo('#ar-ret', { scale: .9, transformOrigin: '190px 610px' }, { scale: 1.06, duration: .5, yoyo: true, repeat: 5, ease: 'sine.inOut', immediateRender: false }, s.t0 + .4);
-        tl.fromTo('#ar-tap', { opacity: 0, scale: 1.4, transformOrigin: '190px 610px' }, { opacity: 1, scale: 1, duration: .35, ease: 'power2.out', immediateRender: false }, TAP - .45);
-        tl.to('#ar-tap', { opacity: 0, scale: 1.8, duration: .45, ease: 'power2.out' }, TAP + .05);
-        tl.to('#ar-ret', { opacity: 0, duration: .2 }, TAP);
-        tl.fromTo('#ar-model', { opacity: 0, y: -60 }, { opacity: 1, y: 0, duration: .6, ease: 'bounce.out', immediateRender: false }, TAP + .05);
-        tl.to('#ar-msg', { opacity: 0, duration: .2 }, TAP + .1);
-        tl.to('#ar-ph', { opacity: 0, x: V9 ? 0 : -200, y: V9 ? 300 : 0, duration: .4, ease: 'power3.in' }, s.t1 - .4);
-      }
-      // 15. the cherry on top: ten games
-      { const v = V.ga, SF = click('v-ga', 1);
-        camTo(v, SEG.ga.t0 - .9, 0, [0, 0, FW, FH]);
-        const k = camTo(v, at('v-ga', 'tab') + .5, .8, [150, 300, 1140, 600]);
-        callout(v, [612, 338], 'Ten games, built in', 't', at('v-ga', 'tab') + 1.0, SF - .1, k);
-        camTo(v, SF + .3, .8, [360, 420, 720, 430]);
+      // 13. the cherry on top: ten games. The laptop, then a slow push into the game as it starts.
+      { const v = V.ga, SF = click('v-ga', 1), TB = at('v-ga', 'tab');
+        camTo(v, SEG.ga.t0 - .6, 0, [0, 0, FW, FH]);
+        const k = camTo(v, TB + .4, .9, [150, 300, 1140, 600]);
+        callout(v, [612, 338], 'Ten games, built in', 't', TB + .8, SF - .15, k);
+        tl.to('#rig', { z: POSE.R.z + 60, rotationY: POSE.R.rotationY * .85, duration: SF - SEG.ga.t0 - .5, ease: 'sine.inOut' }, SEG.ga.t0 + .65);
+        rigTo(SF + .1, 1.4, 'full', {}, 'power2.inOut');
+        deck(false, SF + .9);
+        v.safe = SAFE[V9 ? 'T' : 'L'];
+        camTo(v, SF + .1, 1.4, [360, 420, 720, 430]);
       }
 
-      // ===== the values, one per beat, on the stop-time hits =====
-      tl.to(['#rig', '#corner'], { opacity: 0, duration: .3, ease: 'power3.in' }, SEG.values - .3);
-      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, SEG.values + i * .5, .35));
-      tl.to('#values', { opacity: 0, scale: 1.06, filter: 'blur(10px)', duration: .25, ease: 'power3.in' }, SEG.end - .25);
+      // ===== the values, one per beat =====
+      capOut('ga', SEG.values - .45);
+      tl.to('#rig', { z: POSE.full.z - 500, opacity: 0, duration: .6, ease: 'power2.in' }, SEG.values - .45);
+      tl.to(['#corner', '#simtag'], { opacity: 0, duration: .4, ease: 'power1.in' }, SEG.values - .4);
+      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, SEG.values + .1 + i * .45, .45));
+      tl.to('#values', { opacity: 0, y: -20, duration: .35, ease: 'power2.in' }, SEG.end - .35);
 
       // ===== the end card =====
       { const E = SEG.end;
         tl.set('#end', { opacity: 1 }, E);
-        tl.fromTo('#end-row', { opacity: .15, scale: 1.18, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: .5, ease: 'expo.out', immediateRender: false }, E);
-        tl.fromTo('#end-tag', { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, E + .3);
-        tl.fromTo('#term', { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, E + .6);
-        tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .5 }, E + .9);
-        tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .5 }, E + 1.2);
+        tl.fromTo('#end-row', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: .7, ease: 'power3.out', immediateRender: false }, E);
+        tl.fromTo('#end-tag', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, E + .25);
+        tl.fromTo('#term', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .6, ease: 'power3.out', immediateRender: false }, E + .45);
+        tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .5 }, E + .8);
+        tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .5 }, E + 1.1);
         gsap.utils.toArray('#term .ln').forEach((ln, i) => {
           const times = TY[i], n = times.length - 1;
-          tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : E + .6);
+          tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : E + .45);
           for (let j = 0; j < n; j++) tl.set(ln, { width: (3 + j) + 'ch' }, times[j]);
         });
       }

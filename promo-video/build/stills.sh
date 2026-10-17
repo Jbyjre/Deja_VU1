@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Exports the marketing feature cards: one still per feature of the launch film (all 15, and
+# Exports the marketing feature cards: one still per feature of the launch film (all 13, and
 # the phone), taken at the moment its caption and callouts are all on screen, in both shapes,
 # plus the icon opening, the title and the end card. Replaces every card in the folder.
 # Run after rendering both cuts to renders/main.mp4 and renders/vertical.mp4. Writes JPEGs to marketing-library/08-feature-cards/.
@@ -9,7 +9,7 @@ OUT="$(dirname "$ROOT")/marketing-library/08-feature-cards"
 mkdir -p "$OUT"
 rm -f "$OUT"/*.jpg
 # name:time (both cuts share the same timing)
-CARDS="00-every-feature:2.35 00-title:4.9 01-every-printer-live:12.5 02-needs-you:18.9 03-confirm-print:23.6 03b-on-your-phone:27.9 04-files-for-the-u1:34.4 05-skip-one-object:43.4 06-digital-twin:47.5 07-photo-studio:59.9 08-automations:66.4 09-maintenance:72.4 10-filament-and-spoolman:78.9 11-print-cost:84.9 12-home-assistant:91.4 13-time-lapse:97.2 14-ar-preview:103.3 15-ten-games:109.4 16-get-it:119.6"
+CARDS="00-every-feature:1.98 00-title:3.85 01-every-printer-live:10.4 02-needs-you:16.0 03-confirm-print:19.6 03b-on-your-phone:23.8 04-files-for-the-u1:29.9 05-skip-one-object:36.5 06-digital-twin:39.0 07-photo-studio:48.4 08-automations:53.4 09-maintenance:58.4 10-filament-and-spoolman:63.95 11-print-cost:68.9 12-home-assistant:74.3 13-ten-games:80.0 14-get-it:89.6"
 # Version 6: taken from the finished renders (exact), not from snapshots (which can be off).
 for fmt in main vertical; do
   suffix=$([ "$fmt" = main ] && echo 16x9 || echo 9x16)

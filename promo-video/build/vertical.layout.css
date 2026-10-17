@@ -1,5 +1,5 @@
-      /* 9:16: the caption on top, the laptop (or the phone, or the drawing) below it; the bottom
-         stays clear for the Reels / TikTok buttons. */
+      /* 9:16: the caption on top, the laptop (or the phone, or the app full width) below it; the
+         bottom stays clear for the Reels / TikTok buttons. */
       :root { --tile: 150px; --tile-label: 21px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
         --values-size: 104px; --term-size: 26px; }
       #grid { left: 40px; top: 388px; grid-template-columns: repeat(3, 320px); column-gap: 20px; row-gap: 46px; }
@@ -7,12 +7,9 @@
       .cap { left: 60px; right: 60px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
       .cap .card { width: 100%; }
       #corner { left: 60px; top: 56px; }
-      #ph, #ar-ph { left: 325px; top: 770px; scale: .86; transform-origin: 50% 0; }
-      #phchip, #archip { left: 50%; bottom: -64px; translate: -50% 0; }
+      #simtag { right: 60px; top: 60px; }
+      #ph { left: 325px; top: 770px; scale: .86; transform-origin: 50% 0; }
       #ha-card { left: 470px; top: 1290px; width: 540px; }
-      #tl-card { left: 50px; top: 820px; width: 980px; }
-      #tl-svg { width: 936px; height: 617px; }
-      #tlchip { left: 24px; bottom: -54px; }
       #end-row { top: 300px; flex-direction: column; gap: 22px; }
       #end-word { font-size: 140px; }
       #end-tag { top: 700px; }
