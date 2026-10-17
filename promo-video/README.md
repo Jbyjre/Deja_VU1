@@ -160,7 +160,8 @@ features shown working.
   filtered noise bursts (a snap and a soft body, then a lighter release), each a little
   different, with nothing tonal in them; the end card is typed at about ten keys a second
   instead of twenty-five. Measured with the loudness meters' K-weighting, in the mix: clicks a
-  median 10 dB and keystrokes 4 dB above the music in the same 60 ms.
+  median 10 dB and keystrokes 4 dB above the music in the same 60 ms; in the finished file
+  (after `finish.py`'s limiter) clicks 8.7 dB and keystrokes 5.8 dB: clearly there, not loud.
 - (v7) With the keyboard deck in the same 3D scene, Chrome clipped part of the screen once the
   camera was pushed all the way in (only in 9:16, where the screen is wider than the frame).
   The deck now fades out on the way into a full-screen shot and back on the way out.
@@ -269,7 +270,7 @@ features shown working.
 
 ## Rendering cost
 
-Version 7 (90 s each, 15 video windows from 14 shots): see the render logs; reuses version 6's footage.
+Version 7 (90 s each, 15 video windows from 14 shots, version 6's footage reused): each cut rendered in about 20 to 25 minutes.
 
 Version 6 (120 s each, 14 filmed shots): filming took about 15 minutes in two parallel
 batches; each cut renders in about half an hour or more on this machine.
