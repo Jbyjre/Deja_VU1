@@ -48,7 +48,7 @@ import notifications
 import wled_bridge
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _RULES_PATH = os.path.join(_DATA_DIR, "automations.json")
 _LOG_PATH = os.path.join(_DATA_DIR, "automation_log.json")
 

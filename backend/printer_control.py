@@ -35,7 +35,7 @@ MAX_GCODE_LENGTH = 200
 def get_capabilities():
     """What this dashboard is currently allowed to do to the printer."""
     return {
-        "actions": ["start", "pause", "resume", "cancel", "set_temperature", "home", "gcode"],
+        "actions": ["start", "pause", "resume", "cancel", "exclude_object", "set_temperature", "home", "gcode"],
         "toolheads": list(mock_moonraker.TOOLHEADS),
         "temperature_range": {"min": MIN_TEMP, "max": MAX_TEMP},
     }
@@ -101,6 +101,22 @@ def resume_print():
 
 def cancel_print():
     return mock_moonraker.cancel_print()
+
+
+def exclude_object(name):
+    """
+    Skip one labelled object for the rest of the print - the others carry
+    on (Klipper's EXCLUDE_OBJECT). The name must be one the running file
+    defined; the result is read back, and anything short of the printer
+    listing it as skipped is reported as a failure, never as done.
+    """
+    name = str(name or "").strip().upper()
+    if not name or len(name) > 128 or any(c.isspace() or c in ';"\'\\' or ord(c) < 32 for c in name):
+        raise ValueError("Choose an object from the plate to skip")
+    state = mock_moonraker.exclude_object(name)
+    if name not in ((state.get("objects") or {}).get("excluded") or []):
+        raise mock_moonraker.PrinterCommandError(f"The printer didn't confirm it is skipping {name}")
+    return state
 
 
 def set_temperature(toolhead, target):

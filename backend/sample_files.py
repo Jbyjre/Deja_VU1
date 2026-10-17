@@ -149,6 +149,36 @@ def calibration_cube():
     return _gcode("20 mm calibration cube", ["#F26A1B"], ["PLA"], body, (242, 106, 27))
 
 
+def three_cubes():
+    """
+    Three 20 mm cubes side by side, each labelled the way Orca labels
+    objects for Klipper (EXCLUDE_OBJECT_DEFINE up front, START/END around
+    each object on every layer), so one can be skipped mid-print from the
+    Control tab while the other two carry on.
+    """
+    xs = [CENTER - 35, CENTER, CENTER + 35]
+    names = [f"cube.stl_id_{i}_copy_0" for i in range(3)]
+
+    def body(w):
+        layers = 50
+        w.layers = layers
+        for x, name in zip(xs, names):
+            corners = [[x - 10, CENTER - 10], [x + 10, CENTER - 10], [x + 10, CENTER + 10], [x - 10, CENTER + 10]]
+            polygon = "[" + ",".join(f"[{cx:.3f},{cy:.3f}]" for cx, cy in corners) + "]"
+            w.cmd(f"EXCLUDE_OBJECT_DEFINE NAME={name} CENTER={x:.3f},{CENTER:.3f} POLYGON={polygon}")
+        for i in range(layers):
+            z = round(LAYER * (i + 1), 2)
+            for x, name in zip(xs, names):
+                w.cmd(f"EXCLUDE_OBJECT_START NAME={name}")
+                w.travel(x - 10, CENTER - 10, z)
+                w.rect(x, CENTER, 20, 20)
+                w.rect(x, CENTER, 20 - 2 * WIDTH, 20 - 2 * WIDTH)
+                w.infill(x, CENTER, 18, 18, i)
+                w.cmd(f"EXCLUDE_OBJECT_END NAME={name}")
+    return _gcode("Three 20 mm calibration cubes, labelled so one can be skipped", ["#F26A1B"], ["PLA"],
+                  body, (242, 106, 27))
+
+
 def two_colour_coaster():
     def body(w):
         layers = 15
@@ -292,13 +322,64 @@ def elegoo_style_project():
     })
 
 
+def bambu_multiplate_project():
+    """
+    A three-plate MakerWorld-style project: two brackets on plate 1, one on
+    plate 2 and one on plate 3, laid out on a 256 mm Bambu bed the way
+    Bambu Studio and Orca lay plates out (columns = ceil(sqrt(plates)),
+    each plate 256 x 1.2 mm from the last; PartPlate.cpp). Converting it
+    shows the plates being moved onto the U1's 270 mm grid.
+    """
+    stride = 256 * 1.2
+    # (plate column, row, [(x, y) on that plate, ...])
+    layout = [(0, 0, [(98, 128), (158, 128)]), (1, 0, [(128, 128)]), (0, 1, [(128, 128)])]
+    tris = dock_bracket_triangles()
+    xs = [p[0] for t in tris for p in t]
+    ys = [p[1] for t in tris for p in t]
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    centred = [[(x - cx, y - cy, z) for x, y, z in t] for t in tris]
+    model = _model_xml(centred, "BambuStudio-02.02.00.85")
+    objects, items, plates, oid = [], [], [], 0
+    for plate_no, (col, row, spots) in enumerate(layout, start=1):
+        instances = []
+        for x, y in spots:
+            oid += 1
+            objects.append(oid)
+            items.append(f'<item objectid="{oid}" transform="1 0 0 0 1 0 0 0 1 '
+                         f'{x + col * stride:.4f} {y - row * stride:.4f} 0" printable="1"/>')
+            instances.append(f'<model_instance><metadata key="object_id" value="{oid}"/>'
+                             f'<metadata key="instance_id" value="0"/>'
+                             f'<metadata key="identify_id" value="{100 + oid}"/></model_instance>')
+        plates.append(f'<plate><metadata key="plater_id" value="{plate_no}"/>'
+                      f'<metadata key="plater_name" value=""/>{"".join(instances)}</plate>')
+    mesh = model.split("<resources>")[1].split("</resources>")[0]
+    one = mesh.replace('<object id="1"', '<object id="{id}"')
+    model = (model.split("<resources>")[0] + "<resources>" + "".join(one.replace("{id}", str(i)) for i in objects)
+             + "</resources>\n <build>" + "".join(items) + "</build>\n</model>\n")
+    settings = ('<?xml version="1.0" encoding="UTF-8"?>\n<config>\n'
+                + "".join(f'<object id="{i}"><metadata key="name" value="Dock bracket {i}"/></object>' for i in objects)
+                + "".join(plates) + "\n</config>\n")
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(bambu_style_project())) as src, \
+            zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        for item in src.infolist():
+            if item.filename == "3D/3dmodel.model":
+                z.writestr(item.filename, model)
+            elif not item.filename.startswith("Metadata/plate_1.gcode"):
+                z.writestr(item, src.read(item))
+        z.writestr("Metadata/model_settings.config", settings)
+    return out.getvalue()
+
+
 SAMPLES = {
     "calibration_cube_20mm.gcode": calibration_cube,
+    "three_cubes_skip_one.gcode": three_cubes,
     "two_colour_coaster.gcode": two_colour_coaster,
     "unsafe_example_purge_past_bed.gcode": unsafe_example,
     "dock_bracket.stl": dock_bracket_stl,
     "sample_bambu_studio_layout.3mf": bambu_style_project,
     "sample_elegoo_slicer_layout.3mf": elegoo_style_project,
+    "sample_makerworld_three_plates.3mf": bambu_multiplate_project,
 }
 
 

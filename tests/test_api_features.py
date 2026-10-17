@@ -213,7 +213,17 @@ class TestFilesAndConversion(FeatureAPI):
                                     "&b=sample_bambu_studio_layout_U1.3mf")
         changed = {r["setting"] for r in diff["rows"] if r["status"] == "changed"}
         self.assertIn("printer_settings_id", changed)
-        self.assertEqual(self.request("/api/convert", {"name": "calibration_cube_20mm.gcode"})[0], 400)
+        status, body = self.request("/api/convert", {"name": "calibration_cube_20mm.gcode"})
+        self.assertEqual(status, 400)
+        self.assertEqual(body["code"], "CV-101")
+        self.assertTrue(body["stage"] and body["action"])
+
+    def test_convert_moves_every_plate_onto_the_u1_grid(self):
+        self.request("/api/files/samples", {})
+        status, body = self.request("/api/convert", {"name": "sample_makerworld_three_plates.3mf"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["report"]["plates"]["moved"], ["1", "2", "3"])
+        self.assertNotIn("model", body["report"]["plates"])
 
 
 class TestAutomationDemoPath(FeatureAPI):

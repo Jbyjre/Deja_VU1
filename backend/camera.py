@@ -66,9 +66,11 @@ import threading
 import time
 import urllib.error
 import urllib.request
+
+import outbound
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _SETTINGS_PATH = os.path.join(_DATA_DIR, "camera_settings.json")
 _URL = re.compile(r"^https?://[^\s]{1,300}$")
 _frame_lock = threading.Lock()
@@ -189,7 +191,9 @@ def open_stream(url=None, timeout=10):
     try:
         return urllib.request.urlopen(url, timeout=timeout)
     except (urllib.error.URLError, OSError) as exc:
-        raise ValueError(f"Couldn't reach the camera: {exc}")
+        # In words, the same way the other outbound connections say it
+        # ("refused the connection - is it on…"), not Python's own repr.
+        raise ValueError(outbound.explain(exc, "The camera", url, timeout))
 
 
 def relay(upstream, write, should_stop):

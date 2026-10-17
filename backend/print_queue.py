@@ -27,7 +27,7 @@ import print_gate
 import printer_control
 import storage
 
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "print_queue.json")
 MAX_ITEMS = 20
 _lock = threading.RLock()
@@ -56,6 +56,8 @@ def get(printer_id=None):
 
 def add(filename, printer_id=None):
     printer_id = printer_id or mock_moonraker.selected_printer_id()
+    if not isinstance(filename, str) or not filename.strip():
+        raise ValueError("Choose a G-code file to queue")
     if file_library.kind_of(filename) != "gcode":
         raise ValueError("Only G-code files can be queued")
     if not file_library.exists(filename):

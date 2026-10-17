@@ -180,6 +180,23 @@ setTimeout(installArcadePlus,50);
 
 const $ = id => document.getElementById(id);
 
+/* Live readings arrive four times a second. Writing the same text or
+ * markup back each time still makes the browser re-measure that part of
+ * the page (and restarts any animation inside replaced markup), so these
+ * only touch the page when the value has actually changed. */
+function setText(el, text) {
+  if (!el) return;
+  text = String(text);
+  if (el.textContent !== text) el.textContent = text;
+}
+function setHTML(el, html) {
+  if (!el) return;
+  if (el._html !== html) { el.innerHTML = html; el._html = html; }
+}
+function setVar(el, name, value) {
+  if (el && el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
+}
+
 function esc(text) {
   return String(text).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -226,7 +243,47 @@ function freshModules() {
   return modGate.pending;
 }
 
+/* ---- is the dashboard server here? ----------------------------------------
+ * These pages can be published on their own, with no Deja Vu1 server behind
+ * them (a static host such as the public Cloudflare link). Then every /api
+ * request fails, and without this check each card would quietly show
+ * "No printer connected" and offer demo data that can't run. So one request
+ * asks first: a JSON answer from /api/health means the server is here; a
+ * network error, a 404 or a web page instead means it isn't. After that,
+ * requests aren't sent at all - each caller gets the same answer at once. */
+const server = { missing: false, checked: null };
+const SERVER_MISSING = "The Deja Vu1 server isn't running at this address, so this part can't work here.";
+
+function serverMissing() { return server.missing; }
+
+function serverMissingBody() {
+  return { error: SERVER_MISSING, server_missing: true, connected: false, demo: false };
+}
+
+async function checkServer() {
+  let here = false;
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 8000);
+  try {
+    const response = await fetch('/api/health', { cache: 'no-store', signal: stop.signal });
+    here = response.status !== 404 && (response.headers.get('content-type') || '').includes('application/json');
+  } catch (_) {
+    here = false;
+  } finally {
+    clearTimeout(timer);
+  }
+  server.missing = !here;
+  if (server.missing) showServerMissing();
+  return here;
+}
+
+function serverReady() {
+  if (!server.checked) server.checked = checkServer();
+  return server.checked;
+}
+
 async function getJSON(url) {
+  if (!await serverReady()) return serverMissingBody();
   const path = url.split('?')[0];
   if (path !== '/api/modules') {
     await freshModules();
@@ -240,6 +297,7 @@ async function getJSON(url) {
 }
 
 async function postJSON(url, payload) {
+  if (!await serverReady()) return { ok: false, status: 0, body: serverMissingBody() };
   let response;
   try {
     response = await fetch(url, {
@@ -292,6 +350,25 @@ function api(path) {
 /* ---- announcements --------------------------------------------------------
  * One polite live region for toasts, so screen-reader users hear the same
  * "Paused — confirmed" or "Pause failed" a sighted user sees. */
+
+/* Copy text for a bug report. navigator.clipboard only exists on https://
+ * and localhost, and a phone on the LAN reaches this over plain http, so
+ * fall back to the old select-and-copy - and say so if both are refused. */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+  } catch (_) { /* fall through to the fallback */ }
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  document.body.appendChild(area);
+  area.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+  area.remove();
+  return ok;
+}
 
 function toast(message, kind = 'info', ms = 4200) {
   const host = $('toasts');
@@ -544,6 +621,7 @@ function initPreferences() {
 
 async function loadConnection() {
   const data = await getJSON('/api/connection');
+  if (data.server_missing) return;          // showServerMissing() has said so already
   const pill = $('conn');
   const label = $('conn-label');
   const wasReal = realOn;
@@ -568,6 +646,81 @@ async function loadConnection() {
   }
 
   $('notice').hidden = !(demoOn && !data.connected);
+}
+
+/* ---- no server: a browser-only preview ----------------------------------
+ * One banner says what's missing and what still works. Every card that
+ * needs the server keeps its heading (so you can see what the dashboard
+ * does) and says so in one line, instead of an empty box or an offer of
+ * demo data that can't run. Demo data is switched off, not hidden: the
+ * simulated printers live on the server too. */
+const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#how-to-run-it';
+const BROWSER_ONLY = '[data-browser-only], [data-module-off], #sb-off, #ap-off, #demo-tools-card, #file-detail';
+
+function needsServerNote(what) {
+  return `<p class="needs-server-note">${what ? `${esc(what)} needs` : 'Needs'} the Deja Vu1 server, which isn't running at this address.
+    <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>`;
+}
+
+function needsServerEmpty(what) {
+  return `
+  <div class="empty is-off">
+    <span class="empty-mark" aria-hidden="true"></span>
+    <p class="empty-title">Needs the Deja Vu1 server</p>
+    <p class="empty-sub">${esc(what ? `${what[0].toUpperCase()}${what.slice(1)} runs` : 'This runs')} on the server, which isn't running at this address.
+      <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>
+  </div>`;
+}
+
+/* "No printer" wording, unless there's no server to have a printer at all. */
+function noPrinterEmpty(sub, what) {
+  return serverMissing() ? needsServerEmpty(what) : EMPTY('No printer connected', sub);
+}
+
+function showServerMissing() {
+  document.body.classList.add('no-server');
+  $('server-banner').hidden = false;
+  $('notice').hidden = true;
+
+  const toggle = $('demo-toggle');
+  demoOn = false;                       // the remembered choice is kept for when the server is back
+  toggle.checked = false;
+  toggle.disabled = true;
+  toggle.closest('.switch').title = 'Demo data runs on the Deja Vu1 server, which isn\'t running at this address.';
+  toggle.setAttribute('aria-describedby', 'server-banner-text');
+
+  const pill = $('conn');
+  pill.classList.remove('is-demo');
+  pill.classList.add('is-offline');
+  $('conn-label').textContent = 'No server';
+  $('printer-chip').hidden = true;
+  $('foot-state').textContent = 'Browser-only preview: the Deja Vu1 server isn\'t running at this address.';
+  $('rb-text').textContent = 'Browser-only preview - no printer or demo farm without the server.';
+
+  document.querySelectorAll('.tab-panel section.card').forEach(card => {
+    if (card.matches(BROWSER_ONLY) || card.querySelector(':scope > .needs-server-note')) return;
+    card.classList.add('needs-server');
+    const head = card.querySelector(':scope > .card-head');
+    if (head) head.insertAdjacentHTML('afterend', needsServerNote());
+    else card.insertAdjacentHTML('afterbegin', needsServerNote(card.dataset.serverWhat || card.querySelector('h2')?.textContent.trim()));
+  });
+  if (window.Workshop) Workshop.reconnect();
+}
+
+function initServerBanner() {
+  document.querySelectorAll('#server-banner [data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+  $('server-retry').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.textContent = 'Checking…';
+    let here = false;
+    try {
+      const r = await fetch('/api/health', { cache: 'no-store' });
+      here = r.status !== 404 && (r.headers.get('content-type') || '').includes('application/json');
+    } catch (_) { here = false; }
+    if (here) { location.reload(); return; }
+    btn.disabled = false; btn.textContent = 'Check again';
+    toast('Still no server at this address.', 'warn');
+  });
 }
 
 /* ---- tabs -----------------------------------------------------------------*/
@@ -622,7 +775,7 @@ function renderStatusRibbon(data) {
 
   if (!hasData(data) || !data.state) {
     ribbon.classList.remove('is-live');
-    text.textContent = 'No printer connected.';
+    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.' : 'No printer connected.';
     bar.hidden = true;
     pct.hidden = true;
     $('rb-done').hidden = true;
@@ -637,19 +790,19 @@ function renderStatusRibbon(data) {
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
-    text.textContent = data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.';
+    setText(text, data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.');
     bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
-    text.textContent = `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`;
+    setText(text, `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`);
     bar.hidden = false; pct.hidden = false;
     // Eases like the other progress visuals (Workshop.tween: each frame
     // closes a fixed fraction of the gap), so switching printers glides.
     const setFill = v => { fill.style.width = `${(v * 100).toFixed(2)}%`; };
     if (window.Workshop && Workshop.tween) Workshop.tween('ribbon', data.progress, setFill); else setFill(data.progress);
-    pct.textContent = `${Math.round(data.progress * 100)}%`;
+    setText(pct, `${Math.round(data.progress * 100)}%`);
     const finish = doneAt(hoursLeft(data));
-    $('rb-done').textContent = finish ? `done ${finish}` : '';
+    setText($('rb-done'), finish ? `done ${finish}` : '');
     $('rb-done').hidden = !finish;
   }
 
@@ -694,7 +847,7 @@ async function loadMaintenance() {
     clearStats();
     $('tasks').innerHTML = moduleDisabledEmpty('Maintenance reminders');
     $('log-wrap').hidden = true;
-    $('overview-maintenance').innerHTML = moduleDisabledEmpty('Maintenance reminders');
+    paint($('overview-maintenance'), moduleDisabledEmpty('Maintenance reminders'));
     return;
   }
 
@@ -703,7 +856,7 @@ async function loadMaintenance() {
     $('tasks').innerHTML = EMPTY('No printer connected',
       'Maintenance reminders appear once print history is available. Turn on demo data to preview them.');
     $('log-wrap').hidden = true;
-    $('overview-maintenance').innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    paint($('overview-maintenance'), noPrinterEmpty('Turn on demo data to preview.', 'maintenance'));
     return;
   }
 
@@ -729,7 +882,7 @@ async function loadMaintenance() {
   });
 
   // Overview tab gets the top 3 most urgent, read-only.
-  $('overview-maintenance').innerHTML = data.tasks.length
+  paint($('overview-maintenance'), data.tasks.length
     ? data.tasks.slice(0, 3).map(t => `
         <div class="task ${t.status}" style="margin-bottom:9px;">
           <div>
@@ -737,7 +890,7 @@ async function loadMaintenance() {
             <div class="task-meta">${esc(t.reason)}</div>
           </div>
         </div>`).join('')
-    : EMPTY('All caught up', 'Nothing due right now.');
+    : EMPTY('All caught up', 'Nothing due right now.'));
 
   $('log-wrap').hidden = false;
   loadMaintenanceLog();
@@ -866,6 +1019,7 @@ function renderControlTab(state) {
   const gcodeSend = $('gcode-send');
   const temps = $('ctrl-temps');
 
+  renderPlate(state);
   if (!state || !state.state) {
     dot.style.background = '';
     text.textContent = 'No printer connected';
@@ -883,24 +1037,29 @@ function renderControlTab(state) {
   }
 
   const running = state.state === 'printing' || state.state === 'paused';
-  dot.style.background = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
-  text.textContent = state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || state.state_message || ''}`;
-  sub.textContent = running ? `${Math.round(state.progress * 100)}% · ${state.print_duration_hours.toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.');
+  const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
+  if (dot.style.background !== dotColor) dot.style.background = dotColor;
+  setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || state.state_message || ''}`);
+  setText(sub, running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
-  if (!pauseResume.dataset.phase || pauseResume.dataset.phase !== 'sending') {
-    pauseResume.disabled = !running;
-    pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
+  if (pauseResume.dataset.phase !== 'sending') {
+    if (pauseResume.disabled !== !running) pauseResume.disabled = !running;
+    setText(pauseResume, state.state === 'paused' ? 'Resume' : 'Pause');
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
-  if (cancel.dataset.phase !== 'sending') cancel.disabled = !running;
+  if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => controlAction('cancel', cancel);
 
+  const homeTitle = running ? 'Not while a print is running or paused' : '';
+  // Said on the card too: a tooltip never shows on a phone.
+  const homeWhy = $('home-why');
+  if (homeWhy && homeWhy.hidden !== !running) homeWhy.hidden = !running;
   homeButtons.forEach(b => {
     // Homing mid-print would drive the toolhead through the print; the
     // server refuses it too, but the button shouldn't offer it.
-    if (b.dataset.phase !== 'sending') b.disabled = running;
-    b.title = running ? 'Not while a print is running or paused' : '';
+    if (b.dataset.phase !== 'sending' && b.disabled !== running) b.disabled = running;
+    if (b.title !== homeTitle) b.title = homeTitle;
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
       runCommand(b, '/api/printer/control/home', { axes }, { sending: 'Homing…', done: `Homed ${axes.join('')}`, failed: 'Homing failed' })
@@ -908,8 +1067,8 @@ function renderControlTab(state) {
     };
   });
 
-  gcodeInput.disabled = false;
-  gcodeSend.disabled = false;
+  if (gcodeInput.disabled) gcodeInput.disabled = false;
+  if (gcodeSend.disabled) gcodeSend.disabled = false;
   gcodeSend.onclick = () => sendGcode();
   gcodeInput.onkeydown = (e) => { if (e.key === 'Enter') sendGcode(); };
 
@@ -946,19 +1105,139 @@ function renderControlTab(state) {
   heads.forEach(th => {
     const info = state.toolheads[th];
     const active = th === state.active_toolhead;
-    temps.querySelector(`[data-temp-key="${th}"]`).textContent = `${th}${active ? ' · active' : ''}${info.status === 'error' ? ' · error' : ''}`;
+    setText(temps.querySelector(`[data-temp-key="${th}"]`), `${th}${active ? ' · active' : ''}${info.status === 'error' ? ' · error' : ''}`);
     const val = temps.querySelector(`[data-temp-val="${th}"]`);
-    val.textContent = formatTemp(info.temperature);
-    val.style.color = active ? 'var(--accent-text)' : '';
-    temps.querySelector(`[data-temp-target="${th}"]`).textContent = info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off';
+    setText(val, formatTemp(info.temperature));
+    const valColor = active ? 'var(--accent-text)' : '';
+    if (val.style.color !== valColor) val.style.color = valColor;
+    setText(temps.querySelector(`[data-temp-target="${th}"]`), info.target_temperature ? `target ${formatTemp(info.target_temperature)}` : 'heater off');
   });
+}
+
+/* ---- Objects on the plate: skip one, keep the rest ------------------------
+ * Klipper's exclude_object lists what the file labelled. The list is the
+ * control (real buttons, keyboard and screen-reader friendly); the map
+ * shows where each one is on the bed. Skipping asks twice, because it
+ * can't be undone for this print. Idea from U1 Print Hub (a Snapmaker
+ * Innovation Fund winner); written for this dashboard. */
+const plateUI = { selected: null, confirmUntil: 0, sig: '' };
+
+function plateShape(o) {
+  if (o.polygon && o.polygon.length >= 3) return o.polygon;
+  if (o.center) {
+    const [x, y] = o.center, r = 6;
+    return [[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]];
+  }
+  return null;
+}
+
+function renderPlate(state) {
+  const card = $('ctrl-plate');
+  if (!card) return;
+  const running = state && (state.state === 'printing' || state.state === 'paused');
+  card.hidden = !running;
+  if (!running) { plateUI.selected = null; plateUI.sig = ''; return; }
+  const plate = state.objects;
+  const body = $('plate-body');
+  if (!plate || !plate.list.length) {
+    if (plateUI.sig !== 'none') {
+      plateUI.sig = 'none';
+      body.hidden = true;
+      $('plate-sub').textContent = 'This print doesn\'t label its objects, so none can be skipped. Turn on '
+        + '"Label objects" in the slicer (Snapmaker\'s U1 profiles have it on) for the next one.';
+    }
+    return;
+  }
+  body.hidden = false;
+  const excluded = new Set(plate.excluded);
+  const live = plate.list.filter(o => !excluded.has(o.name));
+  if (plateUI.selected && (!plate.list.some(o => o.name === plateUI.selected) || excluded.has(plateUI.selected))) plateUI.selected = null;
+  const confirming = plateUI.selected && Date.now() < plateUI.confirmUntil;
+  const sig = JSON.stringify([plate.list.map(o => o.name), plate.excluded, plate.current, plateUI.selected, confirming]);
+  if (sig === plateUI.sig) return;
+  plateUI.sig = sig;
+  $('plate-sub').textContent = `${live.length} of ${plate.list.length} still printing. If one fails, skip just that one - the rest keep going.`;
+
+  const short = (n) => n.replace(/_ID_\d+_COPY_\d+$/i, '').replace(/\.(STL|3MF|STEP|OBJ)$/i, '');
+  const copies = (n) => { const m = n.match(/_ID_(\d+)_COPY_(\d+)$/i); return m ? `#${+m[1] + 1}${+m[2] ? `.${+m[2] + 1}` : ''}` : ''; };
+  // Klipper upper-cases names; show them the way a person would write them.
+  const words = (s) => { const w = s.replace(/_/g, ' ').toLowerCase().trim(); return w ? w[0].toUpperCase() + w.slice(1) : s; };
+  const label = (n) => `${words(short(n))} ${copies(n)}`.trim();
+
+  // The map: bed coordinates have Y pointing away from you; SVG's points down.
+  const grid = [30, 60, 90, 120, 150, 180, 210, 240].map(v =>
+    `<line x1="${v}" y1="0" x2="${v}" y2="270"/><line x1="0" y1="${v}" x2="270" y2="${v}"/>`).join('');
+  const shapes = plate.list.map(o => {
+    const pts = plateShape(o);
+    if (!pts) return '';
+    const cls = excluded.has(o.name) ? 'is-skipped' : o.name === plate.current ? 'is-current' : '';
+    const sel = o.name === plateUI.selected ? ' is-selected' : '';
+    return `<polygon class="plate-obj ${cls}${sel}" data-plate-obj="${esc(o.name)}" points="${pts.map(([x, y]) => `${x},${270 - y}`).join(' ')}"><title>${esc(label(o.name))}</title></polygon>`;
+  }).join('');
+  $('plate-map').innerHTML = `<title id="plate-map-title">The 270 by 270 mm bed, seen from above, with each object on it</title>
+    <defs><pattern id="plate-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="6" class="plate-hatch-line"/></pattern></defs>
+    <rect class="plate-bed" x="0" y="0" width="270" height="270" rx="10"/>
+    <g class="plate-grid">${grid}</g>${shapes}
+    <text class="plate-front" x="135" y="285" text-anchor="middle">front</text>`;
+
+  $('plate-list').innerHTML = plate.list.map(o => {
+    const skipped = excluded.has(o.name), current = o.name === plate.current;
+    return `<li><button type="button" class="plate-item${o.name === plateUI.selected ? ' is-selected' : ''}${skipped ? ' is-skipped' : ''}"
+        data-plate-pick="${esc(o.name)}" ${skipped ? 'disabled' : ''} aria-pressed="${o.name === plateUI.selected}">
+      <span class="plate-dot ${skipped ? 'is-skipped' : current ? 'is-current' : ''}" aria-hidden="true"></span>
+      <span class="plate-name">${esc(label(o.name))}</span>
+      <span class="plate-state">${skipped ? 'skipped' : current ? 'printing now' : 'waiting'}</span></button></li>`;
+  }).join('');
+
+  const action = $('plate-action');
+  if (!plateUI.selected) {
+    action.innerHTML = `<p class="log-empty">${live.length > 1 ? 'Choose an object to skip it.' : 'Only one object is left - Cancel stops the whole print.'}</p>`;
+  } else {
+    const n = plateUI.selected;
+    action.innerHTML = `<p class="plate-confirm-text">${confirming
+      ? `Skip <b>${esc(label(n))}</b> for the rest of this print? It can't be brought back.`
+      : `<b>${esc(label(n))}</b> selected.`}</p>
+      <div class="plate-buttons">
+        <button class="btn danger" type="button" id="plate-skip">${confirming ? 'Yes, skip it' : 'Skip this object'}</button>
+        <button class="btn" type="button" id="plate-clear">${confirming ? 'Keep printing it' : 'Done'}</button>
+      </div>`;
+    $('plate-clear').onclick = () => { plateUI.selected = null; plateUI.confirmUntil = 0; renderPlate(lastPrinterState); };
+    $('plate-skip').onclick = async (e) => {
+      if (Date.now() >= plateUI.confirmUntil) {
+        plateUI.confirmUntil = Date.now() + 6000;
+        renderPlate(lastPrinterState);
+        setTimeout(() => renderPlate(lastPrinterState), 6100);   // the question times out by itself
+        $('plate-skip').focus();
+        return;
+      }
+      plateUI.confirmUntil = 0;
+      const r = await runCommand(e.currentTarget, '/api/printer/control/exclude', { name: n }, {
+        sending: 'Skipping…', done: `Skipping ${label(n)}`, failed: `Skipping ${label(n)} failed`,
+        expect: s => ((s.objects || {}).excluded || []).includes(n),
+      });
+      if (r.ok) plateUI.selected = null;
+      plateUI.sig = '';
+      renderPlate(lastPrinterState);
+    };
+  }
+  const pick = (name) => {
+    if (excluded.has(name)) return;
+    plateUI.selected = plateUI.selected === name ? null : name;
+    plateUI.confirmUntil = 0;
+    renderPlate(lastPrinterState);
+    const btn = document.querySelector(`[data-plate-pick="${CSS.escape(name)}"]`);
+    if (btn) btn.focus();
+  };
+  document.querySelectorAll('[data-plate-pick]').forEach(b => { b.onclick = () => pick(b.dataset.platePick); });
+  document.querySelectorAll('[data-plate-obj]').forEach(p => { p.onclick = () => pick(p.dataset.plateObj); });
 }
 
 function renderOverviewControl(state) {
   const host = $('overview-control');
   if (!host) return;
   if (!state || !state.state) {
-    host.innerHTML = EMPTY('No printer connected', 'Turn on demo data to preview.');
+    host.innerHTML = noPrinterEmpty('Turn on demo data to preview.');
     host.dataset.built = '';
     return;
   }
@@ -973,16 +1252,17 @@ function renderOverviewControl(state) {
       </div>`;
   }
   const running = state.state === 'printing' || state.state === 'paused';
-  $('ov-file').textContent = running || state.state === 'complete' ? (state.current_file || '') : 'Idle';
-  $('ov-bar').style.width = `${Math.round((state.progress || 0) * 100)}%`;
+  setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Idle');
+  const barWidth = `${Math.round((state.progress || 0) * 100)}%`;
+  if ($('ov-bar').style.width !== barWidth) $('ov-bar').style.width = barWidth;
   const pauseResume = $('ov-pause-resume');
   const cancel = $('ov-cancel');
   if (pauseResume.dataset.phase !== 'sending') {
-    pauseResume.disabled = !running;
-    pauseResume.textContent = state.state === 'paused' ? 'Resume' : 'Pause';
+    if (pauseResume.disabled !== !running) pauseResume.disabled = !running;
+    setText(pauseResume, state.state === 'paused' ? 'Resume' : 'Pause');
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
-  if (cancel.dataset.phase !== 'sending') cancel.disabled = !running;
+  if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => controlAction('cancel', cancel);
 }
 
@@ -1048,10 +1328,11 @@ async function loadFilament() {
   }
 
   const spools = data.spools || [];
+  if (data.spoolman && data.spoolman.url && !$('spoolman-url').value) $('spoolman-url').value = data.spoolman.url;
   host.innerHTML = spools.length ? spools.map(s => `
     <div class="spool-row">
       <span class="spool-swatch" style="background:${esc(s.color_hex || '#888')}"></span>
-      <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}</span>
+      <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}${s.spoolman_id ? ` <small class="spool-src" title="Imported from Spoolman (spool ${esc(s.spoolman_id)})">Spoolman</small>` : ''}</span>
       <span class="spool-grams ${s.grams_remaining < 80 ? 'is-low' : ''}">${s.grams_remaining.toFixed(0)} g</span>
       <button class="btn small" data-remove-spool="${esc(s.id)}">Remove</button>
     </div>`).join('') : EMPTY('No spools tracked', 'Add one below.');
@@ -1078,11 +1359,31 @@ function initSpoolForm() {
     const colorName = $('spool-color-name').value.trim() || 'Unnamed';
     const colorHex = $('spool-color-hex').value;
     const grams = parseFloat($('spool-grams').value) || 0;
-    await postJSON(api('/api/filament/spools'), {
+    const r = await postJSON(api('/api/filament/spools'), {
       material, color_name: colorName, color_hex: colorHex, grams_remaining: grams,
     });
+    // A refused spool keeps what was typed, and says why.
+    if (!r.ok) { toast(`Spool not added: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); return; }
     e.target.reset();
     $('spool-color-hex').value = '#ff7a2f';
+    toast(`Added ${r.body.color_name} ${r.body.material}`, 'ok');
+    loadFilament();
+  });
+  $('spoolman-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const out = $('spoolman-result');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    const r = await postJSON(api('/api/filament/spoolman'), { url: $('spoolman-url').value });
+    btn.disabled = false; btn.textContent = 'Import spools';
+    if (!r.ok) { out.textContent = `Not imported: ${r.body.error || `HTTP ${r.status}`}`; out.classList.add('is-bad'); return; }
+    const b = r.body;
+    out.classList.remove('is-bad');
+    out.textContent = `${b.found} spool${b.found === 1 ? '' : 's'} in Spoolman: ${b.added} added, ${b.updated} updated.`
+      + (b.unknown_weight ? ` ${b.unknown_weight} had no weight in Spoolman - set it there or weigh them here.` : '')
+      + (b.not_added_full ? ` ${b.not_added_full} didn't fit - the inventory is full.` : '')
+      + (b.skipped.length ? ` Skipped: ${b.skipped.join('; ')}.` : '');
+    toast(`Spoolman: ${b.added} added, ${b.updated} updated`, 'ok');
     loadFilament();
   });
 }
@@ -1108,7 +1409,7 @@ async function loadCompare() {
   }
 
   if (isModuleDisabled(compareData) && !rows.length) {
-    host.innerHTML = moduleDisabledEmpty('What changed?');
+    paint(host, moduleDisabledEmpty('What changed?'));
     return;
   }
   if (hasData(compareData) && compareData.has_history) {
@@ -1116,7 +1417,7 @@ async function loadCompare() {
     compareData.differences.forEach(msg => rows.push(`<div class="crow" style="border-left:3px solid var(--warn);">${esc(msg)}</div>`));
   }
 
-  host.innerHTML = rows.length ? rows.join('') : EMPTY('Nothing to check yet', 'Needs a printer connection and print history for this file.');
+  paint(host, rows.length ? rows.join('') : EMPTY('Nothing to check yet', 'Needs a printer connection and print history for this file.'));
 }
 
 function initRepeatSettings() {
@@ -1207,11 +1508,43 @@ async function loadDevices() {
   }
 }
 
+/* While a code is on screen, the other device redeems it somewhere else, so
+ * this one looks for it: every 2 s until a new device appears or the code
+ * expires. Without this the code stayed up and the list said "No devices
+ * paired yet" until the page was reloaded, as if pairing had failed. */
+let pairingWatch = null;
+function watchForPairing() {
+  clearInterval(pairingWatch);
+  const known = getJSON('/api/pairing/devices').then(d => new Set((d.devices || []).map(x => x.id))).catch(() => null);
+  // A code lasts 10 minutes (pairing.py CODE_TTL_MINUTES). Counted here, not
+  // read from the server's clock, whose time zone this device may not share.
+  const until = Date.now() + 10 * 60 * 1000;
+  pairingWatch = setInterval(async () => {
+    if (Date.now() > until) {
+      clearInterval(pairingWatch);
+      $('pairing-code-display').style.display = 'none';
+      toast('The pairing code expired - make a new one when you are ready', 'info', 5000);
+      return;
+    }
+    const data = await getJSON('/api/pairing/devices').catch(() => null);
+    const seen = await known;
+    if (!seen) return;                      // couldn't read the starting list
+    const added = ((data && data.devices) || []).filter(d => !seen.has(d.id));
+    if (!added.length) return;
+    clearInterval(pairingWatch);
+    $('pairing-code-display').style.display = 'none';
+    toast(`${added.map(d => d.name).join(', ')} paired`, 'ok');
+    loadDevices();
+  }, 2000);
+}
+
 function initPairing() {
   $('generate-code-btn').addEventListener('click', async () => {
-    const { body } = await postJSON('/api/pairing/code', {});
+    const { ok, body } = await postJSON('/api/pairing/code', {});
+    if (!ok) { toast(`Couldn't make a code: ${body.error || 'unknown error'}`, 'bad'); return; }
     $('pairing-code-display').style.display = 'block';
     $('pairing-code-text').textContent = (body.code || '').replace(/(\d{3})(\d{3})/, '$1 $2');
+    watchForPairing();
   });
 
   $('redeem-form').addEventListener('submit', async (e) => {
@@ -1220,8 +1553,10 @@ function initPairing() {
     const code = codeInput.value.replace(/\s/g, '');
     const { ok, body } = await postJSON('/api/pairing/redeem', { code, device_name: navigator.userAgent.includes('Mobile') ? 'Phone' : 'Browser' });
     if (ok) {
+      clearInterval(pairingWatch);
       codeInput.value = '';
       $('pairing-code-display').style.display = 'none';
+      toast('Paired - this device is now on the list', 'ok');
       loadDevices();
     } else {
       codeInput.setCustomValidity(body.error || 'Could not pair');
@@ -1347,11 +1682,20 @@ async function loadCost() {
   paint(host, rows.length ? rows.join('') : EMPTY('No cost data yet', 'Turn on demo data, or connect a printer, to see estimates.'));
 }
 
+/* The prices already set, so you can see what PLA costs before changing it. */
+function showCostPrices(data) {
+  const hint = $('cost-prices');
+  if (!hint || !data || !data.filament_price_per_kg) return;
+  const list = Object.entries(data.filament_price_per_kg).map(([m, p]) => `${m} $${Number(p).toFixed(2)}`).join(' · ');
+  hint.textContent = list ? `Prices now (per kg): ${list}` : '';
+}
+
 function initCostSettings() {
   getJSON('/api/cost/settings').then(data => {
     if (!data || isModuleDisabled(data)) return;
     $('cost-electricity').value = data.electricity_rate_per_kwh ?? '';
     $('cost-watts').value = data.printer_watts ?? '';
+    showCostPrices(data);
   });
 
   $('cost-save-btn').addEventListener('click', async () => {
@@ -1364,7 +1708,11 @@ function initCostSettings() {
     if (material && !Number.isNaN(price)) {
       updates.filament_price_per_kg = { [material]: price };
     }
-    await postJSON('/api/cost/settings', updates);
+    const r = await postJSON('/api/cost/settings', updates);
+    if (!r.ok) { toast(`Prices not saved: ${r.body.error || `HTTP ${r.status}`}`, 'bad', 6000); return; }
+    showCostPrices(r.body);
+    $('cost-material').value = '';
+    $('cost-price').value = '';
     const btn = $('cost-save-btn');
     const original = btn.textContent;
     btn.textContent = 'Saved';
@@ -1419,7 +1767,7 @@ function initBridges() {
     $('ha-status').textContent = 'Pushing…';
     const { body } = await postJSON('/api/homeassistant/push', {});
     $('ha-status').textContent = body.ok
-      ? 'Pushed sensors to Home Assistant.'
+      ? `Pushed ${body.entities || ''} sensors to Home Assistant.`.replace('  ', ' ')
       : `Push failed: ${body.error || 'unknown error'}`;
   });
 }
@@ -3257,14 +3605,20 @@ function trackHighlights() {
     if (queued) return;
     queued = true;
     requestAnimationFrame(() => {
+      // Measure every panel first, then write. Writing between
+      // measurements made the browser lay the page out again for each
+      // panel, on every pointer move.
+      const margin = 70;
+      const near = [];
       document.querySelectorAll('.liquid-glass').forEach(el => {
         const box = el.getBoundingClientRect();
-        const margin = 70;
-        const near = event.clientX >= box.left - margin && event.clientX <= box.right + margin &&
-                     event.clientY >= box.top - margin && event.clientY <= box.bottom + margin;
-        if (!near) return;
-        el.style.setProperty('--mx', `${((event.clientX - box.left) / box.width) * 100}%`);
-        el.style.setProperty('--my', `${((event.clientY - box.top) / box.height) * 100}%`);
+        if (!box.width || !box.height) return;            // on a hidden tab
+        if (event.clientX >= box.left - margin && event.clientX <= box.right + margin &&
+            event.clientY >= box.top - margin && event.clientY <= box.bottom + margin) near.push([el, box]);
+      });
+      near.forEach(([el, box]) => {
+        el.style.setProperty('--mx', `${Math.round(((event.clientX - box.left) / box.width) * 100)}%`);
+        el.style.setProperty('--my', `${Math.round(((event.clientY - box.top) / box.height) * 100)}%`);
       });
       queued = false;
     });
@@ -3325,6 +3679,8 @@ function initDemoToggle() {
   });
 }
 
+serverReady();
+initServerBanner();
 initDemoToggle();
 initPressedSync();
 initTabs();

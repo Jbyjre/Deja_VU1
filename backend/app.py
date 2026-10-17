@@ -66,6 +66,7 @@ API endpoints
   POST /api/printer/control/pause
   POST /api/printer/control/resume
   POST /api/printer/control/cancel
+  POST /api/printer/control/exclude   {"name"} skip one labelled object, the rest keep printing
   POST /api/printer/control/temperature  {"toolhead": "T0", "target": 220}
   POST /api/printer/control/home         {"axes": ["X","Y","Z"]}
   POST /api/printer/control/gcode        {"command": "G28"}
@@ -112,6 +113,7 @@ API endpoints
 
   GET  /api/filament                 spool inventory + idle-spool flags
   GET  /api/filament/check           does inventory cover the current job?
+  POST /api/filament/spoolman        {"url"} import spools from Spoolman (updates ones imported before)
   GET  /api/filament/forecast        grams left and prints left per spool
   POST /api/filament/spools          add a spool
   POST /api/filament/spools/<id>/remove
@@ -215,6 +217,7 @@ import converter_3mf
 import cost_calculator
 import file_library
 import filament_inventory
+import spoolman_bridge
 import fleet
 import handoff
 import webrtc_camera
@@ -336,7 +339,6 @@ _DATA_ROUTES = {
     "/api/compare/side-by-side": ("compare", lambda q: comparison.side_by_side()),
     "/api/sanity": ("sanity_check", lambda q: sanity_check.check()),
     "/api/updates": ("updates", lambda q: updates.get_status()),
-    "/api/camera": ("camera", lambda q: camera.get_status()),
     "/api/cost/history": ("cost_calculator", lambda q: {"jobs": cost_calculator.cost_history()}),
     "/api/cost/current": ("cost_calculator", lambda q: cost_calculator.current_job()),
     "/api/live/snapshot": (None, lambda q: _live_snapshot()),
@@ -360,9 +362,14 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    # The camera's frozen-stream watchdog is about the camera relay, not
+    # printer figures: it stays readable while a printer's link is down,
+    # like the stream itself, which is when a frozen picture matters most.
+    "/api/camera": ("camera", lambda q: camera.get_status()),
     "/api/filament": ("filament_inventory", lambda q: {
         "spools": filament_inventory.get_inventory(),
         "idle_spools": filament_inventory.idle_spools(),
+        "spoolman": spoolman_bridge.get_settings(),
     }),
     "/api/notifications/settings": ("notifications", lambda q: notifications.public_settings()),
     "/api/notifications/queue": ("notifications", lambda q: {"queue": notifications.get_queue()}),
@@ -410,6 +417,7 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/pause": lambda body: printer_control.pause_print(),
     "/api/printer/control/resume": lambda body: printer_control.resume_print(),
     "/api/printer/control/cancel": lambda body: printer_control.cancel_print(),
+    "/api/printer/control/exclude": lambda body: printer_control.exclude_object(body.get("name")),
     "/api/printer/control/temperature": lambda body: printer_control.set_temperature(
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
@@ -451,6 +459,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     # a byte at a time) would otherwise hold a thread forever. Live
     # connections raise this once they are set up (see _handle_websocket).
     timeout = 60
+    # Named here rather than left to the system's mime table, which not
+    # every Python install has these in.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map,
+                      ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml",
+                      ".js": "text/javascript", ".css": "text/css"}
 
     def __init__(self, *args, **kwargs):
         # Tell the built-in file server to serve out of the frontend folder.
@@ -467,7 +480,20 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         self.send_header("X-Frame-Options", "SAMEORIGIN")
         self.send_header("Content-Security-Policy", "frame-ancestors 'self'")
         self.send_header("Referrer-Policy", "same-origin")
+        # The page's own files (HTML, scripts, styles) carry no caching rule
+        # from the built-in file server, so a browser guessed one and could
+        # keep running last week's scripts against today's page after an
+        # update. no-cache means "check first": an unchanged file costs only
+        # a short "304 Not Modified" reply. API answers set their own rule.
+        if not self.path.startswith("/api/") and not getattr(self, "_cache_rule_sent", False):
+            self.send_header("Cache-Control", "no-cache")
+        self._cache_rule_sent = False
         super().end_headers()
+
+    def send_header(self, keyword, value):
+        if keyword.lower() == "cache-control":
+            self._cache_rule_sent = True
+        super().send_header(keyword, value)
 
     # -- helpers ----------------------------------------------------------
 
@@ -986,7 +1012,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             body = self._read_json_body()
             name = body.get("name")
-            data, report = converter_3mf.convert(file_library.read_bytes(name))
+            try:
+                data, report = converter_3mf.convert(file_library.read_bytes(name))
+            except converter_3mf.ConversionError as exc:
+                return self._send_json(exc.as_dict(), status=400)
             new_name = converter_3mf.converted_name(file_library.clean_name(name))
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
@@ -1055,6 +1084,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 body.get("material"), body.get("color_name"),
                 body.get("color_hex"), body.get("grams_remaining", 0))
             return self._send_json(spool)
+
+        if route == "/api/filament/spoolman":
+            if self._module_blocked("filament_inventory"):
+                return None
+            body = self._read_json_body()
+            return self._send_json(spoolman_bridge.import_spools(body.get("url")))
 
         if route.startswith("/api/filament/spools/") and route.endswith("/remove"):
             if self._module_blocked("filament_inventory"):

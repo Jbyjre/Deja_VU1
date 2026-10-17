@@ -175,8 +175,15 @@ li.bad .fc-res-text { color: var(--bad-text); }
 /* Same stat typography as the overview tiles, one step smaller: these are
    a model's details, not the page's headline numbers. */
 .st-metrics .stat-val { font-size: 22px; letter-spacing: -.6px; margin-top: 4px; }
+.st-metrics .st-advice { grid-column: 1 / -1; margin: 0; padding: 10px 14px; font-size: 13px; color: var(--text-dim, inherit); border-top: 1px solid rgba(0, 0, 0, .06); }
 .studio-preview.is-empty > :not(.st-empty) { display: none; }
 .studio-preview:not(.is-empty) > .st-empty { display: none; }
+/* Out of date (a colour or size changed): the old model fades back until
+ * the rebuild lands, so it's never mistaken for what will be saved. */
+.studio-preview.is-stale :is(#st-printed, .st-metrics, .st-plan, .st-plan-text) {
+  opacity: .38; filter: saturate(.4); transition: opacity .2s ease, filter .2s ease;
+}
+.studio-preview :is(#st-printed, .st-metrics, .st-plan, .st-plan-text) { transition: opacity .25s ease, filter .25s ease; }
 .st-empty { min-height: 360px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
 /* The swap ladder - the studio's signature: the stack drawn as a spool core

@@ -29,7 +29,7 @@ import storage
 
 # Where the "when did I last do this task" records are saved. A plain JSON
 # file keeps this dependency-free — no database to install.
-_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+_DATA_DIR = storage.DATA_DIR
 _LOG_PATH = os.path.join(_DATA_DIR, "maintenance_log.json")
 
 
@@ -429,7 +429,7 @@ def mark_done(task_id, note=""):
     printer's current totals, so the countdown for that task starts over from
     here. Returns the freshly recalculated status.
     """
-    if task_id not in _TASKS_BY_ID:
+    if not isinstance(task_id, str) or task_id not in _TASKS_BY_ID:
         raise ValueError(f"Unknown maintenance task: {task_id}")
 
     log = _load_log()

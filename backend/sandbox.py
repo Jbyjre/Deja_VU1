@@ -174,7 +174,7 @@ def _clean_step(step):
     if not isinstance(step, dict):
         raise ValueError("Each step must be an object")
     event = step.get("event")
-    if event not in EVENTS:
+    if not isinstance(event, str) or event not in EVENTS:
         raise ValueError(f"Unknown event: {event}")
     try:
         at = float(step.get("at_s", 0))
@@ -344,7 +344,7 @@ def _perform(printer_id, event, params):
 
 def fire(event, printer="random", params=None, step=None):
     """Run one event now, on the printer(s) it targets, and log each outcome."""
-    if event not in EVENTS:
+    if not isinstance(event, str) or event not in EVENTS:
         raise ValueError(f"Unknown event: {event}")
     params = params or {}
     outcomes = []

@@ -34,7 +34,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 572 tests, about 130 s
+python3 -m unittest discover tests          # 608 tests, about 135 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
@@ -44,7 +44,8 @@ python3 backend/maintenance.py              # console demos (also led_status.py,
 Environment variables (the only ones read): `PORT` (default 8000),
 `DEJAVU_ALLOWED_HOSTS` (comma-separated extra host names, e.g. a Cloudflare
 Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
-`DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print).
+`DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
+(where settings and files live; default `backend/data/`).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
 (`NODE_PATH=/opt/node22/lib/node_modules node script.js`, then
@@ -88,7 +89,8 @@ root should hand over to `welcome.html`.
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
   every 30 s), fleet cards, the "Needs you" list, room tint, live pill,
-  digital twin, files, dialogs, morph animations.
+  digital twin (an SVG engineering drawing projected from millimetres,
+  `drawTwin`), files, dialogs, morph animations.
 - CSS order: `style.css` → `workshop.css` → `farm.css` → `theme.css`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
@@ -119,15 +121,21 @@ worker (`deja-vu1.jmath1110.workers.dev`), because crawlers need a full
 address; `test_link_preview_image_is_the_bundled_card` checks it. Rename the
 worker in `wrangler.jsonc` and those tags must change too.
 
+`marketing-library/` and `build-prompts/` are temporary, for the owner:
+copies of every marketing picture plus `MESSAGING.md` (the agreed feature
+order and wording), and one prompt per planned build session. Nothing reads
+them; both go before the launch post (`build-prompts/08-launch-prep.md`).
+
 `promo-video/`: the launch video (HyperFrames compositions, frame-by-frame filming
 scripts that drive the real app on the simulated farm, synthesised music);
-`promo-video/README.md` is its working guide. `marketing/`: finished marketing assets
-(the two launch videos, about 45 MB), indexed in `marketing/README.md`. Neither folder
-is published by Cloudflare, but the repo is public.
+`promo-video/README.md` is its working guide. The finished videos are copied into
+`marketing-library/07-videos/`.
 
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
-comment from Cloudflare's bot. `*.workers.dev` is blocked from the cloud
+comment from Cloudflare's bot. GitHub Actions also runs the test suite on Python
+3.8, 3.10, 3.12 and 3.13 (`.github/workflows/tests.yml`, pinned to Ubuntu
+24.04 because Python 3.8 builds stop there). `*.workers.dev` is blocked from the cloud
 sandbox, so you can't fetch the preview from here.
 
 ## Rules the code depends on
@@ -154,10 +162,12 @@ sandbox, so you can't fetch the preview from here.
 
 ## Pitfalls
 
-- The test suite writes to the real `backend/data/` (module toggles,
-  maintenance logs, pairing, notifications, `fleet.json`). Back it up first
-  on a machine with real printers. Don't run a demo server while the full
-  suite runs: one run failed an automation test that passed on its own.
+- The tests run in a temporary data folder (`storage.DATA_DIR`, set when
+  the test runner imports `storage`), never the real `backend/data/`. A new
+  module that keeps files must set `_DATA_DIR = storage.DATA_DIR`;
+  `test_tests_never_touch_the_real_data_folder` checks every module. Don't
+  run a demo server while the full suite runs: one run failed an
+  automation test that passed on its own.
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line
   contains that text, because it kills the shell. Kill by PID.
 - The selected printer is thread-local. Code on a worker thread answers for

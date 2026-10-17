@@ -1,13 +1,13 @@
 # Deja Vu1
 
-**Docked toolheads are silent.** A toolhead parked in its dock looks the same
-whether it's ready, out of filament or faulted. Deja Vu1 is a free,
-open-source dashboard for the Snapmaker U1 that says it out loud: which
-toolheads are ready, whether the right filament is loaded, what maintenance is
-due, and whether it's safe to press print. It runs on your own network, with no
-account and nothing to install but Python.
+**One screen for every U1 you run.** Deja Vu1 is a free, open-source
+dashboard for the Snapmaker U1. You watch every printer live, start prints
+from your phone behind a check the server enforces, get MakerWorld, NexPrint
+and OrcaSlicer projects ready for the U1, and get a message when a print jams.
+It runs on your own network, with no account and nothing to install but
+Python.
 
-![Deja Vu1: "Docked toolheads are silent." beside the Needs you list and three printer cards from the simulated farm](frontend/img/social-card.png)
+![Deja Vu1: "One screen for every U1 you run." beside the live engineering drawing of a printing U1 and three printer cards from the simulated farm](frontend/img/social-card.png)
 
 <sub>Every figure in the picture comes from the built-in simulated farm.</sub>
 
@@ -37,17 +37,16 @@ simulated farm of three U1s that heat, print and finish.
 [security](#security-and-your-network) · [first connection](docs/first-connection.md) ·
 [for developers](#for-developers-and-ai-coding-sessions)
 
-Deja Vu1 started as an answer to three questions you currently have to walk
-over and figure out yourself —
-is that docked toolhead ready or stuck, is the right filament loaded, is
-anything due for maintenance — and has grown into a fuller companion:
-printer control, phone pairing, filament tracking, smart notifications, a
-running cost estimate, bridges to smart-home gear you likely already own,
-and ten games for while a long print runs. It now also runs a whole fleet
-of printers, updates live four times a second, starts prints from your
-phone behind a real safety check, reads and edits print files in 2D and 3D,
-converts MakerWorld and NexPrint projects for the U1, and runs local
-"when this happens, do that" automations. It runs on Moonraker, the web API
+Deja Vu1 runs a whole fleet of up to 12 printers, updates live four times a
+second, and starts prints from your phone behind a real safety check. It
+reads and edits print files in 2D and 3D, converts MakerWorld, NexPrint and
+OrcaSlicer projects for the U1, skips one failed object while the rest of
+the plate finishes, and runs local "when this happens, do that" automations
+that reach your phone through ntfy, Discord or Telegram. Around that sit
+printer control, a live engineering drawing of each printer, maintenance
+tracking, filament and cost tracking, a photo-to-print studio, bridges to
+Home Assistant, WLED and Spoolman, and ten games for while a long print
+runs. It runs on Moonraker, the web API
 that already sits in front of the printer: one application and one
 connection per printer (a WebSocket for live state, plain HTTP requests for
 commands, history and uploads), shared by every module.
@@ -63,74 +62,57 @@ tested logic waiting on physical parts.
 Much of the code is written with [Claude Code](https://claude.com/claude-code),
 and every change is in the public history.
 
-## The problem
+## Why it exists
 
-**Docked toolheads are silent.** A toolhead parked in its dock looks exactly
-the same whether it is ready, out of filament, or faulted. On a multi-toolhead
-machine you find out by walking over and reading the screen.
+You walk over to the printer to answer the same four questions. The printer
+already publishes every answer; Deja Vu1 reads them for every U1 you run.
 
-![Four identical grey docked toolheads beside Deja Vu1's view of the same docks: T0 docked and ready, T1 printing, T2 heating up, T3 needs attention with a filament runout, plus the five dock states and their colours](docs/img/explainer-silent-docks.jpg)
+**Is it still printing?** Every printer updates four times a second, and
+**Needs you** ranks what wants a person across the whole farm: a jam, a paused
+print, a finished plate, an idle printer with work waiting. Automations send
+it to your phone.
 
-**Wrong filament, discovered too late.** Four toolheads means four chances to
-load the wrong spool. Nothing checks. You notice when the print comes out in
-the wrong color, which is after the time and material are spent.
+**Will this file print on a U1?** The pre-flight check flags extrusion outside
+the 270 × 270 × 270 mm build volume, unknown toolheads and unsafe
+temperatures, with line numbers. MakerWorld, NexPrint and OrcaSlicer projects
+convert for the U1 in one click.
 
-**Maintenance gets skipped until something breaks.** Nozzles clog, beds drift,
-belts loosen. None of it announces itself on a schedule, so it gets done after
-a print fails instead of before.
+**Is the right filament loaded?** Four toolheads mean four chances to load the
+wrong spool. Deja Vu1 compares the colour each toolhead was sliced for with
+what the printer reports, and stops the start on a mismatch.
 
-**You can't tell if it's safe to hit print.** Everything above is scattered
-across separate checks nobody remembers to run every time.
-
-Each is small. Together they are most of the routine friction of running the
-machine, and all of it is visible in data the printer already publishes.
+**Is it safe to press print?** Confirm Print pulls it together: pre-flight,
+filament match, spool weight, maintenance, time, grams and cost. The server
+checks again at the moment of starting and refuses in words if something
+changed, even when you start from your phone.
 
 ## What's in it
 
-![Every module grouped by what it needs: 8 ready today, 17 live and fleet-wide, 3 for farms and making, 7 optional, 2 waiting on hardware, and 10 games](docs/img/explainer-whats-in-it.jpg)
+![Every module grouped by what it needs: 17 for running the farm and printing safely, 8 for care, control and the basics, 3 for farms and making, 7 optional, 2 waiting on hardware, and 10 games](docs/img/explainer-whats-in-it.jpg)
 
 Every screenshot in this section comes from the built-in simulated farm (the **Demo data** switch), so every figure in them is simulated. The yellow banner and the **SIMULATED** badge in the app say the same.
 
-### Ready today — no hardware needed
-
-| Module | What it does |
-|---|---|
-| **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
-| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
-| **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram — plain webhooks, no SDK, no account. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
-| **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
-| **Config backup** | One-click zip of the module switches, the filament list, notification settings (secrets blanked) and the default simulated printer's maintenance log. Not yet included: real printers' maintenance logs, the printer list, automations, the queue and the other settings; there is no restore yet. |
-| **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
-| **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
-| **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history — editable $/kg per material, $/kWh, and printer wattage. |
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/img/care.jpg" alt="The Care tab: maintenance tasks with progress bars, two marked overdue in red and one due soon"><br><sub><b>Care:</b> each maintenance task with how far it has run, overdue ones in red.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Control tab: the running print with Pause and Cancel, four toolhead temperatures, Home buttons and a G-code console"><br><sub><b>Control:</b> the running print, all four toolheads' temperatures, homing and a G-code console.</sub></td>
-</tr>
-</table>
-
-### Live, fleet-wide, and hands-on — no hardware needed
+### Run the farm and print safely — no hardware needed
 
 | Feature | What it does |
 |---|---|
+| **Printer fleet** | Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
 | **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If the WebSocket fails three times (a network that blocks it, or a server restart), the dashboard asks once a second instead, says so, and tries the WebSocket again every 30 seconds. |
 | **Needs you** | The top of the Overview ranks every printer by what wants a person — a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes — each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
+| **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
+| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
+| **MakerWorld / NexPrint / OrcaSlicer → U1** | One click turns a Bambu Studio (MakerWorld), Elegoo Slicer (NexPrint) or OrcaSlicer project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. **Multi-plate projects land on the right plates**: every plate's objects are moved onto the U1's own plate grid, written from Snapmaker Orca's source. When it can't convert, it says why with a code, the step it failed at and what to try, and **Copy report** puts a full report on the clipboard for a bug report. |
+| **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab shows the plate from above with the object printing now; pick one, confirm, and the printer's own read-back says it's skipped. It refuses names the print doesn't have and the last object left (that's what Cancel is for). |
+| **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
+| **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
+| **Digital twin** | A live engineering drawing of the printer, in thin lines: the bed dropping as each layer is added, the gantry and toolhead moving, the parts on the plate drawn from the file's own object outlines (a skipped one is crossed out), and the four rear docks with each head's filament colour and temperature. Drag to turn it, or jump to the front and top views. |
+| **File library** | Your G-code, 3MF and STL files, with real thumbnails, estimated time and grams, a pre-flight verdict, and a recent list. |
+| **Interactive 3D viewer** | The toolpath of any G-code file, scrubbable layer by layer, and any STL or 3MF model — drawn with plain WebGL and parsers written for this project, no 3D library. |
+| **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command — each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
+| **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer actually reports back. A command the printer refuses is shown as refused, in words — never as done. |
 | **Finish time on the clock** | Alongside "2 h 17 min left", every running print says when it will finish — "done 2:42 PM", "tomorrow 1:05 AM" — on the status ribbon, the fleet cards and the live pill, from the same estimate. |
 | **The browser tab follows the print** | The page title mirrors the selected printer — "53% · U1 · Workshop — Deja Vu1" (or Paused, Finished, Needs attention) — and the tab's icon draws the progress ring, so a background tab still tells you how it's going. |
-| **Printer fleet** | Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
-| **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
-| **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer actually reports back. A command the printer refuses is shown as refused, in words — never as done. |
-| **File library** | Your G-code, 3MF and STL files, with real thumbnails, estimated time and grams, a pre-flight verdict, and a recent list. |
-| **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command — each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
-| **Interactive 3D viewer** | The toolpath of any G-code file, scrubbable layer by layer, and any STL or 3MF model — drawn with plain WebGL and parsers written for this project, no 3D library. |
-| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. |
-| **MakerWorld / NexPrint → U1** | One click turns a Bambu Studio (MakerWorld) or Elegoo Slicer (NexPrint) project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. |
 | **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
-| **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
-| **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
-| **Digital twin** | A live 3D view of the toolhead, the part growing layer by layer, and the four docks — pure CSS 3D, the same technique as the games' 3D scenes. |
 | **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast — see [docs/architecture.md](docs/architecture.md). |
 
 ![The Overview: header with the printer picker and SIMULATED badge, the status ribbon with progress and finish time, the Needs you list ranking a dock error, a paused print and overdue maintenance, and totals for print hours, prints, filament and overdue tasks](docs/img/overview.jpg)
@@ -159,14 +141,47 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 
 ![Three Overview cards: the digital twin of the toolhead over the bed with four docks, a print health gauge reading 65 with its deductions listed, and a chamber temperature chart](docs/img/twin-health-chamber.jpg)
 
-<sub>**Digital twin, print health and chamber climate:** the toolhead and docks live, one health score with every deduction listed, and the chamber temperature over time.</sub>
+<sub>**Digital twin, print health and chamber climate:** a live engineering drawing of the printer (the bed dropping as layers build, the head moving, the parts on the plate, the four docks), one health score with every deduction listed, and the chamber temperature over time.</sub>
+
+![Objects on the plate: a map of the bed from above with three objects, the one printing now in blue and one selected in red, and the question "Skip Toolhead cover #3 for the rest of this print? It can't be brought back."](docs/img/skip-object.jpg)
+
+<sub>**Skip one object:** pick the failed part on the plate map, confirm, and the rest keep printing.</sub>
+
+<img align="right" width="300" src="docs/img/converter.jpg" alt="A MakerWorld project converted for the U1: saved as a new 3MF for the Snapmaker U1 with a 0.4 nozzle, all three plates re-placed on the 270 mm bed, the creator's own changes kept, and a Copy report button">
+
+**Converting a MakerWorld project:** every plate lands where Snapmaker Orca
+expects it, the creator's own setting changes are kept and listed, and the
+report says what wasn't checked yet (the result hasn't been opened in
+Snapmaker Orca itself).
+
+<br clear="right">
+
+### Care, control and the basics — no hardware needed
+
+| Module | What it does |
+|---|---|
+| **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
+| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
+| **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram — plain webhooks, no SDK, no account. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
+| **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
+| **Config backup** | One-click zip of the module switches, the filament list, notification settings (secrets blanked) and the default simulated printer's maintenance log. Not yet included: real printers' maintenance logs, the printer list, automations, the queue and the other settings; there is no restore yet. |
+| **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
+| **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list — no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
+| **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history — editable $/kg per material, $/kWh, and printer wattage. |
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/care.jpg" alt="The Care tab: maintenance tasks with progress bars, two marked overdue in red and one due soon"><br><sub><b>Care:</b> each maintenance task with how far it has run, overdue ones in red.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Control tab: the running print with Pause and Cancel, four toolhead temperatures, Home buttons and a G-code console"><br><sub><b>Control:</b> the running print, all four toolheads' temperatures, homing and a G-code console.</sub></td>
+</tr>
+</table>
 
 ### Running a farm, and making new things — no hardware needed
 
 | Feature | What it does |
 |---|---|
 | **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately — "Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason ("Nothing is printing right now") in its own row — never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
-| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. It all runs in the browser; the photo is never uploaded. |
+| **Photo-to-Print Studio** | Drop in a photo and get a colour-layered relief model (the well-known "HueForge" technique) in up to four filament colours — the spools in your inventory, or colours you pick. It models how light passes through thin layers of each filament, picks each pixel's height to match the photo, chooses where each colour starts, previews the result in 2D and in the 3D viewer, and saves a watertight STL or a 3MF carrying the tool changes. Change a colour, a size or a layer setting and the model rebuilds by itself; until it has, the old one is greyed out and can't be saved, so what you save always matches what's set. When the match is rough it says which colour would help. It all runs in the browser; the photo is never uploaded. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios — a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue — and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
 <table>
@@ -188,13 +203,16 @@ screen, with the print's progress on a line just above them on every tab.
 Pair a phone from **Settings → Pair another device**: it gets a short code,
 and talks straight to your computer over your home network.
 
+**Add to Home Screen** gives it a proper icon and name, opening without the
+browser's bars where the phone allows.
+
 <br clear="right">
 
 ### Optional — on by request
 
 | Module | What it does |
 |---|---|
-| **Filament inventory** | Tracks spools on hand, flags print files needing a colour you don't have, and nudges you if a spool has sat loaded for weeks. |
+| **Filament inventory** | Tracks spools on hand, flags print files needing a colour you don't have, and nudges you if a spool has sat loaded for weeks. **Import from Spoolman** brings in the spools you already track in [Spoolman](https://github.com/Donkie/Spoolman), with their colour and grams left; importing again updates them instead of duplicating. |
 | **What changed?** | Compares the job about to print against your last few runs of that file, and flags a likely cause when the file has failed before and shares a pattern (a filament type in common, say). |
 | **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
 | **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API — no extra hardware to build. |
@@ -212,6 +230,10 @@ and talks straight to your computer over your home network.
 ![The Dock status rings panel: four rings for T0 to T3, three soft white for docked and ready and one red for needs attention, marked HARDWARE PENDING, with the note that it shows what the LEDs would display](docs/img/dock-rings.jpg)
 
 <sub>**Dock status rings, on screen today:** what each LED ring would show. The physical rings are waiting on hardware.</sub>
+
+![Four identical grey docked toolheads beside Deja Vu1's view of the same docks: T0 docked and ready, T1 printing, T2 heating up, T3 needs attention with a filament runout, plus the five dock states and their colours](docs/img/explainer-silent-docks.jpg)
+
+<sub>**Why dock status matters:** a parked toolhead looks the same whether it's ready, out of filament or faulted. Deja Vu1 shows each dock's state on screen today, and on the rings once they exist.</sub>
 
 <img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: switches for Maintenance reminders, Printer control, Dock status rings, Right colour loaded, Push notifications, Filament inventory and Pre-print sanity check, each tagged READY TODAY, HARDWARE PENDING or OPTIONAL">
 
@@ -388,9 +410,41 @@ Rockchip SoC exposes no GPIO, so this is both a design requirement and the
 only sensible approach. Details in
 [docs/hardware-modules.md](docs/hardware-modules.md).
 
+### Status at a glance
+
+| Part | Works with demo data | Tested against a stand-in built from the real thing's source | Confirmed on real hardware |
+|---|---|---|---|
+| Live dashboard, fleet, controls, start-print interlock | Yes | Yes - Moonraker, Klipper and Snapmaker's U1 source | Not yet - no U1 here |
+| Skip one object | Yes | Yes - Snapmaker's u1-klipper `exclude_object` | Not yet |
+| Filament colours after a touchscreen change | - | Yes - asked for every 30 s as well as pushed | Not yet |
+| MakerWorld / NexPrint / OrcaSlicer converter | Yes | Checked against Snapmaker Orca's loader and plate-grid source | Output not yet opened in Snapmaker Orca |
+| Photo-to-Print Studio | Yes | Runs in the browser; STL checked watertight | 3MF not yet opened in Orca, no print yet |
+| Spoolman import | Yes | Yes - Spoolman's API source | Not against a running Spoolman |
+| WLED, Home Assistant, ntfy, Discord, Telegram | Yes | Yes - each one's own source or docs | Not yet |
+| Auto-print slicing (optional) | Yes | A stand-in that behaves like OrcaSlicer's command line | Not against a real Orca install |
+| Low-latency camera (optional) | - | go2rtc's source | Not yet |
+| LED dock rings, colour sensor | Simulated | Decision logic tested | Hardware pending |
+
+If you have a U1 and want to help close the last column, see
+[docs/beta-testing.md](docs/beta-testing.md).
+
+## Ideas from the Phase 1 winners
+
+Phase 2 builds on what Phase 1 showed works. These ideas came from Phase 1
+winners. Each was rebuilt here from the printer's, slicer's or service's own
+source - no code was copied (several of these projects are GPL or carry
+non-commercial terms, and this one is MIT):
+
+| Idea | From |
+|---|---|
+| Re-place multi-plate projects on the U1's plate grid; coded, copyable conversion errors | [MakerWorld to Snapmaker U1](https://github.com/Dragon2203/makerworld-to-snapmaker-u1) |
+| Skip one object mid-print; ask for filament colours instead of only waiting for pushes; Spoolman import; add-to-home-screen | [U1 Print Hub](https://github.com/dlgambill/u1hub) |
+| Tell multiACE users to post-process T4-T15 before printing | [multiACE](https://github.com/decay71/multiACE) |
+| A status table of what is and isn't verified; a beta-tester guide | Sidecar, FOrcaSlicer, U1 Print Hub |
+
 ## Tech stack
 
-![By the numbers: 572 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 608 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only — written for 3.8 or newer;
   tested on 3.11 and 3.13 (3.8 itself hasn't been run)
@@ -400,7 +454,7 @@ only sensible approach. Details in
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 572 cases
+- **Tests:** `unittest` from the standard library, 608 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -421,16 +475,20 @@ The interface uses an Apple Liquid Glass treatment: translucent panels with
 real edge refraction (an SVG displacement filter, not just a blur), a
 specular highlight that tracks the pointer, a bright rim, and elevation
 shadow — the five layers that separate genuine glass from a blurred box.
-Repeated small panels share one glass surface with plain dividers rather
-than each getting its own blur, both for the look and for performance. It
+The real refracting glass sits on the navigation and floating layer — top
+bar, tab bar, live print pill, menus, sheets and dialogs, the things content
+scrolls under. Content cards keep the same tint, highlight, rim and shadow
+but don't blur what's behind them: behind them is only the soft background
+glow, where a blur looks the same and costs real work every frame. Repeated
+small panels share one surface with plain dividers for the same reason. It
 respects the system settings for reduced transparency, reduced motion, and
 increased contrast, and the layout collapses cleanly to a phone-width screen.
 
 Liquid Glass 2.0 adds four things on top: panels **morph** — a sheet of
 glass deforms on a spring from one element into another (a printer card
 into the overview, a file into its detail view, a button into its dialog,
-the active tab sliding along the tab bar); the highlight and some surfaces
-**drift gently even at rest**; glass laid over glass (dialogs) uses a
+the active tab sliding along the tab bar); on the live print pill and the
+digital twin the highlight **drifts gently even at rest**; glass laid over glass (dialogs) uses a
 **deeper refraction**, so what's underneath visibly bends more than the
 background; and panels **take a tint** from what they're about — the active
 filament's colour, a printer's state, a verdict.
@@ -561,6 +619,20 @@ its finish, or to make the next Pause fail and see how that is reported.
 
 (Tested on Python 3.11 and 3.13.)
 
+**Opened the pages without the server?** The `frontend/` folder can be
+published on its own (for example as static files on Cloudflare — see
+`wrangler.jsonc`), with no Python server behind it. The dashboard notices
+(its first request, `/api/health`, gets no JSON back) and turns into a
+**browser-only preview**: one banner says the server isn't there, Demo data
+is switched off rather than pretending, and every card that needs the server
+keeps its heading and says so in one line. What still works there, entirely
+in the browser: the **Photo studio** (with six built-in suggested colours,
+and **Download STL / 3MF** instead of saving to the library), viewing
+**G-code, STL and 3MF files from your own device** in 3D (read in the
+browser, never uploaded — no pre-flight verdict, which is the server's job),
+**View on your desk (AR)** where the browser supports it, the **Games**, and
+the accent and unit **Preferences**.
+
 To see the maintenance module on its own, printed to the terminal:
 
 ```bash
@@ -578,12 +650,14 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 572
+python3 -m unittest discover tests          # all 608
 python3 -m unittest tests.test_api          # one file
 ```
 
 The tests use the simulation and a stand-in Moonraker; no printer is
-contacted. With no printer added, the dashboard contacts none either, and
+contacted. They work in a temporary folder of their own and never touch
+your printers, settings or files in `backend/data/`. The dashboard keeps
+its data in `backend/data/` unless `DEJAVU_DATA_DIR` names another folder. With no printer added, the dashboard contacts none either, and
 shows simulated figures only while **Demo data** is on. Add one by address
 and the dashboard connects to it; `DEJAVU_MOONRAKER_LOG=1 python3
 backend/app.py` prints every exchange with it.
@@ -603,6 +677,9 @@ version.
 
 - [CLAUDE.md](CLAUDE.md) — working context for developers and AI coding
   sessions: commands, file map, rules, pitfalls, known open issues
+- [docs/beta-testing.md](docs/beta-testing.md) — trying it on your own U1:
+  what to check first, what to send back
+- [CHANGELOG.md](CHANGELOG.md) — what changed, newest first
 - [docs/real-printer.md](docs/real-printer.md) — connecting a real printer:
   what was checked against Moonraker's and Snapmaker's source, what can't
   be without the machine, and what the first run will tell you

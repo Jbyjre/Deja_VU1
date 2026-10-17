@@ -153,3 +153,51 @@ class TestCapabilities(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSkipOneObject(unittest.TestCase):
+    """Klipper's EXCLUDE_OBJECT, with the checks Klipper itself doesn't make."""
+
+    def setUp(self):
+        mock_moonraker.reset_live_state()
+        self.addCleanup(mock_moonraker.reset_live_state)
+        self.names = [o["name"] for o in mock_moonraker.get_printer_state()["objects"]["list"]]
+
+    def test_one_object_is_skipped_and_the_rest_carry_on(self):
+        state = printer_control.exclude_object(self.names[0].lower())
+        self.assertEqual(state["objects"]["excluded"], [self.names[0]])
+        self.assertEqual(state["state"], "printing")
+        mock_moonraker.advance(120)
+        self.assertNotEqual(mock_moonraker.get_printer_state()["objects"]["current"], self.names[0])
+
+    def test_refusals_are_in_words(self):
+        for bad, words in (("", "Choose an object"), ("two words", "Choose an object"),
+                           ('x"; M112', "Choose an object"), ("NOT_ON_THE_PLATE", "no object called")):
+            with self.assertRaisesRegex(ValueError, words):
+                printer_control.exclude_object(bad)
+        for name in self.names[:-1]:
+            printer_control.exclude_object(name)
+        with self.assertRaisesRegex(ValueError, "last object"):
+            printer_control.exclude_object(self.names[-1])
+
+    def test_a_refused_command_is_reported_as_failed(self):
+        mock_moonraker.fail_next("exclude")
+        with self.assertRaises(mock_moonraker.PrinterCommandError):
+            printer_control.exclude_object(self.names[0])
+        self.assertEqual(mock_moonraker.get_printer_state()["objects"]["excluded"], [])
+
+    def test_objects_go_when_the_print_does(self):
+        printer_control.cancel_print()
+        self.assertNotIn("objects", mock_moonraker.get_printer_state())
+        with self.assertRaisesRegex(ValueError, "Nothing is printing"):
+            printer_control.exclude_object(self.names[0])
+
+    def test_a_started_file_brings_its_own_objects(self):
+        printer_control.cancel_print()
+        import gcode_tools
+        text = ("EXCLUDE_OBJECT_DEFINE NAME=left CENTER=100,135 POLYGON=[[90,125],[110,125],[110,145]]\n"
+                "EXCLUDE_OBJECT_DEFINE NAME=right CENTER=170,135\n")
+        objects = gcode_tools.analyze(text, want_toolpath=False)["objects"]
+        mock_moonraker.upload_file("two.gcode")
+        state = mock_moonraker.start_print("two.gcode", {"objects": objects})
+        self.assertEqual([o["name"] for o in state["objects"]["list"]], ["LEFT", "RIGHT"])

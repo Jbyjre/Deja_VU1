@@ -56,6 +56,9 @@ const Farm = (() => {
       box.closest('.fleet-card').classList.toggle('is-picked', box.checked);
     });
     renderBar();
+    // The queues are only drawn on the Fleet tab, and opening it loads them
+    // fresh (onTab), so there's no need to keep asking while it's closed.
+    if (!visible('tab-fleet')) return;
     if (Date.now() - cmd.queuesAt > 3000) loadQueues(); else renderQueues();
   }
 
@@ -424,7 +427,8 @@ const Farm = (() => {
     if (!body) return;
     if (!demoOn) {
       body.hidden = true; off.hidden = false;
-      off.innerHTML = EMPTY('The sandbox runs on simulated printers', 'Turn on demo data (top right) to build a farm and run scenarios. It never touches a real printer.');
+      off.innerHTML = serverMissing() ? needsServerEmpty('the farm sandbox')
+        : EMPTY('The sandbox runs on simulated printers', 'Turn on demo data (top right) to build a farm and run scenarios. It never touches a real printer.');
       stopPolling();
       return;
     }
@@ -614,6 +618,8 @@ const Farm = (() => {
     const body = $('ap-body'), off = $('ap-off');
     if (!body) return;
     const data = await getJSON('/api/slicer/settings').catch(() => null);
+    // No server: its cards already say they need one.
+    if (data && data.server_missing) { body.hidden = false; off.hidden = true; return; }
     ap.enabled = !isModuleDisabled(data) && !!data;
     if (!ap.enabled) {
       body.hidden = true; off.hidden = false;
