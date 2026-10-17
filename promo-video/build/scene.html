@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=__W__, height=__H__" />
+    <title>Deja Vu1 launch film (__FMT__)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+/*SHARED_CSS*/
+      html, body { width: __W__px; height: __H__px; }
+      /* ---------- version 5: a tutorial, one step at a time ---------- */
+      .panel { position: absolute; }
+      .tp { position: absolute; inset: 0; opacity: 0; display: flex; flex-direction: column; }
+      .tp .k { display: flex; align-items: center; gap: 12px; font: 500 19px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+      .tp .k b { font-weight: 600; color: #fff; background: var(--heat); padding: 7px 10px 6px; border-radius: 9px; letter-spacing: .02em; }
+      .tp .t { font: 740 var(--title-size)/1.0 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); }
+      .tp .b { font: 500 var(--body-size)/1.42 var(--sans); color: var(--ink-dim); text-wrap: pretty; }
+      .tp .b em { font-style: normal; color: var(--ink); font-weight: 600; }
+      .ill { position: relative; border-radius: 28px; padding: 14px; }
+      .ill svg { position: relative; z-index: 4; display: block; width: 100%; height: 100%; overflow: visible; }
+      .ill .ln, .ill .ln2 { fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .ill .ln2 { stroke: var(--ink-faint); stroke-width: 1.8; }
+      .ill .ac { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .ill .ht { fill: none; stroke: var(--heat); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .ill .flow { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: 4 9; stroke-linecap: round; }
+      .ill text { font: 600 15px var(--mono); fill: var(--ink-dim); letter-spacing: .06em; }
+      .ill text.big { font: 700 19px var(--sans); fill: var(--ink); letter-spacing: 0; }
+      .co { position: absolute; width: 0; height: 0; opacity: 0; z-index: 8; }
+      .co .dot { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+        box-shadow: 0 0 0 5px rgba(74,141,248,.28), 0 2px 6px rgba(20,25,40,.3); }
+      .co .stem { position: absolute; background: var(--accent); }
+      .co .pill { position: absolute; white-space: nowrap; font: 650 25px/1 var(--sans); color: #fff; background: oklch(26% 0.03 265); padding: 13px 18px; border-radius: 14px;
+        box-shadow: 0 2px 4px rgba(20,25,40,.18), 0 12px 30px rgba(20,25,40,.28); }
+      .co.r .stem { left: 0; top: -1.5px; width: 56px; height: 3px; } .co.r .pill { left: 56px; top: -25px; }
+      .co.l .stem { right: 0; top: -1.5px; width: 56px; height: 3px; } .co.l .pill { right: 56px; top: -25px; }
+      .co.t .stem { left: -1.5px; bottom: 0; width: 3px; height: 50px; } .co.t .pill { left: 50%; bottom: 50px; transform: translateX(-50%); }
+      .co.b .stem { left: -1.5px; top: 0; width: 3px; height: 50px; } .co.b .pill { left: 50%; top: 50px; transform: translateX(-50%); }
+      .layer { position: absolute; inset: 0; opacity: 0; }
+      #W .view { background: var(--bg); }
+      #hook { position: absolute; inset: 0; }
+      .hq { position: absolute; left: 0; right: 0; text-align: center; font: 740 var(--hook-size)/1.02 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); opacity: 0; }
+      .hq .hl { color: var(--accent-text); }
+      .hq .word { display: inline-block; opacity: 0; }
+      #brand { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; opacity: 0; }
+      .icon { flex: none; filter: drop-shadow(0 18px 30px rgba(13,17,24,.28)); }
+      .wordmark { font: 740 var(--brand-size)/1 var(--display); font-stretch: 88%; letter-spacing: -.05em; color: var(--ink); }
+      .brand-sub { font: 500 34px/1.3 var(--sans); color: var(--ink-dim); text-align: center; }
+      #corner { position: absolute; display: flex; align-items: center; gap: 14px; opacity: 0; font: 740 30px/1 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); }
+      .phone { position: absolute; width: 430px; height: 920px; border-radius: 62px; background: oklch(22% 0.014 265); padding: 14px; opacity: 0; transform-origin: 50% 50%;
+        box-shadow: 0 2px 4px rgba(20,25,40,.14), 0 40px 90px oklch(25% 0.02 265 / .3), inset 0 0 0 2px #3a3e47; }
+      .phone .pscreen { position: relative; width: 402px; height: 892px; border-radius: 50px; overflow: hidden; background: var(--bg); }
+      .phone .island { position: absolute; left: 50%; top: 12px; width: 112px; height: 32px; margin-left: -56px; border-radius: 20px; background: #0b0d12; z-index: 3; }
+      #rail { position: absolute; display: flex; gap: 10px; opacity: 0; }
+      #rail .seg { display: flex; flex-direction: column; gap: 8px; font: 500 14px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); }
+      #rail .seg i { display: block; height: 5px; border-radius: 3px; background: oklch(30% 0.03 265 / .14); overflow: hidden; }
+      #rail .seg i u { display: block; height: 100%; width: 100%; background: var(--heat); transform-origin: 0 50%; transform: scaleX(0); }
+      #more { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 34px; }
+      #more .mh { font: 740 var(--more-size)/1 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); opacity: 0; }
+      #more .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; max-width: var(--chips-w); }
+      #more .chip { font: 550 26px/1 var(--sans); color: var(--ink); padding: 18px 26px; border-radius: 99px; opacity: 0; }
+      #more .chip span { position: relative; z-index: 4; }
+      #values { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+      #values .v { font: 740 var(--values-size)/1.0 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); opacity: 0; white-space: nowrap; }
+      #values .faint { color: var(--ink-faint); }
+      #end { position: absolute; inset: 0; opacity: 0; }
+      #end-row { position: absolute; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 30px; }
+      #end-tag { position: absolute; left: 40px; right: 40px; text-align: center; font: 600 46px/1.15 var(--display); font-stretch: 92%; letter-spacing: -.02em; color: var(--ink); }
+      #term { position: absolute; border-radius: 24px; background: oklch(21% 0.014 265); padding: 22px 32px 30px; opacity: 0;
+        box-shadow: 0 2px 4px rgba(20,25,40,.2), 0 30px 80px oklch(25% 0.02 265 / .32), inset 0 0 0 1px #343842; }
+      #term .tbar { display: flex; gap: 8px; margin-bottom: 18px; }
+      #term .tbar i { width: 12px; height: 12px; border-radius: 50%; background: #3a3e47; display: block; }
+      #term .ln { font: 500 var(--term-size)/1.75 var(--mono); color: #e9ebf0; white-space: nowrap; overflow: hidden; width: 0; }
+      #term .ln b { color: var(--heat); font-weight: 500; }
+      #end-meta { position: absolute; left: 40px; right: 40px; text-align: center; font: 500 20px/1.6 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); opacity: 0; }
+      #end-fine { position: absolute; left: 30px; right: 30px; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0; text-align: center; }
+/*LAYOUT_CSS*/
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="lg-distort" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="16" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <defs>
+        <linearGradient id="ic-tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2230"/><stop offset="1" stop-color="#0d1118"/></linearGradient>
+        <linearGradient id="ic-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7db2ff"/><stop offset="1" stop-color="#4a8df8"/></linearGradient>
+        <symbol id="app-icon" viewBox="0 0 512 512">
+          <rect width="512" height="512" rx="112" fill="url(#ic-tile)"/><circle cx="256" cy="256" r="150" fill="none" stroke="url(#ic-ring)" stroke-width="44"/>
+          <circle cx="256" cy="256" r="58" fill="#4a8df8"/><circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
+        </symbol>
+      </defs>
+    </svg>
+    <div id="root" data-composition-id="__FMT__" data-start="0" data-width="__W__" data-height="__H__" data-duration="__DUR__">
+      <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="lines"></div></div>
+
+      <div id="hook">
+        <div class="hq" id="hq1">Running more than one Snapmaker U1?</div>
+        <div class="ill glass" id="hk-ill"><svg viewBox="0 0 600 260" id="hk-svg"></svg></div>
+        <div class="hq" id="hq2"></div>
+      </div>
+
+      <div id="brand">
+        <svg class="icon" id="b-icon" width="176" height="176" viewBox="0 0 512 512" aria-hidden="true">
+          <rect width="512" height="512" rx="112" fill="url(#ic-tile)"/>
+          <circle id="b-ring" cx="256" cy="256" r="150" fill="none" stroke="url(#ic-ring)" stroke-width="44" stroke-dasharray="942.5" stroke-dashoffset="942.5" transform="rotate(-90 256 256)"/>
+          <circle id="b-dot" cx="256" cy="256" r="58" fill="#4a8df8"/><circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
+        </svg>
+        <div class="wordmark" id="b-word">Deja Vu1</div>
+        <div class="brand-sub" id="b-sub">The free, open-source dashboard<br>for the Snapmaker U1.</div>
+      </div>
+
+      <div id="corner"><svg width="44" height="44" aria-hidden="true"><use href="#app-icon"/></svg>Deja Vu1</div>
+      <div class="panel" id="panel"></div>
+
+      <div class="win glass" id="W">
+        <div class="view" id="Wv"></div>
+        <div class="simchip glass" id="Wchip"><span>Simulated farm</span></div>
+      </div>
+      <div class="phone" id="ph"><div class="pscreen" id="ph-screen"><div class="island"></div></div>
+        <div class="simchip glass" id="phchip"><span>Simulated farm</span></div></div>
+
+      <div id="rail"></div>
+      <div id="more"><div class="mh" id="more-h">And there's more.</div><div class="chips" id="chips"></div></div>
+      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">Just Python.</div></div>
+
+      <div id="end">
+        <div id="end-row"><svg class="icon" width="128" height="128" aria-hidden="true"><use href="#app-icon"/></svg><div class="wordmark" id="end-word">Deja Vu1</div></div>
+        <div id="end-tag">One screen for every U1 you run.</div>
+        <div id="term">
+          <div class="tbar"><i></i><i></i><i></i></div>
+          <div class="ln"><b>$</b> git clone https://github.com/Jbyjre/Deja_VU1.git</div>
+          <div class="ln"><b>$</b> cd Deja_VU1</div>
+          <div class="ln"><b>$</b> python3 backend/app.py</div>
+        </div>
+        <div id="end-meta">Free · MIT licence · Python 3.8 or newer · nothing else to install</div>
+        <div id="end-fine">
+          <div class="note">Every figure shown comes from Deja Vu1's built-in simulated farm.</div>
+          <div class="note">Deja Vu1 is an independent project and is not affiliated with Snapmaker.</div>
+        </div>
+      </div>
+
+<!--VIDEOS-->
+      <audio id="mix" src="assets/audio/mix___FMT__.wav" data-start="0" data-duration="__DUR__" data-track-index="9" data-volume="1"></audio>
+    </div>
+
+    <script>
+/*SCENE_JS*/
+      window.__timelines["__FMT__"] = tl;
+    </script>
+  </body>
+</html>
