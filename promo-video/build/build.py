@@ -111,14 +111,15 @@ for vid, name, start, vfrom, vto in plan:
 # keystroke); the next two are typed.
 random.seed(4)
 typing = [[round(END + .7, 3)] * 49]
-cues.append({'t': round(END + .7, 3), 'type': 'key', 'gain': .8, 'pan': 0, 'pitch': 1.0})
+KEY_END = .5                      # version 11: the real piano's last chord fades sooner, so the typing sits 6 dB lower
+cues.append({'t': round(END + .7, 3), 'type': 'key', 'gain': .8 * KEY_END, 'pan': 0, 'pitch': 1.0})
 t = END + 1.1
 for n in (11, 22):
     per = []
     for i in range(n + 1):
         per.append(round(t, 3))
         last = i == n
-        cues.append({'t': round(t, 3), 'type': 'key', 'gain': .8 if last else random.uniform(.55, .75),
+        cues.append({'t': round(t, 3), 'type': 'key', 'gain': KEY_END * (.8 if last else random.uniform(.55, .75)),
                      'pan': random.uniform(-.15, .15), 'pitch': .85 if last else random.uniform(.94, 1.06)})
         t += random.uniform(.06, .09) if i < n - 1 else .18
     typing.append(per)
@@ -166,8 +167,8 @@ json.dump({'bpm': BPM, 'length': LENGTH, 'cues': sorted(pcues, key=lambda c: c['
            'changes': [SEG[k][0] for k, _ in ORDER] + [MORE, START], 'band': HIW['t0'], 'values': VALUES,
            'more': MORE, 'start': START, 'end': END},
           open(plan_file, 'w'), indent=0)
-music_wav = os.path.join(audio, f'music9_{FMT}.wav')
-subprocess.run(['python3', os.path.join(ROOT, 'music', 'compose9.py'), music_wav, plan_file], check=True)
+music_wav = os.path.join(audio, f'music10_{FMT}.wav')
+subprocess.run(['python3', os.path.join(ROOT, 'music', 'compose10.py'), music_wav, plan_file], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'sfx.py'), cue_file, str(LENGTH), sfx_wav], check=True)
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'mix.py'), music_wav, sfx_wav, cue_file,
