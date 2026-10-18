@@ -349,15 +349,14 @@
     </div>
 
     <script>
-      // Version 9: a 75-second SaaS promo that moves fast but reads easily. It opens on what the
-      // app is for (who it is for, what it does, three promises), then the name, then the app
-      // itself, sometimes on a laptop standing in 3D, sometimes full screen, one feature after
-      // another, each with a short caption and one or two callouts. Every feature change is one
-      // quick camera move on a bar line of the 160 BPM music, and every moment something appears
-      // is put on the music's grid and written to CUES, so the music plays along with the picture
-      // (music/compose9.py). Shared by both cuts; the layout CSS places things, this file times
-      // them. build.py fills in M (each shot's clicks and marks), TY (the end-card typing) and
-      // SEG (when each feature starts and ends).
+      // Version 10: a 75-second SaaS launch video. The problem, what the app is for, the name,
+      // how it works (the laptop with the real app, the printers and the phone joining it), seven
+      // features shown working (sometimes on the laptop standing in 3D, sometimes full screen),
+      // "and plenty more", why trust it, get started, the end card. Every change lands on a bar
+      // line of the 160 BPM music, and every moment something appears is put on the music's grid
+      // and written to CUES, so the music plays along with the picture (music/compose9.py).
+      // Shared by both cuts; the layout CSS places things, this file times them. build.py fills
+      // in M (each shot's clicks and marks), TY (the end-card typing) and SEG (the timings).
       const FMT = 'main', V9 = FMT === 'vertical';
       const M = {"v-fl": {"start": 11.067, "marks": {"tab": 1.033, "cards": 2.933, "sandbox": 5.133, "hover": 5.883, "hover2": 8.333}, "clicks": [0.983]}, "v-ov": {"start": 19.75, "marks": {"jam": 1.783, "row": 3.867}, "clicks": []}, "v-ok": {"start": 21.75, "marks": {"open": 0.9, "print": 2.933, "dialog": 5.233, "start": 6.167}, "clicks": [0.85, 2.883, 6.117]}, "v-ph": {"start": 26.4, "marks": {}, "clicks": [1.833, 4.217, 5.1]}, "v-cv": {"start": 31.6, "marks": {"convert": 2.167, "report": 3.867}, "clicks": [0.783, 2.117]}, "v-sk": {"start": 34.0, "marks": {"tab": 1.033, "plate": 3.133, "pick": 3.867, "ask": 5.6, "skip": 7.15, "done": 8.95}, "clicks": [0.983, 3.817, 5.55, 7.1]}, "v-tw": {"start": 41.35, "marks": {"orbit": 1.583, "orbited": 4.217, "front": 5.85, "top": 7.8, "iso": 9.75}, "clicks": [1.583, 5.8, 7.75, 9.7]}, "v-tw2": {"start": 39.85, "marks": {"orbit": 1.583, "orbited": 4.217, "front": 5.85, "top": 7.8, "iso": 9.75}, "clicks": [1.583, 5.8, 7.75, 9.7]}, "v-au": {"start": 46.1, "marks": {"tab": 1.033, "template": 2.567, "save": 4.783}, "clicks": [0.983, 2.517, 4.733]}};
       const TY = [[69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7], [70.1, 70.165, 70.249, 70.317, 70.405, 70.471, 70.556, 70.636, 70.699, 70.768, 70.854, 71.034], [71.464, 71.525, 71.601, 71.667, 71.735, 71.812, 71.879, 71.949, 72.029, 72.118, 72.202, 72.286, 72.35, 72.41, 72.481, 72.554, 72.619, 72.694, 72.77, 72.844, 72.917, 72.992, 73.172]];
