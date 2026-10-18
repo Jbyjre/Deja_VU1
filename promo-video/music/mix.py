@@ -35,9 +35,10 @@ mid = signal.filtfilt(b, a, mus, axis=0)                    # zero-phase, so sub
 mus = mus - mid * band[:, None]
 # Version 6: the music sits lower (it is background music; the owner could not hear the
 # clicks over version 5's mix) and the clicks and keystrokes higher.
-# Version 8: the faster music (walking bass, ride) measures about 1.2 dB louder than version 7's,
-# so it is turned down by that much to keep the clicks and keystrokes where the owner liked them.
-MUSIC, FX = .44, 1.7
+# Version 8 set the music so the clicks and keystrokes sat where the owner liked them ("so much
+# better now"). Version 9's music comes out of the composer about 2.6 dB quieter than version
+# 8's, so it is turned up by that much: the clicks keep the same distance above it.
+MUSIC, FX = .6, 1.7
 m_part, f_part = mus * MUSIC * gain[:, None], fx * FX
 out = m_part + f_part
 norm = .9 / (np.max(np.abs(np.tanh(out * 1.05) / np.tanh(1.05))) or 1)

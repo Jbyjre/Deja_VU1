@@ -11,13 +11,25 @@
       /* ---------- version 6: a SaaS promo. The app runs on a laptop (and a phone) standing in
          a 3D space; glass captions float beside it; no step numbers, no progress bar. ---------- */
 
-      /* the opening: every feature as an icon, in under three seconds */
-      #intro { position: absolute; inset: 0; }
-      #grid { position: absolute; display: flex; flex-wrap: wrap; justify-content: center; }
-      .ft { width: var(--ft-w); display: flex; flex-direction: column; align-items: center; gap: 16px; opacity: 0; }
-      .ft .tile { width: var(--tile); height: var(--tile); border-radius: calc(var(--tile) * .27); display: grid; place-items: center; }
-      .ft svg { position: relative; z-index: 4; width: 50%; height: 50%; overflow: visible; }
-      .ft .lb { font: 600 var(--tile-label)/1.1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); text-align: center; white-space: nowrap; }
+      /* the opening (version 9): what the app is for, in plain words, before its name. A small
+         label says who it is for, a two-line headline says what it does, then three promises,
+         each with its line icon on a glass tile, one per beat of the music. */
+      #purpose { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; }
+      #p-for { align-self: flex-start; position: relative; display: inline-flex; align-items: center; gap: 12px; padding: 12px 20px 12px 16px; border-radius: 99px; opacity: 0;
+        font: 600 var(--p-for)/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-text); }
+      #p-for span, #p-for svg { position: relative; z-index: 4; }
+      #p-for svg { width: 30px; height: 30px; overflow: visible; }
+      #p-head { font: 760 var(--p-head)/.98 var(--display); font-stretch: 86%; letter-spacing: -.05em; color: var(--ink); margin: 34px 0 0; }
+      #p-head .ln { display: block; overflow: hidden; padding-bottom: .06em; }
+      #p-head .w { display: inline-block; opacity: 0; }
+      #p-head .hl { color: var(--accent-text); }
+      #p-head br.v9 { display: none; }
+      #p-list { display: flex; gap: var(--p-gap); margin-top: 56px; }
+      .pi { display: flex; align-items: center; gap: 20px; opacity: 0; }
+      .pi .tile { flex: none; width: var(--p-tile); height: var(--p-tile); border-radius: calc(var(--p-tile) * .28); display: grid; place-items: center; }
+      .pi .tile svg { position: relative; z-index: 4; width: 52%; height: 52%; overflow: visible; }
+      .pi .t { font: 650 var(--p-item)/1.15 var(--sans); color: var(--ink); letter-spacing: -.01em; }
+      .pi .t em { font-style: normal; color: var(--accent-text); }
       .ico path, .ico rect, .ico circle, .ico ellipse, .ico line, .ico polyline { fill: none; stroke: var(--accent-text); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
       .ico .fill { fill: var(--accent); stroke: none; }
       .ico .heat { stroke: var(--heat); }
@@ -103,6 +115,48 @@
       #ha-card .row.more { color: var(--ink-faint); font-family: var(--mono); font-size: 17px; letter-spacing: .06em; }
 
       #corner { position: absolute; display: flex; align-items: center; gap: 14px; opacity: 0; font: 740 30px/1 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); z-index: 30; }
+
+      /* version 10: the hook, how it works, "and plenty more", get started */
+      #hook { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; }
+      #hook .hk { font: 760 var(--hook)/1.0 var(--display); font-stretch: 86%; letter-spacing: -.05em; color: var(--ink); opacity: 0; }
+      #hook .hk.b { color: var(--accent-text); }
+      #shelf { position: absolute; display: grid; grid-template-columns: repeat(3, var(--sh)); gap: calc(var(--sh) * .2); }
+      .sh { position: relative; width: var(--sh); height: var(--sh); border-radius: calc(var(--sh) * .28); display: grid; place-items: center; opacity: 0; }
+      .sh svg { position: relative; z-index: 4; width: 52%; height: 52%; overflow: visible; }
+      .sh .dot { position: absolute; z-index: 5; right: 12%; top: 12%; width: 18%; height: 18%; border-radius: 50%; background: oklch(62% 0.2 30); box-shadow: 0 0 0 6px oklch(62% 0.2 30 / .22); opacity: 0; }
+      #hiw { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
+      #wires { position: absolute; inset: 0; overflow: visible; }
+      #wires line { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 12; opacity: .55; }
+      #wires circle { fill: var(--accent); opacity: 0; }
+      .node { position: absolute; display: flex; align-items: center; gap: 16px; opacity: 0; }
+      .node .tile { flex: none; width: var(--node); height: var(--node); border-radius: calc(var(--node) * .28); display: grid; place-items: center; }
+      .node .tile svg { position: relative; z-index: 4; width: 54%; height: 54%; overflow: visible; }
+      .node.col { flex-direction: column; text-align: center; gap: 12px; }
+      .node .lb { font: 600 var(--node-lb)/1.15 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); white-space: nowrap; }
+      .node .lb b { display: block; font: 650 calc(var(--node-lb) * 1.25)/1.1 var(--sans); letter-spacing: -.01em; text-transform: none; color: var(--ink); }
+      .step { position: absolute; z-index: 20; opacity: 0; }
+      .step .card { border-radius: 30px; padding: 26px 34px 28px; display: flex; gap: 24px; align-items: flex-start; }
+      .step .n, .sc .n { position: relative; z-index: 4; flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font: 700 30px/1 var(--display); }
+      .step .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }
+      .step .h { font: 740 var(--step-h)/1.02 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); }
+      .step .s { font: 500 var(--step-s)/1.35 var(--sans); color: var(--ink-dim); }
+      .step .s em { font-style: normal; color: var(--ink); font-weight: 650; }
+      #more { position: absolute; inset: 0; opacity: 0; }
+      #more-t { position: absolute; font: 760 var(--more-t)/1 var(--display); font-stretch: 86%; letter-spacing: -.045em; color: var(--ink); }
+      #more-g { position: absolute; display: grid; gap: var(--more-gap); }
+      .mc { border-radius: 26px; padding: 14px 14px 18px; opacity: 0; }
+      .mc .shot { position: relative; z-index: 4; width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; background: var(--bg); box-shadow: inset 0 0 0 1px oklch(30% 0.02 265 / .1); }
+      .mc .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .mc .shot.txt { display: grid; place-items: center; font: 760 120px/1 var(--display); letter-spacing: -.05em; color: var(--accent-text); background: oklch(96% 0.02 255); }
+      .mc .lb { position: relative; z-index: 4; display: flex; align-items: center; gap: 12px; margin-top: 14px; font: 650 var(--mc-lb)/1.1 var(--sans); color: var(--ink); }
+      .mc .lb svg { width: 30px; height: 30px; overflow: visible; flex: none; }
+      #start { position: absolute; inset: 0; opacity: 0; }
+      #start-t { position: absolute; font: 760 var(--more-t)/1 var(--display); font-stretch: 86%; letter-spacing: -.045em; color: var(--ink); }
+      #start-g { position: absolute; display: grid; gap: 28px; }
+      .sc { border-radius: 28px; padding: 30px 32px 32px; opacity: 0; display: flex; gap: 22px; align-items: flex-start; }
+      .sc .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 12px; }
+      .sc .h { font: 740 var(--sc-h)/1.05 var(--display); font-stretch: 88%; letter-spacing: -.035em; color: var(--ink); }
+      .sc .m { font: 500 var(--sc-m)/1.3 var(--mono); color: var(--accent-text); letter-spacing: .01em; }
       #values { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
       #values .v { font: 740 var(--values-size)/1.0 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); opacity: 0; white-space: nowrap; }
       #values .faint { color: var(--ink-faint); }
@@ -138,7 +192,13 @@
     <div id="root" data-composition-id="__FMT__" data-start="0" data-width="__W__" data-height="__H__" data-duration="__DUR__">
       <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="lines"></div></div>
 
-      <div id="intro"><div id="grid"></div></div>
+      <div id="hook"><div class="hk">One printer is easy.</div><div class="hk b">A shelf of them isn&rsquo;t.</div></div>
+      <div id="shelf"></div>
+      <div id="purpose">
+        <div id="p-for" class="glass"><svg viewBox="0 0 48 48" class="ico" aria-hidden="true"><rect x="9" y="6" width="30" height="36" rx="4"/><path d="M15 34h18M18 13h12v13H18z"/></svg><span>For Snapmaker U1 3D printers</span></div>
+        <h1 id="p-head"><span class="ln"><span class="w">Run</span> <span class="w">your</span> <span class="w">3D</span><br class="v9"> <span class="w">printers</span></span> <span class="ln"><span class="w">from</span><br class="v9"> <span class="w hl">one</span> <span class="w hl">screen.</span></span></h1>
+        <div id="p-list"></div>
+      </div>
 
       <div id="brand">
         <svg class="icon" id="b-icon" width="168" height="168" viewBox="0 0 512 512" aria-hidden="true">
@@ -147,7 +207,6 @@
           <circle id="b-dot" cx="256" cy="256" r="58" fill="#4a8df8"/><circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
         </svg>
         <div class="wordmark" id="b-word">Deja Vu1</div>
-        <div class="brand-sub" id="b-sub"></div>
         <div class="brand-sub2" id="b-sub2">Free and open source, for the Snapmaker U1.</div>
       </div>
 
@@ -161,12 +220,18 @@
         <div class="phone" id="ph"><div class="pscreen" id="ph-screen"><div class="island"></div></div></div>
       </div>
 
-      <div class="pop3 glass" id="ha-card"><div class="in" id="ha-in"></div></div>
+      <div id="hiw">
+        <svg id="wires" viewBox="0 0 __W__ __H__" aria-hidden="true"></svg>
+        <div id="nodes"></div>
+        <div id="steps"></div>
+      </div>
       <div class="simchip glass" id="simtag"><span>Simulated farm</span></div>
       <div id="caps"></div>
 
-      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">Just Python.</div></div>
+      <div id="more"><div id="more-t">And plenty more.</div><div id="more-g"></div></div>
+      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">638 automated tests.</div></div>
 
+      <div id="start"><div id="start-t">Get started in three steps.</div><div id="start-g"></div></div>
       <div id="end">
         <div id="end-row"><svg class="icon" width="128" height="128" aria-hidden="true"><use href="#app-icon"/></svg><div class="wordmark" id="end-word">Deja Vu1</div></div>
         <div id="end-tag">One screen for every U1 you run.</div>
