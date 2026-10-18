@@ -177,12 +177,11 @@ MEL_BR = [(0, 73, 2), (2, 76, 1), (3, 79, 1), (4, 81, 3), (7, 79, 1),
 MELODY = [MEL_A, None, MEL_BR, MEL_A]          # the second A lays out: the piano comps
 
 
-BAND = PLAN['band']                    # bar 4: the band kicks in as the laptop lands
-VALUES, END = PLAN['values'], PLAN['end']
-B0 = int(round(BAND / BAR))
-INTRO = [  # (bar, beat, chord): what the opening plays under the purpose and the name
-    (0, 0, 'Fmaj9'), (1, 0, 'F6'), (1, 2, 'Bb6'), (1, 3, 'Am7'), (2, 0, 'D7'), (2, 2, 'Gm7'), (2, 3, 'C7'),
-    (3, 0, 'Fmaj9'), (3, 2, 'Gm7'), (3, 3, 'C7')]
+BAND = PLAN['band']                    # bar 6: the band kicks in as the laptop lands (how it works)
+VALUES, START, END = PLAN['values'], PLAN['start'], PLAN['end']
+INTRO = [  # (bar, beat, chord) under the opening: the hook, what it is for, the name
+    (0, 0, 'Fmaj9'), (1, 0, 'Bb6'), (2, 0, 'F6'), (2, 2, 'Am7'), (3, 0, 'Bb6'), (3, 1, 'Am7'), (3, 2, 'D7'),
+    (4, 0, 'Gm7'), (4, 1, 'C7'), (4, 2, 'Fmaj9'), (5, 0, 'F6'), (5, 2, 'Gm7'), (5, 3, 'C7')]
 
 
 def chord_at(t):
@@ -193,7 +192,7 @@ def chord_at(t):
             if bar * BAR + beat * BEAT <= t + 1e-6:
                 cur = ch
         return cur
-    if t >= VALUES:
+    if VALUES <= t < START:
         return 'F6'
     k = int((t - BAND) // (BAR / 2))
     bar, half = divmod(k, 2)
@@ -246,20 +245,22 @@ def build():
             while m < 31: m += 12
             bs(m, jit(t0 + q * BEAT, 4), BEAT * .9, .95 if q == 0 else .82)
 
-    # ===== the opening: what the app is for =====
+    # ===== the opening: the hook, what it is for, the name =====
     cues = PLAN['cues']
+    for c in cues:
+        if c['k'] == 'hook':                                         # each line of the hook: a soft chord and a high note
+            ch('Fmaj9' if c['i'] == 0 else 'Bb6', c['t'], 1.4, .34)
+            pn(84 if c['i'] == 0 else 86, c['t'], 1.0, .4, pan=.2)
+            if c['i']:
+                bs(46, c['t'], 1.3, .7)
     words = [c for c in cues if c['k'] == 'word']
     for c, m in zip(words, [72, 74, 77, 79, 81, 84, 86]):           # one note per word, rising
         pn(m, c['t'], .5, .5, pan=.15)
-    pn(65, .05, 1.3, .32, pan=-.2); pn(69, .05, 1.3, .3, pan=-.2)    # the label: a soft open fifth under it
-    for bar, beat, name in INTRO:
+    for bar, beat, name in INTRO[2:]:
         t = bar * BAR + beat * BEAT
-        if bar == 0:
-            ch(name, t + .05, 1.4, .3)
-            continue
-        ch(name, t, (2 if beat == 0 else 1) * BEAT * .95, .5 if beat == 0 else .42)
-        bs(ROOT[name], t, BEAT * (1.9 if beat == 0 else .9), .9)
-    time_keeping(BAR, 2, light=True)                                   # ride and hi-hat from "screen."
+        ch(name, t, (2 if beat in (0, 2) else 1) * BEAT * .95, .5 if beat == 0 else .42)
+        bs(ROOT[name], t, BEAT * (1.9 if beat in (0, 2) else .9), .9)
+    time_keeping(2 * BAR, 4, light=True)                              # ride and hi-hat from "what it is for"
     for c in cues:
         if c['k'] == 'item':                                           # each promise: a kick and a snare hit
             place(mus, kick(.7), c['t']); place(mus, snare(.35), c['t'], pan=-.1)
@@ -267,27 +268,28 @@ def build():
     place(mus, crash(.8), name_t, pan=-.3); place(mus, kick(.9), name_t)
     for i, m in enumerate([77, 81, 84, 88]):                            # a little sparkle over the name
         pn(m, name_t + .06 + i * .07, .9, .3, pan=.25)
-    time_keeping(name_t, 1, light=True)
     # the fill into the band: snare eighths, then toms
     for i, (beat, kind) in enumerate([(2, 's'), (2.5, 's'), (3, 't1'), (3.5, 't2')]):
         t = BAND - BAR + sw(beat * BEAT)
         place(mus, snare(.5 + .1 * i) if kind == 's' else tom(150 if kind == 't1' else 110, .9), jit(t, 3), pan=-.1)
 
-    # ===== the band: choruses from bar 4 to the values =====
-    n_bars = int(np.ceil((VALUES - BAND) / BAR))
-    time_keeping(BAND, n_bars)
+    # ===== the band: from how it works to the end card (the values have hits of their own) =====
+    rest = lambda t: VALUES - 1e-6 <= t < START - 1e-6                # the values' two bars
+    n_bars = int(round((END - BAND) / BAR))
+    time_keeping(BAND, int(round((VALUES - BAND) / BAR)))
+    time_keeping(VALUES, 2, light=True)
+    time_keeping(START, int((END - START) // BAR))
     for b in range(n_bars):
         t0 = BAND + b * BAR
         c1, c2 = CHORUS[b % 32]
         nxt = ROOT[CHORUS[(b + 1) % 32][0]]
-        if t0 >= VALUES - 1e-6:
-            break
+        if rest(t0):
+            continue
         walk(t0, c1, c2, nxt)
         # piano: the Charleston (1, and-of-2) on the first chord, a push on the and-of-4 every other bar
         ch(c1, jit(t0), .9 * BEAT, .46)
-        if t0 + sw(1.5 * BEAT) < VALUES:
-            ch(c2, jit(t0 + sw(1.5 * BEAT)), 1.2 * BEAT, .38)
-        if b % 2 == 1 and t0 + sw(3.5 * BEAT) < VALUES - .05:
+        ch(c2, jit(t0 + sw(1.5 * BEAT)), 1.2 * BEAT, .38)
+        if b % 2 == 1 and not rest(t0 + BAR) and t0 + BAR < END:
             ch(CHORUS[(b + 1) % 32][0], jit(t0 + sw(3.5 * BEAT)), .8 * BEAT, .32)
     # the melody: the first, third and fourth eight-bar sections of each chorus
     for start in range(0, n_bars, 8):
@@ -296,7 +298,7 @@ def build():
             continue
         for beat, m, ln in mel:
             t = BAND + start * BAR + sw(beat * BEAT)
-            if t < VALUES - .1:
+            if t < END - .1 and not rest(t):
                 pn(m + 12, jit(t, 6), ln * BEAT * .9, .34, pan=.1)
 
     # ===== the picture's moments =====
@@ -314,6 +316,16 @@ def build():
                 pn(m, t + i * BEAT / 4, .35, .3 + .02 * i, pan=.25)
         elif k == 'cut':                                    # the twin's change of view: the ride's bell
             place(mus, BELL * .07, t, pan=.35)
+        elif k == 'step':                                   # each step of how it works: a bright two-note bell
+            tt = tones(chord_at(t), 84, 98)
+            pn(tt[-1], t, .8, .38, pan=.25); pn(tt[-3], t + .02, .8, .32, pan=.25)
+        elif k == 'tile':                                   # the shelf filling up: one soft note per printer
+            pn([72, 76, 79, 81, 84, 88][c['i']], t, .4, .3, pan=.3)
+        elif k == 'alert':                                  # one of them flags a problem: a light snare tap
+            place(mus, snare(.3), t, pan=-.1)
+        elif k in ('node', 'card', 'start'):                # each printer, phone, card, step: one rising note
+            tt = tones(chord_at(t), 79, 99)
+            pn(tt[min(c['i'] * 2, len(tt) - 1)], sw(t), .45, .4, pan=.3)
     # every feature change: a fill in the beat before, then a crash, a kick, the band's chord
     for i, t in enumerate(PLAN['changes']):
         fill = [(-1, 's', .5), (-.5, 's', .65)] if i % 3 else [(-1, 't1', .8), (-.5, 't2', .85)]
@@ -326,7 +338,6 @@ def build():
         place(mus, crash(.55 if i % 2 else .7), t, pan=(-.3 if i % 2 else .3))
         place(mus, kick(.8), t)
     place(mus, crash(.8), BAND, pan=-.3); place(mus, kick(1.0), BAND)
-    ch('F6', BAND, BEAT * 1.5, .5)
 
     # ===== the values: a band hit on each word, on each beat =====
     vals = [c for c in cues if c['k'] == 'value']
@@ -339,8 +350,6 @@ def build():
         pn(tones(name, 84, 96)[-1], t, .4, .4, pan=.2)
     for beat, v in ((2, .4), (2.5, .5), (3, .6), (3.5, .7)):                    # the fill into the end card
         place(mus, snare(v), jit(END - BAR + sw(beat * BEAT), 3), pan=-.1)
-    if vals:
-        time_keeping(vals[0]['t'], 1, light=True)
 
     # ===== the end card: ii-V, then the home chord rings to the last frame =====
     place(mus, crash(.75), END, pan=-.3); place(mus, kick(.9), END)

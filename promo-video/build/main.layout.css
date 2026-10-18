@@ -5,10 +5,10 @@
       #p-list { flex-direction: row; }
       .pi { flex: 1; }
       .cap { top: 0; bottom: 0; width: 650px; display: flex; align-items: center; }
-      .cap.L { left: 90px; } .cap.R { right: 90px; }
-      #corner { left: 90px; top: 56px; }
-      #simtag { right: 90px; top: 58px; }
-      #ph { left: 1150px; top: 80px; }
+      .cap.L { left: 150px; } .cap.R { right: 150px; }
+      #corner { left: 110px; top: 64px; }
+      #simtag { right: 110px; top: 66px; }
+      #ph { left: 1150px; top: 80px; scale: .84; }   /* closer to a real phone's size beside the laptop */
       #ha-card { left: 110px; top: 560px; width: 480px; }
       #end-row { top: 150px; }
       #end-word { font-size: 132px; }
@@ -16,3 +16,13 @@
       #term { left: 50%; width: 1080px; margin-left: -540px; top: 450px; }
       #end-meta { top: 800px; }
       #end-fine { top: 930px; }
+      /* version 10 (title-safe: everything that matters stays 192 px from the sides, 108 from top and bottom) */
+      :root { --hook: 150px; --node: 120px; --node-lb: 17px; --step-h: 50px; --step-s: 25px; --more-t: 84px; --more-gap: 24px; --mc-lb: 26px; --sc-h: 50px; --sc-m: 23px; }
+      #hook { left: 192px; right: 192px; }
+      .step { left: 50%; width: 1180px; margin-left: -590px; bottom: 108px; }
+      #more-t { left: 192px; top: 120px; }
+      #more-g { left: 192px; right: 192px; top: 236px; grid-template-columns: repeat(3, 1fr); }
+      #start-t { left: 192px; top: 330px; }
+      #start-g { left: 192px; right: 192px; top: 480px; grid-template-columns: repeat(3, 1fr); }
+      :root { --sh: 120px; }
+      #shelf { left: 1316px; top: 408px; }

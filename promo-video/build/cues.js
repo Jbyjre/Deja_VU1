@@ -5,6 +5,7 @@ const { chromium } = require('playwright');
   const [file, fmt] = process.argv.slice(2);
   const b = await chromium.launch();
   const p = await b.newPage({ viewport: fmt === 'main' ? { width: 1920, height: 1080 } : { width: 1080, height: 1920 } });
+  p.on('pageerror', e => console.error('page error:', e.message));
   await p.addInitScript(() => { window.__timelines = {}; });
   await p.route('**/*.{mp4,wav}', r => r.abort());          // the media aren't needed for the timing
   await p.goto('file://' + require('path').resolve(file), { waitUntil: 'domcontentloaded' });

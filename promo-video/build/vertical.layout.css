@@ -5,10 +5,10 @@
       #purpose { left: 70px; right: 70px; }
       #p-list { flex-direction: column; gap: 34px; }
       #brand { padding: 0 50px; }
-      .cap { left: 60px; right: 60px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
+      .cap { left: 90px; right: 90px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
       .cap .card { width: 100%; }
-      #corner { left: 60px; top: 56px; }
-      #simtag { right: 60px; top: 60px; }
+      #corner { left: 90px; top: 100px; }
+      #simtag { right: 90px; top: 104px; }
       #ph { left: 325px; top: 770px; scale: .86; transform-origin: 50% 0; }
       #ha-card { left: 470px; top: 1290px; width: 540px; }
       #end-row { top: 300px; flex-direction: column; gap: 22px; }
@@ -20,3 +20,14 @@
       #end-fine .note { font-size: 18px; }
       #p-head .ln { display: inline; }
       #p-head br.v9 { display: inline; }   /* three lines: "Run your 3D / printers from / one screen." */
+      /* version 10 (title-safe: everything that matters stays 108 px from the sides, 192 from top and bottom) */
+      :root { --hook: 118px; --node: 128px; --node-lb: 19px; --step-h: 54px; --step-s: 29px; --more-t: 88px; --more-gap: 26px; --mc-lb: 30px; --sc-h: 54px; --sc-m: 27px; }
+      #hook { left: 108px; right: 108px; }
+      .step { left: 90px; right: 90px; top: 196px; }
+      #more-t { left: 108px; top: 236px; }
+      #more-g { left: 90px; right: 90px; top: 380px; grid-template-columns: repeat(2, 1fr); }
+      #start-t { left: 108px; top: 420px; }
+      #start-g { left: 108px; right: 108px; top: 580px; grid-template-columns: 1fr; }
+      :root { --sh: 190px; }
+      #shelf { left: 197px; top: 1120px; }
+      #hook { justify-content: flex-start; padding-top: 620px; }

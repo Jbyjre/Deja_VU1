@@ -24,23 +24,28 @@ def shot(name):
     return json.load(open(os.path.join(ROOT, 'footage', name + '.json')))
 
 
-# Version 9: still 75 s, laid out in bars of the 160 BPM music (music/compose9.py; a bar is
-# 1.5 s), so every feature change lands on a bar line (a half bar = beat 3). Bars 0-3: what the
-# app is for; bar 3: the name; bar 4 (6 s): the laptop lands as the band kicks in. A feature
-# gets 2.5 to 3.5 bars (3.75 to 5.25 s); Confirm Print, with the phone inside it, 5.5.
+# Version 10: still 75 s, laid out in bars of the 160 BPM music (music/compose9.py; a bar is
+# 1.5 s), so every change lands on a bar line (a half bar = beat 3). The story (the owner: less
+# of a feature list, more about what the app is, how it works and where to get it):
+#   bars 0-2 the hook, 2-4.5 what it is for, 4.5-6 the name, 6-10.5 how it works (the laptop
+#   lands showing the app, the printers and the phone join it), 10.5-35.5 seven features,
+#   35.5-39.5 "and plenty more", 39.5-41.5 why trust it, 41.5-46 get started, 46-50 the end card.
 BPM = 160
 BEAT = 60 / BPM                   # 0.375 s
 BAR = 4 * BEAT                    # 1.5 s
-ORDER = [('fl', 3.5), ('ov', 3), ('ok', 5.5), ('cv', 3), ('sk', 3.5), ('tw', 3.5), ('au', 3.5),
-         ('ca', 3), ('fi', 3), ('co', 2.5), ('ha', 3), ('ga', 3.5)]
-SEG, _b = {}, 4.0
+ORDER = [('fl', 3), ('ov', 3), ('ok', 5.5), ('cv', 3), ('sk', 3.5), ('tw', 3.5), ('au', 3.5)]
+SEG, _b = {}, 10.5
 for _k, _n in ORDER:
     SEG[_k] = (round(_b * BAR, 3), round((_b + _n) * BAR, 3))
     _b += _n
+assert _b == 35.5, _b
+HIW = {'t0': 6 * BAR, 's2': 7.5 * BAR, 's3': 9 * BAR}  # how it works: its three steps
 PHONE_AT = round(SEG['ok'][0] + 3.5 * BAR, 3)          # inside Confirm Print: the phone takes over (on beat 3)
 TWIN_CUT = round(SEG['tw'][0] + 2 * BAR, 3)            # the twin: 3D (turned by hand) until here, then front and top
-VALUES = SEG['ga'][1]                                  # bar 44.5: the values, one per beat
-END = round(46 * BAR, 3)                               # bar 46 (69 s): the end card, as the music's ending starts
+MORE = 35.5 * BAR                                      # "and plenty more"
+VALUES = 39.5 * BAR                                    # why trust it, one value per beat
+START = 41.5 * BAR                                     # get started
+END = 46 * BAR                                         # the end card (69 s)
 LENGTH = 75.0
 
 
@@ -51,7 +56,7 @@ def plan_main(S):
     c = lambda s, i: S[s]['clicks'][i]
     win = lambda k, src: (SEG[k][0] - src, SEG[k][0] - .6, SEG[k][1] + .1)   # footage time src lands on the feature's start
     return [
-        ('v-fl', 'fleet', SEG['fl'][0] - 2.7, SEG['fl'][0] - .7, SEG['fl'][1] + .1),  # already on Fleet as the laptop rises
+        ('v-fl', 'fleet', SEG['fl'][0] + 1.2 - m('fleet', 'hover'), HIW['t0'] - .6, SEG['fl'][1] + .1),  # on the laptop from how it works on
         ('v-ov', 'overview_jam', *win('ov', .5)),
         ('v-ok', 'confirm_ok', *win('ok', 3.0)),                                     # starts on the open file
         ('v-ph', 'phone', PHONE_AT + 1.5 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),  # hold to cancel 1.5 s in
@@ -60,11 +65,6 @@ def plan_main(S):
         ('v-tw', 'twin', SEG['tw'][0] - 1.4, SEG['tw'][0] - .6, TWIN_CUT + .3),     # part 1: the 3D drawing, turned
         ('v-tw2', 'twin', TWIN_CUT - 5.9, TWIN_CUT - .3, SEG['tw'][1] + .1),        # part 2: front, then top
         ('v-au', 'automations', *win('au', 1.9)),
-        ('v-ca', 'care', *win('ca', 1.4)),
-        ('v-fi', 'filament', *win('fi', 1.3)),
-        ('v-co', 'cost', *win('co', 1.0)),
-        ('v-ha', 'ha', *win('ha', 1.6)),
-        ('v-ga', 'games', *win('ga', .6)),
     ]
 
 
@@ -134,8 +134,21 @@ html = tpl.replace('/*SHARED_CSS*/', SHARED_CSS).replace('<!--VIDEOS-->', '\n'.j
           .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing)) \
           .replace('/*SEGS*/{}/*END*/', json.dumps({**{k: {'t0': a, 't1': b} for k, (a, b) in SEG.items()},
                                                      'values': VALUES, 'end': END, 'twinCut': TWIN_CUT, 'beat': BEAT,
+                                                     'hiw': HIW, 'more': MORE, 'start': START,
                                                      'ok': {'t0': SEG['ok'][0], 't1': SEG['ok'][1], 'phone': PHONE_AT}}))
 open(os.path.join(PROJ, 'index.html'), 'w').write(html)
+
+# "And plenty more": stills of the supporting features, from the same filmed shots, each cropped
+# to 16:10 around the panel that matters (x, y, width in page pixels; the footage is 1440 x 900).
+STILLS = {'care': ('care', 4.6, (150, 275, 1000)), 'filament': ('filament', 5.0, (150, 230, 640)),
+          'cost': ('cost', 3.0, (150, 420, 760)), 'ha': ('ha', 5.2, (700, 180, 620)),
+          'modules': ('ha', 5.2, (150, 120, 600)), 'games': ('games', 4.5, (260, 330, 900))}
+os.makedirs(os.path.join(PROJ, 'assets', 'stills'), exist_ok=True)
+for name, (src, at, (x, y, w)) in STILLS.items():
+    h = round(w * 10 / 16)
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', str(at), '-i', os.path.join(ROOT, 'footage', src + '.mp4'), '-frames:v', '1',
+                    '-vf', f'crop={w}:{h}:{x}:{y},scale=960:600:flags=lanczos', '-q:v', '2',
+                    os.path.join(PROJ, 'assets', 'stills', name + '.jpg')], check=True)
 
 cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
@@ -150,7 +163,8 @@ pcues = json.loads(subprocess.run(['node', os.path.join(HERE, 'cues.js'), os.pat
                                   env={**os.environ, 'NODE_PATH': os.environ.get('NODE_PATH', '/opt/node22/lib/node_modules')}).stdout)
 plan_file = os.path.join(HERE, f'music_{FMT}.json')
 json.dump({'bpm': BPM, 'length': LENGTH, 'cues': sorted(pcues, key=lambda c: c['t']),
-           'changes': [SEG[k][0] for k, _ in ORDER[1:]], 'band': SEG['fl'][0], 'values': VALUES, 'end': END},
+           'changes': [SEG[k][0] for k, _ in ORDER] + [MORE, START], 'band': HIW['t0'], 'values': VALUES,
+           'more': MORE, 'start': START, 'end': END},
           open(plan_file, 'w'), indent=0)
 music_wav = os.path.join(audio, f'music9_{FMT}.wav')
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'compose9.py'), music_wav, plan_file], check=True)

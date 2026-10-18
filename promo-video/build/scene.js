@@ -1,12 +1,11 @@
-      // Version 9: a 75-second SaaS promo that moves fast but reads easily. It opens on what the
-      // app is for (who it is for, what it does, three promises), then the name, then the app
-      // itself, sometimes on a laptop standing in 3D, sometimes full screen, one feature after
-      // another, each with a short caption and one or two callouts. Every feature change is one
-      // quick camera move on a bar line of the 160 BPM music, and every moment something appears
-      // is put on the music's grid and written to CUES, so the music plays along with the picture
-      // (music/compose9.py). Shared by both cuts; the layout CSS places things, this file times
-      // them. build.py fills in M (each shot's clicks and marks), TY (the end-card typing) and
-      // SEG (when each feature starts and ends).
+      // Version 10: a 75-second SaaS launch video. The problem, what the app is for, the name,
+      // how it works (the laptop with the real app, the printers and the phone joining it), seven
+      // features shown working (sometimes on the laptop standing in 3D, sometimes full screen),
+      // "and plenty more", why trust it, get started, the end card. Every change lands on a bar
+      // line of the 160 BPM music, and every moment something appears is put on the music's grid
+      // and written to CUES, so the music plays along with the picture (music/compose9.py).
+      // Shared by both cuts; the layout CSS places things, this file times them. build.py fills
+      // in M (each shot's clicks and marks), TY (the end-card typing) and SEG (the timings).
       const FMT = '__FMT__', V9 = FMT === 'vertical';
       const M = /*MARKS*/{}/*END*/;
       const TY = /*TYPING*/[]/*END*/;
@@ -34,11 +33,13 @@
         ar: '<path d="M7 15V7h8M33 7h8v8M41 33v8h-8M15 41H7v-8"/><path d="M24 14l9 5v10l-9 5-9-5V19zM15 19l9 5 9-5M24 24v10"/>',
         ga: '<path d="M14 15h20a9 9 0 0 1 9 9v4a6 6 0 0 1-11 3.5L30 29H18l-2 2.5A6 6 0 0 1 5 28v-4a9 9 0 0 1 9-9z"/><path d="M14 20v7M10.5 23.5h7"/><circle class="fill" cx="31" cy="22" r="2.2"/><circle class="fill" cx="36" cy="26" r="2.2"/>',
         ph: '<rect x="13" y="4" width="22" height="40" rx="5"/><path d="M21 9h6"/><circle class="fill" cx="24" cy="37" r="2"/>',
+        pr: '<rect x="7" y="5" width="34" height="38" rx="4"/><path d="M7 13h34M19 13v7l5 5 5-5v-7M13 35h22"/><path class="heat" d="M17 31h14"/>',
+        mod: '<rect x="4" y="15" width="40" height="20" rx="10"/><circle class="fill" cx="34" cy="25" r="6"/>',
       };
       const svgIcon = (id) => `<svg class="ico" viewBox="0 0 48 48" aria-hidden="true">${IC[id]}</svg>`;
 
 
-      // ---------- the features: twelve filmed ones, best first, the cherry on top last ----------
+      // ---------- the features: seven filmed ones, in the order MESSAGING.md leads with ----------
       // shot: D = on a device (the laptop turned towards the caption, its keyboard in view),
       //       F = the app full screen (the camera dollies into the laptop's screen).
       // The owner: "not the laptop and phone in every one, maybe half". The device shots are
@@ -61,16 +62,6 @@
           h: 'A live drawing of each printer.', s: '<em>Drawn to scale.</em> Turn it in 3D.' },
         { id: 'au', lb: 'Automations', k: 'Automations', shot: 'D', cap: 'L',
           h: 'When this happens, do that.', s: 'Alerts to <em>ntfy, Discord or Telegram</em>. No cloud.' },
-        { id: 'ca', lb: 'Maintenance', k: 'Maintenance', shot: 'F', cap: 'L',
-          h: 'Maintenance that keeps count.', s: 'Counted from <em>real print hours</em>.' },
-        { id: 'fi', lb: 'Filament & Spoolman', k: 'Filament & Spoolman', shot: 'D', cap: 'R',
-          h: 'Know what’s on the shelf.', s: '<em>Prints left</em> on every spool.' },
-        { id: 'co', lb: 'Print cost', k: 'Print cost', shot: 'F', cap: 'R',
-          h: 'What each print costs.', s: '<em>Filament plus electricity.</em>' },
-        { id: 'ha', lb: 'Home Assistant', k: 'Home Assistant', shot: 'D', cap: 'R',
-          h: 'Home Assistant, built in.', s: '<em>28 sensors</em> per printer. No add-on.' },
-        { id: 'ga', lb: 'Ten games', k: 'Ten games', shot: 'D', cap: 'L',
-          h: 'Something to play while it prints.', s: '<em>Ten games</em>, built in.' },
       ];
       const PH = { id: 'ph', cap: 'L', k: 'On your phone', h: 'And from your phone.', s: '<em>No account, no cloud.</em>' };
       // The opening (version 9, the owner: "change the first scene to defining the purpose of the
@@ -82,7 +73,32 @@
         { id: 'ov', t: 'Know the moment one <em>needs you</em>.' },
       ];
 
+      // How it works (version 10): three steps around the laptop, each sentence checked against
+      // docs/getting-started.md, backend/live_feed.py (four updates a second) and backend/fleet.py.
+      const STEPS = [
+        { h: 'Runs on your computer.', s: 'Windows, Mac, Linux or a Raspberry Pi. <em>Python 3.8 or newer</em>, nothing else.' },
+        { h: 'Talks to your U1s on your network.', s: '<em>Four updates a second</em>, up to 12 printers. Nothing installed on the printer.' },
+        { h: 'Open it in any browser.', s: 'On that computer or <em>on your phone</em>. No account, no cloud.' },
+      ];
+      const PRINTERS = ['Workshop', 'Garage', 'Studio'];            // the simulated farm's three built-in printers
+      // "And plenty more": the supporting features as stills from the same filmed shots.
+      const MORE = [
+        { id: 'ca', lb: 'Maintenance', img: 'care' }, { id: 'fi', lb: 'Filament &amp; Spoolman', img: 'filament' },
+        { id: 'co', lb: 'Print cost', img: 'cost' }, { id: 'ha', lb: 'Home Assistant', img: 'ha' },
+        { id: 'ga', lb: 'Ten games', img: 'games' }, { id: 'mod', lb: '29 modules, on or off', img: 'modules' },
+      ];
+      const START = [
+        { h: 'Download it, free.', m: 'github.com/Jbyjre/Deja_VU1' },
+        { h: 'Double-click start.', m: 'Windows · Mac · Linux' },
+        { h: 'It opens in your browser.', m: 'Your phone too, on the same network.' },
+      ];
+
       // ---------- DOM ----------
+      $('#nodes').innerHTML = PRINTERS.map((p, i) => `<div class="node col" id="nd-${i}"><div class="tile glass">${svgIcon('pr')}</div><div class="lb">U1<b>${p}</b></div></div>`).join('')
+        + `<div class="node col" id="nd-ph"><div class="tile glass">${svgIcon('ph')}</div><div class="lb">Browser<b>Your phone</b></div></div>`;
+      $('#steps').innerHTML = STEPS.map((p, i) => `<div class="step" id="st-${i}"><div class="card glass"><div class="n">${i + 1}</div><div class="in"><div class="h">${p.h}</div><div class="s">${p.s}</div></div></div></div>`).join('');
+      $('#more-g').innerHTML = MORE.map(m => `<div class="mc glass" id="mc-${m.id}"><div class="shot${m.txt ? ' txt' : ''}">${m.txt ? m.txt : `<img src="assets/stills/${m.img}.jpg" alt="">`}</div><div class="lb">${svgIcon(m.id)}${m.lb}</div></div>`).join('');
+      $('#start-g').innerHTML = START.map((p, i) => `<div class="sc glass" id="sc-${i}"><div class="n">${i + 1}</div><div class="in"><div class="h">${p.h}</div><div class="m">${p.m}</div></div></div>`).join('');
       $('#p-list').innerHTML = PURPOSE.map(p => `<div class="pi" id="pi-${p.id}"><div class="tile glass">${svgIcon(p.id)}</div><div class="t">${p.t}</div></div>`).join('');
       $('#caps').innerHTML = [...F, PH].map(f => `<div class="cap ${V9 ? 'T' : f.cap}" id="cap-${f.id}"><div class="card glass"><div class="in">
           <div class="k"><span class="mini">${svgIcon(f.id)}</span>${f.k.replace('&', '&amp;')}</div><div class="h">${f.h}</div><div class="s">${f.s}</div></div></div></div>`).join('');
@@ -93,10 +109,11 @@
 
       const V = {};
       function mount(viewEl, vid, vw, vh) {
-        const s = Math.max(vw / FW, vh / FH), cam = viewEl.querySelector('.cam');
-        Object.assign(cam.style, { width: FW * s + 'px', height: FH * s + 'px' });
-        cam.appendChild(document.getElementById(vid));
-        return { cam, vw, vh, s, safe: [0, 0, 1, 1], cs: 1 };
+        const s = Math.max(vw / FW, vh / FH), cam = viewEl.querySelector('.cam'), inner = document.createElement('div');
+        Object.assign(cam.style, { width: vw + 'px', height: vh + 'px', transformOrigin: `${vw / 2}px ${vh / 2}px` });
+        Object.assign(inner.style, { position: 'absolute', left: 0, top: 0, width: FW * s + 'px', height: FH * s + 'px' });
+        inner.appendChild(document.getElementById(vid)); cam.appendChild(inner);
+        return { cam, inner, vw, vh, s, safe: [0, 0, 1, 1], cs: 1 };
       }
       LAYERS.forEach(id => { V[id] = mount($('#L-' + id), 'v-' + id, SW, SH); });
       (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { inset: '0', width: '100%', height: '100%' });
@@ -121,16 +138,18 @@
         full: { x: 0, y: 247, z: 889, rotationX: 0, rotationY: 0, lid: 0 },   // the screen fills the frame below the caption, its bezel off the bottom edge
         back: { x: 0, y: 220, z: -2400, rotationX: -10, rotationY: -12, lid: 16 },
         rise: { x: 0, y: 1300, z: -1900, rotationX: -40, rotationY: 0, lid: 16 },
+        hub: { x: 0, y: 40, z: -1900, rotationX: -9, rotationY: 0, lid: 15 },     // how it works: square on, the printers above, the phone below
       } : {
-        R: { x: 250, y: -150, z: -1000, rotationX: -10, rotationY: -15, lid: 16 },
-        L: { x: -250, y: -150, z: -1000, rotationX: -10, rotationY: 15, lid: 16 },
+        R: { x: 290, y: -150, z: -1000, rotationX: -10, rotationY: -15, lid: 16 },
+        L: { x: -290, y: -150, z: -1000, rotationX: -10, rotationY: 15, lid: 16 },
         full: { x: 0, y: 2.5, z: 930, rotationX: 0, rotationY: 0, lid: 0 },
         back: { x: 220, y: -90, z: -1850, rotationX: -10, rotationY: -20, lid: 16 },
-        rise: { x: 250, y: 1000, z: -1500, rotationX: -40, rotationY: -15, lid: 16 },
+        rise: { x: 0, y: 1000, z: -1700, rotationX: -40, rotationY: 0, lid: 16 },
+        hub: { x: 0, y: -150, z: -1700, rotationX: -9, rotationY: 0, lid: 15 },   // how it works: square on, the printers left, the phone right
       };
       // In full screen the caption covers one side of the app, so the camera inside the screen
       // frames each detail in the part that stays clear (fractions of the screen).
-      const SAFE = V9 ? { T: [.22, .03, .78, .97] } : { L: [.41, .09, .98, .91], R: [.02, .09, .59, .91] };
+      const SAFE = V9 ? { T: [.22, .03, .78, .97] } : { L: [.44, .09, .98, .91], R: [.02, .09, .56, .91] };
       const DEVICE_LOOK = look(POSE.R.z);
       function shotPose(f) { return f.shot === 'F' ? 'full' : (f.cap === 'L' ? 'R' : 'L'); }
       function setView(v, pose, cap) {
@@ -155,7 +174,9 @@
       }
       function camK(v, r) {
         const sw = v.vw * (v.safe[2] - v.safe[0]), sh = v.vh * (v.safe[3] - v.safe[1]);
-        return Math.max(Math.min(sw / (r[2] * v.s), sh / (r[3] * v.s)), Math.max(v.vw / (FW * v.s), v.vh / (FH * v.s)));
+        // never more than 1.9 times the page's size on the screen: past that the app's text and
+        // controls look out of proportion (the owner: the zooms went too far)
+        return Math.max(Math.min(sw / (r[2] * v.s), sh / (r[3] * v.s), 1.9), Math.max(v.vw / (FW * v.s), v.vh / (FH * v.s)));
       }
       // Frame a rectangle of the footage (CSS px of the filmed page) in the clear part of the screen.
       function camTo(v, t, d, r, ease = 'power2.inOut') {
@@ -168,7 +189,14 @@
         const slide = [v.vw * v.safe[0], v.vw * (1 - v.safe[2])];
         x = Math.min(slide[0], Math.max(v.vw - k * FW * v.s - slide[1], x));
         y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
-        if (d === 0) tl.set(v.cam, { scale: k, x, y }, t); else tl.to(v.cam, { scale: k, x, y, duration: d, ease }, t);
+        // Version 10 (the owner: the zooms looked unnatural). Version 9 tweened scale and position
+        // on one element with x/y in screen pixels, so mid-zoom the detail being framed swung
+        // along a curve and arrived late. Now the outer layer scales about the screen's centre and
+        // the inner one moves the page in page pixels, both on one ease: the framed point travels
+        // in a straight line while the zoom grows (HyperFrames' coordinate-target-zoom rule).
+        const ox = v.vw / 2, oy = v.vh / 2, ix = (x - ox * (1 - k)) / k, iy = (y - oy * (1 - k)) / k;
+        if (d === 0) { tl.set(v.cam, { scale: k }, t); tl.set(v.inner, { x: ix, y: iy }, t); }
+        else { tl.to(v.cam, { scale: k, duration: d, ease }, t); tl.to(v.inner, { x: ix, y: iy, duration: d, ease }, t); }
         return k;
       }
       // A callout: a dot on the thing, a short stem, a dark label, inside the screen's camera
@@ -178,7 +206,7 @@
         const el = document.createElement('div'); el.className = 'co ' + dir;
         el.innerHTML = `<i class="dot"></i><b class="stem"></b><span class="pill">${label}</span>`;
         Object.assign(el.style, { left: pt[0] * v.s + 'px', top: pt[1] * v.s + 'px' });
-        v.cam.appendChild(el);
+        v.inner.appendChild(el);
         tl.set(el, { scale: v.cs / k, transformOrigin: '0 0' }, 0);
         tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: .3, ease: 'power2.out', immediateRender: false }, tIn);
         tl.fromTo(el.querySelector('.dot'), { scale: 0 }, { scale: 1, duration: .45, ease: 'back.out(2.2)', immediateRender: false }, tIn);
@@ -190,7 +218,7 @@
       function spot(v, r, tIn, tOut) {
         const el = document.createElement('div'); el.className = 'spot';
         Object.assign(el.style, { left: r[0] * v.s + 'px', top: r[1] * v.s + 'px', width: r[2] * v.s + 'px', height: r[3] * v.s + 'px' });
-        v.cam.appendChild(el);
+        v.inner.appendChild(el);
         tl.fromTo(el, { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: .45, ease: 'power3.out', immediateRender: false }, tIn);
         tl.to(el, { opacity: 0, duration: .3, ease: 'power1.in' }, tOut);
       }
@@ -225,44 +253,118 @@
       tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 75, ease: 'none' }, 0);
       { const { lid, ...p } = POSE.rise; gsap.set('#rig', p); gsap.set('#lid', { rotationX: lid }); }
 
-      // ===== 0-4.2 what it is for. Bar 0: the label, then the headline a word at a time, a piano
-      // note on each word; bar 1: the band comes in on "screen." and the three promises land on
-      // beats 3, 4 and the next 1, a chord on each. =====
-      const B = SEG.beat;
-      tl.fromTo('#p-for', { opacity: 0, y: 14, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, cue(0.05, 'for'));
-      tl.fromTo('#p-for', { '--sx': '0%' }, { '--sx': '90%', duration: 4, ease: 'none', immediateRender: false }, 0);
-      tl.fromTo('#p-for .ico *', { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .5, ease: 'power2.out', stagger: .04, immediateRender: false }, .1);
+      // ===== version 10's story, bar by bar (a bar of the 160 BPM music is 1.5 s) =====
+      const B = SEG.beat, BAR = 4 * B;
+      // bars 0-2: the hook, the problem in two lines
+      gsap.utils.toArray('#hook .hk').forEach((el, i) => tl.fromTo(el, { opacity: 0, y: 46 },
+        { opacity: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, cue(i ? BAR : .05, 'hook', { i })));
+      // the shelf: one printer with the first line, five more with the second, then one of them
+      // flags a problem (the red dot), the reason to want one screen
+      $('#shelf').innerHTML = Array.from({ length: 6 }, (_, i) => `<div class="sh glass" id="sh-${i}">${svgIcon('pr')}<i class="dot"></i></div>`).join('');
+      $('#shelf').querySelectorAll('.ico path, .ico rect').forEach(el => { const n = el.getTotalLength(); el.style.strokeDasharray = n; el.dataset.len = n; });
+      for (let i = 0; i < 6; i++) {
+        const t = cue(i ? BAR + (i - 1) * B / 2 : .1, 'tile', { i }), el = '#sh-' + i;
+        tl.fromTo(el, { opacity: 0, scale: .6, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: .4, ease: 'back.out(1.8)', immediateRender: false }, t);
+        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .4, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .03);
+        tl.fromTo(el, { '--sx': '0%' }, { '--sx': '100%', duration: 2.5, ease: 'none', immediateRender: false }, t);
+      }
+      tl.fromTo('#sh-4 .dot', { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: .35, ease: 'back.out(2.5)', immediateRender: false }, cue(BAR + 3 * B, 'alert'));
+      tl.to('#sh-4', { x: 6, duration: .06, yoyo: true, repeat: 5, ease: 'sine.inOut' }, BAR + 3 * B);
+      tl.to(['#hook', '#shelf'], { y: V9 ? -120 : -90, opacity: 0, duration: .3, ease: 'power2.in' }, 2 * BAR - .32);
+
+      // bars 2-4.5: what it is for. The label, the headline a word an eighth note, then the three
+      // promises on beats 1, 2 and 3 of bar 3 (a chord on each).
+      const P0 = 2 * BAR;
+      tl.fromTo('#p-for', { opacity: 0, y: 14, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, cue(P0, 'for'));
+      tl.fromTo('#p-for', { '--sx': '0%' }, { '--sx': '90%', duration: 3.6, ease: 'none', immediateRender: false }, P0);
+      tl.fromTo('#p-for .ico *', { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .5, ease: 'power2.out', stagger: .04, immediateRender: false }, P0 + .05);
       gsap.utils.toArray('#p-head .w').forEach((w, i) => {
-        tl.fromTo(w, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, cue(B * (1 + i * .5), 'word', { i }));
+        tl.fromTo(w, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, cue(P0 + B * (.5 + i * .5), 'word', { i }));
       });
       PURPOSE.forEach((p, i) => {
-        const t = cue(B * (6 + i), 'item', { i }), el = '#pi-' + p.id;
+        const t = cue(3 * BAR + i * B, 'item', { i }), el = '#pi-' + p.id;
         tl.fromTo(el, { opacity: 0, y: 26, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, t);
         tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
-        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 2.4, ease: 'none', immediateRender: false }, t);
+        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 2.2, ease: 'none', immediateRender: false }, t);
       });
-      tl.fromTo('#purpose', { scale: 1 }, { scale: 1.025, duration: 4.1, ease: 'none' }, 0);
-      tl.to('#purpose', { y: V9 ? -160 : -120, opacity: 0, duration: .32, ease: 'power2.in' }, B * 11 - .32);
+      tl.fromTo('#purpose', { scale: 1 }, { scale: 1.025, duration: 3.6, ease: 'none', immediateRender: false }, P0);
+      tl.set('#purpose', { opacity: 1 }, 0);
+      tl.to('#purpose', { y: V9 ? -160 : -120, opacity: 0, duration: .3, ease: 'power2.in' }, 4.5 * BAR - .34);
 
-      // ===== bar 3 (4.5 s): the name, on a full chord and a cymbal =====
-      const NAME = cue(B * 12, 'name');
+      // bar 4.5: the name, on a full chord and a cymbal
+      const NAME = cue(4.5 * BAR, 'name');
       tl.set('#brand', { opacity: 1 }, NAME);
       tl.fromTo('#b-icon', { scale: .4, opacity: 0 }, { scale: 1, opacity: 1, duration: .45, ease: 'back.out(1.7)', immediateRender: false }, NAME);
       tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'power3.out' }, NAME + .03);
       tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .35, ease: 'back.out(2)', immediateRender: false }, NAME + .12);
       tl.fromTo('#b-word', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, NAME + .06);
       tl.fromTo('#b-sub2', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .4, ease: 'power3.out', immediateRender: false }, NAME + B);
-      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .32, ease: 'power2.in' }, SEG.fl.t0 - .82);
+      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .32, ease: 'power2.in' }, SEG.hiw.t0 - .82);
+
+      // ===== bars 6-10.5: how it works. The laptop lands showing the real app; the printers and
+      // the phone come in around it, joined by the network, a pulse on each wire every quarter of
+      // a second (the app's four updates a second). =====
+      const H0 = SEG.hiw.t0, HS = [H0, SEG.hiw.s2, SEG.hiw.s3], H1 = SEG.fl.t0;
+      tl.set('#rig', { opacity: 1 }, H0 - .55);
+      tl.set('#L-fl', { opacity: 1 }, H0 - .55);
+      rigTo(H0 - .55, .9, 'hub', {}, 'expo.out');
+      tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .5, ease: 'power3.out', immediateRender: false }, H0);
+      tl.fromTo('#simtag', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out', immediateRender: false }, H0);
+      tl.to('#rig', { z: POSE.hub.z + 90, duration: H1 - H0 - .5, ease: 'sine.inOut' }, H0 + .4);
+      STEPS.forEach((p, i) => {
+        const el = '#st-' + i, t = cue(HS[i], 'step', { i });
+        tl.set(el, { opacity: 1 }, t);
+        tl.fromTo(`${el} .card`, { opacity: 0, y: V9 ? -20 : 24, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: .5, ease: 'expo.out', immediateRender: false }, t + .04);
+        tl.fromTo(`${el} .n`, { scale: .4 }, { scale: 1, duration: .45, ease: 'back.out(2)', immediateRender: false }, t + .08);
+        tl.fromTo(`${el} .card`, { '--sx': '0%' }, { '--sx': '90%', duration: 2.3, ease: 'none', immediateRender: false }, t);
+        const out = i < 2 ? HS[i + 1] - .3 : H1 - .38;
+        tl.to(`${el} .card`, { opacity: 0, y: V9 ? -12 : 12, duration: .26, ease: 'power1.in' }, out);
+        tl.set(el, { opacity: 0 }, out + .27);
+      });
+      // where the nodes sit, in frame pixels: (left, top) of each node, and the wire ends
+      const NODE = V9 ? { w: 230, pr: [[135, 500], [425, 500], [715, 500]], ph: [425, 1420] } : { w: 230, pr: [[250, 205], [250, 385], [250, 565]], ph: [1440, 360] };
+      const T = V9 ? 128 : 120;
+      const WIRE = V9 ? {
+        pr: NODE.pr.map(([l, tp], i) => [l + 115, tp + T + 66, 360 + i * 180, 746]),
+        ph: [540, 1330, 540, NODE.ph[1] - 8],
+      } : {
+        pr: NODE.pr.map(([l, tp]) => [l + 115 + T / 2 + 4, tp + T / 2, 588, 449]),
+        ph: [1334, 449, NODE.ph[0] + 115 - T / 2 - 4, NODE.ph[1] + T / 2],
+      };
+      [...NODE.pr, NODE.ph].forEach(([l, tp], i) => Object.assign($(i < 3 ? '#nd-' + i : '#nd-ph').style, { left: l + 'px', top: tp + 'px', width: NODE.w + 'px', alignItems: 'center' }));
+      const svgNS = 'http://www.w3.org/2000/svg', wires = $('#wires');
+      function wire([x1, y1, x2, y2], t0, t1, back) {
+        const ln = document.createElementNS(svgNS, 'line');
+        Object.entries({ x1, y1, x2: x1, y2: y1 }).forEach(([k, v]) => ln.setAttribute(k, v)); wires.appendChild(ln);
+        tl.fromTo(ln, { attr: { x2: x1, y2: y1 }, opacity: 0 }, { attr: { x2, y2 }, opacity: .55, duration: .45, ease: 'power2.out', immediateRender: false }, t0);
+        tl.to(ln, { opacity: 0, duration: .3, ease: 'power1.in' }, t1);
+        // a pulse every quarter of a second: the data going one way (printer to app, app to phone)
+        const [ax, ay, bx, by] = back ? [x2, y2, x1, y1] : [x1, y1, x2, y2];
+        for (let t = t0 + .45; t < t1 - .4; t += .25) {
+          const d = document.createElementNS(svgNS, 'circle'); d.setAttribute('r', V9 ? 7 : 6); wires.appendChild(d);
+          tl.fromTo(d, { attr: { cx: ax, cy: ay }, opacity: 0 }, { attr: { cx: bx, cy: by }, duration: .5, ease: 'none', immediateRender: false }, t);
+          tl.fromTo(d, { opacity: 0 }, { keyframes: [{ opacity: .95, duration: .08 }, { opacity: .95, duration: .34 }, { opacity: 0, duration: .08 }], immediateRender: false }, t);
+        }
+      }
+      NODE.pr.forEach((_, i) => {
+        const t = cue(HS[1] + i * B, 'node', { i }), el = '#nd-' + i;
+        tl.fromTo(el, { opacity: 0, scale: .8, x: V9 ? 0 : -30, y: V9 ? -20 : 0 }, { opacity: 1, scale: 1, x: 0, y: 0, duration: .45, ease: 'back.out(1.6)', immediateRender: false }, t);
+        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
+        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 3, ease: 'none', immediateRender: false }, t);
+        wire(WIRE.pr[i], t + .1, H1 - .45, false);
+        tl.to(el, { opacity: 0, scale: .9, duration: .3, ease: 'power1.in' }, H1 - .45);
+      });
+      { const t = cue(HS[2] + B, 'node', { i: 3 });
+        tl.fromTo('#nd-ph', { opacity: 0, scale: .8, x: V9 ? 0 : 30, y: V9 ? 20 : 0 }, { opacity: 1, scale: 1, x: 0, y: 0, duration: .45, ease: 'back.out(1.6)', immediateRender: false }, t);
+        tl.fromTo('#nd-ph .ico *', { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
+        wire(WIRE.ph, t + .1, H1 - .45, false);
+        tl.to('#nd-ph', { opacity: 0, scale: .9, duration: .3, ease: 'power1.in' }, H1 - .45);
+      }
 
       // ===== the features =====
-      // The laptop rises into place, landing as the band comes in, and Fleet is clicked on its screen.
-      const T0 = SEG.fl.t0;
-      tl.set('#rig', { opacity: 1 }, T0 - .55);
-      tl.set('#L-fl', { opacity: 1 }, T0 - .55);
-      rigTo(T0 - .55, .9, shotPose(F[0]), {}, 'expo.out');
-      tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .5, ease: 'power3.out', immediateRender: false }, T0);
-      tl.fromTo('#simtag', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out', immediateRender: false }, T0);
-      capIn('fl', T0 + .05);
+      // The laptop turns from the how-it-works pose to the first feature's, the same app still on it.
+      rigTo(H1 - .42, .85, shotPose(F[0]), {}, 'power3.inOut');
+      capIn('fl', H1 + .06);
       F.forEach(f => setView(V[f.id], shotPose(f), f.cap));
       setView(V.tw2, 'full', 'R');
 
@@ -273,11 +375,9 @@
         const p = F[i - 1], t0 = SEG[f.id].t0, from = shotPose(p), to = shotPose(f);
         capOut(p.id === 'ok' ? 'ph' : p.id, t0 - .38);
         capIn(f.id, t0 + .06);
-        if (from === to) {                                   // full screen to full screen: a quick breath
-          const z = POSE[to].z;
-          tl.to('#rig', { z: z - 150, duration: .4, ease: 'power2.inOut' }, t0 - .4);
-          tl.to('#rig', { z, duration: .55, ease: 'expo.out' }, t0);
-        } else rigTo(t0 - .42, .85, to, p.id === 'ok' ? { opacity: 1 } : {}, 'power3.inOut');
+        // full screen to full screen: the laptop stays where it is (version 9's quick step back
+        // and in again read as a bump); the new screen settles in as it fades up
+        if (from !== to) rigTo(t0 - .42, .85, to, p.id === 'ok' ? { opacity: 1 } : {}, 'power3.inOut');
         if (to === 'full' && from !== 'full') deck(false, t0 - .1);
         if (from === 'full' && to !== 'full' && p.id !== 'ok') deck(true, t0 - .42);
         // the new screen fades in on top of the old one, which only goes once it is covered
@@ -293,14 +393,12 @@
         if (was !== is) tl.to('#corner', { opacity: is ? 1 : 0, duration: .4, ease: 'power1.inOut' }, SEG[f.id].t0 - .4);
       });
       tl.to('#corner', { opacity: 1, duration: .5, ease: 'power1.inOut' }, SEG.ok.phone - .4);
-      tl.to('#corner', { opacity: 0, duration: .5, ease: 'power1.inOut' }, SEG.ga.t0 + (M['v-ga'].start + M['v-ga'].clicks[1] - SEG.ga.t0));
 
       // While a feature plays the laptop keeps drifting a little closer (and, on the device,
       // turns towards the viewer), so the frame is never quite still.
       F.forEach(f => {
         const s = SEG[f.id], pose = POSE[shotPose(f)];
-        const end = f.id === 'ok' ? s.phone - .5 : f.id === 'ga' ? null : s.t1 - .42;
-        if (end === null) return;
+        const end = f.id === 'ok' ? s.phone - .5 : s.t1 - .42;
         const drift = f.shot === 'F' ? { z: pose.z + 45 } : { z: pose.z + 110, rotationY: pose.rotationY * .75 };
         tl.to('#rig', { ...drift, duration: end - s.t0 - .45, ease: 'sine.inOut' }, s.t0 + .45);
       });
@@ -310,8 +408,8 @@
       const OUT = id => SEG[id].t1 - .32;
       // 1. every printer, live
       { const v = V.fl, H = at('v-fl', 'hover');
-        camTo(v, SEG.fl.t0 - .8, 0, [0, 0, FW, FH]);
-        camTo(v, at('v-fl', 'cards') - .3, .8, [170, 280, 1110, 640]);
+        camTo(v, SEG.hiw.t0 - .6, 0, [0, 0, FW, FH]);                 // the whole page while how it works plays
+        camTo(v, SEG.fl.t0 - .3, .9, [170, 280, 1110, 640]);
         const k = camTo(v, H - .5, .8, [470, 280, 700, 440]);
         spot(v, [556, 346, 336, 104], H + .1, OUT('fl'));
         callout(v, [592, 432], 'Progress', 'b', H + .15, OUT('fl'), k);
@@ -380,62 +478,41 @@
         const k2 = camTo(v, S - .45, .75, [150, 440, 800, 360]);
         callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .3, OUT('au'), k2);
       }
-      // 8. maintenance: overdue tasks, one marked done
-      { const v = V.ca, O = at('v-ca', 'overdue'), D = at('v-ca', 'done');
-        camTo(v, SEG.ca.t0 - .5, 0, [150, 100, 800, 640]);
-        const k = camTo(v, O - .6, .7, [170, 380, 780, 260]);
-        spot(v, [178, 396, 1084, 112], O - .1, D - .1);
-        callout(v, [418, 423], 'Overdue', 't', O, D - .1, k);
-        const k2 = camTo(v, D + .1, .7, [420, 0, 700, 420]);
-        callout(v, [720, 62], 'Done: the count starts again', 'b', D + .35, OUT('ca'), k2);
-      }
-      // 9. filament: the inventory switched on, then how long each spool will last
-      { const v = V.fi, SP = at('v-fi', 'spools'), FO = at('v-fi', 'forecast');
-        camTo(v, SEG.fi.t0 - .5, 0, [0, 0, FW, FH]);
-        const k = camTo(v, SP - .7, .7, [140, 260, 640, 520]);
-        callout(v, [612, 481], 'Running low', 'r', SP - .1, FO - .2, k);
-        const k2 = camTo(v, FO + .3, .7, [130, 420, 700, 400]);
-        callout(v, [645, 534], 'Prints left on each spool', 't', FO + .9, OUT('fi'), k2);
-      }
-      // 10. print cost: the print running now
-      { const v = V.co, C = at('v-co', 'card');
-        camTo(v, SEG.co.t0 - .5, 0, [150, 200, 800, 600]);
-        const k = camTo(v, C - .35, .75, [150, 400, 800, 330]);
-        spot(v, [188, 474, 1074, 36], C + .3, OUT('co'));
-        callout(v, [430, 478], 'This print, so far', 't', C + .4, OUT('co'), k);
-      }
-      // 11. Home Assistant: the bridge switched on, its address typed in; the sensors float out
-      { const v = V.ha, FL = at('v-ha', 'field'), TY2 = at('v-ha', 'typed');
-        camTo(v, SEG.ha.t0 - .5, 0, [560, 100, 880, 560]);
-        const k = camTo(v, SEG.ha.t0 + .15, .75, [660, 150, 700, 440]);
-        callout(v, [975, 340], 'Just its address', 'b', TY2 + .05, OUT('ha'), k);
-        const rows = ['printer state', 'print progress', 'time remaining (estimate)', 'T0 to T3 temperatures'];   // 7 of the 28 sensors (home_assistant_bridge.py)
-        $('#ha-in').innerHTML = '<div class="t">Home Assistant <b>28 sensors</b></div>' + rows.map(r => `<div class="row"><i></i>${r}</div>`).join('') + '<div class="row more">+ 21 more for each U1</div>';
-        tl.fromTo('#ha-card', { opacity: 0, x: V9 ? 0 : -50, y: V9 ? 50 : 30, z: -200, rotationY: V9 ? 0 : 16, transformPerspective: 1600 },
-          { opacity: 1, x: 0, y: 0, z: 0, rotationY: V9 ? 0 : 7, duration: .7, ease: 'expo.out', immediateRender: false }, FL + .2);
-        tl.fromTo('#ha-card', { '--sx': '0%' }, { '--sx': '90%', duration: 3.5, ease: 'none', immediateRender: false }, FL + .2);
-        const R0 = snap(FL + .45);
-        gsap.utils.toArray('#ha-card .row').forEach((r, i) => tl.fromTo(r, { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: .28, ease: 'power3.out', immediateRender: false }, cue(R0 + i * SEG.beat / 2, 'row', { i })));
-        tl.to('#ha-card', { opacity: 0, y: -16, duration: .3, ease: 'power1.in' }, SEG.ha.t1 - .4);
-      }
-      // 12. the cherry on top: ten games. The laptop, then a push into the game as it starts.
-      { const v = V.ga, SF = click('v-ga', 1), TB = at('v-ga', 'tab');
-        camTo(v, SEG.ga.t0 - .5, 0, [0, 0, FW, FH]);
-        const k = camTo(v, TB + .05, .7, [150, 300, 1140, 600]);
-        callout(v, [612, 338], 'Ten games, built in', 't', TB + .35, SF - .1, k);
-        tl.to('#rig', { z: POSE.R.z + 70, rotationY: POSE.R.rotationY * .8, duration: Math.max(.3, SF - SEG.ga.t0 - .45), ease: 'sine.inOut' }, SEG.ga.t0 + .45);
-        rigTo(SF + .1, 1.1, 'full', {}, 'power3.inOut');
-        deck(false, SF + .7);
-        v.safe = SAFE[V9 ? 'T' : 'L'];
-        camTo(v, SF + .1, 1.1, [360, 420, 720, 430], 'power3.inOut');
+
+      // ===== bars 35.5-39.5: "and plenty more": the supporting features as stills, one per beat =====
+      capOut('au', SEG.more - .36);
+      tl.to('#rig', { z: POSE.R.z - 700, y: '-=120', opacity: 0, duration: .5, ease: 'power2.in' }, SEG.more - .4);
+      tl.to('#corner', { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.more - .3);
+      { const M0 = SEG.more;
+        tl.set('#more', { opacity: 1 }, M0);
+        tl.fromTo('#more-t', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, cue(M0, 'more'));
+        MORE.forEach((m, i) => {
+          const t = cue(M0 + B * (1 + i), 'card', { i }), el = '#mc-' + m.id;
+          tl.fromTo(el, { opacity: 0, y: 40, scale: .94 }, { opacity: 1, y: 0, scale: 1, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+          tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .05);
+          tl.fromTo(el, { '--sx': '0%' }, { '--sx': '90%', duration: 3.5, ease: 'none', immediateRender: false }, t);
+        });
+        tl.fromTo('#more-g', { scale: 1, transformOrigin: '50% 40%' }, { scale: 1.035, duration: SEG.values - M0, ease: 'none', immediateRender: false }, M0);
+        tl.to('#more', { opacity: 0, y: -30, duration: .3, ease: 'power2.in' }, SEG.values - .32);
+        tl.to('#simtag', { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.values - .3);
       }
 
-      // ===== the values, one per beat of the music =====
-      capOut('ga', SEG.values - .35);
-      tl.to('#rig', { z: POSE.full.z - 500, opacity: 0, duration: .5, ease: 'power2.in' }, SEG.values - .35);
-      tl.to(['#corner', '#simtag'], { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.values - .3);
+      // ===== bars 39.5-41.5: why trust it, one value per beat =====
       gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, cue(SEG.values + i * SEG.beat, 'value', { i }), .32));
-      tl.to('#values', { opacity: 0, y: -20, duration: .3, ease: 'power2.in' }, SEG.end - .3);
+      tl.to('#values', { opacity: 0, y: -20, duration: .3, ease: 'power2.in' }, SEG.start - .32);
+
+      // ===== bars 41.5-46: get started, three steps =====
+      { const S0 = SEG.start;
+        tl.set('#start', { opacity: 1 }, S0);
+        tl.fromTo('#start-t', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, cue(S0, 'starttitle'));
+        START.forEach((p, i) => {
+          const t = cue(S0 + BAR * (.5 + i * .75), 'start', { i }), el = '#sc-' + i;
+          tl.fromTo(el, { opacity: 0, y: 36, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+          tl.fromTo(`${el} .n`, { scale: .4 }, { scale: 1, duration: .45, ease: 'back.out(2)', immediateRender: false }, t + .06);
+          tl.fromTo(el, { '--sx': '0%' }, { '--sx': '90%', duration: 4, ease: 'none', immediateRender: false }, t);
+        });
+        tl.to('#start', { opacity: 0, y: -24, duration: .3, ease: 'power2.in' }, SEG.end - .32);
+      }
 
       // ===== the end card =====
       { const E = SEG.end;
