@@ -24,23 +24,23 @@ def shot(name):
     return json.load(open(os.path.join(ROOT, 'footage', name + '.json')))
 
 
-# Version 8: 75 s (the owner: "edit the videos to 75 seconds"), laid out in bars of the 132 BPM
-# music (music/compose8.py), so every feature change lands on a bar line (a half bar = beat 3).
-# The band comes in at bar 2 as the laptop lands. Lengths in bars: a feature gets 2 to 3.5 bars
-# (3.6 to 6.4 s); Confirm Print, with the phone inside it, 4.5.
-BPM = 132
-BEAT = 60 / BPM
-BAR = 4 * BEAT                    # 1.818 s
-ORDER = [('fl', 3), ('ov', 2.5), ('ok', 4.5), ('cv', 2.5), ('sk', 3), ('tw', 3.5), ('au', 3),
-         ('ca', 2.5), ('fi', 2.5), ('co', 2), ('ha', 2.5), ('ga', 3)]
-SEG, _b = {}, 2.0
+# Version 9: still 75 s, laid out in bars of the 160 BPM music (music/compose9.py; a bar is
+# 1.5 s), so every feature change lands on a bar line (a half bar = beat 3). Bars 0-3: what the
+# app is for; bar 3: the name; bar 4 (6 s): the laptop lands as the band kicks in. A feature
+# gets 2.5 to 3.5 bars (3.75 to 5.25 s); Confirm Print, with the phone inside it, 5.5.
+BPM = 160
+BEAT = 60 / BPM                   # 0.375 s
+BAR = 4 * BEAT                    # 1.5 s
+ORDER = [('fl', 3.5), ('ov', 3), ('ok', 5.5), ('cv', 3), ('sk', 3.5), ('tw', 3.5), ('au', 3.5),
+         ('ca', 3), ('fi', 3), ('co', 2.5), ('ha', 3), ('ga', 3.5)]
+SEG, _b = {}, 4.0
 for _k, _n in ORDER:
     SEG[_k] = (round(_b * BAR, 3), round((_b + _n) * BAR, 3))
     _b += _n
-PHONE_AT = round((SEG['ok'][0] / BAR + 3) * BAR, 3)       # inside Confirm Print: the phone takes over
-TWIN_CUT = round((SEG['tw'][0] / BAR + 2) * BAR, 3)     # the twin: 3D (turned by hand) until here, then front and top
-VALUES = SEG['ga'][1]                                  # bar 36.5: the values, one per beat
-END = round(38 * BAR, 3)                               # bar 38: the end card, as the music's ending starts
+PHONE_AT = round(SEG['ok'][0] + 3.5 * BAR, 3)          # inside Confirm Print: the phone takes over (on beat 3)
+TWIN_CUT = round(SEG['tw'][0] + 2 * BAR, 3)            # the twin: 3D (turned by hand) until here, then front and top
+VALUES = SEG['ga'][1]                                  # bar 44.5: the values, one per beat
+END = round(46 * BAR, 3)                               # bar 46 (69 s): the end card, as the music's ending starts
 LENGTH = 75.0
 
 
@@ -141,10 +141,19 @@ cue_file = os.path.join(HERE, f'sfx_{FMT}.json')
 json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
 audio = os.path.join(PROJ, 'assets', 'audio')
 os.makedirs(audio, exist_ok=True)
-music_wav = os.path.join(audio, f'music8_{FMT}.wav')
-composer = os.path.join(ROOT, 'music', 'compose8.py')
-if not os.path.exists(music_wav) or os.path.getmtime(music_wav) < os.path.getmtime(composer):
-    subprocess.run(['python3', composer, music_wav, FMT], check=True)
+
+# Version 9: the music follows the picture. Read back from the built page the moments scene.js
+# put on the music's grid (words, promises, callouts, the phone, sensor rows, values), add the
+# feature changes, and hand the lot to the composer.
+pcues = json.loads(subprocess.run(['node', os.path.join(HERE, 'cues.js'), os.path.join(PROJ, 'index.html'), FMT],
+                                  check=True, capture_output=True, text=True,
+                                  env={**os.environ, 'NODE_PATH': os.environ.get('NODE_PATH', '/opt/node22/lib/node_modules')}).stdout)
+plan_file = os.path.join(HERE, f'music_{FMT}.json')
+json.dump({'bpm': BPM, 'length': LENGTH, 'cues': sorted(pcues, key=lambda c: c['t']),
+           'changes': [SEG[k][0] for k, _ in ORDER[1:]], 'band': SEG['fl'][0], 'values': VALUES, 'end': END},
+          open(plan_file, 'w'), indent=0)
+music_wav = os.path.join(audio, f'music9_{FMT}.wav')
+subprocess.run(['python3', os.path.join(ROOT, 'music', 'compose9.py'), music_wav, plan_file], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'sfx.py'), cue_file, str(LENGTH), sfx_wav], check=True)
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'mix.py'), music_wav, sfx_wav, cue_file,

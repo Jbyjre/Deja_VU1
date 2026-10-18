@@ -1,11 +1,12 @@
-      // Version 8: a 75-second SaaS promo that moves fast but reads easily. Every feature as an
-      // icon in under two seconds, the name, then the app itself, sometimes on a laptop standing
-      // in 3D, sometimes full screen, one feature after another. Each feature gets one short
-      // caption and one or two callouts, so the eye goes straight to what matters, and every
-      // feature change is one quick camera move that lands on a bar line of the music. Shared by
-      // both cuts; the layout CSS places things, this file times them. build.py fills in M (each
-      // shot's clicks and marks), TY (the end-card typing) and SEG (when each feature starts and
-      // ends, in seconds, laid out in bars of the 132 BPM music).
+      // Version 9: a 75-second SaaS promo that moves fast but reads easily. It opens on what the
+      // app is for (who it is for, what it does, three promises), then the name, then the app
+      // itself, sometimes on a laptop standing in 3D, sometimes full screen, one feature after
+      // another, each with a short caption and one or two callouts. Every feature change is one
+      // quick camera move on a bar line of the 160 BPM music, and every moment something appears
+      // is put on the music's grid and written to CUES, so the music plays along with the picture
+      // (music/compose9.py). Shared by both cuts; the layout CSS places things, this file times
+      // them. build.py fills in M (each shot's clicks and marks), TY (the end-card typing) and
+      // SEG (when each feature starts and ends).
       const FMT = '__FMT__', V9 = FMT === 'vertical';
       const M = /*MARKS*/{}/*END*/;
       const TY = /*TYPING*/[]/*END*/;
@@ -72,14 +73,17 @@
           h: 'Something to play while it prints.', s: '<em>Ten games</em>, built in.' },
       ];
       const PH = { id: 'ph', cap: 'L', k: 'On your phone', h: 'And from your phone.', s: '<em>No account, no cloud.</em>' };
-      // The opening shows the features as icons; time-lapse and AR preview are among them but
-      // not explained (they can't be filmed on the simulated farm). Version 8 leaves the
-      // Photo-to-Print Studio out of the film altogether (the owner: still too rough to show).
-      const ICONS = [...F.slice(0, 11), { id: 'tl', lb: 'Time-lapse' }, { id: 'ar', lb: 'AR preview' }, F[11]];
+      // The opening (version 9, the owner: "change the first scene to defining the purpose of the
+      // app"): who it is for, what it does, three promises, then the name. Each promise is a
+      // feature shown later in the film: the live fleet, Confirm Print, Needs you.
+      const PURPOSE = [
+        { id: 'fl', t: 'Watch every print, <em>live</em>.' },
+        { id: 'ok', t: 'Check every file <em>before it prints</em>.' },
+        { id: 'ov', t: 'Know the moment one <em>needs you</em>.' },
+      ];
 
       // ---------- DOM ----------
-      $('#grid').innerHTML = ICONS.map(f => `<div class="ft" id="ft-${f.id}"><div class="tile glass">${svgIcon(f.id)}</div><div class="lb">${f.lb.replace('&', '&amp;')}</div></div>`).join('');
-      $('#b-sub').innerHTML = ['One', 'screen', 'for', '<span class="hl">every U1</span>', 'you', 'run.'].map(w => `<span class="word">${w}</span>`).join(' ');
+      $('#p-list').innerHTML = PURPOSE.map(p => `<div class="pi" id="pi-${p.id}"><div class="tile glass">${svgIcon(p.id)}</div><div class="t">${p.t}</div></div>`).join('');
       $('#caps').innerHTML = [...F, PH].map(f => `<div class="cap ${V9 ? 'T' : f.cap}" id="cap-${f.id}"><div class="card glass"><div class="in">
           <div class="k"><span class="mini">${svgIcon(f.id)}</span>${f.k.replace('&', '&amp;')}</div><div class="h">${f.h}</div><div class="s">${f.s}</div></div></div></div>`).join('');
       $('#keys').innerHTML = '<i></i>'.repeat(74) + '<i class="sp"></i>' + '<i></i>'.repeat(4);   // five rows of 14, then the space bar row
@@ -135,6 +139,14 @@
       }
 
       const tl = gsap.timeline({ paused: true });
+      // Version 9: the sound follows the picture. Every moment something appears (a word of the
+      // opening, a promise, a callout, the phone, a sensor row, a value) is put on the music's
+      // grid (the nearest eighth note of the 160 BPM music) and written to CUES, which build.py
+      // reads back so music/compose9.py plays a note, a chord or a drum hit exactly then.
+      const CUES = [];
+      const cue = (t, k, extra = {}) => { CUES.push({ t: +t.toFixed(3), k, ...extra }); return t; };
+      const snap = t => Math.round(t / (SEG.beat / 2)) * (SEG.beat / 2);
+      window.__cues = CUES;
       // A smooth move of the whole laptop (and its hinge) to a pose.
       function rigTo(t, d, pose, extra = {}, ease = 'power2.inOut') {
         const { lid, ...p } = POSE[pose];
@@ -162,6 +174,7 @@
       // A callout: a dot on the thing, a short stem, a dark label, inside the screen's camera
       // (it stays on its target through every move) and scaled to keep one size on screen.
       function callout(v, pt, label, dir, tIn, tOut, k) {
+        tIn = cue(snap(tIn), 'callout');
         const el = document.createElement('div'); el.className = 'co ' + dir;
         el.innerHTML = `<i class="dot"></i><b class="stem"></b><span class="pill">${label}</span>`;
         Object.assign(el.style, { left: pt[0] * v.s + 'px', top: pt[1] * v.s + 'px' });
@@ -212,38 +225,41 @@
       tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -150, y: -50, duration: 75, ease: 'none' }, 0);
       { const { lid, ...p } = POSE.rise; gsap.set('#rig', p); gsap.set('#lid', { rotationX: lid }); }
 
-      // ===== 0-1.8 every feature as an icon, one every 0.08 s (a piano note each) =====
-      ICONS.forEach((f, i) => {
-        const t = .1 + i * .08, el = '#ft-' + f.id;
-        tl.fromTo(el, { opacity: 0, scale: .5, y: 24 }, { opacity: 1, scale: 1, y: 0, duration: .4, ease: 'back.out(1.8)', immediateRender: false }, t);
-        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .4, ease: 'power2.out', stagger: .025, immediateRender: false }, t + .04);
-        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 1.8, ease: 'none', immediateRender: false }, t);
+      // ===== 0-4.2 what it is for. Bar 0: the label, then the headline a word at a time, a piano
+      // note on each word; bar 1: the band comes in on "screen." and the three promises land on
+      // beats 3, 4 and the next 1, a chord on each. =====
+      const B = SEG.beat;
+      tl.fromTo('#p-for', { opacity: 0, y: 14, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, cue(0.05, 'for'));
+      tl.fromTo('#p-for', { '--sx': '0%' }, { '--sx': '90%', duration: 4, ease: 'none', immediateRender: false }, 0);
+      tl.fromTo('#p-for .ico *', { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .5, ease: 'power2.out', stagger: .04, immediateRender: false }, .1);
+      gsap.utils.toArray('#p-head .w').forEach((w, i) => {
+        tl.fromTo(w, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, cue(B * (1 + i * .5), 'word', { i }));
       });
-      tl.fromTo('#grid', { scale: 1 }, { scale: 1.04, duration: 1.7, ease: 'none' }, .1);
-      // ...then they gather into the middle and become the app icon
-      { const g = $('#grid').getBoundingClientRect(), cx = g.left + g.width / 2, cy = g.top + g.height / 2;
-        ICONS.forEach(f => {
-          const r = $('#ft-' + f.id).getBoundingClientRect(), dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
-          tl.to('#ft-' + f.id, { x: dx, y: dy, scale: .3, opacity: 0, duration: .42, ease: 'power3.inOut' }, 1.6 + (1 - Math.hypot(dx, dy) / 900) * .08);
-        }); }
+      PURPOSE.forEach((p, i) => {
+        const t = cue(B * (6 + i), 'item', { i }), el = '#pi-' + p.id;
+        tl.fromTo(el, { opacity: 0, y: 26, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, t);
+        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
+        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 2.4, ease: 'none', immediateRender: false }, t);
+      });
+      tl.fromTo('#purpose', { scale: 1 }, { scale: 1.025, duration: 4.1, ease: 'none' }, 0);
+      tl.to('#purpose', { y: V9 ? -160 : -120, opacity: 0, duration: .32, ease: 'power2.in' }, B * 11 - .32);
 
-      // ===== 1.95-3.4 the name and the one line =====
-      tl.set('#brand', { opacity: 1 }, 1.95);
-      tl.fromTo('#b-icon', { scale: .4, opacity: 0 }, { scale: 1, opacity: 1, duration: .5, ease: 'back.out(1.6)', immediateRender: false }, 1.95);
-      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .65, ease: 'power3.out' }, 2.0);
-      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .4, ease: 'back.out(2)', immediateRender: false }, 2.1);
-      tl.fromTo('#b-word', { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, 2.05);
-      gsap.utils.toArray('#b-sub .word').forEach((w, i) => tl.fromTo(w, { opacity: 0, y: 22 },
-        { opacity: 1, y: 0, duration: .35, ease: 'expo.out', immediateRender: false }, 2.3 + i * .08));
-      tl.fromTo('#b-sub2', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .4, ease: 'power3.out', immediateRender: false }, 2.7);
-      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .4, ease: 'power2.in' }, 2.95);
+      // ===== bar 3 (4.5 s): the name, on a full chord and a cymbal =====
+      const NAME = cue(B * 12, 'name');
+      tl.set('#brand', { opacity: 1 }, NAME);
+      tl.fromTo('#b-icon', { scale: .4, opacity: 0 }, { scale: 1, opacity: 1, duration: .45, ease: 'back.out(1.7)', immediateRender: false }, NAME);
+      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'power3.out' }, NAME + .03);
+      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .35, ease: 'back.out(2)', immediateRender: false }, NAME + .12);
+      tl.fromTo('#b-word', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, NAME + .06);
+      tl.fromTo('#b-sub2', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .4, ease: 'power3.out', immediateRender: false }, NAME + B);
+      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .32, ease: 'power2.in' }, SEG.fl.t0 - .82);
 
       // ===== the features =====
       // The laptop rises into place, landing as the band comes in, and Fleet is clicked on its screen.
       const T0 = SEG.fl.t0;
-      tl.set('#rig', { opacity: 1 }, T0 - .65);
-      tl.set('#L-fl', { opacity: 1 }, T0 - .65);
-      rigTo(T0 - .65, 1.0, shotPose(F[0]), {}, 'expo.out');
+      tl.set('#rig', { opacity: 1 }, T0 - .55);
+      tl.set('#L-fl', { opacity: 1 }, T0 - .55);
+      rigTo(T0 - .55, .9, shotPose(F[0]), {}, 'expo.out');
       tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .5, ease: 'power3.out', immediateRender: false }, T0);
       tl.fromTo('#simtag', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out', immediateRender: false }, T0);
       capIn('fl', T0 + .05);
@@ -324,6 +340,7 @@
           { opacity: 1, x: 0, y: 0, rotationY: V9 ? -5 : -11, rotationX: 2, duration: .8, ease: 'expo.out', immediateRender: false }, PH0 - .3);
         tl.to('#ph', { rotationY: V9 ? 4 : -2, duration: SEG.ok.t1 - PH0 - .2, ease: 'sine.inOut' }, PH0 + .5);
         capIn('ph', PH0 + .06);
+        cue(PH0 - .3, 'phone');
         tl.to('#ph', { opacity: 0, x: V9 ? 0 : 420, y: V9 ? 380 : 0, rotationY: V9 ? -10 : -28, duration: .55, ease: 'power2.in' }, SEG.ok.t1 - .45);
       }
       // 4. files ready for the U1
@@ -349,6 +366,7 @@
         const k = camK(v, r);
         callout(v, [330, 330], 'Drag to turn it in 3D', 'r', O + .15, CUT - .3, k);
         tl.set('#L-tw2', { zIndex: 30 }, CUT - .25);
+        cue(CUT, 'cut');
         tl.fromTo('#L-tw2', { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power1.inOut', immediateRender: false }, CUT - .2);
         tl.set('#L-tw', { opacity: 0 }, CUT + .2);
         callout(v2, [330, 218], 'Front and top, drawn to scale', 'r', FR + .05, OUT('tw'), k);
@@ -396,7 +414,8 @@
         tl.fromTo('#ha-card', { opacity: 0, x: V9 ? 0 : -50, y: V9 ? 50 : 30, z: -200, rotationY: V9 ? 0 : 16, transformPerspective: 1600 },
           { opacity: 1, x: 0, y: 0, z: 0, rotationY: V9 ? 0 : 7, duration: .7, ease: 'expo.out', immediateRender: false }, FL + .2);
         tl.fromTo('#ha-card', { '--sx': '0%' }, { '--sx': '90%', duration: 3.5, ease: 'none', immediateRender: false }, FL + .2);
-        tl.fromTo('#ha-card .row', { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: .3, ease: 'power3.out', stagger: .09, immediateRender: false }, FL + .4);
+        const R0 = snap(FL + .45);
+        gsap.utils.toArray('#ha-card .row').forEach((r, i) => tl.fromTo(r, { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: .28, ease: 'power3.out', immediateRender: false }, cue(R0 + i * SEG.beat / 2, 'row', { i })));
         tl.to('#ha-card', { opacity: 0, y: -16, duration: .3, ease: 'power1.in' }, SEG.ha.t1 - .4);
       }
       // 12. the cherry on top: ten games. The laptop, then a push into the game as it starts.
@@ -415,12 +434,12 @@
       capOut('ga', SEG.values - .35);
       tl.to('#rig', { z: POSE.full.z - 500, opacity: 0, duration: .5, ease: 'power2.in' }, SEG.values - .35);
       tl.to(['#corner', '#simtag'], { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.values - .3);
-      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, SEG.values + .05 + i * SEG.beat, .35));
+      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, cue(SEG.values + i * SEG.beat, 'value', { i }), .32));
       tl.to('#values', { opacity: 0, y: -20, duration: .3, ease: 'power2.in' }, SEG.end - .3);
 
       // ===== the end card =====
       { const E = SEG.end;
-        tl.set('#end', { opacity: 1 }, E);
+        tl.set('#end', { opacity: 1 }, cue(E, 'end'));
         tl.fromTo('#end-row', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: .7, ease: 'power3.out', immediateRender: false }, E);
         tl.fromTo('#end-tag', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, E + .25);
         tl.fromTo('#term', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .6, ease: 'power3.out', immediateRender: false }, E + .45);

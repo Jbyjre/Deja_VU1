@@ -1,8 +1,9 @@
       /* 9:16: the caption on top, the laptop (or the phone, or the app full width) below it; the
          bottom stays clear for the Reels / TikTok buttons. */
-      :root { --tile: 150px; --tile-label: 21px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
+      :root { --p-for: 24px; --p-head: 150px; --p-tile: 124px; --p-item: 46px; --p-gap: 34px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
         --values-size: 104px; --term-size: 26px; }
-      #grid { left: 40px; width: 1000px; top: 372px; column-gap: 20px; row-gap: 46px; --ft-w: 320px; }   /* 14 icons: rows of three, the last two centred */
+      #purpose { left: 70px; right: 70px; }
+      #p-list { flex-direction: column; gap: 34px; }
       #brand { padding: 0 50px; }
       .cap { left: 60px; right: 60px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
       .cap .card { width: 100%; }
@@ -17,3 +18,5 @@
       #end-meta { top: 1160px; }
       #end-fine { top: 1300px; }
       #end-fine .note { font-size: 18px; }
+      #p-head .ln { display: inline; }
+      #p-head br.v9 { display: inline; }   /* three lines: "Run your 3D / printers from / one screen." */

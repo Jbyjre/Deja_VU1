@@ -89,7 +89,7 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The launch video (version 8), filmed from the current app with demo data on, in two
+The launch video (version 9), filmed from the current app with demo data on, in two
 cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
 -16 LUFS (2 dB under the usual -14 for YouTube and social, so the music stays light).
 
@@ -98,23 +98,24 @@ cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound se
 | `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | YouTube, the forum, X, LinkedIn, the README or product page |
 | `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | Shorts, Reels, TikTok |
 
-It's a SaaS-style promo that moves fast but stays easy to follow. It opens on the features
-as icons in under two seconds, then the name and "One screen for every U1 you run.", then
-twelve features in turn. Each has a short glass caption (the feature's icon, a headline, a
+It's a SaaS-style promo that moves fast but stays easy to follow. It opens on what the app is
+for ("Run your 3D printers from one screen." and three promises: watch every print live, check
+every file before it prints, know the moment one needs you), then the name, then twelve
+features in turn. Each has a short glass caption (the feature's icon, a headline, a
 few words) and one or two callouts pointing at the thing that matters. About half are shown
 on a 3D laptop (or the phone), the rest full screen. One quick camera move links each to the
 next, and every move lands on a bar line of the music. The features: every printer live,
 Needs you, Confirm Print (and the phone), projects converted for the U1, Skip one object,
 the digital twin, automations, maintenance, filament and Spoolman, print cost, Home
 Assistant and ten games. Then the values, one per beat, and the install lines typed out.
-Time-lapse and AR preview appear only among the opening icons (they can't be filmed on the
-simulated farm). The Photo-to-Print Studio is left out of this version.
+Time-lapse, AR preview and the Photo-to-Print Studio are not in this version.
 
 Every app view is labelled "Simulated farm". The end card says every figure comes from
 the simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The music and every
 click and keystroke are original, synthesised in code, with no third-party audio. The music
-is a jazz piano trio (piano, upright bass, brushes) in a medium-up swing at 132 beats a
-minute. Listen to it before posting: it was checked by measurement, not by ear.
+is a bright, up-tempo jazz trio (piano, upright bass, drums) at 160 beats a minute that plays
+along with the picture: a drum fill and a cymbal on every scene change, a piano note on every
+label that pops up, a band hit on each closing value. Listen to it before posting: it was checked by measurement, not by ear.
 How to change or re-film it: `promo-video/README.md`.
 
 ## 08 · Feature cards
@@ -126,7 +127,7 @@ Each comes in two shapes: `-16x9.jpg` (1920 × 1080: README, forum posts, X, Lin
 
 | Card | Shows |
 |---|---|
-| `00-every-feature` | The features as icons |
+| `00-what-it-is-for` | The opening: "Run your 3D printers from one screen." and three promises |
 | `00-title` | The app icon, "Deja Vu1" and "One screen for every U1 you run." |
 | `01-every-printer-live` | The 27-printer sandbox farm on the laptop, one card's progress and finish time called out |
 | `02-needs-you` | A filament jam arriving at the top of Needs you |

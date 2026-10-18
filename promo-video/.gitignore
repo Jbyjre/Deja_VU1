@@ -9,3 +9,4 @@ music/*.wav
 */.hyperframes/
 node_modules/
 build/sfx_*.json
+build/music_*.json

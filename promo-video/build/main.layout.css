@@ -1,7 +1,9 @@
       /* 16:9: the caption on one side, the laptop (or, full screen, the app) behind or beside it. */
-      :root { --tile: 128px; --tile-label: 17px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 27px; --co-size: 32px;
+      :root { --p-for: 22px; --p-head: 170px; --p-tile: 112px; --p-item: 42px; --p-gap: 40px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 27px; --co-size: 32px;
         --values-size: 110px; --term-size: 28px; }
-      #grid { left: 148px; width: 1624px; top: 359px; column-gap: 14px; row-gap: 40px; --ft-w: 220px; }   /* 14 icons: two rows of seven */
+      #purpose { left: 150px; right: 150px; }
+      #p-list { flex-direction: row; }
+      .pi { flex: 1; }
       .cap { top: 0; bottom: 0; width: 650px; display: flex; align-items: center; }
       .cap.L { left: 90px; } .cap.R { right: 90px; }
       #corner { left: 90px; top: 56px; }
