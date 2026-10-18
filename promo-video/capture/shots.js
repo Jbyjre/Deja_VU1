@@ -42,7 +42,7 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
 
 // Version 3: every action is quicker (cursor moves of about a third of a second), so the
 // footage itself feels fast; the edit then only has to hold each moment for a beat.
-const MV = 620, PA = 260;   // cursor travel and the pause before a click, in ms (v5: calm, tutorial pace)
+const MV = 480, PA = 200;   // cursor travel and the pause before a click, in ms (v8: brisker than v5-v7's 620 / 260)
 const SHOTS = {
   // Overview: Needs you, then a jam fired from the sandbox arrives live.
   async overview_jam() {

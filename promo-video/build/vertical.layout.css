@@ -2,7 +2,7 @@
          bottom stays clear for the Reels / TikTok buttons. */
       :root { --tile: 150px; --tile-label: 21px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
         --values-size: 104px; --term-size: 26px; }
-      #grid { left: 40px; top: 388px; grid-template-columns: repeat(3, 320px); column-gap: 20px; row-gap: 46px; }
+      #grid { left: 40px; width: 1000px; top: 372px; column-gap: 20px; row-gap: 46px; --ft-w: 320px; }   /* 14 icons: rows of three, the last two centred */
       #brand { padding: 0 50px; }
       .cap { left: 60px; right: 60px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
       .cap .card { width: 100%; }
