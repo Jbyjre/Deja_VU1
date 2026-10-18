@@ -51,7 +51,7 @@ def plan_main(S):
     c = lambda s, i: S[s]['clicks'][i]
     win = lambda k, src: (SEG[k][0] - src, SEG[k][0] - .6, SEG[k][1] + .1)   # footage time src lands on the feature's start
     return [
-        ('v-fl', 'fleet', SEG['fl'][0] - 2.7, SEG['fl'][0] - .8, SEG['fl'][1] + .1),  # already on Fleet as the laptop rises
+        ('v-fl', 'fleet', SEG['fl'][0] - 2.7, SEG['fl'][0] - .7, SEG['fl'][1] + .1),  # already on Fleet as the laptop rises
         ('v-ov', 'overview_jam', *win('ov', .5)),
         ('v-ok', 'confirm_ok', *win('ok', 3.0)),                                     # starts on the open file
         ('v-ph', 'phone', PHONE_AT + 1.5 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),  # hold to cancel 1.5 s in
@@ -63,8 +63,8 @@ def plan_main(S):
         ('v-ca', 'care', *win('ca', 1.4)),
         ('v-fi', 'filament', *win('fi', 1.3)),
         ('v-co', 'cost', *win('co', 1.0)),
-        ('v-ha', 'ha', *win('ha', .8)),
-        ('v-ga', 'games', *win('ga', 1.0)),
+        ('v-ha', 'ha', *win('ha', 1.6)),
+        ('v-ga', 'games', *win('ga', .6)),
     ]
 
 

@@ -114,7 +114,7 @@
       const POSE = V9 ? {
         R: { x: 0, y: 120, z: -1450, rotationX: -12, rotationY: -13, lid: 16 },
         L: { x: 0, y: 120, z: -1450, rotationX: -12, rotationY: 13, lid: 16 },
-        full: { x: 0, y: 128, z: 433, rotationX: 0, rotationY: 0, lid: 0 },
+        full: { x: 0, y: 247, z: 889, rotationX: 0, rotationY: 0, lid: 0 },   // the screen fills the frame below the caption, its bezel off the bottom edge
         back: { x: 0, y: 220, z: -2400, rotationX: -10, rotationY: -12, lid: 16 },
         rise: { x: 0, y: 1300, z: -1900, rotationX: -40, rotationY: 0, lid: 16 },
       } : {
@@ -126,7 +126,7 @@
       };
       // In full screen the caption covers one side of the app, so the camera inside the screen
       // frames each detail in the part that stays clear (fractions of the screen).
-      const SAFE = V9 ? { T: [.16, .09, .84, .98] } : { L: [.41, .09, .98, .91], R: [.02, .09, .59, .91] };
+      const SAFE = V9 ? { T: [.22, .03, .78, .97] } : { L: [.41, .09, .98, .91], R: [.02, .09, .59, .91] };
       const DEVICE_LOOK = look(POSE.R.z);
       function shotPose(f) { return f.shot === 'F' ? 'full' : (f.cap === 'L' ? 'R' : 'L'); }
       function setView(v, pose, cap) {
@@ -152,8 +152,8 @@
         let x = tx - k * cx, y = ty - k * cy;
         // The page may slide out from under the caption (the strip it leaves is the app's own
         // light background, behind the caption's glass), but never past the clear part's edge.
-        // (9:16 captions sit on top, so there the page never slides sideways.)
-        const slide = V9 ? [0, 0] : [v.vw * v.safe[0], v.vw * (1 - v.safe[2])];
+        // (In 9:16 the strip it leaves falls in the part of the screen cropped off the frame.)
+        const slide = [v.vw * v.safe[0], v.vw * (1 - v.safe[2])];
         x = Math.min(slide[0], Math.max(v.vw - k * FW * v.s - slide[1], x));
         y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
         if (d === 0) tl.set(v.cam, { scale: k, x, y }, t); else tl.to(v.cam, { scale: k, x, y, duration: d, ease }, t);
@@ -236,14 +236,14 @@
       gsap.utils.toArray('#b-sub .word').forEach((w, i) => tl.fromTo(w, { opacity: 0, y: 22 },
         { opacity: 1, y: 0, duration: .35, ease: 'expo.out', immediateRender: false }, 2.3 + i * .08));
       tl.fromTo('#b-sub2', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .4, ease: 'power3.out', immediateRender: false }, 2.7);
-      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .45, ease: 'power2.in' }, 3.15);
+      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .4, ease: 'power2.in' }, 2.95);
 
       // ===== the features =====
       // The laptop rises into place, landing as the band comes in, and Fleet is clicked on its screen.
       const T0 = SEG.fl.t0;
-      tl.set('#rig', { opacity: 1 }, T0 - .75);
-      tl.set('#L-fl', { opacity: 1 }, T0 - .75);
-      rigTo(T0 - .75, 1.05, shotPose(F[0]), {}, 'expo.out');
+      tl.set('#rig', { opacity: 1 }, T0 - .65);
+      tl.set('#L-fl', { opacity: 1 }, T0 - .65);
+      rigTo(T0 - .65, 1.0, shotPose(F[0]), {}, 'expo.out');
       tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .5, ease: 'power3.out', immediateRender: false }, T0);
       tl.fromTo('#simtag', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out', immediateRender: false }, T0);
       capIn('fl', T0 + .05);
@@ -402,8 +402,8 @@
       // 12. the cherry on top: ten games. The laptop, then a push into the game as it starts.
       { const v = V.ga, SF = click('v-ga', 1), TB = at('v-ga', 'tab');
         camTo(v, SEG.ga.t0 - .5, 0, [0, 0, FW, FH]);
-        const k = camTo(v, TB + .3, .75, [150, 300, 1140, 600]);
-        callout(v, [612, 338], 'Ten games, built in', 't', TB + .6, SF - .15, k);
+        const k = camTo(v, TB + .05, .7, [150, 300, 1140, 600]);
+        callout(v, [612, 338], 'Ten games, built in', 't', TB + .35, SF - .1, k);
         tl.to('#rig', { z: POSE.R.z + 70, rotationY: POSE.R.rotationY * .8, duration: Math.max(.3, SF - SEG.ga.t0 - .45), ease: 'sine.inOut' }, SEG.ga.t0 + .45);
         rigTo(SF + .1, 1.1, 'full', {}, 'power3.inOut');
         deck(false, SF + .7);
