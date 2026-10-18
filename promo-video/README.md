@@ -294,6 +294,7 @@ icons but have no section of their own: they can't be filmed on the simulated fa
 
 ## Rendering cost
 
+Version 8 (75 s each, 14 video windows from 13 shots, all re-filmed): the 16:9 cut rendered in about 21 minutes, the 9:16 in about 19.
 Version 7 (90 s each, 15 video windows from 14 shots, version 6's footage reused): each cut rendered in about 20 to 25 minutes.
 
 Version 6 (120 s each, 14 filmed shots): filming took about 15 minutes in two parallel
