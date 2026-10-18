@@ -38,7 +38,9 @@ mus = mus - mid * band[:, None]
 # Version 8 set the music so the clicks and keystrokes sat where the owner liked them ("so much
 # better now"). Version 9's music comes out of the composer about 2.6 dB quieter than version
 # 8's, so it is turned up by that much: the clicks keep the same distance above it.
-MUSIC, FX = .6, 1.7
+# Version 11 plays recorded instruments, which are more dynamic: the music is set so the clicks
+# again sit about 3.5 dB under it, measured, as in versions 8-10.
+MUSIC, FX = .72, 1.7
 m_part, f_part = mus * MUSIC * gain[:, None], fx * FX
 out = m_part + f_part
 norm = .9 / (np.max(np.abs(np.tanh(out * 1.05) / np.tanh(1.05))) or 1)

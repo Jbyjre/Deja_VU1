@@ -89,7 +89,7 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The launch video (version 10), filmed from the current app with demo data on, in two
+The launch video (version 11), filmed from the current app with demo data on, in two
 cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
 -16 LUFS (2 dB under the usual -14 for YouTube and social, so the music stays light).
 
@@ -108,10 +108,12 @@ more as screenshots), why to trust it (free, open source, runs on your network, 
 and the install lines.
 
 Every app view is labelled "Simulated farm". The end card says every figure comes from
-the simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The music and every
-click and keystroke are original, synthesised in code, with no third-party audio. The music
-is a bright, up-tempo jazz trio (piano, upright bass, drums) at 160 beats a minute that plays
-along with the picture: a drum fill and a cymbal on every scene change, a piano note on every
+the simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The clicks and
+keystrokes are synthesised in code. The music is a bright, up-tempo jazz trio at 160 beats a
+minute played on recorded acoustic instruments: Salamander Grand Piano by Alexander Holm (CC BY
+3.0, so credit it in the post's description too: "Piano: Salamander Grand Piano by Alexander
+Holm, CC BY 3.0"), the VSCO 2 Community Edition upright bass and Virtuosity Drums (both CC0). It
+plays along with the picture: a drum fill and a cymbal on every scene change, a piano note on every
 label and card that appears, a band hit on each value. Listen to it before posting: it was
 checked by measurement, not by ear.
 How to change or re-film it: `promo-video/README.md`.

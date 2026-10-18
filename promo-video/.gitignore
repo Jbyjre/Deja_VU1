@@ -10,3 +10,4 @@ music/*.wav
 node_modules/
 build/sfx_*.json
 build/music_*.json
+music/samples/

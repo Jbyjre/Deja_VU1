@@ -50,6 +50,7 @@ LENGTH = PLAN['length']
 N = int(LENGTH * SR)
 SWING = .60
 rng = np.random.default_rng(9)
+NORMALISE = True                 # False: leave the level alone (for measuring one instrument at a time)
 c8.rng = rng
 filt, piano, chord, bass, hz = c8.filt, c8.piano, c8.chord, c8.bass, c8.hz
 
@@ -375,7 +376,7 @@ def build():
     mus *= np.clip((LENGTH - t) / 1.2, 0, 1) * np.clip(t / .01, 0, 1)
     mus = filt(mus, 'high', 35)
     mus = np.tanh(mus * 1.2) / np.tanh(1.2)
-    return mus * (.89 / (np.max(np.abs(mus)) or 1))
+    return mus * (.89 / (np.max(np.abs(mus)) or 1)) if NORMALISE else mus
 
 
 if __name__ == '__main__':
