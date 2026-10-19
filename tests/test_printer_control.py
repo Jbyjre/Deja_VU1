@@ -1,5 +1,5 @@
 """
-Tests for printer_control.py and the stateful parts of mock_moonraker.py —
+Tests for printer_control.py and the stateful parts of mock_moonraker.py -
 pause/resume/cancel, temperature, homing, and the G-code console.
 
     python3 -m unittest discover tests

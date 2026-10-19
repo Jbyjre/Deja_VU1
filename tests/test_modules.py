@@ -69,7 +69,7 @@ class TestLedStatus(unittest.TestCase):
             led_status._write_to_hardware([])
 
     def test_push_update_falls_back_to_simulation(self):
-        # With no hardware present this must not raise — it should simulate.
+        # With no hardware present this must not raise - it should simulate.
         self.assertTrue(led_status.push_update()["simulated"])
 
 

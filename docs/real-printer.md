@@ -6,7 +6,7 @@ install on the printer.
 
 ## Adding it
 
-1. Find the printer's address on your network — the same one Fluidd or
+1. Find the printer's address on your network - the same one Fluidd or
    Mainsail uses, usually `http://<printer-ip>:7125`.
 2. In the dashboard: **Fleet → Add a printer**. Give it a name, paste the
    address, and add an API key only if your Moonraker asks for one.
@@ -17,7 +17,7 @@ install on the printer.
 `Details` on the printer's row shows everything a first connection needs
 someone to see: whether the link is open, Klipper's state, which toolheads
 and chamber sensor were found, how much print history was read, and the
-newest 14 exchanges with Moonraker — what was sent and what came back. The
+newest 14 exchanges with Moonraker - what was sent and what came back. The
 full record, with the last 300 exchanges, is at
 `GET /api/printers/diagnostics?printer=<id>` (the id is listed at
 `GET /api/fleet/registry`). The
@@ -72,16 +72,16 @@ There is no physical printer in this project's build environment, so the
 connection (`backend/moonraker_client.py`) was written against the real
 thing's **source code and documentation**, and tested against a stand-in
 server built from the same source (`tests/fake_moonraker.py`), over real
-sockets — real HTTP, a real WebSocket handshake, masked frames, JSON-RPC.
+sockets - real HTTP, a real WebSocket handshake, masked frames, JSON-RPC.
 
 Sources, at the commits read:
 
-- Moonraker — [Arksine/moonraker](https://github.com/Arksine/moonraker) `1cfb0c4`
-- Snapmaker's U1 Moonraker — [Snapmaker/u1-moonraker](https://github.com/Snapmaker/u1-moonraker) `a308cfa`
-- Klipper — [Klipper3d/klipper](https://github.com/Klipper3d/klipper) `ce7002b`
-- Snapmaker's U1 Klipper — [Snapmaker/u1-klipper](https://github.com/Snapmaker/u1-klipper) `10f2f69`
+- Moonraker - [Arksine/moonraker](https://github.com/Arksine/moonraker) `1cfb0c4`
+- Snapmaker's U1 Moonraker - [Snapmaker/u1-moonraker](https://github.com/Snapmaker/u1-moonraker) `a308cfa`
+- Klipper - [Klipper3d/klipper](https://github.com/Klipper3d/klipper) `ce7002b`
+- Snapmaker's U1 Klipper - [Snapmaker/u1-klipper](https://github.com/Snapmaker/u1-klipper) `10f2f69`
 
-What reading them changed — each of these would have been a bug on the
+What reading them changed - each of these would have been a bug on the
 first real connection, and none of them could show up against the
 simulation:
 
@@ -108,7 +108,7 @@ simulation:
   `extruder3`; each head's dock sensor reports `PARKED`/`ACTIVATE`;
   `print_task_config` says what each head has loaded (`filament_exist`,
   `filament_type`, `filament_color_rgba`) and how the file's T0–T3 map to
-  heads. "NONE" there means unknown — shown as unknown, never as white.
+  heads. "NONE" there means unknown - shown as unknown, never as white.
   The Confirm Print check follows the mapping to the head that will really
   print.
 - **History.** 50 jobs a page unless asked for more (maintenance would

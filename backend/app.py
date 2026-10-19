@@ -182,7 +182,7 @@ API endpoints
 No figures without a printer
 ----------------------------
 With no printer connected, routes that read printer state return no numbers
-at all — just {"connected": false, "demo": false}. The dashboard shows empty
+at all - just {"connected": false, "demo": false}. The dashboard shows empty
 states rather than inventing values. The live WebSocket follows the same
 rule: without demo it sends exactly that object and closes.
 
@@ -191,8 +191,8 @@ what the dashboard's "Demo data" switch sends. Everything returned that way is
 flagged "demo": true, so simulated figures can never be mistaken for real ones.
 
 This rule applies only to routes that read *printer* data. Routes that read
-or change this dashboard's own settings — modules, pairing, notification
-preferences, the filament list, the file library, automation rules — work
+or change this dashboard's own settings - modules, pairing, notification
+preferences, the filament list, the file library, automation rules - work
 the same whether or not a printer is connected, because they aren't printer
 figures.
 """
@@ -576,7 +576,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         return b"".join(data)
 
     def log_message(self, fmt, *args):
-        """Keep the terminal quiet — one tidy line per request."""
+        """Keep the terminal quiet - one tidy line per request."""
         # A garbled request line (https:// sent to this plain-HTTP port, a
         # port scanner) is logged before self.path exists.
         path = getattr(self, "path", "").split("?")[0]
@@ -598,7 +598,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         """
         Did the caller explicitly ask for simulated data?
 
-        True when the URL carries ?demo=1. Anything else means no — we do not
+        True when the URL carries ?demo=1. Anything else means no - we do not
         hand out invented figures unless they were asked for by name.
         """
         wanted = self._query().get("demo", ["0"])[0] in ("1", "true", "yes")

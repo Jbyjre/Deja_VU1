@@ -3,17 +3,17 @@ comparison.py
 =============
 
 Two related features, both built on the print history mock_moonraker
-already generates — no new data source, no extra hardware:
+already generates - no new data source, no extra hardware:
 
-  * "What changed?" — compares the job about to print against the last time
+  * "What changed?" - compares the job about to print against the last time
     this same file printed successfully, and flags real differences
     (toolhead, filament colour).
-  * "Likely cause" — when this file has failed before, looks for a pattern
+  * "Likely cause" - when this file has failed before, looks for a pattern
     across those failures (a shared filament type, say) and flags it if the
     current run matches. This is plain pattern-matching over your own
-    history, not a prediction model — it can only ever say "this looks like
+    history, not a prediction model - it can only ever say "this looks like
     what happened before," never "this will fail."
-  * "Repeat last settings" — a quick reference for what filament and
+  * "Repeat last settings" - a quick reference for what filament and
     toolheads were used the last time this file printed cleanly.
 
 All three only ever look at *your own* past jobs. Nothing here calls out to
@@ -103,7 +103,7 @@ def compare_current_job(filename=None, limit=3):
 
 def repeat_last_settings(filename=None):
     """
-    What worked last time — the filament and toolheads from the most recent
+    What worked last time - the filament and toolheads from the most recent
     successful print of this file. A reference, not an auto-apply: this
     project doesn't have the original slicer settings to replay, only what
     print history actually recorded.

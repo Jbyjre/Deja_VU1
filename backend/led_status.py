@@ -2,14 +2,14 @@
 led_status.py
 =============
 
-MODULE 2 — LED Dock Status Rings.  STATUS: interface + simulation only.
+MODULE 2 - LED Dock Status Rings.  STATUS: interface + simulation only.
 No hardware driver code lives here yet, on purpose.
 
 The plan
 --------
 The Snapmaker U1 parks its toolheads in docks. When a toolhead is sitting in
 its dock you cannot tell at a glance whether it is ready, in use, out of
-filament, or faulted — you have to walk over and read the screen.
+filament, or faulted - you have to walk over and read the screen.
 
 This module will drive a small ring of WS2812 addressable LEDs mounted beside
 each dock. WS2812 LEDs are individually controllable: one data wire carries a
@@ -27,7 +27,7 @@ What is here today
 Everything except the hardware. The state-decision logic is real and runs on
 mock Moonraker data. `simulate()` prints what each ring *would* show. When a
 real LED strip is available, only `_write_to_hardware()` needs to be filled
-in — the rest already works.
+in - the rest already works.
 
 Why no driver code yet
 ----------------------
@@ -41,12 +41,12 @@ from mock_moonraker import get_printer_state
 
 # The colors each state maps to, as (red, green, blue), 0-255.
 STATE_COLORS = {
-    "docked":  (60, 60, 60),     # soft white — parked and ready
-    "active":  (0, 200, 60),     # green — this toolhead is printing
-    "heating": (255, 150, 0),    # amber — coming up to temperature
-    "paused":  (0, 120, 255),    # blue — print is paused
-    "error":   (255, 30, 30),    # red — needs attention
-    "off":     (0, 0, 0),        # dark — printer is off or idle
+    "docked":  (60, 60, 60),     # soft white - parked and ready
+    "active":  (0, 200, 60),     # green - this toolhead is printing
+    "heating": (255, 150, 0),    # amber - coming up to temperature
+    "paused":  (0, 120, 255),    # blue - print is paused
+    "error":   (255, 30, 30),    # red - needs attention
+    "off":     (0, 0, 0),        # dark - printer is off or idle
 }
 
 # How each state should animate.
@@ -155,7 +155,7 @@ def get_all_ring_states():
 
 
 # ---------------------------------------------------------------------------
-# Hardware interface — deliberately not implemented yet
+# Hardware interface - deliberately not implemented yet
 # ---------------------------------------------------------------------------
 
 def connect_hardware(host=None, port=None):
@@ -177,7 +177,7 @@ def _write_to_hardware(ring_states):
 
     Once built, this will send each ring's color, effect, and progress arc to
     the controller board, which writes them onto the WS2812 chains. This is
-    the only function that will ever touch hardware — everything above it is
+    the only function that will ever touch hardware - everything above it is
     already final.
     """
     raise NotImplementedError(
@@ -212,7 +212,7 @@ def simulate():
     data = get_all_ring_states()
 
     print("=" * 62)
-    print("Deja Vu1 — LED Dock Rings (SIMULATION — no hardware connected)")
+    print("Deja Vu1 - LED Dock Rings (SIMULATION - no hardware connected)")
     print("=" * 62)
     print(f"Printer state: {data['printer_state']}")
     print()

@@ -4,7 +4,7 @@ updates.py
 
 Reads Moonraker's own update-status endpoint and reports which tracked
 packages (Klipper, Moonraker) have a newer version waiting. No git calls of
-this project's own — Moonraker already does that work and exposes the
+this project's own - Moonraker already does that work and exposes the
 result; this just reads and summarizes it.
 """
 

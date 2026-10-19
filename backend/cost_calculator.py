@@ -4,7 +4,7 @@ cost_calculator.py
 
 Turns a print job into a dollar figure: filament used, priced per material,
 plus the electricity the printer drew while it ran. Nothing here talks to a
-payment system or a store — it's an estimate built entirely from numbers the
+payment system or a store - it's an estimate built entirely from numbers the
 dashboard already has (print history, live progress, and prices the user
 types in once).
 
@@ -156,7 +156,7 @@ def estimate_current_job():
 
     Extrapolates filament used from elapsed progress rather than reading a
     scale, and is explicit that it's an estimate. Raises ValueError if
-    nothing is currently printing — there is nothing honest to estimate.
+    nothing is currently printing - there is nothing honest to estimate.
     """
     state = mock_moonraker.get_printer_state()
     if state["state"] not in ("printing", "paused"):

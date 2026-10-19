@@ -4,12 +4,12 @@ home_assistant_bridge.py
 
 Pushes printer state into Home Assistant as a handful of REST sensors, so it
 shows up on an existing HA dashboard alongside everything else in the house.
-No MQTT broker, no custom component, no dependency — Home Assistant's REST
+No MQTT broker, no custom component, no dependency - Home Assistant's REST
 API accepts a plain `POST /api/states/<entity_id>` with a long-lived access
 token in the Authorization header, which is all this file does.
 
 This only pushes state outward. It never reads anything back from Home
-Assistant, and never controls the printer from it — the dashboard's own
+Assistant, and never controls the printer from it - the dashboard's own
 printer_control.py stays the only thing that can do that.
 """
 

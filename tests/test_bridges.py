@@ -1,5 +1,5 @@
 """
-Tests for wled_bridge.py and home_assistant_bridge.py — outbound HTTP
+Tests for wled_bridge.py and home_assistant_bridge.py - outbound HTTP
 integrations. No real network calls are made: both are pointed at nothing
 configured (the default) to confirm they fail cleanly, and at an
 unreachable address to confirm real request attempts are caught rather than

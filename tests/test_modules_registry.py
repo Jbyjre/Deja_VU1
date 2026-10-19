@@ -1,5 +1,5 @@
 """
-Tests for modules.py — the feature on/off registry.
+Tests for modules.py - the feature on/off registry.
 
     python3 -m unittest discover tests
 """

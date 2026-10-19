@@ -1,6 +1,6 @@
 /* Deja Vu1 dashboard logic.
  *
- * Asks the Python backend for data and draws it. Plain JavaScript — no
+ * Asks the Python backend for data and draws it. Plain JavaScript - no
  * framework, no build step, nothing to install.
  *
  * The important rule here: with no printer connected, the backend returns no
@@ -24,11 +24,11 @@ function plusFrame(title,help,body,tools){$('game-host').innerHTML=gameShellV2(t
 function plusStats(items){gameStats(items.map(([k,id,a,v])=>`<div class="game-stat"><div class="g-key">${k}</div><div class="g-val ${a?'accent':''}" id="${id}">${v??'0'}</div></div>`).join(''));}
 function newFreeCell(){const t=plusTools(),key='dejavu1.freecell.best';plusStats([['Score','fc-score'],['Moves','fc-moves'],['Best','fc-best',true,gameBestV2(key)||'—']]);plusFrame('FreeCell','Click a face-up card, then a destination · A auto-moves a safe card',`<div class="freecell" id="fc-board"><div class="fc-top"><div class="fc-pockets" id="fc-free"></div><div class="fc-foundations" id="fc-found"></div></div><div class="fc-tableau" id="fc-tableau"></div><div class="fc-footer"><button class="btn" id="fc-new">New deal</button><button class="btn" id="fc-auto">Auto move</button><span id="fc-message">Build each suit from ace to king.</span></div></div>`,t);const suits=['♠','♥','♦','♣'],red=new Set(['♥','♦']),ranks=['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];let cols,free,founds,selected,moves,score;const color=c=>red.has(c.s)?'red':'black',label=c=>ranks[c.n]+c.s,shuffle=a=>{for(let i=a.length-1;i;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;},msg=(x,g)=>{$('fc-message').textContent=x;$('fc-message').classList.toggle('good',!!g);};const valid=(p,i)=>p.slice(i).every((c,j,r)=>!j||r[j-1].n===c.n+1&&color(r[j-1])!==color(c));function deal(){const d=shuffle(suits.flatMap(s=>Array.from({length:13},(_,i)=>({s,n:i+1} ))));cols=Array.from({length:8},()=>[]);d.forEach((c,i)=>cols[i%8].push(c));free=[null,null,null,null];founds=suits.map(()=>[]);selected=null;moves=score=0;msg('Build each suit from ace to king.');draw();}const canCol=(c,i)=>{const top=cols[i].at(-1);return top?top.n===c.n+1&&color(top)!==color(c):c.n===13;};const canFound=(c,i)=>{const top=founds[i].at(-1);return c.s===suits[i]&&(top?top.n+1===c.n:c.n===1);};function move(to){if(!selected)return false;const s=selected,card=s.card;let ok=false;if(to.kind==='free'&&s.kind==='column'&&free[to.i]===null&&s.row===cols[s.col].length-1){cols[s.col].pop();free[to.i]=card;ok=true;}else if(to.kind==='column'&&s.kind==='column'&&to.i!==s.col&&valid(cols[s.col],s.row)&&cols[s.col].length-s.row<=Math.max(1,free.filter(Boolean).length+cols.filter(c=>!c.length).length)&&canCol(card,to.i)){cols[to.i].push(...cols[s.col].splice(s.row));ok=true;}else if(to.kind==='column'&&s.kind==='free'&&canCol(card,to.i)){free[s.slot]=null;cols[to.i].push(card);ok=true;}else if(to.kind==='foundation'&&canFound(card,to.i)&&((s.kind==='column'&&s.row===cols[s.col].length-1)||s.kind==='free')){s.kind==='column'?cols[s.col].pop():free[s.slot]=null;founds[to.i].push(card);score+=card.n===1?10:5;ok=true;}if(!ok)return false;selected=null;moves++;if(founds.every(p=>p.length===13)){score+=500;const best=Math.max(gameBestV2(key),score);saveBest(key,best);$('fc-best').textContent=best;msg(`Complete in ${moves} moves · ${score} points`,true);}draw();return true;}function select(card,kind,a,b){if(selected&&move(kind==='column'?{kind:'column',i:a}:{kind:'foundation',i:a}))return;selected=kind==='column'?{card,kind,col:a,row:b}:{card,kind,slot:a};draw();}function auto(){for(let c=0;c<cols.length;c++){const card=cols[c].at(-1),i=suits.indexOf(card?.s);if(card&&canFound(card,i)){selected={card,kind:'column',col:c,row:cols[c].length-1};move({kind:'foundation',i});return;}}for(let i=0;i<4;i++){const card=free[i],f=suits.indexOf(card?.s);if(card&&canFound(card,f)){selected={card,kind:'free',slot:i};move({kind:'foundation',i:f});return;}}msg('No safe auto-move found.');}function draw(){const fh=$('fc-free');fh.innerHTML='';free.forEach((c,i)=>{const b=document.createElement('button');b.className='fc-slot';b.textContent=c?label(c):'FREE';b.onclick=()=>c?select(c,'free',i):move({kind:'free',i});fh.appendChild(b);});const f=$('fc-found');f.innerHTML='';founds.forEach((p,i)=>{const b=document.createElement('button');b.className='fc-slot foundation';b.textContent=p.at(-1)?label(p.at(-1)):suits[i];b.onclick=()=>move({kind:'foundation',i});f.appendChild(b);});const th=$('fc-tableau');th.innerHTML='';cols.forEach((p,c)=>{const col=document.createElement('div');col.className='fc-column';p.forEach((card,i)=>{const b=document.createElement('button');b.className=`fc-card up ${color(card)} ${selected?.card===card?'selected':''}`;b.textContent=label(card);b.style.top=`${i*22}px`;b.onclick=()=>select(card,'column',c,i);col.appendChild(b);});const drop=document.createElement('button');drop.className='fc-drop';drop.textContent='K';drop.onclick=()=>move({kind:'column',i:c});col.appendChild(drop);th.appendChild(col);});$('fc-score').textContent=score;$('fc-moves').textContent=moves;}t.on($('fc-new'),'click',deal);t.on($('fc-auto'),'click',auto);t.on(document,'keydown',e=>{if(e.key.toLowerCase()==='a')auto();});deal();}
 function newSnake(){const t=plusTools(),key='dejavu1.snake.best',W=480,N=20,S=24;plusStats([['Score','sn-score'],['Length','sn-length'],['Best','sn-best',true,gameBestV2(key)||'—']]);plusFrame('Snake','Arrow keys / WASD · swipe · speed rises every five apples',`<div class="snake-wrap"><canvas id="sn-canvas" class="arcade-canvas" width="480" height="480"></canvas><div class="snake-actions"><button class="btn primary" id="sn-start">Start run</button><button class="btn" id="sn-pause">Pause</button></div></div>`,t);const c=$('sn-canvas'),x=c.getContext('2d');let snake,dir,next,food,score,run,paused,timer,swipe;const same=(a,b)=>a.x===b.x&&a.y===b.y,place=()=>{let p;do{p={x:Math.floor(Math.random()*N),y:Math.floor(Math.random()*N)}}while(snake.some(s=>same(s,p)));return p;};function start(){clearInterval(timer);snake=[{x:10,y:10},{x:9,y:10},{x:8,y:10}];dir={x:1,y:0};next={...dir};food=place();score=0;run=true;paused=false;timer=t.every(tick,145);draw();}function change(a,b){if(a===-dir.x&&b===-dir.y)return;next={x:a,y:b};if(!run)start();}function tick(){if(!run||paused)return;dir=next;const h={x:(snake[0].x+dir.x+N)%N,y:(snake[0].y+dir.y+N)%N};if(snake.some((s,i)=>i&&same(s,h))){run=false;clearInterval(timer);const best=Math.max(gameBestV2(key),score);saveBest(key,best);$('sn-best').textContent=best;draw();return;}snake.unshift(h);if(same(h,food)){score++;food=place();if(score%5===0){clearInterval(timer);timer=t.every(tick,Math.max(70,145-score*3));}}else snake.pop();draw();}function draw(){x.fillStyle='#091525';x.fillRect(0,0,W,W);x.strokeStyle='rgba(255,255,255,.05)';for(let i=1;i<N;i++){x.beginPath();x.moveTo(i*S,0);x.lineTo(i*S,W);x.moveTo(0,i*S);x.lineTo(W,i*S);x.stroke();}x.fillStyle='#ffcf66';x.beginPath();x.arc(food.x*S+12,food.y*S+12,7,0,7);x.fill();snake?.forEach((s,i)=>{x.fillStyle=i?'#56c982':'#b9f29a';x.fillRect(s.x*S+3,s.y*S+3,S-6,S-6);});$('sn-score').textContent=score;$('sn-length').textContent=snake?.length||0;}t.on(document,'keydown',e=>{const d={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],KeyW:[0,-1],KeyS:[0,1],KeyA:[-1,0],KeyD:[1,0]}[e.code];if(d){e.preventDefault();change(...d);}if(e.code==='Space'){e.preventDefault();paused=!paused;}});t.on(c,'pointerdown',e=>{swipe={x:e.clientX,y:e.clientY};});t.on(c,'pointerup',e=>{if(!swipe)return;const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;if(Math.max(Math.abs(dx),Math.abs(dy))>20)change(Math.abs(dx)>Math.abs(dy)?Math.sign(dx):0,Math.abs(dy)>=Math.abs(dx)?Math.sign(dy):0);swipe=null;});t.on($('sn-start'),'click',start);t.on($('sn-pause'),'click',()=>paused=!paused);start();}
-function new2048(){const t=plusTools(),key='dejavu1.2048.best';plusStats([['Score','tw-score'],['Best','tw-best',true,gameBestV2(key)||'—'],['Goal','tw-goal',false,'2048']]);plusFrame('2048','Arrow keys / swipe · combine equal tiles · reach 2048',`<div class="twenty-wrap"><div class="twenty-board" id="tw-board"></div><div class="twenty-actions"><button class="btn" id="tw-new">New game</button><button class="btn" id="tw-undo">Undo</button><span id="tw-message">Make your first move.</span></div></div>`,t);let board,score,previous,won,over,startPoint;const idx=(r,c)=>r*4+c,add=()=>{const p=board.map((v,i)=>v?null:i).filter(i=>i!==null);if(p.length){const i=p[Math.floor(Math.random()*p.length)];board[i]=Math.random()<.9?2:4;}},line=a=>{const v=a.filter(Boolean),o=[];for(let i=0;i<v.length;i++){if(v[i]===v[i+1]){o.push(v[i]*2);score+=v[i]*2;i++;}else o.push(v[i]);}return o.concat([0,0,0,0]).slice(0,4);};function fresh(){board=Array(16).fill(0);score=0;previous=null;won=over=false;add();add();draw();}function move(d){if(over)return;const before=board.slice(),old=score,out=Array(16).fill(0);for(let r=0;r<4;r++){let a=d==='up'||d==='down'?[0,1,2,3].map(c=>board[idx(c,r)]):board.slice(r*4,r*4+4);if(d==='right'||d==='down')a.reverse();a=line(a);if(d==='left'||d==='right')a.forEach((v,c)=>out[idx(r,d==='left'?c:3-c)]=v);else a.forEach((v,c)=>out[idx(d==='up'?c:3-c,r)]=v);}if(out.every((v,i)=>v===before[i])){score=old;return;}previous={board:before,score:old,won,over};board=out;add();if(board.some(v=>v>=2048)&&!won){won=true;$('tw-message').textContent='2048 reached — keep going.';}if(board.every(Boolean)&&!board.some((v,i)=>{const r=Math.floor(i/4),c=i%4;return c<3&&v===board[i+1]||r<3&&v===board[i+4];})){over=true;const best=Math.max(gameBestV2(key),score);saveBest(key,best);$('tw-best').textContent=best;$('tw-message').textContent='No moves left — start a new board.';}draw();}function draw(){const h=$('tw-board');h.innerHTML='';board.forEach(v=>{const e=document.createElement('div');e.className=`tw-tile t${v?Math.min(15,Math.log2(v)):0}`;e.textContent=v||'';h.appendChild(e);});$('tw-score').textContent=score;}t.on(document,'keydown',e=>{const d={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[e.key];if(d){e.preventDefault();move(d);}});t.on($('tw-new'),'click',fresh);t.on($('tw-undo'),'click',()=>{if(previous){board=previous.board;score=previous.score;won=previous.won;over=previous.over;previous=null;$('tw-message').textContent='Move undone.';draw();}});t.on($('tw-board'),'pointerdown',e=>{startPoint={x:e.clientX,y:e.clientY};});t.on($('tw-board'),'pointerup',e=>{if(!startPoint)return;const dx=e.clientX-startPoint.x,dy=e.clientY-startPoint.y;if(Math.max(Math.abs(dx),Math.abs(dy))>20)move(Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up');startPoint=null;});t.on(document,'pointercancel',()=>{startPoint=null;});fresh();}
+function new2048(){const t=plusTools(),key='dejavu1.2048.best';plusStats([['Score','tw-score'],['Best','tw-best',true,gameBestV2(key)||'—'],['Goal','tw-goal',false,'2048']]);plusFrame('2048','Arrow keys / swipe · combine equal tiles · reach 2048',`<div class="twenty-wrap"><div class="twenty-board" id="tw-board"></div><div class="twenty-actions"><button class="btn" id="tw-new">New game</button><button class="btn" id="tw-undo">Undo</button><span id="tw-message">Make your first move.</span></div></div>`,t);let board,score,previous,won,over,startPoint;const idx=(r,c)=>r*4+c,add=()=>{const p=board.map((v,i)=>v?null:i).filter(i=>i!==null);if(p.length){const i=p[Math.floor(Math.random()*p.length)];board[i]=Math.random()<.9?2:4;}},line=a=>{const v=a.filter(Boolean),o=[];for(let i=0;i<v.length;i++){if(v[i]===v[i+1]){o.push(v[i]*2);score+=v[i]*2;i++;}else o.push(v[i]);}return o.concat([0,0,0,0]).slice(0,4);};function fresh(){board=Array(16).fill(0);score=0;previous=null;won=over=false;add();add();draw();}function move(d){if(over)return;const before=board.slice(),old=score,out=Array(16).fill(0);for(let r=0;r<4;r++){let a=d==='up'||d==='down'?[0,1,2,3].map(c=>board[idx(c,r)]):board.slice(r*4,r*4+4);if(d==='right'||d==='down')a.reverse();a=line(a);if(d==='left'||d==='right')a.forEach((v,c)=>out[idx(r,d==='left'?c:3-c)]=v);else a.forEach((v,c)=>out[idx(d==='up'?c:3-c,r)]=v);}if(out.every((v,i)=>v===before[i])){score=old;return;}previous={board:before,score:old,won,over};board=out;add();if(board.some(v=>v>=2048)&&!won){won=true;$('tw-message').textContent='2048 reached. Keep going.';}if(board.every(Boolean)&&!board.some((v,i)=>{const r=Math.floor(i/4),c=i%4;return c<3&&v===board[i+1]||r<3&&v===board[i+4];})){over=true;const best=Math.max(gameBestV2(key),score);saveBest(key,best);$('tw-best').textContent=best;$('tw-message').textContent='No moves left. Start a new board.';}draw();}function draw(){const h=$('tw-board');h.innerHTML='';board.forEach(v=>{const e=document.createElement('div');e.className=`tw-tile t${v?Math.min(15,Math.log2(v)):0}`;e.textContent=v||'';h.appendChild(e);});$('tw-score').textContent=score;}t.on(document,'keydown',e=>{const d={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[e.key];if(d){e.preventDefault();move(d);}});t.on($('tw-new'),'click',fresh);t.on($('tw-undo'),'click',()=>{if(previous){board=previous.board;score=previous.score;won=previous.won;over=previous.over;previous=null;$('tw-message').textContent='Move undone.';draw();}});t.on($('tw-board'),'pointerdown',e=>{startPoint={x:e.clientX,y:e.clientY};});t.on($('tw-board'),'pointerup',e=>{if(!startPoint)return;const dx=e.clientX-startPoint.x,dy=e.clientY-startPoint.y;if(Math.max(Math.abs(dx),Math.abs(dy))>20)move(Math.abs(dx)>Math.abs(dy)?dx>0?'right':'left':dy>0?'down':'up');startPoint=null;});t.on(document,'pointercancel',()=>{startPoint=null;});fresh();}
 function newSmartPong(){const t=plusTools(),key='dejavu1.pong.smart.best',W=760,H=420,host=$('game-host');plusStats([['You','sp-you'],['CPU','sp-cpu'],['Rally','sp-rally'],['Best','sp-best',true,gameBestV2(key)||'—']]);plusFrame('Pong','Move with mouse, touch, or ↑↓ · first to 7 · edge hits create sharper angles',`<div class="smart-pong"><canvas id="sp-canvas" class="arcade-canvas" width="760" height="420"></canvas><div class="pong-pad"><button class="btn" data-pong="up">▲</button><button class="btn" data-pong="down">▼</button></div><div class="game-overlay" id="sp-overlay"><div class="g-title">PONG</div><div class="g-sub">The CPU reads the ball, but its reaction window gets shorter as the rally grows.</div><button class="btn primary">Serve</button></div></div>`,t);const c=$('sp-canvas'),x=c.getContext('2d');let py=H/2-46,ay=py,ball,you=0,cpu=0,rally=0,run=false,timer,keys={};const reset=()=>{py=H/2-46;ay=py;ball={x:W/2,y:H/2,vx:5,vy:(Math.random()-.5)*4};you=cpu=rally=0;run=true;$('sp-overlay').style.display='none';clearInterval(timer);timer=t.every(tick,16);draw();};const predictY=()=>{if(!ball||ball.vx<=0)return H/2;const targetX=W-42,travel=Math.max(0,(targetX-ball.x)/ball.vx),top=9,bottom=H-9,span=bottom-top,period=span*2;let projected=ball.y+ball.vy*travel;const folded=((projected-top)%period+period)%period;return folded<=span?top+folded:bottom-(folded-span);};
-  const chooseTarget=()=>{if(!ball||ball.vx<=0)return H/2-46;const intercept=predictY(),edgeBias=Math.max(-1,Math.min(1,ball.vy/6))*Math.min(18,rally*.7),rallyRead=Math.min(14,rally*.35),noise=(Math.random()-.5)*Math.max(1.2,4.5-rally*.12);return intercept-46+edgeBias+rallyRead+noise;};const serve=d=>{ball={x:W/2,y:H/2,vx:d*(5+Math.min(3,rally*.12)),vy:(Math.random()-.5)*4};};function point(won){won?you++:cpu++;rally=0;if(you>=7||cpu>=7){run=false;clearInterval(timer);const best=Math.max(gameBestV2(key),you);saveBest(key,best);$('sp-best').textContent=best;$('sp-overlay').innerHTML=`<div class="g-title">${you>cpu?'MATCH WON':'MATCH LOST'}</div><div class="g-sub">${you} — ${cpu}</div><button class="btn primary">Rematch</button>`;$('sp-overlay').style.display='flex';}else serve(won?1:-1);}function steer(e){const r=c.getBoundingClientRect();py=Math.max(0,Math.min(H-92,(e.clientY-r.top)/r.height*H-46));}function tick(){if(!run)return;if(keys.ArrowUp||keys.KeyW)py=Math.max(0,py-6);if(keys.ArrowDown||keys.KeyS)py=Math.min(H-92,py+6);ball.x+=ball.vx;ball.y+=ball.vy;if(ball.y<9||ball.y>H-9){ball.y=Math.max(9,Math.min(H-9,ball.y));ball.vy*=-1;}const target=ball.vx>0?chooseTarget():H/2-46;const closing=Math.max(0,Math.min(1,(W-150-ball.x)/Math.max(1,W-150)));const reaction=Math.min(.24,.13+rally*.002+closing*.045);const maxStep=5.2+Math.min(2.4,rally*.08);const error=Math.max(.025,.18-rally*.004);const delta=target-ay;ay+=Math.max(-maxStep,Math.min(maxStep,delta))*reaction+(Math.random()-.5)*error;ay=Math.max(0,Math.min(H-92,ay));if(ball.x<42&&ball.x>22&&ball.y>py-8&&ball.y<py+100&&ball.vx<0){ball.x=42;const hit=(ball.y-(py+46))/46;ball.vx=Math.min(11,Math.abs(ball.vx)*1.04);ball.vy=hit*5.7;rally++;}if(ball.x>W-42&&ball.x<W-22&&ball.y>ay-8&&ball.y<ay+100&&ball.vx>0){ball.x=W-42;const hit=(ball.y-(ay+46))/46;ball.vx=-Math.min(11,Math.abs(ball.vx)*1.04);ball.vy=hit*5.7;rally++;}if(ball.x<-20)point(false);if(ball.x>W+20)point(true);draw();}function draw(){x.fillStyle='#101827';x.fillRect(0,0,W,H);x.setLineDash([8,12]);x.strokeStyle='rgba(255,255,255,.16)';x.beginPath();x.moveTo(W/2,0);x.lineTo(W/2,H);x.stroke();x.setLineDash([]);x.fillStyle='#f7fbff';x.fillRect(22,py,16,92);x.fillStyle='#ff9c66';x.fillRect(W-38,ay,16,92);x.fillStyle='#ffe69b';x.beginPath();x.arc(ball?.x||W/2,ball?.y||H/2,8,0,7);x.fill();$('sp-you').textContent=you;$('sp-cpu').textContent=cpu;$('sp-rally').textContent=rally;}t.on(c,'pointermove',steer);t.on(c,'pointerdown',e=>{steer(e);if(!run)reset();});t.on(document,'keydown',e=>{if(['ArrowUp','ArrowDown','KeyW','KeyS'].includes(e.code))e.preventDefault();keys[e.code]=true;});t.on(document,'keyup',e=>{keys[e.code]=false;});t.on(host.querySelector('.game-overlay button'),'click',reset);document.querySelectorAll('[data-pong]').forEach(b=>t.on(b,'pointerdown',()=>{keys[b.dataset.pong==='up'?'ArrowUp':'ArrowDown']=true;}));document.querySelectorAll('[data-pong]').forEach(b=>t.on(b,'pointerup',()=>{keys[b.dataset.pong==='up'?'ArrowUp':'ArrowDown']=false;}));t.on(document,'pointerup',()=>{keys.ArrowUp=false;keys.ArrowDown=false;});t.on(document,'pointercancel',()=>{keys.ArrowUp=false;keys.ArrowDown=false;});reset();}
+  const chooseTarget=()=>{if(!ball||ball.vx<=0)return H/2-46;const intercept=predictY(),edgeBias=Math.max(-1,Math.min(1,ball.vy/6))*Math.min(18,rally*.7),rallyRead=Math.min(14,rally*.35),noise=(Math.random()-.5)*Math.max(1.2,4.5-rally*.12);return intercept-46+edgeBias+rallyRead+noise;};const serve=d=>{ball={x:W/2,y:H/2,vx:d*(5+Math.min(3,rally*.12)),vy:(Math.random()-.5)*4};};function point(won){won?you++:cpu++;rally=0;if(you>=7||cpu>=7){run=false;clearInterval(timer);const best=Math.max(gameBestV2(key),you);saveBest(key,best);$('sp-best').textContent=best;$('sp-overlay').innerHTML=`<div class="g-title">${you>cpu?'MATCH WON':'MATCH LOST'}</div><div class="g-sub">${you} - ${cpu}</div><button class="btn primary">Rematch</button>`;$('sp-overlay').style.display='flex';}else serve(won?1:-1);}function steer(e){const r=c.getBoundingClientRect();py=Math.max(0,Math.min(H-92,(e.clientY-r.top)/r.height*H-46));}function tick(){if(!run)return;if(keys.ArrowUp||keys.KeyW)py=Math.max(0,py-6);if(keys.ArrowDown||keys.KeyS)py=Math.min(H-92,py+6);ball.x+=ball.vx;ball.y+=ball.vy;if(ball.y<9||ball.y>H-9){ball.y=Math.max(9,Math.min(H-9,ball.y));ball.vy*=-1;}const target=ball.vx>0?chooseTarget():H/2-46;const closing=Math.max(0,Math.min(1,(W-150-ball.x)/Math.max(1,W-150)));const reaction=Math.min(.24,.13+rally*.002+closing*.045);const maxStep=5.2+Math.min(2.4,rally*.08);const error=Math.max(.025,.18-rally*.004);const delta=target-ay;ay+=Math.max(-maxStep,Math.min(maxStep,delta))*reaction+(Math.random()-.5)*error;ay=Math.max(0,Math.min(H-92,ay));if(ball.x<42&&ball.x>22&&ball.y>py-8&&ball.y<py+100&&ball.vx<0){ball.x=42;const hit=(ball.y-(py+46))/46;ball.vx=Math.min(11,Math.abs(ball.vx)*1.04);ball.vy=hit*5.7;rally++;}if(ball.x>W-42&&ball.x<W-22&&ball.y>ay-8&&ball.y<ay+100&&ball.vx>0){ball.x=W-42;const hit=(ball.y-(ay+46))/46;ball.vx=-Math.min(11,Math.abs(ball.vx)*1.04);ball.vy=hit*5.7;rally++;}if(ball.x<-20)point(false);if(ball.x>W+20)point(true);draw();}function draw(){x.fillStyle='#101827';x.fillRect(0,0,W,H);x.setLineDash([8,12]);x.strokeStyle='rgba(255,255,255,.16)';x.beginPath();x.moveTo(W/2,0);x.lineTo(W/2,H);x.stroke();x.setLineDash([]);x.fillStyle='#f7fbff';x.fillRect(22,py,16,92);x.fillStyle='#ff9c66';x.fillRect(W-38,ay,16,92);x.fillStyle='#ffe69b';x.beginPath();x.arc(ball?.x||W/2,ball?.y||H/2,8,0,7);x.fill();$('sp-you').textContent=you;$('sp-cpu').textContent=cpu;$('sp-rally').textContent=rally;}t.on(c,'pointermove',steer);t.on(c,'pointerdown',e=>{steer(e);if(!run)reset();});t.on(document,'keydown',e=>{if(['ArrowUp','ArrowDown','KeyW','KeyS'].includes(e.code))e.preventDefault();keys[e.code]=true;});t.on(document,'keyup',e=>{keys[e.code]=false;});t.on(host.querySelector('.game-overlay button'),'click',reset);document.querySelectorAll('[data-pong]').forEach(b=>t.on(b,'pointerdown',()=>{keys[b.dataset.pong==='up'?'ArrowUp':'ArrowDown']=true;}));document.querySelectorAll('[data-pong]').forEach(b=>t.on(b,'pointerup',()=>{keys[b.dataset.pong==='up'?'ArrowUp':'ArrowDown']=false;}));t.on(document,'pointerup',()=>{keys.ArrowUp=false;keys.ArrowDown=false;});t.on(document,'pointercancel',()=>{keys.ArrowUp=false;keys.ArrowDown=false;});reset();}
 function newPacmanLegacy(){const t=plusTools(),key='dejavu1.pacman.smart.best',map=['###################','#........#........#','#.###.###.#.###.###','#o###.###.#.###.##o','#.................#','#.###.#.#####.#.###','#.....#...#...#...#','#####.# ## ## #.#####','#........#........#','#####.# ## ## #.#####','#.........#.........#','#.###.#.#####.#.###','#o..#.....#.....#..o#','###.#.#.#####.#.#.###','#.....#...#...#.....#','#.######## ########.#','###################'];const rows=map.length,cols=21,cell=27,W=567,H=459;plusStats([['Score','pp-score'],['Lives','pp-lives'],['Level','pp-level'],['Best','pp-best',true,gameBestV2(key)||'—']]);plusFrame('Pac-Man','WASD / arrows · use the arrow pad · eat dots, then hunt frightened ghosts',`<div class="pac-wrap"><canvas id="pp-canvas" class="arcade-canvas" width="570" height="510"></canvas><div class="pac-pad"><button class="btn" data-pac="up">▲</button><button class="btn" data-pac="left">◀</button><button class="btn" data-pac="down">▼</button><button class="btn" data-pac="right">▶</button></div><div class="game-overlay" id="pp-overlay"><div class="g-title">PAC-MAN</div><div class="g-sub">Four ghosts use different chase targets. Power pellets reverse the hunt.</div><button class="btn primary">Start chase</button></div></div>`,t);const c=$('pp-canvas'),x=c.getContext('2d'),dirs={left:[0,-1],right:[0,1],up:[-1,0],down:[1,0]};let grid,player,ghosts,score,lives,level,power,run,timer,wanted='left';const walk=(r,col)=>r>=0&&r<rows&&col>=0&&col<cols&&map[r][col]!=='#';const neigh=(r,col)=>['up','left','down','right'].filter(d=>walk(r+dirs[d][0],col+dirs[d][1]));const reset=()=>{grid=map.map(row=>row.split('').map(ch=>ch==='.'||ch==='o'?ch:null));player={r:10,c:1,dir:'left'};ghosts=[{r:8,c:1,dir:'left',color:'#ef5350',mode:'blinky'},{r:8,c:2,dir:'right',color:'#f6a6d5',mode:'pinky'},{r:8,c:3,dir:'up',color:'#55ddea',mode:'inky'},{r:10,c:17,dir:'left',color:'#ffb05a',mode:'clyde'}];score=0;lives=3;level=1;power=0;run=true;$('pp-overlay').style.display='none';clearInterval(timer);timer=t.every(tick,135);draw();};const targetFor=(g)=>g.mode==='blinky'?player:g.mode==='pinky'?{r:player.r+dirs[player.dir][0]*4,c:player.c+dirs[player.dir][1]*4}:g.mode==='inky'?{r:player.r+dirs[player.dir][0]*2,c:player.c+dirs[player.dir][1]*2}:{r:Math.abs(g.r-player.r)+Math.abs(g.c-player.c)>7?player:{r:0,c:0}};const nextStep=(g,target)=>{const q=[{r:g.r,c:g.c}],seen=new Set([`${g.r},${g.c}`]),prev=new Map();while(q.length){const p=q.shift();if(p.r===target.r&&p.c===target.c)break;neigh(p.r,p.c).forEach(d=>{const n={r:p.r+dirs[d][0],c:p.c+dirs[d][1]},k=`${n.r},${n.c}`;if(!seen.has(k)){seen.add(k);prev.set(k,{p,d});q.push(n);}});}let cur={r:Math.max(0,Math.min(rows-1,target.r)),c:Math.max(0,Math.min(cols-1,target.c))};while(prev.has(`${cur.r},${cur.c}`)){const z=prev.get(`${cur.r},${cur.c}`);if(z.p.r===g.r&&z.p.c===g.c)return z.d;cur=z.p;}return g.dir;};function tick(){if(!run)return;const pd=wanted;if(walk(player.r+dirs[pd][0],player.c+dirs[pd][1]))player.dir=pd;if(walk(player.r+dirs[player.dir][0],player.c+dirs[player.dir][1])){player.r+=dirs[player.dir][0];player.c+=dirs[player.dir][1];}const dot=grid[player.r][player.c];if(dot){grid[player.r][player.c]=null;score+=dot==='o'?50:10;if(dot==='o')power=55;}ghosts.forEach(g=>{if(power){const choices=neigh(g.r,g.c);g.dir=choices[Math.floor(Math.random()*choices.length)]||g.dir;}else g.dir=nextStep(g,targetFor(g));if(walk(g.r+dirs[g.dir][0],g.c+dirs[g.dir][1])){g.r+=dirs[g.dir][0];g.c+=dirs[g.dir][1];}if(g.r===player.r&&g.c===player.c){if(power){score+=200;g.r=8;g.c=1;}else{lives--;player={r:10,c:1,dir:'left'};ghosts.forEach((h,i)=>{h.r=8;h.c=1+i;});if(!lives){run=false;clearInterval(timer);const best=Math.max(gameBestV2(key),score);saveBest(key,best);$('pp-best').textContent=best;$('pp-overlay').innerHTML=`<div class="g-title">GAME OVER</div><div class="g-sub">${score} points · level ${level}</div><button class="btn primary">Try again</button>`;$('pp-overlay').style.display='flex';}}}});if(power)power--;if(!grid.flat().some(Boolean)){level++;grid=map.map(row=>row.split('').map(ch=>ch==='.'||ch==='o'?ch:null));player={r:10,c:1,dir:'left'};ghosts.forEach((g,i)=>{g.r=8;g.c=1+i;});}draw();}function draw(){x.fillStyle='#070d1a';x.fillRect(0,0,W,H);for(let r=0;r<rows;r++)for(let col=0;col<cols;col++){if(map[r][col]==='#'){x.fillStyle='#2349ad';x.fillRect(col*cell+2,r*cell+2,cell-4,cell-4);}const v=grid?.[r]?.[col];if(v){x.fillStyle=v==='o'?'#ffdb70':'#f3e7c5';x.beginPath();x.arc(col*cell+15,r*cell+15,v==='o'?7:2,0,7);x.fill();}}const p=player||{r:14,c:9};x.fillStyle='#ffd447';x.beginPath();x.arc(p.c*cell+15,p.r*cell+15,11,0,7);x.fill();ghosts?.forEach(g=>{x.fillStyle=power?'#7190ff':g.color;x.beginPath();x.arc(g.c*cell+15,g.r*cell+15,11,Math.PI,0);x.lineTo(g.c*cell+26,g.r*cell+25);x.lineTo(g.c*cell+20,g.r*cell+20);x.lineTo(g.c*cell+15,g.r*cell+25);x.lineTo(g.c*cell+10,g.r*cell+20);x.lineTo(g.c*cell+4,g.r*cell+25);x.closePath();x.fill();});$('pp-score').textContent=score;$('pp-lives').textContent=lives;$('pp-level').textContent=level;}t.on(document,'keydown',e=>{const d={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'}[e.code];if(d){e.preventDefault();wanted=d;}});document.querySelectorAll('[data-pac]').forEach(b=>t.on(b,'pointerdown',()=>{wanted=b.dataset.pac;}));t.on(c,'pointerdown',()=>{if(!run)reset();});t.on($('pp-overlay button'),'click',reset);reset();}
-function newBlackjack(){const t=plusTools(),key='dejavu1.blackjack.best',suits=['♠','♥','♦','♣'],ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];plusStats([['Bankroll','bj-bank'],['Shoe','bj-shoe'],['Wins','bj-wins'],['Best','bj-best',true,gameBestV2(key)||'—']]);plusFrame('Blackjack','H hit · S stand · D double · P basic-strategy hint · dealer stands on soft 17',`<div class="blackjack"><div class="bj-table"><div class="bj-hand"><b>DEALER</b><div id="bj-dealer"></div></div><div class="bj-message" id="bj-message">Place your hand.</div><div class="bj-hand"><b>PLAYER</b><div id="bj-player"></div></div></div><div class="bj-controls"><button class="btn primary" id="bj-deal">Deal</button><button class="btn" id="bj-hit">Hit</button><button class="btn" id="bj-stand">Stand</button><button class="btn" id="bj-double">Double</button><button class="btn" id="bj-hint">Hint</button></div></div>`,t);let shoe,hand=[],dealer=[],bank=100,wins=0,wager=10,active=false,doubled=false;const card=()=>{if(shoe.length<24)shoe=freshShoe();return shoe.pop();};const newShoe=()=>suits.flatMap(s=>ranks.map((r,i)=>({s,r,n:Math.min(i+1,10),ace:i===0})));const shuffle=a=>{for(let i=a.length-1;i;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};const freshShoe=()=>shuffle(Array.from({length:6},()=>newShoe()).flat());const value=h=>{let total=h.reduce((n,c)=>n+c.n,0),aces=h.filter(c=>c.ace).length;while(aces&&total+10<=21){total+=10;aces--;}return{total,soft:aces>0};};const face=c=>c.r+c.s;const message=(m,good)=>{$('bj-message').textContent=m;$('bj-message').classList.toggle('good',!!good);};function draw(hole=true){$('bj-player').innerHTML=hand.map(c=>`<span class="bj-card ${c.s==='♥'||c.s==='♦'?'red':''}">${face(c)}</span>`).join('');$('bj-dealer').innerHTML=dealer.map((c,i)=>`<span class="bj-card ${i===1&&hole?'hidden-card':' '}">${i===1&&hole?'?':face(c)}</span>`).join('');$('bj-bank').textContent=bank;$('bj-wins').textContent=wins;$('bj-shoe').textContent=shoe.length;}function finish(){active=false;const p=value(hand).total,d=value(dealer).total,pbj=p===21&&hand.length===2,dbj=d===21&&dealer.length===2;if(p>21){bank-=wager;message('Bust — dealer wins.');}else if(pbj&&!dbj){bank+=wager*1.5;wins++;message('Blackjack — paid 3:2!',true);}else if(dbj&&!pbj){bank-=wager;message('Dealer blackjack.');}else if(d>21||p>d){bank+=wager;wins++;message('You win.',true);}else if(p===d){message('Push — your wager returns.');}else{bank-=wager;message('Dealer wins.');}draw(false);const best=Math.max(gameBestV2(key),bank);saveBest(key,best);$('bj-best').textContent=best;}function dealerTurn(){while(value(dealer).total<17)dealer.push(card());finish();}function deal(){if(bank<=0){bank=100;message('Bankroll reset for a new shoe.');}wager=10;shoe=shoe?.length>24?shoe:freshShoe();hand=[card(),card()];dealer=[card(),card()];doubled=false;active=true;if(value(hand).total===21){message('Blackjack — dealer check.');dealerTurn();}else{message('Your move: hit, stand, or double.');}draw();}function hit(){if(!active)return;hand.push(card());if(value(hand).total>21)finish();else if(value(hand).total===21)dealerTurn();else draw();}function stand(){if(active)dealerTurn();}function dbl(){if(!active||hand.length!==2||bank<wager)return;wager*=2;doubled=true;hit();}function hint(){if(!active)return;const v=value(hand).total,up=dealer[0].n;if(v<=11)message('Basic strategy: hit.');else if(v>=17)message('Basic strategy: stand.');else if(v===12&&up>=4&&up<=6)message('Basic strategy: stand against a weak up-card.');else message(up>=7?'Basic strategy: hit.':'Basic strategy: stand.');}t.on($('bj-deal'),'click',deal);t.on($('bj-hit'),'click',hit);t.on($('bj-stand'),'click',stand);t.on($('bj-double'),'click',dbl);t.on($('bj-hint'),'click',hint);t.on(document,'keydown',e=>{if(e.key.toLowerCase()==='h')hit();if(e.key.toLowerCase()==='s')stand();if(e.key.toLowerCase()==='d')dbl();if(e.key.toLowerCase()==='p')hint();});shoe=freshShoe();draw();}
+function newBlackjack(){const t=plusTools(),key='dejavu1.blackjack.best',suits=['♠','♥','♦','♣'],ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];plusStats([['Bankroll','bj-bank'],['Shoe','bj-shoe'],['Wins','bj-wins'],['Best','bj-best',true,gameBestV2(key)||'—']]);plusFrame('Blackjack','H hit · S stand · D double · P basic-strategy hint · dealer stands on soft 17',`<div class="blackjack"><div class="bj-table"><div class="bj-hand"><b>DEALER</b><div id="bj-dealer"></div></div><div class="bj-message" id="bj-message">Place your hand.</div><div class="bj-hand"><b>PLAYER</b><div id="bj-player"></div></div></div><div class="bj-controls"><button class="btn primary" id="bj-deal">Deal</button><button class="btn" id="bj-hit">Hit</button><button class="btn" id="bj-stand">Stand</button><button class="btn" id="bj-double">Double</button><button class="btn" id="bj-hint">Hint</button></div></div>`,t);let shoe,hand=[],dealer=[],bank=100,wins=0,wager=10,active=false,doubled=false;const card=()=>{if(shoe.length<24)shoe=freshShoe();return shoe.pop();};const newShoe=()=>suits.flatMap(s=>ranks.map((r,i)=>({s,r,n:Math.min(i+1,10),ace:i===0})));const shuffle=a=>{for(let i=a.length-1;i;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};const freshShoe=()=>shuffle(Array.from({length:6},()=>newShoe()).flat());const value=h=>{let total=h.reduce((n,c)=>n+c.n,0),aces=h.filter(c=>c.ace).length;while(aces&&total+10<=21){total+=10;aces--;}return{total,soft:aces>0};};const face=c=>c.r+c.s;const message=(m,good)=>{$('bj-message').textContent=m;$('bj-message').classList.toggle('good',!!good);};function draw(hole=true){$('bj-player').innerHTML=hand.map(c=>`<span class="bj-card ${c.s==='♥'||c.s==='♦'?'red':''}">${face(c)}</span>`).join('');$('bj-dealer').innerHTML=dealer.map((c,i)=>`<span class="bj-card ${i===1&&hole?'hidden-card':' '}">${i===1&&hole?'?':face(c)}</span>`).join('');$('bj-bank').textContent=bank;$('bj-wins').textContent=wins;$('bj-shoe').textContent=shoe.length;}function finish(){active=false;const p=value(hand).total,d=value(dealer).total,pbj=p===21&&hand.length===2,dbj=d===21&&dealer.length===2;if(p>21){bank-=wager;message('Bust. Dealer wins.');}else if(pbj&&!dbj){bank+=wager*1.5;wins++;message('Blackjack, paid 3:2!',true);}else if(dbj&&!pbj){bank-=wager;message('Dealer blackjack.');}else if(d>21||p>d){bank+=wager;wins++;message('You win.',true);}else if(p===d){message('Push, your wager returns.');}else{bank-=wager;message('Dealer wins.');}draw(false);const best=Math.max(gameBestV2(key),bank);saveBest(key,best);$('bj-best').textContent=best;}function dealerTurn(){while(value(dealer).total<17)dealer.push(card());finish();}function deal(){if(bank<=0){bank=100;message('Bankroll reset for a new shoe.');}wager=10;shoe=shoe?.length>24?shoe:freshShoe();hand=[card(),card()];dealer=[card(),card()];doubled=false;active=true;if(value(hand).total===21){message('Blackjack, dealer check.');dealerTurn();}else{message('Your move: hit, stand, or double.');}draw();}function hit(){if(!active)return;hand.push(card());if(value(hand).total>21)finish();else if(value(hand).total===21)dealerTurn();else draw();}function stand(){if(active)dealerTurn();}function dbl(){if(!active||hand.length!==2||bank<wager)return;wager*=2;doubled=true;hit();}function hint(){if(!active)return;const v=value(hand).total,up=dealer[0].n;if(v<=11)message('Basic strategy: hit.');else if(v>=17)message('Basic strategy: stand.');else if(v===12&&up>=4&&up<=6)message('Basic strategy: stand against a weak up-card.');else message(up>=7?'Basic strategy: hit.':'Basic strategy: stand.');}t.on($('bj-deal'),'click',deal);t.on($('bj-hit'),'click',hit);t.on($('bj-stand'),'click',stand);t.on($('bj-double'),'click',dbl);t.on($('bj-hint'),'click',hint);t.on(document,'keydown',e=>{if(e.key.toLowerCase()==='h')hit();if(e.key.toLowerCase()==='s')stand();if(e.key.toLowerCase()==='d')dbl();if(e.key.toLowerCase()==='p')hint();});shoe=freshShoe();draw();}
 function newBreakoutLegacy(){const t=plusTools(),key='dejavu1.breakout.doodle.best',W=640,H=430;plusStats([['Score','db-score'],['Level','db-level'],['Lives','db-lives'],['Best','db-best',true,gameBestV2(key)||'—']]);plusFrame('Brick Break','Mouse, touch, or ←→ paddle · angle the rebound · catch powerups and build a combo',`<div class="doodle-break"><canvas id="db-canvas" class="arcade-canvas" width="640" height="430"></canvas><div class="game-overlay" id="db-overlay"><div class="g-title">BRICK BREAK</div><div class="g-sub">A bright, fast doodle-style breakout. Clear the pattern before you run out of lives.</div><button class="btn primary">Launch</button></div></div>`,t);const c=$('db-canvas'),x=c.getContext('2d');let paddle=260,balls,bricks,powers,score,level,lives,combo,run,timer,keys={},pointer=320;const colors=['#ff7a2f','#ffcc66','#65c9ff','#77d68a','#e36bff'];function setup(){bricks=[];const rows=Math.min(4+level,8);for(let r=0;r<rows;r++)for(let col=0;col<10;col++)bricks.push({x:18+col*61,y:36+r*23,w:55,h:17,hp:(r+level>7&&col%3===0)?2:1,max:1});balls=[{x:W/2,y:H-62,vx:3.2+level*.2,vy:-4.6-level*.18,r:7}];powers=[];combo=0;}function start(){score=0;level=1;lives=3;run=true;$('db-overlay').style.display='none';setup();clearInterval(timer);timer=t.every(tick,16);draw();}function hit(){lives--;combo=0;if(lives){balls=[{x:W/2,y:H-62,vx:3.2+level*.2,vy:-4.6-level*.18,r:7}];}else{run=false;clearInterval(timer);const best=Math.max(gameBestV2(key),score);saveBest(key,best);$('db-best').textContent=best;$('db-overlay').innerHTML=`<div class="g-title">RUN OVER</div><div class="g-sub">${score} points · level ${level}</div><button class="btn primary">Play again</button>`;$('db-overlay').style.display='flex';}}function tick(){if(!run)return;const pw=level>3?76:94;if(keys.ArrowLeft||keys.KeyA)paddle=Math.max(paddle-8,0);if(keys.ArrowRight||keys.KeyD)paddle=Math.min(paddle+8,W-pw);paddle=Math.max(0,Math.min(W-pw,pointer-pw/2));balls.forEach(b=>{b.x+=b.vx;b.y+=b.vy;if(b.x<b.r||b.x>W-b.r){b.vx*=-1;b.x=Math.max(b.r,Math.min(W-b.r,b.x));}if(b.y<b.r)b.vy=Math.abs(b.vy);if(b.vy>0&&b.y+b.r>H-34&&b.y<H-18&&b.x>paddle&&b.x<paddle+pw){const hit=(b.x-(paddle+pw/2))/(pw/2);b.vx=hit*6;b.vy=-Math.max(4,Math.hypot(b.vx,b.vy));combo++;}for(const br of bricks){if(!br.hp||b.x+b.r<br.x||b.x-b.r>br.x+br.w||b.y+b.r<br.y||b.y-b.r>br.y+br.h)continue;br.hp--;b.vy*=-1;score+=br.hp?5:10+combo*2;if(!br.hp&&Math.random()<.18)powers.push({x:br.x+br.w/2,y:br.y,kind:Math.random()<.5?'wide':'multi'});break;}});powers.forEach(p=>p.y+=2);powers=powers.filter(p=>{if(p.y>H-42&&p.x>paddle-8&&p.x<paddle+pw+8){if(p.kind==='wide')paddle=Math.max(0,paddle-20);else if(balls.length<3)balls.push({...balls[0],vx:-balls[0].vx});return false;}return p.y<H+20;});if(balls.some(b=>b.y>H+20)){balls=balls.filter(b=>b.y<=H+20);if(!balls.length)hit();}if(bricks.every(b=>!b.hp)){level++;const best=Math.max(gameBestV2(key),level);saveBest(key,best);$('db-best').textContent=best;setup();}draw();}function draw(){x.fillStyle='#101c35';x.fillRect(0,0,W,H);x.fillStyle='rgba(255,255,255,.08)';for(let i=0;i<70;i++)x.fillRect((i*97)%W,(i*53)%H,2,2);bricks?.forEach(b=>{if(!b.hp)return;x.fillStyle=colors[(Math.floor(b.y/23)+Math.floor(b.x/61))%colors.length];x.fillRect(b.x,b.y,b.w,b.h);if(b.hp>1){x.strokeStyle='#fff';x.strokeRect(b.x+3,b.y+3,b.w-6,b.h-6);}});powers?.forEach(p=>{x.fillStyle=p.kind==='wide'?'#5cc16f':'#65c9ff';x.beginPath();x.arc(p.x,p.y,10,0,7);x.fill();x.fillStyle='#102';x.fillText(p.kind==='wide'?'W':'M',p.x-4,p.y+4);});x.fillStyle='#fff';x.fillRect(paddle,H-25,level>3?76:94,12);balls?.forEach(b=>{x.fillStyle='#ffe69b';x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.fill();});$('db-score').textContent=score;$('db-level').textContent=level;$('db-lives').textContent=lives;}t.on(c,'pointermove',e=>{const r=c.getBoundingClientRect();pointer=(e.clientX-r.left)/r.width*W;});t.on(c,'pointerdown',()=>{if(!run)start();});t.on(document,'keydown',e=>{if(['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code))e.preventDefault();keys[e.code]=true;});t.on(document,'keyup',e=>{keys[e.code]=false;});t.on($('db-overlay button'),'click',start);start();}
 
 function newPacmanArcade(){
@@ -121,7 +121,7 @@ function newPacmanArcade(){
       ctx.fillStyle='#e23b2e';ctx.beginPath();ctx.arc(fx-2,fy-4,4.4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(fx+3.4,fy-6.4,4.2,0,Math.PI*2);ctx.fill();
     }
     $('ppd-score').textContent=score.toLocaleString();$('ppd-lives').textContent=lives;$('ppd-level').textContent=level;}
-  const keyDown=e=>{const d={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'}[e.code];if(d){e.preventDefault();wanted=d;begin();}if(e.code==='Space'){e.preventDefault();paused=!paused;message(paused?'Paused — press Space to resume':'Back in the maze');}};t.on(document,'keydown',keyDown);document.querySelectorAll('[data-pacd]').forEach(button=>t.on(button,'pointerdown',e=>{e.preventDefault();wanted=button.dataset.pacd;begin();}));t.on(document,'pointerup',()=>{});t.on(document,'pointercancel',()=>{});t.on(canvas,'pointerdown',()=>begin());t.on($('ppd-overlay'),'click',e=>{if(e.target.closest('button')){resetBoard();score=0;lives=3;level=1;begin();}});t.on($('ppd-pause'),'click',()=>{if(run){paused=!paused;message(paused?'Paused':'Back in the maze');}});resetBoard();score=0;lives=3;level=1;draw();
+  const keyDown=e=>{const d={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',KeyW:'up',KeyS:'down',KeyA:'left',KeyD:'right'}[e.code];if(d){e.preventDefault();wanted=d;begin();}if(e.code==='Space'){e.preventDefault();paused=!paused;message(paused?'Paused: press Space to resume':'Back in the maze');}};t.on(document,'keydown',keyDown);document.querySelectorAll('[data-pacd]').forEach(button=>t.on(button,'pointerdown',e=>{e.preventDefault();wanted=button.dataset.pacd;begin();}));t.on(document,'pointerup',()=>{});t.on(document,'pointercancel',()=>{});t.on(canvas,'pointerdown',()=>begin());t.on($('ppd-overlay'),'click',e=>{if(e.target.closest('button')){resetBoard();score=0;lives=3;level=1;begin();}});t.on($('ppd-pause'),'click',()=>{if(run){paused=!paused;message(paused?'Paused':'Back in the maze');}});resetBoard();score=0;lives=3;level=1;draw();
 }
 
 function newBreakoutDeep(){
@@ -494,7 +494,7 @@ function api(path) {
 
 /* ---- announcements --------------------------------------------------------
  * One polite live region for toasts, so screen-reader users hear the same
- * "Paused — confirmed" or "Pause failed" a sighted user sees. */
+ * "Paused - confirmed" or "Pause failed" a sighted user sees. */
 
 /* Copy text for a bug report. navigator.clipboard only exists on https://
  * and localhost, and a phone on the LAN reaches this over plain http, so
@@ -565,7 +565,7 @@ async function runCommand(button, path, body, labels) {
   if (button) { button.textContent = original; button.disabled = false; button.dataset.phase = confirmed ? 'done' : 'failed'; setTimeout(() => delete button.dataset.phase, 1600); }
   // "Confirmed by the printer" only when the printer's own state was read
   // back and checked - saving a rule or a queue entry is not a printer act.
-  if (confirmed && labels.expect && state) toast(`${labels.done} — confirmed by the printer in ${ms} ms`, 'ok');
+  if (confirmed && labels.expect && state) toast(`${labels.done}: confirmed by the printer in ${ms} ms`, 'ok');
   else if (confirmed) toast(`${labels.done} (${ms} ms)`, 'ok');
   else toast(`${labels.done.split(' ')[0]} sent, but the printer now reports "${state ? state.state : 'unknown'}"`, 'warn', 7000);
   return { ok: true, result, confirmed };
@@ -688,7 +688,7 @@ function mirrorInTab(data) {
   const name = (data && data.printer_name) || 'Printer';
   const pct = s ? Math.round((data.progress || 0) * 100) : 0;
   const lead = { printing: `${pct}%`, paused: 'Paused', complete: 'Finished', error: 'Needs attention' }[s];
-  const title = lead ? `${lead} · ${name} — Deja Vu1` : BASE_TITLE;
+  const title = lead ? `${lead} · ${name} · Deja Vu1` : BASE_TITLE;
   if (title !== tabMirror.title) { document.title = title; tabMirror.title = title; }
 
   // Redrawn per whole percent, not per live update.
@@ -782,12 +782,12 @@ async function loadConnection() {
   } else if (demoOn) {
     pill.classList.add('is-demo');
     label.textContent = 'Simulated';
-    $('foot-state').textContent = 'Demo data — no printer connected, nothing is contacted.';
+    $('foot-state').textContent = 'Demo data: no printer connected, nothing is contacted.';
   } else {
     pill.classList.remove('is-demo');
     label.textContent = 'Not connected';
     $('foot-state').textContent = (data.printers || []).length
-      ? data.message : 'No printer connected — nothing is contacted.';
+      ? data.message : 'No printer connected. Nothing is contacted.';
   }
 
   $('notice').hidden = !(demoOn && !data.connected);
@@ -935,11 +935,11 @@ function renderStatusRibbon(data) {
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
-    setText(text, data.state === 'error' ? `Error — ${data.state_message || ''}` : 'Idle — no print running.');
+    setText(text, data.state === 'error' ? `Error: ${data.state_message || ''}` : 'Idle: no print running.');
     bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
-    setText(text, `${data.printer_name ? data.printer_name + ' · ' : ''}${word} — ${data.current_file || 'unknown file'}`);
+    setText(text, `${data.printer_name ? data.printer_name + ' · ' : ''}${word}: ${data.current_file || 'unknown file'}`);
     bar.hidden = false; pct.hidden = false;
     // Eases like the other progress visuals (Workshop.tween: each frame
     // closes a fixed fraction of the gap), so switching printers glides.
@@ -1048,7 +1048,7 @@ async function markDone(button) {
     const { ok, status, body } = await postJSON(api('/api/maintenance/done'), { task_id: button.dataset.task });
     if (!ok) throw new Error(body.error || (body.connected === false ? 'No printer connected' : `the dashboard answered ${status}`));
     await loadMaintenance();
-    toast('Marked done — its counter starts again from now', 'ok', 2600);
+    toast('Marked done: its counter starts again from now', 'ok', 2600);
   } catch (err) {
     console.error('Could not mark task done:', err);
     toast(`Couldn't mark it done: ${err.message}`, 'bad', 6000);
@@ -1184,7 +1184,7 @@ function renderControlTab(state) {
   const running = state.state === 'printing' || state.state === 'paused';
   const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
   if (dot.style.background !== dotColor) dot.style.background = dotColor;
-  setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)} — ${state.current_file || state.state_message || ''}`);
+  setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
   setText(sub, running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
@@ -1456,7 +1456,7 @@ async function loadPrinterConsole() {
   }
   $('gcode-log').innerHTML = [...data.log].reverse().map(entry => `
     <div><span class="c-cmd">&gt; ${esc(entry.detail)}</span></div>
-    <div class="c-detail ${entry.kind === 'error' ? 'is-failed' : ''}">${entry.kind === 'error' ? 'failed' : 'ok'} — ${esc(entry.kind)}</div>`).join('') || '<span class="c-detail">No commands sent yet.</span>';
+    <div class="c-detail ${entry.kind === 'error' ? 'is-failed' : ''}">${entry.kind === 'error' ? 'failed' : 'ok'}: ${esc(entry.kind)}</div>`).join('') || '<span class="c-detail">No commands sent yet.</span>';
 }
 
 async function loadPrinterControl() {
@@ -1506,7 +1506,7 @@ async function loadFilament() {
   const idle = data.idle_spools || [];
   if (idle.length) {
     idleNote.hidden = false;
-    idleNote.textContent = `${idle[0].color_name} has been loaded ${idle[0].days_loaded.toFixed(0)} days — worth checking it hasn't absorbed moisture.`;
+    idleNote.textContent = `${idle[0].color_name} has been loaded ${idle[0].days_loaded.toFixed(0)} days. Worth checking it hasn't absorbed moisture.`;
   } else {
     idleNote.hidden = true;
   }
@@ -1561,8 +1561,8 @@ async function loadCompare() {
   if (hasData(sanityData) && !isModuleDisabled(sanityData) && sanityData.reasons) {
     if (sanityData.safe_to_print) {
       rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">${sanityData.colour_measured === false
-        ? 'Safe to print — maintenance and docks check out. Colour wasn’t measured (no sensor fitted); Confirm Print still compares the file with what the printer reports loaded.'
-        : 'Safe to print — maintenance, dock, and colour all check out.'}</div>`);
+        ? 'Safe to print: maintenance and docks check out. Colour wasn’t measured (no sensor fitted); Confirm Print still compares the file with what the printer reports loaded.'
+        : 'Safe to print: maintenance, dock, and colour all check out.'}</div>`);
     } else {
       sanityData.reasons.forEach(msg => rows.push(`<div class="crow" style="border-left:3px solid var(--bad);">${esc(msg)}</div>`));
     }
@@ -1827,7 +1827,7 @@ async function loadCost() {
     rows.push(`
       <div class="crow" style="border-left:3px solid var(--accent);">
         <strong>This print, so far:</strong> $${current.cost_so_far.toFixed(2)}
-        (est. total once done: $${current.total_cost.toFixed(2)}) — ${Math.round(current.progress * 100)}% complete
+        (est. total once done: $${current.total_cost.toFixed(2)}), ${Math.round(current.progress * 100)}% complete
       </div>`);
   }
 
@@ -1933,7 +1933,7 @@ function initBridges() {
 }
 
 /* ==========================================================================
-   While You Wait — six fresh offline arcade games
+   While You Wait: six fresh offline arcade games
 
    Rebuilt from the rules of Asteroids, Pong, Minesweeper, Guideline Tetris,
    Pac-Man, and Klondike. This section owns every game timer and listener;
@@ -1987,14 +1987,14 @@ function newAsteroids() {
      20/50/100 scoring with an extra ship every 10,000, big and small saucers
      whose aim sharpens as the score climbs, a hyperspace that can kill you,
      a respawn that waits for a clear center, and touch pads for mobile. */
-  arcadeShell(host, 'Asteroids', 'Rotate with the arrows, thrust, and shoot · H hyperspaces at a risk · saucers hunt you as you score', '<canvas id="arcade-asteroids" class="arcade-canvas" aria-label="Asteroids"></canvas><div class="pong-pad"><button class="btn" data-ast="ccw">↺</button><button class="btn" data-ast="fire">◉</button><button class="btn" data-ast="cw">↻</button><button class="btn" data-ast="thrust">▲</button><button class="btn" data-ast="hyper">H</button></div><div class="arcade-overlay" id="asteroids-overlay"><b>ASTEROIDS</b><span>Momentum, wraparound, splitting rocks — and saucers that learn your position.</span><button class="btn primary">Launch</button></div>', `<div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="as-score">0</div></div><div class="game-stat"><div class="g-key">Ships</div><div class="g-val" id="as-lives">3</div></div><div class="game-stat"><div class="g-key">Wave</div><div class="g-val" id="as-wave">1</div></div><div class="game-stat"><div class="g-key">Best</div><div class="g-val accent" id="as-best">${gameBest(key) || '—'}</div></div>`, tools);
+  arcadeShell(host, 'Asteroids', 'Rotate with the arrows, thrust, and shoot · H hyperspaces at a risk · saucers hunt you as you score', '<canvas id="arcade-asteroids" class="arcade-canvas" aria-label="Asteroids"></canvas><div class="pong-pad"><button class="btn" data-ast="ccw">↺</button><button class="btn" data-ast="fire">◉</button><button class="btn" data-ast="cw">↻</button><button class="btn" data-ast="thrust">▲</button><button class="btn" data-ast="hyper">H</button></div><div class="arcade-overlay" id="asteroids-overlay"><b>ASTEROIDS</b><span>Momentum, wraparound, splitting rocks, and saucers that learn your position.</span><button class="btn primary">Launch</button></div>', `<div class="game-stat"><div class="g-key">Score</div><div class="g-val" id="as-score">0</div></div><div class="game-stat"><div class="g-key">Ships</div><div class="g-val" id="as-lives">3</div></div><div class="game-stat"><div class="g-key">Wave</div><div class="g-val" id="as-wave">1</div></div><div class="game-stat"><div class="g-key">Best</div><div class="g-val accent" id="as-best">${gameBest(key) || '—'}</div></div>`, tools);
   const [canvas, ctx] = gameCanvas(host, 'arcade-asteroids', W, H);
   let ship = null, rocks = [], shots = [], sparks = [], saucer = null, saucerTimer = null, score = 0, lives = 3, wave = 1, nextExtra = 10000, playing = false, loop = null, respawnWait = 0;
   const keys = {};
   const wrap = o => { o.x = (o.x + W) % W; o.y = (o.y + H) % H; };
   const makeRock = (x, y, size = 3, speedScale = 1) => ({ x, y, size, r: size * 13, vx: (Math.random() - .5) * 2.2 * speedScale, vy: (Math.random() - .5) * 2.2 * speedScale, spin: (Math.random() - .5) * .05, angle: Math.random() * 6.28, points: Array.from({ length: 9 }, (_, i) => .78 + Math.random() * .35 + Math.sin(i * 2.7) * .04) });
   /* Every wave opens with large rocks only, spread away from the ship, and
-     drifts a little faster each wave — the original ramp. */
+     drifts a little faster each wave, the original ramp. */
   const waveRocks = count => { rocks = []; const px = ship ? ship.x : W / 2, py = ship ? ship.y : H / 2; for (let i = 0; i < count; i++) { let x, y; do { x = Math.random() * W; y = Math.random() * H; } while (Math.hypot(x - px, y - py) < 150); rocks.push(makeRock(x, y, 3, 1 + wave * .06)); } };
   const spawnSaucer = () => { const small = score >= 40000 || Math.random() < .35; const fromLeft = Math.random() < .5; saucer = { x: fromLeft ? -22 : W + 22, y: 40 + Math.random() * (H - 80), vx: (small ? 1.9 : 1.1) * (fromLeft ? 1 : -1), vy: (Math.random() - .5) * .9, small, r: small ? 12 : 18, cd: 60 }; };
   const scheduleSaucer = () => { if (saucerTimer) return; saucerTimer = tools.later(() => { saucerTimer = null; if (playing && !saucer) spawnSaucer(); }, 12000 + Math.random() * 9000); };
@@ -2140,7 +2140,7 @@ function newPong() {
   const [canvas, ctx] = gameCanvas(host, 'arcade-pong', W, H); let p = H / 2 - 45, ai = p, ball, you = 0, them = 0, rally = 0, playing = false, loop;
   function reset() { p = H / 2 - 45; ai = p; ball = { x: W / 2, y: H / 2, vx: 5, vy: (Math.random() - .5) * 4 }; you = them = rally = 0; playing = true; $('pong-overlay').style.display = 'none'; loop = tools.every(tick, 16); }
   function serve(direction) { ball = { x: W / 2, y: H / 2, vx: direction * (5 + Math.min(2, rally * .08)), vy: (Math.random() - .5) * 4 }; }
-  function point(won) { if (won) you++; else them++; rally = 0; if (you >= 11 || them >= 11) { playing = false; clearInterval(loop); const best = Math.max(gameBest(key), you); setGameBest(key, best); $('po-best').textContent = best; $('pong-overlay').innerHTML = `<b>${you > them ? 'MATCH WON' : 'MATCH LOST'}</b><span>${you} — ${them}</span><button class="btn primary">Rematch</button>`; $('pong-overlay').style.display = 'flex'; } else serve(won ? 1 : -1); }
+  function point(won) { if (won) you++; else them++; rally = 0; if (you >= 11 || them >= 11) { playing = false; clearInterval(loop); const best = Math.max(gameBest(key), you); setGameBest(key, best); $('po-best').textContent = best; $('pong-overlay').innerHTML = `<b>${you > them ? 'MATCH WON' : 'MATCH LOST'}</b><span>${you} - ${them}</span><button class="btn primary">Rematch</button>`; $('pong-overlay').style.display = 'flex'; } else serve(won ? 1 : -1); }
   function tick() { if (!playing) return; ball.x += ball.vx; ball.y += ball.vy; if (ball.y < 10 || ball.y > H - 10) ball.vy *= -1; const target = ball.vx > 0 ? ball.y - 42 : H / 2 - 45; ai += Math.max(-3.8, Math.min(3.8, target - ai)) * .08; if (ball.x < 38 && ball.x > 22 && ball.y > p - 8 && ball.y < p + 98 && ball.vx < 0) { ball.x = 38; const impact = (ball.y - (p + 45)) / 45; ball.vx = Math.min(9, Math.abs(ball.vx) * 1.045); ball.vy = impact * 5.2; rally++; } if (ball.x > W - 38 && ball.x < W - 22 && ball.y > ai - 8 && ball.y < ai + 98 && ball.vx > 0) { ball.x = W - 38; const impact = (ball.y - (ai + 45)) / 45; ball.vx = -Math.min(9, Math.abs(ball.vx) * 1.045); ball.vy = impact * 5.2; rally++; } if (ball.x < -20) point(false); if (ball.x > W + 20) point(true); draw(); }
   function draw() { ctx.fillStyle = '#101827'; ctx.fillRect(0, 0, W, H); ctx.setLineDash([8, 12]); ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#f8fbff'; ctx.fillRect(22, p, 16, 90); ctx.fillStyle = '#ff9c66'; ctx.fillRect(W - 38, ai, 16, 90); ctx.fillStyle = '#ffe69b'; ctx.beginPath(); ctx.arc(ball?.x || W/2, ball?.y || H/2, 8, 0, 7); ctx.fill(); $('po-you').textContent = you; $('po-rally').textContent = rally; }
   const steer = event => { const rect = canvas.getBoundingClientRect(); p = Math.max(0, Math.min(H - 90, (event.clientY - rect.top) / rect.height * H - 45)); }; tools.on(canvas, 'pointermove', steer); tools.on(canvas, 'pointerdown', () => { if (!playing) reset(); }); tools.on(host.querySelector('.arcade-overlay button'), 'click', reset); draw();
@@ -2153,7 +2153,7 @@ function newMines() {
   function newGame() { cells = Array.from({ length: S * S }, () => ({ mine: false, open: false, flag: false, n: 0 })); started = over = false; flags = seconds = 0; clearInterval(timer); board.innerHTML = ''; for (let i = 0; i < S * S; i++) { const button = document.createElement('button'); button.className = 'mine-cell'; button.dataset.i = i; board.appendChild(button); } draw(); }
   const neighbors = i => { const r = Math.floor(i / S), c = i % S, out = []; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if ((dr || dc) && rr >= 0 && rr < S && cc >= 0 && cc < S) out.push(rr * S + cc); } return out; };
   function plant(first) { const safe = new Set([first, ...neighbors(first)]), choices = [...Array(S * S).keys()].filter(i => !safe.has(i)); for (let i = choices.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [choices[i], choices[j]] = [choices[j], choices[i]]; } choices.slice(0, M).forEach(i => cells[i].mine = true); cells.forEach((cell, i) => { cell.n = neighbors(i).filter(n => cells[n].mine).length; }); started = true; timer = tools.every(() => { seconds++; $('mi-time').textContent = seconds; }, 1000); }
-  function reveal(i) { if (over || cells[i].flag || cells[i].open) return; if (!started) plant(i); cells[i].open = true; if (cells[i].mine) { over = true; cells.forEach(c => { if (c.mine) c.open = true; }); $('mine-face').textContent = '💥'; $('mine-message').textContent = 'Field lost — start another sweep.'; clearInterval(timer); draw(); return; } if (!cells[i].n) neighbors(i).forEach(reveal); const safe = cells.filter(c => !c.mine && c.open).length; if (safe === S * S - M) { over = true; clearInterval(timer); const best = gameBest(key); if (!best || seconds < best) { setGameBest(key, seconds); $('mi-best').textContent = seconds; } $('mine-face').textContent = '😎'; $('mine-message').textContent = 'Clear field. Clean sweep.'; } draw(); }
+  function reveal(i) { if (over || cells[i].flag || cells[i].open) return; if (!started) plant(i); cells[i].open = true; if (cells[i].mine) { over = true; cells.forEach(c => { if (c.mine) c.open = true; }); $('mine-face').textContent = '💥'; $('mine-message').textContent = 'Field lost. Start another sweep.'; clearInterval(timer); draw(); return; } if (!cells[i].n) neighbors(i).forEach(reveal); const safe = cells.filter(c => !c.mine && c.open).length; if (safe === S * S - M) { over = true; clearInterval(timer); const best = gameBest(key); if (!best || seconds < best) { setGameBest(key, seconds); $('mi-best').textContent = seconds; } $('mine-face').textContent = '😎'; $('mine-message').textContent = 'Clear field. Clean sweep.'; } draw(); }
   function flag(i) { if (over || cells[i].open) return; cells[i].flag = !cells[i].flag; flags += cells[i].flag ? 1 : -1; draw(); }
   function draw() { [...board.children].forEach((button, i) => { const c = cells[i]; button.className = `mine-cell ${c.open ? 'open' : ''} ${c.flag ? 'flag' : ''} ${c.mine && c.open ? 'mine' : ''}`; button.textContent = c.flag ? '⚑' : c.open ? (c.mine ? '✹' : c.n || '') : ''; button.style.setProperty('--n', c.n); }); $('mi-count').textContent = M - flags; }
   tools.on(board, 'click', e => { const cell = e.target.closest('.mine-cell'); if (cell) reveal(Number(cell.dataset.i)); }); tools.on(board, 'contextmenu', e => { e.preventDefault(); const cell = e.target.closest('.mine-cell'); if (cell) flag(Number(cell.dataset.i)); }); tools.on($('mine-new'), 'click', newGame); newGame();
@@ -2264,7 +2264,7 @@ function echoMazeV2() {
   function nextEchoStep(from, target) { const queue = [from], came = new Map([[cellKey(from.r, from.c), null]]); while (queue.length) { const current = queue.shift(); if (current.r === target.r && current.c === target.c) break; grid[current.r][current.c].walls.forEach((wall, direction) => { if (wall) return; const nr = current.r + DIRS[direction][0], nc = current.c + DIRS[direction][1], next = cellKey(nr, nc); if (nr >= 0 && nr < size && nc >= 0 && nc < size && !came.has(next)) { came.set(next, current); queue.push({ r: nr, c: nc }); } }); } let current = target; if (!came.has(cellKey(current.r, current.c))) return from; while (came.get(cellKey(current.r, current.c))) { const parent = came.get(cellKey(current.r, current.c)); if (parent.r === from.r && parent.c === from.c) return current; current = parent; } return current; }
   function draw() { const current = grid[player.r][player.c], left = (facing + 3) % 4, right = (facing + 1) % 4; [['e2-front', current.walls[facing]], ['e2-left', current.walls[left]], ['e2-right', current.walls[right]]].forEach(([id, solid]) => $(id).classList.toggle('open', !solid)); const distance = Math.abs(player.r - echo.r) + Math.abs(player.c - echo.c); room.classList.toggle('danger', status === 'playing' && distance <= 3); $('e2-level').textContent = level; $('e2-steps').textContent = steps; $('e2-echo').textContent = status === 'won' ? 'escaped' : `${distance} rooms`; map.innerHTML = ''; grid.forEach((row, r) => row.forEach((cell, c) => { const dot = document.createElement('i'); dot.className = !cell.seen ? 'fog' : r === player.r && c === player.c ? 'you' : r === echo.r && c === echo.c ? 'echo' : r === size - 1 && c === size - 1 ? 'goal' : ''; map.appendChild(dot); })); const overlay = $('e2-overlay'); overlay.style.display = status === 'playing' ? 'none' : 'flex'; if (status === 'won') overlay.innerHTML = `<div class="g-title">Beacon found</div><div class="g-sub">${steps} steps · level ${level} cleared</div><button class="btn primary" type="button">Next level</button>`; }
   function begin() { if (status === 'ready') { status = 'playing'; draw(); } }
-  function move(direction) { if (status === 'won') { level = Math.min(12, level + 1); size = Math.min(12, 8 + level); generate(); begin(); return; } begin(); if (direction === 'left') { facing = (facing + 3) % 4; draw(); return; } if (direction === 'right') { facing = (facing + 1) % 4; draw(); return; } const cell = grid[player.r][player.c]; if (cell.walls[facing]) { gameToastV2(stage, 'A wall blocks the way', 'maze-toast'); return; } player.r += DIRS[facing][0]; player.c += DIRS[facing][1]; grid[player.r][player.c].seen = true; steps++; echo = nextEchoStep(echo, player); if (echo.r === player.r && echo.c === player.c) { gameToastV2(stage, 'The Echo caught you — back to the entrance', 'maze-toast'); player = { r: 0, c: 0 }; echo = { r: size - 1, c: 0 }; } if (player.r === size - 1 && player.c === size - 1) { status = 'won'; const best = Math.max(gameBestV2(BEST_KEY), level); saveBest(BEST_KEY, best); $('e2-best').textContent = best; } draw(); }
+  function move(direction) { if (status === 'won') { level = Math.min(12, level + 1); size = Math.min(12, 8 + level); generate(); begin(); return; } begin(); if (direction === 'left') { facing = (facing + 3) % 4; draw(); return; } if (direction === 'right') { facing = (facing + 1) % 4; draw(); return; } const cell = grid[player.r][player.c]; if (cell.walls[facing]) { gameToastV2(stage, 'A wall blocks the way', 'maze-toast'); return; } player.r += DIRS[facing][0]; player.c += DIRS[facing][1]; grid[player.r][player.c].seen = true; steps++; echo = nextEchoStep(echo, player); if (echo.r === player.r && echo.c === player.c) { gameToastV2(stage, 'The Echo caught you, back to the entrance', 'maze-toast'); player = { r: 0, c: 0 }; echo = { r: size - 1, c: 0 }; } if (player.r === size - 1 && player.c === size - 1) { status = 'won'; const best = Math.max(gameBestV2(BEST_KEY), level); saveBest(BEST_KEY, best); $('e2-best').textContent = best; } draw(); }
   const onKey = event => { const direction = { ArrowUp: 'forward', ArrowDown: 'back', ArrowLeft: 'left', ArrowRight: 'right', w: 'forward', s: 'back', a: 'left', d: 'right' }[event.key]; if (!direction) return; event.preventDefault(); if (direction === 'back') { facing = (facing + 2) % 4; move('forward'); } else move(direction); }; tools.on(document, 'keydown', onKey); tools.on(stage, 'pointerdown', event => { if (event.target.closest('.game-overlay')) move('forward'); }); document.querySelectorAll('[data-maze-action]').forEach(button => tools.on(button, 'click', () => move(button.dataset.mazeAction))); tools.on($('e2-new'), 'click', generate); generate();
 }
 
@@ -2316,7 +2316,7 @@ function mergePuzzleV2() {
   function hasMoves() { return grid.some((row, r) => row.some((value, c) => !value || grid[r + 1]?.[c] === value || row[c + 1] === value)); }
   function evaluate(candidate) { let spaces = 0, smooth = 0, max = 0; candidate.forEach((row, r) => row.forEach((value, c) => { if (!value) spaces++; max = Math.max(max, value); if (value && candidate[r]?.[c + 1]) smooth -= Math.abs(Math.log2(value) - Math.log2(candidate[r][c + 1])); if (value && candidate[r + 1]?.[c]) smooth -= Math.abs(Math.log2(value) - Math.log2(candidate[r + 1][c])); })); const corners = [candidate[0][0], candidate[0][3], candidate[3][0], candidate[3][3]]; return spaces * 8 + smooth * 2 + (corners.includes(max) ? max * .5 : 0); }
   function move(direction) { if (over) return; const result = simulate(direction); if (!result.changed) return; undo = { grid: grid.map(row => row.slice()), score }; grid = result.next; score += result.gained; addTile(); saveBest(BEST_KEY, Math.max(gameBestV2(BEST_KEY), score)); if (grid.some(row => row.includes(2048))) won = true; over = !hasMoves(); draw(); }
-  function draw() { board.innerHTML = ''; grid.forEach(row => row.forEach(value => { const tile = document.createElement('i'); tile.className = value ? `tile t${Math.min(15, Math.log2(value))}` : ''; tile.textContent = value || ''; board.appendChild(tile); })); $('q2-score').textContent = score; $('q2-max').textContent = Math.max(...grid.flat()); $('q2-best').textContent = gameBestV2(BEST_KEY) || '—'; $('q2-undo').disabled = !undo; const message = $('q2-message'); message.textContent = over ? `No more moves · score ${score}` : won ? '2048 reached — keep going for a bigger tile.' : ''; message.classList.toggle('is-win', won); }
+  function draw() { board.innerHTML = ''; grid.forEach(row => row.forEach(value => { const tile = document.createElement('i'); tile.className = value ? `tile t${Math.min(15, Math.log2(value))}` : ''; tile.textContent = value || ''; board.appendChild(tile); })); $('q2-score').textContent = score; $('q2-max').textContent = Math.max(...grid.flat()); $('q2-best').textContent = gameBestV2(BEST_KEY) || '—'; $('q2-undo').disabled = !undo; const message = $('q2-message'); message.textContent = over ? `No more moves · score ${score}` : won ? '2048 reached. Keep going for a bigger tile.' : ''; message.classList.toggle('is-win', won); }
   function newGame() { grid = empty(); score = 0; undo = null; over = false; won = false; addTile(); addTile(); draw(); }
   const onKey = event => { const direction = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[event.key]; if (direction) { event.preventDefault(); move(direction); } }; tools.on(document, 'keydown', onKey); document.querySelectorAll('[data-merge-direction]').forEach(button => tools.on(button, 'click', () => move(button.dataset.mergeDirection))); tools.on($('q2-undo'), 'click', () => { if (undo && !over) { grid = undo.grid; score = undo.score; undo = null; draw(); } }); tools.on($('q2-new'), 'click', newGame); tools.on($('q2-hint'), 'click', () => { const directions = ['up', 'left', 'down', 'right']; const best = directions.map(direction => ({ direction, result: simulate(direction) })).filter(item => item.result.changed).sort((a, b) => evaluate(b.result.next) - evaluate(a.result.next))[0]; if (!best) return; board.classList.remove('hint'); void board.offsetWidth; board.classList.add('hint'); gameToastV2(board, `Try ${best.direction}`, 'merge-toast'); });
   let startX = 0, startY = 0; tools.on(board, 'pointerdown', event => { startX = event.clientX; startY = event.clientY; }); tools.on(board, 'pointerup', event => { const dx = event.clientX - startX, dy = event.clientY - startY; if (Math.max(Math.abs(dx), Math.abs(dy)) >= 24) move(Math.abs(dx) > Math.abs(dy) ? dx > 0 ? 'right' : 'left' : dy > 0 ? 'down' : 'up'); }); newGame();
@@ -2391,14 +2391,14 @@ function initSkyDash() {
   const BEST_KEY = 'dejavu1.skydash.best';
   const W = 640, H = 380, GRAVITY = 0.55, FLAP = -8, X = 90, R = 13;
   // The visual body stays R, but what actually collides is a couple of
-  // pixels smaller — the classic "forgiving hitbox" trick that makes a near
+  // pixels smaller - the classic "forgiving hitbox" trick that makes a near
   // miss feel fair instead of feeling like the game lied about the sprite.
   const COLLIDE_R = R - 4;
   // Difficulty ramps with score: faster obstacles, a tighter gap to thread.
   const speedFor = (score) => Math.min(3 + score * 0.12, 7.5);
   const gapFor = (score) => Math.max(128 - score * 2, 86);
   // Past a score threshold, some gaps drift up and down instead of sitting
-  // still — real variety instead of just "everything gets faster."
+  // still - real variety instead of just "everything gets faster."
   const moverChanceFor = (score) => Math.min(Math.max((score - 10) * 0.03, 0), 0.55);
   const ZONES = [
     { at: 0, name: 'Calm Skies' }, { at: 12, name: 'Crosswinds' },
@@ -2417,7 +2417,7 @@ function initSkyDash() {
     <div class="game-surface sky-dash" id="sd-surface" style="width:${W}px; max-width:100%; height:${H}px;">
       <div class="sd-avatar" id="sd-avatar"></div>
       <div class="sd-popups" id="sd-popups"></div>
-      <div class="game-overlay" id="sd-overlay"><div class="g-title">Sky Dash</div><div class="g-sub">Click to start — click again to flap</div></div>
+      <div class="game-overlay" id="sd-overlay"><div class="g-title">Sky Dash</div><div class="g-sub">Click to start, click again to flap</div></div>
     </div>`;
 
   let state = { status: 'idle', y: H / 2, v: 0, squash: 0, obstacles: [], score: 0, time: 0 };
@@ -2462,8 +2462,8 @@ function initSkyDash() {
     else {
       overlay.style.display = 'flex';
       overlay.innerHTML = state.status === 'over'
-        ? `<div class="g-title">Crashed</div><div class="g-sub">Score ${state.score} in ${zoneFor(state.score)} — click to try again</div>`
-        : `<div class="g-title">Sky Dash</div><div class="g-sub">Click to start — click again to flap</div>`;
+        ? `<div class="g-title">Crashed</div><div class="g-sub">Score ${state.score} in ${zoneFor(state.score)}: click to try again</div>`
+        : `<div class="g-title">Sky Dash</div><div class="g-sub">Click to start, click again to flap</div>`;
     }
   }
 
@@ -2573,7 +2573,7 @@ function initEchoMaze() {
     return cells;
   }
 
-  // Breadth-first search over the maze graph — genuine pathfinding, not a
+  // Breadth-first search over the maze graph - genuine pathfinding, not a
   // straight-line chase, so the pursuer actually reasons about walls the
   // same way the player has to.
   function bfsDistances(grid, n, start) {
@@ -2656,7 +2656,7 @@ function initEchoMaze() {
   $('game-host').innerHTML = `
     <div style="display:flex; gap:24px; align-items:flex-start; flex-wrap:wrap;">
       <div style="flex:1; min-width:260px;">
-        <p class="card-sub" style="margin-bottom:12px; max-width:38ch;">Every room looks the same as the last — on purpose. The map only remembers rooms you've been in. Something is hunting you through the walls you can't see — find the glowing exit before it finds you.</p>
+        <p class="card-sub" style="margin-bottom:12px; max-width:38ch;">Every room looks the same as the last, on purpose. The map only remembers rooms you've been in. Something is hunting you through the walls you can't see. Find the glowing exit before it finds you.</p>
         <div class="maze-viewport" id="em-viewport">
           <div class="maze-cube" id="em-cube">
             <div class="maze-wall" id="em-wall-N"></div>
@@ -2733,7 +2733,7 @@ function initEchoMaze() {
       const best = Math.max(readBest(BEST_KEY) ?? 0, maze.n - MIN_N + 1);
       saveBest(BEST_KEY, best);
       $('em-best').textContent = best;
-      overlay.innerHTML = `<div class="g-title">You escaped</div><div class="g-sub">${maze.steps} steps, ${maze.caught} close call${maze.caught === 1 ? '' : 's'} — click New maze for a bigger one</div>`;
+      overlay.innerHTML = `<div class="g-title">You escaped</div><div class="g-sub">${maze.steps} steps, ${maze.caught} close call${maze.caught === 1 ? '' : 's'}, click New maze for a bigger one</div>`;
     }
   }
 
@@ -2745,7 +2745,7 @@ function initEchoMaze() {
       maze.steps += 5;
       maze.row = 0; maze.col = 0; maze.rotation = 0;
       maze.pursuer = { ...maze.lair };
-      popup('The Echo caught you — back to the start');
+      popup('The Echo caught you, back to the start');
     }
   }
 
@@ -2784,16 +2784,16 @@ function initEchoMaze() {
  *   world.transform = rotateZ(-yaw) translate3d(-px, -py, 0)
  * translate3d runs first (moves the world so the player is at the origin),
  * then rotateZ turns that around the camera to match which way they're
- * facing — so the terrain the player hasn't reached yet visibly slides and
+ * facing - so the terrain the player hasn't reached yet visibly slides and
  * spins past as they walk and turn, instead of a room simply swapping out.
  *
  * Minecraft-inspired, not a clone: a blocky, deterministically-generated
  * chunk (flat-topped voxels, elevation via translateZ, real rotated CSS
- * side faces only where a tile is actually taller than its neighbor — the
+ * side faces only where a tile is actually taller than its neighbor - the
  * same "only draw exposed faces" idea real voxel engines use, just done by
  * hand for a couple dozen tiles instead of a renderer). Walk into ore or
  * trees to mine/chop them, then spend wood to place your own blocks. There
- * is no jump and no collision with terrain height — the player always
+ * is no jump and no collision with terrain height - the player always
  * walks at a fixed height, so a hill is climbed by walking onto it rather
  * than jumped up, a deliberate simplification for a browser mini-game.
  * --------------------------------------------------------------------- */
@@ -2828,7 +2828,7 @@ function initBeacon() {
     <div class="game-stat"><div class="g-key">Best level</div><div class="g-val accent" id="bc-best">${readBest(BEST_KEY) ?? '—'}</div></div>`;
 
   $('game-host').innerHTML = `
-    <p class="card-sub" style="margin-bottom:12px; max-width:52ch;">Mine every glowing ore vein and tree in the chunk before time runs out. Spend wood on a plain block, or 3 ore on a glowing torch. Something skittish shares the chunk with you — it keeps its distance unless you crowd it. WASD or arrow keys to move and turn, E to place wood, Q for a torch.</p>
+    <p class="card-sub" style="margin-bottom:12px; max-width:52ch;">Mine every glowing ore vein and tree in the chunk before time runs out. Spend wood on a plain block, or 3 ore on a glowing torch. Something skittish shares the chunk with you. It keeps its distance unless you crowd it. WASD or arrow keys to move and turn, E to place wood, Q for a torch.</p>
     <div class="beacon-viewport" id="bc-viewport">
       <div class="beacon-hud"><span id="bc-hud-left">Resources: 0/0</span><span id="bc-hud-right">Time: —</span></div>
       <div class="beacon-horizon">
@@ -2837,7 +2837,7 @@ function initBeacon() {
         </div>
       </div>
       <div class="beacon-reticle" aria-hidden="true"></div>
-      <div class="game-overlay" id="bc-overlay"><div class="g-title">Block World</div><div class="g-sub">Click to start — WASD / arrows to move and turn</div></div>
+      <div class="game-overlay" id="bc-overlay"><div class="g-title">Block World</div><div class="g-sub">Click to start. WASD / arrows to move and turn</div></div>
     </div>
     <div class="beacon-controls">
       <button class="btn" id="bc-turnl" data-hold="turnL">↺ Turn</button>
@@ -2891,7 +2891,7 @@ function initBeacon() {
   }
 
   // A small, low-stakes wandering creature: it ambles in a random direction
-  // until the player gets close, then flees directly away — a simple
+  // until the player gets close, then flees directly away - a simple
   // reactive state machine (wander vs. flee), not a scripted path.
   function spawnCritter(tiles) {
     const candidates = [...tiles.values()].filter(t => Math.hypot(t.col, t.row) > 2);
@@ -2923,7 +2923,7 @@ function initBeacon() {
   }
 
   // One flat top face plus real rotated CSS side faces, but only toward a
-  // neighbor that's actually lower — the same "don't draw a face nothing
+  // neighbor that's actually lower - the same "don't draw a face nothing
   // will ever occlude" idea a voxel engine uses, applied to ~80 tiles by
   // hand instead of by a renderer.
   function renderVoxel(host, x, y, h, neighborH, colors) {
@@ -2983,7 +2983,7 @@ function initBeacon() {
   }
 
   // Collected resources get a scale-and-fade animation (see .collected in
-  // CSS) instead of vanishing instantly — a small "you got that" beat.
+  // CSS) instead of vanishing instantly - a small "you got that" beat.
   // Once collected, a resource's element is left alone rather than repositioned.
   function positionResources() {
     state.resources.forEach(r => {
@@ -3070,7 +3070,7 @@ function initBeacon() {
     const overlay = $('bc-overlay');
     overlay.style.display = state.status === 'playing' ? 'none' : 'flex';
     if (state.status === 'over') {
-      overlay.innerHTML = `<div class="g-title">Out of time</div><div class="g-sub">Reached level ${state.level} — ${state.wood} wood, ${state.ore} ore — click to try again</div>`;
+      overlay.innerHTML = `<div class="g-title">Out of time</div><div class="g-sub">Reached level ${state.level}: ${state.wood} wood, ${state.ore} ore. Click to try again</div>`;
     }
   }
 
@@ -3103,7 +3103,7 @@ function initBeacon() {
   function tick() {
     if (state.status !== 'playing') return;
 
-    // Acceleration instead of an instant fixed speed — held input eases
+    // Acceleration instead of an instant fixed speed - held input eases
     // toward its target velocity each tick, so starting and stopping (and
     // turning) reads as real momentum rather than a toggle switch.
     const turnInput = (keys.turnR ? 1 : 0) - (keys.turnL ? 1 : 0);
@@ -3196,7 +3196,7 @@ function initStacker() {
   const BEST_KEY = 'dejavu1.stacker.best';
   const W = 300, H = 420, BLOCK_H = 26, VISIBLE_ROWS = Math.floor(H / BLOCK_H);
   // A drop this close to fully flush with the block below counts as
-  // "perfect" — the classic tower-game reward: no shrinkage, a combo tick,
+  // "perfect" - the classic tower-game reward: no shrinkage, a combo tick,
   // and a snap to dead-flush alignment instead of the exact pixel offset.
   const PERFECT_MARGIN = 6;
 
@@ -3207,7 +3207,7 @@ function initStacker() {
 
   $('game-host').innerHTML = `
     <div class="game-surface stacker" id="st-surface" style="width:${W}px; max-width:100%; height:${H}px;">
-      <div class="game-overlay" id="st-overlay"><div class="g-title">Block Stacker</div><div class="g-sub">Click to start — click to drop each block</div></div>
+      <div class="game-overlay" id="st-overlay"><div class="g-title">Block Stacker</div><div class="g-sub">Click to start, click to drop each block</div></div>
     </div>`;
 
   const COLORS = ['#ff9c66', '#7fb2ff', '#5cc16f', '#e0475f'];
@@ -3250,7 +3250,7 @@ function initStacker() {
     $('st-combo').textContent = combo;
     const overlay = $('st-overlay');
     overlay.style.display = status === 'playing' ? 'none' : 'flex';
-    if (status === 'over') overlay.innerHTML = `<div class="g-title">Missed</div><div class="g-sub">Height ${level}, best combo this run ${combo} — click to try again</div>`;
+    if (status === 'over') overlay.innerHTML = `<div class="g-title">Missed</div><div class="g-sub">Height ${level}, best combo this run ${combo}. Click to try again</div>`;
   }
 
   function spawnMoving() {
@@ -3362,7 +3362,7 @@ function initMerge() {
     if (!empties.length) return null;
     const [r, c] = empties[Math.floor(Math.random() * empties.length)];
     // The higher the score climbs, the more often a 4 shows up instead of a
-    // 2 — harder to plan around, same as the real game gets harder late.
+    // 2 - harder to plan around, same as the real game gets harder late.
     const twoChance = Math.max(0.9 - scoreForOdds / 15000, 0.68);
     g[r][c] = Math.random() < twoChance ? 2 : 4;
     return [r, c];
@@ -3447,7 +3447,7 @@ function initMerge() {
   }
 
   // A small heuristic search (empty cells, "smoothness" between neighbors,
-  // and keeping the biggest tile cornered) — not full lookahead, but real
+  // and keeping the biggest tile cornered) - not full lookahead, but real
   // evaluation of the resulting board rather than a coin flip between
   // directions that happen to be legal.
   function evaluateGrid(g) {
@@ -3554,14 +3554,14 @@ function initBreakout() {
   $('game-host').innerHTML = `
     <div class="game-surface breakout" id="bo-surface" style="width:${W}px; max-width:100%; height:${H}px;">
       <div class="bo-paddle" id="bo-paddle" style="width:${PADDLE_W_BASE}px;"></div>
-      <div class="game-overlay" id="bo-overlay"><div class="g-title">Brick Break</div><div class="g-sub">Move the mouse to steer — click to launch. Tougher bricks take two hits; falling capsules are worth catching.</div></div>
+      <div class="game-overlay" id="bo-overlay"><div class="g-title">Brick Break</div><div class="g-sub">Move the mouse to steer, click to launch. Tougher bricks take two hits; falling capsules are worth catching.</div></div>
     </div>`;
 
   const BRICK_W = W / COLS;
   const COLORS = ['#ff9c66', '#ffcc66', '#7fb2ff', '#5cc16f', '#e0475f', '#34c759', '#a78bfa'];
 
   // Every level shrinks the paddle a little and speeds the ball up, on top
-  // of one more row of bricks, up to ROWS_MAX — it keeps going instead of
+  // of one more row of bricks, up to ROWS_MAX - it keeps going instead of
   // stopping the moment the board clears.
   let level = 1;
   let paddleW = PADDLE_W_BASE;
@@ -3590,7 +3590,7 @@ function initBreakout() {
     setTimeout(() => el.remove(), 750);
   }
 
-  // Past level 2, some bricks need two hits — a crack shows after the
+  // Past level 2, some bricks need two hits - a crack shows after the
   // first, distinct from a one-hit brick instead of just "more health".
   function resetBricks(forLevel) {
     const rows = Math.min(3 + Math.floor((forLevel - 1) / 1), ROWS_MAX);
@@ -3649,7 +3649,7 @@ function initBreakout() {
 
     const overlay = $('bo-overlay');
     overlay.style.display = status === 'playing' ? 'none' : 'flex';
-    if (status === 'over') overlay.innerHTML = `<div class="g-title">Game over</div><div class="g-sub">Reached level ${level}, score ${score} — click to try again</div>`;
+    if (status === 'over') overlay.innerHTML = `<div class="g-title">Game over</div><div class="g-sub">Reached level ${level}, score ${score}. Click to try again</div>`;
   }
 
   function applyPowerup(type) {
@@ -3728,7 +3728,7 @@ function initBreakout() {
       saveBest(BEST_KEY, best);
       $('bo-best').textContent = best;
     } else if (bricks.every(b => !b.alive)) {
-      // Cleared the board — advance instead of stopping. Score carries over.
+      // Cleared the board - advance instead of stopping. Score carries over.
       setupLevel(level + 1);
       const best = Math.max(readBest(BEST_KEY) ?? 0, level);
       saveBest(BEST_KEY, best);

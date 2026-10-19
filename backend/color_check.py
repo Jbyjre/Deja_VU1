@@ -2,14 +2,14 @@
 color_check.py
 ==============
 
-MODULE 3 — "Right Color Loaded?" Checker.  STATUS: interface + simulation only.
+MODULE 3 - "Right Color Loaded?" Checker.  STATUS: interface + simulation only.
 No sensor driver code lives here yet, on purpose.
 
 The plan
 --------
 A multi-toolhead printer makes it easy to load the wrong spool. You start a
 two-color print, walk away, and come back to find the logo printed in grey
-instead of orange. Nothing was broken — the printer had no way to know.
+instead of orange. Nothing was broken - the printer had no way to know.
 
 This module will read an optical color sensor (TCS34725 or similar) mounted in
 the filament path ahead of each toolhead. Before a print starts, it compares
@@ -24,7 +24,7 @@ What is here today
 ------------------
 The comparison logic is real and runs now. Color distance, tolerance
 thresholds, and the match/mismatch decision all work. Only the sensor read is
-faked — `read_sensor()` returns a plausible value instead of measuring light.
+faked - `read_sensor()` returns a plausible value instead of measuring light.
 
 Why no driver code yet
 ----------------------
@@ -50,7 +50,7 @@ _RNG = random.Random(4242)
 MATCH_TOLERANCE = 40
 WARN_TOLERANCE = 90
 
-# DEMO SETTING — has no effect once real hardware is connected.
+# DEMO SETTING - has no effect once real hardware is connected.
 # With no sensor attached, every reading would otherwise come back as a
 # perfect match, so the dashboard would only ever show green ticks and the
 # mismatch warning would never be visible. Listing a toolhead here makes the
@@ -75,7 +75,7 @@ def color_distance(hex_a, hex_b):
 
     Straight-line (Euclidean) distance between the two colors treated as
     points in RGB space. Simple, fast, and good enough to tell orange from
-    grey — which is the actual job here. If real sensor testing shows it is
+    grey - which is the actual job here. If real sensor testing shows it is
     too crude, this can move to the CIE Lab color space later without
     changing anything that calls it.
 
@@ -112,7 +112,7 @@ def compare(expected_hex, detected_hex):
 
 
 # ---------------------------------------------------------------------------
-# Sensor interface — deliberately not implemented yet
+# Sensor interface - deliberately not implemented yet
 # ---------------------------------------------------------------------------
 
 def connect_sensor(toolhead_id):
@@ -120,7 +120,7 @@ def connect_sensor(toolhead_id):
     NOT IMPLEMENTED. Will open the I2C connection to a toolhead's color sensor.
 
     Once built, this will initialize the TCS34725 on the companion board and
-    set its gain and integration time — the two settings that control how
+    set its gain and integration time - the two settings that control how
     sensitive the reading is and how long each measurement takes.
 
     Returns False today so callers know to fall back to simulation.
@@ -178,7 +178,7 @@ def read_sensor(toolhead_id):
 
 
 # ---------------------------------------------------------------------------
-# Public API — what the dashboard calls
+# Public API - what the dashboard calls
 # ---------------------------------------------------------------------------
 
 def check_current_job():
@@ -250,7 +250,7 @@ def simulate():
     icons = {"match": "[ok]", "close": "[~]", "mismatch": "[!]"}
 
     print("=" * 62)
-    print("Deja Vu1 — Filament Color Check (SIMULATION — no sensor connected)")
+    print("Deja Vu1 - Filament Color Check (SIMULATION - no sensor connected)")
     print("=" * 62)
     print(f"Print file: {data['filename']}")
     print()
@@ -259,7 +259,7 @@ def simulate():
         print(f"  {icons[check['verdict']]:5} {check['toolhead']}  "
               f"expected {check['expected_color_name']} ({check['expected_hex']})  "
               f"detected {check['detected_hex']}")
-        print(f"        distance {check['distance']} — {check['message']}")
+        print(f"        distance {check['distance']} - {check['message']}")
 
     print()
     print(f"Overall: {data['overall'].upper()}")

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Deja Vu1 — "Layer lines"
+   Deja Vu1 - "Layer lines"
 
    The design layer, loaded last. It changes how the dashboard looks, never
    how it is laid out, so every component keeps the structure style.css,
@@ -8,7 +8,7 @@
    Direction: a well-lit print bench. Three decisions carry it:
 
    1. The room is made of layer lines. Behind everything runs a field of
-      fine horizontal lines — the side wall of an FDM print — lit by soft
+      fine horizontal lines - the side wall of an FDM print - lit by soft
       pools of light in the colours of the filament actually loaded on the
       printer (workshop.js tintRoom sets --fil-a / --fil-b). When you load
       red, the room turns warm. Straight lines are also the clearest thing
@@ -25,9 +25,9 @@
 
    3. Three typefaces with three jobs, bundled in fonts/ (SIL OFL, licences
       alongside) so nothing is fetched from the internet:
-        Bricolage Grotesque — headings and big numbers
-        Instrument Sans     — reading text, buttons, tabs
-        IBM Plex Mono       — readings, labels, anything measured
+        Bricolage Grotesque - headings and big numbers
+        Instrument Sans     - reading text, buttons, tabs
+        IBM Plex Mono       - readings, labels, anything measured
    ========================================================================== */
 
 @font-face {

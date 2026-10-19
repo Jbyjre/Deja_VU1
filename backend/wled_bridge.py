@@ -7,7 +7,7 @@ custom WS2812 controller board (see led_status.py), push the same ring
 states to a WLED-flashed strip the user already owns, over WLED's own JSON
 HTTP API. WLED is a very common firmware for addressable LED strips, and its
 JSON API is a single POST of `{"on": ..., "seg": [...]}` to
-`http://<device>/json/state` — no SDK, no extra dependency, just
+`http://<device>/json/state` - no SDK, no extra dependency, just
 `urllib.request` like every other bridge in this project.
 
 This is a real network client, not a simulation: given a real WLED device's
@@ -123,7 +123,7 @@ def push_ring_states(ring_states=None, settings=None):
     """
     Send the current dock ring states to a WLED device as one segment per
     toolhead ring. Returns {"ok": False, "error": ...} rather than raising,
-    the same pattern notifications.py uses for its webhook posts — a
+    the same pattern notifications.py uses for its webhook posts - a
     misconfigured or offline WLED strip should never take the dashboard
     down with it.
 

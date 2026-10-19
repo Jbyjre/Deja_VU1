@@ -6,7 +6,7 @@ Bridges the printer's camera feed into the dashboard, and watches it: if no
 new frame has arrived in a while, the feed is flagged as frozen instead of
 silently showing a stale image forever.
 
-The video stream itself is nothing this module can simulate — that needs a
+The video stream itself is nothing this module can simulate - that needs a
 real camera on a real printer. What it can simulate, and what is genuinely
 useful the moment a real camera is connected, is the watchdog logic:
 comparing "when did a frame last arrive" against "now."

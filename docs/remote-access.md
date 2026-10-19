@@ -1,4 +1,4 @@
-# Reaching the dashboard away from home — Cloudflare Tunnel
+# Reaching the dashboard away from home - Cloudflare Tunnel
 
 Deja Vu1 runs on one always-on machine on your home network (a Raspberry
 Pi, a NAS, an old laptop). At home you open it by that machine's address.
@@ -24,7 +24,7 @@ To open it from anywhere else, this project uses **Cloudflare Tunnel**.
   printer link stays on your home network. The printer itself is never
   reachable from the internet, tunnel or no tunnel.
 
-## Before you start — this part is a real, one-time cost
+## Before you start - this part is a real, one-time cost
 
 A *named* tunnel (the kind with a fixed address that survives restarts)
 needs **a domain whose nameservers point at Cloudflare**. If you don't have
@@ -37,7 +37,7 @@ takes to apply the nameserver change.
 changes every time the tunnel restarts, so it isn't suitable for a link you
 keep on your phone.)
 
-## Put a login in front of it — do not skip this
+## Put a login in front of it - do not skip this
 
 **Deja Vu1 has no login of its own.** On your home network that is a
 deliberate choice (see pairing in the README). On the internet it is not
@@ -60,7 +60,7 @@ These are the steps from Cloudflare's own guide to a locally-managed
 tunnel. Replace `deja-vu1` with any name you like and
 `printer.example.com` with an address on your own domain.
 
-1. **Install `cloudflared`** on the machine that runs Deja Vu1 — Cloudflare
+1. **Install `cloudflared`** on the machine that runs Deja Vu1 - Cloudflare
    publishes packages for Linux, macOS and Windows on its downloads page.
 
 2. **Log in** (opens a browser; pick your domain):
@@ -69,7 +69,7 @@ tunnel. Replace `deja-vu1` with any name you like and
    cloudflared tunnel login
    ```
 
-3. **Create the named tunnel** — note the tunnel ID (a UUID) it prints:
+3. **Create the named tunnel** - note the tunnel ID (a UUID) it prints:
 
    ```sh
    cloudflared tunnel create deja-vu1
@@ -96,7 +96,7 @@ tunnel. Replace `deja-vu1` with any name you like and
    cloudflared tunnel run deja-vu1
    ```
 
-   To have it start with the machine, install it as a system service —
+   To have it start with the machine, install it as a system service -
    Cloudflare's "run as a service" pages cover Linux, macOS and Windows.
 
 7. **Add Cloudflare Access** for `printer.example.com` (above).
@@ -134,13 +134,13 @@ documentation says it proxies WebSocket connections; there is also a
 **WebSockets** switch under **Network** in the Cloudflare dashboard for
 your domain, which should be on. If the WebSocket can't get through for
 any reason, the dashboard notices and switches to asking once a second
-instead — the badge in the status strip then reads "Polling 1 s" rather
+instead - the badge in the status strip then reads "Polling 1 s" rather
 than "Live".
 
 ## How fast will it feel?
 
 These are the rough figures from this project's planning, not measurements
-of a real installation — how far you are from a Cloudflare location is what
+of a real installation - how far you are from a Cloudflare location is what
 matters:
 
 | Where you are | Extra delay |

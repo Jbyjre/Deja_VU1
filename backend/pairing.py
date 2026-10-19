@@ -6,7 +6,7 @@ Lets a phone (or any second browser) find and remember this dashboard,
 without an account or a password. The desktop shows a short numeric code;
 entering that code on the phone adds it to the paired-devices list.
 
-This is about *connecting* devices, not about *restricting* access — the
+This is about *connecting* devices, not about *restricting* access - the
 dashboard has no login wall and this doesn't add one. Anyone already on your
 home network could reach the same address directly. Pairing exists so your
 phone remembers "this is my printer's dashboard" and shows up in the

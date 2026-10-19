@@ -1,4 +1,4 @@
-/* Deja Vu1 — live connection, fleet, files, automations and Liquid Glass 2.0.
+/* Deja Vu1 - live connection, fleet, files, automations and Liquid Glass 2.0.
  *
  * Loaded after app.js and viewer3d.js, and uses app.js's helpers ($, esc,
  * api, getJSON, postJSON, runCommand, toast, render* functions). Plain
@@ -52,8 +52,8 @@ const Workshop = (() => {
 
   /* Continuous visuals ease toward each new reading instead of jumping.
    * This is the easing Block World already uses for movement (initBeacon
-   * in app.js: each frame, velocity closes a fixed fraction — ACCEL = 0.18
-   * — of the gap to its target), made frame-rate independent so a 120 Hz
+   * in app.js: each frame, velocity closes a fixed fraction - ACCEL = 0.18
+   * - of the gap to its target), made frame-rate independent so a 120 Hz
    * screen and a 60 Hz one move at the same speed. */
   const EASE_RATE = 0.18;
   function ease(current, target, dt) {
@@ -259,7 +259,7 @@ const Workshop = (() => {
       const mine = !currentPrinter || event.printer === currentPrinter;
       const word = { started: 'started', finished: 'finished', failed: 'failed', paused: 'paused', resumed: 'resumed', cancelled: 'cancelled' }[event.event];
       if (event.event === 'finished' && event.summary) celebrate(event);
-      else toast(`${event.printer_name}: print ${word}${event.file ? ` — ${event.file}` : ''}`,
+      else toast(`${event.printer_name}: print ${word}${event.file ? `: ${event.file}` : ''}`,
                  event.event === 'failed' ? 'bad' : 'info');
       if (mine) { loadHealth(); loadQueue(); loadTimelapse(); }
     } else if (event.type === 'automation') {
@@ -534,7 +534,7 @@ const Workshop = (() => {
       const d = await getJSON(`/api/printers/diagnostics?printer=${enc(b.dataset.regDetails)}`).catch(() => null);
       if (!d || d.error) { box.textContent = (d && d.error) || 'Couldn\'t load the connection details.'; return; }
       const facts = [
-        ['Connection', d.connected ? `open since ${d.connected_at || '?'}` : `closed — ${d.last_error || 'connecting…'}`],
+        ['Connection', d.connected ? `open since ${d.connected_at || '?'}` : `closed: ${d.last_error || 'connecting…'}`],
         ['Klipper', d.klippy_state || '—'],
         ['Toolheads', (d.toolheads || []).join(', ') || '—'],
         ['Chamber sensor', d.chamber_sensor || 'none reported'],
@@ -604,7 +604,7 @@ const Workshop = (() => {
       e.preventDefault();
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,
                                                          api_key: $('fleet-add-key').value });
-      if (r.ok) { toast(`${r.body.name} added — connecting to it now`, 'ok', 5000); e.target.reset(); }
+      if (r.ok) { toast(`${r.body.name} added, connecting to it now`, 'ok', 5000); e.target.reset(); }
       else toast(`Couldn't add it: ${r.body.error}`, 'bad', 6000);
       loadRegistry();
       // Show the connection opening (or why it can't) without a reload.
@@ -1287,7 +1287,7 @@ const Workshop = (() => {
     // it holds a few minutes, not the 30 the window grows to.
     const mins = Math.round((t1 - t0) / 60);
     $('ch-sub').textContent = mins >= 29 ? 'Last 30 minutes'
-      : mins < 1 ? 'Recording — the line fills in over 30 minutes'
+      : mins < 1 ? 'Recording: the line fills in over 30 minutes'
       : `Last ${mins} min · fills in to 30`;
   }
 
@@ -1297,7 +1297,7 @@ const Workshop = (() => {
 
   /* The status ribbon at the top of the page already carries the print's
    * progress, so the floating pill only appears once the ribbon has been
-   * scrolled out of view — otherwise the two say the same thing and the
+   * scrolled out of view - otherwise the two say the same thing and the
    * pill sits on top of whatever is in the bottom-right corner. */
   if ('IntersectionObserver' in window && $('status-ribbon')) {
     new IntersectionObserver(([entry]) => document.body.classList.toggle('ribbon-in-view', entry.isIntersecting))
@@ -1315,7 +1315,7 @@ const Workshop = (() => {
     setVar(pill, '--glass-tint', active ? state.toolheads[active].filament_color_hex : STATE_HEX[state.state]);
     if (pill.dataset.state !== state.state) pill.dataset.state = state.state;
     const title = `${state.printer_name ? state.printer_name + ' · ' : ''}${state.state === 'complete' ? 'Done' : pct + '%'}`;
-    const sub = state.state === 'paused' ? `Paused — ${state.current_file || ''}` :
+    const sub = state.state === 'paused' ? `Paused: ${state.current_file || ''}` :
       state.state === 'complete' ? `${state.current_file || ''} finished`
       : left != null ? `${fmtHours(left)} left · done ${doneAt(left)}` : (state.current_file || '');
     setText($('lp-title'), title);
@@ -1574,7 +1574,7 @@ const Workshop = (() => {
       <div id="fd-compare-host"></div>`;
     $('fd-print').addEventListener('click', (e) => openConfirm(entry.name, e.currentTarget));
     $('fd-queue').addEventListener('click', async (e) => {
-      if (!liveData()) { toast('No printer connected — turn on demo data to queue on a simulated printer', 'warn'); return; }
+      if (!liveData()) { toast('No printer connected. Turn on demo data to queue on a simulated printer', 'warn'); return; }
       const r = await runCommand(e.currentTarget, '/api/queue/add', { filename: entry.name },
         { sending: 'Adding…', done: `Added ${entry.name} to the queue`, failed: 'Could not queue it' });
       if (r.ok) loadQueue();
@@ -1773,7 +1773,7 @@ const Workshop = (() => {
           <p class="log-empty">${esc(rep.unverified)}</p>
           <div class="convert-actions">${copyBtn}</div>
         </div>`;
-      toast(`Converted — saved as ${r.body.file.name}`, 'ok');
+      toast(`Converted. Saved as ${r.body.file.name}`, 'ok');
       await loadFiles();
       if (files.open) renderCompare(files.open);
       qsa('[data-open-file]', host).forEach(b => b.onclick = () => openFile(b.dataset.openFile));
@@ -1882,7 +1882,7 @@ const Workshop = (() => {
     const v = r.body.preflight.verdict;
     msg.classList.add(v === 'blocked' ? 'is-bad' : 'is-ok');
     msg.textContent = `Saved (the original is kept). Pre-flight after the edit: ${{ clear: 'clear', check: 'warnings to check', blocked: 'blocked' }[v]}.`;
-    toast('Edit saved — original kept, pre-flight re-checked', 'ok');
+    toast('Edit saved. Original kept, pre-flight re-checked', 'ok');
     await loadFiles();
     const name = files.open.name, line = files.selectedLine;
     files.open = files.list.find(f => f.name === name);
@@ -1925,7 +1925,7 @@ const Workshop = (() => {
 
   let confirmFile = null;
   async function openConfirm(filename, fromEl, preloaded) {
-    if (!liveData()) { toast('No printer connected — turn on demo data to print on a simulated printer', 'warn'); return; }
+    if (!liveData()) { toast('No printer connected. Turn on demo data to print on a simulated printer', 'warn'); return; }
     confirmFile = filename;
     const dialog = $('confirm-dialog');
     $('confirm-sub').textContent = `${filename} on ${printerName(currentPrinter || (live.fleet[0] || {}).id)}`;
@@ -1943,7 +1943,7 @@ const Workshop = (() => {
     panel.style.setProperty('--glass-tint', tint);
     const banner = { blocked: 'This print can\'t start', confirm: 'Read these before starting', clear: 'Everything checks out' }[gate.verdict];
     go.disabled = gate.verdict === 'blocked';
-    go.textContent = gate.verdict === 'confirm' ? 'I\'ve read these — start print' : 'Start print';
+    go.textContent = gate.verdict === 'confirm' ? 'I\'ve read these, start print' : 'Start print';
     $('confirm-health').innerHTML = `<span class="gm-num">${gate.health.score}</span><span class="gm-lbl">health</span>`;
     $('confirm-health').style.setProperty('--gm', { good: 'var(--ok)', fair: 'var(--warn)', poor: 'var(--bad)' }[gate.health.band]);
     const fil = gate.filament.map(f => `
@@ -1966,9 +1966,9 @@ const Workshop = (() => {
         <div><span class="stat-key">Cost</span><b>${money(gate.cost.total_cost)}</b></div>
         <div><span class="stat-key">Pre-flight</span><b>${{ clear: 'Clear', check: 'Warnings', blocked: 'Blocked' }[gate.preflight.verdict]}</b></div>
       </div>
-      <h3 class="fd-h">Filament — as the printer reports it loaded</h3>
+      <h3 class="fd-h">Filament, as the printer reports it loaded</h3>
       ${fil || '<p class="log-empty">The file doesn\'t say which toolheads it uses.</p>'}
-      ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : `${esc(s.spool)} — ${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
+      ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : `${esc(s.spool)}: ${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
   }
 
   function initConfirm() {
@@ -2204,9 +2204,9 @@ const Workshop = (() => {
   function initSwap() {
     $('swap-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!demoOn) { toast('No printer connected — turn on demo data to try this on a simulated printer', 'warn'); return; }
+      if (!demoOn) { toast('No printer connected. Turn on demo data to try this on a simulated printer', 'warn'); return; }
       const r = await runCommand(e.submitter || null, '/api/maintenance/swap', { kind: $('swap-kind').value, toolhead: $('swap-toolhead').value },
-        { sending: 'Recording…', done: 'Swap recorded — recalibration is now due', failed: 'Not recorded' });
+        { sending: 'Recording…', done: 'Swap recorded, recalibration is now due', failed: 'Not recorded' });
       if (r.ok) { loadMaintenance(); loadHealth(); }
     });
   }
@@ -2216,7 +2216,7 @@ const Workshop = (() => {
     if (!host) return;
     const data = await getJSON(api('/api/filament/forecast')).catch(() => null);
     if (isModuleDisabled(data)) { host.innerHTML = '<p class="log-empty">Turn on Filament inventory to see this.</p>'; return; }
-    if (!data || !hasData(data)) { host.innerHTML = '<p class="log-empty">Needs print history — turn on demo data to preview.</p>'; return; }
+    if (!data || !hasData(data)) { host.innerHTML = '<p class="log-empty">Needs print history. Turn on demo data to preview.</p>'; return; }
     host.innerHTML = data.spools.map(s => `
       <div class="spool-row">
         <span class="spool-swatch" style="background:${esc(s.color_hex)}"></span>
@@ -2256,7 +2256,7 @@ const Workshop = (() => {
     cam.mjpeg = (s && s.stream_url) || '';
     cam.webrtc = webrtcModule && Boolean(w.go2rtc_url && w.stream) && typeof RTCPeerConnection === 'function';
     if (!cam.mjpeg && !cam.webrtc) {
-      host.innerHTML = empty('No camera set up', 'Add the printer camera\'s MJPEG address above. Nothing is simulated here — the demo has no camera.');
+      host.innerHTML = empty('No camera set up', 'Add the printer camera\'s MJPEG address above. Nothing is simulated here, so the demo has no camera.');
       cam.built = false;
       return;
     }
@@ -2268,7 +2268,7 @@ const Workshop = (() => {
         </div>
         <p class="log-empty cam-why" id="cam-why" hidden></p>
         <div class="fd-actions"><button class="btn small" id="camera-reload" type="button">Reconnect</button>
-        <span class="log-empty">Over Wi-Fi, MJPEG delay can slowly build up — Reconnect resets it.</span></div>`;
+        <span class="log-empty">Over Wi-Fi, MJPEG delay can slowly build up. Reconnect resets it.</span></div>`;
       $('camera-reload').addEventListener('click', () => { stopCamera(); startCamera(); });
       cam.built = true;
     }
@@ -2289,7 +2289,7 @@ const Workshop = (() => {
     const img = $('camera-img'), video = $('camera-video');
     if (!img) return;
     video.hidden = true;
-    if (!cam.mjpeg) { img.hidden = true; setCamMode('none', `${why} There's no MJPEG address to fall back to — add one above.`); return; }
+    if (!cam.mjpeg) { img.hidden = true; setCamMode('none', `${why} There's no MJPEG address to fall back to. Add one above.`); return; }
     img.hidden = false;
     const run = cam.run;
     const note = why ? `Using the normal camera feed: ${why}` : '';
@@ -2413,7 +2413,7 @@ const Workshop = (() => {
         <span class="reg-name">${esc(s.filename || 'print')}</span>
         <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'}${s.source === 'simulated' ? ' · simulated' : ''}</span>
         <button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
-      </div>`).join('') : '<p class="log-empty">No time-lapses yet — one is recorded during every print.</p>';
+      </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>';
     qsa('[data-flip]', host).forEach(b => b.addEventListener('click', () => playFlipbook(b.dataset.flip)));
   }
 
@@ -2452,7 +2452,7 @@ const Workshop = (() => {
     $('demo-fail-btn').addEventListener('click', async () => {
       const action = $('demo-fail-action').value;
       const r = await postJSON(api('/api/demo/fail-next'), { action, message: 'Klippy reported an error (simulated failure)' });
-      toast(r.ok ? `The next "${action}" on ${printerName(currentPrinter)} will fail — watch how it's reported` : `Couldn't arm it: ${r.body.error}`, r.ok ? 'warn' : 'bad', 6000);
+      toast(r.ok ? `The next "${action}" on ${printerName(currentPrinter)} will fail. Watch how it's reported` : `Couldn't arm it: ${r.body.error}`, r.ok ? 'warn' : 'bad', 6000);
     });
     $('demo-reset-btn').addEventListener('click', async () => {
       const r = await postJSON(api('/api/demo/reset'), {});
@@ -2471,7 +2471,7 @@ const Workshop = (() => {
     $('webrtc-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await postJSON('/api/camera/webrtc/settings', { go2rtc_url: $('webrtc-url').value.trim(), stream: $('webrtc-stream').value.trim() });
-      toast(r.ok ? (r.body.go2rtc_url ? 'go2rtc address saved — trying the low-latency camera' : 'Low-latency camera cleared') : `Not saved: ${r.body.error}`, r.ok ? 'ok' : 'bad', 5000);
+      toast(r.ok ? (r.body.go2rtc_url ? 'go2rtc address saved, trying the low-latency camera' : 'Low-latency camera cleared') : `Not saved: ${r.body.error}`, r.ok ? 'ok' : 'bad', 5000);
       if (r.ok) loadCamera();
     });
   }
