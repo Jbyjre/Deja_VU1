@@ -1263,8 +1263,7 @@ function renderControlTab(state) {
  * Klipper's exclude_object lists what the file labelled. The list is the
  * control (real buttons, keyboard and screen-reader friendly); the map
  * shows where each one is on the bed. Skipping asks twice, because it
- * can't be undone for this print. Idea from U1 Print Hub (a Snapmaker
- * Innovation Fund winner); written for this dashboard. */
+ * can't be undone for this print. */
 const plateUI = { selected: null, confirmUntil: 0, sig: '' };
 
 function plateShape(o) {

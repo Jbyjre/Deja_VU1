@@ -77,9 +77,9 @@ and every change is in the public history.
 - **The digital twin is a real drawing you can click.** Hidden edges,
   dimensions, a title block; click a toolhead for its nozzle, swaps and
   what the print needs from it.
-- **Mixed-nozzle planner**, the idea behind a $5,000 Innovation Fund
-  winner: a different nozzle and layer height per toolhead, checked against
-  Snapmaker's own limits, plus a nozzle check in Confirm Print.
+- **Mixed-nozzle planner**: a different nozzle and layer height per
+  toolhead, checked against Snapmaker's own limits, plus a nozzle check in
+  Confirm Print.
 - **Find printers on my network**, **Test** before adding, double-click
   starters for Windows, Mac and Linux, and a plain-language
   [getting-started guide](docs/getting-started.md).
@@ -127,7 +127,7 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 | **Needs you** | The top of the Overview ranks every printer by what wants a person — a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes — each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
 | **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
 | **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
-| **Mixed-nozzle planner** | A different nozzle and layer height on each toolhead: fine detail on a 0.2 mm nozzle, thick fast layers on a 0.8. Pick each head's nozzle and height (they start from what the printer reports fitted) and it works out the shared layer grid, how many grid layers each head spans and how many layers a part needs, checks every height against Snapmaker's own U1 profile limits, and draws a section through the layers. The idea of LixNix's Full Multi-Nozzle Printing, a $5,000 Tier 1 winner of Snapmaker's Innovation Fund, rewritten from its description. **Confirm Print** now also refuses a file sliced for a nozzle the toolhead doesn't have fitted. |
+| **Mixed-nozzle planner** | A different nozzle and layer height on each toolhead: fine detail on a 0.2 mm nozzle, thick fast layers on a 0.8. Pick each head's nozzle and height (they start from what the printer reports fitted) and it works out the shared layer grid, how many grid layers each head spans and how many layers a part needs, checks every height against Snapmaker's own U1 profile limits, and draws a section through the layers. The grid rule follows the published description of a U1 Orca fork's per-extruder layer height option. **Confirm Print** now also refuses a file sliced for a nozzle the toolhead doesn't have fitted. |
 | **MakerWorld / NexPrint / OrcaSlicer → U1** | One click turns a Bambu Studio (MakerWorld), Elegoo Slicer (NexPrint) or OrcaSlicer project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. **Multi-plate projects land on the right plates**: every plate's objects are moved onto the U1's own plate grid, written from Snapmaker Orca's source. When it can't convert, it says why with a code, the step it failed at and what to try, and **Copy report** puts a full report on the clipboard for a bug report. |
 | **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
@@ -455,7 +455,7 @@ only sensible approach. Details in
 | Live dashboard, fleet, controls, start-print interlock | Yes | Yes - Moonraker, Klipper and Snapmaker's U1 source | Not yet - no U1 here |
 | Skip one object | Yes | Yes - Snapmaker's u1-klipper `exclude_object` | Not yet |
 | Nozzle sizes and swap counts per toolhead | Yes | Yes - u1-klipper `extruder.get_status` | Not yet |
-| Mixed-nozzle planner, nozzle check in Confirm Print | Yes | Limits from Snapmaker Orca's U1 profiles; grid rule from the LixNix fork's description | Not printed yet |
+| Mixed-nozzle planner, nozzle check in Confirm Print | Yes | Limits from Snapmaker Orca's U1 profiles; grid rule from a published description, not checked against a real slice | Not printed yet |
 | Find printers, Test | - | Yes - u1-moonraker's mDNS announcement and Moonraker's HTTP API | Not on a real network with a U1 yet |
 | Double-click starters | - | Linux | Windows and Mac not run yet |
 | Online demo (Cloudflare link) | Recorded from it | Checked in Chromium on a plain static server, like Cloudflare's | The published link itself not opened from here (the build sandbox can't reach it) |
@@ -471,20 +471,12 @@ only sensible approach. Details in
 If you have a U1 and want to help close the last column, see
 [docs/beta-testing.md](docs/beta-testing.md).
 
-## Ideas from the Phase 1 winners
+## Thanks
 
-Phase 2 builds on what Phase 1 showed works. These ideas came from Phase 1
-winners. Each was rebuilt here from the printer's, slicer's or service's own
-source - no code was copied (several of these projects are GPL or carry
-non-commercial terms, and this one is MIT):
-
-| Idea | From |
-|---|---|
-| Re-place multi-plate projects on the U1's plate grid; coded, copyable conversion errors | [MakerWorld to Snapmaker U1](https://github.com/Dragon2203/makerworld-to-snapmaker-u1) |
-| Skip one object mid-print; ask for filament colours instead of only waiting for pushes; Spoolman import; add-to-home-screen | [U1 Print Hub](https://github.com/dlgambill/u1hub) |
-| Tell multiACE users to post-process T4-T15 before printing | [multiACE](https://github.com/decay71/multiACE) |
-| A different nozzle and layer height per toolhead: the mixed-nozzle planner and the nozzle check | [Full Multi-Nozzle Printing](https://github.com/LixNix-Swap-Org/Snapmaker-Orca) by LixNix |
-| A status table of what is and isn't verified; a beta-tester guide | Sidecar, FOrcaSlicer, U1 Print Hub |
+Thank you to the Snapmaker U1 community and to the Phase 1 winners of the
+Snapmaker Innovation Fund, whose public work showed what U1 owners need.
+The U1-specific behaviour is written from Moonraker's, Klipper's and
+Snapmaker's own source and documentation.
 
 ## Tech stack
 

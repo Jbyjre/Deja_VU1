@@ -278,8 +278,9 @@ preferred layer height in; the shared layer grid (the coarsest height every
 preferred height is a whole multiple of, within 0.01 mm, or exactly in
 "exact" mode), each head's real height and multiple, layer counts for a part
 height, and Snapmaker's own U1 limits per nozzle (from Snapmaker/OrcaSlicer
-`8931178`) out. The rule is LixNix's `extruder_layer_height`, rewritten from
-the option's description (fork commit `8fa80da`, AGPL; no code copied).
+`8931178`) out. The rule follows the published description of a U1 Orca
+fork's `extruder_layer_height` option; it hasn't been compared with that
+slicer's output.
 `farm.js` draws the result as a section view and keeps a browser copy of the
 maths for the online demo.
 
@@ -360,10 +361,8 @@ are matched to plates the way Orca writes them (`model_settings.config`'s
 object's build items in order, `bbs_3mf.cpp`). A plate whose objects can't
 all be matched, or that straddles two grid cells, is left exactly as it was
 and named in the report; an object whose centre would fall off the U1's bed
-(a bigger source bed) is warned about. The idea came from the "MakerWorld to
-Snapmaker U1" browser extension (a Snapmaker Innovation Fund Phase 1 winner);
-the code is this project's own, written from Orca's source at commit
-`4996d50`. `tests/test_converter_3mf.py` checks the result against the grid
+(a bigger source bed) is warned about. The code was written from Orca's source
+at commit `4996d50`. `tests/test_converter_3mf.py` checks the result against the grid
 formula computed independently from the plate index.
 
 **When it can't convert.** Every refusal carries a code (`CV-101`...), the
@@ -387,12 +386,12 @@ skipped, and it isn't the last object left (that's what Cancel is for). The
 result is read back; anything short of the printer listing it as skipped is
 reported as failed. The simulation reads the same labels from the file it
 was started with (`gcode_tools.object_definition`), so the demo behaves like
-the printer. The idea comes from U1 Print Hub.
+the printer.
 
 ### Filament: asked for, not only waited for
-U1 Print Hub, tested on real U1s, found `print_task_config` doesn't always
-push an update when filament is changed on the touchscreen. The real
-client now also asks for it directly every 30 s
+Owners of real U1s report that `print_task_config` doesn't always push an
+update when filament is changed on the touchscreen. The real client now
+also asks for it directly every 30 s
 (`MoonrakerPrinter._requery_filament`, `printer.objects.query`), so a
 touchscreen change shows up even if no push arrives.
 

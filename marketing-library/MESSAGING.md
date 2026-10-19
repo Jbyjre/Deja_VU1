@@ -90,7 +90,8 @@ Each was checked against the code on 16 October 2026.
   Snapmaker Orca itself yet**.
 - The dock rings and colour sensor are **hardware pending**.
 
-## Credit where ideas came from
+## Thanks
 
-The README's "Ideas from the Phase 1 winners" table credits each borrowed
-idea. Keep it when you post, and add any new borrowings there.
+The README ends its credits with one line thanking the U1 community and the
+Phase 1 winners as a group. Keep it when you post. Don't name individual
+projects as the source of a feature.

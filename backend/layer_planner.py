@@ -2,14 +2,12 @@
 Mixed-nozzle layer planning for the Snapmaker U1, and the nozzle check
 Confirm Print runs before a start.
 
-The idea comes from LixNix's "Full Multi-Nozzle Printing", a Tier 1 winner
-of Snapmaker's Innovation Fund Phase 1 (github.com/LixNix-Swap-Org/
-Snapmaker-Orca, AGPL-3.0). Its slicer gives each extruder a preferred layer
-height (`extruder_layer_height`); the object prints on the coarsest shared
-grid that every preferred height is a whole multiple of, and a part on a
-coarse nozzle prints only every Nth grid layer with thicker extrusions. The
-rule below is written fresh from that option's description in its
-PrintConfig.cpp (commit 8fa80da); no code was copied (Deja Vu1 is MIT).
+Each extruder gets a preferred layer height. The object prints on the
+coarsest shared grid that every preferred height is a whole multiple of, and
+a part on a coarse nozzle prints only every Nth grid layer with thicker
+extrusions. The rule follows the published description of the
+`extruder_layer_height` option in a U1 Orca fork. It hasn't been compared
+with that slicer's output on a real slice, so the slicer has the final word.
 
 This module doesn't slice. It plans: which grid a set of nozzles and
 heights lands on, how many grid layers each head spans, and whether each

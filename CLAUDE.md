@@ -40,12 +40,16 @@ trust the code and fix this file.
 1. Turn the request into a checklist, item by item, and re-read the
    original message before finishing. Counts and formats exactly.
 2. Research from primary sources: shallow or sparse `git clone` of the
-   upstream repo (Snapmaker's u1-klipper, u1-moonraker, OrcaSlicer, the
-   winning forks), read the actual file, and cite repo plus commit in the
-   code comment. Product pages only for specs. Say what's unverified.
+   upstream repo (Snapmaker's u1-klipper, u1-moonraker, OrcaSlicer, Klipper,
+   Moonraker), read the actual file, and cite repo plus commit in the code
+   comment when it explains why code behaves as it does. Other projects are
+   study material only: don't cite them as the source of a feature. Product
+   pages only for specs. Say what's unverified.
 3. Build the smallest real version end to end (backend, both printer paths,
    frontend, tests) before polishing. Borrowed ideas are rewritten, never
-   copied (licences), and credited in README's winners table.
+   copied (licences). If you ever copy or closely adapt code from another
+   project, stop and tell the owner: that project's licence then decides
+   what must happen.
 4. Verify three ways: the unit tests for the module, the full suite once
    before pushing, and Playwright screenshots at 1366 px and 390 px (look
    at them). For anything animated, measure frame time before and after.
@@ -237,7 +241,7 @@ sandbox, so you can't fetch the preview from here.
 - Switching a module off doesn't stop its background work: automation rules
   (including pause), queue auto-advance, time-lapse, filament deduction
   (`live_feed.py`).
-- Config backup holds only 4 files. It misses real printers' maintenance
+- Config backup holds only 5 files. It misses real printers' maintenance
   logs, `fleet.json`, automations, the queue and other settings, and there
   is no restore (`backup.py`).
 - A start the real printer refuses still replaces the current job and erases
@@ -249,8 +253,6 @@ sandbox, so you can't fetch the preview from here.
   so its LED ring reads "ready".
 - `fleet.set_change_listener()` is never called, so real-printer updates wait
   for the next 250 ms tick. `MoonrakerPrinter.clear_error()` is unreachable.
-- Some docstrings still say no real Moonraker client exists (`fleet.py`,
-  `live_feed.py`, `printer_control.py`, `mock_moonraker.py`).
 - Not checked by the audit (its agents hit the usage limit): the feature
   backends in depth (automations, converter, slicer bridge, studio, queue,
   camera) and `docs/architecture.md` beyond the frontend section.

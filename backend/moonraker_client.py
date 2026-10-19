@@ -85,10 +85,10 @@ WS_MAX_MESSAGE = 8 * 1024 * 1024
 HISTORY_PAGE = 500
 HISTORY_MAX_JOBS = 20000
 PING_INTERVAL = 15.0
-# U1 Print Hub (a Snapmaker Innovation Fund winner, tested on real U1s)
-# found print_task_config doesn't always push an update when a filament is
-# changed on the touchscreen, so what each head has loaded is also asked
-# for directly this often rather than trusted to arrive.
+# Owners of real U1s report that print_task_config doesn't always push an
+# update when a filament is changed on the touchscreen, so what each head
+# has loaded is also asked for directly this often rather than trusted to
+# arrive. The interval is a guess; no U1 here has confirmed the report.
 FILAMENT_REQUERY = 30.0
 DEAD_AFTER = 60.0              # nothing heard (not even a pong) for this long: reconnect
 KLIPPY_RETRY = 2.0             # Moonraker's docs: ask again in 2 s while Klipper starts

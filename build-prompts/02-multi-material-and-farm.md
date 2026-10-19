@@ -30,7 +30,7 @@ themselves.
   nozzle size and falls back to 0.4 mm; the auto-print slicer bridge and
   Photo Studio don't consider nozzles at all. The idea comes from LixNix's
   "Full Multi-Nozzle Printing" (`LixNix-Swap-Org/Snapmaker-Orca`, AGPL:
-  ideas only, credit in the README's winners table). Upstream OrcaSlicer
+  ideas only; no code copied). Upstream OrcaSlicer
   issue #16138 says mixed sizes can be tagged wrongly in G-code: check it.
 - **multiACE** by decay71 (`github.com/decay71/multiACE`), another ,000
   Phase 1 winner, connects up to four Anycubic ACE units to a U1 for up to
