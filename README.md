@@ -114,7 +114,7 @@ changed, even when you start from your phone.
 
 ## What's in it
 
-![Every module grouped by what it needs: 17 for running the farm and printing safely, 8 for care, control and the basics, 3 for farms and making, 7 optional, 2 waiting on hardware, and 10 games](docs/img/explainer-whats-in-it.jpg)
+![Every feature grouped by what it needs: 19 for running the farm and printing safely, 8 for care, control and the basics, 3 for farms and making, 7 optional, 2 waiting on hardware, and 10 games](docs/img/explainer-whats-in-it.jpg)
 
 Every screenshot in this section comes from the built-in simulated farm (the **Demo data** switch), so every figure in them is simulated. The yellow banner and the **SIMULATED** badge in the app say the same.
 
