@@ -74,11 +74,12 @@ python3 backend/maintenance.py              # console demos (also led_status.py,
 python3 tools/online-demo/record.py         # re-record the online demo (about 3 min)
 ```
 
-Environment variables (the only ones read): `PORT` (default 8000),
+Environment variables (the only ones the app reads): `PORT` (default 8000),
 `DEJAVU_ALLOWED_HOSTS` (comma-separated extra host names, e.g. a Cloudflare
 Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
 `DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
-(where settings and files live; default `backend/data/`).
+(where settings and files live; default `backend/data/`),
+`DEJAVU_NO_BROWSER=1` (read by `start.py`: don't open the browser).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
 (`NODE_PATH=/opt/node22/lib/node_modules node script.js`, then

@@ -32,7 +32,7 @@ simulated:
 | `twin-health-chamber.jpg` | Overview: the digital twin row (`.live-row`), printer U1 · Workshop |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |
 | `twin-detail.jpg` | Overview: the digital twin (`#twin-card`), T0's balloon clicked so its details show |
-| `layer-planner.jpg` | Files: the Mixed-nozzle planner (`#tab-layerplan`) → Try the winning example |
+| `layer-planner.jpg` | Files: the Mixed-nozzle planner (`#tab-layerplan`) → Try an example |
 | `add-printer.jpg` | Fleet → Add a printer, with the address of a running `tests/fake_moonraker.py` stand-in, then Test |
 | `converter.jpg` | Files → `sample_makerworld_three_plates.3mf` → Convert for Snapmaker U1: the report |
 | `sandbox.jpg`, `sandbox-farm.jpg` | Fleet → farm sandbox: add 6 printers, load "Jam mid-print", step 660 s |

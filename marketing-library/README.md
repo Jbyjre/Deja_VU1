@@ -39,7 +39,7 @@ Illustrations that explain one idea each. Rendered from
 
 | | |
 |---|---|
-| ![What's in it](02-explainer-boards/explainer-whats-in-it.jpg)<br>**What's in it:** every module, grouped by what it needs | ![Confirm Print](02-explainer-boards/explainer-confirm-print.jpg)<br>**Confirm Print:** the six checks before a start |
+| ![What's in it](02-explainer-boards/explainer-whats-in-it.jpg)<br>**What's in it:** every module, grouped by what it needs | ![Confirm Print](02-explainer-boards/explainer-confirm-print.jpg)<br>**Confirm Print:** the seven checks before a start |
 | ![How it connects](02-explainer-boards/explainer-how-it-connects.jpg)<br>**How it connects:** one connection per printer, shared by every module | ![By the numbers](02-explainer-boards/explainer-by-the-numbers.jpg)<br>**By the numbers:** 638 tests, 250 ms updates, 12 printers… |
 | ![Silent docks](02-explainer-boards/explainer-silent-docks.jpg)<br>**Dock status:** the old lead picture. Now used only in the README's dock rings section; don't lead with it | |
 

@@ -150,7 +150,7 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 
 <sub>**Fleet:** every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
 
-![Confirm Print explained: six checks (printer ready, pre-flight, filament match, spool weight, maintenance, cost), what each one does when it fails, the path from your file to a start or a refusal, and a real refusal from the built-in unsafe example file](docs/img/explainer-confirm-print.jpg)
+![Confirm Print explained: seven checks (printer ready, pre-flight, filament match, nozzles, spool weight, maintenance, cost), what each one does when it fails, the path from your file to a start or a refusal, and a real refusal from the built-in unsafe example file](docs/img/explainer-confirm-print.jpg)
 
 <table>
 <tr>
@@ -483,7 +483,7 @@ Snapmaker's own source and documentation.
 ![By the numbers: 638 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only — written for 3.8 or newer;
-  tested on 3.11 and 3.13 (3.8 itself hasn't been run)
+  the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
 - **Web server:** `http.server` from the standard library (the threading
   version), plus a hand-written RFC 6455 WebSocket for live updates
 - **Frontend:** HTML, CSS, and JavaScript — no framework, no build step;

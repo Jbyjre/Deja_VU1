@@ -60,7 +60,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 .legend i{width:14px;height:14px;border-radius:50%;background:var(--c)}
 
 /* confirm */
-.checks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px}
+.checks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
 .check{display:grid;gap:8px;align-content:start;padding:18px 18px 16px;border-radius:18px;background:var(--paper);border:1px solid var(--hair);box-shadow:var(--shadow)}
 .check .n{font:600 12px/1 "IBM Plex Mono";color:var(--faint);letter-spacing:.08em}
 .check h3{font:680 21px/1.15 "Bricolage Grotesque";letter-spacing:-.01em}
@@ -159,11 +159,12 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 <!-- ============ 2. Confirm Print ============ -->
 <section class="board" id="b-confirm">
   <span class="eyebrow"><i></i>Confirm Print</span>
-  <h2>Six checks before a print starts. The server runs them again at the moment it starts.</h2>
+  <h2>Seven checks before a print starts. The server runs them again at the moment it starts.</h2>
   <div class="checks">
     <div class="check"><h3>Printer ready?</h3><p>Idle (ready or finished), with no dock reporting an error.</p><span class="tag block">Blocks</span></div>
     <div class="check"><h3>Pre-flight</h3><p>Every move in the file: outside the 270 × 270 × 270 mm volume, below the bed, an unknown toolhead, too hot.</p><span class="tag block">Errors block · warnings ask</span></div>
     <div class="check"><h3>Filament match</h3><p>Each toolhead the file uses has filament, in the colour it was sliced for, as the printer reports it.</p><span class="tag block">A mismatch blocks</span></div>
+    <div class="check"><h3>Nozzles</h3><p>The nozzle each toolhead was sliced for matches the one the printer reports fitted.</p><span class="tag block">A mismatch blocks</span></div>
     <div class="check"><h3>Spool weight</h3><p>Enough left on the matching spool, when the filament inventory is on.</p><span class="tag ask">Warns</span></div>
     <div class="check"><h3>Maintenance</h3><p>Any overdue task, such as a nozzle check or bed leveling.</p><span class="tag ask">Warns</span></div>
     <div class="check"><h3>Cost</h3><p>Material plus electricity, estimated from your prices.</p><span class="tag info">Information</span></div>
@@ -185,7 +186,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <li>Maintenance overdue: Nozzle check &amp; clean, Bed leveling check</li>
     </ul>
   </div>
-  <p class="foot">The six checks and three verdicts are the ones documented in backend/print_gate.py.</p>
+  <p class="foot">The seven checks and three verdicts are the ones documented in backend/print_gate.py.</p>
 </section>
 
 <!-- ============ 3. Architecture ============ -->

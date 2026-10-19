@@ -28,8 +28,8 @@ its controls. Keep it on your home network for the session (see
 
 ## Before you start
 
-- A computer on the same network as the U1, with Python 3.8 or newer (it's
-  tested on 3.11 and 3.13). It hasn't been confirmed on Windows yet; if that's
+- A computer on the same network as the U1, with Python 3.8 or newer (the
+  tests pass on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions). It hasn't been confirmed on Windows yet; if that's
   what you have, say so when you sign up.
 - The printer's address: the same one Fluidd or Mainsail uses, usually
   `http://<printer-ip>:7125`.
