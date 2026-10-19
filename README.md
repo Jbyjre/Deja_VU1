@@ -108,7 +108,7 @@ wrong spool. Deja Vu1 compares the colour each toolhead was sliced for with
 what the printer reports, and stops the start on a mismatch.
 
 **Is it safe to press print?** Confirm Print pulls it together: pre-flight,
-filament match, spool weight, maintenance, time, grams and cost. The server
+filament match, nozzles, spool weight, maintenance, time, grams and cost. The server
 checks again at the moment of starting and refuses in words if something
 changed, even when you start from your phone.
 

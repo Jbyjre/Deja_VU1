@@ -21,7 +21,7 @@ so swapping in a real printer later changes nothing in this file.
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import mock_moonraker
 from mock_moonraker import get_print_history

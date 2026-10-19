@@ -30,7 +30,6 @@ type 2 is CustomGCode::ToolChange. Like the 3MF converter, not yet
 confirmed by opening a studio file in Orca.
 """
 
-import io
 import re
 import xml.etree.ElementTree as ET
 

@@ -529,7 +529,7 @@ the connection; every route that reads the dashboard's own settings checks
 only its module state. No framework, so there is nothing to install.
 
 ### `frontend/`
-Twelve files plus two folders - `index.html`, `style.css` and `app.js`
+Twelve page, script and style files, the app icons and `manifest.webmanifest`, and three folders. The twelve are `index.html`, `style.css` and `app.js`
 (the original dashboard and the games, and the shared helpers the other
 scripts use), `workshop.css` and `workshop.js` (live connection, fleet, the
 "Needs you" list, files, automations, phone layout, Liquid Glass 2.0),
@@ -540,8 +540,8 @@ sandbox, auto-print pipeline), `theme.css` (the "Layer lines" design layer,
 loaded last; also the only stylesheet for the "Needs you" card) and
 `welcome.html` (the product page a static host shows instead of the
 dashboard). `fonts/` holds the three bundled typefaces with their SIL Open
-Font License files, and `img/` the product page's screenshots, taken from
-the simulated farm. `workshop.js` tells the
+Font License files, `img/` the product page's screenshots, taken from the
+simulated farm, and `demo/` the recording the online demo replays. `workshop.js` tells the
 newer files what happens through window events - `dv-tab`, `dv-refresh`,
 `dv-fleet`, `dv-live-event`, `dv-model-open` - rather than them reaching
 into its internals. No framework, no build

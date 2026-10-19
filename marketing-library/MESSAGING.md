@@ -43,8 +43,8 @@ repository page with the ⚙ next to **About**:
    second, with "done at 9:48 PM" on every running print.
 2. **Needs you.** One list, most urgent first, across the whole farm.
 3. **Start from your phone, safely.** Confirm Print: pre-flight, filament
-   colour match, spool weight, maintenance, time, grams, cost. The server
-   checks again at the moment of starting.
+   colour match, nozzles, spool weight, maintenance, time, grams, cost. The
+   server checks again at the moment of starting.
 4. **Files ready for the U1.** Pre-flight with line numbers; MakerWorld,
    NexPrint and OrcaSlicer projects converted in one click, multi-plate
    included; G-code in 3D, layer by layer.
@@ -65,7 +65,7 @@ as "coming, hardware pending", after the features that work today.
 
 ## Numbers you can quote
 
-Each was checked against the code on 16 October 2026.
+Each was checked against the code on 19 October 2026.
 
 | Claim | Where it comes from |
 |---|---|
