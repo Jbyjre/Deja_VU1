@@ -5,10 +5,10 @@ printer_control.py
 Direct control over what the printer is doing right now: pause, resume,
 cancel, set a temperature, home an axis, or send a raw G-code line.
 
-Like maintenance.py, this module needs no extra hardware — it only needs a
-live connection to Moonraker. Every function here calls through to
-mock_moonraker today; swapping that file for a real Moonraker HTTP client is
-the only change needed to make these commands reach a real printer.
+Like maintenance.py, this module needs no extra hardware, only a live
+connection to Moonraker. Every function calls mock_moonraker, which runs
+the command against the simulation or hands it to the real printer's
+moonraker_client, depending on which printer is selected.
 """
 
 import threading

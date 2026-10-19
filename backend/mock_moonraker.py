@@ -7,13 +7,12 @@ Software (like this dashboard) asks Moonraker questions such as "what is the
 printer doing right now?" or "show me the list of prints I've run", and
 Moonraker answers with JSON.
 
-We do not have a real Snapmaker U1 yet, so this file *pretends* to be
-Moonraker. Every function here returns the same shape of data a real
-Moonraker instance would return, but the numbers are generated locally.
-
-Why this matters: when a real printer becomes available, only this one file
-needs to be swapped for a real HTTP/WebSocket client. Nothing else in the
-project talks to the printer directly, so nothing else has to change.
+This file is the one place the rest of the project asks about a printer.
+For the built-in and sandbox printers it *pretends* to be Moonraker: every
+function returns the same shape of data a real Moonraker instance would,
+with the numbers generated locally. For a printer added by address it
+passes the call to a real client (see "Real printers" below). Nothing else
+in the project talks to a printer directly.
 
 More than one printer
 ---------------------

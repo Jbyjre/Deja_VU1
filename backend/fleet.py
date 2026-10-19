@@ -6,9 +6,9 @@ More than one printer. Two separate things live here:
 
   1. The registry - the printers the user has added by address (a
      Moonraker URL on the home network). That is the dashboard's own
-     setting, like the filament list, so it is always available. Until a
-     real Moonraker client exists, a registered printer honestly shows as
-     "not connected" - it is never filled in with made-up numbers.
+     setting, like the filament list, so it is always available. A
+     registered printer that can't be reached shows as "not connected";
+     it is never filled in with made-up numbers.
 
   2. The overview - one at-a-glance row per printer (state, progress,
      alerts, health). Those are printer figures, so the API only serves
