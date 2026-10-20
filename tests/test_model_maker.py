@@ -85,6 +85,18 @@ class ModelMaker(unittest.TestCase):
         with patch('mock_moonraker.selected_printer_id',return_value='two'):
             self.assertIsNone(maker.settings()['calibration'])
 
+    def test_plate_roundtrip_keeps_colour_paint_and_layer_contract(self):
+        result=maker.build(self.body());name=result['file']['name']
+        with patch('file_library.read_bytes',side_effect=lambda n:self.saved[n]):
+            data=plate_project.build({'objects':[{'name':name,'tool':0}]})
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+                self.assertIn('DejaVu/generation.json',z.namelist())
+                part=z.read('3D/sources/0/3D/3dmodel.model')
+                for paint in ('4','8','0C','1C'):self.assertIn(f'paint_color="{paint}"'.encode(),part)
+            transform=list(plate_project.IDENTITY);transform[8]=-1
+            with self.assertRaisesRegex(ValueError,'upright'):
+                plate_project.build({'objects':[{'name':name,'tool':0,'transform':transform}]})
+
     def test_terrain_mesh_is_closed_with_every_edge_used_twice(self):
         part=maker.terrain(self.body()['pixels'],2,2,40,40,10,.8)
         counts=Counter(tuple(sorted(edge)) for a,b,c in part['triangles'] for edge in [(a,b),(b,c),(c,a)])

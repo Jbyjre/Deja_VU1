@@ -5,6 +5,9 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Generated four-tool colour paint survives a plate save-as and real-engine
+  round trip. Layer settings remain attached; transforms that would invalidate
+  the layer recipe are refused.
 - Colour recipes now export as a single multipart object, keeping raised colour
   layers together. The bridge checks printer/tool identity and both first and
   later layer heights. Measured recipes are printer-specific. Selected-settings

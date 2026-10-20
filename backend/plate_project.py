@@ -95,7 +95,7 @@ def build(body):
     rows=body.get('objects')
     if not isinstance(rows,list) or not 1<=len(rows)<=32:
         raise ValueError("A plate needs between 1 and 32 model objects")
-    output=io.BytesIO();objects=[];settings=[];source_bytes=0;model_parts=[];unpacked_total=0
+    output=io.BytesIO();objects=[];settings=[];source_bytes=0;model_parts=[];unpacked_total=0;generation=None
     setup=tool_setup.get()['heads']
     palette=[next((h['color_hex'] for h in setup if h['toolhead']=='T'+str(i)),'#808080') for i in range(4)]
     with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as target:
@@ -115,6 +115,15 @@ def build(body):
             if name.lower().endswith('.3mf'):
                 archive=safe_zip.open_archive(data)
                 try:
+                    if 'DejaVu/generation.json' in archive.namelist():
+                        try:contract=json.loads(safe_zip.read(archive,'DejaVu/generation.json',limit=4096))
+                        except (ValueError,UnicodeError):raise ValueError('This image project has damaged layer settings')
+                        if not isinstance(contract,dict):raise ValueError('This image project has damaged layer settings')
+                        if generation is not None and generation!=contract:
+                            raise ValueError('Use image projects made for the same printer, tools and layer thickness on one plate')
+                        if any(abs(transform[i]-v)>1e-7 for i,v in [(2,0),(5,0),(8,1),(11,0)]):
+                            raise ValueError('Keep generated colour layers upright, at their original thickness and on the plate. Move or rotate around Z; regenerate for a different thickness')
+                        generation=contract
                     if len(archive.infolist())>2000:raise ValueError("This project has too many parts to combine")
                     total=0
                     for info in archive.infolist():
@@ -153,6 +162,7 @@ def build(body):
         target.writestr('Metadata/model_settings.config','<config>'+''.join(settings)+'<plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value="Deja Vu1 plate"/>'+instances+'</plate></config>')
         target.writestr('Metadata/project_settings.config',json.dumps({'filament_colour':palette,'filament_type':[next((h['material'] for h in setup if h['toolhead']=='T'+str(i)),'') for i in range(4)],'printer_model':'Snapmaker U1','printer_settings_id':'Snapmaker U1 (0.4 nozzle)'}))
         target.writestr('DejaVu/plate.json',json.dumps({'version':1,'objects':rows}))
+        if generation is not None:target.writestr('DejaVu/generation.json',json.dumps(generation))
     result=output.getvalue()
     if len(result)>file_library.MAX_BYTES:raise ValueError("The saved plate would exceed the library's 64 MB file limit")
     return result
@@ -171,7 +181,8 @@ def native(parts,palette,note='Generated model'):
         if not part['triangles']:continue
         tool=part['tool'];oid=len(objects)+1
         vertices=''.join('<vertex x="%.7g" y="%.7g" z="%.7g"/>'%tuple(v) for v in part['vertices'])
-        triangles=''.join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a,b,c in part['triangles'])
+        paint=('4','8','0C','1C')[tool]
+        triangles=''.join(f'<triangle v1="{a}" v2="{b}" v3="{c}" paint_color="{paint}"/>' for a,b,c in part['triangles'])
         objects.append(f'<object id="{oid}" type="model" pid="100" pindex="{tool}"><mesh><vertices>{vertices}</vertices><triangles>{triangles}</triangles></mesh></object>')
         settings.append(f'<part id="{oid}" subtype="normal_part"><metadata key="name" value="T{tool} geometry"/><metadata key="extruder" value="{tool+1}"/></part>')
     if not objects:raise ValueError('The generated model has no geometry')
