@@ -63,6 +63,7 @@ import storage
 import slicer_profiles
 import tool_setup
 import mock_moonraker
+import model_maker
 
 _DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "slicer.json")
@@ -314,9 +315,10 @@ def add_installed_profile(body):
     entry = add_profile(body.get('name'), prepared['machine'], prepared['process'], prepared['filaments'])
     s = get_settings()
     saved = next(p for p in s['profiles'] if p['id'] == entry['id'])
-    saved.update({k: prepared[k] for k in ('options','tool_setup','layer_plan','source')})
+    saved.update({k: prepared[k] for k in ('options','tool_setup','layer_plan','source','warnings')})
     saved['printer_id'] = mock_moonraker.selected_printer_id()
     saved['preset_selection'] = {k: body.get(k) for k in ('machine','process','filaments')}
+    s['default_profile']=saved['id']
     _save(s)
     return public_settings()
 
@@ -486,6 +488,8 @@ def slice_model(name, profile_id=None, on_step=None):
     for f, t in [(profile["machine"], "machine"), (profile["process"], "process")] + \
             [(f, "filament") for f in profile["filaments"]]:
         read_preset(f, t)           # they may have moved or changed since the profile was saved
+    with open(profile['process'],encoding='utf-8') as fh:
+        model_maker.check_slice_contract(data,json.load(fh))
 
     work = tempfile.mkdtemp(prefix="dejavu-slice-")
     try:

@@ -71,3 +71,22 @@ class InstalledProfiles(unittest.TestCase):
     def test_material_mismatch_refused(self):
         heads=self.heads();heads[0]['material']='ABS'
         with self.assertRaisesRegex(ValueError,'material'):profiles.prepare(str(self.program),self.body(),heads)
+
+    def test_machine_nozzles_must_match_saved_physical_tools(self):
+        heads=self.heads();heads[0]['nozzle']=.6
+        with self.assertRaisesRegex(ValueError,'nozzle sizes do not match'):profiles.prepare(str(self.program),self.body(),heads)
+
+    def test_mixed_nozzles_limit_bridge_width_to_smallest_head(self):
+        d=json.loads(self.machine.read_text());d['nozzle_diameter']=['.4','.4','.6','.6'];self.machine.write_text(json.dumps(d))
+        heads=self.heads();heads[2]['nozzle']=heads[3]['nozzle']=.6
+        result=profiles.prepare(str(self.program),self.body(),heads)
+        process=json.loads(Path(result['process']).read_text())
+        self.assertEqual(process['bridge_line_width'],'0.4');self.assertTrue(result['warnings'])
+
+    def test_material_variant_requires_explicit_review_and_stays_u1_only(self):
+        d=json.loads(self.filament.read_text());d['compatible_printers']=['Snapmaker U1 (0.6 nozzle)'];self.filament.write_text(json.dumps(d))
+        with self.assertRaisesRegex(ValueError,'compatible'):profiles.prepare(str(self.program),self.body(),self.heads())
+        body=self.body();body['allow_material_variant']=True
+        self.assertTrue(profiles.prepare(str(self.program),body,self.heads())['warnings'])
+        d['compatible_printers']=['Another printer'];self.filament.write_text(json.dumps(d))
+        with self.assertRaisesRegex(ValueError,'compatible'):profiles.prepare(str(self.program),body,self.heads())

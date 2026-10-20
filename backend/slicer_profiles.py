@@ -12,7 +12,7 @@ import storage
 _DATA_DIR = storage.DATA_DIR
 MAX_FILES = 5000
 MAX_BYTES = 4 * 1024 * 1024
-NUMBERS = {"layer_height": (.04, .56), "wall_loops": (1, 20),
+NUMBERS = {"layer_height": (.04, .56), "initial_layer_print_height": (.04,.56), "wall_loops": (1, 20),
            "top_shell_layers": (0, 30), "bottom_shell_layers": (0, 30),
            "outer_wall_speed": (5, 500), "inner_wall_speed": (5, 500),
            "sparse_infill_speed": (5, 500), "travel_speed": (10, 700)}
@@ -64,9 +64,13 @@ def catalog(program):
         d = e['data']; name = str(d.get('name') or '')
         if str(d.get('instantiation')).lower() != 'true' or 'u1' not in name.lower():
             continue
+        try:resolved=resolve(key,entries)
+        except ValueError:continue
         rows.append({'id': key, 'name': name, 'type': d['type'],
                      'compatible_printers': d.get('compatible_printers') or [],
-                     'nozzles': d.get('nozzle_diameter')})
+                     'nozzles': resolved.get('nozzle_diameter'),
+                     'layer_height': resolved.get('layer_height'),
+                     'material': (resolved.get('filament_type') or [None])[0]})
     return {'presets': rows, 'available': bool(rows),
             'problem': None if rows else 'No installed U1 presets were found beside OrcaSlicer. Open Orca, install its Snapmaker U1 profiles, then check again. An extracted Linux AppImage can expose its resources folder; Advanced setup also accepts exported presets.'}
 
@@ -130,9 +134,16 @@ def prepare(program, body, heads):
     for p in [process]+filaments:
         compatible=p.get('compatible_printers') or []
         if compatible and machine['name'] not in compatible:
-            raise ValueError(f"{p['name']} does not list {machine['name']} as compatible. Choose matching presets")
+            reviewed=(p.get('type')=='filament' and body.get('allow_material_variant') is True
+                      and all(str(n).startswith('Snapmaker U1 (') for n in compatible))
+            if not reviewed:
+                raise ValueError(f"{p['name']} does not list {machine['name']} as compatible. Choose matching presets, or explicitly review using a U1 material preset with another nozzle variant")
     if len(heads)!=4:raise ValueError("Save the four-head preparation choices first")
     heads=sorted(heads,key=lambda h:h['toolhead'])
+    try:profile_nozzles=sorted(float(n) for n in machine.get('nozzle_diameter',[]))
+    except (ValueError,TypeError):raise ValueError('The installed printer preset has unreadable nozzle sizes')
+    if profile_nozzles!=sorted(h['nozzle'] for h in heads):
+        raise ValueError('The printer preset nozzle sizes do not match the saved tools. Choose a matching nozzle variant or correct the fitted-tool records')
     machine['nozzle_diameter']=[str(h['nozzle']) for h in heads]
     machine['min_layer_height']=[str(layer_planner.U1_LIMITS[h['nozzle']][0]) for h in heads]
     machine['max_layer_height']=[str(layer_planner.U1_LIMITS[h['nozzle']][1]) for h in heads]
@@ -140,12 +151,23 @@ def prepare(program, body, heads):
     machine['printer_settings_id']=machine['name']
     process['print_settings_id']=process['name']
     process.update(validate_options(body.get('options') or {}))
+    notes=[]
+    if len(set(h['nozzle'] for h in heads))>1:
+        # Percentage bridge widths are evaluated against the largest nozzle,
+        # but engine validation caps bridges at the smallest fitted nozzle.
+        process['bridge_line_width']=str(min(h['nozzle'] for h in heads))
+        notes.append('Bridge line width is limited to the smallest fitted nozzle. Review the material flow limits for every head before printing')
+    if body.get('allow_material_variant') is True:
+        notes.append('You explicitly allowed U1 material presets listed for another nozzle variant. Their temperature and flow settings still need physical verification')
     height=float(process.get('layer_height') or .2)
     # Stock Orca does not advertise per-head preferred heights. A common layer
     # height still passes through the same nozzle planner before reaching it.
     plan=layer_planner.plan([dict(h,height=height) for h in heads])
     if not all(h['ok'] for h in plan['heads']):
         raise ValueError("The layer height is outside one or more nozzle limits. Choose a shared height or use a verified mixed-height engine")
+    first=float(process.get('initial_layer_print_height') or height)
+    if any(not layer_planner.U1_LIMITS[h['nozzle']][0]<=first<=layer_planner.U1_LIMITS[h['nozzle']][1] for h in heads):
+        raise ValueError('The first-layer height is outside one or more nozzle limits')
     for h,f in zip(heads,filaments):
         types=f.get('filament_type') or []
         if types and str(types[0]).upper()!=h['material']:
@@ -158,4 +180,4 @@ def prepare(program, body, heads):
     for name,data in [('machine',machine),('process',process)]+[(f'filament-{i}',f) for i,f in enumerate(filaments)]:
         path=work/(name+'.json');storage.save_json(str(path),data);paths.append(str(path))
     return {'machine':paths[0],'process':paths[1],'filaments':paths[2:],'options':body.get('options') or {},
-            'tool_setup':heads,'layer_plan':plan,'source':'installed presets'}
+            'tool_setup':heads,'layer_plan':plan,'source':'installed presets','warnings':notes}

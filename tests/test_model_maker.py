@@ -6,11 +6,13 @@ import sys
 import tempfile
 import unittest
 import zipfile
+import xml.etree.ElementTree as ET
 from collections import Counter
 from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parent.parent/'backend'))
 import model_maker as maker
 import mesh_tools
+import plate_project
 
 
 class ModelMaker(unittest.TestCase):
@@ -31,6 +33,9 @@ class ModelMaker(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             settings=z.read('Metadata/model_settings.config')
             for i in range(1,5):self.assertIn(f'key="extruder" value="{i}"'.encode(),settings)
+            root=ET.fromstring(z.read('3D/3dmodel.model'));ns={'c':plate_project.CORE}
+            self.assertEqual(len(root.findall('c:build/c:item',ns)),1)
+            self.assertEqual(len(root.findall('.//c:components/c:component',ns)),4)
         self.assertEqual(result['preview']['indices'],[0,1,2,3])
         self.assertGreater(mesh_tools.summarize(data,'image.3mf')['count'],0)
 
@@ -64,6 +69,21 @@ class ModelMaker(unittest.TestCase):
         result=maker.build({'mode':'calibration'})
         self.assertIsNone(result['preview'])
         self.assertGreater(len(self.saved[result['file']['name']]),0)
+
+    def test_image_slice_requires_matching_first_and_later_layers(self):
+        result=maker.build(self.body());data=self.saved[result['file']['name']]
+        maker.check_slice_contract(data,{'layer_height':'.2','initial_layer_print_height':'.2'})
+        with self.assertRaisesRegex(ValueError,'first-layer height'):
+            maker.check_slice_contract(data,{'layer_height':'.2','initial_layer_print_height':'.25'})
+        self.heads[1]['nozzle']=.6
+        with self.assertRaisesRegex(ValueError,'tools changed'):
+            maker.check_slice_contract(data,{'layer_height':'.2','initial_layer_print_height':'.2'})
+
+    def test_calibration_is_scoped_to_printer(self):
+        with patch('mock_moonraker.selected_printer_id',return_value='one'):
+            maker.save_calibration({'colours':['#123456']*16,'measured':True})
+        with patch('mock_moonraker.selected_printer_id',return_value='two'):
+            self.assertIsNone(maker.settings()['calibration'])
 
     def test_terrain_mesh_is_closed_with_every_edge_used_twice(self):
         part=maker.terrain(self.body()['pixels'],2,2,40,40,10,.8)

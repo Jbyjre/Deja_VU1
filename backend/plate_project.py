@@ -173,14 +173,15 @@ def native(parts,palette,note='Generated model'):
         vertices=''.join('<vertex x="%.7g" y="%.7g" z="%.7g"/>'%tuple(v) for v in part['vertices'])
         triangles=''.join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a,b,c in part['triangles'])
         objects.append(f'<object id="{oid}" type="model" pid="100" pindex="{tool}"><mesh><vertices>{vertices}</vertices><triangles>{triangles}</triangles></mesh></object>')
-        settings.append(f'<object id="{oid}"><metadata key="name" value="T{tool} geometry"/><metadata key="extruder" value="{tool+1}"/></object>')
+        settings.append(f'<part id="{oid}" subtype="normal_part"><metadata key="name" value="T{tool} geometry"/><metadata key="extruder" value="{tool+1}"/></part>')
     if not objects:raise ValueError('The generated model has no geometry')
     materials='<basematerials id="100">'+''.join(f'<base name="T{i}" displaycolor="{h["color_hex"]}"/>' for i,h in enumerate(palette))+'</basematerials>'
-    model=f'<model unit="millimeter" xmlns="{CORE}"><metadata name="Application">Deja Vu1</metadata><metadata name="Description">{escape(note)}</metadata><resources>'+materials+''.join(objects)+'</resources><build>'+''.join(f'<item objectid="{i+1}"/>' for i in range(len(objects)))+'</build></model>'
+    assembly='<object id="1000" type="model"><components>'+''.join(f'<component objectid="{i+1}"/>' for i in range(len(objects)))+'</components></object>'
+    model=f'<model unit="millimeter" xmlns="{CORE}"><metadata name="Application">Deja Vu1</metadata><metadata name="Description">{escape(note)}</metadata><resources>'+materials+''.join(objects)+assembly+'</resources><build><item objectid="1000"/></build></model>'
     with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED) as z:
         z.writestr('3D/3dmodel.model',model)
         z.writestr('_rels/.rels','<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="model" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
         z.writestr('[Content_Types].xml','<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/></Types>')
-        z.writestr('Metadata/model_settings.config','<config>'+''.join(settings)+'</config>')
+        z.writestr('Metadata/model_settings.config','<config><object id="1000"><metadata key="name" value="Four-tool model"/>'+''.join(settings)+'</object></config>')
         z.writestr('Metadata/project_settings.config',json.dumps({'filament_colour':[h['color_hex'] for h in palette],'filament_type':[h['material'] for h in palette],'printer_model':'Snapmaker U1'}))
     return output.getvalue()

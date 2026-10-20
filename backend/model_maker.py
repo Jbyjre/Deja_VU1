@@ -1,14 +1,17 @@
 """Four-tool image tiles, measured layer recipes and closed heightmap reliefs."""
 import hashlib
+import io
 import json
 import math
 import os
 import re
 import threading
 import uuid
+import zipfile
 
 import file_library
 import layer_planner
+import mock_moonraker
 import plate_project
 import storage
 import tool_setup
@@ -40,7 +43,7 @@ def recipes():
 
 def signature(heads,height):
     fields=[{k:h.get(k) for k in ('material','color_hex','spool_id','nozzle')} for h in heads]
-    return hashlib.sha256(json.dumps([fields,height],sort_keys=True).encode()).hexdigest()
+    return hashlib.sha256(json.dumps([mock_moonraker.selected_printer_id(),fields,height],sort_keys=True).encode()).hexdigest()
 
 
 def settings(height=.2):
@@ -48,7 +51,7 @@ def settings(height=.2):
     heads=palette();key=signature(heads,h)
     with _lock:calibration=storage.load_json(_PATH,{}).get(key)
     return {'palette':heads,'recipes':[{'id':i,'row':i//4+1,'column':i%4+1,'layers':['T'+str(t) for t in row]} for i,row in enumerate(recipes())],
-            'layer_height':h,'calibration':calibration,'note':'Measured recipes apply only to these saved spools, colours, nozzles and layer thickness. A screen preview cannot predict a physical print.'}
+            'layer_height':h,'calibration':calibration,'note':'Measured recipes apply only to this printer, saved spools, colours, nozzles and layer thickness. Use identical print and material settings for the swatches and image, including temperature and first layer. A screen preview cannot predict a physical print.'}
 
 
 def save_calibration(body):
@@ -121,6 +124,7 @@ def build(body):
         lo,hi=layer_planner.U1_LIMITS[head['nozzle']]
         if not lo<=height<=hi:raise ValueError(f"{head['toolhead']}: choose a layer thickness between {lo} and {hi} mm")
     base=number(body.get('base',.8),'Backing thickness',.4,5)
+    base=math.ceil(base/height-1e-9)*height
     parts=[{'tool':i,'vertices':[],'triangles':[]} for i in range(4)]
     plan=recipes()
     if mode=='calibration':
@@ -165,6 +169,32 @@ def build(body):
             preview={'width':w,'height':h,'colours':colours,'indices':indices,'source':'measured swatches' if mode=='layered' else 'saved filament colours; appearance is not calibrated'}
         else:raise ValueError('Choose mosaic, layered image, calibration swatches or terrain relief')
     data=plate_project.native(parts,heads,'Image/heightmap geometry; slice before printing')
+    if mode in ('calibration','layered','mosaic'):
+        archive=io.BytesIO(data)
+        with zipfile.ZipFile(archive,'a',zipfile.ZIP_DEFLATED) as z:
+            z.writestr('DejaVu/generation.json',json.dumps({'version':1,'layer_height':height,
+                'initial_layer_print_height':height,'tool_signature':signature(heads,height)}))
+        data=archive.getvalue()
     name=mode+'-'+uuid.uuid4().hex[:10]+'.3mf'
     entry=file_library.save(name,data,origin='generated',note='Generated '+mode+' model; inspect and slice before printing')
     return {'file':entry,'preview':preview,'note':'This is model geometry, not G-code. Slice it to obtain real time and filament figures. Physical colour matching is unverified.'}
+
+
+def check_slice_contract(data,process):
+    """Refuse layer boundaries that would change a generated colour recipe."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            if 'DejaVu/generation.json' not in z.namelist():return
+            entry=z.getinfo('DejaVu/generation.json')
+            if entry.file_size>4096:raise ValueError('The generated image settings are too large')
+            contract=json.loads(z.read(entry))
+    except zipfile.BadZipFile:return  # Ordinary STL input has no project settings.
+    except (TypeError,UnicodeError,json.JSONDecodeError):raise ValueError('The generated image settings are damaged')
+    if not isinstance(contract,dict):raise ValueError('The generated image settings are damaged')
+    height=number(contract.get('layer_height'),'Generated layer thickness',.04,.56)
+    if contract.get('tool_signature')!=signature(palette(),height):
+        raise ValueError('The printer or saved tools changed since this image was made. Generate it again with the current tools')
+    for key in ('layer_height','initial_layer_print_height'):
+        try:match=abs(float(process.get(key))-height)<1e-6
+        except (TypeError,ValueError):match=False
+        if not match:raise ValueError(f'This image needs both layer height and first-layer height set to {height:g} mm. Save a matching slicing profile; use the same print and material settings as its calibration swatches')

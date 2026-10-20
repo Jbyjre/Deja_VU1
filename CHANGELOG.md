@@ -5,6 +5,19 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Colour recipes now export as a single multipart object, keeping raised colour
+  layers together. The bridge checks printer/tool identity and both first and
+  later layer heights. Measured recipes are printer-specific. Selected-settings
+  export now includes tool assignments and measured recipes; full restore remains absent.
+- Mixed-nozzle presets limit bridge width to the smallest nozzle and require
+  explicit review before using materials listed for another U1 nozzle variant.
+  A real mixed-nozzle slice was blocked by startup extrusion outside 270 mm.
+  A converted three-plate fixture crashed Orca; single-plate conversions passed.
+- G-code layers follow file order, including sequential objects; startup purge
+  can be excluded when framing a layer. Added selected-object outlines, broadest
+  surface lay-flat, cached transforms, bounded ZIP streaming and 3MF unit handling.
+
+
 - Connected explicit spool assignments to Confirm Print’s weight check. New
   inventories start empty; existing records are preserved. Duplicate physical
   spool assignments are refused. Without measured per-tool usage, a multi-tool
