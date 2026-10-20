@@ -2,7 +2,7 @@
   "name": "Deja Vu1 - Snapmaker U1 Dashboard",
   "short_name": "Deja Vu1",
   "description": "Your Snapmaker U1s at a glance: live status, controls, files, filament and maintenance.",
-  "start_url": "./",
+  "start_url": "./?dashboard",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f0f1f5",

@@ -129,6 +129,13 @@
 </header>
 
 <main class="wrap">
+  <section class="launch-strip" aria-label="Setup and feature finder">
+    <div><p class="eyebrow">DEJA VU1 / YOUR WORKSHOP</p><strong id="private-greeting">Your print bench</strong></div>
+    <div class="feature-finder"><label class="sr-only" for="feature-search">Find a feature</label><input id="feature-search" type="search" placeholder="Find a feature…" autocomplete="off"><div id="feature-results" hidden></div></div>
+    <button class="btn" id="setup-open">Set up &amp; help</button>
+    <button class="btn" id="camera-open">Camera</button>
+  </section>
+
 
   <section class="server-banner liquid-glass" id="server-banner" hidden>
     <span class="notice-mark" aria-hidden="true">i</span>
@@ -600,7 +607,7 @@
         <p>A different nozzle and layer height on each toolhead: fine detail where it shows, thick fast layers inside</p></div>
       <section class="card liquid-glass lp-card">
         <div class="card-head"><div><h2>Plan the layers</h2><p class="card-sub">Pick each toolhead's nozzle and the layer height you'd like. The planner finds the shared layer grid, the way mixed-nozzle slicers do, and checks each height against Snapmaker's U1 profile for that nozzle.</p></div>
-          <button class="btn small" type="button" id="lp-example">Try the winning example</button></div>
+          <button class="btn small" type="button" id="lp-example">Try a mixed-nozzle example</button></div>
         <div class="lp-layout">
           <form class="lp-form" id="lp-form" novalidate>
             <div class="lp-rows" id="lp-rows"></div>
@@ -612,7 +619,7 @@
           </form>
           <div class="lp-out" id="lp-out" aria-live="polite"></div>
         </div>
-        <p class="lp-source">The idea: LixNix's Full Multi-Nozzle Printing, a Tier 1 winner of Snapmaker's Innovation Fund. The grid rule is rewritten here from its description; the slicer has the final word, so check its preview before printing. Layer limits: Snapmaker's U1 machine profiles. Print it with a slicer that supports per-toolhead layer heights; Confirm Print then checks each toolhead's nozzle before it starts.</p>
+        <p class="lp-source">This plans layer heights; it does not slice a model. Limits come from Snapmaker's U1 machine profiles. Use a slicer that supports per-toolhead layer heights and check its preview. Confirm Print checks each fitted nozzle before starting.</p>
       </section>
     </section>
   </section>
@@ -856,6 +863,18 @@
   <!-- MODULES & DEVICES                                             -->
   <!-- ============================================================ -->
   <section id="tab-modules" class="tab-panel" hidden>
+    <section class="card liquid-glass setup-settings" data-browser-only>
+      <div class="card-head"><div><h2>Your space</h2><p class="card-sub">A little help, whenever you need it.</p></div><button class="btn" id="setup-replay">Replay setup</button></div>
+      <label for="private-name">Your name · optional</label>
+      <div class="inline-form"><input id="private-name" maxlength="40" autocomplete="off"><button class="btn" id="private-delete">Delete name</button></div>
+      <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
+      <h3>App updates <span id="app-update-badge" hidden>New version available</span></h3>
+      <p id="app-update-status" role="status">Loading app information…</p>
+      <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button></div>
+      <label class="setup-check"><input type="checkbox" id="app-update-auto"> Check automatically at startup (at most daily)</label>
+      <p class="field-hint">Off by default. Checks send no name or printer details. GitHub sees your connection's network address.</p>
+      <p class="field-hint" id="app-update-note"></p>
+    </section>
     <div class="grid-2" style="align-items:start;">
       <section class="card liquid-glass">
         <div class="card-head"><div><h2>Modules</h2><p class="card-sub">Turn features on or off</p></div></div>
@@ -864,7 +883,7 @@
 
       <div style="display:flex; flex-direction:column; gap:20px;">
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Paired devices</h2></div></div>
+          <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Optional list of devices. This is not a login or access restriction.</p></div></div>
           <div id="pairing-code-display" style="display:none; text-align:center; margin-bottom:14px;">
             <div class="pair-code" id="pairing-code-text">— — —</div>
             <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
@@ -911,7 +930,7 @@
         </section>
 
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Updates &amp; backup</h2></div></div>
+          <div class="card-head"><div><h2>Printer firmware &amp; config download</h2><p class="card-sub">App updates are above. This download includes only some settings and has no restore button; it is not a full backup.</p></div></div>
           <div id="updates-body" class="log-empty">—</div>
           <div style="display:flex; gap:8px; margin-top:14px;" data-module-body="backup">
             <a class="btn block" id="backup-btn" href="/api/backup" download style="text-align:center; text-decoration:none;">Download backup</a>
@@ -992,15 +1011,20 @@
             <button class="btn" type="submit">Save</button>
           </form>
         </details>
-        <div id="camera-host" class="camera-host"></div>
+        <details class="stock-camera"><summary>U1 built-in camera</summary>
+          <p class="field-hint">For the stock U1 camera: JPEG pictures requested directly from the selected printer. Requires compatible firmware; not yet verified on a physical U1. The stream address above is for a separately configured camera.</p>
+          <button class="btn" id="stock-camera-start" type="button">Show built-in camera</button>
+          <button class="btn" id="stock-camera-stop" type="button" hidden>Stop camera</button>
+          <p id="stock-camera-status" role="status"></p><img id="stock-camera-image" alt="Selected printer camera" hidden style="width:100%;border-radius:16px">
+        </details><div id="camera-host" class="camera-host"></div>
       </section>
       <section class="card liquid-glass">
         <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
         <div id="timelapse-host"></div>
       </section>
       <section class="card liquid-glass" data-browser-only>
-        <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">Reach this dashboard through a Cloudflare Tunnel</p></div></div>
-        <p class="card-sub">The dashboard stays on your home network; <code>cloudflared</code>, a separate program you run on the same machine, opens an outgoing link to Cloudflare. The printer itself is never exposed. It needs a domain on Cloudflare and about fifteen minutes of setup — the steps are in <code>docs/remote-access.md</code>. Put Cloudflare Access in front of it: this dashboard has no login of its own.</p>
+        <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">A private connection to your home computer</p></div></div>
+        <p class="card-sub">Keep this computer awake. Use Tailscale on your computer and phone with private Serve, or configure Cloudflare Access before exposing a tunnel. This dashboard has no login, and pairing does not restrict access. Do not forward its port through your router. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md" target="_blank" rel="noopener">Remote setup guide</a>.</p>
       </section>
       <section class="card liquid-glass" id="demo-tools-card" hidden>
         <div class="card-head"><div><h2>Demo controls</h2><p class="card-sub">Only with demo data on — for trying things out</p></div></div>
@@ -1176,11 +1200,17 @@
     <button class="btn" id="ar-exit" type="button">Done</button>
   </div>
 </div>
+<dialog id="setup-dialog" class="glass-dialog setup-dialog" aria-labelledby="setup-title">
+  <div class="setup-top"><span id="setup-step" class="eyebrow"></span><button class="btn small" id="setup-skip">Skip setup</button></div>
+  <div id="setup-content"></div><p id="setup-status" role="status" aria-live="polite"></p>
+  <div class="setup-footer"><button class="btn" id="setup-back">Back</button><button class="btn primary" id="setup-next">Continue</button></div>
+</dialog>
 <script src="app.js"></script>
 <script src="viewer3d.js"></script>
 <script src="ar.js"></script>
 <script src="workshop.js"></script>
 <script src="studio.js"></script>
 <script src="farm.js"></script>
+<script src="launchpad.js"></script>
 </body>
 </html>

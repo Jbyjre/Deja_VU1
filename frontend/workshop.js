@@ -91,7 +91,7 @@ const Workshop = (() => {
 
   function empty(title, sub) { return EMPTY(title, sub); }
   function demoNeeded(what) {
-    return serverMissing() ? needsServerEmpty(what) : empty(`No printer connected`, `Turn on demo data to see ${what} on the simulated printers.`);
+    return serverMissing() ? needsServerEmpty(what) : empty(`No printer connected`, `Connect your printer in Set up & help, or turn on demo data to explore ${what}.`);
   }
 
   /* ================================================================
@@ -129,6 +129,7 @@ const Workshop = (() => {
     live.ws = ws;
     ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; badge(); };
     ws.onmessage = (e) => {
+      if (live.ws !== ws) return;
       let msg;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (!msg.type) { live.mode = 'off'; badge(); return; }          // {"connected":false,"demo":false}
@@ -337,6 +338,7 @@ const Workshop = (() => {
 
   function renderFleet(printers) {
     live.fleet = printers || [];
+    renderAttention(live.fleet);
     // The remembered printer can be gone (removed, or a sandbox printer torn
     // down). Every request would then ask for an unknown printer and every
     // panel would say nothing is connected, so fall back to the default.
@@ -415,7 +417,6 @@ const Workshop = (() => {
     });
     // The fleet command center (farm.js) adds selection, queues and drop targets.
     window.dispatchEvent(new CustomEvent('dv-fleet', { detail: live.fleet }));
-    renderAttention(live.fleet);
   }
 
   /* ================================================================
@@ -1167,6 +1168,7 @@ const Workshop = (() => {
     if (!host) return;
     const views = $('wf-views');
     if (!state) {
+      setText($('twin-sub'), 'Waiting for a printer connection');
       host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null;
       if (views) views.hidden = true;
       return;
