@@ -415,6 +415,8 @@ def module_routes():
     routes = {path: owner for path, (owner, _) in {**_DATA_ROUTES, **_APP_ROUTES}.items() if owner}
     routes["/api/sandbox"] = "sandbox"
     routes["/api/timelapse/frame"] = "timelapse"
+    routes["/api/camera/snapshot"] = "camera"
+    routes["/api/camera/stream"] = "camera"
     return routes
 
 
@@ -797,6 +799,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             ctype = "text/plain; charset=utf-8" if kind == "gcode" else "application/octet-stream"
             download = query.get("download", ["0"])[0] == "1"
             return self._send_bytes(data, ctype, filename=file_library.clean_name(name) if download else None)
+
+        if route == "/api/camera/snapshot":
+            if self._module_blocked("camera"):
+                return None
+            if force_disconnected or (not connected and not _demo(query)):
+                return self._send_json({"connected": False, "demo": False})
+            data, mime = mock_moonraker.camera_snapshot()
+            return self._send_bytes(data, mime)
 
         if route == "/api/camera/stream":
             if self._module_blocked("camera"):
@@ -1430,6 +1440,8 @@ def main():
         print("\nStopped.")
     finally:
         live_feed.stop()
+        import stock_camera
+        stock_camera.stop_all()
         server.server_close()
     if getattr(server, "update_restart", False):
         sys.exit(75)

@@ -256,6 +256,9 @@ def tick(seconds=TICK_SECONDS, count=0, scaled=True):
     "step forward"), so each printer's demo speed isn't applied again.
     """
     now = time.time()
+    if not modules.is_enabled("camera"):
+        import stock_camera
+        stock_camera.stop_all()
     for printer_id in mock_moonraker.printer_ids():
         if not mock_moonraker.has_printer(printer_id):
             continue                  # removed by the sandbox mid-tick
