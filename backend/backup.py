@@ -2,8 +2,8 @@
 backup.py
 =========
 
-A one-click archive of this dashboard's own data: the maintenance log,
-module settings, filament inventory, and notification settings. Built with
+An export of selected dashboard records: the default maintenance log, module
+switches, inventory, notification/Spoolman settings, tool setup and colour recipes. Built with
 `zipfile` and `json`, both standard library - no dependency, nothing to
 install.
 

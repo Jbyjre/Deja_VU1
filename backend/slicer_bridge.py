@@ -18,8 +18,7 @@ exactly the way a person would from a terminal:
         --outputdir <temp folder> model.stl
 
 How that command line works was read from OrcaSlicer's source
-(github.com/SoftFever/OrcaSlicer, tag v2.3.2 and main as of September
-2026), not assumed:
+(github.com/OrcaSlicer/OrcaSlicer, tag v2.4.2), not assumed:
   - options are defined in src/libslic3r/PrintConfig.cpp (CLIActionsConfigDef,
     CLIMiscConfigDef): --slice <plate, 0 = all>, --load-settings,
     --load-filaments (lists separated by ";"), --outputdir
@@ -27,7 +26,7 @@ How that command line works was read from OrcaSlicer's source
     on Linux only, <outputdir>/result.json with "return_code" and
     "error_string"; a bare STL is arranged on the plate by default
   - a preset file must say where it came from ("from": "system" or "User")
-    and, in v2.3.2, what it is ("type": machine / process / filament)
+    and what it is ("type": machine / process / filament)
   - error codes are listed in src/libslic3r/Utils.hpp (CLI_* defines)
 
 What's genuinely fragile, said plainly: this drives another program's

@@ -410,8 +410,7 @@ def convert(data):
 # A plate whose objects can't all be matched up safely is left exactly as
 # it was rather than moved in part, and the report says which.
 #
-# The idea of correcting plate positions comes from the "MakerWorld to
-# Snapmaker U1" extension; this code is written from Orca's source.
+# Plate positions follow the slicer's documented bed-coordinate layout.
 # ---------------------------------------------------------------------------
 
 MODEL_PART = "3D/3dmodel.model"
