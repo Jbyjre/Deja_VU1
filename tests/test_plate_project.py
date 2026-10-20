@@ -53,7 +53,10 @@ class PlateProjects(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'unsafe'):plate.build({'objects':[{'name':'bad.3mf'}]})
 
     def test_document_entities_refused(self):
-        with self.assertRaisesRegex(ValueError,'declarations'):plate._xml(b'<!DOCTYPE m [<!ENTITY x "bad">]><m/>')
+        xml='<!DOCTYPE m [<!ENTITY x "bad">]><m/>'
+        for encoding in ('utf-8','utf-16','utf-16-le','utf-16-be'):
+            with self.subTest(encoding),self.assertRaisesRegex(ValueError,'declarations'):
+                plate._xml(xml.encode(encoding))
 
     def test_obj_vertex_colours_survive_preparation(self):
         self.sources['colours.obj']=b'v 0 0 0 1 0 0\nv 10 0 0 0 1 0\nv 0 10 0 0 0 1\nf 1 2 3\n'

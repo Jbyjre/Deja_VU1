@@ -29,6 +29,9 @@ def _xml(data):
     # Only the build list is needed. Do not construct millions of vertex nodes.
     root=ET.Element('{'+CORE+'}model');build=ET.SubElement(root,'{'+CORE+'}build')
     parser=expat.ParserCreate(namespace_separator='}');in_build=[False]
+    def reject_declaration(*args):raise ValueError('Model XML with document declarations is not supported')
+    parser.StartDoctypeDeclHandler=reject_declaration
+    parser.EntityDeclHandler=reject_declaration
     def start(tag,attrs):
         if tag==CORE+'}model':root.attrib.update(attrs)
         elif tag==CORE+'}build':in_build[0]=True
