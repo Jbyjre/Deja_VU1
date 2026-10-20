@@ -90,7 +90,9 @@ Each was checked against the code on 16 October 2026.
   Snapmaker Orca itself yet**.
 - The dock rings and colour sensor are **hardware pending**.
 
-## Credit where ideas came from
+## Research and required notices
 
-The README's "Ideas from the Phase 1 winners" table credits each borrowed
-idea. Keep it when you post, and add any new borrowings there.
+Keep the owner's study record outside the shipped repository. Do not name study
+projects as the source of independently implemented features in public copy.
+Preserve required licence and copyright notices for anything actually reused;
+stop for a licence review before copying or closely adapting external material.
