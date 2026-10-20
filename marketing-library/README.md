@@ -104,7 +104,7 @@ computer, talks to your U1s on your network, opens in any browser, your phone in
 seven features shown working (every printer live, Needs you, Confirm Print and the phone,
 files for the U1, skip one object, the digital twin, automations), "and plenty more" (six
 more as screenshots), why to trust it (free, open source, runs on your network, no account,
-638 automated tests), how to get started (download, double-click, it opens in your browser)
+659 automated tests), how to get started (download, double-click, it opens in your browser)
 and the install lines.
 
 Every app view is labelled "Simulated farm". The end card says every figure comes from
@@ -140,7 +140,7 @@ files.
 | `07-digital-twin` | The live engineering drawing, front and top views |
 | `08-automations` | A ready-made rule saved, on the laptop |
 | `09-and-plenty-more` | Maintenance, filament, print cost, Home Assistant, games, 29 modules |
-| `10-why-trust-it` | Free, open source, runs on your network, no account, 638 automated tests |
+| `10-why-trust-it` | Free, open source, runs on your network, no account, 659 automated tests |
 | `11-get-started` | Download, double-click, it opens in your browser |
 | `12-get-it` | The end card: the three install lines |
 
