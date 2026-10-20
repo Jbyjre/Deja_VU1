@@ -254,6 +254,13 @@ sandbox, so you can't fetch the preview from here.
 
 ## Launch-readiness additions
 
+- `slicer_profiles.py`: discover installed Snapmaker presets, resolve parents
+  with cycle/size bounds, check compatibility and write private flattened
+  working copies under `slicer-presets/`. Preserve system identity for CLI
+  compatibility; inherited `printer_settings_id` can be stale. Native profiles
+  retain their printer/tool choices and refuse stale assignments before slicing.
+  Real Orca 2.4.2 Linux bracket slice verified; other OSs and hardware not tested.
+
 - Time-lapse uses `mock_moonraker.camera_snapshot()` for each real printer.
   One bounded on-demand capture worker per printer keeps camera delays out of
   the live tick. Session identity and module switches are rechecked before save.

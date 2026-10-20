@@ -98,6 +98,10 @@ and every change is in the public history.
 
 ## What's new
 
+- **Installed U1 profiles by name:** resolve Orca's inherited settings, choose
+  four materials and edit layer height, walls, infill, supports and speeds.
+  A real OrcaSlicer 2.4.2 Linux slice produced 125 layers and passed pre-flight.
+
 - **Time-lapse follows the selected printer’s built-in camera**, with separate
   capture state for every printer and visible capture errors. It no longer reads
   the shared manual camera feed. Slow snapshots do not pause live printer updates.
@@ -379,6 +383,12 @@ answer the browser does. Settings that belong to the dashboard itself
 printer figures, so they work the same with or without a printer connected.
 
 ## Current status
+
+The local bridge has now run OrcaSlicer 2.4.2 on Linux using installed U1
+presets: a 20-triangle bracket produced 125 layers, 6.62 g and 0.231 hours
+(engine-reported estimates), with a clear pre-flight report. This is one sample,
+not physical-printer validation. Windows/macOS, complex painted models and
+different per-head layer heights remain unverified. No engine is bundled.
 
 Four-head preparation is tested against the simulator and a stand-in Moonraker.
 Physical U1 filament writes, tagged-spool refusal and persistence through a

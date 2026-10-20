@@ -32,6 +32,20 @@ is not a calibrated prediction of physical filament appearance.
 
 ## Recommended slicing route: locally installed OrcaSlicer
 
+**Verified engine path:** OrcaSlicer 2.4.2 on Linux has sliced the sample bracket
+through this bridge, using its own resolved U1 presets. Output: 125 layers,
+6.62 g and 0.231 hours from the engine; Deja Vu1 pre-flight was clear. This
+does not verify a physical print, other operating systems or arbitrary projects.
+
+**Beginner profile setup:** in Auto-print, load and save **Tools & filaments**,
+then choose **Find installed U1 profiles**. Pick matching printer, quality and
+four material presets by name. Set layer height, walls, infill and supports;
+more settings expose speeds and shell counts. Save a new named profile. The
+app resolves parent presets from the installed engine and writes private working
+copies; it never edits the installation. The saved nozzles and colours feed
+those copies. Changing tool preparation requires a new profile. All heads use
+the selected common layer height, validated through the nozzle planner.
+
 Use a separately installed OrcaSlicer with known-compatible U1 presets. Deja Vu1
 runs its command line as a child program; it does not include a slicing engine,
 download one automatically or send the model to a cloud slicer. OrcaSlicer's

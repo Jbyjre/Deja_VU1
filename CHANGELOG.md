@@ -5,6 +5,15 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Added installed-preset discovery, bounded inheritance resolution, matching
+  machine/material checks and a native print-settings form. Generated working
+  presets leave the installation intact. Saved tools feed nozzle arrays and
+  colours; a shared layer height passes through the nozzle planner. Separate
+  preferred heights are explicitly unsupported by this stock-engine path.
+- Verified a real OrcaSlicer 2.4.2 Linux slice through the bridge: 125 layers,
+  6.62 g, 0.231 h from the engine, clear pre-flight. Fixed lost system identity
+  during preset resolution and selected-printer scope on slicing workers.
+
 - Time-lapse now captures each real printer’s own stock camera, independently of
   open browser tabs. Duplicate pictures are skipped, failures are visible and
   retried, and late replies cannot enter a different print’s session. Real

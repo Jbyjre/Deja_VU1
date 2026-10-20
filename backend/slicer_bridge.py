@@ -40,9 +40,9 @@ would know until a slice fails. So every run
   - reports failure in words, with the end of Orca's own output attached,
   - records the Orca version it ran with, so "it worked last month" can be
     traced to an update.
-It has not yet been run against a real Orca install in this project's own
-testing - the tests drive a stand-in program that behaves like the source
-says Orca does (see tests/test_slicer_bridge.py).
+OrcaSlicer 2.4.2 has produced a real U1 bracket slice through this bridge on
+Linux. The portable unit tests still use a stand-in executable; physical
+printing and other operating systems remain unverified.
 """
 
 import json
@@ -60,6 +60,9 @@ from datetime import datetime
 import file_library
 import gcode_tools
 import storage
+import slicer_profiles
+import tool_setup
+import mock_moonraker
 
 _DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "slicer.json")
@@ -300,6 +303,24 @@ def remove_profile(profile_id):
     return public_settings()
 
 
+def installed_catalog():
+    path, _ = slicer_path()
+    return slicer_profiles.catalog(path)
+
+
+def add_installed_profile(body):
+    path, _ = slicer_path()
+    prepared = slicer_profiles.prepare(path, body, tool_setup.get()['heads'])
+    entry = add_profile(body.get('name'), prepared['machine'], prepared['process'], prepared['filaments'])
+    s = get_settings()
+    saved = next(p for p in s['profiles'] if p['id'] == entry['id'])
+    saved.update({k: prepared[k] for k in ('options','tool_setup','layer_plan','source')})
+    saved['printer_id'] = mock_moonraker.selected_printer_id()
+    saved['preset_selection'] = {k: body.get(k) for k in ('machine','process','filaments')}
+    _save(s)
+    return public_settings()
+
+
 # ---------------------------------------------------------------------------
 # Running the program
 # ---------------------------------------------------------------------------
@@ -455,6 +476,11 @@ def slice_model(name, profile_id=None, on_step=None):
     if problem:
         raise ValueError(problem)
     profile = _profile(profile_id, s)
+    if profile.get('tool_setup'):
+        if profile.get('printer_id') != mock_moonraker.selected_printer_id():
+            raise ValueError("This profile belongs to another printer. Choose or make a profile for this printer")
+        if profile['tool_setup'] != tool_setup.get()['heads']:
+            raise ValueError("Tool preparation changed after this profile was made. Save a new profile with the current tools")
     step("Checking the preset files")
     for f, t in [(profile["machine"], "machine"), (profile["process"], "process")] + \
             [(f, "filament") for f in profile["filaments"]]:
@@ -504,7 +530,7 @@ def slice_model(name, profile_id=None, on_step=None):
             if not gcode.strip():
                 raise SliceFailed(f"Orca wrote {plate_file}, but it's empty", report)
             analysis = gcode_tools.analyze(gcode.decode("utf-8", errors="replace"), want_toolpath=False)
-            if not analysis["layers"] or not analysis["filament_grams"]:
+            if not analysis["layers"] or not analysis["filament_mm"]:
                 raise SliceFailed(f"Orca wrote {plate_file}, but it has no printable layers in it - "
                                   "refusing to add a file that would print nothing", report)
             plate_no = int(re.findall(r"\d+", plate_file)[0])
@@ -560,9 +586,14 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
         _order.append(job["id"])
         while len(_order) > MAX_JOBS_KEPT:
             _jobs.pop(_order.pop(0), None)
-    threading.Thread(target=_work, args=(job["id"], name, profile["id"], queue_to, on_done),
+    threading.Thread(target=_work_selected, args=(mock_moonraker.selected_printer_id(), job["id"], name, profile["id"], queue_to, on_done),
                      name="slicer", daemon=True).start()
     return dict(job)
+
+
+def _work_selected(printer_id, *args):
+    with mock_moonraker.use_printer(printer_id):
+        _work(*args)
 
 
 def _previous_output(model, profile_id):

@@ -415,6 +415,11 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .tool-setup-grid label { display:grid;gap:6px;margin:12px 0;font-size:.85rem; }
 .tool-setup-grid input,.tool-setup-grid select { min-height:44px;max-width:100%;width:100%; }
 .tool-setup-grid input[type=color] { padding:4px; }
+.profile-options { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+.native-profile { padding:8px 0 20px; }
+.native-profile h3 { margin:10px 0; }
+.native-profile summary { min-height:44px;padding:12px 0;cursor:pointer; }
+.native-profile input,.native-profile select {width:100%;min-width:0;min-height:44px;}
 .tool-setup-grid .btn { width:100%;min-height:44px;white-space:normal; }
 @media(max-width:850px) { .tool-setup-grid {grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media(max-width:480px) { .tool-setup-grid {grid-template-columns:1fr;} }

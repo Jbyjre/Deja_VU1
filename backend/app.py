@@ -372,6 +372,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
     # The camera's frozen-stream watchdog is about the camera relay, not
@@ -1044,6 +1045,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if verb == "profiles":
                 return self._send_json(slicer_bridge.add_profile(body.get("name"), body.get("machine"),
                                                                  body.get("process"), body.get("filaments")))
+            if verb == "profiles/from-installed":
+                return self._send_json(slicer_bridge.add_installed_profile(body))
             if verb.startswith("profiles/") and verb.endswith("/remove"):
                 return self._send_json(slicer_bridge.remove_profile(verb.split("/")[1]))
             if verb == "slice":
