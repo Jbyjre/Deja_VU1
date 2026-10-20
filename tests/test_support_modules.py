@@ -6,6 +6,7 @@ Tests for the smaller support modules: updates, backup, camera, pairing.
 
 import os
 import sys
+import tempfile
 import unittest
 from unittest import mock
 import zipfile
@@ -52,6 +53,15 @@ class TestBackup(unittest.TestCase):
         # backup should still succeed with just a manifest, not crash.
         filename, data = backup.create_backup()
         self.assertGreater(len(data), 0)
+
+    def test_exports_tool_and_measured_recipe_records(self):
+        with tempfile.TemporaryDirectory() as folder,mock.patch.object(backup,'_DATA_DIR',folder):
+            for name in ('tool_setup.json','colour_calibration.json'):
+                with open(os.path.join(folder,name),'w') as f:f.write('{}')
+            _,data=backup.create_backup()
+            with zipfile.ZipFile(BytesIO(data)) as archive:
+                self.assertIn('tool_setup.json',archive.namelist())
+                self.assertIn('colour_calibration.json',archive.namelist())
 
 
 class TestCamera(unittest.TestCase):

@@ -28,6 +28,8 @@ _INCLUDED_FILES = [
     "filament_inventory.json",
     "notification_settings.json",
     "spoolman_settings.json",
+    "tool_setup.json",
+    "colour_calibration.json",
 ]
 
 # Fields blanked in the archive (see create_backup).
