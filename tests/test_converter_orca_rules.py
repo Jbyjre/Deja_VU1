@@ -1,8 +1,8 @@
 """
 Static check of converted projects against Snapmaker Orca's own loader rules.
 
-The converter has NOT been verified by opening its output in Snapmaker Orca.
-These tests are the strictest check possible without running Orca itself:
+These static checks complement real Orca 2.4.2 single-plate integration checks;
+opening converted projects in the Snapmaker desktop fork remains unverified:
 each converted Metadata/project_settings.config is held to what Snapmaker
 Orca's loader reads, and to Snapmaker's real U1 profiles.
 
@@ -83,8 +83,6 @@ CASES = {
     "0.2 nozzle": lambda: bambu(nozzle_diameter=["0.2"], layer_height="0.1"),
     "0.6 nozzle, PETG": lambda: bambu(nozzle_diameter=["0.6"], layer_height="0.3", filament_type=["PETG", "PETG"]),
     "0.8 nozzle, thick layers": lambda: bambu(nozzle_diameter=["0.8"], layer_height="0.4"),
-    "unsupported 0.5 nozzle": lambda: bambu(nozzle_diameter=["0.5"]),
-    "unknown material": lambda: bambu(filament_type=["UNOBTANIUM", "PLA"]),
     "no settings list at all": lambda: bambu(different_settings_to_system=None, inherits_group=None),
 }
 
@@ -106,6 +104,12 @@ class ConverterAgainstOrcaLoader(unittest.TestCase):
             with self.subTest(label):
                 config, report, names = self.converted(make)
                 self.check(config, report, names)
+
+    def test_unverified_nozzle_and_material_have_no_fallback_profile(self):
+        for make,message in [(lambda:bambu(nozzle_diameter=['0.5']),'no 0.5 mm nozzle'),
+                             (lambda:bambu(filament_type=['UNOBTANIUM','PLA']),'not be silently replaced')]:
+            with self.subTest(message),self.assertRaisesRegex(converter_3mf.ConversionError,message):
+                converter_3mf.convert(make())
 
     def check(self, config, report, names):
         # Values: strings or arrays of strings only (Config.cpp load_from_json).
