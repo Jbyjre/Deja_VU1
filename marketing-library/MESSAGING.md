@@ -69,7 +69,7 @@ Each was checked against the code on 19 October 2026.
 
 | Claim | Where it comes from |
 |---|---|
-| 638 automated tests, on Python 3.8, 3.10, 3.12 and 3.13 | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
+| 659 automated tests, on Python 3.8, 3.10, 3.12 and 3.13 | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
 | Four updates a second (every 250 ms) | `backend/live_feed.py`, `TICK_SECONDS = 0.25` |
 | Up to 12 printers | `backend/fleet.py`, "At most 12 printers" |
 | 29 modules you can switch on and off | `backend/modules.py`, `REGISTRY` |
@@ -90,8 +90,9 @@ Each was checked against the code on 19 October 2026.
   Snapmaker Orca itself yet**.
 - The dock rings and colour sensor are **hardware pending**.
 
-## Thanks
+## Research and required notices
 
-The README ends its credits with one line thanking the U1 community and the
-Phase 1 winners as a group. Keep it when you post. Don't name individual
-projects as the source of a feature.
+Keep the owner's study record outside the shipped repository. Do not name study
+projects as the source of independently implemented features in public copy.
+Preserve required licence and copyright notices for anything actually reused;
+stop for a licence review before copying or closely adapting external material.

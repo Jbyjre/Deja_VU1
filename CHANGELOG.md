@@ -3,11 +3,36 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — launch readiness
+
+Validation: all 659 Python tests pass on Linux; Chromium desktop/phone checks
+cover setup, privacy, search, viewer transforms and offline handling. A browser
+connection test rejects a wrong API key, accepts the authenticated stand-in
+and keeps the selected printer after reload. Real devices remain untested.
+
+- Added skippable/replayable setup, a name stored only in the browser, feature
+  search and explicit public-demo guidance. Added a network-only service worker
+  with an offline explanation; printer readings and commands are never cached.
+- Added opt-in app release checks, SHA-256 verification, safe staging and a
+  supervising launcher with file rollback after failed startup. Linux process
+  tests cover good/broken releases and preserved data. No real release published;
+  Windows/macOS and real network delivery remain unverified.
+- Added selected-printer stock camera snapshots with a dedicated authenticated
+  monitor connection, renewals and idle shutdown. Tested with fake Moonraker;
+  a real U1 camera still needs testing. Existing manual MJPEG is separate.
+- Added triangulated OBJ geometry loading, viewer pan/scale/quarter-turn rotation,
+  measured bounds and save/export of prepared STL copies. STL loses colour/tool
+  metadata; overlap checking and multi-model editing are future work.
+- Added local OrcaSlicer path detection; actual slicing still needs a separately
+  installed engine and compatible presets, and has not run with a real engine here.
+- Fixed refused print starts overwriting job summaries and disabled modules
+  continuing background actions. A request already in flight cannot be recalled.
+- Rewrote computer, phone, firewall, remote-access and release guides. Clarified
+  incomplete configuration backup and the real-hardware test requirements.
+
 ## Unreleased - Phase 2 work
 
-Features written from each printer's, slicer's or service's own source and
-documentation, plus fixes for things that didn't behave the same way every
-time.
+Local setup, printer reliability and file preparation improvements.
 
 ### Added
 - **Online demo on the public Cloudflare link** (`/?demo`, and **Try the
@@ -29,8 +54,8 @@ time.
   `error_count`), shown in the twin's details. Printers that don't report
   them show "not reported", never 0.
 - **Mixed-nozzle planner** (Files tab) and **a nozzle check in Confirm
-  Print.** Limits from Snapmaker/OrcaSlicer `8931178`; the grid rule from
-  the published description of a U1 Orca fork's layer height option.
+  Print.** Limits from Snapmaker/OrcaSlicer `8931178`; a common grid keeps
+  each toolhead's preferred layer height on whole steps.
 - **Find printers on my network** and **Test** (Fleet → Add a printer):
   mDNS `_snapmaker._tcp` (from u1-moonraker `a308cfa`) and `_moonraker._tcp`,
   then port 7125 on the home network. Tested against the stand-in
@@ -54,7 +79,8 @@ time.
 - **Skip one object** (Control tab). When a print labels its objects, they
   show on a map of the bed; pick one, confirm, and only that one stops.
   Refuses names the print doesn't have and the last object left. Read back
-  from the printer. Written from Snapmaker's u1-klipper `exclude_object.py`.
+  from the printer. Protocol checked in Snapmaker's
+  u1-klipper `exclude_object.py`.
 - **Multi-plate conversions land on the right plates.** Every plate's
   objects are moved onto the U1's 270 mm plate grid, from Snapmaker Orca's
   `PartPlate.cpp`. Before, plate 2 onward landed between plates.
@@ -74,8 +100,8 @@ time.
   model is greyed out and can't be saved. A change made mid-build is built
   straight after instead of being lost. A rough colour match now says which
   colour would help. HEIC photos get a clear message.
-- **Filament colours are asked for every 30 s** as well as pushed, because
-  owners report the U1 doesn't always push a touchscreen change.
+- **Filament colours are asked for every 30 s** as well as pushed, so
+  missed touchscreen-change notifications do not leave stale readings.
 - A raw `T4`-`T15` in a file now says to run the filament add-on's
   post-processor (multiACE rewrites them into `ACE_SWAP_HEAD`).
 - The demo's idle printer (Garage) now has the sample files' colours

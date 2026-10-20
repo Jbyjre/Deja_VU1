@@ -1,163 +1,113 @@
-# Reaching the dashboard away from home - Cloudflare Tunnel
+# On your phone away from home
 
-Deja Vu1 runs on one always-on machine on your home network (a Raspberry
-Pi, a NAS, an old laptop). At home you open it by that machine's address.
-To open it from anywhere else, this project uses **Cloudflare Tunnel**.
+Deja Vu1 has **no login**. Anyone who can reach the dashboard can use its
+controls. Device pairing does not restrict access. Do not forward port 8000
+from your router to the internet.
 
-## How it fits together
+The computer running Deja Vu1 must stay awake and connected to the printer's
+home network. Remote access only extends the phone-to-computer connection.
 
-```
- your phone, anywhere ──https──▶ Cloudflare ◀──outgoing link── cloudflared ──▶ Deja Vu1 (localhost:8000)
-                                                                              │
-                                                              home network only
-                                                                              ▼
-                                                                    Moonraker ──▶ Snapmaker U1
-```
-
-- The dashboard is **never exposed directly** to the internet. No port is
-  opened on your router.
-- `cloudflared` is a small program from Cloudflare that you install and run
-  on the same machine. It makes an *outgoing* connection to Cloudflare, and
-  Cloudflare passes visitors for your address down that connection. It is
-  not part of this project's code and is not something Deja Vu1 imports.
-- The tunnel only covers **your browser ↔ the dashboard**. The dashboard ↔
-  printer link stays on your home network. The printer itself is never
-  reachable from the internet, tunnel or no tunnel.
-
-## Before you start - this part is a real, one-time cost
-
-A *named* tunnel (the kind with a fixed address that survives restarts)
-needs **a domain whose nameservers point at Cloudflare**. If you don't have
-one, that means buying a cheap domain and, in the Cloudflare dashboard,
-adding it as a site and switching its nameservers to the two Cloudflare
-gives you. Allow roughly fifteen minutes plus however long your registrar
-takes to apply the nameserver change.
-
-(Cloudflare also has "quick tunnels" with a random address. That address
-changes every time the tunnel restarts, so it isn't suitable for a link you
-keep on your phone.)
-
-## Put a login in front of it - do not skip this
-
-**Deja Vu1 has no login of its own.** On your home network that is a
-deliberate choice (see pairing in the README). On the internet it is not
-safe: anyone who found the address could pause or cancel a print.
-
-Protect the address with **Cloudflare Access** (part of Cloudflare Zero
-Trust, which has a "Zero Trust Free" plan): create an application for the
-hostname and an Access policy that only lets your own email address in,
-with Cloudflare's "one-time PIN" login. Cloudflare then emails you a code
-before the dashboard is ever reached.
-
-The dashboard also refuses control commands and live connections that come
-from a *different website* (it checks the `Origin` header browsers send),
-so a web page you happen to visit can't press buttons on your printer. That
-is a second layer, not a replacement for Access.
-
-## Setting it up
-
-These are the steps from Cloudflare's own guide to a locally-managed
-tunnel. Replace `deja-vu1` with any name you like and
-`printer.example.com` with an address on your own domain.
-
-1. **Install `cloudflared`** on the machine that runs Deja Vu1 - Cloudflare
-   publishes packages for Linux, macOS and Windows on its downloads page.
-
-2. **Log in** (opens a browser; pick your domain):
-
-   ```sh
-   cloudflared tunnel login
-   ```
-
-3. **Create the named tunnel** - note the tunnel ID (a UUID) it prints:
-
-   ```sh
-   cloudflared tunnel create deja-vu1
-   ```
-
-4. **Write `config.yml`** in the `.cloudflared` folder in your home
-   directory. Deja Vu1 listens on port 8000 by default:
-
-   ```yaml
-   url: http://localhost:8000
-   tunnel: <Tunnel-UUID>
-   credentials-file: /home/<you>/.cloudflared/<Tunnel-UUID>.json
-   ```
-
-5. **Point your address at the tunnel** (creates the DNS record):
-
-   ```sh
-   cloudflared tunnel route dns deja-vu1 printer.example.com
-   ```
-
-6. **Run it:**
-
-   ```sh
-   cloudflared tunnel run deja-vu1
-   ```
-
-   To have it start with the machine, install it as a system service -
-   Cloudflare's "run as a service" pages cover Linux, macOS and Windows.
-
-7. **Add Cloudflare Access** for `printer.example.com` (above).
-
-Leave the tunnel's "HTTP Host Header" option unset. Deja Vu1 checks it
-either way, but unset is the default and the simplest.
-
-### Which addresses the dashboard answers to
-
-Deja Vu1 only answers requests addressed to a name that belongs to your own
-network: an IP address, `localhost`, a plain machine name like
-`raspberrypi`, a home-network name ending in `.local`, `.lan`, `.home`,
-`.home.arpa`, `.internal` or `.localdomain`, a Tailscale name ending in
-`.ts.net`, or a name listed in `DEJAVU_ALLOWED_HOSTS`. Anything else gets a
-"Refused" message. This
-blocks a trick called *DNS rebinding*, where a web page you happen to visit
-points its own domain at your dashboard's address to control it from your
-browser.
-
-So the tunnel's name has to be listed when starting the server, whether
-`cloudflared` runs on the same computer or another one (a header that only
-*looks* forwarded by Cloudflare isn't trusted, because a web page can add it
-itself):
-
-```
-DEJAVU_ALLOWED_HOSTS=printer.example.com python3 backend/app.py
+```text
+Phone ── private encrypted connection ── computer running Deja Vu1
+                                                    │
+                                               home network
+                                                    │
+                                                U1 printer
 ```
 
-(Several names can be separated with commas.)
+## Recommended: a private Tailscale connection
 
-## Live updates through the tunnel
+Tailscale is a VPN: it gives approved devices a private network across the
+internet. Install it separately; Deja Vu1 does not bundle or configure it.
 
-The dashboard's live updates travel over a WebSocket. Cloudflare's
-documentation says it proxies WebSocket connections; there is also a
-**WebSockets** switch under **Network** in the Cloudflare dashboard for
-your domain, which should be on. If the WebSocket can't get through for
-any reason, the dashboard notices and switches to asking once a second
-instead - the badge in the status strip then reads "Polling 1 s" rather
-than "Live".
+1. Install [Tailscale](https://tailscale.com/download) on the computer running
+   Deja Vu1 and on your phone. Sign both into your own Tailscale account and
+   complete any device approval your account requires.
+2. Start Deja Vu1 with its launcher. Confirm `http://localhost:8000` opens on
+   that computer.
+3. In Terminal (Mac/Linux) or PowerShell (Windows) on that computer, run:
 
-## How fast will it feel?
+   ```sh
+   tailscale serve --bg http://127.0.0.1:8000
+   ```
 
-These are the rough figures from this project's planning, not measurements
-of a real installation - how far you are from a Cloudflare location is what
-matters:
+4. Follow Tailscale's displayed setup link if it asks you to enable HTTPS.
+   Copy the resulting `https://…ts.net` address. **Use Serve**, which is private
+   to your Tailscale network. Funnel is a separate public-sharing feature and
+   is unsuitable for this app without added authentication.
+5. On the phone, connect Tailscale, turn Wi-Fi off briefly to test mobile data,
+   and open that HTTPS address. Only approved devices allowed by your Tailscale
+   access policy should be able to reach it. Limit that policy to the people
+   who may control your printers.
+6. Add this HTTPS address to the home screen using Safari or Chrome. Keep
+   Tailscale connected when you use it away from home. Turn Wi-Fi back on after
+   testing if you normally use it at home.
 
-| Where you are | Extra delay |
-|---|---|
-| Near a Cloudflare location | about 2–8 ms |
-| Typical | about 15–45 ms |
-| Far from any location | up to about 200 ms |
+`.ts.net` names are already allowed by Deja Vu1. Check the setup with
+`tailscale serve status`; to stop sharing, use `tailscale serve --https=443 off`.
+This stops the HTTPS sharing configured above, not Deja Vu1 itself.
+[Official Serve command reference](https://tailscale.com/docs/reference/tailscale-cli/serve).
 
-None of that is noticeable on a status dashboard. For a sense of scale: the
-printer itself only reports new readings every 250 ms (a fixed Klipper
-setting), and on the home network a Pause is confirmed back from the
-printer in well under 100 ms (about 57 ms in this project's own browser
-tests against the simulated printer).
+HTTPS certificates can publish the device's domain name in public certificate
+records; choose a neutral machine name if that matters to you.
+[Official HTTPS guidance](https://tailscale.com/docs/how-to/set-up-https-certificates).
 
-## The camera through the tunnel
+## Alternative: Cloudflare Tunnel with Access
 
-The printer's camera address is only reachable at home, so the dashboard
-relays the camera's MJPEG stream itself (`/api/camera/stream`). It only
-ever relays something that is actually a camera stream (an MJPEG stream or
-an image), never an arbitrary web page on your network.
+A tunnel carries browser traffic to your computer without opening a router
+port. **A tunnel alone is not a login.** Configure Cloudflare Access before
+making the dashboard's hostname reachable. This option requires your own domain
+and a separate Cloudflare setup; check current plans and domain costs with the
+providers before choosing it.
+
+1. In Cloudflare Zero Trust, create a **self-hosted Access application** for
+   your chosen hostname, such as `printer.example.com`. Add an Allow policy for
+   only your own email or approved users and choose a supported login method.
+   Do not use a Bypass policy. Follow the
+   [official Access setup](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/).
+2. Follow [Cloudflare's Tunnel setup](https://developers.cloudflare.com/tunnel/get-started/)
+   to install its connector on the Deja Vu1 computer. Configure the protected
+   hostname's service as `http://localhost:8000`. Leave the HTTP Host Header
+   override unset. Use the **Protect with Access** option where available.
+3. Restart Deja Vu1 with the hostname in its allowed-host list. On Mac/Linux,
+   run this from the Deja Vu1 folder:
+
+   ```sh
+   DEJAVU_ALLOWED_HOSTS=printer.example.com python3 start.py
+   ```
+
+   On Windows, open **Command Prompt** in the folder:
+
+   ```bat
+   set "DEJAVU_ALLOWED_HOSTS=printer.example.com"
+   py -3 start.py
+   ```
+
+   Replace the example hostname with yours. `DEJAVU_ALLOWED_HOSTS` is a startup
+   setting, not an app password. It permits that address but does not verify a
+   visitor's identity. Several names can be separated by commas.
+4. Start the protected tunnel. From a private/incognito browser on another
+   network, confirm Cloudflare asks for login **before any dashboard appears**.
+   Test that an unapproved account cannot enter. Do not continue using the
+   tunnel if either check fails.
+5. Open your HTTPS hostname on the phone and sign in. Add that address to the
+   home screen. Keep the computer, Deja Vu1 and the connector running.
+
+The app also checks browser request origins and blocks embedding in other
+websites. Those safeguards stay enabled behind a tunnel; they are not a
+replacement for Access.
+
+## Connection checks
+
+- If local access fails, solve that first using [getting started](getting-started.md).
+- “Refused” / 421 means the requested hostname is not allowed; check spelling
+  and restart after changing the startup setting.
+- If live updates cannot open a WebSocket (a persistent connection for new
+  readings), the dashboard uses polling, which asks repeatedly for updates.
+- Stock camera snapshots pass through the dashboard. The optional manually
+  configured camera relay must also be reachable by the computer at home.
+- No remote latency figures are promised. Connection quality, sleep settings,
+  provider configuration and printer response all affect the result.
+
+These instructions were checked against the app and official documentation.
+Neither remote setup has been exercised with a real phone and U1 here.

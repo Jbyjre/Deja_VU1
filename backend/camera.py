@@ -127,7 +127,8 @@ def keep_frames_coming(seconds=90):
 
 
 def _grab_loop():
-    wanted = lambda: time.monotonic() < _grab["until"]      # noqa: E731
+    import modules
+    wanted = lambda: modules.is_enabled("camera") and modules.is_enabled("timelapse") and time.monotonic() < _grab["until"]      # noqa: E731
     while wanted():
         try:
             upstream = open_stream(timeout=10)

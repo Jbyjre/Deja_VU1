@@ -212,6 +212,7 @@ from urllib.parse import parse_qs, urlparse
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _BACKEND_DIR)
 
+import app_updates
 import automations
 import backup
 import camera
@@ -369,6 +370,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,
     # like the stream itself, which is when a frozen picture matters most.
@@ -413,6 +415,8 @@ def module_routes():
     routes = {path: owner for path, (owner, _) in {**_DATA_ROUTES, **_APP_ROUTES}.items() if owner}
     routes["/api/sandbox"] = "sandbox"
     routes["/api/timelapse/frame"] = "timelapse"
+    routes["/api/camera/snapshot"] = "camera"
+    routes["/api/camera/stream"] = "camera"
     return routes
 
 
@@ -796,6 +800,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             download = query.get("download", ["0"])[0] == "1"
             return self._send_bytes(data, ctype, filename=file_library.clean_name(name) if download else None)
 
+        if route == "/api/camera/snapshot":
+            if self._module_blocked("camera"):
+                return None
+            if force_disconnected or (not connected and not _demo(query)):
+                return self._send_json({"connected": False, "demo": False})
+            data, mime = mock_moonraker.camera_snapshot()
+            return self._send_bytes(data, mime)
+
         if route == "/api/camera/stream":
             if self._module_blocked("camera"):
                 return None
@@ -856,6 +868,29 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         route = self.path.split("?")[0].rstrip("/")
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
+
+        if route == "/api/app/updates/settings":
+            return self._send_json(app_updates.save_settings(self._read_json_body()))
+        if route == "/api/app/updates/check":
+            self._read_json_body()
+            return self._send_json(app_updates.check())
+        if route == "/api/app/updates/install":
+            self._read_json_body()
+            def require_idle():
+                for pid in mock_moonraker.printer_ids():
+                    if mock_moonraker.is_real(pid):
+                        with mock_moonraker.use_printer(pid):
+                            state = mock_moonraker.get_printer_state()
+                        if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
+                            raise ValueError("Updates wait until all real printers are connected and idle")
+                if any(j.get("status") in ("waiting", "running") for j in slicer_bridge.jobs()):
+                    raise ValueError("Wait for slicing to finish before updating")
+            require_idle()
+            result = app_updates.prepare(before_commit=require_idle)
+            self._send_json(result)
+            self.server.update_restart = True
+            threading.Timer(0.5, self.server.shutdown).start()
+            return
 
         if route == "/api/tools/layer-plan":
             # A calculator: no printer needed, nothing stored.
@@ -1382,6 +1417,7 @@ class DejaVuServer(ThreadingHTTPServer):
 def main():
     server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
     live_feed.start()
+    threading.Thread(target=app_updates.automatic_check, daemon=True).start()
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")
@@ -1402,8 +1438,13 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopped.")
+    finally:
         live_feed.stop()
+        import stock_camera
+        stock_camera.stop_all()
         server.server_close()
+    if getattr(server, "update_restart", False):
+        sys.exit(75)
 
 
 if __name__ == "__main__":

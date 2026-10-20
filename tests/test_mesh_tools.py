@@ -140,3 +140,15 @@ class TestHostileModels(unittest.TestCase):
         self.assertEqual(summary["count"], n)
         self.assertLessEqual(len(summary["sample"]), 2000)
         self.assertEqual(summary["bounds"]["size"], [6.0, 6.0, 6.0])
+
+class TestOBJ(unittest.TestCase):
+    def test_negative_face_indices_and_material_paths_stay_local(self):
+        data = b'mtllib https://example.invalid/private\nv 0 0 0\nv 2 0 0\nv 0 3 0\nf -3/1 -2/2 -1/3\n'
+        triangles, info = mesh_tools.parse_model(data, 'model.obj')
+        self.assertEqual(mesh_tools.bounds(triangles)['size'], [2, 3, 0])
+        self.assertIn('materials not loaded', info['application'])
+
+    def test_missing_vertices_nonfinite_values_and_polygons_are_refused(self):
+        for data in (b'v nan 0 0', b'v 0 0 0\nf 1 2 3', b'v 0 0 0\nf 1 1 1 1'):
+            with self.subTest(data=data), self.assertRaises(mesh_tools.MeshError):
+                mesh_tools.parse_model(data, 'bad.obj')

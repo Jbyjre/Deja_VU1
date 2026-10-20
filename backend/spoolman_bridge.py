@@ -3,8 +3,7 @@ spoolman_bridge.py
 ==================
 
 Bring the spools you already track in Spoolman (github.com/Donkie/Spoolman,
-the self-hosted filament tracker a lot of Klipper users run) into this
-dashboard's
+the self-hosted filament tracker) into this dashboard's
 filament inventory, so you don't type them in twice.
 
 One way, on request: Spoolman stays the record it is. Each imported spool

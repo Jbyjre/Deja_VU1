@@ -475,7 +475,7 @@ footer p { max-width: 70ch; }
           <h3><i aria-hidden="true"></i>Checked</h3>
           <ul>
             <li>The printer connection was written from the Moonraker, Klipper and U1 source code Snapmaker publishes, and tested against a stand-in Moonraker built from that source, over real network connections.</li>
-            <li>638 automated tests, run with nothing but Python.</li>
+            <li>Automated tests run with nothing but Python; see the repository for current results.</li>
             <li>Every tab driven in a real (headless) browser, at laptop and phone sizes, including touch.</li>
             <li>WLED, Home Assistant, ntfy, Discord and Telegram checked against each service's own source or documentation.</li>
           </ul>
@@ -495,24 +495,29 @@ footer p { max-width: 70ch; }
   <section class="band" id="run" aria-labelledby="run-title">
     <div class="wrap">
       <p class="eyebrow">Run it</p>
-      <h2 id="run-title">Three lines. Then open a browser.</h2>
+      <h2 id="run-title">Your computer runs it.<br>Your phone opens it.</h2>
       <div class="run">
         <div class="terminal">
-          <div class="term-bar"><span>Terminal</span><button class="copy" type="button" data-copy="git clone https://github.com/Jbyjre/Deja_VU1.git
-cd Deja_VU1
-python3 backend/app.py">Copy</button></div>
-<pre><code><span class="p">$ </span>git clone https://github.com/Jbyjre/Deja_VU1.git
-<span class="p">$ </span>cd Deja_VU1
-<span class="p">$ </span>python3 backend/app.py
-<span class="c"># then open http://localhost:8000</span></code></pre>
+          <div class="term-bar"><span>How it works</span></div>
+          <pre><code>Your phone browser
+        │ home Wi-Fi
+        ▼
+Your computer · Deja Vu1
+        │ home network
+        ▼
+Your U1 printer</code></pre>
+          <p style="padding:0 20px 20px">This public website plays a demo recording. It cannot control your printer. Real readings need your own running copy.</p>
         </div>
         <ol class="steps">
-          <li><b>Python 3.8 or newer is all it needs.</b> No packages, no build step, and nothing is fetched from the internet while it runs.</li>
-          <li><b>Try it with no printer.</b> Flip <code>Demo data</code> in the header for a simulated farm of three U1s that heat, print and finish.</li>
-          <li><b>Add your U1.</b> Fleet → Add a printer, with its Moonraker address, usually <code>http://&lt;printer-ip&gt;:7125</code>.</li>
-          <li><b>Open it on your phone.</b> Settings → Pair another device gives a short code. It talks straight to your computer over your home network.</li>
+          <li><b>On your computer.</b> Install Python 3.8+, download the ZIP from GitHub and extract it. Double-click the Windows, Mac or Linux launcher. Keep that window open and the computer awake.</li>
+          <li><b>Connect your printer.</b> Open Set up &amp; help, choose Connect my printer, then Find printers or enter its address. Test and connect. Keep Demo data off for real readings.</li>
+          <li><b>On your phone at home.</b> Use the same Wi-Fi and open the computer’s “From a phone” address from the launcher, such as <code>http://192.168.1.20:8000</code>. Pairing is optional, not a login.</li>
+          <li><b>Keep it on your home screen.</b> Safari → Share → Add to Home Screen, or Chrome’s menu → Add to Home screen. HTTP may offer only a shortcut; secure HTTPS enables full installation and the offline explanation. Offline never means live readings.</li>
+          <li><b>Away from home.</b> Use private Tailscale Serve, or a Cloudflare tunnel with Access protection configured first. Deja Vu1 has no login. Do not forward its port through your router.</li>
         </ol>
       </div>
+      <p><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md">Exact setup and firewall steps</a> · <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md">Private remote access</a></p>
+      <p class="intro">An optional name stays only in your browser. App update checks are off by default; enable them in Settings if you want them. Neither your name nor printer details are sent in an update check.</p>
     </div>
   </section>
 

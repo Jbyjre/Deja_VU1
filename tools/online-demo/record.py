@@ -41,7 +41,8 @@ JAM_AT = 75            # the Workshop printer jams here
 # streams, downloads or images the demo can't use.
 TIMELINE = {"/api/live/snapshot", "/api/live/events", "/api/fleet"}
 NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/camera/stream",
-                "/api/backup", "/api/timelapse/frame", "/api/live"}
+                "/api/backup", "/api/timelapse/frame", "/api/live",
+                "/api/camera/snapshot", "/api/app/info"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/print/confirm": "file"}
 # Parameters that don't change the answer, so they aren't part of the key.

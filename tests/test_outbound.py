@@ -27,6 +27,8 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
+from urllib.error import URLError
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -261,7 +263,11 @@ class TestFailuresInWords(unittest.TestCase):
         self.assertIn("refused the connection", r["error"])
 
     def test_unknown_name(self):
-        r = outbound.send("http://no-such-device.invalid/json/info", "The WLED device")
+        # Exercise DNS failure directly: a network proxy may answer .invalid
+        # with HTTP 403 instead of allowing local name resolution to fail.
+        with patch("urllib.request.urlopen", side_effect=URLError(socket.gaierror(-2, "Name not known"))):
+            r = outbound.send("http://no-such-device.invalid/json/info", "The WLED device")
+        self.assertFalse(r["ok"])
         self.assertIn("Can't find", r["error"])
 
     def test_too_slow(self):

@@ -85,10 +85,8 @@ WS_MAX_MESSAGE = 8 * 1024 * 1024
 HISTORY_PAGE = 500
 HISTORY_MAX_JOBS = 20000
 PING_INTERVAL = 15.0
-# Owners of real U1s report that print_task_config doesn't always push an
-# update when a filament is changed on the touchscreen, so what each head
-# has loaded is also asked for directly this often rather than trusted to
-# arrive. The interval is a guess; no U1 here has confirmed the report.
+# Requery loaded filament periodically so a missed status notification
+# cannot leave a touchscreen change invisible indefinitely.
 FILAMENT_REQUERY = 30.0
 DEAD_AFTER = 60.0              # nothing heard (not even a pong) for this long: reconnect
 KLIPPY_RETRY = 2.0             # Moonraker's docs: ask again in 2 s while Klipper starts
@@ -1582,6 +1580,13 @@ class MoonrakerPrinter:
         if state["state"] == "error":
             raise ValueError(f"The printer is reporting an error; clear it first ({state['state_message']})")
         job = job or {}
+        self._log_command("start", filename)
+        result = self.http.request("POST", "/printer/print/start", body={"filename": filename},
+                                   timeout=COMMAND_TIMEOUT)
+        # The U1's Moonraker says no to a start with a *successful* reply
+        # holding {"state": "error", "message": ...}.
+        if isinstance(result, dict) and str(result.get("state", "")).lower() == "error":
+            raise PrinterRefused(clean_error(result.get("message") or "The printer refused to start the print"))
         with self.lock:
             self._job = {
                 "filename": filename,
@@ -1598,13 +1603,6 @@ class MoonrakerPrinter:
             self._finished_job = None
             self._metadata_for = filename
         self._history_dirty.set()
-        self._log_command("start", filename)
-        result = self.http.request("POST", "/printer/print/start", body={"filename": filename},
-                                   timeout=COMMAND_TIMEOUT)
-        # The U1's Moonraker says no to a start with a *successful* reply
-        # holding {"state": "error", "message": ...}.
-        if isinstance(result, dict) and str(result.get("state", "")).lower() == "error":
-            raise PrinterRefused(clean_error(result.get("message") or "The printer refused to start the print"))
         state = self._await(lambda s: s["state"] == "printing", START_WAIT)
         if state["state"] != "printing":
             raise PrinterCommandError(f"The printer accepted the start, but {START_WAIT:g} s later it still "

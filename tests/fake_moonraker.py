@@ -314,6 +314,16 @@ class FakeMoonraker:
                 q = {k: v[0] for k, v in parse_qs(parsed.query).items()}
                 # Moonraker serves its JSON-RPC methods over HTTP as well
                 # (server.info -> GET /server/info), with the same result.
+                if parsed.path == "/server/files/camera/monitor.jpg":
+                    if not getattr(fake, "camera_monitoring", False):
+                        return self._error(404, "Camera not monitoring")
+                    picture = b"\xff\xd8fake-camera-fixture\xff\xd9"
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(picture)))
+                    self.end_headers()
+                    self.wfile.write(picture)
+                    return
                 if parsed.path == "/server/info":
                     return self._reply(200, {"result": {
                         "klippy_connected": fake.klippy_state != "disconnected", "klippy_state": fake.klippy_state,
@@ -491,6 +501,12 @@ class FakeMoonraker:
             return ok({"connection_id": client["id"]})
         if self.api_key and not client["identified"]:
             return err(401, "Unauthorized")
+        if method in ("camera.start_monitor", "camera.stop_monitor"):
+            if getattr(self, "camera_refused", False):
+                return err(404, "Camera method not available")
+            self.camera_monitoring = method == "camera.start_monitor"
+            self.camera_client = client["id"]
+            return ok({"monitoring": self.camera_monitoring})
         if method == "server.info":
             return ok({"klippy_connected": self.klippy_state != "disconnected", "klippy_state": self.klippy_state,
                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],

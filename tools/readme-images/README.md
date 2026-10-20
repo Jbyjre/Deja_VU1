@@ -32,7 +32,7 @@ simulated:
 | `twin-health-chamber.jpg` | Overview: the digital twin row (`.live-row`), printer U1 · Workshop |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |
 | `twin-detail.jpg` | Overview: the digital twin (`#twin-card`), T0's balloon clicked so its details show |
-| `layer-planner.jpg` | Files: the Mixed-nozzle planner (`#tab-layerplan`) → Try an example |
+| `layer-planner.jpg` | Files: the Mixed-nozzle planner (`#tab-layerplan`) → Try a mixed-nozzle example |
 | `add-printer.jpg` | Fleet → Add a printer, with the address of a running `tests/fake_moonraker.py` stand-in, then Test |
 | `converter.jpg` | Files → `sample_makerworld_three_plates.3mf` → Convert for Snapmaker U1: the report |
 | `sandbox.jpg`, `sandbox-farm.jpg` | Fleet → farm sandbox: add 6 printers, load "Jam mid-print", step 660 s |
@@ -86,3 +86,12 @@ Before using a new card or board, check its palette with any colour-blind
 simulator: the six feature-group colours were chosen so neighbouring groups
 stay apart for the common kinds of colour blindness, and every group is also
 named in text.
+
+## Launch-readiness captures
+
+`docs/img/setup-phone.png`, `launch-overview.png` and `launch-phone.png` show the
+current setup/navigation. Browser checks in `tools/check-launch-ui.js` also
+capture before/after evidence into a caller-chosen folder; private reports belong
+outside this repository. The numbers board was rerendered for 659 tests.
+Existing feature crops, social card, animated GIF and launch videos still need
+an editorial pass before claiming all media shows the latest interface.

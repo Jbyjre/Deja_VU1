@@ -23,13 +23,40 @@ farm (three U1s; one jams halfway). Click around: the digital twin, Files,
 the mixed-nozzle planner and Photo Studio all work there; anything that would
 change a printer says it's a recording.
 
+## How it works
+
+```text
+Your phone browser ── home Wi-Fi ── your computer running Deja Vu1
+                                                │
+                                           home network
+                                                │
+                                           your U1 printer
+```
+
+**On my computer:** install Python 3.8+, download and extract the ZIP, then
+open the launcher for Windows, Mac or Linux. Keep its window open and the
+computer awake. **Set up & help** can find and test your printer.
+
+**On my phone at home:** use the same Wi-Fi and open the computer's **From a
+phone** address, such as `http://192.168.1.20:8000`. Turn demo data off and
+select your real printer. Pairing is optional, not a login. Add to Home Screen
+may be a shortcut over HTTP; full PWA installation and offline support need a
+secure address. Offline mode never shows saved readings or sends commands.
+
+**On my phone away from home:** use a private Tailscale connection with Serve,
+or a Cloudflare tunnel protected by Access before exposing it. There is no
+app login. Do not forward port 8000 on your router.
+
+[Exact computer, phone and firewall steps](docs/getting-started.md) ·
+[Private remote access](docs/remote-access.md)
+
 **Try it in three lines** (Python 3.8 or newer; the first line needs git, or
 use GitHub's **Code → Download ZIP** instead):
 
 ```bash
 git clone https://github.com/Jbyjre/Deja_VU1.git
 cd Deja_VU1
-python3 backend/app.py
+python3 start.py
 ```
 
 Then open **http://localhost:8000** and flip **Demo data** in the header for a
@@ -71,20 +98,38 @@ and every change is in the public history.
 
 ## What's new
 
+- **First-run help**, a private optional browser name and feature search (Ctrl/Cmd+K).
+- **App updates** with opt-in checks, verified release packages, launcher restart
+  and rollback. The development version still needs a published release package;
+  Windows/macOS update tests remain. [Details](docs/releasing.md).
+- **Stock camera snapshots** for the selected printer, tested against a stand-in;
+  real camera hardware remains unverified. Manual MJPEG and time-lapse are separate.
+- **OBJ geometry preview**, pan, scale, quarter-turn rotation and a prepared STL
+  copy that can go back into Files. Colour/texture assignments are not preserved
+  in STL. No multi-model plate editor or overlap detection yet.
+- **Module switches stop background actions** and a refused real print start
+  keeps the existing job summary.
+
 - **An online demo.** The public Cloudflare link now opens the real
   dashboard with a recording of the simulated farm, so anyone can see how it
   looks and works before installing it ([how it works](#the-public-page)).
 - **The digital twin is a real drawing you can click.** Hidden edges,
   dimensions, a title block; click a toolhead for its nozzle, swaps and
   what the print needs from it.
-- **Mixed-nozzle planner**: a different nozzle and layer height per
-  toolhead, checked against Snapmaker's own limits, plus a nozzle check in
-  Confirm Print.
+- **Mixed-nozzle planner**: a different nozzle and layer height per toolhead, checked against
+  Snapmaker's own limits, plus a nozzle check in Confirm Print.
 - **Find printers on my network**, **Test** before adding, double-click
   starters for Windows, Mac and Linux, and a plain-language
   [getting-started guide](docs/getting-started.md).
 - **Photo Studio** fits the photo's tones to your filaments, so hazy photos
   stop printing flat.
+
+![Current launch-polish overview with setup, feature search and camera navigation; all printer figures are simulated](docs/img/launch-overview.png)
+
+<table><tr><td width="50%"><img src="docs/img/setup-phone.png" alt="First-run phone setup with optional private name and skip button"></td><td width="50%"><img src="docs/img/launch-phone.png" alt="Phone dashboard with explicitly labelled demo data and reachable pause and cancel controls"></td></tr></table>
+
+These are the current setup and navigation screens. Older feature-specific
+pictures below remain useful examples but predate this navigation strip.
 
 Everything, with what is and isn't verified: [CHANGELOG.md](CHANGELOG.md).
 
@@ -122,12 +167,12 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 
 | Feature | What it does |
 |---|---|
-| **Printer fleet** | **Find printers on my network** adds a U1 without typing an address (it asks the network, then tries Moonraker's port on your home network, and checks each one); **Test** checks a typed address first. Every printer at a glance: state, progress, the filament in each dock, temperatures, alerts and a health score. One tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
-| **Live updates** | Printer state refreshes every 250 ms, the same rhythm Klipper itself reports at, so nothing could be fresher. It is pushed to the browser over a WebSocket written from scratch in standard-library Python. If the WebSocket fails three times (a network that blocks it, or a server restart), the dashboard asks once a second instead, says so, and tries the WebSocket again every 30 seconds. |
-| **Needs you** | The top of the Overview ranks every printer by what wants a person: a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, or a print finishing within 15 minutes. Each comes with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
-| **Start a print from your phone** | Pick a file, read one Confirm Print summary (pre-flight check, filament match, nozzles, spool weight, maintenance, time, grams and cost) and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
-| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more, with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
-| **Mixed-nozzle planner** | A different nozzle and layer height on each toolhead: fine detail on a 0.2 mm nozzle, thick fast layers on a 0.8. Pick each head's nozzle and height (they start from what the printer reports fitted) and it works out the shared layer grid, how many grid layers each head spans and how many layers a part needs, checks every height against Snapmaker's own U1 profile limits, and draws a section through the layers. The grid rule follows the published description of a U1 Orca fork's per-extruder layer height option. **Confirm Print** now also refuses a file sliced for a nozzle the toolhead doesn't have fitted. |
+| **Printer fleet** | **Find printers on my network** adds a U1 without typing an address (it asks the network, then tries Moonraker's port on your home network, and checks each one); **Test** checks a typed address first. Every printer at a glance — state, progress, the filament in each dock, temperatures, alerts, a health score — and one tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
+| **Live updates** | Printer state refreshes every 250 ms — the same rhythm Klipper itself reports at, so nothing could be fresher — pushed to the browser over a WebSocket written from scratch in standard-library Python. If the WebSocket fails three times (a network that blocks it, or a server restart), the dashboard asks once a second instead, says so, and tries the WebSocket again every 30 seconds. |
+| **Needs you** | The top of the Overview ranks every printer by what wants a person — a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes — each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
+| **Start a print from your phone** | Pick a file, read one Confirm Print summary — pre-flight check, filament match, spool weight, maintenance, time, grams and cost — and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
+| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more — with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
+| **Mixed-nozzle planner** | A different nozzle and layer height on each toolhead: fine detail on a 0.2 mm nozzle, thick fast layers on a 0.8. Pick each head's nozzle and height (they start from what the printer reports fitted) and it works out the shared layer grid, how many grid layers each head spans and how many layers a part needs, checks every height against Snapmaker's own U1 profile limits, and draws a section through the layers. **Confirm Print** now also refuses a file sliced for a nozzle the toolhead doesn't have fitted. |
 | **MakerWorld / NexPrint / OrcaSlicer → U1** | One click turns a Bambu Studio (MakerWorld), Elegoo Slicer (NexPrint) or OrcaSlicer project into one set up for the Snapmaker U1 in Snapmaker Orca, keeping the creator's own settings and colours. **Multi-plate projects land on the right plates**: every plate's objects are moved onto the U1's own plate grid, written from Snapmaker Orca's source. When it can't convert, it says why with a code, the step it failed at and what to try, and **Copy report** puts a full report on the clipboard for a bug report. |
 | **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
@@ -173,7 +218,7 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 <table>
 <tr>
 <td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The digital twin with T0 picked: its parked head drawn in blue, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
-<td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The mixed-nozzle planner: T0 with a 0.2 mm nozzle at 0.08 mm and T1 with a 0.8 mm nozzle at 0.56 mm, a section view showing seven thin layers for every thick one, 375 layers against 54 for a 30 mm part, and a warning that the 0.08 mm prime-tower slabs are below the 0.8 mm nozzle's minimum"><br><sub><b>Mixed-nozzle planner:</b> the $5,000 winner's idea, checked against Snapmaker's own limits.</sub></td>
+<td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The mixed-nozzle planner: T0 with a 0.2 mm nozzle at 0.08 mm and T1 with a 0.8 mm nozzle at 0.56 mm, a section view showing seven thin layers for every thick one, 375 layers against 54 for a 30 mm part, and a warning that the 0.08 mm prime-tower slabs are below the 0.8 mm nozzle's minimum"><br><sub><b>Mixed-nozzle planner:</b> a common layer grid, checked against Snapmaker's own limits.</sub></td>
 </tr>
 </table>
 
@@ -238,8 +283,8 @@ Snapmaker Orca itself).
 On a phone the layout is rebuilt thumb-first: the main sections and the
 Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
 screen, with the print's progress on a line just above them on every tab.
-Pair a phone from **Settings → Pair another device**: it gets a short code,
-and talks straight to your computer over your home network.
+Open the computer’s address on your phone over your home Wi-Fi.
+**Settings → Pair another device** is optional bookkeeping; it is not a login.
 
 **Add to Home Screen** gives it a proper icon and name, opening without the
 browser's bars where the phone allows.
@@ -327,7 +372,20 @@ printer figures, so they work the same with or without a printer connected.
 
 ## Current status
 
-**The real printer connection exists and is tested, against the source,
+The launch-readiness pass passes **659 automated tests** on Linux (139 seconds
+in the final run), plus Chromium checks at 1366 px and 390 px. Tests include a
+newer update package, checksum/path rejection, real child-process startup and
+rollback, authenticated fake-printer setup, and browser-name privacy. None of
+those substitutes for a physical U1, Windows/macOS or real phone test.
+
+New stock camera support remains hardware-unverified. The slicer bridge still
+needs a real engine test and beginner preset setup; multi-model plates and
+full backup/restore are not complete. A stable update package has not been
+published. See [model/slicer limits](docs/slicing-and-models.md) and
+[release requirements](docs/releasing.md).
+
+
+**The real printer connection exists and is tested — against the source,
 not against a machine.** `backend/moonraker_client.py` talks to Moonraker
 over HTTP and its WebSocket and translates what it says into what every
 module already reads. It was written from Moonraker's, Klipper's and
@@ -415,12 +473,13 @@ The same pass hardened the rest for real conditions:
   yet. The studio's colour preview is a light-absorption model with
   estimated filament transmission values, not a photo of a print.
 
-- Maintenance, printer control, notifications, updates, backup, camera
-  watchdog, pairing, and the print cost calculator are complete and tested,
+- Maintenance, printer control, notifications, firmware-update requests, camera
+  watchdog, pairing, and the print cost calculator have automated tests,
   against the simulation and (through the real Moonraker client) against
-  the stand-in Moonraker. Nothing outside `backend/mock_moonraker.py` and
-  `backend/moonraker_client.py` talks to Moonraker (the camera relay reads
-  the stream address you set in the camera settings).
+  the stand-in Moonraker. The main printer path is `backend/moonraker_client.py`. Stock snapshots
+  use a separate camera-monitor connection in `backend/stock_camera.py`;
+  the optional manual camera relay reads the address you configure.
+  Configuration backup is incomplete and has no restore function.
 - Filament inventory, the What-changed check, and the pre-print sanity check
   are complete and tested; they're optional and off by default.
 - The WLED and Home Assistant bridges are complete outbound HTTP clients,
@@ -437,9 +496,9 @@ The same pass hardened the rest for real conditions:
 I do not own a Snapmaker U1. The project hasn't been entered in the Snapmaker
 Innovation Fund yet; the plan is to enter Phase 2, partly to request a unit.
 Until then, [first connections](docs/first-connection.md) on owners' printers
-are how it gets tested on real hardware. Everything that can be built without
-the machine has been built; the rest is designed and documented so it can be
-finished quickly once hardware is available.
+are how it gets tested on real hardware. Several software improvements also remain, including full backup/restore,
+multiple editable models on one plate and richer slicing controls. See
+[the staged build brief](build-prompts/05-launch-follow-through.md).
 
 Both hardware modules are deliberately non-invasive, external add-ons that
 mount to the frame and read printer state over the network. Nothing is
@@ -455,7 +514,7 @@ only sensible approach. Details in
 | Live dashboard, fleet, controls, start-print interlock | Yes | Yes - Moonraker, Klipper and Snapmaker's U1 source | Not yet - no U1 here |
 | Skip one object | Yes | Yes - Snapmaker's u1-klipper `exclude_object` | Not yet |
 | Nozzle sizes and swap counts per toolhead | Yes | Yes - u1-klipper `extruder.get_status` | Not yet |
-| Mixed-nozzle planner, nozzle check in Confirm Print | Yes | Limits from Snapmaker Orca's U1 profiles; grid rule from a published description, not checked against a real slice | Not printed yet |
+| Mixed-nozzle planner, nozzle check in Confirm Print | Yes | Limits from Snapmaker Orca's U1 profiles; common-grid arithmetic checked by tests | Not printed yet |
 | Find printers, Test | - | Yes - u1-moonraker's mDNS announcement and Moonraker's HTTP API | Not on a real network with a U1 yet |
 | Double-click starters | - | Linux | Windows and Mac not run yet |
 | Online demo (Cloudflare link) | Recorded from it | Checked in Chromium on a plain static server, like Cloudflare's | The published link itself not opened from here (the build sandbox can't reach it) |
@@ -471,16 +530,9 @@ only sensible approach. Details in
 If you have a U1 and want to help close the last column, see
 [docs/beta-testing.md](docs/beta-testing.md).
 
-## Thanks
-
-Thank you to the Snapmaker U1 community and to the Phase 1 winners of the
-Snapmaker Innovation Fund, whose public work showed what U1 owners need.
-The U1-specific behaviour is written from Moonraker's, Klipper's and
-Snapmaker's own source and documentation.
-
 ## Tech stack
 
-![By the numbers: 638 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 659 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -490,7 +542,7 @@ Snapmaker's own source and documentation.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 638 cases
+- **Tests:** `unittest` from the standard library, 659 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -560,8 +612,9 @@ against:
 - **Being framed.** No other site can load the dashboard invisibly inside
   its own page.
 
-To reach it away from home, use a Cloudflare Tunnel with Cloudflare Access
-in front, and list the tunnel's name in `DEJAVU_ALLOWED_HOSTS`. See
+To reach it away from home, prefer private Tailscale Serve. Alternatively,
+protect a Cloudflare Tunnel with Access first and list the hostname in
+`DEJAVU_ALLOWED_HOSTS` — see
 [docs/remote-access.md](docs/remote-access.md).
 
 ## Settings and your data
@@ -571,8 +624,8 @@ The server listens on every network interface of the computer, on port
 
 | Variable | What it does |
 |---|---|
-| `PORT` | Listen on another port, e.g. `PORT=8080 python3 backend/app.py` |
-| `DEJAVU_ALLOWED_HOSTS` | Extra names it answers to, comma-separated, such as your tunnel's domain |
+| `PORT` | Listen on another port, e.g. `PORT=8080 python3 start.py` |
+| `DEJAVU_ALLOWED_HOSTS` | Extra names it answers to, comma-separated — your tunnel's domain, say |
 | `DEJAVU_MOONRAKER_LOG` | `1` prints every exchange with a real printer, for debugging a first connection |
 | `DEJAVU_SLICER_PATH` | Where OrcaSlicer is, for the optional auto-print pipeline |
 
@@ -662,7 +715,7 @@ From a terminal:
 ```bash
 git clone https://github.com/Jbyjre/Deja_VU1.git
 cd Deja_VU1
-python3 start.py          # or: python3 backend/app.py, then open http://localhost:8000
+python3 start.py          # opens http://localhost:8000
 ```
 
 The window prints the address to open from a phone on the same Wi-Fi.
@@ -674,8 +727,8 @@ network, and checks each one), or type its Moonraker address (usually
 `http://<printer-ip>:7125`) and press **Test** first. See
 [docs/real-printer.md](docs/real-printer.md).
 Or flip the **Demo data** switch in the header to fill it with the simulated
-print history. To try it from a phone on the same network, open
-**Settings → Pair another device** to get a code.
+print history. On a phone, open the computer’s **From a phone** address
+printed in the launcher. Pairing is optional.
 
 With demo data on, a quick tour of the newer parts: **Fleet** to switch
 between the three simulated printers; **Files → Add sample files**, open
@@ -686,19 +739,13 @@ its finish, or to make the next Pause fail and see how that is reported.
 
 (GitHub Actions runs every test on Python 3.8, 3.10, 3.12 and 3.13.)
 
-**Opened the pages without the server?** The `frontend/` folder can be
-published on its own (for example as static files on Cloudflare; see
-`wrangler.jsonc`), with no Python server behind it. The dashboard notices
-(its first request, `/api/health`, gets no JSON back) and turns into a
-**browser-only preview**: one banner says the server isn't there, Demo data
-is switched off rather than pretending, and every card that needs the server
-keeps its heading and says so in one line. What still works there, entirely
-in the browser: the **Photo studio** (with six built-in suggested colours,
-and **Download STL / 3MF** instead of saving to the library), viewing
-**G-code, STL and 3MF files from your own device** in 3D (read in the
-browser, never uploaded; there is no pre-flight verdict, which is the server's job),
-**View on your desk (AR)** where the browser supports it, the **Games**, and
-the accent and unit **Preferences**.
+**Opened the pages without the server?** The public site serves `frontend/`
+without Python. Its home page explains the download; **Try demo** plays a
+recording of simulated printers. Browser-only tools such as local model preview
+and Photo Studio can still run, but this public site cannot control a printer,
+install an app update or save files into your computer's dashboard library.
+The first-run tour explains that distinction. If the recording cannot load,
+server-dependent panels show a connection message.
 
 To see the maintenance module on its own, printed to the terminal:
 
@@ -717,7 +764,7 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 638
+python3 -m unittest discover tests          # all 659
 python3 -m unittest tests.test_api          # one file
 ```
 

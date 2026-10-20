@@ -40,16 +40,14 @@ trust the code and fix this file.
 1. Turn the request into a checklist, item by item, and re-read the
    original message before finishing. Counts and formats exactly.
 2. Research from primary sources: shallow or sparse `git clone` of the
-   upstream repo (Snapmaker's u1-klipper, u1-moonraker, OrcaSlicer, Klipper,
-   Moonraker), read the actual file, and cite repo plus commit in the code
-   comment when it explains why code behaves as it does. Other projects are
-   study material only: don't cite them as the source of a feature. Product
-   pages only for specs. Say what's unverified.
+   upstream repo (Snapmaker's u1-klipper, u1-moonraker, OrcaSlicer, the
+   winning forks), read the actual file, and retain private repo/commit/licence notes outside the shipped repository.
+   Do not name study projects as feature sources in app text, comments, README
+   or commits. Product pages only for specs. Say what is unverified.
 3. Build the smallest real version end to end (backend, both printer paths,
-   frontend, tests) before polishing. Borrowed ideas are rewritten, never
-   copied (licences). If you ever copy or closely adapt code from another
-   project, stop and tell the owner: that project's licence then decides
-   what must happen.
+   frontend, tests) before polishing. Implement ideas independently. Never copy or closely adapt external code
+   without stopping to check the owner's licence requirements. Keep required
+   third-party notices; private study notes do not replace notices for copied work.
 4. Verify three ways: the unit tests for the module, the full suite once
    before pushing, and Playwright screenshots at 1366 px and 390 px (look
    at them). For anything animated, measure frame time before and after.
@@ -66,7 +64,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 638 tests, about 140 s
+python3 -m unittest discover tests          # 659 tests, about 140 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
@@ -74,7 +72,7 @@ python3 backend/maintenance.py              # console demos (also led_status.py,
 python3 tools/online-demo/record.py         # re-record the online demo (about 3 min)
 ```
 
-Environment variables (the only ones the app reads): `PORT` (default 8000),
+User-facing startup settings include: `PORT` (default 8000),
 `DEJAVU_ALLOWED_HOSTS` (comma-separated extra host names, e.g. a Cloudflare
 Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
 `DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
@@ -124,7 +122,7 @@ root should hand over to `welcome.html`.
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Script order: `app.js` → `viewer3d.js` → `ar.js` → `workshop.js` →
-  `studio.js` → `farm.js`. `app.js` defines the shared globals the others
+  `studio.js` → `farm.js` → `launchpad.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
@@ -194,7 +192,8 @@ sandbox, so you can't fetch the preview from here.
   data route returns exactly `{"connected": false, "demo": false}`.
 - Demo data never reaches a real printer.
 - Module switches are enforced by the server (a disabled module's routes
-  answer 403). Known gaps: background work isn't stopped yet (see below),
+  answer 403). Background automation, queue advancement, camera capture, time-lapse and
+  filament deduction are also gated. An in-flight request cannot be recalled.
   `ar_preview` is browser-only, and pairing is always on.
 - Honest controls: a command the printer refuses is shown as refused, in
   words.
@@ -239,14 +238,9 @@ sandbox, so you can't fetch the preview from here.
 
 ## Known open issues (found in the October 2026 audit, not fixed yet)
 
-- Switching a module off doesn't stop its background work: automation rules
-  (including pause), queue auto-advance, time-lapse, filament deduction
-  (`live_feed.py`).
-- Config backup holds only 5 files. It misses real printers' maintenance
+- Config backup holds only 4 files. It misses real printers' maintenance
   logs, `fleet.json`, automations, the queue and other settings, and there
   is no restore (`backup.py`).
-- A start the real printer refuses still replaces the current job and erases
-  the last finish summary (`moonraker_client.start_print`).
 - A missing API key over the WebSocket shows only "Not connected:
   Unauthorized" (`moonraker_client._call`).
 - A simulated cancel records no history entry and keeps the active toolhead
@@ -257,3 +251,20 @@ sandbox, so you can't fetch the preview from here.
 - Not checked by the audit (its agents hit the usage limit): the feature
   backends in depth (automations, converter, slicer bridge, studio, queue,
   camera) and `docs/architecture.md` beyond the frontend section.
+
+## Launch-readiness additions
+
+- `VERSION`, `backend/app_updates.py`, `start.py`: opt-in GitHub release checking,
+  verified staging and child-process rollback. No stable package published yet.
+  `docs/releasing.md` is the release checklist. Python is still required.
+- `backend/stock_camera.py`: separate authenticated stock camera monitor per
+  real printer. Snapshot GET is module-gated; demo returns a labelled SVG.
+  Real camera unverified; manual MJPEG/time-lapse remains globally configured.
+- `frontend/launchpad.js`: skippable setup, private browser name, feature search,
+  update settings and camera snapshots. Browser-only names never enter requests.
+- `sw.js` caches only `offline.html`, never API replies or commands. HTTP LAN
+  addresses cannot register it. Public demo info/update controls stay disabled.
+- Viewer accepts triangular OBJ geometry; transforms save a new STL. This drops
+  colours/materials/tool assignments. Do not claim overlap checks or multi-model
+  plate editing. Slicer auto-detection is present; real Orca remains untested.
+- Detailed remaining work: `build-prompts/05-launch-follow-through.md`.

@@ -120,6 +120,10 @@ class TestFiring(AutomationCase):
         self.assertIn("no notification channel", entry["error"])
 
     def test_bridge_actions_report_real_failures(self):
+        import modules
+        modules.set_enabled("wled_bridge", True)
+        modules.set_enabled("home_assistant_bridge", True)
+        self.addCleanup(modules.reset_state)
         light = automations.add_rule(rule({"type": "state", "event": "paused"},
                                           {"type": "light", "color": "#ffaa00"}), demo=True)
         self.assertEqual(automations.test_fire(light["id"], "u1-workshop")["error"], "No WLED host configured")

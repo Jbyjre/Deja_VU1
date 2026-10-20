@@ -32,6 +32,7 @@ from collections import deque
 from datetime import datetime
 
 import automations
+import modules
 import cost_calculator
 import filament_inventory
 import fleet
@@ -213,17 +214,17 @@ def _detect_locked(printer_id, state, finish_event):
             payload["summary"] = {"file": job["filename"], "hours": job["print_duration_hours"],
                                   "grams": job["filament_used_grams"], "material": job["filament_type"],
                                   "color": job["filament_color_hex"], "cost": cost}
-            if not simulated:
+            if not simulated and modules.is_enabled("filament_inventory"):
                 payload["filament"] = filament_inventory.deduct_after_print(job)
         publish_event(payload)
         if side_effects:
-            if name == "started":
+            if name == "started" and modules.is_enabled("timelapse"):
                 timelapse.begin(printer_id, state.get("current_file"), "simulated" if simulated else "camera")
             elif name in ("finished", "failed", "cancelled"):
                 timelapse.finish(printer_id)
-            if name == "finished":
+            if name == "finished" and modules.is_enabled("print_queue"):
                 threading.Thread(target=_advance_queue, args=(printer_id,), daemon=True).start()
-    if events and side_effects:
+    if events and side_effects and modules.is_enabled("automations"):
         # Print events are checked against the rules here, where they are
         # detected - whether that is the 250 ms loop or straight after a
         # button press - so an event can never slip past the rules.
@@ -232,6 +233,8 @@ def _detect_locked(printer_id, state, finish_event):
 
 
 def _advance_queue(printer_id):
+    if not modules.is_enabled("print_queue"):
+        return
     result = print_queue.on_print_finished(printer_id)
     if result and (result.get("started") or result.get("held")):
         publish_event({"type": "queue", "printer": printer_id,
@@ -254,6 +257,9 @@ def tick(seconds=TICK_SECONDS, count=0, scaled=True):
     "step forward"), so each printer's demo speed isn't applied again.
     """
     now = time.time()
+    if not modules.is_enabled("camera"):
+        import stock_camera
+        stock_camera.stop_all()
     for printer_id in mock_moonraker.printer_ids():
         if not mock_moonraker.has_printer(printer_id):
             continue                  # removed by the sandbox mid-tick
@@ -286,9 +292,12 @@ def _tick_one(printer_id, seconds, count, scaled, now):
     if side_effects:
         # Continuous triggers (temperatures, mismatch, maintenance);
         # print events were already handled in _detect.
-        automations.evaluate(printer_id, state, set(), demo_printer=simulated,
-                             slow_checks=(count % 4 == 0))
-        if timelapse.is_recording(printer_id) and state["state"] == "printing":
+        if modules.is_enabled("automations"):
+            automations.evaluate(printer_id, state, set(), demo_printer=simulated,
+                                 slow_checks=(count % 4 == 0))
+        if not modules.is_enabled("timelapse") and timelapse.is_recording(printer_id):
+            timelapse.finish(printer_id)
+        if modules.is_enabled("timelapse") and timelapse.is_recording(printer_id) and state["state"] == "printing":
             with mock_moonraker.use_printer(printer_id):
                 job = mock_moonraker.get_current_job()
             layer = (state.get("layer") or {}).get("current")
@@ -296,7 +305,7 @@ def _tick_one(printer_id, seconds, count, scaled, now):
                 pass                      # the printer doesn't know the layer: no frame is due
             elif simulated:
                 timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
-            else:
+            elif modules.is_enabled("camera"):
                 import camera
                 # Frames arrive only while something reads the stream: keep it
                 # read while recording, and never store a stale one as new.
