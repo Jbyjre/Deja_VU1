@@ -100,7 +100,7 @@ and [licence](https://github.com/OrcaSlicer/OrcaSlicer/blob/8500fcdccaa10b5099ac
    complete exported preset files; it does not resolve those files' parents.
 5. Select an STL or 3MF, choose the saved profile and **Slice**. Save edited or
    OBJ models as a new 3MF plate first. Inspect the resulting G-code, pre-flight
-   and tool assignments. **Slice and queue** puts successful output in the queue;
+   and tool assignments. **Slice and queue** puts successful, non-blocked output in the queue;
    it never starts a printer or skips Confirm Print.
 6. Start only after checking the physical bed, toolheads and filaments. Confirm
    Print rechecks the file and printer state before sending it.
@@ -142,3 +142,14 @@ vendor-specific per-part settings are not complete.
 The four-tool generated geometry is one multipart object, preserving the vertical position of each colour layer. Whole-face tool paint survives plate save-as; a real four-tool round trip passed pre-flight. Generated colour projects retain their slicing contract through plate saves and refuse tilting, Z scaling or lifting that would invalidate layer recipes. Move them in XY or rotate around Z; regenerate to change thickness. Orca 2.4.2 has sliced a layered-image fixture with synthetic calibration values; that verifies geometry and tool handling, not physical colour accuracy. Mixed 0.4/0.6 mm nozzle preparation feeds real machine settings and limits bridge width to the smallest nozzle. Material presets listed for another U1 nozzle variant require explicit temperature/flow review. A real mixed-nozzle slice computed eight layers, but its installed machine preset emitted startup extrusion at X290 and was blocked by the 270 mm pre-flight check. Do not print that result or bypass the check; use a hardware-verified U1 startup preset. Different preferred layer heights per head remain unsupported.
 
 Converted single-plate Bambu-style and Elegoo-style fixtures sliced with installed U1 settings. The converted three-plate fixture crashed Orca 2.4.2 (signal 11); no output was accepted. Open and verify multi-plate projects in Orca, or export each plate separately. Full vendor preset/paint compatibility is not claimed.
+
+Slice-job time and grams are read from the engine’s file metadata. Missing
+engine fields stay unknown. The file inspector separately labels nominal motion
+time and length-based weight using 1.75 mm filament and reference-density
+assumptions; unknown material uses a PLA assumption there, not a measured weight.
+Pre-flight-blocked output is saved for inspection, fails the slice job visibly
+and never reaches the automatic queue handoff.
+
+A closed 200,000-triangle sphere was also sliced by the real Linux engine in
+5.7 seconds: 200 layers, 11.66 g and 0.336 h predicted printing time, clear
+pre-flight. This verifies a larger geometry input, not physical print quality.

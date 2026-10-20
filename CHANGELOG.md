@@ -5,6 +5,12 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Blocked engine output is kept for inspection and never automatically queued.
+  Slice reports show unknown when the engine supplies no time or weight. The
+  file inspector labels its older length/density assumptions explicitly.
+- Tool forms reject a changed printer immediately, including late load replies;
+  a browser check confirms no filament command is sent from a stale form.
+
 - Generated four-tool colour paint survives a plate save-as and real-engine
   round trip. Layer settings remain attached; transforms that would invalidate
   the layer recipe are refused.
@@ -69,7 +75,7 @@ and what is and isn't verified.
   read-back verification; firmware refusals remain errors. Confirm Print also
   checks known material mismatches. Physical U1 verification remains outstanding.
 
-Validation: all 659 Python tests pass on Linux; Chromium desktop/phone checks
+Validation: all 732 Python tests pass on Python 3.12 Linux (133.8 s); Chromium desktop/phone checks
 cover setup, privacy, search, viewer transforms and offline handling. A browser
 connection test rejects a wrong API key, accepts the authenticated stand-in
 and keeps the selected printer after reload. Real devices remain untested.

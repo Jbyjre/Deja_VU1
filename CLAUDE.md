@@ -64,7 +64,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 659 tests, about 140 s
+python3 -m unittest discover tests          # 732 tests, latest run 134 s
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
@@ -80,8 +80,8 @@ Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
 `DEJAVU_NO_BROWSER=1` (read by `start.py`: don't open the browser).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
-(`NODE_PATH=/opt/node22/lib/node_modules node script.js`, then
-`require('playwright').chromium.launch()`). Turn on demo data by clicking
+(`node script.js`, then `require('playwright').chromium.launch({executablePath:
+process.env.DEJAVU_BROWSER || '/usr/bin/chromium', args:['--no-sandbox']})`). Turn on demo data by clicking
 `label[for=demo-toggle]`. Full-page screenshots draw sticky and fixed
 elements in the wrong place, so check those with viewport screenshots. To
 mimic the public static host, serve `frontend/` with any static server; the
@@ -92,7 +92,7 @@ root should hand over to `welcome.html`.
 `backend/` (standard library only; runtime data in `backend/data/`, gitignored)
 - `app.py`: the whole web server. `_dispatch` picks the printer
   (`?printer=<id>`, else the default), runs the handler inside
-  `mock_moonraker.use_printer(id)` and maps exceptions to 400/404/409/502/500.
+  `mock_moonraker.selection_only(id)` and maps exceptions to 400/404/409/502/500.
   GET routes live in `_DATA_ROUTES` (printer figures: module-gated, then
   connected-or-`?demo=1`) and `_APP_ROUTES` (the dashboard's own settings:
   module-gated only). Write actions go in `_CONTROL_ACTIONS` and
@@ -238,7 +238,7 @@ sandbox, so you can't fetch the preview from here.
 
 ## Known open issues (found in the October 2026 audit, not fixed yet)
 
-- Config backup holds only 4 files. It misses real printers' maintenance
+- Config export currently includes seven selected files, including tool assignments and colour recipes. It misses real printers' maintenance
   logs, `fleet.json`, automations, the queue and other settings, and there
   is no restore (`backup.py`).
 - A missing API key over the WebSocket shows only "Not connected:
@@ -297,12 +297,20 @@ sandbox, so you can't fetch the preview from here.
   `docs/releasing.md` is the release checklist. Python is still required.
 - `backend/stock_camera.py`: separate authenticated stock camera monitor per
   real printer. Snapshot GET is module-gated; demo returns a labelled SVG.
-  Real camera unverified; manual MJPEG/time-lapse remains globally configured.
+  Real camera unverified; time-lapse now uses each stock camera. Manual MJPEG
+  remains a separate global viewing feed.
 - `frontend/launchpad.js`: skippable setup, private browser name, feature search,
   update settings and camera snapshots. Browser-only names never enter requests.
 - `sw.js` caches only `offline.html`, never API replies or commands. HTTP LAN
   addresses cannot register it. Public demo info/update controls stay disabled.
-- Viewer accepts triangular OBJ geometry; transforms save a new STL. This drops
-  colours/materials/tool assignments. Do not claim overlap checks or multi-model
-  plate editing. Slicer auto-detection is present; real Orca remains untested.
+- Viewer now has multi-model plate editing and native 3MF save-as, core/vertex
+  colours, bounded mesh contact and surface measurements. Complex paint/texture
+  rendering, multi-plate editing and AR's edited geometry are still incomplete.
+  Real Orca 2.4.2 Linux slices are verified; physical U1 printing is not.
 - Detailed remaining work: `build-prompts/05-launch-follow-through.md`.
+
+Round-two evidence lives in `docs/native-studio-validation.md` and
+`docs/viewer-performance.json`. The software-rendered 200k-triangle test is not
+smooth and does not establish real-phone performance. Slice jobs never queue
+pre-flight-blocked output; job time/weight come only from engine metadata, with
+unknowns preserved. Tool forms reject stale printer selection before any write.

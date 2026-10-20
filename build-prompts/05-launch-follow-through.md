@@ -1,5 +1,10 @@
 # Finish launch readiness from measured evidence
 
+Historical starting brief: native tools, per-printer time-lapse, profile selection,
+plate editing and image geometry have since been implemented. Use
+[the current remaining-work brief](06-native-studio-hardware-and-compatibility.md)
+and current status before treating anything below as unfinished.
+
 The owner has no coding experience. Explain decisions in everyday language,
 verify claims from primary sources and never present simulator success as a
 physical-printer test. Read CLAUDE.md and the current guides. No subagents.

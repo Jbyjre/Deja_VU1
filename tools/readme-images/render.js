@@ -12,17 +12,35 @@ const out = path.join(here, 'out');
 
 (async () => {
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1200, height: 900 }, deviceScaleFactor: 2 });
-  await page.goto('file://' + path.join(here, 'boards.html'));
+  const browser = await chromium.launch({executablePath:process.env.DEJAVU_BROWSER||undefined,args:['--no-sandbox']});
+  // Fulfil loopback requests from disk: managed browsers can block file://.
+  // No listening socket or application/demo server is needed.
+  const root=path.resolve(here,'../..'),origin='http://127.0.0.1:8794';
+  async function localPage(viewport,deviceScaleFactor=1){
+    const context=await browser.newContext({viewport,deviceScaleFactor});
+    await context.route(origin+'/**',async route=>{
+      const file=path.resolve(root,'.'+decodeURIComponent(new URL(route.request().url()).pathname));
+      if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile())return route.abort();
+      await route.fulfill({path:file});
+    });
+    return context.newPage();
+  }
+  const page = await localPage({ width: 1200, height: 900 },2);
+  await page.goto(origin+'/tools/readme-images/boards.html');
   await page.evaluate(() => document.fonts.ready);
   for (const id of ['b-problem', 'b-confirm', 'b-arch', 'b-features', 'b-numbers']) {
     await page.locator('#' + id).screenshot({ path: path.join(out, id + '.png') });
     console.log('wrote', id + '.png');
   }
+  const vision=await page.context().newCDPSession(page);
+  for(const type of ['protanopia','deuteranopia','tritanopia']){
+    await vision.send('Emulation.setEmulatedVisionDeficiency',{type});
+    await page.locator('#b-features').screenshot({path:path.join(out,'palette-'+type+'.png')});
+  }
+  await vision.send('Emulation.setEmulatedVisionDeficiency',{type:'none'});
   for (const [w, h] of [[1200, 630], [1280, 640]]) {
-    const card = await browser.newPage({ viewport: { width: w, height: h } });
-    await card.goto('file://' + path.join(here, 'card.html') + `?w=${w}&h=${h}`);
+    const card = await localPage({ width: w, height: h });
+    await card.goto(origin+'/tools/readme-images/card.html'+`?w=${w}&h=${h}`);
     await card.evaluate(() => document.fonts.ready);
     await card.screenshot({ path: path.join(out, `card-${w}x${h}.png`) });
     console.log(`wrote card-${w}x${h}.png`);
