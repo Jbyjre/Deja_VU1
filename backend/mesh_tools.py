@@ -279,13 +279,55 @@ def parse_3mf(data):
     return list(triangles), info
 
 
+def iter_obj(data):
+    """Geometry-only triangulated OBJ. Never fetch material or texture paths."""
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise MeshError("OBJ must be UTF-8 text") from None
+    vertices, count = [], 0
+    for line in text.splitlines():
+        fields = line.split("#", 1)[0].split()
+        if not fields:
+            continue
+        if fields[0] == "v":
+            try:
+                point = tuple(float(v) for v in fields[1:4])
+            except ValueError:
+                raise MeshError("OBJ has an invalid vertex") from None
+            if len(point) != 3 or not _finite(point) or len(vertices) >= MAX_TRIANGLES * 3:
+                raise MeshError("OBJ has invalid or too many vertices")
+            vertices.append(point)
+        elif fields[0] == "f":
+            if len(fields) != 4:
+                raise MeshError("Export OBJ with triangulated faces; polygons are not supported yet")
+            indices = []
+            for field in fields[1:]:
+                try:
+                    i = int(field.split("/")[0])
+                except ValueError:
+                    raise MeshError("OBJ has an invalid face index") from None
+                index = i - 1 if i > 0 else len(vertices) + i
+                if i == 0 or not 0 <= index < len(vertices):
+                    raise MeshError("OBJ face refers to a missing vertex")
+                indices.append(index)
+            count += 1
+            if count > MAX_TRIANGLES:
+                raise MeshError("OBJ has too many triangles")
+            yield tuple(vertices[i] for i in indices)
+    if not count:
+        raise MeshError("OBJ has no triangular faces")
+
+
 def iter_model(data, filename):
     lower = filename.lower()
+    if lower.endswith(".obj"):
+        return iter_obj(data), {"objects": 1, "application": "OBJ geometry (materials not loaded)"}
     if lower.endswith(".stl"):
         return iter_stl(data), {"objects": 1}
     if lower.endswith(".3mf"):
         return iter_3mf(data)
-    raise MeshError("Only STL and 3MF models can be read")
+    raise MeshError("Only STL, 3MF and triangulated OBJ models can be read")
 
 
 def parse_model(data, filename):

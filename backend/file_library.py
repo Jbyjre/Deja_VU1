@@ -35,7 +35,7 @@ FILES_DIR = os.path.join(_DATA_DIR, "files")
 _INDEX_PATH = os.path.join(_DATA_DIR, "file_index.json")
 _THUMB_DIR = os.path.join(_DATA_DIR, "thumbs")
 
-ALLOWED_EXTENSIONS = (".gcode", ".gco", ".g", ".3mf", ".stl")
+ALLOWED_EXTENSIONS = (".gcode", ".gco", ".g", ".3mf", ".stl", ".obj")
 MAX_BYTES = 64 * 1024 * 1024
 _lock = threading.RLock()
 
@@ -64,6 +64,8 @@ def kind_of(name):
         return "gcode"
     if lower.endswith(".3mf"):
         return "3mf"
+    if lower.endswith(".obj"):
+        return "obj"
     if lower.endswith(".stl"):
         return "stl"
     return None
@@ -81,7 +83,7 @@ def clean_name(name):
     if len(name) > 120:
         raise ValueError("File name is too long (120 characters at most)")
     if not name.lower().endswith(ALLOWED_EXTENSIONS):
-        raise ValueError("Only .gcode, .3mf and .stl files can be added")
+        raise ValueError("Only .gcode, .3mf, .stl and .obj files can be added")
     return name
 
 
