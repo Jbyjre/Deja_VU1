@@ -328,6 +328,21 @@ class TestJobs(SlicerBridgeTest):
         self.assertIn("preset", job["error"])
         self.assertEqual(slicer_bridge.jobs()["jobs"][0]["id"], job["id"])
 
+    def test_blocked_engine_output_is_not_queued(self):
+        self.configure()
+        os.environ['FAKE_ORCA_GCODE']+='\nG90\nM83\nG1 X290 Y0 Z0.2 E5\n'
+        with unittest.mock.patch.object(print_queue,'add',wraps=print_queue.add) as add:
+            job=slicer_bridge.wait(slicer_bridge.start_job('dock_bracket.stl',queue_to='u1-garage')['id'])
+        self.assertEqual(job['status'],'failed');self.assertIn('Pre-flight blocked',job['error'])
+        self.assertEqual(job['report']['files'][0]['preflight'],'blocked');add.assert_not_called()
+
+    def test_missing_engine_estimates_remain_unknown(self):
+        profile=self.configure()
+        os.environ['FAKE_ORCA_GCODE']='\n'.join(line for line in os.environ['FAKE_ORCA_GCODE'].splitlines() if not line.lstrip().startswith(';'))
+        report=slicer_bridge.slice_model('dock_bracket.stl',profile['id'])
+        self.assertIsNone(report['files'][0]['filament_grams'])
+        self.assertIsNone(report['files'][0]['estimated_hours'])
+
     def test_previous_output_is_remembered_for_what_changed(self):
         self.configure()
         first = slicer_bridge.wait(slicer_bridge.start_job("dock_bracket.stl")["id"])

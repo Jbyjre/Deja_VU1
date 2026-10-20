@@ -543,10 +543,10 @@ def analyze(text, want_toolpath=True):
         "filament_mm": {f"T{t}": round(v, 1) for t, v in filament_mm.items()},
         "filament_grams_by_tool": grams_by_tool,
         "filament_grams": meta.get("filament_grams") or round(sum(grams_by_tool.values()), 2),
-        "filament_grams_source": "slicer" if meta.get("filament_grams") else "estimated from extrusion length",
+        "filament_grams_source": "slicer" if meta.get("filament_grams") else "calculated from extrusion; assumes 1.75 mm filament and reference densities (PLA if material is unknown)",
         "estimated_hours": meta.get("estimated_hours") or round(time_s / 3600.0, 3),
         "estimated_hours_source": ("slicer" if meta.get("estimated_hours")
-                                   else "estimated from move lengths and feed rates"),
+                                   else "nominal movement time; excludes acceleration, heating, macros and pauses"),
         "travel_mm": round(travel_mm, 1),
         "preflight": {
             "verdict": "blocked" if errors else ("check" if warnings else "clear"),

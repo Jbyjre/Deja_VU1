@@ -543,8 +543,8 @@ def slice_model(name, profile_id=None, on_step=None):
                                       note=f"Sliced from {name} with \"{profile['name']}\""
                                            + (f" by OrcaSlicer {report['orca_version']}" if report["orca_version"] else ""))
             saved.append({"name": entry["name"], "layers": analysis["layers"],
-                          "estimated_hours": analysis["estimated_hours"],
-                          "filament_grams": analysis["filament_grams"],
+                          "estimated_hours": analysis["meta"].get("estimated_hours"),
+                          "filament_grams": analysis["meta"].get("filament_grams"),
                           "preflight": analysis["preflight"]["verdict"]})
         report["files"] = saved
         report["profile"] = {"id": profile["id"], "name": profile["name"]}
@@ -617,6 +617,8 @@ def _work(job_id, name, profile_id, queue_to, on_done):
         _job_update(job_id, status="running", started_at=datetime.now().isoformat(timespec="seconds"))
         try:
             report = slice_model(name, profile_id, on_step=lambda text: _job_update(job_id, step=text))
+            if any(f.get('preflight')=='blocked' for f in report.get('files',[])):
+                raise SliceFailed('Pre-flight blocked the sliced output. It is saved for inspection and was not queued. Open its file report and correct the printer preset before slicing again',report)
             if not queue_to:
                 _job_update(job_id, status="done", step="Sliced", report=report)
             else:
