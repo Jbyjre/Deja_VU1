@@ -420,6 +420,16 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .native-profile h3 { margin:10px 0; }
 .native-profile summary { min-height:44px;padding:12px 0;cursor:pointer; }
 .native-profile input,.native-profile select {width:100%;min-width:0;min-height:44px;}
+#ap-body > .grid-2 {grid-template-columns:1fr;}
+#np-form:not([hidden]) {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;}
+#np-form > label:first-child,#np-filaments,#np-form > .profile-options,#np-form > details,#np-form > p,#np-form > button {grid-column:1/-1;}
+#np-filaments {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+#np-form > .profile-options {grid-template-columns:repeat(4,minmax(0,1fr));}
+.native-profile h3,.maker-workspace,.plate-heading,#tool-setup {scroll-margin-top:120px;}
+#np-form > .np-review {grid-column:1/-1;display:flex;align-items:center;gap:12px;}
+.native-profile #np-variant {width:22px;min-width:22px;height:22px;min-height:22px;margin:0;}
+@media(max-width:760px){#np-form:not([hidden]){grid-template-columns:1fr;}#np-filaments,#np-form > .profile-options{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:480px){#np-filaments{grid-template-columns:1fr;}}
 .plate-workspace { padding-top:16px;border-top:1px solid var(--border,#7774); }
 .plate-heading h3 {font-family:var(--font-display,'Bricolage Grotesque',sans-serif);font-size:1.65rem;line-height:1.08;margin:10px 0;letter-spacing:-.035em;}
 .plate-toolbar {display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;}
@@ -447,5 +457,8 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .file-detail:has(.plate-workspace) .viewer-canvas {height:560px;}
 @media(max-width:760px){.file-detail:has(.plate-workspace) .fd-view{position:static;}.file-detail:has(.plate-workspace) .viewer-canvas{height:320px;}.plate-heading h3{font-size:1.45rem;}}
 .tool-setup-grid .btn { width:100%;min-height:44px;white-space:normal; }
+@media(prefers-reduced-transparency:reduce),(prefers-contrast:more){
+  .tool-setup-grid fieldset {background:var(--card-solid,#fff);border-color:currentColor;}
+}
 @media(max-width:850px) { .tool-setup-grid {grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media(max-width:480px) { .tool-setup-grid {grid-template-columns:1fr;} }

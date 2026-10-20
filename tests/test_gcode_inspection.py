@@ -23,3 +23,9 @@ class GcodeInspection(unittest.TestCase):
     def test_g92_does_not_count_recovery_as_new_filament(self):
         a=gcode_tools.analyze('PRINT_START\nM82\nG1 X10 E5\nG1 E4\nG92 E0\nG1 E1\nG1 X20 E2')
         self.assertEqual(a['filament_mm']['T0'],6)
+
+    def test_layer_ids_exclude_startup_purge_and_keep_sequential_object_order(self):
+        text='PRINT_START\nM83\nG1 X10 Z.05 E1\n;LAYER_CHANGE\n;Z:.2\nG1 X20 Z.2 E1\n;LAYER_CHANGE\n;Z:.4\nG1 X30 Z.4 E1\n;LAYER_CHANGE\n;Z:.2\nG1 X40 Z.2 E1'
+        a=gcode_tools.analyze(text)
+        self.assertEqual([l['z'] for l in a['layer_table']],[.2,.4,.2])
+        self.assertEqual([s[11] for s in a['toolpath']['segments']],[-1,0,1,2])

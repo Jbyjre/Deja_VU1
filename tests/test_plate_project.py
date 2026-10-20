@@ -62,3 +62,12 @@ class PlateProjects(unittest.TestCase):
             model=z.read('3D/sources/0/3D/3dmodel.model')
             for colour in (b'#ff0000',b'#00ff00',b'#0000ff'):self.assertIn(colour,model)
             self.assertIn(b'pid="2" p1="1" p2="2" p3="3"',model)
+
+    def test_non_millimetre_size_is_displayed_in_real_millimetres(self):
+        xml=f'<model xmlns="{plate.CORE}" unit="inch"><resources><object id="1"><mesh><vertices><vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/><vertex x="0" y="1" z="0"/></vertices><triangles><triangle v1="0" v2="1" v3="2"/></triangles></mesh></object></resources><build><item objectid="1"/></build></model>'
+        data=io.BytesIO()
+        with zipfile.ZipFile(data,'w') as z:z.writestr('3D/3dmodel.model',xml)
+        summary=mesh_tools.summarize(data.getvalue(),'inches.3mf')
+        self.assertEqual(summary['bounds']['size'],[25.4,25.4,0])
+        self.sources['inches.3mf']=data.getvalue()
+        with self.assertRaisesRegex(ValueError,'millimetres'):plate.build({'objects':[{'name':'inches.3mf'}]})

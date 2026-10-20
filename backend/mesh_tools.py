@@ -26,6 +26,7 @@ import safe_zip
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 PROD_NS = "http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
 MAX_TRIANGLES = 2_000_000
+UNIT_MM={'micron':.001,'millimeter':1,'centimeter':10,'inch':25.4,'foot':304.8,'meter':1000}
 
 
 class MeshError(ValueError):
@@ -164,7 +165,9 @@ def _read_model_part(stream, part_name):
         tag = name[len(_CORE):]
         obj = state["obj"]
         try:
-            if tag == "vertex" and obj is not None:
+            if tag == 'model':
+                state['unit']=attrs.get('unit','millimeter')
+            elif tag == "vertex" and obj is not None:
                 state["vertices"] += 1
                 if state["vertices"] > 3 * MAX_TRIANGLES:
                     raise MeshError("The model has too many vertices")
@@ -212,6 +215,7 @@ def _read_model_part(stream, part_name):
         parser.ParseFile(stream)
     except expat.ExpatError as exc:
         raise MeshError(f"The 3MF's {part_name} isn't valid XML ({exc})")
+    metadata['_geometry_unit']=state.get('unit','millimeter')
     return objects, build, metadata
 
 
@@ -240,13 +244,19 @@ def iter_3mf(data):
         return parts[key]
 
     objects, build, metadata = load(main)
+    source_unit=metadata['_geometry_unit']
+    if source_unit not in UNIT_MM:raise MeshError('The 3MF uses an unknown measurement unit')
+    unit_scale=UNIT_MM[source_unit]
     items = build or [(oid, None) for oid in objects]
     count = [0]
 
     def emit(part_path, object_id, transform, depth=0):
         if depth > 8:
             raise MeshError("3MF components nest too deeply")
-        obj = load(part_path)[0].get(object_id)
+        part=load(part_path)
+        if part[2]['_geometry_unit']!=source_unit:
+            raise MeshError('This project mixes measurement units between parts. Re-save it in millimetres in its source program')
+        obj = part[0].get(object_id)
         if obj is None:
             raise MeshError(f"3MF object {object_id} is missing")
         verts, tris = obj["verts"], obj["tris"]
@@ -259,7 +269,7 @@ def iter_3mf(data):
             for k in (tris[i], tris[i + 1], tris[i + 2]):
                 if not 0 <= k < n_verts:
                     raise MeshError(f"A 3MF triangle refers to vertex {k}, which doesn't exist")
-                corners.append(_apply(transform, (verts[3 * k], verts[3 * k + 1], verts[3 * k + 2])))
+                corners.append(tuple(v*unit_scale for v in _apply(transform, (verts[3 * k], verts[3 * k + 1], verts[3 * k + 2]))))
             yield tuple(corners)
         for path, child, child_transform in obj["components"]:
             yield from emit(path or part_path, child, _compose(_matrix(child_transform), transform), depth + 1)

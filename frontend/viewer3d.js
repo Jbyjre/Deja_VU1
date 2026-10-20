@@ -189,6 +189,8 @@ const DV3D = (() => {
     };
     const main = '3D/3dmodel.model';
     const root = await load(main);
+    const unit=root.documentElement.getAttribute('unit')||'millimeter',units={micron:.001,millimeter:1,centimeter:10,inch:25.4,foot:304.8,meter:1000};
+    if(!units[unit])throw new Error('This project uses an unknown measurement unit');
     const meta = {};
     for (const m of root.getElementsByTagNameNS(NS, 'metadata')) meta[m.getAttribute('name')] = m.textContent;
     const chunks = [], colourChunks=[], warnings=new Set();
@@ -204,7 +206,8 @@ const DV3D = (() => {
     };
     const emit = async (path, id, t, depth, assignedTool=0) => {
       if (depth > 8) throw new Error('3MF components nest too deeply');
-      const obj = objectsIn(await load(path))[id];
+      const partDoc=await load(path);if((partDoc.documentElement.getAttribute('unit')||'millimeter')!==unit)throw new Error('This project mixes measurement units. Re-save it in millimetres in its source program.');
+      const obj = objectsIn(partDoc)[id];
       if (!obj) throw new Error(`3MF object ${id} is missing`);
       const mesh = obj.getElementsByTagNameNS(NS, 'mesh')[0];
       if (mesh && mesh.parentNode === obj) {
@@ -259,6 +262,7 @@ const DV3D = (() => {
     const all = new Float32Array(total), colors=new Float32Array(total);
     let off = 0;
     for (let i=0;i<chunks.length;i++) { all.set(chunks[i], off);colors.set(colourChunks[i],off); off += chunks[i].length; }
+    if(units[unit]!==1){for(let i=0;i<all.length;i++)all[i]*=units[unit];warnings.add('Converted '+unit+' coordinates to millimetres for this preview. Re-save the source in millimetres before plate export.');}
     let plateSource=null;
     try{const stateBytes=await zip.read('DejaVu/plate.json',1024*1024);if(stateBytes){const state=JSON.parse(new TextDecoder().decode(stateBytes));if(state.version!==1||!Array.isArray(state.objects)||!state.objects.length||state.objects.length>32)throw new Error('Invalid plate state');plateSource={state,read:(index,name)=>zip.read('DejaVu/Sources/'+index+'/'+name,64*1024*1024)};}}catch(_){warnings.add('Saved plate-editing state could not be restored. The geometry remains available.');}
     return finishMesh(all, { colours:colors,objects: items.length, application: meta.Application || '', title: meta.Title || '',warnings:[...warnings],plateSource });
@@ -275,8 +279,8 @@ const DV3D = (() => {
         if (pos[i + k] > max[k]) max[k] = pos[i + k];
       }
     }
-    const normals = new Float32Array(pos.length);
-    for (let i = 0; i < pos.length; i += 9) {
+    const normals = info?.normals || new Float32Array(pos.length);
+    if(!info?.normals) for (let i = 0; i < pos.length; i += 9) {
       const ux = pos[i + 3] - pos[i], uy = pos[i + 4] - pos[i + 1], uz = pos[i + 5] - pos[i + 2];
       const vx = pos[i + 6] - pos[i], vy = pos[i + 7] - pos[i + 1], vz = pos[i + 8] - pos[i + 2];
       let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
@@ -339,10 +343,10 @@ const DV3D = (() => {
       vec3 col = colored ? vk : c;
       for (int i = 0; i < 4; i++) { if (i < nb && vz >= bz[i] - 0.0005) col = bc[i]; }
       float d = abs(dot(normalize(vn), l)); gl_FragColor = vec4(col * (0.38 + 0.62 * d), 1.0); }`;
-  const LINE_VS = `attribute vec3 p; attribute vec4 k; uniform mat4 m; varying vec4 vk; varying float vz;
-    void main(){ vk = k; vz=p.z; gl_PointSize=6.0; gl_Position = m * vec4(p, 1.0); }`;
-  const LINE_FS = `precision mediump float; varying vec4 vk; varying float vz; uniform bool hideTravel; uniform float minZ; uniform float maxZ;
-    void main(){ if(vk.a<0.001 || (hideTravel && vk.a<0.5) || vz<minZ || vz>maxZ)discard; gl_FragColor = vk; }`;
+  const LINE_VS = `attribute vec3 p; attribute vec4 k; attribute float q; uniform mat4 m; varying vec4 vk; varying float vz; varying float vlayer;
+    void main(){ vk = k; vz=p.z; vlayer=q; gl_PointSize=6.0; gl_Position = m * vec4(p, 1.0); }`;
+  const LINE_FS = `precision mediump float; varying vec4 vk; varying float vz; varying float vlayer; uniform bool hideTravel; uniform float minZ; uniform float maxZ; uniform float minLayer; uniform float maxLayer;
+    void main(){ if(vk.a<0.001 || (hideTravel && vk.a<0.5) || vz<minZ || vz>maxZ || vlayer<minLayer || vlayer>maxLayer)discard; gl_FragColor = vk; }`;
 
   function hexToRGB(hex, fallback = [1, 0.48, 0.18]) {
     const m = /^#?([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(hex || '');
@@ -415,7 +419,7 @@ const DV3D = (() => {
         pos[i] = mesh.positions[i] + dx; pos[i + 1] = mesh.positions[i + 1] + dy; pos[i + 2] = mesh.positions[i + 2] + dz;
       }
       this.mesh = { pos: this.buffer(pos), nrm: this.buffer(mesh.normals), count: pos.length / 3 };
-      if(mesh.colours)this.mesh.col=this.buffer(mesh.colours);
+      if(mesh.colours){const display=new Float32Array(mesh.colours);for(let i=0;i<display.length;i+=3){const lum=.2126*display[i]+.7152*display[i+1]+.0722*display[i+2];if(lum<.12)for(let k=0;k<3;k++)display[i+k]+=.5-lum;}this.mesh.col=this.buffer(display);}
       this.color = hexToRGB(colorHex);
       // Like the toolpath view, lift near-black on screen only so it doesn't vanish.
       const lift = (c) => { const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; return l < 0.22 ? c.map(v => v + (0.42 - l)) : c; };
@@ -451,10 +455,11 @@ const DV3D = (() => {
       }
       this.travelMask = segments.map(s => s[7] === 1);
       this.lines = { pos: this.buffer(pos), col: this.buffer(col), count: n * 2, zmax };
+      const layerValues=new Float32Array(n*2);segments.forEach((s,i)=>{layerValues[i*2]=layerValues[i*2+1]=s[11]??-1;});this.lines.lyr=this.buffer(layerValues);this.layerRange=null;
       this.toolSegments=segments;this.toolPalette=palette;this.pathMode='tool';this.toolFilter=-1;
       this.pathDetails=details;this.lowerLimit=-Infinity;
       const markers=details.markers||[];
-      if(markers.length){const mp=new Float32Array(markers.length*3),mc=new Float32Array(markers.length*4);markers.forEach((m,i)=>{mp.set(m.position,i*3);mc.set(m.kind==='toolchange'?[1,.85,.15,1]:[1,.2,.7,1],i*4);});this.markers={pos:this.buffer(mp),col:this.buffer(mc),count:markers.length};}
+      if(markers.length){const mp=new Float32Array(markers.length*3),mc=new Float32Array(markers.length*4),ml=new Float32Array(markers.length);markers.forEach((m,i)=>{mp.set(m.position,i*3);mc.set(m.kind==='toolchange'?[1,.85,.15,1]:[1,.2,.7,1],i*4);ml[i]=m.layer??-1;});this.markers={pos:this.buffer(mp),col:this.buffer(mc),lyr:this.buffer(ml),count:markers.length};}
       if (isFinite(min[0])) this.frame([(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (max[2]) / 2],
         Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]));
       this.limit = Infinity;
@@ -464,11 +469,20 @@ const DV3D = (() => {
 
     setLayerLimit(z) { this.limit = z; this.draw(); }
 
+    setSelection(bounds) {
+      const gl=this.gl;if(this.outline){gl.deleteBuffer(this.outline.pos);gl.deleteBuffer(this.outline.col);}
+      if(!bounds){this.outline=null;this.draw();return;}
+      const v=Array.from({length:8},(_,i)=>[bounds[i&1?'max':'min'][0],bounds[i&2?'max':'min'][1],bounds[i&4?'max':'min'][2]]),p=[],c=[];
+      for(let i=0;i<8;i++)for(const bit of [1,2,4])if(!(i&bit)){p.push(...v[i],...v[i|bit]);c.push(.25,.7,1,.85,.25,.7,1,.85);}
+      this.outline={pos:this.buffer(new Float32Array(p)),col:this.buffer(new Float32Array(c)),count:p.length/3};this.draw();
+    }
+
     setPathStyle(mode='tool',tool=-1) {
       if(!this.lines)return;this.pathMode=mode;this.toolFilter=tool;
       const segs=this.toolSegments,col=new Float32Array(segs.length*8),max=segs.reduce((n,s)=>Math.max(n,s[8]||0),1),features=[[.15,.7,1],[1,.5,.12],[.35,.85,.4],[.85,.35,.9],[.95,.85,.2],[.6,.7,.85]];
       for(let i=0;i<segs.length;i++){const s=segs[i],ext=s[7]===1;let c=ext?this.toolPalette[s[6]]||this.toolPalette[0]:[.45,.5,.6];if(ext&&mode==='speed'){const t=(s[8]||0)/max;c=[t,.35+.4*(1-Math.abs(2*t-1)),1-t];}if(ext&&mode==='feature')c=features[(s[9]||0)%features.length];const a=tool>=0&&s[6]!==tool?0:ext?1:.22;col.set([...c,a,...c,a],i*8);}
       const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.lines.col);gl.bufferData(gl.ARRAY_BUFFER,col,gl.STATIC_DRAW);this.draw();
+      if(this.markers){const values=new Float32Array(this.pathDetails.markers.length*4);this.pathDetails.markers.forEach((m,i)=>{const c=m.kind==='toolchange'?[1,.85,.15]:[1,.2,.7];values.set([...c,tool<0||m.tool===tool?1:0],i*4);});gl.bindBuffer(gl.ARRAY_BUFFER,this.markers.col);gl.bufferData(gl.ARRAY_BUFFER,values,gl.STATIC_DRAW);}
     }
 
     frame(center, size) {
@@ -478,11 +492,11 @@ const DV3D = (() => {
 
     clear() {
       const gl = this.gl;
-      for (const obj of [this.mesh, this.lines,this.markers]) {
+      for (const obj of [this.mesh, this.lines,this.markers,this.outline]) {
         if (!obj) continue;
-        for (const key of ['pos', 'nrm', 'col']) if (obj[key]) gl.deleteBuffer(obj[key]);
+        for (const key of ['pos', 'nrm', 'col','lyr']) if (obj[key]) gl.deleteBuffer(obj[key]);
       }
-      this.mesh = null; this.lines = null;this.markers=null;this.toolSegments=null;
+      this.mesh = null; this.lines = null;this.markers=null;this.outline=null;this.toolSegments=null;
     }
 
     matrix() {
@@ -527,6 +541,8 @@ const DV3D = (() => {
       gl.uniformMatrix4fv(gl.getUniformLocation(this.lineProg, 'm'), false, m);
       gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),false);
       gl.uniform1f(gl.getUniformLocation(this.lineProg,'minZ'),-1e8);gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxZ'),1e8);
+      gl.uniform1f(gl.getUniformLocation(this.lineProg,'minLayer'),-1e8);gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxLayer'),1e8);
+      const lq=gl.getAttribLocation(this.lineProg,'q');gl.disableVertexAttribArray(lq);gl.vertexAttrib1f(lq,-1);
       const lp = this.attrib(this.lineProg, 'p', this.bed.pos, 3);
       const lk = this.attrib(this.lineProg, 'k', this.bed.col, 4);
       gl.drawArrays(gl.LINES, 0, this.bed.count);
@@ -537,17 +553,20 @@ const DV3D = (() => {
         gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxZ'),Number.isFinite(this.limit)?this.limit+1e-5:1e8);
         this.attrib(this.lineProg, 'p', this.lines.pos, 3);
         this.attrib(this.lineProg, 'k', this.lines.col, 4);
+        this.attrib(this.lineProg,'q',this.lines.lyr,1);
+        if(this.layerRange){gl.uniform1f(gl.getUniformLocation(this.lineProg,'minLayer'),this.layerRange.min-.1);gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxLayer'),this.layerRange.max+.1);}
         let count = this.lines.count / 2;
-        if (isFinite(this.limit)) {
+        if (isFinite(this.limit) && !this.layerRange) {
           let lo = 0, hi = count;                       // zAt only ever rises: binary search
           while (lo < hi) { const mid = (lo + hi) >> 1; if (this.zAt[mid] <= this.limit + 1e-6) lo = mid + 1; else hi = mid; }
           count = lo;
         }
         gl.lineWidth(1);
         gl.drawArrays(gl.LINES, 0, count * 2);
-        if(this.showMarkers&&this.markers){this.attrib(this.lineProg,'p',this.markers.pos,3);this.attrib(this.lineProg,'k',this.markers.col,4);gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),false);gl.drawArrays(gl.POINTS,0,this.markers.count);}
+        if(this.showMarkers&&this.markers){this.attrib(this.lineProg,'p',this.markers.pos,3);this.attrib(this.lineProg,'k',this.markers.col,4);this.attrib(this.lineProg,'q',this.markers.lyr,1);gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),false);gl.drawArrays(gl.POINTS,0,this.markers.count);}
       }
       gl.disableVertexAttribArray(lk);
+      gl.disableVertexAttribArray(lq);
 
       if (this.mesh) {
         gl.useProgram(this.meshProg);
@@ -575,6 +594,7 @@ const DV3D = (() => {
         gl.disableVertexAttribArray(mk);
       }
       gl.disableVertexAttribArray(lp);
+      if(this.outline){gl.useProgram(this.lineProg);gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),false);gl.uniform1f(gl.getUniformLocation(this.lineProg,'minZ'),-1e8);gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxZ'),1e8);gl.uniform1f(gl.getUniformLocation(this.lineProg,'minLayer'),-1e8);gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxLayer'),1e8);this.attrib(this.lineProg,'p',this.outline.pos,3);this.attrib(this.lineProg,'k',this.outline.col,4);gl.disableVertexAttribArray(lq);gl.vertexAttrib1f(lq,0);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.LINES,0,this.outline.count);gl.enable(gl.DEPTH_TEST);gl.disableVertexAttribArray(lk);gl.disableVertexAttribArray(lp);}
     }
 
     /* Orbit and zoom. The canvas has touch-action:none (see workshop.css) and

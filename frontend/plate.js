@@ -8,26 +8,28 @@ window.DVPlate = (() => {
     return out;
   }
   const point=(m,p)=>[0,1,2].map(c=>p[0]*m[c]+p[1]*m[3+c]+p[2]*m[6+c]+m[9+c]);
+  function bounds(o){const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity],p=o.mesh.positions,m=o.transform;for(let i=0;i<p.length;i+=3)for(let k=0;k<3;k++){const v=p[i]*m[k]+p[i+1]*m[3+k]+p[i+2]*m[6+k]+m[9+k];min[k]=Math.min(min[k],v);max[k]=Math.max(max[k],v);}return {min,max};}
   function transformed(o) {
+    const cacheKey=o.transform.join(',');if(o._cached?.key===cacheKey)return o._cached.mesh;
     const src=o.mesh.positions,p=new Float32Array(src.length),m=o.transform;
     for(let i=0;i<src.length;i+=3){p[i]=src[i]*m[0]+src[i+1]*m[3]+src[i+2]*m[6]+m[9];p[i+1]=src[i]*m[1]+src[i+1]*m[4]+src[i+2]*m[7]+m[10];p[i+2]=src[i]*m[2]+src[i+1]*m[5]+src[i+2]*m[8]+m[11];}
     const det=m[0]*(m[4]*m[8]-m[5]*m[7])-m[1]*(m[3]*m[8]-m[5]*m[6])+m[2]*(m[3]*m[7]-m[4]*m[6]);
     let colours=o.mesh.colours?new Float32Array(o.mesh.colours):null;
     if(det<0)for(let i=0;i<p.length;i+=9)for(let k=0;k<3;k++){[p[i+3+k],p[i+6+k]]=[p[i+6+k],p[i+3+k]];if(colours)[colours[i+3+k],colours[i+6+k]]=[colours[i+6+k],colours[i+3+k]];}
-    return DV3D.finishMesh(p,{objects:1,colours});
+    const mesh=DV3D.finishMesh(p,{objects:1,colours});o._cached={key:cacheKey,mesh};return mesh;
   }
-  function centre(o,x=135,y=135) {const b=transformed(o).bounds;o.transform[9]+=x-(b.min[0]+b.max[0])/2;o.transform[10]+=y-(b.min[1]+b.max[1])/2;o.transform[11]-=b.min[2];}
+  function centre(o,x=135,y=135) {const b=bounds(o);o.transform[9]+=x-(b.min[0]+b.max[0])/2;o.transform[10]+=y-(b.min[1]+b.max[1])/2;o.transform[11]-=b.min[2];}
   function rotated(axis,degrees) {const m=identity(),a=degrees*Math.PI/180,c=Math.cos(a),s=Math.sin(a);if(axis===0){m[4]=c;m[5]=s;m[7]=-s;m[8]=c;}if(axis===1){m[0]=c;m[2]=-s;m[6]=s;m[8]=c;}if(axis===2){m[0]=c;m[1]=s;m[3]=-s;m[4]=c;}return m;}
-  function around(o,m) {const b=transformed(o).bounds,c=b.min.map((v,i)=>(v+b.max[i])/2),a=identity(),back=identity();a.splice(9,3,...c.map(v=>-v));back.splice(9,3,...c);o.transform=compose(compose(compose(o.transform,a),m),back);}
+  function around(o,m) {const b=bounds(o),c=b.min.map((v,i)=>(v+b.max[i])/2),a=identity(),back=identity();a.splice(9,3,...c.map(v=>-v));back.splice(9,3,...c);o.transform=compose(compose(compose(o.transform,a),m),back);}
   function overlap(a,b){return [0,1,2].every(k=>Math.min(a.max[k],b.max[k])-Math.max(a.min[k],b.min[k])>.001);}
   function layFlat(o) {
-    const mesh=transformed(o),p=mesh.positions;let normal=null,area=0;
-    for(let i=0;i<p.length;i+=9){const u=[p[i+3]-p[i],p[i+4]-p[i+1],p[i+5]-p[i+2]],v=[p[i+6]-p[i],p[i+7]-p[i+1],p[i+8]-p[i+2]],n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],a=Math.hypot(...n);if(a>area){area=a;normal=n.map(x=>x/a);}}
+    const mesh=transformed(o),p=mesh.positions;let normal=null,area=0;const planes=new Map();
+    for(let i=0;i<p.length;i+=9){const u=[p[i+3]-p[i],p[i+4]-p[i+1],p[i+5]-p[i+2]],v=[p[i+6]-p[i],p[i+7]-p[i+1],p[i+8]-p[i+2]],n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],a=Math.hypot(...n);if(a<1e-9)continue;const unit=n.map(x=>x/a),d=unit[0]*p[i]+unit[1]*p[i+1]+unit[2]*p[i+2],key=unit.map(x=>Math.round(x*10000)).join(',')+','+Math.round(d*1000),sum=(planes.get(key)||0)+a;planes.set(key,sum);if(sum>area){area=sum;normal=unit;}}
     if(!normal)throw new Error('This mesh has no non-degenerate face to lay flat.');
     const n=normal,d=[0,0,-1],axis=[-n[1],n[0],0],len=Math.hypot(...axis),dot=-n[2];
     if(len<1e-8){if(dot<0)around(o,rotated(0,180));}
     else {const [x,y,z]=axis.map(v=>v/len),c=Math.max(-1,Math.min(1,dot)),s=Math.sqrt(1-c*c),t=1-c;around(o,[t*x*x+c,t*x*y+s*z,t*x*z-s*y,t*x*y-s*z,t*y*y+c,t*y*z+s*x,t*x*z+s*y,t*y*z-s*x,t*z*z+c,0,0,0]);}
-    const b=transformed(o).bounds;o.transform[11]-=b.min[2];
+    const b=bounds(o);o.transform[11]-=b.min[2];
   }
   async function saveObjects(objects) {
     if(typeof tourOn==='function'&&tourOn())throw new Error('Saving a plate needs the local Deja Vu1 server. The public demo is a recording.');
@@ -45,7 +47,7 @@ window.DVPlate = (() => {
     if($('fd-name').textContent!==entry.name||$('file-detail').hidden)return;
     let selected=0,version=0,measuring=false,points=[],disposed=false;
     const controls=document.createElement('section');controls.className='plate-workspace';
-    controls.innerHTML=`<div class="plate-heading"><span class="eyebrow">PLATE 01 · 270 × 270 MM</span><h3>Build your plate.</h3><p class="field-hint">Original shapes and colour data stay intact. Edit objects, then save a new print project.</p></div>
+    controls.innerHTML=`<div class="plate-heading"><span class="eyebrow">PLATE 01 · 270 × 270 MM</span><h3>Build your plate.</h3><p class="field-hint">Edits keep original shapes and colour data. The blue box marks the selected object; dark colours are lightened on screen.</p></div>
       <div class="plate-toolbar"><button class="btn" id="plate-add-open">＋ Add models</button><input hidden id="plate-add" type="file" accept=".stl,.obj,.3mf" multiple><button class="btn" id="plate-arrange">Arrange</button><button class="btn" id="plate-undo">Undo</button><button class="btn" id="plate-redo">Redo</button><button class="btn" id="plate-fit">Fit view</button><button class="btn" id="plate-pan" aria-pressed="false">Pan</button></div>
       <label>Selected object<select id="plate-object"></select></label><p id="plate-dimensions" class="plate-dimensions" role="status"></p>
       <form id="plate-transform"><div class="profile-options">${['x','y','z'].map((a,i)=>`<label>${a.toUpperCase()} ${i===2?'bottom':'centre'}, mm<input id="plate-${a}" type="number" step="any"></label>`).join('')}<label>Scale, %<input id="plate-scale" type="number" value="100" min=".01" max="10000" step="any"></label>${['x','y','z'].map(a=>`<label>Rotate ${a.toUpperCase()} by degrees<input id="plate-r${a}" type="number" step="any" value="0"></label>`).join('')}</div><button class="btn primary">Apply transform</button></form>
@@ -58,11 +60,12 @@ window.DVPlate = (() => {
     worker.onmessage=e=>{const slot=waiting.get(e.data.id);if(slot){waiting.delete(e.data.id);e.data.error?slot.reject(new Error(e.data.error)):slot.resolve(e.data);}};
     worker.onerror=()=>{for(const s of waiting.values())s.reject(new Error('The geometry worker stopped. Reopen the model and try again.'));waiting.clear();};
     function work(message,transfer=[]){return new Promise((resolve,reject)=>{const id=++messageId;waiting.set(id,{resolve,reject});worker.postMessage({...message,id},transfer);});}
-    function checkpoint(){undo.push(objects.map(o=>({...o,transform:o.transform.slice(),settings:{...o.settings}})));if(undo.length>30)undo.shift();redo.length=0;}
-    function restore(stack,dest){if(!stack.length)return;dest.push(objects.map(o=>({...o,transform:o.transform.slice(),settings:{...o.settings}})));objects.splice(0,objects.length,...stack.pop());selected=Math.min(selected,objects.length-1);draw();}
-    function geometry(){const meshes=objects.map(transformed),length=meshes.reduce((n,m)=>n+m.positions.length,0);if(length/9>2000000)throw new Error('This plate exceeds two million triangles. Use fewer or simpler models.');const pos=new Float32Array(length),colors=new Float32Array(length);let offset=0;for(let i=0;i<meshes.length;i++){const m=meshes[i],o=objects[i];pos.set(m.positions,offset);if(m.colours&&o.keepColour)colors.set(m.colours,offset);else{const color=DV3D.hexToRGB(toolColours[o.tool]);for(let k=0;k<m.positions.length;k+=3)colors.set(color,offset+k);}offset+=m.positions.length;}return {mesh:DV3D.finishMesh(pos,{colours:colors,objects:objects.length}),meshes};}
+    const snapshot=()=>objects.map(o=>({name:o.name,mesh:o.mesh,transform:o.transform.slice(),settings:{...o.settings},tool:o.tool,keepColour:o.keepColour,local:o.local,sourceName:o.sourceName}));
+    function checkpoint(){undo.push(snapshot());if(undo.length>30)undo.shift();redo.length=0;}
+    function restore(stack,dest){if(!stack.length)return;dest.push(snapshot());objects.splice(0,objects.length,...stack.pop());selected=Math.min(selected,objects.length-1);draw();}
+    function geometry(){const meshes=objects.map(transformed),length=meshes.reduce((n,m)=>n+m.positions.length,0);if(length/9>2000000)throw new Error('This plate exceeds two million triangles. Use fewer or simpler models.');const pos=new Float32Array(length),colors=new Float32Array(length),normal=new Float32Array(length);let offset=0;for(let i=0;i<meshes.length;i++){const m=meshes[i],o=objects[i];pos.set(m.positions,offset);normal.set(m.normals,offset);if(m.colours&&o.keepColour)colors.set(m.colours,offset);else{const color=DV3D.hexToRGB(toolColours[o.tool]);for(let k=0;k<m.positions.length;k+=3)colors.set(color,offset+k);}offset+=m.positions.length;}return {mesh:DV3D.finishMesh(pos,{colours:colors,objects:objects.length,normals:normal}),meshes};}
     function draw(){if(disposed)return;version++;const {mesh:combined,meshes}=geometry();viewer.setMesh(combined,null,null,{absolute:true,keepCamera:version>1});
-      $p('plate-object').innerHTML=objects.map((o,i)=>`<option value="${i}" ${i===selected?'selected':''}>${i+1}. ${esc(o.name)}</option>`).join('');const o=objects[selected],m=meshes[selected],b=m.bounds;
+      $p('plate-object').innerHTML=objects.map((o,i)=>`<option value="${i}" ${i===selected?'selected':''}>${i+1}. ${esc(o.name)}</option>`).join('');const o=objects[selected],m=meshes[selected],b=m.bounds;viewer.setSelection(b);
       ['x','y','z'].forEach((a,i)=>$p('plate-'+a).value=(i===2?b.min[2]:(b.min[i]+b.max[i])/2).toFixed(3));$p('plate-tool').value=o.tool;$p('plate-colour').checked=o.keepColour;$p('plate-walls').value=o.settings.wall_loops||'';$p('plate-infill').value=o.settings.sparse_infill_density??'';
       $p('plate-dimensions').textContent=m.size.map(n=>n.toFixed(2)).join(' × ')+' mm · '+objects.length+' object'+(objects.length>1?'s':'');
       const outside=meshes.flatMap((m,i)=>m.bounds.min.some(v=>v<-.001)||m.bounds.max.some(v=>v>270.001)?[objects[i].name]:[]),pairs=[];for(let i=0;i<meshes.length;i++)for(let j=i+1;j<meshes.length;j++)if(overlap(meshes[i].bounds,meshes[j].bounds))pairs.push(`${i+1} & ${j+1}`);
@@ -72,9 +75,9 @@ window.DVPlate = (() => {
     }
     function change(fn){try{checkpoint();fn(objects[selected]);draw();}catch(e){if(undo.length)objects.splice(0,objects.length,...undo.pop());$p('plate-report').textContent=e.message;}}
     $p('plate-object').onchange=e=>{selected=Number(e.target.value);draw();};
-    $p('plate-transform').onsubmit=e=>{e.preventDefault();change(o=>{const vals=['x','y','z','rx','ry','rz','scale'].map(a=>Number($p('plate-'+a).value));if(!vals.every(Number.isFinite)||vals[6]<=0||vals[6]>10000)throw new Error('Enter finite positions, angles and a scale above zero and at most 10,000%.');const s=identity();s[0]=s[4]=s[8]=vals[6]/100;around(o,s);for(let i=0;i<3;i++)around(o,rotated(i,vals[i+3]));const b=transformed(o).bounds;for(let i=0;i<3;i++)o.transform[9+i]+=vals[i]-(i===2?b.min[2]:(b.min[i]+b.max[i])/2);['rx','ry','rz'].forEach(a=>$p('plate-'+a).value=0);$p('plate-scale').value=100;});};
+    $p('plate-transform').onsubmit=e=>{e.preventDefault();change(o=>{const vals=['x','y','z','rx','ry','rz','scale'].map(a=>Number($p('plate-'+a).value));if(!vals.every(Number.isFinite)||vals[6]<=0||vals[6]>10000)throw new Error('Enter finite positions, angles and a scale above zero and at most 10,000%.');const s=identity();s[0]=s[4]=s[8]=vals[6]/100;around(o,s);for(let i=0;i<3;i++)around(o,rotated(i,vals[i+3]));const b=bounds(o);for(let i=0;i<3;i++)o.transform[9+i]+=vals[i]-(i===2?b.min[2]:(b.min[i]+b.max[i])/2);['rx','ry','rz'].forEach(a=>$p('plate-'+a).value=0);$p('plate-scale').value=100;});};
     $p('plate-undo').onclick=()=>restore(undo,redo);$p('plate-redo').onclick=()=>restore(redo,undo);
-    $p('plate-drop').onclick=()=>change(o=>{o.transform[11]-=transformed(o).bounds.min[2];});
+    $p('plate-drop').onclick=()=>change(o=>{o.transform[11]-=bounds(o).min[2];});
     $p('plate-flat').onclick=()=>change(layFlat);
     controls.querySelectorAll('[data-mirror]').forEach(b=>b.onclick=()=>change(o=>{const m=identity();m['xyz'.indexOf(b.dataset.mirror)*4]=-1;around(o,m);}));
     $p('plate-duplicate').onclick=()=>change(o=>{if(objects.length>=32)throw new Error('A plate holds at most 32 objects.');objects.push({...o,transform:o.transform.slice(),settings:{...o.settings}});selected=objects.length-1;objects[selected].transform[9]+=10;});
@@ -85,7 +88,7 @@ window.DVPlate = (() => {
     $p('plate-add-open').onclick=()=>$p('plate-add').click();
     $p('plate-settings').onclick=()=>change(o=>{o.tool=Number($p('plate-tool').value);o.keepColour=$p('plate-colour').checked;const walls=$p('plate-walls').value,fill=$p('plate-infill').value;if(walls&&(!Number.isInteger(Number(walls))||Number(walls)<1||Number(walls)>20))throw new Error('Walls must be a whole number from 1 to 20.');if(fill&&(Number(fill)<0||Number(fill)>100))throw new Error('Infill must be between 0 and 100%.');o.settings={...(walls?{wall_loops:Number(walls)}:{}),...(fill!==''?{sparse_infill_density:Number(fill)}:{})};});
     $p('plate-add').onchange=async e=>{const list=[...e.target.files];try{const added=[];for(const file of list){const m=await DV3D.parseModel(await file.arrayBuffer(),file.name);const o={name:file.name,local:file,mesh:m,transform:identity(),tool:0,keepColour:true,settings:{}};centre(o);added.push(o);}if(objects.length+added.length>32||objects.concat(added).reduce((n,o)=>n+o.mesh.triangles,0)>2000000)throw new Error('Use at most 32 objects and two million triangles per plate.');checkpoint();objects.push(...added);selected=objects.length-1;draw();}catch(err){$p('plate-report').textContent=err.message;}e.target.value='';};
-    $p('plate-collision').onclick=async e=>{e.currentTarget.disabled=true;const revision=version;try{const meshes=objects.map(o=>transformed(o).positions);const result=await work({type:'contact',meshes},meshes.map(p=>p.buffer));if(version===revision)$p('plate-report').textContent=result.pairs.length?'Mesh contact or enclosed geometry: '+result.pairs.map(p=>`objects ${p[0]+1} & ${p[1]+1}`).join('; ')+'. Move objects apart or inspect the slicer preview.':'No mesh contact or enclosed geometry found. Toolhead clearance and support needs are not checked.';}catch(err){$p('plate-report').textContent=err.message;}finally{if(!disposed)$p('plate-collision').disabled=false;}};
+    $p('plate-collision').onclick=async e=>{e.currentTarget.disabled=true;const revision=version;try{const meshes=objects.map(o=>transformed(o).positions.slice());const result=await work({type:'contact',meshes},meshes.map(p=>p.buffer));if(version===revision)$p('plate-report').textContent=result.pairs.length?'Mesh contact or enclosed geometry: '+result.pairs.map(p=>`objects ${p[0]+1} & ${p[1]+1}`).join('; ')+'. Move objects apart or inspect the slicer preview.':'No mesh contact or enclosed geometry found. Toolhead clearance and support needs are not checked.';}catch(err){$p('plate-report').textContent=err.message;}finally{if(!disposed)$p('plate-collision').disabled=false;}};
     $p('plate-measure').onclick=e=>{measuring=!measuring;points=[];e.currentTarget.setAttribute('aria-pressed',String(measuring));$p('plate-measurement').textContent=measuring?'Tap two points on the model. Distances are in millimetres.':'Measurement mode off.';if(measuring)viewer.canvas.scrollIntoView({block:'center'});};
     const measure=async e=>{if(!measuring)return;try{const mesh=geometry().mesh.positions,rect=viewer.canvas.getBoundingClientRect(),ray=unproject(viewer.matrix(),(e.clientX-rect.left)/rect.width*2-1,1-(e.clientY-rect.top)/rect.height*2);const result=await work({type:'pick',mesh,ray},[mesh.buffer]);if(!result.point){$p('plate-measurement').textContent='No surface at that point. Tap the visible model.';return;}if(points.length===2)points=[];points.push(result.point);$p('plate-measurement').textContent=points.length===1?'First surface point selected. Tap the second.':Math.hypot(...points[0].map((v,i)=>v-points[1][i])).toFixed(3)+' mm between surface points.';}catch(err){$p('plate-measurement').textContent=err.message;}};
     viewer.canvas.addEventListener('click',measure);
