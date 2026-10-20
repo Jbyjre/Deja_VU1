@@ -60,7 +60,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 .legend i{width:14px;height:14px;border-radius:50%;background:var(--c)}
 
 /* confirm */
-.checks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:26px}
+.checks{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:26px}
 .check{display:grid;gap:8px;align-content:start;padding:18px 18px 16px;border-radius:18px;background:var(--paper);border:1px solid var(--hair);box-shadow:var(--shadow)}
 .check .n{font:600 12px/1 "IBM Plex Mono";color:var(--faint);letter-spacing:.08em}
 .check h3{font:680 21px/1.15 "Bricolage Grotesque";letter-spacing:-.01em}
@@ -159,11 +159,12 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 <!-- ============ 2. Confirm Print ============ -->
 <section class="board" id="b-confirm">
   <span class="eyebrow"><i></i>Confirm Print</span>
-  <h2>Six checks before a print starts. The server runs them again at the moment it starts.</h2>
+  <h2>Seven checks before a print starts. The server runs them again at the moment it starts.</h2>
   <div class="checks">
     <div class="check"><h3>Printer ready?</h3><p>Idle (ready or finished), with no dock reporting an error.</p><span class="tag block">Blocks</span></div>
     <div class="check"><h3>Pre-flight</h3><p>Every move in the file: outside the 270 × 270 × 270 mm volume, below the bed, an unknown toolhead, too hot.</p><span class="tag block">Errors block · warnings ask</span></div>
     <div class="check"><h3>Filament match</h3><p>Each toolhead the file uses has filament, in the colour it was sliced for, as the printer reports it.</p><span class="tag block">A mismatch blocks</span></div>
+    <div class="check"><h3>Nozzles</h3><p>The nozzle each toolhead was sliced for matches the one the printer reports fitted.</p><span class="tag block">A mismatch blocks</span></div>
     <div class="check"><h3>Spool weight</h3><p>Enough left on the matching spool, when the filament inventory is on.</p><span class="tag ask">Warns</span></div>
     <div class="check"><h3>Maintenance</h3><p>Any overdue task, such as a nozzle check or bed leveling.</p><span class="tag ask">Warns</span></div>
     <div class="check"><h3>Cost</h3><p>Material plus electricity, estimated from your prices.</p><span class="tag info">Information</span></div>
@@ -185,7 +186,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <li>Maintenance overdue: Nozzle check &amp; clean, Bed leveling check</li>
     </ul>
   </div>
-  <p class="foot">The six checks and three verdicts are the ones documented in backend/print_gate.py.</p>
+  <p class="foot">The seven checks and three verdicts are the ones documented in backend/print_gate.py.</p>
 </section>
 
 <!-- ============ 3. Architecture ============ -->
@@ -271,10 +272,10 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 <!-- ============ 4. Feature map ============ -->
 <section class="board" id="b-features">
   <span class="eyebrow"><i></i>What's in it</span>
-  <h2>Every module, grouped by what it needs. Most need nothing but the printer.</h2>
+  <h2>Every feature, grouped by what it needs. Most need nothing but the printer.</h2>
   <div class="groups">
-    <div class="group" style="--c:var(--g-live)"><header><h3>Run the farm, print safely</h3><span class="count">17</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Live updates</li><li>Needs you</li><li>Finish time on the clock</li><li>Tab follows the print</li><li>Printer fleet</li><li>Start from your phone</li><li>Honest controls</li><li>File library</li><li>G-code viewer + edits</li><li>3D viewer</li><li>Pre-flight check</li><li>MakerWorld / NexPrint → U1</li><li>View on your desk (AR)</li><li>Automations</li><li>Print queue</li><li>Digital twin</li><li>+ health gauge, chamber, time-lapse and more</li></ul></div>
+    <div class="group" style="--c:var(--g-live)"><header><h3>Run the farm, print safely</h3><span class="count">19</span></header><span class="needs"><i></i>No hardware needed</span>
+      <ul><li>Live updates</li><li>Needs you</li><li>Finish time on the clock</li><li>Tab follows the print</li><li>Printer fleet</li><li>Start from your phone</li><li>Honest controls</li><li>File library</li><li>G-code viewer + edits</li><li>3D viewer</li><li>Pre-flight check</li><li>Mixed-nozzle planner</li><li>MakerWorld / NexPrint → U1</li><li>Skip one object</li><li>View on your desk (AR)</li><li>Automations</li><li>Print queue</li><li>Digital twin</li><li>+ health gauge, chamber, time-lapse and more</li></ul></div>
     <div class="group" style="--c:var(--g-ready)"><header><h3>Care, control, the basics</h3><span class="count">8</span></header><span class="needs"><i></i>No hardware needed</span>
       <ul><li>Maintenance reminders</li><li>Printer control</li><li>Push notifications</li><li>Update checker</li><li>Config backup</li><li>Camera bridge</li><li>Phone pairing</li><li>Print cost calculator</li></ul></div>
     <div class="group" style="--c:var(--g-farm)"><header><h3>Running a farm, making things</h3><span class="count">3</span></header><span class="needs"><i></i>No hardware needed</span>

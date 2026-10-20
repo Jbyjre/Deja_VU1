@@ -3,7 +3,7 @@ maintenance.py
 ==============
 
 The maintenance reminder engine. This is the fully working module of Deja Vu1
-— it needs no extra hardware, only print history, so it runs today.
+- it needs no extra hardware, only print history, so it runs today.
 
 The idea in plain terms:
   * Every printer task (clean the nozzle, level the bed, check belt tension,
@@ -21,14 +21,14 @@ so swapping in a real printer later changes nothing in this file.
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import mock_moonraker
 from mock_moonraker import get_print_history
 import storage
 
 # Where the "when did I last do this task" records are saved. A plain JSON
-# file keeps this dependency-free — no database to install.
+# file keeps this dependency-free - no database to install.
 _DATA_DIR = storage.DATA_DIR
 _LOG_PATH = os.path.join(_DATA_DIR, "maintenance_log.json")
 
@@ -146,8 +146,8 @@ def _default_log():
 
     The story we tell: the user did a full maintenance pass roughly halfway
     through their print history, and has printed plenty since. That produces a
-    realistic mix — a few tasks overdue, one or two approaching, the rest fine
-    — instead of everything reading either "brand new" or "all overdue".
+    realistic mix - a few tasks overdue, one or two approaching, the rest fine
+    - instead of everything reading either "brand new" or "all overdue".
     """
     history = get_print_history()
 
@@ -245,8 +245,8 @@ def get_printer_totals():
     """
     Add up everything the printer has done, according to the print history.
 
-    Failed and cancelled prints still count toward wear — the machine was
-    moving and extruding either way — so they are included in the hours.
+    Failed and cancelled prints still count toward wear - the machine was
+    moving and extruding either way - so they are included in the hours.
     Only completed prints count toward the "number of prints" totals, since
     that is what bed-leveling intervals are really tracking.
     """
@@ -389,7 +389,7 @@ def record_swap(kind, toolhead, note=""):
 
 
 # ---------------------------------------------------------------------------
-# Public API — these three functions are what the dashboard calls
+# Public API - these three functions are what the dashboard calls
 # ---------------------------------------------------------------------------
 
 def get_status():
@@ -499,7 +499,7 @@ if __name__ == "__main__":
     t = status["totals"]
 
     print("=" * 62)
-    print("Deja Vu1 — Maintenance Report (simulated printer data)")
+    print("Deja Vu1 - Maintenance Report (simulated printer data)")
     print("=" * 62)
     print(f"Total print hours : {t['total_print_hours']}")
     print(f"Total prints      : {t['total_prints']} "

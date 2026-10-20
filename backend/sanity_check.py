@@ -6,7 +6,7 @@ One "is it safe to print?" verdict, combining three signals this dashboard
 already reads on their own: is anything overdue for maintenance, is any dock
 showing an error, and does the loaded filament match what the file expects.
 
-Nothing new is measured here — this only reads the other three modules and
+Nothing new is measured here - this only reads the other three modules and
 decides what "safe" means from what they already say.
 """
 
@@ -38,7 +38,7 @@ def check():
     if colors["overall"] == "mismatch":
         blocking.append("Filament colour mismatch detected before this print starts")
     elif colors["overall"] == "close":
-        warnings.append("Filament colour is a close call — worth a glance")
+        warnings.append("Filament colour is a close call - worth a glance")
 
     reasons = blocking + warnings
     return {

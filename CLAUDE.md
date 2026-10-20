@@ -76,7 +76,8 @@ User-facing startup settings include: `PORT` (default 8000),
 `DEJAVU_ALLOWED_HOSTS` (comma-separated extra host names, e.g. a Cloudflare
 Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
 `DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
-(where settings and files live; default `backend/data/`).
+(where settings and files live; default `backend/data/`),
+`DEJAVU_NO_BROWSER=1` (read by `start.py`: don't open the browser).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
 (`NODE_PATH=/opt/node22/lib/node_modules node script.js`, then
@@ -247,8 +248,6 @@ sandbox, so you can't fetch the preview from here.
   so its LED ring reads "ready".
 - `fleet.set_change_listener()` is never called, so real-printer updates wait
   for the next 250 ms tick. `MoonrakerPrinter.clear_error()` is unreachable.
-- Some docstrings still say no real Moonraker client exists (`fleet.py`,
-  `live_feed.py`, `printer_control.py`, `mock_moonraker.py`).
 - Not checked by the audit (its agents hit the usage limit): the feature
   backends in depth (automations, converter, slicer bridge, studio, queue,
   camera) and `docs/architecture.md` beyond the frontend section.

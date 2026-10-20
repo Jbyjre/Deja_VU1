@@ -1,4 +1,4 @@
-/* Deja Vu1 — Photo-to-Print Studio.
+/* Deja Vu1 - Photo-to-Print Studio.
  *
  * A photo in, a colour-layered relief model out, built from filament
  * colours you own - all of it in this page. The photo is never uploaded;

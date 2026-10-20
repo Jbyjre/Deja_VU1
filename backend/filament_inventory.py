@@ -6,9 +6,9 @@ Tracks the spools you actually own, separate from what happens to be loaded
 in the printer right now (that part is mock_moonraker's job). Two things
 this makes possible:
 
-  1. "Do I have what this file needs?" — compare a job's required colors
+  1. "Do I have what this file needs?" - compare a job's required colors
      against what's in the inventory before you start printing.
-  2. "Has this spool been sitting loaded too long?" — filament left loaded
+  2. "Has this spool been sitting loaded too long?" - filament left loaded
      for weeks absorbs moisture and prints worse. A nudge, not an alarm.
 
 Nothing here needs a printer connection or extra hardware; it is a plain

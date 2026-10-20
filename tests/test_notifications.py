@@ -1,7 +1,7 @@
 """
-Tests for notifications.py — quiet hours, priority routing, and the
+Tests for notifications.py - quiet hours, priority routing, and the
 deferred-send queue. These don't test actual delivery (that would mean
-depending on ntfy.sh/Discord/Telegram being reachable in a test run) — they
+depending on ntfy.sh/Discord/Telegram being reachable in a test run) - they
 test the decision of whether to send now or queue, which is the real logic.
 
     python3 -m unittest discover tests
@@ -76,7 +76,7 @@ class TestPriorityRouting(unittest.TestCase):
 
     def setUp(self):
         notifications.reset()
-        # No channels configured, so "sending" is a safe no-op in tests —
+        # No channels configured, so "sending" is a safe no-op in tests -
         # this exercises the routing decision, not real network delivery.
 
     def tearDown(self):

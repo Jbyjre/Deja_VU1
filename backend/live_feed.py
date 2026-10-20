@@ -9,9 +9,10 @@ every connected browser the moment something changes.
 The rhythm is 250 ms because that is the real ceiling: Klipper sends
 subscribed-object updates to Moonraker on a fixed 0.25 s timer
 (SUBSCRIPTION_REFRESH_TIME in klippy/webhooks.py), so no dashboard can see
-printer data fresher than that. With a real printer this thread would
-hold Moonraker's WebSocket open and apply each notify_status_update as it
-arrives; today it asks mock_moonraker.advance() for the same 250 ms step.
+printer data fresher than that. A real printer's WebSocket is held open by
+moonraker_client, which merges each notify_status_update into its copy of
+the state; this thread reads that copy every tick. A simulated printer
+moves forward by one 250 ms step through mock_moonraker.advance().
 
 Besides caching state, each tick it notices *changes* - a print started,
 paused, finished, failed or was cancelled - and turns them into events:

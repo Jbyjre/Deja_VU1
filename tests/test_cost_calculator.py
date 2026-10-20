@@ -1,5 +1,5 @@
 """
-Tests for cost_calculator.py — filament + electricity pricing.
+Tests for cost_calculator.py - filament + electricity pricing.
 
     python3 -m unittest discover tests
 """

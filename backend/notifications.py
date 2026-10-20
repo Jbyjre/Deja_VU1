@@ -2,8 +2,8 @@
 notifications.py
 =================
 
-Sends an alert when a print finishes or fails, over plain webhooks — ntfy.sh,
-Discord, or Telegram — no account, no SDK, no dependency: all three accept a
+Sends an alert when a print finishes or fails, over plain webhooks - ntfy.sh,
+Discord, or Telegram - no account, no SDK, no dependency: all three accept a
 plain HTTPS POST, which Python's standard `urllib` already knows how to do.
 
 The one piece of real logic here is priority: a failed print always notifies
@@ -35,7 +35,7 @@ _DEFAULT_SETTINGS = {
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "quiet_hours_start": 22,   # 10pm
-    "quiet_hours_end": 7,      # 7am — wraps past midnight
+    "quiet_hours_end": 7,      # 7am - wraps past midnight
 }
 
 

@@ -1,5 +1,5 @@
 """
-Tests for the maintenance module — the one fully working part of Deja Vu1.
+Tests for the maintenance module - the one fully working part of Deja Vu1.
 
 These use Python's built-in unittest, so there is nothing to install:
 

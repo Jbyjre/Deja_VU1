@@ -1,5 +1,5 @@
 """
-Tests for filament_inventory.py — spool tracking, job-coverage checks, and
+Tests for filament_inventory.py - spool tracking, job-coverage checks, and
 the idle-spool reminder.
 
     python3 -m unittest discover tests

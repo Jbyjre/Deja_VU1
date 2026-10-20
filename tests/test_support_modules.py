@@ -48,7 +48,7 @@ class TestBackup(unittest.TestCase):
         self.assertIn("manifest.json", archive.namelist())
 
     def test_skips_files_that_do_not_exist_yet(self):
-        # A fresh checkout may not have generated any data/*.json yet — the
+        # A fresh checkout may not have generated any data/*.json yet - the
         # backup should still succeed with just a manifest, not crash.
         filename, data = backup.create_backup()
         self.assertGreater(len(data), 0)

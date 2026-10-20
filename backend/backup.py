@@ -4,11 +4,11 @@ backup.py
 
 A one-click archive of this dashboard's own data: the maintenance log,
 module settings, filament inventory, and notification settings. Built with
-`zipfile` and `json`, both standard library — no dependency, nothing to
+`zipfile` and `json`, both standard library - no dependency, nothing to
 install.
 
 This backs up Deja Vu1's own settings, not the printer's Klipper
-configuration (printer.cfg / moonraker.conf) — those live on the printer
+configuration (printer.cfg / moonraker.conf) - those live on the printer
 and aren't something this dashboard has ever read or written.
 """
 
@@ -40,7 +40,7 @@ def create_backup():
     """
     Build a zip archive of this dashboard's data files in memory.
 
-    Returns (filename, bytes) so the caller can decide how to serve it —
+    Returns (filename, bytes) so the caller can decide how to serve it -
     app.py streams the bytes straight back as a download.
     """
     buffer = io.BytesIO()

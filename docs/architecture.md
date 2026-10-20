@@ -5,7 +5,7 @@
 Deja Vu1 is one web application, grown from three modules to about thirty-five.
 It reads printer state from Moonraker through a single connection per
 printer, keeps a live copy of it in memory, decides what to show, and
-serves a dashboard — plus its own settings and files (pairing, filament
+serves a dashboard - plus its own settings and files (pairing, filament
 inventory, notification preferences, the file library, automation rules)
 that aren't printer data at all.
 
@@ -43,7 +43,7 @@ that aren't printer data at all.
 
 `mock_moonraker.py` holds a small fleet of simulated printers and, once
 you add one by address, real ones. Every call into it answers for the
-*selected* printer — the default one (the first real printer if there is
+*selected* printer - the default one (the first real printer if there is
 one, otherwise the first simulated one), unless the caller is inside
 `with mock_moonraker.use_printer("u1-studio"):`. The web
 server wraps every request in that, from a `?printer=` parameter, so every
@@ -54,23 +54,23 @@ log carries straight over.
 
 ### Live updates
 
-`live_feed.py` runs one background thread. Every 250 ms — Klipper's own
+`live_feed.py` runs one background thread. Every 250 ms - Klipper's own
 fixed `SUBSCRIPTION_REFRESH_TIME` in `klippy/webhooks.py`, so no dashboard
-can see fresher data — it steps each printer forward, stores a numbered
+can see fresher data - it steps each printer forward, stores a numbered
 snapshot, and wakes every waiting WebSocket. It also notices *changes*
 (started, paused, resumed, finished, failed, cancelled) and turns them into
 numbered events: automations are checked, time-lapse frames recorded, the
 queue advanced, and a finished print gets its celebration summary. A real
 printer isn't stepped: its own connection thread keeps Moonraker's
 WebSocket open and merges each `notify_status_update` into its copy, and
-the tick only reads that copy from memory — so a slow or lost printer can
+the tick only reads that copy from memory - so a slow or lost printer can
 never stall the feed. Each printer is its own step of the tick: one that
 fails is logged and skipped, and the others still update.
 
 A control action (pause, start…) doesn't wait for the next tick: the server
 sends the command, reads the printer straight back, returns that state to
 the caller and pushes it to every other open dashboard at once. The browser
-only ever shows what came back — see "honest commands" below.
+only ever shows what came back - see "honest commands" below.
 
 If a WebSocket can't be opened, the browser falls back to asking
 `/api/live/snapshot` and `/api/live/events` once a second, and its status
@@ -93,8 +93,8 @@ the dictionaries the simulation has always returned, and
 `mock_moonraker.py` passes each call to it for a real printer. That is also
 why the whole project is still testable on a laptop with no printer.
 
-Modules that hold the dashboard's *own* settings — `modules.py`,
-`pairing.py`, `filament_inventory.py`, `notifications.py` — don't go through
+Modules that hold the dashboard's *own* settings - `modules.py`,
+`pairing.py`, `filament_inventory.py`, `notifications.py` - don't go through
 `mock_moonraker.py` at all, because they aren't printer data. They read and
 write their own JSON files directly.
 
@@ -104,7 +104,7 @@ write their own JSON files directly.
 Pretends to be Moonraker. Generates 38 fake print jobs spread over about two
 months, plus mutable live printer state, a console log of commands sent to
 it, and simulated update-status. Print history uses a fixed random seed so
-it's identical on every run; live state is a real mutable in-memory object —
+it's identical on every run; live state is a real mutable in-memory object -
 pause/resume/cancel and temperature changes genuinely change what
 `get_printer_state()` returns next, the same way a real printer's state
 changes and then forgets it on a power cycle (this file resets on restart
@@ -119,13 +119,13 @@ too, deliberately).
 | `get_update_status()` | `GET /machine/update/status` |
 | `get_current_job_requirements()` | G-code file metadata |
 | `upload_file()` / `start_print()` | `POST /server/files/upload`, `POST /printer/print/start` |
-| `advance()` | one 250 ms step — stands in for `printer.objects.subscribe` updates |
+| `advance()` | one 250 ms step - stands in for `printer.objects.subscribe` updates |
 
 For a printer added by address, each of these goes to
 `moonraker_client.MoonrakerPrinter` instead (see below). The demo and
 sandbox hooks refuse a real printer outright.
 
-Each simulated printer also has test and demo hooks — `fail_next(action)`
+Each simulated printer also has test and demo hooks - `fail_next(action)`
 makes the next command fail exactly as a refusing printer would (raising
 `PrinterCommandError`, which the API reports as a 502 with the reason),
 and `set_time_scale()` fast-forwards the simulation. The API only exposes
@@ -135,7 +135,7 @@ connected.
 The farm sandbox (below) adds more hooks of the same kind, all in this
 file: `add_printer()` / `remove_printer()` grow the simulated fleet (up to
 24 extra printers; the built-in three can't be removed, and `reset_all()`
-drops the extras), and the faults a real farm runs into —
+drops the extras), and the faults a real farm runs into -
 `inject_jam()` and `inject_heater_fault()` (the print stops in error and
 lands in history as failed, with Klipper's own wording for the heater
 check), `inject_runout()` (the dock errors; the print pauses if that
@@ -148,7 +148,7 @@ by editing its log) and `set_link()` (a network drop: commands fail with
 printer keeps printing when the Wi-Fi goes). `advance(..., scaled=False)`
 takes simulated seconds directly, for the sandbox's "step forward".
 
-### `backend/moonraker_client.py` — the real printer
+### `backend/moonraker_client.py` - the real printer
 
 One `MoonrakerPrinter` per printer added by address (fleet.py's registry,
 when the `printer_link` module is on). It keeps a WebSocket open to
@@ -161,7 +161,7 @@ network. Commands go over HTTP, each checked first against a fresh
 reading and then read back until the printer reports the change (or said
 not to have). Every exchange is kept in a log for the Details panel
 (`GET /api/printers/diagnostics`). Written against Moonraker's, Klipper's
-and Snapmaker's U1 source — see [real-printer.md](real-printer.md) for
+and Snapmaker's U1 source - see [real-printer.md](real-printer.md) for
 exactly what was read, what it changed, and what can't be checked without
 a printer.
 
@@ -176,16 +176,16 @@ printer added through the API.
 **Demo and real never mix.** Demo data only ever means simulated printers:
 a real printer without a live link answers "not connected" even with demo
 data on; the fleet overview lists simulated printers only on a demo
-request; "all printers" in a broadcast means the real ones, or — with demo
-on — only the simulated ones; the sandbox's targets (`all`, `random`, …)
+request; "all printers" in a broadcast means the real ones, or - with demo
+on - only the simulated ones; the sandbox's targets (`all`, `random`, …)
 never include a real printer; and the live WebSocket labels every message
 by the printer it is about.
 
 ### `backend/modules.py`
-The on/off registry for every feature. Metadata only — disabling a module
+The on/off registry for every feature. Metadata only - disabling a module
 makes its API routes refuse to answer (`403`, `{"module_disabled": true}`);
 the code itself is never unloaded. Deliberately not a real plugin system
-that runs arbitrary code — that's a security problem this project doesn't
+that runs arbitrary code - that's a security problem this project doesn't
 need to take on.
 
 `GET /api/modules` also returns `routes`: which module owns each GET route,
@@ -197,23 +197,23 @@ module list at least every 20 s, so a module switched on from another
 device is noticed.
 
 ### Modules that need only a Moonraker connection
-`maintenance.py`, `printer_control.py` — complete and tested, against the
+`maintenance.py`, `printer_control.py` - complete and tested, against the
 simulation and against the stand-in Moonraker. `printer_control` refuses
 homing while a print runs (a real `G28` would drive the head through it),
 and starts one print at a time per printer.
 
 ### Modules that read printer history but add their own logic
 `comparison.py` ("what changed?" + likely-cause, by pattern-matching your own
-past failures — never a prediction, only ever "this looks like what happened
+past failures - never a prediction, only ever "this looks like what happened
 before"), `sanity_check.py` (combines maintenance + LED + colour-check into
 one verdict), `cost_calculator.py` (prices filament by material plus
-electricity, for both finished jobs and one in progress — extrapolating
+electricity, for both finished jobs and one in progress - extrapolating
 grams from elapsed progress, and explicit about that being an estimate).
 
 ### Modules that are their own small settings stores
 `filament_inventory.py`, `notifications.py` (priority-aware: failures always
 send immediately, successes respect configured quiet hours), `pairing.py`
-(device pairing by one-time code — connects devices, doesn't gate access;
+(device pairing by one-time code - connects devices, doesn't gate access;
 this dashboard has no login wall and pairing doesn't add one), `backup.py`
 (zips the dashboard's own data directory), `camera.py` (a frozen-feed
 watchdog; the actual video stream needs a real camera), `updates.py` (reads
@@ -225,7 +225,7 @@ JSON HTTP API) and `home_assistant_bridge.py` (publishes printer state as
 REST sensors via Home Assistant's `POST /api/states/<entity_id>`, with a
 bearer token). Both, and `notifications.py`'s ntfy / Discord / Telegram
 posts, go through `outbound.py`, which turns every network failure into a
-sentence (`{"ok": false, "error": ...}`) — a misconfigured strip or HA
+sentence (`{"ok": false, "error": ...}`) - a misconfigured strip or HA
 instance never takes the dashboard down with it. Each was checked against
 the service's own source (`tests/test_outbound.py` has stand-ins that follow
 it): WLED ignores a segment it doesn't have unless the request says where
@@ -246,12 +246,12 @@ toolpath for the viewer, and small validated edits. It reads every line
 tokenised with Klipper's own rules (`gcode.py`: upper-cased, words may run
 together, a leading `N` line number skipped, only `;` starts a comment),
 extrusion relative under `M83` *or* `G91` (`gcode_move.py`), and arcs
-followed along their curve with the U1's `gcode_arcs.py` rules — so a file
+followed along their curve with the U1's `gcode_arcs.py` rules - so a file
 can't hide an unsafe move in a form the checker skips and the printer runs.
 Its result is remembered per file version (size + modification time).
 `mesh_tools.py` reads STL and 3MF (following Bambu/Orca-style
-`<component>` parts) as a stream — 3MF XML with expat callbacks into compact
-arrays, STL a triangle at a time — and draws a PNG thumbnail from an even
+`<component>` parts) as a stream - 3MF XML with expat callbacks into compact
+arrays, STL a triangle at a time - and draws a PNG thumbnail from an even
 sample with a tiny depth-buffered rasterizer, so the largest model an
 upload allows takes about 120 MB rather than 1.5 GB. `safe_zip.py` opens
 uploaded archives: each part's size is checked before and while it's
@@ -306,7 +306,7 @@ MakerWorld (Bambu Studio) or NexPrint (Elegoo Slicer) project. It follows
 Snapmaker Orca's own loader (`PresetBundle.cpp`, `Preset.cpp`
 `load_external_preset`): `inherits_group` names Snapmaker's U1 profiles
 and `different_settings_to_system` lists what the project keeps, so every
-other printer setting — bed, start/end G-code, tool changes — comes from
+other printer setting - bed, start/end G-code, tool changes - comes from
 Snapmaker's profile. Profile names come from Snapmaker's repository
 (`resources/profiles/Snapmaker`). Not yet confirmed by opening the result
 in Snapmaker Orca.
@@ -423,17 +423,17 @@ geometry `DV3D.parseModel` produces, converted from mm (Z up) to metres
 ### Running the farm: fleet command center
 `fleet.py` also operates printers as a group. `broadcast(action, printers,
 params)` sends preheat / pause / resume / cancel / home to several printers
-at once — in parallel (a thread pool), each inside its own
+at once - in parallel (a thread pool), each inside its own
 `use_printer()`, through `printer_control`'s per-printer functions, so
 every existing check still applies. Each printer's outcome is its own row:
 `done`, `refused` (the dashboard said no, e.g. nothing to pause),
 `printer_failed` (the printer refused), `not_confirmed` (accepted, but the
-state read back isn't what the action should leave — the same "expect"
+state read back isn't what the action should leave - the same "expect"
 check the single-printer buttons use: the state for pause / resume /
 cancel, the target temperatures for preheat), or `not_connected` for
 printers registered by address. The headline names every printer that failed.
 Preheat values are validated once, before anything is sent.
-`route_file()` puts a library file on another printer's queue — or moves
+`route_file()` puts a library file on another printer's queue - or moves
 a waiting queue item, removing it from the first queue only once it's on
 the second. `history(days, bucket)` sums each printer's
 `get_print_history()` into counts, completion / failure / cancel rates
@@ -447,9 +447,9 @@ Registered as the `fleet_command` module; broadcasting also needs
 ### Making new things: Photo-to-Print Studio
 `frontend/studio.js` turns a photo into a colour-layered relief (the
 "HueForge" technique) entirely in the browser: the photo is never
-uploaded. Each filament colour is a partially translucent layer — a layer
+uploaded. Each filament colour is a partially translucent layer - a layer
 of thickness *h* lets through `exp(-3h / TD)` of the light, Beer–Lambert
-style, where TD (transmission distance) is the thickness that hides ~95% —
+style, where TD (transmission distance) is the thickness that hides ~95% -
 composited top-down in linear light. For every possible column height it
 computes the colour that column shows; each pixel takes the height whose
 colour is nearest the photo's in OKLab; where each colour starts is
@@ -458,8 +458,8 @@ one column per pixel joined into a single closed solid (walls split at
 every height that meets them, so there are no T-junctions; checked by a
 script that every edge is met equally from both sides and the volume is
 exact). It previews through `DV3D.parseSTL` and `DV3D.Viewer` like any
-other model — the viewer gained optional height bands so it can show which
-filament prints where — and saves as a binary STL or a 3MF written by a
+other model - the viewer gained optional height bands so it can show which
+filament prints where - and saves as a binary STL or a 3MF written by a
 small built-in ZIP writer (deflated with the browser's `CompressionStream`
 where available). The 3MF carries the tool changes in
 `Metadata/custom_gcode_per_layer.xml`, in the layout OrcaSlicer's own
@@ -473,7 +473,7 @@ suggestions) and `save()`, which checks the model reads, fits the U1's
 
 ### Closing the loop: auto-print pipeline
 `backend/slicer_bridge.py` slices STL / 3MF models with an OrcaSlicer the
-user installed — off by default, never bundled, like go2rtc and
+user installed - off by default, never bundled, like go2rtc and
 cloudflared. It runs Orca's command line with `subprocess`:
 `--slice 0 --load-settings "machine.json;process.json" --load-filaments
 "…" --outputdir <temp> model.stl`, which was read from Orca's source
@@ -482,8 +482,8 @@ cloudflared. It runs Orca's command line with `subprocess`:
 `Utils.hpp` for the error codes). Preset files are checked before Orca
 starts (`type` and `from`, which Orca's loader requires). Every run has a
 hard time limit and is killed with its whole process group past it; its
-result is judged by what came out — a G-code file that exists and has
-printable layers — not by the exit code alone; failures come back in
+result is judged by what came out - a G-code file that exists and has
+printable layers - not by the exit code alone; failures come back in
 words with the end of Orca's output; the Orca version is recorded in the
 new file's note. The G-code joins the library with origin `sliced`; "slice
 and queue" adds it to a printer's queue, where the Confirm Print gate
@@ -499,12 +499,12 @@ Orca install yet.
 hooks, not a second simulator. `build_farm()` adds simulated printers
 (some mid-print), `teardown()` removes them along with their queues,
 maintenance logs and cached live state. A scenario is a list of timed
-steps (`at_s`, a target — a printer, `all`, `random`, `random-printing`,
-`random-idle` or `previous` — an event and its parameters); five presets
+steps (`at_s`, a target - a printer, `all`, `random`, `random-printing`,
+`random-idle` or `previous` - an event and its parameters); five presets
 ship with it. The scenario clock moves while playing (a live-feed tick
 listener, at the sandbox's speed) or in one jump with `step()`, which
 drives `live_feed.tick()` itself in short slices, split at each step's
-time — so events, automations, the queue, time-lapse and notifications
+time - so events, automations, the queue, time-lapse and notifications
 all happen when they would have in real time. Each step's outcome is
 logged as what really happened (a jam aimed at an idle printer is logged
 as refused) and published as a `sandbox` live event. Starting a print
@@ -513,7 +513,7 @@ like every other demo hook.
 
 ### `backend/led_status.py` / `backend/color_check.py`
 Hardware-pending placeholders. The decision logic (state → colour, colour
-distance) is real and tested. The hardware write / sensor read is faked —
+distance) is real and tested. The hardware write / sensor read is faked -
 so with a real printer the colour check reports "no sensor fitted" rather
 than passing a simulated reading (with its deliberate demo mismatch) off as
 that printer's, and the rings say what they *would* show. See
@@ -527,7 +527,7 @@ the connection; every route that reads the dashboard's own settings checks
 only its module state. No framework, so there is nothing to install.
 
 ### `frontend/`
-Twelve files plus two folders — `index.html`, `style.css` and `app.js`
+Twelve page, script and style files, the app icons and `manifest.webmanifest`, and three folders. The twelve are `index.html`, `style.css` and `app.js`
 (the original dashboard and the games, and the shared helpers the other
 scripts use), `workshop.css` and `workshop.js` (live connection, fleet, the
 "Needs you" list, files, automations, phone layout, Liquid Glass 2.0),
@@ -538,10 +538,10 @@ sandbox, auto-print pipeline), `theme.css` (the "Layer lines" design layer,
 loaded last; also the only stylesheet for the "Needs you" card) and
 `welcome.html` (the product page a static host shows instead of the
 dashboard). `fonts/` holds the three bundled typefaces with their SIL Open
-Font License files, and `img/` the product page's screenshots, taken from
-the simulated farm. `workshop.js` tells the
-newer files what happens through window events — `dv-tab`, `dv-refresh`,
-`dv-fleet`, `dv-live-event`, `dv-model-open` — rather than them reaching
+Font License files, `img/` the product page's screenshots, taken from the
+simulated farm, and `demo/` the recording the online demo replays. `workshop.js` tells the
+newer files what happens through window events - `dv-tab`, `dv-refresh`,
+`dv-fleet`, `dv-live-event`, `dv-model-open` - rather than them reaching
 into its internals. No framework, no build
 step, and nothing fetched from any external host: no webfonts, no CDN. The
 dashboard runs fully offline, including phone pairing, which talks
@@ -558,7 +558,7 @@ gives every card without `data-browser-only` a one-line "needs the Deja Vu1
 server" note in place of its body. The browser-only parts: the Studio
 (built-in palette, download instead of save), local G-code / STL / 3MF
 viewing (`DV3D.parseGcode` in `viewer3d.js` reads the toolpath in the
-browser — moves, arcs, G92, T0–T3; its footprint includes every extrusion,
+browser - moves, arcs, G92, T0–T3; its footprint includes every extrusion,
 where the server's pre-flight leaves out-of-bounds points out of the
 footprint and reports them instead), AR, the games and the preferences.
 
@@ -586,7 +586,7 @@ recording, or when anything in it isn't simulated.
 
 **Honest commands.** Every control button goes through one function
 (`runCommand` in `app.js`): it shows "Pausing…" at once, sends the command,
-and then shows only what the printer reports back — or the failure, in
+and then shows only what the printer reports back - or the failure, in
 words. The UI never switches to "Paused" because a button was pressed.
 
 **The digital twin is a drawing.** `renderTwin`/`drawTwin` in `workshop.js`
@@ -602,8 +602,8 @@ capped at about 30 a second, and only the moving labels are touched.
 
 **Smooth, not snapping.** Continuous visuals (the digital twin's toolhead,
 the progress rings, the status strip's bar, the gauge needle) ease toward each new reading with the
-same easing Block World uses for movement — each frame closes a fixed
-fraction (0.18) of the gap — made frame-rate independent.
+same easing Block World uses for movement - each frame closes a fixed
+fraction (0.18) of the gap - made frame-rate independent.
 
 **Phones.** Below 720 px wide the top tab bar is replaced by a bottom
 navigation bar and a quick-action dock (Pause/Resume, Hold-to-cancel, Start
@@ -633,7 +633,7 @@ re-run every frame. The background glows themselves are still, many-stop
 radial gradients rather than an animated `blur(120px)`, because everything
 glass above them has to look through them.
 
-Repeated elements — task rows, module rows, stat tiles — deliberately share
+Repeated elements - task rows, module rows, stat tiles - deliberately share
 one glass surface with plain dividers rather than each getting its own
 `backdrop-filter`. One blurred region per row is both slower and the most
 common tell of imitation glass; a real pane of glass can't cleanly sample
@@ -651,7 +651,7 @@ drifts at rest - animated on the highlight layer itself with non-inheriting
 properties, so it never restyles what's inside the panel; they also refract
 a little harder); *depth* (dialogs use a deeper displacement filter, so glass
 under glass bends more than the background); and *tint* (panels take a
-colour from what they're about — filament, printer state, verdict).
+colour from what they're about - filament, printer state, verdict).
 
 Nine tabs hold everything, and every one is always showing: Fleet (with
 the farm sandbox at the bottom), Overview, Control, Files (with Auto-print),
@@ -663,7 +663,7 @@ scrolling to the section. The labels fit one line on a laptop; on a
 narrower screen the bar wraps to a second row rather than hiding a tab.
 On a phone the bottom bar holds Fleet, Now, Control and Files, and More
 opens the other five. A status strip and a floating live "print pill" stay
-visible on every tab — including mid-game. The printer chip in the header
+visible on every tab - including mid-game. The printer chip in the header
 opens a list of printers; choosing one there keeps you on the tab you're
 on. That list is a small glass menu that live updates never re-render, so
 a refresh can't close it under the pointer.
@@ -693,13 +693,13 @@ around-the-camera trick Echo Maze uses for its room-to-room turns, extended
 from 90-degree snaps to continuous free movement:
 `world.transform = rotateZ(-yaw) translate3d(-px, -py, 0)`. The translate
 runs first (recentring the world on the player), then the rotate turns that
-around the now-centered camera — so the terrain slides and spins past
+around the now-centered camera - so the terrain slides and spins past
 naturally as the player walks and turns, all still plain CSS 3D transforms
 with no canvas or WebGL.
 
 Each terrain tile is one flat top face, positioned with real elevation via
-`translateZ`, plus a real rotated CSS side face — `rotateX(90deg)` for a
-north/south-facing wall, `rotateY(90deg)` for east/west — but only toward a
+`translateZ`, plus a real rotated CSS side face - `rotateX(90deg)` for a
+north/south-facing wall, `rotateY(90deg)` for east/west - but only toward a
 neighboring tile that's actually lower. That mirrors the face-culling a
 real voxel engine does (never draw a face nothing will occlude), done by
 hand for the ~80 tiles in one chunk instead of by a renderer. The chunk
@@ -707,13 +707,13 @@ itself comes from a small deterministic pseudo-noise function (a few
 out-of-phase sine/cosine waves, not real Perlin noise) seeded per level, so
 each level is a fresh but reproducible-looking chunk. Player-built blocks
 reuse the exact same tile-rendering function with all four neighbor heights
-fixed at 0, so a placed block always gets all four side faces — free-
+fixed at 0, so a placed block always gets all four side faces - free-
 standing, unlike terrain tiles that lean on their neighbors.
 
 ## API
 
 See the docstring at the top of `backend/app.py` for the full, current route
-list — it's kept there rather than duplicated here so it can't drift out of
+list - it's kept there rather than duplicated here so it can't drift out of
 sync with the code.
 
 ### No printer, no figures
@@ -725,22 +725,22 @@ exactly this and nothing else:
 {"connected": false, "demo": false}
 ```
 
-Adding `?demo=1` opts in to simulated data explicitly — what the dashboard's
+Adding `?demo=1` opts in to simulated data explicitly - what the dashboard's
 "Demo data" switch sends. Everything returned that way is flagged
-`"demo": true`. This gate is enforced in the server, not hidden in CSS —
+`"demo": true`. This gate is enforced in the server, not hidden in CSS -
 `curl` gets the same answer the browser does.
 
 Routes that read the dashboard's *own* settings (modules, pairing,
 notification preferences, filament inventory) are never gated by
-connection/demo — only by their own module's on/off state, since they
+connection/demo - only by their own module's on/off state, since they
 aren't printer figures and work the same with or without a printer.
 
 ## Storage
 
-Plain JSON files under `backend/data/` — maintenance logs (one per
+Plain JSON files under `backend/data/` - maintenance logs (one per
 printer), module toggles, filament inventory, notification settings and
 queue, paired devices, registered printers, automation rules and their log,
-the print queue, camera settings — plus the file library
+the print queue, camera settings - plus the file library
 (`backend/data/files/`), thumbnails and time-lapse frames. No
 database to install; each is created on first use and regenerated if
 deleted. The whole directory is gitignored, so a fresh clone always starts
@@ -757,7 +757,7 @@ Everything that calls them already works.
 
 ## Testing
 
-638 tests, using Python's built-in `unittest`:
+659 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -770,7 +770,7 @@ One test file per backend module (`test_maintenance.py`,
 (WLED + Home Assistant, pointed at unreachable addresses to confirm they
 fail cleanly rather than hang or raise), plus the original `test_modules.py`
 for the LED and colour-check placeholders), and `test_api.py` starting the
-real server on a spare port to test what a browser would actually receive —
+real server on a spare port to test what a browser would actually receive -
 module gating, connection gating, and the no-printer-no-figures rule.
 
 The newer modules follow the same one-file-per-module pattern:
@@ -781,7 +781,7 @@ example, framing, and a real socket client against `/api/live`),
 (including the start-print interlock), `test_print_queue.py`,
 `test_automations.py`, `test_fleet.py`, `test_timelapse.py`,
 `test_handoff.py`, `test_camera_stream.py` (a local fake MJPEG camera), and
-`test_api_features.py` for the new routes — including the automation demo
+`test_api_features.py` for the new routes - including the automation demo
 path end to end, a forced printer failure reported as a failure, and
 commands from another website being refused.
 
@@ -791,7 +791,7 @@ dropped link, routing and moving queue items, history totals matching the
 raw history), `test_photo_studio.py`, `test_slicer_bridge.py` (a stand-in
 "orca-slicer" that can succeed, fail with an Orca error code, crash, hang
 past the time limit, or write nothing, an empty file or one with no
-printable layers — each must end in a worded failure with nothing added to
+printable layers - each must end in a worded failure with nothing added to
 the library), `test_sandbox.py` (scenarios fire in order at their time, the
 live feed sees the failures they cause, starts go through Confirm Print),
 the sandbox hooks in `test_mock_moonraker.py`, and `test_api_flagship.py`

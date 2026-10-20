@@ -1,4 +1,4 @@
-/* Deja Vu1 — running the farm: fleet command center, fleet history, the
+/* Deja Vu1 - running the farm: fleet command center, fleet history, the
  * farm sandbox and the auto-print pipeline.
  *
  * Loaded after workshop.js and uses app.js's helpers ($, esc, api,
@@ -151,7 +151,7 @@ const Farm = (() => {
     const used = document.activeElement;
     const card = used && used.closest && used.closest('#fleet-grid .fleet-card');
     if (card && used.closest('[data-f="queue"]')) { card.tabIndex = -1; card.focus({ preventScroll: true }); }
-    if (r.ok) toast(`${r.body.routed} ${r.body.moved_from ? 'moved' : 'queued'} on ${r.body.to_name} — it starts only after its Confirm Print check`, 'ok', 5500);
+    if (r.ok) toast(`${r.body.routed} ${r.body.moved_from ? 'moved' : 'queued'} on ${r.body.to_name}. It starts only after its Confirm Print check`, 'ok', 5500);
     else toast(`Couldn't queue it on ${name(target)}: ${r.body.error || r.status}`, 'bad', 7000);
     await loadQueues();
     if (window.Workshop) Workshop.loadQueue();
@@ -170,7 +170,7 @@ const Farm = (() => {
       ${cmd.files.slice(0, 14).map(f => `<button class="chip-btn fc-file ${cmd.picked === f.name ? 'is-picked' : ''}" type="button"
           draggable="true" data-file="${esc(f.name)}" aria-pressed="${cmd.picked === f.name}">${esc(f.name)}</button>`).join('')}
       <span class="fc-files-hint">Drag onto a printer, or tap one and choose "Queue here".</span>`
-      : '<p class="log-empty">No G-code in the library yet — add some in Files to send it to a printer from here.</p>';
+      : '<p class="log-empty">No G-code in the library yet. Add some in Files to send it to a printer from here.</p>';
   }
 
   function initCommand() {
@@ -572,7 +572,7 @@ const Farm = (() => {
       e.preventDefault();
       sbPost('/api/sandbox/farm', { count: +$('sb-count').value, busy_fraction: +$('sb-busy').value / 100 },
         e.submitter || qs('button[type="submit"]', e.target), 'Adding…')
-        .then(r => { if (r.ok) toast(`Farm is now ${r.body.farm.length} printers — the Fleet tab shows them all`, 'ok'); });
+        .then(r => { if (r.ok) toast(`Farm is now ${r.body.farm.length} printers. The Fleet tab shows them all`, 'ok'); });
     });
     $('sb-teardown').addEventListener('click', (e) => sbPost('/api/sandbox/teardown', {}, e.currentTarget, 'Removing…'));
     $('sb-reset').addEventListener('click', (e) => sbPost('/api/sandbox/reset', {}, e.currentTarget, 'Resetting…'));
@@ -627,13 +627,13 @@ const Farm = (() => {
         <div class="empty">
           <span class="empty-mark" aria-hidden="true"></span>
           <p class="empty-title">The auto-print pipeline is off</p>
-          <p class="empty-sub">It slices STL and 3MF models with OrcaSlicer — a separate, free program you install yourself.
+          <p class="empty-sub">It slices STL and 3MF models with OrcaSlicer, a separate, free program you install yourself.
             Nothing is downloaded or installed by this dashboard. Turn it on to set it up.</p>
           <button class="btn primary" type="button" id="ap-enable">Turn on auto-print</button>
         </div>`;
       $('ap-enable').addEventListener('click', async (e) => {
         const r = await busy(e.currentTarget, 'Turning on…', () => postJSON('/api/modules/auto_print/toggle', { enabled: true }));
-        if (r.ok) { toast('Auto-print is on — now point it at your OrcaSlicer', 'ok'); loadAutoPrint(); if (typeof loadModules === 'function') loadModules(); }
+        if (r.ok) { toast('Auto-print is on. Now point it at your OrcaSlicer', 'ok'); loadAutoPrint(); if (typeof loadModules === 'function') loadModules(); }
         else toast(`Couldn't turn it on: ${r.body.error}`, 'bad');
       });
       return;
@@ -813,7 +813,7 @@ const Farm = (() => {
       // Sandbox events are the scenario talking - worth a word on any tab,
       // since the point is to watch the rest of the dashboard react.
       if (ev.type === 'sandbox' && ev.printer && !visible('tab-fleet')) {
-        toast(`Sandbox: ${ev.printer_name} — ${ev.detail}`, ev.ok ? 'info' : 'warn', 5000);
+        toast(`Sandbox: ${ev.printer_name}: ${ev.detail}`, ev.ok ? 'info' : 'warn', 5000);
       }
     });
     getJSON('/api/slicer/settings').then(d => { ap.enabled = !!d && !isModuleDisabled(d); }).catch(() => {});

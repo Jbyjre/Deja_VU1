@@ -1,5 +1,5 @@
 """
-Tests for comparison.py — "what changed?", likely-cause, and repeat-last-
+Tests for comparison.py - "what changed?", likely-cause, and repeat-last-
 settings. These build small fake print histories rather than relying on
 mock_moonraker's random data, so the expected differences are exact.
 

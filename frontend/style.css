@@ -1,16 +1,16 @@
 /* ==========================================================================
    Deja Vu1 dashboard
 
-   Visual direction: Apple Liquid Glass — white/silver panels that genuinely
+   Visual direction: Apple Liquid Glass - white/silver panels that genuinely
    bend and reflect what's behind them, not just a blurred box. Five layers,
    all of which matter:
      1. backdrop blur + saturation      (the frosted base)
-     2. edge refraction via SVG filter  (light bending — the part that sells it)
+     2. edge refraction via SVG filter  (light bending - the part that sells it)
      3. a specular highlight that tracks the pointer
      4. a thin bright rim, brighter at the light-facing edge
      5. elevation shadow
 
-   Plain CSS. No framework, no build step, no downloaded fonts — the app is
+   Plain CSS. No framework, no build step, no downloaded fonts - the app is
    meant to run offline with nothing fetched from anywhere.
    ========================================================================== */
 
@@ -61,7 +61,7 @@
 
   /* ---- type ----
      No webfonts: the dashboard must work with no network. System font is a
-     deliberate choice here, not a lazy default — it's what makes this read
+     deliberate choice here, not a lazy default - it's what makes this read
      as genuinely Apple-styled rather than an imitation. */
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code",
                Menlo, Consolas, monospace;
@@ -87,7 +87,7 @@ body {
 /* ==========================================================================
    Background atmosphere
    One dominant brand-orange glow, one cooler counter-note, placed
-   asymmetrically — not a symmetric three-blob wallpaper — plus faint
+   asymmetrically - not a symmetric three-blob wallpaper - plus faint
    outlined rings echoing the dock-ring brand mark instead of generic
    decorative blur.
    ========================================================================== */
@@ -143,12 +143,12 @@ body {
   box-shadow: var(--lg-shadow);
   transition: transform .22s cubic-bezier(.2, .8, .2, 1), box-shadow .22s ease;
 
-  /* Layer 1 — baseline, understood by every browser. */
+  /* Layer 1 - baseline, understood by every browser. */
   backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate));
   -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturate));
 }
 
-/* Layer 2 — edge refraction. A browser that doesn't understand url(#…) inside
+/* Layer 2 - edge refraction. A browser that doesn't understand url(#…) inside
    backdrop-filter drops this whole declaration and keeps the rule above, so
    Safari and Firefox get clean blurred glass rather than a broken panel. */
 .liquid-glass {
@@ -171,7 +171,7 @@ body {
   background-color: rgba(255, 255, 255, calc(var(--lg-tint-alpha) + .08));
 }
 
-/* Layer 3 — specular highlight. Follows the pointer via --mx/--my, which
+/* Layer 3 - specular highlight. Follows the pointer via --mx/--my, which
    app.js updates; falls back to a fixed position with no JS. */
 .liquid-glass::before {
   content: "";
@@ -196,7 +196,7 @@ body {
    :active rules (the phone live pill) still win. */
 :where(button, a).liquid-glass:active { transform: scale(.988); box-shadow: 0 10px 24px rgba(31, 38, 56, .14); }
 
-/* Layer 4 — the rim. Brighter along the top-left edge, as if lit from there. */
+/* Layer 4 - the rim. Brighter along the top-left edge, as if lit from there. */
 .liquid-glass::after {
   content: "";
   position: absolute;
@@ -996,7 +996,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   z-index: 2; animation: emPopup .75s ease-out forwards;
 }
 
-/* Beacon Run — continuous free-roam 3D, not grid-snapped like Echo Maze */
+/* Beacon Run - continuous free-roam 3D, not grid-snapped like Echo Maze */
 .beacon-viewport {
   position: relative; width: 100%; max-width: 640px; height: 380px;
   overflow: hidden; border-radius: 20px; perspective: 800px;

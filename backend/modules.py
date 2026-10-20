@@ -6,7 +6,7 @@ The list of features this dashboard offers, and whether each one is turned
 on. A module here is metadata, not code that gets loaded dynamically: each
 module ID corresponds to one of the other backend files. Disabling a module
 just makes its API routes refuse to answer; the code itself is never
-unloaded, uninstalled, or swapped out. That is deliberate — dynamically
+unloaded, uninstalled, or swapped out. That is deliberate - dynamically
 loading arbitrary code is a security problem this project does not need to
 take on to deliver the useful part of the idea, which is "let me see
 everything this dashboard can do, and turn off what I don't want."
@@ -144,7 +144,7 @@ REGISTRY = [
         "id": "home_assistant_bridge",
         "name": "Home Assistant bridge",
         "description": "Publishes printer state to Home Assistant as REST "
-                        "sensors — no MQTT broker, no custom component.",
+                        "sensors - no MQTT broker, no custom component.",
         "status": "optional",
         "default_enabled": False,
     },

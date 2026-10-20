@@ -43,8 +43,8 @@ repository page with the ⚙ next to **About**:
    second, with "done at 9:48 PM" on every running print.
 2. **Needs you.** One list, most urgent first, across the whole farm.
 3. **Start from your phone, safely.** Confirm Print: pre-flight, filament
-   colour match, spool weight, maintenance, time, grams, cost. The server
-   checks again at the moment of starting.
+   colour match, nozzles, spool weight, maintenance, time, grams, cost. The
+   server checks again at the moment of starting.
 4. **Files ready for the U1.** Pre-flight with line numbers; MakerWorld,
    NexPrint and OrcaSlicer projects converted in one click, multi-plate
    included; G-code in 3D, layer by layer.
@@ -65,11 +65,11 @@ as "coming, hardware pending", after the features that work today.
 
 ## Numbers you can quote
 
-Each was checked against the code on 16 October 2026.
+Each was checked against the code on 19 October 2026.
 
 | Claim | Where it comes from |
 |---|---|
-| 608 automated tests, on Python 3.8, 3.10, 3.12 and 3.13 | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
+| 659 automated tests, on Python 3.8, 3.10, 3.12 and 3.13 | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
 | Four updates a second (every 250 ms) | `backend/live_feed.py`, `TICK_SECONDS = 0.25` |
 | Up to 12 printers | `backend/fleet.py`, "At most 12 printers" |
 | 29 modules you can switch on and off | `backend/modules.py`, `REGISTRY` |

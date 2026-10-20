@@ -16,6 +16,8 @@ It combines checks that already exist elsewhere, plus the file itself:
   filament match     each toolhead the file uses must have filament
                      loaded, in the colour the file was sliced for,
                      as the printer itself reports it     -> mismatch blocks
+  nozzles            the nozzle each toolhead was sliced for must match
+                     the one the printer reports fitted    -> mismatch blocks
   spool weight       enough filament left on the matching spool? (from the
                      filament inventory, when that module is on) -> warns
   maintenance        overdue tasks                           -> warns

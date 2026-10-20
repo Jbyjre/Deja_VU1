@@ -1,11 +1,11 @@
-/* Deja Vu1 — 3D engine shared by the file viewer and the G-code inspector.
+/* Deja Vu1 - 3D engine shared by the file viewer and the G-code inspector.
  *
  * Plain JavaScript and raw WebGL: no library, no build step.
  *   - parseSTL: binary or ASCII STL
  *   - parse3MF: unzips the 3MF with the browser's own DecompressionStream
  *     ("deflate-raw"), reads 3D/3dmodel.model and follows <component>s into
  *     3D/Objects/*.model parts (how Bambu Studio / Orca-family slicers store
- *     objects), applying every transform — the same rules as the server's
+ *     objects), applying every transform - the same rules as the server's
  *     backend/mesh_tools.py
  *   - Viewer: one small renderer for both triangle meshes and G-code
  *     toolpaths (coloured line segments), with the U1's 270 x 270 mm bed,

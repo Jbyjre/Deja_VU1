@@ -396,7 +396,7 @@ def run_action(rule, printer_id, detail, manual=False):
     prefix = "[Demo data] " if demo else ""
     kind = action["type"]
     if kind == "notify":
-        message = f"{prefix}{action['message']} — {printer_name}" + (f" ({detail})" if detail else "")
+        message = f"{prefix}{action['message']} - {printer_name}" + (f" ({detail})" if detail else "")
         settings = notifications.get_settings()
         has_channel = settings.get("ntfy_topic") or settings.get("discord_webhook_url") or (
             settings.get("telegram_bot_token") and settings.get("telegram_chat_id"))

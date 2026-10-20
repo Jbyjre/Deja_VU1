@@ -1,4 +1,4 @@
-# Hardware modules — LED dock rings and color checker
+# Hardware modules - LED dock rings and color checker
 
 This document covers the two modules that need physical parts. Both are
 unbuilt. This is the design they will be built to.
@@ -17,7 +17,7 @@ That rules out the obvious approach. Both modules are therefore designed as
 - The printer is never opened beyond removing external panels.
 - Everything mounts to the frame or enclosure and runs off its own power.
 
-The add-ons talk to the printer the same way this dashboard does — over the
+The add-ons talk to the printer the same way this dashboard does - over the
 network, through Moonraker. They read printer state; they never write to it.
 
 This matters for three reasons. It does not void the warranty. It does not
@@ -46,16 +46,16 @@ A single small microcontroller board acts as the bridge:
 The companion board does no thinking. The Python backend decides what every
 LED should show and what every sensor reading means; the board just carries
 signals. That keeps the logic testable on a laptop with no hardware attached
-— which is exactly what the current simulation does.
+- which is exactly what the current simulation does.
 
 ---
 
-## Module 2 — LED dock status rings
+## Module 2 - LED dock status rings
 
 ### What it is for
 
 When a toolhead is parked in its dock you cannot tell its state at a glance.
-Ready, out of filament, faulted, mid-print — they all look identical. A ring
+Ready, out of filament, faulted, mid-print - they all look identical. A ring
 of light around each dock makes the state readable from across the room.
 
 ### Color scheme
@@ -67,7 +67,7 @@ of light around each dock makes the state readable from across the room.
 | Heating | Amber | Slow pulse |
 | Paused | Blue | Solid |
 | Error | Red | Blink |
-| Off | Dark | — |
+| Off | Dark | - |
 
 While a toolhead is printing, its ring doubles as a progress bar: LEDs light
 up around the circle as the print advances.
@@ -79,7 +79,7 @@ up around the circle as the print advances.
 | WS2812B ring, 12 LED, 45 mm | 4 | $6–12 total |
 | Raspberry Pi Pico W | 1 | $6 |
 | 5 V 2 A USB power supply | 1 | $6 |
-| 3-core wire, JST connectors | — | $4 |
+| 3-core wire, JST connectors | - | $4 |
 | Printed mounting brackets | 4 | filament only |
 
 **Roughly $22–28 total**, or $6–12 if you already have a spare
@@ -121,7 +121,7 @@ which will send colors to the companion board over HTTP or MQTT.
 
 ---
 
-## Module 3 — "Right color loaded?" checker
+## Module 3 - "Right color loaded?" checker
 
 ### What it is for
 
@@ -147,7 +147,7 @@ the slicer's own settings.
 | TCS34725 RGB color sensor breakout | 2–4 | $8–20 total |
 | I2C multiplexer (TCA9548A) | 1 | $5 |
 | Printed sensor housing | 2–4 | filament only |
-| Ribbon cable | — | $3 |
+| Ribbon cable | - | $3 |
 
 **Roughly $16–28 total.** The multiplexer is only needed for more than one
 sensor: every TCS34725 ships with the same fixed I2C address, so they cannot
@@ -171,7 +171,7 @@ build and skips the multiplexer entirely.
 The sensor sits in a printed housing clamped around the PTFE tube a few
 centimetres before the filament enters the toolhead. The housing has two
 jobs: hold the sensor a fixed distance from the filament, and block ambient
-light. Both matter — the reading drifts badly without them.
+light. Both matter - the reading drifts badly without them.
 
 The TCS34725 has its own white LED for illumination, so the housing can be
 fully enclosed.
@@ -185,7 +185,7 @@ This part is already written and working in `backend/color_check.py`:
 3. Measure the straight-line distance between the two colors in RGB space.
 4. Under 40 is a match. 40–90 warns. Over 90 is a mismatch.
 
-RGB distance is crude but sufficient — the job is telling orange from grey,
+RGB distance is crude but sufficient - the job is telling orange from grey,
 not matching paint. If real-world testing shows it struggling with similar
 shades, the fix is to switch to the CIE Lab color space, which measures
 difference closer to how the eye sees it. Only `color_distance()` would
@@ -207,7 +207,7 @@ and the real body of `read_sensor()`.
 ## What is needed to finish both
 
 Access to a physical Snapmaker U1. Every design decision above is made
-against the published spec and photos of the machine — dock geometry,
+against the published spec and photos of the machine - dock geometry,
 mounting points, and filament path clearances all need confirming against the
 real thing before anything gets built.
 
