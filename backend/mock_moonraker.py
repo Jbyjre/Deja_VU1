@@ -294,6 +294,7 @@ class SimulatedPrinter:
                 "filament_loaded": True,
                 "filament_color_hex": loaded[th]["hex"],
                 "filament_color_name": loaded[th]["name"],
+                "filament_material": None,
                 # What the U1's firmware reports per toolhead (u1-klipper
                 # extruder.get_status); simulated lifetime counts here.
                 "nozzle_diameter": nozzles.get(th, 0.4),
@@ -1246,3 +1247,22 @@ def camera_snapshot():
     import timelapse
     frame = timelapse.simulated_frame(get_printer_state(), get_current_job())
     return frame if isinstance(frame, bytes) else frame.encode(), "image/svg+xml"
+
+
+def set_filament(body):
+    import tool_setup
+    tool, colour, material = tool_setup.filament_fields(body)
+    printer = _current()
+    if printer.real:
+        return printer.set_filament(tool, colour, material)
+    printer = _sim()
+    with printer.lock:
+        state = printer.snapshot()
+        if state["state"] in ("printing", "paused", "error"):
+            raise ValueError("Filament settings can only change while the printer is idle")
+        if state["toolheads"][tool].get("filament_loaded") is not True:
+            raise ValueError(f"Load filament into {tool} before changing its identity")
+        printer.live["toolheads"][tool].update(filament_color_hex=colour, filament_color_name=colour,
+                                                 filament_material=material)
+        printer.log("filament", f"{tool}: {material} {colour}")
+    return {"toolhead": tool, "color_hex": colour, "material": material, "verified": True}

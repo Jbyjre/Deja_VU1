@@ -254,6 +254,12 @@ sandbox, so you can't fetch the preview from here.
 
 ## Launch-readiness additions
 
+- `tool_setup.py`, `printroom.js`: per-printer preparation records, four-head
+  editor and read-only feeder detection. `/api/tools/assignments` is local
+  settings under `filament_inventory`; `/api/tools/compatibility` and the
+  physical filament write action belong to `printer_control`. Real writes use
+  read-back, never FORCE, and never change fitted nozzle readings.
+
 - `VERSION`, `backend/app_updates.py`, `start.py`: opt-in GitHub release checking,
   verified staging and child-process rollback. No stable package published yet.
   `docs/releasing.md` is the release checklist. Python is still required.

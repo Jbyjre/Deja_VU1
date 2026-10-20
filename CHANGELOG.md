@@ -5,6 +5,11 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Added per-printer four-tool preparation records and a native editor in
+  Auto-print. Idle-only colour/material changes use physical head numbers and
+  read-back verification; firmware refusals remain errors. Confirm Print also
+  checks known material mismatches. Physical U1 verification remains outstanding.
+
 Validation: all 659 Python tests pass on Linux; Chromium desktop/phone checks
 cover setup, privacy, search, viewer transforms and offline handling. A browser
 connection test rejects a wrong API key, accepts the authenticated stand-in

@@ -98,6 +98,10 @@ and every change is in the public history.
 
 ## What's new
 
+- **Four-head preparation:** save colour, material, nozzle and layer choices per
+  printer in Auto-print. Apply colour/material while idle with printer read-back;
+  Confirm Print compares actual material as well as colour and nozzle.
+
 - **First-run help**, a private optional browser name and feature search (Ctrl/Cmd+K).
 - **App updates** with opt-in checks, verified release packages, launcher restart
   and rollback. The development version still needs a published release package;
@@ -371,6 +375,11 @@ answer the browser does. Settings that belong to the dashboard itself
 printer figures, so they work the same with or without a printer connected.
 
 ## Current status
+
+Four-head preparation is tested against the simulator and a stand-in Moonraker.
+Physical U1 filament writes, tagged-spool refusal and persistence through a
+printer restart still require a real-printer check. Saved nozzle choices never
+replace hardware readings.
 
 The launch-readiness pass passes **659 automated tests** on Linux (139 seconds
 in the final run), plus Chromium checks at 1366 px and 390 px. Tests include a

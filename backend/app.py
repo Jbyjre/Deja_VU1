@@ -244,6 +244,7 @@ import sandbox
 import sanity_check
 import slicer_bridge
 import timelapse
+import tool_setup
 import updates
 import websocket
 import wled_bridge
@@ -331,6 +332,7 @@ def _live_snapshot():
 # to the module that owns them (checked before connection) and the function
 # that produces the data. Each gets the parsed query string.
 _DATA_ROUTES = {
+    "/api/tools/compatibility": ("printer_control", lambda q: tool_setup.compatibility()),
     "/api/maintenance": ("maintenance", lambda q: maintenance.get_status()),
     "/api/maintenance/history": ("maintenance", lambda q: {"history": maintenance.get_history()}),
     "/api/leds": ("led_status", lambda q: led_status.get_all_ring_states()),
@@ -370,6 +372,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,
@@ -423,6 +426,7 @@ def module_routes():
 # POST actions on printer-figure-gated routes. Each changes the printer, so
 # each is followed straight away by a fresh read of the printer's state.
 _CONTROL_ACTIONS = {
+    "/api/printer/control/filament": lambda b: mock_moonraker.set_filament(b),
     "/api/printer/control/start": lambda body: printer_control.start_print(
         body.get("filename"), confirmed=bool(body.get("confirmed"))),
     "/api/printer/control/pause": lambda body: printer_control.pause_print(),
@@ -897,6 +901,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             return self._send_json(layer_planner.plan(body.get("heads") or [], bool(body.get("exact")),
                                                       body.get("part_height")))
+
+        if route == "/api/tools/assignments":
+            if self._module_blocked("filament_inventory"):
+                return None
+            return self._send_json(tool_setup.save(self._read_json_body()))
 
         if route == "/api/maintenance/done":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.mark_done(

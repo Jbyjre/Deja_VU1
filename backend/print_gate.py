@@ -40,6 +40,7 @@ import layer_planner
 import maintenance
 import mock_moonraker
 import modules
+import tool_setup
 
 
 def _filament_match(required, state):
@@ -89,6 +90,10 @@ def _filament_match(required, state):
                                 "(no RFID tag, and none set on its screen) - check it by eye")
             else:
                 row["status"] = "no_colour_in_file"
+            actual_material = dock.get("filament_material")
+            if req.get("expected_material") and actual_material and req["expected_material"].upper() != actual_material.upper():
+                row["material_mismatch"] = True
+                blocking.append(f"{where} has {actual_material} loaded, but the file needs {req['expected_material']}")
         rows.append(row)
     return rows, blocking, warnings
 
@@ -100,6 +105,7 @@ def summary(filename, printer_state=None):
     analysis = file_library.checked(filename)
     state = printer_state or mock_moonraker.get_printer_state()
     blocking, warnings, info = [], [], []
+    warnings += tool_setup.check_saved(state)
 
     # -- the printer itself ---------------------------------------------------
     if state["state"] in ("printing", "paused"):
