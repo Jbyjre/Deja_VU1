@@ -22,6 +22,9 @@ import os
 import re
 import shutil
 import threading
+import time
+import hashlib
+import uuid
 from datetime import datetime
 import storage
 
@@ -32,12 +35,13 @@ KEEP_SESSIONS = 5
 EVERY_N_LAYERS = 2
 _lock = threading.RLock()
 _active = {}          # printer_id -> {"session": id, "last_layer": n}
+_capturing = set()
 _SAFE = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 
 
 def _dir(*parts):
     for p in parts:
-        if not _SAFE.match(p):
+        if not _SAFE.fullmatch(p) or p in (".", ".."):
             raise ValueError("Bad time-lapse name")
     return os.path.join(_ROOT, *parts)
 
@@ -48,7 +52,7 @@ def _meta_path(printer_id, session):
 
 def begin(printer_id, filename, source):
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    session = f"{stamp}-{re.sub(r'[^A-Za-z0-9_-]', '_', filename or 'print')[:40]}"
+    session = f"{stamp}-{re.sub(r'[^A-Za-z0-9_-]', '_', filename or 'print')[:32]}-{uuid.uuid4().hex[:6]}"
     with _lock:
         os.makedirs(_dir(printer_id, session), exist_ok=True)
         storage.save_json(_meta_path(printer_id, session),
@@ -102,6 +106,61 @@ def finish(printer_id):
 
 def is_recording(printer_id):
     return printer_id in _active
+
+
+def request_camera(printer_id, layer):
+    """One on-demand worker per printer; slow cameras never stall live status."""
+    with _lock:
+        info = _active.get(printer_id)
+        now = time.monotonic()
+        if (not info or printer_id in _capturing or layer - info["last_layer"] < EVERY_N_LAYERS
+                or now < info.get("retry_at", 0)):
+            return False
+        _capturing.add(printer_id)
+        session = info["session"]
+    threading.Thread(target=_capture_camera, args=(printer_id, layer, session),
+                     name="timelapse-camera", daemon=True).start()
+    return True
+
+
+def _capture_camera(printer_id, layer, session):
+    import modules
+    import mock_moonraker
+    try:
+        if not modules.is_enabled("camera") or not modules.is_enabled("timelapse"):
+            return
+        with mock_moonraker.use_printer(printer_id):
+            data, kind = mock_moonraker.camera_snapshot()
+        if kind != "image/jpeg":
+            raise ValueError("The real printer camera did not return a JPEG picture")
+        fingerprint = hashlib.sha256(data).hexdigest()
+        with _lock:
+            info = _active.get(printer_id)
+            if not info or info["session"] != session:
+                return
+            if not modules.is_enabled("camera") or not modules.is_enabled("timelapse"):
+                return
+            if info.get("last_picture") == fingerprint:
+                info["retry_at"] = time.monotonic() + 2
+                return
+            if maybe_capture(printer_id, layer, data, "jpg"):
+                info["last_picture"] = fingerprint
+                path = _meta_path(printer_id, session)
+                meta = storage.load_json(path, {})
+                meta.update(source="printer camera", last_error=None, last_layer=layer)
+                storage.save_json(path, meta)
+    except Exception as exc:
+        with _lock:
+            info = _active.get(printer_id)
+            if info and info["session"] == session:
+                info["retry_at"] = time.monotonic() + 15
+                path = _meta_path(printer_id, session)
+                meta = storage.load_json(path, {})
+                meta["last_error"] = "Camera capture failed: " + str(exc)[:300]
+                storage.save_json(path, meta)
+    finally:
+        with _lock:
+            _capturing.discard(printer_id)
 
 
 def sessions(printer_id):

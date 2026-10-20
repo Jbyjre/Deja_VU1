@@ -98,6 +98,10 @@ and every change is in the public history.
 
 ## What's new
 
+- **Time-lapse follows the selected printer’s built-in camera**, with separate
+  capture state for every printer and visible capture errors. It no longer reads
+  the shared manual camera feed. Slow snapshots do not pause live printer updates.
+
 - **Four-head preparation:** save colour, material, nozzle and layer choices per
   printer in Auto-print. Apply colour/material while idle with printer read-back;
   Confirm Print compares actual material as well as colour and nozzle.

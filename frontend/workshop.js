@@ -2438,7 +2438,7 @@ const Workshop = (() => {
     host.innerHTML = data.sessions.length ? data.sessions.map(s => `
       <div class="reg-row">
         <span class="reg-name">${esc(s.filename || 'print')}</span>
-        <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'}${s.source === 'simulated' ? ' · simulated' : ''}</span>
+        <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'} · ${esc(s.source)}${s.last_error ? ' · '+esc(s.last_error) : ''}</span>
         <button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
       </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>';
     qsa('[data-flip]', host).forEach(b => b.addEventListener('click', () => playFlipbook(b.dataset.flip)));

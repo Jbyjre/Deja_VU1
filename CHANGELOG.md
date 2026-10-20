@@ -5,6 +5,11 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Time-lapse now captures each real printer’s own stock camera, independently of
+  open browser tabs. Duplicate pictures are skipped, failures are visible and
+  retried, and late replies cannot enter a different print’s session. Real
+  cameras remain unverified. Real status notifications now wake the live feed.
+
 - Added per-printer four-tool preparation records and a native editor in
   Auto-print. Idle-only colour/material changes use physical head numbers and
   read-back verification; firmware refusals remain errors. Confirm Print also

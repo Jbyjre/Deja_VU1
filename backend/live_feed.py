@@ -306,13 +306,7 @@ def _tick_one(printer_id, seconds, count, scaled, now):
             elif simulated:
                 timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
             elif modules.is_enabled("camera"):
-                import camera
-                # Frames arrive only while something reads the stream: keep it
-                # read while recording, and never store a stale one as new.
-                camera.keep_frames_coming(90)
-                frame = camera.latest_frame(max_age=15)
-                if frame:
-                    timelapse.maybe_capture(printer_id, layer, frame, "jpg")
+                timelapse.request_camera(printer_id, layer)
 
     samples = _climate.setdefault(printer_id, deque(maxlen=CHAMBER_SAMPLES))
     if not samples or now - samples[-1]["t"] >= CHAMBER_SAMPLE_SECONDS:
@@ -379,6 +373,7 @@ def start():
     if _thread and _thread.is_alive():
         return
     _running = True
+    fleet.set_change_listener(refresh)
     fleet.sync_real_printers()        # connect every printer added by address
     for printer_id in mock_moonraker.printer_ids():
         refresh(printer_id)
@@ -389,6 +384,7 @@ def start():
 def stop():
     global _running
     _running = False
+    fleet.set_change_listener(None)
     with _cond:
         _cond.notify_all()
     if _thread:

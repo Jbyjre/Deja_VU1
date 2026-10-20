@@ -254,6 +254,11 @@ sandbox, so you can't fetch the preview from here.
 
 ## Launch-readiness additions
 
+- Time-lapse uses `mock_moonraker.camera_snapshot()` for each real printer.
+  One bounded on-demand capture worker per printer keeps camera delays out of
+  the live tick. Session identity and module switches are rechecked before save.
+  The old manual MJPEG feed is for viewing only. Fleet change listener is wired.
+
 - `tool_setup.py`, `printroom.js`: per-printer preparation records, four-head
   editor and read-only feeder detection. `/api/tools/assignments` is local
   settings under `filament_inventory`; `/api/tools/compatibility` and the
