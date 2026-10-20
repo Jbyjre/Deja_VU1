@@ -428,8 +428,12 @@ class TestCommands(WireTest):
         orig = self.printer._fresh_state
         self.printer._fresh_state = lambda: {**orig(), "state": "ready"}
         self.fake.status["print_stats"]["state"] = "printing"   # ...but the printer knows it's busy
+        before = self.printer._job
+        self.printer._finished_job = {"filename": "previous.gcode"}
         with self.assertRaises(mc.PrinterRefused) as caught:
             self.printer.start_print("next.gcode")
+        self.assertEqual(self.printer._job, before)
+        self.assertEqual(self.printer._finished_job, {"filename": "previous.gcode"})
         self.assertIn("not ready", str(caught.exception))
 
     def test_a_start_that_never_begins_is_not_reported_as_started(self):

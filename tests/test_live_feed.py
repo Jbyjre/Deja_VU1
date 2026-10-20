@@ -30,6 +30,25 @@ class TestLiveFeed(unittest.TestCase):
         automations.reset()
         timelapse.reset()
 
+    def test_switches_stop_background_actions(self):
+        import modules
+        from unittest.mock import patch
+        modules.reset_state()
+        self.addCleanup(modules.reset_state)
+        live_feed.mark_demo_seen()
+        live_feed.tick(0.25)
+        for name in ("automations", "print_queue", "timelapse", "filament_inventory"):
+            modules.set_enabled(name, False)
+        with patch.object(automations, "evaluate") as rules, \
+             patch.object(print_queue, "on_print_finished") as queue, \
+             patch.object(timelapse, "begin") as recording:
+            live_feed._prev_state["u1-workshop"] = "ready"
+            live_feed.tick(0.25)
+            live_feed._advance_queue("u1-workshop")
+            rules.assert_not_called()
+            queue.assert_not_called()
+            recording.assert_not_called()
+
     def test_tick_advances_and_numbers_every_update(self):
         live_feed.tick(0.25)
         first = live_feed.snapshot("u1-workshop")
