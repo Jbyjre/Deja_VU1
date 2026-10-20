@@ -279,7 +279,7 @@ def parse_3mf(data):
     return list(triangles), info
 
 
-def iter_obj(data):
+def iter_obj(data, on_vertex=None, on_face=None):
     """Geometry-only triangulated OBJ. Never fetch material or texture paths."""
     try:
         text = data.decode("utf-8-sig")
@@ -298,6 +298,7 @@ def iter_obj(data):
             if len(point) != 3 or not _finite(point) or len(vertices) >= MAX_TRIANGLES * 3:
                 raise MeshError("OBJ has invalid or too many vertices")
             vertices.append(point)
+            if on_vertex:on_vertex(fields)
         elif fields[0] == "f":
             if len(fields) != 4:
                 raise MeshError("Export OBJ with triangulated faces; polygons are not supported yet")
@@ -314,6 +315,7 @@ def iter_obj(data):
             count += 1
             if count > MAX_TRIANGLES:
                 raise MeshError("OBJ has too many triangles")
+            if on_face:on_face(indices)
             yield tuple(vertices[i] for i in indices)
     if not count:
         raise MeshError("OBJ has no triangular faces")

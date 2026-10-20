@@ -388,7 +388,8 @@ def check():
     else:
         started = time.monotonic()
         try:
-            code, out, err = _run([path, "--help"], CHECK_TIMEOUT)
+            with tempfile.TemporaryDirectory(prefix='dejavu-engine-check-') as work:
+                code, out, err = _run([path, "--help"], CHECK_TIMEOUT, cwd=work)
         except ValueError as exc:
             code, out, err = "failed", b"", str(exc).encode()
         text = _tail(out) or _tail(err)

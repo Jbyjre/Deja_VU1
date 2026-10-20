@@ -254,6 +254,16 @@ sandbox, so you can't fetch the preview from here.
 
 ## Launch-readiness additions
 
+- `plate.js`, `plate-worker.js`, `plate_project.py`: source meshes plus affine
+  transforms, undo/redo, bounded off-thread contact/ray checks and 3MF save-as.
+  Preserve XML prefixes when relocating paths (`requiredextensions` refers to
+  those prefixes). List ALL model parts in `3D/_rels/3dmodel.model.rels` or Orca
+  can import empty geometry. Original source files live inside `DejaVu/Sources/`.
+- `gcode-view.js`: layer index, tool/speed/feature filters and event list.
+  Backend toolpath segments now append requested mm/s, feature index and line
+  number after the original eight values. Extrusion accounting tracks per-tool
+  retraction debt. Nominal time excludes acceleration, heating and macros.
+
 - `slicer_profiles.py`: discover installed Snapmaker presets, resolve parents
   with cycle/size bounds, check compatibility and write private flattened
   working copies under `slicer-presets/`. Preserve system identity for CLI

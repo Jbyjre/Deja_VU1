@@ -245,6 +245,7 @@ import sanity_check
 import slicer_bridge
 import timelapse
 import tool_setup
+import plate_project
 import updates
 import websocket
 import wled_bridge
@@ -907,6 +908,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("filament_inventory"):
                 return None
             return self._send_json(tool_setup.save(self._read_json_body()))
+
+        if route == "/api/files/plate":
+            if self._module_blocked("file_library"):
+                return None
+            return self._send_json(plate_project.save(self._read_json_body()))
 
         if route == "/api/maintenance/done":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.mark_done(

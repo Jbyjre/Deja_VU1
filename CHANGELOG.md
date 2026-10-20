@@ -5,6 +5,17 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Replaced the single-model transform controls with an undoable multi-model
+  plate workspace, arbitrary rotation, mirroring, scaling, arrange, drop/lay-flat,
+  object settings and exact surface-point measurements. Geometry checks run in
+  a bounded browser worker and distinguish box overlap from mesh contact.
+- 3MF save-as retains original model/property/texture parts and source recovery
+  copies. Added required model relationships after a real-engine test exposed
+  empty imported geometry. A two-object T0/T1 slice now passes pre-flight.
+- Added G-code speed/feature information, layer heights, event markers and
+  nominal movement time with its limits. Retraction recovery no longer counts
+  as newly consumed filament. Travel filtering now uses one GPU draw call.
+
 - Added installed-preset discovery, bounded inheritance resolution, matching
   machine/material checks and a native print-settings form. Generated working
   presets leave the installation intact. Saved tools feed nozzle arrays and

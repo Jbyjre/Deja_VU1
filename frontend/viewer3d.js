@@ -56,13 +56,15 @@ const DV3D = (() => {
   }
 
   function parseOBJ(buffer) {
-    const text = new TextDecoder('utf-8', {fatal:true}).decode(buffer), vertices = [], pos = [];
+    const text = new TextDecoder('utf-8', {fatal:true}).decode(buffer), vertices = [], vertexColours=[], pos = [], colours=[];
     for (const line of text.split(/\r?\n/)) {
       const fields = line.split('#')[0].trim().split(/\s+/);
       if (fields[0] === 'v') {
         const v = fields.slice(1,4).map(Number);
         if(v.length!==3 || !v.every(Number.isFinite) || vertices.length>=MAX_TRIANGLES*3) throw new Error('OBJ has invalid or too many vertices');
         vertices.push(v);
+        const rgb=fields.slice(4,7).map(Number);
+        vertexColours.push(fields.length===7&&rgb.length===3&&rgb.every(n=>Number.isFinite(n)&&n>=0&&n<=1)?rgb:null);
       } else if(fields[0]==='f') {
         if(fields.length!==4)throw new Error('Export OBJ with triangulated faces; polygons are not supported yet');
         for(const f of fields.slice(1)) {
@@ -70,12 +72,13 @@ const DV3D = (() => {
           const n=Number(raw), i=n>0?n-1:vertices.length+n;
           if(n===0 || !vertices[i])throw new Error('OBJ face refers to a missing vertex');
           pos.push(...vertices[i]);
+          colours.push(...(vertexColours[i]||[.5,.5,.5]));
         }
         if(pos.length/9>MAX_TRIANGLES)throw new Error('OBJ has too many triangles');
       }
     }
     if(!pos.length)throw new Error('OBJ has no triangular faces');
-    return finishMesh(new Float32Array(pos),{objects:1,application:'OBJ geometry (materials not loaded)'});
+    return finishMesh(new Float32Array(pos),{objects:1,colours:vertexColours.some(Boolean)?new Float32Array(colours):null,application:'OBJ',warnings:/^mtllib\s/m.test(text)?['External OBJ material/texture files are not loaded. Vertex colours are preserved; check any missing materials in the source program.']:[]});
   }
 
   function transformMesh(mesh, scale=1, axis=null) {
@@ -88,10 +91,10 @@ const DV3D = (() => {
       if(axis==='z')[x,y]=[-y,x];
       pos.set([x*scale,y*scale,z*scale],i);
     }
-    const transformed=finishMesh(pos,{objects:mesh.objects,application:mesh.application});
+    const transformed=finishMesh(pos,{objects:mesh.objects,application:mesh.application,colours:mesh.colours,warnings:mesh.warnings});
     const b=transformed.bounds, delta=[BED/2-(b.min[0]+b.max[0])/2,BED/2-(b.min[1]+b.max[1])/2,-b.min[2]];
     for(let i=0;i<pos.length;i++)pos[i]+=delta[i%3];
-    return finishMesh(pos,{objects:mesh.objects,application:mesh.application});
+    return finishMesh(pos,{objects:mesh.objects,application:mesh.application,colours:mesh.colours,warnings:mesh.warnings});
   }
 
   function exportSTL(mesh) {
@@ -125,13 +128,13 @@ const DV3D = (() => {
       files[name.toLowerCase()] = { name, method, csize, usize, local };
       ptr += 46 + nameLen + extraLen + commentLen;
     }
-    const read = async (key) => {
+    const read = async (key,limit=MAX_PART_BYTES) => {
       const f = files[key.replace(/^\//, '').toLowerCase()];
       if (!f) return null;
       if (view.getUint32(f.local, true) !== 0x04034b50) throw new Error(`The 3MF is damaged (${f.name} has no header)`);
       // Checked before unpacking: a small file that unpacks to gigabytes
       // (a "zip bomb") must not fill the tab's memory.
-      if (f.usize > MAX_PART_BYTES) throw new Error(`The 3MF's ${f.name} would unpack to ${Math.round(f.usize / 1048576)} MB - refused`);
+      if (f.usize > limit) throw new Error(`The 3MF's ${f.name} would unpack to ${Math.round(f.usize / 1048576)} MB - refused`);
       const nl = view.getUint16(f.local + 26, true);
       const el = view.getUint16(f.local + 28, true);
       const data = new Uint8Array(buffer, f.local + 30 + nl + el, f.csize);
@@ -140,7 +143,7 @@ const DV3D = (() => {
       if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot unzip 3MF files');
       const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
       let out;
-      try { out = new Uint8Array(await new Response(stream).arrayBuffer()); }
+      try {const reader=stream.getReader(),chunks=[];let length=0;while(true){const {value,done}=await reader.read();if(done)break;length+=value.length;if(length>f.usize||length>limit){await reader.cancel();throw new Error('Expanded data exceeds its declared size');}chunks.push(value);}out=new Uint8Array(length);let offset=0;for(const c of chunks){out.set(c,offset);offset+=c.length;}}
       catch (e) { throw new Error(`The 3MF is damaged - ${f.name} can't be unpacked`); }
       if (out.length > f.usize) throw new Error(`The 3MF's ${f.name} is larger than it says - refused`);
       return out;
@@ -188,14 +191,18 @@ const DV3D = (() => {
     const root = await load(main);
     const meta = {};
     for (const m of root.getElementsByTagNameNS(NS, 'metadata')) meta[m.getAttribute('name')] = m.textContent;
-    const chunks = [];
+    const chunks = [], colourChunks=[], warnings=new Set();
+    let palette=[],assigned={};
+    try {const config=await zip.read('Metadata/project_settings.config');if(config){const d=JSON.parse(new TextDecoder().decode(config));palette=Array.isArray(d.filament_colour)?d.filament_colour:[];}}catch(_){warnings.add('Project colour settings could not be read.');}
+    const settings=await zip.read('Metadata/model_settings.config');
+    if(settings){const doc=new DOMParser().parseFromString(new TextDecoder().decode(settings),'application/xml');for(const o of doc.querySelectorAll('config > object')){const m=[...o.children].find(x=>x.localName==='metadata'&&x.getAttribute('key')==='extruder');if(m)assigned[o.getAttribute('id')]=Number(m.getAttribute('value'))-1;}}
     let total = 0;
     const objectsIn = (doc) => {
       const map = {};
       for (const o of doc.getElementsByTagNameNS(NS, 'object')) map[o.getAttribute('id')] = o;
       return map;
     };
-    const emit = async (path, id, t, depth) => {
+    const emit = async (path, id, t, depth, assignedTool=0) => {
       if (depth > 8) throw new Error('3MF components nest too deeply');
       const obj = objectsIn(await load(path))[id];
       if (!obj) throw new Error(`3MF object ${id} is missing`);
@@ -216,6 +223,11 @@ const DV3D = (() => {
         const ts = mesh.getElementsByTagNameNS(NS, 'triangle');
         if (total / 9 + ts.length > MAX_TRIANGLES) throw new Error('The model has too many triangles to show');
         const pos = new Float32Array(ts.length * 9);
+        const colors=new Float32Array(pos.length), doc=await load(path), resources={};
+        for(const r of [...doc.documentElement.children].find(n=>n.localName==='resources')?.children||[]){
+          if(r.localName==='basematerials'||r.localName==='colorgroup')resources[r.getAttribute('id')]=[...r.children].map(n=>n.getAttribute('displaycolor')||n.getAttribute('color'));
+          if(r.localName==='texture2d'||r.localName==='texture2dgroup')warnings.add('Texture images are kept in saved 3MF projects; this preview shows material colours only.');
+        }
         for (let i = 0; i < ts.length; i++) {
           const a = +ts[i].getAttribute('v1') * 3, b = +ts[i].getAttribute('v2') * 3, c = +ts[i].getAttribute('v3') * 3;
           for (const k of [a, b, c]) {
@@ -224,23 +236,32 @@ const DV3D = (() => {
           pos.set(verts.subarray(a, a + 3), i * 9);
           pos.set(verts.subarray(b, b + 3), i * 9 + 3);
           pos.set(verts.subarray(c, c + 3), i * 9 + 6);
+          const tri=ts[i],pid=tri.getAttribute('pid')||obj.getAttribute('pid'),props=resources[pid];
+          let tool=assignedTool;
+          const paint=tri.getAttribute('paint_color')||tri.getAttribute('slic3rpe:mmu_segmentation');
+          if(paint){const slot=['4','8','0C','1C'].indexOf(paint);if(slot>=0)tool=slot;else warnings.add('Subdivided painted faces are preserved in the saved source, but this preview approximates their colour.');}
+          for(let v=0;v<3;v++){const raw=tri.getAttribute('p'+(v+1))||tri.getAttribute('p1')||obj.getAttribute('pindex')||'0';const hex=props?.[Number(raw)]||palette[tool]||'#808080';colors.set(hexToRGB(hex),i*9+v*3);}
         }
         chunks.push(pos);
+        colourChunks.push(colors);
         total += pos.length;
       }
       const comps = obj.getElementsByTagNameNS(NS, 'component');
       for (const comp of comps) {
         const p = comp.getAttributeNS(PNS, 'path') || path;
-        await emit(p, comp.getAttribute('objectid'), compose(matrix(comp.getAttribute('transform')), t), depth + 1);
+        await emit(p, comp.getAttribute('objectid'), compose(matrix(comp.getAttribute('transform')), t), depth + 1,assignedTool);
       }
     };
     const build = root.getElementsByTagNameNS(NS, 'item');
     const items = build.length ? [...build] : Object.keys(objectsIn(root)).map(id => ({ getAttribute: k => (k === 'objectid' ? id : null) }));
-    for (const item of items) await emit(main, item.getAttribute('objectid'), matrix(item.getAttribute('transform')), 0);
-    const all = new Float32Array(total);
+    for (const item of items) {if(item.getAttribute('printable')==='0')continue;await emit(main, item.getAttribute('objectid'), matrix(item.getAttribute('transform')), 0,assigned[item.getAttribute('objectid')]||0);}
+    if(!total)throw new Error('The project has no printable triangles');
+    const all = new Float32Array(total), colors=new Float32Array(total);
     let off = 0;
-    for (const c of chunks) { all.set(c, off); off += c.length; }
-    return finishMesh(all, { objects: items.length, application: meta.Application || '', title: meta.Title || '' });
+    for (let i=0;i<chunks.length;i++) { all.set(chunks[i], off);colors.set(colourChunks[i],off); off += chunks[i].length; }
+    let plateSource=null;
+    try{const stateBytes=await zip.read('DejaVu/plate.json',1024*1024);if(stateBytes){const state=JSON.parse(new TextDecoder().decode(stateBytes));if(state.version!==1||!Array.isArray(state.objects)||!state.objects.length||state.objects.length>32)throw new Error('Invalid plate state');plateSource={state,read:(index,name)=>zip.read('DejaVu/Sources/'+index+'/'+name,64*1024*1024)};}}catch(_){warnings.add('Saved plate-editing state could not be restored. The geometry remains available.');}
+    return finishMesh(all, { colours:colors,objects: items.length, application: meta.Application || '', title: meta.Title || '',warnings:[...warnings],plateSource });
   }
 
   function finishMesh(pos, info) {
@@ -308,22 +329,23 @@ const DV3D = (() => {
 
   /* ---------------- the renderer ---------------- */
 
-  const MESH_VS = `attribute vec3 p; attribute vec3 n; uniform mat4 m; varying vec3 vn; varying float vz;
-    void main(){ vn = n; vz = p.z; gl_Position = m * vec4(p, 1.0); }`;
+  const MESH_VS = `attribute vec3 p; attribute vec3 n; attribute vec3 k; uniform mat4 m; varying vec3 vn; varying vec3 vk; varying float vz;
+    void main(){ vn = n; vk=k; vz = p.z; gl_Position = m * vec4(p, 1.0); }`;
   /* Optional height bands (the Photo-to-Print Studio): up to four colours,
      each from its start height upward - which filament prints where. */
-  const MESH_FS = `precision mediump float; varying vec3 vn; varying float vz; uniform vec3 c; uniform vec3 l;
+  const MESH_FS = `precision mediump float; varying vec3 vn; varying vec3 vk; varying float vz; uniform vec3 c; uniform vec3 l; uniform bool colored;
     uniform vec3 bc[4]; uniform float bz[4]; uniform int nb;
     void main(){
-      vec3 col = c;
+      vec3 col = colored ? vk : c;
       for (int i = 0; i < 4; i++) { if (i < nb && vz >= bz[i] - 0.0005) col = bc[i]; }
       float d = abs(dot(normalize(vn), l)); gl_FragColor = vec4(col * (0.38 + 0.62 * d), 1.0); }`;
-  const LINE_VS = `attribute vec3 p; attribute vec4 k; uniform mat4 m; varying vec4 vk;
-    void main(){ vk = k; gl_Position = m * vec4(p, 1.0); }`;
-  const LINE_FS = `precision mediump float; varying vec4 vk; void main(){ gl_FragColor = vk; }`;
+  const LINE_VS = `attribute vec3 p; attribute vec4 k; uniform mat4 m; varying vec4 vk; varying float vz;
+    void main(){ vk = k; vz=p.z; gl_PointSize=6.0; gl_Position = m * vec4(p, 1.0); }`;
+  const LINE_FS = `precision mediump float; varying vec4 vk; varying float vz; uniform bool hideTravel; uniform float minZ; uniform float maxZ;
+    void main(){ if(vk.a<0.001 || (hideTravel && vk.a<0.5) || vz<minZ || vz>maxZ)discard; gl_FragColor = vk; }`;
 
   function hexToRGB(hex, fallback = [1, 0.48, 0.18]) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    const m = /^#?([0-9a-f]{6})(?:[0-9a-f]{2})?$/i.exec(hex || '');
     if (!m) return fallback;
     const v = parseInt(m[1], 16);
     return [(v >> 16 & 255) / 255, (v >> 8 & 255) / 255, (v & 255) / 255];
@@ -382,28 +404,29 @@ const DV3D = (() => {
     }
 
     /* bands (optional): [{z, hex}] lowest first, heights in the model's own mm. */
-    setMesh(mesh, colorHex, bands) {
+    setMesh(mesh, colorHex, bands, options={}) {
       const gl = this.gl;
       this.clear();
       // Sit the model on the bed, centred, as a slicer would place it.
       const b = mesh.bounds;
-      const dx = BED / 2 - (b.min[0] + b.max[0]) / 2, dy = BED / 2 - (b.min[1] + b.max[1]) / 2, dz = -b.min[2];
+      const dx = options.absolute?0:BED / 2 - (b.min[0] + b.max[0]) / 2, dy = options.absolute?0:BED / 2 - (b.min[1] + b.max[1]) / 2, dz = options.absolute?0:-b.min[2];
       const pos = new Float32Array(mesh.positions.length);
       for (let i = 0; i < pos.length; i += 3) {
         pos[i] = mesh.positions[i] + dx; pos[i + 1] = mesh.positions[i + 1] + dy; pos[i + 2] = mesh.positions[i + 2] + dz;
       }
       this.mesh = { pos: this.buffer(pos), nrm: this.buffer(mesh.normals), count: pos.length / 3 };
+      if(mesh.colours)this.mesh.col=this.buffer(mesh.colours);
       this.color = hexToRGB(colorHex);
       // Like the toolpath view, lift near-black on screen only so it doesn't vanish.
       const lift = (c) => { const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; return l < 0.22 ? c.map(v => v + (0.42 - l)) : c; };
       this.bands = (bands || []).slice(0, 4).map(b => ({ z: b.z + dz, color: lift(hexToRGB(b.hex)) }));
-      this.frame([BED / 2, BED / 2, mesh.size[2] / 2], Math.max(...mesh.size));
+      if(!options.keepCamera)this.frame([BED / 2, BED / 2, mesh.size[2] / 2], Math.max(...mesh.size));
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
       this.draw();
     }
 
     /* segments: [x1,y1,z1,x2,y2,z2,tool,extruding] from the server's analysis */
-    setToolpath(segments, colours) {
+    setToolpath(segments, colours, details={}) {
       this.clear();
       const n = segments.length;
       const pos = new Float32Array(n * 6), col = new Float32Array(n * 8);
@@ -428,6 +451,10 @@ const DV3D = (() => {
       }
       this.travelMask = segments.map(s => s[7] === 1);
       this.lines = { pos: this.buffer(pos), col: this.buffer(col), count: n * 2, zmax };
+      this.toolSegments=segments;this.toolPalette=palette;this.pathMode='tool';this.toolFilter=-1;
+      this.pathDetails=details;this.lowerLimit=-Infinity;
+      const markers=details.markers||[];
+      if(markers.length){const mp=new Float32Array(markers.length*3),mc=new Float32Array(markers.length*4);markers.forEach((m,i)=>{mp.set(m.position,i*3);mc.set(m.kind==='toolchange'?[1,.85,.15,1]:[1,.2,.7,1],i*4);});this.markers={pos:this.buffer(mp),col:this.buffer(mc),count:markers.length};}
       if (isFinite(min[0])) this.frame([(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (max[2]) / 2],
         Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]));
       this.limit = Infinity;
@@ -437,6 +464,13 @@ const DV3D = (() => {
 
     setLayerLimit(z) { this.limit = z; this.draw(); }
 
+    setPathStyle(mode='tool',tool=-1) {
+      if(!this.lines)return;this.pathMode=mode;this.toolFilter=tool;
+      const segs=this.toolSegments,col=new Float32Array(segs.length*8),max=segs.reduce((n,s)=>Math.max(n,s[8]||0),1),features=[[.15,.7,1],[1,.5,.12],[.35,.85,.4],[.85,.35,.9],[.95,.85,.2],[.6,.7,.85]];
+      for(let i=0;i<segs.length;i++){const s=segs[i],ext=s[7]===1;let c=ext?this.toolPalette[s[6]]||this.toolPalette[0]:[.45,.5,.6];if(ext&&mode==='speed'){const t=(s[8]||0)/max;c=[t,.35+.4*(1-Math.abs(2*t-1)),1-t];}if(ext&&mode==='feature')c=features[(s[9]||0)%features.length];const a=tool>=0&&s[6]!==tool?0:ext?1:.22;col.set([...c,a,...c,a],i*8);}
+      const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,this.lines.col);gl.bufferData(gl.ARRAY_BUFFER,col,gl.STATIC_DRAW);this.draw();
+    }
+
     frame(center, size) {
       this.target = center;
       this.dist = Math.max(60, size * 2.6);
@@ -444,11 +478,11 @@ const DV3D = (() => {
 
     clear() {
       const gl = this.gl;
-      for (const obj of [this.mesh, this.lines]) {
+      for (const obj of [this.mesh, this.lines,this.markers]) {
         if (!obj) continue;
         for (const key of ['pos', 'nrm', 'col']) if (obj[key]) gl.deleteBuffer(obj[key]);
       }
-      this.mesh = null; this.lines = null;
+      this.mesh = null; this.lines = null;this.markers=null;this.toolSegments=null;
     }
 
     matrix() {
@@ -491,11 +525,16 @@ const DV3D = (() => {
 
       gl.useProgram(this.lineProg);
       gl.uniformMatrix4fv(gl.getUniformLocation(this.lineProg, 'm'), false, m);
+      gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),false);
+      gl.uniform1f(gl.getUniformLocation(this.lineProg,'minZ'),-1e8);gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxZ'),1e8);
       const lp = this.attrib(this.lineProg, 'p', this.bed.pos, 3);
       const lk = this.attrib(this.lineProg, 'k', this.bed.col, 4);
       gl.drawArrays(gl.LINES, 0, this.bed.count);
 
       if (this.lines) {
+        gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),!this.showTravel);
+        gl.uniform1f(gl.getUniformLocation(this.lineProg,'minZ'),Number.isFinite(this.lowerLimit)?this.lowerLimit:-1e8);
+        gl.uniform1f(gl.getUniformLocation(this.lineProg,'maxZ'),Number.isFinite(this.limit)?this.limit+1e-5:1e8);
         this.attrib(this.lineProg, 'p', this.lines.pos, 3);
         this.attrib(this.lineProg, 'k', this.lines.col, 4);
         let count = this.lines.count / 2;
@@ -505,16 +544,8 @@ const DV3D = (() => {
           count = lo;
         }
         gl.lineWidth(1);
-        if (this.showTravel) gl.drawArrays(gl.LINES, 0, count * 2);
-        else {
-          // Draw extrusion runs only, skipping travel moves in contiguous batches.
-          let start = -1;
-          for (let i = 0; i <= count; i++) {
-            const ext = i < count && this.travelMask[i];
-            if (ext && start < 0) start = i;
-            if (!ext && start >= 0) { gl.drawArrays(gl.LINES, start * 2, (i - start) * 2); start = -1; }
-          }
-        }
+        gl.drawArrays(gl.LINES, 0, count * 2);
+        if(this.showMarkers&&this.markers){this.attrib(this.lineProg,'p',this.markers.pos,3);this.attrib(this.lineProg,'k',this.markers.col,4);gl.uniform1i(gl.getUniformLocation(this.lineProg,'hideTravel'),false);gl.drawArrays(gl.POINTS,0,this.markers.count);}
       }
       gl.disableVertexAttribArray(lk);
 
@@ -535,9 +566,13 @@ const DV3D = (() => {
         gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'l'), l.map(v => v / ll));
         const mp = this.attrib(this.meshProg, 'p', this.mesh.pos, 3);
         const mn = this.attrib(this.meshProg, 'n', this.mesh.nrm, 3);
+        const mk=gl.getAttribLocation(this.meshProg,'k');
+        gl.uniform1i(gl.getUniformLocation(this.meshProg,'colored'),!!this.mesh.col);
+        if(this.mesh.col)this.attrib(this.meshProg,'k',this.mesh.col,3);else{gl.disableVertexAttribArray(mk);gl.vertexAttrib3f(mk,1,1,1);}
         gl.drawArrays(gl.TRIANGLES, 0, this.mesh.count);
         gl.disableVertexAttribArray(mn);
         gl.disableVertexAttribArray(mp);
+        gl.disableVertexAttribArray(mk);
       }
       gl.disableVertexAttribArray(lp);
     }
@@ -691,5 +726,5 @@ const DV3D = (() => {
     };
   }
 
-  return { parseSTL, parse3MF, parseOBJ, transformMesh, exportSTL, parseModel, parseGcode, Viewer, BED };
+  return { parseSTL, parse3MF, parseOBJ, transformMesh, exportSTL, parseModel, parseGcode, finishMesh, hexToRGB, Viewer, BED };
 })();

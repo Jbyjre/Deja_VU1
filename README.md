@@ -98,6 +98,12 @@ and every change is in the public history.
 
 ## What's new
 
+- **A multi-model plate workspace:** add models, undo/redo, arrange, move,
+  rotate by any angle, mirror, scale, lay a face flat and measure surfaces.
+  Save a new 3MF with source parts and recovery copies, then slice it.
+- **Deeper G-code inspection:** actual layer steps, one-layer view, tool
+  filtering, requested-speed/feature colours and retraction/tool-change markers.
+
 - **Installed U1 profiles by name:** resolve Orca's inherited settings, choose
   four materials and edit layer height, walls, infill, supports and speeds.
   A real OrcaSlicer 2.4.2 Linux slice produced 125 layers and passed pre-flight.
@@ -383,6 +389,14 @@ answer the browser does. Settings that belong to the dashboard itself
 printer figures, so they work the same with or without a printer connected.
 
 ## Current status
+
+Multi-object 3MF export has been sliced with real OrcaSlicer 2.4.2 using T0 and
+T1, with clear pre-flight. Source 3MF parts and original files are retained;
+texture rendering and subdivided face-paint previews remain approximate or
+unsupported. Imported advanced per-part settings still need inspection in
+Orca. Contact and point-measurement workers are bounded at 250,000 triangles
+per object; the viewer accepts up to two million triangles per plate. Contact
+checks do not model toolhead clearance, supports or whether a mesh is watertight.
 
 The local bridge has now run OrcaSlicer 2.4.2 on Linux using installed U1
 presets: a 20-triangle bracket produced 125 layers, 6.62 g and 0.231 hours

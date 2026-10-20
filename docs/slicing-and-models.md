@@ -6,6 +6,37 @@ slicer, and passing the dashboard's checks is not a guarantee of a safe print.
 
 ## Model preparation available now
 
+**Plate workspace:** source geometry stays immutable; edits are separate
+position/rotation/scale matrices. Add STL, 3MF or triangular OBJ files, select
+objects by name, move their centre/bottom numerically, rotate by any angle,
+scale, mirror, duplicate, arrange with 5 mm spacing, undo/redo and drop to bed.
+Lay-flat uses the largest triangle's face, not an automatic support optimiser.
+Surface measurement uses actual ray/triangle intersections. Mesh contact and
+measurement run off the browser's main thread, capped at 250,000 triangles per
+object; the visual workspace allows two million triangles total.
+
+Save a **new 3MF plate** to Files or save and open slicing. Original 3MF model,
+property and texture parts are relocated into separate source folders, and
+untouched original input files are included for recovery. Current base-tool and
+object wall/infill choices are written into project settings. Inspect complex
+imported per-part settings in Orca; not every vendor extension is interpreted
+by the dashboard. The preview supports core material colours, colour groups,
+simple whole-face paint and OBJ vertex colours. Texture images and subdivided
+face paint are kept in source data but not fully rendered. Geometry STL export
+is explicitly shape-only. AR still uses the original source model.
+
+Reopening a native saved plate restores its individual objects and transforms
+from the embedded original files, even if their old library entries are gone.
+OBJ vertex colours in the `v x y z r g b` form are converted to standard 3MF
+colour groups when saving. External OBJ material/texture files remain unsupported.
+
+The G-code inspector steps through actual extrusion heights, optionally isolates
+one layer, filters tools and colours by tool, requested speed or file feature
+labels. Yellow dots are tool changes; pink dots are retractions. Missing labels
+are shown as unspecified. File-derived nominal motion time is distance/speed,
+with no allowance for acceleration, heating, macros or pauses. Slicer-reported
+time remains labelled separately. Retraction recovery does not add new filament.
+
 Open **Files**, upload a model and open its preview. STL and 3MF are supported;
 OBJ support reads triangular geometry only. Export an OBJ with triangulated faces
 from its authoring program if it contains polygons. OBJ textures and material
