@@ -28,16 +28,13 @@ themselves.
   and each toolhead's fitted nozzle and swap counts from u1-klipper's
   `extruder.get_status` exist. Not done: the 3MF converter still reads one
   nozzle size and falls back to 0.4 mm; the auto-print slicer bridge and
-  Photo Studio don't consider nozzles at all. The idea comes from LixNix's
-  "Full Multi-Nozzle Printing" (`LixNix-Swap-Org/Snapmaker-Orca`, AGPL:
-  ideas only, credit in the README's winners table). Upstream OrcaSlicer
-  issue #16138 says mixed sizes can be tagged wrongly in G-code: check it.
-- **multiACE** by decay71 (`github.com/decay71/multiACE`), another ,000
-  Phase 1 winner, connects up to four Anycubic ACE units to a U1 for up to
-  16 filaments. Deja Vu1 today only warns that files using T4-T15 need
-  multiACE's post-processing. FOrcaSlicer's README describes its supply
-  modes too. Read multiACE's own source for what it exposes to Moonraker
-  and Klipper, and check its licence before reusing anything.
+  Photo Studio don't fully expose per-tool nozzle planning. A common-grid
+  calculator is not a slicing engine. Check current official engine behaviour
+  and preserve the owner's private source-study record outside this repo.
+- **Extra filament slots.** Physical U1 toolheads and add-on feeder slots are
+  different things. The existing pre-flight warns about raw T4–T15 commands.
+  Verify supported hardware capabilities and preprocessing before adding controls;
+  do not send invented commands or copy restricted source.
 - **Farm routing.** Each printer has its own queue, every start passes
   Confirm Print on the server, and you can drag a file onto a printer.
   Missing: one farm-wide list where Deja Vu1 starts each job on a printer

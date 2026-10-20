@@ -1233,3 +1233,17 @@ def link_is_up(printer_id=None):
     if printer.real:
         return printer.is_connected()
     return printer.link_lost_at is None
+
+
+def camera_snapshot():
+    """A real U1 JPEG, or an explicitly simulated SVG for demo requests."""
+    pid = selected_printer_id()
+    if is_real(pid):
+        if not is_connected(pid):
+            raise ValueError("The printer is not connected. Check its address and power")
+        import stock_camera
+        return stock_camera.snapshot(real_printer(pid)), "image/jpeg"
+    _sim()
+    import timelapse
+    frame = timelapse.simulated_frame(get_printer_state(), get_current_job())
+    return frame if isinstance(frame, bytes) else frame.encode(), "image/svg+xml"

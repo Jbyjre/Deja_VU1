@@ -15,8 +15,8 @@ import layer_planner as lp   # noqa: E402
 
 class TestSharedGrid(unittest.TestCase):
 
-    def test_the_winning_projects_own_example(self):
-        # LixNix's example: 0.2 mm nozzle at 0.08, 0.8 mm nozzle at 0.56 -> N = 7.
+    def test_fine_and_coarse_nozzles_share_a_seven_step_grid(self):
+        # Mixed nozzle example: 0.2 mm nozzle at 0.08, 0.8 mm nozzle at 0.56 -> N = 7.
         p = lp.plan([{"toolhead": "T0", "nozzle": 0.2, "height": 0.08},
                      {"toolhead": "T1", "nozzle": 0.8, "height": 0.56}], part_height=30)
         self.assertEqual(p["grid"], 0.08)

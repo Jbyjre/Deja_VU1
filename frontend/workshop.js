@@ -91,7 +91,7 @@ const Workshop = (() => {
 
   function empty(title, sub) { return EMPTY(title, sub); }
   function demoNeeded(what) {
-    return serverMissing() ? needsServerEmpty(what) : empty(`No printer connected`, `Turn on demo data to see ${what} on the simulated printers.`);
+    return serverMissing() ? needsServerEmpty(what) : empty(`No printer connected`, `Connect your printer in Set up & help, or turn on demo data to explore ${what}.`);
   }
 
   /* ================================================================
@@ -129,6 +129,7 @@ const Workshop = (() => {
     live.ws = ws;
     ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; badge(); };
     ws.onmessage = (e) => {
+      if (live.ws !== ws) return;
       let msg;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (!msg.type) { live.mode = 'off'; badge(); return; }          // {"connected":false,"demo":false}
@@ -337,6 +338,7 @@ const Workshop = (() => {
 
   function renderFleet(printers) {
     live.fleet = printers || [];
+    renderAttention(live.fleet);
     // The remembered printer can be gone (removed, or a sandbox printer torn
     // down). Every request would then ask for an unknown printer and every
     // panel would say nothing is connected, so fall back to the default.
@@ -415,7 +417,6 @@ const Workshop = (() => {
     });
     // The fleet command center (farm.js) adds selection, queues and drop targets.
     window.dispatchEvent(new CustomEvent('dv-fleet', { detail: live.fleet }));
-    renderAttention(live.fleet);
   }
 
   /* ================================================================
@@ -1167,6 +1168,7 @@ const Workshop = (() => {
     if (!host) return;
     const views = $('wf-views');
     if (!state) {
+      setText($('twin-sub'), 'Waiting for a printer connection');
       host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null;
       if (views) views.hidden = true;
       return;
@@ -1347,7 +1349,7 @@ const Workshop = (() => {
    * still be looked at: it's read here, in the browser, and never sent
    * anywhere. The same 64 MB limit as the library (file_library.MAX_BYTES). */
   const LOCAL_MAX_BYTES = 64 * 1024 * 1024;
-  const kindOf = (name) => /\.stl$/i.test(name) ? 'stl' : /\.3mf$/i.test(name) ? '3mf' : /\.(gcode|gco|g)$/i.test(name) ? 'gcode' : null;
+  const kindOf = (name) => /\.obj$/i.test(name) ? 'obj' : /\.stl$/i.test(name) ? 'stl' : /\.3mf$/i.test(name) ? '3mf' : /\.(gcode|gco|g)$/i.test(name) ? 'gcode' : null;
 
   function renderLocalFiles() {
     const grid = $('file-grid');
@@ -1363,7 +1365,7 @@ const Workshop = (() => {
           <span class="fcd-meta">${f.local.size < 1048576 ? `${Math.max(1, Math.round(f.local.size / 1024))} KB` : `${(f.local.size / 1048576).toFixed(1)} MB`}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span><span class="origin-tag">on this device</span></span>
         </button>`).join('')
-        : empty('No file open', 'Choose a G-code, STL or 3MF file from this device to see it in 3D.'));
+        : empty('No file open', 'Choose a G-code, STL, OBJ or 3MF file from this device to see it in 3D.'));
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b));
   }
 
@@ -1371,7 +1373,7 @@ const Workshop = (() => {
     let last = null;
     for (const file of list) {
       const kind = kindOf(file.name);
-      if (!kind) { toast(`${file.name} isn't a G-code, STL or 3MF file`, 'warn'); continue; }
+      if (!kind) { toast(`${file.name} isn't a G-code, STL, OBJ or 3MF file`, 'warn'); continue; }
       if (file.size > LOCAL_MAX_BYTES) { toast(`${file.name} is over 64 MB - too big to open here`, 'warn'); continue; }
       files.local = files.local.filter(f => f.name !== file.name);
       files.local.unshift({ name: file.name, kind, local: file, origin: 'local', note: 'On this device - not uploaded' });
@@ -1402,7 +1404,7 @@ const Workshop = (() => {
           <span class="fcd-meta">${esc(meta)}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc(f.origin)}</span>` : ''}</span>
         </button>`;
-    }).join('') : empty('No files yet', 'Add your own G-code, STL or 3MF files, or the sample files to try things out.');
+    }).join('') : empty('No files yet', 'Add your own G-code, STL, OBJ or 3MF files, or the sample files to try things out.');
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b.classList.contains('file-card') ? b : null));
   }
 
@@ -1697,6 +1699,7 @@ const Workshop = (() => {
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
         <div id="fd-compare-host"></div>
         <div id="fd-convert-report"></div>`}`;
+      modelTools(entry, mesh, viewer, side);
       if (entry.local) {
         $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
         setupAR(entry, mesh);
@@ -1710,6 +1713,30 @@ const Workshop = (() => {
     } catch (err) {
       side.innerHTML = `<p class="log-empty">Couldn't read this model: ${esc(err.message)}</p>`;
     }
+  }
+
+  function modelTools(entry, original, viewer, side) {
+    let current = original;
+    const controls=document.createElement('section');controls.className='model-tools';
+    controls.innerHTML=`<h3>Prepare this model</h3><p class="field-hint">Drag to orbit; pinch or scroll to zoom. Hold Shift to pan, or choose Pan below. Dimensions are measured from the geometry.</p>
+      <div class="fd-actions"><button class="btn" data-axis="x">Rotate X 90°</button><button class="btn" data-axis="y">Rotate Y 90°</button><button class="btn" data-axis="z">Rotate Z 90°</button><button class="btn" id="model-pan" aria-pressed="false">Pan</button></div>
+      <div class="inline-form"><label for="model-scale">Scale %</label><input id="model-scale" type="number" min="0.01" max="10000" step="any" value="100"><button class="btn" id="model-apply">Apply scale</button><button class="btn" id="model-reset">Reset</button></div>
+      <p id="model-measure" role="status"></p><p class="field-hint">Fit checks cover the model’s bounding box only. They do not check collisions, toolhead clearance or supports. Export makes a geometry-only STL; colours and tool assignments must be set again in the slicer.</p>
+      <div class="fd-actions"><button class="btn" id="model-export">Download prepared STL</button>${!entry.local&&!tourOn()?'<button class="btn primary" id="model-save">Save prepared copy to Files</button>':''}</div>`;
+    side.append(controls);
+    function update(){
+      const fits=current.size.every(x=>x<=270.0001);
+      $('model-measure').textContent=`${current.size.map(x=>x.toFixed(2)).join(' × ')} mm · ${fits?'Fits inside the 270 mm build volume':'Too large for the 270 mm build volume'}`;
+      if(viewer)viewer.setMesh(current,getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
+    }
+    controls.querySelectorAll('[data-axis]').forEach(b=>b.onclick=()=>{current=DV3D.transformMesh(current,1,b.dataset.axis);update();});
+    $('model-pan').onclick=e=>{if(viewer){viewer.panMode=!viewer.panMode;e.currentTarget.setAttribute('aria-pressed',String(viewer.panMode));}};
+    $('model-apply').onclick=()=>{try{current=DV3D.transformMesh(current,Number($('model-scale').value)/100);$('model-scale').value='100';update();}catch(e){toast(e.message,'bad');}};
+    $('model-reset').onclick=()=>{current=original;update();};
+    const name=()=>entry.name.replace(/\.[^.]+$/,'').slice(0,70)+'_prepared_'+Date.now()+'.stl';
+    $('model-export').onclick=()=>{const url=URL.createObjectURL(new Blob([DV3D.exportSTL(current)],{type:'application/octet-stream'}));const a=document.createElement('a');a.href=url;a.download=name();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+    if($('model-save'))$('model-save').onclick=async()=>{const file=new File([DV3D.exportSTL(current)],name());await uploadFiles([file]);await loadFiles();openFile(file.name);};
+    update();
   }
 
   /* A plain-text report of one conversion, to paste into a bug report. */

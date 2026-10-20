@@ -384,7 +384,13 @@ def wait_idle(timeout=5.0):
 
 def run_action(rule, printer_id, detail, manual=False):
     """Carry out one rule's action and log exactly what happened."""
+    import modules
     action = rule["action"]
+    owner = {"notify": "notifications", "light": "wled_bridge",
+             "home_assistant": "home_assistant_bridge", "pause": "printer_control"}.get(action["type"])
+    if not modules.is_enabled("automations") or (owner and not modules.is_enabled(owner)):
+        return _record(rule, printer_id, detail, {"ok": False,
+                       "error": "Action stopped: its feature is switched off in Settings"}, manual=manual)
     demo = rule.get("demo", False)
     printer_name = mock_moonraker.printer_name(printer_id) if mock_moonraker.has_printer(printer_id) else printer_id
     prefix = "[Demo data] " if demo else ""

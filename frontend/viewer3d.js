@@ -55,6 +55,52 @@ const DV3D = (() => {
     return finishMesh(new Float32Array(nums), { objects: 1 });
   }
 
+  function parseOBJ(buffer) {
+    const text = new TextDecoder('utf-8', {fatal:true}).decode(buffer), vertices = [], pos = [];
+    for (const line of text.split(/\r?\n/)) {
+      const fields = line.split('#')[0].trim().split(/\s+/);
+      if (fields[0] === 'v') {
+        const v = fields.slice(1,4).map(Number);
+        if(v.length!==3 || !v.every(Number.isFinite) || vertices.length>=MAX_TRIANGLES*3) throw new Error('OBJ has invalid or too many vertices');
+        vertices.push(v);
+      } else if(fields[0]==='f') {
+        if(fields.length!==4)throw new Error('Export OBJ with triangulated faces; polygons are not supported yet');
+        for(const f of fields.slice(1)) {
+          const raw=f.split('/')[0]; if(!/^-?\d+$/.test(raw))throw new Error('OBJ has an invalid face index');
+          const n=Number(raw), i=n>0?n-1:vertices.length+n;
+          if(n===0 || !vertices[i])throw new Error('OBJ face refers to a missing vertex');
+          pos.push(...vertices[i]);
+        }
+        if(pos.length/9>MAX_TRIANGLES)throw new Error('OBJ has too many triangles');
+      }
+    }
+    if(!pos.length)throw new Error('OBJ has no triangular faces');
+    return finishMesh(new Float32Array(pos),{objects:1,application:'OBJ geometry (materials not loaded)'});
+  }
+
+  function transformMesh(mesh, scale=1, axis=null) {
+    if(!Number.isFinite(scale)||scale<=0||scale>100)throw new Error('Choose a scale greater than zero and at most 10,000%');
+    const pos=new Float32Array(mesh.positions.length);
+    for(let i=0;i<pos.length;i+=3){
+      let [x,y,z]=[mesh.positions[i],mesh.positions[i+1],mesh.positions[i+2]];
+      if(axis==='x')[y,z]=[-z,y];
+      if(axis==='y')[x,z]=[z,-x];
+      if(axis==='z')[x,y]=[-y,x];
+      pos.set([x*scale,y*scale,z*scale],i);
+    }
+    const transformed=finishMesh(pos,{objects:mesh.objects,application:mesh.application});
+    const b=transformed.bounds, delta=[BED/2-(b.min[0]+b.max[0])/2,BED/2-(b.min[1]+b.max[1])/2,-b.min[2]];
+    for(let i=0;i<pos.length;i++)pos[i]+=delta[i%3];
+    return finishMesh(pos,{objects:mesh.objects,application:mesh.application});
+  }
+
+  function exportSTL(mesh) {
+    const buffer=new ArrayBuffer(84+mesh.triangles*50), view=new DataView(buffer);
+    view.setUint32(80,mesh.triangles,true);
+    for(let t=0;t<mesh.triangles;t++)for(let k=0;k<9;k++)view.setFloat32(84+t*50+12+k*4,mesh.positions[t*9+k],true);
+    return buffer;
+  }
+
   async function unzip(buffer, wanted) {
     const view = new DataView(buffer);
     let eocd = -1;
@@ -224,6 +270,7 @@ const DV3D = (() => {
   async function parseModel(buffer, name) {
     const lower = name.toLowerCase();
     try {
+      if (lower.endsWith('.obj')) return parseOBJ(buffer);
       if (lower.endsWith('.stl')) return parseSTL(buffer);
       if (lower.endsWith('.3mf')) return await parse3MF(buffer);
     } catch (e) {
@@ -231,7 +278,7 @@ const DV3D = (() => {
       if (e instanceof RangeError) throw new Error('The file is damaged or cut short - it can\'t be read');
       throw e;
     }
-    throw new Error('Only STL and 3MF models can be shown');
+    throw new Error('Only STL, 3MF and triangulated OBJ models can be shown');
   }
 
   /* ---------------- tiny matrix helpers ---------------- */
@@ -295,6 +342,7 @@ const DV3D = (() => {
       this.color = [1, 0.48, 0.18];
       this.yaw = -0.9; this.pitch = 0.62; this.dist = 380;
       this.target = [BED / 2, BED / 2, 0];
+      this.panMode = false;
       this.meshProg = this.program(MESH_VS, MESH_FS);
       this.lineProg = this.program(LINE_VS, LINE_FS);
       this.bed = this.buildBed();
@@ -508,7 +556,12 @@ const DV3D = (() => {
       const move = (e) => {
         const prev = pointers.get(e.pointerId);
         if (!prev) return;
-        if (pointers.size === 1) {
+        if (pointers.size === 1 && (this.panMode || e.shiftKey)) {
+          const dx=(e.clientX-prev.x)*this.dist/600, dy=(e.clientY-prev.y)*this.dist/600;
+          this.target[0]-=Math.cos(this.yaw)*dx;
+          this.target[1]-=Math.sin(this.yaw)*dx;
+          this.target[2]+=dy;
+        } else if (pointers.size === 1) {
           this.yaw -= (e.clientX - prev.x) * 0.008;
           this.pitch = Math.max(-0.2, Math.min(1.5, this.pitch + (e.clientY - prev.y) * 0.008));
         }
@@ -638,5 +691,5 @@ const DV3D = (() => {
     };
   }
 
-  return { parseSTL, parse3MF, parseModel, parseGcode, Viewer, BED };
+  return { parseSTL, parse3MF, parseOBJ, transformMesh, exportSTL, parseModel, parseGcode, Viewer, BED };
 })();

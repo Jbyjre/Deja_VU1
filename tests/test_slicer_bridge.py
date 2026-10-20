@@ -342,3 +342,12 @@ class TestJobs(SlicerBridgeTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TestAutoDetect(unittest.TestCase):
+    def test_known_program_is_detected_without_saving_a_path(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {slicer_bridge.ENV_PATH: ''}), \
+             patch.object(slicer_bridge.shutil, 'which', return_value='/opt/orca-slicer'), \
+             patch.object(slicer_bridge.os.path, 'isfile', return_value=True), \
+             patch.object(slicer_bridge.os, 'access', return_value=True):
+            self.assertEqual(slicer_bridge.slicer_path({'slicer_path': ''}), ('/opt/orca-slicer', 'detected'))

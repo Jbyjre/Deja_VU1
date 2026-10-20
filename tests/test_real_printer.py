@@ -17,6 +17,7 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -36,6 +37,7 @@ import moonraker_client as mc   # noqa: E402
 import modules                  # noqa: E402
 import print_queue              # noqa: E402
 import sample_files             # noqa: E402
+import stock_camera             # noqa: E402
 from fake_moonraker import FakeMoonraker, history_job   # noqa: E402
 from test_websocket import LiveClient                    # noqa: E402
 
@@ -108,6 +110,27 @@ class RealPrinterAPI(unittest.TestCase):
 
 
 class TestReading(RealPrinterAPI):
+    def test_selected_stock_camera_is_real_and_module_gated(self):
+        self.addCleanup(stock_camera.stop_all)
+        with patch.object(stock_camera, 'WARMUP_SECONDS', 0):
+            status, picture = self.request('/api/camera/snapshot?printer=' + self.pid)
+        self.assertEqual(status, 200)
+        self.assertIsInstance(picture, bytes)
+        self.assertTrue(picture.startswith(b'\xff\xd8'))
+        modules.set_enabled('camera', False)
+        self.addCleanup(lambda: modules.set_enabled('camera', True))
+        status, body = self.request('/api/camera/snapshot?printer=' + self.pid)
+        self.assertEqual(status, 403)
+        self.assertTrue(body.get('module_disabled'))
+
+    def test_camera_never_invents_a_picture_without_printer_or_demo(self):
+        status, body = self.request('/api/camera/snapshot?printer=u1-garage')
+        self.assertEqual(status, 200)
+        self.assertEqual(body, NO_PRINTER)
+        status, body = self.request('/api/camera/snapshot?printer=u1-garage&demo=1')
+        self.assertEqual(status, 200)
+        self.assertIn(b'<svg', body)
+
     def test_the_dashboard_opens_on_the_real_printer(self):
         status, conn = self.request("/api/connection")
         self.assertTrue(conn["connected"])

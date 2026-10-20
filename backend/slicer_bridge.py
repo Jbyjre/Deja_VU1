@@ -127,7 +127,18 @@ def slicer_path(settings=None):
     env = os.environ.get(ENV_PATH, "").strip()
     if env:
         return env, "environment"
-    return (settings or get_settings()).get("slicer_path", ""), "settings"
+    configured = (settings or get_settings()).get("slicer_path", "")
+    if configured:
+        return configured, "settings"
+    candidates = [shutil.which("orca-slicer"), shutil.which("OrcaSlicer"),
+                  "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer"]
+    if os.name == "nt":
+        candidates += [os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"),
+                                    "OrcaSlicer", "orca-slicer.exe")]
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate, "detected"
+    return "", "settings"
 
 
 def _looks_like_orca(path):
