@@ -721,7 +721,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             mock_moonraker.is_real(printer_id) and not mock_moonraker.is_connected(printer_id))
         try:
             if offline_real:
-                return handler(printer_id, force_disconnected=True)
+                with mock_moonraker.selection_only(printer_id):
+                    return handler(printer_id, force_disconnected=True)
             with mock_moonraker.use_printer(printer_id):
                 return handler(printer_id)
         except _Gone:

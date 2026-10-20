@@ -243,16 +243,20 @@ sandbox, so you can't fetch the preview from here.
   is no restore (`backup.py`).
 - A missing API key over the WebSocket shows only "Not connected:
   Unauthorized" (`moonraker_client._call`).
-- A simulated cancel records no history entry and keeps the active toolhead
-  (`mock_moonraker.cancel_print`). A simulated heater fault docks the head,
-  so its LED ring reads "ready".
-- `fleet.set_change_listener()` is never called, so real-printer updates wait
-  for the next 250 ms tick. `MoonrakerPrinter.clear_error()` is unreachable.
+- A simulated heater fault docks the head, so its LED ring reads "ready".
+- `MoonrakerPrinter.clear_error()` is unreachable.
 - Not checked by the audit (its agents hit the usage limit): the feature
   backends in depth (automations, converter, slicer bridge, studio, queue,
   camera) and `docs/architecture.md` beyond the frontend section.
 
 ## Launch-readiness additions
+
+- Inventory starts empty; explicit spool ids feed Confirm Print. Multi-tool
+  usage without measured per-head totals is not deducted from a guessed spool.
+  Existing inventory files are never cleared by this change. Converter refuses
+  unsupported materials/nozzles instead of guessing substitutes. Simulated
+  cancel now records history and clears the active head. `selection_only()`
+  scopes offline settings and slicing workers without opening printer sockets.
 
 - `model_maker.py`, `maker.js`: native four-tool image tiles, calibrated layer
   stacks, 16-swatch sheets and closed heightmap meshes. Routes belong to

@@ -36,15 +36,8 @@ _lock = threading.RLock()
 
 
 def _default_inventory():
-    """A reasonable starting shelf, built from the same colors the rest of
-    the project already uses, so a first run doesn't show an empty screen."""
-    now = datetime.now().isoformat(timespec="seconds")
-    colors = mock_moonraker.FILAMENT_COLORS
-    return [
-        {"id": "spool-1", "material": "PLA", "color_name": colors[2]["name"], "color_hex": colors[2]["hex"], "grams_remaining": 340.0, "loaded_since": now},
-        {"id": "spool-2", "material": "PLA", "color_name": colors[0]["name"], "color_hex": colors[0]["hex"], "grams_remaining": 1100.0, "loaded_since": now},
-        {"id": "spool-3", "material": "PETG", "color_name": colors[4]["name"], "color_hex": colors[4]["hex"], "grams_remaining": 60.0, "loaded_since": now},
-    ]
+    """Ownership and weight must come from the person or their tracker."""
+    return []
 
 
 def _load():
@@ -221,22 +214,29 @@ def _match_spool(inventory, material, color_hex):
     return best[1] if best else None
 
 
-def estimate_for_job(required):
+def estimate_for_job(required, state=None):
     """
     For each toolhead a file uses: which spool it will draw from, how much
     the file itself says it needs, and how much will be left afterwards.
     """
     inventory = _load()
+    import tool_setup
+    assignments={h['toolhead']:h.get('spool_id') for h in tool_setup.get((state or {}).get('printer_id'))['heads']}
+    mapping=(state or {}).get('extruder_map') or {}
+    reserved={}
     out = []
     for req in required:
         grams = float(req.get("grams") or 0.0)
-        spool = _match_spool(inventory, req.get("expected_material"), req.get("expected_color_hex"))
+        assigned=assignments.get(mapping.get(req['toolhead'],req['toolhead']))
+        spool = next((s for s in inventory if s['id']==assigned),None) if assigned else _match_spool(inventory, req.get("expected_material"), req.get("expected_color_hex"))
         if spool is None:
             out.append({"toolhead": req["toolhead"], "status": "no_spool", "grams_needed": grams})
             continue
-        left = spool["grams_remaining"] - grams
+        reserved[spool['id']]=reserved.get(spool['id'],0)+grams
+        left = spool["grams_remaining"] - reserved[spool['id']]
         out.append({
             "toolhead": req["toolhead"], "spool_id": spool["id"],
+            "selection": "assigned" if assigned else "nearest matching spool",
             "spool": f"{spool['material']} {spool['color_name']}",
             "grams_needed": round(grams, 1), "grams_remaining": round(spool["grams_remaining"], 1),
             "grams_after": round(left, 1),
@@ -245,7 +245,7 @@ def estimate_for_job(required):
     return out
 
 
-def deduct_after_print(job):
+def deduct_after_print(job, printer_id=None):
     """
     Take a finished print's filament off the spool it most likely used, so
     the remaining weight follows what was actually printed rather than
@@ -253,7 +253,13 @@ def deduct_after_print(job):
     """
     with _lock:                           # runs on the live feed's thread
         inventory = _load()
-        spool = _match_spool(inventory, job.get("filament_type"), job.get("filament_color_hex"))
+        used=job.get('toolheads_used') or []
+        if len(used)>1:
+            return None                  # no measured per-tool consumption: do not charge it all to one spool
+        import tool_setup
+        assignments=tool_setup.get(printer_id)['heads']
+        assigned=next((h.get('spool_id') for h in assignments if used and h['toolhead']==used[0]),None)
+        spool = next((s for s in inventory if s['id']==assigned),None) if assigned else _match_spool(inventory, job.get("filament_type"), job.get("filament_color_hex"))
         if spool is None:
             return None
         grams = float(job.get("filament_used_grams") or 0.0)

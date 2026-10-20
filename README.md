@@ -98,6 +98,12 @@ and every change is in the public history.
 
 ## What's new
 
+- **Honest spool checks:** a new inventory starts empty, and an explicitly
+  assigned spool is the one checked before a print. Unknown multi-tool usage is
+  no longer deducted entirely from one spool. Existing inventories stay intact.
+- Conversion refuses unsupported materials/nozzles instead of substituting PLA
+  or a 0.4 mm nozzle. Simulated cancel now records history and clears the head.
+
 - **Four-tool image projects:** colour tiles with dithering, measured-swatch
   layered images and a sixteen-tile calibration sheet. Also make a closed
   heightmap relief from an image. Generated 3MF files enter the normal library,

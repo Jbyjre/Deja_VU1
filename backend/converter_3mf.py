@@ -48,6 +48,7 @@ import json
 import re
 import shutil
 import zipfile
+import math
 from xml.parsers import expat
 
 import safe_zip
@@ -230,6 +231,8 @@ def convert(data):
         except (ValueError, UnicodeDecodeError):
             raise ConversionError("The project's settings file is damaged and can't be read", "bad_settings")
 
+    if config is not None and not isinstance(config,dict):
+        raise ConversionError("The project's settings must be an object, not a list or a single value", "bad_settings")
     source = detect_source(application, config)
     if source == "snapmaker":
         raise ConversionError("This project is already set up for a Snapmaker printer - nothing to convert",
@@ -262,11 +265,12 @@ def convert(data):
     nozzles = _as_list(config.get("nozzle_diameter")) or ["0.4"]
     try:
         nozzle = f"{float(nozzles[0]):.1f}"
-    except ValueError:
-        nozzle = "0.4"
+    except (ValueError,TypeError):
+        raise ConversionError("The project has an unreadable nozzle diameter. Choose the fitted nozzle in its source slicer first", "bad_settings")
     if nozzle not in U1_PROCESSES:
-        report["warnings"].append(f"The U1 has no {nozzle} mm nozzle profile; converted for 0.4 mm instead")
-        nozzle = "0.4"
+        raise ConversionError(f"The U1 has no {nozzle} mm nozzle profile. Choose a supported fitted nozzle before converting", "bad_settings")
+    if len(set(map(str,nozzles)))>1:
+        report['warnings'].append('Different source nozzle sizes are retained. Choose a matching installed mixed-nozzle profile before slicing; this conversion does not implement different per-head layer heights')
     printer_preset = f"Snapmaker U1 ({nozzle} nozzle)"
     original_printer = config.get("printer_settings_id") or config.get("printer_model") or "unknown printer"
     report["original_printer"] = original_printer
@@ -286,7 +290,9 @@ def convert(data):
     try:
         layer_height = float(config.get("layer_height") or 0.2)
     except (TypeError, ValueError):
-        layer_height = 0.2
+        raise ConversionError("The project has an unreadable layer height", "bad_settings")
+    if not math.isfinite(layer_height) or not .01<=layer_height<=1:
+        raise ConversionError("The project has an invalid layer height. Correct it in its source slicer first", "bad_settings")
     options = U1_PROCESSES[nozzle]
     process = options[_nearest(options.keys(), layer_height)]
     change("print_settings_id", process)
@@ -315,10 +321,7 @@ def convert(data):
         material = (types[i] if i < len(types) else (types[0] if types else "PLA")).upper()
         preset = U1_FILAMENTS[nozzle].get(material)
         if not preset:
-            preset = U1_FILAMENTS[nozzle]["PLA"] if "PLA" in U1_FILAMENTS[nozzle] else "Generic PLA"
-            report["warnings"].append(
-                f"No U1 profile for {material} with a {nozzle} mm nozzle; filament {i + 1} "
-                f"set to {preset} - check it before printing")
+            raise ConversionError(f"No verified U1 preset for {material} with a {nozzle} mm nozzle (filament {i+1}). Set up that material in Orca; it will not be silently replaced with PLA", "bad_settings")
         filament_presets.append(preset)
     change("filament_settings_id", filament_presets)
 

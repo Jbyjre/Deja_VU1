@@ -53,6 +53,18 @@ def save(body):
                         "nozzle": nozzle, "height": height, "spool_id": str(row.get("spool_id") or "")[:80]})
     if len({h["toolhead"] for h in checked}) != 4:
         raise ValueError("Each physical toolhead must appear exactly once")
+    assigned=[h['spool_id'] for h in checked if h['spool_id']]
+    if len(assigned)!=len(set(assigned)):
+        raise ValueError('A physical spool can be assigned to one head. Add separate spool records for separate spools of the same colour')
+    if assigned:
+        import filament_inventory
+        inventory={s['id']:s for s in filament_inventory.get_inventory()}
+        for h in checked:
+            if not h['spool_id']:continue
+            spool=inventory.get(h['spool_id'])
+            if not spool:raise ValueError(f"{h['toolhead']}: that spool no longer exists. Choose another or select by hand")
+            if spool['material'].upper()!=h['material'] or spool['color_hex'].lower()!=h['color_hex']:
+                raise ValueError(f"{h['toolhead']}: the selected spool has a different material or colour. Update the spool or choose by hand")
     pid = mock_moonraker.selected_printer_id()
     with _lock:
         data = storage.load_json(_PATH, {})
@@ -76,7 +88,7 @@ def compatibility():
     if mock_moonraker.is_real(pid):
         printer = mock_moonraker.real_printer(pid)
         with printer.lock:
-            names = sorted(printer._status)
+            names = sorted(set(printer._objects) | set(printer._status))
     else:
         mock_moonraker._sim()
         names = ["print_task_config", "extruder", "extruder1", "extruder2", "extruder3"]

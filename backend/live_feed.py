@@ -215,7 +215,7 @@ def _detect_locked(printer_id, state, finish_event):
                                   "grams": job["filament_used_grams"], "material": job["filament_type"],
                                   "color": job["filament_color_hex"], "cost": cost}
             if not simulated and modules.is_enabled("filament_inventory"):
-                payload["filament"] = filament_inventory.deduct_after_print(job)
+                payload["filament"] = filament_inventory.deduct_after_print(job,printer_id=printer_id)
         publish_event(payload)
         if side_effects:
             if name == "started" and modules.is_enabled("timelapse"):

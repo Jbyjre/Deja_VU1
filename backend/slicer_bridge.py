@@ -593,7 +593,7 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
 
 
 def _work_selected(printer_id, *args):
-    with mock_moonraker.use_printer(printer_id):
+    with mock_moonraker.selection_only(printer_id):
         _work(*args)
 
 

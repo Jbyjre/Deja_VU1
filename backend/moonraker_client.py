@@ -1622,7 +1622,7 @@ class MoonrakerPrinter:
         toolhead, colour, material = tool_setup.filament_fields(
             {"toolhead": toolhead, "color_hex": colour, "material": material})
         state = self._fresh_state()
-        if state["state"] not in ("ready", "finished"):
+        if state["state"] not in ("ready", "complete"):
             raise ValueError("Filament settings can only change while the printer is idle")
         if state["toolheads"].get(toolhead, {}).get("filament_loaded") is not True:
             raise ValueError(f"Load filament into {toolhead} before changing its identity")

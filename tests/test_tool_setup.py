@@ -60,6 +60,24 @@ class ToolSetup(unittest.TestCase):
             with patch.dict(mock._sim().live, {'state':'printing'}):
                 with self.assertRaisesRegex(ValueError,'idle'):mock.set_filament(heads()[0])
 
+    def test_duplicate_physical_spool_assignment_is_refused(self):
+        rows=heads();rows[0]['spool_id']=rows[1]['spool_id']='same-spool'
+        with self.assertRaisesRegex(ValueError,'one head'):tool_setup.save({'heads':rows})
+
+    def test_assigned_spool_drives_weight_check(self):
+        import filament_inventory as inv
+        spools=[{'id':'small','material':'PLA','color_hex':'#123456','color_name':'Small spool','grams_remaining':5},
+                {'id':'large','material':'PLA','color_hex':'#123456','color_name':'Large spool','grams_remaining':1000}]
+        rows=heads();rows[0]['spool_id']='small'
+        with patch.object(inv,'get_inventory',return_value=spools),patch.object(inv,'_load',return_value=spools):
+            tool_setup.save({'heads':rows})
+            checked=inv.estimate_for_job([{'toolhead':'T0','expected_material':'PLA','expected_color_hex':'#123456','grams':10}])
+        self.assertEqual(checked[0]['spool_id'],'small');self.assertEqual(checked[0]['status'],'short')
+
+    def test_multi_tool_consumption_does_not_charge_one_spool(self):
+        import filament_inventory as inv
+        self.assertIsNone(inv.deduct_after_print({'toolheads_used':['T0','T1'],'filament_used_grams':50}))
+
 
 class RealFilament(unittest.TestCase):
     def setUp(self):
@@ -88,3 +106,7 @@ class RealFilament(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Load filament'):
             self.printer.set_filament('T2','#123456','PLA')
         self.assertEqual(self.fake.scripts,[])
+
+    def test_completed_printer_accepts_idle_filament_change(self):
+        self.fake.set('print_stats',state='complete')
+        self.assertTrue(self.printer.set_filament('T0','#123456','PLA')['verified'])

@@ -134,13 +134,14 @@ class DamagedModuleFiles(unittest.TestCase):
             with mock.patch.object(pairing, "_DEVICES_PATH", path):
                 self.assertEqual(pairing.list_devices(), [])
 
-    def test_damaged_inventory_is_reseeded(self):
+    def test_damaged_inventory_is_preserved_without_inventing_owned_spools(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "filament_inventory.json")
             with open(path, "w") as fh:
                 fh.write("not json")
             with mock.patch.object(filament_inventory, "_INVENTORY_PATH", path):
-                self.assertTrue(filament_inventory.get_inventory())
+                self.assertEqual(filament_inventory.get_inventory(), [])
+                self.assertTrue(any(n.startswith('filament_inventory.json.corrupt-') for n in os.listdir(tmp)))
 
 
 class SettingsValidation(unittest.TestCase):

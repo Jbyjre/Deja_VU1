@@ -592,10 +592,17 @@ def selected_printer_id():
 def use_printer(printer_id):
     """Answer every call inside this block for `printer_id`."""
     printer = _get(printer_id)
+    with selection_only(printer_id):
+        yield printer
+
+
+@contextmanager
+def selection_only(printer_id):
+    """Scope local settings to an already-validated id without connecting a device."""
     previous = getattr(_selected, "printer_id", None)
     _selected.printer_id = printer_id
     try:
-        yield printer
+        yield
     finally:
         if previous is None:
             del _selected.printer_id
@@ -742,13 +749,16 @@ def cancel_print():
             raise ValueError("Nothing to cancel")
         printer.check_failure("cancel")
         cancelled_file = live["current_file"]
+        _record_failed_job(printer, "Cancelled by the user", status="cancelled")
         live.pop("objects", None)
         live["state"] = "ready"
         live["state_message"] = "Idle"
         live["progress"] = 0.0
         live["current_file"] = None
+        live["active_toolhead"] = None
         live["bed_target"] = 0.0
         for data in live["toolheads"].values():
+            data["target_temperature"] = 0.0
             if data["status"] == "active":
                 data["status"] = "docked"
                 data["target_temperature"] = 0.0
@@ -1071,14 +1081,14 @@ def is_sandbox_printer(printer_id):
         return any(s["id"] == printer_id and s.get("sandbox") for s in _FLEET_SPEC)
 
 
-def _record_failed_job(printer, message):
+def _record_failed_job(printer, message, status="error"):
     """A print that stops with an error lands in history, as Moonraker's does."""
     live = printer.live
     hours = round(live["print_duration_hours"], 2)
     total = printer.job["total_hours"] or 1.0
     printer.session_jobs.append({
         "job_id": f"live-{len(printer.session_jobs) + 1:03d}",
-        "filename": live["current_file"], "status": "error",
+        "filename": live["current_file"], "status": status,
         "start_time": (datetime.now() - timedelta(hours=hours)).isoformat(timespec="seconds"),
         "end_time": datetime.now().isoformat(timespec="seconds"),
         "print_duration_hours": hours,

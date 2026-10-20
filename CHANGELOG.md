@@ -5,6 +5,16 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Connected explicit spool assignments to Confirm Print’s weight check. New
+  inventories start empty; existing records are preserved. Duplicate physical
+  spool assignments are refused. Without measured per-tool usage, a multi-tool
+  print no longer consumes the whole weight from one guessed spool.
+- Converter now refuses unknown materials, unsupported nozzles, malformed
+  settings objects and nonfinite layer heights. Mixed-nozzle arrays stay intact
+  with explicit limitations. Simulated cancel records partial history, docks
+  the active head and turns off all heater targets. Offline local settings and
+  slice workers retain the selected printer without opening a connection.
+
 - Added original four-tool image-to-3MF generation with optional serpentine
   error diffusion, physically measurable sixteen-swatch recipes and calibrated
   layer stacks. Measurements are tied to spool identity, colour, nozzle and

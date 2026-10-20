@@ -105,7 +105,8 @@ def summary(filename, printer_state=None):
     analysis = file_library.checked(filename)
     state = printer_state or mock_moonraker.get_printer_state()
     blocking, warnings, info = [], [], []
-    warnings += tool_setup.check_saved(state)
+    if modules.is_enabled('filament_inventory'):
+        warnings += tool_setup.check_saved(state)
 
     # -- the printer itself ---------------------------------------------------
     if state["state"] in ("printing", "paused"):
@@ -132,7 +133,7 @@ def summary(filename, printer_state=None):
     warnings += fil_warn
     spools = None
     if modules.is_enabled("filament_inventory"):
-        spools = filament_inventory.estimate_for_job(required)
+        spools = filament_inventory.estimate_for_job(required,state)
         for s in spools:
             if s["status"] == "short":
                 warnings.append(f"{s['toolhead']}: the matching spool has about {s['grams_remaining']:.0f} g "
