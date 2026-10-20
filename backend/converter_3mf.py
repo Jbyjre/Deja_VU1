@@ -101,10 +101,7 @@ _MACHINE_GCODE_KEYS = ("machine_start_gcode", "machine_end_gcode", "change_filam
 
 
 # Every way a conversion can fail, with a code to quote in a bug report,
-# the stage it failed at, and what to try. The idea of coded, copyable
-# conversion errors comes from the "MakerWorld to Snapmaker U1" browser
-# extension (a Snapmaker Innovation Fund Phase 1 winner); the codes and
-# wording here are this project's own.
+# the stage it failed at, and a concrete recovery suggestion.
 ERRORS = {
     "not_3mf":      ("CV-101", "Opening the file",
                      "Download the project again - the file may be incomplete, or it isn't a 3MF"),

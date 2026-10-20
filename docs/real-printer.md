@@ -169,8 +169,10 @@ Said plainly, because a good test suite is not a real machine:
   the printer lists it; if it doesn't, the Control tab says the print's
   objects aren't labelled.
 - **Filament after a touchscreen change.** Asked for every 30 s as well as
-  pushed (U1 Print Hub's finding on real machines); the interval is a guess.
-- **The U1's own chamber camera.** U1 Print Hub's code says a stock U1
-  serves it through Snapmaker's `camera.start_monitor` plugin rather than
-  the usual webcam address. That isn't built here yet: the camera panel still
-  needs a stream address you type in.
+  pushed. This interval is a design choice, not measured device latency.
+- **The U1's own chamber camera.** Camera → Show built-in camera opens a
+  dedicated monitor connection using `camera.start_monitor`, reads the selected
+  printer's JPEG endpoint and closes it after idle time. Automated tests use a
+  stand-in. Camera quality, refresh cadence and compatibility on physical U1
+  firmware remain unverified. The manual stream and time-lapse settings are
+  separate, globally configured features.
