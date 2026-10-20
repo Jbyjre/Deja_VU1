@@ -433,6 +433,16 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .gcode-toolbar label {display:flex;gap:8px;align-items:center;min-height:44px;}
 .gcode-toolbar select {min-height:44px;max-width:180px;}
 .gcode-toolbar .field-hint {flex-basis:100%;}
+.maker-layout {display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;}
+.maker-workspace label {display:grid;gap:6px;margin:12px 0;}
+.maker-workspace label:has(input[type=checkbox]) {display:flex;align-items:center;}
+.maker-workspace input:not([type=checkbox]),.maker-workspace select {width:100%;min-width:0;min-height:44px;}
+.maker-workspace summary {cursor:pointer;min-height:44px;padding:12px 0;}
+.maker-workspace figure {margin:0;border-radius:18px;overflow:hidden;background:#151b25;padding:16px;color:#edf0f6;}
+.maker-workspace canvas {width:100%;height:auto;max-height:480px;object-fit:contain;image-rendering:pixelated;border-radius:10px;}
+.maker-workspace figcaption {margin-top:12px;font-size:.8rem;line-height:1.5;}
+.calibration-swatches {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+@media(max-width:760px){.maker-layout{grid-template-columns:1fr;}.calibration-swatches{grid-template-columns:repeat(2,minmax(0,1fr));}}
 .file-detail:has(.plate-workspace) .fd-view {position:sticky;top:112px;align-self:start;}
 .file-detail:has(.plate-workspace) .viewer-canvas {height:560px;}
 @media(max-width:760px){.file-detail:has(.plate-workspace) .fd-view{position:static;}.file-detail:has(.plate-workspace) .viewer-canvas{height:320px;}.plate-heading h3{font-size:1.45rem;}}

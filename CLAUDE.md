@@ -254,6 +254,12 @@ sandbox, so you can't fetch the preview from here.
 
 ## Launch-readiness additions
 
+- `model_maker.py`, `maker.js`: native four-tool image tiles, calibrated layer
+  stacks, 16-swatch sheets and closed heightmap meshes. Routes belong to
+  `photo_studio` (writes also require `file_library`). Only small RGB grids reach
+  Python. There is no image library dependency or guessed print estimate.
+  `colour_calibration.json` keys include saved spools/nozzles and layer thickness.
+
 - `plate.js`, `plate-worker.js`, `plate_project.py`: source meshes plus affine
   transforms, undo/redo, bounded off-thread contact/ray checks and 3MF save-as.
   Preserve XML prefixes when relocating paths (`requiredextensions` refers to

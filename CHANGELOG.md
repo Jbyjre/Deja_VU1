@@ -5,6 +5,14 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
+- Added original four-tool image-to-3MF generation with optional serpentine
+  error diffusion, physically measurable sixteen-swatch recipes and calibrated
+  layer stacks. Measurements are tied to spool identity, colour, nozzle and
+  layer thickness. Layered mode refuses uncalibrated settings.
+- Added closed heightmap relief geometry. Real Orca 2.4.2 sliced tile, swatch
+  and relief projects; all passed pre-flight. Physical colour and printer tests
+  remain outstanding. Image brightness is not geographic elevation.
+
 - Replaced the single-model transform controls with an undoable multi-model
   plate workspace, arbitrary rotation, mirroring, scaling, arrange, drop/lay-flat,
   object settings and exact surface-point measurements. Geometry checks run in

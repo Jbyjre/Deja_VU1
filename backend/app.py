@@ -246,6 +246,7 @@ import slicer_bridge
 import timelapse
 import tool_setup
 import plate_project
+import model_maker
 import updates
 import websocket
 import wled_bridge
@@ -373,6 +374,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
@@ -913,6 +915,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("file_library"):
                 return None
             return self._send_json(plate_project.save(self._read_json_body()))
+
+        if route in ("/api/maker/build", "/api/maker/calibration"):
+            if self._module_blocked("photo_studio") or self._module_blocked("file_library"):
+                return None
+            body=self._read_json_body()
+            return self._send_json(model_maker.build(body) if route.endswith("/build") else model_maker.save_calibration(body))
 
         if route == "/api/maintenance/done":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.mark_done(

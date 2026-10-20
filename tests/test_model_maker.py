@@ -1,0 +1,85 @@
+import io
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+import zipfile
+from collections import Counter
+from unittest.mock import patch
+sys.path.insert(0,str(Path(__file__).resolve().parent.parent/'backend'))
+import model_maker as maker
+import mesh_tools
+
+
+class ModelMaker(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+        self.heads=[{'toolhead':'T'+str(i),'material':'PLA','color_hex':c,'nozzle':.4,'height':.2,'spool_id':str(i)} for i,c in enumerate(['#000000','#ffffff','#ff0000','#0000ff'])]
+        self.saved={}
+        for p in [patch('tool_setup.get',side_effect=lambda:{'heads':self.heads}),patch.object(maker,'_PATH',os.path.join(self.tmp.name,'cal.json')),patch('file_library.save',side_effect=self.save)]:
+            p.start();self.addCleanup(p.stop)
+
+    def save(self,name,data,**kwargs):self.saved[name]=data;return {'name':name}
+
+    def body(self,mode='mosaic'):
+        return {'mode':mode,'pixels_w':2,'pixels_h':2,'pixels':[0,0,0,255,255,255,255,0,0,0,0,255],'width':40,'layer_height':.2}
+
+    def test_mosaic_contains_all_four_physical_assignments(self):
+        result=maker.build(self.body());data=self.saved[result['file']['name']]
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            settings=z.read('Metadata/model_settings.config')
+            for i in range(1,5):self.assertIn(f'key="extruder" value="{i}"'.encode(),settings)
+        self.assertEqual(result['preview']['indices'],[0,1,2,3])
+        self.assertGreater(mesh_tools.summarize(data,'image.3mf')['count'],0)
+
+    def test_dithering_is_deterministic_and_uses_only_palette_entries(self):
+        pixels=[128,128,128]*64
+        a=maker.quantize(pixels,8,8,['#000000','#ffffff'],True)
+        self.assertEqual(a,maker.quantize(pixels,8,8,['#000000','#ffffff'],True))
+        self.assertEqual(set(a),{0,1})
+
+    def test_layered_mode_requires_actual_user_calibration(self):
+        with self.assertRaisesRegex(ValueError,'swatches'):maker.build(self.body('layered'))
+
+    def test_calibration_requires_measurement_confirmation(self):
+        with self.assertRaisesRegex(ValueError,'Confirm'):maker.save_calibration({'colours':['#123456']*16})
+
+    def test_layered_mode_accepts_saved_measurements(self):
+        maker.save_calibration({'colours':['#123456']*16,'measured':True})
+        result=maker.build(self.body('layered'))
+        self.assertEqual(result['preview']['source'],'measured swatches')
+
+    def test_spool_and_layer_changes_invalidate_calibration(self):
+        maker.save_calibration({'colours':['#123456']*16,'measured':True})
+        self.assertIsNotNone(maker.settings()['calibration'])
+        self.assertIsNone(maker.settings(.16)['calibration'])
+        self.heads[0]['spool_id']='new spool'
+        self.assertIsNone(maker.settings()['calibration'])
+
+    def test_calibration_sheet_has_sixteen_recipe_tiles(self):
+        self.assertEqual(len(maker.recipes()),16)
+        self.assertEqual(len(maker.settings()['recipes']),16)
+        result=maker.build({'mode':'calibration'})
+        self.assertIsNone(result['preview'])
+        self.assertGreater(len(self.saved[result['file']['name']]),0)
+
+    def test_terrain_mesh_is_closed_with_every_edge_used_twice(self):
+        part=maker.terrain(self.body()['pixels'],2,2,40,40,10,.8)
+        counts=Counter(tuple(sorted(edge)) for a,b,c in part['triangles'] for edge in [(a,b),(b,c),(c,a)])
+        self.assertEqual(set(counts.values()),{2})
+        self.assertTrue(all(z>=0 for x,y,z in part['vertices']))
+        maker.build(self.body('terrain'))
+
+    def test_invalid_pixels_and_oversize_grid_refused(self):
+        for changes in [{'pixels_w':97},{'pixels':[0]},{'width':float('nan')},{'pixels':[-1]*12}]:
+            with self.assertRaises(ValueError):maker.build(dict(self.body(),**changes))
+
+    def test_pixel_features_must_be_wide_enough_for_nozzles(self):
+        b=self.body();b.update(pixels_w=96,pixels_h=2,pixels=[128]*(96*2*3),width=5)
+        with self.assertRaisesRegex(ValueError,'nozzle widths'):maker.build(b)
+
+    def test_missing_saved_tools_does_not_invent_filaments(self):
+        self.heads.clear()
+        with self.assertRaisesRegex(ValueError,'Save all four'):maker.build(self.body())

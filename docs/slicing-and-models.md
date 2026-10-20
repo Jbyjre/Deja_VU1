@@ -63,6 +63,26 @@ is not a calibrated prediction of physical filament appearance.
 
 ## Recommended slicing route: locally installed OrcaSlicer
 
+## Images and heightmaps
+
+In **Photo Studio → From image to print project**, choose a photo or the test
+image. **Colour tiles** selects among the four saved tool colours. Optional
+dithering spreads colour differences across neighbouring tiles; it does not mix
+filament inside the nozzle. The output includes a backing and closed tile solids.
+Cell width must be at least two of the widest selected nozzle widths.
+
+For **Layered colour**, build the sixteen-swatch sheet, slice at the displayed
+layer thickness, print it, then record each measured tile colour in row order.
+Confirm the measurements came from your printed swatches. The app stores them
+for that exact tool/spool/nozzle setup and thickness. The layered workflow then
+chooses among those measured four-layer recipes. Nothing here measures colour
+automatically or promises physical matching without a printer check.
+
+**Heightmap relief** makes lighter pixels higher and closes the mesh with a
+flat bottom and side walls. Width and relief height are explicit millimetres;
+there is no geographical scale or elevation lookup. Save the generated model,
+open it in the plate workspace and slice to obtain engine-derived quantities.
+
 **Verified engine path:** OrcaSlicer 2.4.2 on Linux has sliced the sample bracket
 through this bridge, using its own resolved U1 presets. Output: 125 layers,
 6.62 g and 0.231 hours from the engine; Deja Vu1 pre-flight was clear. This

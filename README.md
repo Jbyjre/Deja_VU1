@@ -98,6 +98,11 @@ and every change is in the public history.
 
 ## What's new
 
+- **Four-tool image projects:** colour tiles with dithering, measured-swatch
+  layered images and a sixteen-tile calibration sheet. Also make a closed
+  heightmap relief from an image. Generated 3MF files enter the normal library,
+  plate editor, slicing and Confirm Print workflow.
+
 - **A multi-model plate workspace:** add models, undo/redo, arrange, move,
   rotate by any angle, mirror, scale, lay a face flat and measure surfaces.
   Save a new 3MF with source parts and recovery copies, then slice it.
@@ -389,6 +394,12 @@ answer the browser does. Settings that belong to the dashboard itself
 printer figures, so they work the same with or without a printer connected.
 
 ## Current status
+
+Generated colour tiles, calibration sheets and heightmap reliefs have been sliced
+with real OrcaSlicer 2.4.2 on Linux and passed pre-flight. The colour tile and
+calibration outputs use T0–T3. Layered colour requires user-measured swatches;
+no physical colour accuracy, calibration measurement or printer output is
+verified here. Heightmaps use image brightness, not geographic elevation data.
 
 Multi-object 3MF export has been sliced with real OrcaSlicer 2.4.2 using T0 and
 T1, with clear pre-flight. Source 3MF parts and original files are retained;
