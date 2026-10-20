@@ -47,7 +47,8 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual(result["tools_used"], ["T0", "T1"])
         self.assertEqual(result["filament_mm"], {"T0": 200.0, "T1": 200.0})
         self.assertEqual(result["bounds"]["max"][:2], [50.0, 50.0])
-        self.assertEqual(result["filament_grams_source"], "estimated from extrusion length")
+        self.assertIn('assumes 1.75 mm filament',result['filament_grams_source'])
+        self.assertIn('PLA if material is unknown',result['filament_grams_source'])
         # PETG is denser than PLA, so T1's 2 mm weighs more than T0's.
         self.assertGreater(result["filament_grams_by_tool"]["T1"], result["filament_grams_by_tool"]["T0"])
 
