@@ -388,3 +388,14 @@ class TestSliceCancellation(SlicerBridgeTest):
             with self.assertRaisesRegex(ValueError,'this printer'):slicer_bridge.cancel_job(job['id'])
             self.assertNotIn(job['id'],[j['id'] for j in slicer_bridge.jobs()['jobs']])
         slicer_bridge.cancel_job(job['id']);self.assertEqual(slicer_bridge.wait(job['id'],5)['status'],'cancelled')
+
+
+class TestExportedHeightContracts(SlicerBridgeTest):
+    def test_exported_preferences_cannot_bypass_engine_capability_check(self):
+        self.configure()
+        with open(self.machine,encoding='utf-8') as stream:data=json.load(stream)
+        data.update(extruder_layer_height=['.1','.2','.1','.1'],nozzle_diameter=['.4']*4)
+        with open(self.machine,'w',encoding='utf-8') as stream:json.dump(data,stream)
+        with self.assertRaisesRegex(ValueError,'shared-height fallback is refused'):
+            slicer_bridge.slice_model('dock_bracket.stl')
+        self.assertFalse(os.path.exists(self.args_file))

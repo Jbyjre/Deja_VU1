@@ -555,7 +555,29 @@ def slice_model(name, profile_id=None, on_step=None):
         materials=[]
         for material in profile['filaments']:
             with open(material,encoding='utf-8') as mf:materials.append(json.load(mf))
-        model_maker.check_slice_contract(data,json.load(fh),materials,preferred_heights=[h['height'] for h in profile['tool_setup']] if profile.get('layer_mode')=='per_tool' else None)
+        process_data=json.load(fh)
+    with open(profile['machine'],encoding='utf-8') as fh:
+        machine_data=json.load(fh)
+    preferred_heights=None
+    requested=machine_data.get('extruder_layer_height') or []
+    if not isinstance(requested,list):raise ValueError('The machine preset has unreadable per-tool heights. Export a complete preset again')
+    try:requested=[float(h) for h in requested]
+    except (ValueError,TypeError):raise ValueError('The machine preset has unreadable per-tool heights')
+    if any(h!=0 for h in requested):
+        if not engine_capabilities(s).get('per_tool_heights'):
+            raise ValueError('The selected engine does not advertise per-tool heights. Check a capable engine before using this exported preset; shared-height fallback is refused')
+        nozzles=machine_data.get('nozzle_diameter') or []
+        if len(requested)!=4 or len(nozzles)!=4 or len(materials)!=4:
+            raise ValueError('Per-tool height profiles need four physical nozzle entries and four material presets. Use the native profile editor to assign T0 to T3')
+        try:
+            base=float(process_data.get('layer_height') or .2)
+            heads=[{'toolhead':'T'+str(i),'nozzle':float(n),'height':h if h!=0 else base} for i,(n,h) in enumerate(zip(nozzles,requested))]
+            plan=slicing_contract.tool_layers(heads,process_data.get('initial_layer_print_height') or base)
+        except (TypeError,KeyError):raise ValueError('The exported nozzle/height combination is unsupported. Use the native profile editor')
+        if abs(base-plan['grid'])>1e-6:
+            raise ValueError(f"Set the exported process layer height to the exact {plan['grid']:g} mm coordination grid, or make a native profile")
+        preferred_heights=[h['height'] for h in heads]
+    model_maker.check_slice_contract(data,process_data,materials,preferred_heights=preferred_heights)
     input_notes=[]
     if kind=='3mf':data,input_notes=project_plates.engine_input(data,materials)
 
@@ -613,7 +635,7 @@ def slice_model(name, profile_id=None, on_step=None):
                                       note=f"Sliced from {name} with \"{profile['name']}\""
                                            + (f" by OrcaSlicer {report['orca_version']}" if report["orca_version"] else ""))
             saved.append({"name": entry["name"], "layers": analysis["layers"],
-                          "deposition": slicing_contract.deposition_evidence(gcode.decode('utf-8', 'replace')) if profile.get('layer_mode') == 'per_tool' else None,
+                          "deposition": slicing_contract.deposition_evidence(gcode.decode('utf-8', 'replace')) if preferred_heights else None,
                           "estimated_hours": analysis["meta"].get("estimated_hours"),
                           "filament_grams": analysis["meta"].get("filament_grams"),
                           "preflight": analysis["preflight"]["verdict"]})
