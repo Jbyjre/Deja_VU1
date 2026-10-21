@@ -46,6 +46,7 @@ class FullBackup(unittest.TestCase):
         self.assertFalse(json.loads((folder/'data/modules.json').read_text())['automations'])
         self.assertIsNone(json.loads((folder/'data/slicer.json').read_text())['last_check'])
         self.assertEqual(json.loads((folder/'data/slicer.json').read_text())['profiles'][0]['machine'],str(folder/'data/slicer-presets/private/machine.json'))
+        self.assertFalse((self.root/'restore-staging'/(review['id']+'.zip')).exists())
         self.assertTrue((folder/'Start restored app.bat').is_file())
         self.assertTrue((folder/'Start restored app.command').is_file())
         self.assertEqual((folder/'data/files/part.gcode').read_bytes(),b'G90\n')
@@ -81,3 +82,10 @@ class FullBackup(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(self.archive())) as z:
             self.assertNotIn('external.json',z.namelist())
             self.assertEqual(json.loads(z.read('camera_settings.json'))['url'],'https://example.test/frame?size=2')
+
+    def test_discard_only_removes_its_staged_upload(self):
+        review=backup.preview_restore(self.archive())
+        backup.discard_preview({'id':review['id']})
+        self.assertFalse((self.root/'restore-staging'/(review['id']+'.zip')).exists())
+        self.assertTrue((self.root/'files/part.gcode').is_file())
+        with self.assertRaises(ValueError):backup.discard_preview({'id':'../outside'})

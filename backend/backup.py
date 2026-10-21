@@ -182,4 +182,14 @@ def restore(body):
         os.replace(staging,destination)
     except BaseException:
         shutil.rmtree(staging,ignore_errors=True);raise
+    try:source.unlink()
+    except OSError:pass
     return {'folder':str(destination),'files':len(payload),'note':'Restored as a separate copy. Stop this app, open the recovery folder, then double-click Start restored app.command (Linux/macOS) or Start restored app.bat (Windows). The original launcher still opens your original data. Re-enter credentials and review disabled automatic modules before using printers.'}
+
+
+def discard_preview(body):
+    token=body.get('id')
+    if not isinstance(token,str) or not re.fullmatch(r'[a-f0-9]{32}',token):raise ValueError('Choose a staged backup preview')
+    path=Path(_DATA_DIR)/'restore-staging'/(token+'.zip')
+    if path.is_file():path.unlink()
+    return {'discarded':True}

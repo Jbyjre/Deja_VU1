@@ -880,11 +880,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
 
-        if route in ('/api/backup/preview','/api/backup/restore'):
+        if route in ('/api/backup/preview','/api/backup/restore','/api/backup/discard'):
             if self._module_blocked('backup'):
                 return None
             if route.endswith('/preview'):
                 return self._send_json(backup.preview_restore(self._read_raw_body(backup.MAX_ARCHIVE_BYTES)))
+            if route.endswith('/discard'):
+                return self._send_json(backup.discard_preview(self._read_json_body()))
             return self._send_json(backup.restore(self._read_json_body()))
 
         if route == "/api/app/updates/settings":
