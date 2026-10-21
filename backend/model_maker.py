@@ -180,7 +180,7 @@ def build(body):
     return {'file':entry,'preview':preview,'note':'This is model geometry, not G-code. Slice it to obtain real time and filament figures. Physical colour matching is unverified.'}
 
 
-def check_slice_contract(data,process):
+def check_slice_contract(data,process,materials=None,preferred_heights=None):
     """Refuse layer boundaries that would change a generated colour recipe."""
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -192,6 +192,8 @@ def check_slice_contract(data,process):
     except (TypeError,UnicodeError,json.JSONDecodeError):raise ValueError('The generated image settings are damaged')
     if not isinstance(contract,dict):raise ValueError('The generated image settings are damaged')
     height=number(contract.get('layer_height'),'Generated layer thickness',.04,.56)
+    if preferred_heights and any(abs(float(h)-height)>1e-6 for h in preferred_heights):
+        raise ValueError('This generated colour project needs the same layer thickness on every tool. Use a shared-height profile matching its calibration')
     if contract.get('tool_signature')!=signature(palette(),height):
         raise ValueError('The printer or saved tools changed since this image was made. Generate it again with the current tools')
     for key in ('layer_height','initial_layer_print_height'):

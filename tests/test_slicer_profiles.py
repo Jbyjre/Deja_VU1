@@ -90,3 +90,42 @@ class InstalledProfiles(unittest.TestCase):
         self.assertTrue(profiles.prepare(str(self.program),body,self.heads())['warnings'])
         d['compatible_printers']=['Another printer'];self.filament.write_text(json.dumps(d))
         with self.assertRaisesRegex(ValueError,'compatible'):profiles.prepare(str(self.program),body,self.heads())
+
+    def test_per_tool_heights_are_not_silently_accepted_by_stock_engine(self):
+        body=self.body();body['layer_mode']='per_tool'
+        with self.assertRaisesRegex(ValueError,'capable local engine'):profiles.prepare(str(self.program),body,self.heads())
+
+    def test_per_tool_heights_reach_machine_settings_and_grid(self):
+        body=self.body();body['layer_mode']='per_tool';body['options']['initial_layer_print_height']=.14
+        heads=self.heads()
+        for h in heads:h['height']=.14
+        heads[1]['height']=.28
+        result=profiles.prepare(str(self.program),body,heads,{'per_tool_heights':True,'exact_tool_heights':True})
+        machine=json.loads(Path(result['machine']).read_text());process=json.loads(Path(result['process']).read_text())
+        self.assertEqual(machine['extruder_layer_height'],['0.14','0.28','0.14','0.14'])
+        self.assertEqual(machine['extruder_layer_height_exact'],'1')
+        self.assertEqual(process['layer_height'],'0.14')
+
+    def test_material_override_limits_and_originals(self):
+        body=self.body();body['material_options']=[{'nozzle_temperature':220,'filament_flow_ratio':.98},{},{},{}]
+        result=profiles.prepare(str(self.program),body,self.heads())
+        material=json.loads(Path(result['filaments'][0]).read_text())
+        self.assertEqual(material['nozzle_temperature'],['220'])
+        self.assertEqual(material['filament_flow_ratio'],['0.98'])
+        self.assertNotIn('nozzle_temperature',json.loads(self.filament.read_text()))
+        for opts in [{'nozzle_temperature':999},{'filament_flow_ratio':float('nan')},{'post_process':'run'},{'fan_min_speed':80,'fan_max_speed':20}]:
+            with self.assertRaises(ValueError):profiles.material_options(opts)
+
+
+    def test_generic_out_of_volume_startup_is_refused_before_engine(self):
+        data=json.loads(self.machine.read_text());data['machine_start_gcode']='G90\nG0 X300 Y0\nG0 X290 E30 Z0.2'
+        self.machine.write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError,'X290'):profiles.prepare(str(self.program),self.body(),self.heads())
+
+    def test_older_standard_flow_migrates_to_explicit_variant(self):
+        data=json.loads(self.filament.read_text());data['filament_flow_support']=['standard'];self.filament.write_text(json.dumps(data))
+        result=profiles.prepare(str(self.program),self.body(),self.heads(),{'per_tool_heights':True})
+        material=json.loads(Path(result['filaments'][0]).read_text())
+        self.assertEqual(material['filament_extruder_variant'],['Direct Drive Standard'])
+        self.assertNotIn('filament_flow_support',material)
+        self.assertEqual(json.loads(Path(result['process']).read_text())['nozzle_diameter'],['0.4']*4)

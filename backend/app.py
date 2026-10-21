@@ -215,6 +215,7 @@ sys.path.insert(0, _BACKEND_DIR)
 import app_updates
 import automations
 import backup
+import project_plates
 import camera
 import color_check
 import comparison
@@ -397,6 +398,7 @@ _APP_ROUTES = {
         file_library.read_text(_q(q, "name")), _q(q, "offset", "0"), _q(q, "limit", "200"),
         _q(q, "q", "") or None)),
     "/api/files/analysis": ("file_library", lambda q: file_library.analysis(_q(q, "name"))),
+    "/api/files/plates": ("file_library", lambda q: project_plates.describe(_q(q, 'name'))),
     "/api/profiles/diff": ("file_library", lambda q: comparison.diff_profiles(_q(q, "a"), _q(q, "b"))),
     "/api/fleet/registry": ("fleet", lambda q: fleet.registry()),
     "/api/printers/diagnostics": ("fleet", lambda q: fleet.diagnostics(_q(q, "printer"))),
@@ -912,6 +914,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             return self._send_json(tool_setup.save(self._read_json_body()))
 
+        if route == '/api/files/plates/extract':
+            if self._module_blocked('file_library'):
+                return None
+            return self._send_json(project_plates.save(self._read_json_body()))
+
         if route == "/api/files/plate":
             if self._module_blocked("file_library"):
                 return None
@@ -1062,6 +1069,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                                                  body.get("process"), body.get("filaments")))
             if verb == "profiles/from-installed":
                 return self._send_json(slicer_bridge.add_installed_profile(body))
+            if verb.startswith('jobs/') and verb.endswith('/cancel'):
+                return self._send_json(slicer_bridge.cancel_job(verb.split('/')[1]))
             if verb.startswith("profiles/") and verb.endswith("/remove"):
                 return self._send_json(slicer_bridge.remove_profile(verb.split("/")[1]))
             if verb == "slice":
