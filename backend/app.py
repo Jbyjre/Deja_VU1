@@ -375,7 +375,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
-    "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"))),
+    "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
