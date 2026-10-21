@@ -491,8 +491,21 @@ still decides whether it starts. Slicing runs as a background job (one at
 a time) and publishes a `slicer` live event when it ends. For safety the
 program path set from the dashboard must be named like Orca (this
 dashboard has no login); `DEJAVU_SLICER_PATH` set by whoever starts the
-server overrides it. Tested against a stand-in program, never a real
-Orca install yet.
+server overrides it. Portable tests use a stand-in program. Real OrcaSlicer 2.4.2 on Linux now
+slices bracket, multi-object, four-tool image, swatch and heightmap projects.
+Physical U1 printing and Windows/macOS remain unverified.
+
+`backend/slicer_profiles.py` discovers installed U1 presets and resolves parent
+settings with cycle/size bounds. Native profiles retain printer/tool identity,
+validate nozzle/material compatibility and expose common print settings.
+`plate.js` keeps immutable sources and affine transforms; `plate-worker.js`
+checks contacts and surface rays away from the browser UI thread.
+`plate_project.py` streams source geometry, preserves 3MF parts and stores
+original inputs plus editable state in saved projects.
+`model_maker.py` creates four-tool image tiles, measured layer recipes and
+closed brightness-based heightmaps, using only standard-library Python.
+The G-code parser records requested speeds, feature labels and events, and
+accounts for retraction debt before counting newly consumed filament.
 
 ### Testing it all: farm sandbox
 `backend/sandbox.py` is a control panel on `mock_moonraker.py`'s demo
@@ -757,7 +770,7 @@ Everything that calls them already works.
 
 ## Testing
 
-659 tests, using Python's built-in `unittest`:
+732 tests, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -828,15 +841,19 @@ release limitations; no native installer or data migration is included.
 each selected real printer. It starts/renews `camera.start_monitor`, reads the
 stock JPEG endpoint, bounds response size and closes idle sessions. The gateway
 returns a labelled SVG for demo mode, and the normal no-data response without
-a connected printer or demo. Manual MJPEG and time-lapse remain separate global
-configuration and need per-printer integration before a full camera claim.
+a connected printer or demo. Time-lapse requests that printer’s camera in a
+bounded worker, rejects stale-session replies and records failures. The optional
+manual MJPEG relay remains a separate configured source. Physical cameras are unverified.
 
 `frontend/launchpad.js` provides setup, browser-only names, feature navigation
 and app update UI. The name never enters an API payload. `frontend/sw.js` caches
 only the offline explanation; API requests and app navigation stay network-only.
 A secure browser context is required for service-worker registration.
 
-The model viewer adds triangular OBJ geometry and fresh STL export after uniform
-scale/quarter-turn rotation. It recentres edited geometry on the U1 bed, but
-loses colour/tool metadata in STL. It does not assemble multiple editable models
-or detect overlap. See `slicing-and-models.md` for the actual workflow and limits.
+The native plate workspace keeps source meshes and separate transforms, supports
+multiple objects and arbitrary angles, and delegates bounded contact/measurement
+checks to a browser worker. 3MF save-as keeps source parts and original inputs;
+STL remains shape-only. Tool paint on generated projects survives a real-engine
+round trip. Generated layer contracts reject changes that would invalidate colour
+recipes. G-code layer records follow file order rather than assuming height only
+rises. See `slicing-and-models.md` for the workflow and remaining format limits.

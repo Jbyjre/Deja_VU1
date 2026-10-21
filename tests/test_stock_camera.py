@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import sys
+import tempfile
+import time
 import unittest
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'backend'))
@@ -39,3 +41,21 @@ class StockCamera(unittest.TestCase):
         stock_camera.snapshot(printer2)
         self.assertIsNot(stock_camera._sessions['camera-test'], stock_camera._sessions['camera-other'])
         self.assertTrue(other.camera_monitoring)
+
+    def test_time_lapse_uses_authenticated_selected_printer_camera(self):
+        import mock_moonraker as fleet
+        import timelapse
+        import storage
+        self.printer.start();self.addCleanup(self.printer.stop)
+        deadline=time.monotonic()+5
+        while not self.printer.is_connected() and time.monotonic()<deadline:time.sleep(.02)
+        self.assertTrue(self.printer.is_connected())
+        with tempfile.TemporaryDirectory() as folder,patch.object(timelapse,'_ROOT',folder),patch.dict(fleet._REAL,{'camera-test':self.printer}),patch('modules.is_enabled',return_value=True):
+            session=timelapse.begin('camera-test','fixture.gcode','printer camera')
+            try:
+                timelapse._capture_camera('camera-test',5,session)
+                meta=storage.load_json(timelapse._meta_path('camera-test',session),{})
+                self.assertEqual(meta['frames'],1);self.assertIsNone(meta['last_error'])
+                self.assertTrue(Path(timelapse._dir('camera-test',session),'00001.jpg').read_bytes().startswith(b'\xff\xd8'))
+                self.assertTrue(self.fake.camera_monitoring)
+            finally:timelapse._active.pop('camera-test',None)

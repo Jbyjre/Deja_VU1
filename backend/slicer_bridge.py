@@ -18,8 +18,7 @@ exactly the way a person would from a terminal:
         --outputdir <temp folder> model.stl
 
 How that command line works was read from OrcaSlicer's source
-(github.com/SoftFever/OrcaSlicer, tag v2.3.2 and main as of September
-2026), not assumed:
+(github.com/OrcaSlicer/OrcaSlicer, tag v2.4.2), not assumed:
   - options are defined in src/libslic3r/PrintConfig.cpp (CLIActionsConfigDef,
     CLIMiscConfigDef): --slice <plate, 0 = all>, --load-settings,
     --load-filaments (lists separated by ";"), --outputdir
@@ -27,7 +26,7 @@ How that command line works was read from OrcaSlicer's source
     on Linux only, <outputdir>/result.json with "return_code" and
     "error_string"; a bare STL is arranged on the plate by default
   - a preset file must say where it came from ("from": "system" or "User")
-    and, in v2.3.2, what it is ("type": machine / process / filament)
+    and what it is ("type": machine / process / filament)
   - error codes are listed in src/libslic3r/Utils.hpp (CLI_* defines)
 
 What's genuinely fragile, said plainly: this drives another program's
@@ -40,9 +39,9 @@ would know until a slice fails. So every run
   - reports failure in words, with the end of Orca's own output attached,
   - records the Orca version it ran with, so "it worked last month" can be
     traced to an update.
-It has not yet been run against a real Orca install in this project's own
-testing - the tests drive a stand-in program that behaves like the source
-says Orca does (see tests/test_slicer_bridge.py).
+OrcaSlicer 2.4.2 has produced a real U1 bracket slice through this bridge on
+Linux. The portable unit tests still use a stand-in executable; physical
+printing and other operating systems remain unverified.
 """
 
 import json
@@ -60,6 +59,10 @@ from datetime import datetime
 import file_library
 import gcode_tools
 import storage
+import slicer_profiles
+import tool_setup
+import mock_moonraker
+import model_maker
 
 _DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "slicer.json")
@@ -300,6 +303,25 @@ def remove_profile(profile_id):
     return public_settings()
 
 
+def installed_catalog():
+    path, _ = slicer_path()
+    return slicer_profiles.catalog(path)
+
+
+def add_installed_profile(body):
+    path, _ = slicer_path()
+    prepared = slicer_profiles.prepare(path, body, tool_setup.get()['heads'])
+    entry = add_profile(body.get('name'), prepared['machine'], prepared['process'], prepared['filaments'])
+    s = get_settings()
+    saved = next(p for p in s['profiles'] if p['id'] == entry['id'])
+    saved.update({k: prepared[k] for k in ('options','tool_setup','layer_plan','source','warnings')})
+    saved['printer_id'] = mock_moonraker.selected_printer_id()
+    saved['preset_selection'] = {k: body.get(k) for k in ('machine','process','filaments')}
+    s['default_profile']=saved['id']
+    _save(s)
+    return public_settings()
+
+
 # ---------------------------------------------------------------------------
 # Running the program
 # ---------------------------------------------------------------------------
@@ -367,7 +389,8 @@ def check():
     else:
         started = time.monotonic()
         try:
-            code, out, err = _run([path, "--help"], CHECK_TIMEOUT)
+            with tempfile.TemporaryDirectory(prefix='dejavu-engine-check-') as work:
+                code, out, err = _run([path, "--help"], CHECK_TIMEOUT, cwd=work)
         except ValueError as exc:
             code, out, err = "failed", b"", str(exc).encode()
         text = _tail(out) or _tail(err)
@@ -455,10 +478,17 @@ def slice_model(name, profile_id=None, on_step=None):
     if problem:
         raise ValueError(problem)
     profile = _profile(profile_id, s)
+    if profile.get('tool_setup'):
+        if profile.get('printer_id') != mock_moonraker.selected_printer_id():
+            raise ValueError("This profile belongs to another printer. Choose or make a profile for this printer")
+        if profile['tool_setup'] != tool_setup.get()['heads']:
+            raise ValueError("Tool preparation changed after this profile was made. Save a new profile with the current tools")
     step("Checking the preset files")
     for f, t in [(profile["machine"], "machine"), (profile["process"], "process")] + \
             [(f, "filament") for f in profile["filaments"]]:
         read_preset(f, t)           # they may have moved or changed since the profile was saved
+    with open(profile['process'],encoding='utf-8') as fh:
+        model_maker.check_slice_contract(data,json.load(fh))
 
     work = tempfile.mkdtemp(prefix="dejavu-slice-")
     try:
@@ -504,7 +534,7 @@ def slice_model(name, profile_id=None, on_step=None):
             if not gcode.strip():
                 raise SliceFailed(f"Orca wrote {plate_file}, but it's empty", report)
             analysis = gcode_tools.analyze(gcode.decode("utf-8", errors="replace"), want_toolpath=False)
-            if not analysis["layers"] or not analysis["filament_grams"]:
+            if not analysis["layers"] or not analysis["filament_mm"]:
                 raise SliceFailed(f"Orca wrote {plate_file}, but it has no printable layers in it - "
                                   "refusing to add a file that would print nothing", report)
             plate_no = int(re.findall(r"\d+", plate_file)[0])
@@ -513,8 +543,8 @@ def slice_model(name, profile_id=None, on_step=None):
                                       note=f"Sliced from {name} with \"{profile['name']}\""
                                            + (f" by OrcaSlicer {report['orca_version']}" if report["orca_version"] else ""))
             saved.append({"name": entry["name"], "layers": analysis["layers"],
-                          "estimated_hours": analysis["estimated_hours"],
-                          "filament_grams": analysis["filament_grams"],
+                          "estimated_hours": analysis["meta"].get("estimated_hours"),
+                          "filament_grams": analysis["meta"].get("filament_grams"),
                           "preflight": analysis["preflight"]["verdict"]})
         report["files"] = saved
         report["profile"] = {"id": profile["id"], "name": profile["name"]}
@@ -560,9 +590,14 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
         _order.append(job["id"])
         while len(_order) > MAX_JOBS_KEPT:
             _jobs.pop(_order.pop(0), None)
-    threading.Thread(target=_work, args=(job["id"], name, profile["id"], queue_to, on_done),
+    threading.Thread(target=_work_selected, args=(mock_moonraker.selected_printer_id(), job["id"], name, profile["id"], queue_to, on_done),
                      name="slicer", daemon=True).start()
     return dict(job)
+
+
+def _work_selected(printer_id, *args):
+    with mock_moonraker.selection_only(printer_id):
+        _work(*args)
 
 
 def _previous_output(model, profile_id):
@@ -582,6 +617,8 @@ def _work(job_id, name, profile_id, queue_to, on_done):
         _job_update(job_id, status="running", started_at=datetime.now().isoformat(timespec="seconds"))
         try:
             report = slice_model(name, profile_id, on_step=lambda text: _job_update(job_id, step=text))
+            if any(f.get('preflight')=='blocked' for f in report.get('files',[])):
+                raise SliceFailed('Pre-flight blocked the sliced output. It is saved for inspection and was not queued. Open its file report and correct the printer preset before slicing again',report)
             if not queue_to:
                 _job_update(job_id, status="done", step="Sliced", report=report)
             else:

@@ -69,7 +69,7 @@ Each was checked against the code on 19 October 2026.
 
 | Claim | Where it comes from |
 |---|---|
-| 659 automated tests, on Python 3.8, 3.10, 3.12 and 3.13 | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
+| 732 automated tests on Python 3.12 Linux; CI is configured for additional Python versions | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
 | Four updates a second (every 250 ms) | `backend/live_feed.py`, `TICK_SECONDS = 0.25` |
 | Up to 12 printers | `backend/fleet.py`, "At most 12 printers" |
 | 29 modules you can switch on and off | `backend/modules.py`, `REGISTRY` |

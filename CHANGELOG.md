@@ -5,7 +5,77 @@ and what is and isn't verified.
 
 ## Unreleased — launch readiness
 
-Validation: all 659 Python tests pass on Linux; Chromium desktop/phone checks
+- Blocked engine output is kept for inspection and never automatically queued.
+  Slice reports show unknown when the engine supplies no time or weight. The
+  file inspector labels its older length/density assumptions explicitly.
+- Tool forms reject a changed printer immediately, including late load replies;
+  a browser check confirms no filament command is sent from a stale form.
+
+- Generated four-tool colour paint survives a plate save-as and real-engine
+  round trip. Layer settings remain attached; transforms that would invalidate
+  the layer recipe are refused.
+- Colour recipes now export as a single multipart object, keeping raised colour
+  layers together. The bridge checks printer/tool identity and both first and
+  later layer heights. Measured recipes are printer-specific. Selected-settings
+  export now includes tool assignments and measured recipes; full restore remains absent.
+- Mixed-nozzle presets limit bridge width to the smallest nozzle and require
+  explicit review before using materials listed for another U1 nozzle variant.
+  A real mixed-nozzle slice was blocked by startup extrusion outside 270 mm.
+  A converted three-plate fixture crashed Orca; single-plate conversions passed.
+- G-code layers follow file order, including sequential objects; startup purge
+  can be excluded when framing a layer. Added selected-object outlines, broadest
+  surface lay-flat, cached transforms, bounded ZIP streaming and 3MF unit handling.
+
+
+- Connected explicit spool assignments to Confirm Print’s weight check. New
+  inventories start empty; existing records are preserved. Duplicate physical
+  spool assignments are refused. Without measured per-tool usage, a multi-tool
+  print no longer consumes the whole weight from one guessed spool.
+- Converter now refuses unknown materials, unsupported nozzles, malformed
+  settings objects and nonfinite layer heights. Mixed-nozzle arrays stay intact
+  with explicit limitations. Simulated cancel records partial history, docks
+  the active head and turns off all heater targets. Offline local settings and
+  slice workers retain the selected printer without opening a connection.
+
+- Added original four-tool image-to-3MF generation with optional serpentine
+  error diffusion, physically measurable sixteen-swatch recipes and calibrated
+  layer stacks. Measurements are tied to spool identity, colour, nozzle and
+  layer thickness. Layered mode refuses uncalibrated settings.
+- Added closed heightmap relief geometry. Real Orca 2.4.2 sliced tile, swatch
+  and relief projects; all passed pre-flight. Physical colour and printer tests
+  remain outstanding. Image brightness is not geographic elevation.
+
+- Replaced the single-model transform controls with an undoable multi-model
+  plate workspace, arbitrary rotation, mirroring, scaling, arrange, drop/lay-flat,
+  object settings and exact surface-point measurements. Geometry checks run in
+  a bounded browser worker and distinguish box overlap from mesh contact.
+- 3MF save-as retains original model/property/texture parts and source recovery
+  copies. Added required model relationships after a real-engine test exposed
+  empty imported geometry. A two-object T0/T1 slice now passes pre-flight.
+- Added G-code speed/feature information, layer heights, event markers and
+  nominal movement time with its limits. Retraction recovery no longer counts
+  as newly consumed filament. Travel filtering now uses one GPU draw call.
+
+- Added installed-preset discovery, bounded inheritance resolution, matching
+  machine/material checks and a native print-settings form. Generated working
+  presets leave the installation intact. Saved tools feed nozzle arrays and
+  colours; a shared layer height passes through the nozzle planner. Separate
+  preferred heights are explicitly unsupported by this stock-engine path.
+- Verified a real OrcaSlicer 2.4.2 Linux slice through the bridge: 125 layers,
+  6.62 g, 0.231 h from the engine, clear pre-flight. Fixed lost system identity
+  during preset resolution and selected-printer scope on slicing workers.
+
+- Time-lapse now captures each real printer’s own stock camera, independently of
+  open browser tabs. Duplicate pictures are skipped, failures are visible and
+  retried, and late replies cannot enter a different print’s session. Real
+  cameras remain unverified. Real status notifications now wake the live feed.
+
+- Added per-printer four-tool preparation records and a native editor in
+  Auto-print. Idle-only colour/material changes use physical head numbers and
+  read-back verification; firmware refusals remain errors. Confirm Print also
+  checks known material mismatches. Physical U1 verification remains outstanding.
+
+Validation: all 732 Python tests pass on Python 3.12 Linux (133.8 s); Chromium desktop/phone checks
 cover setup, privacy, search, viewer transforms and offline handling. A browser
 connection test rejects a wrong API key, accepts the authenticated stand-in
 and keeps the selected printer after reload. Real devices remain untested.

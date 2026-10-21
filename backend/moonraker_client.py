@@ -1617,6 +1617,27 @@ class MoonrakerPrinter:
             raise ValueError(f"{self.name} has no {toolhead}" + (f" (it has {', '.join(known)})" if known else ""))
         return name
 
+    def set_filament(self, toolhead, colour, material):
+        import tool_setup
+        toolhead, colour, material = tool_setup.filament_fields(
+            {"toolhead": toolhead, "color_hex": colour, "material": material})
+        state = self._fresh_state()
+        if state["state"] not in ("ready", "complete"):
+            raise ValueError("Filament settings can only change while the printer is idle")
+        if state["toolheads"].get(toolhead, {}).get("filament_loaded") is not True:
+            raise ValueError(f"Load filament into {toolhead} before changing its identity")
+        # Physical CONFIG_EXTRUDER bypasses a job's logical tool mapping.
+        # No FORCE: firmware protects tagged spools from manual replacement.
+        self._gcode(f"SET_PRINT_FILAMENT_CONFIG CONFIG_EXTRUDER={toolhead[1]} "
+                    f"FILAMENT_COLOR_RGBA={colour[1:].upper()}FF "
+                    f"VENDOR=Snapmaker FILAMENT_TYPE={material} FILAMENT_SUBTYPE=Basic")
+        updated = self._await(lambda s: s["toolheads"].get(toolhead, {}).get("filament_color_hex") == colour
+                              and s["toolheads"].get(toolhead, {}).get("filament_material") == material, 3)
+        dock = updated["toolheads"].get(toolhead, {})
+        if dock.get("filament_color_hex") != colour or dock.get("filament_material") != material:
+            raise ValueError("The printer did not confirm the requested colour and material. Check its screen; some firmware or tagged spools refuse changes")
+        return {"toolhead": toolhead, "color_hex": colour, "material": material, "verified": True}
+
     def set_target_temperature(self, toolhead, target):
         heater = self._toolhead_name(toolhead)
         # SET_HEATER_TEMPERATURE names the physical heater; on a U1, "M104 T1"

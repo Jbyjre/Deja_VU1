@@ -1438,6 +1438,7 @@ const Workshop = (() => {
   }
 
   function closeFile() {
+    if(window.DVPlate?.active){window.DVPlate.active.dispose();window.DVPlate.active=null;}
     if (ar.handle) ar.handle.end();
     $('file-detail').hidden = true;
     files.open = null;
@@ -1446,6 +1447,7 @@ const Workshop = (() => {
   }
 
   async function openFile(name, fromEl) {
+    if(window.DVPlate?.active){window.DVPlate.active.dispose();window.DVPlate.active=null;}
     let entry = files.list.find(f => f.name === name);
     if (!entry) { await loadFiles(); entry = files.list.find(f => f.name === name); }      // made elsewhere (studio, slicer)
     if (!entry) return;
@@ -1516,6 +1518,7 @@ const Workshop = (() => {
         edits and printing need the Deja Vu1 server.</p>
       <div class="fd-actions"><button class="btn" id="fd-forget" type="button">Close and forget</button></div>`;
     $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
+    window.DVGcode?.mount(entry,a,viewer);
     loadLines();
   }
 
@@ -1543,6 +1546,7 @@ const Workshop = (() => {
       $('vt-travel').addEventListener('change', (e) => { viewer.showTravel = e.target.checked; viewer.draw(); });
     }
     renderGcodeSide(entry, a);
+    window.DVGcode?.mount(entry,a,viewer);
     loadLines();
   }
 
@@ -1699,7 +1703,7 @@ const Workshop = (() => {
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
         <div id="fd-compare-host"></div>
         <div id="fd-convert-report"></div>`}`;
-      modelTools(entry, mesh, viewer, side);
+      await modelTools(entry, mesh, viewer, side);
       if (entry.local) {
         $('fd-forget').addEventListener('click', () => forgetLocal(entry.name));
         setupAR(entry, mesh);
@@ -1716,27 +1720,7 @@ const Workshop = (() => {
   }
 
   function modelTools(entry, original, viewer, side) {
-    let current = original;
-    const controls=document.createElement('section');controls.className='model-tools';
-    controls.innerHTML=`<h3>Prepare this model</h3><p class="field-hint">Drag to orbit; pinch or scroll to zoom. Hold Shift to pan, or choose Pan below. Dimensions are measured from the geometry.</p>
-      <div class="fd-actions"><button class="btn" data-axis="x">Rotate X 90°</button><button class="btn" data-axis="y">Rotate Y 90°</button><button class="btn" data-axis="z">Rotate Z 90°</button><button class="btn" id="model-pan" aria-pressed="false">Pan</button></div>
-      <div class="inline-form"><label for="model-scale">Scale %</label><input id="model-scale" type="number" min="0.01" max="10000" step="any" value="100"><button class="btn" id="model-apply">Apply scale</button><button class="btn" id="model-reset">Reset</button></div>
-      <p id="model-measure" role="status"></p><p class="field-hint">Fit checks cover the model’s bounding box only. They do not check collisions, toolhead clearance or supports. Export makes a geometry-only STL; colours and tool assignments must be set again in the slicer.</p>
-      <div class="fd-actions"><button class="btn" id="model-export">Download prepared STL</button>${!entry.local&&!tourOn()?'<button class="btn primary" id="model-save">Save prepared copy to Files</button>':''}</div>`;
-    side.append(controls);
-    function update(){
-      const fits=current.size.every(x=>x<=270.0001);
-      $('model-measure').textContent=`${current.size.map(x=>x.toFixed(2)).join(' × ')} mm · ${fits?'Fits inside the 270 mm build volume':'Too large for the 270 mm build volume'}`;
-      if(viewer)viewer.setMesh(current,getComputedStyle(document.documentElement).getPropertyValue('--accent').trim());
-    }
-    controls.querySelectorAll('[data-axis]').forEach(b=>b.onclick=()=>{current=DV3D.transformMesh(current,1,b.dataset.axis);update();});
-    $('model-pan').onclick=e=>{if(viewer){viewer.panMode=!viewer.panMode;e.currentTarget.setAttribute('aria-pressed',String(viewer.panMode));}};
-    $('model-apply').onclick=()=>{try{current=DV3D.transformMesh(current,Number($('model-scale').value)/100);$('model-scale').value='100';update();}catch(e){toast(e.message,'bad');}};
-    $('model-reset').onclick=()=>{current=original;update();};
-    const name=()=>entry.name.replace(/\.[^.]+$/,'').slice(0,70)+'_prepared_'+Date.now()+'.stl';
-    $('model-export').onclick=()=>{const url=URL.createObjectURL(new Blob([DV3D.exportSTL(current)],{type:'application/octet-stream'}));const a=document.createElement('a');a.href=url;a.download=name();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-    if($('model-save'))$('model-save').onclick=async()=>{const file=new File([DV3D.exportSTL(current)],name());await uploadFiles([file]);await loadFiles();openFile(file.name);};
-    update();
+    if (window.DVPlate) return DVPlate.mount(entry, original, viewer, side);
   }
 
   /* A plain-text report of one conversion, to paste into a bug report. */
@@ -2438,7 +2422,7 @@ const Workshop = (() => {
     host.innerHTML = data.sessions.length ? data.sessions.map(s => `
       <div class="reg-row">
         <span class="reg-name">${esc(s.filename || 'print')}</span>
-        <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'}${s.source === 'simulated' ? ' · simulated' : ''}</span>
+        <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'} · ${esc(s.source)}${s.last_error ? ' · '+esc(s.last_error) : ''}</span>
         <button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
       </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>';
     qsa('[data-flip]', host).forEach(b => b.addEventListener('click', () => playFlipbook(b.dataset.flip)));

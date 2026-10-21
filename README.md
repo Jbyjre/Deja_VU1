@@ -68,6 +68,7 @@ simulated farm of three U1s that heat, print and finish.
 
 **Quick links:** [getting started](docs/getting-started.md) · [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
 [how it connects](#why-one-dashboard-not-several-tools) · [current status](#current-status) ·
+[native studio evidence and pictures](docs/native-studio-validation.md) ·
 [security](#security-and-your-network) · [first connection](docs/first-connection.md) ·
 [for developers](#for-developers-and-ai-coding-sessions)
 
@@ -98,15 +99,44 @@ and every change is in the public history.
 
 ## What's new
 
+- **Honest spool checks:** a new inventory starts empty, and an explicitly
+  assigned spool is the one checked before a print. Unknown multi-tool usage is
+  no longer deducted entirely from one spool. Existing inventories stay intact.
+- Conversion refuses unsupported materials/nozzles instead of substituting PLA
+  or a 0.4 mm nozzle. Simulated cancel now records history and clears the head.
+
+- **Four-tool image projects:** colour tiles with dithering, measured-swatch
+  layered images and a sixteen-tile calibration sheet. Also make a closed
+  heightmap relief from an image. Generated 3MF files enter the normal library,
+  plate editor, slicing and Confirm Print workflow.
+
+- **A multi-model plate workspace:** add models, undo/redo, arrange, move,
+  rotate by any angle, mirror, scale, lay a face flat and measure surfaces.
+  Save a new 3MF with source parts and recovery copies, then slice it.
+- **Deeper G-code inspection:** actual layer steps, one-layer view, tool
+  filtering, requested-speed/feature colours and retraction/tool-change markers.
+
+- **Installed U1 profiles by name:** resolve Orca's inherited settings, choose
+  four materials and edit layer height, walls, infill, supports and speeds.
+  A real OrcaSlicer 2.4.2 Linux slice produced 125 layers and passed pre-flight.
+
+- **Time-lapse follows the selected printer’s built-in camera**, with separate
+  capture state for every printer and visible capture errors. It no longer reads
+  the shared manual camera feed. Slow snapshots do not pause live printer updates.
+
+- **Four-head preparation:** save colour, material, nozzle and layer choices per
+  printer in Auto-print. Apply colour/material while idle with printer read-back;
+  Confirm Print compares actual material as well as colour and nozzle.
+
 - **First-run help**, a private optional browser name and feature search (Ctrl/Cmd+K).
 - **App updates** with opt-in checks, verified release packages, launcher restart
   and rollback. The development version still needs a published release package;
   Windows/macOS update tests remain. [Details](docs/releasing.md).
 - **Stock camera snapshots** for the selected printer, tested against a stand-in;
   real camera hardware remains unverified. Manual MJPEG and time-lapse are separate.
-- **OBJ geometry preview**, pan, scale, quarter-turn rotation and a prepared STL
-  copy that can go back into Files. Colour/texture assignments are not preserved
-  in STL. No multi-model plate editor or overlap detection yet.
+- **OBJ vertex-colour import** and editable 3MF plates. STL exports remain
+  shape-only; texture images and complex face paint are retained in source parts
+  but not fully displayed.
 - **Module switches stop background actions** and a refused real print start
   keeps the existing job summary.
 
@@ -247,7 +277,7 @@ Snapmaker Orca itself).
 | **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
 | **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram, plain webhooks, no SDK, no account. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
 | **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
-| **Config backup** | One-click zip of the module switches, the filament list, notification settings (secrets blanked) and the default simulated printer's maintenance log. Not yet included: real printers' maintenance logs, the printer list, automations, the queue and the other settings; there is no restore yet. |
+| **Config backup** | One-click zip of the module switches, the filament list, four-tool assignments, measured colour recipes, notification settings (secrets blanked) and the default simulated printer's maintenance log. Not yet included: real printers' maintenance logs, the printer list, automations, the queue and the other settings; there is no restore yet. |
 | **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
 | **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list, no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
 | **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history. $/kg per material, $/kWh and printer wattage are editable. |
@@ -372,15 +402,49 @@ printer figures, so they work the same with or without a printer connected.
 
 ## Current status
 
-The launch-readiness pass passes **659 automated tests** on Linux (139 seconds
-in the final run), plus Chromium checks at 1366 px and 390 px. Tests include a
+Generated colour tiles, calibration sheets and heightmap reliefs have been sliced
+with real OrcaSlicer 2.4.2 on Linux and passed pre-flight. The colour tile and
+calibration outputs use T0–T3. Layered colour requires user-measured swatches;
+no physical colour accuracy, calibration measurement or printer output is
+verified here. Heightmaps use image brightness, not geographic elevation data.
+
+Multi-object 3MF export has been sliced with real OrcaSlicer 2.4.2 using T0 and
+T1, with clear pre-flight. Source 3MF parts and original files are retained;
+texture rendering and subdivided face-paint previews remain approximate or
+unsupported. Imported advanced per-part settings still need inspection in
+Orca. Contact and point-measurement workers are bounded at 250,000 triangles
+per object; the viewer accepts up to two million triangles per plate. Contact
+checks do not model toolhead clearance, supports or whether a mesh is watertight.
+
+The local bridge has now run OrcaSlicer 2.4.2 on Linux using installed U1
+presets: a 20-triangle bracket produced 125 layers, 6.62 g and 0.231 hours
+(engine-reported estimates), with a clear pre-flight report. This is one sample,
+not physical-printer validation. Windows/macOS, complex painted models and
+different per-head layer heights remain unverified. No engine is bundled. A closed
+200,000-triangle sphere also sliced successfully: 200 layers, 11.66 g and
+0.336 h predicted printing time; actual engine processing took 5.7 seconds.
+
+The mixed 0.4/0.6 mm nozzle fixture produced eight layers in the real engine,
+but the installed preset emitted startup extrusion at X290. Pre-flight correctly
+blocked it. A converted three-plate fixture crashed Orca 2.4.2; single-plate
+Bambu-style and Elegoo-style conversions sliced successfully. Do not bypass
+these checks. Export separate plates in Orca when needed.
+
+Four-head preparation is tested against the simulator and a stand-in Moonraker.
+Physical U1 filament writes, tagged-spool refusal and persistence through a
+printer restart still require a real-printer check. Saved nozzle choices never
+replace hardware readings.
+
+The native-studio pass passes **732 automated tests** on Python 3.12 Linux
+(133.8 seconds in the final run),
+plus Chromium checks at 1366 px and 390 px. Tests include a
 newer update package, checksum/path rejection, real child-process startup and
 rollback, authenticated fake-printer setup, and browser-name privacy. None of
 those substitutes for a physical U1, Windows/macOS or real phone test.
 
-New stock camera support remains hardware-unverified. The slicer bridge still
-needs a real engine test and beginner preset setup; multi-model plates and
-full backup/restore are not complete. A stable update package has not been
+New stock camera support remains hardware-unverified. Native profile setup and
+multi-model plates have passed browser and real Linux engine checks. Different
+per-head layer heights, full vendor extensions and full backup/restore remain incomplete. A stable update package has not been
 published. See [model/slicer limits](docs/slicing-and-models.md) and
 [release requirements](docs/releasing.md).
 
@@ -451,27 +515,17 @@ The same pass hardened the rest for real conditions:
   target, prints progress and finish, the toolhead travels. Demo controls
   can fast-forward it, restart it, or make the next command fail on purpose
   to show how a failure is reported.
-- Not verified yet, and said so: the converter's output hasn't been opened
-  in Snapmaker Orca itself. Getting Orca running here was tried and blocked
-  (see [docs/architecture.md](docs/architecture.md#conversion)). Instead,
-  every converted project is checked by a test against the rules in
-  Snapmaker Orca's loader source and a snapshot of Snapmaker's real U1
-  profiles. That check caught and fixed one real bug. Nothing has touched a
-  real Moonraker (only a stand-in built from its source), a real camera,
-  a real go2rtc (its API was checked against go2rtc's source; a password-
-  protected one now works), or a real Cloudflare Tunnel. The AR preview has
-  only run against a stand-in for a phone's WebXR, never on a real device.
-
-- The fleet command center, Photo-to-Print Studio, auto-print pipeline and
-  farm sandbox are complete and covered by tests, and were clicked through
-  in a real (headless) browser at desktop and phone sizes. What isn't
-  verified yet, and said so: the auto-print pipeline has only run against a
-  stand-in program that behaves the way OrcaSlicer's source code says Orca
-  does (the command line was read from Orca's source, v2.3.2 and main),
-  never against a real Orca install. A studio 3MF's tool changes use the
-  layout Orca's own 3MF reader expects, but one hasn't been opened in Orca
-  yet. The studio's colour preview is a light-absorption model with
-  estimated filament transmission values, not a photo of a print.
+- Real OrcaSlicer 2.4.2 now runs through the local bridge on Linux. Tested
+  outputs include a bracket, a two-object T0/T1 plate, four-tool image tiles,
+  calibration swatches and a heightmap relief; all passed pre-flight. This does
+  not prove physical printer behavior, every imported vendor extension or other
+  operating systems. The older Photo Studio's absorption preview still uses
+  estimated transmission values; the new layered-colour route requires measured
+  swatches. No physical colour calibration has been verified here.
+- Real Moonraker, cameras, go2rtc, WLED, Home Assistant and remote-access
+  hardware remain unverified. Their stand-ins and protocol checks are useful
+  evidence, but do not replace an owner test. AR still uses original source
+  geometry and has only run against a WebXR stand-in.
 
 - Maintenance, printer control, notifications, firmware-update requests, camera
   watchdog, pairing, and the print cost calculator have automated tests,
@@ -497,8 +551,8 @@ I do not own a Snapmaker U1. The project hasn't been entered in the Snapmaker
 Innovation Fund yet; the plan is to enter Phase 2, partly to request a unit.
 Until then, [first connections](docs/first-connection.md) on owners' printers
 are how it gets tested on real hardware. Several software improvements also remain, including full backup/restore,
-multiple editable models on one plate and richer slicing controls. See
-[the staged build brief](build-prompts/05-launch-follow-through.md).
+different per-head slicing heights, complex vendor extensions and hardware
+verification. See [remaining launch work](build-prompts/06-native-studio-hardware-and-compatibility.md).
 
 Both hardware modules are deliberately non-invasive, external add-ons that
 mount to the frame and read printer state over the network. Nothing is
@@ -520,10 +574,10 @@ only sensible approach. Details in
 | Online demo (Cloudflare link) | Recorded from it | Checked in Chromium on a plain static server, like Cloudflare's | The published link itself not opened from here (the build sandbox can't reach it) |
 | Filament colours after a touchscreen change | - | Yes - asked for every 30 s as well as pushed | Not yet |
 | MakerWorld / NexPrint / OrcaSlicer converter | Yes | Checked against Snapmaker Orca's loader and plate-grid source | Output not yet opened in Snapmaker Orca |
-| Photo-to-Print Studio | Yes | Runs in the browser; STL checked watertight | 3MF not yet opened in Orca, no print yet |
+| Photo-to-Print Studio | Yes | Legacy relief geometry tests; new tile/swatch/heightmap 3MFs sliced by real Orca 2.4.2 | Physical colour and printing unverified |
 | Spoolman import | Yes | Yes - Spoolman's API source | Not against a running Spoolman |
 | WLED, Home Assistant, ntfy, Discord, Telegram | Yes | Yes - each one's own source or docs | Not yet |
-| Auto-print slicing (optional) | Yes | A stand-in that behaves like OrcaSlicer's command line | Not against a real Orca install |
+| Auto-print slicing (optional) | Setup/error flow | Unit stand-in plus real OrcaSlicer 2.4.2 Linux slices | Engine verified; no physical U1 print |
 | Low-latency camera (optional) | - | go2rtc's source | Not yet |
 | LED dock rings, colour sensor | Simulated | Decision logic tested | Hardware pending |
 
@@ -532,7 +586,7 @@ If you have a U1 and want to help close the last column, see
 
 ## Tech stack
 
-![By the numbers: 659 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 732 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -542,7 +596,7 @@ If you have a U1 and want to help close the last column, see
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 659 cases
+- **Tests:** `unittest` from the standard library, 732 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -764,7 +818,7 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 659
+python3 -m unittest discover tests          # all 732
 python3 -m unittest tests.test_api          # one file
 ```
 

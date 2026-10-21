@@ -294,6 +294,12 @@ def analyze(text, want_toolpath=True):
     time_s = 0.0
     feed = 3000.0
     segments = []
+    markers = []
+    feature_names = ["Unspecified"]
+    feature = 0
+    extrusion_balance, extrusion_peak = {}, {}
+    layer_table=[]
+    layer_index=-1
     line_count = 0
 
     # Lines are split where Klipper splits them - at "\n" only
@@ -301,6 +307,18 @@ def analyze(text, want_toolpath=True):
     # own tokeniser, so what is checked here is what the printer would run.
     for line_no, raw in enumerate(text.split("\n"), start=1):
         line_count = line_no
+        if re.match(r'\s*;\s*(?:LAYER_CHANGE\b|LAYER\s*:\s*\d+|layer num/total_layer_count\s*:)',raw,re.I):
+            layer_index+=1;layer_table.append({'index':layer_index,'z':None,'line':line_no})
+        height_comment=re.match(r'\s*;\s*(?:Z|Z_HEIGHT)\s*:\s*([-+0-9.eE]+)',raw,re.I)
+        if height_comment and layer_table:
+            try:comment_z=float(height_comment.group(1))
+            except ValueError:comment_z=None
+            if comment_z is not None and math.isfinite(comment_z):layer_table[-1]['z']=comment_z
+        feature_match = re.match(r"\s*;\s*(?:TYPE|FEATURE)\s*:\s*(.{1,80})", raw, re.I)
+        if feature_match:
+            name=feature_match.group(1).strip()
+            if name not in feature_names and len(feature_names)<80:feature_names.append(name)
+            feature=feature_names.index(name) if name in feature_names else 0
         head, params, code = klipper_command(raw)
         if not head:
             continue
@@ -314,6 +332,7 @@ def analyze(text, want_toolpath=True):
             continue
         if head.startswith("T") and head[1:].isdigit():
             tool = int(head[1:])
+            if want_toolpath and len(markers)<10000:markers.append({"kind":"toolchange","line":line_no,"tool":tool,"layer":layer_index,"position":[pos['X'],pos['Y'],pos['Z']]})
             if tool not in VALID_TOOLS:
                 # T4 and up are how a slicer numbers the extra slots of a
                 # filament add-on (multiACE: T = unit * 4 + slot, T4-T15).
@@ -411,9 +430,15 @@ def analyze(text, want_toolpath=True):
             relative_e = (not abs_e) or (not absolute)
             e_delta = words["E"] if relative_e else words["E"] - start["E"]
             pos["E"] = pos["E"] + words["E"] if relative_e else words["E"]
+            balance=extrusion_balance.get(tool,0)+e_delta
+            old_peak=extrusion_peak.get(tool,0)
+            extrusion_balance[tool]=balance
+            extrusion_peak[tool]=max(old_peak,balance)
+            if want_toolpath and e_delta<0 and len(markers)<10000:
+                markers.append({"kind":"retraction","line":line_no,"tool":tool,"layer":layer_index,"position":[start['X'],start['Y'],start['Z']]})
             if e_delta > 0:
                 extruding = True
-                filament_mm[tool] = filament_mm.get(tool, 0.0) + e_delta
+                filament_mm[tool] = filament_mm.get(tool, 0.0) + max(0,balance-old_peak)
 
         # Every point the nozzle passes: for an arc, points along the curve
         # (it can bulge past its end points), otherwise just the end.
@@ -433,6 +458,7 @@ def analyze(text, want_toolpath=True):
 
         x, y, z = pos["X"], pos["Y"], pos["Z"]
         if extruding:
+            if layer_table and layer_table[-1]['z'] is None:layer_table[-1]['z']=z
             if not heated:
                 flag("warning", "cold_extrusion", line_no,
                      "Extrudes before any nozzle heating command")
@@ -473,7 +499,8 @@ def analyze(text, want_toolpath=True):
             prev = (start["X"], start["Y"], start["Z"])
             for p in points:
                 segments.append((round(prev[0], 2), round(prev[1], 2), round(prev[2], 2),
-                                 round(p[0], 2), round(p[1], 2), round(p[2], 2), tool, 1 if extruding else 0))
+                                 round(p[0], 2), round(p[1], 2), round(p[2], 2), tool, 1 if extruding else 0,
+                                 round(feed/60,2),feature,line_no,layer_index))
                 prev = p
 
     has_extrusion = ext_min[0] != math.inf
@@ -503,6 +530,10 @@ def analyze(text, want_toolpath=True):
         "meta": meta,
         "lines": line_count,
         "layers": meta.get("layers") or len(layer_zs),
+        "layer_heights": sorted(layer_zs),
+        "layer_table": layer_table,
+        "nominal_motion_seconds": round(time_s,3),
+        "nominal_motion_note": "Move lengths divided by requested speeds; excludes acceleration, heating, macros and pauses",
         "bounds": ({"min": [round(v, 2) for v in ext_min], "max": [round(v, 2) for v in ext_max]}
                    if has_extrusion else None),
         "footprint_mm": ([round(ext_max[0] - ext_min[0], 1), round(ext_max[1] - ext_min[1], 1)]
@@ -512,10 +543,10 @@ def analyze(text, want_toolpath=True):
         "filament_mm": {f"T{t}": round(v, 1) for t, v in filament_mm.items()},
         "filament_grams_by_tool": grams_by_tool,
         "filament_grams": meta.get("filament_grams") or round(sum(grams_by_tool.values()), 2),
-        "filament_grams_source": "slicer" if meta.get("filament_grams") else "estimated from extrusion length",
+        "filament_grams_source": "slicer" if meta.get("filament_grams") else "calculated from extrusion; assumes 1.75 mm filament and reference densities (PLA if material is unknown)",
         "estimated_hours": meta.get("estimated_hours") or round(time_s / 3600.0, 3),
         "estimated_hours_source": ("slicer" if meta.get("estimated_hours")
-                                   else "estimated from move lengths and feed rates"),
+                                   else "nominal movement time; excludes acceleration, heating, macros and pauses"),
         "travel_mm": round(travel_mm, 1),
         "preflight": {
             "verdict": "blocked" if errors else ("check" if warnings else "clear"),
@@ -525,6 +556,8 @@ def analyze(text, want_toolpath=True):
     }
     if want_toolpath:
         result["toolpath"] = _downsample(segments)
+        result["toolpath"].update(markers=markers,feature_names=feature_names,
+                                   markers_capped=len(markers)>=10000,layer_table=layer_table)
     return result
 
 

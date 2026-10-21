@@ -31,9 +31,8 @@ happens, and the repository is ready to post publicly.
   on those systems.
 - The README roadmap lists packaging as a Moonraker component that installs
   next to Fluidd or Mainsail and updates through Moonraker's update
-  manager. **U1 Extended Firmware by paxx12**, another Phase 1 winner, is
-  reported to add SSH, camera streaming and metrics: find its repository
-  and confirm what it really does.
+  manager. Verify any community firmware’s camera, access and metrics
+  capabilities from its actual source before relying on it.
 - The public Cloudflare link (`wrangler.jsonc`) serves the product page
   and, at `/?demo`, the online demo (a recording of the simulated farm;
   `tools/online-demo/record.py`). It hadn't been opened on the published

@@ -699,7 +699,7 @@ const Farm = (() => {
 
   async function startSlice(queue, btn, model) {
     const body = { name: model || $('ap-model').value, profile: $('ap-profile').value || null, queue };
-    const r = await busy(btn, 'Starting…', () => postJSON(queue ? api('/api/slicer/slice') : '/api/slicer/slice', body));
+    const r = await busy(btn, 'Starting…', () => postJSON(api('/api/slicer/slice'), body));
     if (!r.ok) { toast(`Couldn't start slicing: ${r.body.error || r.status}`, 'bad', 8000); return; }
     toast(`Slicing ${r.body.model}…`, 'info');
     await loadJobs();
@@ -723,7 +723,7 @@ const Farm = (() => {
         <div class="ap-job-head"><b>${esc(j.model)}</b><span class="pill">${WORD[j.status]}</span></div>
         <p class="ap-job-step">${esc(j.error || j.step)}</p>
         ${files.map(f => `<p class="ap-job-file">→ <button class="chip-btn" type="button" data-open-file="${esc(f.name)}">${esc(f.name)}</button>
-          ${f.layers} layers · ${Workshop.fmtHours(f.estimated_hours)} · ${f.filament_grams.toFixed(1)} g · pre-flight ${esc(f.preflight)}</p>`).join('')}
+          ${f.layers} layers · ${f.estimated_hours==null?'time unknown':Workshop.fmtHours(f.estimated_hours)} · ${f.filament_grams==null?'filament unknown':f.filament_grams.toFixed(1)+' g'} · pre-flight ${esc(f.preflight)}</p>`).join('')}
         <div class="fd-actions">
           ${files.length && j.previous ? `<button class="btn small" type="button" data-diff="${esc(j.previous)}|${esc(files[0].name)}">What changed since ${esc(j.previous)}?</button>` : ''}
           ${rep.command ? `<details class="ap-details"><summary>What ran${rep.seconds != null ? ` (${rep.seconds} s)` : ''}</summary>

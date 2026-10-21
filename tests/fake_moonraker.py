@@ -237,6 +237,13 @@ class FakeMoonraker:
             if heater not in self.status or not (heater == "heater_bed" or heater.startswith("extruder")):
                 return 400, f"The value '{heater}' is not valid for HEATER"
             self.set(heater, target=float(args.get("TARGET", 0)))
+        elif word == "SET_PRINT_FILAMENT_CONFIG":
+            args = dict(p.split("=", 1) for p in script.split()[1:] if "=" in p)
+            n = int(args["CONFIG_EXTRUDER"])
+            ptc = copy.deepcopy(self.status["print_task_config"])
+            ptc["filament_color_rgba"][n] = args["FILAMENT_COLOR_RGBA"]
+            ptc["filament_type"][n] = args["FILAMENT_TYPE"]
+            self.set("print_task_config", **ptc)
         elif word == "EXCLUDE_OBJECT":
             # Klipper upper-cases the name and adds it whatever it is - it
             # never checks the object exists (extras/exclude_object.py).

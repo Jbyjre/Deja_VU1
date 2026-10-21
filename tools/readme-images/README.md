@@ -92,6 +92,15 @@ named in text.
 `docs/img/setup-phone.png`, `launch-overview.png` and `launch-phone.png` show the
 current setup/navigation. Browser checks in `tools/check-launch-ui.js` also
 capture before/after evidence into a caller-chosen folder; private reports belong
-outside this repository. The numbers board was rerendered for 659 tests.
+outside this repository. The numbers board was rerendered for 732 tests.
 Existing feature crops, social card, animated GIF and launch videos still need
 an editorial pass before claiming all media shows the latest interface.
+
+## Native studio captures
+
+`docs/img/native-*.png` holds inspected 1366 px and 390 px viewport captures,
+including before/after viewer, profile setup and image workspaces, four tools
+and the G-code layer inspector. See `docs/native-studio-validation.md` for their
+context and the real-engine limits. Rerender feature/number boards with the
+current test count. Older promotional crops/GIF/video timelines still require
+an editorial pass; the owner’s launch cuts remain 75 seconds.

@@ -26,8 +26,8 @@ class TestInventoryBasics(unittest.TestCase):
     def tearDown(self):
         filament_inventory.reset()
 
-    def test_default_inventory_is_not_empty(self):
-        self.assertGreater(len(filament_inventory.get_inventory()), 0)
+    def test_default_inventory_does_not_invent_owned_spools(self):
+        self.assertEqual(filament_inventory.get_inventory(), [])
 
     def test_add_spool(self):
         spool = filament_inventory.add_spool("PLA", "Grass Green", "#2f9e44", 1000)
@@ -53,6 +53,7 @@ class TestJobCoverage(unittest.TestCase):
 
     def setUp(self):
         filament_inventory.reset()
+        filament_inventory.add_spool('PLA','Test orange','#ff7700',500)
 
     def tearDown(self):
         filament_inventory.reset()
@@ -94,6 +95,7 @@ class TestIdleSpools(unittest.TestCase):
 
     def setUp(self):
         filament_inventory.reset()
+        filament_inventory.add_spool('PLA','Test orange','#ff7700',500)
 
     def tearDown(self):
         filament_inventory.reset()

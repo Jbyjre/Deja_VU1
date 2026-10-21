@@ -275,11 +275,11 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
   <h2>Every feature, grouped by what it needs. Most need nothing but the printer.</h2>
   <div class="groups">
     <div class="group" style="--c:var(--g-live)"><header><h3>Run the farm, print safely</h3><span class="count">19</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Live updates</li><li>Needs you</li><li>Finish time on the clock</li><li>Tab follows the print</li><li>Printer fleet</li><li>Start from your phone</li><li>Honest controls</li><li>File library</li><li>G-code viewer + edits</li><li>3D viewer</li><li>Pre-flight check</li><li>Mixed-nozzle planner</li><li>MakerWorld / NexPrint → U1</li><li>Skip one object</li><li>View on your desk (AR)</li><li>Automations</li><li>Print queue</li><li>Digital twin</li><li>+ health gauge, chamber, time-lapse and more</li></ul></div>
+      <ul><li>Live updates</li><li>Needs you</li><li>Finish time on the clock</li><li>Tab follows the print</li><li>Printer fleet</li><li>Start from your phone</li><li>Honest controls</li><li>File library</li><li>Layer/tool/speed inspection</li><li>Editable model plates</li><li>Pre-flight check</li><li>Mixed-nozzle planner</li><li>MakerWorld / NexPrint → U1</li><li>Skip one object</li><li>View on your desk (AR)</li><li>Automations</li><li>Print queue</li><li>Digital twin</li><li>+ health gauge, chamber, time-lapse and more</li></ul></div>
     <div class="group" style="--c:var(--g-ready)"><header><h3>Care, control, the basics</h3><span class="count">8</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Maintenance reminders</li><li>Printer control</li><li>Push notifications</li><li>Update checker</li><li>Config backup</li><li>Camera bridge</li><li>Phone pairing</li><li>Print cost calculator</li></ul></div>
+      <ul><li>Maintenance reminders</li><li>Printer control</li><li>Push notifications</li><li>Update checker</li><li>Selected settings export</li><li>Camera bridge</li><li>Phone pairing</li><li>Print cost calculator</li></ul></div>
     <div class="group" style="--c:var(--g-farm)"><header><h3>Running a farm, making things</h3><span class="count">3</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Fleet command center</li><li>Photo-to-Print Studio</li><li>Farm sandbox</li></ul></div>
+      <ul><li>Fleet command center</li><li>Image projects + measured recipes</li><li>Farm sandbox</li></ul></div>
     <div class="group" style="--c:var(--g-opt)"><header><h3>Optional, on by request</h3><span class="count">7</span></header><span class="needs"><i></i>Off until you switch it on</span>
       <ul><li>Filament inventory</li><li>What changed?</li><li>Pre-print sanity check</li><li>WLED bridge</li><li>Home Assistant bridge</li><li>Auto-print pipeline</li><li>Low-latency camera</li></ul></div>
     <div class="group" style="--c:var(--g-pend)"><header><h3>Hardware pending</h3><span class="count">2</span></header><span class="needs"><i></i>Logic built, parts not yet</span>
@@ -295,10 +295,10 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
   <span class="eyebrow"><i></i>By the numbers</span>
   <h2>Small, checked, and free.</h2>
   <div class="tiles">
-    <div class="tile"><b>659</b><span>automated tests, run with nothing but Python</span><em>python3 -m unittest discover tests</em></div>
+    <div class="tile"><b>732</b><span>automated tests, run with nothing but Python</span><em>python3 -m unittest discover tests</em></div>
     <div class="tile"><b>250<small>ms</small></b><span>between live updates, the rate Klipper itself reports at</span><em>backend/live_feed.py</em></div>
     <div class="tile"><b>12</b><span>printers on one dashboard, each with its own connection</span><em>backend/fleet.py</em></div>
-    <div class="tile"><b>0</b><span>packages to install beyond Python</span><em>standard library only</em></div>
+    <div class="tile"><b>0</b><span>packages to install beyond Python</span><em>Dashboard only; slicing needs separate OrcaSlicer</em></div>
     <div class="tile"><b>7</b><span>maintenance tasks, tracked by hours, prints and calendar time</span><em>backend/maintenance.py</em></div>
     <div class="tile"><b>28</b><span>Home Assistant sensors, with no MQTT broker</span><em>backend/home_assistant_bridge.py</em></div>
     <div class="tile"><b>27</b><span>printers in the farm sandbox: 3 built in, up to 24 added</span><em>backend/sandbox.py</em></div>

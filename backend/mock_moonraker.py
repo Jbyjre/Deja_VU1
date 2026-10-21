@@ -294,6 +294,7 @@ class SimulatedPrinter:
                 "filament_loaded": True,
                 "filament_color_hex": loaded[th]["hex"],
                 "filament_color_name": loaded[th]["name"],
+                "filament_material": None,
                 # What the U1's firmware reports per toolhead (u1-klipper
                 # extruder.get_status); simulated lifetime counts here.
                 "nozzle_diameter": nozzles.get(th, 0.4),
@@ -591,10 +592,17 @@ def selected_printer_id():
 def use_printer(printer_id):
     """Answer every call inside this block for `printer_id`."""
     printer = _get(printer_id)
+    with selection_only(printer_id):
+        yield printer
+
+
+@contextmanager
+def selection_only(printer_id):
+    """Scope local settings to an already-validated id without connecting a device."""
     previous = getattr(_selected, "printer_id", None)
     _selected.printer_id = printer_id
     try:
-        yield printer
+        yield
     finally:
         if previous is None:
             del _selected.printer_id
@@ -741,13 +749,16 @@ def cancel_print():
             raise ValueError("Nothing to cancel")
         printer.check_failure("cancel")
         cancelled_file = live["current_file"]
+        _record_failed_job(printer, "Cancelled by the user", status="cancelled")
         live.pop("objects", None)
         live["state"] = "ready"
         live["state_message"] = "Idle"
         live["progress"] = 0.0
         live["current_file"] = None
+        live["active_toolhead"] = None
         live["bed_target"] = 0.0
         for data in live["toolheads"].values():
+            data["target_temperature"] = 0.0
             if data["status"] == "active":
                 data["status"] = "docked"
                 data["target_temperature"] = 0.0
@@ -1070,14 +1081,14 @@ def is_sandbox_printer(printer_id):
         return any(s["id"] == printer_id and s.get("sandbox") for s in _FLEET_SPEC)
 
 
-def _record_failed_job(printer, message):
+def _record_failed_job(printer, message, status="error"):
     """A print that stops with an error lands in history, as Moonraker's does."""
     live = printer.live
     hours = round(live["print_duration_hours"], 2)
     total = printer.job["total_hours"] or 1.0
     printer.session_jobs.append({
         "job_id": f"live-{len(printer.session_jobs) + 1:03d}",
-        "filename": live["current_file"], "status": "error",
+        "filename": live["current_file"], "status": status,
         "start_time": (datetime.now() - timedelta(hours=hours)).isoformat(timespec="seconds"),
         "end_time": datetime.now().isoformat(timespec="seconds"),
         "print_duration_hours": hours,
@@ -1246,3 +1257,22 @@ def camera_snapshot():
     import timelapse
     frame = timelapse.simulated_frame(get_printer_state(), get_current_job())
     return frame if isinstance(frame, bytes) else frame.encode(), "image/svg+xml"
+
+
+def set_filament(body):
+    import tool_setup
+    tool, colour, material = tool_setup.filament_fields(body)
+    printer = _current()
+    if printer.real:
+        return printer.set_filament(tool, colour, material)
+    printer = _sim()
+    with printer.lock:
+        state = printer.snapshot()
+        if state["state"] in ("printing", "paused", "error"):
+            raise ValueError("Filament settings can only change while the printer is idle")
+        if state["toolheads"][tool].get("filament_loaded") is not True:
+            raise ValueError(f"Load filament into {tool} before changing its identity")
+        printer.live["toolheads"][tool].update(filament_color_hex=colour, filament_color_name=colour,
+                                                 filament_material=material)
+        printer.log("filament", f"{tool}: {material} {colour}")
+    return {"toolhead": tool, "color_hex": colour, "material": material, "verified": True}
