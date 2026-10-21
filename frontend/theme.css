@@ -576,3 +576,15 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .slicer-workspace .fd-view-tools .plate-dimensions {color:#d6e8ff;}
 .slicer-workspace .gv-display-controls #gv-legend {flex-basis:100%;margin:0;font-size:11px;}
 @media(max-width:760px){.slicer-workspace .gv-steps,.slicer-workspace .gv-switches{gap:8px;}.slicer-workspace .gv-steps .btn{min-width:44px;}.slicer-workspace .gv-steps label{font-size:11px;}.slicer-workspace .gv-steps #gv-height{margin-left:auto;font-size:10px;}}
+@media(min-width:761px){
+ .slicer-workspace.sw-preview #plate-object {height:90px;min-height:90px;}
+ .slicer-workspace.sw-preview #sw-objects .sw-source-info {display:none;}
+ .slicer-workspace.sw-preview #sw-objects .gv-display-controls {display:grid;gap:10px;}
+ .slicer-workspace.sw-preview #sw-objects .gv-display-controls label {display:grid;font-size:11px;gap:4px;}
+ .slicer-workspace.sw-preview #sw-objects .gv-display-controls label:has(input[type=checkbox]) {display:flex;align-items:center;}
+ .slicer-workspace.sw-preview #sw-objects .gv-display-controls .btn {white-space:normal;}
+}
+#backup-review {margin-top:12px;overflow-wrap:anywhere;}
+#backup-review label {display:flex;align-items:center;gap:8px;margin:12px 0;}
+#backup-review input[type=checkbox] {min-width:20px;min-height:20px;}
+#backup-review ul {font-size:12px;max-height:200px;overflow:auto;}

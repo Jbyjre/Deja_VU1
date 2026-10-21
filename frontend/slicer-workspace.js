@@ -47,6 +47,7 @@ window.DVWorkspace = (() => {
       for (const id of ['prepare','preview','setup']) $('sw-'+id).setAttribute('aria-pressed', String(id === name));
       if (name !== 'preview') {
         $('fd-view-tools').replaceChildren();
+        left.querySelector('.gv-display')?.remove();
         document.querySelector('.sw-preview-facts')?.remove();
         DVPlate.active?.redraw();
       }
@@ -122,6 +123,11 @@ window.DVWorkspace = (() => {
         const file=state.output;
         facts.innerHTML=`<div class="sw-panel-title"><h3>Slice result</h3><span>${esc(file.preflight)}</span></div><p><b>${esc(file.name)}</b></p><dl><dt>Layers</dt><dd>${esc(file.layers)}</dd><dt>Engine time estimate</dt><dd>${file.estimated_hours==null?'Unknown':esc(Workshop.fmtHours(file.estimated_hours))}</dd><dt>Engine filament estimate</dt><dd>${file.filament_grams==null?'Unknown':esc(file.filament_grams)+' g'}</dd></dl><p class="field-hint">Predictions from the engine. Physical print time and usage vary.</p>${(analysis.preflight?.issues||[]).map(i=>`<p class="ap-warn">${esc(i.message||i.text||i)}</p>`).join('')}<button id="sw-inspect-output" class="btn primary">Open file & Confirm Print</button><div id="sw-movement"></div>`;
         side.append(facts); DVGcode.mount({name:file.name},analysis,viewer,$('sw-movement'));
+        if(matchMedia('(min-width:761px)').matches) {
+          left.querySelector('.gv-display')?.remove();
+          const display=$('fd-view-tools').querySelector('.gv-display');
+          if(display)left.append(display);
+        }
         $('sw-inspect-output').onclick=()=>Workshop.openFile(file.name);
         if(file.deposition) {
           const evidence=document.createElement('p'); evidence.className='field-hint';
