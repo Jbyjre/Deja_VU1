@@ -571,12 +571,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             raise ValueError("The request wasn't valid JSON")
         return body if isinstance(body, dict) else {}
 
-    def _read_raw_body(self):
+    def _read_raw_body(self, max_bytes=MAX_UPLOAD):
         length = self._content_length()
         if not length:
             raise ValueError("The file is empty")
-        if length > MAX_UPLOAD:
-            raise ValueError("Files over 64 MB can't be added")
+        if length > max_bytes:
+            raise ValueError(f"Files over {max_bytes//(1024*1024)} MB can't be added")
         data, remaining = [], length
         while remaining:
             chunk = self.rfile.read(min(remaining, 1 << 20))
@@ -879,6 +879,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         route = self.path.split("?")[0].rstrip("/")
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
+
+        if route in ('/api/backup/preview','/api/backup/restore'):
+            if self._module_blocked('backup'):
+                return None
+            if route.endswith('/preview'):
+                return self._send_json(backup.preview_restore(self._read_raw_body(backup.MAX_ARCHIVE_BYTES)))
+            return self._send_json(backup.restore(self._read_json_body()))
 
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))

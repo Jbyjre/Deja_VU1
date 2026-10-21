@@ -558,7 +558,7 @@
             <form id="ap-form" class="ap-form">
               <label>Path to the OrcaSlicer program
                 <input type="text" id="ap-path" placeholder="/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer" spellcheck="false" autocomplete="off"></label>
-              <p class="log-empty" id="ap-path-note"></p>
+              <p class="log-empty" id="ap-path-note"></p><label>Unpacked presets folder (optional)<input id="ap-preset-folder" type="text" spellcheck="false" placeholder="Folder containing Snapmaker / machine, process, filament"></label><p class="field-hint">For engines with packed presets, choose their matching unpacked profiles or use complete exported files. No profiles are downloaded.</p>
               <label>Time limit per slice <span><input type="number" id="ap-timeout" min="30" max="3600" value="600"> seconds</span></label>
               <div class="fd-actions">
                 <button class="btn primary" type="submit">Save</button>
@@ -930,11 +930,12 @@
         </section>
 
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Printer firmware &amp; config download</h2><p class="card-sub">App updates are above. This download includes only some settings and has no restore button; it is not a full backup.</p></div></div>
+          <div class="card-head"><div><h2>Printer firmware &amp; app recovery</h2><p class="card-sub">App updates are above. Back up app data, then validate and restore into a separate recovery folder. Printer firmware and external engine installations are separate.</p></div></div>
           <div id="updates-body" class="log-empty">—</div>
           <div style="display:flex; gap:8px; margin-top:14px;" data-module-body="backup">
-            <a class="btn block" id="backup-btn" href="/api/backup" download style="text-align:center; text-decoration:none;">Download backup</a>
+            <a class="btn block" id="backup-btn" href="/api/backup" download style="text-align:center; text-decoration:none;">Download full app backup</a><label class="btn file-upload">Preview a backup<input id="backup-upload" type="file" accept=".zip"></label>
           </div>
+          <div id="backup-review" data-module-body="backup" role="status" aria-live="polite"></div><p class="field-hint">Connection secrets in settings are omitted. Private library and camera files are retained. Restore keeps the running installation intact, disables automatic actions in the restored copy and provides separate launchers. Snapshot limits: 512 MB unpacked / 256 MB ZIP.</p>
           <div data-module-off="backup" hidden></div>
         </section>
 
@@ -1215,6 +1216,7 @@
 <script src="printroom.js"></script>
 <script src="plate.js"></script>
 <script src="gcode-view.js"></script>
+<script src="backup.js"></script>
 <script src="maker.js"></script>
 </body>
 </html>
