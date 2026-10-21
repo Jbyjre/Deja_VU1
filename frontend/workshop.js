@@ -1438,6 +1438,7 @@ const Workshop = (() => {
   }
 
   function closeFile() {
+    window.DVWorkspace?.close();
     if(window.DVPlate?.active){window.DVPlate.active.dispose();window.DVPlate.active=null;}
     if (ar.handle) ar.handle.end();
     $('file-detail').hidden = true;
@@ -1447,6 +1448,7 @@ const Workshop = (() => {
   }
 
   async function openFile(name, fromEl) {
+    window.DVWorkspace?.close();
     if(window.DVPlate?.active){window.DVPlate.active.dispose();window.DVPlate.active=null;}
     let entry = files.list.find(f => f.name === name);
     if (!entry) { await loadFiles(); entry = files.list.find(f => f.name === name); }      // made elsewhere (studio, slicer)
@@ -1662,6 +1664,16 @@ const Workshop = (() => {
   async function openModel(entry, viewer) {
     const side = $('fd-side');
     try {
+      if(entry.kind==='3mf'&&!entry.local){
+        const selection=await getJSON('/api/files/plates?name='+enc(entry.name));
+        if(files.open!==entry)return;
+        if(selection?.count>1){
+          side.innerHTML=`<h3>Choose a plate</h3><p class="field-hint">This project contains ${selection.count} plates. Prepare and slice each separately; the original stays intact.</p><label>Plate<select id="fd-choose-plate">${selection.plates.map(p=>`<option value="${esc(p.id)}">${esc(p.name)} · ${esc(p.objects)} objects</option>`).join('')}</select></label><button class="btn primary" id="fd-extract-plate">Open selected plate as new</button><p id="fd-plate-status" role="status"></p>`;
+          $('fd-view-tools').textContent='Select one plate to load its models.';
+          $('fd-extract-plate').onclick=async e=>{e.currentTarget.disabled=true;try{if(typeof tourOn==='function'&&tourOn())throw new Error('Saving a selected plate needs the local Deja Vu1 app. The public demo is a recording.');const r=await postJSON('/api/files/plates/extract',{name:entry.name,plate:$('fd-choose-plate').value});if(files.open!==entry)return;if(!r.ok)throw new Error(r.body.error);await loadFiles();await openFile(r.body.name);}catch(err){if(files.open===entry){$('fd-plate-status').textContent=err.message;e.currentTarget.disabled=false;}}};
+          return;
+        }
+      }
       let buffer;
       if (entry.local) buffer = await entry.local.arrayBuffer();
       else {

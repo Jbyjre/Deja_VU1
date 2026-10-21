@@ -37,6 +37,7 @@ function hits(t,o,d){const stack=[t.root],out=[];while(stack.length){const n=sta
 function inside(point,t){const d=[.811107,.324443,.486664];return hits(t,point,d).length%2===1;}
 self.onmessage=e=>{const {id,type}=e.data;try{
   if(type==='contact'){const trees=e.data.meshes.map(tree),pairs=[];for(let i=0;i<trees.length;i++)for(let j=i+1;j<trees.length;j++){const a=trees[i],b=trees[j];if(boxes(a.root,b.root)&&(contact(a,b)||inside(Array.from(a.p.subarray(0,3)),b)||inside(Array.from(b.p.subarray(0,3)),a)))pairs.push([i,j]);}self.postMessage({id,pairs});}
+  else if(type==='select'){const {origin,direction}=e.data.ray;let object=null,distance=Infinity;e.data.meshes.forEach((mesh,i)=>{const found=hits(tree(mesh),origin,direction);if(found.length&&found[0]<distance){object=i;distance=found[0];}});self.postMessage({id,object});}
   else if(type==='pick'){const t=tree(e.data.mesh),{origin,direction}=e.data.ray,found=hits(t,origin,direction);self.postMessage({id,point:found.length?origin.map((v,i)=>v+direction[i]*found[0]):null});}
   else throw new Error('Unknown geometry check');
 }catch(error){self.postMessage({id,error:error.message});}};

@@ -533,7 +533,9 @@
         <div><h2 id="fd-name">—</h2><p class="card-sub" id="fd-sub"></p></div>
         <button class="btn small" id="fd-close" type="button">Close</button>
       </div>
+      <div id="sw-header" hidden></div>
       <div class="fd-body">
+        <aside id="sw-objects" hidden aria-label="Plate objects"></aside>
         <div class="fd-view">
           <canvas id="fd-canvas" class="viewer-canvas" tabindex="0" aria-label="3D view. Drag to turn, scroll or pinch to zoom, arrow keys to turn."></canvas>
           <div class="fd-view-tools" id="fd-view-tools"></div>
@@ -1216,6 +1218,7 @@
 <script src="printroom.js"></script>
 <script src="plate.js"></script>
 <script src="gcode-view.js"></script>
+<script src="slicer-workspace.js"></script>
 <script src="backup.js"></script>
 <script src="maker.js"></script>
 </body>
