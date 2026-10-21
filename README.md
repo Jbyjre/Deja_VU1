@@ -68,7 +68,7 @@ simulated farm of three U1s that heat, print and finish.
 
 **Quick links:** [getting started](docs/getting-started.md) · [run it](#how-to-run-it) · [what's in it](#whats-in-it) ·
 [how it connects](#why-one-dashboard-not-several-tools) · [current status](#current-status) ·
-[native studio evidence and pictures](docs/native-studio-validation.md) ·
+[current slicer evidence and pictures](docs/slicer-workspace-validation.md) ·
 [security](#security-and-your-network) · [first connection](docs/first-connection.md) ·
 [for developers](#for-developers-and-ai-coding-sessions)
 
@@ -98,6 +98,30 @@ Much of the code is written with [Claude Code](https://claude.com/claude-code),
 and every change is in the public history.
 
 ## What's new
+
+- **One slicing workspace:** objects, precise transforms, profiles and four-head
+  setup stay beside a large viewport. Slice the edited plate, inspect file-order
+  layers, then open the result’s pre-flight and Confirm Print. Phone preparation,
+  settings and preview have deliberate layouts.
+- **Real different heights per head:** a capable separately installed engine now
+  receives fitted nozzles and preferred heights. Linux output verifies 0.14/0.28 mm,
+  0.2/0.4 mm and 0.1/0.2 mm combinations. Stock engines without these options refuse
+  the mode. First layers, bridges and geometry-dependent fallback can differ.
+- **Select one project plate:** save a separate plate with a recovery copy of the
+  source. All three plates of the formerly crashing fixture now slice separately.
+- **Full app-data recovery:** a versioned ZIP includes library files, per-printer
+  records, queues, fleet, working presets and time-lapse. Preview checksums and
+  differences, then restore to a separate folder with launchers. Existing data
+  stays intact; connection secrets are omitted and automatic actions are disabled
+  in the recovered copy. [Recovery guide](docs/backup-and-recovery.md).
+- **Measured colour recipes track their process:** temperature, flow, cooling,
+  process and backing/order changes invalidate tracked recipes. Older recipes
+  remain explicitly untracked. Physical colour calibration is still owner work.
+
+[Current validation and pictures](docs/slicer-workspace-validation.md) ·
+[Model and engine setup](docs/slicing-and-models.md)
+
+![The current preparation workspace with two physical-tool assignments](docs/img/slicer-after-workspace-1366.png)
 
 - **Honest spool checks:** a new inventory starts empty, and an explicitly
   assigned spool is the one checked before a print. Unknown multi-tool usage is
@@ -230,7 +254,7 @@ Every screenshot in this section comes from the built-in simulated farm (the **D
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/img/confirm-print-refused.jpg" alt="The Confirm print dialog refusing the unsafe example file: printer busy, extrusion outside the 270 mm build volume on line 19, T0 has Snapmaker Orange loaded but the file was sliced for a red, and two maintenance tasks overdue"><br><sub><b>Confirm Print, refusing:</b> the built-in unsafe example file, with every reason in words and the start button disabled.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/file-detail.jpg" alt="A G-code file opened in the library: the 3D toolpath of a two-colour coaster, time, filament, layers and toolheads, a clear pre-flight, and the G-code itself below with search"><br><sub><b>A file, opened:</b> the toolpath in 3D, the slicer's estimates, the pre-flight verdict and the G-code, searchable and editable.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/file-detail.jpg" alt="The unified sliced-plate preview, file-order layers, requested-speed colours, tool filters, event markers and real-engine estimates"><br><sub><b>A sliced plate:</b> inspect layers and toolpaths beside real-engine estimates, then open pre-flight and Confirm Print.</sub></td>
 </tr>
 </table>
 
@@ -277,7 +301,7 @@ Snapmaker Orca itself).
 | **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
 | **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram, plain webhooks, no SDK, no account. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
 | **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
-| **Config backup** | One-click zip of the module switches, the filament list, four-tool assignments, measured colour recipes, notification settings (secrets blanked) and the default simulated printer's maintenance log. Not yet included: real printers' maintenance logs, the printer list, automations, the queue and the other settings; there is no restore yet. |
+| **App-data backup & recovery** | Versioned full app-data ZIP with checksums, omitted connection secrets and restore preview. Recovery creates a separate folder and launchers; it keeps existing data and disables automatic actions. Includes library, per-printer logs, fleet, queues, presets and time-lapse. Limits: 512 MB unpacked / 256 MB ZIP; files over 64 MB and external installations require an offline copy. |
 | **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
 | **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list, no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
 | **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history. $/kg per material, $/kWh and printer wattage are editable. |
@@ -416,35 +440,41 @@ Orca. Contact and point-measurement workers are bounded at 250,000 triangles
 per object; the viewer accepts up to two million triangles per plate. Contact
 checks do not model toolhead clearance, supports or whether a mesh is watertight.
 
-The local bridge has now run OrcaSlicer 2.4.2 on Linux using installed U1
-presets: a 20-triangle bracket produced 125 layers, 6.62 g and 0.231 hours
-(engine-reported estimates), with a clear pre-flight report. This is one sample,
-not physical-printer validation. Windows/macOS, complex painted models and
-different per-head layer heights remain unverified. No engine is bundled. A closed
-200,000-triangle sphere also sliced successfully: 200 layers, 11.66 g and
-0.336 h predicted printing time; actual engine processing took 5.7 seconds.
+The current Linux validation uses a separately installed Snapmaker_Orca
+02.08.01.55 build. Actual two-object output has 179/90 deposition levels for
+T0/T1 at 0.14/0.28 mm; extrusion length also agrees with the declared strand
+geometry and the material’s 0.98 flow ratio. Other verified pairs are 0.2/0.4 mm
+on 0.4/0.8 mm nozzles and 0.1/0.2 mm on two 0.4 mm nozzles. All passed pre-flight.
+This is real engine output, not a physical print. The optional engine is not
+bundled, and Windows/macOS remain unverified. Stock Orca retains shared-height
+slicing. Capability detection and nozzle limits refuse unsupported combinations.
 
-The mixed 0.4/0.6 mm nozzle fixture produced eight layers in the real engine,
-but the installed preset emitted startup extrusion at X290. Pre-flight correctly
-blocked it. A converted three-plate fixture crashed Orca 2.4.2; single-plate
-Bambu-style and Elegoo-style conversions sliced successfully. Do not bypass
-these checks. Export separate plates in Orca when needed.
+The earlier X290 startup failure came from a generic inherited toolchanger
+startup sequence. The tested native U1 presets use their own startup macros and
+pass pre-flight without changing limits or removing instructions. Known literal
+startup extrusion outside the supported volume is refused during profile setup;
+all resulting G-code is still checked. No physical purge allowance is assumed.
+
+The former three-plate fixture now slices as three separately selected files:
+125 layers each, with clear pre-flight. The bridge also reconciles source preset
+identity slots with the explicitly selected four-head materials, in a temporary
+input. The original project, paint and per-part settings remain intact. This is
+not proof of complete vendor extension or texture fidelity.
 
 Four-head preparation is tested against the simulator and a stand-in Moonraker.
 Physical U1 filament writes, tagged-spool refusal and persistence through a
 printer restart still require a real-printer check. Saved nozzle choices never
 replace hardware readings.
 
-The native-studio pass passes **732 automated tests** on Python 3.12 Linux
-(133.8 seconds in the final run),
-plus Chromium checks at 1366 px and 390 px. Tests include a
-newer update package, checksum/path rejection, real child-process startup and
-rollback, authenticated fake-printer setup, and browser-name privacy. None of
-those substitutes for a physical U1, Windows/macOS or real phone test.
+The current full suite passes **759 tests in 128.765 seconds** on Python 3.12.14
+Linux, with app/demo servers stopped. See [workspace validation](docs/slicer-workspace-validation.md). The historical
+round-two baseline was 732 passing tests. Chromium checks at 1366 px and 390 px
+cover real slicing, stable form focus, stale printer refusal, plate selection,
+preview and Confirm Print entry. Recovery also starts through its generated
+Linux launcher. These checks do not establish physical U1 or phone behaviour.
 
 New stock camera support remains hardware-unverified. Native profile setup and
-multi-model plates have passed browser and real Linux engine checks. Different
-per-head layer heights, full vendor extensions and full backup/restore remain incomplete. A stable update package has not been
+multi-model plates have passed browser and real Linux engine checks. Full vendor extensions, physical mixed-nozzle printing and real-device checks remain incomplete. A stable update package has not been
 published. See [model/slicer limits](docs/slicing-and-models.md) and
 [release requirements](docs/releasing.md).
 
@@ -533,7 +563,7 @@ The same pass hardened the rest for real conditions:
   the stand-in Moonraker. The main printer path is `backend/moonraker_client.py`. Stock snapshots
   use a separate camera-monitor connection in `backend/stock_camera.py`;
   the optional manual camera relay reads the address you configure.
-  Configuration backup is incomplete and has no restore function.
+  App-data recovery creates a separate copy; external engine installations and printer firmware/configuration are outside its scope.
 - Filament inventory, the What-changed check, and the pre-print sanity check
   are complete and tested; they're optional and off by default.
 - The WLED and Home Assistant bridges are complete outbound HTTP clients,
@@ -550,9 +580,9 @@ The same pass hardened the rest for real conditions:
 I do not own a Snapmaker U1. The project hasn't been entered in the Snapmaker
 Innovation Fund yet; the plan is to enter Phase 2, partly to request a unit.
 Until then, [first connections](docs/first-connection.md) on owners' printers
-are how it gets tested on real hardware. Several software improvements also remain, including full backup/restore,
-different per-head slicing heights, complex vendor extensions and hardware
-verification. See [remaining launch work](build-prompts/06-native-studio-hardware-and-compatibility.md).
+are how it gets tested on real hardware. Several software improvements also remain, including complete vendor paint/texture fidelity,
+physical per-head printing, complex vendor extensions and hardware
+verification. See [remaining launch work](build-prompts/07-physical-validation-and-format-fidelity.md).
 
 Both hardware modules are deliberately non-invasive, external add-ons that
 mount to the frame and read printer state over the network. Nothing is
@@ -573,11 +603,12 @@ only sensible approach. Details in
 | Double-click starters | - | Linux | Windows and Mac not run yet |
 | Online demo (Cloudflare link) | Recorded from it | Checked in Chromium on a plain static server, like Cloudflare's | The published link itself not opened from here (the build sandbox can't reach it) |
 | Filament colours after a touchscreen change | - | Yes - asked for every 30 s as well as pushed | Not yet |
-| MakerWorld / NexPrint / OrcaSlicer converter | Yes | Checked against Snapmaker Orca's loader and plate-grid source | Output not yet opened in Snapmaker Orca |
+| MakerWorld / NexPrint / OrcaSlicer converter | Yes | Source format checks plus real Linux engine slices of three separated fixture plates | Full vendor fidelity and physical printing unverified |
 | Photo-to-Print Studio | Yes | Legacy relief geometry tests; new tile/swatch/heightmap 3MFs sliced by real Orca 2.4.2 | Physical colour and printing unverified |
 | Spoolman import | Yes | Yes - Spoolman's API source | Not against a running Spoolman |
 | WLED, Home Assistant, ntfy, Discord, Telegram | Yes | Yes - each one's own source or docs | Not yet |
-| Auto-print slicing (optional) | Setup/error flow | Unit stand-in plus real OrcaSlicer 2.4.2 Linux slices | Engine verified; no physical U1 print |
+| Auto-print slicing (optional) | Setup/error flow | Stand-in lifecycle tests plus real Linux engine slices, distinct tool heights and large geometry | Engine output verified; no physical U1 print |
+| Full app-data recovery | Local app required | Checksums, malformed archives, write failures and generated Linux launcher | Windows/macOS launchers not executed |
 | Low-latency camera (optional) | - | go2rtc's source | Not yet |
 | LED dock rings, colour sensor | Simulated | Decision logic tested | Hardware pending |
 
@@ -586,7 +617,7 @@ If you have a U1 and want to help close the last column, see
 
 ## Tech stack
 
-![By the numbers: 732 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 759 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -596,7 +627,7 @@ If you have a U1 and want to help close the last column, see
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** plain JSON files
-- **Tests:** `unittest` from the standard library, 732 cases
+- **Tests:** `unittest` from the standard library, 759 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -818,7 +849,7 @@ To run the tests (about two minutes; they write to `backend/data/`, see
 [Settings and your data](#settings-and-your-data)):
 
 ```bash
-python3 -m unittest discover tests          # all 732
+python3 -m unittest discover tests          # all 759
 python3 -m unittest tests.test_api          # one file
 ```
 

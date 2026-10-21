@@ -1,0 +1,33 @@
+{
+  "method": "Two 200,000-triangle objects; ten synchronous select changes. Includes CPU editing and buffer submission, not physical phone latency.",
+  "rows": [
+    {
+      "width": 1366,
+      "version": "before",
+      "triangles": 400000,
+      "selectionMeanMs": 56.97999999998137,
+      "selectionP95Ms": 71.89999999990687
+    },
+    {
+      "width": 1366,
+      "version": "after",
+      "triangles": 400000,
+      "selectionMeanMs": 0.4099999999627471,
+      "selectionP95Ms": 0.6999999997206032
+    },
+    {
+      "width": 390,
+      "version": "before",
+      "triangles": 400000,
+      "selectionMeanMs": 61.65999999996275,
+      "selectionP95Ms": 79
+    },
+    {
+      "width": 390,
+      "version": "after",
+      "triangles": 400000,
+      "selectionMeanMs": 0.37000000006519257,
+      "selectionP95Ms": 0.7000000001862645
+    }
+  ]
+}

@@ -153,3 +153,12 @@ Remade with `promo-video/build/stills.sh` after any change to the video.
 The pictures here are copies. When the app changes, regenerate the
 originals as `tools/readme-images/README.md` describes, then copy them here
 again (or ask a Claude Code session to "refresh the marketing library").
+
+
+Current slicing captures are under `03-screenshots/`: preparation at both widths,
+process/tool setup, layer preview and app-data recovery. Their engine predictions
+come from real output files; they are not physical-printer measurements. Updated
+boards quote the current suite count. The existing 75-second video files and older
+editorial feature crops have not been rerendered for this workspace.
+
+`05-animation/slicer-preview.gif` shows current browser layer controls using simulated demo files. It does not replace the 75-second launch cuts.

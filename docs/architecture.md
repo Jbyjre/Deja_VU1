@@ -497,7 +497,7 @@ Physical U1 printing and Windows/macOS remain unverified.
 
 `backend/slicer_profiles.py` discovers installed U1 presets and resolves parent
 settings with cycle/size bounds. Native profiles retain printer/tool identity,
-validate nozzle/material compatibility and expose common print settings.
+validate nozzle/material compatibility and expose grouped process/material settings. Current capable-engine height contracts and working-preset compatibility are described below.
 `plate.js` keeps immutable sources and affine transforms; `plate-worker.js`
 checks contacts and surface rays away from the browser UI thread.
 `plate_project.py` streams source geometry, preserves 3MF parts and stores
@@ -770,7 +770,7 @@ Everything that calls them already works.
 
 ## Testing
 
-732 tests, using Python's built-in `unittest`:
+The current test total is recorded in `slicer-workspace-validation.md`, using Python's built-in `unittest`:
 
 ```
 python3 -m unittest discover tests
@@ -857,3 +857,33 @@ STL remains shape-only. Tool paint on generated projects survives a real-engine
 round trip. Generated layer contracts reject changes that would invalidate colour
 recipes. G-code layer records follow file order rather than assuming height only
 rises. See `slicing-and-models.md` for the workflow and remaining format limits.
+
+
+## Slicing and isolated recovery
+
+`slicer-workspace.js` relocates the existing plate/profile/tool controls rather
+than creating another settings store. Each mounted plate retains its own DOM
+references and worker lifecycle. Selection reuses geometry; edits invalidate
+output preview. Engine jobs are scoped to their captured printer, bounded,
+cancellable as process groups and checked before an atomic queue handoff.
+
+`slicing_contract.py` validates conservative exact physical-head heights. The
+bridge checks help/exported option schema and executable identity, writes
+private working presets and passes the actual heights to a capable external
+engine. It computes labelled deposition evidence from output coordinates and
+extrusion, excluding travel/retraction recovery. Bridge strands and first-layer
+exceptions remain visible. This does not implement a new slicing engine.
+
+`project_plates.py` selects build instances and moves one documented plate back
+to its own origin, preserving model XML namespace spelling and original input.
+It validates source preset slot counts before running the engine. Only the
+source identity arrays are reconciled with an explicit CLI profile, in temporary
+input; per-part settings, geometry and paint are retained.
+
+`backup.py` snapshots regular app data with sizes/checksums and redacts connection
+secrets in JSON. Restore validates the entire archive before writing, prepares a
+new recovery directory, remaps internal preset paths and publishes it by directory
+rename. Failure removes only that new staging directory. Existing app data is
+never replaced. Separate launchers select the restored data directory; automatic
+modules and queue advancement are disabled pending review. Engine installations,
+external exported presets and printer configuration remain external resources.
