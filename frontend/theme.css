@@ -588,3 +588,42 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 #backup-review label {display:flex;align-items:center;gap:8px;margin:12px 0;}
 #backup-review input[type=checkbox] {min-width:20px;min-height:20px;}
 #backup-review ul {font-size:12px;max-height:200px;overflow:auto;}
+
+/* ==========================================================================
+   Games fit the window
+   Every game's playing field is sized so the whole of it is on screen at
+   once (paddle, bottom row, the lot): never wider than the card, never
+   taller than the window minus the game's own toolbar and controls.
+   app.js fitGameCanvas sets the playing field's width from these rules.
+   ========================================================================== */
+#game-host { --game-chrome: 300px; }
+#game-host canvas.game-main { max-width: 100%; height: auto; margin-inline: auto; }
+#game-host .game-frame:fullscreen, #game-host .arcade-frame:fullscreen { --game-chrome: 150px; }
+@media (max-width: 760px) { #game-host { --game-chrome: 330px; } }
+/* The sticky top bar covers about 100 px when the page is scrolled; on a
+   phone it tucks away, but the bottom tab dock takes the room instead. */
+#game-host { scroll-margin-top: 104px; }
+@media (max-width: 720px) { #game-host { scroll-margin-top: 12px; } }
+/* The rewritten games share one stage: the field with its start / game-over
+   card laid over it, touch buttons under it (hidden where there's a mouse
+   and keyboard), then one status line. */
+#game-host .arcade-stage { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; line-height: 0; }
+#game-host .arcade-stage canvas { display: block; border-radius: 16px; touch-action: none; }
+#game-host .arcade-stage .game-overlay { line-height: 1.4; border-radius: 16px; background: rgba(6, 12, 24, .62); color: #fff; }
+#game-host .arcade-stage .game-overlay .g-title { color: #fff; font-size: 22px; letter-spacing: .08em; }
+#game-host .arcade-stage .game-overlay .g-sub { color: rgba(255, 255, 255, .86); font-size: 14px; max-width: 34ch; }
+#game-host .arcade-pad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 48px); gap: 8px; justify-content: center; margin: 12px auto 0; }
+#game-host .arcade-pad button { min-height: 44px; font-size: 18px; padding: 0; touch-action: none; }
+#game-host .arcade-pad button:nth-child(1) { grid-column: 2; grid-row: 1; }
+#game-host .arcade-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+#game-host .arcade-pad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+#game-host .arcade-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+#game-host .arcade-pad.wide { grid-template-columns: repeat(6, minmax(44px, 60px)); grid-template-rows: 48px; }
+#game-host .arcade-pad.wide button { grid-column: auto; grid-row: auto; }
+@media (hover: hover) and (pointer: fine) { #game-host .arcade-pad { display: none; } }
+#game-host .arcade-actions { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: var(--text-dim); font-size: 14px; text-align: center; }
+#game-host .arcade-actions .good { color: var(--ok, #1f8a4c); }
+#game-host .tetris-v2 { display: flex; justify-content: center; align-items: flex-start; gap: 18px; }
+#game-host .tetris-v2 .tetris-side { min-width: 0; width: 124px; align-items: center; }
+#game-host .tetris-v2 .tetris-side canvas { width: 96px; height: auto; }
+@media (max-width: 520px) { #game-host .tetris-v2 { gap: 10px; } #game-host .tetris-v2 .tetris-side { width: 84px; padding: 8px; } #game-host .tetris-v2 .tetris-side canvas { width: 64px; } }
