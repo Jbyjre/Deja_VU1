@@ -437,7 +437,8 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 ## Rendering cost
 
 Version 13 (60 s each, 8 video windows from 7 shots plus 6 stills; all 13 shots re-filmed in two
-parallel batches in about 13 minutes): RENDER_TIMES.
+parallel batches in about 13 minutes): the 16:9 cut rendered in about 12 minutes, the 9:16 in about
+12 (frame capture 12 min 5 s and 11 min 42 s, measured by the renderer).
 
 Version 8 (75 s each, 14 video windows from 13 shots, all re-filmed): the 16:9 cut rendered in about 21 minutes, the 9:16 in about 19.
 Version 7 (90 s each, 15 video windows from 14 shots, version 6's footage reused): each cut rendered in about 20 to 25 minutes.
