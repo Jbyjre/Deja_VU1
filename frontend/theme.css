@@ -736,3 +736,19 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
 .t3-tag.on { background: var(--accent); color: #fff; }
 .t3-tag.fault { background: var(--bad-text, #b3261e); color: #fff; }
 .t3-tag.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* One sentence under the tab bar saying what the open tab is for. */
+.tab-intro {
+  margin: -4px 4px 18px; max-width: 92ch; font-size: 14.5px; line-height: 1.5; color: var(--text-dim);
+  text-wrap: pretty;
+}
+.tab-intro strong { color: var(--text); font-weight: 600; margin-right: 4px; }
+@media (max-width: 720px) { .tab-intro { font-size: 13.5px; margin: -6px 2px 14px; } }
+/* The twin card stays neutral: tinting it with the active filament made it
+   muddy grey whenever black filament was loaded. The model itself shows
+   the colours. */
+.liquid-glass.card.twin-card[data-tint] { background: var(--paper); }
+.settings-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
+.settings-jumps > span { font: 600 12px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); margin-right: 4px; }
+.settings-jumps .chip-btn { text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+#tab-modules section.card { scroll-margin-top: 110px; }

@@ -102,7 +102,7 @@
       </span>
       <div class="brand-text">
         <h1>Deja&nbsp;Vu1</h1>
-        <p>Snapmaker U1 · Moonraker dashboard</p>
+        <p>Your Snapmaker U1 dashboard</p>
       </div>
     </div>
 
@@ -159,10 +159,10 @@
   </div>
 
   <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
-    <!-- Nine tabs, every one always showing: Sandbox lives in Fleet,
-         Auto-print in Files, Filament & colour in Care. -->
-    <button class="navtab" data-tab="fleet">Fleet</button>
+    <!-- Nine tabs, every one always showing: Sandbox lives in Printers
+         (data-tab "fleet"), Auto-print in Files, Filament & colour in Care. -->
     <button class="navtab active" data-tab="overview">Overview</button>
+    <button class="navtab" data-tab="fleet">Printers</button>
     <button class="navtab" data-tab="control">Control</button>
     <button class="navtab" data-tab="files">Files</button>
     <button class="navtab" data-tab="studio">Photo studio</button>
@@ -184,6 +184,9 @@
       <span class="rb-live-dot" aria-hidden="true"></span><span id="rb-live-text">Live</span>
     </span>
   </div>
+
+  <!-- What the open tab is for, in one sentence (app.js TAB_INTROS). -->
+  <p class="tab-intro" id="tab-intro"><strong>Overview</strong> What needs you, then the selected printer right now: its live 3D twin, quick controls and health.</p>
 
   <!-- ============================================================ -->
   <!-- FLEET                                                         -->
@@ -1118,7 +1121,7 @@
 
 <div class="handoff liquid-glass" id="handoff" hidden role="status">
   <span id="handoff-text"></span>
-  <button class="btn small primary" id="handoff-go" type="button">Continue here</button>
+  <button class="btn small primary" id="handoff-go" type="button">Open here</button>
   <button class="btn small" id="handoff-dismiss" type="button" aria-label="Dismiss">✕</button>
 </div>
 
@@ -1140,8 +1143,8 @@
     <button class="qa-btn" id="qa-next" type="button">Start next</button>
   </div>
   <nav class="bottom-nav liquid-glass" aria-label="Main sections">
-    <button data-tab="fleet"><span class="bn-ico" aria-hidden="true">▦</span>Fleet</button>
     <button data-tab="overview"><span class="bn-ico" aria-hidden="true">◉</span>Now</button>
+    <button data-tab="fleet"><span class="bn-ico" aria-hidden="true">▦</span>Printers</button>
     <button data-tab="control"><span class="bn-ico" aria-hidden="true">⏯</span>Control</button>
     <button data-tab="files"><span class="bn-ico" aria-hidden="true">▤</span>Files</button>
     <button id="bn-more" type="button" aria-haspopup="true"><span class="bn-ico" aria-hidden="true">⋯</span>More</button>

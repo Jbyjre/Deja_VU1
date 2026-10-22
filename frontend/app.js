@@ -1217,7 +1217,49 @@ function initServerBanner() {
 /* ---- tabs -----------------------------------------------------------------*/
 
 const TAB_KEY = 'dejavu1.tab';
+/* One plain sentence per tab, shown under the tab bar, so a first-time
+   visitor knows what each section is for before reading it. */
+const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Control', files: 'Files', studio: 'Photo studio',
+  automations: 'Automations', maintenance: 'Care', modules: 'Settings', games: 'Games' };
+const TAB_INTROS = {
+  overview: 'What needs you, then the selected printer right now: its live 3D twin, quick controls and health.',
+  fleet: 'Every printer you have added, at a glance. Add one by its network address, or try simulated printers in the sandbox.',
+  control: 'Drive the selected printer: temperatures, moving the head, the objects on the plate and a command console. Anything the printer refuses is shown as refused.',
+  files: 'Your print files. Upload, preview in 3D, slice with your own OrcaSlicer and queue prints. Every print is checked before it starts.',
+  studio: 'Turn a photo into a printable multi-colour tile or relief, using the filament colours you have.',
+  automations: '"When this happens, do that" rules, such as a message when a print finishes. They run on this computer, with no cloud.',
+  maintenance: 'Care for the printer: maintenance reminders based on print hours, and your filament shelf.',
+  modules: 'How the dashboard looks, which features are switched on, paired phones, notifications and app updates.',
+  games: 'Something to play while a print runs. Nothing here reads or controls the printer.',
+};
+
+/* Settings is long, so it opens with a row of links to each of its cards,
+   built from the cards' own titles (nothing to keep in step by hand). */
+function initSettingsJumps() {
+  const panel = $('tab-modules');
+  if (!panel || $('settings-jumps')) return;
+  const nav = document.createElement('nav');
+  nav.id = 'settings-jumps'; nav.className = 'settings-jumps'; nav.setAttribute('aria-label', 'Settings sections');
+  const links = [];
+  panel.querySelectorAll('section.card h2').forEach((h, i) => {
+    const card = h.closest('section.card');
+    const title = h.textContent.replace(/\s+/g, ' ').trim().replace(/ New version available$/, '');
+    if (!title || card.closest('[hidden]') && card.closest('[hidden]') !== panel) return;
+    if (!card.id) card.id = `set-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || i}`;
+    links.push(`<a href="#${card.id}" class="chip-btn">${esc(title)}</a>`);
+  });
+  nav.innerHTML = `<span>Jump to</span>${links.join('')}`;
+  nav.addEventListener('click', e => {
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    e.preventDefault();
+    $(a.getAttribute('href').slice(1))?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
+  panel.prepend(nav);
+}
+
 function initTabs() {
+  initSettingsJumps();
   const tabs = document.querySelectorAll('.navtab[data-tab]');
   const panels = document.querySelectorAll('.tab-panel');
 
@@ -1234,6 +1276,8 @@ function initTabs() {
     });
     panels.forEach(p => { p.hidden = p.id !== `tab-${name}`; });
     store.set(TAB_KEY, name);
+    const intro = $('tab-intro');
+    if (intro && TAB_INTROS[name]) intro.innerHTML = `<strong>${esc(TAB_NAMES[name] || name)}</strong> ${esc(TAB_INTROS[name])}`;
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);

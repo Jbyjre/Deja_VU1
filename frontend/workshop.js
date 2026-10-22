@@ -2654,8 +2654,10 @@ const Workshop = (() => {
     const offer = data && data.offer;
     const same = offer && offer.tab === currentTab() && (offer.printer || '') === currentPrinter && !offer.file;
     if (!offer || same || offer.at <= dismissedOffer || offer.seconds_ago > 600) { el.hidden = true; return; }
-    const where = [offer.printer ? printerName(offer.printer) : null, offer.tab, offer.file].filter(Boolean).join(' · ');
-    $('handoff-text').textContent = `Continue from your ${offer.device_name}: ${where}`;
+    // In words: "Your iPhone was on Files · U1 Workshop · benchy.gcode".
+    const tabName = (typeof TAB_NAMES !== 'undefined' && TAB_NAMES[offer.tab]) || offer.tab;
+    const where = [tabName, offer.printer ? printerName(offer.printer) : null, offer.file].filter(Boolean).join(' · ');
+    $('handoff-text').textContent = `Your ${offer.device_name} was on ${where}. Open the same here?`;
     el.hidden = false;
     $('handoff-go').onclick = async () => {
       el.hidden = true;
