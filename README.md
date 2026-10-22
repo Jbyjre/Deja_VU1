@@ -395,7 +395,8 @@ watertightness or toolhead clearance. AR still uses original source geometry.
 Open work includes physical testing, feeder control, full format fidelity,
 heater-fault ring/error-clear issues, heavy-model rendering and older launch
 media. Current boards, social cards, screenshots, demo recording and preview GIF
-are refreshed; existing 75-second videos and older editorial crops are not.
+and both launch videos (60-second version 13, 75-second version 12) are refreshed; older
+editorial crops are not.
 See [full validation](docs/slicer-workspace-validation.md),
 [remaining-work goals](build-prompts/07-physical-validation-and-format-fidelity.md)
 and [release requirements](docs/releasing.md).

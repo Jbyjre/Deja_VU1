@@ -40,7 +40,10 @@ mus = mus - mid * band[:, None]
 # 8's, so it is turned up by that much: the clicks keep the same distance above it.
 # Version 11 plays recorded instruments, which are more dynamic: the music is set so the clicks
 # again sit about 3.5 dB under it, measured, as in versions 8-10.
-MUSIC, FX = .72, 1.7
+# Version 13's tune is fuller (the vibraphone rings on under the effects), so the music comes down
+# a little, putting the clicks and keystrokes back where version 7 measured them (the owner kept
+# those sounds): clicks about 10 dB, keystrokes about 4 dB above the music under them.
+MUSIC, FX = .6, 1.7
 m_part, f_part = mus * MUSIC * gain[:, None], fx * FX
 out = m_part + f_part
 norm = .9 / (np.max(np.abs(np.tanh(out * 1.05) / np.tanh(1.05))) or 1)

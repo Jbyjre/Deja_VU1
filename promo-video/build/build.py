@@ -24,47 +24,53 @@ def shot(name):
     return json.load(open(os.path.join(ROOT, 'footage', name + '.json')))
 
 
-# Version 10: still 75 s, laid out in bars of the 160 BPM music (music/compose9.py; a bar is
-# 1.5 s), so every change lands on a bar line (a half bar = beat 3). The story (the owner: less
-# of a feature list, more about what the app is, how it works and where to get it):
-#   bars 0-2 the hook, 2-4.5 what it is for, 4.5-6 the name, 6-10.5 how it works (the laptop
-#   lands showing the app, the printers and the phone join it), 10.5-35.5 seven features,
-#   35.5-39.5 "and plenty more", 39.5-41.5 why trust it, 41.5-46 get started, 46-50 the end card.
-BPM = 160
-BEAT = 60 / BPM                   # 0.375 s
-BAR = 4 * BEAT                    # 1.5 s
-ORDER = [('fl', 3), ('ov', 3), ('ok', 5.5), ('cv', 3), ('pp', 3.5), ('tw', 3.5), ('au', 3.5)]
-SEG, _b = {}, 10.5
+# Version 13: 60 s (the owner: "do a 60-second video"), laid out in bars of the new 144 BPM music
+# (music/compose11.py; a bar is 1.667 s, so 36 bars make exactly 60 s), every change on a bar line.
+# The story (the owner: explain the problem and why the app is there, then show the features
+# clearly and smoothly):
+#   bars 0-4 the problem, 4-6 the answer (the name), 6-8.5 how it works, 8.5-29 six features,
+#   29-31 "and plenty more", 31-32.5 why trust it, 32.5-36 the end card (where to get it).
+BPM = 144
+BEAT = 60 / BPM                   # 0.4167 s
+BAR = 4 * BEAT                    # 1.667 s
+ORDER = [('fl', 3), ('ov', 2.5), ('ok', 5), ('pp', 3.5), ('tw', 3), ('au', 3.5)]
+SEG, _b = {}, 8.5
 for _k, _n in ORDER:
     SEG[_k] = (round(_b * BAR, 3), round((_b + _n) * BAR, 3))
     _b += _n
-assert _b == 35.5, _b
-HIW = {'t0': 6 * BAR, 's2': 7.5 * BAR, 's3': 9 * BAR}  # how it works: its three steps
+assert _b == 29, _b
+NAME = 4 * BAR                                         # the answer: the windows fold into the app's icon
+HIW = 6 * BAR                                          # how it works
 PHONE_AT = round(SEG['ok'][0] + 3.5 * BAR, 3)          # inside Confirm Print: the phone takes over (on beat 3)
-TWIN_CUT = round(SEG['tw'][0] + 2 * BAR, 3)            # the twin: 3D (turned by hand) until here, then front and top
-MORE = 35.5 * BAR                                      # "and plenty more"
-VALUES = 39.5 * BAR                                    # why trust it, one value per beat
-START = 41.5 * BAR                                     # get started
-END = 46 * BAR                                         # the end card (69 s)
-LENGTH = 75.0
+OK_CUT = round(SEG['ok'][0] + 2.9, 3)                  # Confirm Print: the dialog's filmed 2 s pause is cut short here
+TWIN_CUT = round(SEG['tw'][0] + 1.75 * BAR, 3)         # the twin: 3D (turned by hand) until here, then front and top
+MORE = 29 * BAR                                        # "and plenty more"
+VALUES = 31 * BAR                                      # why trust it, one line per beat
+END = 32.5 * BAR                                       # the end card (54.2 s)
+LENGTH = 60.0
+LAND = 1.9                                             # a feature's key moment comes this long after its start,
+                                                       # once its headline has landed and stepped aside
 
 
 # Each entry: (video id, shot, composition time of the shot's t=0, visible from, visible to).
-# Most shots enter part-way in, so each feature gets straight to the point.
+# Each shot is placed so its key moment (a mark or a click) lands LAND seconds into its feature.
 def plan_main(S):
     m = lambda s, k: S[s]['marks'][k]
     c = lambda s, i: S[s]['clicks'][i]
-    win = lambda k, src: (SEG[k][0] - src, SEG[k][0] - .6, SEG[k][1] + .1)   # footage time src lands on the feature's start
+    key = lambda k, t: SEG[k][0] + LAND - t               # footage time t lands on the feature's key moment
+    w = lambda k, start: (start, SEG[k][0] - .6, SEG[k][1] + .1)
     return [
-        ('v-fl', 'fleet', SEG['fl'][0] + 1.2 - m('fleet', 'hover'), HIW['t0'] - .6, SEG['fl'][1] + .1),  # on the laptop from how it works on
-        ('v-ov', 'overview_jam', *win('ov', .5)),
-        ('v-ok', 'confirm_ok', *win('ok', 3.0)),                                     # starts on the open file
-        ('v-ph', 'phone', PHONE_AT + 1.5 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),  # hold to cancel 1.5 s in
-        ('v-cv', 'convert', *win('cv', .6)),
-        ('v-pp', 'prepare', *win('pp', .7)),
-        ('v-tw', 'twin', SEG['tw'][0] - 1.4, SEG['tw'][0] - .6, TWIN_CUT + .3),     # part 1: the 3D drawing, turned
-        ('v-tw2', 'twin', TWIN_CUT - 5.9, TWIN_CUT - .3, SEG['tw'][1] + .1),        # part 2: front, then top
-        ('v-au', 'automations', *win('au', 1.9)),
+        ('v-fl', 'fleet', key('fl', m('fleet', 'hover')), HIW - .6, SEG['fl'][1] + .1),   # on the laptop from how it works on
+        ('v-ov', 'overview_jam', *w('ov', key('ov', m('overview_jam', 'jam')))),
+        # Confirm Print in two parts of one shot: the Print click and the checks, then (cut where
+        # the dialog sits still, so the frames match) the Start click a second sooner than filmed
+        ('v-ok', 'confirm_ok', SEG['ok'][0] + 1.5 - c('confirm_ok', 1), SEG['ok'][0] - .6, OK_CUT + .3),
+        ('v-ok2', 'confirm_ok', OK_CUT + .05 - m('confirm_ok', 'dialog'), OK_CUT - .3, SEG['ok'][1] + .1),
+        ('v-ph', 'phone', PHONE_AT + 1.2 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),
+        ('v-pp', 'prepare', *w('pp', key('pp', m('prepare', 'blue')) + .9)),              # the copy turns blue just after the caption settles
+        ('v-tw', 'twin', SEG['tw'][0] + LAND - .3 - m('twin', 'orbit'), SEG['tw'][0] - .6, TWIN_CUT + .3),  # part 1: the 3D drawing, turned
+        ('v-tw2', 'twin', TWIN_CUT + .25 - m('twin', 'front'), TWIN_CUT - .3, SEG['tw'][1] + .1),           # part 2: front, then top
+        ('v-au', 'automations', *w('au', key('au', m('automations', 'template')))),
     ]
 
 
@@ -107,11 +113,11 @@ for vid, name, start, vfrom, vto in plan:
                          'pitch': .8 if space else random.uniform(.94, 1.06)})
 
 # End-card typing (version 8: a quick typist, about thirteen keys a second, each a little uneven,
-# so it finishes with a second to spare before the 75 s end). The clone line is pasted (one
+# so it finishes with a second to spare before the end). The clone line is pasted (one
 # keystroke); the next two are typed.
 random.seed(4)
 typing = [[round(END + .7, 3)] * 49]
-KEY_END = .5                      # version 11: the real piano's last chord fades sooner, so the typing sits 6 dB lower
+KEY_END = .75                     # version 13: the vibes hook plays under the typing, so it comes back up 3.5 dB (v11: .5)
 cues.append({'t': round(END + .7, 3), 'type': 'key', 'gain': .8 * KEY_END, 'pan': 0, 'pitch': 1.0})
 t = END + 1.1
 for n in (11, 22):
@@ -135,8 +141,8 @@ html = tpl.replace('/*SHARED_CSS*/', SHARED_CSS).replace('<!--VIDEOS-->', '\n'.j
           .replace('/*MARKS*/{}/*END*/', json.dumps(marks)).replace('/*TYPING*/[]/*END*/', json.dumps(typing)) \
           .replace('/*SEGS*/{}/*END*/', json.dumps({**{k: {'t0': a, 't1': b} for k, (a, b) in SEG.items()},
                                                      'values': VALUES, 'end': END, 'twinCut': TWIN_CUT, 'beat': BEAT,
-                                                     'hiw': HIW, 'more': MORE, 'start': START,
-                                                     'ok': {'t0': SEG['ok'][0], 't1': SEG['ok'][1], 'phone': PHONE_AT}}))
+                                                     'hiw': HIW, 'more': MORE, 'name': NAME,
+                                                     'ok': {'t0': SEG['ok'][0], 't1': SEG['ok'][1], 'phone': PHONE_AT, 'cut': OK_CUT}}))
 open(os.path.join(PROJ, 'index.html'), 'w').write(html)
 
 # "And plenty more": stills of the supporting features, from the same filmed shots, each cropped
@@ -156,7 +162,7 @@ json.dump(sorted(cues, key=lambda c: c['t']), open(cue_file, 'w'), indent=0)
 audio = os.path.join(PROJ, 'assets', 'audio')
 os.makedirs(audio, exist_ok=True)
 
-# Version 9: the music follows the picture. Read back from the built page the moments scene.js
+# Version 9: the music follows the picture (version 13: a new tune, compose11.py). Read back from the built page the moments scene.js
 # put on the music's grid (words, promises, callouts, the phone, sensor rows, values), add the
 # feature changes, and hand the lot to the composer.
 pcues = json.loads(subprocess.run(['node', os.path.join(HERE, 'cues.js'), os.path.join(PROJ, 'index.html'), FMT],
@@ -164,11 +170,12 @@ pcues = json.loads(subprocess.run(['node', os.path.join(HERE, 'cues.js'), os.pat
                                   env={**os.environ, 'NODE_PATH': os.environ.get('NODE_PATH', '/opt/node22/lib/node_modules')}).stdout)
 plan_file = os.path.join(HERE, f'music_{FMT}.json')
 json.dump({'bpm': BPM, 'length': LENGTH, 'cues': sorted(pcues, key=lambda c: c['t']),
-           'changes': [SEG[k][0] for k, _ in ORDER] + [MORE, START], 'band': HIW['t0'], 'values': VALUES,
-           'more': MORE, 'start': START, 'end': END},
+           'changes': [SEG[k][0] for k, _ in ORDER] + [MORE], 'name': NAME, 'hiw': HIW, 'values': VALUES,
+           'more': MORE, 'end': END, 'segs': {k: v for k, v in SEG.items()}, 'phone': PHONE_AT,
+           'band': HIW, 'start': END},                          # band, start: read by compose9 when compose11 imports it
           open(plan_file, 'w'), indent=0)
-music_wav = os.path.join(audio, f'music10_{FMT}.wav')
-subprocess.run(['python3', os.path.join(ROOT, 'music', 'compose10.py'), music_wav, plan_file], check=True)
+music_wav = os.path.join(audio, f'music11_{FMT}.wav')
+subprocess.run(['python3', os.path.join(ROOT, 'music', 'compose11.py'), music_wav, plan_file], check=True)
 sfx_wav = os.path.join(audio, f'sfx_{FMT}.wav')
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'sfx.py'), cue_file, str(LENGTH), sfx_wav], check=True)
 subprocess.run(['python3', os.path.join(ROOT, 'music', 'mix.py'), music_wav, sfx_wav, cue_file,

@@ -57,7 +57,8 @@ Say plainly:
 - Representative converted/generated files passed the Linux engine. Full vendor
   paint, textures and per-part semantics remain incomplete.
 - LED rings and the colour sensor have tested logic but no completed hardware drivers.
-- Current boards/screens/demo and both 75-second videos (version 12) are refreshed.
+- Current boards/screens/demo, the two 60-second videos (version 13) and the two 75-second
+  videos (version 12) are refreshed.
   Older editorial crops still need updating; do not label the whole library current.
 - The newer image generator sends a reduced pixel grid to the local app server;
   the older relief editor calculates in the browser.
