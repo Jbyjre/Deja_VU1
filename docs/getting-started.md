@@ -49,7 +49,7 @@ You need your own running copy for real readings.
    that every printer function works. Start with the watch-only checks in
    [first connection](first-connection.md).
 
-You can also add or edit printers under **Fleet → Add a printer**. Adding a
+You can also add or edit printers under **Printers → Add a printer**. Adding a
 printer does not start a print. To explore first, choose **Explore demo data**;
 simulated figures are labelled and simulated commands cannot control a real U1.
 

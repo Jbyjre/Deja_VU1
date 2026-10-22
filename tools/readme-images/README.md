@@ -19,7 +19,7 @@ below identifies their source. For farm captures:
 
 | File | What to open |
 |---|---|
-| `overview.jpg` | Overview: header, status ribbon, Needs you, totals |
+| `overview.jpg` | Overview: the top 640 px of a 1100 px-wide window at 1.45x (header, tabs, ribbon, tab sentence, Needs you) |
 | `fleet.jpg` | Fleet: the "Your printers" card |
 | `control.jpg` | Control: the whole tab |
 | `files.jpg` | Files → Add sample files: library and queue |
@@ -30,14 +30,16 @@ below identifies their source. For farm captures:
 | `dock-rings.jpg` | The "Dock status rings" card (`#rings`) |
 | `modules.jpg` | Settings: the Modules card |
 | `photo-studio.jpg` | Photo studio → Try a test pattern |
-| `twin-health-chamber.jpg` | Overview: the digital twin row (`.live-row`), printer U1 · Workshop |
+| `twin-health-chamber.jpg` | Overview: the twin row (`.now-row`: 3D model, Printer control, Print health), printer U1 · Workshop; hide `.topbar` and `.live-pill` first so they don't overlap |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |
-| `twin-detail.jpg` | Overview: the digital twin (`#twin-card`), T0's balloon clicked so its details show |
+| `twin-detail.jpg` | Overview: the digital twin (`#twin-card`) in 3D model mode, the T0 chip clicked so its details show |
 | `layer-planner.jpg` | Files: the Mixed-nozzle planner (`#tab-layerplan`) → Try a mixed-nozzle example |
 | `add-printer.jpg` | Fleet → Add a printer, with the address of a running `tests/fake_moonraker.py` stand-in, then Test |
 | `converter.jpg` | Files → `sample_makerworld_three_plates.3mf` → Convert for Snapmaker U1: the report |
 | `sandbox.jpg`, `sandbox-farm.jpg` | Fleet → farm sandbox: add 6 printers, load "Jam mid-print", step 660 s |
-| `games.jpg` | Games |
+| `games.jpg` | Games → Pac-Man, before Start (the `#tab-games` card) |
+| `appearance.jpg` | Settings → Appearance (`#appearance-card`) |
+| `setup.jpg` | Set up & help → Continue: the full-screen "Make it yours" step, after moving the mouse across it |
 | `phone.jpg` | Overview at 390 × 844 |
 
 ## The live GIF (`docs/img/live-jam.gif`)

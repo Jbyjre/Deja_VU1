@@ -25,6 +25,10 @@ trust the code and fix this file.
 - Launch video: 60 seconds for the marketing cuts, both 16:9 and 9:16 (the owner, version 13;
   version 12's 75-second cuts are kept beside them) unless the owner says otherwise
   (`promo-video/README.md` holds the owner's other video preferences).
+- Every change must also be reflected in the online demo (the owner's rule,
+  October 2026; README "For developers and AI coding sessions"). Frontend
+  changes reach it by themselves, but check `/?demo` on a static server; a new
+  or changed route needs `tools/online-demo/record.py` and `frontend/demo/`.
 - Read before editing. Grep first, then read with offset and limit. Cap
   command output.
 - Never auto-subscribe to PR or CI activity, enable auto-fix or auto-merge,
@@ -124,14 +128,25 @@ root should hand over to `welcome.html`.
   (29 module ids), `storage.py` (atomic JSON).
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
-- Script order: `app.js` → `viewer3d.js` → `ar.js` → `workshop.js` →
-  `studio.js` → `farm.js` → `launchpad.js`. `app.js` defines the shared globals the others
+- Script order: `app.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
+  `twin3d.js` → `workshop.js` → `studio.js` → `farm.js` → `launchpad.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
   every 30 s), fleet cards, the "Needs you" list, room tint, live pill,
   digital twin (an SVG engineering drawing projected from millimetres,
   `drawTwin`), files, dialogs, morph animations.
+- `backdrop.js`: the cursor-reactive background (four styles, five colour
+  sets, `Backdrop.picker()` for Settings and setup; browser-only preference).
+  It draws only while the pointer moves or something is settling. While it can
+  move, content cards drop their blur (theme.css "The live background").
+- `twin3d.js`: the twin's shaded 3D model (raw WebGL, no library), driven by
+  workshop.js (`setTwinMode`, `queueTwin`). Outer size 584 × 499 × 730 mm is
+  published; colours and part placement are by eye and the card says so.
+- Games (app.js): every game timer goes through `frameEvery()` (rAF-driven fixed
+  steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
+  canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
+  October 2026; the older game code below them in app.js is legacy.
 - CSS order: `style.css` → `workshop.css` → `farm.css` → `theme.css`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns

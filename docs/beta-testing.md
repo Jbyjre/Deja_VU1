@@ -29,7 +29,7 @@ cd deja_vu1
 DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py
 ```
 
-Open **http://localhost:8000**, then **Fleet → Add a printer** with the U1's
+Open **http://localhost:8000**, then **Printers → Add a printer** with the U1's
 address (usually `http://<printer-ip>:7125`). `DEJAVU_MOONRAKER_LOG=1` makes
 the terminal print every exchange with the printer - that log is the most
 useful thing you can send back.

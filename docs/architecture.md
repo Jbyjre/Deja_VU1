@@ -761,7 +761,7 @@ from the same seeded demo state.
 
 ## Connecting a real printer
 
-Done: add it under **Fleet → Add a printer**. See
+Done: add it under **Printers → Add a printer**. See
 [real-printer.md](real-printer.md).
 
 For the hardware modules, implement `_write_to_hardware()` in `led_status.py`
