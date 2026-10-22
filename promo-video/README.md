@@ -218,7 +218,15 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
   problem and why the app exists, then the features, clearly and smoothly), the same keystrokes,
   exciting "elevator" jazz. Anthropic's own launch-film conventions are still not documented
   anywhere searchable (searched again for this version), so the structure follows the owner's
-  description, not a copied style.
+  description, not a copied style. Checked instead against published 60-second launch-video
+  guides (flowjam.com's one-minute launch video, typecast.ai's 60-second demo template, fliki.ai's
+  Product Hunt guide; search snippets, October 2026): hook and problem in the first 5-15 s, the
+  demo from about 15 to 45 s, proof at 45-55 s, one call to action at the end, on-screen text for
+  viewers watching without sound. Version 13 lands on that: problem 0-7 s, answer and how it works
+  7-14 s, features 14-48 s, trust 52-54 s, the GitHub address 54-60 s, every line on screen.
+- (v13) Tempo: stock listings put relaxed lounge/elevator jazz at about 60-100 BPM and upbeat
+  vibraphone tracks at about 110-145 BPM (one grooving-vibraphone listing at 145). The owner
+  asked for "exciting" and liked 160 BPM in version 9, so 144 sits at the upbeat end of lounge.
 - (v13) A tune makes music "interesting to listen to"; a trio that only hits chords on cues does
   not. The vibraphone is the sound people know from lounge and elevator jazz. No CC0 vibraphone is
   in VSCO 2 CE; VCSL (same author, CC0) has soft and hard mallets. Like VSCO's bass, VCSL names its
