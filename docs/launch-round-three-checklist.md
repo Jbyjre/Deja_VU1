@@ -79,7 +79,7 @@ Current evidence is in [workspace validation](slicer-workspace-validation.md).
 
 38. Inspect real-browser screenshots at both target widths, re-record the online demo, and update documentation, boards and affected media. — **Partly done.** Inspected paired viewport images, demo recording, guides and boards refreshed. New preview GIF added; older editorial crops/video cuts still need a final pass.
 
-39. Commit finished features separately, open a clear pull request, resolve relevant failures, and merge according to the authorized convention. — **Partly done.** Separate feature commits exist. Pull-request/check/merge outcome is reported in the owner delivery chat; no polling or auto-merge.
+39. Commit finished features separately, open a clear pull request, resolve relevant failures, and merge according to the authorized convention. — **Done and verified.** Nine feature/documentation commits published in [PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45); Tests passed and the PR merged with commit 3374e84 on 22 October 2026. No polling or auto-merge.
 
 40. Deliver the complete final report: all 40 statuses, evidence, remaining limits, private research records and concise owner testing steps. — **Done and verified.** Complete owner report supplied with delivery: forty statuses, evidence, private historical/reverified research and practical testing steps.
 

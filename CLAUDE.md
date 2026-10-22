@@ -1,8 +1,10 @@
 # Deja Vu1: notes for AI coding sessions
 
-A dashboard for the Snapmaker U1 3D printer (and a farm of them), talking to
-the printer's Moonraker API. Python standard-library backend, plain
-HTML/CSS/JS frontend, no build step, no dependencies. README.md is the
+A local dashboard and model-preparation workspace for Snapmaker U1 printers.
+It talks to Moonraker, edits plates, invokes an independently installed slicing
+engine and inspects G-code. The core uses standard-library Python and plain
+HTML/CSS/JS, with no build step or packages. Optional engines and media tools
+have separate requirements. README.md is the
 human-facing overview; this file is the working context. Facts here were
 checked against the code in October 2026. If code and this file disagree,
 trust the code and fix this file.
@@ -172,10 +174,11 @@ worker in `wrangler.jsonc` and those tags must change too.
 `marketing-library/` and `build-prompts/` are temporary, for the owner:
 copies of every marketing picture plus `MESSAGING.md` (the agreed feature
 order and wording), and one prompt per planned build session. Nothing reads
-them; both go before the launch post (`build-prompts/04-real-u1-and-launch.md`).
+them; both go before the launch post. Current follow-up goals are in
+`build-prompts/07-physical-validation-and-format-fidelity.md`; older briefs are historical.
 
 `promo-video/`: the launch video (HyperFrames compositions, frame-by-frame filming
-scripts that drive the real app on the simulated farm, synthesised music);
+scripts that drive the app on the simulated farm, recorded-instrument music);
 `promo-video/README.md` is its working guide. The finished videos are copied into
 `marketing-library/07-videos/`.
 
@@ -183,8 +186,10 @@ scripts that drive the real app on the simulated farm, synthesised music);
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
 comment from Cloudflare's bot. GitHub Actions also runs the test suite on Python
 3.8, 3.10, 3.12 and 3.13 (`.github/workflows/tests.yml`, pinned to Ubuntu
-24.04 because Python 3.8 builds stop there). `*.workers.dev` is blocked from the cloud
-sandbox, so you can't fetch the preview from here.
+24.04 because Python 3.8 builds stop there). Check the current environment's
+network policy before accessing a preview; a permitted production host does not
+establish access to every `*.workers.dev` preview. Local static checks do not
+prove a public deployment.
 
 ## Rules the code depends on
 
@@ -238,16 +243,15 @@ sandbox, so you can't fetch the preview from here.
 
 ## Known open issues (found in the October 2026 audit, not fixed yet)
 
-- Full app-data backup and isolated recovery now exist (`backup.py`). External
-  engine installations and external exported preset paths remain external resources;
-  Windows/macOS recovery launchers still need owner verification.
+- Windows/macOS engine setup and recovery launchers remain unverified; Linux
+  isolated recovery is tested. External engines/exported presets need separate backup.
 - A missing API key over the WebSocket shows only "Not connected:
   Unauthorized" (`moonraker_client._call`).
 - A simulated heater fault docks the head, so its LED ring reads "ready".
 - `MoonrakerPrinter.clear_error()` is unreachable.
-- Not checked by the audit (its agents hit the usage limit): the feature
-  backends in depth (automations, converter, slicer bridge, studio, queue,
-  camera) and `docs/architecture.md` beyond the frontend section.
+- Current backend/security/fake-printer coverage passes, but it does not establish
+  physical firmware behaviour. Follow the current validation record rather than
+  older audit-completion claims.
 
 ## Launch-readiness additions
 

@@ -3,9 +3,10 @@
 > **Temporary. Delete this folder (with `marketing-library/`) before the
 > launch post.** These are working notes for the owner, not documentation.
 
-One prompt per piece of work that's big enough for its own Claude Code
-session. Each one says what the owner wants and why, gives the context a
-fresh session needs, and leaves the *how* to that session.
+Follow-up briefs for work that needs a separate coding session. Start with
+[07: physical validation and format fidelity](07-physical-validation-and-format-fidelity.md).
+Read the current [validation record](../docs/slicer-workspace-validation.md)
+and [working rules](../CLAUDE.md) before relying on an older brief.
 
 ## How to use one
 
@@ -13,33 +14,21 @@ fresh session needs, and leaves the *how* to that session.
    `Jbyjre/Deja_VU1`).
 2. Open the prompt file below, copy everything under the line, and paste it
    as your first message.
-3. Let it work. It will open a pull request and merge it when the checks
-   are green, as `CLAUDE.md` says.
+3. The session should open a pull request and merge with one merge commit when
+   checks are green or absent and there are no conflicts. Pending checks are
+   reported without waiting, polling or enabling auto-merge.
 
-Four prompts, consolidated on 17 October 2026 from eight (the first,
-multi-nozzle printing, was mostly built in that session; what's left of it
-is in prompt 2). Each gives the goal, what's known, and directions, and
-leaves the *how* to the session. Run them roughly in this order, and let
-each session re-check what a prompt states before relying on it.
+## Current and historical briefs
 
 | # | Prompt | What it gets you |
 |---|---|---|
-| 1 | [Make everything work, every time](01-make-everything-work.md) | Every known bug fixed, the never-audited features (automations, converter, slicer bridge, Studio, queue, camera) tried hard and fixed, and a smarter dashboard |
-| 2 | [More colours, more nozzles, the whole farm](02-multi-material-and-farm.md) | multiACE's 16 colours, mixed nozzles through the converter, slicer and Studio, and jobs that go to the right printer by themselves |
-| 3 | [Make the big features lead](03-structure-and-drawings.md) | An app that feels as big as it is, with the digital twin's drawing style brought to the rest of the screens |
-| 4 | [On a real U1, then launch](04-real-u1-and-launch.md) | An install a U1 owner can follow, the first real connection, then fresh pictures, honest copy and the GitHub page ready to post |
+| 7 | [Physical validation and format fidelity](07-physical-validation-and-format-fidelity.md) | Current priorities: owner-authorized U1 testing, real-phone performance, platform setup, format fidelity and remaining launch media |
+| 6 | [Native studio and compatibility](06-native-studio-hardware-and-compatibility.md) | Historical round-two brief; several engine, plate and recovery gaps are now resolved |
+| 5 | [Launch follow-through](05-launch-follow-through.md) | Historical launch-polish brief; recheck against current evidence |
+| 1–4 | [Reliability](01-make-everything-work.md), [materials/farm](02-multi-material-and-farm.md), [structure](03-structure-and-drawings.md), [real U1/launch](04-real-u1-and-launch.md) | Original goals, retained for context rather than a current completion list |
+| 99 | [Cleanup merge notes](99-cleanup-merge-notes.md) | Historical wording pass; its test totals and branch notes are not current |
 
-## Asked for, not built yet
-
-From the owner's 17 October requests, these need a session of their own
-and are written into the prompts above:
-
-- The drawing style across the rest of the app (fleet cards, G-code viewer,
-  charts, maintenance, converter previews): prompt 3.
-- "Smarter" behaviour that notices problems before it's asked: prompts 1
-  and 3.
-- Mixed nozzles in the converter, slicer bridge and Photo Studio, and
-  Photo Studio measured against HueForge: prompt 2.
-- Installing next to Moonraker on the printer itself: prompt 4.
-- The GitHub page itself (About text, topics, social preview), which only
-  the owner can change: prompt 4 lists the clicks.
+The unified workspace, capable-engine per-head heights, single-plate separation
+and isolated app-data recovery are implemented. Feeder control, physical colour
+accuracy and real-printer validation remain open. Avoid repeating resolved work
+or treating an old brief's ambitions as shipped features.
