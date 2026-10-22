@@ -627,3 +627,68 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 #game-host .tetris-v2 .tetris-side { min-width: 0; width: 124px; align-items: center; }
 #game-host .tetris-v2 .tetris-side canvas { width: 96px; height: auto; }
 @media (max-width: 520px) { #game-host .tetris-v2 { gap: 10px; } #game-host .tetris-v2 .tetris-side { width: 84px; padding: 8px; } #game-host .tetris-v2 .tetris-side canvas { width: 64px; } }
+
+/* ==========================================================================
+   The live background (backdrop.js)
+   One canvas behind everything. It replaces the two filament-coloured
+   pools (the "Filament" colour set keeps that behaviour as an option).
+   While it can move, content cards drop their own blur and become plain
+   paper: glass that re-blurs a moving background on every frame was this
+   app's main source of stutter before, so only the chrome (top bar, tabs,
+   status ribbon) stays glass and bends what moves behind it.
+   ========================================================================== */
+.backdrop-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+html[data-backdrop] .pool { display: none; }
+html[data-backdrop] .bg::before { z-index: 1; }
+html[data-backdrop="lines"] .bg::before,
+html[data-backdrop="dots"] .bg::before { display: none; }
+html[data-backdrop]:not([data-backdrop="still"]) { --paper: oklch(99% 0.002 250 / .9); }
+html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The picker: four styles with a small preview each, five colour sets. */
+.backdrop-picker { display: grid; gap: 18px; margin-bottom: 18px; }
+.bp-group { border: 0; padding: 0; margin: 0; min-width: 0; }
+.bp-group legend { font: 600 14px/1.3 var(--font-sans); color: var(--text); padding: 0; margin-bottom: 10px; }
+.appearance-card > .bp-group { margin-bottom: 14px; }
+.bp-styles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.bp-style {
+  display: grid; grid-template-rows: auto auto 1fr; gap: 4px; text-align: left; padding: 10px;
+  border-radius: 16px; border: 1.5px solid var(--hair); background: var(--paper-solid); color: var(--text);
+  font: inherit; cursor: pointer; min-height: 44px;
+}
+.bp-style:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--hair)); }
+.bp-style.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.bp-style:focus-visible, .bp-palette:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bp-thumb { display: block; height: 64px; border-radius: 10px; margin-bottom: 4px; background-color: var(--bp-bg, #eef2f7); }
+.bp-thumb-flow { background:
+  radial-gradient(circle at 25% 30%, var(--bp-a) 0, transparent 46%),
+  radial-gradient(circle at 75% 40%, var(--bp-b) 0, transparent 42%),
+  radial-gradient(circle at 55% 85%, var(--bp-c) 0, transparent 44%),
+  var(--bp-bg); }
+.bp-thumb-lines { background:
+  radial-gradient(circle at 60% 50%, color-mix(in srgb, var(--bp-glow) 40%, transparent) 0, transparent 30%),
+  repeating-linear-gradient(180deg, var(--bp-ink) 0 1px, transparent 1px 5px),
+  var(--bp-bg); }
+.bp-thumb-dots { background:
+  radial-gradient(circle at 62% 50%, color-mix(in srgb, var(--bp-glow) 35%, transparent) 0, transparent 28%),
+  radial-gradient(circle, var(--bp-ink) 1.2px, transparent 1.6px) 0 0 / 10px 10px,
+  var(--bp-bg); }
+.bp-thumb-still { background: linear-gradient(160deg, var(--bp-a), var(--bp-bg) 55%, var(--bp-b)); }
+.bp-name { font-weight: 600; font-size: 14px; }
+.bp-hint { font-size: 12.5px; color: var(--text-faint); line-height: 1.35; }
+.bp-palettes { display: flex; flex-wrap: wrap; gap: 10px; }
+.bp-palette {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; min-height: 44px;
+  border-radius: 999px; border: 1.5px solid var(--hair); background: var(--paper-solid); color: var(--text);
+  font: 500 14px/1 var(--font-sans); cursor: pointer;
+}
+.bp-palette.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.bp-swatch { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.bp-note { margin: 10px 0 0; font-size: 13px; color: var(--text-dim); }
+@media (prefers-contrast: more) {
+  .bp-style, .bp-palette { border-color: var(--text-dim); }
+  .bp-style.active, .bp-palette.active { border-width: 3px; }
+}

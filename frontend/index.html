@@ -877,6 +877,12 @@
       <p class="field-hint">Off by default. Checks send no name or printer details. GitHub sees your connection's network address.</p>
       <p class="field-hint" id="app-update-note"></p>
     </section>
+    <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
+      <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
+      <div data-backdrop-picker></div>
+      <fieldset class="bp-group"><legend>Accent colour</legend><p class="field-hint">Used for buttons, the selected tab and highlights.</p><div id="accent-swatches" style="display:flex; gap:9px; flex-wrap:wrap;"></div></fieldset>
+      <p class="field-hint">Saved only in this browser. Nothing here is sent to the printer or the server.</p>
+    </section>
     <div class="grid-2" style="align-items:start;">
       <section class="card liquid-glass">
         <div class="card-head"><div><h2>Modules</h2><p class="card-sub">Turn features on or off</p></div></div>
@@ -900,8 +906,6 @@
 
         <section class="card liquid-glass" data-browser-only>
           <div class="card-head"><div><h2>Preferences</h2></div></div>
-          <p class="card-sub" style="margin-bottom:8px;">Accent colour</p>
-          <div id="accent-swatches" style="display:flex; gap:9px; margin-bottom:16px;"></div>
           <p class="card-sub" style="margin-bottom:8px;">Temperature units</p>
           <div class="pill-toggle" role="group" aria-label="Temperature units">
             <button id="units-c" class="active">°C</button>
@@ -1209,6 +1213,7 @@
   <div class="setup-footer"><button class="btn" id="setup-back">Back</button><button class="btn primary" id="setup-next">Continue</button></div>
 </dialog>
 <script src="app.js"></script>
+<script src="backdrop.js"></script>
 <script src="viewer3d.js"></script>
 <script src="ar.js"></script>
 <script src="workshop.js"></script>
