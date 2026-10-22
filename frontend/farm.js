@@ -617,7 +617,9 @@ const Farm = (() => {
   async function loadAutoPrint() {
     const body = $('ap-body'), off = $('ap-off');
     if (!body) return;
-    const data = await getJSON('/api/slicer/settings').catch(() => null);
+    const forPrinter = currentPrinter;
+    const data = await getJSON(api('/api/slicer/settings')).catch(() => null);
+    if (forPrinter !== currentPrinter) return;
     // No server: its cards already say they need one.
     if (data && data.server_missing) { body.hidden = false; off.hidden = true; return; }
     ap.enabled = !isModuleDisabled(data) && !!data;
@@ -652,22 +654,24 @@ const Farm = (() => {
     else if (check) status.innerHTML = `<p class="ap-state is-bad"><b>The last check failed.</b> ${esc(check.error)}</p>`;
     else status.innerHTML = '<p class="ap-state"><b>Not checked yet.</b> Save the path, then press "Check slicer".</p>';
     if (document.activeElement !== $('ap-path')) $('ap-path').value = s.slicer_path || '';
+    if(document.activeElement!==$('ap-preset-folder'))$('ap-preset-folder').value=s.preset_folder||'';
     $('ap-path').disabled = s.path_source === 'environment';
     $('ap-path-note').textContent = s.path_source === 'environment'
       ? 'Set by DEJAVU_SLICER_PATH when the server was started - change it there.' : '';
     if (document.activeElement !== $('ap-timeout')) $('ap-timeout').value = s.timeout_s;
-    $('ap-profiles').innerHTML = s.profiles.length ? s.profiles.map(p => `
+    paint($('ap-profiles'), s.profiles.length ? s.profiles.map(p => `
       <li class="ap-profile">
         <label class="ap-default"><input type="radio" name="ap-default" value="${esc(p.id)}" ${p.id === s.default_profile ? 'checked' : ''}> Default</label>
         <span><b>${esc(p.name)}</b>
           <small>${esc(p.preset_names.machine)} · ${esc(p.preset_names.process)} · ${p.preset_names.filaments.map(esc).join(', ')}</small>
           ${(p.warnings || []).map(w => `<small class="ap-warn">${esc(w)}</small>`).join('')}</span>
         <button class="btn small" type="button" data-remove-profile="${esc(p.id)}">Remove</button>
-      </li>`).join('') : '<li class="log-empty">No profiles yet. A profile is one machine, one process and one to four filament presets.</li>';
-    qsa('[name="ap-default"]').forEach(r => r.addEventListener('change', () => apPost('/api/slicer/settings', { default_profile: r.value })));
-    qsa('[data-remove-profile]').forEach(b => b.addEventListener('click', () => apPost(`/api/slicer/profiles/${enc(b.dataset.removeProfile)}/remove`, {}, b, 'Removing…')));
-    const sel = $('ap-profile');
+      </li>`).join('') : '<li class="log-empty">No profiles yet. A profile is one machine, one process and one to four filament presets.</li>');
+    qsa('[name="ap-default"]').forEach(r => r.onchange = () => apPost('/api/slicer/settings', { default_profile: r.value }));
+    qsa('[data-remove-profile]').forEach(b => b.onclick = () => apPost(`/api/slicer/profiles/${enc(b.dataset.removeProfile)}/remove`, {}, b, 'Removing…'));
+    const sel = $('ap-profile'), keepProfile = sel.value;
     sel.innerHTML = s.profiles.map(p => `<option value="${esc(p.id)}" ${p.id === s.default_profile ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+    if (s.profiles.some(p=>p.id===keepProfile)) sel.value=keepProfile;
     updateSliceButtons();
   }
 
@@ -706,7 +710,9 @@ const Farm = (() => {
   }
 
   async function loadJobs() {
-    const data = await getJSON('/api/slicer/jobs').catch(() => null);
+    const forPrinter = currentPrinter;
+    const data = await getJSON(api('/api/slicer/jobs')).catch(() => null);
+    if (forPrinter !== currentPrinter) return;
     if (!data || !data.jobs) return;
     ap.jobs = data.jobs;
     renderJobs();
@@ -716,8 +722,8 @@ const Farm = (() => {
   }
 
   function renderJobs() {
-    const WORD = { waiting: 'Waiting', running: 'Slicing', done: 'Sliced', queued: 'Sliced & queued', failed: 'Failed' };
-    $('ap-jobs').innerHTML = ap.jobs.length ? ap.jobs.map(j => {
+    const WORD = { waiting: 'Waiting', running: 'Slicing', done: 'Sliced', queued: 'Sliced & queued', failed: 'Failed', cancelled: 'Cancelled' };
+    paint($('ap-jobs'), ap.jobs.length ? ap.jobs.map(j => {
       const rep = j.report || {}, files = rep.files || [];
       return `<li class="ap-job ${j.status}">
         <div class="ap-job-head"><b>${esc(j.model)}</b><span class="pill">${WORD[j.status]}</span></div>
@@ -725,19 +731,22 @@ const Farm = (() => {
         ${files.map(f => `<p class="ap-job-file">→ <button class="chip-btn" type="button" data-open-file="${esc(f.name)}">${esc(f.name)}</button>
           ${f.layers} layers · ${f.estimated_hours==null?'time unknown':Workshop.fmtHours(f.estimated_hours)} · ${f.filament_grams==null?'filament unknown':f.filament_grams.toFixed(1)+' g'} · pre-flight ${esc(f.preflight)}</p>`).join('')}
         <div class="fd-actions">
+          ${['waiting','running'].includes(j.status)?`<button class="btn small" data-cancel-slice="${esc(j.id)}">Cancel slice</button>`:''}
           ${files.length && j.previous ? `<button class="btn small" type="button" data-diff="${esc(j.previous)}|${esc(files[0].name)}">What changed since ${esc(j.previous)}?</button>` : ''}
           ${rep.command ? `<details class="ap-details"><summary>What ran${rep.seconds != null ? ` (${rep.seconds} s)` : ''}</summary>
             <code>${esc(rep.command.join(' '))}</code>
             ${rep.error_tail || rep.output_tail ? `<pre>${esc((rep.error_tail || rep.output_tail).slice(-600))}</pre>` : ''}</details>` : ''}
         </div>
       </li>`;
-    }).join('') : '<li class="log-empty">Nothing sliced yet.</li>';
-    qsa('#ap-jobs [data-open-file]').forEach(b => b.addEventListener('click', () => { showTab('files'); Workshop.openFile(b.dataset.openFile); }));
-    qsa('#ap-jobs [data-diff]').forEach(b => b.addEventListener('click', () => { const [a, c] = b.dataset.diff.split('|'); Workshop.openDiff(a, c); }));
+    }).join('') : '<li class="log-empty">Nothing sliced yet.</li>');
+    qsa('#ap-jobs [data-cancel-slice]').forEach(b => b.onclick = () => apPost('/api/slicer/jobs/'+enc(b.dataset.cancelSlice)+'/cancel', {}, b, 'Stopping…'));
+    window.dispatchEvent(new CustomEvent('dv-slice-jobs', {detail:ap.jobs}));
+    qsa('#ap-jobs [data-open-file]').forEach(b => b.onclick = () => { showTab('files'); Workshop.openFile(b.dataset.openFile); });
+    qsa('#ap-jobs [data-diff]').forEach(b => b.onclick = () => { const [a, c] = b.dataset.diff.split('|'); Workshop.openDiff(a, c); });
     // Say when a job finishes, once.
     ap.jobs.forEach(j => {
       const before = ap.seen.get(j.id);
-      if (before && before !== j.status && ['done', 'queued', 'failed'].includes(j.status)) {
+      if (before && before !== j.status && ['done', 'queued', 'failed', 'cancelled'].includes(j.status)) {
         toast(j.status === 'failed' ? `Slicing ${j.model} failed: ${j.error}` : `${j.model}: ${j.step}`, j.status === 'failed' ? 'bad' : 'ok', 8000);
         if (window.Workshop) { Workshop.loadFiles(); Workshop.loadQueue(); }
       }
@@ -760,7 +769,7 @@ const Farm = (() => {
     if (!$('tab-autoprint')) return;
     $('ap-form').addEventListener('submit', (e) => {
       e.preventDefault();
-      const body = { timeout_s: +$('ap-timeout').value };
+      const body = { timeout_s: +$('ap-timeout').value, preset_folder:$('ap-preset-folder').value };
       if (!$('ap-path').disabled) body.slicer_path = $('ap-path').value;
       apPost('/api/slicer/settings', body, qs('button[type="submit"]', e.target));
     });

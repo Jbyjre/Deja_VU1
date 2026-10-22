@@ -1,4 +1,7 @@
-# Native studio: evidence and remaining limits
+# Native studio: historical round-two evidence
+
+Current results are in [slicer workspace validation](slicer-workspace-validation.md).
+The failures and unsupported capabilities below describe the previous delivery.
 
 The application still runs with Python alone. The separately installed engine
 used for these integration checks was official OrcaSlicer 2.4.2 on Linux.

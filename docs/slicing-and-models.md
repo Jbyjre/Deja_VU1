@@ -1,155 +1,143 @@
-# Preparing a model and making a print file
+# Prepare, slice and inspect a plate
 
-A model describes a shape. A slicer turns it into G-code: the movement,
-temperature and extrusion instructions the printer follows. A preview is not a
-slicer, and passing the dashboard's checks is not a guarantee of a safe print.
+A model describes a shape. A slicing engine turns it into G-code: the movement,
+heating and extrusion instructions a printer follows. The viewer and nozzle
+calculator do not create those instructions.
 
-## Model preparation available now
+## One workspace
 
-**Plate workspace:** source geometry stays immutable; edits are separate
-position/rotation/scale matrices. Add STL, 3MF or triangular OBJ files, select
-objects by name, move their centre/bottom numerically, rotate by any angle,
-scale, mirror, duplicate, arrange with 5 mm spacing, undo/redo and drop to bed.
-Lay-flat uses the broadest coplanar surface, not an automatic support optimiser.
-Surface measurement uses actual ray/triangle intersections. Mesh contact and
-measurement run off the browser's main thread, capped at 250,000 triangles per
-object; the visual workspace allows two million triangles total.
+Open an STL, triangular OBJ or 3MF in Files. **Prepare** has an object list,
+precise position/rotation/scale, duplicate, arrange, mirror, lay-flat, drop,
+contact checks and surface measurement. Click a model to select it, or use the
+keyboard in the object list. Arrange frames the moved objects automatically.
+The selected object shows its base physical tool; source paint can override it.
 
-Save a **new 3MF plate** to Files or save and open slicing. Original 3MF model,
-property and texture parts are relocated into separate source folders, and
-untouched original input files are included for recovery. Current base-tool and
-object wall/infill choices are written into project settings. Inspect complex
-imported per-part settings in Orca; not every vendor extension is interpreted
-by the dashboard. The preview supports core material colours, colour groups,
-simple whole-face paint and OBJ vertex colours. Texture images and subdivided
-face paint are kept in source data but not fully rendered. Geometry STL export
-is explicitly shape-only. AR still uses the original source model.
+**Profiles & tools** uses the same saved tool assignments and profile editor as
+Auto-print. **Slice plate** saves a new source-preserving 3MF, then starts the
+local engine. The original remains intact. A slice has named stages, cancellation
+and actual output validation; no fabricated percentage is shown.
 
-Reopening a native saved plate restores its individual objects and transforms
-from the embedded original files, even if their old library entries are gone.
-OBJ vertex colours in the `v x y z r g b` form are converted to standard 3MF
-colour groups when saving. External OBJ material/texture files remain unsupported.
+**Preview** inspects that output, with a layer slider, direct layer number,
+previous/next, one-layer mode, travel visibility, tool/speed/feature colours,
+legends and event markers. On phones, optional display controls fold away and
+settings replace the viewport. Editing the plate or changing its profile
+invalidates the preview. A result from an earlier revision stays in the library.
+Open the result to inspect pre-flight and enter **Confirm Print**. Queueing never
+starts a print or bypasses Confirm Print. Blocked output remains inspectable and
+never enters the automatic queue handoff.
 
-The G-code inspector steps through layers in file order, including sequential objects whose height resets, optionally isolates
-one layer, filters tools and colours by tool, requested speed or file feature
-labels. Yellow dots are tool changes; pink dots are retractions. Missing labels
-are shown as unspecified. File-derived nominal motion time is distance/speed,
-with no allowance for acceleration, heating, macros or pauses. Slicer-reported
-time remains labelled separately. Retraction recovery does not add new filament.
+## Install and select an external engine
 
-## Images and heightmaps
+No engine, engine presets or Linux libraries are bundled or downloaded by the
+app. Use an independently installed Orca-compatible program with U1 presets.
+The current verified specialised Linux build identifies itself as
+**Snapmaker_Orca 02.08.01.55**. The owner's delivery report identifies the exact
+release and source. Stock OrcaSlicer 2.4.2 remains a shared-height route; its
+historical successful slices do not prove per-head support.
 
-In **Photo Studio → From image to print project**, choose a photo or the test
-image. **Colour tiles** selects among the four saved tool colours. Optional
-dithering spreads colour differences across neighbouring tiles; it does not mix
-filament inside the nozzle. The output includes a backing and closed tile solids.
-Cell width must be at least two of the widest selected nozzle widths.
+1. Install and open your engine normally. First verify its own U1 setup.
+2. Enable **Auto-print pipeline** and **Filament inventory** in Settings.
+3. Save the fitted T0–T3 nozzles, materials, colours, preferred heights and
+   explicit spool identities. These records do not change fitted hardware.
+4. Enter the full engine program path and **Check slicer**. The check reads its
+   actual version/help and, where available, exported option schema. Changing the
+   executable invalidates its capability result. Schema recognition is not a
+   claim that every geometry or platform has been tested.
+5. **Find installed U1 profiles**. Some engine builds package presets in an opaque
+   cache. For those, select a matching unpacked profiles folder containing
+   `Snapmaker/`, or use complete exported JSON files in advanced setup. The app
+   does not download or unpack proprietary engine caches. Linux validation used
+   matching source presets outside this repository. Normal Windows/macOS setup
+   remains unverified. The Linux build needed WebKitGTK 4.1, JavaScriptCore and
+   mspack runtime libraries; follow the engine's installation requirements.
+6. Select printer, process and four material presets. Review compatibility;
+   explicitly acknowledge using another U1 nozzle/material variant where needed.
+   Save a new named profile. Installed files stay intact. Internal working copies
+   live in application storage and enter app-data backups.
 
-For **Layered colour**, build the sixteen-swatch sheet, slice at the displayed
-layer thickness, print it, then record each measured tile colour in row order.
-Confirm the measurements came from your printed swatches. The app stores them
-for that exact printer/tool/spool/nozzle setup and thickness. Both first and subsequent layers must match the generated thickness; the bridge refuses a mismatch. Keep the same process and material settings, especially temperatures and flow, for swatches and images. Backing thickness rounds up to a whole number of layers. The layered workflow then
-chooses among those measured four-layer recipes. Nothing here measures colour
-automatically or promises physical matching without a printer check.
+Quality/shells, infill, support/adhesion, speed and per-material temperature,
+flow/cooling groups expose validated engine options. Blank numeric overrides
+inherit their installed preset. Unsupported inherited values are preserved;
+unsupported edits are refused. Cooling enablement and bed-type selection still
+come from the resolved presets. Smooth-plate temperature fields apply only to
+that bed type. Edit-as-new keeps the previous profile for recovery. External
+exported preset paths remain external resources and must be backed up separately.
 
-**Heightmap relief** makes lighter pixels higher and closes the mesh with a
-flat bottom and side walls. Width and relief height are explicit millimetres;
-there is no geographical scale or elevation lookup. Save the generated model,
-open it in the plate workspace and slice to obtain engine-derived quantities.
+## Genuine different heights per head
 
-## Local slicing setup
+Choose **Different preferred heights per head** in a native profile. It uses the
+saved physical-head heights, not the older standalone calculator's drawing.
+A capable engine receives `extruder_layer_height` and, when advertised, exact
+coordination mode in the machine working copy; the process receives the computed
+common step. Shared mode removes these preferences and uses the common height.
+Unsupported engines refuse per-tool mode; they never silently substitute shared
+heights. Changing fitted tools makes an old profile stale.
 
-**Verified engine path:** OrcaSlicer 2.4.2 on Linux has sliced the sample bracket
-through this bridge, using its own resolved U1 presets. Output: 125 layers,
-6.62 g and 0.231 hours from the engine; Deja Vu1 pre-flight was clear. This
-does not verify a physical print, other operating systems or arbitrary projects.
+The integration accepts exact multiples of 0.005 mm. Each preference and the
+first layer must fit the nozzle's limits. The common step must also satisfy every
+fitted head's minimum, because purge and fallback paths can use that step. This
+is deliberately more conservative than the engine's experimental fine-grid mode.
+For example 0.14/0.28 mm works on 0.4/0.6 mm nozzles; 0.2/0.3 mm requires a
+0.1 mm grid below the fitted 0.6 mm nozzle's 0.12 mm minimum and is refused.
 
-**Beginner profile setup:** in Auto-print, load and save **Tools & filaments**,
-then choose **Find installed U1 profiles**. Pick matching printer, quality and
-four material presets by name. Set layer height, walls, infill and supports;
-more settings expose speeds and shell counts. Save a new named profile. The
-app resolves parent presets from the installed engine and writes private working
-copies; it never edits the installation. The saved nozzles and colours feed
-those copies. Changing tool preparation requires a new profile. All heads use
-the selected common layer height, validated through the nozzle planner.
+Actual verified pairs: 0.14/0.28 mm on 0.4/0.6 mm nozzles; 0.2/0.4 mm on
+0.4/0.8 mm; 0.1/0.2 mm on two 0.4 mm nozzles. These are preferred heights.
+First layers, shared geometry and features that cannot combine may be finer.
+Bridges span a gap and can use round strands whose declared height reflects
+nozzle width. Inspect model deposition and tool changes, not layer comments alone.
+This differs from adaptive layers, which change thickness through a model's height.
+No physical mixed-nozzle print is verified here.
 
-Use a separately installed OrcaSlicer with known-compatible U1 presets. Deja Vu1
-runs its command line as a child program; it does not include a slicing engine,
-download one automatically or send the model to a cloud slicer. OrcaSlicer's
-root licence is AGPL-3.0; packaging, modifying or distributing it would require
-its own licence review. This app does not bundle it. The current command-line
-options were checked in the [official source](https://github.com/OrcaSlicer/OrcaSlicer/blob/8500fcdccaa10b5099ac20d252af3a7c560046f1/src/OrcaSlicer.cpp),
-[option definitions](https://github.com/OrcaSlicer/OrcaSlicer/blob/8500fcdccaa10b5099ac20d252af3a7c560046f1/src/libslic3r/PrintConfig.cpp)
-and [licence](https://github.com/OrcaSlicer/OrcaSlicer/blob/8500fcdccaa10b5099ac20d252af3a7c560046f1/LICENSE.txt).
+Native U1 startup macros passed pre-flight without changing safety limits or
+removing commands. The historical stock preset failure came from a generic
+inherited toolchanger sequence containing X300 travel and X290 purge extrusion.
+Known literal out-of-volume startup extrusion is now refused during profile
+creation. The entire output is still checked against 270 × 270 × 270 mm. No
+physical purge-region exception has been established.
 
-1. Install OrcaSlicer from its official project and first slice a small U1 model
-   in its own interface. Confirm your printer, nozzle and material presets there.
-2. In Deja Vu1 **Settings → Modules**, enable **Auto-print pipeline**. Then open
-   **Files → Auto-print pipeline**. Automatic here means preparation can be queued;
-   Confirm Print still applies before a print starts.
-3. **Check slicer**. Deja Vu1 searches normal program paths, including the macOS
-   app path and the usual Windows Program Files location. If it cannot find it,
-   enter the full program path. `DEJAVU_SLICER_PATH`, if set by the computer owner,
-   takes priority over the saved path. A downloaded Linux AppImage may need to be
-   made executable and its full path entered.
-4. Enable **Filament inventory** and save the four-tool setup in Auto-print.
-   Add only spools you own and have weighed; a new inventory starts empty.
-   Choose **Find installed U1 profiles**, then matching printer/nozzle, quality
-   and material presets by name. Save a named profile. More print settings
-   expose shell counts, infill pattern and speeds. Advanced setup still accepts
-   complete exported preset files; it does not resolve those files' parents.
-5. Select an STL or 3MF, choose the saved profile and **Slice**. Save edited or
-   OBJ models as a new 3MF plate first. Inspect the resulting G-code, pre-flight
-   and tool assignments. **Slice and queue** puts successful, non-blocked output in the queue;
-   it never starts a printer or skips Confirm Print.
-6. Start only after checking the physical bed, toolheads and filaments. Confirm
-   Print rechecks the file and printer state before sending it.
+## Models and project fidelity
 
-The bridge has a timeout, reports engine errors, checks for actual printable
-G-code and records the engine version. Portable unit tests use a stand-in
-executable; the Linux integration checks ran real OrcaSlicer 2.4.2. Tested
-examples include a bracket, a two-object T0/T1 plate, all-four-tool colour tiles,
-a calibration sheet and a heightmap relief. All passed pre-flight. Physical
-printing, Windows/macOS, arbitrary imported extensions and physical colour
-accuracy remain unverified.
+Sources are immutable; editing stores transforms separately. Save-as includes
+original input files for recovery. Core material/vertex colours and simple face
+paint are displayed; external OBJ materials, textures and subdivided paint are
+not fully interpreted. Preserving payloads does not establish correct rendering
+or full vendor per-part semantics. Review complex imported projects in the engine.
+STL is shape-only; AR still uses the original source geometry.
 
-## Engine choice and limits
+Multi-plate projects require selecting one plate. Separation retains model parts,
+paint, per-part settings and original recovery data. Inconsistent instance lists,
+unknown bed origins and unsupported document encodings are refused. All three
+plates of the historical crashing fixture now slice separately with clear
+pre-flight. When a source has fewer material slots than the chosen four-head
+profile, temporary engine input reconciles its preset identity arrays with that
+explicit profile. Source bytes and per-part assignments remain intact.
 
-The application runs the separately installed engine as a child program. It
-neither imports engine libraries nor bundles/downloads engine binaries or presets.
-Installed preset working copies are created only on the user's computer. Orca's
-AGPLv3 text permits running the unmodified program (section 2) and discusses
-separate independent works (section 5). This is a technical integration decision,
-not a legal opinion about future packaging; bundling or modifying an engine
-requires a fresh review.
+The viewport allows two million triangles total; detailed contact/picking checks
+are bounded at 250,000 triangles per object. Bounding boxes and mesh contacts do
+not guarantee watertightness, support adequacy or toolhead clearance. Heavy model
+frame pacing is still poor with the cloud's SwiftShader software renderer.
 
-No working WebAssembly slicing build was verified. A browser engine would need
-its own build, licence, memory, cancellation and output-parity investigation.
-No new pure-Python slicing engine was written: the existing nozzle planner is
-arithmetic, and the renderer/contact worker are previews and geometry checks.
-The installed mature engine is the verified route to real movement instructions.
+## Images, calibration and reliefs
 
-The native editor covers the common requested print settings, not every setting
-Orca exposes. Mixed nozzle sizes are passed to the engine after checking the
-installed printer variant and the shared layer-height limits. Different preferred
-heights per head are not implemented by the stock-engine path; use a separately
-verified specialised engine for that. Multi-plate import editing, full subdivided
-face painting, automatic support design, sequential-head clearance and all
-vendor-specific per-part settings are not complete.
+Photo Studio makes four-tool dithered colour tiles, sixteen-swatch calibration
+sheets, measured layered-colour images and closed image-heightmap reliefs. A
+heightmap uses image brightness, with no geographic elevation or full CAD.
+Generated colour layers must remain upright and at their original thickness.
 
-### Verified limits from the expanded engine checks
+For new measured colour recipes, load and select the exact slicing profile used
+for the printed swatches. The recipe records process/material settings, backing,
+layer order, printer, spools, nozzles and thickness. Changes invalidate tracked
+recipes or refuse their slicing contract. Older recipes are explicitly
+`process_untracked`; recreate them with a tracked profile. Lighting, humidity,
+material ageing and physical colour measurements are not automatically measured.
+Generated colour projects refuse different preferred heights across tools.
 
-The four-tool generated geometry is one multipart object, preserving the vertical position of each colour layer. Whole-face tool paint survives plate save-as; a real four-tool round trip passed pre-flight. Generated colour projects retain their slicing contract through plate saves and refuse tilting, Z scaling or lifting that would invalidate layer recipes. Move them in XY or rotate around Z; regenerate to change thickness. Orca 2.4.2 has sliced a layered-image fixture with synthetic calibration values; that verifies geometry and tool handling, not physical colour accuracy. Mixed 0.4/0.6 mm nozzle preparation feeds real machine settings and limits bridge width to the smallest nozzle. Material presets listed for another U1 nozzle variant require explicit temperature/flow review. A real mixed-nozzle slice computed eight layers, but its installed machine preset emitted startup extrusion at X290 and was blocked by the 270 mm pre-flight check. Do not print that result or bypass the check; use a hardware-verified U1 startup preset. Different preferred layer heights per head remain unsupported.
+## What the numbers mean
 
-Converted single-plate Bambu-style and Elegoo-style fixtures sliced with installed U1 settings. The converted three-plate fixture crashed Orca 2.4.2 (signal 11); no output was accepted. Open and verify multi-plate projects in Orca, or export each plate separately. Full vendor preset/paint compatibility is not claimed.
-
-Slice-job time and grams are read from the engine’s file metadata. Missing
-engine fields stay unknown. The file inspector separately labels nominal motion
-time and length-based weight using 1.75 mm filament and reference-density
-assumptions; unknown material uses a PLA assumption there, not a measured weight.
-Pre-flight-blocked output is saved for inspection, fails the slice job visibly
-and never reaches the automatic queue handoff.
-
-A closed 200,000-triangle sphere was also sliced by the real Linux engine in
-5.7 seconds: 200 layers, 11.66 g and 0.336 h predicted printing time, clear
-pre-flight. This verifies a larger geometry input, not physical print quality.
+Job time/grams come from engine metadata and remain unknown when missing. The
+file inspector separately labels nominal distance/speed time, excluding heating,
+acceleration, pauses and macros. Its length-derived weight states the 1.75 mm
+filament/reference-density assumptions. Retraction recovery does not add new
+filament. Preview sampling is disclosed; full pre-flight checks every instruction.
+See [current evidence](slicer-workspace-validation.md) and
+[app-data recovery](backup-and-recovery.md).

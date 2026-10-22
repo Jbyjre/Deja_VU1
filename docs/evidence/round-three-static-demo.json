@@ -1,0 +1,21 @@
+{
+  "widths": [
+    {
+      "width": 1366,
+      "recordedDemo": true,
+      "gcodeLayers": true,
+      "plateChoices": 3,
+      "writeRequiresLocalApp": true,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "recordedDemo": true,
+      "gcodeLayers": true,
+      "plateChoices": 3,
+      "writeRequiresLocalApp": true,
+      "overflow": false
+    }
+  ],
+  "errors": []
+}

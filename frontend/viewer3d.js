@@ -414,8 +414,8 @@ const DV3D = (() => {
       // Sit the model on the bed, centred, as a slicer would place it.
       const b = mesh.bounds;
       const dx = options.absolute?0:BED / 2 - (b.min[0] + b.max[0]) / 2, dy = options.absolute?0:BED / 2 - (b.min[1] + b.max[1]) / 2, dz = options.absolute?0:-b.min[2];
-      const pos = new Float32Array(mesh.positions.length);
-      for (let i = 0; i < pos.length; i += 3) {
+      const pos = options.absolute ? mesh.positions : new Float32Array(mesh.positions.length);
+      if(!options.absolute) for (let i = 0; i < pos.length; i += 3) {
         pos[i] = mesh.positions[i] + dx; pos[i + 1] = mesh.positions[i + 1] + dy; pos[i + 2] = mesh.positions[i + 2] + dz;
       }
       this.mesh = { pos: this.buffer(pos), nrm: this.buffer(mesh.normals), count: pos.length / 3 };

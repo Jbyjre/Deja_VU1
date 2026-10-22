@@ -46,12 +46,42 @@ def signature(heads,height):
     return hashlib.sha256(json.dumps([mock_moonraker.selected_printer_id(),fields,height],sort_keys=True).encode()).hexdigest()
 
 
-def settings(height=.2):
+def process_signature(process, materials):
+    ignored={'name','from','type','print_settings_id','filament_settings_id','setting_id','version','description','notes'}
+    normalized=[{k:v for k,v in config.items() if k not in ignored} for config in [process]+materials]
+    return hashlib.sha256(json.dumps(normalized,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
+def profile_process(profile_id):
+    if not profile_id:return None
+    import slicer_bridge
+    profile=next((p for p in slicer_bridge.get_settings()['profiles'] if p['id']==profile_id),None)
+    if not profile:raise ValueError('Choose an available slicing profile for colour calibration')
+    if profile.get('printer_id') not in (None,mock_moonraker.selected_printer_id()):
+        raise ValueError('This calibration profile belongs to another printer')
+    if profile.get('tool_setup') and profile['tool_setup']!=palette():
+        raise ValueError('Tool preparation changed. Use a profile for the current calibration tools')
+    configs=[]
+    for path in [profile['process']]+profile['filaments']:
+        if os.path.getsize(path)>4*1024*1024:raise ValueError('The calibration preset is too large')
+        with open(path,encoding='utf-8') as f:configs.append(json.load(f))
+    return process_signature(configs[0],configs[1:])
+
+
+def settings(height=.2, profile_id=None):
     h=number(height,'Layer thickness',.04,.56)
     heads=palette();key=signature(heads,h)
     with _lock:calibration=storage.load_json(_PATH,{}).get(key)
+    state='missing'
+    if calibration:
+        state='process_untracked'
+        if calibration.get('process_signature'):
+            try:current=profile_process(profile_id or calibration.get('profile_id'))
+            except (ValueError,OSError):current=None
+            state='valid' if current==calibration['process_signature'] else 'process_changed'
+            if state!='valid':calibration=None
     return {'palette':heads,'recipes':[{'id':i,'row':i//4+1,'column':i%4+1,'layers':['T'+str(t) for t in row]} for i,row in enumerate(recipes())],
-            'layer_height':h,'calibration':calibration,'note':'Measured recipes apply only to this printer, saved spools, colours, nozzles and layer thickness. Use identical print and material settings for the swatches and image, including temperature and first layer. A screen preview cannot predict a physical print.'}
+            'layer_height':h,'calibration':calibration,'calibration_state':state,'note':'Measured recipes apply only to this printer, saved spools, colours, nozzles and layer thickness. Use identical print and material settings for the swatches and image, including temperature and first layer. A screen preview cannot predict a physical print.'}
 
 
 def save_calibration(body):
@@ -60,10 +90,12 @@ def save_calibration(body):
     if not isinstance(colours,list) or len(colours)!=16 or any(not isinstance(c,str) or not re.fullmatch(r'#[0-9a-fA-F]{6}',c) for c in colours):
         raise ValueError('Enter the sixteen measured swatch colours, in row order')
     if body.get('measured') is not True:raise ValueError('Confirm these colours came from your printed swatches')
+    backing=math.ceil(number(body.get('base',.8),'Backing thickness',.4,5)/h-1e-9)*h
+    process=profile_process(body.get('profile'))
     with _lock:
         data=storage.load_json(_PATH,{})
         if len(data)>=100 and signature(heads,h) not in data:raise ValueError('The calibration library is full')
-        data[signature(heads,h)]={'colours':[c.lower() for c in colours],'source':'user-measured'}
+        data[signature(heads,h)]={'colours':[c.lower() for c in colours],'source':'user-measured','process_signature':process,'profile_id':body.get('profile'),'backing_mm':backing,'layer_order':recipes()}
         storage.save_json(_PATH,data)
     return settings(h)
 
@@ -148,7 +180,8 @@ def build(body):
             if cell<max(h['nozzle'] for h in heads)*2:raise ValueError('Image cells are narrower than two nozzle widths. Reduce image detail or increase print width')
             colours=[h['color_hex'] for h in heads]
             if mode=='layered':
-                cal=settings(height)['calibration']
+                cal=settings(height,body.get('profile'))['calibration']
+                if cal and (abs(cal.get('backing_mm',base)-base)>1e-6 or cal.get('layer_order',plan)!=plan):raise ValueError('The backing thickness or recipe order changed. Print and measure new calibration swatches')
                 if not cal:raise ValueError('Print and measure the sixteen swatches first. Layered colours need a calibration for these exact tools and layer thickness')
                 colours=cal['colours']
             indices=quantize(pixels,w,h,colours,body.get('dither') is True)
@@ -173,14 +206,15 @@ def build(body):
         archive=io.BytesIO(data)
         with zipfile.ZipFile(archive,'a',zipfile.ZIP_DEFLATED) as z:
             z.writestr('DejaVu/generation.json',json.dumps({'version':1,'layer_height':height,
-                'initial_layer_print_height':height,'tool_signature':signature(heads,height)}))
+                'initial_layer_print_height':height,'tool_signature':signature(heads,height),
+                'process_signature':cal.get('process_signature') if mode=='layered' else profile_process(body.get('profile')) if mode=='calibration' else None}))
         data=archive.getvalue()
     name=mode+'-'+uuid.uuid4().hex[:10]+'.3mf'
     entry=file_library.save(name,data,origin='generated',note='Generated '+mode+' model; inspect and slice before printing')
     return {'file':entry,'preview':preview,'note':'This is model geometry, not G-code. Slice it to obtain real time and filament figures. Physical colour matching is unverified.'}
 
 
-def check_slice_contract(data,process):
+def check_slice_contract(data,process,materials=None,preferred_heights=None):
     """Refuse layer boundaries that would change a generated colour recipe."""
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
@@ -191,7 +225,11 @@ def check_slice_contract(data,process):
     except zipfile.BadZipFile:return  # Ordinary STL input has no project settings.
     except (TypeError,UnicodeError,json.JSONDecodeError):raise ValueError('The generated image settings are damaged')
     if not isinstance(contract,dict):raise ValueError('The generated image settings are damaged')
+    if contract.get('process_signature') and process_signature(process,materials or [])!=contract['process_signature']:
+        raise ValueError('The print process or material temperatures, flow or cooling changed. Use the calibration profile or print and measure new swatches')
     height=number(contract.get('layer_height'),'Generated layer thickness',.04,.56)
+    if preferred_heights and any(abs(float(h)-height)>1e-6 for h in preferred_heights):
+        raise ValueError('This generated colour project needs the same layer thickness on every tool. Use a shared-height profile matching its calibration')
     if contract.get('tool_signature')!=signature(palette(),height):
         raise ValueError('The printer or saved tools changed since this image was made. Generate it again with the current tools')
     for key in ('layer_height','initial_layer_print_height'):

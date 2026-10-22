@@ -3,7 +3,28 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
-## Unreleased — launch readiness
+## Unreleased — slicing workspace and app-data recovery
+
+- Unified object editing, profiles, fitted tools, slicing status and output preview.
+  Phone settings omit the viewport; phone preview keeps layer navigation visible.
+  Arrange now frames the moved objects, and selection reuses unchanged geometry.
+- Supported external engines consume distinct physical-head layer heights. Exact
+  coordination, first layers, nozzle limits, capability changes and stale tools
+  are validated. Three real Linux nozzle/height combinations passed pre-flight.
+- Fixed CLI working-preset context and legacy standard-flow migration; no engine
+  source or startup commands are modified. Generic out-of-volume startup
+  extrusion is refused. Added cancellation, per-printer jobs and atomic queue handoff.
+- Separate 3MF plates with original recovery data. Reconcile source preset identity
+  slots with selected CLI materials; three separated fixture plates now real-slice.
+- Expand profile groups, material temperature/flow/cooling overrides and edit-as-new.
+  Unexposed or inherited settings remain in the resolved working copies.
+- Tracked colour recipes bind to print/material settings, backing and layer order.
+  Changed conditions refuse stale recipes; physical colour accuracy remains unverified.
+- Full app-data ZIP, checksums and isolated recovery with launchers. Connection
+  secrets are omitted, existing data stays intact and restored automatic actions
+  are disabled. Linux recovery startup tested; Windows/macOS remain unverified.
+
+## Historical round-two launch readiness
 
 - Blocked engine output is kept for inspection and never automatically queued.
   Slice reports show unknown when the engine supplies no time or weight. The
@@ -17,7 +38,7 @@ and what is and isn't verified.
 - Colour recipes now export as a single multipart object, keeping raised colour
   layers together. The bridge checks printer/tool identity and both first and
   later layer heights. Measured recipes are printer-specific. Selected-settings
-  export now includes tool assignments and measured recipes; full restore remains absent.
+  export included tool assignments and measured recipes; this historical pass did not include full restore.
 - Mixed-nozzle presets limit bridge width to the smallest nozzle and require
   explicit review before using materials listed for another U1 nozzle variant.
   A real mixed-nozzle slice was blocked by startup extrusion outside 270 mm.

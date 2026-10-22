@@ -1,4 +1,8 @@
-# Prove hardware and close the remaining compatibility gaps
+# Historical round-two follow-through
+
+Slicing, per-tool heights, plate separation and isolated recovery have since advanced.
+Use [the current remaining-work goals](07-physical-validation-and-format-fidelity.md)
+and the current validation record before treating the items below as unfinished.
 
 Read CLAUDE.md, README Current status and docs/slicing-and-models.md first.
 The owner is not a programmer. Keep the existing dependency-free architecture,

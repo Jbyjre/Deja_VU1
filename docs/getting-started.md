@@ -150,7 +150,7 @@ be managed separately. See [release preparation](releasing.md).
 For a manual move, stop the app, keep the old folder intact, and copy its entire
 `backend/data/` into the new copy before launching. If you set `DEJAVU_DATA_DIR`,
 keep pointing to that same folder. The built-in configuration download is **not
-a complete backup** and has no restore function yet.
+a printer firmware/configuration backup**. Current full app-data recovery includes saved settings, library files and per-printer records; see [backup and recovery](backup-and-recovery.md).
 
 ## What has not been proved yet
 

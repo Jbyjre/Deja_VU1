@@ -2,7 +2,7 @@
 
 Historical starting brief: native tools, per-printer time-lapse, profile selection,
 plate editing and image geometry have since been implemented. Use
-[the current remaining-work brief](06-native-studio-hardware-and-compatibility.md)
+[the current remaining-work brief](07-physical-validation-and-format-fidelity.md)
 and current status before treating anything below as unfinished.
 
 The owner has no coding experience. Explain decisions in everyday language,

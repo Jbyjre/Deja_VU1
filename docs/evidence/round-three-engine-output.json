@@ -1,0 +1,553 @@
+{
+  "engine": "Snapmaker_Orca 02.08.01.55 (separately installed Linux build)",
+  "cases": [
+    {
+      "case": "fine-coarse",
+      "files": [
+        {
+          "name": "two-height-evidence-2.gcode",
+          "layers": 179,
+          "deposition": {
+            "source": "Labelled model-feature XY extrusion coordinates; startup, purge, travel and retraction recovery excluded",
+            "tools": [
+              {
+                "toolhead": "T0",
+                "extrusion_moves": 8872,
+                "deposition_levels": 179,
+                "z_steps_mm": {
+                  "0.14": 178
+                },
+                "path_heights_mm": [
+                  0.14,
+                  0.4
+                ],
+                "outer_wall_samples": [
+                  {
+                    "z_mm": 0.14,
+                    "declared_height_mm": 0.14,
+                    "declared_width_mm": 0.5,
+                    "xy_mm": 29.2,
+                    "filament_mm": 0.78276
+                  }
+                ]
+              },
+              {
+                "toolhead": "T1",
+                "extrusion_moves": 3075,
+                "deposition_levels": 90,
+                "z_steps_mm": {
+                  "0.28": 89
+                },
+                "path_heights_mm": [
+                  0.14,
+                  0.28
+                ],
+                "outer_wall_samples": [
+                  {
+                    "z_mm": 0.14,
+                    "declared_height_mm": 0.14,
+                    "declared_width_mm": 0.75,
+                    "xy_mm": 28.95,
+                    "filament_mm": 1.18889
+                  },
+                  {
+                    "z_mm": 0.42,
+                    "declared_height_mm": 0.28,
+                    "declared_width_mm": 0.63,
+                    "xy_mm": 29.37,
+                    "filament_mm": 1.90954
+                  }
+                ]
+              }
+            ],
+            "note": "Z steps are file-derived evidence, not a guarantee of thickness on every feature or a physical measurement. Path heights are engine declarations."
+          },
+          "estimated_hours": 1.431,
+          "filament_grams": 27.62,
+          "preflight": "clear",
+          "sha256": "761dc9ec893761620c4b75517195ddf0ffd6663307eb8e85c8c67d4d7f6444ab"
+        }
+      ]
+    },
+    {
+      "case": "medium-coarse",
+      "files": [
+        {
+          "name": "two-height-evidence-3.gcode",
+          "layers": 125,
+          "deposition": {
+            "source": "Labelled model-feature XY extrusion coordinates; startup, purge, travel and retraction recovery excluded",
+            "tools": [
+              {
+                "toolhead": "T0",
+                "extrusion_moves": 6567,
+                "deposition_levels": 125,
+                "z_steps_mm": {
+                  "0.2": 124
+                },
+                "path_heights_mm": [
+                  0.2,
+                  0.4
+                ],
+                "outer_wall_samples": [
+                  {
+                    "z_mm": 0.2,
+                    "declared_height_mm": 0.2,
+                    "declared_width_mm": 0.5,
+                    "xy_mm": 29.2,
+                    "filament_mm": 1.08759
+                  }
+                ]
+              },
+              {
+                "toolhead": "T1",
+                "extrusion_moves": 1914,
+                "deposition_levels": 63,
+                "z_steps_mm": {
+                  "0.4": 62
+                },
+                "path_heights_mm": [
+                  0.2,
+                  0.4
+                ],
+                "outer_wall_samples": [
+                  {
+                    "z_mm": 0.2,
+                    "declared_height_mm": 0.2,
+                    "declared_width_mm": 1.0,
+                    "xy_mm": 28.7,
+                    "filament_mm": 2.23831
+                  },
+                  {
+                    "z_mm": 0.6,
+                    "declared_height_mm": 0.4,
+                    "declared_width_mm": 0.84,
+                    "xy_mm": 29.16,
+                    "filament_mm": 3.58402
+                  }
+                ]
+              }
+            ],
+            "note": "Z steps are file-derived evidence, not a guarantee of thickness on every feature or a physical measurement. Path heights are engine declarations."
+          },
+          "estimated_hours": 0.969,
+          "filament_grams": 26.85,
+          "preflight": "clear",
+          "sha256": "485baae3cf7d28bb3cd38f1af7e3b33aa9751ae312ab2e055805634900897563"
+        }
+      ]
+    },
+    {
+      "case": "same-nozzle",
+      "files": [
+        {
+          "name": "two-height-evidence-4.gcode",
+          "layers": 250,
+          "deposition": {
+            "source": "Labelled model-feature XY extrusion coordinates; startup, purge, travel and retraction recovery excluded",
+            "tools": [
+              {
+                "toolhead": "T0",
+                "extrusion_moves": 11793,
+                "deposition_levels": 250,
+                "z_steps_mm": {
+                  "0.1": 249
+                },
+                "path_heights_mm": [
+                  0.1,
+                  0.4
+                ],
+                "outer_wall_samples": [
+                  {
+                    "z_mm": 0.1,
+                    "declared_height_mm": 0.1,
+                    "declared_width_mm": 0.5,
+                    "xy_mm": 29.2,
+                    "filament_mm": 0.56933
+                  }
+                ]
+              },
+              {
+                "toolhead": "T1",
+                "extrusion_moves": 6370,
+                "deposition_levels": 126,
+                "z_steps_mm": {
+                  "0.1": 1,
+                  "0.2": 124
+                },
+                "path_heights_mm": [
+                  0.1,
+                  0.2
+                ],
+                "outer_wall_samples": [
+                  {
+                    "z_mm": 0.1,
+                    "declared_height_mm": 0.1,
+                    "declared_width_mm": 0.5,
+                    "xy_mm": 29.2,
+                    "filament_mm": 0.56933
+                  },
+                  {
+                    "z_mm": 0.3,
+                    "declared_height_mm": 0.2,
+                    "declared_width_mm": 0.42,
+                    "xy_mm": 29.58,
+                    "filament_mm": 0.90891
+                  }
+                ]
+              }
+            ],
+            "note": "Z steps are file-derived evidence, not a guarantee of thickness on every feature or a physical measurement. Path heights are engine declarations."
+          },
+          "estimated_hours": 2.198,
+          "filament_grams": 28.93,
+          "preflight": "clear",
+          "sha256": "2cc94949ed5f78809139e16b0cbdf684d25f1ad8f7e8a83310a5579df59fec31"
+        }
+      ]
+    }
+  ],
+  "separated_plates": [
+    {
+      "plate": "1",
+      "seconds": 2.1,
+      "files": [
+        {
+          "name": "selected-1.gcode",
+          "layers": 125,
+          "deposition": null,
+          "estimated_hours": 0.336,
+          "filament_grams": 11.89,
+          "preflight": "clear"
+        }
+      ],
+      "input_notes": [
+        "Source preset identity slots were aligned to the selected physical-head material profile in a temporary input. Geometry, paint, per-part settings and the library source are unchanged."
+      ]
+    },
+    {
+      "plate": "2",
+      "seconds": 2.1,
+      "files": [
+        {
+          "name": "selected-2.gcode",
+          "layers": 125,
+          "deposition": null,
+          "estimated_hours": 0.217,
+          "filament_grams": 5.97,
+          "preflight": "clear"
+        }
+      ],
+      "input_notes": [
+        "Source preset identity slots were aligned to the selected physical-head material profile in a temporary input. Geometry, paint, per-part settings and the library source are unchanged."
+      ]
+    },
+    {
+      "plate": "3",
+      "seconds": 2.1,
+      "files": [
+        {
+          "name": "selected-3.gcode",
+          "layers": 125,
+          "deposition": null,
+          "estimated_hours": 0.217,
+          "filament_grams": 5.97,
+          "preflight": "clear"
+        }
+      ],
+      "input_notes": [
+        "Source preset identity slots were aligned to the selected physical-head material profile in a temporary input. Geometry, paint, per-part settings and the library source are unchanged."
+      ]
+    }
+  ],
+  "large_model": {
+    "triangles": 200000,
+    "source_bytes": 10000084,
+    "seconds": 6.1,
+    "files": [
+      {
+        "name": "closed-200k-sphere.gcode",
+        "layers": 200,
+        "deposition": null,
+        "estimated_hours": 0.286,
+        "filament_grams": 11.16,
+        "preflight": "clear"
+      }
+    ]
+  },
+  "object_settings": {
+    "files": [
+      {
+        "name": "object-settings.gcode",
+        "layers": 125,
+        "deposition": null,
+        "estimated_hours": 0.898,
+        "filament_grams": 19.86,
+        "preflight": "clear"
+      }
+    ],
+    "moves": {
+      "; printing object bracket.stl id:0 copy 0": {
+        "Outer wall": 512,
+        "Bottom surface": 205,
+        "Prime tower": 62,
+        "Internal solid infill": 1799,
+        "Internal Bridge": 280,
+        "Top surface": 198
+      },
+      "; printing object bracket.stl id:1 copy 0": {
+        "Prime tower": 63,
+        "Inner wall": 1489,
+        "Outer wall": 513,
+        "Bottom surface": 188,
+        "Internal solid infill": 1231,
+        "Internal Bridge": 159,
+        "Top surface": 199
+      }
+    }
+  },
+  "generated_models": [
+    {
+      "mode": "mosaic",
+      "synthetic_calibration": false,
+      "files": [
+        {
+          "name": "mosaic-d8931de37e.gcode",
+          "layers": 6,
+          "deposition": null,
+          "estimated_hours": 0.111,
+          "filament_grams": 2.2,
+          "preflight": "clear"
+        }
+      ],
+      "seconds": 2.1,
+      "deposition": {
+        "source": "Labelled model-feature XY extrusion coordinates; startup, purge, travel and retraction recovery excluded",
+        "tools": [
+          {
+            "toolhead": "T0",
+            "extrusion_moves": 586,
+            "deposition_levels": 6,
+            "z_steps_mm": {
+              "0.2": 5
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.2,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.5,
+                "xy_mm": 19.2,
+                "filament_mm": 0.71513
+              }
+            ]
+          },
+          {
+            "toolhead": "T1",
+            "extrusion_moves": 163,
+            "deposition_levels": 3,
+            "z_steps_mm": {
+              "0.2": 2
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.8,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.42,
+                "xy_mm": 7.986,
+                "filament_mm": 0.24539
+              }
+            ]
+          },
+          {
+            "toolhead": "T2",
+            "extrusion_moves": 163,
+            "deposition_levels": 3,
+            "z_steps_mm": {
+              "0.2": 2
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.8,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.42,
+                "xy_mm": 7.986,
+                "filament_mm": 0.24539
+              }
+            ]
+          },
+          {
+            "toolhead": "T3",
+            "extrusion_moves": 163,
+            "deposition_levels": 3,
+            "z_steps_mm": {
+              "0.2": 2
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.8,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.42,
+                "xy_mm": 7.986,
+                "filament_mm": 0.24539
+              }
+            ]
+          }
+        ],
+        "note": "Z steps are file-derived evidence, not a guarantee of thickness on every feature or a physical measurement. Path heights are engine declarations."
+      }
+    },
+    {
+      "mode": "layered",
+      "synthetic_calibration": true,
+      "files": [
+        {
+          "name": "layered-f9318481b7.gcode",
+          "layers": 8,
+          "deposition": null,
+          "estimated_hours": 0.121,
+          "filament_grams": 2.47,
+          "preflight": "clear"
+        }
+      ],
+      "seconds": 2.1,
+      "deposition": {
+        "source": "Labelled model-feature XY extrusion coordinates; startup, purge, travel and retraction recovery excluded",
+        "tools": [
+          {
+            "toolhead": "T0",
+            "extrusion_moves": 531,
+            "deposition_levels": 7,
+            "z_steps_mm": {
+              "0.2": 6
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.2,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.5,
+                "xy_mm": 19.2,
+                "filament_mm": 0.71513
+              }
+            ]
+          },
+          {
+            "toolhead": "T1",
+            "extrusion_moves": 24,
+            "deposition_levels": 1,
+            "z_steps_mm": {},
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 1.0,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.42,
+                "xy_mm": 7.609,
+                "filament_mm": 0.2338
+              }
+            ]
+          },
+          {
+            "toolhead": "T2",
+            "extrusion_moves": 271,
+            "deposition_levels": 5,
+            "z_steps_mm": {
+              "0.2": 4
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.8,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.42,
+                "xy_mm": 6.392,
+                "filament_mm": 0.19641
+              }
+            ]
+          },
+          {
+            "toolhead": "T3",
+            "extrusion_moves": 580,
+            "deposition_levels": 5,
+            "z_steps_mm": {
+              "0.2": 4
+            },
+            "path_heights_mm": [
+              0.2
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.8,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.42,
+                "xy_mm": 6.812,
+                "filament_mm": 0.20931
+              }
+            ]
+          }
+        ],
+        "note": "Z steps are file-derived evidence, not a guarantee of thickness on every feature or a physical measurement. Path heights are engine declarations."
+      }
+    },
+    {
+      "mode": "terrain",
+      "synthetic_calibration": false,
+      "files": [
+        {
+          "name": "terrain-f06dc37b2e.gcode",
+          "layers": 16,
+          "deposition": null,
+          "estimated_hours": 0.043,
+          "filament_grams": 0.99,
+          "preflight": "clear"
+        }
+      ],
+      "seconds": 2.1,
+      "deposition": {
+        "source": "Labelled model-feature XY extrusion coordinates; startup, purge, travel and retraction recovery excluded",
+        "tools": [
+          {
+            "toolhead": "T0",
+            "extrusion_moves": 2160,
+            "deposition_levels": 16,
+            "z_steps_mm": {
+              "0.2": 15
+            },
+            "path_heights_mm": [
+              0.2,
+              0.4
+            ],
+            "outer_wall_samples": [
+              {
+                "z_mm": 0.2,
+                "declared_height_mm": 0.2,
+                "declared_width_mm": 0.5,
+                "xy_mm": 19.2,
+                "filament_mm": 0.71513
+              }
+            ]
+          }
+        ],
+        "note": "Z steps are file-derived evidence, not a guarantee of thickness on every feature or a physical measurement. Path heights are engine declarations."
+      }
+    }
+  ]
+}

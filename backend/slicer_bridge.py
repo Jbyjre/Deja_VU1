@@ -60,6 +60,8 @@ import file_library
 import gcode_tools
 import storage
 import slicer_profiles
+import slicing_contract
+import project_plates
 import tool_setup
 import mock_moonraker
 import model_maker
@@ -99,6 +101,29 @@ _lock = threading.RLock()
 _run_lock = threading.Lock()     # one slice at a time: it's heavy, and Orca isn't built to share
 _jobs = {}
 _order = []
+_cancellations = {}
+_operation = threading.local()
+
+
+class SliceCancelled(ValueError):
+    pass
+
+
+def _program_identity(path):
+    try:
+        stat = os.stat(path)
+        return [os.path.realpath(path), stat.st_size, stat.st_mtime_ns]
+    except OSError:
+        return None
+
+
+def engine_capabilities(settings=None):
+    s = settings or get_settings()
+    path, _ = slicer_path(s)
+    checked = s.get('last_check') or {}
+    if checked.get('ok') and checked.get('program_identity') == _program_identity(path):
+        return checked.get('capabilities') or {}
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +132,7 @@ _order = []
 
 def _defaults():
     return {"slicer_path": "", "timeout_s": DEFAULT_TIMEOUT, "profiles": [], "default_profile": None,
-            "last_check": None}
+            "last_check": None, "preset_folder": ""}
 
 
 def get_settings():
@@ -178,7 +203,7 @@ def public_settings():
     path, source = slicer_path(s)
     return {"slicer_path": path, "path_source": source, "timeout_s": s["timeout_s"],
             "profiles": s["profiles"], "default_profile": s["default_profile"],
-            "last_check": s["last_check"], "problem": _check_program(path, source),
+            "last_check": s["last_check"], "preset_folder": s.get("preset_folder", ""), "problem": _check_program(path, source),
             "fragile_note": ("This drives OrcaSlicer's command line from outside. An Orca update can "
                              "change it; when that happens slicing fails here with Orca's own message, "
                              "rather than producing a file.")}
@@ -198,6 +223,12 @@ def save_settings(body):
         if path != s["slicer_path"]:
             s["last_check"] = None
         s["slicer_path"] = path
+    if "preset_folder" in body:
+        folder = str(body.get("preset_folder") or "").strip()
+        if folder:
+            if not os.path.isabs(folder) or len(folder)>500: raise ValueError("Use the full path to an unpacked presets folder")
+            slicer_profiles.roots("", folder)
+        s["preset_folder"] = folder
     if "timeout_s" in body:
         try:
             t = int(body["timeout_s"])
@@ -305,18 +336,20 @@ def remove_profile(profile_id):
 
 def installed_catalog():
     path, _ = slicer_path()
-    return slicer_profiles.catalog(path)
+    return slicer_profiles.catalog(path, get_settings().get("preset_folder"))
 
 
 def add_installed_profile(body):
     path, _ = slicer_path()
-    prepared = slicer_profiles.prepare(path, body, tool_setup.get()['heads'])
+    prepared = slicer_profiles.prepare(path, body, tool_setup.get()['heads'], engine_capabilities(), get_settings().get('preset_folder'))
     entry = add_profile(body.get('name'), prepared['machine'], prepared['process'], prepared['filaments'])
     s = get_settings()
     saved = next(p for p in s['profiles'] if p['id'] == entry['id'])
-    saved.update({k: prepared[k] for k in ('options','tool_setup','layer_plan','source','warnings')})
+    saved.update({k: prepared[k] for k in ('options','tool_setup','layer_plan','source','warnings','layer_mode','material_options')})
     saved['printer_id'] = mock_moonraker.selected_printer_id()
     saved['preset_selection'] = {k: body.get(k) for k in ('machine','process','filaments')}
+    saved['allow_material_variant'] = body.get('allow_material_variant') is True
+    saved['allow_nozzle_variant'] = body.get('allow_nozzle_variant') is True
     s['default_profile']=saved['id']
     _save(s)
     return public_settings()
@@ -349,10 +382,19 @@ def _run(cmd, timeout, cwd=None):
         raise ValueError(f"{cmd[0]} isn't allowed to run (on Linux: chmod +x it)")
     except OSError as exc:
         raise ValueError(f"Couldn't start {os.path.basename(cmd[0])}: {exc.strerror or exc}")
-    try:
-        out, err = proc.communicate(timeout=timeout)
-        return proc.returncode, out, err
-    except subprocess.TimeoutExpired:
+    end = time.monotonic() + timeout
+    cancelled = False
+    while True:
+        event = getattr(_operation, 'cancel', None)
+        cancelled = bool(event and event.is_set())
+        if cancelled or time.monotonic() >= end:
+            break
+        try:
+            out, err = proc.communicate(timeout=min(.25, max(.01, end-time.monotonic())))
+            return proc.returncode, out, err
+        except subprocess.TimeoutExpired:
+            continue
+    if cancelled or time.monotonic() >= end:
         try:
             if os.name == "posix":
                 os.killpg(proc.pid, signal.SIGKILL)
@@ -372,6 +414,8 @@ def _run(cmd, timeout, cwd=None):
                 except OSError:
                     pass
             out, err = b"", b"(Orca's output couldn't be collected after it was stopped)"
+        if cancelled:
+            raise SliceCancelled('Slicing cancelled. No output was queued')
         return None, out, err
 
 
@@ -395,7 +439,7 @@ def check():
             code, out, err = "failed", b"", str(exc).encode()
         text = _tail(out) or _tail(err)
         first = next((ln.strip() for ln in (out or b"").decode("utf-8", "replace").splitlines() if ln.strip()), "")
-        match = re.match(r"^([A-Za-z_][\w ]*?)-(\d[\w.\-+]*):?$", first)
+        match = next((m for line in (out or b"").decode("utf-8", "replace").splitlines() if (m := re.match(r"^([A-Za-z_][\w ]*?)-(\d[\w.\-+]*):?$", line.strip()))), None)
         if code == "failed":
             result = {"ok": False, "error": _tail(err)}
         elif code is None:
@@ -405,6 +449,22 @@ def check():
             result = {"ok": True, "app": match.group(1), "version": match.group(2),
                       "detail": f"{match.group(1)} {match.group(2)} answered in "
                                 f"{(time.monotonic() - started):.1f} s"}
+            with tempfile.TemporaryDirectory(prefix='dejavu-capabilities-') as work:
+                _, options, _ = _run([path, '--help-fff'], CHECK_TIMEOUT, cwd=work)
+                schema_path = os.path.join(work, 'defaults.json')
+                schema = {}
+                if b'--export-settings' in out:
+                    _run([path, '--export-settings', schema_path], CHECK_TIMEOUT, cwd=work)
+                    if os.path.isfile(schema_path) and os.path.getsize(schema_path) <= MAX_PRESET_BYTES:
+                        schema = storage.load_json(schema_path, {})
+                        if not isinstance(schema, dict): schema = {}
+            # Read actual CLI options; names/versions alone do not prove support.
+            result['capabilities'] = {
+                'per_tool_heights': 'extruder_layer_height' in schema or bool(re.search(rb'--extruder-layer-height(?:\s|=)', options)),
+                'exact_tool_heights': 'extruder_layer_height_exact' in schema or b'--extruder-layer-height-exact' in options,
+            }
+            result['capability_evidence'] = 'Exported option schema and command-line help; actual output still requires inspection'
+            result['program_identity'] = _program_identity(path)
         else:
             result = {"ok": False, "error": "It ran, but didn't answer like OrcaSlicer's command line"
                                             + (f" (it said: {first[:120]!r})" if first else " (no output)"),
@@ -472,12 +532,16 @@ def slice_model(name, profile_id=None, on_step=None):
     if kind not in ("stl", "3mf"):
         raise ValueError("Only STL and 3MF models can be sliced - G-code is already sliced")
     data = file_library.read_bytes(name)
+    if kind == '3mf' and project_plates.describe_data(data)['count'] > 1:
+        raise ValueError('Choose and save one plate in the workspace before slicing this multi-plate project')
     s = get_settings()
     path, source = slicer_path(s)
     problem = _check_program(path, source)
     if problem:
         raise ValueError(problem)
     profile = _profile(profile_id, s)
+    if profile.get('layer_mode') == 'per_tool' and not engine_capabilities(s).get('per_tool_heights'):
+        raise ValueError('The selected engine changed or lacks per-tool heights. Check the engine again before slicing this profile')
     if profile.get('tool_setup'):
         if profile.get('printer_id') != mock_moonraker.selected_printer_id():
             raise ValueError("This profile belongs to another printer. Choose or make a profile for this printer")
@@ -488,7 +552,34 @@ def slice_model(name, profile_id=None, on_step=None):
             [(f, "filament") for f in profile["filaments"]]:
         read_preset(f, t)           # they may have moved or changed since the profile was saved
     with open(profile['process'],encoding='utf-8') as fh:
-        model_maker.check_slice_contract(data,json.load(fh))
+        materials=[]
+        for material in profile['filaments']:
+            with open(material,encoding='utf-8') as mf:materials.append(json.load(mf))
+        process_data=json.load(fh)
+    with open(profile['machine'],encoding='utf-8') as fh:
+        machine_data=json.load(fh)
+    preferred_heights=None
+    requested=machine_data.get('extruder_layer_height') or []
+    if not isinstance(requested,list):raise ValueError('The machine preset has unreadable per-tool heights. Export a complete preset again')
+    try:requested=[float(h) for h in requested]
+    except (ValueError,TypeError):raise ValueError('The machine preset has unreadable per-tool heights')
+    if any(h!=0 for h in requested):
+        if not engine_capabilities(s).get('per_tool_heights'):
+            raise ValueError('The selected engine does not advertise per-tool heights. Check a capable engine before using this exported preset; shared-height fallback is refused')
+        nozzles=machine_data.get('nozzle_diameter') or []
+        if len(requested)!=4 or len(nozzles)!=4 or len(materials)!=4:
+            raise ValueError('Per-tool height profiles need four physical nozzle entries and four material presets. Use the native profile editor to assign T0 to T3')
+        try:
+            base=float(process_data.get('layer_height') or .2)
+            heads=[{'toolhead':'T'+str(i),'nozzle':float(n),'height':h if h!=0 else base} for i,(n,h) in enumerate(zip(nozzles,requested))]
+            plan=slicing_contract.tool_layers(heads,process_data.get('initial_layer_print_height') or base)
+        except (TypeError,KeyError):raise ValueError('The exported nozzle/height combination is unsupported. Use the native profile editor')
+        if abs(base-plan['grid'])>1e-6:
+            raise ValueError(f"Set the exported process layer height to the exact {plan['grid']:g} mm coordination grid, or make a native profile")
+        preferred_heights=[h['height'] for h in heads]
+    model_maker.check_slice_contract(data,process_data,materials,preferred_heights=preferred_heights)
+    input_notes=[]
+    if kind=='3mf':data,input_notes=project_plates.engine_input(data,materials)
 
     work = tempfile.mkdtemp(prefix="dejavu-slice-")
     try:
@@ -512,6 +603,7 @@ def slice_model(name, profile_id=None, on_step=None):
                   "seconds": seconds, "exit_code": code, "orca_result": result_json,
                   "output_tail": out_tail[-800:], "error_tail": err_tail[-800:],
                   "orca_version": (s.get("last_check") or {}).get("version")}
+        report['input_notes']=input_notes
         if code is None:
             raise SliceFailed(f"Slicing didn't finish within {timeout} s, so it was stopped. A big model can "
                               "need longer (raise the time limit), or Orca may be stuck waiting for a screen",
@@ -543,6 +635,7 @@ def slice_model(name, profile_id=None, on_step=None):
                                       note=f"Sliced from {name} with \"{profile['name']}\""
                                            + (f" by OrcaSlicer {report['orca_version']}" if report["orca_version"] else ""))
             saved.append({"name": entry["name"], "layers": analysis["layers"],
+                          "deposition": slicing_contract.deposition_evidence(gcode.decode('utf-8', 'replace')) if preferred_heights else None,
                           "estimated_hours": analysis["meta"].get("estimated_hours"),
                           "filament_grams": analysis["meta"].get("filament_grams"),
                           "preflight": analysis["preflight"]["verdict"]})
@@ -582,11 +675,15 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
         raise ValueError(problem)
     profile = _profile(profile_id, s)
     job = {"id": uuid.uuid4().hex[:8], "model": name, "profile": profile["name"], "profile_id": profile["id"],
+           "printer_id": mock_moonraker.selected_printer_id(),
            "queue_to": queue_to, "status": "waiting", "step": "Waiting for the slicer",
            "created_at": datetime.now().isoformat(timespec="seconds"), "error": None, "report": None,
            "queued": None, "previous": _previous_output(name, profile["id"])}
     with _lock:
+        if sum(j['status'] in ('waiting','running') for j in _jobs.values()) >= 8:
+            raise ValueError('Eight slices are already waiting or running. Cancel one or let the engine finish before adding another')
         _jobs[job["id"]] = job
+        _cancellations[job['id']] = threading.Event()
         _order.append(job["id"])
         while len(_order) > MAX_JOBS_KEPT:
             _jobs.pop(_order.pop(0), None)
@@ -614,9 +711,15 @@ def _previous_output(model, profile_id):
 
 def _work(job_id, name, profile_id, queue_to, on_done):
     with _run_lock:
+        with _lock:
+            _operation.cancel = _cancellations.get(job_id)
         _job_update(job_id, status="running", started_at=datetime.now().isoformat(timespec="seconds"))
         try:
+            if _operation.cancel and _operation.cancel.is_set():
+                raise SliceCancelled('Slicing cancelled before it started')
             report = slice_model(name, profile_id, on_step=lambda text: _job_update(job_id, step=text))
+            if _operation.cancel and _operation.cancel.is_set():
+                raise SliceCancelled('Slicing cancelled. No output was queued')
             if any(f.get('preflight')=='blocked' for f in report.get('files',[])):
                 raise SliceFailed('Pre-flight blocked the sliced output. It is saved for inspection and was not queued. Open its file report and correct the printer preset before slicing again',report)
             if not queue_to:
@@ -628,12 +731,19 @@ def _work(job_id, name, profile_id, queue_to, on_done):
                 _job_update(job_id, step="Sliced - adding it to the queue", report=report)
                 import print_queue          # imported here: the queue imports the printer side
                 try:
-                    print_queue.add(report["files"][0]["name"], printer_id=queue_to)
-                    _job_update(job_id, status="queued", queued={"printer": queue_to, "file": report["files"][0]["name"]},
-                                step="Sliced and queued - it will be checked by Confirm Print before it starts")
+                    with _lock:
+                        if _operation.cancel and _operation.cancel.is_set():
+                            raise SliceCancelled('Slicing cancelled. No output was queued')
+                        print_queue.add(report["files"][0]["name"], printer_id=queue_to)
+                        _job_update(job_id, status="queued", queued={"printer": queue_to, "file": report["files"][0]["name"]},
+                                    step="Sliced and queued - it will be checked by Confirm Print before it starts")
+                except SliceCancelled:
+                    raise
                 except ValueError as exc:
                     _job_update(job_id, status="done", step=f"Sliced, but couldn't queue it: {exc}",
                                 queue_error=str(exc))
+        except SliceCancelled as exc:
+            _job_update(job_id, status='cancelled', step=str(exc), error=None)
         except SliceFailed as exc:
             _job_update(job_id, status="failed", step="Failed", error=str(exc), report=exc.report)
         except ValueError as exc:
@@ -642,6 +752,9 @@ def _work(job_id, name, profile_id, queue_to, on_done):
             _job_update(job_id, status="failed", step="Failed", error=f"Unexpected error: {exc}")
         finally:
             _job_update(job_id, finished_at=datetime.now().isoformat(timespec="seconds"))
+            _operation.cancel = None
+            with _lock:
+                _cancellations.pop(job_id, None)
     if on_done:
         try:
             on_done(get_job(job_id))
@@ -657,7 +770,21 @@ def get_job(job_id):
 
 def jobs():
     with _lock:
-        return {"jobs": [dict(_jobs[j]) for j in reversed(_order)]}
+        pid = mock_moonraker.selected_printer_id()
+        return {"jobs": [dict(_jobs[j]) for j in reversed(_order) if _jobs[j].get('printer_id') == pid]}
+
+
+def cancel_job(job_id):
+    with _lock:
+        job = _jobs.get(job_id)
+        if not job or job.get('printer_id') != mock_moonraker.selected_printer_id():
+            raise ValueError('This slice job is not available for this printer')
+        event = _cancellations.get(job_id)
+        if job['status'] not in ('waiting', 'running') or event is None:
+            raise ValueError('This slice job has already finished')
+        event.set()
+        job['step'] = 'Stopping the engine…'
+        return dict(job)
 
 
 def wait(job_id, timeout=30):
@@ -665,7 +792,7 @@ def wait(job_id, timeout=30):
     end = time.time() + timeout
     while time.time() < end:
         job = get_job(job_id)
-        if job and job["status"] in ("done", "queued", "failed"):
+        if job and job["status"] in ("done", "queued", "failed", "cancelled"):
             return job
         time.sleep(0.05)
     return get_job(job_id)

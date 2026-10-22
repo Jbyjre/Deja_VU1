@@ -64,7 +64,7 @@ trust the code and fix this file.
 ```bash
 python3 backend/app.py                      # http://localhost:8000 (binds 0.0.0.0; no CLI flags)
 PORT=8791 python3 backend/app.py            # another port
-python3 -m unittest discover tests          # 732 tests, latest run 134 s
+python3 -m unittest discover tests          # current count/result: docs/slicer-workspace-validation.md
 python3 -m unittest tests.test_api          # one module
 python3 -m unittest tests.test_api.TestRoutingAndErrors.test_every_file_the_pages_load_is_served
 python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"
@@ -238,9 +238,9 @@ sandbox, so you can't fetch the preview from here.
 
 ## Known open issues (found in the October 2026 audit, not fixed yet)
 
-- Config export currently includes seven selected files, including tool assignments and colour recipes. It misses real printers' maintenance
-  logs, `fleet.json`, automations, the queue and other settings, and there
-  is no restore (`backup.py`).
+- Full app-data backup and isolated recovery now exist (`backup.py`). External
+  engine installations and external exported preset paths remain external resources;
+  Windows/macOS recovery launchers still need owner verification.
 - A missing API key over the WebSocket shows only "Not connected:
   Unauthorized" (`moonraker_client._call`).
 - A simulated heater fault docks the head, so its LED ring reads "ready".
@@ -304,8 +304,7 @@ sandbox, so you can't fetch the preview from here.
 - `sw.js` caches only `offline.html`, never API replies or commands. HTTP LAN
   addresses cannot register it. Public demo info/update controls stay disabled.
 - Viewer now has multi-model plate editing and native 3MF save-as, core/vertex
-  colours, bounded mesh contact and surface measurements. Complex paint/texture
-  rendering, multi-plate editing and AR's edited geometry are still incomplete.
+  colours, bounded mesh contact and surface measurements. Complex paint/texture rendering, simultaneous multi-plate editing and AR's edited geometry are still incomplete. Single-plate selection/separation is now verified.
   Real Orca 2.4.2 Linux slices are verified; physical U1 printing is not.
 - Detailed remaining work: `build-prompts/05-launch-follow-through.md`.
 
@@ -314,3 +313,37 @@ Round-two evidence lives in `docs/native-studio-validation.md` and
 smooth and does not establish real-phone performance. Slice jobs never queue
 pre-flight-blocked output; job time/weight come only from engine metadata, with
 unknowns preserved. Tool forms reject stale printer selection before any write.
+
+
+## Unified slicing workspace and recovery
+
+- `slicer-workspace.js` composes the existing plate editor and shared profile/tool
+  forms. Mounted plate controls keep instance-specific DOM references after they
+  move between panels. Never rebuild mesh buffers just to select another object.
+  Edits invalidate preview; stale printer/profile replies cannot accept a new slice.
+- `slicing_contract.py`, `slicer_profiles.py`: capable external engines consume
+  distinct physical-head heights. Check actual exported schema plus executable
+  identity, not version names alone. Only conservative exact grids are accepted.
+  Generated colour projects require shared matching heights. First layers,
+  bridges and geometry-dependent fallback are explicit exceptions.
+- Working process copies also contain fitted nozzle context: some CLI builds
+  normalize them before merging machine settings. Legacy standard-flow markers
+  migrate to explicit variant fields. No engine source or startup commands are
+  copied or modified. Known startup extrusion beyond 270 mm is refused.
+- `project_plates.py`: select one plate and preserve original input. Before CLI
+  loading, reconcile source preset identity arrays with explicit selected materials;
+  keep paint, geometry and per-part metadata. Never feed all plates to the engine
+  and assume a zero exit proves correctness.
+- Slice jobs are printer-scoped, cancellable process groups and bounded to eight
+  active/waiting jobs. Cancellation and automatic queue handoff share a lock.
+- Colour calibration can bind to exact process/material settings, backing and
+  recipe order; legacy untracked recipes remain labelled. Physical colours still
+  need measured owner swatches.
+- Full data snapshots have versioned sizes/checksums and omitted credentials.
+  Recovery validates before writing and publishes a separate data folder with
+  launchers. It never replaces the running data. Disable automatic modules and
+  queue advancement in recovery, remap internal paths, reset engine readiness.
+- Current evidence: `docs/slicer-workspace-validation.md`,
+  `docs/launch-round-three-checklist.md`, `docs/backup-and-recovery.md`.
+  Actual mixed-height output and three separated plates passed Linux pre-flight.
+  Software-rendered heavy model frame pacing remains poor; disclose regressions.

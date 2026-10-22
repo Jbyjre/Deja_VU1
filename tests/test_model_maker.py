@@ -63,6 +63,11 @@ class ModelMaker(unittest.TestCase):
         self.heads[0]['spool_id']='new spool'
         self.assertIsNone(maker.settings()['calibration'])
 
+    def test_changed_backing_invalidates_layered_colour(self):
+        maker.save_calibration({'colours':['#123456']*16,'measured':True})
+        body=self.body('layered');body['base']=1.2
+        with self.assertRaisesRegex(ValueError,'backing thickness'):maker.build(body)
+
     def test_calibration_sheet_has_sixteen_recipe_tiles(self):
         self.assertEqual(len(maker.recipes()),16)
         self.assertEqual(len(maker.settings()['recipes']),16)
@@ -78,6 +83,11 @@ class ModelMaker(unittest.TestCase):
         self.heads[1]['nozzle']=.6
         with self.assertRaisesRegex(ValueError,'tools changed'):
             maker.check_slice_contract(data,{'layer_height':'.2','initial_layer_print_height':'.2'})
+
+    def test_generated_colour_layers_refuse_different_tool_heights(self):
+        result=maker.build(self.body());data=self.saved[result['file']['name']]
+        with self.assertRaisesRegex(ValueError,'same layer thickness'):
+            maker.check_slice_contract(data,{'layer_height':'.2','initial_layer_print_height':'.2'},preferred_heights=[.2,.4,.2,.2])
 
     def test_calibration_is_scoped_to_printer(self):
         with patch('mock_moonraker.selected_printer_id',return_value='one'):
@@ -115,3 +125,23 @@ class ModelMaker(unittest.TestCase):
     def test_missing_saved_tools_does_not_invent_filaments(self):
         self.heads.clear()
         with self.assertRaisesRegex(ValueError,'Save all four'):maker.build(self.body())
+
+
+class CalibrationProcess(unittest.TestCase):
+    def test_temperature_flow_and_speed_change_the_process_identity(self):
+        process={'layer_height':'.2','outer_wall_speed':'100','name':'first'}
+        material={'nozzle_temperature':['220'],'filament_flow_ratio':['.98']}
+        initial=maker.process_signature(process,[material])
+        self.assertEqual(initial,maker.process_signature(dict(process,name='renamed'),[material]))
+        self.assertNotEqual(initial,maker.process_signature(dict(process,outer_wall_speed='120'),[material]))
+        self.assertNotEqual(initial,maker.process_signature(process,[dict(material,nozzle_temperature=['230'])]))
+        self.assertNotEqual(initial,maker.process_signature(process,[dict(material,filament_flow_ratio=['1.02'])]))
+
+    def test_saved_process_changes_invalidate_measurements(self):
+        with tempfile.TemporaryDirectory() as folder,patch.object(maker,'_PATH',os.path.join(folder,'cal.json')),patch('model_maker.palette',return_value=[{'nozzle':.4}]*4),patch('model_maker.profile_process',return_value='original') as process:
+            maker.save_calibration({'measured':True,'colours':['#123456']*16,'profile':'chosen'})
+            self.assertEqual(maker.settings()['calibration_state'],'valid')
+            process.return_value='changed'
+            state=maker.settings()
+            self.assertEqual(state['calibration_state'],'process_changed')
+            self.assertIsNone(state['calibration'])

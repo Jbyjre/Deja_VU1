@@ -1,0 +1,35 @@
+{
+  "checks": [
+    {
+      "width": 1366,
+      "objects": 2,
+      "transforms": true,
+      "undoRedo": true,
+      "stableFocus": true,
+      "integratedTools": 4,
+      "perToolSettings": true,
+      "realEngineSlice": "4f6049ed",
+      "output": "plate-9956ef9c14.gcode",
+      "previewLayer": 10,
+      "multiPlateSelection": true,
+      "stalePrinterRefused": true,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "objects": 2,
+      "transforms": true,
+      "undoRedo": true,
+      "stableFocus": true,
+      "integratedTools": 4,
+      "perToolSettings": true,
+      "realEngineSlice": "0fc535e1",
+      "output": "plate-f4a00aea34.gcode",
+      "previewLayer": 10,
+      "multiPlateSelection": true,
+      "stalePrinterRefused": true,
+      "overflow": false
+    }
+  ],
+  "errors": []
+}

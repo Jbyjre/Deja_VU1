@@ -215,6 +215,7 @@ sys.path.insert(0, _BACKEND_DIR)
 import app_updates
 import automations
 import backup
+import project_plates
 import camera
 import color_check
 import comparison
@@ -374,7 +375,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
-    "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"))),
+    "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
@@ -397,6 +398,7 @@ _APP_ROUTES = {
         file_library.read_text(_q(q, "name")), _q(q, "offset", "0"), _q(q, "limit", "200"),
         _q(q, "q", "") or None)),
     "/api/files/analysis": ("file_library", lambda q: file_library.analysis(_q(q, "name"))),
+    "/api/files/plates": ("file_library", lambda q: project_plates.describe(_q(q, 'name'))),
     "/api/profiles/diff": ("file_library", lambda q: comparison.diff_profiles(_q(q, "a"), _q(q, "b"))),
     "/api/fleet/registry": ("fleet", lambda q: fleet.registry()),
     "/api/printers/diagnostics": ("fleet", lambda q: fleet.diagnostics(_q(q, "printer"))),
@@ -569,12 +571,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             raise ValueError("The request wasn't valid JSON")
         return body if isinstance(body, dict) else {}
 
-    def _read_raw_body(self):
+    def _read_raw_body(self, max_bytes=MAX_UPLOAD):
         length = self._content_length()
         if not length:
             raise ValueError("The file is empty")
-        if length > MAX_UPLOAD:
-            raise ValueError("Files over 64 MB can't be added")
+        if length > max_bytes:
+            raise ValueError(f"Files over {max_bytes//(1024*1024)} MB can't be added")
         data, remaining = [], length
         while remaining:
             chunk = self.rfile.read(min(remaining, 1 << 20))
@@ -878,6 +880,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
 
+        if route in ('/api/backup/preview','/api/backup/restore','/api/backup/discard'):
+            if self._module_blocked('backup'):
+                return None
+            if route.endswith('/preview'):
+                return self._send_json(backup.preview_restore(self._read_raw_body(backup.MAX_ARCHIVE_BYTES)))
+            if route.endswith('/discard'):
+                return self._send_json(backup.discard_preview(self._read_json_body()))
+            return self._send_json(backup.restore(self._read_json_body()))
+
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
         if route == "/api/app/updates/check":
@@ -911,6 +922,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("filament_inventory"):
                 return None
             return self._send_json(tool_setup.save(self._read_json_body()))
+
+        if route == '/api/files/plates/extract':
+            if self._module_blocked('file_library'):
+                return None
+            return self._send_json(project_plates.save(self._read_json_body()))
 
         if route == "/api/files/plate":
             if self._module_blocked("file_library"):
@@ -1062,6 +1078,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                                                  body.get("process"), body.get("filaments")))
             if verb == "profiles/from-installed":
                 return self._send_json(slicer_bridge.add_installed_profile(body))
+            if verb.startswith('jobs/') and verb.endswith('/cancel'):
+                return self._send_json(slicer_bridge.cancel_job(verb.split('/')[1]))
             if verb.startswith("profiles/") and verb.endswith("/remove"):
                 return self._send_json(slicer_bridge.remove_profile(verb.split("/")[1]))
             if verb == "slice":

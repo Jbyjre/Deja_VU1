@@ -92,7 +92,7 @@ named in text.
 `docs/img/setup-phone.png`, `launch-overview.png` and `launch-phone.png` show the
 current setup/navigation. Browser checks in `tools/check-launch-ui.js` also
 capture before/after evidence into a caller-chosen folder; private reports belong
-outside this repository. The numbers board was rerendered for 732 tests.
+outside this repository. The numbers board is rerendered for the current test count.
 Existing feature crops, social card, animated GIF and launch videos still need
 an editorial pass before claiming all media shows the latest interface.
 
@@ -104,3 +104,20 @@ and the G-code layer inspector. See `docs/native-studio-validation.md` for their
 context and the real-engine limits. Rerender feature/number boards with the
 current test count. Older promotional crops/GIF/video timelines still require
 an editorial pass; the owner’s launch cuts remain 75 seconds.
+
+
+## Current slicer workspace captures
+
+`docs/img/slicer-before-*.png` and `slicer-after-*.png` preserve this pass's
+1366/390 viewport comparisons. Farm readings in historical pictures are simulated;
+new workspace job estimates come from actual local-engine files and are not
+physical measurements. `docs/slicer-workspace-validation.md` records that distinction.
+`file-detail.jpg` now shows the current slice inspection workspace. New recovery
+and process captures are included. The 759-test board and social card were
+rerendered; old video timelines still require the owner's 75-second editorial pass.
+
+`docs/img/slicer-preview.gif` is a sequence of actual browser layer scrubs in the
+recorded static demo. Its source files are simulated, not physical-printer footage.
+
+Run `node tools/check-static-demo.js /tmp/dejavu-evidence` to verify the recorded
+demo from disk without an app server; it also captures real layer-scrub frames.

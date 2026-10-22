@@ -1,4 +1,5 @@
-/* Development checks: node tools/check-native-studio.js URL OUTPUT_DIR */
+/* Historical stock-2.4.2 fixture check; current workflow: tools/check-slicer-workspace.js.
+   Development checks: node tools/check-native-studio.js URL OUTPUT_DIR */
 const {chromium}=require('playwright'),fs=require('fs'),assert=require('assert');
 const base=process.argv[2]||'http://localhost:8791',out=process.argv[3]||'/tmp/dejavu-evidence';
 fs.mkdirSync(out,{recursive:true});

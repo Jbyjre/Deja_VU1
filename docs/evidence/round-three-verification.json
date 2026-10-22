@@ -1,0 +1,36 @@
+{
+  "baseline": {
+    "commit": "9efb8075cd68dc943a71753043d9cefd27fca42b",
+    "tests": 732,
+    "seconds": 127.642,
+    "outcome": "pass"
+  },
+  "final": {
+    "tests": 759,
+    "seconds": 128.765,
+    "outcome": "pass",
+    "app_demo_servers_running": false
+  },
+  "focused_latest": {
+    "tests": 67,
+    "seconds": 13.641,
+    "outcome": "pass"
+  },
+  "online_demo": {
+    "tests": 5,
+    "seconds": 0.04,
+    "outcome": "pass",
+    "answers": 243,
+    "distinct_bodies": 119,
+    "live_seconds": 150,
+    "events": 2,
+    "files": 8
+  },
+  "environment": {
+    "python": "3.12.14",
+    "chromium": "154.0.8037.57",
+    "os": "Debian 13",
+    "graphics": "SwiftShader software renderer"
+  },
+  "excluded": "Premature full-suite run interrupted before recorder exit; not counted as final evidence."
+}
