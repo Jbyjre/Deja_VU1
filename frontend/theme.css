@@ -752,3 +752,66 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
 .settings-jumps > span { font: 600 12px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); margin-right: 4px; }
 .settings-jumps .chip-btn { text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
 #tab-modules section.card { scroll-margin-top: 110px; }
+
+/* ==========================================================================
+   Full-screen setup (launchpad.js)
+   Every step fills the window, with the live background glowing through,
+   except "Find your way", which stays a corner card so the dashboard it
+   points at is visible. A stepper names every step; Back and Continue stay
+   at the bottom.
+   ========================================================================== */
+/* Only while open: a closed <dialog> must keep the browser's display:none,
+   or it would sit invisibly over the page and catch every click. */
+.glass-dialog.setup-dialog.is-full[open]:not(.is-morph-target) {
+  position: fixed; inset: 0; margin: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none;
+  border-radius: 0; padding: 0; display: grid; grid-template-rows: auto 1fr auto;
+  background: color-mix(in oklch, var(--paper-solid) 38%, transparent);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: none; border: 0;
+}
+.glass-dialog.setup-dialog.is-full::backdrop { background: transparent; }
+html.setup-full-open, html.setup-full-open body { overflow: hidden; }
+/* Only the live background shows behind a full-screen step. */
+html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hidden; }
+.setup-dialog.is-full .setup-top {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+  padding: 18px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--hair);
+}
+.setup-dialog.is-full .setup-top #setup-step { display: none; }
+.setup-brand { display: inline-flex; align-items: center; gap: 10px; font: 600 15px/1 var(--font-display); color: var(--text); }
+.setup-brand .brand-mark { width: 30px; height: 30px; }
+.setup-dialog:not(.is-full) .setup-brand, .setup-dialog:not(.is-full) .setup-steps { display: none; }
+.setup-steps { display: flex; justify-content: center; gap: 6px; list-style: none; margin: 0; padding: 0; counter-reset: s; min-width: 0; }
+.setup-steps li { counter-increment: s; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-faint); white-space: nowrap; }
+.setup-steps li::before {
+  content: counter(s); display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  font: 600 12px/1 var(--font-mono); border: 1.5px solid currentColor;
+}
+.setup-steps li + li::after { content: none; }
+.setup-steps li:not(:last-child) { padding-right: 10px; border-right: 1px solid var(--hair); }
+.setup-steps li.done { color: var(--text-dim); }
+.setup-steps li.done::before { content: "✓"; background: var(--accent); border-color: var(--accent); color: #fff; }
+.setup-steps li.now { color: var(--text); font-weight: 600; }
+.setup-steps li.now::before { background: var(--text); border-color: var(--text); color: var(--paper-solid); }
+@media (max-width: 1100px) { .setup-steps li:not(.now) span { display: none; } }
+@media (max-width: 560px) {
+  .setup-dialog.is-full .setup-top { grid-template-columns: 1fr auto; }
+  .setup-dialog.is-full .setup-steps { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+  .setup-brand { font-size: 14px; }
+}
+.setup-dialog.is-full .setup-body { overflow-y: auto; padding: clamp(24px, 6vh, 72px) clamp(16px, 4vw, 40px); }
+.setup-dialog.is-full #setup-content, .setup-dialog.is-full #setup-status { max-width: 720px; margin: 0 auto; }
+.setup-dialog.is-full h2 { font-size: clamp(34px, 5.2vw, 60px); line-height: 1.04; margin-bottom: 20px; text-wrap: balance; }
+.setup-dialog.is-full .setup-mark { font-size: 56px; }
+.setup-lead { font-size: clamp(16px, 1.6vw, 19px); color: var(--text-dim); max-width: 60ch; }
+.setup-points { list-style: none; padding: 0; margin: 22px 0 8px; display: grid; gap: 10px; }
+.setup-points li { padding: 12px 16px; border-radius: 14px; background: var(--paper-solid); box-shadow: var(--shadow-card); }
+.setup-dialog.is-full .setup-footer {
+  justify-content: space-between; padding: 14px clamp(16px, 4vw, 40px) calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hair); background: color-mix(in oklch, var(--paper-solid) 80%, transparent);
+}
+.setup-dialog.is-full .setup-footer #setup-next { margin-left: auto; min-width: 160px; }
+.setup-dialog.is-full #setup-backdrop .bp-styles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass-dialog.setup-dialog.is-full[open]:not(.is-morph-target) { background: var(--paper-solid); }
+}

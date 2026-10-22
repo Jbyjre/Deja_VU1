@@ -1219,8 +1219,13 @@
   </div>
 </div>
 <dialog id="setup-dialog" class="glass-dialog setup-dialog" aria-labelledby="setup-title">
-  <div class="setup-top"><span id="setup-step" class="eyebrow"></span><button class="btn small" id="setup-skip">Skip setup</button></div>
-  <div id="setup-content"></div><p id="setup-status" role="status" aria-live="polite"></p>
+  <div class="setup-top">
+    <span class="setup-brand"><span class="brand-mark" aria-hidden="true"><span class="brand-ring"></span><span class="brand-dot"></span></span>Deja Vu1 setup</span>
+    <ol class="setup-steps" id="setup-steps" aria-label="Setup steps"></ol>
+    <span id="setup-step" class="eyebrow"></span>
+    <button class="btn small" id="setup-skip">Skip setup</button>
+  </div>
+  <div class="setup-body"><div id="setup-content"></div><p id="setup-status" role="status" aria-live="polite"></p></div>
   <div class="setup-footer"><button class="btn" id="setup-back">Back</button><button class="btn primary" id="setup-next">Continue</button></div>
 </dialog>
 <script src="app.js"></script>

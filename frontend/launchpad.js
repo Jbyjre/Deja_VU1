@@ -6,7 +6,10 @@
   const save = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); return true; } catch (_) { return false; } };
   const dialog = $('setup-dialog'), content = $('setup-content');
   let step = 0, mode = 'real', info = null, returnFocus = null, activeTarget = null, generation = 0;
-  const names = ['Welcome', 'Your printer', 'Find your way', 'Your phone', 'Keep up to date'];
+  // Full screen for every step except the tour, which shrinks to a corner
+  // card so the dashboard it points at can be seen.
+  const names = ['Welcome', 'Make it yours', 'Your printer', 'Find your way', 'Your phone', 'Keep up to date'];
+  const TOUR = names.indexOf('Find your way');
   const privacy = 'Only saved in this browser on this device. Never sent to the server, logs, backups or update checks. Optional; delete it any time.';
   function greeting() {
     const name = read(key);
@@ -20,7 +23,7 @@
     activeTarget = document.querySelector(target || nav);
     if (activeTarget) { activeTarget.classList.add('setup-highlight'); activeTarget.scrollIntoView({block:'center', behavior:'instant'}); }
   }
-  function finish() { generation++; save(seenKey, '1'); clearHighlight(); dialog.close(); if (returnFocus) returnFocus.focus(); }
+  function finish() { generation++; save(seenKey, '1'); clearHighlight(); dialog.close(); dialog.classList.remove('is-full'); document.documentElement.classList.remove('setup-full-open'); if (returnFocus) returnFocus.focus(); }
   function setDemo(on) {
     if (tourOn()) return;
     $('demo-toggle').checked = on;
@@ -40,20 +43,27 @@
   function render() {
     const view = ++generation;
     clearHighlight();
-    if (step === 2 && dialog.matches(':modal')) { dialog.close(); dialog.show(); }
-    if (step !== 2 && !dialog.matches(':modal')) { dialog.close(); dialog.showModal(); }
-    $('setup-step').textContent = `${step + 1} / ${names.length} · ${names[step]}`;
+    if (step === TOUR && dialog.matches(':modal')) { dialog.close(); dialog.show(); }
+    if (step !== TOUR && !dialog.matches(':modal')) { dialog.close(); dialog.showModal(); }
+    $('setup-step').textContent = `Step ${step + 1} of ${names.length} · ${names[step]}`;
+    $('setup-steps').innerHTML = names.map((n, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"${i === step ? ' aria-current="step"' : ''}><span>${esc(n)}</span></li>`).join('');
     $('setup-back').hidden = step === 0;
     $('setup-next').textContent = step === names.length - 1 ? 'Finish setup' : 'Continue';
-    dialog.classList.toggle('setup-tour', step === 2);
+    dialog.classList.toggle('setup-tour', step === TOUR);
+    dialog.classList.toggle('is-full', step !== TOUR);
+    document.documentElement.classList.toggle('setup-full-open', step !== TOUR);
     if (step === 0) {
       content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">A little setup.<br>A clearer print day.</h2>
-        <p>Your computer runs Deja Vu1. Your phone is another window onto it. Your printer stays on your own network.</p>
+        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer, talks to your printer over your home network, and works from your phone too. Nothing goes to the cloud.</p>
+        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Stay safe:</strong> every print is checked before it starts.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
         <p class="field-hint">${esc(privacy)}</p>`;
       $('setup-name').addEventListener('input', e => { if (!save(key, e.target.value.trim().slice(0,40))) $('setup-status').textContent='This browser is not allowing saved preferences.'; greeting(); });
-    } else if (step === 1) {
+    } else if (names[step] === 'Make it yours') {
+      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and its colours. Move your mouse (or drag a finger) around this screen to see it react. You can change it any time in Settings → Appearance.</p><div id="setup-backdrop"></div>`;
+      if (typeof Backdrop !== 'undefined') Backdrop.picker($('setup-backdrop'));
+    } else if (names[step] === 'Your printer') {
       content.innerHTML = `<h2 id="setup-title">Choose your starting point.</h2><p>Demo figures are labelled. Connecting a real printer does not start a print.</p>
         <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo">Explore demo data</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" ${tourOn()?'disabled':''}>Connect my printer</button></div>
         ${tourOn()?'<p class="setup-note">Public demo · a recording only. To connect a printer, run the download on your own computer.</p>':''}
@@ -94,13 +104,13 @@
           $('setup-key').value='';btn.textContent='Printer added';
         } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not connect. Check the address and try again.';btn.disabled=false;}
       };
-    } else if (step === 2) {
+    } else if (step === TOUR) {
       content.innerHTML='<h2 id="setup-title">Find your everyday controls.</h2><p>Choose an area to highlight it in the dashboard. This tour does not send printer commands.</p><div class="setup-choices" id="setup-tour-links"></div>';
       [['overview','Progress'],['control','Pause & cancel'],['files','Files & queue'],['modules','Camera & settings']].forEach(([tab,label])=>{
         const b=document.createElement('button');b.className='btn';b.textContent=label;b.onclick=()=>jump(tab);$('setup-tour-links').append(b);
       });
       jump('overview');
-    } else if (step === 3) {
+    } else if (names[step] === 'Your phone') {
       content.innerHTML=`<h2 id="setup-title">Your bench. In your pocket.</h2><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
     } else {
       content.innerHTML='<h2 id="setup-title">Stay in control of updates.</h2><p>Settings → App updates checks GitHub for a newer release. Automatic checks start off. If you enable them, checks happen at startup, at most once a day.</p><p>Install from the double-click launcher when your printers are idle. The launcher keeps your data and restores the previous files if the new server fails its startup check.</p><p class="field-hint">The public demo cannot update a downloaded copy. Printer firmware updates are a separate feature.</p>';
