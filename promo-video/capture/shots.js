@@ -202,20 +202,64 @@ const SHOTS = {
   },
   // Files: a Bambu Studio (MakerWorld) project, converted for the U1 in one click.
   async convert() {
+    // Version 12: opening a project now lands in the slicing workspace, and conversion sits in its
+    // "Source & import information" section, so the file opens before filming and the cursor opens
+    // that section on film.
     const st = await r.open(); await r.demoOn(st); await samples(st);
-    await st.page.mouse.move(900, 560); st.mx = 900; st.my = 560;
     await intoView(st, 'text=sample_bambu_studio_layout.3mf', false);
+    await st.page.locator('text=sample_bambu_studio_layout.3mf').first().click();
+    await r.settle(st, 6000);
+    await intoView(st, '.sw-source-info summary', false);
+    await st.page.mouse.move(700, 400); st.mx = 700; st.my = 400;
     r.start(st, 'convert');
-    await r.wait(st, 100);
-    await r.click(st, 'text=sample_bambu_studio_layout.3mf', MV, PA);
-    await r.wait(st, 600);
+    await r.wait(st, 200);
+    await r.click(st, '.sw-source-info summary', MV, PA); r.mark(st, 'open');
+    await r.wait(st, 500);
     await intoView(st, '#fd-convert', true);
     await r.click(st, '#fd-convert', MV, PA); r.mark(st, 'convert');
     await sleep(2500);
-    await r.wait(st, 900);
+    await r.wait(st, 700);
+    await intoView(st, '#fd-convert-report', true);
     const rb = await r.box(st, '#fd-convert-report');
-    await r.move(st, rb.x + 120, rb.y + 22, 800); r.mark(st, 'report');
+    await r.move(st, rb.x + 120, rb.y + 22, 700); r.mark(st, 'report');
     await r.wait(st, 2000);
+    r.stop(st); return st;
+  },
+  // Version 12: the slicing workspace (Prepare). The four heads are given filament colours first
+  // (saved tool choices, as the owner would set them), the bracket opens on the plate, then on
+  // film: duplicate it, put the copy on head T1, apply, arrange. No slice is shown: slicing needs
+  // a separately installed engine, which the filming machine does not have.
+  async prepare() {
+    const st = await r.open(); await r.demoOn(st);
+    console.log('heads saved:', await st.page.evaluate(async () => {
+      await postJSON('/api/modules/filament_inventory/toggle', { enabled: true });
+      const H = (t, c, m) => ({ toolhead: t, color_hex: c, material: m, nozzle: 0.4, height: 0.2 });
+      const r = await postJSON(api('/api/tools/assignments'), { heads: [H('T0', '#e8572a', 'PLA'), H('T1', '#2f6fde', 'PETG'), H('T2', '#f2f2ee', 'PLA'), H('T3', '#2b2b2e', 'PLA')] });
+      return (await getJSON(api('/api/tools/assignments'))).heads.map(h => h.toolhead + h.color_hex).join(' ');
+    }));
+    await samples(st);
+    await intoView(st, 'text=dock_bracket.stl', false);
+    await st.page.locator('text=dock_bracket.stl').first().click();
+    await r.settle(st, 6000);
+    await st.page.locator('#plate-colour').uncheck();
+    await st.page.locator('button:has-text("Apply object settings")').first().click();
+    await r.settle(st, 1200);
+    await st.page.evaluate(() => scrollTo(0, document.querySelector('#sw-header').getBoundingClientRect().top + scrollY - 100));
+    await r.settle(st, 1200);
+    await st.page.mouse.move(700, 600); st.mx = 700; st.my = 600;
+    r.start(st, 'prepare');
+    await r.wait(st, 300);
+    await r.click(st, 'button:has-text("Duplicate")', MV, PA); r.mark(st, 'dup');
+    await r.wait(st, 500);
+    await r.click(st, '#plate-tool', MV, PA);
+    await st.page.locator('#plate-tool').selectOption('1'); await r.frame(st); r.mark(st, 'tool');
+    await r.wait(st, 250);
+    await r.click(st, 'button:has-text("Apply object settings")', MV, PA); r.mark(st, 'blue');
+    await r.wait(st, 600);
+    await r.click(st, '#plate-arrange', MV, PA); r.mark(st, 'arrange');
+    await r.wait(st, 1100);
+    await r.move(st, 900, 780, MV);
+    await r.wait(st, 1200);
     r.stop(st); return st;
   },
   // Photo-to-Print Studio: the built-in test pattern becomes a layered relief.
