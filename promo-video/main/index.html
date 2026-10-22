@@ -317,7 +317,7 @@
       <div id="caps"></div>
 
       <div id="more"><div id="more-t">And plenty more.</div><div id="more-g"></div></div>
-      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">638 automated tests.</div></div>
+      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">759 automated tests.</div></div>
 
       <div id="start"><div id="start-t">Get started in three steps.</div><div id="start-g"></div></div>
       <div id="end">
@@ -329,7 +329,7 @@
           <div class="ln"><b>$</b> cd Deja_VU1</div>
           <div class="ln"><b>$</b> python3 backend/app.py</div>
         </div>
-        <div id="end-meta">Free · MIT licence · Python 3.8 or newer · nothing else to install</div>
+        <div id="end-meta">Free · MIT licence · the core needs only Python 3.8 or newer</div>
         <div id="end-fine">
           <div class="note">Every figure shown comes from Deja Vu1's built-in simulated farm.</div>
           <div class="note">Deja Vu1 is an independent project and is not affiliated with Snapmaker.</div>
@@ -341,8 +341,8 @@
       <video id="v-ov" src="assets/footage/overview_jam.mp4" muted playsinline data-start="19.650" data-media-start="3.900" data-duration="5.200" data-track-index="2"></video>
       <video id="v-ok" src="assets/footage/confirm_ok.mp4" muted playsinline data-start="24.150" data-media-start="6.400" data-duration="8.950" data-track-index="2"></video>
       <video id="v-ph" src="assets/footage/phone.mp4" muted playsinline data-start="29.600" data-media-start="7.200" data-duration="3.500" data-track-index="2"></video>
-      <video id="v-cv" src="assets/footage/convert.mp4" muted playsinline data-start="32.400" data-media-start="4.800" data-duration="5.200" data-track-index="2"></video>
-      <video id="v-sk" src="assets/footage/skip_object.mp4" muted playsinline data-start="36.900" data-media-start="6.900" data-duration="5.950" data-track-index="2"></video>
+      <video id="v-cv" src="assets/footage/convert.mp4" muted playsinline data-start="32.400" data-media-start="4.000" data-duration="5.200" data-track-index="2"></video>
+      <video id="v-pp" src="assets/footage/prepare.mp4" muted playsinline data-start="36.900" data-media-start="4.100" data-duration="5.950" data-track-index="2"></video>
       <video id="v-tw" src="assets/footage/twin.mp4" muted playsinline data-start="42.150" data-media-start="4.800" data-duration="3.900" data-track-index="2"></video>
       <video id="v-tw2" src="assets/footage/twin.mp4" muted playsinline data-start="45.450" data-media-start="9.600" data-duration="2.650" data-track-index="2"></video>
       <video id="v-au" src="assets/footage/automations.mp4" muted playsinline data-start="47.400" data-media-start="5.300" data-duration="5.950" data-track-index="2"></video>
@@ -359,9 +359,9 @@
       // Shared by both cuts; the layout CSS places things, this file times them. build.py fills
       // in M (each shot's clicks and marks), TY (the end-card typing) and SEG (the timings).
       const FMT = 'main', V9 = FMT === 'vertical';
-      const M = {"v-fl": {"start": 11.067, "marks": {"tab": 1.033, "cards": 2.933, "sandbox": 5.133, "hover": 5.883, "hover2": 8.333}, "clicks": [0.983]}, "v-ov": {"start": 19.75, "marks": {"jam": 1.783, "row": 3.867}, "clicks": []}, "v-ok": {"start": 21.75, "marks": {"open": 0.9, "print": 2.933, "dialog": 5.233, "start": 6.167}, "clicks": [0.85, 2.883, 6.117]}, "v-ph": {"start": 26.4, "marks": {}, "clicks": [1.833, 4.217, 5.1]}, "v-cv": {"start": 31.6, "marks": {"convert": 2.167, "report": 3.867}, "clicks": [0.783, 2.117]}, "v-sk": {"start": 34.0, "marks": {"tab": 1.033, "plate": 3.133, "pick": 3.867, "ask": 5.6, "skip": 7.15, "done": 8.95}, "clicks": [0.983, 3.817, 5.55, 7.1]}, "v-tw": {"start": 41.35, "marks": {"orbit": 1.583, "orbited": 4.217, "front": 5.85, "top": 7.8, "iso": 9.75}, "clicks": [1.583, 5.8, 7.75, 9.7]}, "v-tw2": {"start": 39.85, "marks": {"orbit": 1.583, "orbited": 4.217, "front": 5.85, "top": 7.8, "iso": 9.75}, "clicks": [1.583, 5.8, 7.75, 9.7]}, "v-au": {"start": 46.1, "marks": {"tab": 1.033, "template": 2.567, "save": 4.783}, "clicks": [0.983, 2.517, 4.733]}};
+      const M = {"v-fl": {"start": 11.067, "marks": {"tab": 1.033, "cards": 2.933, "sandbox": 5.133, "hover": 5.883, "hover2": 8.333}, "clicks": [0.983]}, "v-ov": {"start": 19.75, "marks": {"jam": 1.783, "row": 3.867}, "clicks": []}, "v-ok": {"start": 21.75, "marks": {"open": 0.9, "print": 2.933, "dialog": 5.233, "start": 6.167}, "clicks": [0.85, 2.883, 6.117]}, "v-ph": {"start": 26.4, "marks": {}, "clicks": [1.833, 4.217, 5.1]}, "v-cv": {"start": 32.4, "marks": {"open": 0.933, "convert": 2.167, "report": 3.95}, "clicks": [0.883, 2.117]}, "v-pp": {"start": 36.8, "marks": {"dup": 1.033, "tool": 2.283, "blue": 3.267, "arrange": 4.6}, "clicks": [0.983, 2.217, 3.217, 4.55]}, "v-tw": {"start": 41.35, "marks": {"orbit": 1.583, "orbited": 4.217, "front": 5.85, "top": 7.8, "iso": 9.75}, "clicks": [1.583, 5.8, 7.75, 9.7]}, "v-tw2": {"start": 39.85, "marks": {"orbit": 1.583, "orbited": 4.217, "front": 5.85, "top": 7.8, "iso": 9.75}, "clicks": [1.583, 5.8, 7.75, 9.7]}, "v-au": {"start": 46.1, "marks": {"tab": 1.033, "template": 2.567, "save": 4.783}, "clicks": [0.983, 2.517, 4.733]}};
       const TY = [[69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7, 69.7], [70.1, 70.165, 70.249, 70.317, 70.405, 70.471, 70.556, 70.636, 70.699, 70.768, 70.854, 71.034], [71.464, 71.525, 71.601, 71.667, 71.735, 71.812, 71.879, 71.949, 72.029, 72.118, 72.202, 72.286, 72.35, 72.41, 72.481, 72.554, 72.619, 72.694, 72.77, 72.844, 72.917, 72.992, 73.172]];
-      const SEG = {"fl": {"t0": 15.75, "t1": 20.25}, "ov": {"t0": 20.25, "t1": 24.75}, "ok": {"t0": 24.75, "t1": 33.0, "phone": 30.0}, "cv": {"t0": 33.0, "t1": 37.5}, "sk": {"t0": 37.5, "t1": 42.75}, "tw": {"t0": 42.75, "t1": 48.0}, "au": {"t0": 48.0, "t1": 53.25}, "values": 59.25, "end": 69.0, "twinCut": 45.75, "beat": 0.375, "hiw": {"t0": 9.0, "s2": 11.25, "s3": 13.5}, "more": 53.25, "start": 62.25};
+      const SEG = {"fl": {"t0": 15.75, "t1": 20.25}, "ov": {"t0": 20.25, "t1": 24.75}, "ok": {"t0": 24.75, "t1": 33.0, "phone": 30.0}, "cv": {"t0": 33.0, "t1": 37.5}, "pp": {"t0": 37.5, "t1": 42.75}, "tw": {"t0": 42.75, "t1": 48.0}, "au": {"t0": 48.0, "t1": 53.25}, "values": 59.25, "end": 69.0, "twinCut": 45.75, "beat": 0.375, "hiw": {"t0": 9.0, "s2": 11.25, "s3": 13.5}, "more": 53.25, "start": 62.25};
       const $ = (s) => document.querySelector(s);
       const FW = 1440, FH = 900, SW = 1240, SH = 775;       // filmed page (CSS px), laptop screen
       const at = (vid, mark) => M[vid].start + (mark in M[vid].marks ? M[vid].marks[mark] : 0);
@@ -376,6 +376,7 @@
         sk: '<rect x="6" y="6" width="36" height="36" rx="5"/><rect x="12" y="25" width="9" height="9" rx="2"/><rect x="27" y="25" width="9" height="9" rx="2"/><path class="heat" d="M13 11l8 8M21 11l-8 8"/><rect x="27" y="11" width="9" height="9" rx="2"/>',
         tw: '<path d="M24 5l16 9v19l-16 9-16-9V14z"/><path d="M8 14l16 9 16-9M24 23v19"/>',
         st: '<rect x="5" y="9" width="38" height="30" rx="5"/><path d="M9 35l10-11 7 7 5-5 8 9"/><circle class="heat" cx="33" cy="17" r="4"/>',
+        pp: '<path d="M24 6l18 9-18 9-18-9z"/><path d="M6 24l18 9 18-9"/><path class="heat" d="M6 33l18 9 18-9"/>',
         au: '<path d="M27 4L11 27h12l-3 17 17-24H25z"/>',
         ca: '<path d="M31 6a9 9 0 0 0-8 12L8 33a3.6 3.6 0 0 0 5 5l15-15a9 9 0 0 0 12-8l-6 2-4-4 2-6z"/>',
         fi: '<circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="6"/><circle class="heat" cx="24" cy="24" r="12" stroke-dasharray="4 5"/>',
@@ -408,8 +409,8 @@
           h: 'Every print, checked first.', s: 'File, colours and maintenance, <em>before it starts</em>.' },
         { id: 'cv', lb: 'Convert for U1', k: 'Files ready for the U1', shot: 'D', cap: 'R',
           h: 'Any project, ready for the U1.', s: '<em>MakerWorld, NexPrint, OrcaSlicer.</em> One click.' },
-        { id: 'sk', lb: 'Skip one object', k: 'Skip one object', shot: 'F', cap: 'R',
-          h: 'Skip one failed part.', s: '<em>The rest keep printing.</em>' },
+        { id: 'pp', lb: 'Prepare &amp; slice', k: 'Prepare & slice', shot: 'F', cap: 'L',
+          h: 'Prepare the whole plate.', s: 'Each part on its own head, <em>T0 to T3</em>. Then slice.' },
         { id: 'tw', lb: 'Digital twin', k: 'Digital twin', shot: 'F', cap: 'R',
           h: 'A live drawing of each printer.', s: '<em>Drawn to scale.</em> Turn it in 3D.' },
         { id: 'au', lb: 'Automations', k: 'Automations', shot: 'D', cap: 'L',
@@ -421,14 +422,14 @@
       // feature shown later in the film: the live fleet, Confirm Print, Needs you.
       const PURPOSE = [
         { id: 'fl', t: 'Watch every print, <em>live</em>.' },
-        { id: 'ok', t: 'Check every file <em>before it prints</em>.' },
+        { id: 'ok', t: 'Prepare and check <em>every file</em>.' },
         { id: 'ov', t: 'Know the moment one <em>needs you</em>.' },
       ];
 
       // How it works (version 10): three steps around the laptop, each sentence checked against
       // docs/getting-started.md, backend/live_feed.py (four updates a second) and backend/fleet.py.
       const STEPS = [
-        { h: 'Runs on your computer.', s: 'Windows, Mac, Linux or a Raspberry Pi. <em>Python 3.8 or newer</em>, nothing else.' },
+        { h: 'Runs on your computer.', s: 'Windows, Mac, Linux or a Raspberry Pi. The core needs only <em>Python 3.8 or newer</em>.' },
         { h: 'Talks to your U1s on your network.', s: '<em>Four updates a second</em>, up to 12 printers. Nothing installed on the printer.' },
         { h: 'Open it in any browser.', s: 'On that computer or <em>on your phone</em>. No account, no cloud.' },
       ];
@@ -436,7 +437,7 @@
       // "And plenty more": the supporting features as stills from the same filmed shots.
       const MORE = [
         { id: 'ca', lb: 'Maintenance', img: 'care' }, { id: 'fi', lb: 'Filament &amp; Spoolman', img: 'filament' },
-        { id: 'co', lb: 'Print cost', img: 'cost' }, { id: 'ha', lb: 'Home Assistant', img: 'ha' },
+        { id: 'sk', lb: 'Skip one object', img: 'skip' }, { id: 'ha', lb: 'Home Assistant', img: 'ha' },
         { id: 'ga', lb: 'Ten games', img: 'games' }, { id: 'mod', lb: '29 modules, on or off', img: 'modules' },
       ];
       const START = [
@@ -444,6 +445,10 @@
         { h: 'Double-click start.', m: 'Windows · Mac · Linux' },
         { h: 'It opens in your browser.', m: 'Your phone too, on the same network.' },
       ];
+
+      // where the prepare shot's callouts point (page px, measured on the filmed shot)
+      const CV = { btn: [100, 300, 620, 420], click: [334, 474], rep: [100, 380, 620, 420], done: [345, 434] };
+      const PP = { tool: [1180, 528], plate: [640, 560] };
 
       // ---------- DOM ----------
       $('#nodes').innerHTML = PRINTERS.map((p, i) => `<div class="node col" id="nd-${i}"><div class="tile glass">${svgIcon('pr')}</div><div class="lb">U1<b>${p}</b></div></div>`).join('')
@@ -769,10 +774,10 @@
       }
       // 2. needs you
       { const v = V.ov, J = at('v-ov', 'jam');
-        camTo(v, SEG.ov.t0 - .5, 0, [150, 220, 800, 600]);
-        const k = camTo(v, J, .7, [165, 330, 760, 300]);
-        spot(v, [172, 391, 1106, 98], J + .2, OUT('ov'));
-        callout(v, [460, 470], 'A jam, the moment it happens', 'b', J + .35, OUT('ov'), k);
+        camTo(v, SEG.ov.t0 - .5, 0, [150, 280, 800, 600]);
+        const k = camTo(v, J, .7, [165, 400, 760, 300]);
+        spot(v, [172, 455, 1106, 112], J + .2, OUT('ov'));
+        callout(v, [575, 534], 'A jam, the moment it happens', 'b', J + .35, OUT('ov'), k);
       }
       // 3. confirm print, then the phone
       { const v = V.ok, P = click('v-ok', 1), G = click('v-ok', 2), PH0 = SEG.ok.phone;
@@ -795,19 +800,19 @@
       }
       // 4. files ready for the U1
       { const v = V.cv, C = click('v-cv', 1), RP = at('v-cv', 'report');
-        camTo(v, SEG.cv.t0 - .5, 0, [560, 280, 800, 400]);
-        const k = camTo(v, C - .5, .6, [700, 330, 620, 240]);
-        callout(v, [918, 422], 'One click', 't', C - .35, C + .4, k);
-        const k2 = camTo(v, C + .3, .75, [760, 560, 560, 340]);
-        callout(v, [1010, 690], 'Converted for the U1', 't', RP - .15, OUT('cv'), k2);
+        camTo(v, SEG.cv.t0 - .5, 0, [60, 120, 900, 640]);
+        const k = camTo(v, C - .6, .6, CV.btn);
+        callout(v, CV.click, 'One click', 'r', C - .35, C + .4, k);
+        const k2 = camTo(v, C + .3, .75, CV.rep);
+        callout(v, CV.done, 'Converted for the U1', 'r', RP - .15, OUT('cv'), k2);
       }
-      // 5. skip one object
-      { const v = V.sk, PK = at('v-sk', 'pick'), S = at('v-sk', 'skip');
-        camTo(v, SEG.sk.t0 - .5, 0, [300, 140, 800, 420]);
-        const k = camTo(v, PK - .5, .7, [440, 170, 800, 300]);
-        spot(v, [492, 243, 772, 46], PK + .1, OUT('sk'));
-        callout(v, [640, 278], 'Pick the failed part', 'b', PK + .15, S - .1, k);
-        callout(v, [640, 278], 'Skipped. The rest keep going.', 'b', S + .25, OUT('sk'), k);
+      // 5. prepare & slice (version 12, the new workspace): duplicate the part, put the copy on
+      // head T1 (it turns that head's colour), arrange the plate
+      { const v = V.pp, D = at('v-pp', 'dup'), BL = at('v-pp', 'blue'), AR = at('v-pp', 'arrange');
+        camTo(v, SEG.pp.t0 - .5, 0, [560, 200, 720, 600]);
+        const k = camTo(v, D + .2, .8, [540, 280, 740, 520]);
+        callout(v, PP.tool, 'The copy goes on head T1', 'b', BL + .1, AR - .1, k);
+        callout(v, PP.plate, 'Arranged on the U1 plate', 't', AR + .35, OUT('pp'), k);
       }
       // 6. the digital twin: the 3D view longest (turned by hand), then front and top
       { const v = V.tw, v2 = V.tw2, O = at('v-tw', 'orbit'), FR = at('v-tw2', 'front'), CUT = SEG.twinCut;
@@ -826,7 +831,7 @@
       { const v = V.au, T = at('v-au', 'template'), S = at('v-au', 'save');
         camTo(v, SEG.au.t0 - .5, 0, [160, 220, 900, 640]);
         const k = camTo(v, T - .45, .7, [160, 310, 760, 520]);
-        callout(v, [575, 410], 'Ready-made rules', 'r', T + .05, S - .9, k);
+        callout(v, [570, 478], 'Ready-made rules', 'r', T + .05, S - 1.2, k);
         const k2 = camTo(v, S - .45, .75, [150, 440, 800, 360]);
         callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .3, OUT('au'), k2);
       }
