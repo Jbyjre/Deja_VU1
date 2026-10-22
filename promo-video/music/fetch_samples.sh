@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Downloads the recorded instruments music/compose10.py plays (about 700 MB, git-ignored):
+# Downloads the recorded instruments music/compose10.py plays (about 1 GB, git-ignored):
 #   piano  Salamander Grand Piano V3 (Alexander Holm, CC BY 3.0)  github.com/sfzinstruments/SalamanderGrandPiano
 #   bass   VSCO 2 CE solo contrabass pizzicato (CC0)               github.com/sgossner/VSCO-2-CE
 #   drums  Virtuosity Drums, mid-field mic (CC0)                    github.com/sfzinstruments/virtuosity_drums
+#   vibes  VCSL vibraphone (soft and hard mallets) and small shaker (CC0)  github.com/sgossner/VCSL   (version 13)
 # Only the folders used are checked out. Usage: bash music/fetch_samples.sh [work dir]
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; OUT="$HERE/samples"; WORK="${1:-$(mktemp -d)}"
@@ -14,9 +15,12 @@ get() {  # repo, then the paths to check out
 get sfzinstruments/SalamanderGrandPiano Samples LICENSE
 get sgossner/VSCO-2-CE "Strings/Solo Contrabass/Pizz" LICENSE
 get sfzinstruments/virtuosity_drums Samples/mid/ride Samples/mid/crash Samples/mid/hh Samples/mid/kick Samples/mid/snare Samples/mid/htom Samples/mid/ltom LICENSE
-mkdir -p "$OUT/piano" "$OUT/bass" "$OUT/drums"
+get sgossner/VCSL "Idiophones/Struck Idiophones/Vibraphone/Soft Mallets" "Idiophones/Struck Idiophones/Vibraphone/Hard Mallets" "Idiophones/Struck Idiophones/Shaker, Small" LICENSE
+mkdir -p "$OUT/piano" "$OUT/bass" "$OUT/drums" "$OUT/vibes" "$OUT/shaker"
 cp "$WORK/SalamanderGrandPiano/Samples/"*.flac "$OUT/piano/"
 cp "$WORK/VSCO-2-CE/Strings/Solo Contrabass/Pizz/"*.wav "$OUT/bass/"
 for d in ride crash hh kick snare htom ltom; do mkdir -p "$OUT/drums/$d"; cp "$WORK/virtuosity_drums/Samples/mid/$d/"*.flac "$OUT/drums/$d/"; done
+cp "$WORK/VCSL/Idiophones/Struck Idiophones/Vibraphone/"*/*.wav "$OUT/vibes/"; cp "$WORK/VCSL/Idiophones/Struck Idiophones/Shaker, Small/"*.wav "$OUT/shaker/"
+cp "$WORK/VCSL/LICENSE" "$OUT/vibes/LICENSE"; cp "$WORK/VCSL/LICENSE" "$OUT/shaker/LICENSE"
 cp "$WORK/SalamanderGrandPiano/LICENSE" "$OUT/piano/LICENSE"; cp "$WORK/VSCO-2-CE/LICENSE" "$OUT/bass/LICENSE"; cp "$WORK/virtuosity_drums/LICENSE" "$OUT/drums/LICENSE"
 echo "samples in $OUT: $(find "$OUT" -type f | wc -l) files"

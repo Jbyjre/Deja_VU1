@@ -1,9 +1,6 @@
       /* 16:9: the caption on one side, the laptop (or, full screen, the app) behind or beside it. */
       :root { --p-for: 22px; --p-head: 170px; --p-tile: 112px; --p-item: 42px; --p-gap: 40px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 27px; --co-size: 32px;
         --values-size: 110px; --term-size: 28px; }
-      #purpose { left: 150px; right: 150px; }
-      #p-list { flex-direction: row; }
-      .pi { flex: 1; }
       .cap { top: 0; bottom: 0; width: 650px; display: flex; align-items: center; }
       .cap.L { left: 150px; } .cap.R { right: 150px; }
       #corner { left: 110px; top: 64px; }
@@ -18,11 +15,17 @@
       #end-fine { top: 930px; }
       /* version 10 (title-safe: everything that matters stays 192 px from the sides, 108 from top and bottom) */
       :root { --hook: 150px; --node: 120px; --node-lb: 17px; --step-h: 50px; --step-s: 25px; --more-t: 84px; --more-gap: 24px; --mc-lb: 26px; --sc-h: 50px; --sc-m: 23px; }
-      #hook { left: 192px; right: 192px; }
-      .step { left: 50%; width: 1180px; margin-left: -590px; bottom: 108px; }
       #more-t { left: 192px; top: 120px; }
       #more-g { left: 192px; right: 192px; top: 236px; grid-template-columns: repeat(3, 1fr); }
-      #start-t { left: 192px; top: 330px; }
-      #start-g { left: 192px; right: 192px; top: 480px; grid-template-columns: repeat(3, 1fr); }
       :root { --sh: 120px; }
-      #shelf { left: 1316px; top: 408px; }
+      /* version 13 */
+      :root { --pl: 104px; --hw: 24px; --end-get: 26px; --brand-sub: 64px; }
+      #pb-lines { left: 192px; width: 720px; top: 330px; }
+      #how { left: 50%; transform: translateX(-50%); bottom: 112px; }
+      #brand { gap: 24px; }
+      #end-row { top: 120px; }
+      #end-tag { top: 300px; }
+      #term { top: 400px; }
+      #end-get { top: 720px; }
+      #end-meta { top: 790px; }
+      #end-fine { top: 900px; }

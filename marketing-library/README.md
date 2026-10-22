@@ -92,61 +92,61 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The historical launch video (version 11), filmed with demo data before the current
-slicer workspace, has two cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
--16 LUFS (2 dB under the usual -14 for YouTube and social, so the music stays light).
+The launch video, version 13 (October 2026): two new 60-second cuts, re-filmed from the current
+app on the simulated farm. Version 12's two 75-second cuts are kept beside them. All are H.264
+MP4 at 60 frames a second, with sound set to -16 LUFS (2 dB under the usual -14 for YouTube and
+social, so the music stays light).
 
 | File | Size | Length | Where it goes |
 |---|---|---|---|
-| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | YouTube, the forum, X, LinkedIn, the README or product page |
-| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | Shorts, Reels, TikTok |
+| `deja-vu1-launch-60s-16x9.mp4` | 1920 × 1080 | 60 s | YouTube, the forum, X, LinkedIn, the README or product page (version 13) |
+| `deja-vu1-launch-60s-9x16.mp4` | 1080 × 1920 | 60 s | Shorts, Reels, TikTok (version 13) |
+| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | the longer version 12 cut |
+| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | the longer version 12 cut |
 
-It's built like a SaaS launch video: the problem ("One printer is easy. A shelf of them
-isn't."), what Deja Vu1 is for, the name, how it works in three steps (it runs on your
-computer, talks to your U1s on your network, opens in any browser, your phone included),
-seven features shown working (every printer live, Needs you, Confirm Print and the phone,
-files for the U1, skip one object, the digital twin, automations), "and plenty more" (six
-more as screenshots), why to trust it (free, open source, runs on your network, no account,
-659 automated tests at filming time), how to get started (download, double-click, it opens in your browser)
-and the install lines.
+Version 13 is told like a product-launch film: the problem first ("Every printer has its own
+screen. So you check them one by one. And miss the one that needs you."), the answer (the
+windows fold into one: Deja Vu1, "One screen for every U1 you run."), how it works in one breath
+(runs on your computer, talks to your U1s on your network, opens in any browser), then six
+features shown working, each headline landing on its own before it steps aside for the app:
+every printer live, Needs you, Confirm Print and the phone, prepare & slice, the digital twin,
+automations. Then "and plenty more" (six more as screenshots), why to trust it (free and open
+source, no account needed, runs on your own network, 759 automated tests) and the install lines.
 
-Every app view is labelled "Simulated farm". The end card says every figure comes from
-the simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The clicks and
-keystrokes are synthesised in code. The music is a bright, up-tempo jazz trio at 160 beats a
-minute played on recorded acoustic instruments: Salamander Grand Piano by Alexander Holm (CC BY
-3.0, so credit it in the post's description too: "Piano: Salamander Grand Piano by Alexander
-Holm, CC BY 3.0"), the VSCO 2 Community Edition upright bass and Virtuosity Drums (both CC0). It
-plays along with the picture: a drum fill and a cymbal on every scene change, a piano note on every
-label and card that appears, a band hit on each value. Listen to it before posting: it was
+Every app view is labelled "Simulated farm". The end card says every figure comes from the
+simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The clicks and keystrokes are
+synthesised in code (the same sounds as version 11). The music is a new bright lounge-jazz tune
+at 144 beats a minute with a vibraphone melody, played on recorded acoustic instruments: the
+VCSL vibraphone, the VSCO 2 Community Edition upright bass and Virtuosity Drums (all CC0), and
+Salamander Grand Piano by Alexander Holm (CC BY 3.0, so credit it in the post's description too:
+"Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0"). It plays along with the picture: a
+cymbal and the band's chord on every scene change, the tune's head under each headline, a vibes
+note on every callout and card, a band hit on each value. Listen to it before posting: it was
 checked by measurement, not by ear.
 How to change or re-film it: `promo-video/README.md`.
 
 ## 08 · Feature cards
 
-Historical cards from version 11; they share its older interface and test count.
-One card per beat of the launch video's story, taken from the finished video at the moment
-its words are on screen. Each comes in two shapes: `-16x9.jpg` (1920 × 1080: README, forum
-posts, X, LinkedIn) and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories). 16 cards, 32
-files.
+Cards from version 13's 60-second cut. One card per beat of the story, taken from the finished
+video at the moment its words are on screen. Each comes in two shapes: `-16x9.jpg` (1920 × 1080:
+README, forum posts, X, LinkedIn) and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories).
+13 cards, 26 files.
 
 | Card | Shows |
 |---|---|
-| `00-the-problem` | "One printer is easy. A shelf of them isn't." |
-| `00-what-it-is-for` | "Run your 3D printers from one screen." and three promises |
-| `00-title` | The app icon and "Deja Vu1" |
-| `01-how-it-works` | The laptop with the app, three printers and a phone joined by the network, step 3 |
+| `00-the-problem` | "And miss the one that needs you." Six separate printer windows, one flagging a problem (an illustration) |
+| `00-the-answer` | The app icon, "Deja Vu1" and "One screen for every U1 you run." |
+| `01-how-it-works` | The laptop with the app, three printers and a phone joined by the network, three chips |
 | `02-every-printer-live` | The 27-printer sandbox farm on the laptop, one card's progress and finish time called out |
 | `03-needs-you` | A filament jam arriving at the top of Needs you |
 | `04-confirm-print` | A print started after every check, confirmed by the printer |
 | `04b-on-your-phone` | The phone layout in front of the laptop |
-| `05-files-for-the-u1` | A MakerWorld (Bambu Studio) project converted for the U1 |
-| `06-skip-one-object` | One part skipped, the rest still printing |
-| `07-digital-twin` | The live engineering drawing, front and top views |
-| `08-automations` | A ready-made rule saved, on the laptop |
-| `09-and-plenty-more` | Maintenance, filament, print cost, Home Assistant, games, 29 modules |
-| `10-why-trust-it` | Free, open source, runs on your network, no account, 659 automated tests |
-| `11-get-started` | Download, double-click, it opens in your browser |
-| `12-get-it` | The end card: the three install lines |
+| `05-prepare-and-slice` | A part duplicated, the copy on head T1, arranged on the U1 plate |
+| `06-digital-twin` | The live engineering drawing, front and top views |
+| `07-automations` | A ready-made rule saved, on the laptop |
+| `08-and-plenty-more` | Maintenance, filament, skip one object, Home Assistant, games, 29 modules |
+| `09-why-trust-it` | Free and open source, no account needed, runs on your own network, 759 automated tests |
+| `10-get-it` | The end card: the three install lines |
 
 Remade with `promo-video/build/stills.sh` after any change to the video.
 
@@ -159,9 +159,9 @@ originals as `tools/readme-images/README.md` describes, then copy them here
 again (or ask a Claude Code session to "refresh the marketing library").
 
 
-Boards, social cards and current slicing captures were refreshed. Older editorial
-feature crops and both 75-second video cuts still need a final pass. Follow
+Boards, social cards, current slicing captures, both launch videos and the feature cards
+were refreshed. Older editorial feature crops still need a final pass. Follow
 [the capture guide](../tools/readme-images/README.md) and
 [video guide](../promo-video/README.md) before replacing them.
 
-`05-animation/slicer-preview.gif` shows current browser layer controls using simulated demo files. It does not replace the 75-second launch cuts.
+`05-animation/slicer-preview.gif` shows current browser layer controls using simulated demo files. It does not replace the launch videos.

@@ -5,6 +5,11 @@ and what is and isn't verified.
 
 ## Unreleased — slicing workspace and app-data recovery
 
+- Launch video version 13: two new 60-second cuts (16:9 and 9:16), told problem
+  first, then six features, each headline landing before the app shows it. New
+  lounge-jazz music with a recorded vibraphone; same click and keystroke sounds.
+  Re-filmed from the simulated farm; checked by measurement, not by ear. The
+  75-second version 12 cuts are kept.
 - Refresh all five README files, product-page/PWA descriptions and maintainer
   context. Distinguish core/optional dependencies, current/historical media and
   actual engine output/physical testing; remove repeated launch history.
