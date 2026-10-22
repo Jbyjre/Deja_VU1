@@ -5,6 +5,9 @@ and what is and isn't verified.
 
 ## Unreleased — slicing workspace and app-data recovery
 
+- Refresh all five README files, product-page/PWA descriptions and maintainer
+  context. Distinguish core/optional dependencies, current/historical media and
+  actual engine output/physical testing; remove repeated launch history.
 - Unified object editing, profiles, fitted tools, slicing status and output preview.
   Phone settings omit the viewport; phone preview keeps layer navigation visible.
   Arrange now frames the moved objects, and selection reuses unchanged geometry.

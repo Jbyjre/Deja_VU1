@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deja Vu1: one screen for every Snapmaker U1 you run</title>
-<meta name="description" content="Deja Vu1 is a free, open-source dashboard for the Snapmaker U1: live status for every printer, a check the server enforces before every start, MakerWorld, NexPrint and OrcaSlicer projects converted for the U1, and alerts when a print needs you. Runs on your own network with Python, nothing else.">
+<meta name="description" content="Local dashboard and model-preparation workspace for Snapmaker U1 printers. Monitor a fleet, slice with an external engine, inspect G-code and review print checks.">
 <meta property="og:title" content="Deja Vu1: one screen for every Snapmaker U1 you run">
-<meta property="og:description" content="Free and open source. Watch every U1 live, start prints from your phone behind a safety check, convert MakerWorld projects for the U1, and get told when a print needs you. Runs on your own network.">
+<meta property="og:description" content="Free and open source. Monitor your U1 printers, prepare plates, slice through an installed engine and inspect the output. Includes print checks and app-data recovery.">
 <meta property="og:type" content="website">
 <!-- Link previews: crawlers need an absolute address, so this points at the
      published copy (wrangler.jsonc). 1200 x 630 is Meta's recommended size. -->
@@ -362,16 +362,15 @@ footer p { max-width: 70ch; }
     <p class="kicker rise">Free · open source · for the Snapmaker U1</p>
     <h1 class="rise d1">One screen for every <em>U1</em> you run.</h1>
     <p class="hero-lede rise d2">
-      Deja Vu1 is a free dashboard for the Snapmaker U1. You watch every printer live, start prints
-      from your phone behind a check the server enforces, get MakerWorld, NexPrint and OrcaSlicer
-      projects ready for the U1, and hear about a jam before you walk over. It reads the printer's own
-      Moonraker API and runs on your own network, with no account and no cloud.
+      Monitor your Snapmaker U1 printers, prepare plates, slice with an installed engine and
+      inspect the resulting G-code. Review server-enforced checks before starting a print.
+      Deja Vu1 is free, open source and runs on your own network without an app account.
     </p>
     <div class="hero-cta rise d3">
       <a class="btn primary" href="./?demo">Try the demo</a>
       <a class="btn" href="#run">Run it at home</a>
       <a class="btn" href="https://github.com/Jbyjre/Deja_VU1">Read the code</a>
-      <span class="hero-note">Python 3.8+ · nothing else to install · MIT licence</span>
+      <span class="hero-note">Python 3.8+ core · external engine for slicing · MIT licence</span>
     </div>
 
     <figure class="shot glass rise d4">
@@ -425,17 +424,17 @@ footer p { max-width: 70ch; }
         <div>
           <h3>Print</h3>
           <ul>
-            <li><b>Start from your phone</b><span>Behind the Confirm Print check, so nothing starts that shouldn't.</span></li>
+            <li><b>Start from your phone</b><span>Review pre-flight and Confirm Print checks before starting.</span></li>
             <li><b>Skip one object</b><span>When one part on a full plate fails, skip that one and let the rest finish.</span></li>
-            <li><b>Files, queue, 3D viewer</b><span>Thumbnails, estimates, a print queue, and the toolpath of any G-code file, layer by layer.</span></li>
+            <li><b>Prepare, slice, inspect</b><span>Edit objects and profiles in one workspace, slice with an external engine, then inspect layers, tools, speed and events.</span></li>
             <li><b>Honest controls</b><span>A command the printer refuses is shown as refused, in words, never as done.</span></li>
           </ul>
         </div>
         <div>
           <h3>Make</h3>
           <ul>
-            <li><b>Photo-to-Print Studio</b><span>A photo becomes a colour-layered relief in up to four of your filaments. The photo never leaves your browser.</span></li>
-            <li><b>MakerWorld, NexPrint and Orca to U1</b><span>Converts Bambu Studio, Elegoo Slicer and OrcaSlicer projects for the U1 in Snapmaker Orca, keeping the creator's settings and placing every plate.</span></li>
+            <li><b>Photo-to-Print Studio</b><span>Make four-tool colour tiles, measured-swatch layered models or image reliefs. Physical colour accuracy needs calibration.</span></li>
+            <li><b>MakerWorld, NexPrint and Orca to U1</b><span>Converts supported projects for the U1 and separates a selected plate for slicing. Complex vendor paint, textures and settings remain limited.</span></li>
             <li><b>View on your desk</b><span>Places a model on your real desk at its printed size, through an Android phone's camera.</span></li>
           </ul>
         </div>
@@ -443,8 +442,9 @@ footer p { max-width: 70ch; }
           <h3>Run</h3>
           <ul>
             <li><b>Automations</b><span>When this happens, do that: notify, set a light, pause the print. Every firing logged with what really happened.</span></li>
-            <li><b>Notifications</b><span>ntfy, Discord or Telegram, for the events you pick in Automations. Urgent ones always arrive; routine ones wait out your quiet hours.</span></li>
+            <li><b>Notifications</b><span>ntfy, Discord or Telegram, for the events you pick in Automations. Urgent rules bypass quiet hours; delivery failures are reported.</span></li>
             <li><b>Smart home</b><span>WLED lights and Home Assistant sensors, through their own APIs.</span></li>
+            <li><b>App-data recovery</b><span>Validate a backup and restore into a separate copy, with automatic actions disabled.</span></li>
             <li><b>Cost per print</b><span>Filament by material plus electricity, as the print runs.</span></li>
             <li><b>Ten games</b><span>For while a long print runs.</span></li>
           </ul>
@@ -476,7 +476,8 @@ footer p { max-width: 70ch; }
           <ul>
             <li>The printer connection was written from the Moonraker, Klipper and U1 source code Snapmaker publishes, and tested against a stand-in Moonraker built from that source, over real network connections.</li>
             <li>Automated tests run with nothing but Python; see the repository for current results.</li>
-            <li>Every tab driven in a real (headless) browser, at laptop and phone sizes, including touch.</li>
+            <li>Workspace checks passed in Chromium at 1366 and 390 pixels: editing, profiles, actual slicing, preview and Confirm Print entry.</li>
+            <li>Different physical-head heights were verified in actual Linux engine output. Backup recovery and its generated Linux launcher were exercised.</li>
             <li>WLED, Home Assistant, ntfy, Discord and Telegram checked against each service's own source or documentation.</li>
           </ul>
         </div>
@@ -485,7 +486,8 @@ footer p { max-width: 70ch; }
           <ul>
             <li>It has not talked to a physical U1. The first real connection is where any difference from the published source will show up. The printer's Details panel and the server log are built to make that easy to debug.</li>
             <li>The LED dock rings and the optical colour sensor have tested logic waiting on physical parts.</li>
-            <li>The converter's output hasn't been opened in Snapmaker Orca itself; it is checked against the rules in Orca's loader source instead.</li>
+            <li>No physical mixed-nozzle print, measured colour accuracy or real-phone performance is verified. Windows/macOS engine and recovery setup remain untested.</li>
+            <li>Representative converted plates passed the Linux engine; full vendor paint/texture fidelity remains incomplete. Heavy-model rendering remains slow in software graphics.</li>
           </ul>
         </div>
       </div>

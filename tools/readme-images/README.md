@@ -6,8 +6,9 @@ Deja Vu1.
 
 ## Screenshots (`docs/img/*.jpg`, except `explainer-*`)
 
-Captured from the real app in demo mode, so every figure in them is
-simulated:
+Older farm screenshots use demo data. Current slicing captures use local-engine
+output estimates; none are physical-printer measurements. The validation record
+below identifies their source. For farm captures:
 
 1. Start the app on a spare port: `PORT=8791 python3 backend/app.py`.
 2. Open `http://localhost:8791/?dashboard` in Chromium at 2x scale (Playwright
@@ -22,7 +23,7 @@ simulated:
 | `fleet.jpg` | Fleet: the "Your printers" card |
 | `control.jpg` | Control: the whole tab |
 | `files.jpg` | Files → Add sample files: library and queue |
-| `file-detail.jpg` | Files → `two_colour_coaster.gcode` |
+| `file-detail.jpg` | Current workspace → Preview, using a verified local-engine result |
 | `confirm-print-refused.jpg` | Files → `unsafe_example_purge_past_bed.gcode` → Print… |
 | `automations.jpg` | Automations → "Tell me when a print finishes" |
 | `care.jpg` | Care: the Maintenance card |
@@ -87,37 +88,32 @@ simulator: the six feature-group colours were chosen so neighbouring groups
 stay apart for the common kinds of colour blindness, and every group is also
 named in text.
 
-## Launch-readiness captures
+## Current captures and evidence
 
-`docs/img/setup-phone.png`, `launch-overview.png` and `launch-phone.png` show the
-current setup/navigation. Browser checks in `tools/check-launch-ui.js` also
-capture before/after evidence into a caller-chosen folder; private reports belong
-outside this repository. The numbers board is rerendered for the current test count.
-Existing feature crops, social card, animated GIF and launch videos still need
-an editorial pass before claiming all media shows the latest interface.
+- `docs/img/slicer-before-*` and `slicer-after-*`: inspected 1366/390 viewport
+  comparisons for preparation, tool setup and layer preview. Process captures
+  cover both widths; recovery has a desktop capture.
+- `file-detail.jpg`: current sliced-plate inspection. Slice time/grams are engine
+  estimates, not physical measurements.
+- `docs/img/slicer-static-demo-*` and `slicer-preview.gif`: actual browser
+  interactions using recorded, simulated files.
+- `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
+  earlier setup/studio captures, retained as historical comparisons.
 
-## Native studio captures
+The boards and social card were refreshed, including the **759-test** count.
+Older editorial feature crops and both **75-second** launch-video cuts still need
+updating. Do not label the whole media library current.
 
-`docs/img/native-*.png` holds inspected 1366 px and 390 px viewport captures,
-including before/after viewer, profile setup and image workspaces, four tools
-and the G-code layer inspector. See `docs/native-studio-validation.md` for their
-context and the real-engine limits. Rerender feature/number boards with the
-current test count. Older promotional crops/GIF/video timelines still require
-an editorial pass; the owner’s launch cuts remain 75 seconds.
+[Workspace validation](../../docs/slicer-workspace-validation.md) records engine,
+browser, recovery and performance evidence, including rendering regressions.
+Use viewport screenshots for fixed/sticky controls and inspect the images.
 
+```bash
+node tools/check-static-demo.js /tmp/dejavu-evidence
+```
 
-## Current slicer workspace captures
-
-`docs/img/slicer-before-*.png` and `slicer-after-*.png` preserve this pass's
-1366/390 viewport comparisons. Farm readings in historical pictures are simulated;
-new workspace job estimates come from actual local-engine files and are not
-physical measurements. `docs/slicer-workspace-validation.md` records that distinction.
-`file-detail.jpg` now shows the current slice inspection workspace. New recovery
-and process captures are included. The 759-test board and social card were
-rerendered; old video timelines still require the owner's 75-second editorial pass.
-
-`docs/img/slicer-preview.gif` is a sequence of actual browser layer scrubs in the
-recorded static demo. Its source files are simulated, not physical-printer footage.
-
-Run `node tools/check-static-demo.js /tmp/dejavu-evidence` to verify the recorded
-demo from disk without an app server; it also captures real layer-scrub frames.
+This checks the recorded demo from disk without an app server and captures
+layer-scrub frames. `tools/check-slicer-workspace.js` instead needs a dedicated
+local fixture app and configured engine. Keep recording/browser servers stopped
+while running `python3 -m unittest discover tests`. Media tools require Node,
+Playwright and Chromium; these are not app runtime dependencies.

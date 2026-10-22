@@ -12,9 +12,9 @@ Open any folder on GitHub to see its pictures; tap one, then **Download**
 **Code → Download ZIP** on the repository's main page and open the
 `marketing-library` folder inside the ZIP.
 
-Every figure in every picture comes from the built-in simulated farm (the
-**Demo data** switch). None of it is from a real U1 yet; say so wherever you
-post them.
+Farm readings come from **Demo data**. Current slicing captures also contain
+estimates from actual local-engine output; these are not physical measurements.
+No picture establishes a real U1 print. Keep that distinction when posting.
 
 What to say about the project, in what order, and which claims are safe:
 **[MESSAGING.md](MESSAGING.md)**.
@@ -40,12 +40,15 @@ Illustrations that explain one idea each. Rendered from
 | | |
 |---|---|
 | ![What's in it](02-explainer-boards/explainer-whats-in-it.jpg)<br>**What's in it:** every feature, grouped by what it needs | ![Confirm Print](02-explainer-boards/explainer-confirm-print.jpg)<br>**Confirm Print:** the seven checks before a start |
-| ![How it connects](02-explainer-boards/explainer-how-it-connects.jpg)<br>**How it connects:** one connection per printer, shared by every module | ![By the numbers](02-explainer-boards/explainer-by-the-numbers.jpg)<br>**By the numbers:** 638 tests, 250 ms updates, 12 printers… |
+| ![How it connects](02-explainer-boards/explainer-how-it-connects.jpg)<br>**How it connects:** one connection per printer, shared by every module | ![By the numbers](02-explainer-boards/explainer-by-the-numbers.jpg)<br>**By the numbers:** 759 tests, 250 ms updates, up to 12 printers |
 | ![Silent docks](02-explainer-boards/explainer-silent-docks.jpg)<br>**Dock status:** the old lead picture. Now used only in the README's dock rings section; don't lead with it | |
 
 ## 03 · Screenshots
 
-Captured from the app with demo data on.
+Older farm captures use demo data. Current `slicer-after-*` images show
+preparation, profiles and preview at 1366/390 px; `slicer-recovery-1366.png`
+shows isolated app-data recovery. See [validation](../docs/slicer-workspace-validation.md)
+for the source of each figure and the remaining physical/platform limits.
 
 | | |
 |---|---|
@@ -89,8 +92,8 @@ version phones crop into a circle or rounded square).
 
 ## 07 · Videos
 
-The launch video (version 11), filmed from the current app with demo data on, in two
-cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
+The historical launch video (version 11), filmed with demo data before the current
+slicer workspace, has two cuts of 75 seconds each. Both are H.264 MP4 at 60 frames a second, with sound set to
 -16 LUFS (2 dB under the usual -14 for YouTube and social, so the music stays light).
 
 | File | Size | Length | Where it goes |
@@ -104,7 +107,7 @@ computer, talks to your U1s on your network, opens in any browser, your phone in
 seven features shown working (every printer live, Needs you, Confirm Print and the phone,
 files for the U1, skip one object, the digital twin, automations), "and plenty more" (six
 more as screenshots), why to trust it (free, open source, runs on your network, no account,
-659 automated tests), how to get started (download, double-click, it opens in your browser)
+659 automated tests at filming time), how to get started (download, double-click, it opens in your browser)
 and the install lines.
 
 Every app view is labelled "Simulated farm". The end card says every figure comes from
@@ -120,6 +123,7 @@ How to change or re-film it: `promo-video/README.md`.
 
 ## 08 · Feature cards
 
+Historical cards from version 11; they share its older interface and test count.
 One card per beat of the launch video's story, taken from the finished video at the moment
 its words are on screen. Each comes in two shapes: `-16x9.jpg` (1920 × 1080: README, forum
 posts, X, LinkedIn) and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories). 16 cards, 32
@@ -155,10 +159,9 @@ originals as `tools/readme-images/README.md` describes, then copy them here
 again (or ask a Claude Code session to "refresh the marketing library").
 
 
-Current slicing captures are under `03-screenshots/`: preparation at both widths,
-process/tool setup, layer preview and app-data recovery. Their engine predictions
-come from real output files; they are not physical-printer measurements. Updated
-boards quote the current suite count. The existing 75-second video files and older
-editorial feature crops have not been rerendered for this workspace.
+Boards, social cards and current slicing captures were refreshed. Older editorial
+feature crops and both 75-second video cuts still need a final pass. Follow
+[the capture guide](../tools/readme-images/README.md) and
+[video guide](../promo-video/README.md) before replacing them.
 
 `05-animation/slicer-preview.gif` shows current browser layer controls using simulated demo files. It does not replace the 75-second launch cuts.

@@ -1,7 +1,7 @@
 {
-  "name": "Deja Vu1 - Snapmaker U1 Dashboard",
+  "name": "Deja Vu1 - U1 Dashboard & Model Preparation",
   "short_name": "Deja Vu1",
-  "description": "Your Snapmaker U1s at a glance: live status, controls, files, filament and maintenance.",
+  "description": "Monitor Snapmaker U1 printers, prepare models, slice with an external engine, inspect G-code and recover app data.",
   "start_url": "./?dashboard",
   "scope": "./",
   "display": "standalone",

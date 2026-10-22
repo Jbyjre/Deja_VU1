@@ -1,98 +1,69 @@
-# What to say, in what order
+# Project messaging
 
-Temporary, like the rest of this folder. Delete it before the launch post.
+Temporary launch notes. Keep public claims aligned with the
+[current validation](../docs/slicer-workspace-validation.md).
 
-## The one line
+## One line
 
 **One screen for every U1 you run.**
 
-Deja Vu1 is a free, open-source dashboard for the Snapmaker U1. You watch
-every printer live, start prints from your phone behind a check the server
-enforces, get MakerWorld, NexPrint and OrcaSlicer projects ready for the U1,
-and get a message when a print jams. It runs on your own network, with no
-account and nothing to install but Python.
+Deja Vu1 is a free, open-source dashboard and model-preparation workspace for
+Snapmaker U1 printers. Monitor a fleet, prepare plates, slice with an installed
+engine, inspect G-code and review server-enforced checks before printing. The
+core runs locally with Python; optional engines and integrations are separate.
 
-## Paste-ready text
+## Paste-ready repository description
 
-**GitHub repository description** (the "About" box; it still describes the
-very first version: LED dock tracking, "three modules"). Edit it on the
-repository page with the ⚙ next to **About**:
+> Local dashboard and model-preparation workspace for Snapmaker U1 printers,
+> with external-engine slicing, G-code inspection, print checks and app-data recovery.
 
-> Free, open-source dashboard for the Snapmaker U1: watch every printer
-> live, start prints from your phone behind a server-checked safety check,
-> convert MakerWorld/NexPrint/Orca projects for the U1, and get alerts.
-> Runs on your own network, Python only.
+Suggested topics: `snapmaker`, `snapmaker-u1`, `moonraker`, `klipper`,
+`3d-printing`, `print-farm`, `dashboard`, `toolchanger`.
 
-**Suggested topics** (same ⚙ box): `snapmaker`, `snapmaker-u1`, `moonraker`,
-`klipper`, `3d-printing`, `print-farm`, `dashboard`, `toolchanger`.
+## What to emphasize
 
-**Short post** (forum, Reddit, Discord):
+1. **Monitor the fleet:** live state, finish estimates and a ranked Needs you list.
+2. **Prepare, slice, inspect:** object edits, physical T0–T3 assignments, useful
+   profiles and actual layer inspection in one workspace.
+3. **Different preferred heights:** verified Linux engine output for three
+   nozzle/height pairs. A capable external engine is required; this is not a
+   physical-print claim.
+4. **Review before starting:** pre-flight and Confirm Print check the current
+   printer, file and loaded tools. Checks do not guarantee a successful print.
+5. **Keep source data:** supported project conversion, separate plate selection,
+   save-as and isolated app-data recovery.
+6. **Make images printable:** colour tiles, measured-swatch layered models and
+   closed image reliefs. Calibration and physical appearance remain unverified.
+7. **Supporting tools:** maintenance, spools, camera/time-lapse, automations,
+   notifications, smart-home integrations and games.
 
-> I built Deja Vu1, a free dashboard for the Snapmaker U1. It shows every
-> printer live (four updates a second), ranks what needs you across the
-> farm, checks a file before it starts (build volume, toolheads, filament
-> colours, maintenance) and refuses unsafe starts even from your phone. It
-> also converts MakerWorld and NexPrint projects for the U1 and can skip one
-> failed object while the rest finish. It has never talked to a real U1 yet:
-> if you own one, I'd love a 30-minute watch-only test (link to
-> docs/first-connection.md).
+## Evidence and wording limits
 
-## Lead with these, in this order
-
-1. **Every printer, live.** Up to 12 printers on one screen, four updates a
-   second, with "done at 9:48 PM" on every running print.
-2. **Needs you.** One list, most urgent first, across the whole farm.
-3. **Start from your phone, safely.** Confirm Print: pre-flight, filament
-   colour match, nozzles, spool weight, maintenance, time, grams, cost. The
-   server checks again at the moment of starting.
-4. **Files ready for the U1.** Pre-flight with line numbers; MakerWorld,
-   NexPrint and OrcaSlicer projects converted in one click, multi-plate
-   included; G-code in 3D, layer by layer.
-5. **Skip one object.** One failed part no longer costs the whole plate.
-6. **Automations and alerts.** When this happens, do that: ntfy, Discord,
-   Telegram, Home Assistant, WLED, or pause the print.
-7. **The digital twin.** A live engineering drawing of each printer. The
-   best picture to post.
-8. **Photo-to-Print Studio.** A photo becomes a four-colour relief.
-
-Then the supporting cast: maintenance tracking, filament inventory and
-Spoolman import, print cost, the farm sandbox, time-lapse, the camera, AR
-preview, ten games.
-
-**Don't lead with:** dock status rings or the colour sensor. Both are
-designed and simulated but need hardware nobody has built yet. Mention them
-as "coming, hardware pending", after the features that work today.
-
-## Numbers you can quote
-
-Each was checked against the code on 19 October 2026.
-
-| Claim | Where it comes from |
+| Claim | Evidence or qualification |
 |---|---|
-| 732 automated tests on Python 3.12 Linux; CI is configured for additional Python versions | `python3 -m unittest discover tests`; `.github/workflows/tests.yml` |
-| Four updates a second (every 250 ms) | `backend/live_feed.py`, `TICK_SECONDS = 0.25` |
-| Up to 12 printers | `backend/fleet.py`, "At most 12 printers" |
-| 29 modules you can switch on and off | `backend/modules.py`, `REGISTRY` |
-| 7 maintenance tasks | `backend/maintenance.py` |
-| 28 Home Assistant sensors | `backend/home_assistant_bridge.py`, for a four-toolhead printer |
-| 27 simulated printers in the sandbox (3 built in + 24) | `backend/mock_moonraker.py` |
-| 10 games | `frontend/index.html`, the game picker |
-| 270 × 270 × 270 mm build volume checked | Snapmaker's spec page; `backend/gcode_tools.py` |
-| Nothing to install but Python | No packages; standard library only |
+| 759 tests passed | Clean full suite, Python 3.12.14/Linux, 128.765 seconds; PR #45 CI also passed |
+| Follow-up check | 36 targeted tests passed before the PR #45 merge |
+| Live updates | 250 ms target loop; actual freshness depends on printer/network response |
+| Per-head heights | Actual model extrusion, with clear pre-flight; first layers/features can differ |
+| Recovery | Validated separate restore and generated Linux launcher; Windows/macOS unexecuted |
+| App dependencies | Standard-library Python/plain JavaScript; external slicing/media tools are separate |
+| Performance | Selection improved; full-frame model rendering regressed under SwiftShader |
 
-## Say plainly, every time
+Say plainly:
 
-- It has **not yet run on a physical U1**. It was written against Moonraker's,
-  Klipper's and Snapmaker's own U1 source and tested against a stand-in
-  built from that source.
-- Every picture comes from the **simulated farm**.
-- Converted projects and Photo Studio files **haven't been opened in
-  Snapmaker Orca itself yet**.
-- The dock rings and colour sensor are **hardware pending**.
+- No physical U1, real phone, measured colour accuracy or mixed-nozzle print is verified.
+- Farm screenshots are simulated. Slice figures can be actual engine estimates;
+  neither is a physical measurement.
+- Representative converted/generated files passed the Linux engine. Full vendor
+  paint, textures and per-part semantics remain incomplete.
+- LED rings and the colour sensor have tested logic but no completed hardware drivers.
+- Current boards/screens/demo are refreshed. Older editorial crops and 75-second
+  videos still need updating; do not label the whole library current.
+- The newer image generator sends a reduced pixel grid to the local app server;
+  the older relief editor calculates in the browser.
 
 ## Research and required notices
 
-Keep the owner's study record outside the shipped repository. Do not name study
-projects as the source of independently implemented features in public copy.
-Preserve required licence and copyright notices for anything actually reused;
-stop for a licence review before copying or closely adapting external material.
+Keep private study records outside the repository. Do not name study projects as
+feature sources in public copy. Preserve required notices for actual reuse;
+review licensing before copying or closely adapting external material.

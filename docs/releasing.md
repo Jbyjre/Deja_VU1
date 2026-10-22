@@ -61,5 +61,7 @@ updater does not run database/data migrations or promise rollback of them.
 If installation says a recovery copy exists, leave `.dejavu-update/` intact and
 restart with the launcher. If recovery itself errors, stop and inspect the error;
 do not delete the backup folder or saved data. Keep an independent copy of the
-whole data directory before first use of the updater. The existing configuration
-backup button is incomplete and is not a substitute.
+whole data directory before first use of the updater. The current
+[app-data backup](backup-and-recovery.md) supports validated, isolated recovery
+within its file/archive limits. It excludes external engines, external presets
+and printer firmware; keep those separately. Test recovery before relying on it.
