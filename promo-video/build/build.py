@@ -33,7 +33,7 @@ def shot(name):
 BPM = 160
 BEAT = 60 / BPM                   # 0.375 s
 BAR = 4 * BEAT                    # 1.5 s
-ORDER = [('fl', 3), ('ov', 3), ('ok', 5.5), ('cv', 3), ('sk', 3.5), ('tw', 3.5), ('au', 3.5)]
+ORDER = [('fl', 3), ('ov', 3), ('ok', 5.5), ('cv', 3), ('pp', 3.5), ('tw', 3.5), ('au', 3.5)]
 SEG, _b = {}, 10.5
 for _k, _n in ORDER:
     SEG[_k] = (round(_b * BAR, 3), round((_b + _n) * BAR, 3))
@@ -60,8 +60,8 @@ def plan_main(S):
         ('v-ov', 'overview_jam', *win('ov', .5)),
         ('v-ok', 'confirm_ok', *win('ok', 3.0)),                                     # starts on the open file
         ('v-ph', 'phone', PHONE_AT + 1.5 - c('phone', 2), PHONE_AT - .4, SEG['ok'][1] + .1),  # hold to cancel 1.5 s in
-        ('v-cv', 'convert', *win('cv', 1.4)),
-        ('v-sk', 'skip_object', *win('sk', 3.5)),
+        ('v-cv', 'convert', *win('cv', .6)),
+        ('v-pp', 'prepare', *win('pp', .7)),
         ('v-tw', 'twin', SEG['tw'][0] - 1.4, SEG['tw'][0] - .6, TWIN_CUT + .3),     # part 1: the 3D drawing, turned
         ('v-tw2', 'twin', TWIN_CUT - 5.9, TWIN_CUT - .3, SEG['tw'][1] + .1),        # part 2: front, then top
         ('v-au', 'automations', *win('au', 1.9)),
@@ -142,7 +142,7 @@ open(os.path.join(PROJ, 'index.html'), 'w').write(html)
 # "And plenty more": stills of the supporting features, from the same filmed shots, each cropped
 # to 16:10 around the panel that matters (x, y, width in page pixels; the footage is 1440 x 900).
 STILLS = {'care': ('care', 4.6, (150, 275, 1000)), 'filament': ('filament', 5.0, (150, 230, 640)),
-          'cost': ('cost', 3.0, (150, 420, 760)), 'ha': ('ha', 5.2, (700, 180, 620)),
+          'skip': ('skip_object', 9.3, (160, 100, 900)), 'ha': ('ha', 5.2, (700, 180, 620)),
           'modules': ('ha', 5.2, (150, 120, 600)), 'games': ('games', 4.5, (260, 330, 900))}
 os.makedirs(os.path.join(PROJ, 'assets', 'stills'), exist_ok=True)
 for name, (src, at, (x, y, w)) in STILLS.items():

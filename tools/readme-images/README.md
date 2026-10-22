@@ -101,8 +101,8 @@ named in text.
   earlier setup/studio captures, retained as historical comparisons.
 
 The boards and social card were refreshed, including the **759-test** count.
-Older editorial feature crops and both **75-second** launch-video cuts still need
-updating. Do not label the whole media library current.
+Both **75-second** launch-video cuts were rebuilt (version 12). Older editorial
+feature crops still need updating. Do not label the whole media library current.
 
 [Workspace validation](../../docs/slicer-workspace-validation.md) records engine,
 browser, recovery and performance evidence, including rendering regressions.

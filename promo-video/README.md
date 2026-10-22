@@ -3,13 +3,15 @@
 Launch-video tooling and historical cuts filmed from the app's simulated farm.
 These tools are separate from the Python-only application.
 
-**Current status:** the existing version-11 cuts predate the unified slicer
-workspace. They have not been rebuilt for the current interface or 759-test
-suite. Keep both marketing cuts at **75 seconds**, refresh affected footage and
-claims, and inspect the finished renders before publishing. Current screenshots
-and engine evidence are in [workspace validation](../docs/slicer-workspace-validation.md).
-The new [preview GIF](../docs/img/slicer-preview.gif) is a separate demo interaction,
-not an updated launch video or physical-printer footage.
+**Current status (version 12, October 2026):** both 75-second cuts were re-filmed from the
+current app (the slicing workspace, the new page header and setup guide) and rebuilt. The
+music's arrangement, recorded instruments, clicks and keystrokes are unchanged from version 11.
+New: a "Prepare & slice" feature (duplicate a part, put the copy on head T1, arrange) in Skip
+one object's old slot, which moves to "And plenty more" in place of print cost; conversion
+filmed inside the workspace; 759 automated tests (full suite passed on 22 October 2026); "the
+core needs only Python 3.8 or newer". No slice is shown on film: slicing needs a separately
+installed engine, which the filming machine does not have. Engine evidence is in
+[workspace validation](../docs/slicer-workspace-validation.md).
 
 | Folder | What it holds |
 |---|---|
@@ -156,9 +158,9 @@ on the command or the address). Laid out in bars of the 160 BPM music (a bar is 
 | 2-4.5 | 3-6.75 | What it is for: "For Snapmaker U1 3D printers", "Run your 3D printers from one screen.", three promises. |
 | 4.5-6 | 6.75-9 | The name. |
 | 6-10.5 | 9-15.75 | How it works: the laptop lands showing the real app; 1 runs on your computer, 2 talks to your U1s on your network (three printers join it, a pulse on each wire every quarter of a second, the app's four updates a second), 3 open it in any browser (the phone joins). Every sentence checked against `docs/getting-started.md`, `backend/live_feed.py` and `backend/fleet.py`. |
-| 10.5-35.5 | 15.75-53.25 | Seven features, in MESSAGING.md's order: every printer live, Needs you, Confirm Print (then the phone), files for the U1, skip one object, the digital twin, automations. |
-| 35.5-39.5 | 53.25-59.25 | "And plenty more": maintenance, filament and Spoolman, print cost, Home Assistant, ten games, 29 modules, as stills from the same filmed shots, one per beat. |
-| 39.5-41.5 | 59.25-62.25 | Why trust it: free, open source, runs on your network, no account, 638 automated tests. |
+| 10.5-35.5 | 15.75-53.25 | Seven features: every printer live, Needs you, Confirm Print (then the phone), files for the U1, prepare & slice (version 12), the digital twin, automations. |
+| 35.5-39.5 | 53.25-59.25 | "And plenty more": maintenance, filament and Spoolman, skip one object, Home Assistant, ten games, 29 modules, as stills from the same filmed shots, one per beat. |
+| 39.5-41.5 | 59.25-62.25 | Why trust it: free, open source, runs on your network, no account, 759 automated tests. |
 | 41.5-46 | 62.25-69 | Get started: download it free (the GitHub address), double-click start (Windows, Mac, Linux), it opens in your browser. |
 | 46-50 | 69-75 | The end card: the install lines, the notes. |
 
@@ -188,6 +190,20 @@ Measured on the build: the drum hits land within 10 ms of each feature change.
 - *safe areas*: captions, steps and cards stay inside the title-safe box (80% of the frame).
 
 ## Lessons learned (each cost a re-render or a re-shoot)
+
+- (v12) The owner: reflect the app's updates, keep the music, the keystrokes and the length.
+  Every feature change stays on the same bar, so 56 of the 60 music cues are identical; only
+  four soft callout notes moved with their callouts.
+- (v12) A first-run setup guide (`#setup-dialog`) now opens over the app and blocked every
+  click; `rec.open()` presses `#setup-skip` before filming.
+- (v12) The page keeps its own list of modules that are on: switch a module on through the
+  page's `postJSON` (as the Settings tab does), not a bare `fetch`, or the page still answers
+  "Module disabled" for its routes. Head colours in the workspace come from saved tool
+  choices (`/api/tools/assignments`) and need "Show original source colours" off.
+- (v12) Opening a 3MF or STL now lands in the slicing workspace; the converter button lives
+  in its collapsed "Source & import information" section.
+- (v12) Callouts in 9:16 sit in a narrow crop of the screen: point at the middle of the
+  thing, not at a control on the page's right edge (`PP` in `scene.js`).
 
 - (v11) The owner on version 10: "find a music that doesn't sound electronic". Eleven versions
   of synthesised instruments (additive piano, plucked-string bass, modal cymbals) all read as

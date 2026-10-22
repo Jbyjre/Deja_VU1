@@ -24,6 +24,7 @@
         sk: '<rect x="6" y="6" width="36" height="36" rx="5"/><rect x="12" y="25" width="9" height="9" rx="2"/><rect x="27" y="25" width="9" height="9" rx="2"/><path class="heat" d="M13 11l8 8M21 11l-8 8"/><rect x="27" y="11" width="9" height="9" rx="2"/>',
         tw: '<path d="M24 5l16 9v19l-16 9-16-9V14z"/><path d="M8 14l16 9 16-9M24 23v19"/>',
         st: '<rect x="5" y="9" width="38" height="30" rx="5"/><path d="M9 35l10-11 7 7 5-5 8 9"/><circle class="heat" cx="33" cy="17" r="4"/>',
+        pp: '<path d="M24 6l18 9-18 9-18-9z"/><path d="M6 24l18 9 18-9"/><path class="heat" d="M6 33l18 9 18-9"/>',
         au: '<path d="M27 4L11 27h12l-3 17 17-24H25z"/>',
         ca: '<path d="M31 6a9 9 0 0 0-8 12L8 33a3.6 3.6 0 0 0 5 5l15-15a9 9 0 0 0 12-8l-6 2-4-4 2-6z"/>',
         fi: '<circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="6"/><circle class="heat" cx="24" cy="24" r="12" stroke-dasharray="4 5"/>',
@@ -56,8 +57,8 @@
           h: 'Every print, checked first.', s: 'File, colours and maintenance, <em>before it starts</em>.' },
         { id: 'cv', lb: 'Convert for U1', k: 'Files ready for the U1', shot: 'D', cap: 'R',
           h: 'Any project, ready for the U1.', s: '<em>MakerWorld, NexPrint, OrcaSlicer.</em> One click.' },
-        { id: 'sk', lb: 'Skip one object', k: 'Skip one object', shot: 'F', cap: 'R',
-          h: 'Skip one failed part.', s: '<em>The rest keep printing.</em>' },
+        { id: 'pp', lb: 'Prepare &amp; slice', k: 'Prepare & slice', shot: 'F', cap: 'L',
+          h: 'Prepare the whole plate.', s: 'Each part on its own head, <em>T0 to T3</em>. Then slice.' },
         { id: 'tw', lb: 'Digital twin', k: 'Digital twin', shot: 'F', cap: 'R',
           h: 'A live drawing of each printer.', s: '<em>Drawn to scale.</em> Turn it in 3D.' },
         { id: 'au', lb: 'Automations', k: 'Automations', shot: 'D', cap: 'L',
@@ -69,14 +70,14 @@
       // feature shown later in the film: the live fleet, Confirm Print, Needs you.
       const PURPOSE = [
         { id: 'fl', t: 'Watch every print, <em>live</em>.' },
-        { id: 'ok', t: 'Check every file <em>before it prints</em>.' },
+        { id: 'ok', t: 'Prepare and check <em>every file</em>.' },
         { id: 'ov', t: 'Know the moment one <em>needs you</em>.' },
       ];
 
       // How it works (version 10): three steps around the laptop, each sentence checked against
       // docs/getting-started.md, backend/live_feed.py (four updates a second) and backend/fleet.py.
       const STEPS = [
-        { h: 'Runs on your computer.', s: 'Windows, Mac, Linux or a Raspberry Pi. <em>Python 3.8 or newer</em>, nothing else.' },
+        { h: 'Runs on your computer.', s: 'Windows, Mac, Linux or a Raspberry Pi. The core needs only <em>Python 3.8 or newer</em>.' },
         { h: 'Talks to your U1s on your network.', s: '<em>Four updates a second</em>, up to 12 printers. Nothing installed on the printer.' },
         { h: 'Open it in any browser.', s: 'On that computer or <em>on your phone</em>. No account, no cloud.' },
       ];
@@ -84,7 +85,7 @@
       // "And plenty more": the supporting features as stills from the same filmed shots.
       const MORE = [
         { id: 'ca', lb: 'Maintenance', img: 'care' }, { id: 'fi', lb: 'Filament &amp; Spoolman', img: 'filament' },
-        { id: 'co', lb: 'Print cost', img: 'cost' }, { id: 'ha', lb: 'Home Assistant', img: 'ha' },
+        { id: 'sk', lb: 'Skip one object', img: 'skip' }, { id: 'ha', lb: 'Home Assistant', img: 'ha' },
         { id: 'ga', lb: 'Ten games', img: 'games' }, { id: 'mod', lb: '29 modules, on or off', img: 'modules' },
       ];
       const START = [
@@ -92,6 +93,10 @@
         { h: 'Double-click start.', m: 'Windows · Mac · Linux' },
         { h: 'It opens in your browser.', m: 'Your phone too, on the same network.' },
       ];
+
+      // where the prepare shot's callouts point (page px, measured on the filmed shot)
+      const CV = { btn: [100, 300, 620, 420], click: [334, 474], rep: [100, 380, 620, 420], done: [345, 434] };
+      const PP = { tool: V9 ? [720, 620] : [1180, 528], toolDir: V9 ? 't' : 'b', plate: V9 ? [700, 590] : [640, 560], frame: V9 ? [440, 280, 700, 520] : [540, 280, 740, 520] };
 
       // ---------- DOM ----------
       $('#nodes').innerHTML = PRINTERS.map((p, i) => `<div class="node col" id="nd-${i}"><div class="tile glass">${svgIcon('pr')}</div><div class="lb">U1<b>${p}</b></div></div>`).join('')
@@ -417,10 +422,10 @@
       }
       // 2. needs you
       { const v = V.ov, J = at('v-ov', 'jam');
-        camTo(v, SEG.ov.t0 - .5, 0, [150, 220, 800, 600]);
-        const k = camTo(v, J, .7, [165, 330, 760, 300]);
-        spot(v, [172, 391, 1106, 98], J + .2, OUT('ov'));
-        callout(v, [460, 470], 'A jam, the moment it happens', 'b', J + .35, OUT('ov'), k);
+        camTo(v, SEG.ov.t0 - .5, 0, [150, 280, 800, 600]);
+        const k = camTo(v, J, .7, [165, 400, 760, 300]);
+        spot(v, [172, 455, 1106, 112], J + .2, OUT('ov'));
+        callout(v, [575, 534], 'A jam, the moment it happens', 'b', J + .35, OUT('ov'), k);
       }
       // 3. confirm print, then the phone
       { const v = V.ok, P = click('v-ok', 1), G = click('v-ok', 2), PH0 = SEG.ok.phone;
@@ -443,19 +448,19 @@
       }
       // 4. files ready for the U1
       { const v = V.cv, C = click('v-cv', 1), RP = at('v-cv', 'report');
-        camTo(v, SEG.cv.t0 - .5, 0, [560, 280, 800, 400]);
-        const k = camTo(v, C - .5, .6, [700, 330, 620, 240]);
-        callout(v, [918, 422], 'One click', 't', C - .35, C + .4, k);
-        const k2 = camTo(v, C + .3, .75, [760, 560, 560, 340]);
-        callout(v, [1010, 690], 'Converted for the U1', 't', RP - .15, OUT('cv'), k2);
+        camTo(v, SEG.cv.t0 - .5, 0, [60, 120, 900, 640]);
+        const k = camTo(v, C - .6, .6, CV.btn);
+        callout(v, CV.click, 'One click', 'r', C - .35, C + .4, k);
+        const k2 = camTo(v, C + .3, .75, CV.rep);
+        callout(v, CV.done, 'Converted for the U1', 'r', RP - .15, OUT('cv'), k2);
       }
-      // 5. skip one object
-      { const v = V.sk, PK = at('v-sk', 'pick'), S = at('v-sk', 'skip');
-        camTo(v, SEG.sk.t0 - .5, 0, [300, 140, 800, 420]);
-        const k = camTo(v, PK - .5, .7, [440, 170, 800, 300]);
-        spot(v, [492, 243, 772, 46], PK + .1, OUT('sk'));
-        callout(v, [640, 278], 'Pick the failed part', 'b', PK + .15, S - .1, k);
-        callout(v, [640, 278], 'Skipped. The rest keep going.', 'b', S + .25, OUT('sk'), k);
+      // 5. prepare & slice (version 12, the new workspace): duplicate the part, put the copy on
+      // head T1 (it turns that head's colour), arrange the plate
+      { const v = V.pp, D = at('v-pp', 'dup'), BL = at('v-pp', 'blue'), AR = at('v-pp', 'arrange');
+        camTo(v, SEG.pp.t0 - .5, 0, [560, 200, 720, 600]);
+        const k = camTo(v, D + .2, .8, PP.frame);
+        callout(v, PP.tool, 'The copy goes on head T1', PP.toolDir, BL + .1, AR - .1, k);
+        callout(v, PP.plate, 'Arranged on the U1 plate', 't', AR + .35, OUT('pp'), k);
       }
       // 6. the digital twin: the 3D view longest (turned by hand), then front and top
       { const v = V.tw, v2 = V.tw2, O = at('v-tw', 'orbit'), FR = at('v-tw2', 'front'), CUT = SEG.twinCut;
@@ -474,7 +479,7 @@
       { const v = V.au, T = at('v-au', 'template'), S = at('v-au', 'save');
         camTo(v, SEG.au.t0 - .5, 0, [160, 220, 900, 640]);
         const k = camTo(v, T - .45, .7, [160, 310, 760, 520]);
-        callout(v, [575, 410], 'Ready-made rules', 'r', T + .05, S - .9, k);
+        callout(v, [570, 478], 'Ready-made rules', 'r', T + .05, S - 1.2, k);
         const k2 = camTo(v, S - .45, .75, [150, 440, 800, 360]);
         callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .3, OUT('au'), k2);
       }

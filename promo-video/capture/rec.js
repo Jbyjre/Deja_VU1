@@ -69,6 +69,10 @@ async function open({ width = 1440, height = 900, dpr = 2, fps = +(process.env.F
   const st = { browser, ctx, page, cdp, width, height, dpr, fps, mx: -200, my: -200, dir: null, n: 0 };
   await page.goto(url);
   await page.clock.pauseAt(t0 + 1500);   // from here on, time only moves when a frame is filmed
+  // Version 12: a first-run setup guide now opens over the app; skip it, as a returning owner would
+  await settle(st, 600);
+  const skip = page.locator('#setup-skip');
+  if (await skip.isVisible().catch(() => false)) { await skip.click().catch(() => {}); await settle(st, 900); }
   return st;
 }
 async function frame(st) {
