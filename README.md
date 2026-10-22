@@ -84,6 +84,28 @@ and every change is in the public history.
 
 ## What's new
 
+- **A 3D model of your U1:** the Overview's digital twin is now a shaded, coloured
+  3D model built to Snapmaker's published size (584 × 499 × 730 mm outside,
+  270 mm print cube). The head moves on the gantry, the bed drops as Z rises, idle
+  heads sit in the four rear docks, spools show the loaded colours, and the print
+  grows on the bed. Drag to turn, scroll to zoom, click a head for its details.
+  Colours and the exact placement of the screen and spools are illustrative.
+- **A better engineering drawing:** the other twin mode now zooms, can show the
+  machine's outer size with its dimensions, and downloads as an SVG file.
+- **A background that follows your cursor:** four styles (Flow, Layer lines,
+  Dots, Still) and five colour sets in Settings → Appearance. It moves only
+  while you move and is still otherwise. With the mouse moving, the Overview
+  measured 16.7 ms per frame against 33.4 ms before (headless Chromium, software
+  rendering; not a real-device measurement). The old filament-tinted glow is the
+  optional "Filament" colour set.
+- **Games that play properly:** Pac-Man, Tetris, Snake and Sky Dash were rebuilt.
+  Every game now runs on a steady clock that matches the screen, waits for you to
+  press Start, pauses when you switch away, and fits the window so the whole
+  field is visible.
+- **Clearer for a first visit:** full-screen setup with a step-by-step progress
+  bar and a "Make it yours" step, one plain sentence under the tab bar saying what
+  each tab is for, a reorganised Overview, and jump links at the top of Settings.
+
 - **One workspace:** prepare objects, edit profiles and physical T0–T3 assignments,
   slice, then inspect the output beside direct layer navigation, visibility
   controls and tool/speed/feature legends. Desktop and phone layouts were checked.
@@ -104,6 +126,8 @@ and every change is in the public history.
   per-object wall settings, cancellable slice jobs, stale-printer protection and
   explicit spool assignments. Blocked output stays inspectable and is never
   automatically queued.
+
+<img src="docs/img/setup.jpg" width="49%" alt="Full-screen setup on step 2, Make it yours: a progress bar of six named steps, and a choice of four backgrounds (Flow, Layer lines, Dots, Still) and five colour sets"> <img src="docs/img/appearance.jpg" width="49%" alt="Settings, Appearance: the same background and colour choices, plus the accent colour">
 
 [Engine setup and format limits](docs/slicing-and-models.md) ·
 [Validation, performance and screenshots](docs/slicer-workspace-validation.md) ·
@@ -157,7 +181,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
-| **Digital twin** | A live engineering drawing of each printer, drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. 3D, front and top views; drag to turn. |
+| **Digital twin** | Two ways to see each printer, live. **3D model:** a shaded, coloured model built to Snapmaker's published size (584 × 499 × 730 mm outside, 270 mm print cube), with the head on the gantry, the bed dropping as Z rises, idle heads in the rear docks, the spools in their loaded colours and the print growing on the bed; drag to turn, right-drag to move, scroll or +/− to zoom (its colours and the exact screen and spool positions are illustrative). **Engineering drawing:** drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. Angled, front and top views in both modes; the drawing also zooms, can show the machine's outer size with dimensions, and downloads as an SVG file. |
 | **File library** | G-code, 3MF, STL and triangular OBJ files, with available thumbnails, estimates, pre-flight results and recent files. Missing time or filament metadata stays unknown. |
 | **Prepare and preview** | Edit multi-object STL/OBJ/3MF plates, save a new source-preserving 3MF, slice through an installed engine and inspect its G-code by layer. Plain WebGL; no 3D library. Complex paint/textures remain limited. |
 | **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command, each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
@@ -167,13 +191,13 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
 | **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast, see [docs/architecture.md](docs/architecture.md). |
 
-![The Overview: header with the printer picker and SIMULATED badge, the status ribbon with progress and finish time, the Needs you list ranking a dock error, a paused print and overdue maintenance, and totals for print hours, prints, filament and overdue tasks](docs/img/overview.jpg)
+![The Overview: header with the printer picker and SIMULATED badge, the tab bar with Overview first, the status ribbon with progress and finish time, a one-line explanation of the Overview tab, and the Needs you list ranking a dock error, a paused print and overdue maintenance](docs/img/overview.jpg)
 
 <sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
 
 ![The Fleet tab: three printer cards, Workshop printing at 47 percent, Studio paused at 72 percent, Garage idle with a T3 dock error, each with its four toolhead filament colours, temperatures and health score, above controls to command several printers together](docs/img/fleet.jpg)
 
-<sub>**Fleet:** every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
+<sub>**Printers** (the Fleet view): every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
 
 ![Confirm Print explained: seven checks (printer ready, pre-flight, filament match, nozzles, spool weight, maintenance, cost), what each one does when it fails, the path from your file to a start or a refusal, and a real refusal from the built-in unsafe example file](docs/img/explainer-confirm-print.jpg)
 
@@ -191,13 +215,13 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 </tr>
 </table>
 
-![Three Overview cards: the digital twin of the toolhead over the bed with four docks, a print health gauge reading 65 with its deductions listed, and a chamber temperature chart](docs/img/twin-health-chamber.jpg)
+![The Overview's live row: the digital twin as a shaded 3D model of the U1 with its frame, glass panels, orange and black spools on the left side, blue parts on the bed and tagged heads T0 to T3 (T2 printing), beside Printer control with Pause and Cancel and a print health gauge reading 65](docs/img/twin-health-chamber.jpg)
 
-<sub>**Digital twin, print health and chamber climate:** a live engineering drawing of the printer (the bed dropping as layers build, the head moving, the parts on the plate, the four docks), one health score with every deduction listed, and the chamber temperature over time.</sub>
+<sub>**Digital twin, quick controls and print health:** a live 3D model of the printer (the bed dropping as layers build, the head moving, the parts on the plate, the four docks, the spools in their colours), Pause and Cancel, and one health score with every deduction listed. The engineering drawing is one click away.</sub>
 
 <table>
 <tr>
-<td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The digital twin with T0 picked: its parked head drawn in blue, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
+<td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The 3D twin with T0 picked: its tag outlined, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
 <td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The mixed-nozzle planner: T0 with a 0.2 mm nozzle at 0.08 mm and T1 with a 0.8 mm nozzle at 0.56 mm, a section view showing seven thin layers for every thick one, 375 layers against 54 for a 30 mm part, and a warning that the 0.08 mm prime-tower slabs are below the 0.8 mm nozzle's minimum"><br><sub><b>Mixed-nozzle planner:</b> a common layer grid, checked against Snapmaker's own limits.</sub></td>
 </tr>
 </table>
@@ -243,7 +267,7 @@ Snapmaker Orca itself).
 
 | Feature | What it does |
 |---|---|
-| **Fleet command center** | Tick several printers in the Fleet tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately ("Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason, such as "Nothing is printing right now", in its own row), never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
+| **Fleet command center** | Tick several printers in the Printers tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately ("Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason, such as "Nothing is printing right now", in its own row), never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
 | **Photo-to-Print Studio** | Make four-tool dithered tiles, measured-swatch layered models, calibration sheets and closed image-heightmap reliefs. The older absorption-based relief editor remains available. New generation sends a reduced pixel grid to the local app server; legacy relief calculation stays in the browser. Generated files enter the normal preparation/slicing workflow. Physical colour accuracy is unverified. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios (a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue) and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
@@ -315,9 +339,12 @@ Dash**, **Pong**, **Minesweeper**, **Tetris**, **Pac-Man**, **Brick Break**,
 **Blackjack**, **Asteroids**, **Snake** and **2048**. None of them read the
 printer; the status strip and the live print pill stay visible on every
 tab, including mid-game, so a finished or failed print is never missed.
-Best scores are remembered per browser.
+Best scores are remembered per browser. Every game runs at the same speed on
+any screen (60 Hz or 144 Hz), waits for you to start, pauses when you switch
+tab or window, and sizes its playing field to fit the window. On a phone,
+Pac-Man, Snake and Tetris show touch buttons and also take swipes.
 
-<img src="docs/img/games.jpg" width="720" alt="The Games tab with Sky Dash ready to start, the list of ten games above it, and the note that none of them read the printer">
+<img src="docs/img/games.jpg" width="720" alt="The Games tab with Pac-Man ready to start: a blue maze with the ghosts in their house, a Start card explaining the power pellets, the list of ten games above, and the note that none of them read the printer">
 
 ## Why one dashboard, not several tools
 
@@ -355,8 +382,9 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **759 tests in 128.765 seconds** on Python
-3.12.14/Linux, with app/demo servers stopped. PR #45 also passed GitHub Actions
+The latest clean full suite passed **768 tests in 148.5 seconds** on Python
+3.13.16/Linux, with app/demo servers stopped (the interface refresh added nine).
+The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
 and was [merged](https://github.com/Jbyjre/Deja_VU1/pull/45). A follow-up targeted
 check passed 36 tests. Chromium checks at 1366/390 px covered editing, stable
 focus, actual slicing, preview, plate selection and Confirm Print entry. The
@@ -372,6 +400,7 @@ recorded static demo passed at both widths.
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
 | App updates | Staging, restart and rollback tests | Stable release package unpublished; Windows/macOS validation remains |
+| Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px, software WebGL; frame times measured there; static demo checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; model colours and part placement illustrative |
 
 Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified
 nozzle/height pairs were 0.4/0.6 mm at 0.14/0.28 mm, 0.4/0.8 mm at 0.2/0.4 mm,
@@ -439,8 +468,10 @@ shadow: the five layers that separate genuine glass from a blurred box.
 The real refracting glass sits on the navigation and floating layer, top
 bar, tab bar, live print pill, menus, sheets and dialogs, the things content
 scrolls under. Content cards keep the same tint, highlight, rim and shadow
-but don't blur what's behind them: behind them is only the soft background
-glow, where a blur looks the same and costs real work every frame. Repeated
+but don't blur what's behind them: behind them is the live background
+(Settings → Appearance), which moves with your cursor, and blurring a moving
+background costs real work every frame. The background itself only animates
+while the pointer moves, then stops drawing. Repeated
 small panels share one surface with plain dividers for the same reason. It
 respects the system settings for reduced transparency, reduced motion, and
 increased contrast, and the layout collapses cleanly to a phone-width screen.
@@ -594,7 +625,7 @@ python3 start.py          # opens http://localhost:8000
 The window prints the address to open from a phone on the same Wi-Fi.
 
 The dashboard will report that no printer is connected and show empty panels.
-To connect one: **Fleet → Add a printer → Find printers on my network**
+To connect one: **Printers → Add a printer → Find printers on my network**
 (it asks the network, then tries Moonraker's port 7125 on your home
 network, and checks each one), or type its Moonraker address (usually
 `http://<printer-ip>:7125`) and press **Test** first. See
@@ -603,7 +634,7 @@ Or flip the **Demo data** switch in the header to fill it with the simulated
 print history. On a phone, open the computer’s **From a phone** address
 printed in the launcher. Pairing is optional.
 
-With demo data on, a quick tour of the newer parts: **Fleet** to switch
+With demo data on, a quick tour of the newer parts: **Printers** to switch
 between the three simulated printers; **Files → Add sample files**, open
 one, then **Print…** to see the Confirm Print check (the "unsafe example"
 file is refused on purpose); **Automations** to build a rule and watch it
@@ -647,6 +678,19 @@ and the dashboard connects to it; `DEJAVU_MOONRAKER_LOG=1 python3
 backend/app.py` prints every exchange with it.
 
 ## For developers and AI coding sessions
+
+> **Rule for every AI (and person) editing this project: every change must
+> also be reflected in the online demo.** The demo at
+> [`/?demo`](https://deja-vu1.jmath1110.workers.dev/?demo) is the same
+> `frontend/` folder playing back a recording of the server's answers
+> (`frontend/demo/recording.json`). A change to screens, wording or behaviour
+> in `frontend/` reaches the demo by itself, but check it there: serve
+> `frontend/` with any static server and open `/?demo`. A new or changed
+> server route, or a change to what a route returns, is not in the recording
+> until you re-run `python3 tools/online-demo/record.py` and commit
+> `frontend/demo/`; `tests/test_online_demo.py` catches a missing route. If a
+> feature cannot work in a recording (for example it changes a printer), the
+> demo must say so in words rather than fail silently.
 
 [CLAUDE.md](CLAUDE.md) is the working context: the commands, a map of
 every file and what it owns, the rules the code depends on (no invented

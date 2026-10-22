@@ -3,6 +3,43 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — interface refresh: live background, 3D twin, games, setup
+
+- New background that reacts to the cursor (`frontend/backdrop.js`): Flow, Layer
+  lines, Dots and Still, in Glacier, Mint, Dusk, Graphite or Filament colours, chosen
+  in Settings → Appearance and in setup. Glacier (blue) replaces the red/filament
+  glow as the default; the old behaviour is the "Filament" set. It animates only while
+  the pointer moves and for the glide afterwards, and stops for a hidden tab, reduced
+  motion or reduced transparency. Content cards no longer blur what is behind them.
+  Measured in headless Chromium (software rendering) with the mouse moving over the
+  Overview: median frame 16.7 ms with Flow, Layer lines or Dots, against 33.4 ms for the
+  previous version; 95th percentile 33 ms. Not measured on real devices.
+- Digital twin: a shaded 3D model of the U1 (`frontend/twin3d.js`, raw WebGL) beside
+  the engineering drawing. Built to Snapmaker's published outer size (584 × 499 ×
+  730 mm) and 270 mm build cube; head, bed, docked heads, spools and parts are live.
+  Colours, panel tints, screen and spool placement, dock spacing and which side feeds
+  which head are drawn by eye and labelled as illustrative. The drawing gained zoom,
+  an "Outer size" option with overall dimensions, and SVG download.
+- Games: Pac-Man rewritten (a new maze with a ghost house, ghosts released one at a
+  time, smooth movement at sensible speeds, a two-second READY, pause on tab switch);
+  it previously lost all three lives in about four seconds without input. Tetris
+  rewritten (tapping the board used to restart the game; now it turns the piece; ghost
+  piece, hold, wall kicks, lock delay, touch buttons). Snake rewritten (no longer starts
+  by itself; buffered turns, smooth movement, game-over card). Sky Dash rebuilt on a
+  canvas (it rebuilt every pipe element 50 times a second). Every game's timer now runs
+  from the screen's refresh at a fixed rate, so speed is the same at 60 Hz and 144 Hz,
+  and every playing field is sized to fit the window.
+- Setup is now full screen with a named step bar and a new "Make it yours" step.
+  Fixed during the work: a closed full-screen dialog must not stay laid out over the page.
+- Clearer layout: Overview first in the tab bar, "Fleet" shown as "Printers", one
+  sentence under the tab bar explaining each tab, the Overview reorganised (twin with
+  controls and health beside it), plainer card subtitles, jump links at the top of
+  Settings, and plainer wording for the continue-on-another-device banner.
+- README rule: every change, by any AI or person, must also be reflected in the online
+  demo. Frontend changes reach it automatically; changed routes need the recorder.
+- Tests: `tests/test_frontend_refresh.py` (maze reachability, published outer size,
+  script order, tab introductions, game timers). README pictures re-captured.
+
 ## Unreleased — slicing workspace and app-data recovery
 
 - Launch video version 13: two new 60-second cuts (16:9 and 9:16), told problem

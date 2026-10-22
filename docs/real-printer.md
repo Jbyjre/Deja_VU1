@@ -8,7 +8,7 @@ install on the printer.
 
 1. Find the printer's address on your network - the same one Fluidd or
    Mainsail uses, usually `http://<printer-ip>:7125`.
-2. In the dashboard: **Fleet → Add a printer**. Give it a name, paste the
+2. In the dashboard: **Printers → Add a printer**. Give it a name, paste the
    address, and add an API key only if your Moonraker asks for one.
 3. It connects straight away. The row shows **Connected** within a few
    seconds, or says in words why it isn't (see below). The dashboard then
@@ -27,7 +27,7 @@ included.
 
 ## Finding it without typing an address
 
-**Fleet → Add a printer → Find printers on my network** (`backend/discovery.py`):
+**Printers → Add a printer → Find printers on my network** (`backend/discovery.py`):
 
 1. It asks the network over multicast DNS (mDNS). Snapmaker's U1 build of
    Moonraker announces `_snapmaker._tcp.local.`, with its IP address in the
@@ -57,7 +57,7 @@ on the same network (some routers block multicast; step 2 covers that).
 | Wrong address or port | "…refused the connection - is Moonraker running there, and is <port> its port? (Moonraker usually uses 7125)" |
 | Printer off / not on this network | "No answer from … within 5 s - is the printer on and on this network?" |
 | A name that doesn't resolve | "Can't find 'u1.local' on the network - check the printer's address" |
-| Moonraker wants a key | "Not connected: Unauthorized", or "Moonraker refused the live connection (401) - it needs an API key, or this computer added to trusted_clients". Remove the printer and add it again with its key (**Fleet → Add a printer**), or add this computer to `[authorization] trusted_clients` |
+| Moonraker wants a key | "Not connected: Unauthorized", or "Moonraker refused the live connection (401) - it needs an API key, or this computer added to trusted_clients". Remove the printer and add it again with its key (**Printers → Add a printer**), or add this computer to `[authorization] trusted_clients` |
 | Moonraker up, Klipper not | "Moonraker is running, but Klipper isn't connected to it" (retried every 2 s, as Moonraker's docs say) |
 | Klipper restarting | The printer shows an error ("Moonraker is running, but Klipper isn't connected to it", or "Klipper is starting up"), then recovers by itself |
 | Wi-Fi drops | Its last reading stays on screen, labelled "No answer since 14:02"; commands are refused (the dashboard says no printer is connected); it reconnects by itself (1 s, 2 s, 4 s … up to 30 s apart) |

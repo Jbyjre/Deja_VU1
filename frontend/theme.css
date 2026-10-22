@@ -588,3 +588,230 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 #backup-review label {display:flex;align-items:center;gap:8px;margin:12px 0;}
 #backup-review input[type=checkbox] {min-width:20px;min-height:20px;}
 #backup-review ul {font-size:12px;max-height:200px;overflow:auto;}
+
+/* ==========================================================================
+   Games fit the window
+   Every game's playing field is sized so the whole of it is on screen at
+   once (paddle, bottom row, the lot): never wider than the card, never
+   taller than the window minus the game's own toolbar and controls.
+   app.js fitGameCanvas sets the playing field's width from these rules.
+   ========================================================================== */
+#game-host { --game-chrome: 300px; }
+#game-host canvas.game-main { max-width: 100%; height: auto; margin-inline: auto; }
+#game-host .game-frame:fullscreen, #game-host .arcade-frame:fullscreen { --game-chrome: 150px; }
+@media (max-width: 760px) { #game-host { --game-chrome: 330px; } }
+/* The sticky top bar covers about 100 px when the page is scrolled; on a
+   phone it tucks away, but the bottom tab dock takes the room instead. */
+#game-host { scroll-margin-top: 104px; }
+@media (max-width: 720px) { #game-host { scroll-margin-top: 12px; } }
+/* The rewritten games share one stage: the field with its start / game-over
+   card laid over it, touch buttons under it (hidden where there's a mouse
+   and keyboard), then one status line. */
+#game-host .arcade-stage { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; line-height: 0; }
+#game-host .arcade-stage canvas { display: block; border-radius: 16px; touch-action: none; }
+#game-host .arcade-stage .game-overlay { line-height: 1.4; border-radius: 16px; background: rgba(6, 12, 24, .62); color: #fff; }
+#game-host .arcade-stage .game-overlay .g-title { color: #fff; font-size: 22px; letter-spacing: .08em; }
+#game-host .arcade-stage .game-overlay .g-sub { color: rgba(255, 255, 255, .86); font-size: 14px; max-width: 34ch; }
+#game-host .arcade-pad { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(2, 48px); gap: 8px; justify-content: center; margin: 12px auto 0; }
+#game-host .arcade-pad button { min-height: 44px; font-size: 18px; padding: 0; touch-action: none; }
+#game-host .arcade-pad button:nth-child(1) { grid-column: 2; grid-row: 1; }
+#game-host .arcade-pad button:nth-child(2) { grid-column: 1; grid-row: 2; }
+#game-host .arcade-pad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+#game-host .arcade-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+#game-host .arcade-pad.wide { grid-template-columns: repeat(6, minmax(44px, 60px)); grid-template-rows: 48px; }
+#game-host .arcade-pad.wide button { grid-column: auto; grid-row: auto; }
+@media (hover: hover) and (pointer: fine) { #game-host .arcade-pad { display: none; } }
+#game-host .arcade-actions { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: var(--text-dim); font-size: 14px; text-align: center; }
+#game-host .arcade-actions .good { color: var(--ok, #1f8a4c); }
+#game-host .tetris-v2 { display: flex; justify-content: center; align-items: flex-start; gap: 18px; }
+#game-host .tetris-v2 .tetris-side { min-width: 0; width: 124px; align-items: center; }
+#game-host .tetris-v2 .tetris-side canvas { width: 96px; height: auto; }
+@media (max-width: 520px) { #game-host .tetris-v2 { gap: 10px; } #game-host .tetris-v2 .tetris-side { width: 84px; padding: 8px; } #game-host .tetris-v2 .tetris-side canvas { width: 64px; } }
+
+/* ==========================================================================
+   The live background (backdrop.js)
+   One canvas behind everything. It replaces the two filament-coloured
+   pools (the "Filament" colour set keeps that behaviour as an option).
+   While it can move, content cards drop their own blur and become plain
+   paper: glass that re-blurs a moving background on every frame was this
+   app's main source of stutter before, so only the chrome (top bar, tabs,
+   status ribbon) stays glass and bends what moves behind it.
+   ========================================================================== */
+.backdrop-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+html[data-backdrop] .pool { display: none; }
+html[data-backdrop] .bg::before { z-index: 1; }
+html[data-backdrop="lines"] .bg::before,
+html[data-backdrop="dots"] .bg::before { display: none; }
+html[data-backdrop]:not([data-backdrop="still"]) { --paper: oklch(99% 0.002 250 / .9); }
+html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The picker: four styles with a small preview each, five colour sets. */
+.backdrop-picker { display: grid; gap: 18px; margin-bottom: 18px; }
+.bp-group { border: 0; padding: 0; margin: 0; min-width: 0; }
+.bp-group legend { font: 600 14px/1.3 var(--font-sans); color: var(--text); padding: 0; margin-bottom: 10px; }
+.appearance-card > .bp-group { margin-bottom: 14px; }
+.bp-styles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.bp-style {
+  display: grid; grid-template-rows: auto auto 1fr; gap: 4px; text-align: left; padding: 10px;
+  border-radius: 16px; border: 1.5px solid var(--hair); background: var(--paper-solid); color: var(--text);
+  font: inherit; cursor: pointer; min-height: 44px;
+}
+.bp-style:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--hair)); }
+.bp-style.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.bp-style:focus-visible, .bp-palette:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bp-thumb { display: block; height: 64px; border-radius: 10px; margin-bottom: 4px; background-color: var(--bp-bg, #eef2f7); }
+.bp-thumb-flow { background:
+  radial-gradient(circle at 25% 30%, var(--bp-a) 0, transparent 46%),
+  radial-gradient(circle at 75% 40%, var(--bp-b) 0, transparent 42%),
+  radial-gradient(circle at 55% 85%, var(--bp-c) 0, transparent 44%),
+  var(--bp-bg); }
+.bp-thumb-lines { background:
+  radial-gradient(circle at 60% 50%, color-mix(in srgb, var(--bp-glow) 40%, transparent) 0, transparent 30%),
+  repeating-linear-gradient(180deg, var(--bp-ink) 0 1px, transparent 1px 5px),
+  var(--bp-bg); }
+.bp-thumb-dots { background:
+  radial-gradient(circle at 62% 50%, color-mix(in srgb, var(--bp-glow) 35%, transparent) 0, transparent 28%),
+  radial-gradient(circle, var(--bp-ink) 1.2px, transparent 1.6px) 0 0 / 10px 10px,
+  var(--bp-bg); }
+.bp-thumb-still { background: linear-gradient(160deg, var(--bp-a), var(--bp-bg) 55%, var(--bp-b)); }
+.bp-name { font-weight: 600; font-size: 14px; }
+.bp-hint { font-size: 12.5px; color: var(--text-faint); line-height: 1.35; }
+.bp-palettes { display: flex; flex-wrap: wrap; gap: 10px; }
+.bp-palette {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; min-height: 44px;
+  border-radius: 999px; border: 1.5px solid var(--hair); background: var(--paper-solid); color: var(--text);
+  font: 500 14px/1 var(--font-sans); cursor: pointer;
+}
+.bp-palette.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.bp-swatch { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.bp-note { margin: 10px 0 0; font-size: 13px; color: var(--text-dim); }
+@media (prefers-contrast: more) {
+  .bp-style, .bp-palette { border-color: var(--text-dim); }
+  .bp-style.active, .bp-palette.active { border-width: 3px; }
+}
+
+/* ==========================================================================
+   Overview: your printer right now
+   The twin takes the wide column with its quick controls and health score
+   beside it; on narrower screens they stack. Both twin modes (the shaded
+   model, twin3d.js, and the engineering drawing, workshop.js drawTwin) share
+   one stage size so switching doesn't move the page.
+   ========================================================================== */
+.live-row.now-row { grid-template-columns: minmax(0, 1.75fr) minmax(290px, 1fr); align-items: start; }
+.live-row.now-row .twin-card { grid-column: auto; }
+.now-side > .card { margin-bottom: 0; }
+@media (max-width: 1080px) { .live-row.now-row { grid-template-columns: 1fr; } }
+.twin-head { flex-wrap: wrap; gap: 10px 16px; }
+.twin-switches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.twin-card .wf, .twin-model { height: clamp(340px, 54vh, 560px); }
+.twin-card .wf { margin: 0; }
+.twin-card[data-twin-mode="model"] .wf,
+.twin-card[data-twin-mode="drawing"] .twin-model,
+.twin-card[data-twin-mode="model"] [data-drawing-only] { display: none; }
+.twin-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+.twin-tools .btn.small { min-width: 36px; min-height: 36px; }
+.twin-outer { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); min-height: 36px; }
+.twin-outer input { width: 18px; height: 18px; }
+.twin-hint { margin-left: auto; font-size: 12.5px; color: var(--text-faint); }
+.twin-note { margin: 10px 0 0; font-size: 12px; }
+@media (max-width: 720px) { .twin-hint { margin-left: 0; flex-basis: 100%; } }
+
+.twin-model { position: relative; border-radius: 14px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 20%, #ffffff 0%, #eef1f6 60%, #e2e7ef 100%); }
+.twin3d { position: absolute; inset: 0; }
+.twin3d-canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+.twin3d-canvas:active { cursor: grabbing; }
+.twin3d-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.twin3d-tags { position: absolute; inset: 0; pointer-events: none; }
+.t3-tag {
+  position: absolute; transform: translate(-50%, -100%); pointer-events: auto; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border-radius: 999px;
+  font: 600 11.5px/1.2 var(--font-mono); color: var(--text); white-space: nowrap;
+  background: rgba(255, 255, 255, .88); box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 4px 10px rgba(0, 0, 0, .08);
+}
+.t3-tag i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); }
+.t3-tag.on { background: var(--accent); color: #fff; }
+.t3-tag.fault { background: var(--bad-text, #b3261e); color: #fff; }
+.t3-tag.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* One sentence under the tab bar saying what the open tab is for. */
+.tab-intro {
+  margin: -4px 4px 18px; max-width: 92ch; font-size: 14.5px; line-height: 1.5; color: var(--text-dim);
+  text-wrap: pretty;
+}
+.tab-intro strong { color: var(--text); font-weight: 600; margin-right: 4px; }
+@media (max-width: 720px) { .tab-intro { font-size: 13.5px; margin: -6px 2px 14px; } }
+/* The twin card stays neutral: tinting it with the active filament made it
+   muddy grey whenever black filament was loaded. The model itself shows
+   the colours. */
+.liquid-glass.card.twin-card[data-tint] { background: var(--paper); }
+.settings-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
+.settings-jumps > span { font: 600 12px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); margin-right: 4px; }
+.settings-jumps .chip-btn { text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+#tab-modules section.card { scroll-margin-top: 110px; }
+
+/* ==========================================================================
+   Full-screen setup (launchpad.js)
+   Every step fills the window, with the live background glowing through,
+   except "Find your way", which stays a corner card so the dashboard it
+   points at is visible. A stepper names every step; Back and Continue stay
+   at the bottom.
+   ========================================================================== */
+/* Only while open: a closed <dialog> must keep the browser's display:none,
+   or it would sit invisibly over the page and catch every click. */
+.glass-dialog.setup-dialog.is-full[open]:not(.is-morph-target) {
+  position: fixed; inset: 0; margin: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none;
+  border-radius: 0; padding: 0; display: grid; grid-template-rows: auto 1fr auto;
+  background: color-mix(in oklch, var(--paper-solid) 38%, transparent);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: none; border: 0;
+}
+.glass-dialog.setup-dialog.is-full::backdrop { background: transparent; }
+html.setup-full-open, html.setup-full-open body { overflow: hidden; }
+/* Only the live background shows behind a full-screen step. */
+html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hidden; }
+.setup-dialog.is-full .setup-top {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
+  padding: 18px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--hair);
+}
+.setup-dialog.is-full .setup-top #setup-step { display: none; }
+.setup-brand { display: inline-flex; align-items: center; gap: 10px; font: 600 15px/1 var(--font-display); color: var(--text); }
+.setup-brand .brand-mark { width: 30px; height: 30px; }
+.setup-dialog:not(.is-full) .setup-brand, .setup-dialog:not(.is-full) .setup-steps { display: none; }
+.setup-steps { display: flex; justify-content: center; gap: 6px; list-style: none; margin: 0; padding: 0; counter-reset: s; min-width: 0; }
+.setup-steps li { counter-increment: s; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-faint); white-space: nowrap; }
+.setup-steps li::before {
+  content: counter(s); display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  font: 600 12px/1 var(--font-mono); border: 1.5px solid currentColor;
+}
+.setup-steps li + li::after { content: none; }
+.setup-steps li:not(:last-child) { padding-right: 10px; border-right: 1px solid var(--hair); }
+.setup-steps li.done { color: var(--text-dim); }
+.setup-steps li.done::before { content: "✓"; background: var(--accent); border-color: var(--accent); color: #fff; }
+.setup-steps li.now { color: var(--text); font-weight: 600; }
+.setup-steps li.now::before { background: var(--text); border-color: var(--text); color: var(--paper-solid); }
+@media (max-width: 1100px) { .setup-steps li:not(.now) span { display: none; } }
+@media (max-width: 560px) {
+  .setup-dialog.is-full .setup-top { grid-template-columns: 1fr auto; }
+  .setup-dialog.is-full .setup-steps { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+  .setup-brand { font-size: 14px; }
+}
+.setup-dialog.is-full .setup-body { overflow-y: auto; padding: clamp(24px, 6vh, 72px) clamp(16px, 4vw, 40px); }
+.setup-dialog.is-full #setup-content, .setup-dialog.is-full #setup-status { max-width: 720px; margin: 0 auto; }
+.setup-dialog.is-full h2 { font-size: clamp(34px, 5.2vw, 60px); line-height: 1.04; margin-bottom: 20px; text-wrap: balance; }
+.setup-dialog.is-full .setup-mark { font-size: 56px; }
+.setup-lead { font-size: clamp(16px, 1.6vw, 19px); color: var(--text-dim); max-width: 60ch; }
+.setup-points { list-style: none; padding: 0; margin: 22px 0 8px; display: grid; gap: 10px; }
+.setup-points li { padding: 12px 16px; border-radius: 14px; background: var(--paper-solid); box-shadow: var(--shadow-card); }
+.setup-dialog.is-full .setup-footer {
+  justify-content: space-between; padding: 14px clamp(16px, 4vw, 40px) calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--hair); background: color-mix(in oklch, var(--paper-solid) 80%, transparent);
+}
+.setup-dialog.is-full .setup-footer #setup-next { margin-left: auto; min-width: 160px; }
+.setup-dialog.is-full #setup-backdrop .bp-styles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .glass-dialog.setup-dialog.is-full[open]:not(.is-morph-target) { background: var(--paper-solid); }
+}

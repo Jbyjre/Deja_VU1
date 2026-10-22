@@ -51,7 +51,7 @@ its controls. Keep it on your home network for the session (see
    the dashboard doesn't start, the reason is in that file.
 3. Open **http://localhost:8000** in a browser on that computer. It will say
    no printer is connected.
-4. **Fleet → Add a printer.** Give it a name, paste the address, and add an API
+4. **Printers → Add a printer.** Give it a name, paste the address, and add an API
    key only if your Moonraker asks for one.
 5. Within a few seconds the row shows **Connected**, or says in words why it
    isn't. [real-printer.md](real-printer.md#what-happens-if-something-is-wrong)
