@@ -648,13 +648,21 @@ const Workshop = (() => {
     DOCK_Y: 312,                    // rear beam, behind the bed
     HEAD: { w: 42, d: 44, h: 54, cone: 9 },
     VIEWS: { iso: [-34, 27], front: [0, 0], top: [0, 90] },
-    VIEW_WORD: { iso: '3D', front: 'Front', top: 'Top' },
+    VIEW_WORD: { iso: 'Angled', front: 'Front', top: 'Top' },
+    // The whole machine (Snapmaker's published outer size, 584 x 499 x 730 mm),
+    // in the drawing's frame: the nozzle tip is at Z 270 here and 600 mm
+    // above the floor on the real printer, so the floor is at Z -330.
+    OUTER: { x0: -157, x1: 427, y0: -95, y1: 404, z0: -330, z1: 400 },
     PX_PER_MM: 96 / 25.4,           // CSS pixels in a millimetre
   };
   const twin = {
     built: false, yaw: WF.VIEWS.iso[0], pitch: WF.VIEWS.iso[1], view: 'iso',
     pos: [135, 135, 0], state: null, trail: [], trailZ: null, job: null, jobAt: 0,
     w: 0, h: 0, queued: false, label: '', paths: {}, pick: null,
+    // Shaded model or engineering drawing (kept in this browser), the
+    // drawing's zoom and pan, and whether it shows the outer size.
+    mode: (() => { try { return localStorage.getItem('dejavu1.twin-mode') === 'drawing' ? 'drawing' : 'model'; } catch (e) { return 'model'; } })(),
+    zoom: 1, panX: 0, panY: 0, outer: false, model: null,
   };
   const BUCKETS = ['grid', 'env', 'frame', 'trail', 'hid', 'part-hid', 'vis', 'part', 'head', 'fault',
     'skip', 'sel-hid', 'sel', 'dim', 'axis'];
@@ -662,6 +670,15 @@ const Workshop = (() => {
   function buildTwin() {
     const host = $('twin-host');
     host.innerHTML = `
+      <div class="twin-tools" role="toolbar" aria-label="Twin view tools">
+        <button type="button" class="btn small" data-twin="zoom-out" aria-label="Zoom out">−</button>
+        <button type="button" class="btn small" data-twin="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" class="btn small" data-twin="reset">Reset view</button>
+        <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> Outer size</label>
+        <button type="button" class="btn small" data-twin="download" data-drawing-only>Download drawing</button>
+        <span class="twin-hint" id="twin-hint"></span>
+      </div>
+      <div class="twin-model" id="twin-model"></div>
       <div class="wf" id="wf">
         <svg class="wf-svg" id="wf-svg" role="img" tabindex="0" aria-roledescription="drawing"
              aria-describedby="twin-readout" aria-label="Line drawing of the printer" shape-rendering="geometricPrecision">
@@ -685,6 +702,7 @@ const Workshop = (() => {
       <div class="wf-detail" id="wf-detail" hidden></div>
       <div class="twin-readout" id="twin-readout"></div>`;
     const svg = $('wf-svg');
+    twin.model = null;
     twin.paths = {};
     svg.querySelectorAll('path[data-k]').forEach(p => { twin.paths[p.dataset.k] = p; });
     twin.w = 0;
@@ -708,7 +726,8 @@ const Workshop = (() => {
       drag = null;
     });
     ['pointercancel', 'lostpointercapture'].forEach(type => svg.addEventListener(type, () => { drag = null; }));
-    svg.addEventListener('dblclick', () => setView(...WF.VIEWS.iso, 'iso'));
+    svg.addEventListener('dblclick', () => { twin.zoom = 1; twin.panX = twin.panY = 0; setView(...WF.VIEWS.iso, 'iso'); });
+    svg.addEventListener('wheel', (e) => { e.preventDefault(); zoomDrawing(Math.exp(-e.deltaY * 0.0012)); }, { passive: false });
     svg.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { choose(null); return; }
       const turn = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 8], ArrowDown: [0, -8] }[e.key];
@@ -716,12 +735,27 @@ const Workshop = (() => {
       e.preventDefault();
       setView(twin.yaw + turn[0], twin.pitch + turn[1], null, true);
     });
-    // The view buttons live in the card's header (index.html), wired once.
+    // The view and mode buttons live in the card's header (index.html), wired once.
     document.querySelectorAll('#wf-views button').forEach(b => {
       if (b.dataset.wired) return;
       b.dataset.wired = '1';
       b.addEventListener('click', () => setView(...WF.VIEWS[b.dataset.view], b.dataset.view));
     });
+    document.querySelectorAll('#twin-modes button').forEach(b => {
+      if (b.dataset.wired) return;
+      b.dataset.wired = '1';
+      b.addEventListener('click', () => setTwinMode(b.dataset.mode));
+    });
+    host.querySelector('.twin-tools').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-twin]');
+      if (!b) return;
+      const act = b.dataset.twin;
+      if (act === 'zoom-in') twin.mode === 'model' && twin.model ? twin.model.zoomBy(1.25) : zoomDrawing(1.25);
+      if (act === 'zoom-out') twin.mode === 'model' && twin.model ? twin.model.zoomBy(0.8) : zoomDrawing(0.8);
+      if (act === 'reset') { twin.zoom = 1; twin.panX = twin.panY = 0; setView(...WF.VIEWS.iso, 'iso'); }
+      if (act === 'download') downloadDrawing();
+    });
+    $('wf-outer').addEventListener('change', (e) => { twin.outer = e.target.checked; drawTwin(true); });
     $('wf-picks').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
       if (b) choose(twin.pick === b.dataset.pick ? null : b.dataset.pick);
@@ -740,17 +774,83 @@ const Workshop = (() => {
     // on a phone), which means it is redrawn when the card changes width.
     if (window.ResizeObserver) new ResizeObserver(() => drawTwin(true)).observe($('wf'));
     twin.built = true;
+    setTwinMode(twin.mode);
   }
 
-  /* Turn to a view. `now` skips the glide (dragging follows the finger). */
-  function setView(yaw, pitch, name, now) {
-    pitch = Math.max(0, Math.min(90, pitch));
+  /* Model or drawing. The model needs WebGL; without it the drawing stays. */
+  function setTwinMode(mode) {
+    if (mode === 'model' && !twin.model && twin.built && typeof Twin3D !== 'undefined') {
+      twin.model = Twin3D.create($('twin-model'), { onPick: id => choose(id) });
+      if (twin.model) twin.model.onViewChange(name => markView(name));
+    }
+    if (mode === 'model' && !twin.model) mode = 'drawing';
+    twin.mode = mode;
+    try { localStorage.setItem('dejavu1.twin-mode', mode); } catch (e) { /* the choice just isn't remembered */ }
+    const card = $('twin-card');
+    if (card) card.dataset.twinMode = mode;
+    document.querySelectorAll('#twin-modes button').forEach(b => {
+      const on = b.dataset.mode === mode;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    const hint = $('twin-hint');
+    const touch = matchMedia('(pointer: coarse)').matches;
+    if (hint) hint.textContent = touch
+      ? 'Swipe sideways to turn · + and − zoom · tap a part for details'
+      : mode === 'model'
+        ? 'Drag to turn · right-drag to move · scroll to zoom · click a head for details'
+        : 'Drag to turn · scroll to zoom · click a part for details';
+    if (twin.model) twin.model.select(twin.pick);
+    if (mode === 'drawing') drawTwin(true); else queueTwin();
+  }
+
+  function markView(name) {
     twin.view = name;
     document.querySelectorAll('#wf-views button').forEach(b => {
       const on = b.dataset.view === name;
       b.classList.toggle('active', on);
       b.setAttribute('aria-pressed', String(on));
     });
+  }
+
+  function zoomDrawing(f) {
+    twin.zoom = Math.max(0.6, Math.min(5, twin.zoom * f));
+    drawTwin();
+  }
+
+  /* The drawing as a stand-alone SVG file, with its line styles inlined
+   * (they normally come from workshop.css). */
+  function downloadDrawing() {
+    const svg = $('wf-svg');
+    if (!svg) return;
+    const copy = svg.cloneNode(true);
+    copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    copy.querySelectorAll('.wf-hits').forEach(g => g.remove());
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let list = [];
+      try { list = sheet.cssRules || []; } catch (e) { continue; }
+      for (const r of list) if (r.selectorText && /\.wf-/.test(r.selectorText) && !/hover|focus|active/.test(r.selectorText)) rules.push(r.cssText);
+    }
+    const ink = getComputedStyle($('wf'));
+    const vars = ['--ink', '--ink-mid', '--ink-light', '--ink-faint', '--pick', '--fault', '--paper-solid', '--font-mono', '--font-sans']
+      .map(k => `${k}:${ink.getPropertyValue(k)}`).join(';');
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.textContent = `svg{${vars};background:#fff;font-family:${ink.getPropertyValue('--font-mono') || 'monospace'}}${rules.join('')}`;
+    copy.insertBefore(style, copy.firstChild);
+    const blob = new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(twin.state && twin.state.printer_name || 'printer').replace(/[^\w.-]+/g, '_')}-drawing.svg`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  /* Turn to a view. `now` skips the glide (dragging follows the finger). */
+  function setView(yaw, pitch, name, now) {
+    pitch = Math.max(0, Math.min(90, pitch));
+    markView(name);
+    if (name && twin.model && twin.mode === 'model') twin.model.setView(name);
     if (now) { twin.yaw = yaw; twin.pitch = pitch; smooth.delete('wf-view'); drawTwin(); return; }
     // Take the short way round, so 3D -> Front turns 34 degrees, not 326.
     const start = yaw + (((twin.yaw - yaw) % 360) + 540) % 360 - 180;
@@ -767,7 +867,11 @@ const Workshop = (() => {
     if (twin.queued) return;
     twin.queued = true;
     const wait = Math.max(0, 32 - (performance.now() - (twin.drawnAt || 0)));
-    setTimeout(() => requestAnimationFrame(() => { twin.queued = false; drawTwin(); }), wait);
+    setTimeout(() => requestAnimationFrame(() => {
+      twin.queued = false;
+      if (twin.mode === 'model' && twin.model) { twin.drawnAt = performance.now(); twin.model.update(twin.state, twin.pos); renderChips(); }
+      else drawTwin();
+    }), wait);
   }
 
   /* ---- solids, in printer millimetres (X right, Y back, Z up) ----------
@@ -830,15 +934,16 @@ const Workshop = (() => {
     };
     // Fit the machine (build volume, rails, docks, balloons) to the sheet,
     // leaving the bottom strip for the title block.
-    const pts = [];
-    for (const x of [-26, 296]) for (const y of [-22, 346]) for (const z of [0, WF.TOP + 104]) pts.push(raw(x, y, z));
+    const pts = [], O = WF.OUTER;
+    if (twin.outer) { for (const x of [O.x0 - 20, O.x1 + 20]) for (const y of [O.y0 - 10, O.y1 + 10]) for (const z of [O.z0, O.z1]) pts.push(raw(x, y, z)); }
+    else for (const x of [-26, 296]) for (const y of [-22, 346]) for (const z of [0, WF.TOP + 104]) pts.push(raw(x, y, z));
     const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
     // Front and top views carry an X dimension under the drawing.
     const padX = 22, padTop = 18, padBottom = twin.view === 'front' || twin.view === 'top' ? 70 : 46;
-    const s = Math.min((twin.w - 2 * padX) / (Math.max(...xs) - Math.min(...xs)),
+    const s = twin.zoom * Math.min((twin.w - 2 * padX) / (Math.max(...xs) - Math.min(...xs)),
       (twin.h - padTop - padBottom) / (Math.max(...ys) - Math.min(...ys)));
-    const ox = twin.w / 2 - s * (Math.max(...xs) + Math.min(...xs)) / 2;
-    const oy = padTop + (twin.h - padTop - padBottom) / 2 - s * (Math.max(...ys) + Math.min(...ys)) / 2;
+    const ox = twin.w / 2 - s * (Math.max(...xs) + Math.min(...xs)) / 2 + twin.panX;
+    const oy = padTop + (twin.h - padTop - padBottom) / 2 - s * (Math.max(...ys) + Math.min(...ys)) / 2 + twin.panY;
     // Snap to the half pixel, so 1 px lines land on whole device pixels.
     const snap = v => Math.round(v - 0.5) + 0.5;
     const P = (x, y, z) => { const r = raw(x, y, z); return [snap(ox + s * r[0]), snap(oy + s * r[1])]; };
@@ -910,6 +1015,7 @@ const Workshop = (() => {
 
     // Build volume (phantom line), the frame's top rails and rear beam.
     out.env = boxSolid(0, 0, 0, B, B, T);
+    if (twin.outer) { const O = WF.OUTER; out.env.push(...boxSolid(O.x0, O.y0, O.z0, O.x1, O.y1, O.z1)); }
     const rz = T + WF.HEAD.cone + WF.HEAD.h * 0.7, by = WF.DOCK_Y, bz = T + WF.HEAD.cone;
     out.frame.push(
       { a: [-24, -20, rz], b: [-24, by + 34, rz] }, { a: [294, -20, rz], b: [294, by + 34, rz] },
@@ -1012,6 +1118,12 @@ const Workshop = (() => {
     if (v === 'front') dim([0, 0, 0], [x, 0, 0], [0, 0, -22], `X${nb}${x.toFixed(1)}`);
     if (v === 'top') dim([0, -6, T], [x, -6, T], [0, -30, 0], `X${nb}${x.toFixed(1)}`);
     if (v === 'top') dim([0, 0, T], [0, y, T], [-34, 0, 0], `Y${nb}${y.toFixed(1)}`);
+    // The machine's outer size (Snapmaker's published figures).
+    if (twin.outer) {
+      const O = WF.OUTER;
+      if (v === 'front') { dim([O.x0, O.y0, O.z0], [O.x1, O.y0, O.z0], [0, 0, -40], `584${nb}mm`); dim([O.x0, O.y0, O.z0], [O.x0, O.y0, O.z1], [-40, 0, 0], `730${nb}mm`); }
+      if (v === 'top') { dim([O.x0, O.y0, O.z1], [O.x1, O.y0, O.z1], [0, -40, 0], `584${nb}mm`); dim([O.x1, O.y0, O.z1], [O.x1, O.y1, O.z1], [40, 0, 0], `499${nb}mm`); }
+    }
     setHTML($('wf-dims'), dims.join(''));
   }
 
@@ -1082,12 +1194,7 @@ const Workshop = (() => {
     setHTML($('wf-sheet'), `<rect class="wf-border" x="3.5" y="3.5" width="${W - 7}" height="${H - 7}"/>` +
       `<rect class="wf-tb" x="${bx0 + 0.5}" y="${by0 + 0.5}" width="${bw}" height="${bh}"/>${cellSvg}`);
 
-    // The buttons under the drawing (the keyboard and screen-reader way to
-    // pick), and the details of whatever is picked.
-    setHTML($('wf-picks'), heads.map(([n, d]) => `<button type="button" class="wf-pick${pick === `head:${n}` ? ' is-on' : ''}${d.status === 'error' ? ' is-fault' : ''}"
-      data-pick="head:${esc(n)}" aria-pressed="${pick === `head:${n}`}"><i style="background:${esc(d.filament_color_hex || '#ffffff')}"></i>${esc(n)}</button>`).join('') +
-      `<button type="button" class="wf-pick${pick === 'bed' ? ' is-on' : ''}" data-pick="bed" aria-pressed="${pick === 'bed'}">Bed</button>`);
-    renderPick();
+    renderChips();
 
     // A sentence for screen readers, changed only when its words change.
     const skipped = st.objects && Array.isArray(st.objects.excluded) ? st.objects.excluded.length : 0;
@@ -1100,9 +1207,22 @@ const Workshop = (() => {
     if (label !== twin.label) { twin.label = label; $('wf-svg').setAttribute('aria-label', label); }
   }
 
+  /* The buttons under the twin (the keyboard and screen-reader way to
+   * pick), and the details of whatever is picked. Shared by both modes. */
+  function renderChips() {
+    const st = twin.state, pick = twin.pick || '';
+    if (!st || !$('wf-picks')) return;
+    const heads = Object.entries(st.toolheads || {});
+    setHTML($('wf-picks'), heads.map(([n, d]) => `<button type="button" class="wf-pick${pick === `head:${n}` ? ' is-on' : ''}${d.status === 'error' ? ' is-fault' : ''}"
+      data-pick="head:${esc(n)}" aria-pressed="${pick === `head:${n}`}"><i style="background:${esc(d.filament_color_hex || '#ffffff')}"></i>${esc(n)}</button>`).join('') +
+      `<button type="button" class="wf-pick${pick === 'bed' ? ' is-on' : ''}" data-pick="bed" aria-pressed="${pick === 'bed'}">Bed</button>`);
+    renderPick();
+  }
+
   /* ---- picking a part ---------------------------------------------- */
   function choose(id) {
     twin.pick = id || null;
+    if (twin.model) twin.model.select(twin.pick);
     if (id && id.startsWith('head:') && Date.now() - twin.jobAt > 10000) {
       twin.jobAt = Date.now();
       getJSON(api('/api/printer/job')).then(j => { twin.job = j && !j.error ? j : null; renderPick(); }).catch(() => {});
@@ -1169,11 +1289,13 @@ const Workshop = (() => {
     const views = $('wf-views');
     if (!state) {
       setText($('twin-sub'), 'Waiting for a printer connection');
-      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null;
+      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null; twin.model = null;
       if (views) views.hidden = true;
+      if ($('twin-modes')) $('twin-modes').hidden = true;
       return;
     }
     if (views && views.hidden) views.hidden = false;
+    if ($('twin-modes') && $('twin-modes').hidden) $('twin-modes').hidden = false;
     if (!twin.built) buildTwin();
     if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; }
     if (twin.state && twin.state.current_file !== state.current_file) { twin.job = null; twin.jobAt = 0; }

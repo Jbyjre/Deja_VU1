@@ -692,3 +692,47 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
   .bp-style, .bp-palette { border-color: var(--text-dim); }
   .bp-style.active, .bp-palette.active { border-width: 3px; }
 }
+
+/* ==========================================================================
+   Overview: your printer right now
+   The twin takes the wide column with its quick controls and health score
+   beside it; on narrower screens they stack. Both twin modes (the shaded
+   model, twin3d.js, and the engineering drawing, workshop.js drawTwin) share
+   one stage size so switching doesn't move the page.
+   ========================================================================== */
+.live-row.now-row { grid-template-columns: minmax(0, 1.75fr) minmax(290px, 1fr); align-items: start; }
+.live-row.now-row .twin-card { grid-column: auto; }
+.now-side > .card { margin-bottom: 0; }
+@media (max-width: 1080px) { .live-row.now-row { grid-template-columns: 1fr; } }
+.twin-head { flex-wrap: wrap; gap: 10px 16px; }
+.twin-switches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.twin-card .wf, .twin-model { height: clamp(340px, 54vh, 560px); }
+.twin-card .wf { margin: 0; }
+.twin-card[data-twin-mode="model"] .wf,
+.twin-card[data-twin-mode="drawing"] .twin-model,
+.twin-card[data-twin-mode="model"] [data-drawing-only] { display: none; }
+.twin-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+.twin-tools .btn.small { min-width: 36px; min-height: 36px; }
+.twin-outer { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); min-height: 36px; }
+.twin-outer input { width: 18px; height: 18px; }
+.twin-hint { margin-left: auto; font-size: 12.5px; color: var(--text-faint); }
+.twin-note { margin: 10px 0 0; font-size: 12px; }
+@media (max-width: 720px) { .twin-hint { margin-left: 0; flex-basis: 100%; } }
+
+.twin-model { position: relative; border-radius: 14px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 20%, #ffffff 0%, #eef1f6 60%, #e2e7ef 100%); }
+.twin3d { position: absolute; inset: 0; }
+.twin3d-canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: pan-y; }
+.twin3d-canvas:active { cursor: grabbing; }
+.twin3d-canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.twin3d-tags { position: absolute; inset: 0; pointer-events: none; }
+.t3-tag {
+  position: absolute; transform: translate(-50%, -100%); pointer-events: auto; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border-radius: 999px;
+  font: 600 11.5px/1.2 var(--font-mono); color: var(--text); white-space: nowrap;
+  background: rgba(255, 255, 255, .88); box-shadow: 0 1px 2px rgba(0, 0, 0, .12), 0 4px 10px rgba(0, 0, 0, .08);
+}
+.t3-tag i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); }
+.t3-tag.on { background: var(--accent); color: #fff; }
+.t3-tag.fault { background: var(--bad-text, #b3261e); color: #fff; }
+.t3-tag.sel { outline: 2px solid var(--accent); outline-offset: 1px; }

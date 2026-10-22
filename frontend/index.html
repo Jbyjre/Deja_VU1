@@ -350,7 +350,46 @@
       <ol class="att-list" id="attention-list"></ol>
     </section>
 
+    <!-- Your printer right now: the live twin, with its quick controls and
+         health score beside it. -->
+    <div class="live-row now-row">
+      <section class="card liquid-glass twin-card" data-tint id="twin-card">
+        <div class="card-head twin-head">
+          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do</p></div>
+          <div class="twin-switches">
+            <div class="pill-toggle twin-modes" id="twin-modes" role="group" aria-label="Show as">
+              <button type="button" data-mode="model" class="active" aria-pressed="true">3D model</button>
+              <button type="button" data-mode="drawing" aria-pressed="false">Drawing</button>
+            </div>
+            <div class="pill-toggle wf-views" id="wf-views" role="group" aria-label="View" hidden>
+              <button type="button" data-view="iso" class="active" aria-pressed="true">Angled</button>
+              <button type="button" data-view="front" aria-pressed="false">Front</button>
+              <button type="button" data-view="top" aria-pressed="false">Top</button>
+            </div>
+          </div>
+        </div>
+        <div id="twin-host" class="twin-host"></div>
+        <p class="field-hint twin-note">Size and layout follow Snapmaker's published figures (584 &times; 499 &times; 730 mm outside, 270 mm cube print space). Colours, panel tints and which side feeds which head are illustrative.</p>
+      </section>
+      <div class="col-stack now-side">
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Printer control</h2><p class="card-sub">Pause or stop the current print</p></div>
+          </div>
+          <div id="overview-control" data-module-body="printer_control"></div>
+          <div data-module-off="printer_control" hidden></div>
+        </section>
+        <section class="card liquid-glass">
+          <div class="card-head">
+            <div><h2>Print health</h2><p class="card-sub">A score out of 100 from maintenance, filament and pre-flight checks. Higher is better.</p></div>
+          </div>
+          <div id="health-host"></div>
+        </section>
+      </div>
+    </div>
+
     <section class="stats liquid-glass divider-row cols-4" aria-label="Printer totals">
+      <!-- All-time totals for the selected printer. -->
       <div class="stat" id="stat-hours-wrap">
         <span class="stat-key">Print hours</span>
         <span class="stat-val" id="stat-hours">—</span>
@@ -373,67 +412,36 @@
       </div>
     </section>
 
-    <div class="live-row">
-      <section class="card liquid-glass twin-card" data-tint id="twin-card">
+    <div class="grid-2" style="margin-bottom:20px;">
+      <section class="card liquid-glass">
         <div class="card-head">
-          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">Toolhead position and docks, live</p></div>
-          <div class="pill-toggle wf-views" id="wf-views" role="group" aria-label="View" hidden>
-            <button type="button" data-view="iso" class="active" aria-pressed="true">3D</button>
-            <button type="button" data-view="front" aria-pressed="false">Front</button>
-            <button type="button" data-view="top" aria-pressed="false">Top</button>
-          </div>
+          <div><h2>Maintenance</h2><p class="card-sub">Jobs that are due, by print hours since you last did them</p></div>
         </div>
-        <div id="twin-host" class="twin-host"></div>
+        <div id="overview-maintenance"></div>
       </section>
       <section class="card liquid-glass">
         <div class="card-head">
-          <div><h2>Print health</h2><p class="card-sub">Maintenance, filament and pre-flight in one number</p></div>
-        </div>
-        <div id="health-host"></div>
-      </section>
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Chamber climate</h2><p class="card-sub" id="ch-sub">Last 30 minutes</p></div>
+          <div><h2>Chamber climate</h2><p class="card-sub" id="ch-sub">Temperature inside the enclosure, last 30 minutes</p></div>
         </div>
         <div id="chamber-host"></div>
       </section>
     </div>
 
-    <div class="grid-2" style="margin-bottom:20px;">
+    <div class="grid-2">
       <section class="card liquid-glass">
         <div class="card-head">
-          <div><h2>Maintenance</h2><p class="card-sub">What's due right now</p></div>
+          <div><h2>Print cost</h2><p class="card-sub">Filament plus electricity, estimated as you go</p></div>
         </div>
-        <div id="overview-maintenance"></div>
+        <div id="cost-body"></div>
       </section>
-
-      <!-- The short control card and the pairing card share the column, so the
-           taller maintenance list beside them doesn't leave a hole. -->
-      <div class="col-stack">
-        <section class="card liquid-glass">
-          <div class="card-head">
-            <div><h2>Printer control</h2><p class="card-sub">Quick actions</p></div>
-          </div>
-          <div id="overview-control" data-module-body="printer_control"></div>
-          <div data-module-off="printer_control" hidden></div>
-        </section>
-
-        <section class="card liquid-glass pair-card">
-          <div>
-            <h2 style="margin-bottom:6px;">Sync this dashboard to your phone</h2>
-            <p class="card-sub" style="max-width:52ch;">No account, no cloud. The phone talks straight to this dashboard over your home network.</p>
-          </div>
-          <button class="btn primary" id="overview-pair-btn">Pair a device</button>
-        </section>
-      </div>
+      <section class="card liquid-glass pair-card">
+        <div>
+          <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
+          <p class="card-sub" style="max-width:52ch;">No account, no cloud. Your phone talks straight to this computer over your home Wi-Fi.</p>
+        </div>
+        <button class="btn primary" id="overview-pair-btn">Pair a phone</button>
+      </section>
     </div>
-
-    <section class="card liquid-glass">
-      <div class="card-head">
-        <div><h2>Print cost</h2><p class="card-sub">Filament + electricity, estimated as you go</p></div>
-      </div>
-      <div id="cost-body"></div>
-    </section>
   </section>
 
   <!-- ============================================================ -->
@@ -1216,6 +1224,7 @@
 <script src="backdrop.js"></script>
 <script src="viewer3d.js"></script>
 <script src="ar.js"></script>
+<script src="twin3d.js"></script>
 <script src="workshop.js"></script>
 <script src="studio.js"></script>
 <script src="farm.js"></script>
