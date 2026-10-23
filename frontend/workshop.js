@@ -211,6 +211,7 @@ const Workshop = (() => {
     updateChamberNow(state);
     renderChip();
     tintRoom(state);
+    window.dispatchEvent(new CustomEvent('dv-state', { detail: state }));
     if (fromCommand) refreshSoon();
   }
 
