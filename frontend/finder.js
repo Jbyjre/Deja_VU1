@@ -48,6 +48,7 @@ window.Finder = (() => {
     ['Automation rules', 'Automations', 'automations rules if this then notify trigger', 'Rules'],
     ['New automation rule', 'Automations', 'add rule create automation', 'New rule'],
     ['What fired', 'Automations', 'automation log history fired', 'What fired'],
+    ['Logbook · problems and fixes', 'Care', 'logbook log problems fixes clog jam repair history notes what fixed', 'Logbook'],
     ['Maintenance tasks', 'Care', 'upkeep service lube belts clean grease rods maintenance due', 'Maintenance'],
     ['Swapped a nozzle or hotend', 'Care', 'nozzle swap hotend change replace', 'Swapped a nozzle or hotend?'],
     ['Filament & colour', 'Care', 'filament colour color spool loaded', 'Filament & colour'],

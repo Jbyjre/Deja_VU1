@@ -89,6 +89,9 @@ API endpoints
   POST /api/files/restore            {"name"}
   POST /api/files/opened             {"name"}
   POST /api/convert                  {"name"} MakerWorld/NexPrint -> U1
+  GET  /api/logbook?q=               this printer's logbook: problems, fixes, print hours (search with q)
+  POST /api/logbook/add              {"problem", "fix", "tags"}
+  POST /api/logbook/<id>/fix | delete
   GET  /api/profiles/diff?a=&b=      side-by-side slicer settings
 
   Photo-to-Print Studio (the studio itself runs in the browser):
@@ -218,6 +221,7 @@ import app_updates
 import automations
 import backup
 import project_plates
+import logbook
 import process_settings
 import camera
 import color_check
@@ -381,6 +385,7 @@ _APP_ROUTES = {
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
+    "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
     # The camera's frozen-stream watchdog is about the camera relay, not
@@ -1157,6 +1162,20 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
             return self._send_json({"file": entry, "report": report})
+
+        if route.startswith("/api/logbook"):
+            if self._module_blocked("maintenance"):
+                return None
+            body = self._read_json_body()
+            demo = not mock_moonraker.is_connected()
+            if route == "/api/logbook/add":
+                return self._send_json(logbook.add(body.get("problem"), body.get("fix") or "", body.get("tags"), demo=demo))
+            parts = route.split("/")
+            if len(parts) == 5 and parts[4] == "fix":
+                return self._send_json(logbook.update(parts[3], fix=body.get("fix") or ""))
+            if len(parts) == 5 and parts[4] == "delete":
+                return self._send_json(logbook.delete(parts[3]))
+            return self._send_json({"error": "Unknown logbook action"}, status=404)
 
         if route.startswith("/api/automations"):
             if self._module_blocked("automations"):

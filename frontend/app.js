@@ -639,7 +639,7 @@ async function checkServer() {
  * shows its figures as real. */
 const realFetch = window.fetch.bind(window);
 const tour = { on: false, rec: null, started: 0, misses: new Set(),
-  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {} } };
+  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {} } };
 const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
 const TOUR_REFUSED = "This is the online demo: a recording of the simulated farm, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
@@ -723,6 +723,11 @@ async function tourGet(url) {
       if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); });
       return tourReply(body, tour.rec.bodies[rec].status);
     }
+  }
+  if (path === '/api/logbook') {
+    const mine = (tour.sim.logbook[printer] || []).slice().reverse(), q = (url.searchParams.get('q') || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const rows = mine.filter(e => q.every(w => (e.problem + ' ' + e.fix).toLowerCase().includes(w)));
+    return tourReply({ printer, entries: rows, open: rows.filter(e => !e.fix).length, connected: true, demo: true });
   }
   if (path === '/api/files') {
     const base = tour.rec.get[tourKey(path, new URLSearchParams({ printer }))];
@@ -935,6 +940,21 @@ function tourPost(url, body) {
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname.startsWith('/api/logbook')) {
+    const list = tour.sim.logbook[pid] || (tour.sim.logbook[pid] = []);
+    if (url.pathname === '/api/logbook/add') {
+      const problem = String(parsed.problem || '').trim().slice(0, 600);
+      if (!problem) return tourReply({ error: 'Say what happened' }, 400);
+      const e = { id: 'demo' + Date.now(), at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19), print_hours: null, problem, fix: String(parsed.fix || '').trim().slice(0, 600), tags: [], auto: false, demo: true };
+      list.push(e);
+      return tourReply(e);
+    }
+    const m = url.pathname.match(/^\/api\/logbook\/([^/]+)\/(fix|delete)$/), at = m ? list.findIndex(e => e.id === decodeURIComponent(m[1])) : -1;
+    if (at < 0) return tourReply({ error: 'That logbook entry no longer exists' }, 404);
+    if (m[2] === 'fix') { list[at].fix = String(parsed.fix || '').trim().slice(0, 600); return tourReply(list[at]); }
+    list.splice(at, 1);
+    return tourReply({ deleted: m[1] });
+  }
   if (url.pathname === '/api/fleet/route') {
     const to = String(parsed.to || ''), name = String(parsed.filename || '');
     const target = tour.rec.printers.includes(to) ? to : null;
