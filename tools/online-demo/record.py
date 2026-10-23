@@ -13,8 +13,11 @@ It starts the real server in a temporary data folder (your own settings and
 files are never read), turns on the sample files, asks every GET route the
 way the dashboard does, then reads the live feed once a second. Halfway
 through, the Workshop printer jams, so the recording shows what happens
-when a print needs you. Output: frontend/demo/ (recording.json, plus the
-sample files and their thumbnails, which the dashboard loads directly).
+when a print needs you. It also runs the 3MF converter on each sample
+project and keeps the real reports and converted files, so the demo's
+"Convert for Snapmaker U1" works. Output: frontend/demo/ (recording.json,
+plus the sample files and their thumbnails, which the dashboard loads
+directly).
 
 Re-run it when the screens or the routes change; the tests check that every
 GET route the server has is in the recording.
@@ -163,11 +166,28 @@ def record():
                         continue
                     keep(key_for(path, params), status, body)
 
+        # The converter, run for real on each sample project, so the online
+        # demo can show its actual reports and open the converted files.
+        posts, converted = {}, {}
+        for name in [n for n in names if n.endswith(".3mf")]:
+            status, body = srv.post("/api/convert", {"name": name})
+            posts["/api/convert?name=" + name] = {"status": status, "body": body}
+            out_name = (body.get("file") or {}).get("name") if status == 200 else None
+            if not out_name:
+                continue
+            _, listing = srv.get("/api/files")
+            entry = next((f for f in listing["files"] if f["name"] == out_name), None)
+            if entry:
+                converted[out_name] = entry
+            for pid in printers:
+                params = {"demo": 1, "printer": pid, "name": out_name}
+                keep(key_for("/api/files/plates", params), *srv.get("/api/files/plates", **params))
+
         shutil.rmtree(OUT, ignore_errors=True)
         os.makedirs(os.path.join(OUT, "files"))
         os.makedirs(os.path.join(OUT, "thumbs"))
         thumbs = []
-        for name in names:
+        for name in names + list(converted):
             status, raw = srv.get("/api/files/raw", name=name)
             if status == 200:
                 with open(os.path.join(OUT, "files", name), "wb") as f:
@@ -213,6 +233,8 @@ def record():
         "bodies": bodies,
         "files": names,
         "thumbs": thumbs,
+        "posts": posts,
+        "converted": converted,
         "frames": frames,
         "events": events,
     }

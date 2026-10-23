@@ -414,6 +414,28 @@ def _sliced_gcode(title, colours, types, body, thumb_tris, thumb_color, extra=()
     return "\n".join(head + w.lines + tail) + "\n"
 
 
+_CUTS = {}
+
+
+def _cut(tris):
+    """
+    Layers of a placed mesh. A mesh moved sideways has the same outlines,
+    moved, so each shape is cut once (keyed by its outline relative to its
+    own corner) and shifted for every later placement.
+    """
+    xs = [p[0] for t in tris for p in t]
+    ys = [p[1] for t in tris for p in t]
+    x0, y0 = min(xs), min(ys)
+    key = (len(tris), tuple(round(c - o, 3) for c, o in zip(tris[0][0], (x0, y0, 0.0))),
+           round(max(xs) - x0, 3), round(max(ys) - y0, 3), round(max(p[2] for t in tris for p in t), 3))
+    if key not in _CUTS:
+        local = [tuple((p[0] - x0, p[1] - y0, p[2]) for p in t) for t in tris]
+        zs = sample_slicer.layer_heights(max(p[2] for t in local for p in t))
+        _CUTS[key] = (zs, sample_slicer.contours(local, zs))
+    zs, layers = _CUTS[key]
+    return zs, [[[(x + x0, y + y0) for x, y in loop] for loop in layer] for layer in layers]
+
+
 def _layer_loop(w, objects, labelled=False):
     """
     Print several objects layer by layer. objects: [(name, triangles), ...].
@@ -422,9 +444,8 @@ def _layer_loop(w, objects, labelled=False):
     """
     sliced = []
     for name, tris in objects:
-        top = max(p[2] for t in tris for p in t)
-        zs = sample_slicer.layer_heights(top)
-        sliced.append((name, zs, sample_slicer.contours(tris, zs), tris))
+        zs, layers = _cut(tris)
+        sliced.append((name, zs, layers, tris))
     if labelled:
         for name, zs, layers, tris in sliced:
             xs = [p[0] for t in tris for p in t]
