@@ -180,7 +180,7 @@ def web_page(printer_id):
     Mainsail. Opened by the browser on your network; nothing is fetched here.
     """
     entry = next((p for p in registered() if p["id"] == printer_id), None)
-    match = re.match(r"(https?)://([^/:]+|\[[^\]]+\])", entry["moonraker_url"]) if entry else None
+    match = re.match(r"(https?)://(\[[^\]]+\]|[^/:]+)", entry["moonraker_url"]) if entry else None
     return f"{match.group(1)}://{match.group(2)}/" if match else None
 
 
