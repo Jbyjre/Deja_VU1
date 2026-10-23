@@ -105,7 +105,7 @@ class SlicerBridgeTest(unittest.TestCase):
         self.machine = _preset(self.tmp, "Snapmaker U1 (0.4 nozzle)", "machine")
         self.process = _preset(self.tmp, "0.20mm Standard", "process")
         self.filament = _preset(self.tmp, "Generic PLA", "filament")
-        file_library.save("dock_bracket.stl", sample_files.build("dock_bracket.stl"), origin="sample")
+        file_library.save("spur_gear_24t.stl", sample_files.build("spur_gear_24t.stl"), origin="sample")
 
     def tearDown(self):
         for key in ("FAKE_ORCA_MODE", "FAKE_ORCA_ARGS", "FAKE_ORCA_GCODE", slicer_bridge.ENV_PATH):
@@ -202,22 +202,22 @@ class TestSlicing(SlicerBridgeTest):
     def test_slices_into_the_library_with_the_command_orca_documents(self):
         profile = self.configure()
         slicer_bridge.check()
-        report = slicer_bridge.slice_model("dock_bracket.stl")
+        report = slicer_bridge.slice_model("spur_gear_24t.stl")
         with open(self.args_file) as fh:
             args = json.load(fh)
         self.assertEqual(args[:2], ["--slice", "0"])
         self.assertEqual(args[args.index("--load-settings") + 1], f"{self.machine};{self.process}")
         self.assertEqual(args[args.index("--load-filaments") + 1], self.filament)
-        self.assertTrue(args[-1].endswith("dock_bracket.stl"))
-        self.assertEqual(report["files"][0]["name"], "dock_bracket.gcode")
+        self.assertTrue(args[-1].endswith("spur_gear_24t.stl"))
+        self.assertEqual(report["files"][0]["name"], "spur_gear_24t.gcode")
         self.assertGreater(report["files"][0]["layers"], 0)
-        entry = file_library.describe("dock_bracket.gcode")
+        entry = file_library.describe("spur_gear_24t.gcode")
         self.assertEqual(entry["origin"], "sliced")
         self.assertIn(profile["name"], entry["note"])
         self.assertIn("2.3.2", entry["note"])
         # Slicing again never overwrites the first file.
-        again = slicer_bridge.slice_model("dock_bracket.stl")
-        self.assertEqual(again["files"][0]["name"], "dock_bracket-2.gcode")
+        again = slicer_bridge.slice_model("spur_gear_24t.stl")
+        self.assertEqual(again["files"][0]["name"], "spur_gear_24t-2.gcode")
 
     def test_gcode_is_refused(self):
         self.configure()
@@ -230,7 +230,7 @@ class TestSlicing(SlicerBridgeTest):
         os.environ["FAKE_ORCA_MODE"] = mode
         before = set(self.library_names())
         with self.assertRaisesRegex(slicer_bridge.SliceFailed, pattern) as ctx:
-            slicer_bridge.slice_model("dock_bracket.stl")
+            slicer_bridge.slice_model("spur_gear_24t.stl")
         self.assertEqual(set(self.library_names()), before)
         return ctx.exception.report
 
@@ -284,7 +284,7 @@ class TestSlicing(SlicerBridgeTest):
         self.configure()
         os.remove(self.process)
         with self.assertRaisesRegex(ValueError, "No file at"):
-            slicer_bridge.slice_model("dock_bracket.stl")
+            slicer_bridge.slice_model("spur_gear_24t.stl")
 
 
 class TestJobs(SlicerBridgeTest):
@@ -302,7 +302,7 @@ class TestJobs(SlicerBridgeTest):
             return real_add(filename, printer_id=printer_id)
 
         with unittest.mock.patch.object(print_queue, "add", slow_add):
-            job = slicer_bridge.start_job("dock_bracket.stl", queue_to="u1-garage")
+            job = slicer_bridge.start_job("spur_gear_24t.stl", queue_to="u1-garage")
             job = slicer_bridge.wait(job["id"])
         self.assertEqual(seen, ["running"])
         self.assertEqual(job["status"], "queued", job)
@@ -310,11 +310,11 @@ class TestJobs(SlicerBridgeTest):
     def test_slice_and_queue(self):
         self.configure()
         done = []
-        job = slicer_bridge.start_job("dock_bracket.stl", queue_to="u1-garage", on_done=done.append)
+        job = slicer_bridge.start_job("spur_gear_24t.stl", queue_to="u1-garage", on_done=done.append)
         job = slicer_bridge.wait(job["id"])
         self.assertEqual(job["status"], "queued", job)
         queued = print_queue.get("u1-garage")["items"]
-        self.assertEqual([i["filename"] for i in queued], ["dock_bracket.gcode"])
+        self.assertEqual([i["filename"] for i in queued], ["spur_gear_24t.gcode"])
         self.assertEqual(queued[0]["status"], "queued")     # queued, not started: the gate comes later
         self.assertEqual(mock_moonraker.printer_ids()[2], "u1-garage")
         time.sleep(0.1)
@@ -323,7 +323,7 @@ class TestJobs(SlicerBridgeTest):
     def test_failed_job_is_worded_and_listed(self):
         self.configure()
         os.environ["FAKE_ORCA_MODE"] = "config_error"
-        job = slicer_bridge.wait(slicer_bridge.start_job("dock_bracket.stl")["id"])
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"])
         self.assertEqual(job["status"], "failed")
         self.assertIn("preset", job["error"])
         self.assertEqual(slicer_bridge.jobs()["jobs"][0]["id"], job["id"])
@@ -332,27 +332,27 @@ class TestJobs(SlicerBridgeTest):
         self.configure()
         os.environ['FAKE_ORCA_GCODE']+='\nG90\nM83\nG1 X290 Y0 Z0.2 E5\n'
         with unittest.mock.patch.object(print_queue,'add',wraps=print_queue.add) as add:
-            job=slicer_bridge.wait(slicer_bridge.start_job('dock_bracket.stl',queue_to='u1-garage')['id'])
+            job=slicer_bridge.wait(slicer_bridge.start_job('spur_gear_24t.stl',queue_to='u1-garage')['id'])
         self.assertEqual(job['status'],'failed');self.assertIn('Pre-flight blocked',job['error'])
         self.assertEqual(job['report']['files'][0]['preflight'],'blocked');add.assert_not_called()
 
     def test_missing_engine_estimates_remain_unknown(self):
         profile=self.configure()
         os.environ['FAKE_ORCA_GCODE']='\n'.join(line for line in os.environ['FAKE_ORCA_GCODE'].splitlines() if not line.lstrip().startswith(';'))
-        report=slicer_bridge.slice_model('dock_bracket.stl',profile['id'])
+        report=slicer_bridge.slice_model('spur_gear_24t.stl',profile['id'])
         self.assertIsNone(report['files'][0]['filament_grams'])
         self.assertIsNone(report['files'][0]['estimated_hours'])
 
     def test_previous_output_is_remembered_for_what_changed(self):
         self.configure()
-        first = slicer_bridge.wait(slicer_bridge.start_job("dock_bracket.stl")["id"])
-        second = slicer_bridge.start_job("dock_bracket.stl")
+        first = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"])
+        second = slicer_bridge.start_job("spur_gear_24t.stl")
         self.assertEqual(second["previous"], first["report"]["files"][0]["name"])
         slicer_bridge.wait(second["id"])
 
     def test_refuses_to_start_without_a_slicer(self):
         with self.assertRaisesRegex(ValueError, "No slicer set up"):
-            slicer_bridge.start_job("dock_bracket.stl")
+            slicer_bridge.start_job("spur_gear_24t.stl")
 
 
 if __name__ == "__main__":
@@ -371,7 +371,7 @@ class TestAutoDetect(unittest.TestCase):
 class TestSliceCancellation(SlicerBridgeTest):
     def test_running_engine_is_stopped_and_never_queued(self):
         self.configure();os.environ['FAKE_ORCA_MODE']='hang'
-        job=slicer_bridge.start_job('dock_bracket.stl',queue_to=mock_moonraker.selected_printer_id())
+        job=slicer_bridge.start_job('spur_gear_24t.stl',queue_to=mock_moonraker.selected_printer_id())
         end=time.time()+5
         while not os.path.exists(self.args_file) and time.time()<end:time.sleep(.02)
         self.assertTrue(os.path.exists(self.args_file))
@@ -379,11 +379,11 @@ class TestSliceCancellation(SlicerBridgeTest):
         result=slicer_bridge.wait(job['id'],timeout=5)
         self.assertEqual(result['status'],'cancelled')
         self.assertIsNone(result['queued'])
-        self.assertEqual(self.library_names(),['dock_bracket.stl'])
+        self.assertEqual(self.library_names(),['spur_gear_24t.stl'])
 
     def test_other_printer_cannot_cancel_or_list_job(self):
         self.configure();os.environ['FAKE_ORCA_MODE']='hang'
-        job=slicer_bridge.start_job('dock_bracket.stl')
+        job=slicer_bridge.start_job('spur_gear_24t.stl')
         with mock_moonraker.selection_only('u1-studio'):
             with self.assertRaisesRegex(ValueError,'this printer'):slicer_bridge.cancel_job(job['id'])
             self.assertNotIn(job['id'],[j['id'] for j in slicer_bridge.jobs()['jobs']])
@@ -397,5 +397,5 @@ class TestExportedHeightContracts(SlicerBridgeTest):
         data.update(extruder_layer_height=['.1','.2','.1','.1'],nozzle_diameter=['.4']*4)
         with open(self.machine,'w',encoding='utf-8') as stream:json.dump(data,stream)
         with self.assertRaisesRegex(ValueError,'shared-height fallback is refused'):
-            slicer_bridge.slice_model('dock_bracket.stl')
+            slicer_bridge.slice_model('spur_gear_24t.stl')
         self.assertFalse(os.path.exists(self.args_file))

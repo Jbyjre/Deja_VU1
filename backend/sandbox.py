@@ -272,7 +272,7 @@ def _wrong_colour(toolhead):
 
 
 def _start(printer_id, params):
-    name = params.get("file") or "calibration_cube_20mm.gcode"
+    name = params.get("file") or "3dbenchy_pla.gcode"
     if not file_library.exists(name):
         if name in sample_files.SAMPLES:
             file_library.save(name, sample_files.build(name), origin="sample")
@@ -297,7 +297,7 @@ def _perform(printer_id, event, params):
         if event == "start_print":
             return _start(printer_id, params)
         if event == "queue_file":
-            name = params.get("file") or "calibration_cube_20mm.gcode"
+            name = params.get("file") or "3dbenchy_pla.gcode"
             if not file_library.exists(name) and name in sample_files.SAMPLES:
                 file_library.save(name, sample_files.build(name), origin="sample")
             print_queue.add(name, printer_id=printer_id)

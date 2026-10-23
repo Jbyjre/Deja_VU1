@@ -42,7 +42,7 @@ from fake_moonraker import FakeMoonraker, history_job   # noqa: E402
 from test_websocket import LiveClient                    # noqa: E402
 
 NO_PRINTER = {"connected": False, "demo": False}
-CUBE = "calibration_cube_20mm.gcode"
+CUBE = "3dbenchy_pla.gcode"
 
 
 def wait_for(check, seconds=6.0):

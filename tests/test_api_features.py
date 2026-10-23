@@ -176,9 +176,9 @@ class TestHonestControl(FeatureAPI):
         for task in maintenance.TASKS:
             maintenance.mark_done(task["id"])
         status, body = self.request("/api/printer/control/start?demo=1",
-                                    {"filename": "calibration_cube_20mm.gcode", "confirmed": True})
+                                    {"filename": "3dbenchy_pla.gcode", "confirmed": True})
         self.assertEqual(status, 200)
-        self.assertEqual(body["confirmed_state"]["current_file"], "calibration_cube_20mm.gcode")
+        self.assertEqual(body["confirmed_state"]["current_file"], "3dbenchy_pla.gcode")
 
 
 class TestFilesAndConversion(FeatureAPI):
@@ -213,7 +213,7 @@ class TestFilesAndConversion(FeatureAPI):
                                     "&b=sample_bambu_studio_layout_U1.3mf")
         changed = {r["setting"] for r in diff["rows"] if r["status"] == "changed"}
         self.assertIn("printer_settings_id", changed)
-        status, body = self.request("/api/convert", {"name": "calibration_cube_20mm.gcode"})
+        status, body = self.request("/api/convert", {"name": "3dbenchy_pla.gcode"})
         self.assertEqual(status, 400)
         self.assertEqual(body["code"], "CV-101")
         self.assertTrue(body["stage"] and body["action"])

@@ -100,7 +100,7 @@ class TestLiveFeed(unittest.TestCase):
             mock_moonraker.cancel_print()
         live_feed.tick(0.25)
         with mock_moonraker.use_printer("u1-workshop"):
-            printer_control.start_print("calibration_cube_20mm.gcode", confirmed=True)
+            printer_control.start_print("3dbenchy_pla.gcode", confirmed=True)
             mock_moonraker.set_time_scale(60)
         live_feed.refresh("u1-workshop")
         self.assertTrue(timelapse.is_recording("u1-workshop"))
@@ -111,7 +111,7 @@ class TestLiveFeed(unittest.TestCase):
         finished = [e for e in live_feed.events_since(0) if e.get("event") == "finished"]
         self.assertEqual(len(finished), 1)
         summary = finished[0]["summary"]
-        self.assertEqual(summary["file"], "calibration_cube_20mm.gcode")
+        self.assertEqual(summary["file"], "3dbenchy_pla.gcode")
         self.assertGreater(summary["cost"]["total_cost"], 0)
         sessions = timelapse.sessions("u1-workshop")
         self.assertTrue(sessions[0]["finished"])

@@ -519,7 +519,7 @@ const Farm = (() => {
       toolhead: `<label>Toolhead <select data-p="toolhead"><option value="active">Active one</option>
         ${['T0', 'T1', 'T2', 'T3'].map(t => `<option ${p.toolhead === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`,
       hours: `<label>Hours <input type="number" data-p="hours" min="1" max="2000" value="${p.hours || 60}"></label>`,
-      file: `<label>File <input type="text" data-p="file" value="${esc(p.file || 'calibration_cube_20mm.gcode')}"></label>`,
+      file: `<label>File <input type="text" data-p="file" value="${esc(p.file || '3dbenchy_pla.gcode')}"></label>`,
       accept: `<label class="sb-check"><input type="checkbox" data-p="accept_warnings" ${p.accept_warnings ? 'checked' : ''}> A person accepts its warnings</label>`,
     }[k])).join('');
   }
