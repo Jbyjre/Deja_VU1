@@ -290,6 +290,29 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 
 ## Lessons learned (each cost a re-render or a re-shoot)
 
+- (v14) The twin's head labels are rebuilt whenever the live state moves anything. Under the
+  filming clock several state updates arrive inside one filmed frame, so a press and a release a
+  frame apart hit two different label elements and no click fires (the first take's details never
+  opened). `twin3d` aims at the label where it is now and presses and releases in the same instant.
+  In real time that is about four rebuilds a second, so a click on a label can occasionally be
+  lost in the app too while a print runs (not changed here; worth a look).
+- (v14) The twin's glide runs per screen frame (`requestAnimationFrame`): at a low test frame rate
+  it lasts several times longer, so judge the drag and the glide only on 60 fps footage.
+- (v14) Starting two filming batches at once on a just-restarted machine failed both with "Cannot
+  fast-forward to the past": the page took longer than the 1.5 s `rec.open()` allows before
+  `pauseAt`. Run them one after the other, or start the second a minute later.
+- (v14) The filament inventory now starts empty, so a still of it says "No spools tracked";
+  `filament_v14` enters three spools first and the end card says spools were entered for the film.
+- (v14) A jam now shows as two Needs-you rows (the dock error it causes, then the jam): version
+  12's spotlight sat on the wrong row. Re-measure every callout on new footage.
+- (v14) With Confirm Print followed by a full-screen feature, the laptop stayed in the phone's
+  stepped-back pose: a change out of the phone now always moves the laptop, even full to full.
+- (v14) The workspace's 3D viewer now renders on this machine (frame 1 of `convert` shows the part),
+  so "Files ready for the U1" could become a "plenty more" card again.
+- (v14) Measured on the mix: clicks a median 5.5 dB and keystrokes 4.6 dB above the music (60 ms
+  RMS); the six keystrokes typed under the final chord and crash (55.5 s) sit under it, exactly as
+  in version 12, whose typing and final chord have the same offsets. Not checked by ear.
+
 - (v13) The owner: a new 60-second version in both shapes, told like a product-launch film (the
   problem and why the app exists, then the features, clearly and smoothly), the same keystrokes,
   exciting "elevator" jazz. Anthropic's own launch-film conventions are still not documented
@@ -511,6 +534,10 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 - HyperFrames telemetry was switched off (`npx hyperframes telemetry disable`).
 
 ## Rendering cost
+
+Version 14 (60 s each, 7 video windows from 7 shots plus 6 stills; 13 shots filmed, mostly in
+two parallel batches, about 3 s a frame for the 3D twin): the 16:9 cut rendered in 13 min 28 s,
+the 9:16 in 12 min 54 s (frame capture 12 min 44 s and 12 min 4 s, measured by the renderer).
 
 Version 13 (60 s each, 8 video windows from 7 shots plus 6 stills; all 13 shots re-filmed in two
 parallel batches in about 13 minutes): the 16:9 cut rendered in about 12 minutes, the 9:16 in about
