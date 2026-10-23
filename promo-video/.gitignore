@@ -11,3 +11,9 @@ node_modules/
 build/sfx_*.json
 build/music_*.json
 music/samples/
+# version 14 (V1 re-cut to 60 s): the same generated files, one folder down
+v14/*/assets/footage/
+v14/*/assets/audio/
+v14/*/.hyperframes/
+v14/build/sfx_*.json
+v14/build/music_*.json

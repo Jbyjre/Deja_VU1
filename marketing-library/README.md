@@ -103,6 +103,20 @@ social, so the music stays light).
 | `deja-vu1-launch-60s-9x16.mp4` | 1080 × 1920 | 60 s | Shorts, Reels, TikTok (version 13) |
 | `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | the longer version 12 cut |
 | `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | the longer version 12 cut |
+| `deja-vu1-launch-v1-60s-16x9.mp4` | 1920 × 1080 | 60 s | version 14: the owner's "V1" (version 12) cut to 60 s, with the new twin and background |
+| `deja-vu1-launch-v1-60s-9x16.mp4` | 1080 × 1920 | 60 s | version 14, the same cut for Shorts, Reels, TikTok |
+
+**Version 14 (23 October 2026), "V1 at 60 s":** version 12's story, music and sound, re-cut to
+exactly 60 s (40 bars of its 160 BPM jazz trio) and re-filmed from the current app. The digital
+twin gets the most time of any feature (9 s): the realistic 3D model turned by hand (it glides to
+a stop), a click on a toolhead opening its live details, then the same model as an engineering
+drawing and its Front view, with the estimated sizes marked "≈" and Snapmaker's outside size in the
+caption. The app's live Dots background is shown, never captioned: the cursor plays through it on
+the laptop while "how it works" is told, and the film's own scenery is the same dot field, with
+the app's ripple of lit dots on the music's hits. "Files ready for the U1" became a "plenty more"
+card and "get started" folded into the end card. Tests: 771. The end card says the spools and head
+colours were entered for the film. Its feature cards are in `08-feature-cards/v1-60s/`. Music
+credit as version 12: "Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0".
 
 Version 13 is told like a product-launch film: the problem first ("Every printer has its own
 screen. So you check them one by one. And miss the one that needs you."), the answer (the
@@ -149,6 +163,11 @@ README, forum posts, X, LinkedIn) and `-9x16.jpg` (1080 × 1920: Instagram and T
 | `10-get-it` | The end card: the three install lines |
 
 Remade with `promo-video/build/stills.sh` after any change to the video.
+
+`v1-60s/` holds version 14's cards (the "V1" cut at 60 s), made by `promo-video/v14/build/stills.sh`,
+15 cards, 30 files: the problem, what it is for, the title, how it works, every printer live, Needs
+you, Confirm Print, on your phone, prepare & slice, the digital twin's 3D model, the digital twin's
+drawing, automations, and plenty more, why trust it (771 automated tests), get it.
 
 ---
 
