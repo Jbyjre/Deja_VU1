@@ -762,8 +762,21 @@ async function tourGet(url) {
   const hit = tour.rec.get[tourKey(path, params)];
   if (hit === undefined) tour.misses.add(tourKey(path, params));
   if (hit === undefined) return tourReply({ error: "This part isn't in the online demo's recording", connected: false, demo: false }, 404);
-  const { status, body } = tour.rec.bodies[hit];
+  const { status, body } = await tourBody(hit);
   return tourReply(body, status);
+}
+
+/* Large recorded answers live in their own files (record.py, LARGE). */
+const tourLarge = new Map();
+async function tourBody(hit) {
+  const { status, body } = tour.rec.bodies[hit];
+  if (!body || !body.__file__) return { status, body };
+  if (!tourLarge.has(hit)) tourLarge.set(hit, realFetch('demo/' + body.__file__).then(r => r.json()));
+  return { status, body: await tourLarge.get(hit) };
+}
+async function tourAnswerFull(key) {
+  const hit = tour.rec.get[key];
+  return hit === undefined ? null : tourBody(hit);
 }
 
 /* ---- the online demo's simulation ------------------------------------------
@@ -841,7 +854,7 @@ function tourSimFor(pid) {
 function tourDone(pid, extra = {}) {
   return tourReply({ ok: true, online_demo: true, ...extra, confirmed_state: tourState(pid), server_ms: 0, connected: true, demo: true });
 }
-function tourControl(action, pid, body) {
+async function tourControl(action, pid, body) {
   const live = tourState(pid), sim = tourSimFor(pid);
   if (action === 'pause') {
     if (live.state !== 'printing') return tourReply({ error: `Nothing to pause: the printer is ${live.state}` }, 409);
@@ -902,7 +915,7 @@ function tourControl(action, pid, body) {
     const gate = tourAnswer(tourKey('/api/print/confirm', new URLSearchParams({ file: name, printer: pid })));
     if (gate && gate.body && gate.body.verdict === 'blocked') return tourReply({ error: 'Confirm Print blocked this file: ' + (gate.body.blocking || []).join('; ') }, 409);
     if (!body.confirmed) return tourReply({ error: 'Review Confirm Print first' }, 409);
-    const an = tourAnswer(tourKey('/api/files/analysis', new URLSearchParams({ name, printer: pid })));
+    const an = await tourAnswerFull(tourKey('/api/files/analysis', new URLSearchParams({ name, printer: pid })));
     const a = an && an.body || {};
     Object.assign(sim, { mode: 'printing', frozen: null, file: name, startedAt: Date.now(), doneBefore: 0, finishedLogged: false,
       totalHours: Math.max(0.05, a.estimated_hours || 0.5), layers: a.layers || 100, excluded: [],
@@ -926,7 +939,7 @@ function tourConvert(body) {
   return tourReply(rec.body, rec.status);
 }
 
-function tourPost(url, body) {
+async function tourPost(url, body) {
   if (url.pathname === '/api/tools/layer-plan' && typeof planLayers === 'function') {
     try { return tourReply(planLayers(JSON.parse(body || '{}'))); }
     catch (err) { return tourReply({ error: err.message }, 400); }
@@ -936,7 +949,7 @@ function tourPost(url, body) {
   const pid = url.searchParams.get('printer') || (typeof currentPrinter !== 'undefined' && currentPrinter) || tour.rec.default_printer;
   const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start)$/);
   if (control) {
-    const answer = tourControl(control[1], pid, parsed);
+    const answer = await tourControl(control[1], pid, parsed);
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);

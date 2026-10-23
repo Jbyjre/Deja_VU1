@@ -51,6 +51,10 @@ class TestRecording(unittest.TestCase):
             self.assertLess(i, len(self.rec["bodies"]), key)
         for name in self.rec["files"]:
             self.assertTrue(os.path.isfile(os.path.join(DEMO, "files", name)), name)
+        for entry in self.rec["bodies"]:
+            body = entry["body"]
+            if isinstance(body, dict) and "__file__" in body:
+                self.assertTrue(os.path.isfile(os.path.join(DEMO, body["__file__"])), body)
         for name in self.rec["thumbs"]:
             self.assertTrue(os.path.isfile(os.path.join(DEMO, "thumbs", name + ".png")), name)
 

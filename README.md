@@ -93,6 +93,51 @@ and every change is in the public history.
 
 ## What's new
 
+- **The real 3DBenchy in the sample files:** "Add sample files" now gives the actual
+  3DBenchy (public domain since February 2025), a 24-tooth involute gear and a twisted
+  vase instead of cubes and an L-bracket, with G-code cut from those models layer by
+  layer: a 240-layer Benchy, a Benchy + gear + vase plate whose objects can be skipped
+  one by one, and a three-colour coaster that changes heads on every top layer. The
+  Bambu, Elegoo and MakerWorld project samples carry the same models.
+- **Mixed layer heights you can read at a glance:** the new Layer stack (Files, and Tools
+  & filaments) works the way the U1 multi-nozzle work does: one fine base layer, and each
+  head prints a whole number of base layers per pass (×1, ×2, ×3). It shows the base range
+  your nozzles allow, crosses out what a nozzle can't print with the reason, draws a section
+  of the passes and has four smart set-ups (Balanced, Fastest, Finest detail, Same on all).
+  A "Mixed" profile adds the thick-layer mode (Consistent, Adaptive, Fixed) and edge tolerance.
+- **106 OrcaSlicer process settings:** the profile editor is laid out like Orca's own tabs
+  (Quality, Strength, Speed, Support, Others) with line widths, seams and scarf seams,
+  ironing, wall generator, 18 infill patterns, overhang speeds, accelerations, jerk, support
+  styles and interfaces, raft, skirt, brim, prime tower, spiral vase, fuzzy skin and object
+  labels. Every name and choice was checked against OrcaSlicer's option table. Blank means
+  "use the preset"; changed settings are marked, each can be reset, and a finder and a
+  Simple/Advanced switch keep it manageable.
+- **A Farm desk for planning the day** (Printers): a 24-hour dispatch timeline across every
+  printer (your hours shaded, finishes that wait for you marked), the best printer for a
+  file (material first, colour second, then when it's free), what each idle printer can
+  print right now, a filament outlook for everything queued, and "worth printing?" (cost per
+  piece and earnings per printer hour, reading `x24` in a file name as 24 pieces).
+<img src="docs/img/farm-desk.jpg" alt="The Farm desk: a 24-hour dispatch timeline for three simulated printers with queued jobs, your hours shaded and overnight finishes marked as waiting, and below it Best printer for a file, Print right now, Filament outlook and Worth printing">
+
+<img src="docs/img/telemetry.jpg" width="49%" alt="The Telemetry panel: state, file, layer, Z, progress, elapsed, remaining and finish time, bed and chamber against target, and a row per toolhead with temperature against target, a trace, filament, nozzle and swap counters"> <img src="docs/img/process-settings.jpg" width="49%" alt="The process settings editor in OrcaSlicer's layout: Quality, Strength, Speed, Support and Others tabs, a setting finder, Simple and Advanced, and the Speed tab's first-layer, per-feature, overhang and acceleration settings">
+
+- **Telemetry and a logbook:** a dense live readout on the Overview (every head's temperature
+  against target with a trace, filament, nozzle and swap counters; bed, chamber, position,
+  layer and timing), and a per-printer logbook in Care (problems, fixes and print hours,
+  searchable; reported failures are logged by themselves). Real printers' cards link to the
+  printer's own web page.
+- **Bambu Studio / MakerWorld to U1, front and centre:** a converter card at the top of Files
+  (choose a .3mf or try the three-plate MakerWorld sample; the report appears right there).
+- **A search that finds things:** Ctrl/Cmd+K or `/` opens a finder over every screen, setting,
+  action, printer and file, typo-tolerant, keyboard-driven, with recent picks.
+- **A more truthful twin and a working online demo:** parked heads now sit inside the chamber
+  as on the real machine, the screen sits above the door, and the window shows the lit
+  chamber. In the [online demo](https://deja-vu1.jmath1110.workers.dev/?demo) the print
+  controls, skip-object, temperatures, console, queueing, the logbook and the converter now
+  work in a simulation inside your browser, and the simulated heaters hold temperature with a
+  real heater's small ripple.
+- **The launch film on the front page:** the 60-second V1 film (16:9) opens the
+  [product page](https://deja-vu1.jmath1110.workers.dev/#film) and the top of this README.
 - **A realistic 3D model of your U1:** the Overview's digital twin is now a detailed
   model of the actual machine, built from Snapmaker's official product picture and
   published figures: the white rounded body and black rim, the smoked-glass door,
@@ -239,7 +284,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 <table>
 <tr>
 <td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The 3D twin with T0 picked: its tag outlined, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
-<td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The mixed-nozzle planner: T0 with a 0.2 mm nozzle at 0.08 mm and T1 with a 0.8 mm nozzle at 0.56 mm, a section view showing seven thin layers for every thick one, 375 layers against 54 for a 30 mm part, and a warning that the 0.08 mm prime-tower slabs are below the 0.8 mm nozzle's minimum"><br><sub><b>Mixed-nozzle planner:</b> a common layer grid, checked against Snapmaker's own limits.</sub></td>
+<td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The Layer stack: a 0.12 mm base layer, T0 and T1 with 0.4 mm nozzles printing every layer, T2 and T3 with 0.6 mm nozzles printing three base layers per pass at 0.36 mm, multiples a nozzle cannot print crossed out, a section of the passes and the Consistent, Adaptive and Fixed thick-layer modes"><br><sub><b>Layer stack:</b> one base layer, each head a whole multiple of it, with smart set-ups.</sub></td>
 </tr>
 </table>
 
@@ -251,7 +296,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 
 <sub>**Skip one object:** pick the failed part on the plate map, confirm, and the rest keep printing.</sub>
 
-<img align="right" width="300" src="docs/img/converter.jpg" alt="A MakerWorld project converted for the U1: saved as a new 3MF for the Snapmaker U1 with a 0.4 nozzle, all three plates re-placed on the 270 mm bed, the creator's own changes kept, and a Copy report button">
+<img align="right" width="300" src="docs/img/converter.jpg" alt="The converter card at the top of Files: Bambu Studio or MakerWorld project to Snapmaker U1, with the report for the three-plate MakerWorld sample: saved as a U1 copy, all three plates re-placed on the 270 mm bed and the creator's own changes kept">
 
 **Converting a MakerWorld project:** every plate lands where Snapmaker Orca
 expects it, the creator's own setting changes are kept and listed, and the
@@ -399,8 +444,10 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **771 tests in 147.9 seconds** on Python
-3.13.16/Linux, with app/demo servers stopped (the October 2026 interface refreshes added twelve).
+The latest clean full suite passed **783 tests in 428.9 seconds** on Python
+3.13.17/Linux, with app/demo servers stopped (the October 2026 "technical tools" round added
+twelve; the sample files now include real models, which makes some tests slower). The
+run before it passed 771 tests in 147.9 seconds.
 The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
 and was [merged](https://github.com/Jbyjre/Deja_VU1/pull/45). A follow-up targeted
 check passed 36 tests. Chromium checks at 1366/390 px covered editing, stable
@@ -417,6 +464,9 @@ recorded static demo passed at both widths.
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
 | App updates | Staging, restart and rollback tests | Stable release package unpublished; Windows/macOS validation remains |
+| Layer stack, Orca-style process settings | Unit tests for the thick-layer options and all 106 settings (names and choices checked against OrcaSlicer's option table); Chromium at 1366/390 px | No real slice with the new options in this round; whether an engine lists the thick-layer options is read from its own schema |
+| Farm desk, telemetry, logbook, finder, converter card | Unit tests (logbook, printer page link) and Chromium at 1366/390 px on the simulated farm | Real farms, real spools and real printers' web pages unverified |
+| Sample models | The 3DBenchy (CC0) reduced to 60,000 triangles with its edge structure unchanged; sample G-code checked by drawing its layers | The sample slicer is deliberately simple (no seams, supports or bridges) and says so in every file; not for printing |
 | Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
 
 Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified

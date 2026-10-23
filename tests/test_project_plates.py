@@ -18,7 +18,9 @@ class PlateSeparation(unittest.TestCase):
 
     def test_every_converted_plate_is_local_and_keeps_its_original(self):
         self.assertEqual(project_plates.describe_data(self.converted)['count'],3)
-        for index,count in [('1',40),('2',20),('3',20)]:
+        benchy,gear,vase=len(sample_files.benchy_triangles()),len(sample_files.gear_triangles()),len(sample_files.vase_triangles(0.8))
+        # Plate 1: a 3DBenchy and a gear; plate 2: a vase; plate 3: another Benchy.
+        for index,count in [('1',benchy+gear),('2',vase),('3',benchy)]:
             selected=project_plates.extract(self.converted,index)
             summary=mesh_tools.summarize(selected,'selected.3mf')
             self.assertEqual(summary['count'],count)
@@ -32,7 +34,7 @@ class PlateSeparation(unittest.TestCase):
 
     def test_source_bed_coordinates_and_repeated_extraction(self):
         selected=project_plates.extract(self.original,'3')
-        self.assertEqual(mesh_tools.summarize(selected,'plate.3mf')['count'],20)
+        self.assertEqual(mesh_tools.summarize(selected,'plate.3mf')['count'],len(sample_files.benchy_triangles()))
         again=project_plates.extract(selected,'1')
         self.assertEqual(mesh_tools.summarize(again,'plate.3mf')['bounds'],mesh_tools.summarize(selected,'plate.3mf')['bounds'])
 

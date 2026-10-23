@@ -31,6 +31,9 @@ trust the code and fix this file.
   (`promo-video/v14/`, its own build, sharing only capture/, footage and music/) is V1
   cut to 60 s with the twin and background. Version 15 (`promo-video/v15/`) is V2
   updated the same way. The original V1 and V2 files are kept beside both.
+- Next marketing video: show the 3DBenchy instead of the block/cube, then replace the film in
+  the README and on the product page (the owner, 23 October 2026; `promo-video/README.md` "Next
+  run" lists the stale names in `capture/shots.js`). Don't edit the video unless asked.
 - Every change must also be reflected in the online demo (the owner's rule,
   October 2026; README "For developers and AI coding sessions"). Frontend
   changes reach it by themselves, but check `/?demo` on a static server; a new
@@ -126,6 +129,13 @@ root should hand over to `welcome.html`.
   `tests/test_layer_planner.py`), `discovery.py` (Find printers: mDNS, then
   port 7125 on the private /24; `POST /api/printers/discover` and
   `/api/printers/test`).
+- `sample_files.py` + `sample_slicer.py` + `sample_assets/3dbenchy.stl`: the sample set (the
+  real 3DBenchy, CC0, 60k triangles; a gear and a vase from formulas) and a deliberately simple
+  slicer that cuts real layers for the sample G-code. Old cube/bracket names live in `LEGACY`.
+- `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
+  `PrintConfig.cpp`), served by `GET /api/slicer/schema` and used by `slicer_profiles.validate_options`.
+- `logbook.py`: per-printer problems/fixes/print hours (`/api/logbook`, module `maintenance`);
+  `live_feed` logs failures and reasoned pauses; demo entries are flagged and never mix.
 - `print_gate.py` (Confirm Print, re-checked by the server at start),
   `printer_control.py`, `maintenance.py` (7 tasks), `automations.py`,
   `notifications.py` (sent only by automation rules), `gcode_tools.py`
@@ -135,7 +145,9 @@ root should hand over to `welcome.html`.
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Script order: `app.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
-  `twin3d.js` → `workshop.js` → `studio.js` → `farm.js` → `launchpad.js`. `app.js` defines the shared globals the others
+  `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
+  `farm.js` → `launchpad.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` →
+  `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
@@ -167,6 +179,12 @@ root should hand over to `welcome.html`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
   404 and `app.js` hands over to it; `/?demo` and `/?dashboard` skip that.
+- `layer-stack.js` (mixed heights: base × N per head, smart set-ups; rules mirror
+  `slicing_contract.tool_layers`), `finder.js` (Ctrl/Cmd+K search), `desk.js` (Farm desk in
+  Printers), `telemetry.js` (Overview readout, fed by workshop's `dv-state` event),
+  `logbook.js` (Care). The online demo simulates POSTs for control, queue route, logbook and
+  convert in `app.js` (`tourSim`, `tourControl`); the recorder keeps real convert replies.
+- `media/`: the launch film for the product page (web encode under Cloudflare's 25 MiB limit).
 - `demo/`: the online demo's recording (`recording.json`, sample files),
   made by `tools/online-demo/record.py` (about 3 minutes). Where no server
   answers `/api/health`, `app.js` `startTour()` swaps `window.fetch` for

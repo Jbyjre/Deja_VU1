@@ -33,9 +33,10 @@ below identifies their source. For farm captures:
 | `twin-health-chamber.jpg` | Overview: the twin row (`.now-row`: 3D model, Printer control, Print health), printer U1 · Workshop; hide `.topbar` and `.live-pill` first so they don't overlap |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |
 | `twin-detail.jpg` | Overview: the digital twin (`#twin-card`) in 3D model mode, the T0 chip clicked so its details show |
-| `layer-planner.jpg` | Files: the Mixed-nozzle planner (`#tab-layerplan`) → Try a mixed-nozzle example |
+| `layer-planner.jpg` | Files: the Layer stack card (`.lp-card`) → Try a detail + speed example (`capture-round-four.js`) |
 | `add-printer.jpg` | Fleet → Add a printer, with the address of a running `tests/fake_moonraker.py` stand-in, then Test |
-| `converter.jpg` | Files → `sample_makerworld_three_plates.3mf` → Convert for Snapmaker U1: the report |
+| `converter.jpg` | Files: the converter card (`#convert-card`) → Try the 3-plate MakerWorld sample, with its report (`capture-round-four.js`) |
+| `farm-desk.jpg`, `telemetry.jpg`, `process-settings.jpg` | Printers → Farm desk (`#tab-desk`, three files queued); Overview → Telemetry (`#telemetry`); Files → Process profile → Find installed U1 profiles → Speed tab (`#np-settings`). All made by `capture-round-four.js` |
 | `sandbox.jpg`, `sandbox-farm.jpg` | Fleet → farm sandbox: add 6 printers, load "Jam mid-print", step 660 s |
 | `games.jpg` | Games → Pac-Man, before Start (the `#tab-games` card) |
 | `appearance.jpg` | Settings → Appearance (`#appearance-card`) |

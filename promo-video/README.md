@@ -3,6 +3,30 @@
 Launch-video tooling and historical cuts filmed from the app's simulated farm.
 These tools are separate from the Python-only application.
 
+**Next run: show the 3DBenchy (the owner, 23 October 2026; not filmed yet).** The owner asked
+that the next marketing video show the Benchy instead of "the weird block" (the L-shaped
+`dock_bracket.stl` in the prepare/slice scene and the 20 mm cube in Confirm Print and elsewhere),
+and that once it is rendered the new film replaces the current one in the repository README and on
+the product page. Nothing was re-filmed in the session that added this note. What changed in the
+app, and what the filming scripts must follow:
+
+- "Add sample files" now gives `3dbenchy.stl` (the real 3DBenchy, public domain since February
+  2025), `3dbenchy_pla.gcode` (cut from it, 240 layers), `benchy_gear_vase_skip_one.gcode`
+  (three labelled objects; skip `SPUR_GEAR.STL_ID_1_COPY_0`), `hex_coaster_three_colour.gcode`
+  (T0 to T2), `spur_gear_24t.stl`, `twisted_vase.stl`, the unsafe example (same name) and the three
+  3MF projects (now carrying the Benchy, gear and vase).
+- `capture/shots.js` still names the old files: line ~82 `two_colour_coaster.gcode` ->
+  `hex_coaster_three_colour.gcode`; line ~188 `calibration_cube_20mm.gcode` -> `3dbenchy_pla.gcode`;
+  lines ~241-242 `dock_bracket.stl` -> `3dbenchy.stl`. Update them before filming; the old names
+  are still buildable by `sample_files.build()` but no longer appear in the library.
+- After the render: re-encode the 16:9 cut for the web (under 25 MB, Cloudflare's per-file limit;
+  the current one is H.264 CRF 25, 30 fps, 1920x1080, AAC 128k, about 10 MB) to
+  `frontend/media/`, take a new poster frame (`frontend/media/*-poster.jpg`) and README picture
+  (`docs/img/launch-video-v1.jpg`, with the play button), and point `frontend/welcome.html`
+  (`#film`, and the `og:video` tags) and the README's "Watch the 60-second launch film" link at it.
+- Also worth showing now: the Layer stack (Files), the converter card, the Farm desk (Printers),
+  the Telemetry panel (Overview) and the Orca-style process settings.
+
 **Current status (version 13, October 2026):** two new 60-second cuts (the owner: "do a
 60-second video, in both formats"), retold the way product-launch films explain a feature: the
 problem first, the answer, how it works in one breath, then six features, each headline landing on

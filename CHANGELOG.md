@@ -3,6 +3,41 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — technical tools, the real Benchy and a working online demo
+
+- Sample files: the real 3DBenchy (public domain, CC0, since February 2025; reduced from
+  225,706 to 60,000 triangles with its edge structure unchanged), an involute 24-tooth
+  module-2 gear and a twisted vase replace the cubes and the L-bracket. A new, clearly
+  labelled sample slicer (`backend/sample_slicer.py`) cuts real layers from them: a
+  240-layer Benchy, a Benchy + gear + vase plate with skip-object labels, a three-colour
+  coaster. The 3MF project samples carry the new models. Old names stay buildable.
+- Mixed layer heights: the Layer stack (`frontend/layer-stack.js`) replaces the four loose
+  height boxes in the Files planner and Tools & filaments: a base layer, ×N per head, the
+  allowed range, crossed-out choices with reasons, a section view and four smart set-ups.
+  "Mixed" profiles add the thick-layer mode and tolerance; they reach an engine only when
+  its exported schema lists `extruder_layer_height_mode`.
+- Process settings: 106 OrcaSlicer settings in an Orca-style tabbed editor driven by one
+  table (`backend/process_settings.py`, `GET /api/slicer/schema`); names and choices
+  checked against OrcaSlicer's `PrintConfig.cpp`. Blank inherits; per-extruder list values
+  keep their shape. Not yet sliced with a real engine in this round.
+- Farm desk (`frontend/desk.js`): dispatch timeline, best printer, print right now, filament
+  outlook, worth printing. Telemetry panel (`frontend/telemetry.js`). Logbook
+  (`backend/logbook.py`, `frontend/logbook.js`, `/api/logbook`), with failures logged by
+  themselves. Real printers' cards link to the printer's own web page.
+- Converter card at the top of Files; finder (`frontend/finder.js`) over screens, settings,
+  actions, printers and files.
+- Online demo: print controls, skip-object, temperatures, homing, console, queueing, the
+  logbook and the converter (real recorded reports) work in an in-browser simulation;
+  everything else still says it's a recording.
+- Digital twin: parked heads inside the chamber, level with the carriage; touchscreen above
+  the door; lit chamber; clearer door glass. Simulated heaters report a small PID ripple.
+- Launch film: the 60-second V1 (16:9) on the product page and in the README (a 10 MB web
+  encode; the local server now answers byte ranges under `/media/`).
+- Fixed: embedded thumbnail text no longer appears as a G-code setting; the printer-page
+  link handles bracketed IPv6 addresses.
+- Noted for the next video run: show the Benchy, then replace the film in the README and on
+  the product page (`promo-video/README.md`, `build-prompts/09-launch-film-with-benchy.md`).
+
 ## Unreleased — a realistic 3D twin and a livelier background
 
 - Launch video version 14 ("V1 at 60 s"): version 12's 75-second film, its music and

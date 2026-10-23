@@ -38,6 +38,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "frontend", "demo")
 SECONDS = 150          # length of the loop
 JAM_AT = 75            # the Workshop printer jams here
+LARGE = 150_000        # answers bigger than this (bytes of JSON) get their own file
 
 # Routes the recording doesn't hold as fixed answers: the live feed is
 # recorded as a timeline, files and thumbnails as files, and the rest are
@@ -221,6 +222,17 @@ def record():
 
     if not events:
         raise RuntimeError("The recording has no events; the jam should have made one")
+    # Large answers (the analyses of the big sample G-code files) live in
+    # their own files, fetched only when that file is opened, so the demo's
+    # first download stays small. The page reads {"__file__": ...} bodies.
+    os.makedirs(os.path.join(OUT, "answers"), exist_ok=True)
+    for i, entry in enumerate(bodies):
+        text = json.dumps(entry["body"], separators=(",", ":"))
+        if len(text) > LARGE:
+            name = f"answers/{i}.json"
+            with open(os.path.join(OUT, name), "w", encoding="utf-8") as f:
+                f.write(text)
+            entry["body"] = {"__file__": name}
     recording = {
         "about": "A recording of Deja Vu1's simulated farm for the online demo. Not a real printer. "
                  "Made by tools/online-demo/record.py.",
