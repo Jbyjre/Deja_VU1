@@ -425,3 +425,80 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
   .ls-row, .ls-fig, .ls-mode { border: 1.5px solid var(--text); }
   .ls-chip[aria-checked="true"], .ls-kb[aria-checked="true"], .ls-seg button[aria-checked="true"] { outline: 2px solid var(--text); }
 }
+
+/* ---- Farm desk (desk.js): dispatch, best printer, outlook, worth --------- */
+.desk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 18px; margin-top: 18px; }
+.desk-card .card-head { gap: 12px; flex-wrap: wrap; }
+.dk-hours { display: flex; gap: 10px; flex-wrap: wrap; font: 500 12px/1 var(--font-mono); color: var(--text-faint); }
+.dk-hours select { min-height: 32px; font-family: var(--font-mono); margin-left: 6px; }
+.dk-scroll { overflow-x: auto; overscroll-behavior-x: contain; margin: 4px -4px 0; padding: 0 4px 6px; }
+.dk-grid { min-width: 860px; display: grid; gap: 6px; }
+.dk-lane { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.dk-name { display: grid; align-content: center; gap: 3px; min-width: 0; }
+.dk-name b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-name small { font: 500 11px/1.3 var(--font-mono); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dk-name small.is-printing { color: var(--ok-text); }
+.dk-name small.is-paused, .dk-name small.is-error { color: var(--warn-text); }
+.dk-track { position: relative; height: 46px; border-radius: 10px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .06); overflow: hidden; }
+.dk-ruler-row .dk-track { height: 22px; background: none; border: 0; overflow: visible; }
+.dk-ruler span { position: absolute; top: 4px; transform: translateX(-50%); font: 600 10px/1 var(--font-mono); color: var(--text-faint); }
+.dk-ruler span:first-child { transform: none; }
+.dk-now { position: absolute; left: 0; top: 18px; width: 2px; height: 9999px; background: var(--accent); pointer-events: none; }
+.dk-night { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(60, 70, 100, .07) 0 6px, transparent 6px 12px); }
+.dk-bar { position: absolute; top: 5px; bottom: 5px; display: grid; align-content: center; gap: 1px; padding: 0 8px 0 10px; border-radius: 8px; overflow: hidden; min-width: 6px;
+  background: color-mix(in oklch, var(--accent) 22%, white); border: 1px solid color-mix(in oklch, var(--accent) 45%, white); }
+.dk-bar.is-run { background: color-mix(in oklch, var(--ok) 24%, white); border-color: color-mix(in oklch, var(--ok) 55%, white); }
+.dk-bar.is-paused { background: color-mix(in oklch, var(--warn) 30%, white); border-color: color-mix(in oklch, var(--warn) 60%, white); }
+.dk-bar.is-unknown { background: repeating-linear-gradient(90deg, #eee 0 8px, #f8f8f8 8px 16px); border-style: dashed; border-color: #bbb; }
+.dk-bar.is-late { box-shadow: inset -3px 0 0 var(--warn); }
+.dk-bar b { font: 600 11px/1.15 var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.dk-bar i { font: 500 10px/1 var(--font-mono); font-style: normal; color: var(--text-dim); white-space: nowrap; }
+.dk-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; display: grid; }
+.dk-strip em { display: block; }
+.dk-wait { position: absolute; top: 21px; height: 3px; background: repeating-linear-gradient(90deg, var(--warn-text) 0 5px, transparent 5px 10px); opacity: .7; border-radius: 2px; }
+.dk-idle { position: absolute; inset: 0; display: grid; place-items: center start; padding-left: 12px; font: 500 11px/1 var(--font-mono); color: var(--text-faint); }
+.dk-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 10px 0 0; font-size: 11.5px; color: var(--text-faint); }
+.dk-k { display: inline-block; width: 18px; height: 10px; border-radius: 3px; margin-right: -4px; vertical-align: middle; border: 1px solid rgba(0, 0, 0, .15); }
+.dk-k.is-run { background: color-mix(in oklch, var(--ok) 24%, white); }
+.dk-k.is-paused { background: color-mix(in oklch, var(--warn) 30%, white); }
+.dk-k.is-queued { background: color-mix(in oklch, var(--accent) 22%, white); }
+.dk-k.is-wait { background: repeating-linear-gradient(90deg, var(--warn) 0 3px, transparent 3px 6px); }
+.dk-k.is-night { background: repeating-linear-gradient(135deg, rgba(60, 70, 100, .25) 0 3px, transparent 3px 6px); }
+.dk-pick { display: grid; gap: 4px; font-size: 12.5px; color: var(--text-dim); margin-bottom: 10px; }
+.dk-pick select { min-height: 36px; font-family: var(--font-mono); font-size: 12.5px; }
+.dk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dk-table th, .dk-table td { padding: 8px 6px; border-bottom: 1px solid rgba(0, 0, 0, .06); text-align: left; vertical-align: middle; }
+.dk-table thead th { font: 600 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); }
+.dk-table tbody th { font-weight: 600; }
+.dk-table tbody th small { display: block; margin-top: 2px; font: 500 11px/1.2 var(--font-mono); color: var(--text-faint); font-weight: 500; }
+.dk-table tr.is-best { background: color-mix(in oklch, var(--ok) 9%, transparent); }
+.dk-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dk-pill { margin-left: 6px; padding: 2px 7px; border-radius: 9px; background: var(--ok); color: #05210f; font: 700 10px/1.4 var(--font-mono); vertical-align: 1px; }
+.dk-heads { display: flex; flex-wrap: wrap; gap: 5px; }
+.dk-head { display: inline-flex; align-items: center; gap: 2px; padding: 3px 6px 3px 4px; border-radius: 8px; background: rgba(120, 120, 128, .1); font: 600 10.5px/1 var(--font-mono); }
+.dk-head i { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); }
+.dk-head i + i { margin-left: -4px; margin-right: 3px; }
+.dk-head.is-match { background: color-mix(in oklch, var(--ok) 16%, white); }
+.dk-head.is-close, .dk-head.is-unknown { background: color-mix(in oklch, var(--warn) 22%, white); }
+.dk-head.is-colour, .dk-head.is-material, .dk-head.is-missing { background: color-mix(in oklch, var(--bad) 14%, white); color: var(--bad-text); }
+.dk-note { margin: 8px 0 0; font-size: 11.5px; color: var(--text-faint); text-wrap: pretty; }
+.dk-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .25); }
+.dk-now-p + .dk-now-p { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0, 0, 0, .06); }
+.dk-now-p h3 { margin: 0 0 6px; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+.dk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dk-list li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+.dk-list li span { font: 500 11.5px/1.4 var(--font-mono); color: var(--text-faint); white-space: nowrap; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent-text); font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.dk-tag { padding: 2px 8px; border-radius: 9px; font: 600 11px/1.5 var(--font-mono); background: rgba(120, 120, 128, .12); }
+.dk-tag.is-ok { background: color-mix(in oklch, var(--ok) 18%, white); color: var(--ok-text); }
+.dk-tag.is-bad { background: color-mix(in oklch, var(--bad) 14%, white); color: var(--bad-text); }
+.dk-worth-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.dk-worth-form .dk-pick { flex: 1 1 220px; margin: 0; }
+.dk-worth-form label:not(.dk-pick) { display: grid; gap: 4px; font-size: 12.5px; color: var(--text-dim); }
+.dk-worth-form input { width: 110px; min-height: 36px; font-family: var(--font-mono); }
+.dk-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 12px 0 0; }
+.dk-facts div { padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .05); }
+.dk-facts dt { font: 600 10px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+.dk-facts dd { margin: 4px 0 0; font: 600 16px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.dk-facts .is-key { background: color-mix(in oklch, var(--accent) 12%, white); }
+@media (prefers-contrast: more) { .dk-track, .dk-bar, .dk-facts div { border: 1.5px solid var(--text); } }

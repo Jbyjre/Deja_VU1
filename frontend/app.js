@@ -639,7 +639,7 @@ async function checkServer() {
  * shows its figures as real. */
 const realFetch = window.fetch.bind(window);
 const tour = { on: false, rec: null, started: 0, misses: new Set(),
-  sim: { printers: {}, added: [], deleted: new Set(), console: {} } };
+  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {} } };
 const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
 const TOUR_REFUSED = "This is the online demo: a recording of the simulated farm, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
@@ -714,6 +714,16 @@ async function tourGet(url) {
   if (path === '/api/printer') return tourReply({ ...tourState(printer), connected: true, demo: true });
   if (path === '/api/fleet') return tourReply({ printers: tourFrame().frame.fleet.map(tourFleetCard) });
   if (path === '/api/printer/control/console') return tourReply({ log: tourConsole(printer), connected: true, demo: true });
+  if (path === '/api/fleet/queues' || path === '/api/queue') {
+    const rec = tour.rec.get[tourKey(path, new URLSearchParams({ printer }))];
+    if (rec !== undefined) {
+      const body = JSON.parse(JSON.stringify(tour.rec.bodies[rec].body));
+      const extra = pid => (tour.sim.queued[pid] || []);
+      if (path === '/api/queue' && Array.isArray(body.items)) body.items = body.items.concat(extra(printer));
+      if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); });
+      return tourReply(body, tour.rec.bodies[rec].status);
+    }
+  }
   if (path === '/api/files') {
     const base = tour.rec.get[tourKey(path, new URLSearchParams({ printer }))];
     if (base !== undefined) {
@@ -925,6 +935,15 @@ function tourPost(url, body) {
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname === '/api/fleet/route') {
+    const to = String(parsed.to || ''), name = String(parsed.filename || '');
+    const target = tour.rec.printers.includes(to) ? to : null;
+    if (!target) return tourReply({ error: 'Choose one of the demo printers' }, 400);
+    if (!(tour.rec.files || []).includes(name) && !tour.sim.added.some(f => f.name === name)) return tourReply({ error: `${name} isn't in the demo library` }, 400);
+    const list = tour.sim.queued[target] || (tour.sim.queued[target] = []);
+    list.push({ id: 'demo-' + Date.now(), filename: name, status: 'queued', note: 'online demo', added_at: new Date().toISOString().slice(0, 19), online_demo: true });
+    return tourReply({ routed: name, to: target, online_demo: true });
+  }
   if (url.pathname === '/api/files/opened') return tourReply({ ok: true, online_demo: true });
   if (url.pathname === '/api/files/delete') {
     const name = String(parsed.name || '');
