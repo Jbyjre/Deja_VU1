@@ -159,11 +159,12 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 <!-- ============ 2. Confirm Print ============ -->
 <section class="board" id="b-confirm">
   <span class="eyebrow"><i></i>Confirm Print</span>
-  <h2>Seven checks before a print starts. The server runs them again at the moment it starts.</h2>
+  <h2>Review the job. Then let the server check it again.</h2>
+  <p class="lede">Confirm Print brings seven checks and estimates into one review.</p>
   <div class="checks">
-    <div class="check"><h3>Printer ready?</h3><p>Idle (ready or finished), with no dock reporting an error.</p><span class="tag block">Blocks</span></div>
+    <div class="check"><h3>Printer ready?</h3><p>Idle or finished. A fault on a required tool blocks; an unused dock fault warns.</p><span class="tag block">Blocks or warns</span></div>
     <div class="check"><h3>Pre-flight</h3><p>Every move in the file: outside the 270 × 270 × 270 mm volume, below the bed, an unknown toolhead, too hot.</p><span class="tag block">Errors block · warnings ask</span></div>
-    <div class="check"><h3>Filament match</h3><p>Each toolhead the file uses has filament, in the colour it was sliced for, as the printer reports it.</p><span class="tag block">A mismatch blocks</span></div>
+    <div class="check"><h3>Filament match</h3><p>Compare required material and colour with reported filament. Unknowns ask for a visual check.</p><span class="tag block">A mismatch blocks</span></div>
     <div class="check"><h3>Nozzles</h3><p>The nozzle each toolhead was sliced for matches the one the printer reports fitted.</p><span class="tag block">A mismatch blocks</span></div>
     <div class="check"><h3>Spool weight</h3><p>Enough left on the matching spool, when the filament inventory is on.</p><span class="tag ask">Warns</span></div>
     <div class="check"><h3>Maintenance</h3><p>Any overdue task, such as a nozzle check or bed leveling.</p><span class="tag ask">Warns</span></div>
@@ -186,13 +187,14 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <li>Maintenance overdue: Nozzle check &amp; clean, Bed leveling check</li>
     </ul>
   </div>
-  <p class="foot">The seven checks and three verdicts are the ones documented in backend/print_gate.py.</p>
+  <p class="foot">Blocking errors refuse the start; warnings need acknowledgement; estimates are information. Checks do not guarantee a successful print. Physical U1 testing pending.</p>
 </section>
 
 <!-- ============ 3. Architecture ============ -->
 <section class="board" id="b-arch">
   <span class="eyebrow"><i></i>How it connects</span>
-  <h2>One connection per printer, shared by every module. Nothing to install on the printer.</h2>
+  <h2>Your computer runs it. Your browsers open it.</h2>
+  <p class="lede">Each printer shares its state with every module through one connection. Physical U1 testing is pending.</p>
   <div class="diagram">
     <svg viewBox="0 0 1104 560" role="img" aria-label="Each U1's Moonraker talks to the Deja Vu1 server on your computer over one WebSocket for live state and plain HTTP for commands. The server pushes a live view to your browsers and sends state outward to Home Assistant, WLED and notification services.">
       <defs>
@@ -212,7 +214,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <!-- links printer <-> server -->
       <line x1="262" y1="150" x2="410" y2="150" stroke="#2f6fd6" stroke-width="3" marker-end="url(#ahb)"/>
       <text x="270" y="134" font-family="IBM Plex Mono" font-size="12.5" fill="#2f6fd6" font-weight="600">WebSocket</text>
-      <text x="270" y="172" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">live state,</text><text x="270" y="188" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">every 0.25 s</text>
+      <text x="270" y="172" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">reported state,</text><text x="270" y="188" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">freshness varies</text>
       <line x1="410" y1="242" x2="262" y2="242" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
       <text x="270" y="226" font-family="IBM Plex Mono" font-size="12.5" fill="#3d4450" font-weight="600">HTTP</text>
       <text x="270" y="264" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">commands, history,</text>
@@ -222,7 +224,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <text x="446" y="60" font-family="Bricolage Grotesque" font-weight="700" font-size="22" fill="#1d2129">Deja Vu1 server</text>
       <text x="446" y="84" font-family="IBM Plex Mono" font-size="13" fill="#6a717d">your computer · Python standard library</text>
       <g font-family="Instrument Sans" font-weight="600" font-size="15" fill="#1d2129">
-        <rect x="446" y="106" width="144" height="54" rx="12" fill="#eef3fe" stroke="#9dbcf3"/><text x="462" y="130">Live feed</text><text x="462" y="149" font-family="IBM Plex Mono" font-weight="500" font-size="12" fill="#4a5260">every 250 ms</text>
+        <rect x="446" y="106" width="144" height="54" rx="12" fill="#eef3fe" stroke="#9dbcf3"/><text x="462" y="130">Live feed</text><text x="462" y="149" font-family="IBM Plex Mono" font-weight="500" font-size="12" fill="#4a5260">250 ms loop</text>
         <rect x="598" y="106" width="140" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="614" y="139">Confirm Print</text>
         <rect x="446" y="170" width="144" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="462" y="203">Fleet + queue</text>
         <rect x="598" y="170" width="140" height="54" rx="12" fill="#f3f4f6" stroke="#d3d6dc"/><text x="614" y="203">Automations</text>
@@ -245,16 +247,16 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <text x="950" y="164" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">the full dashboard</text>
       <rect x="934" y="206" width="148" height="108" rx="14" fill="#f3f4f6" stroke="#d3d6dc"/>
       <text x="950" y="242" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Phone</text>
-      <text x="950" y="266" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">paired with a</text>
-      <text x="950" y="283" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">short code, on</text>
-      <text x="950" y="300" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">your network</text>
+      <text x="950" y="266" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">same home Wi-Fi</text>
+      <text x="950" y="283" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">pairing optional</text>
+      <text x="950" y="300" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">no app login</text>
       <!-- outbound -->
       <line x1="592" y1="362" x2="592" y2="402" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
       <line x1="210" y1="402" x2="974" y2="402" stroke="#3d4450" stroke-width="2.5"/>
       <line x1="210" y1="402" x2="210" y2="440" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
       <line x1="592" y1="402" x2="592" y2="440" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
       <line x1="974" y1="402" x2="974" y2="440" stroke="#3d4450" stroke-width="2.5" marker-end="url(#ah)"/>
-      <text x="606" y="392" font-family="IBM Plex Mono" font-size="12.5" fill="#3d4450" font-weight="600">sends out only, over plain HTTP</text>
+      <text x="606" y="392" font-family="IBM Plex Mono" font-size="12.5" fill="#3d4450" font-weight="600">optional service connections</text>
       <rect x="80" y="446" width="260" height="76" rx="16" fill="#fcfcfb" stroke="#d3d6dc" stroke-width="1.5"/>
       <text x="100" y="478" font-family="Instrument Sans" font-weight="650" font-size="17" fill="#1d2129">Home Assistant</text>
       <text x="100" y="502" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">28 sensors, no MQTT broker</text>
@@ -266,28 +268,23 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <text x="864" y="502" font-family="IBM Plex Mono" font-size="12" fill="#4a5260">alerts your rules send</text>
     </svg>
   </div>
-  <p class="foot">Optional programs you install yourself, all off by default: OrcaSlicer (auto-print), go2rtc (low-latency camera), cloudflared (remote access). Nothing is fetched from the internet while Deja Vu1 runs.</p>
+  <p class="foot">Core: Python and a browser. Slicing, camera bridges and private remote access need separate tools. Optional notifications, integrations and update checks contact configured services. Remote access needs protection: there is no app login.</p>
 </section>
 
 <!-- ============ 4. Feature map ============ -->
 <section class="board" id="b-features">
   <span class="eyebrow"><i></i>What's in it</span>
-  <h2>Every feature, grouped by what it needs. Most need nothing but the printer.</h2>
+  <h2>Start with the workflow. Add what you need.</h2>
+  <p class="lede">Core app: Python and a browser. Printer operations still need physical U1 validation.</p>
   <div class="groups">
-    <div class="group" style="--c:var(--g-live)"><header><h3>Run the farm, print safely</h3><span class="count">19</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Live updates</li><li>Needs you</li><li>Finish time on the clock</li><li>Tab follows the print</li><li>Printer fleet</li><li>Start from your phone</li><li>Honest controls</li><li>File library</li><li>Layer/tool/speed inspection</li><li>Editable model plates</li><li>Pre-flight check</li><li>Mixed-nozzle planner</li><li>MakerWorld / NexPrint → U1</li><li>Skip one object</li><li>View on your desk (AR)</li><li>Automations</li><li>Print queue</li><li>Digital twin</li><li>+ health gauge, chamber, time-lapse and more</li></ul></div>
-    <div class="group" style="--c:var(--g-ready)"><header><h3>Care, control, the basics</h3><span class="count">8</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Maintenance reminders</li><li>Printer control</li><li>Push notifications</li><li>Update checker</li><li>Selected settings export</li><li>Camera bridge</li><li>Phone pairing</li><li>Print cost calculator</li></ul></div>
-    <div class="group" style="--c:var(--g-farm)"><header><h3>Running a farm, making things</h3><span class="count">3</span></header><span class="needs"><i></i>No hardware needed</span>
-      <ul><li>Fleet command center</li><li>Image projects + measured recipes</li><li>Farm sandbox</li></ul></div>
-    <div class="group" style="--c:var(--g-opt)"><header><h3>Optional, on by request</h3><span class="count">7</span></header><span class="needs"><i></i>Off until you switch it on</span>
-      <ul><li>Filament inventory</li><li>What changed?</li><li>Pre-print sanity check</li><li>WLED bridge</li><li>Home Assistant bridge</li><li>Auto-print pipeline</li><li>Low-latency camera</li></ul></div>
-    <div class="group" style="--c:var(--g-pend)"><header><h3>Hardware pending</h3><span class="count">2</span></header><span class="needs"><i></i>Logic built, parts not yet</span>
-      <ul><li>Dock status rings</li><li>"Right colour loaded?" sensor</li></ul></div>
-    <div class="group" style="--c:var(--g-games)"><header><h3>While you wait</h3><span class="count">10</span></header><span class="needs"><i></i>Games for long prints</span>
-      <ul><li>Sky Dash</li><li>Pong</li><li>Minesweeper</li><li>Tetris</li><li>Pac-Man</li><li>Brick Break</li><li>Blackjack</li><li>Asteroids</li><li>Snake</li><li>2048</li></ul></div>
+    <div class="group" style="--c:var(--g-live)"><header><h3>Watch the fleet</h3></header><span class="needs">Reported printer state</span><ul><li>Needs you: faults and paused jobs</li><li>Progress and finish estimates</li><li>3D twin and drawing</li><li>Up to 12 registered printers</li></ul></div>
+    <div class="group" style="--c:var(--g-ready)"><header><h3>Prepare a plate</h3></header><span class="needs">Separate compatible engine</span><ul><li>STL, OBJ and supported 3MF</li><li>Object edits and T0–T3 assignments</li><li>Profiles and per-object settings</li><li>Select one source-project plate</li></ul></div>
+    <div class="group" style="--c:var(--g-farm)"><header><h3>Inspect before starting</h3></header><span class="needs">File and printer checks</span><ul><li>Layers, tools and requested speeds</li><li>Pre-flight with line references</li><li>Confirm Print rechecks at start</li><li>Blocked output stays inspectable</li></ul></div>
+    <div class="group" style="--c:var(--g-opt)"><header><h3>Add your own services</h3></header><span class="needs">Configure when needed</span><ul><li>Notifications and automations</li><li>Spoolman import and inventory</li><li>WLED and Home Assistant</li><li>Camera bridges and remote access</li></ul></div>
+    <div class="group" style="--c:var(--g-pend)"><header><h3>Know the limits</h3></header><span class="needs">Physical U1 testing pending</span><ul><li>No real U1 print verified</li><li>Dock-ring drivers unfinished</li><li>Colour accuracy unmeasured</li><li>Vendor paint and textures limited</li></ul></div>
+    <div class="group" style="--c:var(--g-games)"><header><h3>Keep a recoverable copy</h3></header><span class="needs">Local app-data backup</span><ul><li>Versioned archive with checksums</li><li>Restore preview and validation</li><li>Separate recovered data folder</li><li>External engines backed up separately</li></ul></div>
   </div>
-  <p class="foot">Groups and counts follow the tables in this README. Settings → Modules switches each one on or off, and the server enforces it (three exceptions are listed under "What's in it").</p>
+  <p class="foot">Actual feature scope, not a hardware certification. Explore the labelled simulated farm before connecting a printer. Optional services and slicing have separate requirements.</p>
 </section>
 
 <!-- ============ 5. By the numbers ============ -->
@@ -295,8 +292,8 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
   <span class="eyebrow"><i></i>By the numbers</span>
   <h2>Small, checked, and free.</h2>
   <div class="tiles">
-    <div class="tile"><b>759</b><span>automated tests, run with nothing but Python</span><em>python3 -m unittest discover tests</em></div>
-    <div class="tile"><b>250<small>ms</small></b><span>between live updates, the rate Klipper itself reports at</span><em>backend/live_feed.py</em></div>
+    <div class="tile"><b>771</b><span>automated tests in the current suite</span><em>Software checks, not physical-print proof</em></div>
+    <div class="tile"><b>250<small>ms</small></b><span>server loop target; freshness depends on printer and network</span><em>backend/live_feed.py</em></div>
     <div class="tile"><b>12</b><span>printers on one dashboard, each with its own connection</span><em>backend/fleet.py</em></div>
     <div class="tile"><b>0</b><span>packages to install beyond Python</span><em>Dashboard only; slicing needs separate OrcaSlicer</em></div>
     <div class="tile"><b>7</b><span>maintenance tasks, tracked by hours, prints and calendar time</span><em>backend/maintenance.py</em></div>
@@ -304,6 +301,6 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
     <div class="tile"><b>27</b><span>printers in the farm sandbox: 3 built in, up to 24 added</span><em>backend/sandbox.py</em></div>
     <div class="tile"><b>270<small>mm</small></b><span>on each axis: the U1 build volume every pre-flight check measures against</span><em>backend/gcode_tools.py</em></div>
   </div>
-  <p class="foot">Each figure is read from the code or the test runner, not estimated.</p>
+  <p class="foot">Code limits and software checks, not performance guarantees. Up to 27 simulated sandbox printers is separate from the 12-printer registry. No physical U1 connection verified.</p>
 </section>
 </body></html>

@@ -66,10 +66,9 @@ Reset the sandbox afterwards (`POST /api/sandbox/reset?demo=1`).
 ## Explainers and the social card
 
 `boards.html` holds the five explainer boards (one `<section>` each) and
-`card.html` the social card. The card's pictures are `img/twin.jpg` (the
-digital twin card, captured like the screenshots above) and
-`img/fleet-cards.jpg`. Every fact on them comes from the code: the
-dock states from `backend/led_status.py`, the six checks from
+`card.html` the social card. The card's pictures are `img/twin.jpg` (the current
+3D model canvas) and `img/needs-you.jpg` (the attention panel). Every fact on them comes from the code: the
+dock states from `backend/led_status.py`, the seven checks from
 `backend/print_gate.py`, the counts from the README tables and the test
 runner. Change them when the code changes.
 
@@ -77,8 +76,8 @@ runner. Change them when the code changes.
 node tools/readme-images/render.js     # needs Playwright and a Chromium
 ```
 
-It writes PNGs into `tools/readme-images/out/` (ignored by git). Resize the
-boards to 1600 px wide and save as JPG quality 90 into `docs/img/` with
+It writes PNGs and 1600 px-wide, quality-90 JPG boards into
+`tools/readme-images/out/` (ignored by git). `sync.py` copies the boards into `docs/img/` with
 these names: `b-problem` → `explainer-silent-docks.jpg`, `b-confirm` →
 `explainer-confirm-print.jpg`, `b-arch` → `explainer-how-it-connects.jpg`,
 `b-features` → `explainer-whats-in-it.jpg`, `b-numbers` →
@@ -103,9 +102,10 @@ named in text.
 - `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
   earlier setup/studio captures, retained as historical comparisons.
 
-The boards and social card were refreshed, including the **759-test** count.
-Both **75-second** launch-video cuts were rebuilt (version 12). Older editorial
-feature crops still need updating. Do not label the whole media library current.
+The current boards use the **771-case** suite count. The October marketing
+refresh recaptures the main editorial images and supplies a separate campaign
+pack. Versioned films and historical engine screenshots keep their original
+provenance; the library index identifies what is current.
 
 [Workspace validation](../../docs/slicer-workspace-validation.md) records engine,
 browser, recovery and performance evidence, including rendering regressions.
@@ -120,3 +120,51 @@ layer-scrub frames. `tools/check-slicer-workspace.js` instead needs a dedicated
 local fixture app and configured engine. Keep recording/browser servers stopped
 while running `python3 -m unittest discover tests`. Media tools require Node,
 Playwright and Chromium; these are not app runtime dependencies.
+
+## October 2026 marketing refresh
+
+Use the actual app on an isolated simulated farm for product imagery:
+
+```bash
+node tools/readme-images/capture.js
+python3 tools/readme-images/sync.py --sources
+node tools/readme-images/render.js
+python3 tools/readme-images/sync.py
+node tools/readme-images/check-marketing.js /tmp/dejavu-marketing-review
+node tools/check-static-demo.js /tmp/dejavu-static-review
+```
+
+`capture.js` creates a temporary data folder, starts its own app server, and
+closes the browser/server on completion. It adds no real printer, never uses the
+owner’s app-data folder, and writes `out/captures/`. The sample conversion,
+refusal, test-pattern preview and sandbox scenario are actual UI interactions.
+Element captures hide the unrelated sticky header; viewport captures retain the
+normal layout. Phone images are browser viewports, not physical-phone evidence.
+
+Copy editorial JPGs to matching names in `docs/img/` and `marketing-library/`.
+The current 3D/front/top/phone twin views go in `04-digital-twin/`; the other
+editorial captures go in `03-screenshots/`. Copy `overview.jpg`, `fleet.jpg`,
+`phone.jpg`, `twin-3d-printing.jpg` (as `twin.jpg`) and `twin-drawing.jpg` into
+`frontend/img/`. The workspace image is the preserved
+`docs/img/slicer-after-workspace-1366.png`, copied to `frontend/img/workspace.png`;
+keep its historical Linux-validation caption. Copy `twin-model.jpg` as
+`tools/readme-images/img/twin.jpg` for the share card and `needs-you.jpg` beside it.
+
+The renderer also makes six subjects in landscape, square and portrait formats.
+Its source is `campaign.json`; `campaign.html` typesets that content, and
+`render.js` checks bounds and missing images at each output size. Copy the 18
+PNGs and `campaign-manifest.json` (as `captions.json`) into
+`marketing-library/09-current-campaign/`. Each manifest entry supplies the
+format, caption, text alternative and evidence limits. Inspect the final files;
+bounds checks do not establish good composition or accessibility.
+
+`sync.py` performs these copies, merges the capture records and writes
+`marketing-library/current-assets.json` with byte sizes and SHA-256 hashes.
+Run it after rendering; keep capture and render output together until it completes.
+
+The core app still requires no media packages. These authoring tools require
+Node, Playwright and Chromium; the copy script uses Python’s standard library.
+Boards render directly at 1600 px and quality 90. Share images
+remain PNG at their native sizes. Preserve versioned films and their music
+notices. Use the campaign pack for current standalone images, rather than
+silently relabelling old video stills.
