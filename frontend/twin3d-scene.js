@@ -78,7 +78,7 @@ const Twin3DScene = (() => {
         add(orient(slab(geo(), circle(2.6, 12), [0, 0], 4, 5.5, { bevel: 0.6, steps: 2 }), [DOOR.x0 + z[1], BODY.y0, z[0]], ...FRONT), 'rubber', { shell: true });
       }
     }
-    const scr = { x: 264, z: 408, w: 88, h: 64 };
+    const scr = { x: 196, z: 410, w: 88, h: 64 };   // above the door, right of centre, as in the picture
     add(orient(slab(geo(), rrect(scr.w, scr.h, 6, 6), [0, 0], 0, 4, { bevel: 1.2, steps: 2 }), [scr.x, BODY.y0, scr.z], ...FRONT), 'bezel', { shell: true });
     add(panel(geo(), [scr.x + 2, BODY.y0 - 4.2, scr.z], [37, 0, 0], [0, 0, 26], [0, -1, 0]), 'screen', { tex: 'screen', shell: true });
     add(panel(geo(), [42, BODY.y0 - 0.4, 412], [40, 0, 0], [0, 0, 7.5], [0, -1, 0]), 'decal', { tex: 'logo', kind: 'tex', shell: true });

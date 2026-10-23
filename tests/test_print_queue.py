@@ -31,20 +31,20 @@ class TestQueue(unittest.TestCase):
         maintenance.reset_log()
 
     def test_add_move_remove(self):
-        print_queue.add("calibration_cube_20mm.gcode")
-        q = print_queue.add("two_colour_coaster.gcode")
+        print_queue.add("3dbenchy_pla.gcode")
+        q = print_queue.add("hex_coaster_three_colour.gcode")
         first, second = q["items"]
         q = print_queue.move(second["id"], "up")
-        self.assertEqual(q["items"][0]["filename"], "two_colour_coaster.gcode")
+        self.assertEqual(q["items"][0]["filename"], "hex_coaster_three_colour.gcode")
         q = print_queue.remove(first["id"])
         self.assertEqual(len(q["items"]), 1)
         with self.assertRaises(ValueError):
-            print_queue.add("dock_bracket.stl")
+            print_queue.add("spur_gear_24t.stl")
 
     def test_clear_file_starts(self):
-        print_queue.add("calibration_cube_20mm.gcode")
+        print_queue.add("3dbenchy_pla.gcode")
         result = print_queue.start_next()
-        self.assertEqual(result["started"]["filename"], "calibration_cube_20mm.gcode")
+        self.assertEqual(result["started"]["filename"], "3dbenchy_pla.gcode")
         self.assertEqual(mock_moonraker.get_printer_state()["state"], "printing")
 
     def test_blocked_file_is_held_with_the_reason(self):
@@ -56,7 +56,7 @@ class TestQueue(unittest.TestCase):
 
     def test_warnings_hold_until_confirmed(self):
         maintenance.reset_log()                     # brings back overdue tasks
-        print_queue.add("calibration_cube_20mm.gcode")
+        print_queue.add("3dbenchy_pla.gcode")
         held = print_queue.start_next()
         if "started" in held:                       # nothing overdue in this history
             return
@@ -65,8 +65,8 @@ class TestQueue(unittest.TestCase):
         self.assertIn("started", started)
 
     def test_auto_advance_after_a_finish(self):
-        print_queue.add("calibration_cube_20mm.gcode")
-        print_queue.add("two_colour_coaster.gcode")
+        print_queue.add("3dbenchy_pla.gcode")
+        print_queue.add("benchy_gear_vase_skip_one.gcode")
         print_queue.set_auto_advance(True)
         print_queue.start_next()
         mock_moonraker.set_time_scale(600)
@@ -77,12 +77,12 @@ class TestQueue(unittest.TestCase):
                 break
         self.assertIsNotNone(finished)
         result = print_queue.on_print_finished(mock_moonraker.selected_printer_id())
-        self.assertEqual(result["started"]["filename"], "two_colour_coaster.gcode")
+        self.assertEqual(result["started"]["filename"], "benchy_gear_vase_skip_one.gcode")
         statuses = [i["status"] for i in print_queue.get()["items"]]
         self.assertEqual(statuses, ["done", "started"])
 
     def test_queues_are_per_printer(self):
-        print_queue.add("calibration_cube_20mm.gcode")
+        print_queue.add("3dbenchy_pla.gcode")
         self.assertEqual(print_queue.get("u1-studio")["items"], [])
 
 

@@ -74,8 +74,17 @@ def _split_list(value):
 def parse_metadata(text):
     """Settings and summary figures the slicer left in comment lines."""
     settings = {}
+    in_picture = False
     for line in text.splitlines():
         if not line.startswith(";"):
+            continue
+        # Embedded preview pictures are base64 text; their padding ("=")
+        # would otherwise read as a "key = value" setting.
+        if re.match(r";\s*thumbnail(?:_PNG|_JPG|_QOI)?\s+begin", line):
+            in_picture = True
+            continue
+        if in_picture:
+            in_picture = not re.match(r";\s*thumbnail(?:_PNG|_JPG|_QOI)?\s+end", line)
             continue
         match = _KV.match(line)
         if match:

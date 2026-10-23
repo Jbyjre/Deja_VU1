@@ -156,25 +156,25 @@ class TestRouting(FleetCommandTest):
         file_library.add_samples()
 
     def test_send_a_file_to_another_printer_s_queue(self):
-        result = fleet.route_file("calibration_cube_20mm.gcode", "u1-garage")
+        result = fleet.route_file("3dbenchy_pla.gcode", "u1-garage")
         self.assertEqual(result["to_name"], "U1 · Garage")
         self.assertEqual([i["filename"] for i in print_queue.get("u1-garage")["items"]],
-                         ["calibration_cube_20mm.gcode"])
+                         ["3dbenchy_pla.gcode"])
 
     def test_move_between_queues_keeps_the_item_on_refusal(self):
-        item = print_queue.add("two_colour_coaster.gcode", printer_id="u1-studio")["items"][0]
+        item = print_queue.add("hex_coaster_three_colour.gcode", printer_id="u1-studio")["items"][0]
         fleet.route_file(None, "u1-garage", "u1-studio", item["id"])
         self.assertEqual(print_queue.get("u1-studio")["items"], [])
-        self.assertEqual(print_queue.get("u1-garage")["items"][0]["filename"], "two_colour_coaster.gcode")
+        self.assertEqual(print_queue.get("u1-garage")["items"][0]["filename"], "hex_coaster_three_colour.gcode")
         # A refused move (models can't be queued) leaves the source alone.
         with self.assertRaisesRegex(ValueError, "Only G-code"):
-            fleet.route_file("dock_bracket.stl", "u1-workshop")
+            fleet.route_file("spur_gear_24t.stl", "u1-workshop")
         moved = print_queue.get("u1-garage")["items"][0]
         with self.assertRaisesRegex(ValueError, "already on that printer"):
             fleet.route_file(None, "u1-garage", "u1-garage", moved["id"])
 
     def test_started_items_do_not_move(self):
-        item = print_queue.add("calibration_cube_20mm.gcode", printer_id="u1-studio")["items"][0]
+        item = print_queue.add("3dbenchy_pla.gcode", printer_id="u1-studio")["items"][0]
         data = print_queue._load()
         data["u1-studio"]["items"][0]["status"] = "started"
         print_queue._save(data)

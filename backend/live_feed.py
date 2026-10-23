@@ -36,6 +36,7 @@ import modules
 import cost_calculator
 import filament_inventory
 import fleet
+import logbook
 import mock_moonraker
 import print_queue
 import timelapse
@@ -222,6 +223,8 @@ def _detect_locked(printer_id, state, finish_event):
                 timelapse.begin(printer_id, state.get("current_file"), "simulated" if simulated else "camera")
             elif name in ("finished", "failed", "cancelled"):
                 timelapse.finish(printer_id)
+            if name in ("paused", "failed") and modules.is_enabled("maintenance"):
+                logbook.record_event(printer_id, name, state, simulated)
             if name == "finished" and modules.is_enabled("print_queue"):
                 threading.Thread(target=_advance_queue, args=(printer_id,), daemon=True).start()
     if events and side_effects and modules.is_enabled("automations"):

@@ -89,6 +89,9 @@ API endpoints
   POST /api/files/restore            {"name"}
   POST /api/files/opened             {"name"}
   POST /api/convert                  {"name"} MakerWorld/NexPrint -> U1
+  GET  /api/logbook?q=               this printer's logbook: problems, fixes, print hours (search with q)
+  POST /api/logbook/add              {"problem", "fix", "tags"}
+  POST /api/logbook/<id>/fix | delete
   GET  /api/profiles/diff?a=&b=      side-by-side slicer settings
 
   Photo-to-Print Studio (the studio itself runs in the browser):
@@ -97,6 +100,7 @@ API endpoints
 
   Auto-print pipeline (OrcaSlicer, a program you install; off by default):
   GET  /api/slicer/settings | POST   {"slicer_path", "timeout_s", "default_profile"}
+  GET  /api/slicer/schema            the process settings the profile editor shows (Orca names, limits)
   POST /api/slicer/check             runs "<slicer> --help": is it there, which version?
   POST /api/slicer/profiles          {"name", "machine", "process", "filaments": [...]}
   POST /api/slicer/profiles/<id>/remove
@@ -200,6 +204,7 @@ figures.
 import ipaddress
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -216,6 +221,8 @@ import app_updates
 import automations
 import backup
 import project_plates
+import logbook
+import process_settings
 import camera
 import color_check
 import comparison
@@ -377,6 +384,8 @@ _DATA_ROUTES = {
 _APP_ROUTES = {
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
+    "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
+    "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
     # The camera's frozen-stream watchdog is about the camera relay, not
@@ -484,7 +493,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
     # every Python install has these in.
     extensions_map = {**SimpleHTTPRequestHandler.extensions_map,
                       ".webmanifest": "application/manifest+json", ".svg": "image/svg+xml",
-                      ".js": "text/javascript", ".css": "text/css"}
+                      ".js": "text/javascript", ".css": "text/css", ".mp4": "video/mp4"}
 
     def __init__(self, *args, **kwargs):
         # Tell the built-in file server to serve out of the frontend folder.
@@ -679,7 +688,47 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/"):
             return self._dispatch(self._handle_api_get)
         # Not an API call, so serve a file from the frontend folder.
+        if self.path.startswith("/media/") and self.headers.get("Range"):
+            return self._send_media_range()
         return super().do_GET()
+
+    def _send_media_range(self):
+        """
+        Videos under /media/ answer a single "Range: bytes=a-b" request, so the
+        launch video on the product page can be scrubbed. Anything else falls
+        back to the ordinary whole-file reply.
+        """
+        path = self.translate_path(self.path)
+        match = re.fullmatch(r"bytes=(\d*)-(\d*)", self.headers.get("Range", "").strip())
+        if not match or not os.path.isfile(path) or not path.startswith(os.path.join(_FRONTEND_DIR, "media")):
+            return super().do_GET()
+        size = os.path.getsize(path)
+        first, last = match.groups()
+        if first == "":
+            start, end = max(0, size - int(last or 0)), size - 1
+        else:
+            start, end = int(first), min(size - 1, int(last) if last else size - 1)
+        if start > end or start >= size:
+            self.send_response(416)
+            self.send_header("Content-Range", f"bytes */{size}")
+            self.end_headers()
+            return None
+        self.send_response(206)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.end_headers()
+        with open(path, "rb") as f:
+            f.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = f.read(min(65536, left))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+        return None
 
     def do_HEAD(self):
         if not self._host_allowed():
@@ -1113,6 +1162,20 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
             return self._send_json({"file": entry, "report": report})
+
+        if route.startswith("/api/logbook"):
+            if self._module_blocked("maintenance"):
+                return None
+            body = self._read_json_body()
+            demo = not mock_moonraker.is_connected()
+            if route == "/api/logbook/add":
+                return self._send_json(logbook.add(body.get("problem"), body.get("fix") or "", body.get("tags"), demo=demo))
+            parts = route.split("/")
+            if len(parts) == 5 and parts[4] == "fix":
+                return self._send_json(logbook.update(parts[3], fix=body.get("fix") or ""))
+            if len(parts) == 5 and parts[4] == "delete":
+                return self._send_json(logbook.delete(parts[3]))
+            return self._send_json({"error": "Unknown logbook action"}, status=404)
 
         if route.startswith("/api/automations"):
             if self._module_blocked("automations"):

@@ -131,7 +131,7 @@
 <main class="wrap">
   <section class="launch-strip" aria-label="Setup and feature finder">
     <div><p class="eyebrow">DEJA VU1 / YOUR WORKSHOP</p><strong id="private-greeting">Your print bench</strong></div>
-    <div class="feature-finder"><label class="sr-only" for="feature-search">Find a feature</label><input id="feature-search" type="search" placeholder="Find a feature…" autocomplete="off"><div id="feature-results" hidden></div></div>
+    <div class="feature-finder"><label class="sr-only" for="feature-search">Search screens, settings, printers and files</label><input id="feature-search" type="search" placeholder="Search screens, printers, files…" autocomplete="off" spellcheck="false"><div id="feature-results" class="liquid-glass" hidden></div></div>
     <button class="btn" id="setup-open">Set up &amp; help</button>
     <button class="btn" id="camera-open">Camera</button>
   </section>
@@ -515,6 +515,20 @@
   <!-- FILES                                                         -->
   <!-- ============================================================ -->
   <section id="tab-files" class="tab-panel" hidden>
+    <section class="card liquid-glass convert-card" id="convert-card" aria-labelledby="cv-title">
+      <div class="cv-copy">
+        <span class="eyebrow">CONVERTER · 3MF PROJECTS</span>
+        <h2 id="cv-title">Bambu Studio or MakerWorld project <span aria-hidden="true">→</span><span class="sr-only">to</span> Snapmaker U1</h2>
+        <p class="card-sub">Keeps the designer's walls, infill, supports and prime tower. Swaps the printer and filament presets for U1 ones and re-places every plate on the U1's 270 mm bed. Your original file is never changed; the U1 copy is saved beside it.</p>
+        <ol class="cv-steps"><li>Choose a .3mf</li><li>Read the report</li><li>Open the U1 copy and slice</li></ol>
+      </div>
+      <div class="cv-actions">
+        <label class="btn primary cv-pick">Choose a .3mf…<input type="file" id="cv-file" accept=".3mf"></label>
+        <button class="btn" id="cv-sample" type="button">Try the 3-plate MakerWorld sample</button>
+        <p class="field-hint" id="cv-note" role="status" aria-live="polite">Also works for Elegoo Slicer projects. Files made for another U1 are left as they are.</p>
+      </div>
+      <div class="cv-report" id="cv-report" hidden></div>
+    </section>
     <div class="files-layout">
       <section class="card liquid-glass files-library" data-browser-only>
         <div class="card-head">
@@ -616,23 +630,19 @@
     </section>
 
     <section id="tab-layerplan" class="tab-sub" aria-labelledby="sub-layerplan-title">
-      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed-nozzle planner</h2>
-        <p>A different nozzle and layer height on each toolhead: fine detail where it shows, thick fast layers inside</p></div>
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed layer heights</h2>
+        <p>Fine layers where detail shows, thick fast layers where it doesn't: each head prints a whole number of base layers at once</p></div>
       <section class="card liquid-glass lp-card">
-        <div class="card-head"><div><h2>Plan the layers</h2><p class="card-sub">Pick each toolhead's nozzle and the layer height you'd like. The planner finds the shared layer grid, the way mixed-nozzle slicers do, and checks each height against Snapmaker's U1 profile for that nozzle.</p></div>
-          <button class="btn small" type="button" id="lp-example">Try a mixed-nozzle example</button></div>
-        <div class="lp-layout">
-          <form class="lp-form" id="lp-form" novalidate>
-            <div class="lp-rows" id="lp-rows"></div>
-            <div class="lp-more">
-              <label>Part height <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
-              <label class="switch" for="lp-exact"><span class="switch-label">Exact heights (slower to slice)</span>
-                <input type="checkbox" id="lp-exact"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label>
-            </div>
-          </form>
-          <div class="lp-out" id="lp-out" aria-live="polite"></div>
-        </div>
-        <p class="lp-source">This plans layer heights; it does not slice a model. Limits come from Snapmaker's U1 machine profiles. Use a slicer that supports per-toolhead layer heights and check its preview. Confirm Print checks each fitted nozzle before starting.</p>
+        <div class="card-head"><div><h2>Layer stack</h2><p class="card-sub">Choose one fine base layer, then how many base layers each head prints in one pass (×1, ×2, ×3…). Choices a nozzle can't print are crossed out, with the reason. Or press a smart set-up and adjust.</p></div>
+          <button class="btn small" type="button" id="lp-example">Try a detail + speed example</button></div>
+        <form class="lp-form" id="lp-form" novalidate>
+          <div id="lp-stack"></div>
+          <div class="lp-more">
+            <label>Part height, for pass counts <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
+            <button class="btn small" type="button" id="lp-fitted">Use this printer's fitted nozzles</button>
+          </div>
+        </form>
+        <p class="lp-source">This plans layer heights; it does not slice a model. Nozzle limits come from Snapmaker's U1 machine profiles. To slice with it, save the same heights in Prepare → Tools &amp; filaments and choose "Mixed" in a process profile; that needs an engine that lists per-head layer heights. Confirm Print checks each fitted nozzle before starting.</p>
       </section>
     </section>
   </section>
@@ -1236,8 +1246,13 @@
 <script src="twin3d.js"></script>
 <script src="workshop.js"></script>
 <script src="studio.js"></script>
+<script src="layer-stack.js"></script>
 <script src="farm.js"></script>
 <script src="launchpad.js"></script>
+<script src="finder.js"></script>
+<script src="desk.js"></script>
+<script src="telemetry.js"></script>
+<script src="logbook.js"></script>
 <script src="printroom.js"></script>
 <script src="plate.js"></script>
 <script src="gcode-view.js"></script>

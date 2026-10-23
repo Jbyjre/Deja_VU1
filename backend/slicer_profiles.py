@@ -8,21 +8,16 @@ from pathlib import Path
 import uuid
 
 import layer_planner
+import process_settings
 import storage
 import slicing_contract
 
 _DATA_DIR = storage.DATA_DIR
 MAX_FILES = 5000
 MAX_BYTES = 4 * 1024 * 1024
-NUMBERS = {"layer_height": (.04, .56), "initial_layer_print_height": (.04,.56), "wall_loops": (1, 20),
-           "top_shell_layers": (0, 30), "bottom_shell_layers": (0, 30),
-           "outer_wall_speed": (5, 500), "inner_wall_speed": (5, 500),
-           "sparse_infill_speed": (5, 500), "travel_speed": (10, 700)}
-NUMBERS.update({'initial_layer_speed': (5, 150), 'top_surface_speed': (5, 500),
-                'internal_solid_infill_speed': (5, 500), 'support_speed': (5, 500),
-                'support_threshold_angle': (0, 90), 'brim_width': (0, 30),
-                'skirt_loops': (0, 20), 'skirt_distance': (0, 30),
-                'line_width': (.1, 1.2), 'seam_gap': (0, .5)})
+# The process settings and their limits live in process_settings.py (the
+# same table the profile editor is drawn from).
+NUMBERS = {k: (o["min"], o["max"]) for k, o in process_settings.OPTIONS.items() if "min" in o}
 FILAMENT_NUMBERS = {'nozzle_temperature': (170, 320), 'nozzle_temperature_initial_layer': (170, 320),
                     'hot_plate_temp': (0, 110), 'hot_plate_temp_initial_layer': (0, 110),
                     'filament_flow_ratio': (.5, 1.5), 'filament_max_volumetric_speed': (1, 50),
@@ -100,7 +95,7 @@ def catalog(program, preset_folder=None):
                      'compatible_printers': d.get('compatible_printers') or [],
                      'nozzles': resolved.get('nozzle_diameter'),
                      'layer_height': resolved.get('layer_height'),
-                     'options': {k: resolved[k] for k in list(NUMBERS)+['sparse_infill_density','sparse_infill_pattern','enable_support','support_type','seam_position','brim_type'] if k in resolved},
+                     'options': {k: resolved[k] for k in process_settings.OPTIONS if k in resolved},
                      'material_options': {k: resolved[k] for k in FILAMENT_NUMBERS if k in resolved},
                      'material': (resolved.get('filament_type') or [None])[0]})
     return {'presets': rows, 'available': bool(rows),
@@ -128,31 +123,20 @@ def resolve(key, entries, stack=()):
 
 
 def validate_options(options):
+    """Check every requested process setting against process_settings; refuse anything else."""
     if not isinstance(options,dict):
         raise ValueError("Print settings must be a settings object")
-    out = {}
-    for key,value in options.items():
-        if key in NUMBERS:
-            try:n=float(value)
-            except (TypeError,ValueError):raise ValueError(f"{key} needs a number")
-            lo,hi=NUMBERS[key]
-            if not math.isfinite(n) or not lo <= n <= hi:
-                raise ValueError(f"{key} must be between {lo} and {hi}")
-            if key in ('wall_loops','top_shell_layers','bottom_shell_layers','skirt_loops') and not n.is_integer():
-                raise ValueError("Wall and shell counts must be whole numbers")
-            out[key]=str(int(n) if n.is_integer() else n)
-        elif key == 'sparse_infill_density':
-            try:n=float(str(value).rstrip('%'))
-            except (TypeError,ValueError):raise ValueError("Infill must be a percentage")
-            if not math.isfinite(n) or not 0 <= n <= 100:raise ValueError("Infill must be between 0 and 100%")
-            out[key]=f'{n:g}%'
-        elif key == 'enable_support' and isinstance(value,bool):out[key]='1' if value else '0'
-        elif key == 'sparse_infill_pattern' and value in ('grid','gyroid','rectilinear','honeycomb'):out[key]=value
-        elif key == 'support_type' and value in ('normal(auto)','tree(auto)'):out[key]=value
-        elif key == 'seam_position' and value in ('nearest','aligned','back','random'):out[key]=value
-        elif key == 'brim_type' and value in ('no_brim','outer_only','inner_only','outer_and_inner'):out[key]=value
-        else:raise ValueError(f"Unsupported print setting: {key}")
-    return out
+    return {key: process_settings.validate(key, value) for key, value in options.items()}
+
+
+def _apply(config, values):
+    """
+    Write checked values into a preset copy, keeping the preset's own shape:
+    newer engines store some settings as one value per extruder (a list).
+    """
+    for key, value in values.items():
+        old = config.get(key)
+        config[key] = [value] * max(1, len(old)) if isinstance(old, list) else value
 
 
 def prepare(program, body, heads, capabilities=None, preset_folder=None):
@@ -198,7 +182,7 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
     # A process with wipe-tower tool selection needs the actual nozzle count
     # at that stage. Supply the same fitted nozzles in both working copies.
     process['nozzle_diameter']=machine['nozzle_diameter'][:]
-    process.update(validate_options(body.get('options') or {}))
+    _apply(process, validate_options(body.get('options') or {}))
     if (capabilities or {}).get('per_tool_heights'):
         # Older preset files use flow markers that the newer CLI materializes
         # as empty vectors during merging. Translate the verified standard-flow
@@ -210,11 +194,15 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
                     raise ValueError('This older preset uses flow variants that need a complete export from the selected engine. Standard-flow presets can be migrated here')
                 config.setdefault(new, ['Direct Drive Standard'])
                 config.pop(old)
-    width = process.get('line_width')
-    if width and not str(width).endswith('%'):
-        width = float(width)
-        if not .5*min(h['nozzle'] for h in heads) <= width <= 2*min(h['nozzle'] for h in heads):
-            raise ValueError('Line width must fit the smallest fitted nozzle (50–200% of its bore). Use the installed default or review the width')
+    for width_key in process_settings.LINE_WIDTHS:
+        if width_key not in (body.get('options') or {}) and width_key != 'line_width':
+            continue
+        width = process.get(width_key)
+        width = width[0] if isinstance(width, list) and width else width
+        if width and not str(width).endswith('%'):
+            width = float(width)
+            if not .5*min(h['nozzle'] for h in heads) <= width <= 2*min(h['nozzle'] for h in heads):
+                raise ValueError('Line width must fit the smallest fitted nozzle (50–200% of its bore). Use the installed default or review the width')
     notes=[]
     if mixed_review:
         notes.append('Fitted nozzles override this installed U1 variant after your explicit review. Its startup and tool-change macros are preserved. Verify each material, line width and physical head before printing')
@@ -231,8 +219,16 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
     if mode == 'per_tool':
         if not (capabilities or {}).get('per_tool_heights'):
             raise ValueError('This engine has not demonstrated per-tool layer-height options. Check a capable local engine first; stock Orca cannot consume these settings')
-        plan = slicing_contract.tool_layers(heads, process.get('initial_layer_print_height') or height)
+        plan = slicing_contract.tool_layers(heads, process.get('initial_layer_print_height') or height,
+                                            body.get('thick_mode', 'fixed'), body.get('thick_tolerance', 80))
         machine['extruder_layer_height'] = [f"{h['height']:g}" for h in heads]
+        if (capabilities or {}).get('thick_layer_modes'):
+            # Print-process options in engines that list them (read from the
+            # engine's own exported schema, never assumed from a version name).
+            process['extruder_layer_height_mode'] = plan['thick_mode']
+            process['extruder_layer_height_tolerance'] = f"{plan['thick_tolerance']}%"
+        elif plan['thick_mode'] != 'fixed' or plan['thick_tolerance'] != 80:
+            notes.append('This engine does not list thick-layer region options, so it combines layers its own way. The mode and tolerance you chose are kept with the profile but not sent')
         # This integration accepts only exactly coordinated heights. Never allow
         # an engine to silently round the requested per-head thicknesses.
         if (capabilities or {}).get('exact_tool_heights'): machine['extruder_layer_height_exact'] = '1'
@@ -241,6 +237,8 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
     else:
         machine.pop('extruder_layer_height', None)
         machine.pop('extruder_layer_height_exact', None)
+        process.pop('extruder_layer_height_mode', None)
+        process.pop('extruder_layer_height_tolerance', None)
         plan=layer_planner.plan([dict(h,height=height) for h in heads])
     if not all(h['ok'] for h in plan['heads']):
         raise ValueError("The layer height is outside one or more nozzle limits. Choose a shared height or use a verified mixed-height engine")

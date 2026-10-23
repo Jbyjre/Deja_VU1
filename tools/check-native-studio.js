@@ -8,7 +8,7 @@ fs.mkdirSync(out,{recursive:true});
  try {for(const width of [1366,390]){
   const page=await browser.newPage({viewport:{width,height:width===390?844:900},reducedMotion:'reduce'});page.on('pageerror',e=>result.errors.push(e.message));let filamentCommands=0;page.on('request',r=>{if(r.url().includes('/api/printer/control/filament')&&r.method()==='POST')filamentCommands++;});
   await page.goto(base+'/?dashboard');await page.waitForTimeout(900);await page.keyboard.press('Escape');
-  await page.evaluate(async()=>{for(const id of ['auto_print','photo_studio','filament_inventory'])await fetch('/api/modules/'+id+'/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true})});await fetch('/api/files/samples',{method:'POST'});await freshModules();showTab('files');await Workshop.loadFiles();await Workshop.openFile('dock_bracket.stl');});
+  await page.evaluate(async()=>{for(const id of ['auto_print','photo_studio','filament_inventory'])await fetch('/api/modules/'+id+'/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:true})});await fetch('/api/files/samples',{method:'POST'});await freshModules();showTab('files');await Workshop.loadFiles();await Workshop.openFile('spur_gear_24t.stl');});
   await page.locator('#plate-dimensions').waitFor();if(await page.locator('#handoff-dismiss').isVisible())await page.locator('#handoff-dismiss').click();
   await page.locator('#plate-duplicate').click();assert.equal(await page.locator('#plate-object option').count(),2);
   await page.locator('#plate-arrange').click();assert.match(await page.locator('#plate-report').textContent(),/No object bounds overlap/);

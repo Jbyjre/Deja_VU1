@@ -7,9 +7,12 @@ G-code viewer, the 3D viewer, the pre-flight check and the 3MF converter
 without owning a printer or a slicer.
 
 Nothing here pretends to be something it isn't:
-  - the G-code files are generated here, move by move, with honest
-    header comments saying so (they are simple test shapes, not tuned
-    slicer output);
+  - the 3DBenchy is the real model (public domain, CC0, since February
+    2025), reduced to 60,000 triangles; the gear and the vase are built
+    here from their formulas;
+  - the G-code files are cut from those models by sample_slicer.py, layer
+    by layer, with honest header comments saying so (real layers, but not
+    tuned slicer output);
   - the "Bambu-style" and "Elegoo-style" projects are built by this file in
     the same project layout those slicers write, and say so in their own
     Application metadata - they are not downloads from MakerWorld or
@@ -19,12 +22,15 @@ The files are only added when the user presses "Add sample files".
 """
 
 import base64
+import functools
 import io
 import json
 import math
+import os
 import zipfile
 
 import mesh_tools
+import sample_slicer
 
 CENTER = 135.0
 LAYER = 0.2
@@ -236,6 +242,300 @@ def dock_bracket_stl():
     return mesh_tools.to_binary_stl(dock_bracket_triangles(), "Deja Vu1 sample dock bracket")
 
 
+# ---------------------------------------------------------------------------
+# Better test models: the real 3DBenchy, an involute spur gear and a twisted
+# vase, plus G-code made from them by sample_slicer (simple, labelled as such).
+# ---------------------------------------------------------------------------
+
+_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_assets")
+BENCHY_NOTE = ("3DBenchy by Creative Tools (3dbenchy.com), released into the public domain (CC0) "
+               "in February 2025; reduced to 60,000 triangles for these samples")
+
+
+@functools.lru_cache(maxsize=1)
+def benchy_stl():
+    """The real 3DBenchy (60 x 31 x 48 mm), reduced from 225,706 to 60,000 triangles."""
+    with open(os.path.join(_ASSETS, "3dbenchy.stl"), "rb") as f:
+        return f.read()
+
+
+@functools.lru_cache(maxsize=1)
+def benchy_triangles():
+    return tuple(sample_slicer.read_binary_stl(benchy_stl()))
+
+
+def _quad(tris, a, b, c, d):
+    tris.append((a, b, c))
+    tris.append((a, c, d))
+
+
+def _ring_solid(outer, inner, z0, z1):
+    """
+    A closed solid between two outlines sampled at the same angles (inner may
+    be a single centre point), from z0 to z1: top, bottom and both walls.
+    """
+    tris, n = [], len(outer)
+    for i in range(n):
+        j = (i + 1) % n
+        o0, o1 = outer[i], outer[j]
+        i0, i1 = inner[i % len(inner)], inner[j % len(inner)]
+        _quad(tris, (o0[0], o0[1], z0), (o1[0], o1[1], z0), (o1[0], o1[1], z1), (o0[0], o0[1], z1))
+        if len(inner) > 1:
+            _quad(tris, (i1[0], i1[1], z0), (i0[0], i0[1], z0), (i0[0], i0[1], z1), (i1[0], i1[1], z1))
+            _quad(tris, (i0[0], i0[1], z1), (o0[0], o0[1], z1), (o1[0], o1[1], z1), (i1[0], i1[1], z1))
+            _quad(tris, (i1[0], i1[1], z0), (o1[0], o1[1], z0), (o0[0], o0[1], z0), (i0[0], i0[1], z0))
+        else:
+            tris.append(((i0[0], i0[1], z1), (o0[0], o0[1], z1), (o1[0], o1[1], z1)))
+            tris.append(((i0[0], i0[1], z0), (o1[0], o1[1], z0), (o0[0], o0[1], z0)))
+    return tris
+
+
+def gear_outline(teeth=24, module=2.0, pressure_deg=20.0, steps=6):
+    """
+    An involute spur gear outline, counter-clockwise, as (x, y) points. Flank
+    angles come from the involute function inv(a) = tan(a) - a, so the tooth
+    is half a pitch thick on the pitch circle.
+    """
+    r = module * teeth / 2
+    ra, rf = r + module, r - 1.25 * module
+    rb = r * math.cos(math.radians(pressure_deg))
+    inv = lambda a: math.tan(a) - a
+    half = math.pi / (2 * teeth) + inv(math.radians(pressure_deg))
+
+    def flank(radius):
+        rr = max(radius, rb)
+        return half - inv(math.acos(min(1.0, rb / rr)))
+
+    radii = [rf] + [rb + (ra - rb) * k / steps for k in range(steps + 1)] if rb > rf else \
+        [rf + (ra - rf) * k / steps for k in range(steps + 1)]
+    pts = []
+    for k in range(teeth):
+        c = 2 * math.pi * k / teeth
+        rising = [(rad, c - flank(rad)) for rad in radii]
+        falling = [(rad, c + flank(rad)) for rad in reversed(radii)]
+        top = [(ra, c - flank(ra) + (2 * flank(ra)) * t / 3) for t in (1, 2)]
+        root_end = c + 2 * math.pi / teeth - flank(rf)
+        root = [(rf, c + flank(rf) + (root_end - c - flank(rf)) * t / 3) for t in (1, 2)]
+        for rad, ang in rising + top + falling + root:
+            pts.append((rad * math.cos(ang), rad * math.sin(ang)))
+    return pts
+
+
+def gear_triangles(teeth=24, module=2.0, thickness=8.0, bore=8.0):
+    """A 24-tooth module-2 spur gear (52 mm across), 8 mm thick, with an 8 mm bore."""
+    outer = gear_outline(teeth, module)
+    inner = [(bore / 2 * math.cos(math.atan2(y, x)), bore / 2 * math.sin(math.atan2(y, x))) for x, y in outer]
+    return _ring_solid(outer, inner, 0.0, thickness)
+
+
+def gear_stl():
+    return mesh_tools.to_binary_stl(gear_triangles(), "Deja Vu1 sample: 24-tooth module 2 spur gear")
+
+
+def vase_triangles(scale=1.0, height=70.0, lobes=6, twist_deg=72.0, rings=70, around=96):
+    """A closed, twisted six-lobed vase: radius swells towards the middle and every ring turns a little."""
+    h = height * scale
+    def ring(z):
+        t = z / h
+        base = (22 + 6 * math.sin(math.pi * t) - 3 * t) * scale
+        turn = math.radians(twist_deg) * t
+        return [(base * (1 + 0.1 * math.cos(lobes * a)) * math.cos(a + turn),
+                 base * (1 + 0.1 * math.cos(lobes * a)) * math.sin(a + turn))
+                for a in (2 * math.pi * i / around for i in range(around))]
+    levels = [h * k / rings for k in range(rings + 1)]
+    outlines = [ring(z) for z in levels]
+    tris = []
+    for k in range(rings):
+        lo, hi, z0, z1 = outlines[k], outlines[k + 1], levels[k], levels[k + 1]
+        for i in range(around):
+            j = (i + 1) % around
+            _quad(tris, (*lo[i], z0), (*lo[j], z0), (*hi[j], z1), (*hi[i], z1))
+    for outline, z, up in ((outlines[0], 0.0, False), (outlines[-1], h, True)):
+        for i in range(around):
+            a, b = outline[i], outline[(i + 1) % around]
+            tris.append(((0.0, 0.0, z), (*a, z), (*b, z)) if up else ((0.0, 0.0, z), (*b, z), (*a, z)))
+    return tris
+
+
+def vase_stl():
+    return mesh_tools.to_binary_stl(vase_triangles(), "Deja Vu1 sample: twisted six-lobed vase")
+
+
+def _hexagon(r, cx=CENTER, cy=CENTER, ccw=True):
+    pts = [(cx + r * math.cos(math.radians(30 + 60 * i)), cy + r * math.sin(math.radians(30 + 60 * i)))
+           for i in range(6)]
+    return pts if ccw else pts[::-1]
+
+
+def _sliced_gcode(title, colours, types, body, thumb_tris, thumb_color, extra=()):
+    """Header, PRINT_START, the moves body(w) writes, PRINT_END and an Orca-style config block."""
+    w = sample_slicer.Writer()
+    body(w)
+    grams = [w.e_total.get(t, 0.0) * sample_slicer.FILAMENT_AREA * 1.24 / 1000 for t in range(len(colours))]
+    metres = [w.e_total.get(t, 0.0) / 1000 for t in range(len(colours))]
+    secs = int(w.seconds)
+    png = mesh_tools.png_thumbnail(list(thumb_tris), 96, thumb_color) if thumb_tris else _square_thumbnail(thumb_color)
+    thumb = base64.b64encode(png).decode("ascii")
+    temps = ",".join("220" for _ in colours)
+    head = [
+        f"; {title}",
+        "; generated by Deja Vu1's sample slicer (backend/sample_slicer.py): real layers cut from the model,",
+        ";   two walls and straight infill; no seams, supports, bridges or tuning. Not for printing.",
+        "; HEADER_BLOCK_START",
+        f"; estimated printing time (normal mode) = {secs // 3600}h {secs % 3600 // 60}m {secs % 60}s",
+        f"; total filament used [g] = {sum(grams):.2f}",
+        f"; total layer number: {w.layers}",
+        "; HEADER_BLOCK_END",
+        "; THUMBNAIL_BLOCK_START",
+        f"; thumbnail begin 96x96 {len(thumb)}",
+    ]
+    head += ["; " + thumb[i:i + 78] for i in range(0, len(thumb), 78)]
+    head += ["; thumbnail end", "; THUMBNAIL_BLOCK_END", *extra,
+             f"PRINT_START TOOL_TEMP=220 BED_TEMP=60 TOOL={0}", "M83", "G90"]
+    tail = ["PRINT_END",
+            f"; filament used [mm] = {', '.join(f'{m * 1000:.2f}' for m in metres)}",
+            f"; filament used [g] = {', '.join(f'{g:.2f}' for g in grams)}",
+            "; CONFIG_BLOCK_START",
+            "; printer_model = Snapmaker U1",
+            "; nozzle_diameter = 0.4,0.4,0.4,0.4",
+            f"; layer_height = {sample_slicer.LAYER}",
+            f"; initial_layer_print_height = {sample_slicer.FIRST_LAYER}",
+            f"; line_width = {sample_slicer.WIDTH}",
+            f"; filament_type = {';'.join(types)}",
+            f"; filament_colour = {';'.join(colours)}",
+            "; sparse_infill_density = 15%",
+            "; sparse_infill_pattern = line",
+            "; wall_loops = 2",
+            f"; top_shell_layers = {sample_slicer.SOLID_SHELLS}",
+            f"; bottom_shell_layers = {sample_slicer.SOLID_SHELLS}",
+            f"; nozzle_temperature = {temps}",
+            "; hot_plate_temp = 60",
+            "; CONFIG_BLOCK_END"]
+    return "\n".join(head + w.lines + tail) + "\n"
+
+
+_CUTS = {}
+
+
+def _cut(tris):
+    """
+    Layers of a placed mesh. A mesh moved sideways has the same outlines,
+    moved, so each shape is cut once (keyed by its outline relative to its
+    own corner) and shifted for every later placement.
+    """
+    xs = [p[0] for t in tris for p in t]
+    ys = [p[1] for t in tris for p in t]
+    x0, y0 = min(xs), min(ys)
+    key = (len(tris), tuple(round(c - o, 3) for c, o in zip(tris[0][0], (x0, y0, 0.0))),
+           round(max(xs) - x0, 3), round(max(ys) - y0, 3), round(max(p[2] for t in tris for p in t), 3))
+    if key not in _CUTS:
+        local = [tuple((p[0] - x0, p[1] - y0, p[2]) for p in t) for t in tris]
+        zs = sample_slicer.layer_heights(max(p[2] for t in local for p in t))
+        _CUTS[key] = (zs, sample_slicer.contours(local, zs))
+    zs, layers = _CUTS[key]
+    return zs, [[[(x + x0, y + y0) for x, y in loop] for loop in layer] for layer in layers]
+
+
+def _layer_loop(w, objects, labelled=False):
+    """
+    Print several objects layer by layer. objects: [(name, triangles), ...].
+    With labelled=True every object is wrapped in EXCLUDE_OBJECT markers the
+    way Orca writes them for Klipper, so one can be skipped mid-print.
+    """
+    sliced = []
+    for name, tris in objects:
+        zs, layers = _cut(tris)
+        sliced.append((name, zs, layers, tris))
+    if labelled:
+        for name, zs, layers, tris in sliced:
+            xs = [p[0] for t in tris for p in t]
+            ys = [p[1] for t in tris for p in t]
+            x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+            poly = f"[[{x0:.3f},{y0:.3f}],[{x1:.3f},{y0:.3f}],[{x1:.3f},{y1:.3f}],[{x0:.3f},{y1:.3f}]]"
+            w.cmd(f"EXCLUDE_OBJECT_DEFINE NAME={name} CENTER={(x0 + x1) / 2:.3f},{(y0 + y1) / 2:.3f} POLYGON={poly}")
+    all_z = sorted({z for _, zs, _, _ in sliced for z in zs})
+    w.layers = len(all_z)
+    for li, z in enumerate(all_z):
+        w.cmd(";LAYER_CHANGE")
+        w.cmd(f";Z:{z:.2f}")
+        w.travel(w.x, w.y, z)
+        for name, zs, layers, _ in sliced:
+            if li >= len(zs):
+                continue
+            if labelled:
+                w.cmd(f"EXCLUDE_OBJECT_START NAME={name}")
+            sample_slicer.print_layer(w, layers, li, z, li == 0)
+            if labelled:
+                w.cmd(f"EXCLUDE_OBJECT_END NAME={name}")
+
+
+@functools.lru_cache(maxsize=None)
+def benchy_gcode():
+    tris = sample_slicer.place(benchy_triangles(), CENTER, CENTER)
+    return _sliced_gcode("3DBenchy in orange PLA, 0.2 mm layers (" + BENCHY_NOTE + ")", ["#F26A1B"], ["PLA"],
+                         lambda w: _layer_loop(w, [("3DBenchy", tris)]), tris, (242, 106, 27))
+
+
+@functools.lru_cache(maxsize=None)
+def benchy_gear_vase_gcode():
+    objects = [("3DBenchy.stl_id_0_copy_0", sample_slicer.place(benchy_triangles(), 92, 135)),
+               ("spur_gear.stl_id_1_copy_0", sample_slicer.place(gear_triangles(), 166, 100)),
+               ("twisted_vase.stl_id_2_copy_0", sample_slicer.place(vase_triangles(0.6), 168, 168))]
+    every = [t for _, tris in objects for t in tris]
+    return _sliced_gcode("3DBenchy, a spur gear and a vase, each labelled so one can be skipped",
+                         ["#F26A1B"], ["PLA"], lambda w: _layer_loop(w, objects, labelled=True),
+                         every, (242, 106, 27))
+
+
+@functools.lru_cache(maxsize=None)
+def three_colour_coaster_gcode():
+    """
+    A 90 mm hexagonal coaster in three colours: an orange base (T0), then a
+    black outer ring (T1), a green middle ring (T2) and an orange centre (T0)
+    on top, changing tool three times on every top layer the way a real
+    multi-colour U1 print does. The colours are what the simulated Garage
+    printer has loaded, so the demo can really print it.
+    """
+    base = [_hexagon(45)]
+    rings = [(1, [_hexagon(45), _hexagon(33, ccw=False)]),
+             (2, [_hexagon(33), _hexagon(21, ccw=False)]),
+             (0, [_hexagon(21)])]
+    base_layers, top_layers = 4, 4
+    total = base_layers + top_layers
+
+    def body(w):
+        w.layers = total
+        for li in range(total):
+            z = round(sample_slicer.FIRST_LAYER + li * sample_slicer.LAYER, 2)
+            w.cmd(";LAYER_CHANGE")
+            w.cmd(f";Z:{z:.2f}")
+            w.travel(w.x, w.y, z)
+            if li < base_layers:
+                sample_slicer.print_layer(w, [base] * total, li, z, li == 0, region_tool=0)
+            else:
+                for tool, loops in rings:
+                    sample_slicer.print_layer(w, [loops] * total, li, z, False, region_tool=tool)
+        w.tool_change(0)
+
+    thumb = sample_slicer.place(_ring_solid(_hexagon(45, 0, 0), [(0.0, 0.0)], 0.0, 1.6), CENTER, CENTER)
+    return _sliced_gcode("Three-colour hex coaster (T0 base and centre, T1 and T2 rings on top)",
+                         ["#F26A1B", "#1C1C1E", "#2F9E44"], ["PLA", "PLA", "PLA"],
+                         body, thumb, (242, 106, 27))
+
+
+@functools.lru_cache(maxsize=None)
+def unsafe_gear_gcode():
+    """A small gear plus a purge line that runs 20 mm past the U1's 270 mm bed edge."""
+    gear = sample_slicer.place(gear_triangles(thickness=4.0), CENTER, CENTER)
+
+    def body(w):
+        w.travel(250, 20, 0.3)
+        w.extrude(290, 20, 3000, 0.3)          # 20 mm beyond the bed - pre-flight must catch it
+        _layer_loop(w, [("gear", gear)])
+    return _sliced_gcode("Unsafe example: purge line past the bed edge", ["#C8102E"], ["PLA"], body,
+                         gear, (200, 16, 46))
+
+
 def _model_xml(triangles, application):
     verts, index, faces = [], {}, []
     for t in triangles:
@@ -259,7 +559,13 @@ def _model_xml(triangles, application):
             '</model>\n')
 
 
-def _project_3mf(application, config):
+@functools.lru_cache(maxsize=None)
+def _plate_png(tris):
+    return mesh_tools.png_thumbnail(list(tris), 128) or b""
+
+
+def _project_3mf(application, config, tris=None):
+    tris = tris or benchy_triangles()
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml",
@@ -270,10 +576,9 @@ def _project_3mf(application, config):
         z.writestr("_rels/.rels",
                    '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                    '<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-        z.writestr("3D/3dmodel.model", _model_xml(dock_bracket_triangles(), application))
+        z.writestr("3D/3dmodel.model", _model_xml(list(tris), application))
         z.writestr("Metadata/project_settings.config", json.dumps(config, indent=4))
-        z.writestr("Metadata/plate_1.png",
-                   mesh_tools.png_thumbnail(dock_bracket_triangles(), 128) or b"")
+        z.writestr("Metadata/plate_1.png", _plate_png(tris))
         z.writestr("Metadata/plate_1.gcode", "; sliced for the original printer\nG28\n")
     return out.getvalue()
 
@@ -319,32 +624,40 @@ def elegoo_style_project():
         "printable_area": ["0x0", "256x0", "256x256", "0x256"],
         "printable_height": "256",
         "machine_start_gcode": "; Elegoo start sequence (sample placeholder)\nG28",
-    })
+    }, tuple(gear_triangles()))
 
 
 def bambu_multiplate_project():
     """
-    A three-plate MakerWorld-style project: two brackets on plate 1, one on
-    plate 2 and one on plate 3, laid out on a 256 mm Bambu bed the way
+    A three-plate MakerWorld-style project: a 3DBenchy and a spur gear on
+    plate 1, a twisted vase on plate 2 and another Benchy on plate 3, laid out on a 256 mm Bambu bed the way
     Bambu Studio and Orca lay plates out (columns = ceil(sqrt(plates)),
     each plate 256 x 1.2 mm from the last; PartPlate.cpp). Converting it
     shows the plates being moved onto the U1's 270 mm grid.
     """
     stride = 256 * 1.2
-    # (plate column, row, [(x, y) on that plate, ...])
-    layout = [(0, 0, [(98, 128), (158, 128)]), (1, 0, [(128, 128)]), (0, 1, [(128, 128)])]
-    tris = dock_bracket_triangles()
-    xs = [p[0] for t in tris for p in t]
-    ys = [p[1] for t in tris for p in t]
-    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
-    centred = [[(x - cx, y - cy, z) for x, y, z in t] for t in tris]
-    model = _model_xml(centred, "BambuStudio-02.02.00.85")
-    objects, items, plates, oid = [], [], [], 0
+    shapes = {"3DBenchy": benchy_triangles(), "Spur gear": tuple(gear_triangles()),
+              "Twisted vase": tuple(vase_triangles(0.8))}
+    # (plate column, row, [(shape, x, y) on that plate, ...])
+    layout = [(0, 0, [("3DBenchy", 90, 128), ("Spur gear", 178, 128)]),
+              (1, 0, [("Twisted vase", 128, 128)]),
+              (0, 1, [("3DBenchy", 128, 128)])]
+
+    def mesh_of(tris, oid):
+        xs = [p[0] for t in tris for p in t]
+        ys = [p[1] for t in tris for p in t]
+        cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+        xml = _model_xml([[(x - cx, y - cy, z) for x, y, z in t] for t in tris], "BambuStudio-02.02.00.85")
+        return xml.split("<resources>")[1].split("</resources>")[0].replace('<object id="1"', f'<object id="{oid}"')
+
+    objects, items, plates, meshes, names, oid = [], [], [], [], {}, 0
     for plate_no, (col, row, spots) in enumerate(layout, start=1):
         instances = []
-        for x, y in spots:
+        for shape, x, y in spots:
             oid += 1
             objects.append(oid)
+            names[oid] = f"{shape} {oid}"
+            meshes.append(mesh_of(shapes[shape], oid))
             items.append(f'<item objectid="{oid}" transform="1 0 0 0 1 0 0 0 1 '
                          f'{x + col * stride:.4f} {y - row * stride:.4f} 0" printable="1"/>')
             instances.append(f'<model_instance><metadata key="object_id" value="{oid}"/>'
@@ -352,12 +665,11 @@ def bambu_multiplate_project():
                              f'<metadata key="identify_id" value="{100 + oid}"/></model_instance>')
         plates.append(f'<plate><metadata key="plater_id" value="{plate_no}"/>'
                       f'<metadata key="plater_name" value=""/>{"".join(instances)}</plate>')
-    mesh = model.split("<resources>")[1].split("</resources>")[0]
-    one = mesh.replace('<object id="1"', '<object id="{id}"')
-    model = (model.split("<resources>")[0] + "<resources>" + "".join(one.replace("{id}", str(i)) for i in objects)
+    head = _model_xml([((0, 0, 0), (1, 0, 0), (0, 1, 0))], "BambuStudio-02.02.00.85").split("<resources>")[0]
+    model = (head + "<resources>" + "".join(meshes)
              + "</resources>\n <build>" + "".join(items) + "</build>\n</model>\n")
     settings = ('<?xml version="1.0" encoding="UTF-8"?>\n<config>\n'
-                + "".join(f'<object id="{i}"><metadata key="name" value="Dock bracket {i}"/></object>' for i in objects)
+                + "".join(f'<object id="{i}"><metadata key="name" value="{names[i]}"/></object>' for i in objects)
                 + "".join(plates) + "\n</config>\n")
     out = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(bambu_style_project())) as src, \
@@ -372,17 +684,28 @@ def bambu_multiplate_project():
 
 
 SAMPLES = {
-    "calibration_cube_20mm.gcode": calibration_cube,
-    "three_cubes_skip_one.gcode": three_cubes,
-    "two_colour_coaster.gcode": two_colour_coaster,
-    "unsafe_example_purge_past_bed.gcode": unsafe_example,
-    "dock_bracket.stl": dock_bracket_stl,
+    "3dbenchy.stl": benchy_stl,
+    "3dbenchy_pla.gcode": benchy_gcode,
+    "benchy_gear_vase_skip_one.gcode": benchy_gear_vase_gcode,
+    "hex_coaster_three_colour.gcode": three_colour_coaster_gcode,
+    "unsafe_example_purge_past_bed.gcode": unsafe_gear_gcode,
+    "spur_gear_24t.stl": gear_stl,
+    "twisted_vase.stl": vase_stl,
     "sample_bambu_studio_layout.3mf": bambu_style_project,
     "sample_elegoo_slicer_layout.3mf": elegoo_style_project,
     "sample_makerworld_three_plates.3mf": bambu_multiplate_project,
 }
 
+# The earlier, simpler shapes. No longer offered by "Add sample files", but
+# kept buildable by name for scripts and older saved queues that ask for them.
+LEGACY = {
+    "calibration_cube_20mm.gcode": calibration_cube,
+    "three_cubes_skip_one.gcode": three_cubes,
+    "two_colour_coaster.gcode": two_colour_coaster,
+    "dock_bracket.stl": dock_bracket_stl,
+}
+
 
 def build(name):
-    data = SAMPLES[name]()
+    data = (SAMPLES.get(name) or LEGACY[name])()
     return data.encode("utf-8") if isinstance(data, str) else data

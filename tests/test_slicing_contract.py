@@ -20,6 +20,13 @@ class ToolLayerContracts(unittest.TestCase):
             with self.assertRaises(ValueError):contract.tool_layers(heads,.14)
         with self.assertRaises(ValueError):contract.tool_layers(self.heads(),.05)
 
+    def test_thick_layer_mode_and_tolerance_are_checked_and_returned(self):
+        plan=contract.tool_layers(self.heads(),.14,'adaptive',65)
+        self.assertEqual((plan['thick_mode'],plan['thick_tolerance']),('adaptive',65))
+        self.assertEqual(contract.tool_layers(self.heads(),.14)['thick_mode'],'fixed')
+        for mode,tol in [('wild',80),('fixed',101),('fixed',-1),('fixed','lots'),('fixed',float('nan'))]:
+            with self.assertRaises(ValueError):contract.tool_layers(self.heads(),.14,mode,tol)
+
     def test_deposition_evidence_uses_extrusion_not_travel_or_recovery(self):
         text='M83\nG90\nT0\nG1 X20 Y20 Z.14\n;TYPE:Outer wall\n;HEIGHT:0.14\nG1 X30 E1\nG1 E-1\nG1 Z.21\nG1 X40 E1\nG1 Z.28\nG1 X50 E1\nT1\n;HEIGHT:0.28\nG1 Z.28\nG1 X60 E1\nG1 Z.56\nG1 X70 E1\n'
         data=contract.deposition_evidence(text)['tools']

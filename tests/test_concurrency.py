@@ -22,7 +22,7 @@ import modules          # noqa: E402
 import print_queue      # noqa: E402
 import printer_control  # noqa: E402
 
-CUBE = "calibration_cube_20mm.gcode"
+CUBE = "3dbenchy_pla.gcode"
 
 
 class SlowPrinter(unittest.TestCase):

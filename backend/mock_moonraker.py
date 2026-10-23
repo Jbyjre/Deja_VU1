@@ -245,6 +245,7 @@ class SimulatedPrinter:
             self.fail_next = {}
             self.time_scale = 1.0
             self.motion_phase = 0.0
+            self.ripple = {}
             # Sandbox network drop: while set, commands get no answer and
             # readers see the last state that arrived, labelled as stale.
             self.link_lost_at = None
@@ -382,12 +383,29 @@ class SimulatedPrinter:
             live = self.live
             event = None
 
-            for th, data in live["toolheads"].items():
-                data["temperature"] = _approach(
-                    data["temperature"],
-                    data["target_temperature"] or AMBIENT_C + 8.5, sim, 25.0)
-            live["bed_temperature"] = _approach(
-                live["bed_temperature"], live.get("bed_target") or AMBIENT_C, sim, 90.0)
+            # Heaters: the smooth temperature follows its target; what is
+            # reported adds the small ripple a real PID loop shows while it
+            # holds (a few tenths of a degree), kept apart so it never drifts.
+            self.sim_clock = getattr(self, "sim_clock", 0.0) + sim
+            ripple = getattr(self, "ripple", None)
+            if ripple is None:
+                ripple = self.ripple = {}
+            def held(key, reported, target, tau, amp, period, phase):
+                true, shown = ripple.get(key, (reported, reported))
+                if abs(reported - shown) > 0.011:        # set elsewhere (a fault, a reset): follow it
+                    true = reported
+                true = _approach(true, target, sim, tau)
+                near = max(0.0, 1.0 - abs(true - target) / 3.0) if target > AMBIENT_C + 10 else 0.0
+                wobble = near * amp * (math.sin(self.sim_clock * 2 * math.pi / period + phase)
+                                       + 0.4 * math.sin(self.sim_clock * 2 * math.pi / (period * 0.37) + 2 * phase))
+                shown = round(true + wobble, 2)
+                ripple[key] = (true, shown)
+                return shown
+            for i, (th, data) in enumerate(live["toolheads"].items()):
+                data["temperature"] = held(th, data["temperature"], data["target_temperature"] or AMBIENT_C + 8.5,
+                                           25.0, 0.22, 6.0 + i, i * 1.3)
+            live["bed_temperature"] = held("bed", live["bed_temperature"], live.get("bed_target") or AMBIENT_C,
+                                           90.0, 0.12, 14.0, 0.5)
             chamber_goal = AMBIENT_C + (0.2 * (live["bed_temperature"] - AMBIENT_C))
             if live["state"] == "printing":
                 chamber_goal += 6.0

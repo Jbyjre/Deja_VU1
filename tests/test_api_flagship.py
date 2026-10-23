@@ -130,11 +130,11 @@ class TestFleetCommandRoutes(FlagshipAPI):
 
     def test_route_and_queues(self):
         self.request("/api/files/samples", {})
-        status, body = self.request("/api/fleet/route?demo=1", {"filename": "calibration_cube_20mm.gcode",
+        status, body = self.request("/api/fleet/route?demo=1", {"filename": "3dbenchy_pla.gcode",
                                                                  "to": "u1-studio"})
         self.assertEqual(status, 200, body)
         status, body = self.request("/api/fleet/queues?demo=1")
-        self.assertEqual(body["queues"]["u1-studio"]["items"][0]["filename"], "calibration_cube_20mm.gcode")
+        self.assertEqual(body["queues"]["u1-studio"]["items"][0]["filename"], "3dbenchy_pla.gcode")
 
     def test_history(self):
         status, body = self.request("/api/fleet/history?demo=1&days=14&bucket=week")

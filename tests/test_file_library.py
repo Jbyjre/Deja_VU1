@@ -23,15 +23,15 @@ class TestLibrary(unittest.TestCase):
         self.assertEqual(len(result["added"]), len(sample_files.SAMPLES))
         self.assertEqual(file_library.add_samples()["added"], [])
         by_name = {f["name"]: f for f in result["files"]}
-        cube = by_name["calibration_cube_20mm.gcode"]["summary"]
+        cube = by_name["3dbenchy_pla.gcode"]["summary"]
         self.assertEqual(cube["preflight"], "clear")
-        self.assertEqual(cube["layers"], 50)
+        self.assertEqual(cube["layers"], 240)
         self.assertEqual(by_name["unsafe_example_purge_past_bed.gcode"]["summary"]["preflight"], "blocked")
-        self.assertEqual(by_name["dock_bracket.stl"]["summary"]["size_mm"], [30.0, 40.0, 25.0])
+        self.assertEqual(by_name["spur_gear_24t.stl"]["summary"]["size_mm"], [52.0, 52.0, 8.0])
 
     def test_thumbnails_for_gcode_and_models(self):
         file_library.add_samples()
-        for name in ("calibration_cube_20mm.gcode", "dock_bracket.stl", "sample_bambu_studio_layout.3mf"):
+        for name in ("3dbenchy_pla.gcode", "spur_gear_24t.stl", "sample_bambu_studio_layout.3mf"):
             self.assertTrue(file_library.thumbnail(name).startswith(b"\x89PNG"), name)
 
     def test_names_are_sanitised(self):
@@ -43,7 +43,7 @@ class TestLibrary(unittest.TestCase):
 
     def test_edit_keeps_the_original_and_restores_it(self):
         file_library.add_samples()
-        name = "calibration_cube_20mm.gcode"
+        name = "3dbenchy_pla.gcode"
         before = file_library.read_text(name)
         line = next(i for i, l in enumerate(before.splitlines(), 1) if l.startswith("G1 "))
         result = file_library.save_edit(name, [{"kind": "comment_out", "line": line}])
@@ -54,13 +54,13 @@ class TestLibrary(unittest.TestCase):
 
     def test_recent_list_follows_opening(self):
         file_library.add_samples()
-        file_library.touch("two_colour_coaster.gcode", "last_opened")
-        self.assertEqual(file_library.list_files()["recent"][0], "two_colour_coaster.gcode")
+        file_library.touch("hex_coaster_three_colour.gcode", "last_opened")
+        self.assertEqual(file_library.list_files()["recent"][0], "hex_coaster_three_colour.gcode")
 
     def test_delete(self):
         file_library.add_samples()
-        file_library.delete("dock_bracket.stl")
-        self.assertFalse(file_library.exists("dock_bracket.stl"))
+        file_library.delete("spur_gear_24t.stl")
+        self.assertFalse(file_library.exists("spur_gear_24t.stl"))
 
 
 if __name__ == "__main__":

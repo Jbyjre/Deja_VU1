@@ -630,11 +630,17 @@ async function checkServer() {
  * tools/online-demo/record.py): every answer the dashboard asks for, for
  * each of the three simulated printers, and 150 seconds of the live feed on
  * a loop, with a jam halfway. The page answers its own /api requests from
- * the recording; anything that would change something says it's a
- * recording. It starts only where no Deja Vu1 server answers /api/health,
- * so a real install never plays it and never shows its figures as real. */
+ * the recording. The main printer actions (start, pause, resume, cancel,
+ * skip an object, temperatures, homing, console) and the Bambu/MakerWorld
+ * converter work in a small in-browser simulation layered over the
+ * recording (tourSim, below), labelled as the demo everywhere it shows;
+ * other changes say it's a recording. It starts only where no Deja Vu1
+ * server answers /api/health, so a real install never plays it and never
+ * shows its figures as real. */
 const realFetch = window.fetch.bind(window);
-const tour = { on: false, rec: null, started: 0, misses: new Set() };
+const tour = { on: false, rec: null, started: 0, misses: new Set(),
+  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {} } };
+const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
 const TOUR_REFUSED = "This is the online demo: a recording of the simulated farm, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
 const TOUR_IGNORED = new Set(['demo', 'since', 'v', 't', '_', 'device']);
@@ -704,9 +710,35 @@ async function tourText(name) {
 async function tourGet(url) {
   const path = url.pathname, q = url.searchParams;
   const printer = q.get('printer') || tour.rec.default_printer;
-  if (path === '/api/live/snapshot') return tourReply({ seq: tourFrame().at, t: Date.now() / 1000, state: tourFrame().frame.state[printer], event_id: 0, time_scale: 1 });
-  if (path === '/api/printer') return tourReply({ ...tourFrame().frame.state[printer], connected: true, demo: true });
-  if (path === '/api/fleet') return tourReply({ printers: tourFrame().frame.fleet });
+  if (path === '/api/live/snapshot') return tourReply({ seq: tourFrame().at, t: Date.now() / 1000, state: tourState(printer), event_id: 0, time_scale: 1 });
+  if (path === '/api/printer') return tourReply({ ...tourState(printer), connected: true, demo: true });
+  if (path === '/api/fleet') return tourReply({ printers: tourFrame().frame.fleet.map(tourFleetCard) });
+  if (path === '/api/printer/control/console') return tourReply({ log: tourConsole(printer), connected: true, demo: true });
+  if (path === '/api/fleet/queues' || path === '/api/queue') {
+    const rec = tour.rec.get[tourKey(path, new URLSearchParams({ printer }))];
+    if (rec !== undefined) {
+      const body = JSON.parse(JSON.stringify(tour.rec.bodies[rec].body));
+      const extra = pid => (tour.sim.queued[pid] || []);
+      if (path === '/api/queue' && Array.isArray(body.items)) body.items = body.items.concat(extra(printer));
+      if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); });
+      return tourReply(body, tour.rec.bodies[rec].status);
+    }
+  }
+  if (path === '/api/logbook') {
+    const mine = (tour.sim.logbook[printer] || []).slice().reverse(), q = (url.searchParams.get('q') || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const rows = mine.filter(e => q.every(w => (e.problem + ' ' + e.fix).toLowerCase().includes(w)));
+    return tourReply({ printer, entries: rows, open: rows.filter(e => !e.fix).length, connected: true, demo: true });
+  }
+  if (path === '/api/files') {
+    const base = tour.rec.get[tourKey(path, new URLSearchParams({ printer }))];
+    if (base !== undefined) {
+      const body = JSON.parse(JSON.stringify(tour.rec.bodies[base].body));
+      if (Array.isArray(body.files)) {
+        body.files = body.files.filter(f => !tour.sim.deleted.has(f.name)).concat(tour.sim.added.filter(f => !body.files.some(b => b.name === f.name)));
+      }
+      return tourReply(body, tour.rec.bodies[base].status);
+    }
+  }
   if (path === '/api/live/events') return tourReply({ events: tourEvents(+(q.get('since') || 0)) });
   if (path === '/api/files/raw') return realFetch(`demo/files/${encodeURIComponent(q.get('name') || '')}`);
   if (path === '/api/files/thumb') return realFetch(`demo/thumbs/${encodeURIComponent(q.get('name') || '')}.png`);
@@ -730,14 +762,226 @@ async function tourGet(url) {
   const hit = tour.rec.get[tourKey(path, params)];
   if (hit === undefined) tour.misses.add(tourKey(path, params));
   if (hit === undefined) return tourReply({ error: "This part isn't in the online demo's recording", connected: false, demo: false }, 404);
-  const { status, body } = tour.rec.bodies[hit];
+  const { status, body } = await tourBody(hit);
   return tourReply(body, status);
 }
 
-function tourPost(url, body) {
+/* Large recorded answers live in their own files (record.py, LARGE). */
+const tourLarge = new Map();
+async function tourBody(hit) {
+  const { status, body } = tour.rec.bodies[hit];
+  if (!body || !body.__file__) return { status, body };
+  if (!tourLarge.has(hit)) tourLarge.set(hit, realFetch('demo/' + body.__file__).then(r => r.json()));
+  return { status, body: await tourLarge.get(hit) };
+}
+async function tourAnswerFull(key) {
+  const hit = tour.rec.get[key];
+  return hit === undefined ? null : tourBody(hit);
+}
+
+/* ---- the online demo's simulation ------------------------------------------
+ * A thin layer of changes over the recorded state, one per printer: a print
+ * started here, a pause, a cancel, a skipped object, new heater targets.
+ * Everything it shows says "online demo"; nothing leaves the browser. */
+function tourAnswer(key) {
+  const hit = tour.rec.get[key];
+  return hit === undefined ? null : tour.rec.bodies[hit];
+}
+function tourLog(pid, text) {
+  const list = tour.sim.console[pid] || (tour.sim.console[pid] = []);
+  const t = new Date();
+  list.push({ time: t.toTimeString().slice(0, 8), detail: text, kind: 'online demo' });
+  if (list.length > 60) list.shift();
+}
+function tourConsole(pid) {
+  const rec = tourAnswer(tourKey('/api/printer/control/console', new URLSearchParams({ printer: pid })));
+  const base = rec && Array.isArray(rec.body.log) ? rec.body.log : [];
+  return base.concat(tour.sim.console[pid] || []);
+}
+function tourState(pid) {
+  const base = tourFrame().frame.state[pid];
+  const sim = tour.sim.printers[pid];
+  if (!base || !sim) return base;
+  const now = Date.now();
+  const st = JSON.parse(JSON.stringify(sim.frozen || base));
+  if (sim.targets) {
+    Object.entries(sim.targets).forEach(([th, target]) => {
+      const head = st.toolheads && st.toolheads[th];
+      if (!head) return;
+      const from = sim.tempFrom[th] ?? head.temperature, secs = (now - sim.tempAt) / 1000;
+      head.target_temperature = target;
+      head.temperature = Math.round((target + (from - target) * Math.exp(-secs / 9)) * 10) / 10;
+    });
+  }
+  if (sim.mode === 'printing' && sim.file) {
+    const elapsedH = (now - sim.startedAt) / 3600000 * TOUR_SPEED + (sim.doneBefore || 0);
+    const progress = Math.min(1, elapsedH / sim.totalHours);
+    Object.assign(st, { state: progress >= 1 ? 'complete' : 'printing', current_file: sim.file, progress,
+      print_duration_hours: Math.round(elapsedH * 1000) / 1000,
+      state_message: progress >= 1 ? `Finished ${sim.file} (online demo)` : `Printing layer ${Math.max(1, Math.ceil(progress * sim.layers))} of ${sim.layers} · online demo, ${TOUR_SPEED}× speed`,
+      layer: { current: Math.max(1, Math.ceil(progress * sim.layers)), total: sim.layers }, active_toolhead: sim.tool || 'T0' });
+    st.objects = { list: sim.objects || [], excluded: sim.excluded || [], current: (sim.objects || []).find(o => !(sim.excluded || []).includes(o.name))?.name || null };
+    const th = st.toolheads && st.toolheads[st.active_toolhead];
+    if (th) { th.status = 'active'; th.target_temperature = th.target_temperature || 220; }
+    st.bed_target = 60;
+    if (progress >= 1 && !sim.finishedLogged) { sim.finishedLogged = true; tourLog(pid, `// Print finished: ${sim.file} (online demo)`); }
+  } else if (sim.mode === 'paused') {
+    Object.assign(st, { state: 'paused', state_message: 'Paused from the online demo' });
+    if (sim.excluded && st.objects) st.objects.excluded = sim.excluded.slice();
+  } else if (sim.mode === 'ready') {
+    Object.assign(st, { state: 'ready', state_message: sim.message || 'Ready', current_file: null, progress: 0, active_toolhead: null,
+      layer: { current: 0, total: 0 }, print_duration_hours: 0 });
+    delete st.objects;
+    Object.entries(st.toolheads || {}).forEach(([name, h]) => { if (h.status === 'active') h.status = 'docked'; if (!sim.targets || !(name in sim.targets)) h.target_temperature = 0; });
+  } else if (sim.excluded && st.objects) {
+    st.objects.excluded = [...new Set([...(st.objects.excluded || []), ...sim.excluded])];
+  }
+  return st;
+}
+function tourFleetCard(card) {
+  if (!tour.sim.printers[card.id]) return card;
+  const st = tourState(card.id), out = { ...card };
+  Object.assign(out, { state: st.state, state_message: st.state_message, current_file: st.current_file, progress: st.progress,
+    active_toolhead: st.active_toolhead });
+  if (st.state === 'printing' && tour.sim.printers[card.id].totalHours) {
+    out.remaining_hours = Math.max(0, tour.sim.printers[card.id].totalHours * (1 - st.progress));
+  } else if (st.state !== 'printing') out.remaining_hours = null;
+  return out;
+}
+function tourSimFor(pid) {
+  return tour.sim.printers[pid] || (tour.sim.printers[pid] = { tempFrom: {}, tempAt: Date.now() });
+}
+function tourDone(pid, extra = {}) {
+  return tourReply({ ok: true, online_demo: true, ...extra, confirmed_state: tourState(pid), server_ms: 0, connected: true, demo: true });
+}
+async function tourControl(action, pid, body) {
+  const live = tourState(pid), sim = tourSimFor(pid);
+  if (action === 'pause') {
+    if (live.state !== 'printing') return tourReply({ error: `Nothing to pause: the printer is ${live.state}` }, 409);
+    sim.frozen = JSON.parse(JSON.stringify(live));
+    if (sim.mode === 'printing') sim.doneBefore = live.print_duration_hours;
+    sim.mode = 'paused'; tourLog(pid, 'PAUSE'); tourLog(pid, '// Print paused (online demo)');
+    return tourDone(pid);
+  }
+  if (action === 'resume') {
+    if (live.state !== 'paused') return tourReply({ error: `Nothing to resume: the printer is ${live.state}` }, 409);
+    sim.frozen = null;
+    if (sim.file) { sim.mode = 'printing'; sim.startedAt = Date.now(); } else sim.mode = 'recorded';
+    if (!sim.file && tourFrame().frame.state[pid].state === 'paused') {
+      // A print that was paused in the recording: carry on from where it stopped.
+      sim.file = live.current_file; sim.totalHours = Math.max(0.2, (live.print_duration_hours || 1) / Math.max(0.05, live.progress || 0.5));
+      sim.doneBefore = live.print_duration_hours || 0; sim.layers = (live.layer && live.layer.total) || 100; sim.startedAt = Date.now();
+      sim.objects = live.objects ? live.objects.list : []; sim.mode = 'printing';
+    }
+    tourLog(pid, 'RESUME'); tourLog(pid, '// Print resumed (online demo)');
+    return tourDone(pid);
+  }
+  if (action === 'cancel') {
+    if (!['printing', 'paused'].includes(live.state)) return tourReply({ error: `Nothing to cancel: the printer is ${live.state}` }, 409);
+    Object.assign(sim, { mode: 'ready', frozen: null, file: null, message: 'Print cancelled from the online demo' });
+    tourLog(pid, 'CANCEL_PRINT'); tourLog(pid, '// Print cancelled (online demo)');
+    return tourDone(pid);
+  }
+  if (action === 'exclude') {
+    const name = String(body.name || '');
+    const objs = live.objects && live.objects.list || [];
+    if (!objs.some(o => o.name === name)) return tourReply({ error: `No object called ${name} on this plate` }, 400);
+    sim.excluded = [...new Set([...(sim.excluded || []), name])];
+    if (sim.frozen && sim.frozen.objects) sim.frozen.objects.excluded = sim.excluded.slice();
+    tourLog(pid, `EXCLUDE_OBJECT NAME=${name}`);
+    return tourDone(pid);
+  }
+  if (action === 'temperature') {
+    const th = String(body.toolhead || ''), target = Number(body.target);
+    if (!(target >= 0 && target <= (th === 'bed' ? 110 : 300))) return tourReply({ error: 'Target must be between 0 and 300 °C (bed 110 °C)' }, 400);
+    if (th === 'bed') { tourLog(pid, `M140 S${target}`); return tourDone(pid); }
+    if (!live.toolheads || !live.toolheads[th]) return tourReply({ error: `No toolhead ${th}` }, 400);
+    sim.targets = { ...(sim.targets || {}) };
+    Object.keys(sim.targets).forEach(k => { sim.tempFrom[k] = live.toolheads[k].temperature; });
+    sim.tempFrom[th] = live.toolheads[th].temperature; sim.tempAt = Date.now(); sim.targets[th] = target;
+    tourLog(pid, `SET_HEATER_TEMPERATURE HEATER=${th} TARGET=${target}`);
+    return tourDone(pid);
+  }
+  if (action === 'home') { tourLog(pid, `G28 ${(body.axes || ['X', 'Y', 'Z']).join(' ')}`); tourLog(pid, '// Homed (online demo)'); return tourDone(pid); }
+  if (action === 'gcode') {
+    const cmd = String(body.command || '').trim().slice(0, 200);
+    if (!cmd) return tourReply({ error: 'Type a command first' }, 400);
+    tourLog(pid, cmd); tourLog(pid, 'ok (online demo: nothing was sent to a printer)');
+    return tourDone(pid);
+  }
+  if (action === 'start') {
+    const name = String(body.filename || '');
+    if (!['ready', 'complete', 'cancelled', 'standby'].includes(live.state)) return tourReply({ error: `The printer is busy (${live.state}${live.current_file ? ` ${live.current_file}` : ''})` }, 409);
+    const gate = tourAnswer(tourKey('/api/print/confirm', new URLSearchParams({ file: name, printer: pid })));
+    if (gate && gate.body && gate.body.verdict === 'blocked') return tourReply({ error: 'Confirm Print blocked this file: ' + (gate.body.blocking || []).join('; ') }, 409);
+    if (!body.confirmed) return tourReply({ error: 'Review Confirm Print first' }, 409);
+    const an = await tourAnswerFull(tourKey('/api/files/analysis', new URLSearchParams({ name, printer: pid })));
+    const a = an && an.body || {};
+    Object.assign(sim, { mode: 'printing', frozen: null, file: name, startedAt: Date.now(), doneBefore: 0, finishedLogged: false,
+      totalHours: Math.max(0.05, a.estimated_hours || 0.5), layers: a.layers || 100, excluded: [],
+      tool: (a.tools_used && a.tools_used[0]) || 'T0',
+      objects: (a.objects || []).map(o => ({ name: o.name, center: o.center, polygon: o.polygon })) });
+    tourLog(pid, `SDCARD_PRINT_FILE FILENAME="${name}"`); tourLog(pid, `// Print started (online demo, ${TOUR_SPEED}× speed)`);
+    return tourDone(pid);
+  }
+  return null;
+}
+function tourConvert(body) {
+  const name = String(body.name || '');
+  const rec = (tour.rec.posts || {})['/api/convert?name=' + name];
+  if (!rec) return tourReply({ error: 'In the online demo the converter runs on the sample MakerWorld, Bambu Studio and Elegoo projects. '
+    + 'Run Deja Vu1 at home to convert your own files.', code: 'ONLINE_DEMO', stage: 'Online demo' }, 409);
+  if (rec.status === 200 && rec.body.file) {
+    const entry = (tour.rec.converted || {})[rec.body.file.name];
+    if (entry && !tour.sim.added.some(f => f.name === entry.name)) tour.sim.added.push(entry);
+    tour.sim.deleted.delete(rec.body.file.name);
+  }
+  return tourReply(rec.body, rec.status);
+}
+
+async function tourPost(url, body) {
   if (url.pathname === '/api/tools/layer-plan' && typeof planLayers === 'function') {
     try { return tourReply(planLayers(JSON.parse(body || '{}'))); }
     catch (err) { return tourReply({ error: err.message }, 400); }
+  }
+  let parsed = {};
+  try { parsed = JSON.parse(body || '{}'); } catch (_) { parsed = {}; }
+  const pid = url.searchParams.get('printer') || (typeof currentPrinter !== 'undefined' && currentPrinter) || tour.rec.default_printer;
+  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start)$/);
+  if (control) {
+    const answer = await tourControl(control[1], pid, parsed);
+    if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
+  }
+  if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname.startsWith('/api/logbook')) {
+    const list = tour.sim.logbook[pid] || (tour.sim.logbook[pid] = []);
+    if (url.pathname === '/api/logbook/add') {
+      const problem = String(parsed.problem || '').trim().slice(0, 600);
+      if (!problem) return tourReply({ error: 'Say what happened' }, 400);
+      const e = { id: 'demo' + Date.now(), at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19), print_hours: null, problem, fix: String(parsed.fix || '').trim().slice(0, 600), tags: [], auto: false, demo: true };
+      list.push(e);
+      return tourReply(e);
+    }
+    const m = url.pathname.match(/^\/api\/logbook\/([^/]+)\/(fix|delete)$/), at = m ? list.findIndex(e => e.id === decodeURIComponent(m[1])) : -1;
+    if (at < 0) return tourReply({ error: 'That logbook entry no longer exists' }, 404);
+    if (m[2] === 'fix') { list[at].fix = String(parsed.fix || '').trim().slice(0, 600); return tourReply(list[at]); }
+    list.splice(at, 1);
+    return tourReply({ deleted: m[1] });
+  }
+  if (url.pathname === '/api/fleet/route') {
+    const to = String(parsed.to || ''), name = String(parsed.filename || '');
+    const target = tour.rec.printers.includes(to) ? to : null;
+    if (!target) return tourReply({ error: 'Choose one of the demo printers' }, 400);
+    if (!(tour.rec.files || []).includes(name) && !tour.sim.added.some(f => f.name === name)) return tourReply({ error: `${name} isn't in the demo library` }, 400);
+    const list = tour.sim.queued[target] || (tour.sim.queued[target] = []);
+    list.push({ id: 'demo-' + Date.now(), filename: name, status: 'queued', note: 'online demo', added_at: new Date().toISOString().slice(0, 19), online_demo: true });
+    return tourReply({ routed: name, to: target, online_demo: true });
+  }
+  if (url.pathname === '/api/files/opened') return tourReply({ ok: true, online_demo: true });
+  if (url.pathname === '/api/files/delete') {
+    const name = String(parsed.name || '');
+    tour.sim.deleted.add(name); tour.sim.added = tour.sim.added.filter(f => f.name !== name);
+    return tourReply({ ok: true, online_demo: true, deleted: name });
   }
   return tourReply({ error: TOUR_REFUSED, online_demo: true }, 409);
 }

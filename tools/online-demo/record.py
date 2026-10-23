@@ -13,8 +13,11 @@ It starts the real server in a temporary data folder (your own settings and
 files are never read), turns on the sample files, asks every GET route the
 way the dashboard does, then reads the live feed once a second. Halfway
 through, the Workshop printer jams, so the recording shows what happens
-when a print needs you. Output: frontend/demo/ (recording.json, plus the
-sample files and their thumbnails, which the dashboard loads directly).
+when a print needs you. It also runs the 3MF converter on each sample
+project and keeps the real reports and converted files, so the demo's
+"Convert for Snapmaker U1" works. Output: frontend/demo/ (recording.json,
+plus the sample files and their thumbnails, which the dashboard loads
+directly).
 
 Re-run it when the screens or the routes change; the tests check that every
 GET route the server has is in the recording.
@@ -35,6 +38,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "frontend", "demo")
 SECONDS = 150          # length of the loop
 JAM_AT = 75            # the Workshop printer jams here
+LARGE = 150_000        # answers bigger than this (bytes of JSON) get their own file
 
 # Routes the recording doesn't hold as fixed answers: the live feed is
 # recorded as a timeline, files and thumbnails as files, and the rest are
@@ -163,11 +167,28 @@ def record():
                         continue
                     keep(key_for(path, params), status, body)
 
+        # The converter, run for real on each sample project, so the online
+        # demo can show its actual reports and open the converted files.
+        posts, converted = {}, {}
+        for name in [n for n in names if n.endswith(".3mf")]:
+            status, body = srv.post("/api/convert", {"name": name})
+            posts["/api/convert?name=" + name] = {"status": status, "body": body}
+            out_name = (body.get("file") or {}).get("name") if status == 200 else None
+            if not out_name:
+                continue
+            _, listing = srv.get("/api/files")
+            entry = next((f for f in listing["files"] if f["name"] == out_name), None)
+            if entry:
+                converted[out_name] = entry
+            for pid in printers:
+                params = {"demo": 1, "printer": pid, "name": out_name}
+                keep(key_for("/api/files/plates", params), *srv.get("/api/files/plates", **params))
+
         shutil.rmtree(OUT, ignore_errors=True)
         os.makedirs(os.path.join(OUT, "files"))
         os.makedirs(os.path.join(OUT, "thumbs"))
         thumbs = []
-        for name in names:
+        for name in names + list(converted):
             status, raw = srv.get("/api/files/raw", name=name)
             if status == 200:
                 with open(os.path.join(OUT, "files", name), "wb") as f:
@@ -201,6 +222,17 @@ def record():
 
     if not events:
         raise RuntimeError("The recording has no events; the jam should have made one")
+    # Large answers (the analyses of the big sample G-code files) live in
+    # their own files, fetched only when that file is opened, so the demo's
+    # first download stays small. The page reads {"__file__": ...} bodies.
+    os.makedirs(os.path.join(OUT, "answers"), exist_ok=True)
+    for i, entry in enumerate(bodies):
+        text = json.dumps(entry["body"], separators=(",", ":"))
+        if len(text) > LARGE:
+            name = f"answers/{i}.json"
+            with open(os.path.join(OUT, name), "w", encoding="utf-8") as f:
+                f.write(text)
+            entry["body"] = {"__file__": name}
     recording = {
         "about": "A recording of Deja Vu1's simulated farm for the online demo. Not a real printer. "
                  "Made by tools/online-demo/record.py.",
@@ -213,6 +245,8 @@ def record():
         "bodies": bodies,
         "files": names,
         "thumbs": thumbs,
+        "posts": posts,
+        "converted": converted,
         "frames": frames,
         "events": events,
     }

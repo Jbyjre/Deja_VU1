@@ -15,9 +15,10 @@
  * - Snapmaker's official product picture of the U1 (shipped with Snapmaker's
  *   Orca slicer profile): the white rounded body with a black rim around the
  *   open top, the framed smoked-glass door with its handle and hinge screws,
- *   the touchscreen at top right, the wordmark, the side panel's tilted oval
+ *   the touchscreen above the door right of centre, the wordmark, the side panel's tilted oval
  *   with two spool drums and perforated vents, the side feeder marked 1 and 2,
- *   four black toolheads with yellow accents parked at the back, each with a
+ *   four black toolheads with yellow accents parked at the back inside the
+ *   chamber (level with the carriage; only their loops rise above), each with a
  *   tall loop of filament tube, and the bed's "BUILD VOLUME" strip.
  * - Snapmaker's slicer profile: a 276 x 293 mm textured PEI plate and a
  *   270 mm print height. Snapmaker's spec: 584 x 499 x 730 mm overall.
@@ -40,7 +41,10 @@ const Twin3D = (() => {
   const BED = 270, PLATE = { w: 276, d: 293 };
   const TIP = 375;                    // nozzle tip height when Z is 0
   const RAIL_Z = 452;                 // the gantry
-  const DOCK = { y: 316, tip: 420, xs: [18, 76, 134, 192] };
+  // Docks sit level with the carriage, as a tool changer's must, so parked
+  // heads stay inside the chamber below the rim (as in Snapmaker's picture,
+  // where only their tube loops rise above the body).
+  const DOCK = { y: 316, tip: TIP, xs: [18, 76, 134, 192] };
   const HEAD = { w: 54, d: 52, h: 96 };
   const HUB = { upper: [245, 341], lower: [115, 142] };   // side-panel spool positions: [y, z]
   const VIEWS = { iso: [-32, 20], front: [0, 3], top: [0, 89] };
@@ -54,10 +58,10 @@ const Twin3D = (() => {
   /* Materials: linear base colour, roughness, metalness, plus how it's drawn. */
   const MAT = {
     body:     { c: lin(.89, .895, .9), r: .38, m: 0 },
-    bodyIn:   { c: lin(.3, .31, .33), r: .8, m: 0 },
+    bodyIn:   { c: lin(.46, .47, .49), r: .8, m: 0 },   // the chamber reads lit in the picture
     rim:      { c: lin(.05, .05, .055), r: .45, m: 0 },
     frame:    { c: lin(.07, .07, .075), r: .35, m: 0 },
-    glass:    { c: lin(.2, .21, .22), r: .04, m: 0, a: .3, kind: 'glass' },
+    glass:    { c: lin(.2, .21, .22), r: .04, m: 0, a: .12, kind: 'glass' },   // clear enough to see the chamber, as in the picture
     bezel:    { c: lin(.04, .04, .045), r: .18, m: 0 },
     screen:   { c: [1, 1, 1], r: .12, m: 0, kind: 'tex', glow: 1 },
     decal:    { c: [1, 1, 1], r: .4, m: 0, kind: 'tex', a: .999 },
@@ -390,8 +394,8 @@ const Twin3D = (() => {
     if (uSel > 0.0) { float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0); col = col * (1.0 + 0.1 * uSel) + vec3(0.1, 0.32, 1.0) * (0.12 + 0.75 * fr) * uSel; }
     if (uKind == 8) { // glass: mostly reflection, a little tint
       float f = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
-      col = base * 0.35 + env(R, 0.03) * (0.12 + 0.88 * f);
-      alpha = clamp(uAlpha + f * 0.5, 0.0, 1.0);
+      col = base * 0.35 + env(R, 0.03) * (0.06 + 0.88 * f);
+      alpha = clamp(uAlpha + f * 0.45, 0.0, 1.0);
     }
     outColor = vec4(pow(aces(col * 0.95), vec3(1.0 / 2.2)), alpha);
   }`;

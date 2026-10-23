@@ -211,6 +211,7 @@ const Workshop = (() => {
     updateChamberNow(state);
     renderChip();
     tintRoom(state);
+    window.dispatchEvent(new CustomEvent('dv-state', { detail: state }));
     if (fromCommand) refreshSoon();
   }
 
@@ -377,6 +378,7 @@ const Workshop = (() => {
           <ul class="fc-alerts" data-f="alerts"></ul>
           <div class="fc-queue" data-f="queue"></div>
           <button class="btn block fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
+          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer">Printer's own page (Fluidd) ↗</a>` : ''}
         </article>`).join('');
       qsa('[data-open]', grid).forEach(btn => btn.addEventListener('click', () => selectPrinter(btn.dataset.open, btn.closest('.fleet-card'))));
     }
@@ -1517,6 +1519,7 @@ const Workshop = (() => {
     if (data && data.server_missing) { renderLocalFiles(); return; }
     if (isModuleDisabled(data)) { grid.innerHTML = moduleDisabledEmpty('Print file library'); $('file-recent').innerHTML = ''; return; }
     files.list = (data && data.files) || [];
+    if ($('convert-card')) $('convert-card').hidden = modGate.off.has('converter');
     $('file-recent').innerHTML = data && data.recent && data.recent.length
       ? `<span class="fr-label">Recent</span>${data.recent.map(n => `<button class="chip-btn" data-open-file="${esc(n)}" type="button">${esc(n)}</button>`).join('')}` : '';
     grid.innerHTML = files.list.length ? files.list.map(f => {
@@ -1545,11 +1548,51 @@ const Workshop = (() => {
     loadFiles();
   }
 
+  /* The converter card: upload (or take the sample), open it, convert it, show the report. */
+  async function convertFromCard(name, button) {
+    await loadFiles();
+    if (!files.list.some(f => f.name === name)) { $('cv-note').textContent = `Couldn't find ${name} in the library.`; return; }
+    await convertFile(name, button, $('cv-report'));
+    $('cv-report').hidden = false;
+  }
+
+  function initConverterCard() {
+    const card = $('convert-card');
+    if (!card) return;
+    $('cv-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      if (typeof tourOn === 'function' && tourOn()) {
+        $('cv-note').textContent = 'The online demo converts the sample projects only. Run Deja Vu1 at home to convert your own files.';
+        return;
+      }
+      if (!/\.3mf$/i.test(file.name)) { $('cv-note').textContent = 'Choose a .3mf project file.'; return; }
+      $('cv-note').textContent = `Adding ${file.name}…`;
+      const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { $('cv-note').textContent = `Couldn't add ${file.name}: ${body.error || res.status}`; return; }
+      $('cv-note').textContent = `Converting ${body.name}…`;
+      await convertFromCard(body.name, $('cv-sample'));
+      $('cv-note').textContent = `${body.name}: report below. Open the U1 copy from the report or the library.`;
+    });
+    $('cv-sample').addEventListener('click', async (e) => {
+      const btn = e.currentTarget, name = 'sample_makerworld_three_plates.3mf';
+      try {
+        if (!files.list.some(f => f.name === name)) await postJSON('/api/files/samples', {});
+        $('cv-note').textContent = 'Converting the sample: a 3DBenchy and a gear on plate 1, a vase on plate 2, another Benchy on plate 3…';
+        await convertFromCard(name, btn);
+        $('cv-note').textContent = 'Sample converted: report below. Open the U1 copy to prepare and slice a plate.';
+      } catch (err) { $('cv-note').textContent = err.message; }
+    });
+  }
+
   function initFiles() {
+    initConverterCard();
     $('file-upload').addEventListener('change', (e) => { uploadFiles([...e.target.files]); e.target.value = ''; });
     $('file-samples').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
-      btn.disabled = true; btn.textContent = 'Adding…';
+      btn.disabled = true; btn.textContent = 'Adding… (about 10 s the first time)';
       const r = await postJSON('/api/files/samples', {});
       btn.disabled = false; btn.textContent = 'Add sample files';
       toast(r.ok ? (r.body.added.length ? `Added ${r.body.added.length} sample files` : 'The sample files are already here') : `Couldn't add samples: ${r.body.error}`, r.ok ? 'ok' : 'bad');
@@ -1893,13 +1936,14 @@ const Workshop = (() => {
       re-placed on the U1's 270 mm bed, each object keeping its spot, height and turn${n > 1 ? ' - so every plate opens where it belongs in Snapmaker Orca' : ''}.</p>`;
   }
 
-  async function convertFile(name, button) {
+  async function convertFile(name, button, target) {
+    const label = button.textContent;
     button.disabled = true;
     button.textContent = 'Converting…';
     const r = await postJSON('/api/convert', { name });
     button.disabled = false;
-    button.textContent = 'Convert for Snapmaker U1';
-    const host = $('fd-convert-report');
+    button.textContent = label;
+    const host = target || $('fd-convert-report');
     const copyBtn = '<button class="btn small" type="button" data-copy-report>Copy report</button>';
     if (!r.ok) {
       const b = r.body || {};
