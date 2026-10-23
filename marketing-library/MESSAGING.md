@@ -1,70 +1,66 @@
 # Project messaging
 
-Temporary launch notes. Keep public claims aligned with the
-[current validation](../docs/slicer-workspace-validation.md).
-
-## One line
-
 **One screen for every U1 you run.**
 
-Deja Vu1 is a free, open-source dashboard and model-preparation workspace for
-Snapmaker U1 printers. Monitor a fleet, prepare plates, slice with an installed
-engine, inspect G-code and review server-enforced checks before printing. The
-core runs locally with Python; optional engines and integrations are separate.
+See which printer needs attention, prepare a plate, inspect its layers and review
+the checks before starting. Deja Vu1 runs on your computer and opens in a browser.
+Free, open source, no app account. Slicing needs a separate compatible engine.
 
-## Paste-ready repository description
+Ready-to-use descriptions and posts: [COPY.md](COPY.md).
+Current share images and their captions: [09-current-campaign](09-current-campaign/).
 
-> Local dashboard and model-preparation workspace for Snapmaker U1 printers,
-> with external-engine slicing, G-code inspection, print checks and app-data recovery.
+## What to lead with
 
-Suggested topics: `snapmaker`, `snapmaker-u1`, `moonraker`, `klipper`,
-`3d-printing`, `print-farm`, `dashboard`, `toolchanger`.
+1. **See what needs you.** A fleet view and ranked attention list make the next
+   printer to check easy to find. Show three printers, rather than implying the
+   27-printer sandbox is the real-printer capacity.
+2. **Prepare, slice, inspect.** Objects, physical T0–T3 assignments, profiles and
+   output inspection in one workspace. Explain the separate engine at first mention.
+3. **Review before starting.** Pre-flight and Confirm Print explain refusals.
+   Known mismatches block; missing filament information asks for a visual check.
+4. **Inspect the implementation.** Public code, setup and validation records.
+   Keep optional integrations, colour generation and games as supporting details.
+5. **Help test the first connection.** A specific watch-only request for U1 owners.
 
-## What to emphasize
+## Claims to keep consistent
 
-1. **Monitor the fleet:** live state, finish estimates and a ranked Needs you list.
-2. **Prepare, slice, inspect:** object edits, physical T0–T3 assignments, useful
-   profiles and actual layer inspection in one workspace.
-3. **Different preferred heights:** verified Linux engine output for three
-   nozzle/height pairs. A capable external engine is required; this is not a
-   physical-print claim.
-4. **Review before starting:** pre-flight and Confirm Print check the current
-   printer, file and loaded tools. Checks do not guarantee a successful print.
-5. **Keep source data:** supported project conversion, separate plate selection,
-   save-as and isolated app-data recovery.
-6. **Make images printable:** colour tiles, measured-swatch layered models and
-   closed image reliefs. Calibration and physical appearance remain unverified.
-7. **Supporting tools:** maintenance, spools, camera/time-lapse, automations,
-   notifications, smart-home integrations and games.
+| Topic | Supported wording | Avoid |
+|---|---|---|
+| Printer status | Reported state, shared through a 250 ms server loop; freshness varies | Guaranteed four updates per second from every printer |
+| Test evidence | Current suite: 771 cases; see validation for the latest run | Treating software tests as real-printer certification |
+| Print checks | Blocking errors refuse; warnings need acknowledgement | Safe-print guarantees or automatic success |
+| Filament | Compare available reported material and colour; unknown stays unknown | Claiming an optical sensor measures the loaded spool today |
+| Slicing | A separately installed compatible engine produces G-code | A bundled slicer or guaranteed support for every engine |
+| Per-head heights | Recorded Linux engine output for three tested pairs | A verified physical mixed-nozzle print |
+| Conversion | Supported projects and selected plates, with a conversion report | Universal one-click fidelity for all vendor projects |
+| Twin | Software model, driven by reported state; geometry partly estimated | Camera footage or an exact mechanical model |
+| Phone | Chromium layout checked at 390 px | Real-phone performance testing |
+| Recovery | Versioned app-data backup and separate recovery; Linux launcher checked | Backing up external engines or verified Windows/macOS recovery |
+| Local operation | Local core; optional services contact configured endpoints | Nothing ever connects to the internet |
+| Accounts | No Deja Vu1 account | No accounts or credentials for third-party services |
 
-## Evidence and wording limits
+No physical U1 connection, mixed-nozzle print or measured colour accuracy is
+verified. Dock-ring and optical-sensor drivers remain unfinished. Heavy-model
+rendering is slow in software graphics. Full vendor paint and texture fidelity
+remains incomplete. Keep these limits close to the relevant claim.
 
-| Claim | Evidence or qualification |
-|---|---|
-| 759 tests passed | Clean full suite, Python 3.12.14/Linux, 128.765 seconds; PR #45 CI also passed |
-| Follow-up check | 36 targeted tests passed before the PR #45 merge |
-| Live updates | 250 ms target loop; actual freshness depends on printer/network response |
-| Per-head heights | Actual model extrusion, with clear pre-flight; first layers/features can differ |
-| Recovery | Validated separate restore and generated Linux launcher; Windows/macOS unexecuted |
-| App dependencies | Standard-library Python/plain JavaScript; external slicing/media tools are separate |
-| Performance | Selection improved; full-frame model rendering regressed under SwiftShader |
+## Visual and editorial rules
 
-Say plainly:
+Use actual app captures for product evidence. Keep one main subject per card,
+short headlines, readable type and an obvious next step. Put the demo or engine
+evidence label inside the image so it survives sharing. Never use a synthetic
+photo as proof of a physical setup. Retain selectable HTML text and useful image
+alternatives. Review at desktop and phone widths and inspect every final image.
 
-- No physical U1, real phone, measured colour accuracy or mixed-nozzle print is verified.
-- Farm screenshots are simulated. Slice figures can be actual engine estimates;
-  neither is a physical measurement.
-- Representative converted/generated files passed the Linux engine. Full vendor
-  paint, textures and per-part semantics remain incomplete.
-- LED rings and the colour sensor have tested logic but no completed hardware drivers.
-- Current boards/screens/demo, the two 60-second videos (version 13) and the two 75-second
-  videos (version 12) are refreshed.
-  Older editorial crops still need updating; do not label the whole library current.
-- The newer image generator sends a reduced pixel grid to the local app server;
-  the older relief editor calculates in the browser.
+Write what a person can do and what they will see. Prefer concrete examples to
+superlatives. Vary sentence length naturally. Do not add fake mistakes, invented
+personal experience, testimonials or detector scores. Keep the public disclosure
+of AI-assisted development. No marketing or award-score uplift is measured here.
 
-## Research and required notices
+## Source and notices
 
-Keep private study records outside the repository. Do not name study projects as
-feature sources in public copy. Preserve required notices for actual reuse;
-review licensing before copying or closely adapting external material.
+Current implementation evidence: [workspace validation](../docs/slicer-workspace-validation.md),
+[current status](../README.md#current-status), [first connection](../docs/first-connection.md).
+Private study records stay outside the repository. Keep required notices for
+actual reused assets. The existing films require the piano credit in COPY.md.
+Deja Vu1 is independent and is not affiliated with or endorsed by Snapmaker.

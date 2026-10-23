@@ -54,8 +54,8 @@
     document.documentElement.classList.toggle('setup-full-open', step !== TOUR);
     if (step === 0) {
       content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">A little setup.<br>A clearer print day.</h2>
-        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer, talks to your printer over your home network, and works from your phone too. Nothing goes to the cloud.</p>
-        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Stay safe:</strong> every print is checked before it starts.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
+        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer, talks to your printer over your home network, and works from your phone too. Core printer data stays on your network. Optional services connect only when configured.</p>
+        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Review the job:</strong> check the file, tools and printer before starting.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
         <p class="field-hint">${esc(privacy)}</p>`;
