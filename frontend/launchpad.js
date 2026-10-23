@@ -158,15 +158,7 @@
     const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Downloading and checking the release…';
     try{const r=await postJSON('/api/app/updates/install',{});if(!r.ok)throw new Error(r.body.error);$('app-update-status').textContent='Restarting. Keep the launcher window open. Reload this page when it is ready.';setTimeout(()=>location.reload(),8000);}catch(e){$('app-update-status').textContent=e.message||'The update could not be installed.';btn.disabled=false;}
   };
-  const search=$('feature-search');
-  const destinations=[['Progress','overview'],['Pause, resume or cancel a print','control'],['Camera and time-lapses','modules'],['Files, models, slicing and queue','files'],['Printers and farm planning','fleet'],['Photo studio','studio'],['Automation rules','automations'],['Maintenance and filament','maintenance'],['Settings and app updates','modules']];
-  search.oninput=()=>{
-    const out=$('feature-results');out.replaceChildren();const q=search.value.trim().toLowerCase();out.hidden=!q;
-    if(!q)return;const hits=destinations.filter(([name])=>name.toLowerCase().includes(q));
-    hits.forEach(([name,tab])=>{const b=document.createElement('button');b.className='btn';b.textContent=name;b.onclick=()=>{out.hidden=true;search.value='';if(name.startsWith('Camera')){openCamera();return;}showTab(tab);const panel=$(`tab-${tab}`);panel.tabIndex=-1;panel.focus();};out.append(b);});
-    if(!hits.length)out.textContent='No matching area. Try “camera”, “files” or “printer”.';
-  };
-  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();search.focus();}if(e.key==='Escape')$('feature-results').hidden=true;});
+  // The search box lives in finder.js.
   let cameraRun = 0, cameraURL = null, cameraTimer = null;
   function stopStock() {
     cameraRun++;clearTimeout(cameraTimer);
