@@ -51,3 +51,17 @@ class Logbook(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PrinterWebPage(unittest.TestCase):
+    def test_same_host_on_the_web_port_and_nothing_for_unknown(self):
+        import fleet
+        real = fleet.registered
+        try:
+            fleet.registered = lambda: [{'id': 'p1', 'moonraker_url': 'http://192.168.1.50:7125'},
+                                        {'id': 'p2', 'moonraker_url': 'https://[fe80::1]:7125'}]
+            self.assertEqual(fleet.web_page('p1'), 'http://192.168.1.50/')
+            self.assertEqual(fleet.web_page('p2'), 'https://[fe80::1]/')
+            self.assertIsNone(fleet.web_page('nope'))
+        finally:
+            fleet.registered = real

@@ -378,6 +378,7 @@ const Workshop = (() => {
           <ul class="fc-alerts" data-f="alerts"></ul>
           <div class="fc-queue" data-f="queue"></div>
           <button class="btn block fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
+          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer">Printer's own page (Fluidd) ↗</a>` : ''}
         </article>`).join('');
       qsa('[data-open]', grid).forEach(btn => btn.addEventListener('click', () => selectPrinter(btn.dataset.open, btn.closest('.fleet-card'))));
     }

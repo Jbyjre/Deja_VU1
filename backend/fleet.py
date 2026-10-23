@@ -173,6 +173,17 @@ def _link_module_on():
     return modules.is_enabled("printer_link")
 
 
+def web_page(printer_id):
+    """
+    The printer's own web page: the same host as its Moonraker address, on
+    the ordinary web port, where Klipper printers usually serve Fluidd or
+    Mainsail. Opened by the browser on your network; nothing is fetched here.
+    """
+    entry = next((p for p in registered() if p["id"] == printer_id), None)
+    match = re.match(r"(https?)://([^/:]+|\[[^\]]+\])", entry["moonraker_url"]) if entry else None
+    return f"{match.group(1)}://{match.group(2)}/" if match else None
+
+
 def registry():
     return {"printers": [_public(p) for p in registered()],
             "note": ("Printers you add here are connected through their Moonraker address. "
@@ -261,6 +272,8 @@ def overview():
                    "alerts": [{"level": "error", "text": "Couldn't read this printer"}], "docks": {},
                    "progress": 0.0, "health": None, "link_lost": True}
         row["demo"] = not mock_moonraker.is_real(pid)
+        if not row["demo"]:
+            row["web_url"] = web_page(pid)
         rows.append(row)
     return {"printers": rows}
 
