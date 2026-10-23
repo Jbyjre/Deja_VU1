@@ -1315,11 +1315,17 @@ function renderStatusRibbon(data) {
     $('rb-done').hidden = true;
     lastPrinterState = null;
     mirrorInTab(null);
+    if (typeof Backdrop !== 'undefined') Backdrop.progress(null);
     return;
   }
 
   lastPrinterState = data;
   mirrorInTab(data);
+  // The background fills up as the print does (backdrop.js).
+  if (typeof Backdrop !== 'undefined') {
+    const head = data.toolheads && data.toolheads[data.active_toolhead];
+    Backdrop.progress(['printing', 'paused'].includes(data.state) ? data.progress : null, head && head.filament_color_hex);
+  }
   const isPrinting = data.state === 'printing';
   ribbon.classList.toggle('is-live', isPrinting);
 

@@ -19,6 +19,8 @@
  * sweep across the screen as each minute turns over, the time drawn in dots
  * on the hour, a burst in the filament's colour when a print finishes, and
  * two secrets typed on the keyboard. New surprises go in SURPRISES below.
+ * While a print runs, Dots and Constellation fill from the bottom up in
+ * its filament's colour, as far as the print has got (`progress`).
  *
  * Cost, which matters because the glass bars blur what is behind them: the
  * canvas only draws while something is moving (the pointer, a ripple, a
@@ -60,6 +62,7 @@ const Backdrop = (() => {
   const pointer = { x: -1e4, y: -1e4, sx: -1e4, sy: -1e4, vx: 0, vy: 0, t: 0, inside: false, down: 0, downAt: 0 };
   let blobs = [], glow = { x: 0, y: 0, a: 0 }, trail = [], grid = null, colours = null;
   let waves = [], sweeps = [], sparks = [], mask = null, charge = null, rainbow = 0;
+  let fill = null;              // a running print: { p: 0..1, c: [r, g, b] }
   const pickers = new Set();
 
   function load() {
@@ -600,17 +603,29 @@ const Backdrop = (() => {
     }
     // Four brightness buckets keep this to a handful of fills.
     const buckets = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
-    const textDots = new Path2D();
+    const textDots = new Path2D(), filled = new Path2D(), layer = new Path2D();
+    // A running print fills the dots from the bottom up, in its filament's
+    // colour, as far as it has got; the row at the top is the layer printing now.
+    const fillY = fill ? H * (1 - fill.p) : Infinity;
     for (let i = 0; i < n; i++) {
       const x = hx[i] + ox[i], y = hy[i] + oy[i], b = Math.min(1, gl[i]);
       if (lit[i] > 0.05) { const r = 2 + lit[i] * 2.6; textDots.moveTo(x + r, y); textDots.arc(x, y, r, 0, Math.PI * 2); continue; }
       const moved = Math.min(1, (Math.abs(ox[i]) + Math.abs(oy[i])) / 30);
       const r = (joined ? 1.5 : 1.35) + b * 1.9 + moved * 0.9;
       const q = b < 0.08 ? 0 : b < 0.35 ? 1 : b < 0.7 ? 2 : 3;
+      if (q === 0 && hy[i] >= fillY) {
+        const top = hy[i] - fillY < STEP;
+        (top ? layer : filled).moveTo(x + r + (top ? 0.4 : 0), y); (top ? layer : filled).arc(x, y, r + (top ? 0.4 : 0), 0, Math.PI * 2);
+        continue;
+      }
       buckets[q].moveTo(x + r, y); buckets[q].arc(x, y, r, 0, Math.PI * 2);
     }
     const glowC = litColour();
     ctx.fillStyle = css(colours.ink, joined ? 0.24 : 0.2); ctx.fill(buckets[0]);
+    if (fill) {
+      ctx.fillStyle = css(mix(colours.ink, fill.c, 0.85), 0.42); ctx.fill(filled);
+      ctx.fillStyle = css(fill.c, 0.9); ctx.fill(layer);
+    }
     ctx.fillStyle = css(mix(colours.ink, glowC, 0.45), 0.4); ctx.fill(buckets[1]);
     ctx.fillStyle = css(glowC, 0.6); ctx.fill(buckets[2]);
     ctx.fillStyle = css(glowC, 0.85); ctx.fill(buckets[3]);
@@ -702,5 +717,15 @@ const Backdrop = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 
-  return { STYLES, PALETTES, ENERGY, get: () => ({ ...prefs }), set, picker, ripple, bloom, celebrate, sweep, showText };
+  /* The dashboard tells the background about a running print (app.js,
+   * renderStatusRibbon); null when nothing is printing. Dots and
+   * Constellation show it; the other styles ignore it. */
+  function progress(p, hex) {
+    const next = p == null || !isFinite(p) ? null : { p: Math.max(0, Math.min(1, p)), c: hexToRgb(hex) || (colours ? colours.glow : [63, 140, 255]) };
+    const same = (!next && !fill) || (next && fill && Math.abs(next.p - fill.p) < 0.002 && next.c.join() === fill.c.join());
+    fill = next;
+    if (!same && !raf && ctx) drawFrame(0);
+  }
+
+  return { STYLES, PALETTES, ENERGY, get: () => ({ ...prefs }), set, picker, ripple, bloom, celebrate, sweep, showText, progress };
 })();

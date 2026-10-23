@@ -386,7 +386,8 @@ const Twin3D = (() => {
     col += (1.0 - uMetal) * base * env(N, 1.0) * 0.36 * (0.55 + 0.45 * sh);
     col += Fv * env(R, rough) * mix(0.55, 1.0, sh) * (uKind == 0 && uMetal < 0.5 ? 0.55 : 0.9);
     if (uGlow > 0.0) col = mix(col, base * 1.25, uGlow);
-    if (uSel > 0.0) col = mix(col, vec3(0.25, 0.5, 1.0), 0.28 * uSel) + vec3(0.02, 0.05, 0.12) * uSel;
+    // Picked: a blue glow round its edges, so its own colour stays true.
+    if (uSel > 0.0) { float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0); col = col * (1.0 + 0.1 * uSel) + vec3(0.1, 0.32, 1.0) * (0.12 + 0.75 * fr) * uSel; }
     if (uKind == 8) { // glass: mostly reflection, a little tint
       float f = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
       col = base * 0.35 + env(R, 0.03) * (0.12 + 0.88 * f);
