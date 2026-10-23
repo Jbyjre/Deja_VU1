@@ -616,23 +616,19 @@
     </section>
 
     <section id="tab-layerplan" class="tab-sub" aria-labelledby="sub-layerplan-title">
-      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed-nozzle planner</h2>
-        <p>A different nozzle and layer height on each toolhead: fine detail where it shows, thick fast layers inside</p></div>
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed layer heights</h2>
+        <p>Fine layers where detail shows, thick fast layers where it doesn't: each head prints a whole number of base layers at once</p></div>
       <section class="card liquid-glass lp-card">
-        <div class="card-head"><div><h2>Plan the layers</h2><p class="card-sub">Pick each toolhead's nozzle and the layer height you'd like. The planner finds the shared layer grid, the way mixed-nozzle slicers do, and checks each height against Snapmaker's U1 profile for that nozzle.</p></div>
-          <button class="btn small" type="button" id="lp-example">Try a mixed-nozzle example</button></div>
-        <div class="lp-layout">
-          <form class="lp-form" id="lp-form" novalidate>
-            <div class="lp-rows" id="lp-rows"></div>
-            <div class="lp-more">
-              <label>Part height <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
-              <label class="switch" for="lp-exact"><span class="switch-label">Exact heights (slower to slice)</span>
-                <input type="checkbox" id="lp-exact"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label>
-            </div>
-          </form>
-          <div class="lp-out" id="lp-out" aria-live="polite"></div>
-        </div>
-        <p class="lp-source">This plans layer heights; it does not slice a model. Limits come from Snapmaker's U1 machine profiles. Use a slicer that supports per-toolhead layer heights and check its preview. Confirm Print checks each fitted nozzle before starting.</p>
+        <div class="card-head"><div><h2>Layer stack</h2><p class="card-sub">Choose one fine base layer, then how many base layers each head prints in one pass (×1, ×2, ×3…). Choices a nozzle can't print are crossed out, with the reason. Or press a smart set-up and adjust.</p></div>
+          <button class="btn small" type="button" id="lp-example">Try a detail + speed example</button></div>
+        <form class="lp-form" id="lp-form" novalidate>
+          <div id="lp-stack"></div>
+          <div class="lp-more">
+            <label>Part height, for pass counts <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
+            <button class="btn small" type="button" id="lp-fitted">Use this printer's fitted nozzles</button>
+          </div>
+        </form>
+        <p class="lp-source">This plans layer heights; it does not slice a model. Nozzle limits come from Snapmaker's U1 machine profiles. To slice with it, save the same heights in Prepare → Tools &amp; filaments and choose "Mixed" in a process profile; that needs an engine that lists per-head layer heights. Confirm Print checks each fitted nozzle before starting.</p>
       </section>
     </section>
   </section>
@@ -1236,6 +1232,7 @@
 <script src="twin3d.js"></script>
 <script src="workshop.js"></script>
 <script src="studio.js"></script>
+<script src="layer-stack.js"></script>
 <script src="farm.js"></script>
 <script src="launchpad.js"></script>
 <script src="printroom.js"></script>

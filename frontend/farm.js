@@ -835,108 +835,36 @@ const Farm = (() => {
 
 window.Farm = Farm;
 
-/* ---- Mixed-nozzle planner (Files tab) --------------------------------------
- * Each toolhead's nozzle and preferred layer height in; the shared grid,
- * each head's real height and a section view of the layers out (the maths
- * is backend/layer_planner.py, behind POST /api/tools/layer-plan). The view
- * is drawn like the digital twin: one ink, hairline grid, dimensions. */
+/* ---- Mixed layer heights (Files tab) ----------------------------------------
+ * The Layer stack (layer-stack.js) with editable nozzles: a base layer, each
+ * head's multiple, smart set-ups and a section view. Purely a planner; the
+ * same rules are enforced by the server when a profile is saved. */
 const LayerPlanner = (() => {
-  if (typeof document === 'undefined' || !document.getElementById('lp-form')) return null;
-  const NOZZLES = [0.2, 0.4, 0.6, 0.8];
+  if (typeof document === 'undefined' || !document.getElementById('lp-stack') || !window.LayerStack) return null;
   const HEADS = ['T0', 'T1', 'T2', 'T3'];
-  let timer = null, seq = 0, seeded = false;
+  const COLORS = ['#f26a1b', '#1c1c1e', '#2f9e44', '#2e7dd7'];
+  let stack = null;
 
-  function rows(values) {
-    $('lp-rows').innerHTML = `<div class="lp-row lp-row-head" aria-hidden="true"><span>Head</span><span>Nozzle</span><span>Layer height</span></div>` +
-      HEADS.map(th => {
-        const v = values[th] || {};
-        return `<div class="lp-row" role="group" aria-label="${th}">
-          <b>${th}</b>
-          <select id="lp-n-${th}" aria-label="${th} nozzle">${NOZZLES.map(n => `<option value="${n}"${n === v.nozzle ? ' selected' : ''}>${n} mm</option>`).join('')}</select>
-          <span class="lp-unit"><input type="number" id="lp-h-${th}" min="0.01" max="1" step="0.01" inputmode="decimal"
-            value="${v.height ?? ''}" placeholder="not used" aria-label="${th} layer height"> mm</span>
-        </div>`;
-      }).join('');
-  }
-
-  /* Start from what the selected printer reports fitted, else 0.4 mm. */
-  function seed() {
+  function fitted() {
     const st = typeof lastPrinterState !== 'undefined' ? lastPrinterState : null;
-    const values = {};
-    HEADS.forEach((th, i) => {
-      const n = st && st.toolheads && st.toolheads[th] && NOZZLES.includes(st.toolheads[th].nozzle_diameter) ? st.toolheads[th].nozzle_diameter : 0.4;
-      values[th] = { nozzle: n, height: i === 0 ? +(n / 2).toFixed(2) : '' };
+    return HEADS.map((th, i) => {
+      const d = st && st.toolheads && st.toolheads[th] || {};
+      return { toolhead: th, nozzle: [0.2, 0.4, 0.6, 0.8].includes(d.nozzle_diameter) ? d.nozzle_diameter : 0.4,
+        color: /^#[0-9a-f]{6}$/i.test(d.filament_color_hex || '') ? d.filament_color_hex : COLORS[i], k: 1 };
     });
-    rows(values);
-    seeded = !!(st && st.toolheads);        // try again once the printer has reported
   }
-
-  function read() {
-    return HEADS.map(th => ({ toolhead: th, nozzle: +$(`lp-n-${th}`).value, height: $(`lp-h-${th}`).value.trim() }))
-      .filter(h => h.height !== '').map(h => ({ ...h, height: +h.height }));
-  }
-
-  async function run() {
-    const heads = read(), mine = ++seq;
-    if (!heads.length) { $('lp-out').innerHTML = `<p class="log-empty">Give at least one toolhead a layer height.</p>`; return; }
-    const r = await postJSON('/api/tools/layer-plan', { heads, exact: $('lp-exact').checked, part_height: $('lp-part').value });
-    if (mine !== seq) return;
-    if (!r.ok) { $('lp-out').innerHTML = `<p class="lp-error">${esc(r.body.error || 'The planner is not available')}</p>`; return; }
-    render(r.body);
-  }
-
-  /* A section through the layers: one column per toolhead, its layer
-   * boundaries over two of the coarsest head's layers, the grid behind. */
-  function section(p) {
-    const heads = p.heads, span = Math.max(...heads.map(h => h.height)) * 2;
-    const W = 96 + heads.length * 74, H = 196, top = 22, bottom = H - 30, scale = (bottom - top) / span;
-    const y = (z) => (bottom - z * scale);
-    let g = '';
-    for (let z = 0; z <= span + 1e-9; z += p.grid) g += `<path class="lp-grid" d="M64 ${y(z).toFixed(1)}H${W - 10}"/>`;
-    const cols = heads.map((h, i) => {
-      const x = 76 + i * 74;
-      let lines = '';
-      for (let z = h.height; z < span - 1e-9; z += h.height) lines += `<path class="lp-layer" d="M${x} ${y(z).toFixed(1)}h56"/>`;
-      return `<rect class="lp-col${h.ok ? '' : ' is-bad'}" x="${x}" y="${y(span).toFixed(1)}" width="56" height="${(span * scale).toFixed(1)}"/>${lines}
-        <text class="lp-col-t" x="${x + 28}" y="${H - 12}" text-anchor="middle">${esc(h.toolhead)} · ${h.nozzle}</text>
-        <text class="lp-col-h" x="${x + 28}" y="${(y(h.height) + y(0)) / 2 + 3.5}" text-anchor="middle">${h.height.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}</text>`;
-    }).join('');
-    // The grid dimensioned on the left: one grid layer.
-    const dim = `<path class="lp-dim" d="M40 ${y(0)}H62M40 ${y(p.grid)}H62M50 ${y(0) + 9}V${y(p.grid) - 9}" marker-start="url(#lp-arrow)" marker-end="url(#lp-arrow)"/>
-      <text class="lp-dim-t" x="36" y="${(y(0) + y(p.grid)) / 2 + 3}" text-anchor="end">${p.grid}</text>`;
-    return `<svg class="lp-svg" viewBox="0 0 ${W} ${H}" style="width:${Math.round(W * 1.35)}px" role="img" aria-label="Section through the layers: ${heads.map(h => `${h.toolhead} prints ${h.height} millimetre layers`).join(', ')}; the shared grid is ${p.grid} millimetres.">
-      <defs><marker id="lp-arrow" viewBox="0 0 8 3" refX="8" refY="1.5" markerWidth="8" markerHeight="3" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L8 1.5L0 3z" class="lp-arrowhead"/></marker></defs>
-      <rect class="lp-sheet" x="0.5" y="0.5" width="${W - 1}" height="${H - 1}"/>
-      <text class="lp-title" x="10" y="15">SECTION · mm</text>${g}${cols}${dim}</svg>`;
-  }
-
-  function render(p) {
-    const saved = p.grid_layers && p.heads.length ? Math.max(0, ...p.heads.map(h => p.grid_layers - h.layers)) : 0;
-    $('lp-out').innerHTML = `${section(p)}
-      <dl class="lp-facts">
-        <div><dt>Shared grid</dt><dd>${p.grid} mm${p.exact ? ' (exact)' : ''}</dd></div>
-        ${p.heads.map(h => `<div><dt>${esc(h.toolhead)} · ${h.nozzle} mm nozzle</dt><dd>${h.height} mm${h.every > 1 ? `, every ${h.every} grid layers` : ''}${h.layers ? ` · ${h.layers} layers` : ''}<small>${h.limits[0]}–${h.limits[1]} mm allowed</small></dd></div>`).join('')}
-        ${saved ? `<div><dt>Coarsest head</dt><dd>${saved} fewer layers than printing it at the grid</dd></div>` : ''}
-      </dl>
-      ${p.notes.length ? `<ul class="lp-notes">${p.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}`;
-  }
-
-  function changed() { clearTimeout(timer); timer = setTimeout(run, 250); }
-
   function init() {
-    seed();
-    $('lp-form').addEventListener('input', changed);
-    $('lp-form').addEventListener('change', changed);
-    $('lp-form').addEventListener('submit', (e) => e.preventDefault());
+    stack = LayerStack.mount($('lp-stack'), { heads: fitted(), base: 0.2, editNozzles: true, showMode: true, part: +$('lp-part').value });
+    $('lp-part').addEventListener('input', () => stack.set({ part: +$('lp-part').value }));
+    $('lp-form').addEventListener('submit', e => e.preventDefault());
+    $('lp-fitted').addEventListener('click', () => { stack.set({ heads: fitted() }); });
     $('lp-example').addEventListener('click', () => {
-      rows({ T0: { nozzle: 0.2, height: 0.08 }, T1: { nozzle: 0.8, height: 0.56 }, T2: { nozzle: 0.4 }, T3: { nozzle: 0.4 } });
-      run();
+      // A 0.4 mm detail head on the base and a 0.6 mm head printing thick passes.
+      stack.set({ heads: [{ nozzle: 0.4, k: 1 }, { nozzle: 0.4, k: 1 }, { nozzle: 0.6, k: 3 }, { nozzle: 0.6, k: 3 }], base: 0.12 });
     });
-    window.addEventListener('dv-tab', (e) => { if (e.detail === 'files') { if (!seeded) seed(); run(); } });
-    run();
   }
   init();
-  return { run };
+  return { get: () => stack && stack.get() };
 })();
 
 /* ---- the planner's maths, in the browser ------------------------------------

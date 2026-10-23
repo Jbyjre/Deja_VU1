@@ -6,8 +6,37 @@ from collections import Counter
 import layer_planner
 
 
-def tool_layers(heads, first_height):
-    """Accept exact 0.005 mm heights on a grid every fitted head can print."""
+THICK_MODES = ('consistent', 'adaptive', 'fixed')
+
+
+def thick_layer_settings(mode='fixed', tolerance=80):
+    """
+    How a head with a thicker preferred height combines layers where a part's
+    outline changes: consistent (two heights at most, most uniform walls),
+    adaptive (also intermediate multiples) or fixed (always the preferred
+    height; curved edges become steps). Tolerance is how far an outline may
+    drift sideways across one thick run, as a percentage of that head's nozzle.
+    """
+    mode = str(mode or 'fixed').strip().lower()
+    if mode not in THICK_MODES:
+        raise ValueError('Choose consistent, adaptive or fixed thick-layer regions')
+    try:
+        tolerance = float(tolerance)
+    except (TypeError, ValueError):
+        raise ValueError('Thick-layer tolerance must be a number from 0 to 100')
+    if not math.isfinite(tolerance) or not 0 <= tolerance <= 100:
+        raise ValueError('Thick-layer tolerance must be a number from 0 to 100')
+    return {'thick_mode': mode, 'thick_tolerance': round(tolerance)}
+
+
+def tool_layers(heads, first_height, mode='fixed', tolerance=80):
+    """
+    Accept exact 0.005 mm heights on a grid every fitted head can print. The
+    grid is the base (object) layer: every head prints a whole number of base
+    layers at once, so a 0.6 mm head at three times the base prints one thick
+    layer for every three thin ones.
+    """
+    thick = thick_layer_settings(mode, tolerance)
     if len(heads) != 4 or [h['toolhead'] for h in heads] != ['T0', 'T1', 'T2', 'T3']:
         raise ValueError('Save all four physical heads T0 to T3 first')
     ticks = []
@@ -30,7 +59,7 @@ def tool_layers(heads, first_height):
     first = float(first_height)
     if not math.isfinite(first) or any(not layer_planner.U1_LIMITS[h['nozzle']][0] <= first <= layer_planner.U1_LIMITS[h['nozzle']][1] for h in heads):
         raise ValueError('The first-layer height is outside one or more nozzle limits')
-    return {'grid': grid, 'first_layer': first, 'mode': 'per_tool',
+    return {'grid': grid, 'first_layer': first, 'mode': 'per_tool', **thick,
             'heads': [dict(h, every=t // divisor, ok=True) for h, t in zip(heads, ticks)],
             'note': 'Preferred heights combine paths where geometry permits. First layers, shared surfaces, supports and purge may use finer paths. Inspect the actual output before printing.'}
 

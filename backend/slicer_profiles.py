@@ -231,8 +231,16 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
     if mode == 'per_tool':
         if not (capabilities or {}).get('per_tool_heights'):
             raise ValueError('This engine has not demonstrated per-tool layer-height options. Check a capable local engine first; stock Orca cannot consume these settings')
-        plan = slicing_contract.tool_layers(heads, process.get('initial_layer_print_height') or height)
+        plan = slicing_contract.tool_layers(heads, process.get('initial_layer_print_height') or height,
+                                            body.get('thick_mode', 'fixed'), body.get('thick_tolerance', 80))
         machine['extruder_layer_height'] = [f"{h['height']:g}" for h in heads]
+        if (capabilities or {}).get('thick_layer_modes'):
+            # Print-process options in engines that list them (read from the
+            # engine's own exported schema, never assumed from a version name).
+            process['extruder_layer_height_mode'] = plan['thick_mode']
+            process['extruder_layer_height_tolerance'] = f"{plan['thick_tolerance']}%"
+        elif plan['thick_mode'] != 'fixed' or plan['thick_tolerance'] != 80:
+            notes.append('This engine does not list thick-layer region options, so it combines layers its own way. The mode and tolerance you chose are kept with the profile but not sent')
         # This integration accepts only exactly coordinated heights. Never allow
         # an engine to silently round the requested per-head thicknesses.
         if (capabilities or {}).get('exact_tool_heights'): machine['extruder_layer_height_exact'] = '1'
@@ -241,6 +249,8 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
     else:
         machine.pop('extruder_layer_height', None)
         machine.pop('extruder_layer_height_exact', None)
+        process.pop('extruder_layer_height_mode', None)
+        process.pop('extruder_layer_height_tolerance', None)
         plan=layer_planner.plan([dict(h,height=height) for h in heads])
     if not all(h['ok'] for h in plan['heads']):
         raise ValueError("The layer height is outside one or more nozzle limits. Choose a shared height or use a verified mixed-height engine")

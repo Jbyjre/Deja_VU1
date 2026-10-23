@@ -411,6 +411,9 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 /* Preparation uses the same light lens as the Layer lines surfaces. */
 .tool-setup-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:20px 0; }
 .tool-setup-grid fieldset { min-width:0;border:1px solid var(--border, #7774);border-radius:18px;padding:16px;background:var(--surface, #ffffff30); }
+.ts-stack-wrap { margin: 4px 0 18px; padding: 16px; border-radius: 18px; border: 1px solid var(--border, #7774); background: var(--surface, #ffffff30); }
+.ts-stack-wrap h3 { margin: 0 0 4px; font-size: 15px; }
+#np-stack { margin: 6px 0 14px; }
 .tool-setup-grid legend { font-family:var(--font-mono, monospace);font-weight:600;padding:0 8px; }
 .tool-setup-grid label { display:grid;gap:6px;margin:12px 0;font-size:.85rem; }
 .tool-setup-grid input,.tool-setup-grid select { min-height:44px;max-width:100%;width:100%; }

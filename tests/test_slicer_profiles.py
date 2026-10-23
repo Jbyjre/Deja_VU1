@@ -106,6 +106,21 @@ class InstalledProfiles(unittest.TestCase):
         self.assertEqual(machine['extruder_layer_height_exact'],'1')
         self.assertEqual(process['layer_height'],'0.14')
 
+    def test_thick_layer_mode_reaches_engines_that_list_it(self):
+        body=self.body();body['layer_mode']='per_tool';body['options']['initial_layer_print_height']=.14
+        body['thick_mode']='consistent';body['thick_tolerance']=50
+        heads=self.heads()
+        for h in heads:h['height']=.14
+        heads[1]['height']=.28
+        result=profiles.prepare(str(self.program),body,heads,{'per_tool_heights':True,'thick_layer_modes':True})
+        process=json.loads(Path(result['process']).read_text())
+        self.assertEqual(process['extruder_layer_height_mode'],'consistent')
+        self.assertEqual(process['extruder_layer_height_tolerance'],'50%')
+        result=profiles.prepare(str(self.program),body,heads,{'per_tool_heights':True})
+        process=json.loads(Path(result['process']).read_text())
+        self.assertNotIn('extruder_layer_height_mode',process)
+        self.assertTrue(any('thick-layer region options' in w for w in result['warnings']))
+
     def test_material_override_limits_and_originals(self):
         body=self.body();body['material_options']=[{'nozzle_temperature':220,'filament_flow_ratio':.98},{},{},{}]
         result=profiles.prepare(str(self.program),body,self.heads())

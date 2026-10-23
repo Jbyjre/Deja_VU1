@@ -462,6 +462,7 @@ def check():
             result['capabilities'] = {
                 'per_tool_heights': 'extruder_layer_height' in schema or bool(re.search(rb'--extruder-layer-height(?:\s|=)', options)),
                 'exact_tool_heights': 'extruder_layer_height_exact' in schema or b'--extruder-layer-height-exact' in options,
+                'thick_layer_modes': 'extruder_layer_height_mode' in schema or b'--extruder-layer-height-mode' in options,
             }
             result['capability_evidence'] = 'Exported option schema and command-line help; actual output still requires inspection'
             result['program_identity'] = _program_identity(path)
