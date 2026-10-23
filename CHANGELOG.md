@@ -3,6 +3,25 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — a realistic 3D twin and a livelier background
+
+- Digital twin rebuilt (`frontend/twin3d.js`, `frontend/twin3d-scene.js`, WebGL 2): a
+  detailed model of the U1 from Snapmaker's official product picture (in Snapmaker's
+  Orca profile) and published figures, with studio lighting, reflections, soft
+  shadows, real materials, live head/bed/docks/spools/screen/print, exact click
+  picking and a gliding drag. The Drawing mode is now made from the same geometry
+  (edge ink, dimensions, balloons, title block, "Show the case", PNG download); the
+  previous SVG drawing remains for browsers without WebGL 2. Estimated: the body's
+  own size (about 390 × 460 × 480 mm), dock spacing, inside layout. Measured in
+  software WebGL only (about 250 ms a frame on the CPU); real GPUs unmeasured.
+- Background: Dots by default; stronger, faster reactions (push, stir, curl, glow);
+  Constellation style, Time of day colours, Reaction setting; "Little surprises" (click
+  ripple, triple-click bloom, long-press charge, minute sweep, the time in dots on the
+  hour, a burst when a print finishes, two keyboard secrets); a running print fills
+  the dots from the bottom in its filament's colour. Reduced motion turns it all off.
+- Owner's note for future launch videos: show the Dots background reacting and the
+  new 3D twin (`promo-video/README.md`). Next ideas: `build-prompts/08-background-and-twin-next.md`.
+
 ## Unreleased — interface refresh: live background, 3D twin, games, setup
 
 - New background that reacts to the cursor (`frontend/backdrop.js`): Flow, Layer

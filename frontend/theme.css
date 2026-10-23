@@ -642,7 +642,9 @@ html[data-backdrop] .pool { display: none; }
 html[data-backdrop] .bg::before { z-index: 1; }
 html[data-backdrop="lines"] .bg::before,
 html[data-backdrop="dots"] .bg::before { display: none; }
-html[data-backdrop]:not([data-backdrop="still"]) { --paper: oklch(99% 0.002 250 / .9); }
+/* A little of the live background shows through content cards (text
+   contrast is unaffected at this opacity: the page behind is pale). */
+html[data-backdrop]:not([data-backdrop="still"]) { --paper: oklch(99% 0.002 250 / .84); }
 html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target) {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -708,8 +710,8 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
 .twin-switches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .twin-card .wf, .twin-model { height: clamp(340px, 54vh, 560px); }
 .twin-card .wf { margin: 0; }
-.twin-card[data-twin-mode="model"] .wf,
-.twin-card[data-twin-mode="drawing"] .twin-model,
+.twin-card[data-twin-engine="3d"] .wf,
+.twin-card[data-twin-engine="svg"] .twin-model,
 .twin-card[data-twin-mode="model"] [data-drawing-only] { display: none; }
 .twin-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
 .twin-tools .btn.small { min-width: 36px; min-height: 36px; }
@@ -815,3 +817,36 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .glass-dialog.setup-dialog.is-full[open]:not(.is-morph-target) { background: var(--paper-solid); }
 }
+
+/* Background picker, second round: the Constellation preview, the Reaction
+   buttons and the surprises switch. */
+.bp-thumb-constellation { background:
+  linear-gradient(32deg, transparent 47%, color-mix(in srgb, var(--bp-glow) 45%, transparent) 48% 49%, transparent 50%) 40% 40% / 60% 60% no-repeat,
+  linear-gradient(-28deg, transparent 47%, color-mix(in srgb, var(--bp-glow) 45%, transparent) 48% 49%, transparent 50%) 62% 52% / 50% 55% no-repeat,
+  radial-gradient(circle, var(--bp-ink) 1.3px, transparent 1.7px) 0 0 / 11px 11px,
+  var(--bp-bg); }
+.bp-row { display: flex; flex-wrap: wrap; gap: 18px 40px; align-items: flex-start; }
+.bp-row > .bp-group { flex: 1 1 220px; }
+.bp-energy button { min-height: 40px; }
+.bp-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-weight: 600; }
+.bp-switch input { width: 20px; height: 20px; accent-color: var(--accent); }
+.bp-row .bp-hint { display: block; margin-top: 4px; max-width: 46ch; }
+
+/* The twin's drawing mode (twin3d.js): ink on white paper, labels as SVG. */
+.twin3d[data-style="drawing"] { background: #fff; }
+.twin3d-ink { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; font-family: var(--font-mono); }
+.twin3d[data-style="model"] .twin3d-ink { display: none; }
+.twin3d-ink line, .twin3d-ink rect { fill: none; stroke: oklch(24% 0.02 265); stroke-width: 1; }
+.twin3d-ink .ph { stroke: oklch(62% 0.012 265); stroke-dasharray: 14 3 2 3; }
+.twin3d-ink .ext, .twin3d-ink .dl, .twin3d-ink .tl { stroke: oklch(48% 0.015 265); }
+.twin3d-ink marker path { fill: oklch(48% 0.015 265); }
+.twin3d-ink text { font: 600 11px var(--font-mono); fill: oklch(24% 0.02 265); }
+.twin3d-ink .tk { font-size: 8px; fill: oklch(48% 0.015 265); letter-spacing: .06em; text-transform: uppercase; }
+.twin3d-ink .bal { pointer-events: all; cursor: pointer; }
+.twin3d-ink .bal circle { fill: #fff; stroke: oklch(24% 0.02 265); stroke-width: 1.2; }
+.twin3d-ink .bal.sel circle { stroke: oklch(52% 0.19 255); stroke-width: 2; }
+.twin3d-ink .bal.sel text { fill: oklch(52% 0.19 255); }
+.twin3d-ink .bal.fault circle, .twin3d-ink .note.fault { stroke: var(--bad-text, #b3261e); fill: #fff; }
+.twin3d-ink .fault text, .twin3d-ink .note.fault { fill: var(--bad-text, #b3261e); }
+.twin3d-ink .bal rect { stroke: oklch(24% 0.02 265); }
+.twin3d-ink .border, .twin3d-ink .tb { stroke-width: 1; }

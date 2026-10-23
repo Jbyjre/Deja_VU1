@@ -674,7 +674,7 @@ const Workshop = (() => {
         <button type="button" class="btn small" data-twin="zoom-out" aria-label="Zoom out">−</button>
         <button type="button" class="btn small" data-twin="zoom-in" aria-label="Zoom in">+</button>
         <button type="button" class="btn small" data-twin="reset">Reset view</button>
-        <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> Outer size</label>
+        <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> <span>Outer size</span></label>
         <button type="button" class="btn small" data-twin="download" data-drawing-only>Download drawing</button>
         <span class="twin-hint" id="twin-hint"></span>
       </div>
@@ -750,12 +750,12 @@ const Workshop = (() => {
       const b = e.target.closest('[data-twin]');
       if (!b) return;
       const act = b.dataset.twin;
-      if (act === 'zoom-in') twin.mode === 'model' && twin.model ? twin.model.zoomBy(1.25) : zoomDrawing(1.25);
-      if (act === 'zoom-out') twin.mode === 'model' && twin.model ? twin.model.zoomBy(0.8) : zoomDrawing(0.8);
+      if (act === 'zoom-in') twin.model ? twin.model.zoomBy(1.25) : zoomDrawing(1.25);
+      if (act === 'zoom-out') twin.model ? twin.model.zoomBy(0.8) : zoomDrawing(0.8);
       if (act === 'reset') { twin.zoom = 1; twin.panX = twin.panY = 0; setView(...WF.VIEWS.iso, 'iso'); }
-      if (act === 'download') downloadDrawing();
+      if (act === 'download') twin.model ? twin.model.download(`${(twin.state && twin.state.printer_name || 'printer').replace(/[^\w.-]+/g, '_')}-drawing.png`) : downloadDrawing();
     });
-    $('wf-outer').addEventListener('change', (e) => { twin.outer = e.target.checked; drawTwin(true); });
+    $('wf-outer').addEventListener('change', (e) => { twin.outer = e.target.checked; if (twin.model) twin.model.setCase(twin.outer); else drawTwin(true); });
     $('wf-picks').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
       if (b) choose(twin.pick === b.dataset.pick ? null : b.dataset.pick);
@@ -778,8 +778,10 @@ const Workshop = (() => {
   }
 
   /* Model or drawing. The model needs WebGL; without it the drawing stays. */
+  /* Both modes are drawn by twin3d.js (WebGL 2) from one detailed model;
+   * without WebGL 2 the SVG line drawing below takes over. */
   function setTwinMode(mode) {
-    if (mode === 'model' && !twin.model && twin.built && typeof Twin3D !== 'undefined') {
+    if (!twin.model && twin.built && typeof Twin3D !== 'undefined') {
       twin.model = Twin3D.create($('twin-model'), { onPick: id => choose(id) });
       if (twin.model) twin.model.onViewChange(name => markView(name));
     }
@@ -787,7 +789,10 @@ const Workshop = (() => {
     twin.mode = mode;
     try { localStorage.setItem('dejavu1.twin-mode', mode); } catch (e) { /* the choice just isn't remembered */ }
     const card = $('twin-card');
-    if (card) card.dataset.twinMode = mode;
+    if (card) { card.dataset.twinMode = mode; card.dataset.twinEngine = twin.model ? '3d' : 'svg'; }
+    if (twin.model) twin.model.setStyle(mode);
+    const outerLabel = document.querySelector('.twin-outer span');
+    if (outerLabel) outerLabel.textContent = twin.model ? 'Show the case' : 'Outer size';
     document.querySelectorAll('#twin-modes button').forEach(b => {
       const on = b.dataset.mode === mode;
       b.classList.toggle('active', on);
@@ -801,7 +806,7 @@ const Workshop = (() => {
         ? 'Drag to turn · right-drag to move · scroll to zoom · click a head for details'
         : 'Drag to turn · scroll to zoom · click a part for details';
     if (twin.model) twin.model.select(twin.pick);
-    if (mode === 'drawing') drawTwin(true); else queueTwin();
+    if (mode === 'drawing' && !twin.model) drawTwin(true); else queueTwin();
   }
 
   function markView(name) {
@@ -850,7 +855,7 @@ const Workshop = (() => {
   function setView(yaw, pitch, name, now) {
     pitch = Math.max(0, Math.min(90, pitch));
     markView(name);
-    if (name && twin.model && twin.mode === 'model') twin.model.setView(name);
+    if (name && twin.model) twin.model.setView(name);
     if (now) { twin.yaw = yaw; twin.pitch = pitch; smooth.delete('wf-view'); drawTwin(); return; }
     // Take the short way round, so 3D -> Front turns 34 degrees, not 326.
     const start = yaw + (((twin.yaw - yaw) % 360) + 540) % 360 - 180;
@@ -869,7 +874,7 @@ const Workshop = (() => {
     const wait = Math.max(0, 32 - (performance.now() - (twin.drawnAt || 0)));
     setTimeout(() => requestAnimationFrame(() => {
       twin.queued = false;
-      if (twin.mode === 'model' && twin.model) { twin.drawnAt = performance.now(); twin.model.update(twin.state, twin.pos); renderChips(); }
+      if (twin.model) { twin.drawnAt = performance.now(); twin.model.update(twin.state, twin.pos); renderChips(); }
       else drawTwin();
     }), wait);
   }
@@ -3019,6 +3024,8 @@ const Workshop = (() => {
       <div><span class="stat-key">Time</span><b>${fmtHours(s.hours)}</b></div>
       <div><span class="stat-key">Filament</span><b>${Number(s.grams).toFixed(1)} g ${esc(s.material)}</b></div>
       <div><span class="stat-key">Cost</span><b>${money(s.cost.total_cost)}</b></div>`;
+    // The background joins in: a burst in the print's filament colour.
+    if (typeof Backdrop !== 'undefined') Backdrop.celebrate([s.color || '#4a8df8']);
     const dialog = $('celebrate-dialog');
     qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#4a8df8');
     qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#4a8df8');

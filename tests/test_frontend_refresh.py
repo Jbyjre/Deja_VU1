@@ -1,4 +1,4 @@
-"""Checks on the October 2026 interface refresh that can be made without a
+"""Checks on the October 2026 interface refreshes that can be made without a
 browser: the Pac-Man maze is playable, the 3D twin keeps Snapmaker's
 published outer size, and the new scripts load where the page expects them.
 Behaviour in a browser (frame times, screenshots) is recorded in CHANGELOG.md.
@@ -67,10 +67,25 @@ class TestPacmanMaze(unittest.TestCase):
 
 class TestTwinModel(unittest.TestCase):
     def test_outer_size_is_the_published_figure(self):
-        m = re.search(r"const OUT = \{ x0: (-?\d+), x1: (-?\d+), y0: (-?\d+), y1: (-?\d+), z0: (-?\d+), z1: (-?\d+) \}",
+        m = re.search(r"const ENVELOPE = \{ x0: (-?\d+), x1: (-?\d+), y0: (-?\d+), y1: (-?\d+), z0: (-?\d+), z1: (-?\d+) \}",
                       read("twin3d.js"))
         x0, x1, y0, y1, z0, z1 = map(int, m.groups())
         self.assertEqual((x1 - x0, y1 - y0, z1 - z0), (584, 499, 730))
+
+    def test_plate_and_print_height_follow_snapmakers_profile(self):
+        # Snapmaker's Orca profile: a 276 x 293 mm plate, 270 mm print height.
+        src = read("twin3d.js")
+        self.assertIn("const BED = 270, PLATE = { w: 276, d: 293 };", src)
+
+    def test_the_body_fits_inside_the_published_envelope(self):
+        src = read("twin3d.js")
+        body = dict(re.findall(r"(x0|x1|y0|y1|z0|z1): (-?\d+)", re.search(r"const BODY = \{([^}]*)\}", src).group(1)))
+        env = dict(re.findall(r"(x0|x1|y0|y1|z0|z1): (-?\d+)", re.search(r"const ENVELOPE = \{([^}]*)\}", src).group(1)))
+        b = {k: int(v) for k, v in body.items()}
+        e = {k: int(v) for k, v in env.items()}
+        self.assertTrue(e["x0"] <= b["x0"] < b["x1"] <= e["x1"])
+        self.assertTrue(e["y0"] <= b["y0"] < b["y1"] <= e["y1"])
+        self.assertTrue(e["z0"] <= b["z0"] < b["z1"] <= e["z1"])
 
     def test_drawing_uses_the_same_outer_size(self):
         m = re.search(r"OUTER: \{ x0: (-?\d+), x1: (-?\d+), y0: (-?\d+), y1: (-?\d+), z0: (-?\d+), z1: (-?\d+) \}",
@@ -82,10 +97,18 @@ class TestTwinModel(unittest.TestCase):
 class TestPageWiring(unittest.TestCase):
     def test_new_scripts_load_in_order(self):
         scripts = re.findall(r'<script src="([^"]+)"></script>', read("index.html"))
-        for name in ("backdrop.js", "twin3d.js"):
+        for name in ("backdrop.js", "twin3d-scene.js", "twin3d.js"):
             self.assertIn(name, scripts)
         self.assertLess(scripts.index("app.js"), scripts.index("backdrop.js"))
+        self.assertLess(scripts.index("twin3d-scene.js"), scripts.index("twin3d.js"))
         self.assertLess(scripts.index("twin3d.js"), scripts.index("workshop.js"))
+
+    def test_background_defaults_to_dots_with_surprises_on(self):
+        src = read("backdrop.js")
+        self.assertIn("const DEFAULT = { style: 'dots', palette: 'glacier', energy: 'lively', surprises: true };", src)
+        # Reduced motion switches the background to Still and the surprises off.
+        self.assertIn("const effectiveStyle = () => (reducedMotion() ? 'still' : prefs.style);", src)
+        self.assertIn("prefs.surprises && !reducedMotion()", src)
 
     def test_every_tab_has_an_introduction(self):
         tabs = set(re.findall(r'class="navtab[^"]*" data-tab="([a-z]+)"', read("index.html")))

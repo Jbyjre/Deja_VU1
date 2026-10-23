@@ -15,6 +15,23 @@ beside the new ones. Figures shown: up to 12 printers, 29 modules, ten games, 75
 needs a separately installed engine, which the filming machine does not have. Engine evidence is
 in [workspace validation](../docs/slicer-workspace-validation.md).
 
+**For the next version (the owner, 23 October 2026): show the new background and the new 3D
+twin.** The app's background is now live (`frontend/backdrop.js`): Dots by default, parting,
+swirling and lighting up around the cursor, with hidden surprises. When the videos are next made:
+
+- Film with the default Dots background and keep the cursor moving through the empty parts of the
+  page, so the dots visibly react. Include at least one click on an empty part of the page (a
+  ripple) and, once, the time drawn in dots. The clock surprises follow the real clock, so under
+  the filming scripts' fake clock trigger them from the page: `Backdrop.showText('3:00', 5)`,
+  `Backdrop.ripple(x, y, 1.5)`, `Backdrop.bloom(x, y)`, `Backdrop.celebrate(['#ff7a00'])`.
+- The video's own scenery should match the app: `build/shared.css` still draws the old layer-line
+  background behind captions; move it to the same dot field so app and film look like one product.
+- Show the Overview's digital twin as the new 3D model (`frontend/twin3d.js`): the angled view,
+  one drag that glides to a stop, and a click on a toolhead opening its details; then one beat of
+  the Drawing mode, which is made from the same model.
+- Captions should say what is estimated (the body's own size and inside layout) the same way the
+  card does; the outside figures (584 x 499 x 730 mm) are Snapmaker's.
+
 | Folder | What it holds |
 |---|---|
 | `capture/` | The filming scripts. `rec.js` drives Chromium frame by frame at 60 fps (Playwright's fake clock plus every CSS animation stepped to the same time), draws a cursor, and logs each click and named moment. `shots.js` stages each shot on a freshly started server. |

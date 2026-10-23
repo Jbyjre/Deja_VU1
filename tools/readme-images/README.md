@@ -39,6 +39,7 @@ below identifies their source. For farm captures:
 | `sandbox.jpg`, `sandbox-farm.jpg` | Fleet → farm sandbox: add 6 printers, load "Jam mid-print", step 660 s |
 | `games.jpg` | Games → Pac-Man, before Start (the `#tab-games` card) |
 | `appearance.jpg` | Settings → Appearance (`#appearance-card`) |
+| `twin-drawing.jpg` | Overview twin → T0 chip → Drawing, Angled (`#twin-card`); launch Chromium with `--use-gl=swiftshader --enable-unsafe-swiftshader` in the sandbox |
 | `setup.jpg` | Set up & help → Continue: the full-screen "Make it yours" step, after moving the mouse across it |
 | `phone.jpg` | Overview at 390 × 844 |
 
