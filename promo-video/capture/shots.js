@@ -353,6 +353,53 @@ const SHOTS = {
     await r.wait(st, 400);
     r.stop(st); return st;
   },
+  // Version 15 (V2 updated): the same twin story as `twin3d`, tighter, for a 4.5-bar feature at
+  // 144 BPM: in over the dots, the flick and glide, head T0's details, then the drawing (held, no
+  // Front view; the caption carries the estimate note).
+  async twin3d_tight() {
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.evaluate(() => scrollTo(0, document.querySelector('#twin-card').getBoundingClientRect().top + scrollY - 110));
+    await r.settle(st, 1200);
+    console.log('twin engine:', await st.page.evaluate(() => {
+      const box = document.getElementById('wf-outer'); box.checked = true; box.dispatchEvent(new Event('change'));
+      return document.getElementById('twin-card').dataset.twinEngine;
+    }));
+    await r.settle(st, 1500);
+    const m = await r.box(st, '#twin-model');
+    await st.page.mouse.move(70, 560); st.mx = 70; st.my = 560;
+    r.start(st, 'twin3d_tight');
+    await r.wait(st, 200);
+    await r.move(st, 120, 430, 420);
+    const gx = m.x + m.width * .62, gy = m.y + m.height * .5;
+    await r.move(st, gx, gy, 480);
+    await r.wait(st, 80);
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); r.mark(st, 'grab'); await r.frame(st);
+    const n = Math.round(.6 * st.fps);
+    for (let i = 1; i <= n; i++) {
+      const k = Math.pow(i / n, 2.2);
+      await st.page.mouse.move(gx - 110 * k, gy + 14 * Math.sin(Math.PI * i / n)); await r.frame(st);
+    }
+    st.mx = gx - 110; st.my = gy;
+    await st.page.mouse.up(); r.mark(st, 'release'); await r.frame(st);
+    await r.wait(st, 1000);
+    // aim at the label where it is now; press and release in one instant (see `twin3d`)
+    const tag = '#twin-model .t3-tag[data-id="head:T0"]';
+    await r.move(st, ...(await r.center(st, tag)), 350);
+    await r.wait(st, 120);
+    const [tx, ty] = await r.center(st, tag);
+    await st.page.mouse.move(tx, ty); st.mx = tx; st.my = ty;
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); await st.page.mouse.up(); r.mark(st, 'pick');
+    await r.frame(st); await r.frame(st);
+    console.log('picked:', await st.page.evaluate(() => !document.getElementById('wf-detail').hidden));
+    await r.wait(st, 1150);
+    await r.click(st, '#twin-modes [data-mode="drawing"]', 350, 150); r.mark(st, 'drawing');
+    await r.wait(st, 1300);
+    await r.move(st, 1360, 520, 700);
+    await r.wait(st, 800);
+    r.stop(st); return st;
+  },
   // Photo-to-Print Studio: the built-in test pattern becomes a layered relief.
   async studio() {
     const st = await r.open(); await r.demoOn(st);

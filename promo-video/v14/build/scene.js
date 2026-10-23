@@ -503,7 +503,7 @@
       { const v = V.au, T = at('v-au', 'template'), S = at('v-au', 'save');
         camTo(v, SEG.au.t0 - .5, 0, [160, 220, 900, 640]);
         const k = camTo(v, T - .45, .7, [160, 310, 760, 520]);
-        callout(v, [570, 478], 'Ready-made rules', 'r', T + .05, S - .6, k);   // version 14: up until the camera moves
+        callout(v, [570, 478], 'Ready-made rules', 'r', T + .05, S - 1.3, k);   // gone before the page scrolls to Save (it starts 1.07 s before the click)
         const k2 = camTo(v, S - .45, .75, [150, 440, 800, 360]);
         callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .3, OUT('au'), k2);
       }

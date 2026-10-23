@@ -105,6 +105,16 @@ social, so the music stays light).
 | `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | the longer version 12 cut |
 | `deja-vu1-launch-v1-60s-16x9.mp4` | 1920 × 1080 | 60 s | version 14: the owner's "V1" (version 12) cut to 60 s, with the new twin and background |
 | `deja-vu1-launch-v1-60s-9x16.mp4` | 1080 × 1920 | 60 s | version 14, the same cut for Shorts, Reels, TikTok |
+| `deja-vu1-launch-v2-60s-16x9.mp4` | 1920 × 1080 | 60 s | version 15: the owner's "V2" (version 13) updated the same way |
+| `deja-vu1-launch-v2-60s-9x16.mp4` | 1080 × 1920 | 60 s | version 15, the same cut for Shorts, Reels, TikTok |
+
+**Version 15 (23 October 2026), "V2 updated":** version 13's story, headline move, lounge-jazz
+music and sound, still 60 s, re-cut so the digital twin gets 7.5 s (was 5): the 3D model turned by
+hand and gliding to a stop, head T0 clicked open with its live details, then the same model as a
+drawing (Snapmaker's outside size and the "≈" estimate note in the caption). The same live
+background, dot-field scenery, 771 tests, spools still and end-card note as version 14, and "Files
+ready for the U1" back as a "plenty more" card. Its cards are in `08-feature-cards/v2-60s/`.
+Music credit as version 13 (Salamander Grand Piano by Alexander Holm, CC BY 3.0).
 
 **Version 14 (23 October 2026), "V1 at 60 s":** version 12's story, music and sound, re-cut to
 exactly 60 s (40 bars of its 160 BPM jazz trio) and re-filmed from the current app. The digital
@@ -168,6 +178,11 @@ Remade with `promo-video/build/stills.sh` after any change to the video.
 15 cards, 30 files: the problem, what it is for, the title, how it works, every printer live, Needs
 you, Confirm Print, on your phone, prepare & slice, the digital twin's 3D model, the digital twin's
 drawing, automations, and plenty more, why trust it (771 automated tests), get it.
+
+`v2-60s/` holds version 15's cards (the "V2" cut, updated), made by `promo-video/v15/build/stills.sh`,
+14 cards, 28 files: the problem, the answer, how it works, every printer live, Needs you, Confirm
+Print, on your phone, prepare & slice, the digital twin's 3D model, its drawing, automations, and
+plenty more, why trust it, get it.
 
 ---
 

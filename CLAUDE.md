@@ -29,7 +29,8 @@ trust the code and fix this file.
   realistic 3D twin (the owner, 23 October 2026; details in that README). The owner
   calls version 12's 75 s pair "V1" and version 13's 60 s pair "V2". Version 14
   (`promo-video/v14/`, its own build, sharing only capture/, footage and music/) is V1
-  cut to 60 s with the twin and background; V2's files were left untouched on request.
+  cut to 60 s with the twin and background. Version 15 (`promo-video/v15/`) is V2
+  updated the same way. The original V1 and V2 files are kept beside both.
 - Every change must also be reflected in the online demo (the owner's rule,
   October 2026; README "For developers and AI coding sessions"). Frontend
   changes reach it by themselves, but check `/?demo` on a static server; a new
@@ -209,8 +210,8 @@ them; both go before the launch post. Current follow-up goals are in
 `build-prompts/07-physical-validation-and-format-fidelity.md`; older briefs are historical.
 
 `promo-video/`: the launch video (HyperFrames compositions, frame-by-frame filming
-scripts that drive the app on the simulated farm, recorded-instrument music; version 14
-lives in `promo-video/v14/`);
+scripts that drive the app on the simulated farm, recorded-instrument music; versions 14
+and 15 live in `promo-video/v14/` and `v15/`);
 `promo-video/README.md` is its working guide. The finished videos are copied into
 `marketing-library/07-videos/`.
 

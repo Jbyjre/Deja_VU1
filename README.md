@@ -433,7 +433,8 @@ Open work includes physical testing, feeder control, full format fidelity,
 heater-fault ring/error-clear issues, heavy-model rendering and older launch
 media. Current boards, social cards, screenshots, demo recording and preview GIF
 and the launch videos (60-second version 13, 75-second version 12, and version 14: version 12
-cut to 60 s with the new twin and background) are refreshed; older
+cut to 60 s with the new twin and background, and version 15: version 13 updated the same way)
+are refreshed; older
 editorial crops are not.
 See [full validation](docs/slicer-workspace-validation.md),
 [remaining-work goals](build-prompts/07-physical-validation-and-format-fidelity.md)
