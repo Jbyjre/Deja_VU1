@@ -11,6 +11,15 @@ optional integrations have separate requirements.
 
 <sub>Every figure in the picture comes from the built-in simulated farm.</sub>
 
+### Watch the 60-second launch film
+
+[![Deja Vu1 launch film (V1, 60 seconds, 16:9): "Run your 3D printers from one screen." Click to watch.](docs/img/launch-video-v1.jpg)](https://deja-vu1.jmath1110.workers.dev/#film)
+
+<sub>Click the picture to watch it on the product page, or
+[download the full-quality MP4](marketing-library/07-videos/deja-vu1-launch-v1-60s-16x9.mp4)
+(49 MB). Filmed on the simulated farm; the vertical 9:16 cut and the other
+versions are in [`marketing-library/07-videos/`](marketing-library/07-videos/).</sub>
+
 > **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
 > one and can spare 30 to 45 minutes, help run its first real connection. It's
 > watch-only: you watch a print you're already running, and nothing is started
