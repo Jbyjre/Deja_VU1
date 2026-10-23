@@ -262,6 +262,144 @@ const SHOTS = {
     await r.wait(st, 1200);
     r.stop(st); return st;
   },
+  // Version 14 (V1 re-cut to 60 s): the fleet shot, opened by the app's live background. The
+  // cursor drifts through the empty page margin (the Dots part and swirl around it), clicks an
+  // empty spot (a ripple runs out through the dots), then goes on exactly as `fleet` does.
+  async fleet_bg() {
+    const st = await r.open(); await r.demoOn(st);
+    await r.api(st, '/api/sandbox/farm?demo=1', { count: 24, busy_fraction: 0.5 });
+    await r.settle(st, 2500);
+    await st.page.mouse.move(1380, 260); st.mx = 1380; st.my = 260;
+    r.start(st, 'fleet_bg');
+    await r.wait(st, 200);
+    await r.move(st, 1350, 470, 650); r.mark(st, 'drift');
+    await r.move(st, 1395, 640, 600);
+    await r.move(st, 1350, 560, 450);
+    await r.wait(st, 120);
+    await r.press(st); r.mark(st, 'ripple');
+    await r.wait(st, 900);
+    await r.click(st, TAB('fleet'), MV, PA); r.mark(st, 'tab');
+    await r.wait(st, 900);
+    await r.scrollTo(st, '.fleet-card >> nth=0', 380, 1000);
+    r.mark(st, 'cards');
+    await r.wait(st, 1100);
+    await r.scrollTo(st, '.fleet-card[data-printer="sim-08"]', 330, 1100);
+    r.mark(st, 'sandbox');
+    const [x, y] = await r.center(st, '.fleet-card[data-printer="sim-08"] .ring-svg');
+    await r.move(st, x + 40, y + 30, 750);
+    r.mark(st, 'hover');
+    await r.wait(st, 1700);
+    const [x2, y2] = await r.center(st, '.fleet-card[data-printer="sim-09"] .ring-svg');
+    await r.move(st, x2 + 40, y2 + 30, 750);
+    r.mark(st, 'hover2');
+    await r.wait(st, 1500);
+    r.stop(st); return st;
+  },
+  // Version 14: the new digital twin (frontend/twin3d.js), both ways it is drawn. The cursor comes
+  // in over the background, turns the 3D model by hand and lets go (it glides to a stop), clicks
+  // head T0 (it lights up and its live details open), then switches to Drawing: the same model in
+  // the same view, drawn as an engineering drawing, then the Front view with its sizes. "Show the
+  // case" is switched on before filming so the drawing shows the whole printer, as the model does,
+  // and the front view marks the estimated body size with "≈".
+  async twin3d() {
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.evaluate(() => scrollTo(0, document.querySelector('#twin-card').getBoundingClientRect().top + scrollY - 110));
+    await r.settle(st, 1200);
+    console.log('twin engine:', await st.page.evaluate(() => {
+      const box = document.getElementById('wf-outer'); box.checked = true; box.dispatchEvent(new Event('change'));
+      return document.getElementById('twin-card').dataset.twinEngine;
+    }));
+    await r.settle(st, 1500);
+    const m = await r.box(st, '#twin-model');
+    await st.page.mouse.move(60, 600); st.mx = 60; st.my = 600;
+    r.start(st, 'twin3d');
+    await r.wait(st, 300);
+    await r.move(st, 110, 420, 500);
+    const gx = m.x + m.width * .62, gy = m.y + m.height * .5;
+    await r.move(st, gx, gy, 600);
+    await r.wait(st, 100);
+    // The drag speeds up to the moment of letting go, so the model keeps turning and glides to a stop.
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); r.mark(st, 'grab'); await r.frame(st);
+    // A short flick (about 44 degrees by hand, then about 28 more as it glides): from the angled
+    // view, past the front, to the side with the touchscreen and spools.
+    const n = Math.round(.6 * st.fps);
+    for (let i = 1; i <= n; i++) {
+      const k = Math.pow(i / n, 2.2);
+      await st.page.mouse.move(gx - 110 * k, gy + 14 * Math.sin(Math.PI * i / n)); await r.frame(st);
+    }
+    st.mx = gx - 110; st.my = gy;
+    await st.page.mouse.up(); r.mark(st, 'release'); await r.frame(st);
+    await r.wait(st, 1150);
+    // The head labels are redrawn whenever the live state moves anything, and under the filming
+    // clock several state updates arrive during one filmed frame, so a press and release a frame
+    // apart land on two different label elements and no click fires. Aim at the label where it is
+    // now, then press and release in the same instant (the cursor still shows its click ring).
+    const tag = '#twin-model .t3-tag[data-id="head:T0"]';
+    await r.move(st, ...(await r.center(st, tag)), 450);
+    await r.wait(st, 150);
+    const [tx, ty] = await r.center(st, tag);
+    await st.page.mouse.move(tx, ty); st.mx = tx; st.my = ty;
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); await st.page.mouse.up(); r.mark(st, 'pick');
+    await r.frame(st); await r.frame(st);
+    console.log('picked:', await st.page.evaluate(() => !document.getElementById('wf-detail').hidden));
+    await r.wait(st, 1300);
+    await r.click(st, '#twin-modes [data-mode="drawing"]', 450, 200); r.mark(st, 'drawing');
+    await r.wait(st, 1400);
+    await r.click(st, '#wf-views [data-view="front"]', 400, 150); r.mark(st, 'front');
+    await r.wait(st, 1400);
+    await r.move(st, 1360, 520, 700);
+    await r.wait(st, 400);
+    r.stop(st); return st;
+  },
+  // Version 15 (V2 updated): the same twin story as `twin3d`, tighter, for a 4.5-bar feature at
+  // 144 BPM: in over the dots, the flick and glide, head T0's details, then the drawing (held, no
+  // Front view; the caption carries the estimate note).
+  async twin3d_tight() {
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.evaluate(() => scrollTo(0, document.querySelector('#twin-card').getBoundingClientRect().top + scrollY - 110));
+    await r.settle(st, 1200);
+    console.log('twin engine:', await st.page.evaluate(() => {
+      const box = document.getElementById('wf-outer'); box.checked = true; box.dispatchEvent(new Event('change'));
+      return document.getElementById('twin-card').dataset.twinEngine;
+    }));
+    await r.settle(st, 1500);
+    const m = await r.box(st, '#twin-model');
+    await st.page.mouse.move(70, 560); st.mx = 70; st.my = 560;
+    r.start(st, 'twin3d_tight');
+    await r.wait(st, 200);
+    await r.move(st, 120, 430, 420);
+    const gx = m.x + m.width * .62, gy = m.y + m.height * .5;
+    await r.move(st, gx, gy, 480);
+    await r.wait(st, 80);
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); r.mark(st, 'grab'); await r.frame(st);
+    const n = Math.round(.6 * st.fps);
+    for (let i = 1; i <= n; i++) {
+      const k = Math.pow(i / n, 2.2);
+      await st.page.mouse.move(gx - 110 * k, gy + 14 * Math.sin(Math.PI * i / n)); await r.frame(st);
+    }
+    st.mx = gx - 110; st.my = gy;
+    await st.page.mouse.up(); r.mark(st, 'release'); await r.frame(st);
+    await r.wait(st, 1000);
+    // aim at the label where it is now; press and release in one instant (see `twin3d`)
+    const tag = '#twin-model .t3-tag[data-id="head:T0"]';
+    await r.move(st, ...(await r.center(st, tag)), 350);
+    await r.wait(st, 120);
+    const [tx, ty] = await r.center(st, tag);
+    await st.page.mouse.move(tx, ty); st.mx = tx; st.my = ty;
+    (st.clicks = st.clicks || []).push(+(st.n / st.fps).toFixed(3));
+    await st.page.mouse.down(); await st.page.mouse.up(); r.mark(st, 'pick');
+    await r.frame(st); await r.frame(st);
+    console.log('picked:', await st.page.evaluate(() => !document.getElementById('wf-detail').hidden));
+    await r.wait(st, 1150);
+    await r.click(st, '#twin-modes [data-mode="drawing"]', 350, 150); r.mark(st, 'drawing');
+    await r.wait(st, 1300);
+    await r.move(st, 1360, 520, 700);
+    await r.wait(st, 800);
+    r.stop(st); return st;
+  },
   // Photo-to-Print Studio: the built-in test pattern becomes a layered relief.
   async studio() {
     const st = await r.open(); await r.demoOn(st);
@@ -329,6 +467,32 @@ const SHOTS = {
     await r.wait(st, 300);
     await r.move(st, 640, 520, MV);
     await r.wait(st, 1300);
+    r.stop(st); return st;
+  },
+  // Version 14: the inventory now starts empty (no spools are invented), so for the "and plenty
+  // more" still three spools are entered before filming, as an owner would, through the page's own
+  // postJSON (module switched on first). On film: the cursor opens how long each spool will last.
+  async filament_v14() {
+    const st = await r.open(); await r.demoOn(st);
+    console.log('spools:', await st.page.evaluate(async () => {
+      await postJSON('/api/modules/filament_inventory/toggle', { enabled: true });
+      for (const [m, n, c, g] of [['PLA', 'Snapmaker Orange', '#e8572a', 820], ['PETG', 'Blue', '#2f6fde', 640], ['PLA', 'White', '#f2f2ee', 310]])
+        await postJSON(api('/api/filament/spools'), { material: m, color_name: n, color_hex: c, grams_remaining: g });
+      return (await getJSON(api('/api/filament/spools'))).spools?.length;
+    }));
+    await tab(st, 'maintenance');
+    await r.scrollTo(st, '#tab-filament', 30, 1); await r.settle(st, 1500);
+    await intoView(st, '#forecast-wrap summary', false);
+    await st.page.mouse.move(1340, 520); st.mx = 1340; st.my = 520;
+    r.start(st, 'filament_v14');
+    await r.wait(st, 300);
+    await r.move(st, 600, 420, MV); r.mark(st, 'spools');
+    await r.wait(st, 500);
+    await r.click(st, '#forecast-wrap summary', MV, PA); r.mark(st, 'forecast');
+    await sleep(600);
+    await r.wait(st, 700);
+    await r.move(st, 1330, 640, 800);
+    await r.wait(st, 900);
     r.stop(st); return st;
   },
   // Print cost: filament plus electricity, for the print running now and for past prints.

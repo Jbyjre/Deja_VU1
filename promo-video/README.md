@@ -15,8 +15,74 @@ beside the new ones. Figures shown: up to 12 printers, 29 modules, ten games, 75
 needs a separately installed engine, which the filming machine does not have. Engine evidence is
 in [workspace validation](../docs/slicer-workspace-validation.md).
 
-**For the next version (the owner, 23 October 2026): show the new background and the new 3D
-twin.** The app's background is now live (`frontend/backdrop.js`): Dots by default, parting,
+**Version 14 (23 October 2026): the owner's "V1" at 60 seconds.** The owner calls version 12's
+75-second pair "V1" and version 13's 60-second pair "V2". They asked for V1, in both shapes, cut to
+60 s, showing the new digital twin (both the realistic 3D model and the drawing made from it) and
+the new live background (shown, never captioned), keeping V1's music and the way it plays along
+with every click and keystroke, and leaving V2 untouched. Version 14 is that cut. It lives in its
+own folder, `v14/` (`build/`, `main/`, `vertical/`), so version 13's `build/`, `main/` and
+`vertical/` and its finished files are unchanged; the two share only the filming scripts, the
+footage and `music/` (whose `mix.py` now reads `DEJAVU_MUSIC_LEVEL`, unset for version 13).
+
+- **Music:** version 12's (`compose10.py`: the 160 BPM jazz trio on recorded piano, bass and
+  drums, written from the timeline's own cues), at version 12's level (.72). 60 s is exactly 40
+  bars, so every scene change still lands on a bar line with its fill, crash and chord, and every
+  click and keystroke still gets its dip in the music. Bars 0-6 (hook, purpose, name) are note for
+  note version 12's.
+- **The story, bar by bar:** hook 0-2, what it is for 2-4.5, the name 4.5-6, how it works 6-9.5
+  (a bar per step), then every printer live 9.5-12, Needs you 12-14.5, Confirm Print 14.5-19.5 (the
+  phone on beat 3 of bar 18), prepare & slice 19.5-23, **the digital twin 23-29** (3.5 bars of the
+  3D model, then 2.5 of the drawing; version 12 gave the whole twin 3.5), automations 29-32, "and
+  plenty more" 32-34 (one card per eighth note), why trust it 34-36, the end card 36-40.
+- **Cut to fit:** "Files ready for the U1" became the first "and plenty more" card (in the games'
+  place); "Get started" folded into the end card ("Or download it and double-click start", as
+  version 13); how-it-works sentences were shortened to fit a bar each (Python 3.8 moved to the
+  end card's fine print); Live fleet has one callout, "Progress and finish time".
+- **The twin** (`twin3d` shot, one continuous take): the cursor comes in over the dots, flicks the
+  3D model past the front (it glides to a stop on the side with the door, touchscreen and spools),
+  clicks head T0 (it turns blue and its live details open). On the bar the caption gives way and
+  the same model, in the same view, becomes the engineering drawing ("Show the case" is switched on
+  before filming so the drawing shows the whole printer, as the model does), then its Front view.
+  The drawing's caption says what is estimated: "≈ estimated · outside 584 × 499 × 730 mm, per
+  Snapmaker", and a callout points at the drawing's "≈390 mm".
+- **The background, shown not told:** the fleet shot (`fleet_bg`) opens with the cursor drifting
+  through the empty page margin (the dots part, swirl and light up) and a click on an empty spot
+  (a ripple), playing on the laptop while how it works is told; the twin shot enters over the dots.
+  The film's own scenery is now the app's Dots field in its default Glacier colours (`v14/build/
+  shared.css`), and the app's ripple of lit dots runs out from the film's key moments on the
+  music's hits (the alert, the name, the laptop landing, each device scene, "and plenty more", the
+  values, the end card).
+- **Figures re-checked against the code on 23 October 2026:** up to 12 printers, 29 modules, four
+  updates a second, ntfy/Discord/Telegram, MakerWorld/NexPrint conversion, Python 3.8, MIT, and
+  771 automated tests (a full run passed, 771 tests in 153.9 s, Python 3.12, this machine).
+- **Staged before filming, as an owner would:** the four heads' colours (Prepare, as version 12)
+  and, new, three spools in the filament inventory (`filament_v14`), because the inventory now
+  starts empty. Everything else is the built-in simulated farm.
+
+**Version 15 (23 October 2026): the owner's "V2" updated the same way.** The owner then asked for
+V2 (version 13's 60-second pair) to be edited the same way. Version 15 is that cut, in its own
+folder, `v15/` (copied from `build/`, `main/`, `vertical/`, which stay as version 13 made them):
+
+- **Music:** version 13's (`compose11.py`, the 144 BPM lounge-jazz tune with the vibraphone), at
+  version 13's level, re-written from the new timeline's cues. The opening (the problem, bars 0-4,
+  whose music is written to fixed bars), the answer and how it works are unchanged.
+- **Retimed in bars of 1.667 s:** Live fleet 2.5 (was 3), Needs you 2.5, Confirm Print 5, prepare
+  & slice 3 (was 3.5), **the digital twin 4.5 (was 3: 7.5 s)**, automations 3.5, "and plenty more"
+  1.5 (was 2), why trust it 1.5, the end card 3.5. Version 13's headline move is kept: each
+  feature's headline lands big over a veil, then glides aside as the app plays.
+- **The twin** (`twin3d_tight`, a tighter take of the same story as `twin3d`): in over the dots, the
+  flick and glide (the release lands as the headline settles), head T0's live details, then on the
+  bar the drawing ("Drawn from the same model"; T0 stays blue in it). No Front view: at 7.5 s the
+  drawing is held instead; the caption carries the estimate note, as version 14's.
+- **The same background, fixes and checks as version 14:** `fleet_bg` on the laptop during how it
+  works, the dot-field scenery with ripples on the music's hits, the two-row jam callout, 771
+  automated tests, the spools still and the end card's note, and "Files ready for the U1" in the
+  games' place in "and plenty more" (version 13 had left it out because its still rendered black).
+
+**Done in version 14 (the owner's note of 23 October 2026, kept for reference): show the new
+background and the new 3D twin.** The time drawn in dots was left out: under the filming clock it
+would draw an arbitrary time, and the owner asked for the background's reaction to the cursor. The
+app's background is now live (`frontend/backdrop.js`): Dots by default, parting,
 swirling and lighting up around the cursor, with hidden surprises. When the videos are next made:
 
 - Film with the default Dots background and keep the cursor moving through the empty parts of the
@@ -40,6 +106,8 @@ swirling and lighting up around the cursor, with hidden surprises. When the vide
 | `build/` | `scene.html` and `scene.js` (the one template and timeline both cuts share), `main.layout.css` and `vertical.layout.css` (where things sit in each shape), shared CSS (tokens and the liquid-glass system), `build.py`, which places the footage on the timeline from the recorded markers, puts a click on every filmed click and a keystroke on every key press and typed character, and mixes the soundtrack, `finish.py` (sets the loudness and puts the sound on the rendered picture) and `stills.sh` (exports the marketing feature cards from the renders). |
 | `main/`, `vertical/` | The [HyperFrames](https://github.com/heygen-com/hyperframes) projects: 16:9 (1920 × 1080) and 9:16 (1080 × 1920), both 60 s (version 13; 75 s up to version 12). `index.html` is generated by `build.py`. |
 | `v1/` | The first version's compositions, for reference. |
+| `v14/` | Version 14, the owner's "V1" (version 12) re-cut to 60 s: its own `build/` (template, timeline, layouts, `build.py`, `stills.sh`) and HyperFrames projects `main/` and `vertical/`. Built with `python3 v14/build/build.py main` (or `vertical`); renders go to `v14/renders/`. |
+| `v15/` | Version 15, the owner's "V2" (version 13) updated the same way: its own `build/` and HyperFrames projects; `python3 v15/build/build.py main` (or `vertical`), renders in `v15/renders/`, cards by `v15/build/stills.sh`. |
 
 Existing on-screen figures came from the simulated farm or the README at filming
 time. Historical test counts are not current. Keep simulated readings, engine
@@ -75,6 +143,18 @@ cd ../vertical && npx hyperframes@0.8.166 render --fps 60 --quality delivery --v
 cd .. && python3 build/finish.py main renders/main.mp4 renders/deja-vu1-launch-60s-16x9.mp4
 python3 build/finish.py vertical renders/vertical.mp4 renders/deja-vu1-launch-60s-9x16.mp4
 bash build/stills.sh
+```
+
+Version 14 (V1 at 60 s) films `fleet_bg overview_jam confirm_ok phone prepare twin3d automations
+care filament_v14 skip_object ha convert`, then:
+
+```bash
+python3 v14/build/build.py main && python3 v14/build/build.py vertical
+cd v14/main && npx hyperframes@0.8.166 render --fps 60 --quality delivery --video-frame-format png --output ../renders/main.mp4
+cd ../vertical && npx hyperframes@0.8.166 render --fps 60 --quality delivery --video-frame-format png --output ../renders/vertical.mp4
+cd ../.. && python3 v14/build/finish.py main v14/renders/main.mp4 v14/renders/deja-vu1-launch-v1-60s-16x9.mp4
+python3 v14/build/finish.py vertical v14/renders/vertical.mp4 v14/renders/deja-vu1-launch-v1-60s-9x16.mp4
+bash v14/build/stills.sh
 ```
 
 To try a shot quickly, film it at a low frame rate somewhere else first:
@@ -230,6 +310,36 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 - *safe areas*: captions, steps and cards stay inside the title-safe box (80% of the frame).
 
 ## Lessons learned (each cost a re-render or a re-shoot)
+
+- (v15) Version 14's first render kept "Ready-made rules" up until 0.6 s before the Save click,
+  but the filmed scroll to Save starts 1.07 s before it, so for half a second the label pointed at
+  blank space. Both cuts now take it down 1.3 s before the click; check every callout against the
+  filmed scrolls, not only the clicks.
+- (v15) Version 13's opening has music written to fixed bars (`compose11.py`), so time for the
+  twin came from the features and "and plenty more", never from the opening.
+
+- (v14) The twin's head labels are rebuilt whenever the live state moves anything. Under the
+  filming clock several state updates arrive inside one filmed frame, so a press and a release a
+  frame apart hit two different label elements and no click fires (the first take's details never
+  opened). `twin3d` aims at the label where it is now and presses and releases in the same instant.
+  In real time that is about four rebuilds a second, so a click on a label can occasionally be
+  lost in the app too while a print runs (not changed here; worth a look).
+- (v14) The twin's glide runs per screen frame (`requestAnimationFrame`): at a low test frame rate
+  it lasts several times longer, so judge the drag and the glide only on 60 fps footage.
+- (v14) Starting two filming batches at once on a just-restarted machine failed both with "Cannot
+  fast-forward to the past": the page took longer than the 1.5 s `rec.open()` allows before
+  `pauseAt`. Run them one after the other, or start the second a minute later.
+- (v14) The filament inventory now starts empty, so a still of it says "No spools tracked";
+  `filament_v14` enters three spools first and the end card says spools were entered for the film.
+- (v14) A jam now shows as two Needs-you rows (the dock error it causes, then the jam): version
+  12's spotlight sat on the wrong row. Re-measure every callout on new footage.
+- (v14) With Confirm Print followed by a full-screen feature, the laptop stayed in the phone's
+  stepped-back pose: a change out of the phone now always moves the laptop, even full to full.
+- (v14) The workspace's 3D viewer now renders on this machine (frame 1 of `convert` shows the part),
+  so "Files ready for the U1" could become a "plenty more" card again.
+- (v14) Measured on the mix: clicks a median 5.5 dB and keystrokes 4.6 dB above the music (60 ms
+  RMS); the six keystrokes typed under the final chord and crash (55.5 s) sit under it, exactly as
+  in version 12, whose typing and final chord have the same offsets. Not checked by ear.
 
 - (v13) The owner: a new 60-second version in both shapes, told like a product-launch film (the
   problem and why the app exists, then the features, clearly and smoothly), the same keystrokes,
@@ -452,6 +562,15 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 - HyperFrames telemetry was switched off (`npx hyperframes telemetry disable`).
 
 ## Rendering cost
+
+Version 15 (60 s each, 8 video windows from 7 shots plus 6 stills; one new shot, `twin3d_tight`,
+filmed in about 5 minutes): the 16:9 cut rendered in 14 min 42 s, the 9:16 in 14 min 14 s. Version 14
+was rendered again after the automation-callout fix: 16 min 32 s and 15 min 29 s (four renders in a
+row, so slower than the first time).
+
+Version 14 (60 s each, 7 video windows from 7 shots plus 6 stills; 13 shots filmed, mostly in
+two parallel batches, about 3 s a frame for the 3D twin): the 16:9 cut rendered in 13 min 28 s,
+the 9:16 in 12 min 54 s (frame capture 12 min 44 s and 12 min 4 s, measured by the renderer).
 
 Version 13 (60 s each, 8 video windows from 7 shots plus 6 stills; all 13 shots re-filmed in two
 parallel batches in about 13 minutes): the 16:9 cut rendered in about 12 minutes, the 9:16 in about

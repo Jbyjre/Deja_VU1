@@ -1,0 +1,36 @@
+      /* 9:16: the caption on top, the laptop (or the phone, or the app full width) below it; the
+         bottom stays clear for the Reels / TikTok buttons. */
+      :root { --p-for: 24px; --p-head: 150px; --p-tile: 124px; --p-item: 46px; --p-gap: 34px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
+        --values-size: 104px; --term-size: 26px; }
+      #brand { padding: 0 50px; }
+      .cap { left: 90px; right: 90px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
+      .cap .card { width: 100%; }
+      #corner { left: 90px; top: 100px; }
+      #simtag { right: 90px; top: 104px; }
+      #ph { left: 325px; top: 770px; scale: .86; transform-origin: 50% 0; }
+      #ha-card { left: 470px; top: 1290px; width: 540px; }
+      #end-row { top: 300px; flex-direction: column; gap: 22px; }
+      #end-word { font-size: 140px; }
+      #end-tag { top: 700px; }
+      #term { left: 50px; right: 50px; top: 860px; }
+      #end-meta { top: 1160px; }
+      #end-fine { top: 1300px; }
+      #end-fine .note { font-size: 18px; }
+      /* version 10 (title-safe: everything that matters stays 108 px from the sides, 192 from top and bottom) */
+      :root { --hook: 118px; --node: 128px; --node-lb: 19px; --step-h: 54px; --step-s: 29px; --more-t: 88px; --more-gap: 26px; --mc-lb: 30px; --sc-h: 54px; --sc-m: 27px; }
+      #more-t { left: 108px; top: 236px; }
+      #more-g { left: 90px; right: 90px; top: 380px; grid-template-columns: repeat(2, 1fr); }
+      :root { --sh: 190px; }
+      /* version 13 */
+      :root { --pl: 100px; --hw: 28px; --end-get: 30px; --brand-sub: 66px; --values-size: 82px; }
+      #pb-lines { left: 108px; right: 108px; top: 300px; }
+      #how { left: 90px; right: 90px; top: 200px; flex-direction: column; align-items: center; gap: 14px; }
+      #brand { gap: 26px; padding: 0 90px; }
+      #end-row { top: 260px; }
+      #end-tag { top: 640px; }
+      #term { top: 780px; }
+      #end-get { top: 1090px; left: 90px; right: 90px; }
+      #end-meta { top: 1220px; }
+      #end-fine { top: 1340px; }
+      /* version 15: the caption's fine line (what is estimated) */
+      :root { --cap-fine: 21px; }

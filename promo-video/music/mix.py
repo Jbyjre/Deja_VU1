@@ -6,6 +6,7 @@ the clicks share that band), so each one cuts through clearly while the bass kee
 Usage: python3 mix.py music.wav sfx.wav cues.json OUT.wav [STEM_PREFIX]
 """
 import json
+import os
 import sys
 import numpy as np
 from scipy import signal
@@ -43,7 +44,9 @@ mus = mus - mid * band[:, None]
 # Version 13's tune is fuller (the vibraphone rings on under the effects), so the music comes down
 # a little, putting the clicks and keystrokes back where version 7 measured them (the owner kept
 # those sounds): clicks about 10 dB, keystrokes about 4 dB above the music under them.
-MUSIC, FX = .6, 1.7
+# Version 14 (V1 re-cut to 60 s) plays version 12's trio again, so it sets version 12's level, .72,
+# through DEJAVU_MUSIC_LEVEL; without it the level stays version 13's.
+MUSIC, FX = float(os.environ.get('DEJAVU_MUSIC_LEVEL', .6)), 1.7
 m_part, f_part = mus * MUSIC * gain[:, None], fx * FX
 out = m_part + f_part
 norm = .9 / (np.max(np.abs(np.tanh(out * 1.05) / np.tanh(1.05))) or 1)

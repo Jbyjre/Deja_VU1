@@ -5,6 +5,17 @@ and what is and isn't verified.
 
 ## Unreleased — a realistic 3D twin and a livelier background
 
+- Launch video version 14 ("V1 at 60 s"): version 12's 75-second film, its music and
+  its click and keystroke sounds, re-cut to exactly 60 s in both shapes and re-filmed from
+  the current app. The new twin gets 9 s (the 3D model turned by hand and gliding to a stop,
+  a toolhead clicked open, then the same model as a drawing and its Front view, estimated
+  sizes marked "≈"); the live Dots background is shown through the cursor and as the film's
+  own scenery. Version 13's cuts are unchanged. Not checked by ear; measured only.
+- Launch video version 15 ("V2 updated"): version 13's 60-second film, music and headline
+  move, re-cut so the twin gets 7.5 s (model, glide, a head's live details, then the
+  drawing), with the same live background, scenery and fixes as version 14. Version 13's
+  files are kept. A version 14 callout that pointed at blank space during a scroll is fixed
+  in both.
 - Digital twin rebuilt (`frontend/twin3d.js`, `frontend/twin3d-scene.js`, WebGL 2): a
   detailed model of the U1 from Snapmaker's official product picture (in Snapmaker's
   Orca profile) and published figures, with studio lighting, reflections, soft

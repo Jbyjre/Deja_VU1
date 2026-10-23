@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Deja Vu1 launch film, V1 at 60 s (vertical)</title>
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Bricolage Grotesque"; src: url("fonts/BricolageGrotesque-var.woff2") format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; }
+      @font-face { font-family: "Instrument Sans"; src: url("fonts/InstrumentSans-var.woff2") format("woff2"); font-weight: 400 700; font-stretch: 75% 100%; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-400.woff2") format("woff2"); font-weight: 400; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-500.woff2") format("woff2"); font-weight: 500; }
+      @font-face { font-family: "IBM Plex Mono"; src: url("fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; }
+      /* Tokens: the app's own palette (frontend/theme.css, style.css); --dot-step is the app's 22 px
+         dot grid at the film's scale (the app's page is filmed at 1440 px wide, the film is 1920). */
+      :root {
+        --bg: oklch(95.4% 0.004 250); --ink: oklch(22% 0.014 265); --ink-dim: oklch(37% 0.014 265); --ink-faint: oklch(49% 0.012 265);
+        --heat: oklch(66% 0.17 48); --heat-ink: oklch(50% 0.15 45); --paper: oklch(99% 0.002 250);
+        --accent: #4a8df8; --accent-text: #1d5fc8; --ok: #34c759; --warn: #ffcc00; --bad: #ff3b30;
+        --dot-step: 28px;
+        --display: "Bricolage Grotesque", sans-serif; --sans: "Instrument Sans", sans-serif; --mono: "IBM Plex Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { overflow: hidden; background: var(--bg); }
+      body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--bg); }
+      /* Version 14: the app's own background (frontend/backdrop.js, Dots in the default Glacier
+         colours): a 22 px grid of small ink dots on a pale blue-grey, a blue glow at the top left and
+         a teal one at the bottom right. In the app the dots light up and run out in a ripple where
+         you click; here the same lit ripple runs out from the film's key moments (.rip, timed by
+         scene.js), so the film and the app look like one product. */
+      #bench { position: absolute; inset: 0; overflow: hidden; background: #edf2f8; }
+      .pool { position: absolute; border-radius: 50%; }
+      #pool-a { width: 1700px; height: 1700px; left: -620px; top: -900px; background: radial-gradient(circle, #9cc8ff 0%, transparent 66%); opacity: .5; }
+      #pool-b { width: 1700px; height: 1700px; right: -520px; bottom: -900px; background: radial-gradient(circle, #a6e4e0 0%, transparent 68%); opacity: .62; }
+      #dots, .rip { position: absolute; inset: 0; background-size: var(--dot-step) var(--dot-step); background-position: calc(var(--dot-step) / 2) calc(var(--dot-step) / 2); }
+      #dots { background-image: radial-gradient(circle at center, rgb(40 62 98 / .22) 1.7px, transparent 2.3px); }
+      .rip { opacity: 0; --x: 50%; --y: 50%; --r: 0px;
+        background-image: radial-gradient(circle at center, #3f8cff 3px, transparent 3.7px);
+        -webkit-mask: radial-gradient(circle at var(--x) var(--y), transparent calc(var(--r) - 130px), #000 calc(var(--r) - 30px), #000 var(--r), transparent calc(var(--r) + 50px));
+                mask: radial-gradient(circle at var(--x) var(--y), transparent calc(var(--r) - 130px), #000 calc(var(--r) - 30px), #000 var(--r), transparent calc(var(--r) + 50px)); }
+      .kicker { font: 500 18px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--heat-ink); display: flex; align-items: center; gap: 12px; }
+      .kicker::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--heat); }
+      .sub { font: 500 25px/1.42 var(--sans); color: var(--ink-dim); }
+      .note { font: 400 16px/1.5 var(--mono); color: var(--ink-faint); letter-spacing: .02em; }
+      @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+      /* ---------- version 3: one liquid-glass system (captions, window bezels, chips) ----------
+         Blur + saturation, SVG feDisplacementMap edge lensing, a 1 px rim lit from the top
+         left, a two-layer shadow (contact + ambient) and a specular glint that drifts. */
+      .glass { position: relative; isolation: isolate;
+        background: oklch(99% 0.003 250 / .58); backdrop-filter: blur(20px) saturate(1.7) url(#lg-distort);
+        box-shadow: 0 2px 4px rgba(20,25,40,.10), 0 16px 40px rgba(20,25,40,.20), inset 0 0 0 1px rgba(255,255,255,.55); }
+      .glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+        background: linear-gradient(160deg, rgba(255,255,255,.95), rgba(255,255,255,.08) 40%, rgba(255,255,255,.08) 62%, rgba(255,255,255,.55));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+      .glass::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+        background: radial-gradient(60% 120% at var(--sx, 20%) -10%, rgba(255,255,255,.55), transparent 60%); }
+      .win { position: absolute; border-radius: 30px; padding: 9px; opacity: 0; }
+      .win .view { position: relative; width: 100%; height: 100%; border-radius: 21px; overflow: hidden; background: var(--paper);
+        box-shadow: 0 0 0 1px oklch(30% 0.02 265 / .10); }
+      .cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+      .cam video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover; }
+      .spot { position: absolute; border-radius: 14px; opacity: 0; pointer-events: none;
+        box-shadow: 0 0 0 3px rgba(74,141,248,.95), 0 0 0 10px rgba(74,141,248,.18), 0 0 0 6000px rgba(16,20,32,.16); }
+      .cap { position: absolute; opacity: 0; }
+      .cap .card { border-radius: 32px; padding: 24px 34px 27px; }
+      .cap .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }
+      .cap .k { display: flex; align-items: center; gap: 12px; font: 500 16px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-dim); }
+      .cap .k b { font-weight: 600; color: #fff; background: var(--heat); padding: 6px 9px 5px; border-radius: 8px; letter-spacing: .04em; }
+      .cap .h { font: 700 64px/1.0 var(--display); font-stretch: 90%; letter-spacing: -.035em; color: var(--ink); white-space: nowrap; }
+      .cap .s { font: 500 24px/1.3 var(--sans); color: var(--ink-dim); white-space: nowrap; }
+      .simchip { position: absolute; z-index: 6; display: flex; align-items: center; gap: 9px; padding: 9px 15px 9px 13px; border-radius: 99px;
+        font: 600 13px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: oklch(40% 0.08 85); }
+      .simchip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); position: relative; z-index: 4; }
+      .simchip span { position: relative; z-index: 4; }
+      .word { display: inline-block; }
+      .mask { display: block; overflow: hidden; padding-bottom: .08em; }
+      .mask > span { display: block; }
+
+      html, body { width: 1080px; height: 1920px; }
+      /* ---------- version 6: a SaaS promo. The app runs on a laptop (and a phone) standing in
+         a 3D space; glass captions float beside it; no step numbers, no progress bar. ---------- */
+
+      /* the opening (version 9): what the app is for, in plain words, before its name. A small
+         label says who it is for, a two-line headline says what it does, then three promises,
+         each with its line icon on a glass tile, one per beat of the music. */
+      #purpose { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; }
+      #p-for { align-self: flex-start; position: relative; display: inline-flex; align-items: center; gap: 12px; padding: 12px 20px 12px 16px; border-radius: 99px; opacity: 0;
+        font: 600 var(--p-for)/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-text); }
+      #p-for span, #p-for svg { position: relative; z-index: 4; }
+      #p-for svg { width: 30px; height: 30px; overflow: visible; }
+      #p-head { font: 760 var(--p-head)/.98 var(--display); font-stretch: 86%; letter-spacing: -.05em; color: var(--ink); margin: 34px 0 0; }
+      #p-head .ln { display: block; overflow: hidden; padding-bottom: .06em; }
+      #p-head .w { display: inline-block; opacity: 0; }
+      #p-head .hl { color: var(--accent-text); }
+      #p-head br.v9 { display: none; }
+      #p-list { display: flex; gap: var(--p-gap); margin-top: 56px; }
+      .pi { display: flex; align-items: center; gap: 20px; opacity: 0; }
+      .pi .tile { flex: none; width: var(--p-tile); height: var(--p-tile); border-radius: calc(var(--p-tile) * .28); display: grid; place-items: center; }
+      .pi .tile svg { position: relative; z-index: 4; width: 52%; height: 52%; overflow: visible; }
+      .pi .t { font: 650 var(--p-item)/1.15 var(--sans); color: var(--ink); letter-spacing: -.01em; }
+      .pi .t em { font-style: normal; color: var(--accent-text); }
+      .ico path, .ico rect, .ico circle, .ico ellipse, .ico line, .ico polyline { fill: none; stroke: var(--accent-text); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .ico .fill { fill: var(--accent); stroke: none; }
+      .ico .heat { stroke: var(--heat); }
+      #brand { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; opacity: 0; }
+      .icon { flex: none; filter: drop-shadow(0 18px 30px rgba(13,17,24,.28)); }
+      .wordmark { font: 740 var(--brand-size)/1 var(--display); font-stretch: 88%; letter-spacing: -.05em; color: var(--ink); }
+      .brand-sub { font: 600 var(--brand-sub)/1.15 var(--display); font-stretch: 92%; letter-spacing: -.02em; color: var(--ink); text-align: center; }
+      .brand-sub .hl { color: var(--accent-text); }
+      .brand-sub2 { font: 500 30px/1.3 var(--sans); color: var(--ink-dim); text-align: center; }
+
+      /* the laptop (no brand marks), a real 3D object. Version 8 rebuilt it to a real laptop's
+         proportions: lid and keyboard deck the same width, the deck about as deep as the lid is
+         tall, a thin black glass bezel with an aluminium edge, a lid with thickness (its back
+         panel sits 14 px behind the screen), a dark hinge, a keyboard that spans most of the
+         deck near the hinge, a wide trackpad near the front. The lid opens to about 108 degrees
+         (version 7 had it tipped forward to 78, which read as half-closed). The camera moves it
+         with translateZ (a dolly) rather than scale, so depth stays true. */
+      #stage { position: absolute; inset: 0; perspective: 2600px; perspective-origin: 50% 50%; }
+      #rig { position: absolute; left: 50%; top: 50%; width: 1300px; height: 840px; margin: -420px 0 0 -650px; opacity: 0; transform-style: preserve-3d; }
+      .lid { position: absolute; left: 0; top: 0; width: 1300px; height: 840px; border-radius: 30px 30px 8px 8px; transform-origin: 50% 100%; transform-style: preserve-3d;
+        background: #0a0b0d; box-shadow: inset 0 0 0 3px #b9bec6, inset 0 0 0 5px #1a1c20; }
+      .lid-back { position: absolute; inset: 0; border-radius: inherit; transform: translateZ(-14px); background: linear-gradient(180deg, #c9cdd4, #aeb3bb); }
+      .lid-edge { position: absolute; left: 0; right: 0; top: 0; height: 14px; transform-origin: 50% 0; transform: rotateX(90deg); background: linear-gradient(180deg, #e3e6ea, #b3b8c0); border-radius: 30px 30px 0 0; }
+      .cam-dot { position: absolute; left: 50%; top: 12px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #23262c; box-shadow: inset 0 0 0 1.5px #343841; }
+      .screen { position: absolute; left: 30px; top: 30px; width: 1240px; height: 775px; border-radius: 4px; overflow: hidden; background: var(--bg); }
+      .glare { position: absolute; inset: 0; background: linear-gradient(118deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.025) 30%, transparent 44%); z-index: 9; pointer-events: none; }
+      .deck { position: absolute; left: 0; top: 840px; width: 1300px; height: 860px; transform-origin: 50% 0; transform: rotateX(90deg); transform-style: preserve-3d;
+        border-radius: 6px 6px 40px 40px; background: linear-gradient(180deg, #d4d7dc 0%, #e2e4e8 35%, #d6d9de 100%);
+        box-shadow: inset 0 0 0 1px rgba(30,35,45,.12), inset 0 3px 0 rgba(255,255,255,.55), 0 0 140px 30px rgba(20,25,40,.16); }
+      .hinge { position: absolute; left: 190px; right: 190px; top: 0; height: 22px; border-radius: 0 0 10px 10px; background: linear-gradient(180deg, #2a2d33, #4a4e56); }
+      .keys { position: absolute; left: 105px; top: 62px; width: 1090px; height: 400px; padding: 12px; border-radius: 14px; background: #bfc3ca;
+        display: grid; grid-template-columns: repeat(14, 1fr); grid-template-rows: .55fr repeat(5, 1fr); gap: 8px; box-shadow: inset 0 1px 4px rgba(0,0,0,.20); }
+      .keys i { display: block; border-radius: 7px; background: linear-gradient(180deg, #2f3238, #222429); box-shadow: inset 0 -2px 0 #15161a, 0 1px 0 rgba(255,255,255,.4); }
+      .keys i.sp { grid-column: span 6; }
+      .keys i.w2 { grid-column: span 2; }
+      .pad { position: absolute; left: 400px; top: 495px; width: 500px; height: 310px; border-radius: 22px;
+        background: linear-gradient(180deg, #cdd1d7, #c6cad1); box-shadow: inset 0 0 0 1.5px rgba(30,35,45,.13), inset 0 2px 3px rgba(0,0,0,.07); }
+      .lip { position: absolute; left: 0; bottom: 0; width: 100%; height: 22px; transform-origin: 50% 100%; transform: rotateX(-90deg);
+        border-radius: 0 0 40px 40px; background: linear-gradient(180deg, #b6bac2, #8f959e); }
+      .notch { position: absolute; left: 50%; bottom: 0; width: 240px; height: 10px; margin-left: -120px; border-radius: 12px 12px 0 0; background: linear-gradient(180deg, #a9aeb6, #c5c9cf); }
+      .floor { position: absolute; left: -60px; top: -40px; width: 1420px; height: 960px; transform: translateZ(-24px);
+        background: radial-gradient(50% 46% at 50% 48%, rgba(20,25,40,.30), rgba(20,25,40,.10) 60%, transparent 75%); filter: blur(18px); }
+      .layer { position: absolute; inset: 0; opacity: 0; }
+      #simtag { position: absolute; z-index: 40; opacity: 0; }
+
+      /* the phone */
+      .phone { position: absolute; width: 430px; height: 920px; border-radius: 62px; background: oklch(22% 0.014 265); padding: 14px; opacity: 0; transform-origin: 50% 50%;
+        box-shadow: 0 2px 4px rgba(20,25,40,.14), 0 40px 90px oklch(25% 0.02 265 / .3), inset 0 0 0 2px #3a3e47; }
+      .phone .pscreen { position: relative; width: 402px; height: 892px; border-radius: 50px; overflow: hidden; background: var(--bg); }
+      .phone .island { position: absolute; left: 50%; top: 12px; width: 112px; height: 32px; margin-left: -56px; border-radius: 20px; background: #0b0d12; z-index: 3; }
+
+      /* glass captions: the feature's icon and name, a headline, one sentence */
+      .cap { position: absolute; opacity: 0; z-index: 20; }
+      .cap .card { border-radius: 34px; padding: 30px 38px 34px; }
+      .cap .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 16px; }
+      .cap .k { display: flex; align-items: center; gap: 14px; font: 600 18px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-text); }
+      .cap .k .mini { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; background: oklch(96% 0.02 255); box-shadow: inset 0 0 0 1px oklch(85% 0.04 255); }
+      .cap .k .mini svg { width: 26px; height: 26px; overflow: visible; }
+      .cap .h { font: 740 var(--cap-h)/1.0 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); text-wrap: balance; }
+      .cap .s { font: 500 var(--cap-s)/1.4 var(--sans); color: var(--ink-dim); text-wrap: pretty; }
+      /* version 14: a small line under a caption, for what is estimated (it may wrap) */
+      .cap .fine { font: 500 var(--cap-fine)/1.45 var(--mono); color: var(--ink-faint); letter-spacing: .01em; white-space: normal; text-wrap: pretty; margin-top: 2px; }
+      .cap .s em { font-style: normal; color: var(--ink); font-weight: 650; }
+
+      /* callouts on the app (inside the screen's camera) */
+      .co { position: absolute; width: 0; height: 0; opacity: 0; z-index: 8; }
+      .co .dot { position: absolute; left: -10px; top: -10px; width: 20px; height: 20px; border-radius: 50%; background: var(--accent);
+        box-shadow: 0 0 0 6px rgba(74,141,248,.28), 0 2px 6px rgba(20,25,40,.3); }
+      .co .stem { position: absolute; background: var(--accent); }
+      .co .pill { position: absolute; white-space: nowrap; font: 650 var(--co-size)/1 var(--sans); color: #fff; background: oklch(26% 0.03 265); padding: .5em .7em; border-radius: .55em;
+        box-shadow: 0 2px 4px rgba(20,25,40,.18), 0 12px 30px rgba(20,25,40,.28); }
+      .co.r .stem { left: 0; top: -2px; width: 60px; height: 4px; } .co.r .pill { left: 60px; top: 0; transform: translateY(-50%); }
+      .co.l .stem { right: 0; top: -2px; width: 60px; height: 4px; } .co.l .pill { right: 60px; top: 0; transform: translateY(-50%); }
+      .co.t .stem { left: -2px; bottom: 0; width: 4px; height: 54px; } .co.t .pill { left: 50%; bottom: 54px; transform: translateX(-50%); }
+      .co.b .stem { left: -2px; top: 0; width: 4px; height: 54px; } .co.b .pill { left: 50%; top: 54px; transform: translateX(-50%); }
+
+      /* a floating glass card in front of the laptop (the Home Assistant sensors) */
+      .pop3 { position: absolute; opacity: 0; z-index: 15; border-radius: 30px; }
+      .pop3 .in { position: relative; z-index: 4; }
+      #ha-card { padding: 26px 30px 24px; background: oklch(99% 0.003 250 / .86); }
+      #ha-card .t { font: 700 26px/1 var(--display); letter-spacing: -.02em; color: var(--ink); margin-bottom: 16px; display: flex; align-items: baseline; gap: 12px; }
+      #ha-card .t b { font: 600 15px/1 var(--mono); letter-spacing: .1em; color: var(--accent-text); text-transform: uppercase; }
+      #ha-card .row { display: flex; align-items: center; gap: 12px; font: 500 21px/1 var(--sans); color: var(--ink-dim); padding: 9px 0; border-top: 1px solid oklch(30% 0.02 265 / .08); opacity: 0; }
+      #ha-card .row i { width: 10px; height: 10px; border-radius: 50%; background: #18bcf2; flex: none; }
+      #ha-card .row.more { color: var(--ink-faint); font-family: var(--mono); font-size: 17px; letter-spacing: .06em; }
+
+      #corner { position: absolute; display: flex; align-items: center; gap: 14px; opacity: 0; font: 740 30px/1 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); z-index: 30; }
+
+      /* version 10: the hook, how it works, "and plenty more", get started */
+      #hook { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; }
+      #hook .hk { font: 760 var(--hook)/1.0 var(--display); font-stretch: 86%; letter-spacing: -.05em; color: var(--ink); opacity: 0; }
+      #hook .hk.b { color: var(--accent-text); }
+      #shelf { position: absolute; display: grid; grid-template-columns: repeat(3, var(--sh)); gap: calc(var(--sh) * .2); }
+      .sh { position: relative; width: var(--sh); height: var(--sh); border-radius: calc(var(--sh) * .28); display: grid; place-items: center; opacity: 0; }
+      .sh svg { position: relative; z-index: 4; width: 52%; height: 52%; overflow: visible; }
+      .sh .dot { position: absolute; z-index: 5; right: 12%; top: 12%; width: 18%; height: 18%; border-radius: 50%; background: oklch(62% 0.2 30); box-shadow: 0 0 0 6px oklch(62% 0.2 30 / .22); opacity: 0; }
+      #hiw { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
+      #wires { position: absolute; inset: 0; overflow: visible; }
+      #wires line { stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 12; opacity: .55; }
+      #wires circle { fill: var(--accent); opacity: 0; }
+      .node { position: absolute; display: flex; align-items: center; gap: 16px; opacity: 0; }
+      .node .tile { flex: none; width: var(--node); height: var(--node); border-radius: calc(var(--node) * .28); display: grid; place-items: center; }
+      .node .tile svg { position: relative; z-index: 4; width: 54%; height: 54%; overflow: visible; }
+      .node.col { flex-direction: column; text-align: center; gap: 12px; }
+      .node .lb { font: 600 var(--node-lb)/1.15 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-dim); white-space: nowrap; }
+      .node .lb b { display: block; font: 650 calc(var(--node-lb) * 1.25)/1.1 var(--sans); letter-spacing: -.01em; text-transform: none; color: var(--ink); }
+      .step { position: absolute; z-index: 20; opacity: 0; }
+      .step .card { border-radius: 30px; padding: 26px 34px 28px; display: flex; gap: 24px; align-items: flex-start; }
+      .step .n { position: relative; z-index: 4; flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font: 700 30px/1 var(--display); }
+      .step .in { position: relative; z-index: 4; display: flex; flex-direction: column; gap: 10px; }
+      .step .h { font: 740 var(--step-h)/1.02 var(--display); font-stretch: 88%; letter-spacing: -.04em; color: var(--ink); }
+      .step .s { font: 500 var(--step-s)/1.35 var(--sans); color: var(--ink-dim); }
+      .step .s em { font-style: normal; color: var(--ink); font-weight: 650; }
+      #more { position: absolute; inset: 0; opacity: 0; }
+      #more-t { position: absolute; font: 760 var(--more-t)/1 var(--display); font-stretch: 86%; letter-spacing: -.045em; color: var(--ink); }
+      #more-g { position: absolute; display: grid; gap: var(--more-gap); }
+      .mc { border-radius: 26px; padding: 14px 14px 18px; opacity: 0; }
+      .mc .shot { position: relative; z-index: 4; width: 100%; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; background: var(--bg); box-shadow: inset 0 0 0 1px oklch(30% 0.02 265 / .1); }
+      .mc .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .mc .shot.txt { display: grid; place-items: center; font: 760 120px/1 var(--display); letter-spacing: -.05em; color: var(--accent-text); background: oklch(96% 0.02 255); }
+      .mc .lb { position: relative; z-index: 4; display: flex; align-items: center; gap: 12px; margin-top: 14px; font: 650 var(--mc-lb)/1.1 var(--sans); color: var(--ink); }
+      .mc .lb svg { width: 30px; height: 30px; overflow: visible; flex: none; }
+      #values { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+      #values .v { font: 740 var(--values-size)/1.0 var(--display); font-stretch: 88%; letter-spacing: -.045em; color: var(--ink); opacity: 0; white-space: nowrap; }
+      #values .faint { color: var(--ink-faint); }
+      #end { position: absolute; inset: 0; opacity: 0; }
+      #end-row { position: absolute; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 30px; }
+      #end-tag { position: absolute; left: 40px; right: 40px; text-align: center; font: 600 46px/1.15 var(--display); font-stretch: 92%; letter-spacing: -.02em; color: var(--ink); }
+      #term { position: absolute; border-radius: 24px; background: oklch(21% 0.014 265); padding: 22px 32px 30px; opacity: 0;
+        box-shadow: 0 2px 4px rgba(20,25,40,.2), 0 30px 80px oklch(25% 0.02 265 / .32), inset 0 0 0 1px #343842; }
+      #term .tbar { display: flex; gap: 8px; margin-bottom: 18px; }
+      #term .tbar i { width: 12px; height: 12px; border-radius: 50%; background: #3a3e47; display: block; }
+      #term .ln { font: 500 var(--term-size)/1.75 var(--mono); color: #e9ebf0; white-space: nowrap; overflow: hidden; width: 0; }
+      #term .ln b { color: var(--heat); font-weight: 500; }
+      #end-get { position: absolute; left: 40px; right: 40px; text-align: center; font: 600 var(--end-get)/1.3 var(--sans); color: var(--ink); opacity: 0; }
+      #end-get b { color: var(--accent-text); font-weight: 650; }
+      #end-meta { position: absolute; left: 40px; right: 40px; text-align: center; font: 500 20px/1.6 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-dim); opacity: 0; }
+      #end-fine { position: absolute; left: 30px; right: 30px; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0; text-align: center; }
+      /* 9:16: the caption on top, the laptop (or the phone, or the app full width) below it; the
+         bottom stays clear for the Reels / TikTok buttons. */
+      :root { --p-for: 24px; --p-head: 150px; --p-tile: 124px; --p-item: 46px; --p-gap: 34px; --brand-size: 150px; --brand-sub: 58px; --cap-h: 72px; --cap-s: 32px; --co-size: 40px;
+        --values-size: 104px; --term-size: 26px; }
+      #purpose { left: 70px; right: 70px; }
+      #p-list { flex-direction: column; gap: 34px; }
+      #brand { padding: 0 50px; }
+      .cap { left: 90px; right: 90px; top: 150px; height: 560px; display: flex; align-items: flex-end; }
+      .cap .card { width: 100%; }
+      #corner { left: 90px; top: 100px; }
+      #simtag { right: 90px; top: 104px; }
+      #ph { left: 325px; top: 770px; scale: .86; transform-origin: 50% 0; }
+      #ha-card { left: 470px; top: 1290px; width: 540px; }
+      #end-row { top: 300px; flex-direction: column; gap: 22px; }
+      #end-word { font-size: 140px; }
+      #end-tag { top: 700px; }
+      #term { left: 50px; right: 50px; top: 860px; }
+      #end-meta { top: 1212px; }
+      #end-fine { top: 1326px; }
+      #end-fine .note { font-size: 18px; }
+      #p-head .ln { display: inline; }
+      #p-head br.v9 { display: inline; }   /* three lines: "Run your 3D / printers from / one screen." */
+      /* version 10 (title-safe: everything that matters stays 108 px from the sides, 192 from top and bottom) */
+      :root { --hook: 118px; --node: 128px; --node-lb: 19px; --step-h: 54px; --step-s: 29px; --more-t: 88px; --more-gap: 26px; --mc-lb: 30px; --sc-h: 54px; --sc-m: 27px; }
+      #hook { left: 108px; right: 108px; }
+      .step { left: 90px; right: 90px; top: 196px; }
+      #more-t { left: 108px; top: 236px; }
+      #more-g { left: 90px; right: 90px; top: 380px; grid-template-columns: repeat(2, 1fr); }
+      :root { --sh: 190px; }
+      #shelf { left: 197px; top: 1120px; }
+      #hook { justify-content: flex-start; padding-top: 620px; }
+      /* version 14: get started folds into the end card */
+      :root { --end-get: 30px; --cap-fine: 21px; }
+      #end-get { top: 1104px; left: 90px; right: 90px; }
+
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="lg-distort" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="16" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <defs>
+        <linearGradient id="ic-tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2230"/><stop offset="1" stop-color="#0d1118"/></linearGradient>
+        <linearGradient id="ic-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7db2ff"/><stop offset="1" stop-color="#4a8df8"/></linearGradient>
+        <symbol id="app-icon" viewBox="0 0 512 512">
+          <rect width="512" height="512" rx="112" fill="url(#ic-tile)"/><circle cx="256" cy="256" r="150" fill="none" stroke="url(#ic-ring)" stroke-width="44"/>
+          <circle cx="256" cy="256" r="58" fill="#4a8df8"/><circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
+        </symbol>
+      </defs>
+    </svg>
+    <div id="root" data-composition-id="vertical" data-start="0" data-width="1080" data-height="1920" data-duration="60">
+      <div id="bench"><div id="pool-a" class="pool"></div><div id="pool-b" class="pool"></div><div id="dots"></div><div class="rip" id="rip-0"></div><div class="rip" id="rip-1"></div><div class="rip" id="rip-2"></div></div>
+
+      <div id="hook"><div class="hk">One printer is easy.</div><div class="hk b">A shelf of them isn&rsquo;t.</div></div>
+      <div id="shelf"></div>
+      <div id="purpose">
+        <div id="p-for" class="glass"><svg viewBox="0 0 48 48" class="ico" aria-hidden="true"><rect x="9" y="6" width="30" height="36" rx="4"/><path d="M15 34h18M18 13h12v13H18z"/></svg><span>For Snapmaker U1 3D printers</span></div>
+        <h1 id="p-head"><span class="ln"><span class="w">Run</span> <span class="w">your</span> <span class="w">3D</span><br class="v9"> <span class="w">printers</span></span> <span class="ln"><span class="w">from</span><br class="v9"> <span class="w hl">one</span> <span class="w hl">screen.</span></span></h1>
+        <div id="p-list"></div>
+      </div>
+
+      <div id="brand">
+        <svg class="icon" id="b-icon" width="168" height="168" viewBox="0 0 512 512" aria-hidden="true">
+          <rect width="512" height="512" rx="112" fill="url(#ic-tile)"/>
+          <circle id="b-ring" cx="256" cy="256" r="150" fill="none" stroke="url(#ic-ring)" stroke-width="44" stroke-dasharray="942.5" stroke-dashoffset="942.5" transform="rotate(-90 256 256)"/>
+          <circle id="b-dot" cx="256" cy="256" r="58" fill="#4a8df8"/><circle cx="236" cy="236" r="16" fill="#ffffff" opacity=".55"/>
+        </svg>
+        <div class="wordmark" id="b-word">Deja Vu1</div>
+        <div class="brand-sub2" id="b-sub2">Free and open source, for the Snapmaker U1.</div>
+      </div>
+
+      <div id="corner"><svg width="44" height="44" aria-hidden="true"><use href="#app-icon"/></svg>Deja Vu1</div>
+
+      <div id="stage">
+        <div id="rig">
+          <div class="deck"><div class="floor"></div><div class="hinge"></div><div class="keys" id="keys"></div><div class="pad"></div><div class="lip"><div class="notch"></div></div></div>
+          <div class="lid" id="lid"><div class="lid-back"></div><div class="lid-edge"></div><div class="cam-dot"></div><div class="screen" id="screen"><div class="glare"></div></div></div>
+        </div>
+        <div class="phone" id="ph"><div class="pscreen" id="ph-screen"><div class="island"></div></div></div>
+      </div>
+
+      <div id="hiw">
+        <svg id="wires" viewBox="0 0 1080 1920" aria-hidden="true"></svg>
+        <div id="nodes"></div>
+        <div id="steps"></div>
+      </div>
+      <div class="simchip glass" id="simtag"><span>Simulated farm</span></div>
+      <div id="caps"></div>
+
+      <div id="more"><div id="more-t">And plenty more.</div><div id="more-g"></div></div>
+      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">771 automated tests.</div></div>
+
+      <div id="end">
+        <div id="end-row"><svg class="icon" width="128" height="128" aria-hidden="true"><use href="#app-icon"/></svg><div class="wordmark" id="end-word">Deja Vu1</div></div>
+        <div id="end-tag">One screen for every U1 you run.</div>
+        <div id="term">
+          <div class="tbar"><i></i><i></i><i></i></div>
+          <div class="ln"><b>$</b> git clone https://github.com/Jbyjre/Deja_VU1.git</div>
+          <div class="ln"><b>$</b> cd Deja_VU1</div>
+          <div class="ln"><b>$</b> python3 backend/app.py</div>
+        </div>
+        <div id="end-get">Or download it and double-click <b>start</b>. Windows · Mac · Linux</div>
+        <div id="end-meta">Free · MIT licence · the core needs only Python 3.8 or newer</div>
+        <div id="end-fine">
+          <div class="note">Figures from Deja Vu1's built-in simulated farm; spools and head colours entered for the film.</div>
+          <div class="note">Deja Vu1 is an independent project and is not affiliated with Snapmaker.</div>
+          <div class="note">Music played on recorded instruments: Salamander Grand Piano by Alexander Holm (CC BY 3.0), VSCO 2 CE, Virtuosity Drums (CC0).</div>
+        </div>
+      </div>
+
+      <video id="v-fl" src="assets/footage/fleet_bg.mp4" muted playsinline data-start="8.400" data-media-start="5.117" data-duration="9.700" data-track-index="2"></video>
+      <video id="v-ov" src="assets/footage/overview_jam.mp4" muted playsinline data-start="17.400" data-media-start="3.900" data-duration="4.450" data-track-index="2"></video>
+      <video id="v-ok" src="assets/footage/confirm_ok.mp4" muted playsinline data-start="21.150" data-media-start="6.800" data-duration="8.200" data-track-index="2"></video>
+      <video id="v-ph" src="assets/footage/phone.mp4" muted playsinline data-start="26.600" data-media-start="7.600" data-duration="2.750" data-track-index="2"></video>
+      <video id="v-pp" src="assets/footage/prepare.mp4" muted playsinline data-start="28.650" data-media-start="4.700" data-duration="5.950" data-track-index="2"></video>
+      <video id="v-tw" src="assets/footage/twin3d.mp4" muted playsinline data-start="33.900" data-media-start="4.067" data-duration="9.700" data-track-index="2"></video>
+      <video id="v-au" src="assets/footage/automations.mp4" muted playsinline data-start="42.900" data-media-start="5.600" data-duration="5.200" data-track-index="2"></video>
+      <audio id="mix" src="assets/audio/mix_vertical.wav" data-start="0" data-duration="60" data-track-index="9" data-volume="1"></audio>
+    </div>
+
+    <script>
+      // Version 14 (the owner's "V1", version 12's 75-second film, re-cut to 60 s): the same story
+      // in 40 bars of the same 160 BPM music, with the new digital twin shown both ways it is drawn
+      // (the 3D model, then the drawing made from it) and the app's live Dots background, both in
+      // the footage (the cursor plays through it) and as the film's own scenery.
+      // Version 10: a 75-second SaaS launch video. The problem, what the app is for, the name,
+      // how it works (the laptop with the real app, the printers and the phone joining it), seven
+      // features shown working (sometimes on the laptop standing in 3D, sometimes full screen),
+      // "and plenty more", why trust it, get started, the end card. Every change lands on a bar
+      // line of the 160 BPM music, and every moment something appears is put on the music's grid
+      // and written to CUES, so the music plays along with the picture (music/compose9.py).
+      // Shared by both cuts; the layout CSS places things, this file times them. build.py fills
+      // in M (each shot's clicks and marks), TY (the end-card typing) and SEG (the timings).
+      const FMT = 'vertical', V9 = FMT === 'vertical';
+      const M = {"v-fl": {"start": 7.283, "marks": {"drift": 0.85, "ripple": 2.067, "tab": 3.7, "cards": 5.6, "sandbox": 7.8, "hover": 8.55, "hover2": 11}, "clicks": [2.017, 3.65]}, "v-ov": {"start": 17.5, "marks": {"jam": 1.783, "row": 3.867}, "clicks": []}, "v-ok": {"start": 18.35, "marks": {"open": 0.9, "print": 2.933, "dialog": 5.233, "start": 6.167}, "clicks": [0.85, 2.883, 6.117]}, "v-ph": {"start": 23.0, "marks": {}, "clicks": [1.833, 4.217, 5.1]}, "v-pp": {"start": 27.95, "marks": {"dup": 1.033, "tool": 2.283, "blue": 3.267, "arrange": 4.6}, "clicks": [0.983, 2.217, 3.217, 4.55]}, "v-tw": {"start": 33.833, "marks": {"grab": 1.5, "release": 2.117, "pick": 3.883, "drawing": 5.917, "front": 7.917}, "clicks": [1.5, 3.883, 5.867, 7.867]}, "v-au": {"start": 41.3, "marks": {"tab": 1.033, "template": 2.567, "save": 4.783}, "clicks": [0.983, 2.517, 4.733]}};
+      const TY = [[54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7, 54.7], [55.1, 55.165, 55.249, 55.317, 55.405, 55.471, 55.556, 55.636, 55.699, 55.768, 55.854, 56.034], [56.464, 56.525, 56.601, 56.667, 56.735, 56.812, 56.879, 56.949, 57.029, 57.118, 57.202, 57.286, 57.35, 57.41, 57.481, 57.554, 57.619, 57.694, 57.77, 57.844, 57.917, 57.992, 58.172]];
+      const SEG = {"fl": {"t0": 14.25, "t1": 18.0}, "ov": {"t0": 18.0, "t1": 21.75}, "ok": {"t0": 21.75, "t1": 29.25, "phone": 27.0}, "pp": {"t0": 29.25, "t1": 34.5}, "tw": {"t0": 34.5, "t1": 43.5}, "au": {"t0": 43.5, "t1": 48.0}, "values": 51.0, "end": 54.0, "twinCut": 39.75, "beat": 0.375, "hiw": {"t0": 9.0, "s2": 10.5, "s3": 12.0}, "more": 48.0, "length": 60.0};
+      const $ = (s) => document.querySelector(s);
+      const FW = 1440, FH = 900, SW = 1240, SH = 775;       // filmed page (CSS px), laptop screen
+      const FRW = V9 ? 1080 : 1920, FRH = V9 ? 1920 : 1080;  // the film's frame
+      const at = (vid, mark) => M[vid].start + (mark in M[vid].marks ? M[vid].marks[mark] : 0);
+      const click = (vid, i) => M[vid].start + M[vid].clicks[i];
+
+      // ---------- the feature icons (48 x 48, drawn as lines) ----------
+      const IC = {
+        fl: '<rect x="5" y="8" width="38" height="26" rx="5"/><path d="M18 41h12M24 34v7"/><path class="heat" d="M10 22h7l3-6 5 12 3-6h10"/>',
+        ov: '<path d="M14 32V22a10 10 0 0 1 20 0v10l3 4H11z"/><path d="M21 40a3.5 3.5 0 0 0 6 0"/><circle class="fill" cx="35" cy="12" r="5"/>',
+        ok: '<path d="M24 5l14 5v12c0 9-6 16-14 20-8-4-14-11-14-20V10z"/><path d="M17 24l5 5 9-10"/>',
+        cv: '<path d="M11 5h16l9 9v29H11z"/><path d="M27 5v9h9"/><path class="heat" d="M17 30h13M26 25l5 5-5 5"/>',
+        sk: '<rect x="6" y="6" width="36" height="36" rx="5"/><rect x="12" y="25" width="9" height="9" rx="2"/><rect x="27" y="25" width="9" height="9" rx="2"/><path class="heat" d="M13 11l8 8M21 11l-8 8"/><rect x="27" y="11" width="9" height="9" rx="2"/>',
+        tw: '<path d="M24 5l16 9v19l-16 9-16-9V14z"/><path d="M8 14l16 9 16-9M24 23v19"/>',
+        st: '<rect x="5" y="9" width="38" height="30" rx="5"/><path d="M9 35l10-11 7 7 5-5 8 9"/><circle class="heat" cx="33" cy="17" r="4"/>',
+        pp: '<path d="M24 6l18 9-18 9-18-9z"/><path d="M6 24l18 9 18-9"/><path class="heat" d="M6 33l18 9 18-9"/>',
+        au: '<path d="M27 4L11 27h12l-3 17 17-24H25z"/>',
+        ca: '<path d="M31 6a9 9 0 0 0-8 12L8 33a3.6 3.6 0 0 0 5 5l15-15a9 9 0 0 0 12-8l-6 2-4-4 2-6z"/>',
+        fi: '<circle cx="24" cy="24" r="18"/><circle cx="24" cy="24" r="6"/><circle class="heat" cx="24" cy="24" r="12" stroke-dasharray="4 5"/>',
+        co: '<circle cx="24" cy="24" r="18"/><path d="M30 17c-2-3-12-3-12 2.5S30 23 30 29s-10 5.5-12 2.5M24 11v4M24 33v4"/>',
+        ha: '<path d="M7 23L24 8l17 15v18H7z"/><circle cx="24" cy="27" r="3"/><circle cx="17" cy="33" r="2"/><circle cx="31" cy="31" r="2"/><path d="M24 30v11M22 28l-4 4M26 28l4 2"/>',
+        tl: '<circle cx="24" cy="26" r="16"/><path d="M24 17v9l6 4M19 5h10"/><path class="heat" d="M24 5v5"/>',
+        ar: '<path d="M7 15V7h8M33 7h8v8M41 33v8h-8M15 41H7v-8"/><path d="M24 14l9 5v10l-9 5-9-5V19zM15 19l9 5 9-5M24 24v10"/>',
+        ga: '<path d="M14 15h20a9 9 0 0 1 9 9v4a6 6 0 0 1-11 3.5L30 29H18l-2 2.5A6 6 0 0 1 5 28v-4a9 9 0 0 1 9-9z"/><path d="M14 20v7M10.5 23.5h7"/><circle class="fill" cx="31" cy="22" r="2.2"/><circle class="fill" cx="36" cy="26" r="2.2"/>',
+        ph: '<rect x="13" y="4" width="22" height="40" rx="5"/><path d="M21 9h6"/><circle class="fill" cx="24" cy="37" r="2"/>',
+        pr: '<rect x="7" y="5" width="34" height="38" rx="4"/><path d="M7 13h34M19 13v7l5 5 5-5v-7M13 35h22"/><path class="heat" d="M17 31h14"/>',
+        mod: '<rect x="4" y="15" width="40" height="20" rx="10"/><circle class="fill" cx="34" cy="25" r="6"/>',
+      };
+      const svgIcon = (id) => `<svg class="ico" viewBox="0 0 48 48" aria-hidden="true">${IC[id]}</svg>`;
+
+
+      // ---------- the features: seven filmed ones, in the order MESSAGING.md leads with ----------
+      // shot: D = on a device (the laptop turned towards the caption, its keyboard in view),
+      //       F = the app full screen (the camera dollies into the laptop's screen).
+      // The owner: "not the laptop and phone in every one, maybe half". The device shots are
+      // where a device says something (the first look at the app, the phone, the moments that
+      // step back for breath, the games); the full-screen shots are where the detail matters.
+      // Version 8: Automations takes the studio's place and its device slot, so the two kinds
+      // alternate through the second half. cap: the caption's side in 16:9 (on top in 9:16).
+      const F = [
+        { id: 'fl', lb: 'Live fleet', k: 'Every printer, live', shot: 'D', cap: 'L',
+          h: 'See every printer at once.', s: 'Up to <em>12 printers</em>, live.' },
+        { id: 'ov', lb: 'Needs you', k: 'Needs you', shot: 'F', cap: 'R',
+          h: 'Know what needs you.', s: 'One list, <em>most urgent first</em>.' },
+        { id: 'ok', lb: 'Confirm Print', k: 'Confirm Print', shot: 'F', cap: 'L',
+          h: 'Every print, checked first.', s: 'File, colours and maintenance, <em>before it starts</em>.' },
+        { id: 'pp', lb: 'Prepare &amp; slice', k: 'Prepare & slice', shot: 'F', cap: 'L',
+          h: 'Prepare the whole plate.', s: 'Each part on its own head, <em>T0 to T3</em>. Then slice.' },
+        // Version 14: the new twin (frontend/twin3d.js). The 3D model first; on the cut its caption
+        // gives way to TW2, the drawing made from the same model.
+        { id: 'tw', lb: 'Digital twin', k: 'Digital twin · 3D model', shot: 'F', cap: 'R',
+          h: 'A live 3D twin of each printer.', s: 'Turn it by hand. <em>Click a head</em> for its details.' },
+        { id: 'au', lb: 'Automations', k: 'Automations', shot: 'D', cap: 'L',
+          h: 'When this happens, do that.', s: 'Alerts to <em>ntfy, Discord or Telegram</em>. No cloud.' },
+      ];
+      const PH = { id: 'ph', cap: 'L', k: 'On your phone', h: 'And from your phone.', s: '<em>No account, no cloud.</em>' };
+      // The drawing's sizes: the outside figures are Snapmaker's; the body's own size is estimated,
+      // and the drawing marks it with "≈" (the twin card says the same, frontend/index.html).
+      const TW2 = { id: 'tw2', cap: 'R', k: 'Digital twin · Drawing', h: 'The same model, as a drawing.', s: '<em>Live dimensions</em>, balloons, a title block.',
+        fine: '≈ estimated · outside 584 × 499 × 730 mm, per Snapmaker' };
+      // The opening (version 9, the owner: "change the first scene to defining the purpose of the
+      // app"): who it is for, what it does, three promises, then the name. Each promise is a
+      // feature shown later in the film: the live fleet, Confirm Print, Needs you.
+      const PURPOSE = [
+        { id: 'fl', t: 'Watch every print, <em>live</em>.' },
+        { id: 'ok', t: 'Prepare and check <em>every file</em>.' },
+        { id: 'ov', t: 'Know the moment one <em>needs you</em>.' },
+      ];
+
+      // How it works (version 10): three steps around the laptop, each sentence checked against
+      // docs/getting-started.md, backend/live_feed.py (four updates a second) and backend/fleet.py.
+      const STEPS = [
+        // version 14: a bar each, so each sentence is shorter (Python 3.8 moves to the end card)
+        { h: 'Runs on your computer.', s: 'Windows, Mac, Linux or a <em>Raspberry Pi</em>.' },
+        { h: 'Talks to your U1s on your network.', s: '<em>Four updates a second.</em> Nothing installed on the printer.' },
+        { h: 'Open it in any browser.', s: 'On that computer or <em>on your phone</em>.' },
+      ];
+      const PRINTERS = ['Workshop', 'Garage', 'Studio'];            // the simulated farm's three built-in printers
+      // "And plenty more": the supporting features as stills from the same filmed shots.
+      // Version 14: Files ready for the U1 (its own feature in version 12) leads them, in the games' place.
+      const MORE = [
+        { id: 'cv', lb: 'Files ready for the U1', img: 'convert' },
+        { id: 'ca', lb: 'Maintenance', img: 'care' }, { id: 'fi', lb: 'Filament &amp; Spoolman', img: 'filament' },
+        { id: 'sk', lb: 'Skip one object', img: 'skip' }, { id: 'ha', lb: 'Home Assistant', img: 'ha' },
+        { id: 'mod', lb: '29 modules, on or off', img: 'modules' },
+      ];
+
+      // where the twin shot's camera and callouts go (page px, measured on the filmed shot)
+      // The model fills page 182-835 x 243-730 (the card's mode switch at y 150), the details open at
+      // y 780-900 under the head chips; the Front drawing's "≈390 mm" sits at (510, 681).
+      const TW = { model: [160, 120, 700, 640], pick: [160, 330, 700, 570], draw: [160, 120, 700, 650],
+        drag: [500, 590], dragDir: 'b', detail: [340, 806], detailDir: 'r', size: [510, 670], sizeDir: 't' };
+      // where the prepare shot's callouts point (page px, measured on the filmed shot)
+      const PP = { tool: V9 ? [720, 620] : [1180, 528], toolDir: V9 ? 't' : 'b', plate: V9 ? [700, 590] : [640, 560], frame: V9 ? [440, 280, 700, 520] : [540, 280, 740, 520] };
+
+      // ---------- DOM ----------
+      $('#nodes').innerHTML = PRINTERS.map((p, i) => `<div class="node col" id="nd-${i}"><div class="tile glass">${svgIcon('pr')}</div><div class="lb">U1<b>${p}</b></div></div>`).join('')
+        + `<div class="node col" id="nd-ph"><div class="tile glass">${svgIcon('ph')}</div><div class="lb">Browser<b>Your phone</b></div></div>`;
+      $('#steps').innerHTML = STEPS.map((p, i) => `<div class="step" id="st-${i}"><div class="card glass"><div class="n">${i + 1}</div><div class="in"><div class="h">${p.h}</div><div class="s">${p.s}</div></div></div></div>`).join('');
+      $('#more-g').innerHTML = MORE.map(m => `<div class="mc glass" id="mc-${m.id}"><div class="shot${m.txt ? ' txt' : ''}">${m.txt ? m.txt : `<img src="assets/stills/${m.img}.jpg" alt="">`}</div><div class="lb">${svgIcon(m.id)}${m.lb}</div></div>`).join('');
+      $('#p-list').innerHTML = PURPOSE.map(p => `<div class="pi" id="pi-${p.id}"><div class="tile glass">${svgIcon(p.id)}</div><div class="t">${p.t}</div></div>`).join('');
+      $('#caps').innerHTML = [...F, PH, TW2].map(f => `<div class="cap ${V9 ? 'T' : f.cap}" id="cap-${f.id}"><div class="card glass"><div class="in">
+          <div class="k"><span class="mini">${svgIcon(f.id === 'tw2' ? 'tw' : f.id)}</span>${f.k.replace('&', '&amp;')}</div><div class="h">${f.h}</div><div class="s">${f.s}</div>${f.fine ? `<div class="fine">${f.fine}</div>` : ''}</div></div></div>`).join('');
+      $('#keys').innerHTML = '<i></i>'.repeat(74) + '<i class="sp"></i>' + '<i></i>'.repeat(4);   // five rows of 14, then the space bar row
+      const screen = $('#screen');
+      const LAYERS = F.map(f => f.id);   // version 14: the twin is one continuous take
+      LAYERS.forEach(id => { const l = document.createElement('div'); l.className = 'layer'; l.id = 'L-' + id; l.innerHTML = '<div class="cam"></div>'; screen.insertBefore(l, screen.querySelector('.glare')); });
+
+      const V = {};
+      function mount(viewEl, vid, vw, vh) {
+        const s = Math.max(vw / FW, vh / FH), cam = viewEl.querySelector('.cam'), inner = document.createElement('div');
+        Object.assign(cam.style, { width: vw + 'px', height: vh + 'px', transformOrigin: `${vw / 2}px ${vh / 2}px` });
+        Object.assign(inner.style, { position: 'absolute', left: 0, top: 0, width: FW * s + 'px', height: FH * s + 'px' });
+        inner.appendChild(document.getElementById(vid)); cam.appendChild(inner);
+        return { cam, inner, vw, vh, s, safe: [0, 0, 1, 1], cs: 1 };
+      }
+      LAYERS.forEach(id => { V[id] = mount($('#L-' + id), 'v-' + id, SW, SH); });
+      (() => { const cam = document.createElement('div'); cam.className = 'cam'; Object.assign(cam.style, { inset: '0', width: '100%', height: '100%' });
+        cam.appendChild($('#v-ph')); $('#ph-screen').appendChild(cam); })();
+      document.querySelectorAll('.ico path, .ico rect, .ico circle:not(.fill)').forEach(el => {
+        if (el.getAttribute('stroke-dasharray')) return;
+        const n = el.getTotalLength ? el.getTotalLength() : 200;
+        el.style.strokeDasharray = n; el.dataset.len = n;
+      });
+
+      // ---------- the camera ----------
+      // Poses of the laptop. z is a dolly towards (+) or away from (-) the viewer; with the
+      // stage's 2600 px perspective the laptop looks 2600 / (2600 - z) times its size. lid is
+      // the hinge: positive opens it back past upright (18 = a 108 degree opening, the way a
+      // laptop sits on a desk). R / L: standing right / left of the caption, turned a little
+      // towards it and seen a little from above, so the keyboard shows without the screen
+      // looking stretched. full: the screen fills the frame (lid upright, seen straight on).
+      const PERSP = 2600, look = z => PERSP / (PERSP - z);
+      const POSE = V9 ? {
+        R: { x: 0, y: 120, z: -1450, rotationX: -12, rotationY: -13, lid: 16 },
+        L: { x: 0, y: 120, z: -1450, rotationX: -12, rotationY: 13, lid: 16 },
+        full: { x: 0, y: 247, z: 889, rotationX: 0, rotationY: 0, lid: 0 },   // the screen fills the frame below the caption, its bezel off the bottom edge
+        back: { x: 0, y: 220, z: -2400, rotationX: -10, rotationY: -12, lid: 16 },
+        rise: { x: 0, y: 1300, z: -1900, rotationX: -40, rotationY: 0, lid: 16 },
+        hub: { x: 0, y: 40, z: -1900, rotationX: -9, rotationY: 0, lid: 15 },     // how it works: square on, the printers above, the phone below
+      } : {
+        R: { x: 290, y: -150, z: -1000, rotationX: -10, rotationY: -15, lid: 16 },
+        L: { x: -290, y: -150, z: -1000, rotationX: -10, rotationY: 15, lid: 16 },
+        full: { x: 0, y: 2.5, z: 930, rotationX: 0, rotationY: 0, lid: 0 },
+        back: { x: 220, y: -90, z: -1850, rotationX: -10, rotationY: -20, lid: 16 },
+        rise: { x: 0, y: 1000, z: -1700, rotationX: -40, rotationY: 0, lid: 16 },
+        hub: { x: 0, y: -150, z: -1700, rotationX: -9, rotationY: 0, lid: 15 },   // how it works: square on, the printers left, the phone right
+      };
+      // In full screen the caption covers one side of the app, so the camera inside the screen
+      // frames each detail in the part that stays clear (fractions of the screen).
+      const SAFE = V9 ? { T: [.22, .03, .78, .97] } : { L: [.44, .09, .98, .91], R: [.02, .09, .56, .91] };
+      const DEVICE_LOOK = look(POSE.R.z);
+      function shotPose(f) { return f.shot === 'F' ? 'full' : (f.cap === 'L' ? 'R' : 'L'); }
+      function setView(v, pose, cap) {
+        v.safe = pose === 'full' ? SAFE[V9 ? 'T' : cap] : [0, 0, 1, 1];
+        v.cs = DEVICE_LOOK / look(POSE[pose].z);          // callouts keep one size on screen
+      }
+
+      const tl = gsap.timeline({ paused: true });
+      // Version 9: the sound follows the picture. Every moment something appears (a word of the
+      // opening, a promise, a callout, the phone, a sensor row, a value) is put on the music's
+      // grid (the nearest eighth note of the 160 BPM music) and written to CUES, which build.py
+      // reads back so music/compose9.py plays a note, a chord or a drum hit exactly then.
+      const CUES = [];
+      const cue = (t, k, extra = {}) => { CUES.push({ t: +t.toFixed(3), k, ...extra }); return t; };
+      const snap = t => Math.round(t / (SEG.beat / 2)) * (SEG.beat / 2);
+      window.__cues = CUES;
+      // A smooth move of the whole laptop (and its hinge) to a pose.
+      function rigTo(t, d, pose, extra = {}, ease = 'power2.inOut') {
+        const { lid, ...p } = POSE[pose];
+        tl.to('#rig', { ...p, ...extra, duration: d, ease }, t);
+        tl.to('#lid', { rotationX: lid, duration: d, ease }, t);
+      }
+      function camK(v, r) {
+        const sw = v.vw * (v.safe[2] - v.safe[0]), sh = v.vh * (v.safe[3] - v.safe[1]);
+        // never more than 1.9 times the page's size on the screen: past that the app's text and
+        // controls look out of proportion (the owner: the zooms went too far)
+        return Math.max(Math.min(sw / (r[2] * v.s), sh / (r[3] * v.s), 1.9), Math.max(v.vw / (FW * v.s), v.vh / (FH * v.s)));
+      }
+      // Frame a rectangle of the footage (CSS px of the filmed page) in the clear part of the screen.
+      function camTo(v, t, d, r, ease = 'power2.inOut') {
+        const k = camK(v, r), cx = (r[0] + r[2] / 2) * v.s, cy = (r[1] + r[3] / 2) * v.s;
+        const tx = v.vw * (v.safe[0] + v.safe[2]) / 2, ty = v.vh * (v.safe[1] + v.safe[3]) / 2;
+        let x = tx - k * cx, y = ty - k * cy;
+        // The page may slide out from under the caption (the strip it leaves is the app's own
+        // light background, behind the caption's glass), but never past the clear part's edge.
+        // (In 9:16 the strip it leaves falls in the part of the screen cropped off the frame.)
+        const slide = [v.vw * v.safe[0], v.vw * (1 - v.safe[2])];
+        x = Math.min(slide[0], Math.max(v.vw - k * FW * v.s - slide[1], x));
+        y = Math.min(0, Math.max(v.vh - k * FH * v.s, y));
+        // Version 10 (the owner: the zooms looked unnatural). Version 9 tweened scale and position
+        // on one element with x/y in screen pixels, so mid-zoom the detail being framed swung
+        // along a curve and arrived late. Now the outer layer scales about the screen's centre and
+        // the inner one moves the page in page pixels, both on one ease: the framed point travels
+        // in a straight line while the zoom grows (HyperFrames' coordinate-target-zoom rule).
+        const ox = v.vw / 2, oy = v.vh / 2, ix = (x - ox * (1 - k)) / k, iy = (y - oy * (1 - k)) / k;
+        if (d === 0) { tl.set(v.cam, { scale: k }, t); tl.set(v.inner, { x: ix, y: iy }, t); }
+        else { tl.to(v.cam, { scale: k, duration: d, ease }, t); tl.to(v.inner, { x: ix, y: iy, duration: d, ease }, t); }
+        return k;
+      }
+      // A callout: a dot on the thing, a short stem, a dark label, inside the screen's camera
+      // (it stays on its target through every move) and scaled to keep one size on screen.
+      function callout(v, pt, label, dir, tIn, tOut, k) {
+        tIn = cue(snap(tIn), 'callout');
+        const el = document.createElement('div'); el.className = 'co ' + dir;
+        el.innerHTML = `<i class="dot"></i><b class="stem"></b><span class="pill">${label}</span>`;
+        Object.assign(el.style, { left: pt[0] * v.s + 'px', top: pt[1] * v.s + 'px' });
+        v.inner.appendChild(el);
+        tl.set(el, { scale: v.cs / k, transformOrigin: '0 0' }, 0);
+        tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: .3, ease: 'power2.out', immediateRender: false }, tIn);
+        tl.fromTo(el.querySelector('.dot'), { scale: 0 }, { scale: 1, duration: .45, ease: 'back.out(2.2)', immediateRender: false }, tIn);
+        tl.fromTo(el.querySelector('.stem'), { scale: 0 }, { scale: 1, duration: .35, ease: 'power3.out', immediateRender: false,
+          transformOrigin: { r: '0 50%', l: '100% 50%', t: '50% 100%', b: '50% 0' }[dir] }, tIn + .05);
+        tl.fromTo(el.querySelector('.pill'), { opacity: 0 }, { opacity: 1, duration: .35, ease: 'power2.out', immediateRender: false }, tIn + .12);
+        tl.to(el, { opacity: 0, duration: .25, ease: 'power1.in' }, tOut);
+      }
+      function spot(v, r, tIn, tOut) {
+        const el = document.createElement('div'); el.className = 'spot';
+        Object.assign(el.style, { left: r[0] * v.s + 'px', top: r[1] * v.s + 'px', width: r[2] * v.s + 'px', height: r[3] * v.s + 'px' });
+        v.inner.appendChild(el);
+        tl.fromTo(el, { opacity: 0, scale: 1.04 }, { opacity: 1, scale: 1, duration: .45, ease: 'power3.out', immediateRender: false }, tIn);
+        tl.to(el, { opacity: 0, duration: .3, ease: 'power1.in' }, tOut);
+      }
+      function zin(el, t, d = .4) {
+        tl.fromTo(el, { opacity: 0, scale: .9, y: 18 }, { opacity: 1, scale: 1, y: 0, duration: d, ease: 'power3.out', immediateRender: false }, t);
+      }
+      // Captions: the card glides in, then its label, headline and sentence close behind (version
+      // 8: about half a second in all, so the words are there while the camera is still settling).
+      function capIn(id, t) {
+        const c = '#cap-' + id, dx = V9 ? 0 : $(c).classList.contains('L') ? -44 : 44;
+        tl.set(c, { opacity: 1 }, t);
+        tl.fromTo(`${c} .card`, { opacity: 0, x: dx, y: V9 ? -24 : 0, scale: .96 }, { opacity: 1, x: 0, y: 0, scale: 1, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+        tl.fromTo(`${c} .k`, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .35, ease: 'power3.out', immediateRender: false }, t + .05);
+        tl.fromTo(`${c} .h`, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, t + .09);
+        tl.fromTo(`${c} .s`, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, t + .17);
+        tl.fromTo(`${c} .mini .ico *`, { strokeDashoffset: (i, el) => el.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .06);
+        tl.fromTo(`${c} .card`, { '--sx': '0%' }, { '--sx': '90%', duration: 5, ease: 'none', immediateRender: false }, t);
+      }
+      // Full screen, the keyboard deck is out of the picture; it fades away on the way in and back
+      // on the way out (left in place, Chrome clips part of the screen when the camera is this
+      // close to a 3D scene that also holds the deck).
+      function deck(show, t) {
+        if (show) { tl.set('.deck', { visibility: 'visible' }, t); tl.to('.deck', { opacity: 1, duration: .4, ease: 'power1.out' }, t); }
+        else { tl.to('.deck', { opacity: 0, duration: .4, ease: 'power1.in' }, t); tl.set('.deck', { visibility: 'hidden' }, t + .4); }
+      }
+      function capOut(id, t) {
+        tl.to(`#cap-${id} .card`, { opacity: 0, scale: .98, duration: .25, ease: 'power1.in' }, t);
+        tl.set('#cap-' + id, { opacity: 0 }, t + .26);
+      }
+
+      tl.fromTo('#pool-a', { x: 0, y: 0 }, { x: 140, y: 60, duration: SEG.length, ease: 'none' }, 0);
+      tl.fromTo('#pool-b', { x: 0, y: 0 }, { x: -120, y: -40, duration: SEG.length, ease: 'none' }, 0);
+      // Version 14: the app's click ripple, run out through the scenery's dots from the film's key
+      // moments, on the music's hits. Three ripples take turns (each lives about 1.6 s).
+      let nRip = 0;
+      function ripple(t, x, y, power = 1) {
+        const el = '#rip-' + (nRip++ % 3), reach = (V9 ? 1500 : 1700) * (.75 + .25 * power);
+        tl.set(el, { '--x': x + 'px', '--y': y + 'px' }, t);
+        tl.fromTo(el, { '--r': '0px' }, { '--r': reach + 'px', duration: 1.6, ease: 'power2.out', immediateRender: false }, t);
+        tl.fromTo(el, { opacity: 0 }, { keyframes: [{ opacity: .9 * Math.min(1, power), duration: .12 }, { opacity: 0, duration: 1.45, ease: 'power1.in' }], immediateRender: false }, t);
+      }
+      const centre = (sel) => { const r = $(sel).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+      { const { lid, ...p } = POSE.rise; gsap.set('#rig', p); gsap.set('#lid', { rotationX: lid }); }
+
+      // ===== version 10's story, bar by bar (a bar of the 160 BPM music is 1.5 s) =====
+      const B = SEG.beat, BAR = 4 * B;
+      // bars 0-2: the hook, the problem in two lines
+      gsap.utils.toArray('#hook .hk').forEach((el, i) => tl.fromTo(el, { opacity: 0, y: 46 },
+        { opacity: 1, y: 0, duration: .5, ease: 'expo.out', immediateRender: false }, cue(i ? BAR : .05, 'hook', { i })));
+      // the shelf: one printer with the first line, five more with the second, then one of them
+      // flags a problem (the red dot), the reason to want one screen
+      $('#shelf').innerHTML = Array.from({ length: 6 }, (_, i) => `<div class="sh glass" id="sh-${i}">${svgIcon('pr')}<i class="dot"></i></div>`).join('');
+      $('#shelf').querySelectorAll('.ico path, .ico rect').forEach(el => { const n = el.getTotalLength(); el.style.strokeDasharray = n; el.dataset.len = n; });
+      for (let i = 0; i < 6; i++) {
+        const t = cue(i ? BAR + (i - 1) * B / 2 : .1, 'tile', { i }), el = '#sh-' + i;
+        tl.fromTo(el, { opacity: 0, scale: .6, y: 20 }, { opacity: 1, scale: 1, y: 0, duration: .4, ease: 'back.out(1.8)', immediateRender: false }, t);
+        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .4, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .03);
+        tl.fromTo(el, { '--sx': '0%' }, { '--sx': '100%', duration: 2.5, ease: 'none', immediateRender: false }, t);
+      }
+      tl.fromTo('#sh-4 .dot', { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: .35, ease: 'back.out(2.5)', immediateRender: false }, cue(BAR + 3 * B, 'alert'));
+      tl.to('#sh-4', { x: 6, duration: .06, yoyo: true, repeat: 5, ease: 'sine.inOut' }, BAR + 3 * B);
+      ripple(BAR + 3 * B, ...centre('#sh-4'), .7);
+      tl.to(['#hook', '#shelf'], { y: V9 ? -120 : -90, opacity: 0, duration: .3, ease: 'power2.in' }, 2 * BAR - .32);
+
+      // bars 2-4.5: what it is for. The label, the headline a word an eighth note, then the three
+      // promises on beats 1, 2 and 3 of bar 3 (a chord on each).
+      const P0 = 2 * BAR;
+      tl.fromTo('#p-for', { opacity: 0, y: 14, scale: .96 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, cue(P0, 'for'));
+      tl.fromTo('#p-for', { '--sx': '0%' }, { '--sx': '90%', duration: 3.6, ease: 'none', immediateRender: false }, P0);
+      tl.fromTo('#p-for .ico *', { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .5, ease: 'power2.out', stagger: .04, immediateRender: false }, P0 + .05);
+      gsap.utils.toArray('#p-head .w').forEach((w, i) => {
+        tl.fromTo(w, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: .4, ease: 'expo.out', immediateRender: false }, cue(P0 + B * (.5 + i * .5), 'word', { i }));
+      });
+      PURPOSE.forEach((p, i) => {
+        const t = cue(3 * BAR + i * B, 'item', { i }), el = '#pi-' + p.id;
+        tl.fromTo(el, { opacity: 0, y: 26, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: .45, ease: 'expo.out', immediateRender: false }, t);
+        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
+        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 2.2, ease: 'none', immediateRender: false }, t);
+      });
+      tl.fromTo('#purpose', { scale: 1 }, { scale: 1.025, duration: 3.6, ease: 'none', immediateRender: false }, P0);
+      tl.set('#purpose', { opacity: 1 }, 0);
+      tl.to('#purpose', { y: V9 ? -160 : -120, opacity: 0, duration: .3, ease: 'power2.in' }, 4.5 * BAR - .34);
+
+      // bar 4.5: the name, on a full chord and a cymbal
+      const NAME = cue(4.5 * BAR, 'name');
+      tl.set('#brand', { opacity: 1 }, NAME);
+      tl.fromTo('#b-icon', { scale: .4, opacity: 0 }, { scale: 1, opacity: 1, duration: .45, ease: 'back.out(1.7)', immediateRender: false }, NAME);
+      tl.to('#b-ring', { attr: { 'stroke-dashoffset': 0 }, duration: .6, ease: 'power3.out' }, NAME + .03);
+      tl.fromTo('#b-dot', { scale: 0, transformOrigin: '50% 50%' }, { scale: 1, duration: .35, ease: 'back.out(2)', immediateRender: false }, NAME + .12);
+      ripple(NAME, ...centre('#b-icon'), 1.2);
+      tl.fromTo('#b-word', { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, NAME + .06);
+      tl.fromTo('#b-sub2', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .4, ease: 'power3.out', immediateRender: false }, NAME + B);
+      tl.to('#brand', { y: V9 ? -420 : -260, opacity: 0, duration: .32, ease: 'power2.in' }, SEG.hiw.t0 - .82);
+
+      // ===== bars 6-10.5: how it works. The laptop lands showing the real app; the printers and
+      // the phone come in around it, joined by the network, a pulse on each wire every quarter of
+      // a second (the app's four updates a second). =====
+      const H0 = SEG.hiw.t0, HS = [H0, SEG.hiw.s2, SEG.hiw.s3], H1 = SEG.fl.t0;
+      tl.set('#rig', { opacity: 1 }, H0 - .55);
+      tl.set('#L-fl', { opacity: 1 }, H0 - .55);
+      rigTo(H0 - .55, .9, 'hub', {}, 'expo.out');
+      tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .5, ease: 'power3.out', immediateRender: false }, H0);
+      ripple(H0, FRW / 2, FRH / 2, 1);
+      tl.fromTo('#simtag', { opacity: 0 }, { opacity: 1, duration: .5, ease: 'power2.out', immediateRender: false }, H0);
+      tl.to('#rig', { z: POSE.hub.z + 90, duration: H1 - H0 - .5, ease: 'sine.inOut' }, H0 + .4);
+      STEPS.forEach((p, i) => {
+        const el = '#st-' + i, t = cue(HS[i], 'step', { i });
+        tl.set(el, { opacity: 1 }, t);
+        tl.fromTo(`${el} .card`, { opacity: 0, y: V9 ? -20 : 24, scale: .97 }, { opacity: 1, y: 0, scale: 1, duration: .5, ease: 'expo.out', immediateRender: false }, t + .04);
+        tl.fromTo(`${el} .n`, { scale: .4 }, { scale: 1, duration: .45, ease: 'back.out(2)', immediateRender: false }, t + .08);
+        tl.fromTo(`${el} .card`, { '--sx': '0%' }, { '--sx': '90%', duration: 2.3, ease: 'none', immediateRender: false }, t);
+        const out = i < 2 ? HS[i + 1] - .3 : H1 - .38;
+        tl.to(`${el} .card`, { opacity: 0, y: V9 ? -12 : 12, duration: .26, ease: 'power1.in' }, out);
+        tl.set(el, { opacity: 0 }, out + .27);
+      });
+      // where the nodes sit, in frame pixels: (left, top) of each node, and the wire ends
+      const NODE = V9 ? { w: 230, pr: [[135, 500], [425, 500], [715, 500]], ph: [425, 1420] } : { w: 230, pr: [[250, 205], [250, 385], [250, 565]], ph: [1440, 360] };
+      const T = V9 ? 128 : 120;
+      const WIRE = V9 ? {
+        pr: NODE.pr.map(([l, tp], i) => [l + 115, tp + T + 66, 360 + i * 180, 746]),
+        ph: [540, 1330, 540, NODE.ph[1] - 8],
+      } : {
+        pr: NODE.pr.map(([l, tp]) => [l + 115 + T / 2 + 4, tp + T / 2, 588, 449]),
+        ph: [1334, 449, NODE.ph[0] + 115 - T / 2 - 4, NODE.ph[1] + T / 2],
+      };
+      [...NODE.pr, NODE.ph].forEach(([l, tp], i) => Object.assign($(i < 3 ? '#nd-' + i : '#nd-ph').style, { left: l + 'px', top: tp + 'px', width: NODE.w + 'px', alignItems: 'center' }));
+      const svgNS = 'http://www.w3.org/2000/svg', wires = $('#wires');
+      function wire([x1, y1, x2, y2], t0, t1, back) {
+        const ln = document.createElementNS(svgNS, 'line');
+        Object.entries({ x1, y1, x2: x1, y2: y1 }).forEach(([k, v]) => ln.setAttribute(k, v)); wires.appendChild(ln);
+        tl.fromTo(ln, { attr: { x2: x1, y2: y1 }, opacity: 0 }, { attr: { x2, y2 }, opacity: .55, duration: .45, ease: 'power2.out', immediateRender: false }, t0);
+        tl.to(ln, { opacity: 0, duration: .3, ease: 'power1.in' }, t1);
+        // a pulse every quarter of a second: the data going one way (printer to app, app to phone)
+        const [ax, ay, bx, by] = back ? [x2, y2, x1, y1] : [x1, y1, x2, y2];
+        for (let t = t0 + .45; t < t1 - .4; t += .25) {
+          const d = document.createElementNS(svgNS, 'circle'); d.setAttribute('r', V9 ? 7 : 6); wires.appendChild(d);
+          tl.fromTo(d, { attr: { cx: ax, cy: ay }, opacity: 0 }, { attr: { cx: bx, cy: by }, duration: .5, ease: 'none', immediateRender: false }, t);
+          tl.fromTo(d, { opacity: 0 }, { keyframes: [{ opacity: .95, duration: .08 }, { opacity: .95, duration: .34 }, { opacity: 0, duration: .08 }], immediateRender: false }, t);
+        }
+      }
+      NODE.pr.forEach((_, i) => {
+        const t = cue(HS[1] + i * B, 'node', { i }), el = '#nd-' + i;
+        tl.fromTo(el, { opacity: 0, scale: .8, x: V9 ? 0 : -30, y: V9 ? -20 : 0 }, { opacity: 1, scale: 1, x: 0, y: 0, duration: .45, ease: 'back.out(1.6)', immediateRender: false }, t);
+        tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
+        tl.fromTo(`${el} .tile`, { '--sx': '0%' }, { '--sx': '100%', duration: 3, ease: 'none', immediateRender: false }, t);
+        wire(WIRE.pr[i], t + .1, H1 - .45, false);
+        tl.to(el, { opacity: 0, scale: .9, duration: .3, ease: 'power1.in' }, H1 - .45);
+      });
+      { const t = cue(HS[2] + B, 'node', { i: 3 });
+        tl.fromTo('#nd-ph', { opacity: 0, scale: .8, x: V9 ? 0 : 30, y: V9 ? 20 : 0 }, { opacity: 1, scale: 1, x: 0, y: 0, duration: .45, ease: 'back.out(1.6)', immediateRender: false }, t);
+        tl.fromTo('#nd-ph .ico *', { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .04);
+        wire(WIRE.ph, t + .1, H1 - .45, false);
+        tl.to('#nd-ph', { opacity: 0, scale: .9, duration: .3, ease: 'power1.in' }, H1 - .45);
+      }
+
+      // ===== the features =====
+      // The laptop turns from the how-it-works pose to the first feature's, the same app still on it.
+      rigTo(H1 - .42, .85, shotPose(F[0]), {}, 'power3.inOut');
+      capIn('fl', H1 + .06);
+      F.forEach(f => setView(V[f.id], shotPose(f), f.cap));
+
+      // Between two features: one continuous move. The caption fades, the laptop turns, dollies
+      // in or steps back while its screen crossfades to the next app view (no cuts, no blur).
+      F.forEach((f, i) => {
+        if (!i) return;
+        const p = F[i - 1], t0 = SEG[f.id].t0, from = shotPose(p), to = shotPose(f);
+        capOut(p.id === 'ok' ? 'ph' : p.id === 'tw' ? 'tw2' : p.id, t0 - .38);
+        capIn(f.id, t0 + .06);
+        // full screen to full screen: the laptop stays where it is (version 9's quick step back
+        // and in again read as a bump); the new screen settles in as it fades up
+        // (version 14: after the phone the laptop stands back, so it always moves, even into full screen)
+        const back = p.id === 'ok';
+        if (from !== to || back) rigTo(t0 - .42, .85, to, back ? { opacity: 1 } : {}, 'power3.inOut');
+        if (to === 'full' && (from !== 'full' || back)) deck(false, t0 - .1);
+        if (from === 'full' && to !== 'full' && p.id !== 'ok') deck(true, t0 - .42);
+        // the new screen fades in on top of the old one, which only goes once it is covered
+        tl.set('#L-' + f.id, { zIndex: 2 + i }, t0 - .26);
+        tl.fromTo('#L-' + f.id, { scale: 1.04 }, { scale: 1, duration: .75, ease: 'expo.out', immediateRender: false }, t0 - .22);
+        tl.fromTo('#L-' + f.id, { opacity: 0 }, { opacity: 1, duration: .32, ease: 'power1.inOut', immediateRender: false }, t0 - .22);
+        tl.set('#L-' + p.id, { opacity: 0 }, t0 + .14);
+        // the scenery answers each change into or out of a device shot (where it is in view)
+        if (f.shot === 'D' || p.shot === 'D') ripple(t0, FRW / 2, FRH / 2, .8);
+      });
+      // The small logo shows over device shots only: full screen, it would sit on top of the app.
+      F.forEach((f, i) => {
+        if (!i) return;
+        const was = F[i - 1].shot === 'D' || F[i - 1].id === 'ok', is = f.shot === 'D';
+        if (was !== is) tl.to('#corner', { opacity: is ? 1 : 0, duration: .4, ease: 'power1.inOut' }, SEG[f.id].t0 - .4);
+      });
+      tl.to('#corner', { opacity: 1, duration: .5, ease: 'power1.inOut' }, SEG.ok.phone - .4);
+
+      // While a feature plays the laptop keeps drifting a little closer (and, on the device,
+      // turns towards the viewer), so the frame is never quite still.
+      F.forEach(f => {
+        const s = SEG[f.id], pose = POSE[shotPose(f)];
+        const end = f.id === 'ok' ? s.phone - .5 : s.t1 - .42;
+        const drift = f.shot === 'F' ? { z: pose.z + 45 } : { z: pose.z + 110, rotationY: pose.rotationY * .75 };
+        tl.to('#rig', { ...drift, duration: end - s.t0 - .45, ease: 'sine.inOut' }, s.t0 + .45);
+      });
+
+      // Version 8: one or two callouts per feature, each up long enough to read, so the eye
+      // goes straight to the one thing that matters. OUT: when a feature's callouts leave.
+      const OUT = id => SEG[id].t1 - .32;
+      // 1. every printer, live
+      { const v = V.fl, H = at('v-fl', 'hover');
+        camTo(v, SEG.hiw.t0 - .6, 0, [0, 0, FW, FH]);                 // the whole page while how it works plays
+        camTo(v, SEG.fl.t0 - .3, .9, [170, 280, 1110, 640]);
+        const k = camTo(v, H - .5, .8, [470, 280, 700, 440]);
+        spot(v, [556, 346, 336, 104], H + .1, OUT('fl'));
+        callout(v, [760, 418], 'Progress and finish time', 't', H + .25, OUT('fl'), k);   // version 14: one callout, as version 13
+      }
+      // 2. needs you
+      { const v = V.ov, J = at('v-ov', 'jam');
+        camTo(v, SEG.ov.t0 - .5, 0, [150, 280, 800, 600]);
+        const k = camTo(v, J, .7, [165, 400, 760, 300]);
+        // version 14: the jam now arrives as two rows (the dock error it causes, then the jam itself)
+        spot(v, [172, 490, 1106, 112], J + .2, OUT('ov'));
+        callout(v, [572, 566], 'A jam, the moment it happens', 'r', J + .35, OUT('ov'), k);
+      }
+      // 3. confirm print, then the phone
+      { const v = V.ok, P = click('v-ok', 1), G = click('v-ok', 2), PH0 = SEG.ok.phone;
+        camTo(v, SEG.ok.t0 - .5, 0, [600, 250, 760, 330]);
+        const k = camTo(v, P + .1, .75, [350, 250, 740, 400]);
+        spot(v, [383, 364, 674, 50], P + .55, G - .25);
+        callout(v, [720, 410], 'Every check passed', 'b', P + .65, G - .25, k);
+        const k2 = camTo(v, G + .1, .7, [520, 20, 760, 380]);
+        callout(v, [720, 110], 'Started, confirmed by the printer', 'b', G + .45, PH0 - .4, k2);
+        // ...and from your phone: the laptop steps back, the phone comes forward
+        capOut('ok', PH0 - .4);
+        rigTo(PH0 - .5, .9, 'back', { opacity: .55 }, 'power3.inOut');
+        deck(true, PH0 - .5);
+        tl.fromTo('#ph', { opacity: 0, x: V9 ? 0 : 380, y: V9 ? 420 : 30, rotationY: V9 ? -14 : -30, rotationX: 6, transformPerspective: 1800 },
+          { opacity: 1, x: 0, y: 0, rotationY: V9 ? -5 : -11, rotationX: 2, duration: .8, ease: 'expo.out', immediateRender: false }, PH0 - .3);
+        tl.to('#ph', { rotationY: V9 ? 4 : -2, duration: SEG.ok.t1 - PH0 - .2, ease: 'sine.inOut' }, PH0 + .5);
+        capIn('ph', PH0 + .06);
+        cue(PH0 - .3, 'phone');
+        ripple(PH0, FRW * (V9 ? .5 : .7), FRH * (V9 ? .72 : .5), .8);
+        tl.to('#ph', { opacity: 0, x: V9 ? 0 : 420, y: V9 ? 380 : 0, rotationY: V9 ? -10 : -28, duration: .55, ease: 'power2.in' }, SEG.ok.t1 - .45);
+      }
+      // 5. prepare & slice (version 12, the new workspace): duplicate the part, put the copy on
+      // head T1 (it turns that head's colour), arrange the plate
+      { const v = V.pp, D = at('v-pp', 'dup'), BL = at('v-pp', 'blue'), AR = at('v-pp', 'arrange');
+        camTo(v, SEG.pp.t0 - .5, 0, [560, 200, 720, 600]);
+        const k = camTo(v, D + .2, .8, PP.frame);
+        callout(v, PP.tool, 'The copy goes on head T1', PP.toolDir, BL + .1, AR - .1, k);
+        callout(v, PP.plate, 'Arranged on the U1 plate', 't', AR + .35, OUT('pp'), k);
+      }
+      // 6. the digital twin (version 14: the new twin, frontend/twin3d.js), one continuous take. The
+      // 3D model: the cursor turns it by hand and lets go (it glides to a stop), then clicks head T0
+      // (it lights up and its live details open). On the cut (the Drawing switch, on the bar) the
+      // caption gives way and the same model, in the same view, is an engineering drawing; then its
+      // Front view, where the body's estimated size is marked "≈".
+      { const v = V.tw, GR = at('v-tw', 'grab'), PK = at('v-tw', 'pick'), CUT = SEG.twinCut, FR = at('v-tw', 'front');
+        camTo(v, SEG.tw.t0 - .5, 0, TW.model);
+        const k = camK(v, TW.model);
+        callout(v, TW.drag, 'Drag it: it glides to a stop', TW.dragDir, GR + .15, PK - .3, k);
+        const k2 = camTo(v, PK - .05, .75, TW.pick);
+        callout(v, TW.detail, 'Its live details', TW.detailDir, PK + .4, CUT - .3, k2);
+        capOut('tw', CUT - .38);
+        capIn('tw2', CUT + .06);
+        cue(CUT, 'cut');
+        const k3 = camTo(v, CUT - .35, .75, TW.draw);
+        callout(v, TW.size, '≈ estimated size', TW.sizeDir, FR + .55, OUT('tw'), k3);
+      }
+      // 7. automations (version 8: on the laptop, in the studio's old place): a ready-made rule
+      // in one click, then saved
+      { const v = V.au, T = at('v-au', 'template'), S = at('v-au', 'save');
+        camTo(v, SEG.au.t0 - .5, 0, [160, 220, 900, 640]);
+        const k = camTo(v, T - .45, .7, [160, 310, 760, 520]);
+        callout(v, [570, 478], 'Ready-made rules', 'r', T + .05, S - 1.3, k);   // gone before the page scrolls to Save (it starts 1.07 s before the click)
+        const k2 = camTo(v, S - .45, .75, [150, 440, 800, 360]);
+        callout(v, [366, 709], 'Saved. It runs on your computer.', 'r', S + .3, OUT('au'), k2);
+      }
+
+      // ===== bars 32-34: "and plenty more": the supporting features as stills (version 14: one per
+      // eighth note, so all six are up for a second and a half) =====
+      capOut('au', SEG.more - .36);
+      tl.to('#rig', { z: POSE.R.z - 700, y: '-=120', opacity: 0, duration: .5, ease: 'power2.in' }, SEG.more - .4);
+      tl.to('#corner', { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.more - .3);
+      { const M0 = SEG.more;
+        tl.set('#more', { opacity: 1 }, M0);
+        tl.fromTo('#more-t', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .45, ease: 'expo.out', immediateRender: false }, cue(M0, 'more'));
+        ripple(M0, FRW * .2, FRH * .15, .9);
+        MORE.forEach((m, i) => {
+          const t = cue(M0 + B * (1 + i / 2), 'card', { i }), el = '#mc-' + m.id;
+          tl.fromTo(el, { opacity: 0, y: 40, scale: .94 }, { opacity: 1, y: 0, scale: 1, duration: .5, ease: 'expo.out', immediateRender: false }, t);
+          tl.fromTo(`${el} .ico *`, { strokeDashoffset: (j, e) => e.dataset.len || 0 }, { strokeDashoffset: 0, duration: .45, ease: 'power2.out', stagger: .03, immediateRender: false }, t + .05);
+          tl.fromTo(el, { '--sx': '0%' }, { '--sx': '90%', duration: 3.5, ease: 'none', immediateRender: false }, t);
+        });
+        tl.fromTo('#more-g', { scale: 1, transformOrigin: '50% 40%' }, { scale: 1.035, duration: SEG.values - M0, ease: 'none', immediateRender: false }, M0);
+        tl.to('#more', { opacity: 0, y: -30, duration: .3, ease: 'power2.in' }, SEG.values - .32);
+        tl.to('#simtag', { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.values - .3);
+      }
+
+      // ===== bars 34-36: why trust it, one value per beat =====
+      gsap.utils.toArray('#values .v').forEach((el, i) => zin(el, cue(SEG.values + i * SEG.beat, 'value', { i }), .32));
+      ripple(SEG.values, FRW / 2, FRH / 2, .9);
+      tl.to('#values', { opacity: 0, y: -20, duration: .3, ease: 'power2.in' }, SEG.end - .32);
+
+      // ===== the end card =====
+      { const E = SEG.end;
+        tl.set('#end', { opacity: 1 }, cue(E, 'end'));
+        tl.fromTo('#end-row', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: .7, ease: 'power3.out', immediateRender: false }, E);
+        tl.fromTo('#end-tag', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, E + .25);
+        tl.fromTo('#term', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .6, ease: 'power3.out', immediateRender: false }, E + .45);
+        ripple(E, FRW / 2, FRH * (V9 ? .2 : .2), 1);
+        // version 14: get started folds in here, under the install lines
+        tl.fromTo('#end-get', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .5, ease: 'power3.out', immediateRender: false }, E + 1.2);
+        tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .5 }, E + 1.5);
+        tl.fromTo('#end-fine', { opacity: 0 }, { opacity: 1, duration: .5 }, E + 1.8);
+        gsap.utils.toArray('#term .ln').forEach((ln, i) => {
+          const times = TY[i], n = times.length - 1;
+          tl.set(ln, { width: '2ch' }, i ? TY[i - 1][TY[i - 1].length - 1] + .05 : E + .45);
+          for (let j = 0; j < n; j++) tl.set(ln, { width: (3 + j) + 'ch' }, times[j]);
+        });
+      }
+
+      window.__timelines["vertical"] = tl;
+    </script>
+  </body>
+</html>
