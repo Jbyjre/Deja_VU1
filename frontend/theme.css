@@ -642,7 +642,9 @@ html[data-backdrop] .pool { display: none; }
 html[data-backdrop] .bg::before { z-index: 1; }
 html[data-backdrop="lines"] .bg::before,
 html[data-backdrop="dots"] .bg::before { display: none; }
-html[data-backdrop]:not([data-backdrop="still"]) { --paper: oklch(99% 0.002 250 / .9); }
+/* A little of the live background shows through content cards (text
+   contrast is unaffected at this opacity: the page behind is pale). */
+html[data-backdrop]:not([data-backdrop="still"]) { --paper: oklch(99% 0.002 250 / .84); }
 html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target) {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -815,3 +817,17 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .glass-dialog.setup-dialog.is-full[open]:not(.is-morph-target) { background: var(--paper-solid); }
 }
+
+/* Background picker, second round: the Constellation preview, the Reaction
+   buttons and the surprises switch. */
+.bp-thumb-constellation { background:
+  linear-gradient(32deg, transparent 47%, color-mix(in srgb, var(--bp-glow) 45%, transparent) 48% 49%, transparent 50%) 40% 40% / 60% 60% no-repeat,
+  linear-gradient(-28deg, transparent 47%, color-mix(in srgb, var(--bp-glow) 45%, transparent) 48% 49%, transparent 50%) 62% 52% / 50% 55% no-repeat,
+  radial-gradient(circle, var(--bp-ink) 1.3px, transparent 1.7px) 0 0 / 11px 11px,
+  var(--bp-bg); }
+.bp-row { display: flex; flex-wrap: wrap; gap: 18px 40px; align-items: flex-start; }
+.bp-row > .bp-group { flex: 1 1 220px; }
+.bp-energy button { min-height: 40px; }
+.bp-switch { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; font-weight: 600; }
+.bp-switch input { width: 20px; height: 20px; accent-color: var(--accent); }
+.bp-row .bp-hint { display: block; margin-top: 4px; max-width: 46ch; }

@@ -3019,6 +3019,8 @@ const Workshop = (() => {
       <div><span class="stat-key">Time</span><b>${fmtHours(s.hours)}</b></div>
       <div><span class="stat-key">Filament</span><b>${Number(s.grams).toFixed(1)} g ${esc(s.material)}</b></div>
       <div><span class="stat-key">Cost</span><b>${money(s.cost.total_cost)}</b></div>`;
+    // The background joins in: a burst in the print's filament colour.
+    if (typeof Backdrop !== 'undefined') Backdrop.celebrate([s.color || '#4a8df8']);
     const dialog = $('celebrate-dialog');
     qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#4a8df8');
     qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#4a8df8');
