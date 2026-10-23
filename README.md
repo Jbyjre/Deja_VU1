@@ -84,20 +84,26 @@ and every change is in the public history.
 
 ## What's new
 
-- **A 3D model of your U1:** the Overview's digital twin is now a shaded, coloured
-  3D model built to Snapmaker's published size (584 × 499 × 730 mm outside,
-  270 mm print cube). The head moves on the gantry, the bed drops as Z rises, idle
-  heads sit in the four rear docks, spools show the loaded colours, and the print
-  grows on the bed. Drag to turn, scroll to zoom, click a head for its details.
-  Colours and the exact placement of the screen and spools are illustrative.
-- **A better engineering drawing:** the other twin mode now zooms, can show the
-  machine's outer size with its dimensions, and downloads as an SVG file.
-- **A background that follows your cursor:** four styles (Flow, Layer lines,
-  Dots, Still) and five colour sets in Settings → Appearance. It moves only
-  while you move and is still otherwise. With the mouse moving, the Overview
-  measured 16.7 ms per frame against 33.4 ms before (headless Chromium, software
-  rendering; not a real-device measurement). The old filament-tinted glow is the
-  optional "Filament" colour set.
+- **A realistic 3D model of your U1:** the Overview's digital twin is now a detailed
+  model of the actual machine, built from Snapmaker's official product picture and
+  published figures: the white rounded body and black rim, the smoked-glass door,
+  the live touchscreen, the side oval with its spool drums and feeder, the black
+  toolheads with yellow accents in the rear docks with their tall tube loops, and a
+  276 × 293 mm textured PEI plate. Studio lighting, reflections and soft shadows;
+  the head, bed, docked heads, spool colours, screen and print all follow the
+  printer live. Drag to turn (it glides to a stop), scroll to zoom, click any head,
+  spool or the bed. The body's own size and the inside layout are estimates, and
+  the card says so.
+- **A drawing made from the same model:** the Drawing mode is now an engineering
+  drawing of that geometry (ink edges, front/top/angled views, live dimensions,
+  balloons, a title block), with "Show the case" and a PNG download.
+- **A livelier background, with surprises:** Dots is the default, and it parts,
+  swirls and lights up around your cursor. New: Constellation, a Time of day colour
+  set and a Reaction setting (Gentle, Lively, Wild). "Little surprises" hides a few
+  things to find: try clicking an empty part of the page, and watch it on the hour.
+  While a print runs, the dots fill from the bottom as far as the print has got.
+  With the mouse moving, Dots measured 16.7 ms per frame in headless Chromium
+  (software rendering; not a real-device measurement).
 - **Games that play properly:** Pac-Man, Tetris, Snake and Sky Dash were rebuilt.
   Every game now runs on a steady clock that matches the screen, waits for you to
   press Start, pauses when you switch away, and fits the window so the whole
@@ -127,7 +133,9 @@ and every change is in the public history.
   explicit spool assignments. Blocked output stays inspectable and is never
   automatically queued.
 
-<img src="docs/img/setup.jpg" width="49%" alt="Full-screen setup on step 2, Make it yours: a progress bar of six named steps, and a choice of four backgrounds (Flow, Layer lines, Dots, Still) and five colour sets"> <img src="docs/img/appearance.jpg" width="49%" alt="Settings, Appearance: the same background and colour choices, plus the accent colour">
+<img src="docs/img/twin-detail.jpg" width="49%" alt="The 3D twin of the U1: a white rounded body with a black rim, the smoked-glass door and touchscreen, an orange and a black spool on the side drums, four black toolheads with yellow accents and tall tube loops, T0 picked and glowing blue, and its details panel below"> <img src="docs/img/twin-drawing.jpg" width="49%" alt="The twin's Drawing mode: an engineering drawing of the gantry, docked heads, bed and Z column, with the build volume as a dash-dot line, a Z dimension, balloons T0 to T3 and a title block">
+
+<img src="docs/img/setup.jpg" width="49%" alt="Full-screen setup on step 2, Make it yours: a progress bar of six named steps, the five background styles and six colour sets"> <img src="docs/img/appearance.jpg" width="49%" alt="Settings, Appearance: background styles, colour sets, Reaction (Gentle, Lively, Wild), Little surprises, and the accent colour">
 
 [Engine setup and format limits](docs/slicing-and-models.md) ·
 [Validation, performance and screenshots](docs/slicer-workspace-validation.md) ·
@@ -181,7 +189,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
-| **Digital twin** | Two ways to see each printer, live. **3D model:** a shaded, coloured model built to Snapmaker's published size (584 × 499 × 730 mm outside, 270 mm print cube), with the head on the gantry, the bed dropping as Z rises, idle heads in the rear docks, the spools in their loaded colours and the print growing on the bed; drag to turn, right-drag to move, scroll or +/− to zoom (its colours and the exact screen and spool positions are illustrative). **Engineering drawing:** drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. Angled, front and top views in both modes; the drawing also zooms, can show the machine's outer size with dimensions, and downloads as an SVG file. |
+| **Digital twin** | Two ways to see each printer, live, both from one detailed model of the U1 (from Snapmaker's official product picture and published figures; the body's own size and inside layout estimated). **3D model:** studio-lit and realistic, with the head on the gantry, the bed dropping as Z rises, idle heads in the rear docks, the spools in their loaded colours, the touchscreen showing the printer's state and the print growing on the bed; drag to turn, right-drag to move, scroll or +/− to zoom. **Engineering drawing:** made from the same geometry and drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. Angled, front and top views in both modes; the drawing can show the case with its estimated size and downloads as a PNG picture (an SVG line drawing is used where WebGL 2 isn't available). |
 | **File library** | G-code, 3MF, STL and triangular OBJ files, with available thumbnails, estimates, pre-flight results and recent files. Missing time or filament metadata stays unknown. |
 | **Prepare and preview** | Edit multi-object STL/OBJ/3MF plates, save a new source-preserving 3MF, slice through an installed engine and inspect its G-code by layer. Plain WebGL; no 3D library. Complex paint/textures remain limited. |
 | **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command, each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
@@ -382,8 +390,8 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **768 tests in 148.5 seconds** on Python
-3.13.16/Linux, with app/demo servers stopped (the interface refresh added nine).
+The latest clean full suite passed **771 tests in 147.9 seconds** on Python
+3.13.16/Linux, with app/demo servers stopped (the October 2026 interface refreshes added twelve).
 The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
 and was [merged](https://github.com/Jbyjre/Deja_VU1/pull/45). A follow-up targeted
 check passed 36 tests. Chromium checks at 1366/390 px covered editing, stable
@@ -400,7 +408,7 @@ recorded static demo passed at both widths.
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
 | App updates | Staging, restart and rollback tests | Stable release package unpublished; Windows/macOS validation remains |
-| Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px, software WebGL; frame times measured there; static demo checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; model colours and part placement illustrative |
+| Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
 
 Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified
 nozzle/height pairs were 0.4/0.6 mm at 0.14/0.28 mm, 0.4/0.8 mm at 0.2/0.4 mm,

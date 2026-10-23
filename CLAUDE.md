@@ -24,7 +24,9 @@ trust the code and fix this file.
   before finishing, and go a step beyond each one.
 - Launch video: 60 seconds for the marketing cuts, both 16:9 and 9:16 (the owner, version 13;
   version 12's 75-second cuts are kept beside them) unless the owner says otherwise
-  (`promo-video/README.md` holds the owner's other video preferences).
+  (`promo-video/README.md` holds the owner's other video preferences). The next
+  videos must show the live Dots background reacting to the cursor and the new
+  realistic 3D twin (the owner, 23 October 2026; details in that README).
 - Every change must also be reflected in the online demo (the owner's rule,
   October 2026; README "For developers and AI coding sessions"). Frontend
   changes reach it by themselves, but check `/?demo` on a static server; a new
@@ -136,13 +138,23 @@ root should hand over to `welcome.html`.
   every 30 s), fleet cards, the "Needs you" list, room tint, live pill,
   digital twin (an SVG engineering drawing projected from millimetres,
   `drawTwin`), files, dialogs, morph animations.
-- `backdrop.js`: the cursor-reactive background (four styles, five colour
-  sets, `Backdrop.picker()` for Settings and setup; browser-only preference).
-  It draws only while the pointer moves or something is settling. While it can
-  move, content cards drop their blur (theme.css "The live background").
-- `twin3d.js`: the twin's shaded 3D model (raw WebGL, no library), driven by
-  workshop.js (`setTwinMode`, `queueTwin`). Outer size 584 × 499 × 730 mm is
-  published; colours and part placement are by eye and the card says so.
+- `backdrop.js`: the cursor-reactive background (Dots by default, plus
+  Constellation, Flow, Layer lines, Still; six colour sets incl. Time of day;
+  Reaction Gentle/Lively/Wild; "Little surprises": click ripple, triple-click
+  bloom, long-press charge, minute sweep, the time in dots on the hour, a burst
+  when a print finishes, two keyboard secrets). New surprises go in its
+  SURPRISES section. It draws only while something moves; reduced motion turns
+  it Still with no surprises. Content cards drop their blur while it can move.
+- `twin3d.js` + `twin3d-scene.js`: the digital twin (WebGL 2, no library) in
+  both modes: a realistic model (PBR-style lighting, shadows, reflections) and
+  an engineering drawing made from the same geometry (edge-detection ink plus
+  SVG dimensions, balloons and title block). Driven by workshop.js
+  (`setTwinMode`, `queueTwin`); the old SVG `drawTwin` is the fallback without
+  WebGL 2. The look comes from Snapmaker's official product picture (shipped in
+  Snapmaker's Orca profile, `resources/profiles/Snapmaker/Snapmaker U1_cover.png`)
+  and the plate size from that profile (276 × 293 mm); only facts were used,
+  not files (that repo is AGPL). The body's own size (~390 × 460 × 480 mm),
+  dock spacing and inside layout are estimates; the card says so.
 - Games (app.js): every game timer goes through `frameEvery()` (rAF-driven fixed
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
