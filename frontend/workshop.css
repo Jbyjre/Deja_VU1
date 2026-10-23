@@ -1035,3 +1035,43 @@ body.is-scrolled .topbar {
 .cv-actions .field-hint { max-width: 300px; margin: 2px 0 0; }
 .cv-report { grid-column: 1 / -1; border-top: 1px solid rgba(0, 0, 0, .06); padding-top: 12px; }
 @media (max-width: 760px) { .convert-card { grid-template-columns: 1fr; } .cv-actions { min-width: 0; } }
+
+/* ---- Process settings editor (printroom.js SettingsEditor) --------------- */
+.pe, #np-stack, #np-form > details, #np-form .np-review { grid-column: 1 / -1; }
+.pe { margin: 12px 0 16px; border: 1px solid rgba(0, 0, 0, .07); border-radius: 18px; background: rgba(255, 255, 255, .55); overflow: hidden; }
+.pe-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid rgba(0, 0, 0, .06); background: rgba(250, 250, 252, .8); }
+.pe-tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(120, 120, 128, .12); }
+.pe-tabs button, .pe-mode button { min-height: 32px; padding: 5px 13px; border: 0; border-radius: 9px; background: transparent; font: 600 13px/1 var(--font-sans); color: var(--text-dim); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.pe-tabs button[aria-selected="true"], .pe-mode button[aria-checked="true"] { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .1); }
+.pe-tabs button:focus-visible, .pe-mode button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pe-count { min-width: 18px; padding: 2px 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 700 10px/1 var(--font-mono); }
+.pe-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pe-find input { width: 260px; min-height: 34px; font-size: 13px; }
+.pe-mode { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(120, 120, 128, .12); }
+.pe-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; font: 500 12px/1.3 var(--font-mono); color: var(--text-faint); border-bottom: 1px solid rgba(0, 0, 0, .05); }
+.pe-panel { columns: 2 400px; column-gap: 22px; padding: 8px 14px 14px; }
+.pe-sec { margin: 0; padding: 6px 0 0; border: 0; min-width: 0; break-inside: avoid; }
+.pe-sec legend { padding: 8px 0 4px; font: 600 10.5px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); }
+.pe-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 170px) 26px; gap: 4px 10px; align-items: center; min-height: 40px; padding: 3px 8px; border-radius: 10px; border-left: 3px solid transparent; }
+.pe-row:hover { background: rgba(255, 255, 255, .7); }
+.pe-row.is-set { border-left-color: var(--accent); background: color-mix(in oklch, var(--accent) 7%, white); }
+.pe-row label { font-size: 13px; color: var(--text); display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.pe-key { font: 500 10px/1 var(--font-mono); color: var(--text-faint); background: none; padding: 0; }
+.pe-ctl { display: flex; align-items: center; gap: 6px; }
+.pe-ctl input, .pe-ctl select { flex: 1 1 auto; min-width: 0; width: 100%; min-height: 32px; font: 500 12.5px/1 var(--font-mono); font-variant-numeric: tabular-nums; padding: 4px 8px; }
+.pe-ctl input:invalid { outline: 2px solid var(--bad); }
+.pe-ctl input[readonly] { opacity: .7; }
+.pe-unit { flex: none; min-width: 38px; font: 500 10.5px/1 var(--font-mono); color: var(--text-faint); }
+.pe-reset { width: 26px; height: 26px; border: 0; border-radius: 8px; background: transparent; color: var(--text-faint); font-size: 14px; cursor: pointer; visibility: hidden; }
+.pe-row.is-set .pe-reset { visibility: visible; }
+.pe-reset:hover { background: rgba(0, 0, 0, .06); color: var(--text); }
+.pe-reset:focus-visible { visibility: visible; outline: 2px solid var(--accent); }
+.pe-tip { grid-column: 1 / -1; margin-top: -2px; font-size: 11.5px; color: var(--text-faint); }
+#np-form.is-preview .pe { opacity: .96; }
+@media (max-width: 620px) {
+  .pe-row { grid-template-columns: minmax(0, 1fr) 26px; }
+  .pe-ctl { grid-column: 1 / 2; grid-row: 2; }
+  .pe-find input { width: 100%; }
+  .pe-tools, .pe-find { flex: 1 1 100%; }
+}
+@media (prefers-contrast: more) { .pe, .pe-row.is-set { border: 1.5px solid var(--text); } }

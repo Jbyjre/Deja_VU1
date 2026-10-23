@@ -97,6 +97,7 @@ API endpoints
 
   Auto-print pipeline (OrcaSlicer, a program you install; off by default):
   GET  /api/slicer/settings | POST   {"slicer_path", "timeout_s", "default_profile"}
+  GET  /api/slicer/schema            the process settings the profile editor shows (Orca names, limits)
   POST /api/slicer/check             runs "<slicer> --help": is it there, which version?
   POST /api/slicer/profiles          {"name", "machine", "process", "filaments": [...]}
   POST /api/slicer/profiles/<id>/remove
@@ -217,6 +218,7 @@ import app_updates
 import automations
 import backup
 import project_plates
+import process_settings
 import camera
 import color_check
 import comparison
@@ -378,6 +380,7 @@ _DATA_ROUTES = {
 _APP_ROUTES = {
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
+    "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
     # The camera's frozen-stream watchdog is about the camera relay, not
