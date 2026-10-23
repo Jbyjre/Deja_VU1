@@ -1,0 +1,705 @@
+{
+  "generatedAt": "2026-10-23T21:47:29.038890+00:00",
+  "assets": [
+    {
+      "path": "docs/img/add-printer.jpg",
+      "source": "tools/readme-images/out/extras/add-printer.jpg",
+      "kind": "app capture",
+      "bytes": 45973,
+      "sha256": "3dd43fb7846f3b353355a7107faa7641d623b3cf43b3f956e4e2eceaa679785c"
+    },
+    {
+      "path": "marketing-library/03-screenshots/add-printer.jpg",
+      "source": "tools/readme-images/out/extras/add-printer.jpg",
+      "kind": "app capture copy",
+      "bytes": 45973,
+      "sha256": "3dd43fb7846f3b353355a7107faa7641d623b3cf43b3f956e4e2eceaa679785c"
+    },
+    {
+      "path": "docs/img/appearance.jpg",
+      "source": "tools/readme-images/out/captures/appearance.jpg",
+      "kind": "app capture",
+      "bytes": 96663,
+      "sha256": "124d45e7072747b36029ec4b9bbf4c19a5af65c638f6f1fa19f1b8dfe0ac46b1"
+    },
+    {
+      "path": "marketing-library/03-screenshots/appearance.jpg",
+      "source": "tools/readme-images/out/captures/appearance.jpg",
+      "kind": "app capture copy",
+      "bytes": 96663,
+      "sha256": "124d45e7072747b36029ec4b9bbf4c19a5af65c638f6f1fa19f1b8dfe0ac46b1"
+    },
+    {
+      "path": "docs/img/automations.jpg",
+      "source": "tools/readme-images/out/extras/automations.jpg",
+      "kind": "app capture",
+      "bytes": 101235,
+      "sha256": "b35ab7cbb4f510b4188b7dc8f534478c3ff4ff21687f80eebd71504228b9ed4e"
+    },
+    {
+      "path": "marketing-library/03-screenshots/automations.jpg",
+      "source": "tools/readme-images/out/extras/automations.jpg",
+      "kind": "app capture copy",
+      "bytes": 101235,
+      "sha256": "b35ab7cbb4f510b4188b7dc8f534478c3ff4ff21687f80eebd71504228b9ed4e"
+    },
+    {
+      "path": "docs/img/care.jpg",
+      "source": "tools/readme-images/out/captures/care.jpg",
+      "kind": "app capture",
+      "bytes": 130553,
+      "sha256": "dd8a1633dc1ca5a694417a95a90f9569aa4a95d81a3e3c9a93b9855135f8e6f4"
+    },
+    {
+      "path": "marketing-library/03-screenshots/care.jpg",
+      "source": "tools/readme-images/out/captures/care.jpg",
+      "kind": "app capture copy",
+      "bytes": 130553,
+      "sha256": "dd8a1633dc1ca5a694417a95a90f9569aa4a95d81a3e3c9a93b9855135f8e6f4"
+    },
+    {
+      "path": "docs/img/confirm-print-refused.jpg",
+      "source": "tools/readme-images/out/captures/confirm-print-refused.jpg",
+      "kind": "app capture",
+      "bytes": 66698,
+      "sha256": "2662af3949785f8843daa8949d67a4f236e6cfe49d98aeee1f92f455b3effaac"
+    },
+    {
+      "path": "marketing-library/03-screenshots/confirm-print-refused.jpg",
+      "source": "tools/readme-images/out/captures/confirm-print-refused.jpg",
+      "kind": "app capture copy",
+      "bytes": 66698,
+      "sha256": "2662af3949785f8843daa8949d67a4f236e6cfe49d98aeee1f92f455b3effaac"
+    },
+    {
+      "path": "docs/img/control.jpg",
+      "source": "tools/readme-images/out/captures/control.jpg",
+      "kind": "app capture",
+      "bytes": 105021,
+      "sha256": "eb35ed466e2a260dc3b2209015fc9da89aaf065e3a30a50e069711cc10849314"
+    },
+    {
+      "path": "marketing-library/03-screenshots/control.jpg",
+      "source": "tools/readme-images/out/captures/control.jpg",
+      "kind": "app capture copy",
+      "bytes": 105021,
+      "sha256": "eb35ed466e2a260dc3b2209015fc9da89aaf065e3a30a50e069711cc10849314"
+    },
+    {
+      "path": "docs/img/converter.jpg",
+      "source": "tools/readme-images/out/conversion/converter.jpg",
+      "kind": "app capture",
+      "bytes": 36480,
+      "sha256": "9bcaa2e5bcda11af2585a7c20c01eba67d37360bff83a26ec34c7b3b37feccc6"
+    },
+    {
+      "path": "marketing-library/03-screenshots/converter.jpg",
+      "source": "tools/readme-images/out/conversion/converter.jpg",
+      "kind": "app capture copy",
+      "bytes": 36480,
+      "sha256": "9bcaa2e5bcda11af2585a7c20c01eba67d37360bff83a26ec34c7b3b37feccc6"
+    },
+    {
+      "path": "docs/img/demo-layer-preview.jpg",
+      "source": "tools/readme-images/out/captures/demo-layer-preview.jpg",
+      "kind": "app capture",
+      "bytes": 174366,
+      "sha256": "876f951a89be7017c340cdd770878de97169540ee383a01c513411fb863c08ba"
+    },
+    {
+      "path": "marketing-library/03-screenshots/demo-layer-preview.jpg",
+      "source": "tools/readme-images/out/captures/demo-layer-preview.jpg",
+      "kind": "app capture copy",
+      "bytes": 174366,
+      "sha256": "876f951a89be7017c340cdd770878de97169540ee383a01c513411fb863c08ba"
+    },
+    {
+      "path": "docs/img/dock-rings.jpg",
+      "source": "tools/readme-images/out/extras/dock-rings.jpg",
+      "kind": "app capture",
+      "bytes": 28337,
+      "sha256": "0433290153742902290f3cf25b571088e4a1c391d0574da97b5b357751641448"
+    },
+    {
+      "path": "marketing-library/03-screenshots/dock-rings.jpg",
+      "source": "tools/readme-images/out/extras/dock-rings.jpg",
+      "kind": "app capture copy",
+      "bytes": 28337,
+      "sha256": "0433290153742902290f3cf25b571088e4a1c391d0574da97b5b357751641448"
+    },
+    {
+      "path": "docs/img/files.jpg",
+      "source": "tools/readme-images/out/captures/files.jpg",
+      "kind": "app capture",
+      "bytes": 140623,
+      "sha256": "6979fb880c6a66532a0b3fed1eb61232b701fef0c969c16c5a154b8f4238c739"
+    },
+    {
+      "path": "marketing-library/03-screenshots/files.jpg",
+      "source": "tools/readme-images/out/captures/files.jpg",
+      "kind": "app capture copy",
+      "bytes": 140623,
+      "sha256": "6979fb880c6a66532a0b3fed1eb61232b701fef0c969c16c5a154b8f4238c739"
+    },
+    {
+      "path": "docs/img/fleet.jpg",
+      "source": "tools/readme-images/out/captures/fleet.jpg",
+      "kind": "app capture",
+      "bytes": 98014,
+      "sha256": "3526439a66dcddf32219485d7682e2e90320b4c2b68e069c56b55af47e009850"
+    },
+    {
+      "path": "marketing-library/03-screenshots/fleet.jpg",
+      "source": "tools/readme-images/out/captures/fleet.jpg",
+      "kind": "app capture copy",
+      "bytes": 98014,
+      "sha256": "3526439a66dcddf32219485d7682e2e90320b4c2b68e069c56b55af47e009850"
+    },
+    {
+      "path": "docs/img/games.jpg",
+      "source": "tools/readme-images/out/captures/games.jpg",
+      "kind": "app capture",
+      "bytes": 57955,
+      "sha256": "f047ba8957f3ef4504d59dd27b35c3eb5fc9796c0f78edff6c61d83e5b8f3d9b"
+    },
+    {
+      "path": "marketing-library/03-screenshots/games.jpg",
+      "source": "tools/readme-images/out/captures/games.jpg",
+      "kind": "app capture copy",
+      "bytes": 57955,
+      "sha256": "f047ba8957f3ef4504d59dd27b35c3eb5fc9796c0f78edff6c61d83e5b8f3d9b"
+    },
+    {
+      "path": "docs/img/layer-planner.jpg",
+      "source": "tools/readme-images/out/extras/layer-planner.jpg",
+      "kind": "app capture",
+      "bytes": 110225,
+      "sha256": "6682bbfe11968e2ac23ba9b88d8e6b00ad4724d8b59349d8e4089c4557e29354"
+    },
+    {
+      "path": "marketing-library/03-screenshots/layer-planner.jpg",
+      "source": "tools/readme-images/out/extras/layer-planner.jpg",
+      "kind": "app capture copy",
+      "bytes": 110225,
+      "sha256": "6682bbfe11968e2ac23ba9b88d8e6b00ad4724d8b59349d8e4089c4557e29354"
+    },
+    {
+      "path": "docs/img/modules.jpg",
+      "source": "tools/readme-images/out/extras/modules.jpg",
+      "kind": "app capture",
+      "bytes": 285333,
+      "sha256": "3b34e050c7c9b83fb5e8a616f17a690097aa0770adf26e6c4e5affb3d4dc43ca"
+    },
+    {
+      "path": "marketing-library/03-screenshots/modules.jpg",
+      "source": "tools/readme-images/out/extras/modules.jpg",
+      "kind": "app capture copy",
+      "bytes": 285333,
+      "sha256": "3b34e050c7c9b83fb5e8a616f17a690097aa0770adf26e6c4e5affb3d4dc43ca"
+    },
+    {
+      "path": "docs/img/needs-you.jpg",
+      "source": "tools/readme-images/out/captures/needs-you.jpg",
+      "kind": "app capture",
+      "bytes": 37285,
+      "sha256": "76d412d814c8ee916ffd459cf1f01f844d122f091acd1c46c0bf4ef2dabbba3f"
+    },
+    {
+      "path": "marketing-library/03-screenshots/needs-you.jpg",
+      "source": "tools/readme-images/out/captures/needs-you.jpg",
+      "kind": "app capture copy",
+      "bytes": 37285,
+      "sha256": "76d412d814c8ee916ffd459cf1f01f844d122f091acd1c46c0bf4ef2dabbba3f"
+    },
+    {
+      "path": "docs/img/overview.jpg",
+      "source": "tools/readme-images/out/captures/overview.jpg",
+      "kind": "app capture",
+      "bytes": 184229,
+      "sha256": "cdefd9bb2d945638ea63945d2184cb49c5f252838ad118dc02394b0675975fb6"
+    },
+    {
+      "path": "marketing-library/03-screenshots/overview.jpg",
+      "source": "tools/readme-images/out/captures/overview.jpg",
+      "kind": "app capture copy",
+      "bytes": 184229,
+      "sha256": "cdefd9bb2d945638ea63945d2184cb49c5f252838ad118dc02394b0675975fb6"
+    },
+    {
+      "path": "docs/img/phone.jpg",
+      "source": "tools/readme-images/out/captures/phone.jpg",
+      "kind": "app capture",
+      "bytes": 87180,
+      "sha256": "23026775ae03f87342c85754355f091823674ce05112386e8e62053479e96ed6"
+    },
+    {
+      "path": "marketing-library/03-screenshots/phone.jpg",
+      "source": "tools/readme-images/out/captures/phone.jpg",
+      "kind": "app capture copy",
+      "bytes": 87180,
+      "sha256": "23026775ae03f87342c85754355f091823674ce05112386e8e62053479e96ed6"
+    },
+    {
+      "path": "docs/img/photo-studio.jpg",
+      "source": "tools/readme-images/out/extras/photo-studio.jpg",
+      "kind": "app capture",
+      "bytes": 114151,
+      "sha256": "9bf90964cb0948462fef6da6a0d9acb71d81dd76b6770404246b9850e52e78c3"
+    },
+    {
+      "path": "marketing-library/03-screenshots/photo-studio.jpg",
+      "source": "tools/readme-images/out/extras/photo-studio.jpg",
+      "kind": "app capture copy",
+      "bytes": 114151,
+      "sha256": "9bf90964cb0948462fef6da6a0d9acb71d81dd76b6770404246b9850e52e78c3"
+    },
+    {
+      "path": "docs/img/sandbox-farm.jpg",
+      "source": "tools/readme-images/out/extras/sandbox-farm.jpg",
+      "kind": "app capture",
+      "bytes": 216867,
+      "sha256": "0f833867118db9b0d5b354b23a69eacc95277a1b896b5ca06c12250ba68f6900"
+    },
+    {
+      "path": "marketing-library/03-screenshots/sandbox-farm.jpg",
+      "source": "tools/readme-images/out/extras/sandbox-farm.jpg",
+      "kind": "app capture copy",
+      "bytes": 216867,
+      "sha256": "0f833867118db9b0d5b354b23a69eacc95277a1b896b5ca06c12250ba68f6900"
+    },
+    {
+      "path": "docs/img/sandbox.jpg",
+      "source": "tools/readme-images/out/extras/sandbox.jpg",
+      "kind": "app capture",
+      "bytes": 196744,
+      "sha256": "5e2d448cd6a8f051964f1a24b18f27264fe796a7cef4395806058b7d2c0763a4"
+    },
+    {
+      "path": "marketing-library/03-screenshots/sandbox.jpg",
+      "source": "tools/readme-images/out/extras/sandbox.jpg",
+      "kind": "app capture copy",
+      "bytes": 196744,
+      "sha256": "5e2d448cd6a8f051964f1a24b18f27264fe796a7cef4395806058b7d2c0763a4"
+    },
+    {
+      "path": "docs/img/skip-object.jpg",
+      "source": "tools/readme-images/out/captures/skip-object.jpg",
+      "kind": "app capture",
+      "bytes": 44900,
+      "sha256": "58238f13e9b5b9da6f5445a8c8115d0f25f4834b8edede7db85a6345ed53e7c8"
+    },
+    {
+      "path": "marketing-library/03-screenshots/skip-object.jpg",
+      "source": "tools/readme-images/out/captures/skip-object.jpg",
+      "kind": "app capture copy",
+      "bytes": 44900,
+      "sha256": "58238f13e9b5b9da6f5445a8c8115d0f25f4834b8edede7db85a6345ed53e7c8"
+    },
+    {
+      "path": "docs/img/twin-3d-printing.jpg",
+      "source": "tools/readme-images/out/captures/twin-3d-printing.jpg",
+      "kind": "app capture",
+      "bytes": 86962,
+      "sha256": "82a46433eeb4f78ed70504c8f34df24965fb0d646d51921831721dacec2cf6b8"
+    },
+    {
+      "path": "marketing-library/04-digital-twin/twin-3d-printing.jpg",
+      "source": "tools/readme-images/out/captures/twin-3d-printing.jpg",
+      "kind": "app capture copy",
+      "bytes": 86962,
+      "sha256": "82a46433eeb4f78ed70504c8f34df24965fb0d646d51921831721dacec2cf6b8"
+    },
+    {
+      "path": "docs/img/twin-detail.jpg",
+      "source": "tools/readme-images/out/captures/twin-detail.jpg",
+      "kind": "app capture",
+      "bytes": 105662,
+      "sha256": "8f6f8e3b0c036b6809b516c7492fa4c03b922f5ebe67175a6bd6e6fedebb58bf"
+    },
+    {
+      "path": "marketing-library/03-screenshots/twin-detail.jpg",
+      "source": "tools/readme-images/out/captures/twin-detail.jpg",
+      "kind": "app capture copy",
+      "bytes": 105662,
+      "sha256": "8f6f8e3b0c036b6809b516c7492fa4c03b922f5ebe67175a6bd6e6fedebb58bf"
+    },
+    {
+      "path": "docs/img/twin-drawing.jpg",
+      "source": "tools/readme-images/out/captures/twin-drawing.jpg",
+      "kind": "app capture",
+      "bytes": 106634,
+      "sha256": "aabcd4007b15f7d70b03d21e615770ef32cd52f33df0ebfdd74fbdb4f18ef4f6"
+    },
+    {
+      "path": "marketing-library/03-screenshots/twin-drawing.jpg",
+      "source": "tools/readme-images/out/captures/twin-drawing.jpg",
+      "kind": "app capture copy",
+      "bytes": 106634,
+      "sha256": "aabcd4007b15f7d70b03d21e615770ef32cd52f33df0ebfdd74fbdb4f18ef4f6"
+    },
+    {
+      "path": "docs/img/twin-front-printing.jpg",
+      "source": "tools/readme-images/out/captures/twin-front-printing.jpg",
+      "kind": "app capture",
+      "bytes": 96267,
+      "sha256": "ee592a8672c34916309b7c51c1d97577742d620dbe31b3e2c434098c12e81d95"
+    },
+    {
+      "path": "marketing-library/04-digital-twin/twin-front-printing.jpg",
+      "source": "tools/readme-images/out/captures/twin-front-printing.jpg",
+      "kind": "app capture copy",
+      "bytes": 96267,
+      "sha256": "ee592a8672c34916309b7c51c1d97577742d620dbe31b3e2c434098c12e81d95"
+    },
+    {
+      "path": "docs/img/twin-health-chamber.jpg",
+      "source": "tools/readme-images/out/captures/twin-health-chamber.jpg",
+      "kind": "app capture",
+      "bytes": 124035,
+      "sha256": "0a5bd8d62fa1d1e7ce4a5528981017f20543cf2ad196417fba1f56732ceca883"
+    },
+    {
+      "path": "marketing-library/03-screenshots/twin-health-chamber.jpg",
+      "source": "tools/readme-images/out/captures/twin-health-chamber.jpg",
+      "kind": "app capture copy",
+      "bytes": 124035,
+      "sha256": "0a5bd8d62fa1d1e7ce4a5528981017f20543cf2ad196417fba1f56732ceca883"
+    },
+    {
+      "path": "docs/img/twin-phone.jpg",
+      "source": "tools/readme-images/out/captures/twin-phone.jpg",
+      "kind": "app capture",
+      "bytes": 78824,
+      "sha256": "0f22a45eadb528a1d038687bdc25cc918e7e1132d3ffe45105e8fad183aaf8b8"
+    },
+    {
+      "path": "marketing-library/04-digital-twin/twin-phone.jpg",
+      "source": "tools/readme-images/out/captures/twin-phone.jpg",
+      "kind": "app capture copy",
+      "bytes": 78824,
+      "sha256": "0f22a45eadb528a1d038687bdc25cc918e7e1132d3ffe45105e8fad183aaf8b8"
+    },
+    {
+      "path": "docs/img/twin-top-printing.jpg",
+      "source": "tools/readme-images/out/captures/twin-top-printing.jpg",
+      "kind": "app capture",
+      "bytes": 95953,
+      "sha256": "3439e6ec9e8e1090623e2570091657a39134ca4f90fce8db5491c7d4d1f647ac"
+    },
+    {
+      "path": "marketing-library/04-digital-twin/twin-top-printing.jpg",
+      "source": "tools/readme-images/out/captures/twin-top-printing.jpg",
+      "kind": "app capture copy",
+      "bytes": 95953,
+      "sha256": "3439e6ec9e8e1090623e2570091657a39134ca4f90fce8db5491c7d4d1f647ac"
+    },
+    {
+      "path": "frontend/img/overview.jpg",
+      "source": "tools/readme-images/out/captures/overview.jpg",
+      "kind": "product page",
+      "bytes": 184229,
+      "sha256": "cdefd9bb2d945638ea63945d2184cb49c5f252838ad118dc02394b0675975fb6"
+    },
+    {
+      "path": "marketing-library/03-screenshots/product-page-overview.jpg",
+      "source": "tools/readme-images/out/captures/overview.jpg",
+      "kind": "product page copy",
+      "bytes": 184229,
+      "sha256": "cdefd9bb2d945638ea63945d2184cb49c5f252838ad118dc02394b0675975fb6"
+    },
+    {
+      "path": "frontend/img/fleet.jpg",
+      "source": "tools/readme-images/out/captures/fleet.jpg",
+      "kind": "product page",
+      "bytes": 98014,
+      "sha256": "3526439a66dcddf32219485d7682e2e90320b4c2b68e069c56b55af47e009850"
+    },
+    {
+      "path": "marketing-library/03-screenshots/product-page-fleet.jpg",
+      "source": "tools/readme-images/out/captures/fleet.jpg",
+      "kind": "product page copy",
+      "bytes": 98014,
+      "sha256": "3526439a66dcddf32219485d7682e2e90320b4c2b68e069c56b55af47e009850"
+    },
+    {
+      "path": "frontend/img/phone.jpg",
+      "source": "tools/readme-images/out/captures/phone.jpg",
+      "kind": "product page",
+      "bytes": 87180,
+      "sha256": "23026775ae03f87342c85754355f091823674ce05112386e8e62053479e96ed6"
+    },
+    {
+      "path": "marketing-library/03-screenshots/product-page-phone.jpg",
+      "source": "tools/readme-images/out/captures/phone.jpg",
+      "kind": "product page copy",
+      "bytes": 87180,
+      "sha256": "23026775ae03f87342c85754355f091823674ce05112386e8e62053479e96ed6"
+    },
+    {
+      "path": "frontend/img/twin.jpg",
+      "source": "tools/readme-images/out/captures/twin-3d-printing.jpg",
+      "kind": "product page",
+      "bytes": 86962,
+      "sha256": "82a46433eeb4f78ed70504c8f34df24965fb0d646d51921831721dacec2cf6b8"
+    },
+    {
+      "path": "frontend/img/twin-drawing.jpg",
+      "source": "tools/readme-images/out/captures/twin-drawing.jpg",
+      "kind": "product page",
+      "bytes": 106634,
+      "sha256": "aabcd4007b15f7d70b03d21e615770ef32cd52f33df0ebfdd74fbdb4f18ef4f6"
+    },
+    {
+      "path": "tools/readme-images/img/twin.jpg",
+      "source": "tools/readme-images/out/extras/twin-model.jpg",
+      "kind": "share card source",
+      "bytes": 44716,
+      "sha256": "a8c923717db8d977063cc4f73d14d3b2af3aa10fbe4a8307e7b5a92419af794d"
+    },
+    {
+      "path": "tools/readme-images/img/needs-you.jpg",
+      "source": "tools/readme-images/out/captures/needs-you.jpg",
+      "kind": "share card source",
+      "bytes": 37285,
+      "sha256": "76d412d814c8ee916ffd459cf1f01f844d122f091acd1c46c0bf4ef2dabbba3f"
+    },
+    {
+      "path": "tools/readme-images/img/fleet-cards.jpg",
+      "source": "tools/readme-images/out/captures/fleet-cards.jpg",
+      "kind": "share card source",
+      "bytes": 64804,
+      "sha256": "5824b58a1ae2467566f523e532a9bb5a9157d72c17ad9d7e75fc935a282e06f7"
+    },
+    {
+      "path": "frontend/img/workspace.png",
+      "source": "docs/img/slicer-after-workspace-1366.png",
+      "kind": "historical Linux validation capture",
+      "bytes": 350962,
+      "sha256": "becdb231d5e127708872afa6d2ea1db511e007f1c15130f5f0b22f915331637f"
+    },
+    {
+      "path": "docs/img/explainer-silent-docks.jpg",
+      "source": "tools/readme-images/out/b-problem.jpg",
+      "kind": "rendered explainer",
+      "bytes": 243488,
+      "sha256": "38bf2b6dab89019f5ec2795484024314553123300768f7635534cbbe95290b1a"
+    },
+    {
+      "path": "marketing-library/02-explainer-boards/explainer-silent-docks.jpg",
+      "source": "tools/readme-images/out/b-problem.jpg",
+      "kind": "rendered explainer",
+      "bytes": 243488,
+      "sha256": "38bf2b6dab89019f5ec2795484024314553123300768f7635534cbbe95290b1a"
+    },
+    {
+      "path": "docs/img/explainer-confirm-print.jpg",
+      "source": "tools/readme-images/out/b-confirm.jpg",
+      "kind": "rendered explainer",
+      "bytes": 366964,
+      "sha256": "84d4d8829db9c3c407986914c08de030a8f63125dce9c039d4c0aadfea0f9780"
+    },
+    {
+      "path": "marketing-library/02-explainer-boards/explainer-confirm-print.jpg",
+      "source": "tools/readme-images/out/b-confirm.jpg",
+      "kind": "rendered explainer",
+      "bytes": 366964,
+      "sha256": "84d4d8829db9c3c407986914c08de030a8f63125dce9c039d4c0aadfea0f9780"
+    },
+    {
+      "path": "docs/img/explainer-how-it-connects.jpg",
+      "source": "tools/readme-images/out/b-arch.jpg",
+      "kind": "rendered explainer",
+      "bytes": 281233,
+      "sha256": "aaa887b0b5ec0ef666724c83cd29fc90dae208c42671faffe1439754f8b36933"
+    },
+    {
+      "path": "marketing-library/02-explainer-boards/explainer-how-it-connects.jpg",
+      "source": "tools/readme-images/out/b-arch.jpg",
+      "kind": "rendered explainer",
+      "bytes": 281233,
+      "sha256": "aaa887b0b5ec0ef666724c83cd29fc90dae208c42671faffe1439754f8b36933"
+    },
+    {
+      "path": "docs/img/explainer-whats-in-it.jpg",
+      "source": "tools/readme-images/out/b-features.jpg",
+      "kind": "rendered explainer",
+      "bytes": 269535,
+      "sha256": "ed46797f53196df44f77626cf3480214f804822e013dc9cf7e2eedb374831d5d"
+    },
+    {
+      "path": "marketing-library/02-explainer-boards/explainer-whats-in-it.jpg",
+      "source": "tools/readme-images/out/b-features.jpg",
+      "kind": "rendered explainer",
+      "bytes": 269535,
+      "sha256": "ed46797f53196df44f77626cf3480214f804822e013dc9cf7e2eedb374831d5d"
+    },
+    {
+      "path": "docs/img/explainer-by-the-numbers.jpg",
+      "source": "tools/readme-images/out/b-numbers.jpg",
+      "kind": "rendered explainer",
+      "bytes": 205349,
+      "sha256": "85721962a8d0d675749288fafb44b2c1063500f92294e0bb53b02cce579defb6"
+    },
+    {
+      "path": "marketing-library/02-explainer-boards/explainer-by-the-numbers.jpg",
+      "source": "tools/readme-images/out/b-numbers.jpg",
+      "kind": "rendered explainer",
+      "bytes": 205349,
+      "sha256": "85721962a8d0d675749288fafb44b2c1063500f92294e0bb53b02cce579defb6"
+    },
+    {
+      "path": "frontend/img/social-card.png",
+      "source": "tools/readme-images/out/card-1200x630.png",
+      "kind": "link preview",
+      "bytes": 147968,
+      "sha256": "e8e35f4a5a3602413252f5fef96b620c00e27256007bea58eae932d97cb820fd"
+    },
+    {
+      "path": "marketing-library/01-main-image/link-preview-card-1200x630.png",
+      "source": "tools/readme-images/out/card-1200x630.png",
+      "kind": "link preview copy",
+      "bytes": 147968,
+      "sha256": "e8e35f4a5a3602413252f5fef96b620c00e27256007bea58eae932d97cb820fd"
+    },
+    {
+      "path": "marketing-library/01-main-image/github-social-preview-1280x640.png",
+      "source": "tools/readme-images/out/card-1280x640.png",
+      "kind": "GitHub preview candidate",
+      "bytes": 157764,
+      "sha256": "53ee2db0b0d89c28e76f2a9c479dde2efb9e75002eba7f14962b415b57f57fca"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/01-fleet-landscape.png",
+      "source": "tools/readme-images/out/01-fleet-landscape.png",
+      "kind": "campaign card",
+      "bytes": 301472,
+      "sha256": "35d993f1fd6b489778d193a36313b83cace4b2ef8d45516090f4921fd1803233"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/02-needs-you-landscape.png",
+      "source": "tools/readme-images/out/02-needs-you-landscape.png",
+      "kind": "campaign card",
+      "bytes": 144509,
+      "sha256": "2d52dae22ca5e0c6b7c3269819aebc07fffae2b24a9c22c635321ce5a4f80fc0"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/03-prepare-landscape.png",
+      "source": "tools/readme-images/out/03-prepare-landscape.png",
+      "kind": "campaign card",
+      "bytes": 224128,
+      "sha256": "5a8a25e0d7a9d09c2f15a3554e192debdbbc4174bce9914a7ad519fcbe1a41d1"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/04-print-checks-landscape.png",
+      "source": "tools/readme-images/out/04-print-checks-landscape.png",
+      "kind": "campaign card",
+      "bytes": 298648,
+      "sha256": "f687d9908cbcc5571650d6629203b79c6cd6733c06a97ab5e2831a49aa76c4c5"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/05-digital-twin-landscape.png",
+      "source": "tools/readme-images/out/05-digital-twin-landscape.png",
+      "kind": "campaign card",
+      "bytes": 217386,
+      "sha256": "0e8e21d2999323cd449d2c92f1bb5778e0d4b0291626f5ba895e792ed475422e"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/06-first-connection-landscape.png",
+      "source": "tools/readme-images/out/06-first-connection-landscape.png",
+      "kind": "campaign card",
+      "bytes": 217876,
+      "sha256": "a7e96f9256bc3d7791354bc1001f5735be97f34dfae46464130066a468cde478"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/01-fleet-square.png",
+      "source": "tools/readme-images/out/01-fleet-square.png",
+      "kind": "campaign card",
+      "bytes": 230303,
+      "sha256": "e18ded03e8b9c0fb975659eff4f14c29e80ad32f34a44491b9fc61c0bab63240"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/02-needs-you-square.png",
+      "source": "tools/readme-images/out/02-needs-you-square.png",
+      "kind": "campaign card",
+      "bytes": 135539,
+      "sha256": "91490e7e2fface746c8c6e53d10620fb3c9919b6b7946d5cbd811cdde9ebfdac"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/03-prepare-square.png",
+      "source": "tools/readme-images/out/03-prepare-square.png",
+      "kind": "campaign card",
+      "bytes": 166286,
+      "sha256": "d1c86399e3c89ad9343aec7db464443017fb4b1e43a5b8efde9597337a3e5ad0"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/04-print-checks-square.png",
+      "source": "tools/readme-images/out/04-print-checks-square.png",
+      "kind": "campaign card",
+      "bytes": 254294,
+      "sha256": "61383412b8747f25c8df7336c02912f41379e3b2b48ff53f2b56ddc89ccbae1d"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/05-digital-twin-square.png",
+      "source": "tools/readme-images/out/05-digital-twin-square.png",
+      "kind": "campaign card",
+      "bytes": 152254,
+      "sha256": "eb743499d1f69a963d0d256c9aa71d0bcfaef8eccf061114805c7e462aac09ad"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/06-first-connection-square.png",
+      "source": "tools/readme-images/out/06-first-connection-square.png",
+      "kind": "campaign card",
+      "bytes": 155010,
+      "sha256": "38e4c2caa48971a80d2aeff4940ff0be69577924bb1a767d4b93b4814711534b"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/01-fleet-portrait.png",
+      "source": "tools/readme-images/out/01-fleet-portrait.png",
+      "kind": "campaign card",
+      "bytes": 298347,
+      "sha256": "5803aac787b7bba806c3646185797b640dbc0abb6acfa8dea13ea674bfb14025"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/02-needs-you-portrait.png",
+      "source": "tools/readme-images/out/02-needs-you-portrait.png",
+      "kind": "campaign card",
+      "bytes": 143136,
+      "sha256": "052520646daf301e975c5709878fd8b47be5c737b2ca4cfbdf05077715d1e538"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/03-prepare-portrait.png",
+      "source": "tools/readme-images/out/03-prepare-portrait.png",
+      "kind": "campaign card",
+      "bytes": 257401,
+      "sha256": "eb3d783e49acf7ef55b4f859269dbf58f815948487b6543d0d08254b5cb6213e"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/04-print-checks-portrait.png",
+      "source": "tools/readme-images/out/04-print-checks-portrait.png",
+      "kind": "campaign card",
+      "bytes": 302949,
+      "sha256": "6b2b413b69eb27fafa58614822959c916b0887d49815b63690f33bfd3ea25d24"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/05-digital-twin-portrait.png",
+      "source": "tools/readme-images/out/05-digital-twin-portrait.png",
+      "kind": "campaign card",
+      "bytes": 254097,
+      "sha256": "ecdf850f90e6f53097b9570a2a8ee5a55ee3bd6d660ee9cfd089cdb947c4038d"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/06-first-connection-portrait.png",
+      "source": "tools/readme-images/out/06-first-connection-portrait.png",
+      "kind": "campaign card",
+      "bytes": 252222,
+      "sha256": "2a56b39de61fb36c71ad249c308caee3d0abc3a920e4b99309c331330a42a7fc"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/captions.json",
+      "source": "tools/readme-images/out/campaign-manifest.json",
+      "kind": "captions and alternatives",
+      "bytes": 10464,
+      "sha256": "1f796bc7c802cc17c6ea180ae5aafe095345644553b8252cf2fc06ff8cc8fa86"
+    }
+  ]
+}

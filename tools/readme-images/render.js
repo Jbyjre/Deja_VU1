@@ -12,7 +12,7 @@ const out = path.join(here, 'out');
 
 (async () => {
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch({executablePath:process.env.DEJAVU_BROWSER||undefined,args:['--no-sandbox']});
+  const browser = await chromium.launch({executablePath:process.env.DEJAVU_BROWSER||'/usr/bin/chromium',args:['--no-sandbox']});
   // Fulfil loopback requests from disk: managed browsers can block file://.
   // No listening socket or application/demo server is needed.
   const root=path.resolve(here,'../..'),origin='http://127.0.0.1:8794';
@@ -25,11 +25,12 @@ const out = path.join(here, 'out');
     });
     return context.newPage();
   }
-  const page = await localPage({ width: 1200, height: 900 },2);
+  const page = await localPage({ width: 1200, height: 900 },4/3);
   await page.goto(origin+'/tools/readme-images/boards.html');
   await page.evaluate(() => document.fonts.ready);
   for (const id of ['b-problem', 'b-confirm', 'b-arch', 'b-features', 'b-numbers']) {
     await page.locator('#' + id).screenshot({ path: path.join(out, id + '.png') });
+    await page.locator('#' + id).screenshot({ path: path.join(out, id + '.jpg'),type:'jpeg',quality:90 });
     console.log('wrote', id + '.png');
   }
   const vision=await page.context().newCDPSession(page);
@@ -45,5 +46,31 @@ const out = path.join(here, 'out');
     await card.screenshot({ path: path.join(out, `card-${w}x${h}.png`) });
     console.log(`wrote card-${w}x${h}.png`);
   }
+  const cards=JSON.parse(fs.readFileSync(path.join(here,'campaign.json'),'utf8'));
+  const results=[];
+  for(const [shape,width,height] of [['landscape',1600,900],['square',1080,1080],['portrait',1080,1350]]){
+    const p=await localPage({width,height});
+    for(const card of cards){
+      await p.goto(origin+'/tools/readme-images/campaign.html?id='+card.id);
+      await p.waitForFunction(()=>window.cardReady===true);
+      const issues=await p.evaluate(()=>{
+        const errors=[];
+        for(const id of ['title','body','evidence','limit','cta']){
+          const e=document.getElementById(id),r=e.getBoundingClientRect();
+          if(r.left<0||r.right>innerWidth||r.top<0||r.bottom>innerHeight)errors.push(id+' outside image');
+        }
+        if(document.documentElement.scrollHeight>innerHeight||document.documentElement.scrollWidth>innerWidth)errors.push('overflow');
+        const img=document.getElementById('image');if(!img.naturalWidth)errors.push('missing image');
+        return errors;
+      });
+      if(issues.length)throw new Error(card.id+' '+shape+': '+issues.join(', '));
+      const file=card.id+'-'+shape+'.png';
+      await p.screenshot({path:path.join(out,file)});
+      results.push({file,width,height,alt:card.alt,caption:card.caption,evidence:card.evidence,limit:card.limit});
+      console.log('wrote '+file);
+    }
+    await p.context().close();
+  }
+  fs.writeFileSync(path.join(out,'campaign-manifest.json'),JSON.stringify(results,null,2)+'\n');
   await browser.close();
-})();
+})().catch(e=>{console.error(e);process.exitCode=1});

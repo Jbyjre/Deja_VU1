@@ -1,15 +1,15 @@
 # Deja Vu1
 
-**One screen for every U1 you run.** Deja Vu1 is a free, open-source dashboard
-and model-preparation workspace for Snapmaker U1 printers. Monitor a fleet,
-prepare plates, slice with an independently installed engine, inspect G-code,
-and review server-enforced checks before starting a print. It runs on your own
-network without an app account. The core app needs only Python; slicing and
-optional integrations have separate requirements.
+**One screen for every U1 you run.** See which printer needs attention,
+prepare a plate, inspect its layers, and review the checks before you start.
+Deja Vu1 is a free, open-source workspace for Snapmaker U1 printers. It runs
+on your own computer and opens in a browser, including a phone on the same
+network. No app account is needed. The core needs Python; slicing needs a
+separately installed compatible engine.
 
-![Deja Vu1: "One screen for every U1 you run." beside the live engineering drawing of a printing U1 and three printer cards from the simulated farm](frontend/img/social-card.png)
+![Deja Vu1: One screen for every U1 you run. Current 3D twin and Needs you panel from the simulated farm; physical U1 testing pending](frontend/img/social-card.png)
 
-<sub>Every figure in the picture comes from the built-in simulated farm.</sub>
+<sub>Actual app, simulated farm. The 3D twin is a software model with estimated geometry, not a photograph of a connected printer. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
 > **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
 > one and can spare 30 to 45 minutes, help run its first real connection. It's
@@ -84,6 +84,10 @@ and every change is in the public history.
 
 ## What's new
 
+- **A clearer first look:** current screenshots, readable share cards and shorter
+  descriptions show the fleet, preparation workspace and print checks. Demo data,
+  engine estimates and unverified hardware are labelled where they appear.
+
 - **A realistic 3D model of your U1:** the Overview's digital twin is now a detailed
   model of the actual machine, built from Snapmaker's official product picture and
   published figures: the white rounded body and black rim, the smoked-glass door,
@@ -145,10 +149,10 @@ and every change is in the public history.
 
 ## Why it exists
 
-You walk over to the printer to answer the same four questions. The printer
-already publishes every answer; Deja Vu1 reads them for every U1 you run.
+You walk over to the printer to answer the same four questions. Deja Vu1 brings
+the printers’ reported state into one view, with unknown information left unknown.
 
-**Is it still printing?** Every printer updates four times a second, and
+**Is it still printing?** Shared live state updates the dashboard, and
 **Needs you** ranks what wants a person across the whole farm: a jam, a paused
 print, a finished plate, an idle printer with work waiting. Automations send
 it to your phone.
@@ -156,16 +160,19 @@ it to your phone.
 **Will this file print on a U1?** The pre-flight check flags extrusion outside
 the 270 × 270 × 270 mm build volume, unknown toolheads and unsafe
 temperatures, with line numbers. MakerWorld, NexPrint and OrcaSlicer projects
-convert for the U1 in one click.
+can be converted where their settings and geometry are supported. Select one
+plate for slicing; complete vendor paint and texture fidelity is still limited.
 
 **Is the right filament loaded?** Four toolheads mean four chances to load the
 wrong spool. Deja Vu1 compares the colour each toolhead was sliced for with
-what the printer reports, and stops the start on a mismatch.
+what the printer reports, and stops the start on a known mismatch. Missing
+filament information stays unknown and asks you to check by eye.
 
-**Is it safe to press print?** Confirm Print pulls it together: pre-flight,
+**What needs checking before I start?** Confirm Print pulls it together: pre-flight,
 filament match, nozzles, spool weight, maintenance, time, grams and cost. The server
 checks again at the moment of starting and refuses in words if something
-changed, even when you start from your phone.
+changed, even when you start from your phone. Checks help you review a job;
+they do not guarantee a successful print.
 
 ## What's in it
 
@@ -199,11 +206,11 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
 | **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast, see [docs/architecture.md](docs/architecture.md). |
 
-![The Overview: header with the printer picker and SIMULATED badge, the tab bar with Overview first, the status ribbon with progress and finish time, a one-line explanation of the Overview tab, and the Needs you list ranking a dock error, a paused print and overdue maintenance](docs/img/overview.jpg)
+![Current Overview with the simulated-data banner, printer picker, progress ribbon and Needs you list; the 3D twin and controls begin below](docs/img/overview.jpg)
 
 <sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
 
-![The Fleet tab: three printer cards, Workshop printing at 47 percent, Studio paused at 72 percent, Garage idle with a T3 dock error, each with its four toolhead filament colours, temperatures and health score, above controls to command several printers together](docs/img/fleet.jpg)
+![Three simulated printer cards: Workshop printing, Studio paused and Garage reporting a dock fault, with progress, temperatures and fleet controls](docs/img/fleet.jpg)
 
 <sub>**Printers** (the Fleet view): every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
 
@@ -219,35 +226,35 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/img/files.jpg" alt="The file library with thumbnails of six sample files, the G-code ones marked PRE-FLIGHT CLEAR or BLOCKED, next to the print queue"><br><sub><b>Files:</b> thumbnails and estimates, a pre-flight badge on every G-code file, and the print queue beside them.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/automations.jpg" alt="The Automations tab building a rule from the "Tell me when a print finishes" example: when a print finishes, send a notification, on any printer, with a log of what fired"><br><sub><b>Automations:</b> "when this happens, do that", built from a ready-made example, with every firing logged.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/automations.jpg" alt="The Automations form using the print-finished notification example, with a log of what fired. Simulated farm"><br><sub><b>Automations:</b> choose an event and action from a ready-made example; every firing is logged.</sub></td>
 </tr>
 </table>
 
-![The Overview's live row: the digital twin as a shaded 3D model of the U1 with its frame, glass panels, orange and black spools on the left side, blue parts on the bed and tagged heads T0 to T3 (T2 printing), beside Printer control with Pause and Cancel and a print health gauge reading 65](docs/img/twin-health-chamber.jpg)
+![Current 3D twin beside Printer control and the print-health gauge. Simulated readings; software model with estimated body and internal geometry](docs/img/twin-health-chamber.jpg)
 
 <sub>**Digital twin, quick controls and print health:** a live 3D model of the printer (the bed dropping as layers build, the head moving, the parts on the plate, the four docks, the spools in their colours), Pause and Cancel, and one health score with every deduction listed. The engineering drawing is one click away.</sub>
 
 <table>
 <tr>
-<td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The 3D twin with T0 picked: its tag outlined, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
+<td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="Current 3D twin with head T0 selected and its filament, nozzle and swap details. Simulated farm"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
 <td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The mixed-nozzle planner: T0 with a 0.2 mm nozzle at 0.08 mm and T1 with a 0.8 mm nozzle at 0.56 mm, a section view showing seven thin layers for every thick one, 375 layers against 54 for a 30 mm part, and a warning that the 0.08 mm prime-tower slabs are below the 0.8 mm nozzle's minimum"><br><sub><b>Mixed-nozzle planner:</b> a common layer grid, checked against Snapmaker's own limits.</sub></td>
 </tr>
 </table>
 
-![Add a printer: Find printers on my network, and a Test result saying Moonraker answered, Klipper is ready, it reports Snapmaker's U1 objects and has 4 toolheads](docs/img/add-printer.jpg)
+![Add a printer: the current Test result from a source-based stand-in Moonraker on loopback. No physical U1 connected](docs/img/add-printer.jpg)
 
-<sub>**Add a printer:** find it on the network, or test a typed address before adding it.</sub>
+<sub>**Add a printer:** test an address before adding it. This capture uses a local stand-in Moonraker, not a physical U1.</sub>
 
 ![Objects on the plate: a map of the bed from above with three objects, the one printing now in blue and one selected in red, and the question "Skip Toolhead cover #3 for the rest of this print? It can't be brought back."](docs/img/skip-object.jpg)
 
 <sub>**Skip one object:** pick the failed part on the plate map, confirm, and the rest keep printing.</sub>
 
-<img align="right" width="300" src="docs/img/converter.jpg" alt="A MakerWorld project converted for the U1: saved as a new 3MF for the Snapmaker U1 with a 0.4 nozzle, all three plates re-placed on the 270 mm bed, the creator's own changes kept, and a Copy report button">
+<img align="right" width="300" src="docs/img/converter.jpg" alt="Conversion report for the supported Bambu-layout sample project: a new U1 file, preserved overrides, warnings and Copy report. Not a physical print">
 
-**Converting a MakerWorld project:** every plate lands where Snapmaker Orca
-expects it, the creator's own setting changes are kept and listed, and the
-report says what wasn't checked yet (the result hasn't been opened in
-Snapmaker Orca itself).
+**Converting a supported project:** keep the original, review the conversion
+report, then select a plate for slicing. All three plates of the recorded test
+fixture passed the Linux engine separately. Complex vendor paint, textures and
+per-part settings remain limited. Conversion is not proof of printability.
 
 <br clear="right">
 
@@ -257,7 +264,7 @@ Snapmaker Orca itself).
 |---|---|
 | **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
 | **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
-| **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram, plain webhooks, no SDK, no account. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
+| **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram using HTTP requests, with no app SDK. Configure the chosen service's topic, webhook or bot credentials. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
 | **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
 | **App-data backup & recovery** | Versioned full app-data ZIP with checksums, omitted connection secrets and restore preview. Recovery creates a separate folder and launchers; it keeps existing data and disables automatic actions. Includes library, per-printer logs, fleet, queues, presets and time-lapse. Limits: 512 MB unpacked / 256 MB ZIP; files over 64 MB and external installations require an offline copy. |
 | **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
@@ -281,12 +288,12 @@ Snapmaker Orca itself).
 
 <table>
 <tr>
-<td width="50%" valign="top"><img src="docs/img/sandbox-farm.jpg" alt="The Fleet tab with nine printers: the three built-in U1s and six added simulated printers, some printing, some idle"><br><sub><b>A bigger farm:</b> the three built-in printers plus six added in the sandbox.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/sandbox.jpg" alt="The farm sandbox: a scenario clock at plus 11 minutes running the "Jam mid-print" scenario, the farm list, an event picker and a log of what happened, with preset scenarios below"><br><sub><b>Farm sandbox:</b> the "Jam mid-print" scenario on its clock, one-off events, and a log of what happened.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/sandbox-farm.jpg" alt="The Fleet tab with nine printers: the three built-in U1s and six added simulated printers, some printing, some idle"><br><sub><b>A bigger farm:</b> the three built-in printers plus six added in the sandbox. All readings are simulated.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/sandbox.jpg" alt="The simulated farm sandbox after stepping the Jam mid-print scenario to eleven minutes, with its event log and presets"><br><sub><b>Farm sandbox:</b> the "Jam mid-print" scenario on its clock, one-off events, and a log of what happened.</sub></td>
 </tr>
 </table>
 
-![The Photo-to-Print Studio with its built-in test pattern: the original image, the relief as it would print, modelled in white and black filament, its size and colour settings, and the 3D preview](docs/img/photo-studio.jpg)
+![Photo-to-Print Studio preview using its built-in test pattern: original, modelled colours and 3D relief. Software preview, not a photograph of a print](docs/img/photo-studio.jpg)
 
 <sub>**Photo-to-Print Studio:** the built-in test pattern turned into a layered relief. The right-hand preview is modelled, not photographed.</sub>
 
@@ -319,8 +326,8 @@ browser's bars where the phone allows.
 
 | Module | What it does |
 |---|---|
-| **Dock status rings** | A ring of light beside each toolhead dock: soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault. It is readable across the room. Two ways to build it: WS2812 rings, or push the same state to a WLED-controlled strip you already own. |
-| **"Right colour loaded?"** | An optical sensor in the filament path, compared against what the print file expects, catching the wrong spool before the print starts. |
+| **Dock status rings** | Proposed rings beside the toolhead docks: soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault. The on-screen logic is implemented; physical ring drivers and validation are unfinished. The separate WLED bridge can send the same state to a configured strip. |
+| **"Right colour loaded?"** | Proposed optical check against the file’s expected colour. Comparison logic and simulation exist; sensor hardware, driver and calibration are unfinished. |
 
 ![The Dock status rings panel: four rings for T0 to T3, three soft white for docked and ready and one red for needs attention, marked HARDWARE PENDING, with the note that it shows what the LEDs would display](docs/img/dock-rings.jpg)
 
@@ -356,7 +363,7 @@ Pac-Man, Snake and Tetris show touch buttons and also take swipes.
 
 ## Why one dashboard, not several tools
 
-![How it connects: each Snapmaker U1 runs Moonraker in front of Klipper; the Deja Vu1 server on your computer holds one WebSocket per printer for live state every 0.25 seconds and uses plain HTTP for commands, history and uploads; it pushes a live view to your laptop and paired phone, and only sends state outward to Home Assistant, a WLED strip and ntfy, Discord or Telegram](docs/img/explainer-how-it-connects.jpg)
+![How it connects: each Snapmaker U1 runs Moonraker in front of Klipper; the Deja Vu1 server on your computer holds one WebSocket per printer for reported state and uses plain HTTP for commands, history and uploads; it shares a live view with your browsers and connects to configured services such as Home Assistant, a WLED strip and ntfy, Discord or Telegram](docs/img/explainer-how-it-connects.jpg)
 
 Everything reads from the same Moonraker connection and the same print
 history. Splitting that into separate tools would mean separate connections,
@@ -390,8 +397,9 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **771 tests in 147.9 seconds** on Python
-3.13.16/Linux, with app/demo servers stopped (the October 2026 interface refreshes added twelve).
+The marketing-refresh verification passed **771 tests in 134.189 seconds** on
+Python 3.12.14/Linux, with app/demo servers stopped. The earlier interface-refresh
+run passed the same 771 cases on Python 3.13.16/Linux.
 The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
 and was [merged](https://github.com/Jbyjre/Deja_VU1/pull/45). A follow-up targeted
 check passed 36 tests. Chromium checks at 1366/390 px covered editing, stable
@@ -430,19 +438,17 @@ accepts two million triangles per plate. They do not guarantee support adequacy,
 watertightness or toolhead clearance. AR still uses original source geometry.
 
 Open work includes physical testing, feeder control, full format fidelity,
-heater-fault ring/error-clear issues, heavy-model rendering and older launch
-media. Current boards, social cards, screenshots, demo recording and preview GIF
-and the launch videos (60-second version 13, 75-second version 12, and version 14: version 12
-cut to 60 s with the new twin and background, and version 15: version 13 updated the same way)
-are refreshed; older
-editorial crops are not.
+heater-fault ring/error-clear issues and heavy-model rendering. The current
+share cards, product-page images and main editorial screenshots were captured
+again for the marketing refresh. The media library distinguishes these from
+older reference images and the preserved version 12–15 films.
 See [full validation](docs/slicer-workspace-validation.md),
 [remaining-work goals](build-prompts/07-physical-validation-and-format-fidelity.md)
 and [release requirements](docs/releasing.md).
 
 ## Tech stack
 
-![By the numbers: 759 automated tests, 250 ms between live updates, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 771 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 simulated printers in the sandbox, and 270 mm build bounds](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -452,7 +458,7 @@ and [release requirements](docs/releasing.md).
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 759 cases
+- **Tests:** `unittest` from the standard library, 771 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -677,7 +683,7 @@ python3 backend/color_check.py
 Stop app/demo servers before the full suite (about two minutes):
 
 ```bash
-python3 -m unittest discover tests          # all 759
+python3 -m unittest discover tests          # current suite: 771
 python3 -m unittest tests.test_api          # one file
 ```
 

@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — public copy and marketing images
+
+- Shorter project-page and README introductions, consistent search/share
+  descriptions, and a visible first-connection invitation. Claims distinguish
+  reported filament data, missing information, target update timing and
+  separately installed slicing engines.
+- Current editorial screenshots, two share-image sizes, five explainer boards
+  and eighteen standalone campaign cards. Simulation, historical Linux engine
+  evidence and estimated twin geometry are labelled. Existing versioned films
+  and brand icons are preserved; current post/video descriptions are drafted.
+- Reproducible capture/render tools and a desktop/phone product-page check.
+  Plain-text captions and alternatives accompany the campaign pack. Physical
+  printing and real-device performance remain unverified.
+
 ## Unreleased — a realistic 3D twin and a livelier background
 
 - Launch video version 14 ("V1 at 60 s"): version 12's 75-second film, its music and
