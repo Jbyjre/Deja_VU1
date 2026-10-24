@@ -480,10 +480,10 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **783 tests in 428.9 seconds** on Python
-3.13.17/Linux, with app/demo servers stopped (the October 2026 "technical tools" round added
-twelve; the sample files now include real models, which makes some tests slower). The
-run before it passed 771 tests in 147.9 seconds.
+The latest clean full suite passed **832 tests in 473.5 seconds** on Python
+3.13.17/Linux, with app/demo servers stopped (24 October 2026; this round added the print
+preview, insights, safety copies, Orca import, device lock and self-check tests). Before
+that: 783 tests in 428.9 seconds, and 771 tests in 147.9 seconds.
 The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
 and was [merged](https://github.com/Jbyjre/Deja_VU1/pull/45). A follow-up targeted
 check passed 36 tests. Chromium checks at 1366/390 px covered editing, stable
