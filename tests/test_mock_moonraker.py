@@ -42,7 +42,9 @@ class TestFleetSimulation(unittest.TestCase):
         mid = mock_moonraker.get_printer_state()["toolheads"]["T0"]["temperature"]
         mock_moonraker.advance(200)
         end = mock_moonraker.get_printer_state()["toolheads"]["T0"]["temperature"]
-        self.assertTrue(before < mid < end <= 200)
+        # A held heater shows a PID-like ripple of up to about 0.3 °C either side of its
+        # target (mock_moonraker.advance), so the settled reading may sit just above it.
+        self.assertTrue(before < mid < end <= 200.5)
         self.assertAlmostEqual(end, 200, delta=1)
 
     def test_progress_moves_and_print_finishes_into_history(self):
