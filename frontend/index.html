@@ -416,6 +416,12 @@
       </div>
     </section>
 
+    <!-- What the printer's own history says (insights.js, /api/insights). -->
+    <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
+      <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
+      <div id="insights-body"><p class="log-empty">Loading…</p></div>
+    </section>
+
     <div class="grid-2" style="margin-bottom:20px;">
       <section class="card liquid-glass">
         <div class="card-head">
@@ -894,10 +900,23 @@
       <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
       <h3>App updates <span id="app-update-badge" hidden>New version available</span></h3>
       <p id="app-update-status" role="status">Loading app information…</p>
-      <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button></div>
-      <label class="setup-check"><input type="checkbox" id="app-update-auto"> Check automatically at startup (at most daily)</label>
-      <p class="field-hint">Off by default. Checks send no name or printer details. GitHub sees your connection's network address.</p>
+      <fieldset class="update-channel">
+        <legend class="sr-only">Which updates to get</legend>
+        <label><input type="radio" name="app-update-channel" value="latest"><span><b>Newest builds</b> Each improvement as soon as it is published, without downloading the app again. Only the files that changed are fetched, and each must match GitHub's own record of it before anything is replaced.</span></label>
+        <label><input type="radio" name="app-update-channel" value="stable"><span><b>Stable releases</b> Only versions published as releases: fewer, bigger steps.</span></label>
+      </fieldset>
+      <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button><button class="btn primary" id="app-update-git" hidden>Update with git &amp; restart</button></div>
+      <label class="setup-check"><input type="checkbox" id="app-update-auto"> Check automatically <span class="field-hint" id="app-update-auto-when">(newest builds every 15 minutes, releases once a day)</span></label>
+      <label class="setup-check"><input type="checkbox" id="app-update-autoinstall"> Install by itself when every printer is idle</label>
+      <p class="field-hint">Checks send no name or printer details. GitHub sees your connection's network address. Your data folder is never part of an update, and a safety copy is made first.</p>
       <p class="field-hint" id="app-update-note"></p>
+    </section>
+    <section class="card liquid-glass memory-card" id="memory-card">
+      <div class="card-head"><div><h2>Your data is safe</h2><p class="card-sub">Deja Vu1 keeps safety copies of everything it remembers (printers, spools, maintenance, the logbook, rules, queues and profiles) on this computer: every 6 hours, at start-up and before every update. If a file is ever damaged, it is repaired from them by itself.</p></div>
+        <button class="btn" type="button" id="mem-now">Make a safety copy now</button></div>
+      <p id="mem-status" role="status">Loading…</p>
+      <ul class="mem-list" id="mem-list"></ul>
+      <p class="field-hint">Restoring takes one more safety copy first, so a restore can itself be undone. The dashboard then restarts to read the restored records. Model files and camera pictures are covered by the full backup below, not by safety copies.</p>
     </section>
     <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
       <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
@@ -1254,6 +1273,7 @@
 <script src="desk.js"></script>
 <script src="telemetry.js"></script>
 <script src="logbook.js"></script>
+<script src="insights.js"></script>
 <script src="printroom.js"></script>
 <script src="plate.js"></script>
 <script src="gcode-view.js"></script>

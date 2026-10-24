@@ -77,6 +77,14 @@ API endpoints
 
   GET  /api/print/confirm?file=...   the Confirm Print summary (gate)
   GET  /api/print/preview            the running print's visible walls per toolhead (3D twin)
+  GET  /api/insights                 findings from the printer's own print history
+  GET  /api/app/memory               safety copies of the dashboard's records; repairs made
+  POST /api/app/memory/snapshot      make a safety copy now
+  POST /api/app/memory/restore       {"id", "file"?} write a safety copy back, then restart
+  GET  /api/import/orca              presets and recent projects found in Orca on this computer
+  POST /api/import/orca/projects     {"ids"} copy recent projects into Files
+  POST /api/import/orca/profile      {"name", "machine", "process", "filaments"} a profile from your presets
+  POST /api/app/updates/git          update a git checkout (fast-forward only)
 
   GET  /api/files                    the file library
   GET  /api/files/thumb?name=        a file's thumbnail (PNG)
@@ -248,6 +256,9 @@ import pairing
 import photo_studio
 import print_gate
 import print_preview
+import insights
+import memory
+import orca_import
 import print_queue
 import printer_control
 import sandbox
@@ -374,6 +385,7 @@ _DATA_ROUTES = {
     "/api/health": (None, lambda q: print_gate.printer_health()),
     "/api/print/confirm": (None, lambda q: print_gate.summary(_q(q, "file"))),
     "/api/print/preview": (None, lambda q: print_preview.for_current()),
+    "/api/insights": (None, lambda q: insights.current()),
     "/api/queue": ("print_queue", lambda q: print_queue.get()),
     "/api/timelapse": ("timelapse", lambda q: {
         "sessions": timelapse.sessions(mock_moonraker.selected_printer_id()),
@@ -391,6 +403,8 @@ _APP_ROUTES = {
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
+    "/api/app/memory": (None, lambda q: memory.status()),
+    "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,
     # like the stream itself, which is when a frozen picture matters most.
@@ -948,21 +962,41 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._send_json(app_updates.check())
         if route == "/api/app/updates/install":
             self._read_json_body()
-            def require_idle():
-                for pid in mock_moonraker.printer_ids():
-                    if mock_moonraker.is_real(pid):
-                        with mock_moonraker.use_printer(pid):
-                            state = mock_moonraker.get_printer_state()
-                        if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
-                            raise ValueError("Updates wait until all real printers are connected and idle")
-                if any(j.get("status") in ("waiting", "running") for j in slicer_bridge.jobs()):
-                    raise ValueError("Wait for slicing to finish before updating")
-            require_idle()
-            result = app_updates.prepare(before_commit=require_idle)
-            self._send_json(result)
-            self.server.update_restart = True
-            threading.Timer(0.5, self.server.shutdown).start()
-            return
+            result = _install_update(self.server)
+            return self._send_json(result)
+        if route == "/api/app/memory/snapshot":
+            self._read_json_body()
+            return self._send_json(memory.snapshot("manual"))
+        if route == "/api/app/memory/restore":
+            body = self._read_json_body()
+            result = memory.restore(body.get("id"), body.get("file"))
+            # Every module re-reads the restored records after a restart.
+            if os.environ.get("DEJAVU_LAUNCHER") == "1":
+                result["restarting"] = True
+                self.server.update_restart = True
+                threading.Timer(0.5, self.server.shutdown).start()
+            else:
+                result["restart_needed"] = True
+            return self._send_json(result)
+        if route == "/api/import/orca/projects":
+            if self._module_blocked("file_library"):
+                return None
+            return self._send_json(orca_import.import_projects(self._read_json_body().get("ids")))
+        if route == "/api/import/orca/profile":
+            if self._module_blocked("auto_print"):
+                return None
+            return self._send_json(orca_import.import_profile(self._read_json_body()))
+        if route == "/api/app/updates/git":
+            # A development copy: git pull --ff-only, then a restart through
+            # the launcher if there is one (otherwise the person restarts it).
+            self._read_json_body()
+            _require_idle_for_update()
+            result = app_updates.git_update()
+            if result["updated"] and os.environ.get("DEJAVU_LAUNCHER") == "1":
+                result["restarting"] = True
+                self.server.update_restart = True
+                threading.Timer(0.5, self.server.shutdown).start()
+            return self._send_json(result)
 
         if route == "/api/tools/layer-plan":
             # A calculator: no printer needed, nothing stored.
@@ -1525,10 +1559,36 @@ class DejaVuServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
 
+def _require_idle_for_update():
+    """Updates wait while a real printer is busy, out of reach, or a slice is running."""
+    for pid in mock_moonraker.printer_ids():
+        if mock_moonraker.is_real(pid):
+            with mock_moonraker.use_printer(pid):
+                state = mock_moonraker.get_printer_state()
+            if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
+                raise ValueError("Updates wait until all real printers are connected and idle")
+    if any(j.get("status") in ("waiting", "running") for j in slicer_bridge.jobs()):
+        raise ValueError("Wait for slicing to finish before updating")
+
+
+def _install_update(server):
+    """Stage an update (checked again just before it is committed), then restart into it."""
+    _require_idle_for_update()
+    try:
+        memory.snapshot("before-update")
+    except Exception:
+        pass                       # a safety copy that can't be written never blocks the update itself
+    result = app_updates.prepare(before_commit=_require_idle_for_update)
+    server.update_restart = True
+    threading.Timer(0.5, server.shutdown).start()
+    return result
+
+
 def main():
     server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
     live_feed.start()
-    threading.Thread(target=app_updates.automatic_check, daemon=True).start()
+    threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
+    threading.Thread(target=memory.watch, daemon=True).start()
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")

@@ -921,3 +921,46 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
 .twin3d-ink .tv { font-size: 10.5px; }
 .twin3d-ink .proj line, .twin3d-ink .proj path, .twin3d-ink .proj circle { fill: none; stroke: oklch(24% 0.02 265); stroke-width: 1; }
 .twin3d-ink .proj line { stroke-dasharray: 8 2 2 2; stroke: oklch(48% 0.015 265); }
+
+/* ==========================================================================
+   Memory and history (insights.js): what the history says, safety copies,
+   and picking up existing Orca work.
+   ========================================================================== */
+.insights-card { margin-bottom: 20px; }
+.ins-so-far { margin: 0 0 12px; font-size: 14px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.ins-so-far b { color: var(--text); font-weight: 650; }
+.ins-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.ins { display: grid; grid-template-columns: 12px 1fr; gap: 10px; padding: 12px 14px; border-radius: 14px;
+  background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .06); }
+.ins b { font-size: 14px; line-height: 1.3; }
+.ins p { margin: 4px 0 6px; font-size: 13px; line-height: 1.45; color: var(--text-dim); text-wrap: pretty; }
+.ins small { font: 600 10.5px/1.2 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); }
+.ins-dot { width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: var(--accent); }
+.ins.is-good .ins-dot { background: var(--ok, #2f9e44); }
+.ins.is-watch .ins-dot { background: var(--warn, #e8a400); box-shadow: 0 0 0 3px color-mix(in oklch, var(--warn, #e8a400) 25%, transparent); }
+.ins.is-info .ins-dot { background: oklch(70% 0.03 265); }
+.update-channel { border: 0; padding: 0; margin: 10px 0; display: grid; gap: 8px; }
+.update-channel label { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, .08); background: rgba(255, 255, 255, .5); cursor: pointer; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+.update-channel label:has(input:checked) { border-color: var(--accent); background: #fff; }
+.update-channel b { display: block; color: var(--text); font-size: 14px; }
+.update-channel input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+.mem-list { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 6px; max-height: 340px; overflow: auto; }
+.mem-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 12px;
+  background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .05); }
+.mem-list li div { display: grid; gap: 2px; }
+.mem-list li span { font-size: 12.5px; color: var(--text-faint); }
+.mem-repair { display: block; margin-top: 4px; color: var(--ok-text, #1d7a35); }
+.orca-import { margin-bottom: 20px; }
+.oi-app h3 { margin: 6px 0 10px; font: 650 15px/1.2 var(--font-sans); }
+.oi-app h4 { margin: 0 0 8px; font: 600 11px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+.oi-app h4 small { font-weight: 500; margin-left: 4px; }
+.oi-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.oi-projects { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; max-height: 260px; overflow: auto; }
+.oi-projects label { display: flex; align-items: center; gap: 8px; min-height: 34px; font-size: 13.5px; }
+.oi-projects small { color: var(--text-faint); }
+.oi-profile { display: grid; gap: 8px; }
+.oi-profile label { display: grid; gap: 4px; font-size: 12.5px; color: var(--text-dim); }
+.oi-profile select, .oi-profile input { min-height: 36px; }
+.oi-profile button { justify-self: start; }
+@media (prefers-contrast: more) { .ins, .update-channel label, .mem-list li { border-color: currentColor; } }

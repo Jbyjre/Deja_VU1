@@ -20,7 +20,7 @@ _DATA_DIR = storage.DATA_DIR
 MAX_ARCHIVE_BYTES = 256*1024*1024
 MAX_TOTAL_BYTES = 512*1024*1024
 MAX_FILES = 10000
-_EXCLUDED = {'restore-staging','restored','updates','update-staging'}
+_EXCLUDED = {'restore-staging','restored','updates','update-staging','snapshots'}   # snapshots: memory.py's safety copies
 _SECRET = re.compile(r'(?:api[_-]?key|token|password|secret|webhook|authorization|private[_-]?key)',re.I)
 
 
@@ -62,7 +62,7 @@ def _files():
         dirs[:]=[d for d in dirs if d not in _EXCLUDED and not d.startswith('.') and not (Path(folder)/d).is_symlink()]
         for name in sorted(names):
             p=Path(folder)/name
-            if name.startswith('.tmp-') or p.is_symlink():continue
+            if name.startswith('.') or p.is_symlink():continue   # .tmp- writes and .prev copies (storage.py)
             relative=p.relative_to(root).as_posix();_safe_name(relative)
             paths.append((relative,p))
     if len(paths)>MAX_FILES:raise ValueError('More than 10,000 app data files need an offline filesystem backup')
