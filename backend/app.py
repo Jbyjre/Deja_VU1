@@ -158,6 +158,8 @@ API endpoints
   POST /api/pairing/code
   POST /api/pairing/redeem           {"code": "...", "device_name": "..."}
   POST /api/pairing/devices/<id>/unpair
+  GET  /api/pairing/status           device lock on?, this computer?, this device paired?
+  POST /api/pairing/lock             {"on": bool} only paired devices may use the dashboard
   GET  /api/handoff?device=          "continue where another device was"
   POST /api/handoff                  {"device_id", "device_name", "view"}
 
@@ -211,6 +213,7 @@ figures.
 """
 
 import ipaddress
+import http.cookies
 import json
 import os
 import re
@@ -544,12 +547,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     # -- helpers ----------------------------------------------------------
 
-    def _send_json(self, payload, status=200):
+    def _send_json(self, payload, status=200, cookie=None):
         """Send a Python dictionary back to the browser as JSON."""
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         # Stop the browser caching API responses, so the dashboard always
         # shows current data when it refreshes.
         self.send_header("Cache-Control", "no-store")
@@ -697,8 +702,44 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                   f"DEJAVU_ALLOWED_HOSTS={_host_name(host)}"}, status=421)
         return False
 
+    # -- the device lock (pairing.py) ----------------------------------------
+
+    _OPEN_WHEN_LOCKED = {"/api/pairing/status", "/api/pairing/redeem"}
+
+    def _this_computer(self):
+        """A browser on this computer, reached as localhost (not via a tunnel or network address)."""
+        ip = (self.client_address or ("",))[0]
+        try:
+            loopback = ipaddress.ip_address(ip.split("%")[0]).is_loopback
+        except ValueError:
+            loopback = False
+        return loopback and _host_name(self.headers.get("Host", "")).lower() in ("localhost", "127.0.0.1", "::1")
+
+    def _device(self):
+        jar = http.cookies.SimpleCookie()
+        try:
+            jar.load(self.headers.get("Cookie", ""))
+        except http.cookies.CookieError:
+            return None
+        morsel = jar.get(pairing.COOKIE)
+        return pairing.device_for(morsel.value) if morsel else None
+
+    def _locked_out(self):
+        """With the device lock on, refuse an unpaired device (with a 401 that says how to pair)."""
+        route = urlparse(self.path).path
+        if route in self._OPEN_WHEN_LOCKED or not pairing.lock_enabled():
+            return False
+        if self._this_computer() or self._device():
+            return False
+        self._send_json({"error": "This dashboard only answers devices that have been paired with it. Enter the "
+                                  "pairing code shown on a paired device (Settings, Pair a phone), or open it on the "
+                                  "computer it runs on.", "pairing_required": True}, status=401)
+        return True
+
     def do_GET(self):
         if not self._host_allowed():
+            return None
+        if self.path.startswith("/api/") and self._locked_out():
             return None
         if self.path.startswith("/api/live") and websocket.is_upgrade_request(self.headers):
             return self._handle_websocket()
@@ -757,6 +798,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return None
         if not self._same_origin():
             return self._send_json({"error": "Refused: this request came from another website"}, status=403)
+        if self._locked_out():
+            return None
         return self._dispatch(self._handle_api_post)
 
     def _same_origin(self):
@@ -852,6 +895,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/pairing/devices":
             return self._send_json({"devices": pairing.list_devices()})
+        if route == "/api/pairing/status":
+            device = self._device()
+            return self._send_json({"lock": pairing.lock_enabled(), "this_computer": self._this_computer(),
+                                    "paired": bool(device), "device": device["name"] if device else None})
 
         if route == "/api/backup":
             if self._module_blocked("backup"):
@@ -1335,7 +1382,17 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/pairing/redeem":
             body = self._read_json_body()
             device = pairing.redeem_code(body.get("code"), body.get("device_name"))
-            return self._send_json(device)
+            # The device's key goes into a cookie the page's scripts can't read.
+            cookie = (f"{pairing.COOKIE}={device.pop('token')}; Path=/; Max-Age={pairing.COOKIE_DAYS * 86400}; "
+                      "HttpOnly; SameSite=Strict")
+            return self._send_json(device, cookie=cookie)
+
+        if route == "/api/pairing/lock":
+            body = self._read_json_body()
+            if not (self._this_computer() or self._device()):
+                raise ValueError("Pair this device first, or change the lock on the computer running Deja Vu1, "
+                                 "so nobody can lock you out")
+            return self._send_json({"lock": pairing.set_lock(body.get("on"))})
 
         if route.startswith("/api/pairing/devices/") and route.endswith("/unpair"):
             device_id = route[len("/api/pairing/devices/"):-len("/unpair")]

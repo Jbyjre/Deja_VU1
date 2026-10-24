@@ -1027,8 +1027,32 @@ async function getJSON(url) {
   }
   const response = await fetch(url);
   const body = await response.json().catch(() => ({}));
+  if (response.status === 401 && body.pairing_required) showPairGate();
   if (path === '/api/modules') noteModules(body);
   return body;
+}
+
+/* The device lock (backend/pairing.py): an unpaired device is asked for a
+ * pairing code instead of being shown empty screens. Pairing sets the
+ * device's key as a cookie, then the page reloads with access. */
+let pairGateShown = false;
+function showPairGate() {
+  const dlg = $('pair-gate');
+  if (!dlg || pairGateShown) return;
+  pairGateShown = true;
+  if (!dlg.open) { try { dlg.showModal(); } catch (_) { dlg.setAttribute('open', ''); } }
+  dlg.addEventListener('cancel', e => e.preventDefault());
+  $('pair-gate-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const code = $('pair-gate-code').value.replace(/\s/g, '');
+    $('pair-gate-go').disabled = true;
+    const r = await fetch('/api/pairing/redeem', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, device_name: $('pair-gate-name').value.trim() || (navigator.userAgent.includes('Mobile') ? 'Phone' : 'Browser') }) })
+      .then(async res => ({ ok: res.ok, body: await res.json().catch(() => ({})) })).catch(() => ({ ok: false, body: {} }));
+    $('pair-gate-go').disabled = false;
+    if (r.ok) { $('pair-gate-error').textContent = 'Paired. Opening the dashboard…'; location.reload(); return; }
+    $('pair-gate-error').textContent = r.body.error || 'That code did not work. Check it and try again.';
+  };
 }
 
 async function postJSON(url, payload) {
@@ -1046,6 +1070,7 @@ async function postJSON(url, payload) {
     return { ok: false, status: 0, body: { error: "Couldn't reach the dashboard server - is it still running?" } };
   }
   const body = await response.json().catch(() => ({}));
+  if (response.status === 401 && body.pairing_required) showPairGate();
   const toggled = url.split('?')[0].match(/^\/api\/modules\/([\w-]+)\/toggle$/);
   if (toggled && response.ok) {
     if (payload && payload.enabled) modGate.off.delete(toggled[1]); else modGate.off.add(toggled[1]);
@@ -2337,7 +2362,29 @@ function watchForPairing() {
   }, 2000);
 }
 
+async function loadDeviceLock() {
+  const box = $('device-lock');
+  if (!box) return;
+  const st = await getJSON('/api/pairing/status').catch(() => null);
+  if (!st || st.error) { box.disabled = true; return; }
+  box.checked = !!st.lock;
+  box.disabled = !(st.this_computer || st.paired);
+  $('device-lock-note').textContent = box.disabled ? 'Change the lock from the computer running Deja Vu1, or from a paired device.'
+    : st.lock ? `On. ${st.this_computer ? 'This computer' : `This device (${st.device})`} keeps access; others need a pairing code.` : '';
+}
+
 function initPairing() {
+  if ($('device-lock')) {
+    loadDeviceLock();
+    $('device-lock').addEventListener('change', async (e) => {
+      const on = e.target.checked;
+      if (on && !confirm('Only paired devices will be able to use this dashboard. Any phone or computer you haven\'t paired will be asked for a code. Switch the lock on?')) { e.target.checked = false; return; }
+      const { ok, body } = await postJSON('/api/pairing/lock', { on });
+      if (!ok) { e.target.checked = !on; toast(body.error || 'The lock was not changed', 'bad'); }
+      else toast(on ? 'Device lock on' : 'Device lock off', 'ok');
+      loadDeviceLock();
+    });
+  }
   $('generate-code-btn').addEventListener('click', async () => {
     const { ok, body } = await postJSON('/api/pairing/code', {});
     if (!ok) { toast(`Couldn't make a code: ${body.error || 'unknown error'}`, 'bad'); return; }

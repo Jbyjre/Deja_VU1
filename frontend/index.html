@@ -932,7 +932,9 @@
 
       <div style="display:flex; flex-direction:column; gap:20px;">
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Optional list of devices. This is not a login or access restriction.</p></div></div>
+          <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Phones and other computers you use with this dashboard.</p></div></div>
+          <label class="setup-check device-lock"><input type="checkbox" id="device-lock"> <span><b>Only paired devices can use this dashboard</b> Off by default. When on, any other device must enter a pairing code before it can see or control anything. This computer always works, so you can't lock yourself out. Pair your phone first.</span></label>
+          <p class="field-hint" id="device-lock-note" role="status"></p>
           <div id="pairing-code-display" style="display:none; text-align:center; margin-bottom:14px;">
             <div class="pair-code" id="pairing-code-text">— — —</div>
             <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
@@ -940,7 +942,8 @@
           <div id="device-list"></div>
           <button class="btn block" id="generate-code-btn" style="margin-top:12px;">+ Pair another device</button>
           <form id="redeem-form" style="display:flex; gap:8px; margin-top:10px;">
-            <input type="text" id="redeem-code" placeholder="Enter a code" style="flex:1;">
+            <label class="sr-only" for="redeem-code">Pairing code</label>
+            <input type="text" id="redeem-code" placeholder="Enter a code" inputmode="numeric" autocomplete="one-time-code" style="flex:1;">
             <button class="btn" type="submit">Pair</button>
           </form>
         </section>
@@ -1257,6 +1260,19 @@
   </div>
   <div class="setup-body"><div id="setup-content"></div><p id="setup-status" role="status" aria-live="polite"></p></div>
   <div class="setup-footer"><button class="btn" id="setup-back">Back</button><button class="btn primary" id="setup-next">Continue</button></div>
+</dialog>
+<!-- Shown when the device lock is on and this device hasn't been paired (app.js showPairGate). -->
+<dialog class="pair-gate" id="pair-gate" aria-labelledby="pair-gate-title">
+  <form method="dialog" id="pair-gate-form">
+    <h2 id="pair-gate-title">Pair this device</h2>
+    <p>This dashboard only answers devices that have been paired with it. On a device that already works (or the computer it runs on), open Settings and press <b>Pair another device</b>, then type the six-digit code here.</p>
+    <label for="pair-gate-code">Pairing code</label>
+    <input id="pair-gate-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+    <label for="pair-gate-name">Name for this device <small>(optional)</small></label>
+    <input id="pair-gate-name" maxlength="40" placeholder="e.g. My phone">
+    <p class="field-hint" id="pair-gate-error" role="alert"></p>
+    <button class="btn primary" type="submit" id="pair-gate-go">Pair</button>
+  </form>
 </dialog>
 <script src="app.js"></script>
 <script src="backdrop.js"></script>
