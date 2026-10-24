@@ -184,12 +184,28 @@ _FLEET_SPEC = [
     {
         "id": "u1-workshop", "name": "U1 · Workshop", "seed": 20260907,
         "jobs": 38, "days": 64,
+        # Printing the two-colour Benchy pair from the sample files
+        # (sample_files.two_colour_benchy_pair_gcode): orange in T0 and
+        # black in T1, as loaded, so the twin can draw the real boats in
+        # their real colours. Its layer count, time and outlines are that
+        # file's own.
         "scenario": {
-            "state": "printing", "file": "toolhead_cover.gcode",
-            "progress": 0.46, "hours": 2.1, "total_hours": 4.6,
-            "active": "T2", "layers": 322,
+            "state": "printing", "file": "two_benchies_two_colours.gcode",
+            "progress": 0.46, "hours": 0.73, "total_hours": 1.58,
+            "active": "T1", "layers": 240,
             "loaded": {"T0": 2, "T1": 0, "T2": 4, "T3": 1},
             "required": [("T0", 2, "PLA"), ("T1", 0, "PLA")],
+            "footprint": [60.0, 77.0],
+            "objects": [
+                {"name": "3DBENCHY.STL_ID_0_COPY_0", "center": [135.0, 112.0],
+                 "polygon": [[105.0, 96.5], [165.0, 96.5], [165.0, 127.5], [105.0, 127.5]]},
+                {"name": "3DBENCHY.STL_ID_0_COPY_1", "center": [135.0, 158.0],
+                 "polygon": [[105.0, 142.5], [165.0, 142.5], [165.0, 173.5], [105.0, 173.5]]},
+            ],
+            # Which head prints each boat: hull colour up to the deck (layer
+            # 75, 15.0 mm), cabin colour above it.
+            "object_tools": {"3DBENCHY.STL_ID_0_COPY_0": ["T0", "T1", 75],
+                             "3DBENCHY.STL_ID_0_COPY_1": ["T1", "T0", 75]},
         },
     },
     {
@@ -265,7 +281,8 @@ class SimulatedPrinter:
                     }
                     for th, ci, mat in s["required"]
                 ],
-                "footprint_mm": [60.0, 40.0],
+                "footprint_mm": list(s.get("footprint") or [60.0, 40.0]),
+                "object_tools": dict(s.get("object_tools") or {}),
             }
             # Completed jobs added while the server runs (on top of history).
             self.session_jobs = []
@@ -326,7 +343,7 @@ class SimulatedPrinter:
             "layer": {"current": layer, "total": s["layers"]},
             "printer_id": self.id,
             "printer_name": self.name,
-            **({"objects": _plate(_demo_objects(s["file"]))} if printing else {}),
+            **({"objects": _plate(s.get("objects") or _demo_objects(s["file"]))} if printing else {}),
         }
 
     # -- helpers ------------------------------------------------------------
@@ -428,6 +445,9 @@ class SimulatedPrinter:
                     left = [o["name"] for o in plate["list"] if o["name"] not in plate["excluded"]]
                     within = (live["progress"] * layers) % 1.0
                     plate["current"] = left[min(len(left) - 1, int(within * len(left)))] if left else None
+                    plan = self.job.get("object_tools", {}).get(plate["current"])
+                    if plan:
+                        self._switch_to(plan[0] if layer <= plan[2] else plan[1], layer)
                 live["state_message"] = f"Printing layer {layer} of {layers}"
 
                 # Travel the layer outline at ~120 mm/s of simulated time.
@@ -447,14 +467,20 @@ class SimulatedPrinter:
             return event
 
     def _maybe_tool_change(self, layer):
+        if self.job.get("object_tools"):
+            return              # the file says which head prints each object (see advance)
         required = [r["toolhead"] for r in self.job["required_filament"]]
         if len(required) < 2 or layer % 12:
             return
-        live = self.live
-        current = live["active_toolhead"]
+        current = self.live["active_toolhead"]
         nxt = required[(required.index(current) + 1) % len(required)] \
             if current in required else required[0]
-        if nxt == current:
+        self._switch_to(nxt, layer)
+
+    def _switch_to(self, nxt, layer):
+        live = self.live
+        current = live["active_toolhead"]
+        if nxt == current or nxt not in live["toolheads"]:
             return
         if current in live["toolheads"]:
             old = live["toolheads"][current]
@@ -782,6 +808,22 @@ def cancel_print():
                 data["target_temperature"] = 0.0
         printer.log("cancel", cancelled_file)
         return printer.snapshot()
+
+
+def gcode_version(filename):
+    """(size, modified) of a file on a real printer, for knowing when it changed."""
+    printer = _current()
+    if not printer.real:
+        raise ValueError("A simulated printer keeps no file contents")
+    return printer.gcode_version(filename)
+
+
+def fetch_gcode(filename, max_bytes):
+    """The bytes of a file as a real printer holds it. Simulated printers keep none."""
+    printer = _current()
+    if not printer.real:
+        raise ValueError("A simulated printer keeps no file contents")
+    return printer.fetch_gcode(filename, max_bytes)
 
 
 def upload_file(filename, size_bytes=0, data=None):

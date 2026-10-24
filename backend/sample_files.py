@@ -487,6 +487,55 @@ def benchy_gear_vase_gcode():
                          every, (242, 106, 27))
 
 
+TWO_COLOUR_DECK_MM = 15.0        # where the Benchy's hull ends and its cabin begins (measured from the model)
+TWO_COLOUR_PAIR = (("3DBenchy.stl_id_0_copy_0", 112.0, (0, 1)),     # orange hull, black cabin
+                   ("3DBenchy.stl_id_0_copy_1", 158.0, (1, 0)))     # black hull, orange cabin
+
+
+@functools.lru_cache(maxsize=None)
+def two_colour_benchy_pair_gcode():
+    """
+    Two Benchies in two colours, the way a U1 prints a two-colour plate: one
+    with an orange hull (T0) and a black cabin (T1), its twin the other way
+    round. The colour changes at the deck (15 mm, measured from the model's
+    own cross-sections), and every layer above the first prints both boats,
+    swapping heads between them. Each boat is labelled for Skip one object.
+    """
+    objects = []
+    for name, y, tools in TWO_COLOUR_PAIR:
+        tris = sample_slicer.place(benchy_triangles(), CENTER, y)
+        zs, layers = _cut(tris)
+        objects.append((name, tris, zs, layers, tools))
+
+    def body(w):
+        for name, tris, _, _, _ in objects:
+            xs = [p[0] for t in tris for p in t]
+            ys = [p[1] for t in tris for p in t]
+            x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+            poly = f"[[{x0:.3f},{y0:.3f}],[{x1:.3f},{y0:.3f}],[{x1:.3f},{y1:.3f}],[{x0:.3f},{y1:.3f}]]"
+            w.cmd(f"EXCLUDE_OBJECT_DEFINE NAME={name} CENTER={(x0 + x1) / 2:.3f},{(y0 + y1) / 2:.3f} POLYGON={poly}")
+        all_z = sorted({z for _, _, zs, _, _ in objects for z in zs})
+        w.layers = len(all_z)
+        for li, z in enumerate(all_z):
+            w.cmd(";LAYER_CHANGE")
+            w.cmd(f";Z:{z:.2f}")
+            w.travel(w.x, w.y, z)
+            todo = [(name, layers, tools[0] if z <= TWO_COLOUR_DECK_MM else tools[1])
+                    for name, _, zs, layers, tools in objects if li < len(zs)]
+            # The boat whose colour is already in the nozzle goes first: one swap a layer, not two.
+            todo.sort(key=lambda o: o[2] != w.tool)
+            for name, layers, tool in todo:
+                w.cmd(f"EXCLUDE_OBJECT_START NAME={name}")
+                sample_slicer.print_layer(w, layers, li, z, li == 0, region_tool=tool)
+                w.cmd(f"EXCLUDE_OBJECT_END NAME={name}")
+        w.tool_change(0)
+
+    every = [t for _, tris, _, _, _ in objects for t in tris]
+    return _sliced_gcode("Two 3DBenchy boats in two colours: orange hull and black cabin, and the reverse ("
+                         + BENCHY_NOTE + ")", ["#F26A1B", "#1C1C1E"], ["PLA", "PLA"], body, every,
+                         (242, 106, 27))
+
+
 @functools.lru_cache(maxsize=None)
 def three_colour_coaster_gcode():
     """
@@ -687,6 +736,7 @@ SAMPLES = {
     "3dbenchy.stl": benchy_stl,
     "3dbenchy_pla.gcode": benchy_gcode,
     "benchy_gear_vase_skip_one.gcode": benchy_gear_vase_gcode,
+    "two_benchies_two_colours.gcode": two_colour_benchy_pair_gcode,
     "hex_coaster_three_colour.gcode": three_colour_coaster_gcode,
     "unsafe_example_purge_past_bed.gcode": unsafe_gear_gcode,
     "spur_gear_24t.stl": gear_stl,

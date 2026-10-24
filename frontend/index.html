@@ -358,7 +358,7 @@
     <div class="live-row now-row">
       <section class="card liquid-glass twin-card" data-tint id="twin-card">
         <div class="card-head twin-head">
-          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do</p></div>
+          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do, and the print grows layer by layer in its real colours</p></div>
           <div class="twin-switches">
             <div class="pill-toggle twin-modes" id="twin-modes" role="group" aria-label="Show as">
               <button type="button" data-mode="model" class="active" aria-pressed="true">3D model</button>
@@ -368,11 +368,12 @@
               <button type="button" data-view="iso" class="active" aria-pressed="true">Angled</button>
               <button type="button" data-view="front" aria-pressed="false">Front</button>
               <button type="button" data-view="top" aria-pressed="false">Top</button>
+              <button type="button" data-view="print" aria-pressed="false" title="Close up on the print">Print</button>
             </div>
           </div>
         </div>
         <div id="twin-host" class="twin-host"></div>
-        <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout and which side feeds which head are estimated.</p>
+        <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them.</p>
       </section>
       <div class="col-stack now-side">
         <section class="card liquid-glass">

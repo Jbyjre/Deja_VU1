@@ -47,7 +47,7 @@ const Twin3D = (() => {
   const DOCK = { y: 316, tip: TIP, xs: [18, 76, 134, 192] };
   const HEAD = { w: 54, d: 52, h: 96 };
   const HUB = { upper: [245, 341], lower: [115, 142] };   // side-panel spool positions: [y, z]
-  const VIEWS = { iso: [-32, 20], front: [0, 3], top: [0, 89] };
+  const VIEWS = { iso: [-32, 20], front: [0, 3], top: [0, 89], print: [-22, 40] };
 
   const srgb = (hex) => {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
@@ -78,6 +78,11 @@ const Twin3D = (() => {
     cable:    { c: lin(.04, .04, .045), r: .45, m: 0 },
     flange:   { c: lin(.06, .06, .07), r: .3, m: 0, a: .82, kind: 'clear' },
     rubber:   { c: lin(.03, .03, .03), r: .9, m: 0 },
+    extrusion:{ c: lin(.62, .64, .67), r: .42, m: 1, kind: 'brushed' },   // anodised aluminium frame
+    motor:    { c: lin(.06, .06, .065), r: .55, m: .2 },
+    belt:     { c: lin(.05, .05, .055), r: .7, m: 0 },
+    screw:    { c: lin(.8, .8, .82), r: .25, m: 1, kind: 'thread' },
+    ghost:    { c: lin(.9, .91, .93), r: .3, m: 0, a: .16, kind: 'ghost' },  // the case, seen through
   };
 
   /* ---- geometry: interleaved position, normal, uv ------------------- */
@@ -323,8 +328,17 @@ const Twin3D = (() => {
   uniform vec3 uBase; uniform float uRough; uniform float uMetal; uniform float uAlpha; uniform float uGlow;
   uniform int uKind; uniform sampler2D uTex; uniform sampler2D uShadow; uniform vec3 uEye; uniform float uSel; uniform vec3 uBg;
   uniform vec3 uKey; uniform vec3 uFill; uniform vec4 uFoot;
+  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes;
   out vec4 outColor;
   const float PI = 3.14159265;
+  /* The studio backdrop: lighter above, a soft vignette. The floor uses
+     the same colour per pixel, so it melts into the backdrop with no edge. */
+  vec3 backdrop(vec2 fc) {
+    vec2 q = fc / uRes;
+    vec3 c = mix(uBgBot, uBgTop, smoothstep(0.0, 1.0, q.y));
+    float v = length((q - vec2(0.5, 0.56)) * vec2(1.0, 0.85));
+    return c * (1.0 - 0.09 * smoothstep(0.3, 0.95, v));
+  }
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   /* A photo studio: a soft overhead box, a strip light each side, a pale
      sweep behind and a grey floor. Rougher surfaces see it more blurred. */
@@ -351,13 +365,16 @@ const Twin3D = (() => {
   float ggx(float nh, float a) { float a2 = a * a; float d = nh * nh * (a2 - 1.0) + 1.0; return a2 / (PI * d * d); }
   vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
   void main() {
+    // The print grows to the nozzle's height (mode 1); its rest is drawn above (mode 2).
+    if (uClip.x > 0.5 && uClip.x < 1.5 && vW.z > uClip.y) discard;
+    if (uClip.x > 1.5 && vW.z <= uClip.y) discard;
     vec3 N = normalize(vN), V = normalize(uEye - vP);
     if (uKind == 6) {
       // The floor: only the shadow and a soft contact darkening show.
       float sh = shadowAt(vL, 0.002);
       vec2 q = (vW.xy - uFoot.xy) / uFoot.zw;
       float ao = 1.0 - smoothstep(0.55, 1.15, length(q));
-      vec3 c = uBg * (1.0 - 0.24 * (1.0 - sh) * (1.0 - smoothstep(0.7, 1.6, length(q))) - 0.2 * ao);
+      vec3 c = backdrop(gl_FragCoord.xy) * (1.0 - 0.26 * (1.0 - sh) * (1.0 - smoothstep(0.7, 1.6, length(q))) - 0.22 * ao);
       outColor = vec4(pow(c, vec3(1.0 / 2.2)), 1.0); return;
     }
     if (dot(N, V) < 0.0) N = -N;
@@ -368,6 +385,15 @@ const Twin3D = (() => {
     if (uKind == 4) { float l = fract(vW.z / 1.4); base *= 0.9 + 0.1 * smoothstep(0.1, 0.5, l) * smoothstep(0.9, 0.5, l); }
     if (uKind == 5) { float w = abs(sin((vW.x + vW.y + vW.z) * 1.7)); base *= 0.85 + 0.3 * w; }
     if (uKind == 7) { float rr = length(vW.yz - uFoot.xy); base *= 0.86 + 0.14 * smoothstep(0.3, 0.7, fract(rr / 1.75)); }
+    if (uKind == 9) {
+      // Printed plastic: a faint ridge per layer, fading out where layers
+      // are finer than a pixel (no shimmer when zoomed out).
+      float t = vW.z / uLayerH, f = fract(t), aa = clamp(fwidth(t) * 1.4, 0.0, 1.0);
+      float ridge = smoothstep(0.0, 0.3, f) * smoothstep(1.0, 0.7, f);
+      base *= mix(0.8 + 0.2 * ridge, 0.92, aa); rough = 0.48;
+    }
+    if (uKind == 11) { float n = hash(vec2(floor(vW.z * 3.0 + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))); base *= 0.93 + 0.1 * n; }
+    if (uKind == 12) { base *= 0.72 + 0.28 * smoothstep(0.15, 0.85, abs(fract(vW.z / 2.0) * 2.0 - 1.0)); }
     vec3 F0 = mix(vec3(0.04), base, uMetal);
     vec3 col = vec3(0.0);
     float sh = shadowAt(vL, 0.0025);
@@ -392,6 +418,13 @@ const Twin3D = (() => {
     if (uGlow > 0.0) col = mix(col, base * 1.25, uGlow);
     // Picked: a blue glow round its edges, so its own colour stays true.
     if (uSel > 0.0) { float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0); col = col * (1.0 + 0.1 * uSel) + vec3(0.1, 0.32, 1.0) * (0.12 + 0.75 * fr) * uSel; }
+    // The layer being laid now reads a touch brighter: fresh, still warm plastic.
+    if (uKind == 9 && uClip.x > 0.5 && uClip.x < 1.5 && vW.z > uClip.y - uLayerH * 1.01) col += base * 0.35 + vec3(0.03);
+    if (uKind == 10) { // the case, see-through: an outline of light, no body
+      float f = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+      col = mix(col, env(R, 0.25), 0.55);
+      alpha = clamp(uAlpha + f * 0.42, 0.0, 0.75);
+    }
     if (uKind == 8) { // glass: mostly reflection, a little tint
       float f = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
       col = base * 0.35 + env(R, 0.03) * (0.06 + 0.88 * f);
@@ -400,25 +433,35 @@ const Twin3D = (() => {
     outColor = vec4(pow(aces(col * 0.95), vec3(1.0 / 2.2)), alpha);
   }`;
   const SHADOW_VS = `#version 300 es
-  in vec3 aPos; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS;
-  void main() { vec3 p = aPos * uS + uT; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
+  in vec3 aPos; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; out float vZ;
+  void main() { vec3 p = aPos * uS + uT; vZ = p.z; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
   const SHADOW_FS = `#version 300 es
-  precision mediump float; out vec4 o; void main() { o = vec4(1.0); }`;
+  precision highp float; in float vZ; uniform vec2 uClip; out vec4 o;
+  void main() { if (uClip.x > 0.5 && vZ > uClip.y) discard; o = vec4(1.0); }`;
   /* The drawing's first pass: surface direction and part id, per pixel. */
   const GB_FS = `#version 300 es
   precision highp float;
-  in vec3 vN; uniform float uId; out vec4 o;
-  void main() { o = vec4(normalize(vN) * 0.5 + 0.5, uId / 255.0); }`;
+  in vec3 vN; in vec3 vW; uniform float uId; uniform vec2 uClip; out vec4 o;
+  void main() { if (uClip.x > 0.5 && vW.z > uClip.y) discard; o = vec4(normalize(vN) * 0.5 + 0.5, uId / 255.0); }`;
   /* Picking: each pickable part paints its id. */
   const ID_FS = `#version 300 es
-  precision mediump float; uniform float uId; out vec4 o; void main() { o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`;
+  precision highp float; in vec3 vW; uniform float uId; uniform vec2 uClip; out vec4 o;
+  void main() { if (uClip.x > 0.5 && vW.z > uClip.y) discard; o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`;
+  const BG_FS = `#version 300 es
+  precision highp float; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; out vec4 o;
+  void main() {
+    vec2 q = gl_FragCoord.xy / uRes;
+    vec3 c = mix(uBgBot, uBgTop, smoothstep(0.0, 1.0, q.y));
+    c *= 1.0 - 0.09 * smoothstep(0.3, 0.95, length((q - vec2(0.5, 0.56)) * vec2(1.0, 0.85)));
+    o = vec4(pow(c, vec3(1.0 / 2.2)), 1.0);
+  }`;
   const POST_VS = `#version 300 es
   out vec2 vUV; void main() { vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2); vUV = p; gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
   /* The drawing's ink: an edge wherever depth jumps, the surface turns
      sharply, or one part meets another. Picked parts ink blue, faults red. */
   const INK_FS = `#version 300 es
   precision highp float;
-  in vec2 vUV; uniform sampler2D uG; uniform sampler2D uD; uniform vec2 uPx; uniform float uSelId; uniform float uFaultMask[8]; uniform float uDepthK;
+  in vec2 vUV; uniform sampler2D uG; uniform sampler2D uD; uniform vec2 uPx; uniform float uSelId; uniform float uFaultMask[8]; uniform float uDepthK; uniform vec3 uToolCol[4];
   out vec4 o;
   float depthAt(vec2 uv) { return texture(uD, uv).r; }
   void main() {
@@ -432,6 +475,8 @@ const Twin3D = (() => {
       float nn = dot(g.rgb * 2.0 - 1.0, g2.rgb * 2.0 - 1.0);
       float id2 = floor(g2.a * 255.0 + 0.5);
       float e = max(smoothstep(0.004, 0.012, dz), smoothstep(0.88, 0.6, nn));
+      // The print (ids 200 and up, one per head): its outline only, not every layer's wall.
+      if (idHere > 199.5 && id2 == idHere) e = smoothstep(0.03, 0.08, dz);
       if (id2 != idHere) e = 1.0;
       if (d >= 0.9999 && d2 >= 0.9999) e = 0.0;
       edge = max(edge, e);
@@ -439,6 +484,7 @@ const Twin3D = (() => {
     }
     vec3 paper = vec3(1.0);
     vec3 fill = d < 0.9999 ? mix(vec3(0.955), vec3(0.985), clamp(g.b * 1.2 - 0.1, 0.0, 1.0)) : paper;
+    if (d < 0.9999 && idHere > 199.5 && idHere < 203.5) fill = mix(vec3(1.0), uToolCol[int(idHere - 200.0)], 0.55);   // the print, washed in its colour
     if (d < 0.9999 && idHere == uSelId && uSelId > 0.5) fill = mix(fill, vec3(0.82, 0.88, 1.0), 0.6);
     vec3 ink = selEdge > 0.5 ? vec3(0.16, 0.36, 0.92) : vec3(0.13, 0.14, 0.17);
     o = vec4(mix(fill, ink, edge), 1.0);
@@ -472,7 +518,7 @@ const Twin3D = (() => {
     };
     let P;
     try {
-      P = { main: compile(VS, FS), shadow: compile(SHADOW_VS, SHADOW_FS), gbuf: compile(VS, GB_FS), id: compile(VS, ID_FS), ink: compile(POST_VS, INK_FS) };
+      P = { main: compile(VS, FS), shadow: compile(SHADOW_VS, SHADOW_FS), gbuf: compile(VS, GB_FS), id: compile(VS, ID_FS), ink: compile(POST_VS, INK_FS), bg: compile(POST_VS, BG_FS) };
     } catch (err) { console.warn('Twin3D:', err.message); wrap.remove(); return null; }
 
     const upload = (g) => {
@@ -546,8 +592,13 @@ const Twin3D = (() => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
-    const cam = { yaw: VIEWS.iso[0], pitch: VIEWS.iso[1], zoom: 1, tx: 0, ty: 0, vyaw: 0, vpitch: 0 };
+    // focus: 0 frames the whole machine, 1 the print on the plate (the Print view).
+    const cam = { yaw: VIEWS.iso[0], pitch: VIEWS.iso[1], zoom: 1, tx: 0, ty: 0, vyaw: 0, vpitch: 0, focus: 0 };
     let state = null, pos = [135, 135, 0], selected = '', W = 0, H = 0, queued = false, style = 'model', showCase = false;
+    // The model's own options: the case closed, see-through or off; the
+    // print on the plate (and, faintly, what is still to come); name tags.
+    let caseMode = 'closed', showPrint = true, showRest = true, showTags = true;
+    let print = null, printMeshes = [], pickNames = [];
     let partsMeshes = [], partsKey = '', loopMeshes = {}, loopKey = '', screenKey = '', shadowKey = '', labels = [], viewName = 'iso';
     let viewChanged = () => {};
 
@@ -566,8 +617,17 @@ const Twin3D = (() => {
       if (style === 'drawing' && !showCase) return { x0: -70, x1: 340, y0: -40, y1: 370, z0: 60, z1: 540 };
       return ENVELOPE;
     }
+    /* Where the Print view looks: the middle of what's printed so far, on
+     * the bed wherever the bed has dropped to. */
+    function printFocus() {
+      const z = Math.max(0, Math.min(BED, pos[2])), bedTop = TIP - z;
+      const h = print ? Math.min(print.top, Math.max(z, 8)) : Math.max(z, 20);
+      const c = print ? print.centre : [135, 135];
+      return [c[0], bedTop + h * 0.5, -c[1]];
+    }
     function matrices() {
-      const b = bounds(), centre = [(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, -(b.y0 + b.y1) / 2];
+      const b = bounds(), box = [(b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, -(b.y0 + b.y1) / 2];
+      const fp = printFocus(), centre = box.map((c, i) => c + (fp[i] - c) * cam.focus);
       const yaw = cam.yaw * Math.PI / 180, pitch = cam.pitch * Math.PI / 180;
       const dir = [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
       const right = [Math.cos(yaw), 0, -Math.sin(yaw)], up = [-Math.sin(yaw) * Math.sin(pitch), Math.cos(pitch), -Math.cos(yaw) * Math.sin(pitch)];
@@ -582,9 +642,11 @@ const Twin3D = (() => {
           const p = [x, z, -y, 1], v = [0, 1, 2].map(j => view[j] * p[0] + view[4 + j] * p[1] + view[8 + j] * p[2] + view[12 + j]);
           mx = Math.max(mx, Math.abs(v[0])); my = Math.max(my, Math.abs(v[1]));
         }
-        const room = showCase ? 70 : 36;
-        const half = Math.max(mx * 1.1 / aspect, my * 1.1 + room) / cam.zoom;
-        const VP = mul(ortho(-half * aspect, half * aspect, -half - room / cam.zoom, half - room / cam.zoom, 1, 4000), view);
+        const room = showCase ? 86 : 56;
+        // Wide sheets keep a column on the left for the parts list.
+        const reserve = W >= 1000 ? 404 : W >= 640 ? 196 : 0, wd = Math.max(1, W - reserve), aspectEff = wd / H;
+        const half = Math.max(mx * 1.1 / aspectEff, my * 1.1 + room) / cam.zoom, k = 2 * half / H;
+        const VP = mul(ortho(-(reserve + wd / 2) * k, (wd / 2) * k, -half - room / cam.zoom, half - room / cam.zoom, 1, 4000), view);
         return { VP, eye: target.map((c, i) => c + dir[i] * 2000), pxPerMm: H / (2 * half), dir };
       }
       const fov = 26 * Math.PI / 180;
@@ -598,6 +660,50 @@ const Twin3D = (() => {
       return [(o[0] / o[3] * 0.5 + 0.5) * W, (1 - (o[1] / o[3] * 0.5 + 0.5)) * H, o[3]];
     };
 
+    /* ---- the print: its own G-code's outside walls, per toolhead ----
+     * From /api/print/preview (backend/print_preview.py): each path is
+     * [layer, object, x0, y0, then steps] in hundredths of a millimetre.
+     * Walls become upright ribbons one layer tall; top surfaces lie flat.
+     * One mesh per toolhead and object, so each takes its head's colour
+     * and a skipped object can be greyed out. */
+    function setPrint(data) {
+      printMeshes.forEach(m => free(m.mesh)); printMeshes = []; print = null;
+      if (!data || !data.tools || !Array.isArray(data.layers) || !data.layers.length) { queue(); return; }
+      const L = data.layers, k = data.unit_mm || 0.01, groups = new Map();
+      const group = (tool, obj) => { const key = `${tool}|${obj}`; if (!groups.has(key)) groups.set(key, { tool, obj, g: geo() }); return groups.get(key).g; };
+      let hMin = Infinity, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+      for (const [tool, sets] of Object.entries(data.tools)) {
+        for (const path of sets.walls || []) {
+          const layer = L[path[0]]; if (!layer) continue;
+          const z1 = layer.z, z0 = z1 - (layer.h || 0.2), g = group(tool, path[1]);
+          hMin = Math.min(hMin, layer.h || 0.2);
+          let x = path[2] * k, y = path[3] * k;
+          grow(x, y);
+          for (let i = 4; i + 1 < path.length; i += 2) {
+            const nx = x + path[i] * k, ny = y + path[i + 1] * k, dx = nx - x, dy = ny - y, l = Math.hypot(dx, dy);
+            grow(nx, ny);
+            if (l > 1e-4) { const n = [dy / l, -dx / l, 0]; quadV(g, [[x, y, z0], n], [[nx, ny, z0], n], [[nx, ny, z1], n], [[x, y, z1], n]); }
+            x = nx; y = ny;
+          }
+        }
+        for (const path of sets.fill || []) {
+          const layer = L[path[0]]; if (!layer) continue;
+          const z = layer.z, g = group(tool, path[1]), up = [0, 0, 1], w = 0.24;
+          let x = path[2] * k, y = path[3] * k;
+          for (let i = 4; i + 1 < path.length; i += 2) {
+            const nx = x + path[i] * k, ny = y + path[i + 1] * k, dx = nx - x, dy = ny - y, l = Math.hypot(dx, dy);
+            if (l > 1e-4) { const ox = -dy / l * w, oy = dx / l * w; quadV(g, [[x - ox, y - oy, z], up], [[nx - ox, ny - oy, z], up], [[nx + ox, ny + oy, z], up], [[x + ox, y + oy, z], up]); }
+            x = nx; y = ny;
+          }
+        }
+      }
+      groups.forEach(({ tool, obj, g }) => { if (g.v.length) printMeshes.push({ tool, obj, mesh: upload(g) }); });
+      print = { file: data.file, layers: L, objects: data.objects || [], colours: data.file_colours || [], layerH: isFinite(hMin) ? hMin : 0.2, top: L[L.length - 1].z,
+        centre: isFinite(x0) ? [(x0 + x1) / 2, (y0 + y1) / 2] : [135, 135], size: isFinite(x0) ? Math.max(x1 - x0, y1 - y0, L[L.length - 1].z) : 60 };
+      queue();
+    }
+
     /* ---- what moves: everything that depends on the printer's state ---- */
     function liveScene() {
       const st = state || {}, [x, y, z] = pos, bedTop = TIP - Math.max(0, Math.min(BED, z));
@@ -605,7 +711,7 @@ const Twin3D = (() => {
       const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
       const printing = ['printing', 'paused'].includes(st.state);
       const items = [];
-      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, alpha: o.alpha });
+      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool });
       // Bed: plate, its label strip, heater, carrier.
       const bedId = 2, bedSel = selected === 'bed' ? 1 : 0, heat = st.bed && st.bed.target > 0 ? Math.min(1, (st.bed.temp || 0) / 110) : 0;
       add(dyn.carrier.mesh, MAT.rail, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
@@ -615,22 +721,43 @@ const Twin3D = (() => {
       // Gantry: the X rods at the head's Y, its two Y carriages, the carriage.
       add(dyn.xbeam.mesh, MAT.carbon, { t: [0, y, 0] });
       add(dyn.ycar.mesh, MAT.rail, { t: [0, y, 0] });
+      add(dyn.xbelt.mesh, MAT.belt, { t: [0, y, 0] });
       add(dyn.carriage.mesh, MAT.body, { t: [x, y, 0] });
       // The parts, grown to the current height.
       const plate = st.objects && Array.isArray(st.objects.list) ? st.objects : null;
-      const key = plate && printing ? JSON.stringify(plate.list.map(o => o.polygon)) : '';
+      const finished = st.state === 'complete';
+      const real = print && print.file === st.current_file && (printing || finished);
+      const key = plate && printing && !real ? JSON.stringify(plate.list.map(o => o.polygon)) : '';
       if (key !== partsKey) {
         partsMeshes.forEach(p => free(p.mesh)); partsMeshes = []; partsKey = key;
-        if (plate && printing) plate.list.forEach(o => { if (Array.isArray(o.polygon) && o.polygon.length >= 3) partsMeshes.push({ name: o.name, mesh: upload(prism(geo(), o.polygon)) }); });
+        if (key) plate.list.forEach(o => { if (Array.isArray(o.polygon) && o.polygon.length >= 3) partsMeshes.push({ name: o.name, mesh: upload(prism(geo(), o.polygon)) }); });
       }
       const activeColour = active ? (srgb(st.toolheads[active].filament_color_hex) || lin(.6, .6, .62)) : lin(.6, .6, .62);
-      if (partsMeshes.length) {
+      pickNames = [];
+      if (real) {
+        // The real print: each head's walls in the colour loaded in it (the
+        // file's own colour if the head reports none), up to the layer being
+        // printed; the rest of the print faintly above, if asked for.
+        const L = print.layers, cur = st.layer && st.layer.current ? Math.min(L.length, st.layer.current) : 0;
+        const clipZ = finished ? print.top + 1 : cur ? L[cur - 1].z + 0.001 : Math.max(0.2, z) + 0.001;
+        const excluded = new Set((plate && plate.excluded) || []);
+        pickNames = print.objects.slice();
+        if (showPrint) printMeshes.forEach(m => {
+          const head = st.toolheads && st.toolheads[m.tool], name = print.objects[m.obj];
+          const colour = (head && srgb(head.filament_color_hex)) || srgb(print.colours[+String(m.tool).slice(1)]) || lin(.6, .6, .62);
+          const skip = name && excluded.has(name);
+          const id = m.obj >= 0 ? 40 + m.obj : 0, sel = name && selected === `obj:${name}` ? 1 : 0;
+          add(m.mesh, { c: skip ? lin(.55, .55, .57) : colour, r: .5, m: 0, kind: 'print' }, { t: [0, 0, bedTop], id, sel, clip: [1, bedTop + clipZ], layerH: print.layerH, printed: true, tool: +String(m.tool).slice(1) || 0 });
+          if (showRest && !finished && !skip) add(m.mesh, { ...MAT.ghost, c: colour, a: .1 }, { t: [0, 0, bedTop], clip: [2, bedTop + clipZ], rest: true });
+        });
+      } else if (partsMeshes.length) {
+        pickNames = partsMeshes.map(p => p.name);
         const excluded = new Set((plate && plate.excluded) || []), h = Math.max(0.6, Math.min(BED, z));
         partsMeshes.forEach((p, i) => {
           const skip = excluded.has(p.name);
-          add(p.mesh, { c: skip ? lin(.6, .6, .62) : activeColour, r: .55, m: 0, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, skip ? Math.min(h, 2) : h], id: 40 + i, sel: selected === `obj:${p.name}` ? 1 : 0 });
+          if (showPrint) add(p.mesh, { c: skip ? lin(.6, .6, .62) : activeColour, r: .55, m: 0, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, skip ? Math.min(h, 2) : h], id: 40 + i, sel: selected === `obj:${p.name}` ? 1 : 0 });
         });
-      } else if (printing) {
+      } else if (printing && showPrint) {
         add(dyn.blob.mesh, { c: activeColour, r: .55, m: 0, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, Math.max(0.6, Math.min(BED, z))] });
       }
       // Heads: parked in their docks, the active one on the carriage.
@@ -640,11 +767,11 @@ const Twin3D = (() => {
         const hx = on ? x : DOCK.xs[i % 4], hy = on ? y - 30 : DOCK.y, tipZ = on ? TIP : DOCK.tip;
         const fault = d.status === 'error', colour = srgb(d.filament_color_hex) || lin(.6, .6, .62);
         const hot = (d.temperature || 0) > 60;
-        const t = [hx, hy, tipZ];
-        add(dyn.head.mesh, fault ? { ...MAT.head, c: lin(.42, .06, .05) } : MAT.head, { t, id, sel });
-        add(dyn.headFace.mesh, MAT.decal, { t, id, sel, tex: tex.head });
-        add(dyn.headYellow.mesh, MAT.yellow, { t, id, sel });
-        add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: 0.9 });
+        const t = [hx, hy, tipZ], body = on;   // the working head's body turns to glass in the Print view
+        add(dyn.head.mesh, fault ? { ...MAT.head, c: lin(.42, .06, .05) } : MAT.head, { t, id, sel, body });
+        add(dyn.headFace.mesh, MAT.decal, { t, id, sel, tex: tex.head, body });
+        add(dyn.headYellow.mesh, MAT.yellow, { t, id, sel, body });
+        add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: 0.9, body });
         add(dyn.nozzle.mesh, MAT.steel, { t, id });
         add(dyn.block.mesh, { c: hot ? lin(.95, .45, .18) : lin(.16, .16, .17), r: .5, m: 0 }, { t, id, glow: hot ? Math.min(0.55, ((d.temperature || 0) - 60) / 300) : 0 });
         // Filament loop: from the top of the head up and back down to the rear wall.
@@ -674,10 +801,10 @@ const Twin3D = (() => {
         const lm = loopMeshes[name];
         // The loops count as part of the case in the drawing: they would
         // otherwise run off the top of a sheet sized for the mechanism.
-        add(lm.cable, MAT.cable, { id, lining: true });
-        add(lm.fil, { c: colour, r: .4, m: 0 }, { id, lining: true });
-        add(lm.ptfe, MAT.tube, { id, lining: true });
-        add(lm.clips, MAT.cable, { id, lining: true });
+        add(lm.cable, MAT.cable, { id, lining: true, loop: true });
+        add(lm.fil, { c: colour, r: .4, m: 0 }, { id, lining: true, loop: true });
+        add(lm.ptfe, MAT.tube, { id, lining: true, loop: true });
+        add(lm.clips, MAT.cable, { id, lining: true, loop: true });
         const at = style === 'drawing' ? [hx, hy, tipZ + HEAD.h + 14] : [hx, hy, tipZ + HEAD.h + 24];
         labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature });
       });
@@ -704,34 +831,60 @@ const Twin3D = (() => {
       gl.uniform3fv(u.uBase, c); gl.uniform1f(u.uRough, mat.r); gl.uniform1f(u.uMetal, mat.m);
       gl.uniform1f(u.uAlpha, it.alpha != null ? it.alpha : mat.a != null ? mat.a : 1);
       gl.uniform1f(u.uGlow, it.glow != null ? it.glow : mat.glow || 0);
-      const kind = { tex: 1, pei: 2, spool: 7, layers: 4, carbon: 5, glass: 8, clear: 0 }[it.kind || mat.kind] || 0;
+      const kind = { tex: 1, pei: 2, spool: 7, layers: 4, carbon: 5, glass: 8, clear: 0, print: 9, ghost: 10, brushed: 11, thread: 12 }[it.kind || mat.kind] || 0;
       gl.uniform1i(u.uKind, it.tex ? 1 : kind);
       if (it.tex) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, it.tex); gl.uniform1i(u.uTex, 0); }
       gl.uniform1f(u.uSel, it.sel || 0);
       if (kind === 7) gl.uniform4f(u.uFoot, it.t[1], it.t[2], 0, 0);
+      gl.uniform1f(u.uLayerH, it.layerH || 0.2);
     }
     function drawItem(prog, it) {
       gl.uniform3fv(prog.u.uT, it.t); gl.uniform3fv(prog.u.uS, it.s);
+      if (prog.u.uClip) gl.uniform2f(prog.u.uClip, it.clip ? it.clip[0] : 0, it.clip ? it.clip[1] : 0);
       gl.bindVertexArray(it.mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, it.mesh.count);
     }
     function allItems(live) {
-      const st = parts.map(p => ({ mesh: p.mesh, mat: MAT[p.mat], t: [0, 0, 0], s: [1, 1, 1], id: p.id || 0, tex: p.tex ? tex[p.tex] : null, shell: p.shell, lining: p.lining, kind: p.kind, glow: p.glow, sel: p.pick && selected === p.pick ? 1 : 0 }));
+      const st = parts.map(p => ({ mesh: p.mesh, mat: MAT[p.mat], t: [0, 0, 0], s: [1, 1, 1], id: p.id || 0, tex: p.tex ? tex[p.tex] : null, shell: p.shell, lining: p.lining, frame: p.frame, kind: p.kind, glow: p.glow, sel: p.pick && selected === p.pick ? 1 : 0 }));
       return st.concat(live.items);
+    }
+    /* The model's case: closed as on the desk, see-through (an outline of
+     * light), or off (the frame, drive and print in the open). */
+    function withCase(items) {
+      // Close up on the print, a closed case would only show its own wall:
+      // it turns to glass for as long as the Print view is on.
+      const close = cam.focus > 0.5, mode = caseMode === 'closed' && close ? 'glass' : caseMode;
+      if (mode === 'closed' && !close) return items;
+      const out = [];
+      for (const it of items) {
+        if (close && it.body) { if (!it.tex) out.push({ ...it, mat: { ...MAT.ghost, c: lin(.2, .2, .22), a: .2 }, kind: 'ghost', glow: 0 }); continue; }
+        const chamber = it.lining && !it.loop;
+        if (mode === 'open' && (it.shell || chamber)) continue;
+        if (mode === 'glass') {
+          if (chamber) continue;
+          if (it.shell) {
+            if (it.tex && it.tex !== tex.screen) continue;
+            if (!it.tex) { out.push({ ...it, mat: MAT.ghost, kind: 'ghost', colour: null }); continue; }
+          }
+        }
+        out.push(it);
+      }
+      return out;
     }
 
     function render() {
       queued = false;
       if (!state || !resize()) return;
       screenUpdate();
-      const live = liveScene(), items = allItems(live);
+      const live = liveScene(), all = allItems(live);
       const M = matrices();
+      if (style === 'drawing') { renderDrawing(M, all, live); return; }
+      const items = withCase(all);
       const opaque = items.filter(it => !(it.mat.a != null && it.mat.a < 1));
       const clear = items.filter(it => it.mat.a != null && it.mat.a < 1);
-
-      if (style === 'drawing') { renderDrawing(M, items, live); return; }
       inkSvg.innerHTML = '';
       // Shadows: only when something that casts one has moved.
-      const sk = JSON.stringify([pos.map(v => Math.round(v)), state.state, partsKey.length, Object.keys(loopMeshes).map(k => loopMeshes[k].key)]);
+      const sk = JSON.stringify([pos.map(v => Math.round(v)), state.state, partsKey.length, Object.keys(loopMeshes).map(k => loopMeshes[k].key),
+        caseMode, cam.focus > 0.5, showPrint, print && print.file, state.layer && state.layer.current]);
       if (sk !== shadowKey) {
         shadowKey = sk;
         gl.bindFramebuffer(gl.FRAMEBUFFER, shadowFb); gl.viewport(0, 0, SH, SH);
@@ -743,16 +896,21 @@ const Twin3D = (() => {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
       gl.viewport(0, 0, canvas.width, canvas.height);
-      const bg = lin(.952, .958, .968);
-      gl.clearColor(...bg.map(v => Math.pow(v, 1 / 2.2)), 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.enable(gl.DEPTH_TEST); gl.depthMask(true); gl.disable(gl.BLEND);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // The studio backdrop, then the scene over it.
+      const bgTop = lin(.968, .972, .98), bgBot = lin(.885, .892, .905);
+      gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.useProgram(P.bg.p);
+      gl.uniform3fv(P.bg.u.uBgTop, bgTop); gl.uniform3fv(P.bg.u.uBgBot, bgBot); gl.uniform2f(P.bg.u.uRes, canvas.width, canvas.height);
+      gl.bindVertexArray(null); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
       const u = P.main.u; gl.useProgram(P.main.p);
       gl.uniformMatrix4fv(u.uVP, false, M.VP); gl.uniformMatrix4fv(u.uLVP, false, lightVP);
-      gl.uniform3fv(u.uEye, M.eye); gl.uniform3fv(u.uKey, KEY); gl.uniform3fv(u.uFill, FILL); gl.uniform3fv(u.uBg, bg);
+      gl.uniform3fv(u.uEye, M.eye); gl.uniform3fv(u.uKey, KEY); gl.uniform3fv(u.uFill, FILL);
+      gl.uniform3fv(u.uBgTop, bgTop); gl.uniform3fv(u.uBgBot, bgBot); gl.uniform2f(u.uRes, canvas.width, canvas.height);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, shadowTex); gl.uniform1i(u.uShadow, 1);
       // The floor first, then everything solid.
       gl.uniform1i(u.uKind, 6); gl.uniform4f(u.uFoot, 135, 135, 330, 300);
-      gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]);
+      gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]); gl.uniform2f(u.uClip, 0, 0);
       gl.bindVertexArray(floor.vao); gl.drawArrays(gl.TRIANGLES, 0, floor.count);
       opaque.forEach(it => { setMat(u, it.mat, it); drawItem(P.main, it); });
       // See-through things last, farthest first, without hiding what's behind.
@@ -777,7 +935,7 @@ const Twin3D = (() => {
         }
         l.p = [l.p[0], y]; placed.push({ x: l.p[0], y, w });
       });
-      const html = list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px"><i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>${esc(l.text)}${l.on ? ' · printing' : ''}</span>`).join('');
+      const html = !showTags ? '' : list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px"><i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>${esc(l.text)}${l.on ? ' · printing' : ''}</span>`).join('');
       if (tags.innerHTML !== html) tags.innerHTML = html;
     }
 
@@ -793,9 +951,12 @@ const Twin3D = (() => {
       gl.enable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
       gl.useProgram(P.gbuf.p); gl.uniformMatrix4fv(P.gbuf.u.uVP, false, M.VP);
       const ids = new Map(); let next = 1;
-      const idOf = it => { const k = it.id || `m${items.indexOf(it)}`; if (!ids.has(k)) ids.set(k, next++ % 255); return ids.get(k); };
+      const idOf = it => {
+        if (it.printed) return 200 + Math.max(0, Math.min(3, it.tool || 0));
+        const k = it.id || `m${items.indexOf(it)}`; if (!ids.has(k)) ids.set(k, 1 + (next++ % 190)); return ids.get(k);
+      };
       items.forEach(it => {
-        if (it.mat.kind === 'glass') return;
+        if (it.mat.kind === 'glass' || it.rest) return;
         if (!showCase && (it.shell || it.lining || it.id >= 20 && it.id < 30)) return;
         gl.uniform1f(P.gbuf.u.uId, idOf(it));
         drawItem(P.gbuf, it);
@@ -809,70 +970,164 @@ const Twin3D = (() => {
       const px = Math.max(1, canvas.width / W * 0.6);
       gl.uniform2f(P.ink.u.uPx, px / canvas.width, px / canvas.height);
       gl.uniform1f(P.ink.u.uDepthK, 1.0);
-      const selKey = selected === 'bed' ? 2 : selected.startsWith('head:') ? 10 + Object.keys(state.toolheads || {}).indexOf(selected.slice(5)) : selected.startsWith('obj:') ? 40 + partsMeshes.findIndex(p => `obj:${p.name}` === selected) : -1;
+      const heads = state.toolheads || {}, toolCol = [];
+      for (let t = 0; t < 4; t++) { const hc = srgb((heads[`T${t}`] || {}).filament_color_hex) || [0.6, 0.6, 0.62]; toolCol.push(...hc.map(c => Math.pow(c, 1 / 2.2))); }
+      gl.uniform3fv(P.ink.u.uToolCol, toolCol);
+      const selKey = selected === 'bed' ? 2 : selected.startsWith('head:') ? 10 + Object.keys(state.toolheads || {}).indexOf(selected.slice(5)) : selected.startsWith('obj:') ? 40 + pickNames.indexOf(selected.slice(4)) : -1;
       gl.uniform1f(P.ink.u.uSelId, ids.has(selKey) ? ids.get(selKey) : -1);
       gl.bindVertexArray(null); gl.drawArrays(gl.TRIANGLES, 0, 3);
       drawSheet(M, live);
     }
 
-    /* Phantom build volume, dimensions, balloons and a title block, drawn
-     * as SVG over the ink so text stays sharp. */
+    /* The sheet over the ink, as SVG so its text stays sharp: a zoned
+     * border, the build volume as a phantom line, the plate's centre lines,
+     * live dimensions, the heads' balloons, numbered item balloons with
+     * leaders, a parts list, notes and a title block. Narrow screens drop the
+     * parts list and notes before anything else. */
     function drawSheet(M, live) {
       const P2 = (x, y, z) => project(M.VP, x, y, z);
-      const line = (a, b, cls) => { const p = P2(...a), q = P2(...b); return `<line class="${cls}" x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}"/>`; };
-      const T = live.bedTop, out = [];
+      const f1 = v => v.toFixed(1);
+      const line = (a, b, cls) => { const p = P2(...a), q = P2(...b); return `<line class="${cls}" x1="${f1(p[0])}" y1="${f1(p[1])}" x2="${f1(q[0])}" y2="${f1(q[1])}"/>`; };
+      const T = live.bedTop, out = [], st = state || {}, nb = '\u00a0', [x, y, z] = pos, v = viewName;
       // The 270 mm cube the nozzle can reach, as a phantom (dash-dot) line.
       const c = [[0, 0], [BED, 0], [BED, BED], [0, BED]];
       for (let i = 0; i < 4; i++) {
         const [a, b] = [c[i], c[(i + 1) % 4]];
         out.push(line([...a, TIP - BED], [...b, TIP - BED], 'ph'), line([...a, TIP], [...b, TIP], 'ph'), line([...a, TIP - BED], [...a, TIP], 'ph'));
       }
-      const v = viewName, nb = ' ', [x, y, z] = pos;
+      // The plate's centre lines (chain lines), and the nozzle's position on it.
+      out.push(line([135, -12, T], [135, 282, T], 'cl'), line([-12, 135, T], [282, 135, T], 'cl'));
+      const tip = P2(x, y, T);
+      out.push(`<circle class="mk" cx="${f1(tip[0])}" cy="${f1(tip[1])}" r="3.5"/><line class="mk" x1="${f1(tip[0] - 7)}" y1="${f1(tip[1])}" x2="${f1(tip[0] + 7)}" y2="${f1(tip[1])}"/><line class="mk" x1="${f1(tip[0])}" y1="${f1(tip[1] - 7)}" x2="${f1(tip[0])}" y2="${f1(tip[1] + 7)}"/>`);
       const dim = (a, b, off, label) => {
         const pa = P2(...a), pb = P2(...b), da = P2(a[0] + off[0], a[1] + off[1], a[2] + off[2]), db = P2(b[0] + off[0], b[1] + off[1], b[2] + off[2]);
         const horiz = Math.abs(db[0] - da[0]) > Math.abs(db[1] - da[1]), mx = (da[0] + db[0]) / 2, my = (da[1] + db[1]) / 2;
-        out.push(`<line class="ext" x1="${pa[0]}" y1="${pa[1]}" x2="${da[0]}" y2="${da[1]}"/><line class="ext" x1="${pb[0]}" y1="${pb[1]}" x2="${db[0]}" y2="${db[1]}"/>`,
-          `<line class="dl" x1="${da[0]}" y1="${da[1]}" x2="${db[0]}" y2="${db[1]}" marker-start="url(#t3a)" marker-end="url(#t3a)"/>`,
-          `<text class="dt" x="${(mx + (horiz ? 0 : 7)).toFixed(1)}" y="${(my + (horiz ? -5 : 4)).toFixed(1)}" text-anchor="${horiz ? 'middle' : 'start'}">${label}</text>`);
+        out.push(`<line class="ext" x1="${f1(pa[0])}" y1="${f1(pa[1])}" x2="${f1(da[0])}" y2="${f1(da[1])}"/><line class="ext" x1="${f1(pb[0])}" y1="${f1(pb[1])}" x2="${f1(db[0])}" y2="${f1(db[1])}"/>`,
+          `<line class="dl" x1="${f1(da[0])}" y1="${f1(da[1])}" x2="${f1(db[0])}" y2="${f1(db[1])}" marker-start="url(#t3a)" marker-end="url(#t3a)"/>`,
+          `<text class="dt" x="${f1(mx + (horiz ? 0 : 7))}" y="${f1(my + (horiz ? -5 : 4))}" text-anchor="${horiz ? 'middle' : 'start'}">${label}</text>`);
       };
       if (v !== 'top') dim([BED + 8, 0, T], [BED + 8, 0, TIP], [40, 0, 0], `Z${nb}${z.toFixed(2)}`);
       if (v === 'front') dim([0, 0, T], [x, 0, T], [0, 0, -34], `X${nb}${x.toFixed(1)}`);
       if (v === 'top') { dim([0, -8, TIP], [x, -8, TIP], [0, -40, 0], `X${nb}${x.toFixed(1)}`); dim([0, 0, TIP], [0, y, TIP], [-46, 0, 0], `Y${nb}${y.toFixed(1)}`); }
+      // The print's height so far, against its full height (from its own file).
+      const pr = print && print.file === st.current_file ? print : null;
+      if (pr && v !== 'top' && ['printing', 'paused', 'complete'].includes(st.state)) {
+        const L = pr.layers, cur = st.layer && st.layer.current ? Math.min(L.length, st.layer.current) : 0;
+        const done = st.state === 'complete' ? pr.top : cur ? L[cur - 1].z : Math.min(z, pr.top);
+        const px0 = pr.centre[0] - pr.size / 2 - 6;
+        dim([px0, pr.centre[1], T], [px0, pr.centre[1], T + done], [-30, 0, 0], `${done.toFixed(1)}/${pr.top.toFixed(1)}`);
+      }
       // The case's size: estimated from Snapmaker's picture, hence the ≈.
       if (showCase && v === 'front') { dim([BODY.x0, BODY.y0, 0], [BODY.x1, BODY.y0, 0], [0, 0, -46], `≈390${nb}mm`); dim([BODY.x0, BODY.y0, 0], [BODY.x0, BODY.y0, BODY.z1], [-150, 0, 0], `≈488${nb}mm`); }
       if (showCase && v === 'top') { dim([BODY.x0, BODY.y0, BODY.z1], [BODY.x1, BODY.y0, BODY.z1], [0, -40, 0], `≈390${nb}mm`); dim([BODY.x1, BODY.y0, BODY.z1], [BODY.x1, BODY.y1, BODY.z1], [110, 0, 0], `≈460${nb}mm`); }
-      // Balloons: the drafting way of naming parts.
+      // The heads' balloons: the drafting way of naming parts.
       labels.forEach(l => {
         const p = P2(...l.at), sw = /^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999';
         const cls = l.fault ? ' fault' : selected === l.id ? ' sel' : '';
-        out.push(`<g class="bal${cls}" data-id="${esc(l.id)}"><circle cx="${p[0].toFixed(1)}" cy="${(p[1] - 14).toFixed(1)}" r="11"/><text x="${p[0].toFixed(1)}" y="${(p[1] - 10.5).toFixed(1)}" text-anchor="middle">${esc(l.text)}</text><rect x="${(p[0] + 13).toFixed(1)}" y="${(p[1] - 18).toFixed(1)}" width="7" height="7" style="fill:${sw}"/></g>`);
-        if (l.fault || (l.hot && !l.on)) out.push(`<text class="note${l.fault ? ' fault' : ''}" x="${p[0].toFixed(1)}" y="${(p[1] - 30).toFixed(1)}" text-anchor="middle">${l.fault ? 'FAULT' : Math.round(l.temp) + '°'}</text>`);
+        out.push(`<g class="bal${cls}" data-id="${esc(l.id)}"><circle cx="${f1(p[0])}" cy="${f1(p[1] - 14)}" r="11"/><text x="${f1(p[0])}" y="${f1(p[1] - 10.5)}" text-anchor="middle">${esc(l.text)}</text><rect x="${f1(p[0] + 13)}" y="${f1(p[1] - 18)}" width="7" height="7" style="fill:${sw}"/></g>`);
+        if (l.fault || (l.hot && !l.on)) out.push(`<text class="note${l.fault ? ' fault' : ''}" x="${f1(p[0])}" y="${f1(p[1] - 30)}" text-anchor="middle">${l.fault ? 'FAULT' : Math.round(l.temp) + '°'}</text>`);
       });
-      // Sheet border and title block.
-      const st = state || {}, layer = st.layer || { current: 0, total: 0 }, scale = Math.max(1, Math.round((96 / 25.4) / M.pxPerMm));
-      const cells = [['Printer', st.printer_name || 'Printer'], ['View', { iso: 'Angled', front: 'Front', top: 'Top' }[v] || 'Turned'], ['Scale', `1:${scale}`], ['Layer', layer.total ? `${layer.current}/${layer.total}` : '-']];
-      const bw = Math.min(W - 16, 300), bh = 30, bx0 = W - 8 - bw, by0 = H - 8 - bh, cw = [0.34, 0.2, 0.2, 0.26].map(f => f * bw);
-      let cx = bx0, tb = '';
-      cells.forEach(([k, val], i) => {
-        tb += `<text class="tk" x="${(cx + 5).toFixed(1)}" y="${by0 + 11}">${k}</text><text class="tv" x="${(cx + 5).toFixed(1)}" y="${by0 + 24}">${esc(String(val)).slice(0, 26)}</text>`;
-        cx += cw[i]; if (i < 3) tb += `<line class="tl" x1="${Math.round(cx) + 0.5}" y1="${by0}" x2="${Math.round(cx) + 0.5}" y2="${by0 + bh}"/>`;
+
+      // Item balloons with leaders, matching the parts list.
+      const heads = Object.entries(st.toolheads || {});
+      const loaded = heads.map(([n, d]) => `${n}${nb}${String(d.filament_color_name || d.filament_material || '').slice(0, 12)}`.trim()).join(', ');
+      const items = [
+        { n: 1, what: 'Toolhead', qty: heads.length || 4, note: loaded || 'Tool changer, four heads', at: [DOCK.xs[3], DOCK.y, DOCK.tip + HEAD.h], pick: null },
+        { n: 2, what: 'Build plate, PEI', qty: 1, note: `${PLATE.w}${nb}×${nb}${PLATE.d}`, at: [BED, 8, T], pick: 'bed' },
+        { n: 3, what: 'X beam, carbon', qty: 2, note: 'Moves in Y with the gantry', at: [BED - 20, y, RAIL_Z + 7] },
+        { n: 4, what: 'Frame extrusion ≈', qty: 10, note: '20×20, typical, not measured', at: [304, -68, 250], inside: true },
+        { n: 5, what: 'XY motors ≈', qty: 2, note: 'CoreXY, position estimated', at: [304, 303, 421], inside: true },
+        { n: 6, what: 'Z screw, motor ≈', qty: 1, note: 'Position estimated', at: [135, 305, 150], inside: true },
+      ];
+      if (pr) items.push({ n: 7, what: 'Print', qty: pr.objects.length || 1, note: `${String(pr.file).slice(0, 26)}, ${pr.layers.length} layers, ${pr.top.toFixed(1)}${nb}mm`, at: [pr.centre[0] + pr.size / 2, pr.centre[1], T + Math.min(pr.top, z) * 0.6] });
+      const placedB = [];
+      items.forEach(it => {
+        if (it.inside && showCase) return;
+        const a = P2(...it.at);
+        if (a[0] < 0 || a[0] > W || a[1] < 0 || a[1] > H) return;
+        const sx = a[0] > W / 2 ? 1 : -1;
+        let bx = a[0] + sx * 46, by = a[1] - 30;
+        for (let k = 0; k < 6 && placedB.some(p => Math.hypot(p[0] - bx, p[1] - by) < 24); k++) by -= 24;
+        placedB.push([bx, by]);
+        const d = Math.hypot(bx - a[0], by - a[1]) || 1, ex = bx - (bx - a[0]) / d * 9.5, ey = by - (by - a[1]) / d * 9.5;
+        out.push(`<g class="item${it.pick && selected === it.pick ? ' sel' : ''}"${it.pick ? ` data-id="${it.pick}"` : ''}><line class="ld" x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(ex)}" y2="${f1(ey)}"/><circle class="dot" cx="${f1(a[0])}" cy="${f1(a[1])}" r="1.8"/><circle cx="${f1(bx)}" cy="${f1(by)}" r="9.5"/><text x="${f1(bx)}" y="${f1(by + 3.6)}" text-anchor="middle">${it.n}</text></g>`);
       });
+
+      // Zoned border: numbers along the top and bottom, letters down the sides.
+      const m = 14, cols = Math.max(4, Math.round(W / 130)), rows = Math.max(3, Math.round(H / 120));
+      let zone = `<rect class="border" x="3.5" y="3.5" width="${W - 7}" height="${H - 7}"/><rect class="frame" x="${m + 0.5}" y="${m + 0.5}" width="${W - 2 * m - 1}" height="${H - 2 * m - 1}"/>`;
+      for (let i = 0; i < cols; i++) {
+        const cx = m + (W - 2 * m) * (i + 0.5) / cols, xx = Math.round(m + (W - 2 * m) * i / cols) + 0.5;
+        if (i) zone += `<line class="zt" x1="${xx}" y1="3.5" x2="${xx}" y2="${m}"/><line class="zt" x1="${xx}" y1="${H - m}" x2="${xx}" y2="${H - 3.5}"/>`;
+        zone += `<text class="zn" x="${f1(cx)}" y="${m - 3.5}" text-anchor="middle">${i + 1}</text><text class="zn" x="${f1(cx)}" y="${H - 4.5}" text-anchor="middle">${i + 1}</text>`;
+      }
+      for (let j = 0; j < rows; j++) {
+        const cy = m + (H - 2 * m) * (j + 0.5) / rows, yy = Math.round(m + (H - 2 * m) * j / rows) + 0.5, ch = String.fromCharCode(65 + j);
+        if (j) zone += `<line class="zt" x1="3.5" y1="${yy}" x2="${m}" y2="${yy}"/><line class="zt" x1="${W - m}" y1="${yy}" x2="${W - 3.5}" y2="${yy}"/>`;
+        zone += `<text class="zn" x="${m / 2 + 1.5}" y="${f1(cy + 3)}" text-anchor="middle">${ch}</text><text class="zn" x="${W - m / 2 - 1.5}" y="${f1(cy + 3)}" text-anchor="middle">${ch}</text>`;
+      }
+
+      // Title block: two rows of cells, with the third-angle projection symbol.
+      const layer = st.layer || { current: 0, total: 0 }, scale = Math.max(1, Math.round((96 / 25.4) / M.pxPerMm));
+      const wide = W >= 560, bw = Math.min(W - 2 * m - 8, wide ? 430 : 300), rh = 24, bx0 = W - m - 4 - bw, by0 = H - m - 4 - rh * 2;
+      const today = new Date().toISOString().slice(0, 10);
+      const viewWord = { iso: 'Angled', front: 'Front', top: 'Top', print: 'Print' }[v] || 'Turned';
+      const row1 = wide ? [['Title', 'U1 general arrangement, live', .46], ['Dwg no.', 'DV1-U1-GA-01', .26], ['Sheet', '1 of 1', .12], ['Rev', 'Live', .16]]
+                        : [['Title', 'U1 arrangement, live', .62], ['Dwg no.', 'DV1-GA-01', .38]];
+      const row2 = wide ? [['Printer', st.printer_name || 'Printer', .3], ['View', viewWord, .14], ['Scale', `1:${scale}`, .12], ['Units', 'mm', .1], ['Layer', layer.total ? `${layer.current}/${layer.total}` : '-', .16], ['Date', today, .18]]
+                        : [['Printer', st.printer_name || 'Printer', .4], ['View', viewWord, .2], ['Scale', `1:${scale}`, .18], ['Layer', layer.total ? `${layer.current}/${layer.total}` : '-', .22]];
+      let tb = `<rect class="tb" x="${bx0 + 0.5}" y="${by0 + 0.5}" width="${bw}" height="${rh * 2}"/><line class="tl" x1="${bx0}" y1="${by0 + rh + 0.5}" x2="${bx0 + bw}" y2="${by0 + rh + 0.5}"/>`;
+      [[row1, by0], [row2, by0 + rh]].forEach(([cells, yy]) => {
+        let cx = bx0;
+        cells.forEach(([k, val, f], i) => {
+          const w = f * bw, max = Math.max(4, Math.floor((w - 8) / 6.4));
+          tb += `<text class="tk" x="${f1(cx + 4)}" y="${yy + 9}">${k}</text><text class="tv" x="${f1(cx + 4)}" y="${yy + 20}">${esc(String(val).slice(0, max))}</text>`;
+          cx += w; if (i < cells.length - 1) tb += `<line class="tl" x1="${Math.round(cx) + 0.5}" y1="${yy}" x2="${Math.round(cx) + 0.5}" y2="${yy + rh}"/>`;
+        });
+      });
+      // Third-angle projection symbol, left of the title block.
+      const sx0 = bx0 - 52, sy0 = by0 + 10;
+      if (wide) tb += `<g class="proj"><line x1="${sx0}" y1="${sy0 + 14}" x2="${sx0 + 46}" y2="${sy0 + 14}"/><line x1="${sx0 + 32}" y1="${sy0}" x2="${sx0 + 32}" y2="${sy0 + 28}"/><path d="M${sx0 + 2} ${sy0 + 8}L${sx0 + 20} ${sy0 + 5}L${sx0 + 20} ${sy0 + 23}L${sx0 + 2} ${sy0 + 20}Z"/><circle cx="${sx0 + 32}" cy="${sy0 + 14}" r="9"/><circle cx="${sx0 + 32}" cy="${sy0 + 14}" r="5"/></g>`;
+
+      // Parts list, top left, and notes, bottom left, when there's room.
+      let bom = '';
+      if (W >= 640) {
+        const full = W >= 1000, cw = full ? [24, 150, 34, 172] : [20, 132, 26], tw = cw.reduce((a, b) => a + b, 0), bx = m + 8, by = m + 8, lh = 15;
+        const rowsB = items.map(it => full ? [it.n, it.what, it.qty, it.note] : [it.n, it.what, it.qty]);
+        bom += `<g class="bom"><rect class="tb" x="${bx + 0.5}" y="${by + 0.5}" width="${tw}" height="${lh * (rowsB.length + 1)}"/>`;
+        [full ? ['Item', 'Description', 'Qty', 'Notes'] : ['Item', 'Description', 'Qty']].concat(rowsB).forEach((r, i) => {
+          let cx = bx;
+          r.forEach((val, j) => {
+            const max = Math.floor((cw[j] - 6) / 6.1);
+            bom += `<text class="${i ? 'bv' : 'tk'}" x="${cx + 4}" y="${by + lh * i + 11}">${esc(String(val)).slice(0, max)}</text>`;
+            cx += cw[j]; if (j < cw.length - 1) bom += `<line class="tl" x1="${cx + 0.5}" y1="${by}" x2="${cx + 0.5}" y2="${by + lh * (rowsB.length + 1)}"/>`;
+          });
+          if (i) bom += `<line class="tl" x1="${bx}" y1="${by + lh * i + 0.5}" x2="${bx + tw}" y2="${by + lh * i + 0.5}"/>`;
+        });
+        bom += '</g>';
+      }
+      if (W >= 860) {
+        const notes = ['Notes', '1. Dimensions in mm. Live: positions follow the printer.', '2. ≈ estimated from Snapmaker\'s product picture and specs.', '3. Frame, motors and lead screw: typical, not measured.', '4. Phantom line: the 270 mm build volume.'];
+        bom += `<g class="notes">${notes.map((t, i) => `<text class="${i ? 'nv' : 'tk'}" x="${m + 10}" y="${H - m - 8 - (notes.length - 1 - i) * 13}">${esc(t)}</text>`).join('')}</g>`;
+      }
+
       inkSvg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       inkSvg.innerHTML = `<defs><marker id="t3a" viewBox="0 0 10 4" refX="10" refY="2" markerWidth="10" markerHeight="4" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0 0L10 2L0 4z"/></marker></defs>` +
-        out.join('') + `<rect class="border" x="3.5" y="3.5" width="${W - 7}" height="${H - 7}"/><rect class="tb" x="${bx0 + 0.5}" y="${by0 + 0.5}" width="${bw}" height="${bh}"/>${tb}`;
+        out.join('') + zone + bom + tb;
     }
 
     /* ---- picking: draw ids into an offscreen buffer and read one pixel ---- */
     function pickAt(px, py) {
       if (!state) return null;
       resize(); sizeTargets(canvas.width, canvas.height);
-      const live = liveScene(), items = allItems(live), M = matrices();
+      const live = liveScene(), all = allItems(live), M = matrices();
+      const items = style === 'drawing' ? all : withCase(all);
       gl.bindFramebuffer(gl.FRAMEBUFFER, gbFb); gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST);
       gl.useProgram(P.id.p); gl.uniformMatrix4fv(P.id.u.uVP, false, M.VP);
       items.forEach(it => {
         if (style === 'drawing' && !showCase && (it.shell || it.lining || it.id >= 20 && it.id < 30)) return;
-        if (it.mat.kind === 'glass') return;
+        if (it.mat.kind === 'glass' || it.rest || (it.mat.a != null && it.mat.a < 0.5)) return;
         gl.uniform1f(P.id.u.uId, it.id || 0); drawItem(P.id, it);
       });
       const out = new Uint8Array(4), k = canvas.width / W;
@@ -882,7 +1137,7 @@ const Twin3D = (() => {
       if (id === 2) return 'bed';
       if (id >= 10 && id < 14) return names[id - 10] ? `head:${names[id - 10]}` : null;
       if (id >= 20 && id < 24) return names[id - 20] ? `head:${names[id - 20]}` : null;
-      if (id >= 40 && partsMeshes[id - 40]) return `obj:${partsMeshes[id - 40].name}`;
+      if (id >= 40 && pickNames[id - 40]) return `obj:${pickNames[id - 40]}`;
       return null;
     }
 
@@ -905,7 +1160,7 @@ const Twin3D = (() => {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2 && drag.spread) {
         const [a, b] = [...touches.values()];
-        cam.zoom = Math.max(0.6, Math.min(5, drag.zoom * Math.hypot(a.x - b.x, a.y - b.y) / drag.spread));
+        cam.zoom = Math.max(0.6, Math.min(8, drag.zoom * Math.hypot(a.x - b.x, a.y - b.y) / drag.spread));
         drag.moved = true; queue(); return;
       }
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -941,12 +1196,12 @@ const Twin3D = (() => {
     canvas.addEventListener('pointerup', end);
     canvas.addEventListener('pointercancel', end);
     canvas.addEventListener('contextmenu', e => e.preventDefault());
-    canvas.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.max(0.6, Math.min(5, cam.zoom * Math.exp(-e.deltaY * 0.0012))); queue(); }, { passive: false });
+    canvas.addEventListener('wheel', e => { e.preventDefault(); cam.zoom = Math.max(0.6, Math.min(8, cam.zoom * Math.exp(-e.deltaY * 0.0012))); queue(); }, { passive: false });
     canvas.addEventListener('dblclick', () => setView('iso'));
     canvas.addEventListener('keydown', e => {
       const k = { ArrowLeft: [-10, 0], ArrowRight: [10, 0], ArrowUp: [0, 6], ArrowDown: [0, -6] }[e.key];
       if (k) { e.preventDefault(); cam.yaw += k[0]; cam.pitch = Math.max(-8, Math.min(89, cam.pitch + k[1])); viewName = null; viewChanged(null); queue(); }
-      if (e.key === '+' || e.key === '=') { cam.zoom = Math.min(5, cam.zoom * 1.2); queue(); }
+      if (e.key === '+' || e.key === '=') { cam.zoom = Math.min(8, cam.zoom * 1.2); queue(); }
       if (e.key === '-') { cam.zoom = Math.max(0.6, cam.zoom / 1.2); queue(); }
       if (e.key === 'Escape' && onPick) onPick(null);
     });
@@ -957,8 +1212,10 @@ const Twin3D = (() => {
     const glideTo = { raf: 0 };
     function setView(name) {
       const [ty, tp] = VIEWS[name] || VIEWS.iso;
-      const from = { yaw: cam.yaw, pitch: cam.pitch, zoom: cam.zoom, tx: cam.tx, ty: cam.ty };
-      const to = { yaw: from.yaw + ((((ty - from.yaw) % 360) + 540) % 360 - 180), pitch: tp, zoom: 1, tx: 0, ty: 0 };
+      const from = { yaw: cam.yaw, pitch: cam.pitch, zoom: cam.zoom, tx: cam.tx, ty: cam.ty, focus: cam.focus };
+      // Close enough that the print fills about half the view.
+      const close = name === 'print', fit = close ? Math.max(3, Math.min(7.5, 300 / ((print && print.size) || 60))) : 1;
+      const to = { yaw: from.yaw + ((((ty - from.yaw) % 360) + 540) % 360 - 180), pitch: tp, zoom: fit, tx: 0, ty: 0, focus: close ? 1 : 0 };
       cancelAnimationFrame(glideTo.raf); cancelAnimationFrame(spin);
       viewName = name; viewChanged(name);
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) { Object.assign(cam, to); queue(); return; }
@@ -972,6 +1229,25 @@ const Twin3D = (() => {
       glideTo.raf = requestAnimationFrame(step);
     }
 
+    /* A slow turntable, when asked for: stops while you drag, never runs
+     * with reduced motion, and draws at most 30 times a second. */
+    let spinOn = false, spinRaf = 0, spinLast = 0, spinDrawn = 0;
+    function setSpin(on) {
+      spinOn = !!on && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+      cancelAnimationFrame(spinRaf);
+      if (spinOn) { spinLast = performance.now(); spinRaf = requestAnimationFrame(turn); }
+    }
+    function turn(now) {
+      if (!spinOn || !wrap.isConnected) return;
+      if (!drag && document.visibilityState === 'visible') {
+        cam.yaw -= (now - spinLast) * 0.005;
+        if (viewName) { viewName = null; viewChanged(null); }
+        if (now - spinDrawn > 32) { spinDrawn = now; render(); }
+      }
+      spinLast = now;
+      spinRaf = requestAnimationFrame(turn);
+    }
+
     const ro = window.ResizeObserver ? new ResizeObserver(queue) : null;
     ro && ro.observe(canvas);
     const minute = setInterval(() => { if (state) queue(); }, 30000);
@@ -983,8 +1259,20 @@ const Twin3D = (() => {
       setView,
       setStyle(s) { style = s === 'drawing' ? 'drawing' : 'model'; wrap.dataset.style = style; canvas.setAttribute('aria-label', style === 'drawing' ? 'Engineering drawing of the printer. Drag to turn, scroll to zoom.' : '3D model of the printer. Drag to turn, scroll or pinch to zoom.'); queue(); },
       setCase(on) { showCase = !!on; queue(); },
+      setCaseMode(m) { caseMode = ['closed', 'glass', 'open'].includes(m) ? m : 'closed'; shadowKey = ''; queue(); },
+      setPrint,
+      /* print: the part on the plate; rest: what's still to print, faintly;
+       * tags: the heads' name tags; spin: the turntable. */
+      setOptions(o = {}) {
+        if ('print' in o) showPrint = !!o.print;
+        if ('rest' in o) showRest = !!o.rest;
+        if ('tags' in o) showTags = !!o.tags;
+        if ('spin' in o) setSpin(o.spin);
+        shadowKey = ''; queue();
+      },
+      printInfo() { return print ? { file: print.file, layers: print.layers.length, top: print.top, objects: print.objects.slice() } : null; },
       onViewChange(fn) { viewChanged = fn; },
-      zoomBy(f) { cam.zoom = Math.max(0.6, Math.min(5, cam.zoom * f)); queue(); },
+      zoomBy(f) { cam.zoom = Math.max(0.6, Math.min(8, cam.zoom * f)); queue(); },
       /* A picture of what's on screen, with the drawing's labels baked in. */
       async download(filename) {
         render();
@@ -996,7 +1284,7 @@ const Twin3D = (() => {
           copy.setAttribute('xmlns', 'http://www.w3.org/2000/svg'); copy.setAttribute('width', W); copy.setAttribute('height', H);
           const css = getComputedStyle(overlay);
           const s = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-          s.textContent = `line,rect{fill:none;stroke:#23262c;stroke-width:1}.ph{stroke:#8b9099;stroke-dasharray:14 3 2 3}.ext,.dl,.tl{stroke:#6b7079}marker path{fill:#6b7079}text{font:600 11px ${css.fontFamily};fill:#23262c}.tk{font-size:8px;fill:#6b7079}.bal circle{fill:#fff;stroke:#23262c}.fault text,.note.fault{fill:#b3261e}`;
+          s.textContent = `line,rect{fill:none;stroke:#23262c;stroke-width:1}.ph{stroke:#8b9099;stroke-dasharray:14 3 2 3}.cl{stroke:#8b9099;stroke-dasharray:18 3 3 3}.ext,.dl,.tl,.zt{stroke:#6b7079}.frame{stroke-width:1.4}marker path{fill:#6b7079}text{font:600 11px ${css.fontFamily};fill:#23262c}.tk{font-size:8px;fill:#6b7079;text-transform:uppercase;letter-spacing:.06em}.zn{font-size:8.5px;fill:#6b7079}.tv{font-size:10.5px}.bv,.nv{font-size:9px;font-weight:500}.bal circle,.item circle{fill:#fff;stroke:#23262c}.item .dot{fill:#23262c;stroke:none}.item .ld{stroke:#4a4f58;stroke-width:.8}.item text{font-size:10px}.mk{stroke:#2f6fe0;fill:none;stroke-width:1.2}.proj path,.proj circle{fill:none;stroke:#23262c}.proj line{stroke:#6b7079;stroke-dasharray:8 2 2 2}.fault text,.note.fault{fill:#b3261e}`;
           copy.insertBefore(s, copy.firstChild);
           const img = new Image();
           img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(copy));
@@ -1009,7 +1297,7 @@ const Twin3D = (() => {
           document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         }, 'image/png');
       },
-      destroy() { ro && ro.disconnect(); clearInterval(minute); wrap.remove(); },
+      destroy() { ro && ro.disconnect(); clearInterval(minute); spinOn = false; cancelAnimationFrame(spinRaf); printMeshes.forEach(m => free(m.mesh)); wrap.remove(); },
     };
   }
 

@@ -649,8 +649,8 @@ const Workshop = (() => {
     TOP: 270,                       // world height of the nozzle tip
     DOCK_Y: 312,                    // rear beam, behind the bed
     HEAD: { w: 42, d: 44, h: 54, cone: 9 },
-    VIEWS: { iso: [-34, 27], front: [0, 0], top: [0, 90] },
-    VIEW_WORD: { iso: 'Angled', front: 'Front', top: 'Top' },
+    VIEWS: { iso: [-34, 27], front: [0, 0], top: [0, 90], print: [-30, 32] },
+    VIEW_WORD: { iso: 'Angled', front: 'Front', top: 'Top', print: 'Print' },
     // The whole machine (Snapmaker's published outer size, 584 x 499 x 730 mm),
     // in the drawing's frame: the nozzle tip is at Z 270 here and 600 mm
     // above the floor on the real printer, so the floor is at Z -330.
@@ -665,6 +665,13 @@ const Workshop = (() => {
     // drawing's zoom and pan, and whether it shows the outer size.
     mode: (() => { try { return localStorage.getItem('dejavu1.twin-mode') === 'drawing' ? 'drawing' : 'model'; } catch (e) { return 'model'; } })(),
     zoom: 1, panX: 0, panY: 0, outer: false, model: null,
+    // The 3D model's options (kept in this browser): case on, see-through or
+    // off; the print; what's left of it; head labels; a slow turntable.
+    view3d: (() => {
+      const d = { case: 'closed', print: true, rest: true, tags: true, spin: false };
+      try { const o = JSON.parse(localStorage.getItem('dejavu1.twin-view') || '{}'); return { ...d, ...(o && typeof o === 'object' ? o : {}) }; } catch (e) { return d; }
+    })(),
+    printKey: null, printNote: '',
   };
   const BUCKETS = ['grid', 'env', 'frame', 'trail', 'hid', 'part-hid', 'vis', 'part', 'head', 'fault',
     'skip', 'sel-hid', 'sel', 'dim', 'axis'];
@@ -676,6 +683,20 @@ const Workshop = (() => {
         <button type="button" class="btn small" data-twin="zoom-out" aria-label="Zoom out">−</button>
         <button type="button" class="btn small" data-twin="zoom-in" aria-label="Zoom in">+</button>
         <button type="button" class="btn small" data-twin="reset">Reset view</button>
+        <div class="pill-toggle twin-case" id="twin-case" role="group" aria-label="Case" data-model-only>
+          <button type="button" data-case="closed" aria-pressed="true" class="active">Case on</button>
+          <button type="button" data-case="glass" aria-pressed="false">See-through</button>
+          <button type="button" data-case="open" aria-pressed="false">Case off</button>
+        </div>
+        <details class="twin-more" id="twin-more" data-model-only>
+          <summary class="btn small">Show</summary>
+          <div class="twin-more-panel" role="group" aria-label="What the model shows">
+            <label><input type="checkbox" data-opt="print"> The print, in its colours</label>
+            <label><input type="checkbox" data-opt="rest"> What's left to print, faintly</label>
+            <label><input type="checkbox" data-opt="tags"> Head labels</label>
+            <label><input type="checkbox" data-opt="spin"> Turn slowly</label>
+          </div>
+        </details>
         <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> <span>Outer size</span></label>
         <button type="button" class="btn small" data-twin="download" data-drawing-only>Download drawing</button>
         <span class="twin-hint" id="twin-hint"></span>
@@ -757,6 +778,10 @@ const Workshop = (() => {
       if (act === 'reset') { twin.zoom = 1; twin.panX = twin.panY = 0; setView(...WF.VIEWS.iso, 'iso'); }
       if (act === 'download') twin.model ? twin.model.download(`${(twin.state && twin.state.printer_name || 'printer').replace(/[^\w.-]+/g, '_')}-drawing.png`) : downloadDrawing();
     });
+    // The model's options, kept in this browser.
+    document.querySelectorAll('#twin-case button').forEach(b => b.addEventListener('click', () => { twin.view3d.case = b.dataset.case; applyTwinOptions(); }));
+    document.querySelectorAll('#twin-more input[data-opt]').forEach(i => i.addEventListener('change', () => { twin.view3d[i.dataset.opt] = i.checked; applyTwinOptions(); }));
+    document.addEventListener('click', (e) => { const d = $('twin-more'); if (d && d.open && !d.contains(e.target)) d.open = false; });
     $('wf-outer').addEventListener('change', (e) => { twin.outer = e.target.checked; if (twin.model) twin.model.setCase(twin.outer); else drawTwin(true); });
     $('wf-picks').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pick]');
@@ -779,13 +804,40 @@ const Workshop = (() => {
     setTwinMode(twin.mode);
   }
 
+  function applyTwinOptions() {
+    const o = twin.view3d;
+    try { localStorage.setItem('dejavu1.twin-view', JSON.stringify(o)); } catch (e) { /* not remembered */ }
+    document.querySelectorAll('#twin-case button').forEach(b => { const on = b.dataset.case === o.case; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+    document.querySelectorAll('#twin-more input[data-opt]').forEach(i => { i.checked = !!o[i.dataset.opt]; });
+    if (twin.model) { twin.model.setCaseMode(o.case); twin.model.setOptions({ print: o.print, rest: o.rest, tags: o.tags, spin: o.spin }); }
+  }
+
+  /* The print on the plate, from its own G-code (backend/print_preview.py),
+   * fetched once per printer and file. Without it the twin falls back to the
+   * objects' outlines. */
+  async function syncTwinPrint(state) {
+    const on = state && ['printing', 'paused', 'complete'].includes(state.state) && state.current_file;
+    const key = on ? `${state.printer_id}|${state.current_file}` : '';
+    if (key === twin.printKey) return;
+    twin.printKey = key;
+    if (!key) { if (twin.model) twin.model.setPrint(null); return; }
+    try {
+      const data = await getJSON(api('/api/print/preview'));
+      if (twin.printKey !== key || !twin.model) return;
+      twin.model.setPrint(data && data.file === state.current_file && data.layers ? data : null);
+      twin.printNote = data && (data.reason || data.note) || '';
+    } catch (e) {
+      if (twin.printKey === key) { twin.printKey = ''; twin.printNote = ''; }
+    }
+  }
+
   /* Model or drawing. The model needs WebGL; without it the drawing stays. */
   /* Both modes are drawn by twin3d.js (WebGL 2) from one detailed model;
    * without WebGL 2 the SVG line drawing below takes over. */
   function setTwinMode(mode) {
     if (!twin.model && twin.built && typeof Twin3D !== 'undefined') {
       twin.model = Twin3D.create($('twin-model'), { onPick: id => choose(id) });
-      if (twin.model) twin.model.onViewChange(name => markView(name));
+      if (twin.model) { twin.model.onViewChange(name => markView(name)); twin.printKey = null; applyTwinOptions(); syncTwinPrint(twin.state); }
     }
     if (mode === 'model' && !twin.model) mode = 'drawing';
     twin.mode = mode;
@@ -1296,7 +1348,7 @@ const Workshop = (() => {
     const views = $('wf-views');
     if (!state) {
       setText($('twin-sub'), 'Waiting for a printer connection');
-      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null; twin.model = null;
+      host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null; twin.model = null; twin.printKey = null;
       if (views) views.hidden = true;
       if ($('twin-modes')) $('twin-modes').hidden = true;
       return;
@@ -1307,6 +1359,7 @@ const Workshop = (() => {
     if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; }
     if (twin.state && twin.state.current_file !== state.current_file) { twin.job = null; twin.jobAt = 0; }
     twin.state = state;
+    if (twin.model) syncTwinPrint(state);
     const [x, y, z] = state.toolhead_position || [135, 135, 0];
     // A new layer (or no print running) starts a fresh trail.
     if (twin.trailZ === null || Math.abs(z - twin.trailZ) > 0.05 || state.state !== 'printing') { twin.trail = []; twin.trailZ = z; }

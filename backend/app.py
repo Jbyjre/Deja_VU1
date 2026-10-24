@@ -76,6 +76,7 @@ API endpoints
   POST /api/printer/control/gcode        {"command": "G28"}
 
   GET  /api/print/confirm?file=...   the Confirm Print summary (gate)
+  GET  /api/print/preview            the running print's visible walls per toolhead (3D twin)
 
   GET  /api/files                    the file library
   GET  /api/files/thumb?name=        a file's thumbnail (PNG)
@@ -246,6 +247,7 @@ import notifications
 import pairing
 import photo_studio
 import print_gate
+import print_preview
 import print_queue
 import printer_control
 import sandbox
@@ -371,6 +373,7 @@ _DATA_ROUTES = {
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
     "/api/print/confirm": (None, lambda q: print_gate.summary(_q(q, "file"))),
+    "/api/print/preview": (None, lambda q: print_preview.for_current()),
     "/api/queue": ("print_queue", lambda q: print_queue.get()),
     "/api/timelapse": ("timelapse", lambda q: {
         "sessions": timelapse.sessions(mock_moonraker.selected_printer_id()),

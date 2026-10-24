@@ -113,6 +113,45 @@ const Twin3DScene = (() => {
     add(box(geo(), -30, 342, DOCK.tip + 62, 300, 352, DOCK.tip + 104, 2), 'rail');
     DOCK.xs.forEach(x => add(box(geo(), x - 24, 336, DOCK.tip + 70, x + 24, 344, DOCK.tip + 96, 2), 'cable'));
 
+    /* ---- the frame and drive, seen when the case is taken off ----
+     * Not in Snapmaker's picture (the case hides them), so their sizes are
+     * typical of a CoreXY machine this size, drawn where they must be for the
+     * parts above to work: posts in the corners, the two XY motors at the
+     * back, belts along both sides, idlers at the front, a lead screw and
+     * its motor behind the bed. Estimates, like the inside layout. */
+    {
+      const frame = (g) => add(g, 'extrusion', { frame: true });
+      const post = (x, y) => frame(box(geo(), x - 10, y - 10, 40, x + 10, y + 10, 468, 1.5));
+      const corners = [[-34, -68], [304, -68], [-34, 338], [304, 338]];
+      corners.forEach(([x, y]) => post(x, y));
+      // Rings of extrusion at the bottom and under the rails.
+      for (const z of [40, 446]) {
+        frame(box(geo(), -24, -78, z, 294, -58, z + 20, 1.5));
+        frame(box(geo(), -24, 328, z, 294, 348, z + 20, 1.5));
+        if (z === 40) {
+          frame(box(geo(), -44, -58, z, -24, 328, z + 20, 1.5));
+          frame(box(geo(), 294, -58, z, 314, 328, z + 20, 1.5));
+        }
+      }
+      // A base plate the frame stands on.
+      add(box(geo(), -50, -84, 22, 320, 354, 40, 2), 'alu', { frame: true });
+      // CoreXY motors at the back corners, shafts up into the belt pulleys.
+      for (const x of [-34, 304]) {
+        add(box(geo(), x - 21, 282, 398, x + 21, 324, 444, 2.5), 'motor', { frame: true });
+        add(box(geo(), x - 21.5, 281.5, 438, x + 21.5, 324.5, 444, 1.5), 'alu', { frame: true });
+        add(lathe(geo(), [[2.5, 444], [2.5, 452], [8, 452], [8, 466], [2.5, 466], [2.5, 470]], [x, 303, 0], 'z', 24), 'steel', { frame: true });
+        // Idler at the front of the same side.
+        add(lathe(geo(), [[2.5, 452], [8, 452], [8, 466], [2.5, 466]], [x, -50, 0], 'z', 24), 'alu', { frame: true });
+        // Two belt strands along the side, at their two heights.
+        for (const [dx, z] of [[-8.6, 455], [8.6, 461]]) add(box(geo(), x + dx - 0.8, -50, z - 3, x + dx + 0.8, 303, z + 3, 0.4), 'belt', { frame: true });
+      }
+      // The lead screw behind the bed and its motor underneath.
+      add(lathe(geo(), [[4, 60], [4, 430]], [135, 305, 0], 'z', 20), 'screw', { frame: true });
+      add(box(geo(), 114, 284, 60, 156, 326, 104, 2.5), 'motor', { frame: true });
+      add(box(geo(), 113.5, 283.5, 98, 156.5, 326.5, 104, 1.5), 'alu', { frame: true });
+      add(lathe(geo(), [[9, 422], [9, 440]], [135, 305, 0], 'z', 20), 'alu', { frame: true });
+    }
+
     /* ---- the shapes the printer state moves ---- */
     const dynamic = {};
     const dyn = (name, g) => { dynamic[name] = { g }; };
@@ -131,6 +170,8 @@ const Twin3DScene = (() => {
       for (const dz of [-7, 7]) lathe(g, [[4.5, -170], [4.5, 170]], [135, 0, RAIL_Z + dz], 'x', 16);
       dyn('xbeam', g);
     }
+    // The belts across the gantry, moving with it: two strands into the carriage.
+    dyn('xbelt', (() => { const g = geo(); for (const [dy, z] of [[-9, RAIL_Z + 16], [9, RAIL_Z + 22]]) box(g, -26, dy - 0.8, z - 3, 296, dy + 0.8, z + 3, 0.4); return g; })());
     dyn('ycar', (() => { const g = geo(); box(g, -50, -20, RAIL_Z - 14, -26, 20, RAIL_Z + 14, 3); box(g, 296, -20, RAIL_Z - 14, 320, 20, RAIL_Z + 14, 3); return g; })());
     dyn('carriage', slab(geo(), rrect(72, 40, 10, 6), [0, 6], RAIL_Z - 22, RAIL_Z + 24, { bevel: 5, steps: 3 }));
     // A toolhead, its nozzle tip at the origin.

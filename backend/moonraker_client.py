@@ -68,7 +68,7 @@ import time
 import uuid
 from collections import deque
 from datetime import datetime
-from urllib.parse import urlencode, urlparse
+from urllib.parse import quote, urlencode, urlparse
 
 import gcode_tools
 import websocket as ws
@@ -664,7 +664,7 @@ class HttpTransport:
         return f"Can't reach {ep}: {exc}"
 
     def request(self, method, path, query=None, body=None, raw_body=None, content_type=None,
-                timeout=READ_TIMEOUT, wrapped=True, max_bytes=MAX_RESPONSE, expected=()):
+                timeout=READ_TIMEOUT, wrapped=True, max_bytes=MAX_RESPONSE, expected=(), raw=False):
         """
         One request. Returns the reply's "result" (the whole reply when
         wrapped=False). Raises PrinterUnreachable when there was no whole
@@ -728,6 +728,11 @@ class HttpTransport:
             raise PrinterUnreachable(words) from None
 
         entry.update(status=status, ms=round((time.monotonic() - started) * 1000))
+        if raw and status and status < 400:
+            # A file download: the body is the file itself, not JSON.
+            entry["received"] = f"<{len(data)} bytes>"
+            self._log(entry)
+            return data
         try:
             decoded = json.loads(data.decode("utf-8")) if data else None
         except (UnicodeDecodeError, ValueError):
@@ -1400,6 +1405,22 @@ class MoonrakerPrinter:
             else:
                 self._job = found
         self.on_change(self.id)
+
+    def gcode_version(self, filename):
+        """(size, modified) of a file on the printer, from Moonraker's metadata."""
+        meta = self.http.request("GET", "/server/files/metadata", {"filename": filename})
+        return (meta.get("size"), meta.get("modified")) if isinstance(meta, dict) else (None, None)
+
+    def fetch_gcode(self, filename, max_bytes):
+        """
+        The file itself, as the printer holds it (Moonraker's file download,
+        GET /server/files/gcodes/<name>; docs/external_api/file_manager.md).
+        """
+        name = str(filename or "").strip().lstrip("/")
+        if not name or ".." in name.split("/"):
+            raise ValueError("Choose a file on the printer")
+        return self.http.request("GET", "/server/files/gcodes/" + quote(name), raw=True,
+                                 timeout=120.0, max_bytes=max_bytes)
 
     def _load_history(self):
         jobs, start = [], 0
