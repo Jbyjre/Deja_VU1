@@ -93,18 +93,54 @@ and every change is in the public history.
 
 ## What's new
 
+- **The print itself, in its real colours, inside the 3D twin:** the twin now reads the
+  file being printed (downloaded from the printer, or from your file library) and grows the
+  outside walls of every layer up to the one being printed, each in the colour loaded in the
+  head that prints it; the rest of the print shows faintly above. A new **Print** view closes
+  in on the plate. The demo's Workshop printer now prints two 3DBenchy boats in two colours,
+  orange hull and black cabin and the reverse, swapping heads on every layer.
+- **Take the case off:** the 3D model has a Case on / See-through / Case off switch. With the
+  case off you see the frame, the CoreXY motors, belts and idlers and the Z lead screw (drawn
+  where they must be, sizes estimated and labelled so), plus options for the print, what's
+  left of it, head labels and a slow turntable.
+- **A real engineering drawing sheet:** a zoned border, numbered balloons with leader lines
+  and a parts list, notes, the plate's centre lines, the print's height so far against its
+  full height, the print washed in its filament colours, and a full title block (drawing
+  number, sheet, units, date, third-angle projection symbol).
+- **A 3D viewer that looks like a slicer, not a grid:** a real 276 × 293 mm textured plate
+  with a fine grid on it only, a soft studio backdrop, a contact shadow and proper lighting.
+- **Mixed layer heights, rebuilt around what you want:** one question first (finest detail,
+  balanced, fastest or one height), each answer previewing what it sets on every head; then
+  each head in a plain sentence with Thinner and Thicker buttons. The expert controls wait
+  under Fine-tune.
+- **Updates from inside the app:** choose Newest builds and Deja Vu1 compares every file with
+  GitHub, downloads only what changed, checks each file against GitHub's own record of it,
+  and restarts into the new version (rolling back if it fails to start). Automatic checks
+  every 15 minutes, and optional automatic install while every printer is idle.
+- **It never forgets:** every record keeps its last good copy, a damaged file repairs itself,
+  and safety copies of everything the dashboard remembers are made every 6 hours, at start-up
+  and before every update, restorable from Settings (a restore can itself be undone).
+- **Pick up where you left off:** Files finds Snapmaker Orca or OrcaSlicer on this computer,
+  copies your recent projects in and turns your own presets into a slicing profile.
+- **What your history says:** Overview reads the printer's own print history (a real U1 brings
+  everything it has printed) into findings that only appear with enough prints behind them.
+- **An optional device lock:** only paired devices can use the dashboard; this computer
+  always can.
+- **Check it yourself:** Settings → About runs nine real checks inside your own copy in a few
+  seconds, and lists what Deja Vu1 builds on (see also [CREDITS.md](CREDITS.md)).
+- **Smaller and fixed:** the games load only when you open them (they were two thirds of the
+  dashboard script); Snapmaker Orca is found by itself for slicing; a printer that needs an API
+  key says how to fix it; a heater fault shows on its own dock ring; and a printer stopped with
+  an error can be recovered with Restart firmware.
 - **The real 3DBenchy in the sample files:** "Add sample files" now gives the actual
   3DBenchy (public domain since February 2025), a 24-tooth involute gear and a twisted
   vase instead of cubes and an L-bracket, with G-code cut from those models layer by
   layer: a 240-layer Benchy, a Benchy + gear + vase plate whose objects can be skipped
   one by one, and a three-colour coaster that changes heads on every top layer. The
   Bambu, Elegoo and MakerWorld project samples carry the same models.
-- **Mixed layer heights you can read at a glance:** the new Layer stack (Files, and Tools
-  & filaments) works the way the U1 multi-nozzle work does: one fine base layer, and each
-  head prints a whole number of base layers per pass (×1, ×2, ×3). It shows the base range
-  your nozzles allow, crosses out what a nozzle can't print with the reason, draws a section
-  of the passes and has four smart set-ups (Balanced, Fastest, Finest detail, Same on all).
-  A "Mixed" profile adds the thick-layer mode (Consistent, Adaptive, Fixed) and edge tolerance.
+- **Mixed layer heights you can read at a glance:** one shared fine layer, and each head
+  prints a whole number of fine layers per pass. It shows the range your nozzles allow,
+  greys out what a nozzle can't print with the reason, and draws a side cut of the passes.
 - **106 OrcaSlicer process settings:** the profile editor is laid out like Orca's own tabs
   (Quality, Strength, Speed, Support, Others) with line widths, seams and scarf seams,
   ironing, wall generator, 18 infill patterns, overhang speeds, accelerations, jerk, support
@@ -467,6 +503,9 @@ recorded static demo passed at both widths.
 | Layer stack, Orca-style process settings | Unit tests for the thick-layer options and all 106 settings (names and choices checked against OrcaSlicer's option table); Chromium at 1366/390 px | No real slice with the new options in this round; whether an engine lists the thick-layer options is read from its own schema |
 | Farm desk, telemetry, logbook, finder, converter card | Unit tests (logbook, printer page link) and Chromium at 1366/390 px on the simulated farm | Real farms, real spools and real printers' web pages unverified |
 | Sample models | The 3DBenchy (CC0) reduced to 60,000 triangles with its edge structure unchanged; sample G-code checked by drawing its layers | The sample slicer is deliberately simple (no seams, supports or bridges) and says so in every file; not for printing |
+| The print inside the twin, case off, drawing sheet | Preview built from the file's own G-code, tested on the two-colour sample and hand-written files; the real-printer download tested against the Moonraker stand-in; Chromium screenshots at 1366/390 px; frame time measured in software rendering (the print adds about a fifth; case off costs about 2.7× there) | Not seen with a physical U1's own files; frame, motors and lead screw sizes are typical, not measured |
+| Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
+| Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
 | Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
 
 Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified
@@ -489,8 +528,8 @@ accepts two million triangles per plate. They do not guarantee support adequacy,
 watertightness or toolhead clearance. AR still uses original source geometry.
 
 Open work includes physical testing, feeder control, full format fidelity,
-heater-fault ring/error-clear issues, heavy-model rendering and older launch
-media. Current boards, social cards, screenshots, demo recording and preview GIF
+heavy-model rendering and older launch media. The heater-fault ring and the
+unreachable firmware restart were fixed in this round. Current boards, social cards, screenshots, demo recording and preview GIF
 and the launch videos (60-second version 13, 75-second version 12, and version 14: version 12
 cut to 60 s with the new twin and background, and version 15: version 13 updated the same way)
 are refreshed; older
@@ -692,6 +731,21 @@ python3 start.py          # opens http://localhost:8000
 ```
 
 The window prints the address to open from a phone on the same Wi-Fi.
+
+**Staying up to date:** you only download once. In **Settings → App updates**
+choose **Newest builds**, then **Check for updates** and **Install update &
+restart** (or switch on automatic checks and installs). Only changed files are
+fetched, each is checked against GitHub's record of it, your data is never
+touched, and a safety copy is made first. Start the app with its double-click
+launcher (or `python3 start.py`) for in-app installs; a `git clone` copy gets an
+**Update with git** button instead.
+
+**Slicing:** the slicing settings (106 of Orca's process settings, the profile
+editor, the plate editor) are part of Deja Vu1. Turning a model into G-code
+uses a slicing engine you install yourself, Snapmaker Orca or OrcaSlicer; Deja
+Vu1 finds either in its usual place, or you enter its path once in
+**Files → Auto-print**. Without one, everything else (G-code files from your
+slicer, checks, printing, the twin) still works.
 
 The dashboard will report that no printer is connected and show empty panels.
 To connect one: **Printers → Add a printer → Find printers on my network**

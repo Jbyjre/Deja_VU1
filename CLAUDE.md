@@ -132,6 +132,20 @@ root should hand over to `welcome.html`.
 - `sample_files.py` + `sample_slicer.py` + `sample_assets/3dbenchy.stl`: the sample set (the
   real 3DBenchy, CC0, 60k triangles; a gear and a vase from formulas) and a deliberately simple
   slicer that cuts real layers for the sample G-code. Old cube/bracket names live in `LEGACY`.
+  The default demo printer (U1 · Workshop) prints `two_benchies_two_colours.gcode` (orange hull
+  / black cabin and the reverse, deck at 15 mm); its `object_tools` plan drives the active head.
+- `print_preview.py` (`GET /api/print/preview`): the running print's outer walls and top
+  surfaces per head and object from its own G-code (real printer: Moonraker file download;
+  else library or samples), delta-encoded, cached per file version. Drawn by twin3d.js.
+- `memory.py` (safety copies in `<data>/snapshots/`, every 6 h / start-up / before updates,
+  restore with undo) and `storage.py` (`.<name>.prev` last-good copy on every save; damaged
+  files repaired from it or a safety copy). `insights.py` (`/api/insights`, evidence
+  thresholds), `orca_import.py` (Snapmaker_Orca / OrcaSlicer data folders, recent projects,
+  user presets; paths never sent to the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
+- `app_updates.py`: channels `stable` (releases) and `latest` (main branch: per-file git blob
+  hashes against GitHub's tree, only changed files staged), `watch()` thread, `git_update()`.
+- `pairing.py`: device keys (hash stored, HttpOnly cookie) and the optional device lock
+  (`app.py` `_locked_out`; localhost via loopback is always allowed).
 - `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
   `PrintConfig.cpp`), served by `GET /api/slicer/schema` and used by `slicer_profiles.validate_options`.
 - `logbook.py`: per-printer problems/fixes/print hours (`/api/logbook`, module `maintenance`);
@@ -146,7 +160,7 @@ root should hand over to `welcome.html`.
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Script order: `app.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `launchpad.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` →
+  `farm.js` → `launchpad.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -161,7 +175,9 @@ root should hand over to `welcome.html`.
   when a print finishes, two keyboard secrets). New surprises go in its
   SURPRISES section. It draws only while something moves; reduced motion turns
   it Still with no surprises. Content cards drop their blur while it can move.
-- `twin3d.js` + `twin3d-scene.js`: the digital twin (WebGL 2, no library) in
+- `twin3d.js` + `twin3d-scene.js`: the digital twin (WebGL 2, no library), with the real print
+  (`setPrint`, clipped per layer), case modes (closed / glass / open, `setCaseMode`), a Print
+  close-up view and options (`setOptions`: print, rest, tags, spin), in
   both modes: a realistic model (PBR-style lighting, shadows, reflections) and
   an engineering drawing made from the same geometry (edge-detection ink plus
   SVG dimensions, balloons and title block). Driven by workshop.js
@@ -171,10 +187,11 @@ root should hand over to `welcome.html`.
   and the plate size from that profile (276 × 293 mm); only facts were used,
   not files (that repo is AGPL). The body's own size (~390 × 460 × 480 mm),
   dock spacing and inside layout are estimates; the card says so.
-- Games (app.js): every game timer goes through `frameEvery()` (rAF-driven fixed
+- Games (`games.js`, moved out of app.js; fetched by app.js `loadGames()` the first time the
+  Games tab opens, so it is not in index.html's script list): every game timer goes through `frameEvery()` (rAF-driven fixed
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
-  October 2026; the older game code below them in app.js is legacy.
+  October 2026; the older game code below them in games.js is legacy.
 - CSS order: `style.css` → `workshop.css` → `farm.css` → `theme.css`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
@@ -282,6 +299,8 @@ prove a public deployment.
   dict each call.
 - `modules.is_enabled()` returns True for unknown ids, so a typo in a
   route's module id silently ungates it.
+- `storage.save_json` keeps a hidden `.<name>.prev` beside every record. Code that lists a
+  data folder must skip names starting with "." (timelapse frames once counted it).
 - `backend/websocket.py` is also the client framing for `moonraker_client.py`,
   and its name shadows PyPI's `websocket-client`, so `backend/` must stay
   first on `sys.path`.
@@ -296,10 +315,6 @@ prove a public deployment.
 
 - Windows/macOS engine setup and recovery launchers remain unverified; Linux
   isolated recovery is tested. External engines/exported presets need separate backup.
-- A missing API key over the WebSocket shows only "Not connected:
-  Unauthorized" (`moonraker_client._call`).
-- A simulated heater fault docks the head, so its LED ring reads "ready".
-- `MoonrakerPrinter.clear_error()` is unreachable.
 - Current backend/security/fake-printer coverage passes, but it does not establish
   physical firmware behaviour. Follow the current validation record rather than
   older audit-completion claims.
