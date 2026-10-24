@@ -18,13 +18,42 @@ You need your own running copy for real readings.
 
 ## On my computer
 
-1. Install Python 3.8 or newer from [python.org](https://www.python.org/downloads/)
+1. **Fastest: paste a few lines.** They download the newest release into your
+   Documents folder and start it. Skip to step 4 afterwards.
+
+   **Windows:** open **PowerShell** (Windows key, type `PowerShell`, Enter). If
+   you have no Python yet, paste `winget install -e --id Python.Python.3.12`
+   first, wait, then close and reopen PowerShell. Then paste:
+
+   ```powershell
+   $ProgressPreference = 'SilentlyContinue'
+   $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+   Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
+   Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
+   Start-Process "$dest\start-windows.bat"
+   ```
+
+   **Mac, Linux or Raspberry Pi:** open **Terminal** (on a Mac: Cmd + Space, type
+   `Terminal`, Enter) and paste:
+
+   ```bash
+   curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+   python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+   cd ~/Documents/Deja_VU1 && python3 start.py
+   ```
+
+   If a Mac says the `python3` command needs the command line developer tools,
+   click **Install**, wait, and paste the block again. Running a block again
+   later repairs the app and keeps your settings, which live in `backend/data/`.
+2. **No code instead:** install Python 3.8 or newer from [python.org](https://www.python.org/downloads/)
    if you do not already have it. On Windows, the launcher tries `py -3` and then
    `python`; allow the installer to add Python to PATH if that option appears.
-   PATH is the computer's list of places to look for programs.
-2. Open [Deja Vu1 on GitHub](https://github.com/Jbyjre/Deja_VU1), choose **Code →
-   Download ZIP**, and extract it to a folder in Documents. Keep this folder:
-   your saved settings and files normally live inside `backend/data/`.
+   PATH is the computer's list of places to look for programs. Then download the
+   [newest release](https://github.com/Jbyjre/Deja_VU1/releases/latest)
+   (**deja-vu1-update.zip** or **Source code (zip)**) and extract it to a folder in
+   Documents, or clone the project with GitHub Desktop (**File → Clone repository
+   → URL**). Keep this folder: your saved settings and files normally live inside
+   `backend/data/`.
 3. Open the folder and double-click **start-windows.bat**, **start-mac.command**,
    or **start-linux.sh**. On Mac/Linux, if the file opens as text or cannot run,
    open Terminal in the folder and run `python3 start.py`. Downloaded files may
