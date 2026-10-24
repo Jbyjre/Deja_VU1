@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="workshop.css">
 <link rel="stylesheet" href="farm.css">
+<link rel="stylesheet" href="guide.css">
 <link rel="stylesheet" href="theme.css">
 <link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -102,7 +103,7 @@
       </span>
       <div class="brand-text">
         <h1>Deja&nbsp;Vu1</h1>
-        <p>Your Snapmaker U1 dashboard</p>
+        <p>Your Snapmaker U1 dashboard <button class="ver-chip" id="ver-chip" type="button" hidden title="Version and updates"></button></p>
       </div>
     </div>
 
@@ -894,22 +895,64 @@
   <!-- ============================================================ -->
   <section id="tab-modules" class="tab-panel" hidden>
     <section class="card liquid-glass setup-settings" data-browser-only>
-      <div class="card-head"><div><h2>Your space</h2><p class="card-sub">A little help, whenever you need it.</p></div><button class="btn" id="setup-replay">Replay setup</button></div>
+      <div class="card-head"><div><h2>Your space</h2><p class="card-sub">A little help, whenever you need it.</p></div><div class="setup-choices"><button class="btn primary" id="guide-replay" type="button">Tour every screen</button><button class="btn" id="setup-replay">Replay setup</button></div></div>
       <label for="private-name">Your name · optional</label>
       <div class="inline-form"><input id="private-name" maxlength="40" autocomplete="off"><button class="btn" id="private-delete">Delete name</button></div>
       <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
-      <h3>App updates <span id="app-update-badge" hidden>New version available</span></h3>
-      <p id="app-update-status" role="status">Loading app information…</p>
-      <fieldset class="update-channel">
-        <legend class="sr-only">Which updates to get</legend>
-        <label><input type="radio" name="app-update-channel" value="latest"><span><b>Newest builds</b> Each improvement as soon as it is published, without downloading the app again. Only the files that changed are fetched, and each must match GitHub's own record of it before anything is replaced.</span></label>
-        <label><input type="radio" name="app-update-channel" value="stable"><span><b>Stable releases</b> Only versions published as releases: fewer, bigger steps.</span></label>
-      </fieldset>
-      <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button><button class="btn primary" id="app-update-git" hidden>Update with git &amp; restart</button></div>
-      <label class="setup-check"><input type="checkbox" id="app-update-auto"> Check automatically <span class="field-hint" id="app-update-auto-when">(newest builds every 15 minutes, releases once a day)</span></label>
-      <label class="setup-check"><input type="checkbox" id="app-update-autoinstall"> Install by itself when every printer is idle</label>
-      <p class="field-hint">Checks send no name or printer details. GitHub sees your connection's network address. Your data folder is never part of an update, and a safety copy is made first.</p>
-      <p class="field-hint" id="app-update-note"></p>
+    </section>
+    <section class="card liquid-glass version-card" id="version-card" data-browser-only>
+      <div class="card-head"><div><h2>Version &amp; updates <span id="app-update-badge" class="vc-badge" hidden>New version available</span></h2><p class="card-sub">Which version you run, how this copy gets updates, and what every version changed.</p></div></div>
+      <div class="vc-hero">
+        <div class="vc-now">
+          <span class="eyebrow">Installed version</span>
+          <strong class="vc-number" id="vc-number">&hellip;</strong>
+          <span class="vc-name" id="vc-name"></span>
+          <span class="vc-meta" id="vc-meta"></span>
+        </div>
+        <div class="vc-actions">
+          <button class="btn primary" id="vc-tour" type="button">Tour what&rsquo;s new</button>
+          <a class="btn" href="https://github.com/Jbyjre/Deja_VU1/releases" target="_blank" rel="noopener">Releases on GitHub</a>
+        </div>
+      </div>
+      <div class="vc-update">
+        <p class="vc-kind" id="vc-kind"></p>
+        <p id="app-update-status" role="status">Loading app information&hellip;</p>
+        <ul class="vc-coming" id="vc-coming" hidden></ul>
+        <fieldset class="update-channel" id="app-update-channels">
+          <legend class="sr-only">Which updates to get</legend>
+          <label><input type="radio" name="app-update-channel" value="latest"><span><b>Newest builds</b> Each improvement as soon as it is published, without downloading the app again. Only the files that changed are fetched, and each must match GitHub's own record of it before anything is replaced.</span></label>
+          <label><input type="radio" name="app-update-channel" value="stable"><span><b>Stable releases</b> Only versions published as releases: fewer, bigger steps.</span></label>
+        </fieldset>
+        <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button><button class="btn primary" id="app-update-git" hidden>Update with git</button></div>
+        <label class="setup-check"><input type="checkbox" id="app-update-auto"> Look for updates by itself <span class="field-hint" id="app-update-auto-when">(newest builds every 15 minutes, releases once a day)</span></label>
+        <label class="setup-check"><input type="checkbox" id="app-update-autoinstall"> Install by itself when every printer is idle</label>
+        <p class="field-hint">Off until you turn it on. A check sends GitHub no name, printer details or settings; GitHub sees your network address, as with any website. Your data folder is never part of an update, and a safety copy is made first.</p>
+        <p class="field-hint" id="app-update-note"></p>
+      </div>
+      <h3 class="vc-h">Version history</h3>
+      <ol class="vc-history" id="version-history" aria-label="Every version, newest first"></ol>
+    </section>
+    <section class="card liquid-glass desktop-card" id="desktop-card" data-browser-only>
+      <div class="card-head"><div><h2>Desktop app</h2><p class="card-sub">Use Deja Vu1 in its own window instead of a browser tab. Same dashboard, same data, nothing extra to download.</p></div></div>
+      <div class="da-options">
+        <article class="da-option">
+          <h3>Install it as an app</h3>
+          <p>Chrome and Edge can install Deja Vu1 like any app: its own window, an icon in the Start menu or Dock, and a place on the taskbar.</p>
+          <button class="btn primary" id="da-install" type="button">Install Deja Vu1</button>
+          <p class="field-hint" id="da-install-note" role="status"></p>
+        </article>
+        <article class="da-option">
+          <h3>Open as a window when the launcher starts</h3>
+          <p>The double-click launcher can open Deja Vu1 in a window with no tabs or address bar, using Edge or Chrome.</p>
+          <fieldset class="da-modes" id="da-modes"><legend class="sr-only">When the launcher starts, open Deja Vu1</legend>
+            <label><input type="radio" name="da-mode" value="window"> In its own app window</label>
+            <label><input type="radio" name="da-mode" value="browser"> In a browser tab</label>
+            <label><input type="radio" name="da-mode" value="none"> Don&rsquo;t open anything</label>
+          </fieldset>
+          <p class="field-hint" id="da-window-note" role="status"></p>
+        </article>
+      </div>
+      <p class="field-hint">Either way, the launcher window is what runs Deja Vu1. Keep it open. Closing the app window leaves the dashboard running, so your phone can still use it.</p>
     </section>
     <section class="card liquid-glass about-card" id="about-card">
       <div class="card-head"><div><h2>About Deja Vu1</h2><p class="card-sub" id="about-version">A dashboard and print-preparation workspace for the Snapmaker U1.</p></div>
@@ -1145,13 +1188,30 @@
 
   <footer class="foot">
     <span id="foot-state">No printer connected. Nothing is contacted.</span>
-    <span>MIT licensed · <span id="stamp">—</span></span>
+    <span><span id="foot-version"></span>MIT licensed · <span id="stamp">—</span></span>
   </footer>
 
 </main>
 
 <!-- Always-on overlays: toasts, the live print pill, "continue here". -->
-<div id="toasts" class="toasts" aria-live="polite"></div>
+<!-- The notification orb: messages rise out of it and sink back in (orb.js). -->
+<div class="orb-dock" id="orb-dock">
+  <div class="orb-stack" id="toasts" aria-live="polite"></div>
+  <section class="orb-panel liquid-glass deep" id="orb-panel" hidden aria-labelledby="orb-panel-title">
+    <div class="orb-panel-head">
+      <h2 id="orb-panel-title">Notifications</h2>
+      <button class="btn small" id="orb-clear" type="button">Clear</button>
+    </div>
+    <div class="orb-app" id="orb-app"></div>
+    <ol class="orb-list" id="orb-list"></ol>
+    <p class="orb-empty" id="orb-empty">Nothing yet. Messages from the dashboard collect here.</p>
+  </section>
+  <button class="orb" id="orb" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="orb-panel">
+    <span class="orb-glass" aria-hidden="true"></span>
+    <span class="orb-core" aria-hidden="true"></span>
+    <span class="orb-count" id="orb-count" hidden></span>
+  </button>
+</div>
 
 <button class="live-pill liquid-glass" id="live-pill" type="button" hidden data-tint
         aria-label="Current print - open printer control">
@@ -1292,6 +1352,7 @@
   </form>
 </dialog>
 <script src="app.js"></script>
+<script src="orb.js"></script>
 <script src="backdrop.js"></script>
 <script src="viewer3d.js"></script>
 <script src="ar.js"></script>
@@ -1301,7 +1362,9 @@
 <script src="studio.js"></script>
 <script src="layer-stack.js"></script>
 <script src="farm.js"></script>
+<script src="guide.js"></script>
 <script src="launchpad.js"></script>
+<script src="versions.js"></script>
 <script src="finder.js"></script>
 <script src="desk.js"></script>
 <script src="telemetry.js"></script>

@@ -129,34 +129,72 @@ Never forward the dashboard's port through your router: the app has no login.
 The server's own address checks permit local IPs and familiar local host names;
 they do not replace your firewall or a remote login.
 
-## Updating your downloaded copy
+## In its own window: the desktop app
 
-Open **Settings → App updates → Check for updates**. It contacts GitHub; the
-optional automatic check is off until you enable it, then runs at startup at
-most once a day. Your profile name and printer details are never included.
-GitHub still sees the network address making the request.
+You can keep Deja Vu1 out of your browser tabs. Open **Settings → Desktop app**:
 
-When a newer stable release has a verified update package, an install button
-appears for a downloaded copy started through the launcher. Wait until all real
-printers are connected and idle and slicing has finished. Install keeps the
-data folder, restarts the dashboard and restores the previous application files
-if the new server fails its startup check. Keep the launcher window open.
+- **Install Deja Vu1** turns it into an app with its own window and an icon in
+  the Start menu or Dock. This works in Chrome and Edge on the computer that runs
+  Deja Vu1 (the `http://localhost:8000` address). Safari on macOS Sonoma or newer
+  uses **File → Add to Dock**. Firefox cannot install websites as apps.
+- **In its own app window** makes the launcher open Deja Vu1 in a window with no
+  tabs or address bar, using Edge (included with Windows) or Chrome. It applies
+  the next time you start the launcher.
 
-This development version is **0.1.0-dev**. A compatible published release package
-is still needed before ordinary users can receive a real update. Source copies
-with a `.git` folder deliberately cannot self-update; their code changes need to
-be managed separately. See [release preparation](releasing.md).
+The launcher window still runs the dashboard. Keep it open; closing only the app
+window leaves the dashboard running for your phone.
 
-For a manual move, stop the app, keep the old folder intact, and copy its entire
-`backend/data/` into the new copy before launching. If you set `DEJAVU_DATA_DIR`,
-keep pointing to that same folder. The built-in **app-data backup** includes
-settings, library files and per-printer records, with validated recovery into a
-separate copy. It excludes printer firmware and external engines/presets;
-see [backup and recovery](backup-and-recovery.md) for limits and steps.
+## Updating
+
+Open **Settings → Version & updates**. It shows the version you run, how your
+copy updates and what every version changed. Press **Check for updates**; when
+one is ready, press **Install**. To have Deja Vu1 look by itself, turn on **Look
+for updates by itself**: it checks at startup and once a day, and the glass orb
+in the bottom-right corner tells you. A check sends GitHub no name, printer
+details or settings; GitHub still sees the network address making the request.
+
+- **A copy made with GitHub Desktop or git** pulls the newest version of `main`
+  from GitHub. It only moves forward: if you changed any of its files by hand,
+  or it has commits of its own, it stops and changes nothing. On Windows it also
+  finds the copy of git that GitHub Desktop keeps for itself.
+- **A downloaded copy** installs the newest published release. It checks the
+  download's SHA-256 fingerprint before using it.
+
+Either way: start Deja Vu1 with its launcher, and wait until every real printer
+is idle and slicing has finished. Install keeps the data folder, restarts the
+dashboard, and puts the previous version back if the new one fails its startup
+check. Keep the launcher window open. Printer firmware updates are separate.
+
+### Updating an older copy for the first time
+
+If Settings has no **Version & updates** card, your copy is older than the
+updater for it. Update by hand once; after that, updates come through the app.
+
+1. Close the launcher window to stop Deja Vu1.
+2. Then, depending on how you got it:
+   - **GitHub Desktop:** open GitHub Desktop and choose the **Deja_VU1**
+     repository at the top left. Press **Fetch origin**, then **Pull origin**
+     when it appears. If GitHub Desktop says you changed files, it lists them;
+     you made no deliberate changes, so **Discard changes** is usually right,
+     but read the list first. Your settings live in `backend/data/`, which git
+     ignores and never lists.
+   - **git:** open a terminal in the folder and run `git pull`.
+   - **ZIP:** download the newest version into a new folder. Copy the whole
+     `backend/data/` folder from the old copy into the new one. Keep the old
+     folder until the new one works. If you set `DEJAVU_DATA_DIR`, keep pointing
+     to that same folder instead.
+3. Start the launcher again. The header shows the new version.
+
+The built-in **app-data backup** (Settings) includes settings, library files and
+per-printer records, with validated recovery into a separate copy. Make one
+before your first update. It excludes printer firmware and external
+engines/presets; see [backup and recovery](backup-and-recovery.md).
 
 ## What has not been proved yet
 
-The Linux launcher and disposable update/rollback processes have automated
-checks. Windows/macOS double-click launching, a real U1, real iPhone/Android
+The Linux launcher, disposable update/rollback processes and git-copy updates
+(against real git repositories on Linux) have automated checks. Installing the
+desktop app in a real Chrome or Edge window, the launcher's app window on Windows
+or macOS, and an update between two published releases have not been tried yet. Windows/macOS double-click launching, a real U1, real iPhone/Android
 installation, home firewalls and remote access still need device testing. An
 emulated phone-sized browser is useful for layout, but does not prove those.

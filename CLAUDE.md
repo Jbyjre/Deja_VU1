@@ -50,6 +50,12 @@ trust the code and fix this file.
 - Default: commit finished work on a branch, open a PR, and merge it with one
   merge commit (the repo's convention) when there are no conflicts and checks
   are green or absent. Don't wait on pending CI. Never force-push.
+- Versions (the owner, 24 October 2026): `VERSION`, the top entry of
+  `frontend/versions.json` and a `## <version> (<date>): <name>` heading in
+  CHANGELOG.md must agree (`tests/test_versions.py`). Merging a new stable
+  `VERSION` to `main` publishes a GitHub release by itself
+  (`.github/workflows/release.yml`), so only raise it when a release is meant.
+  A new version's `highlights` become its in-app tour; point each at a real element.
 
 ## How to work here (the method that has worked)
 
@@ -93,7 +99,8 @@ User-facing startup settings include: `PORT` (default 8000),
 Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
 `DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
 (where settings and files live; default `backend/data/`),
-`DEJAVU_NO_BROWSER=1` (read by `start.py`: don't open the browser).
+`DEJAVU_NO_BROWSER=1` (read by `start.py`: don't open the browser),
+`DEJAVU_WINDOW=browser|window|none` (overrides Settings → Desktop app for one start).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
 (`node script.js`, then `require('playwright').chromium.launch({executablePath:
@@ -158,9 +165,9 @@ root should hand over to `welcome.html`.
   (29 module ids), `storage.py` (atomic JSON).
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
-- Script order: `app.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
+- Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `launchpad.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
+  `farm.js` → `guide.js` → `launchpad.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -192,7 +199,20 @@ root should hand over to `welcome.html`.
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
   October 2026; the older game code below them in games.js is legacy.
-- CSS order: `style.css` → `workshop.css` → `farm.css` → `theme.css`.
+- CSS order: `style.css` → `workshop.css` → `farm.css` → `guide.css` → `theme.css`.
+- `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
+  message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
+  and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.
+- `guide.js`: the tour engine (`Guide.start(steps)`, spotlight or full-screen
+  chapter steps, "Try it" actions limited to buttons a person could press) and
+  the tour of every screen (`Guide.everything()`, setup's "The tour" step).
+- `versions.js` + `versions.json`: Settings → Version & updates, the header
+  version chip, "Updated to…" news and each version's tour (`Versions.tour(v)`).
+  Works on the static demo (plain file). `launchpad.js` holds setup and the
+  desktop-app card (`beforeinstallprompt`, launcher window choice).
+- Top-level `const` in a classic script is not a `window` property: shared
+  modules here assign `window.Orb`, `window.Guide`, `window.Versions`. Scripts
+  that use a later script at start-up wait for `DOMContentLoaded`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
   404 and `app.js` hands over to it; `/?demo` and `/?dashboard` skip that.
@@ -362,9 +382,16 @@ prove a public deployment.
   physical filament write action belong to `printer_control`. Real writes use
   read-back, never FORCE, and never change fitted nozzle readings.
 
-- `VERSION`, `backend/app_updates.py`, `start.py`: opt-in GitHub release checking,
-  verified staging and child-process rollback. No stable package published yet.
+- `VERSION`, `backend/app_updates.py`, `start.py`: opt-in GitHub release checking
+  (startup, then daily while running), verified staging and child-process
+  rollback. Git/GitHub Desktop copies update by `git fetch` + `merge --ff-only`,
+  refused on hand-edited tracked files or local commits, rolled back with
+  `git reset --keep`; on Windows it finds GitHub Desktop's own git. v0.8.0 is the
+  first release, published by `.github/workflows/release.yml`.
   `docs/releasing.md` is the release checklist. Python is still required.
+- `backend/desktop.py`: the launcher opens a browser tab, an Edge/Chrome `--app`
+  window or nothing (`/api/app/desktop`, `desktop.json`; shown in `/api/app/info`).
+  The launcher opens it once per start, not after an update restart.
 - `backend/stock_camera.py`: separate authenticated stock camera monitor per
   real printer. Snapshot GET is module-gated; demo returns a labelled SVG.
   Real camera unverified; time-lapse now uses each stock camera. Manual MJPEG
