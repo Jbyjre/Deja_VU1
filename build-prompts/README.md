@@ -8,6 +8,8 @@ Follow-up briefs for work that needs a separate coding session. Start with
 Read the current [validation record](../docs/slicer-workspace-validation.md)
 and [working rules](../CLAUDE.md) before relying on an older brief.
 
+Planning note only (not a build prompt yet): [10: other printers](10-other-printers.md).
+
 ## How to use one
 
 1. Start a new Claude Code session on this repository (claude.ai/code, pick
