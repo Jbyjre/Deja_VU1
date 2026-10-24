@@ -6,10 +6,10 @@
   const save = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); return true; } catch (_) { return false; } };
   const dialog = $('setup-dialog'), content = $('setup-content');
   let step = 0, mode = 'real', info = null, returnFocus = null, activeTarget = null, generation = 0;
-  // Full screen for every step except the tour, which shrinks to a corner
-  // card so the dashboard it points at can be seen.
-  const names = ['Welcome', 'Make it yours', 'Your printer', 'Find your way', 'Your phone', 'Keep up to date'];
-  const TOUR = names.indexOf('Find your way');
+  // Every step is full screen. The tour step hands over to the guided tour
+  // (guide.js), which points at the real dashboard, then comes back here.
+  const names = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Your phone', 'Desktop app', 'Keep up to date'];
+  const TOUR = names.indexOf('The tour');
   const privacy = 'Only saved in this browser on this device. Never sent to the server, logs, backups or update checks. Optional; delete it any time.';
   function greeting() {
     const name = read(key);
@@ -30,9 +30,8 @@
     $('demo-toggle').dispatchEvent(new Event('change'));
   }
   async function refreshInfo() {
-    if (tourOn() || serverMissing()) { renderUpdates(); return; }
-    try { info = await getJSON('/api/app/info'); } catch (_) { info = null; }
-    renderUpdates();
+    info = await Versions.refresh();
+    renderDesktop();
   }
   function phoneText() {
     if (tourOn()) return 'This public site is a demo recording. Download and run Deja Vu1 on your computer first; then open that computer’s address on your phone.';
@@ -43,18 +42,16 @@
   function render() {
     const view = ++generation;
     clearHighlight();
-    if (step === TOUR && dialog.matches(':modal')) { dialog.close(); dialog.show(); }
-    if (step !== TOUR && !dialog.matches(':modal')) { dialog.close(); dialog.showModal(); }
+    if (!dialog.matches(':modal')) { dialog.close(); dialog.showModal(); }
     $('setup-step').textContent = `Step ${step + 1} of ${names.length} · ${names[step]}`;
     $('setup-steps').innerHTML = names.map((n, i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}"${i === step ? ' aria-current="step"' : ''}><span>${esc(n)}</span></li>`).join('');
     $('setup-back').hidden = step === 0;
     $('setup-next').textContent = step === names.length - 1 ? 'Finish setup' : 'Continue';
-    dialog.classList.toggle('setup-tour', step === TOUR);
-    dialog.classList.toggle('is-full', step !== TOUR);
-    document.documentElement.classList.toggle('setup-full-open', step !== TOUR);
+    dialog.classList.add('is-full');
+    document.documentElement.classList.add('setup-full-open');
     if (step === 0) {
       content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">A little setup.<br>A clearer print day.</h2>
-        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer, talks to your printer over your home network, and works from your phone too. Nothing goes to the cloud.</p>
+        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer and talks to your printer over your home network. Open it in a browser tab, in its own app window, or on your phone. Nothing goes to the cloud.</p>
         <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Stay safe:</strong> every print is checked before it starts.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
@@ -105,15 +102,38 @@
         } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not connect. Check the address and try again.';btn.disabled=false;}
       };
     } else if (step === TOUR) {
-      content.innerHTML='<h2 id="setup-title">Find your everyday controls.</h2><p>Choose an area to highlight it in the dashboard. This tour does not send printer commands.</p><div class="setup-choices" id="setup-tour-links"></div>';
-      [['overview','Progress'],['control','Pause & cancel'],['files','Files & queue'],['modules','Camera & settings']].forEach(([tab,label])=>{
-        const b=document.createElement('button');b.className='btn';b.textContent=label;b.onclick=()=>jump(tab);$('setup-tour-links').append(b);
-      });
-      jump('overview');
+      content.innerHTML=`<h2 id="setup-title">Take the tour.</h2>
+        <p class="setup-lead">${Guide.count()} short stops covering every screen. Each stop lights up the real part of the dashboard and says what it does; many have something to try.</p>
+        <ul class="setup-points"><li><strong>The big picture:</strong> how your computer, screens and printers connect.</li><li><strong>The names you’ll see:</strong> Workshop, Studio and Garage are three pretend demo printers, and Photo studio is a different thing again.</li><li><strong>Every screen:</strong> Overview, Printers, Control, Files, Photo studio, Automations, Care, Settings and Games.</li></ul>
+        <div class="setup-choices"><button class="btn primary" id="setup-guide">Start the tour</button></div>
+        <p class="field-hint">The tour never moves or starts a printer. End it any time with × or Esc; it comes back here. Replay it later from Settings → Your space.</p>`;
+      $('setup-guide').onclick=()=>{
+        const at=step;generation++;clearHighlight();dialog.close();
+        dialog.classList.remove('is-full');document.documentElement.classList.remove('setup-full-open');
+        Guide.everything({onEnd:()=>{step=Math.min(at+1,names.length-1);dialog.showModal();render();}});
+      };
     } else if (names[step] === 'Your phone') {
-      content.innerHTML=`<h2 id="setup-title">Your bench. In your pocket.</h2><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      content.innerHTML=`<h2 id="setup-title">Your bench. In your pocket.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. It needs no app store and no account.</p><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+    } else if (names[step] === 'Desktop app') {
+      content.innerHTML=`<h2 id="setup-title">A window of its own.</h2>
+        <p class="setup-lead">You are not stuck in a browser tab. Pick how Deja Vu1 opens on this computer; you can change it in Settings → Desktop app.</p>
+        <div class="setup-ways">
+          <div class="setup-way"><strong>Install it as an app</strong><span>An icon in the Start menu or Dock and its own window, from Chrome or Edge.</span><button class="btn primary" id="setup-install">Install Deja Vu1</button></div>
+          <div class="setup-way"><strong>Open as a window at start</strong><span>The launcher opens a window with no tabs or address bar.</span><button class="btn" id="setup-window">Use an app window</button></div>
+          <div class="setup-way"><strong>Keep the browser tab</strong><span>Nothing changes. It opens in your usual browser.</span></div>
+        </div>
+        <p class="field-hint" id="setup-desktop-note">${esc(installHelp())}</p>`;
+      $('setup-install').onclick=()=>install($('setup-desktop-note'));
+      $('setup-window').onclick=()=>saveWindow('window',$('setup-desktop-note'));
+      if(tourOn()||serverMissing()){$('setup-install').disabled=true;$('setup-window').disabled=true;}
     } else {
-      content.innerHTML='<h2 id="setup-title">Stay up to date, without reinstalling.</h2><p>Settings → App updates gets new versions from inside the app. Choose <b>Newest builds</b> to get each improvement as soon as it is published (only changed files download, each checked against GitHub’s record), or <b>Stable releases</b> for fewer, bigger steps. Turn on automatic checks, and if you like, let updates install by themselves while every printer is idle.</p><p>Start Deja Vu1 with its double-click launcher: it swaps the files in, keeps your data, makes a safety copy first and puts the previous version back if the new one fails to start.</p><p class="field-hint">The public demo cannot update a downloaded copy. Printer firmware updates are a separate feature.</p>';
+      const kind=info&&info.install_kind==='git'?'Your copy was made with git or GitHub Desktop, so updates pull the newest version straight from GitHub.':'Updates come from inside the app: Newest builds fetch each improvement as soon as it is published (only the changed files, each checked against GitHub’s record), or Stable releases give fewer, bigger steps. Choose in Settings.';
+      content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
+        <p class="setup-lead">This is Deja Vu1 <strong>v${esc(Versions.installed()||'?')}</strong>. ${esc(tourOn()||serverMissing()?'Updates belong to the copy on your own computer.':kind)}</p>
+        <label class="setup-check setup-check-big"><input type="checkbox" id="setup-auto" ${info&&info.automatic?'checked':''} ${tourOn()||serverMissing()?'disabled':''}> Look for updates by itself</label>
+        <p>When one is ready, the glass orb in the bottom-right corner tells you. Installing keeps your settings and files, makes a safety copy first, restarts the dashboard, and puts the old version back if the new one fails to start. Settings can also let updates install by themselves while every printer is idle. Start Deja Vu1 with its double-click launcher.</p>
+        <p class="field-hint">A check sends GitHub no name, printer details or settings. Settings → Version &amp; updates has the version history and a tour of each version. Printer firmware updates are separate.</p>`;
+      $('setup-auto').onchange=async e=>{const r=await postJSON('/api/app/updates/settings',{automatic:e.target.checked});if(!r.ok){e.target.checked=!e.target.checked;$('setup-status').textContent=r.body.error||'Could not save that.';}else{info={...info,...r.body};Versions.refresh();}};
     }
     $('setup-status').textContent='';
     const title=$('setup-title');title.tabIndex=-1;title.focus({preventScroll:true});
@@ -136,43 +156,72 @@
   dialog.addEventListener('cancel',e=>{e.preventDefault();finish();});
   $('private-name').addEventListener('input',e=>{save(key,e.target.value.trim().slice(0,40));$('private-greeting').textContent=e.target.value.trim()?`Hello, ${e.target.value.trim()}`:'Your print bench';});
   $('private-delete').onclick=()=>{save(key,'');greeting();toast('Name deleted from this browser','ok');};
-  function renderUpdates() {
-    const box=$('app-update-status'), check=$('app-update-check'), install=$('app-update-install');
-    const git=$('app-update-git');
-    if(tourOn()||serverMissing()){box.textContent='Public demo only. Updates belong to the copy running on your computer.';check.disabled=true;['app-update-auto','app-update-autoinstall'].forEach(i=>{$(i).disabled=true;});document.querySelectorAll('input[name=app-update-channel]').forEach(r=>{r.disabled=true;});install.hidden=true;git.hidden=true;return;}
-    if(!info||info.error){box.textContent='App information is unavailable. Check that the server is running.';return;}
-    const latest=info.latest&&info.latest.channel===info.channel?info.latest:null;
-    const build=info.build&&info.build.commit?` · build ${info.build.commit.slice(0,7)}`:'';
-    const what=latest&&!latest.error&&latest.title?` Newest: “${latest.title}”${latest.date?`, ${new Date(latest.date).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}`:''}.`:'';
-    box.textContent=`Version ${info.version}${build}. ${latest?(latest.error||latest.message):'No update check yet.'}${what}`;
-    document.querySelectorAll('input[name=app-update-channel]').forEach(r=>{r.checked=r.value===info.channel;});
-    $('app-update-auto').checked=!!info.automatic;
-    $('app-update-autoinstall').checked=!!info.auto_install;
-    $('app-update-autoinstall').disabled=!info.automatic;
-    install.hidden=!(latest&&latest.installable&&info.install_supported);
-    git.hidden=!info.git_checkout;
-    $('app-update-note').textContent=info.install_supported?'Installing restarts the dashboard and reloads this page by itself. It waits while a real printer is printing, paused or out of reach.'
-      :info.git_checkout?'This copy was made with git: “Update with git” fetches the newest commits (only if you have no local code changes) and restarts.'
-      :'To install from inside the app, start Deja Vu1 with its double-click launcher (start-windows.bat, start-mac.command or start-linux.sh). Checks work either way.';
-    $('app-update-badge').hidden=!(latest&&latest.available);
+  /* ---- the desktop app -----------------------------------------------------
+     Two ways out of the browser tab: install the dashboard as an app (Chrome
+     and Edge offer this on the computer's own http://localhost address), or
+     let the launcher open an app window (backend/desktop.py). */
+  let installEvent = null;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; renderDesktop(); });
+  addEventListener('appinstalled', () => { installEvent = null; toast('Deja Vu1 is installed. Open it from the Start menu, the Dock or your desktop.', 'ok', 7000); renderDesktop(); });
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  function browserName() {
+    const ua = navigator.userAgent;
+    if (/Edg\//.test(ua)) return 'Edge';
+    if (/Firefox\//.test(ua)) return 'Firefox';
+    if (/Chrome\//.test(ua) && !/OPR\//.test(ua)) return 'Chrome';
+    if (/Safari\//.test(ua)) return 'Safari';
+    return '';
   }
-  $('app-update-check').onclick=async e=>{
-    const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Checking GitHub…';
-    try{const r=await postJSON('/api/app/updates/check',{});info=r.body;renderUpdates();}catch(_){$('app-update-status').textContent='Could not check. Try again when your connection is back.';}finally{btn.disabled=false;}
-  };
-  const savePref=async(body,undo)=>{const r=await postJSON('/api/app/updates/settings',body);if(r.ok){info=r.body;renderUpdates();}else{undo();toast(r.body.error||'Could not save that preference','bad');}};
-  $('app-update-auto').onchange=e=>savePref({automatic:e.target.checked},()=>{e.target.checked=!e.target.checked;});
-  $('app-update-autoinstall').onchange=e=>savePref({auto_install:e.target.checked},()=>{e.target.checked=!e.target.checked;});
-  document.querySelectorAll('input[name=app-update-channel]').forEach(r=>r.onchange=()=>savePref({channel:r.value},renderUpdates));
-  const restarted=()=>{$('app-update-status').textContent='Restarting into the new version. This page reloads by itself; keep the launcher window open.';if(window.DVWaitForRestart)DVWaitForRestart($('app-update-status'));else setTimeout(()=>location.reload(),8000);};
-  $('app-update-install').onclick=async e=>{
-    const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Downloading and checking every file…';
-    try{const r=await postJSON('/api/app/updates/install',{});if(!r.ok)throw new Error(r.body.error);restarted();}catch(e){$('app-update-status').textContent=e.message||'The update could not be installed.';btn.disabled=false;}
-  };
-  $('app-update-git').onclick=async e=>{
-    const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Asking git for the newest commits…';
-    try{const r=await postJSON('/api/app/updates/git',{});if(!r.ok)throw new Error(r.body.error);if(r.body.restarting)restarted();else{$('app-update-status').textContent=r.body.updated?'Updated. Restart Deja Vu1 to use the new version.':'Already up to date.';btn.disabled=false;}}catch(e){$('app-update-status').textContent=e.message||'Git could not update this copy.';btn.disabled=false;}
-  };
+  function installHelp() {
+    if (tourOn() || serverMissing()) return 'This public page is a demo recording. Download Deja Vu1 and run it on your computer, then install that copy.';
+    if (standalone()) return 'You are using the installed app right now.';
+    if (!window.isSecureContext) return 'Install it on the computer that runs Deja Vu1, at http://localhost:8000. On a phone, use Add to Home Screen instead.';
+    if (installEvent) return 'Your browser is ready: press Install Deja Vu1.';
+    return {
+      Edge: 'In Edge: the app icon at the right of the address bar, or the menu (…) → Apps → Install this site as an app.',
+      Chrome: 'In Chrome: the install icon at the right of the address bar, or the menu (⋮) → Cast, save and share → Install page as app.',
+      Safari: 'In Safari on macOS Sonoma or newer: File → Add to Dock.',
+      Firefox: 'Firefox cannot install websites as apps. Choose “In its own app window” below, which uses Edge or Chrome, or open localhost:8000 in one of those.',
+    }[browserName()] || 'Look in your browser’s menu for Install or Add to Dock. The wording varies between browsers and versions.';
+  }
+  async function install(note) {
+    if (installEvent) {
+      const ev = installEvent; installEvent = null;
+      ev.prompt();
+      const choice = await ev.userChoice.catch(() => null);
+      if (choice && choice.outcome !== 'accepted') installEvent = ev;
+    } else {
+      (note || $('da-install-note')).textContent = installHelp();
+      toast(installHelp(), 'info', 8000);
+    }
+    renderDesktop();
+  }
+  async function saveWindow(mode, note) {
+    const r = await postJSON('/api/app/desktop', { open_as: mode });
+    if (!r.ok) { toast(r.body.error || 'Could not save that choice', 'bad'); return; }
+    if (info) info.desktop = r.body;
+    const msg = mode === 'window' ? (r.body.window_browser ? `Next time you start the launcher, Deja Vu1 opens in its own ${r.body.window_browser} app window.` : 'Saved, but neither Edge nor Chrome was found on this computer, so the launcher will open a normal browser tab.')
+      : mode === 'none' ? 'Next time, the launcher opens nothing. Open http://localhost:8000 or the installed app yourself.' : 'Next time, the launcher opens a browser tab.';
+    if (note) note.textContent = msg;
+    toast(msg, 'ok', 7000);
+    renderDesktop();
+  }
+  function renderDesktop() {
+    const btn = $('da-install'), offline = tourOn() || serverMissing();
+    btn.disabled = offline || standalone();
+    btn.textContent = standalone() ? 'Installed · in use now' : 'Install Deja Vu1';
+    $('da-install-note').textContent = installHelp();
+    const d = info && info.desktop;
+    document.querySelectorAll('#da-modes input').forEach(r => { r.disabled = offline || !d; r.checked = !!d && r.value === d.open_as; });
+    $('da-window-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !d ? 'Loading…'
+      : d.window_browser ? `The app window uses ${d.window_browser}, found on this computer. Applies the next time you start the launcher.`
+      : 'Neither Edge nor Chrome was found on this computer, so an app window would open as a normal tab.';
+  }
+  $('da-install').onclick = () => install();
+  $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
+  $('guide-replay').onclick = () => Guide.everything();
+  window.DesktopApp = { install, help: installHelp };
+
   // The search box lives in finder.js.
   let cameraRun = 0, cameraURL = null, cameraTimer = null;
   function stopStock() {
@@ -205,6 +254,8 @@
     frame();
   };
   greeting();
-  serverReady().then(async()=>{await refreshInfo();if(!read(seenKey))open();});
+  // versions.js loads after this file, so wait until every script has run.
+  const allLoaded=new Promise(r=>document.readyState==='loading'?addEventListener('DOMContentLoaded',r,{once:true}):r());
+  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(!read(seenKey))open();});
   if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

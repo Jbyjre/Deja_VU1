@@ -1,9 +1,54 @@
 # Changelog
 
 Newest first. Each entry says what changed for someone using the dashboard,
-and what is and isn't verified.
+and what is and isn't verified. The version numbers match the `VERSION` file,
+the app's version history (Settings → Version & updates, from
+`frontend/versions.json`) and the releases on GitHub. Version numbers before
+0.8.0 were given afterwards to rounds of work, dated from the git history;
+0.8.0 is the first version published as a download.
 
-## Unreleased — the real print in the twin, updates in the app, a memory that lasts
+## 0.8.0 (24 October 2026): updates that find you
+
+The first version published as a GitHub release.
+
+- Updates: the updater only ever looked for published GitHub releases, and none
+  existed, so no copy could update. `.github/workflows/release.yml` now publishes
+  a release, with `deja-vu1-update.zip` and notes from `frontend/versions.json`,
+  whenever `main` gets a new stable `VERSION`. Tests run first.
+- Copies made with git or GitHub Desktop now update in the app too
+  (`app_updates.git_info`, `_git_prepare`): fetch, then a fast-forward only. It
+  refuses when tracked files were changed by hand or the copy has its own
+  commits, and the launcher returns to the previous commit (`git reset --keep`)
+  if the new version fails its startup check. On Windows it finds GitHub
+  Desktop's own git when git is not installed separately. Tested with real git
+  repositories on Linux; not yet run on Windows.
+- Automatic update checks (still off until you turn them on) repeat daily while
+  the server runs, not only at startup.
+- Version history: Settings → Version & updates shows the installed version,
+  how this copy updates, every version's changes and a full-screen interactive
+  tour for each. `tests/test_versions.py` keeps `VERSION`, `versions.json`, this
+  file and the release notes in step.
+- Notification orb: a translucent orb in the bottom-right corner. Messages rise
+  out of it and sink back in; click it for the last 30 and for update news.
+- Desktop app: Settings → Desktop app installs Deja Vu1 from Chrome or Edge, or
+  makes the launcher open its own app window (Edge or Chrome `--app` mode,
+  `backend/desktop.py`, `DEJAVU_WINDOW`). The launcher now opens a window once
+  per start, not again after an update restart.
+- Setup tour: 54 stops on a computer (53 on a phone) covering every screen, with things to try, and an
+  explanation of the three demo printers (Workshop, Studio, Garage) and the
+  Photo studio tab.
+- README and product page: the ways to use Deja Vu1, how the pieces connect,
+  and install/update steps for each kind of copy, at the top.
+- Fixed: `test_heaters_settle_toward_their_target` failed in the full suite for
+  about half of the possible simulator clock positions, because the deliberate
+  heater ripple can read up to about 0.3 °C over target. It now allows that.
+- Validation: 852 tests pass (473.0 s, Python 3.13.17, Linux) with both rounds combined. Chromium at 1366
+  and 390 px walked setup, all 54 tour stops (none missing where the part is shown), every version tour,
+  the orb and both new Settings cards, plus the static online demo. Chromium
+  reports the dashboard installable on `localhost`; installing in a visible
+  Chrome/Edge window and the launcher's app window on Windows/macOS are untried.
+
+### Also in 0.8.0: the real print in the twin, newest builds, a memory that lasts
 
 - Digital twin: the print itself, from its own G-code (`backend/print_preview.py`,
   `GET /api/print/preview`): outside walls per layer and head, in each head's loaded colour,
@@ -39,7 +84,9 @@ and what is and isn't verified.
 - Not verified: anything on a physical U1 or real phone; Orca import on Windows/macOS;
   automatic install outside tests.
 
-## Unreleased — technical tools, the real Benchy and a working online demo
+## 0.7.0 (23 October 2026): technical tools, the real Benchy and a working online demo
+
+Built and tested; never published as a download.
 
 - Sample files: the real 3DBenchy (public domain, CC0, since February 2025; reduced from
   225,706 to 60,000 triangles with its edge structure unchanged), an involute 24-tooth
@@ -74,7 +121,9 @@ and what is and isn't verified.
 - Noted for the next video run: show the Benchy, then replace the film in the README and on
   the product page (`promo-video/README.md`, `build-prompts/09-launch-film-with-benchy.md`).
 
-## Unreleased — a realistic 3D twin and a livelier background
+## 0.6.0 (23 October 2026): a realistic 3D twin and a livelier background
+
+Built and tested; never published as a download.
 
 - Launch video version 14 ("V1 at 60 s"): version 12's 75-second film, its music and
   its click and keystroke sounds, re-cut to exactly 60 s in both shapes and re-filmed from
@@ -104,7 +153,9 @@ and what is and isn't verified.
 - Owner's note for future launch videos: show the Dots background reacting and the
   new 3D twin (`promo-video/README.md`). Next ideas: `build-prompts/08-background-and-twin-next.md`.
 
-## Unreleased — interface refresh: live background, 3D twin, games, setup
+## 0.5.0 (22 October 2026): interface refresh: live background, 3D twin, games, setup
+
+Built and tested; never published as a download.
 
 - New background that reacts to the cursor (`frontend/backdrop.js`): Flow, Layer
   lines, Dots and Still, in Glacier, Mint, Dusk, Graphite or Filament colours, chosen
@@ -141,7 +192,9 @@ and what is and isn't verified.
 - Tests: `tests/test_frontend_refresh.py` (maze reachability, published outer size,
   script order, tab introductions, game timers). README pictures re-captured.
 
-## Unreleased — slicing workspace and app-data recovery
+## 0.4.0 (21 October 2026): slicing workspace and app-data recovery
+
+Built and tested; never published as a download.
 
 - Launch video version 13: two new 60-second cuts (16:9 and 9:16), told problem
   first, then six features, each headline landing before the app shows it. New
@@ -170,7 +223,9 @@ and what is and isn't verified.
   secrets are omitted, existing data stays intact and restored automatic actions
   are disabled. Linux recovery startup tested; Windows/macOS remain unverified.
 
-## Historical round-two launch readiness
+## 0.3.0 (20 October 2026): plate editing, real slicing and a first updater
+
+Built and tested; never published as a download. Recorded at the time as "round-two launch readiness".
 
 - Blocked engine output is kept for inspection and never automatically queued.
   Slice reports show unknown when the engine supplies no time or weight. The
@@ -267,7 +322,9 @@ and keeps the selected printer after reload. Real devices remain untested.
 - Rewrote computer, phone, firewall, remote-access and release guides. Clarified
   incomplete configuration backup and the real-hardware test requirements.
 
-## Unreleased - Phase 2 work
+## 0.2.0 (14 October 2026): online demo, planner and printer finder
+
+Built and tested; never published as a download. Recorded at the time as "Phase 2 work".
 
 Local setup, printer reliability and file preparation improvements.
 
@@ -357,7 +414,9 @@ Nothing here has run on a physical U1; the converter's output and studio
 3MFs haven't been opened in Snapmaker Orca; Spoolman import hasn't met a
 running Spoolman. See the status table in the README.
 
-## Before this
+## 0.1.0 (4 August 2026): the first dashboard
+
+Built and tested; never published as a download.
 
 The history before this changelog, in short (see `git log` for detail):
 

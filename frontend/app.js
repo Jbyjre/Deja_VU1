@@ -623,7 +623,9 @@ async function copyText(text) {
   return ok;
 }
 
-function toast(message, kind = 'info', ms = 4200) {
+function toast(message, kind = 'info', ms = 4200, options) {
+  // The notification orb (orb.js) shows and keeps every message when it is loaded.
+  if (window.Orb) return Orb.notify(message, kind, ms, options);
   const host = $('toasts');
   if (!host) return;
   const el = document.createElement('div');
@@ -991,7 +993,7 @@ const TAB_INTROS = {
   studio: 'Turn a photo into a printable multi-colour tile or relief, using the filament colours you have.',
   automations: '"When this happens, do that" rules, such as a message when a print finishes. They run on this computer, with no cloud.',
   maintenance: 'Care for the printer: maintenance reminders based on print hours, and your filament shelf.',
-  modules: 'How the dashboard looks, which features are switched on, paired phones, notifications and app updates.',
+  modules: 'Your version and its updates, the desktop app, how the dashboard looks, which features are on, paired phones and notifications.',
   games: 'Something to play while a print runs. Nothing here reads or controls the printer.',
 };
 

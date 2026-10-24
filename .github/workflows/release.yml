@@ -1,0 +1,67 @@
+name: Release
+
+# Publishes a GitHub release whenever main gets a new stable VERSION number.
+# The app's updater reads that release: downloaded copies install the
+# deja-vu1-update.zip attached here, checked against GitHub's SHA-256 digest.
+# Nothing happens for a -dev version or one already released.
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION, frontend/versions.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Decide whether to publish
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "VERSION is $version, not a stable number: nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif gh release view "v$version" > /dev/null 2>&1; then
+            echo "v$version is already released."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run test suite
+        if: steps.version.outputs.publish == 'true'
+        run: python -m unittest discover tests
+
+      - name: Build the update package and notes
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          python tools/package-update.py "$RUNNER_TEMP/deja-vu1-update.zip"
+          python tools/release-notes.py "${{ steps.version.outputs.version }}" > "$RUNNER_TEMP/notes.md"
+
+      - name: Publish the release
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          gh release create "v$version" "$RUNNER_TEMP/deja-vu1-update.zip" \
+            --title "Deja Vu1 $version" --notes-file "$RUNNER_TEMP/notes.md" --target "$GITHUB_SHA" --latest

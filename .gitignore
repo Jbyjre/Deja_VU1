@@ -22,3 +22,6 @@ tools/readme-images/out/
 # OS
 .DS_Store
 Thumbs.db
+
+# In-app update staging and recovery notes
+.dejavu-update/

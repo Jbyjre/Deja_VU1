@@ -4,6 +4,10 @@ Start Deja Vu1 and open it in your browser.
 Double-click start-windows.bat (Windows), start-mac.command (macOS) or
 start-linux.sh (Linux), or run:  python3 start.py
 Close the window (or press Ctrl+C) to stop it.
+
+Settings -> Desktop app chooses whether it opens in a browser tab or in its
+own app window (Microsoft Edge or Google Chrome, no tabs or address bar).
+DEJAVU_WINDOW=browser|window|none overrides that for one start.
 """
 import os
 import subprocess
@@ -13,7 +17,6 @@ import socket
 import sys
 import threading
 import time
-import webbrowser
 
 if sys.version_info < (3, 8):
     sys.exit("Deja Vu1 needs Python 3.8 or newer - get it from https://www.python.org/downloads/")
@@ -23,7 +26,7 @@ PORT = int(os.environ.get("PORT", 8000))
 
 
 def open_when_ready():
-    """Open the browser once the dashboard answers, not before."""
+    """Open the dashboard once it answers, not before: a tab or its own app window."""
     for _ in range(100):
         try:
             with socket.create_connection(("127.0.0.1", PORT), timeout=0.2):
@@ -32,8 +35,10 @@ def open_when_ready():
             time.sleep(0.1)
     else:
         return
-    if os.environ.get("DEJAVU_NO_BROWSER") != "1":
-        webbrowser.open(f"http://localhost:{PORT}")
+    import desktop
+    opened = desktop.open_dashboard(f"http://localhost:{PORT}")
+    if opened == "window":
+        print("Deja Vu1 opened in its own app window. Keep this window open; closing it stops the dashboard.", flush=True)
 
 
 def supervise():
@@ -43,6 +48,7 @@ def supervise():
     env = dict(os.environ, DEJAVU_LAUNCHER="1")
     env.setdefault("DEJAVU_DATA_DIR", os.path.join(HERE, "backend", "data"))
     child = None
+    opened = False
 
     def launch():
         return subprocess.Popen([sys.executable, os.path.join(HERE, "backend", "app.py")],
@@ -77,7 +83,10 @@ def supervise():
                 print("The update could not start. Your previous version has been restored.", flush=True)
             if child is None or child.poll() is not None:
                 child = launch()
-            threading.Thread(target=open_when_ready, daemon=True).start()
+            if not opened:
+                # Once per launch: after an update restart the open page reloads itself.
+                opened = True
+                threading.Thread(target=open_when_ready, daemon=True).start()
             code = child.wait()
             child = None
             if code != 75:
