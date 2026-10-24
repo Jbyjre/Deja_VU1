@@ -632,14 +632,14 @@
 
     <section id="tab-layerplan" class="tab-sub" aria-labelledby="sub-layerplan-title">
       <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed layer heights</h2>
-        <p>Fine layers where detail shows, thick fast layers where it doesn't: each head prints a whole number of base layers at once</p></div>
+        <p>Detail where it shows, speed where it doesn't</p></div>
       <section class="card liquid-glass lp-card">
-        <div class="card-head"><div><h2>Layer stack</h2><p class="card-sub">Choose one fine base layer, then how many base layers each head prints in one pass (×1, ×2, ×3…). Choices a nozzle can't print are crossed out, with the reason. Or press a smart set-up and adjust.</p></div>
-          <button class="btn small" type="button" id="lp-example">Try a detail + speed example</button></div>
+        <div class="card-head"><div><h2>Layer heights per head</h2><p class="card-sub">The U1 can carry a different nozzle in each head. A small nozzle lays thin layers for crisp detail; a big one lays thick layers and finishes its parts in fewer passes. Choose what matters most and Deja Vu1 works out each head's layer so they always meet up. Nothing here can be set wrong: anything a nozzle can't print is greyed out, with the reason.</p></div>
+          <button class="btn small" type="button" id="lp-example">Show me an example</button></div>
         <form class="lp-form" id="lp-form" novalidate>
           <div id="lp-stack"></div>
           <div class="lp-more">
-            <label>Part height, for pass counts <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
+            <label>How tall is the part? <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
             <button class="btn small" type="button" id="lp-fitted">Use this printer's fitted nozzles</button>
           </div>
         </form>
