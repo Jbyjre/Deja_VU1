@@ -43,7 +43,9 @@ window.DVPlate = (() => {
     const objects=[{name:entry.name,mesh,transform:identity(),tool:0,keepColour:true,settings:{},local:entry.local}],undo=[],redo=[];
     const mountedPrinter=currentPrinter;
     let toolColours=['#808080','#808080','#808080','#808080'];
-    try{const saved=await getJSON(api('/api/tools/assignments'));for(const h of saved?.heads||[])toolColours[Number(h.toolhead[1])]=h.color_hex;}catch(_){}
+    try{const saved=await getJSON(api('/api/tools/assignments'));for(const h of saved?.heads||[])if(/^#[0-9a-f]{6}$/i.test(h.color_hex||''))toolColours[Number(h.toolhead[1])]=h.color_hex;}catch(_){}
+    // Heads with no saved set-up show what the printer reports loaded in them.
+    if(toolColours.includes('#808080'))try{const st=await getJSON(api('/api/printer'));for(let i=0;i<4;i++){const hex=st?.toolheads?.[`T${i}`]?.filament_color_hex;if(toolColours[i]==='#808080'&&/^#[0-9a-f]{6}$/i.test(hex||''))toolColours[i]=hex;}}catch(_){}
     if(mesh.plateSource){const restored=[];for(let i=0;i<mesh.plateSource.state.objects.length;i++){const row=mesh.plateSource.state.objects[i];if(!Array.isArray(row.transform)||row.transform.length!==12||!row.transform.every(Number.isFinite)||![0,1,2,3].includes(row.tool))throw new Error('This plate has invalid editing state. Open its source files instead.');const bytes=await mesh.plateSource.read(i,row.name);if(!bytes)throw new Error('An original source is missing from this plate.');const original=await DV3D.parseModel(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),row.name);restored.push({name:String(row.label||row.name),mesh:original,transform:row.transform.slice(),tool:row.tool,settings:row.settings||{},keepColour:true,local:new File([bytes],row.name),sourceName:row.name});}objects.splice(0,objects.length,...restored);}else centre(objects[0]);
     if($('fd-name').textContent!==entry.name||$('file-detail').hidden||mountedPrinter!==currentPrinter)return;
     let selected=0,version=0,measuring=false,points=[],disposed=false,workspace=null,lastGeometry=null;

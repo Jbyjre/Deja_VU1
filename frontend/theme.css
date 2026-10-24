@@ -515,7 +515,10 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .sw-actionbar select {min-height:40px;width:100%;background:white;border:1px solid #b9c5d4;}
 .sw-actionbar #sw-job {font-size:12px;color:#465466;flex-basis:100%;margin:2px 0;}
 .file-detail.slicer-workspace .fd-body {grid-template-columns:190px minmax(240px,1fr) 290px;gap:0;align-items:stretch;}
-.file-detail.slicer-workspace .fd-view {position:relative;top:auto;min-width:0;gap:0;background:#1d2530;align-self:stretch;}
+.file-detail.slicer-workspace .fd-view {position:relative;top:auto;min-width:0;gap:0;background:linear-gradient(#1b1d22,#15171b);align-self:stretch;}
+/* The 3D view stays in sight while the panels beside it scroll. */
+.file-detail.slicer-workspace .fd-view .viewer-canvas {position:sticky;top:100px;}
+@media(max-width:760px){.file-detail.slicer-workspace .fd-view .viewer-canvas {position:static;}}
 .file-detail.slicer-workspace .viewer-canvas {height:620px;height:clamp(420px,64vh,720px);width:100%;border-radius:0;touch-action:none;}
 .file-detail.slicer-workspace #fd-side {background:var(--sw-surface);color:var(--sw-ink);border-left:1px solid #cbd4df;gap:0;max-height:850px;overflow:auto;}
 .file-detail.slicer-workspace #sw-objects {padding:14px 12px;background:#edf1f6;color:var(--sw-ink);border-right:1px solid #cbd4df;min-width:0;}
