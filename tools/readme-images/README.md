@@ -42,6 +42,11 @@ below identifies their source. For farm captures:
 | `appearance.jpg` | Settings → Appearance (`#appearance-card`) |
 | `twin-drawing.jpg` | Overview twin → T0 chip → Drawing, Angled (`#twin-card`); launch Chromium with `--use-gl=swiftshader --enable-unsafe-swiftshader` in the sandbox |
 | `setup.jpg` | Set up & help → Continue: the full-screen "Make it yours" step, after moving the mouse across it |
+| `version-history.jpg` | Settings → Version & updates (`#version-card`), with the server started through `start.py` so it reads as a launcher copy; the floating orb, live pill and handoff bar hidden; cropped to the top 1640 px |
+| `desktop-app.jpg` | Settings → Desktop app (`#desktop-card`), floating pieces hidden |
+| `whats-new.jpg` | `Versions.tour('0.8.0')`: the opening card, 800 × 900 at 2x |
+| `tour.jpg` | `Guide.everything({ startAt: 12 })`: the "Model or drawing" stop, 800 × 900 at 2x |
+| `orb.jpg` | Three example messages sent with `toast()` on the Overview; the bottom-right 420 × 400 of an 800 × 760 window at 2x. Use truthful example wording (no versions that don't exist) |
 | `phone.jpg` | Overview at 390 × 844 |
 
 ## The live GIF (`docs/img/live-jam.gif`)
@@ -104,7 +109,7 @@ named in text.
 - `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
   earlier setup/studio captures, retained as historical comparisons.
 
-The boards and social card were refreshed, including the **759-test** count.
+The boards and social card were refreshed earlier; the **By the numbers** board was re-rendered on 24 October 2026 with the **803-test** count.
 Both **75-second** launch-video cuts were rebuilt (version 12). Older editorial
 feature crops still need updating. Do not label the whole media library current.
 

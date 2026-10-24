@@ -254,6 +254,21 @@ section.band { padding: clamp(72px, 10vw, 132px) 0 0; }
 .truth li::before { content: ""; position: absolute; left: 0; top: 19px; width: 6px; height: 1.5px; background: var(--ink-faint); }
 
 /* Run it. */
+.ways { list-style: none; margin-top: 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.way { display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 20px; border-radius: 22px; background: oklch(100% 0 0 / .62); border: 1px solid var(--hair); }
+.way b { font: 700 18px/1.2 var(--display, inherit); color: var(--ink); }
+.way span { color: var(--ink-dim); font-size: 15px; line-height: 1.5; }
+.way code { font: 500 .9em var(--mono); }
+.way a { font-weight: 600; min-height: 24px; }
+.way.is-new { border-color: color-mix(in oklch, var(--accent) 45%, transparent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 14%, transparent); }
+.flow { margin-top: 32px; display: grid; justify-items: center; gap: 0; }
+.flow-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.flow-row span { padding: 8px 14px; border-radius: 999px; background: oklch(100% 0 0 / .7); border: 1px solid var(--hair); font: 600 13px/1.2 var(--mono); color: var(--ink-dim); }
+.flow-row.is-printers span { border-style: dashed; }
+.flow-join { position: relative; width: 2px; height: 34px; background: repeating-linear-gradient(180deg, var(--accent) 0 5px, transparent 5px 10px); }
+.flow-join i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); white-space: nowrap; font: 500 12px/1 var(--mono); font-style: normal; color: var(--ink-faint); }
+.flow-core { display: grid; gap: 4px; text-align: center; padding: 16px 24px; border-radius: 20px; max-width: 460px; background: color-mix(in oklch, var(--accent) 12%, white); border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent); }
+.flow-core span { color: var(--ink-dim); font-size: 14px; }
 .run { margin-top: 40px; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
 .terminal {
   border-radius: var(--radius); overflow: hidden;
@@ -350,6 +365,7 @@ footer p { max-width: 70ch; }
   <a class="mark" href="#top" aria-label="Deja Vu1, back to top"><span class="mark-ring" aria-hidden="true"></span><b>Deja&nbsp;Vu1</b></a>
   <nav aria-label="Page sections">
     <ul class="nav-links">
+      <li><a href="#ways">Ways to use it</a></li>
       <li><a href="#problems">Why</a></li>
       <li><a href="#inside">What's inside</a></li>
       <li><a href="#honest">Status</a></li>
@@ -368,9 +384,9 @@ footer p { max-width: 70ch; }
     <p class="kicker rise">Free · open source · for the Snapmaker U1</p>
     <h1 class="rise d1">One screen for every <em>U1</em> you run.</h1>
     <p class="hero-lede rise d2">
-      Monitor your Snapmaker U1 printers, prepare plates, slice with an installed engine and
-      inspect the resulting G-code. Review server-enforced checks before starting a print.
-      Deja Vu1 is free, open source and runs on your own network without an app account.
+      Watch every Snapmaker U1 you run, prepare and check files, and start prints from one
+      dashboard. It runs on a computer in your home, and you open it in a browser, in its own
+      app window or on your phone. You need no account, and nothing goes to the cloud.
     </p>
     <div class="hero-cta rise d3">
       <a class="btn primary" href="./?demo">Try the demo</a>
@@ -390,6 +406,28 @@ footer p { max-width: 70ch; }
     </figure>
     <p class="caption">The 60-second launch film, filmed on the built-in simulated farm. Every figure in it is simulated. Sound on.</p>
   </div>
+
+  <section class="band" id="ways" aria-labelledby="ways-title">
+    <div class="wrap">
+      <p class="eyebrow">Ways to use it</p>
+      <h2 id="ways-title">One computer runs it. Any screen opens it.</h2>
+      <ul class="ways">
+        <li class="way"><b>Try it here</b><span>The online demo runs in this browser, playing a recording of three simulated printers. Nothing to install.</span><a href="./?demo">Open the demo</a></li>
+        <li class="way"><b>A browser tab</b><span>Run Deja Vu1 on your Windows, Mac or Linux computer, or a Raspberry Pi, and open <code>localhost:8000</code>.</span><a href="#run">How to run it</a></li>
+        <li class="way is-new"><b>Its own window</b><span>Install it as an app from Chrome or Edge, or let the launcher open an app window with no tabs or address bar.</span><a href="https://github.com/Jbyjre/Deja_VU1#the-desktop-app">The desktop app</a></li>
+        <li class="way"><b>Your phone at home</b><span>On the same Wi-Fi, open the address the launcher prints. Add it to your home screen.</span><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md#on-my-phone-at-home">Phone steps</a></li>
+        <li class="way"><b>Your phone away</b><span>Through a private Tailscale connection, or a Cloudflare tunnel protected by Access.</span><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md">Remote access</a></li>
+      </ul>
+      <div class="flow" role="img" aria-label="Browser tab, app window and phone all connect to the computer running Deja Vu1, which connects to up to twelve U1 printers over the home network. The online demo is separate.">
+        <div class="flow-row"><span>Browser tab</span><span>App window</span><span>Phone at home</span><span>Phone away</span></div>
+        <div class="flow-join" aria-hidden="true"></div>
+        <div class="flow-core"><b>Your computer, running Deja Vu1</b><span>The launcher window keeps it on. Settings and files live here.</span></div>
+        <div class="flow-join is-net" aria-hidden="true"><i>home network</i></div>
+        <div class="flow-row is-printers"><span>U1 printer</span><span>U1 printer</span><span>up to 12</span></div>
+      </div>
+      <p class="intro">Every way except the demo opens the same dashboard from the same computer, so a print you pause on your phone shows as paused on the computer. Your printers need nothing installed: Deja Vu1 talks to Moonraker, the web service already on every U1.</p>
+    </div>
+  </section>
 
   <section class="band" id="problems" aria-labelledby="problems-title">
     <div class="wrap">
@@ -533,15 +571,17 @@ Your U1 printer</code></pre>
           <p style="padding:0 20px 20px">This public website plays a demo recording. It cannot control your printer. Real readings need your own running copy.</p>
         </div>
         <ol class="steps">
-          <li><b>On your computer.</b> Install Python 3.8+, download the ZIP from GitHub and extract it. Double-click the Windows, Mac or Linux launcher. Keep that window open and the computer awake.</li>
+          <li><b>On your computer.</b> Install Python 3.8+. Get Deja Vu1 with GitHub Desktop (clone the repository) or as a ZIP from GitHub. Double-click the Windows, Mac or Linux launcher. Keep that window open and the computer awake.</li>
           <li><b>Connect your printer.</b> Open Set up &amp; help, choose Connect my printer, then Find printers or enter its address. Test and connect. Keep Demo data off for real readings.</li>
           <li><b>On your phone at home.</b> Use the same Wi-Fi and open the computer’s “From a phone” address from the launcher, such as <code>http://192.168.1.20:8000</code>. Pairing is optional, not a login.</li>
           <li><b>Keep it on your home screen.</b> Safari → Share → Add to Home Screen, or Chrome’s menu → Add to Home screen. HTTP may offer only a shortcut; secure HTTPS enables full installation and the offline explanation. Offline never means live readings.</li>
           <li><b>Away from home.</b> Use private Tailscale Serve, or a Cloudflare tunnel with Access protection configured first. Deja Vu1 has no login. Do not forward its port through your router.</li>
+          <li><b>Out of the browser, if you like.</b> Settings → Desktop app installs it as an app from Chrome or Edge, or makes the launcher open its own window.</li>
+          <li><b>Stay up to date.</b> Settings → Version &amp; updates checks GitHub and installs the new version, for downloaded and GitHub Desktop copies alike. Your settings stay put.</li>
         </ol>
       </div>
       <p><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md">Exact setup and firewall steps</a> · <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md">Private remote access</a></p>
-      <p class="intro">An optional name stays only in your browser. App update checks are off by default; enable them in Settings if you want them. Neither your name nor printer details are sent in an update check.</p>
+      <p class="intro">An optional name stays only in your browser. Automatic update checks are off until you turn them on in Settings; a check sends neither your name nor printer details.</p>
     </div>
   </section>
 

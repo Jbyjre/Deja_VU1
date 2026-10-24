@@ -115,7 +115,7 @@ upload times, renderer details and exact workloads.
 
 ## Automated checks and limits
 
-**783 tests in 428.9 seconds** (Python 3.13.17, 23 October 2026, after the "technical tools" round added twelve; real sample models make some tests slower). Before that: **771 tests in 147.9 seconds** (Python 3.13.16, after the interface refreshes added twelve), with no app/demo server running. The slicing-workspace run itself passed **759 tests in 128.765 seconds**.
+**803 tests in 424.4 seconds** (Python 3.13.17, 24 October 2026, version 0.8.0: updates for git copies, the desktop window choice, version history, tours and the notification orb; one order-dependent heater test fixed). Before that, **783 tests in 428.9 seconds** (Python 3.13.17, 23 October 2026, after the "technical tools" round added twelve; real sample models make some tests slower). Before that: **771 tests in 147.9 seconds** (Python 3.13.16, after the interface refreshes added twelve), with no app/demo server running. The slicing-workspace run itself passed **759 tests in 128.765 seconds**.
 Earlier clean runs passed 758 tests before the final exported-preset regression was added. The prematurely started run was interrupted and is excluded. The clean
 run includes five online-demo recording tests. Static-host Chromium checks also
 passed at both widths: layers, three plate choices, local-write refusal and no
