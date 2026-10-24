@@ -444,3 +444,28 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   `docs/launch-round-three-checklist.md`, `docs/backup-and-recovery.md`.
   Actual mixed-height output and three separated plates passed Linux pre-flight.
   Software-rendered heavy model frame pacing remains poor; disclose regressions.
+
+
+## Public marketing refresh
+
+Current campaign copy is in `marketing-library/COPY.md`, with claim limits in
+`MESSAGING.md`. Twenty-four standalone cards are generated from
+`tools/readme-images/campaign.json` and `campaign.html`; they are separate from
+historical video-extracted cards. The library index and capture record distinguish
+fresh simulated-farm screenshots from historical Linux engine validation images.
+Use `capture.js`, `render.js` and `check-marketing.js` in that tools folder.
+Do not infer physical readiness, guaranteed update freshness, complete conversion
+fidelity, or a competition/detector score from marketing material. Existing v12–15
+films are preserved, not relabelled as current captures. Repository description
+and social-preview settings are supplied as reviewable copy/assets, not changed
+outside the PR. This refresh must remain unmerged until the owner asks.
+
+
+Campaign follow-up: `campaign.html`, `campaign.css`, `campaign.js` and JSON now
+produce 24 images (six subjects × four formats), including a native horizontal
+feed export. `img/brand-loop.png` is explicitly AI-generated conceptual artwork,
+not a physical print or accessory. Preserve that distinction in captions.
+`marketing-library/AD-GUIDE.md` maps messages to destinations and placements;
+`docs/copy-review.md` records the scoped copy edits. The renderer checks authored
+palette pairs and evidence/action bounds; these are not an accessibility or ad
+performance certification. Use `render.js --campaign` for campaign-only refreshes.

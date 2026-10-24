@@ -50,9 +50,9 @@
     dialog.classList.add('is-full');
     document.documentElement.classList.add('setup-full-open');
     if (step === 0) {
-      content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">A little setup.<br>A clearer print day.</h2>
-        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer and talks to your printer over your home network. Open it in a browser tab, in its own app window, or on your phone. Nothing goes to the cloud.</p>
-        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Stay safe:</strong> every print is checked before it starts.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
+      content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">Set up your U1 workspace.</h2>
+        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer and talks to your printer over your home network. Open it in a browser tab, in its own app window, or on your phone. Core printer data stays on your network. Optional services connect only when configured.</p>
+        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Review the job:</strong> check the file, tools and printer before starting.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
         <p class="field-hint">${esc(privacy)}</p>`;
@@ -113,7 +113,7 @@
         Guide.everything({onEnd:()=>{step=Math.min(at+1,names.length-1);dialog.showModal();render();}});
       };
     } else if (names[step] === 'Your phone') {
-      content.innerHTML=`<h2 id="setup-title">Your bench. In your pocket.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. It needs no app store and no account.</p><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. It needs no app store and no account.</p><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
     } else if (names[step] === 'Desktop app') {
       content.innerHTML=`<h2 id="setup-title">A window of its own.</h2>
         <p class="setup-lead">You are not stuck in a browser tab. Pick how Deja Vu1 opens on this computer; you can change it in Settings → Desktop app.</p>

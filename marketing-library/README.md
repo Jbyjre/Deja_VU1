@@ -1,201 +1,91 @@
 # Marketing library
 
-> **Temporary. Delete this whole folder before the launch post.** It is a
-> working copy of every picture Deja Vu1 uses or could use, gathered in one
-> place so they are easy to find, look at and download. The originals the
-> README and product page actually use live in `docs/img/` and
-> `frontend/img/`; nothing in the app reads from this folder, so deleting it
-> breaks nothing.
+Review copy of Deja Vu1’s public materials. This folder is temporary and is
+removed before the launch post; the live app reads its images from `frontend/img/`
+and the README uses `docs/img/`. Nothing has been posted or submitted from here.
 
-Open any folder on GitHub to see its pictures; tap one, then **Download**
-(or the ⋯ menu → Download) to save it. To download everything at once, use
-**Code → Download ZIP** on the repository's main page and open the
-`marketing-library` folder inside the ZIP.
+Start with [AD-GUIDE.md](AD-GUIDE.md) for message/placement choices,
+[COPY.md](COPY.md) for descriptions and posts, and
+[MESSAGING.md](MESSAGING.md) for the claim limits. Open an image on GitHub and use
+Download to save it, or download the repository ZIP for the complete pack.
 
-Farm readings come from **Demo data**. Current slicing captures also contain
-estimates from actual local-engine output; these are not physical measurements.
-No picture establishes a real U1 print. Keep that distinction when posting.
+## Current campaign · 23 October 2026
 
-What to say about the project, in what order, and which claims are safe:
-**[MESSAGING.md](MESSAGING.md)**.
+Six subjects in four formats: landscape **1600 × 900**, square
+**1080 × 1080**, portrait **1080 × 1350**, and horizontal feed **1200 × 628**. These are independently typeset cards,
+not crops of a video. Every card carries its own evidence label and limitation.
+[Captions and alt text](09-current-campaign/captions.json) are included as plain text.
 
----
-
-## 01 · Main image
-
-The picture that appears when someone shares a link to the project.
-
-| File | Size | Where it goes |
+| Subject | Preview | Downloads |
 |---|---|---|
-| `link-preview-card-1200x630.png` | 1200 × 630 | Already in use: `frontend/img/social-card.png` (the product page and dashboard link previews) and the top of the README |
-| `github-social-preview-1280x640.png` | 1280 × 640 | **Not in use yet.** Upload it on GitHub: on the repository's page, **Settings**, then under **Social preview** click **Edit → Upload an image** (GitHub's limit: under 1 MB). GitHub's own link previews then show it |
+| Fleet | ![Your U1s. One workspace. A conceptual blue loop sculpture behind actual simulated-farm printer cards; no physical U1 test verified.](09-current-campaign/01-fleet-square.png) | [Landscape](09-current-campaign/01-fleet-landscape.png) · [Square](09-current-campaign/01-fleet-square.png) · [Portrait](09-current-campaign/01-fleet-portrait.png) · [Feed](09-current-campaign/01-fleet-feed.png) |
+| Needs you | ![One fault. Your next move. An enlarged crop of the actual Needs you panel shows a simulated dock fault.](09-current-campaign/02-needs-you-square.png) | [Landscape](09-current-campaign/02-needs-you-landscape.png) · [Square](09-current-campaign/02-needs-you-square.png) · [Portrait](09-current-campaign/02-needs-you-portrait.png) · [Feed](09-current-campaign/02-needs-you-feed.png) |
+| Prepare | ![Recorded preparation-workspace validation capture with two objects and physical tool assignments.](09-current-campaign/03-prepare-square.png) | [Landscape](09-current-campaign/03-prepare-landscape.png) · [Square](09-current-campaign/03-prepare-square.png) · [Portrait](09-current-campaign/03-prepare-portrait.png) · [Feed](09-current-campaign/03-prepare-feed.png) |
+| Print checks | ![Confirm Print refuses an unsafe sample file and lists the reasons. Simulated printer.](09-current-campaign/04-print-checks-square.png) | [Landscape](09-current-campaign/04-print-checks-landscape.png) · [Square](09-current-campaign/04-print-checks-square.png) · [Portrait](09-current-campaign/04-print-checks-portrait.png) · [Feed](09-current-campaign/04-print-checks-feed.png) |
+| Digital twin | ![A closer look. At every head. A large image of the software twin, with estimated geometry and simulated readings.](09-current-campaign/05-digital-twin-square.png) | [Landscape](09-current-campaign/05-digital-twin-landscape.png) · [Square](09-current-campaign/05-digital-twin-square.png) · [Portrait](09-current-campaign/05-digital-twin-portrait.png) · [Feed](09-current-campaign/05-digital-twin-feed.png) |
+| First connection | ![The dashboard in a 390-pixel Chromium viewport with simulated printer data.](09-current-campaign/06-first-connection-square.png) | [Landscape](09-current-campaign/06-first-connection-landscape.png) · [Square](09-current-campaign/06-first-connection-square.png) · [Portrait](09-current-campaign/06-first-connection-portrait.png) · [Feed](09-current-campaign/06-first-connection-feed.png) |
 
-![The link-preview card: "One screen for every U1 you run."](01-main-image/link-preview-card-1200x630.png)
+## Share image and explainers
 
-## 02 · Explainer boards
+[1200 × 630 link preview](01-main-image/link-preview-card-1200x630.png) is the
+bundled card used by the product page, dashboard metadata and README.
+[1280 × 640 GitHub preview](01-main-image/github-social-preview-1280x640.png) is
+ready for the repository’s Settings → Social preview. That setting is external
+to a PR and has not been changed.
 
-Illustrations that explain one idea each. Rendered from
-`tools/readme-images/boards.html`.
+![Your U1s. One workspace. Conceptual blue loop art and actual printer cards from the simulated farm](01-main-image/link-preview-card-1200x630.png)
 
-| | |
+The [five explainer boards](02-explainer-boards/) cover workflow scope, Confirm
+Print, local connections, code limits and proposed dock status. The workflow
+board replaces the old feature-count collage. Counts describe code or software
+checks, not hardware certification. Dock-ring drivers remain unfinished.
+
+## Screenshots and provenance
+
+The main editorial images in [03-screenshots](03-screenshots/) and current twin
+views in [04-digital-twin](04-digital-twin/) are captures of the actual app on an
+isolated simulated farm. [capture-record.json](capture-record.json) lists exactly
+which images were recaptured and what each shows.
+[current-assets.json](current-assets.json) records shipped paths, source files
+and hashes to check that copies match. Phone pictures are Chromium
+viewports, not photographs or real-device tests. The twin is a software model;
+its body size and internal geometry are estimates.
+
+The `slicer-after-*`, process and recovery images retain their recorded Linux
+validation provenance. They have **not** been relabelled as fresh engine runs.
+See [the validation record](../docs/slicer-workspace-validation.md) for their
+source, tested engines and limits. The current `demo-layer-preview.jpg` uses a
+built-in sample G-code file, not a new real-engine result.
+
+Files absent from the capture record are older references. In particular,
+`twin-3d-dock-fault.jpg`, old setup captures, and the older
+video-extracted cards should not be used as current campaign evidence without
+review. An image showing a stand-in printer never establishes a physical U1.
+
+## Existing films and animation
+
+[07-videos](07-videos/) retains the existing films:
+
+| Files | Version |
 |---|---|
-| ![What's in it](02-explainer-boards/explainer-whats-in-it.jpg)<br>**What's in it:** every feature, grouped by what it needs | ![Confirm Print](02-explainer-boards/explainer-confirm-print.jpg)<br>**Confirm Print:** the seven checks before a start |
-| ![How it connects](02-explainer-boards/explainer-how-it-connects.jpg)<br>**How it connects:** one connection per printer, shared by every module | ![By the numbers](02-explainer-boards/explainer-by-the-numbers.jpg)<br>**By the numbers:** 759 tests, 250 ms updates, up to 12 printers |
-| ![Silent docks](02-explainer-boards/explainer-silent-docks.jpg)<br>**Dock status:** the old lead picture. Now used only in the README's dock rings section; don't lead with it | |
+| `deja-vu1-launch-16x9.mp4`, `deja-vu1-launch-9x16.mp4` | v12, 75 s, original V1 |
+| `deja-vu1-launch-60s-16x9.mp4`, `deja-vu1-launch-60s-9x16.mp4` | v13, 60 s, original V2 |
+| `deja-vu1-launch-v1-60s-16x9.mp4`, `deja-vu1-launch-v1-60s-9x16.mp4` | v14, V1 cut to 60 s with newer twin/background |
+| `deja-vu1-launch-v2-60s-16x9.mp4`, `deja-vu1-launch-v2-60s-9x16.mp4` | v15, V2 updated with newer twin/background |
 
-## 03 · Screenshots
+The films were not re-rendered in this still-image/copy refresh. Their on-screen
+counts and claims belong to their versions. Use the new campaign cards for
+current standalone graphics and COPY.md for the reviewed video description.
+[08-feature-cards](08-feature-cards/) contains the preserved video-derived cards;
+it is not the current campaign pack. [05-animation](05-animation/) retains the
+simulated-jam and layer-preview GIFs; these are demonstrations, not physical prints.
 
-Older farm captures use demo data. Current `slicer-after-*` images show
-preparation, profiles and preview at 1366/390 px; `slicer-recovery-1366.png`
-shows isolated app-data recovery. See [validation](../docs/slicer-workspace-validation.md)
-for the source of each figure and the remaining physical/platform limits.
+Keep the existing film music credit in the description:
+“Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0.”
 
-| | |
-|---|---|
-| ![Overview](03-screenshots/overview.jpg)<br>**Overview:** status ribbon, Needs you, totals | ![Fleet](03-screenshots/fleet.jpg)<br>**Fleet:** every printer at a glance |
-| ![Confirm print refused](03-screenshots/confirm-print-refused.jpg)<br>**Confirm Print refusing an unsafe file** | ![File detail](03-screenshots/file-detail.jpg)<br>**A G-code file in 3D** with its pre-flight verdict |
-| ![Skip object](03-screenshots/skip-object.jpg)<br>**Skip one object** | ![Converter](03-screenshots/converter.jpg)<br>**MakerWorld project converted for the U1** |
-| ![Files](03-screenshots/files.jpg)<br>**File library and queue** | ![Automations](03-screenshots/automations.jpg)<br>**Automations:** when this happens, do that |
-| ![Twin, health, chamber](03-screenshots/twin-health-chamber.jpg)<br>**Digital twin, print health, chamber climate** | ![Control](03-screenshots/control.jpg)<br>**Control:** pause, temperatures, home, console |
-| ![Photo studio](03-screenshots/photo-studio.jpg)<br>**Photo-to-Print Studio** | ![Care](03-screenshots/care.jpg)<br>**Care:** maintenance tasks |
-| ![Sandbox](03-screenshots/sandbox.jpg)<br>**Farm sandbox:** scripted problems | ![Sandbox farm](03-screenshots/sandbox-farm.jpg)<br>**The three built-in printers and sandbox ones, side by side** |
-| ![Modules](03-screenshots/modules.jpg)<br>**Modules:** switch features on and off | ![Dock rings](03-screenshots/dock-rings.jpg)<br>**Dock status rings** (hardware pending) |
-| ![Games](03-screenshots/games.jpg)<br>**Games** | ![Phone](03-screenshots/phone.jpg)<br>**On a phone** |
+## Recreate and review
 
-The product page uses its own crops: `product-page-overview.jpg`,
-`product-page-fleet.jpg`, `product-page-phone.jpg`.
-
-## 04 · Digital twin
-
-The live engineering drawing, the most distinctive picture the app has.
-Captured fresh for this library.
-
-| | |
-|---|---|
-| ![3D](04-digital-twin/twin-3d-printing.jpg)<br>**3D view, printing:** T2 on the carriage, three parts on the plate | ![Front](04-digital-twin/twin-front-printing.jpg)<br>**Front view:** reads like a drawing sheet |
-| ![Top](04-digital-twin/twin-top-printing.jpg)<br>**Top view:** the nozzle's trail around the parts | ![Dock fault](04-digital-twin/twin-3d-dock-fault.jpg)<br>**Idle, with a fault on T3's dock** |
-| ![Phone](04-digital-twin/twin-phone.jpg)<br>**On a phone** | |
-
-## 05 · Animation
-
-![Live jam](05-animation/live-jam.gif)
-
-`live-jam.gif`: a filament jam fired from the farm sandbox. The status
-ribbon turns to an error and the jam goes to the top of **Needs you**.
-
-## 06 · App icon
-
-`icon.svg` (any size), `icon-512.png`, and `icon-maskable-512.png` (the
-version phones crop into a circle or rounded square).
-
-<img src="06-app-icon/icon-512.png" width="96" alt="The Deja Vu1 icon">
-
-## 07 · Videos
-
-The launch video, version 13 (October 2026): two new 60-second cuts, re-filmed from the current
-app on the simulated farm. Version 12's two 75-second cuts are kept beside them. All are H.264
-MP4 at 60 frames a second, with sound set to -16 LUFS (2 dB under the usual -14 for YouTube and
-social, so the music stays light).
-
-| File | Size | Length | Where it goes |
-|---|---|---|---|
-| `deja-vu1-launch-60s-16x9.mp4` | 1920 × 1080 | 60 s | YouTube, the forum, X, LinkedIn, the README or product page (version 13) |
-| `deja-vu1-launch-60s-9x16.mp4` | 1080 × 1920 | 60 s | Shorts, Reels, TikTok (version 13) |
-| `deja-vu1-launch-16x9.mp4` | 1920 × 1080 | 75 s | the longer version 12 cut |
-| `deja-vu1-launch-9x16.mp4` | 1080 × 1920 | 75 s | the longer version 12 cut |
-| `deja-vu1-launch-v1-60s-16x9.mp4` | 1920 × 1080 | 60 s | version 14: the owner's "V1" (version 12) cut to 60 s, with the new twin and background |
-| `deja-vu1-launch-v1-60s-9x16.mp4` | 1080 × 1920 | 60 s | version 14, the same cut for Shorts, Reels, TikTok |
-| `deja-vu1-launch-v2-60s-16x9.mp4` | 1920 × 1080 | 60 s | version 15: the owner's "V2" (version 13) updated the same way |
-| `deja-vu1-launch-v2-60s-9x16.mp4` | 1080 × 1920 | 60 s | version 15, the same cut for Shorts, Reels, TikTok |
-
-**Version 15 (23 October 2026), "V2 updated":** version 13's story, headline move, lounge-jazz
-music and sound, still 60 s, re-cut so the digital twin gets 7.5 s (was 5): the 3D model turned by
-hand and gliding to a stop, head T0 clicked open with its live details, then the same model as a
-drawing (Snapmaker's outside size and the "≈" estimate note in the caption). The same live
-background, dot-field scenery, 771 tests, spools still and end-card note as version 14, and "Files
-ready for the U1" back as a "plenty more" card. Its cards are in `08-feature-cards/v2-60s/`.
-Music credit as version 13 (Salamander Grand Piano by Alexander Holm, CC BY 3.0).
-
-**Version 14 (23 October 2026), "V1 at 60 s":** version 12's story, music and sound, re-cut to
-exactly 60 s (40 bars of its 160 BPM jazz trio) and re-filmed from the current app. The digital
-twin gets the most time of any feature (9 s): the realistic 3D model turned by hand (it glides to
-a stop), a click on a toolhead opening its live details, then the same model as an engineering
-drawing and its Front view, with the estimated sizes marked "≈" and Snapmaker's outside size in the
-caption. The app's live Dots background is shown, never captioned: the cursor plays through it on
-the laptop while "how it works" is told, and the film's own scenery is the same dot field, with
-the app's ripple of lit dots on the music's hits. "Files ready for the U1" became a "plenty more"
-card and "get started" folded into the end card. Tests: 771. The end card says the spools and head
-colours were entered for the film. Its feature cards are in `08-feature-cards/v1-60s/`. Music
-credit as version 12: "Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0".
-
-Version 13 is told like a product-launch film: the problem first ("Every printer has its own
-screen. So you check them one by one. And miss the one that needs you."), the answer (the
-windows fold into one: Deja Vu1, "One screen for every U1 you run."), how it works in one breath
-(runs on your computer, talks to your U1s on your network, opens in any browser), then six
-features shown working, each headline landing on its own before it steps aside for the app:
-every printer live, Needs you, Confirm Print and the phone, prepare & slice, the digital twin,
-automations. Then "and plenty more" (six more as screenshots), why to trust it (free and open
-source, no account needed, runs on your own network, 759 automated tests) and the install lines.
-
-Every app view is labelled "Simulated farm". The end card says every figure comes from the
-simulated farm and that Deja Vu1 is not affiliated with Snapmaker. The clicks and keystrokes are
-synthesised in code (the same sounds as version 11). The music is a new bright lounge-jazz tune
-at 144 beats a minute with a vibraphone melody, played on recorded acoustic instruments: the
-VCSL vibraphone, the VSCO 2 Community Edition upright bass and Virtuosity Drums (all CC0), and
-Salamander Grand Piano by Alexander Holm (CC BY 3.0, so credit it in the post's description too:
-"Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0"). It plays along with the picture: a
-cymbal and the band's chord on every scene change, the tune's head under each headline, a vibes
-note on every callout and card, a band hit on each value. Listen to it before posting: it was
-checked by measurement, not by ear.
-How to change or re-film it: `promo-video/README.md`.
-
-## 08 · Feature cards
-
-Cards from version 13's 60-second cut. One card per beat of the story, taken from the finished
-video at the moment its words are on screen. Each comes in two shapes: `-16x9.jpg` (1920 × 1080:
-README, forum posts, X, LinkedIn) and `-9x16.jpg` (1080 × 1920: Instagram and TikTok stories).
-13 cards, 26 files.
-
-| Card | Shows |
-|---|---|
-| `00-the-problem` | "And miss the one that needs you." Six separate printer windows, one flagging a problem (an illustration) |
-| `00-the-answer` | The app icon, "Deja Vu1" and "One screen for every U1 you run." |
-| `01-how-it-works` | The laptop with the app, three printers and a phone joined by the network, three chips |
-| `02-every-printer-live` | The 27-printer sandbox farm on the laptop, one card's progress and finish time called out |
-| `03-needs-you` | A filament jam arriving at the top of Needs you |
-| `04-confirm-print` | A print started after every check, confirmed by the printer |
-| `04b-on-your-phone` | The phone layout in front of the laptop |
-| `05-prepare-and-slice` | A part duplicated, the copy on head T1, arranged on the U1 plate |
-| `06-digital-twin` | The live engineering drawing, front and top views |
-| `07-automations` | A ready-made rule saved, on the laptop |
-| `08-and-plenty-more` | Maintenance, filament, skip one object, Home Assistant, games, 29 modules |
-| `09-why-trust-it` | Free and open source, no account needed, runs on your own network, 759 automated tests |
-| `10-get-it` | The end card: the three install lines |
-
-Remade with `promo-video/build/stills.sh` after any change to the video.
-
-`v1-60s/` holds version 14's cards (the "V1" cut at 60 s), made by `promo-video/v14/build/stills.sh`,
-15 cards, 30 files: the problem, what it is for, the title, how it works, every printer live, Needs
-you, Confirm Print, on your phone, prepare & slice, the digital twin's 3D model, the digital twin's
-drawing, automations, and plenty more, why trust it (771 automated tests), get it.
-
-`v2-60s/` holds version 15's cards (the "V2" cut, updated), made by `promo-video/v15/build/stills.sh`,
-14 cards, 28 files: the problem, the answer, how it works, every printer live, Needs you, Confirm
-Print, on your phone, prepare & slice, the digital twin's 3D model, its drawing, automations, and
-plenty more, why trust it, get it.
-
----
-
-## Keeping it current
-
-The pictures here are copies. When the app changes, regenerate the
-originals as `tools/readme-images/README.md` describes, then copy them here
-again (or ask a Claude Code session to "refresh the marketing library").
-
-
-Boards, social cards, current slicing captures, both launch videos and the feature cards
-were refreshed. Older editorial feature crops still need a final pass. Follow
-[the capture guide](../tools/readme-images/README.md) and
-[video guide](../promo-video/README.md) before replacing them.
-
-`05-animation/slicer-preview.gif` shows current browser layer controls using simulated demo files. It does not replace the launch videos.
+The [capture guide](../tools/readme-images/README.md) explains source captures,
+rendering, copying and browser checks. [06-app-icon](06-app-icon/) contains the
+existing brand icons; the brand mark is retained. Public material must preserve
+the distinction between simulated data, engine estimates and physical evidence.

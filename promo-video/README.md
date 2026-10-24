@@ -1,5 +1,14 @@
 # Deja Vu1 launch video
 
+For current standalone marketing images, use the eighteen cards in
+[`marketing-library/09-current-campaign/`](../marketing-library/09-current-campaign/).
+Reviewed video titles/descriptions are in
+[`marketing-library/COPY.md`](../marketing-library/COPY.md#video-title-and-description).
+The October still-image/copy refresh preserves all versioned films below;
+it does not re-render them or make their old counts current. Keep each film’s
+music attribution and simulated-data notice when posting.
+
+
 Launch-video tooling and historical cuts filmed from the app's simulated farm.
 These tools are separate from the Python-only application.
 

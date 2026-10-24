@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Deja Vu1: one screen for every Snapmaker U1 you run</title>
-<meta name="description" content="Local dashboard and model-preparation workspace for Snapmaker U1 printers. Monitor a fleet, slice with an external engine, inspect G-code and review print checks.">
+<meta name="description" content="See which Snapmaker U1 needs attention. Prepare plates, inspect G-code and review print checks in a free, open-source workspace on your own computer.">
 <meta property="og:title" content="Deja Vu1: one screen for every Snapmaker U1 you run">
-<meta property="og:description" content="Free and open source. Monitor your U1 printers, prepare plates, slice through an installed engine and inspect the output. Includes print checks and app-data recovery.">
+<meta property="og:description" content="One screen for your U1 printers, from plate preparation to print checks. Free and open source. Explore the simulated farm; physical U1 testing is still ahead.">
 <meta property="og:type" content="website">
 <!-- Link previews: crawlers need an absolute address, so this points at the
      published copy (wrangler.jsonc). 1200 x 630 is Meta's recommended size. -->
@@ -14,13 +14,13 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Deja Vu1: 'One screen for every U1 you run.' beside a live engineering drawing of a printing U1 and three printer cards from the simulated farm.">
+<meta property="og:image:alt" content="Deja Vu1: Your U1s. One workspace. Actual simulated-farm cards over conceptual blue loop art. Physical U1 testing pending.">
 <meta property="og:video" content="https://deja-vu1.jmath1110.workers.dev/media/deja-vu1-launch-v1-16x9.mp4">
 <meta property="og:video:type" content="video/mp4">
 <meta property="og:video:width" content="1920">
 <meta property="og:video:height" content="1080">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#eff1f4">
+<meta name="theme-color" content="#edf1f5">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%23e8692a' stroke-width='4'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23e8692a'/%3E%3C/svg%3E">
 <link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -51,17 +51,16 @@
   --ink-dim: oklch(37% 0.014 265);     /* 9.2:1 */
   --ink-faint: oklch(49% 0.012 265);   /* 5.5:1 */
   --hair: oklch(30% 0.02 265 / .1);
-  --layer: oklch(30% 0.03 265 / .06);
+  --layer: oklch(30% 0.03 265 / .025);
   --paper: oklch(99% 0.002 250 / .82);
   --paper-solid: oklch(98.6% 0.002 250);
 
-  /* Two filament colours light the room; the hot-end orange is also the
-     one accent (buttons, links, the active thing). Dark text on it: 6.1:1. */
-  --fil-a: oklch(68% 0.18 45);
-  --fil-b: oklch(62% 0.17 255);
-  --accent: oklch(68% 0.17 45);
-  --accent-ink: oklch(20% 0.04 45);
-  --accent-text: oklch(50% 0.15 45);   /* 4.9:1 on --bg, for links */
+  /* Match the dashboard’s blue accent and cool background. */
+  --fil-a: oklch(68% 0.12 255);
+  --fil-b: oklch(72% 0.09 170);
+  --accent: oklch(65% 0.17 255);
+  --accent-ink: oklch(16% 0.04 255);
+  --accent-text: oklch(43% 0.14 255);
 
   --radius: 28px;
   --shadow-card: 0 1px 2px oklch(25% 0.02 265 / .05), 0 10px 28px oklch(25% 0.02 265 / .08);
@@ -384,16 +383,16 @@ footer p { max-width: 70ch; }
     <p class="kicker rise">Free · open source · for the Snapmaker U1</p>
     <h1 class="rise d1">One screen for every <em>U1</em> you run.</h1>
     <p class="hero-lede rise d2">
-      Watch every Snapmaker U1 you run, prepare and check files, and start prints from one
-      dashboard. It runs on a computer in your home, and you open it in a browser, in its own
-      app window or on your phone. You need no account, and nothing goes to the cloud.
+      See which printer needs you. Prepare a plate, inspect its layers, and review the checks
+      before you start. A free, open-source workspace for Snapmaker U1 printers that runs on
+      your own computer: open it in a browser, in its own app window or on your phone.
     </p>
     <div class="hero-cta rise d3">
       <a class="btn primary" href="./?demo">Try the demo</a>
       <a class="btn" href="#film">Watch the film · 60 s</a>
       <a class="btn" href="#run">Run it at home</a>
       <a class="btn" href="https://github.com/Jbyjre/Deja_VU1">Read the code</a>
-      <span class="hero-note">Python 3.8+ core · external engine for slicing · MIT licence</span>
+      <span class="hero-note">No app account · Python 3.8+ · separate engine for slicing</span>
     </div>
 
     <figure class="shot glass film rise d4" id="film">
@@ -404,7 +403,7 @@ footer p { max-width: 70ch; }
         <a href="media/deja-vu1-launch-v1-16x9.mp4">Download the 60-second launch film (MP4)</a>
       </video>
     </figure>
-    <p class="caption">The 60-second launch film, filmed on the built-in simulated farm. Every figure in it is simulated. Sound on.</p>
+    <p class="caption">The 60-second launch film, filmed on the built-in simulated farm. Every figure in it is simulated. Sound on. No physical U1 has been connected yet: <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connection.md">help test the first connection</a>.</p>
   </div>
 
   <section class="band" id="ways" aria-labelledby="ways-title">
@@ -433,23 +432,23 @@ footer p { max-width: 70ch; }
     <div class="wrap">
       <p class="eyebrow">Why it exists</p>
       <h2 id="problems-title">The questions you walk over to the printer to answer.</h2>
-      <p class="intro">The printer already publishes the answers. Deja Vu1 reads them for every U1 you run and puts them on one screen, on your phone, or in a message.</p>
+      <p class="intro">A paused job on one machine. A dock fault on another. A plate that has finished. Deja Vu1 brings those separate checks into one view.</p>
       <div class="ledger">
         <div class="ledger-row">
           <h3>Is it still printing?</h3>
-          <p>Every printer updates <b>four times a second</b>. <b>Needs you</b> ranks what wants a person across the whole farm: a jam, a paused print, a finished plate, an idle printer with work waiting. Automations send it to ntfy, Discord or Telegram.</p>
+          <p><b>Needs you</b> brings faults, paused jobs and finished plates to the top. Open the printer from that list, or configure a notification through ntfy, Discord or Telegram. Update freshness depends on the printer and network.</p>
         </div>
         <div class="ledger-row">
-          <h3>Will this file print on a U1?</h3>
-          <p>The pre-flight check flags <b>extrusion outside the 270 × 270 × 270 mm build volume</b>, unknown toolheads and unsafe temperatures, with line numbers. MakerWorld, NexPrint and OrcaSlicer projects convert for the U1 in one click, multi-plate projects included.</p>
+          <h3>What is this file asking the printer to do?</h3>
+          <p>Inspect layers, tool changes and requested speeds. Pre-flight flags <b>extrusion outside the 270 mm build cube</b>, unknown toolheads and unsafe temperatures, with line numbers you can inspect.</p>
         </div>
         <div class="ledger-row">
           <h3>Is the right filament loaded?</h3>
-          <p>Four toolheads mean four chances to load the wrong spool. Deja Vu1 compares <b>the colour each toolhead was sliced for with what the printer reports is loaded</b>, and stops the start on a mismatch, before you spend the time and the filament.</p>
+          <p>Compare the file’s requirements with <b>what the printer reports loaded</b>. A known mismatch blocks the start. Missing filament information stays unknown and asks you to check by eye.</p>
         </div>
         <div class="ledger-row">
-          <h3>Is it safe to press print?</h3>
-          <p><b>Confirm Print</b> pulls it together: pre-flight, filament match, nozzles, spool weight, maintenance, time, grams and cost. The server checks again at the moment of starting and refuses in words if something changed, even when you start from your phone.</p>
+          <h3>What needs checking before I start?</h3>
+          <p><b>Confirm Print</b> puts the file, printer, filament and nozzle checks beside maintenance warnings and available estimates. The server checks again when you start. These checks help you review a job; they do not guarantee a successful print.</p>
         </div>
       </div>
     </div>
@@ -458,18 +457,24 @@ footer p { max-width: 70ch; }
   <section class="band" id="inside" aria-labelledby="inside-title">
     <div class="wrap">
       <p class="eyebrow">What's inside</p>
-      <h2 id="inside-title">One dashboard instead of five tabs and a walk to the printer.</h2>
+      <h2 id="inside-title">From a plate on screen to a job you can review.</h2>
+      <p class="intro">Edit objects, assign physical heads T0–T3, slice through an engine you install, then inspect the output in the same workspace.</p>
+      <figure class="shot glass" style="margin:28px 0 12px">
+        <img src="img/workspace.png" width="1366" height="900" loading="lazy"
+             alt="The preparation workspace with two objects and physical tool assignments, plate controls and slicing settings. Recorded Linux validation capture.">
+      </figure>
+      <p class="caption">Preparation workspace from the recorded Linux checks. Slicing needs a separate compatible engine; physical printing is unverified.</p>
       <div class="sheet">
         <div>
           <h3>Watch</h3>
           <ul>
-            <li><b>Live, four times a second</b><span>Pushed over a WebSocket; it falls back to asking once a second if a network blocks that, and says which.</span></li>
+            <li><b>Live printer state</b><span>A 250 ms server loop shares updates with your browsers. Freshness depends on the printer and network; polling is the fallback.</span></li>
             <li><b>Needs you</b><span>Every printer ranked by what wants a person: faults, paused or finished prints, idle printers with work waiting.</span></li>
             <li><b>Telemetry</b><span>Every head's temperature against target with a trace, filament, nozzle and swap counters; bed, chamber, position, layer and timing.</span></li>
             <li><b>Farm desk</b><span>A 24-hour dispatch line for every printer, the best printer for a file, what each idle printer can print now, filament needed and cost per piece.</span></li>
             <li><b>Whole fleet</b><span>State, progress, docks, temperatures and a health score for every printer, and when each will finish.</span></li>
-            <li><b>Digital twin</b><span>A live 3D model of the printer, or an engineering drawing: the bed, the toolhead, the parts on the plate, the four docks and the spools, moving as it prints.</span></li>
-            <li><b>Dock status</b><span>Which of the four toolheads is ready, heating, in use or faulted, on screen and on LED rings or a WLED strip if you add them.</span></li>
+            <li><b>Digital twin</b><span>Follow the head, bed and docks in a 3D model or drawing. The body size and internal layout are estimated; the model is not a camera feed.</span></li>
+            <li><b>Dock status</b><span>See the four heads’ reported states on screen. A WLED bridge is optional; physical dock-ring drivers remain unfinished.</span></li>
           </ul>
         </div>
         <div>
@@ -488,7 +493,7 @@ footer p { max-width: 70ch; }
           <ul>
             <li><b>Photo-to-Print Studio</b><span>Make four-tool colour tiles, measured-swatch layered models or image reliefs. Physical colour accuracy needs calibration.</span></li>
             <li><b>MakerWorld, NexPrint and Orca to U1</b><span>Converts supported projects for the U1 and separates a selected plate for slicing. Complex vendor paint, textures and settings remain limited.</span></li>
-            <li><b>View on your desk</b><span>Places a model on your real desk at its printed size, through an Android phone's camera.</span></li>
+            <li><b>View on your desk</b><span>AR preview on supported Android/WebXR browsers over HTTPS. Uses the original model geometry; real-phone testing remains open.</span></li>
           </ul>
         </div>
         <div>
@@ -511,17 +516,22 @@ footer p { max-width: 70ch; }
       </figure>
       <p class="caption">The Overview, running on the built-in simulated farm (Demo data). Every figure in these pictures is simulated.</p>
 
+      <div class="twin-pair" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:24px;margin-top:36px">
+        <figure class="shot glass"><img src="img/twin.jpg" width="706" height="821" loading="lazy" alt="The current 3D twin with the head, bed, rear docks and spools. Software model with simulated readings."></figure>
+        <figure class="shot glass"><img src="img/twin-drawing.jpg" width="706" height="1039" loading="lazy" alt="Drawing mode of the same printer geometry, with dimensions and selected head details. Simulated readings."></figure>
+      </div>
+      <p class="caption">Two views of one software model. Body size and internal geometry are estimates; these are simulated readings, not camera images.</p>
       <div class="screens">
         <figure class="shot glass">
-          <img src="img/fleet.jpg" width="1440" height="900" loading="lazy"
-               alt="The Fleet tab: three printer cards (one printing with its finish time, one paused, one idle with a dock error) above a 30-day farm history chart.">
+          <img src="img/fleet.jpg" width="1128" height="640" loading="lazy"
+               alt="Three simulated U1 printer cards with progress, toolhead colours and temperatures, plus controls for selected printers.">
         </figure>
         <figure class="shot glass phone">
           <img src="img/phone.jpg" width="390" height="844" loading="lazy"
                alt="Deja Vu1 on a phone: the Needs you list at the top, and the print's progress with Pause and Hold to cancel in a dock at the bottom of the screen.">
         </figure>
       </div>
-      <p class="caption">Fleet on a laptop, Overview on a phone: the same dashboard, laid out for a thumb. Simulated farm.</p>
+      <p class="caption">The fleet view and a 390 px browser viewport. Simulated farm; the phone layout has been checked in Chromium, not on a physical phone.</p>
     </div>
   </section>
 
@@ -586,10 +596,10 @@ Your U1 printer</code></pre>
   </section>
 
   <section class="closer wrap" aria-labelledby="closer-title">
-    <h2 id="closer-title">Stop walking over to read the screen.</h2>
+    <h2 id="closer-title">Take a look around.<br>No printer needed for the demo.</h2>
     <div class="hero-cta">
-      <a class="btn primary" href="https://github.com/Jbyjre/Deja_VU1">Get Deja Vu1 on GitHub</a>
-      <a class="btn" href="./?demo">Try the demo first</a>
+      <a class="btn primary" href="./?demo">Explore the simulated farm</a>
+      <a class="btn" href="https://github.com/Jbyjre/Deja_VU1">Get the code on GitHub</a>
       <a class="btn" href="#run">How to run it</a>
     </div>
   </section>
@@ -597,7 +607,7 @@ Your U1 printer</code></pre>
 
 <footer>
   <div class="wrap">
-    <p>Deja Vu1 is an open-source project under the MIT licence.</p>
+    <p>Deja Vu1 is an independent open-source project under the MIT licence. Not affiliated with or endorsed by Snapmaker.</p>
     <p>Typefaces: Bricolage Grotesque, Instrument Sans and IBM Plex Mono, under the SIL Open Font License.</p>
   </div>
 </footer>
