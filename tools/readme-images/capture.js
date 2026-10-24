@@ -59,6 +59,15 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       await shot('converter','#fd-convert-report','Actual supported sample conversion report at 760 px, not a physical print');
       await page.setViewportSize({width:1366,height:1000});
     }
+    if(process.argv.includes('--copy-review')){
+      await tab('automations');
+      await page.getByRole('button',{name:'Tell me when a print finishes',exact:true}).click();
+      await shot('automations','#tab-automations','Current automation wording and a sample notification rule; simulated farm');
+      await page.locator('#setup-open').click();
+      await shot('onboarding-copy','#setup-dialog','Current onboarding wording; simulated-farm review, no physical U1');
+      if(record.errors.length)throw new Error(record.errors.join('\n'));
+      return;
+    }
     if(process.argv.includes('--conversion')){
       await tab('files');await page.locator('#file-samples').click();await wait(800);
       await conversion();

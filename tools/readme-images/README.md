@@ -66,8 +66,9 @@ Reset the sandbox afterwards (`POST /api/sandbox/reset?demo=1`).
 ## Explainers and the social card
 
 `boards.html` holds the five explainer boards (one `<section>` each) and
-`card.html` the social card. The card's pictures are `img/twin.jpg` (the current
-3D model canvas) and `img/needs-you.jpg` (the attention panel). Every fact on them comes from the code: the
+`card.html` the share-card entry point. It opens the fleet campaign composition,
+using `img/fleet-cards.jpg` and `img/brand-loop.png`. The latter is conceptual
+brand art; it is not hardware evidence. Every fact on them comes from the code: the
 dock states from `backend/led_status.py`, the seven checks from
 `backend/print_gate.py`, the counts from the README tables and the test
 runner. Change them when the code changes.
@@ -148,11 +149,12 @@ editorial captures go in `03-screenshots/`. Copy `overview.jpg`, `fleet.jpg`,
 `frontend/img/`. The workspace image is the preserved
 `docs/img/slicer-after-workspace-1366.png`, copied to `frontend/img/workspace.png`;
 keep its historical Linux-validation caption. Copy `twin-model.jpg` as
-`tools/readme-images/img/twin.jpg` for the share card and `needs-you.jpg` beside it.
+`tools/readme-images/img/twin.jpg` for the twin campaign. Fleet and attention
+compositions use `fleet-cards.jpg` and `needs-you.jpg` beside it.
 
-The renderer also makes six subjects in landscape, square and portrait formats.
-Its source is `campaign.json`; `campaign.html` typesets that content, and
-`render.js` checks bounds and missing images at each output size. Copy the 18
+The renderer also makes six subjects in landscape, square, portrait and native horizontal-feed formats.
+Its source is `campaign.json`; `campaign.html`, `campaign.css` and `campaign.js` typeset that content, and
+`render.js` checks bounds and missing images at each output size. Copy the 24
 PNGs and `campaign-manifest.json` (as `captions.json`) into
 `marketing-library/09-current-campaign/`. Each manifest entry supplies the
 format, caption, text alternative and evidence limits. Inspect the final files;
@@ -168,3 +170,21 @@ Boards render directly at 1600 px and quality 90. Share images
 remain PNG at their native sizes. Preserve versioned films and their music
 notices. Use the campaign pack for current standalone images, rather than
 silently relabelling old video stills.
+
+
+### Art-directed campaign follow-up
+
+`campaign.css` and `campaign.js` now provide six distinct compositions. Run
+`node tools/readme-images/render.js --campaign` to render only share/campaign
+assets, then `python3 tools/readme-images/sync.py` to update the shipped copies.
+The renderer also checks authored text palette pairs, evidence/action overlap
+and the reviewed 5 MB feed limit. Inspect actual images and reduced-size previews;
+these checks do not certify every screenshot pixel or marketing effectiveness.
+
+`img/brand-loop.png` is AI-generated conceptual brand artwork. Its original is
+retained in the workspace’s generated-images folder. It is deliberately separate
+from actual app screenshots and is never evidence of a physical print or add-on.
+Captions and README explain that distinction. The artwork is bundled into the
+PNG share/campaign exports; the product page does not download the large source.
+See `marketing-library/AD-GUIDE.md` for message and placement choices and
+`docs/copy-review.md` for the exact scope of wording changes.

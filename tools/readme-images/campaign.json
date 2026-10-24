@@ -1,8 +1,140 @@
 [
-  {"id":"01-fleet","eyebrow":"For the Snapmaker U1","title":"One screen for every U1 you run.","body":"See progress, temperatures and which printer needs attention.","image":"../../docs/img/fleet.jpg","alt":"Three simulated U1 printer cards with progress, dock colours and temperatures.","evidence":"Actual app · simulated farm","limit":"Physical U1 testing pending","cta":"Explore the demo","caption":"Deja Vu1 brings U1 printer status into one local dashboard. These three printers are simulated; no physical U1 has been connected yet. Try the demo: https://deja-vu1.jmath1110.workers.dev/?demo"},
-  {"id":"02-needs-you","eyebrow":"Find the next thing to check","title":"Which printer needs you?","body":"Faults, paused jobs and overdue care, brought into one list.","image":"../../docs/img/needs-you.jpg","alt":"Needs you lists a dock fault, a paused print and overdue maintenance across a simulated three-printer farm.","evidence":"Actual app · simulated farm","limit":"Physical U1 testing pending","cta":"Try the simulated farm","caption":"A paused job on one U1. A dock fault on another. Needs you puts those separate checks in one list. Actual app, simulated data; real-printer behaviour is still unverified. https://deja-vu1.jmath1110.workers.dev/?demo"},
-  {"id":"03-prepare","eyebrow":"Prepare · slice · inspect","title":"Keep the plate and its settings together.","body":"Edit objects, assign T0–T3 and inspect the sliced layers in one workspace.","image":"../../docs/img/slicer-after-workspace-1366.png","alt":"Recorded preparation-workspace validation capture with two objects and physical tool assignments.","evidence":"Recorded Linux workspace check","limit":"Separate slicing engine required · physical print unverified","cta":"See the setup guide","caption":"Prepare objects and tool assignments in Deja Vu1, slice through a separately installed compatible engine, then inspect its G-code. Screenshot from recorded Linux workspace validation. It does not establish a physical print. https://github.com/Jbyjre/Deja_VU1/blob/main/docs/slicing-and-models.md"},
-  {"id":"04-print-checks","eyebrow":"Confirm Print","title":"A refusal you can read.","body":"Review the file, tools and printer. Blocking errors explain why the start is refused.","image":"../../docs/img/confirm-print-refused.jpg","alt":"Confirm Print refuses an unsafe sample file and lists the reasons. Simulated printer.","evidence":"Actual refusal UI · simulated printer","limit":"Checks do not guarantee a successful print","cta":"Inspect the checks","caption":"Confirm Print checks the job again on the server when starting. Blocking errors refuse the start; warnings need acknowledgement. This unsafe sample is shown on the simulated farm. These checks are not a guarantee of print success. https://github.com/Jbyjre/Deja_VU1#why-it-exists"},
-  {"id":"05-digital-twin","eyebrow":"Two views of the same printer","title":"Follow the head. See the docks.","body":"Switch between a 3D model and a drawing. Pick a head for its reported details.","image":"../../docs/img/twin-3d-printing.jpg","alt":"Current 3D printer twin from the app, with simulated readings and estimated body geometry.","evidence":"Software model · simulated readings","limit":"Body size and internal geometry estimated","cta":"Turn the model in the demo","caption":"The digital twin follows reported printer state in a 3D model or engineering drawing. This is a software model, not a camera view. Body size and internal geometry are estimated; the pictured readings are simulated. https://deja-vu1.jmath1110.workers.dev/?demo"},
-  {"id":"06-first-connection","eyebrow":"Help test Deja Vu1","title":"Have a U1? Help make the first connection.","body":"30–45 minutes. Watch a print you already started and compare its readings.","image":"../../docs/img/phone.jpg","alt":"The dashboard in a 390-pixel Chromium viewport with simulated printer data.","evidence":"Browser viewport · simulated farm","limit":"Watch-only session · no printer controls","cta":"Read the first-connection guide","caption":"Deja Vu1 has not talked to a physical U1 yet. The first test is watch-only: compare an existing print’s readings without using the dashboard’s printer controls. Allow 30–45 minutes. The phone image is a browser viewport, not a physical-device test. https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connection.md"}
+  {
+    "id": "01-fleet",
+    "eyebrow": "For the Snapmaker U1",
+    "title": "Your U1s. One workspace.",
+    "body": "See the fleet. Prepare the next plate.",
+    "image": "img/fleet-cards.jpg",
+    "alt": "Your U1s. One workspace. A conceptual blue loop sculpture behind actual simulated-farm printer cards; no physical U1 test verified.",
+    "evidence": "Actual app · simulated farm",
+    "limit": "Physical U1 testing pending",
+    "cta": "Explore the demo",
+    "caption": "Deja Vu1 brings U1 printer status into one local dashboard. These three printers are simulated; no physical U1 has been connected yet. Try the demo: https://deja-vu1.jmath1110.workers.dev/?demo The cobalt loop is AI-generated conceptual brand art, not hardware or a print result.",
+    "design": "fleet",
+    "lines": [
+      "Your U1s.",
+      "One workspace."
+    ],
+    "detail": "ACTUAL APP / SIMULATED FARM",
+    "annotation": "CONCEPTUAL BRAND ART",
+    "destination": "deja-vu1.jmath1110.workers.dev",
+    "stage": "Discover",
+    "purpose": "Invite a first visit to the simulated farm",
+    "primaryText": "See the fleet. Prepare the next plate. Physical U1 testing pending."
+  },
+  {
+    "id": "02-needs-you",
+    "eyebrow": "Find the next thing to check",
+    "title": "One fault. Your next move.",
+    "body": "Find the printer that needs attention.",
+    "image": "../../docs/img/needs-you.jpg",
+    "alt": "One fault. Your next move. An enlarged crop of the actual Needs you panel shows a simulated dock fault.",
+    "evidence": "Actual app · simulated farm",
+    "limit": "Physical U1 testing pending",
+    "cta": "Try the simulated farm",
+    "caption": "A paused job on one U1. A dock fault on another. Needs you puts those separate checks in one list. Actual app, simulated data; real-printer behaviour is still unverified. https://deja-vu1.jmath1110.workers.dev/?demo",
+    "design": "attention",
+    "lines": [
+      "One fault.",
+      "Your next move."
+    ],
+    "detail": "NEEDS YOU / DEMO DETAIL",
+    "annotation": "Faults first. Across the fleet.",
+    "destination": "deja-vu1.jmath1110.workers.dev",
+    "stage": "Discover",
+    "purpose": "Show the attention list with an enlarged actual fault",
+    "primaryText": "Find the printer that needs attention. Physical U1 testing pending."
+  },
+  {
+    "id": "03-prepare",
+    "eyebrow": "Prepare · slice · inspect",
+    "title": "From plate to preview.",
+    "body": "Keep objects, tool assignments and output together.",
+    "image": "../../docs/img/slicer-after-workspace-1366.png",
+    "alt": "Recorded preparation-workspace validation capture with two objects and physical tool assignments.",
+    "evidence": "Recorded Linux workspace check",
+    "limit": "Separate slicing engine required · physical print unverified",
+    "cta": "See the setup guide",
+    "caption": "Prepare objects and tool assignments in Deja Vu1, slice through a separately installed compatible engine, then inspect its G-code. Screenshot from recorded Linux workspace validation. It does not establish a physical print. https://github.com/Jbyjre/Deja_VU1/blob/main/docs/slicing-and-models.md",
+    "design": "prepare",
+    "lines": [
+      "From plate",
+      "to preview."
+    ],
+    "detail": "PREPARATION WORKSPACE",
+    "annotation": "Edit → assign → slice → inspect",
+    "destination": "github.com/Jbyjre/Deja_VU1",
+    "stage": "Consider",
+    "purpose": "Explain the workflow and separate-engine setup",
+    "primaryText": "Keep objects, tool assignments and output together. Separate slicing engine required."
+  },
+  {
+    "id": "04-print-checks",
+    "eyebrow": "Confirm Print",
+    "title": "Catch the mismatch.",
+    "body": "Read the checks before you start the job.",
+    "image": "../../docs/img/confirm-print-refused.jpg",
+    "alt": "Confirm Print refuses an unsafe sample file and lists the reasons. Simulated printer.",
+    "evidence": "Actual refusal UI · simulated printer",
+    "limit": "Checks help review a job; print success is not guaranteed",
+    "cta": "Inspect the checks",
+    "caption": "Confirm Print checks the job again on the server when starting. Blocking errors refuse the start; warnings need acknowledgement. This unsafe sample is shown on the simulated farm. These checks are not a guarantee of print success. https://github.com/Jbyjre/Deja_VU1#why-it-exists",
+    "design": "checks",
+    "lines": [
+      "Catch the",
+      "mismatch."
+    ],
+    "detail": "CONFIRM PRINT / DEMO EXAMPLE",
+    "annotation": "Blocking errors explain the refusal.",
+    "destination": "github.com/Jbyjre/Deja_VU1",
+    "stage": "Consider",
+    "purpose": "Show a concrete example of a refused start",
+    "primaryText": "Read the checks before you start the job. Physical U1 testing pending."
+  },
+  {
+    "id": "05-digital-twin",
+    "eyebrow": "Two views of the same printer",
+    "title": "A closer look. At every head.",
+    "body": "Turn the model. Pick a toolhead. Inspect its details.",
+    "image": "img/twin.jpg",
+    "alt": "A closer look. At every head. A large image of the software twin, with estimated geometry and simulated readings.",
+    "evidence": "Software model · simulated readings",
+    "limit": "Body size and internal geometry estimated",
+    "cta": "Turn the model in the demo",
+    "caption": "The digital twin follows reported printer state in a 3D model or engineering drawing. This is a software model, not a camera view. Body size and internal geometry are estimated; the pictured readings are simulated. https://deja-vu1.jmath1110.workers.dev/?demo",
+    "design": "twin",
+    "lines": [
+      "A closer look.",
+      "At every head."
+    ],
+    "detail": "3D TWIN / SOFTWARE MODEL",
+    "annotation": "3D model + engineering drawing",
+    "destination": "deja-vu1.jmath1110.workers.dev",
+    "stage": "Discover",
+    "purpose": "Let the distinctive twin invite product exploration",
+    "primaryText": "Turn the model. Pick a toolhead. Inspect its details. Physical U1 testing pending."
+  },
+  {
+    "id": "06-first-connection",
+    "eyebrow": "Help test Deja Vu1",
+    "title": "Your U1. Our first test.",
+    "body": "Help compare a running print’s readings. Watch-only.",
+    "image": "../../docs/img/phone.jpg",
+    "alt": "The dashboard in a 390-pixel Chromium viewport with simulated printer data.",
+    "evidence": "Browser viewport · simulated farm",
+    "limit": "Physical U1 testing pending · no printer controls in this session",
+    "cta": "Read the first-connection guide",
+    "caption": "Deja Vu1 has not talked to a physical U1 yet. The first test is watch-only: compare an existing print’s readings without using the dashboard’s printer controls. Allow 30–45 minutes. The phone image is a browser viewport, not a physical-device test. https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connection.md",
+    "design": "connect",
+    "lines": [
+      "Your U1.",
+      "Our first test."
+    ],
+    "detail": "BROWSER VIEWPORT / SIMULATED DATA",
+    "annotation": "",
+    "destination": "github.com/Jbyjre/Deja_VU1",
+    "stage": "Participate",
+    "purpose": "Recruit an owner for the first physical connection",
+    "primaryText": "Help compare a running print’s readings. Watch-only. Physical U1 testing pending."
+  }
 ]

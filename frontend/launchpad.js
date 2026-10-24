@@ -53,7 +53,7 @@
     dialog.classList.toggle('is-full', step !== TOUR);
     document.documentElement.classList.toggle('setup-full-open', step !== TOUR);
     if (step === 0) {
-      content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">A little setup.<br>A clearer print day.</h2>
+      content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">Set up your U1 workspace.</h2>
         <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer, talks to your printer over your home network, and works from your phone too. Core printer data stays on your network. Optional services connect only when configured.</p>
         <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Review the job:</strong> check the file, tools and printer before starting.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
@@ -111,7 +111,7 @@
       });
       jump('overview');
     } else if (names[step] === 'Your phone') {
-      content.innerHTML=`<h2 id="setup-title">Your bench. In your pocket.</h2><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
     } else {
       content.innerHTML='<h2 id="setup-title">Stay in control of updates.</h2><p>Settings → App updates checks GitHub for a newer release. Automatic checks start off. If you enable them, checks happen at startup, at most once a day.</p><p>Install from the double-click launcher when your printers are idle. The launcher keeps your data and restores the previous files if the new server fails its startup check.</p><p class="field-hint">The public demo cannot update a downloaded copy. Printer firmware updates are a separate feature.</p>';
     }

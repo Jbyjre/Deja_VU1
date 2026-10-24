@@ -15,7 +15,7 @@ ROOT = HERE.parent.parent
 OUT = HERE / 'out'
 LIBRARY = ROOT / 'marketing-library'
 records = {}
-for directory in [OUT / 'captures', OUT / 'extras', OUT / 'conversion']:
+for directory in [OUT / 'captures', OUT / 'extras', OUT / 'conversion', OUT / 'copy-review']:
     record_path = directory / 'capture-record.json'
     if not record_path.exists():
         continue
@@ -70,15 +70,19 @@ copy(OUT / 'card-1200x630.png', 'frontend/img/social-card.png', 'link preview')
 copy(OUT / 'card-1200x630.png', 'marketing-library/01-main-image/link-preview-card-1200x630.png', 'link preview copy')
 copy(OUT / 'card-1280x640.png', 'marketing-library/01-main-image/github-social-preview-1280x640.png', 'GitHub preview candidate')
 manifest = json.loads((OUT / 'campaign-manifest.json').read_text())
-if len(manifest) != 18:
-    raise SystemExit('Expected six subjects in three formats')
+if len(manifest) != 24:
+    raise SystemExit('Expected six subjects in four formats')
 for card in manifest:
     copy(OUT / card['file'], 'marketing-library/09-current-campaign/' + card['file'], 'campaign card')
 copy(OUT / 'campaign-manifest.json', 'marketing-library/09-current-campaign/captions.json', 'captions and alternatives')
+art = HERE / 'img/brand-loop.png'
+assets.append({'path': str(art.relative_to(ROOT)), 'source': 'image_gen original conceptual artwork',
+               'kind': 'conceptual brand art; not hardware or a physical print',
+               'bytes': art.stat().st_size, 'sha256': hashlib.sha256(art.read_bytes()).hexdigest()})
 provenance = {'source': 'Actual app, isolated simulated farm; stand-in connection explicitly labelled',
               'images': [{k: v for k, v in entry.items() if k != 'source'} for entry in records.values()],
               'errors': []}
 (LIBRARY / 'capture-record.json').write_text(json.dumps(provenance, indent=2) + '\n')
 (LIBRARY / 'current-assets.json').write_text(json.dumps({'generatedAt': datetime.now(timezone.utc).isoformat(),
                                                        'assets': assets}, indent=2) + '\n')
-print('Copied', len(assets), 'current assets;', len(records), 'capture records; 18 campaign cards')
+print('Copied', len(assets), 'current assets;', len(records), 'capture records; 24 campaign cards')

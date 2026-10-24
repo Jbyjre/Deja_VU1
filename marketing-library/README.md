@@ -4,25 +4,26 @@ Review copy of Deja Vu1’s public materials. This folder is temporary and is
 removed before the launch post; the live app reads its images from `frontend/img/`
 and the README uses `docs/img/`. Nothing has been posted or submitted from here.
 
-Start with [COPY.md](COPY.md) for descriptions and posts, and
+Start with [AD-GUIDE.md](AD-GUIDE.md) for message/placement choices,
+[COPY.md](COPY.md) for descriptions and posts, and
 [MESSAGING.md](MESSAGING.md) for the claim limits. Open an image on GitHub and use
 Download to save it, or download the repository ZIP for the complete pack.
 
 ## Current campaign · 23 October 2026
 
-Six subjects, each in three formats: landscape **1600 × 900**, square
-**1080 × 1080**, portrait **1080 × 1350**. These are independently typeset cards,
+Six subjects in four formats: landscape **1600 × 900**, square
+**1080 × 1080**, portrait **1080 × 1350**, and horizontal feed **1200 × 628**. These are independently typeset cards,
 not crops of a video. Every card carries its own evidence label and limitation.
 [Captions and alt text](09-current-campaign/captions.json) are included as plain text.
 
 | Subject | Preview | Downloads |
 |---|---|---|
-| Fleet | ![One screen for every U1 you run. Actual app, simulated farm; physical U1 testing pending](09-current-campaign/01-fleet-square.png) | [Landscape](09-current-campaign/01-fleet-landscape.png) · [Square](09-current-campaign/01-fleet-square.png) · [Portrait](09-current-campaign/01-fleet-portrait.png) |
-| Needs you | ![Which printer needs you? Faults, paused jobs and overdue care on the simulated farm](09-current-campaign/02-needs-you-square.png) | [Landscape](09-current-campaign/02-needs-you-landscape.png) · [Square](09-current-campaign/02-needs-you-square.png) · [Portrait](09-current-campaign/02-needs-you-portrait.png) |
-| Prepare | ![Keep the plate and its settings together. Recorded Linux check; separate engine required and physical print unverified](09-current-campaign/03-prepare-square.png) | [Landscape](09-current-campaign/03-prepare-landscape.png) · [Square](09-current-campaign/03-prepare-square.png) · [Portrait](09-current-campaign/03-prepare-portrait.png) |
-| Print checks | ![A refusal you can read. Actual refusal UI with simulated printer; checks do not guarantee a successful print](09-current-campaign/04-print-checks-square.png) | [Landscape](09-current-campaign/04-print-checks-landscape.png) · [Square](09-current-campaign/04-print-checks-square.png) · [Portrait](09-current-campaign/04-print-checks-portrait.png) |
-| Digital twin | ![Follow the head. See the docks. Software model with simulated readings and estimated geometry](09-current-campaign/05-digital-twin-square.png) | [Landscape](09-current-campaign/05-digital-twin-landscape.png) · [Square](09-current-campaign/05-digital-twin-square.png) · [Portrait](09-current-campaign/05-digital-twin-portrait.png) |
-| First connection | ![Have a U1? Help make the first connection. A watch-only session of 30 to 45 minutes, without printer controls](09-current-campaign/06-first-connection-square.png) | [Landscape](09-current-campaign/06-first-connection-landscape.png) · [Square](09-current-campaign/06-first-connection-square.png) · [Portrait](09-current-campaign/06-first-connection-portrait.png) |
+| Fleet | ![Your U1s. One workspace. A conceptual blue loop sculpture behind actual simulated-farm printer cards; no physical U1 test verified.](09-current-campaign/01-fleet-square.png) | [Landscape](09-current-campaign/01-fleet-landscape.png) · [Square](09-current-campaign/01-fleet-square.png) · [Portrait](09-current-campaign/01-fleet-portrait.png) · [Feed](09-current-campaign/01-fleet-feed.png) |
+| Needs you | ![One fault. Your next move. An enlarged crop of the actual Needs you panel shows a simulated dock fault.](09-current-campaign/02-needs-you-square.png) | [Landscape](09-current-campaign/02-needs-you-landscape.png) · [Square](09-current-campaign/02-needs-you-square.png) · [Portrait](09-current-campaign/02-needs-you-portrait.png) · [Feed](09-current-campaign/02-needs-you-feed.png) |
+| Prepare | ![Recorded preparation-workspace validation capture with two objects and physical tool assignments.](09-current-campaign/03-prepare-square.png) | [Landscape](09-current-campaign/03-prepare-landscape.png) · [Square](09-current-campaign/03-prepare-square.png) · [Portrait](09-current-campaign/03-prepare-portrait.png) · [Feed](09-current-campaign/03-prepare-feed.png) |
+| Print checks | ![Confirm Print refuses an unsafe sample file and lists the reasons. Simulated printer.](09-current-campaign/04-print-checks-square.png) | [Landscape](09-current-campaign/04-print-checks-landscape.png) · [Square](09-current-campaign/04-print-checks-square.png) · [Portrait](09-current-campaign/04-print-checks-portrait.png) · [Feed](09-current-campaign/04-print-checks-feed.png) |
+| Digital twin | ![A closer look. At every head. A large image of the software twin, with estimated geometry and simulated readings.](09-current-campaign/05-digital-twin-square.png) | [Landscape](09-current-campaign/05-digital-twin-landscape.png) · [Square](09-current-campaign/05-digital-twin-square.png) · [Portrait](09-current-campaign/05-digital-twin-portrait.png) · [Feed](09-current-campaign/05-digital-twin-feed.png) |
+| First connection | ![The dashboard in a 390-pixel Chromium viewport with simulated printer data.](09-current-campaign/06-first-connection-square.png) | [Landscape](09-current-campaign/06-first-connection-landscape.png) · [Square](09-current-campaign/06-first-connection-square.png) · [Portrait](09-current-campaign/06-first-connection-portrait.png) · [Feed](09-current-campaign/06-first-connection-feed.png) |
 
 ## Share image and explainers
 
@@ -32,7 +33,7 @@ bundled card used by the product page, dashboard metadata and README.
 ready for the repository’s Settings → Social preview. That setting is external
 to a PR and has not been changed.
 
-![One screen for every U1 you run. Current 3D model and Needs you panel from the simulated farm](01-main-image/link-preview-card-1200x630.png)
+![Your U1s. One workspace. Conceptual blue loop art and actual printer cards from the simulated farm](01-main-image/link-preview-card-1200x630.png)
 
 The [five explainer boards](02-explainer-boards/) cover workflow scope, Confirm
 Print, local connections, code limits and proposed dock status. The workflow

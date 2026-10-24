@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T21:47:29.038890+00:00",
+  "generatedAt": "2026-10-24T01:25:05.615292+00:00",
   "assets": [
     {
       "path": "docs/img/add-printer.jpg",
@@ -31,17 +31,17 @@
     },
     {
       "path": "docs/img/automations.jpg",
-      "source": "tools/readme-images/out/extras/automations.jpg",
+      "source": "tools/readme-images/out/copy-review/automations.jpg",
       "kind": "app capture",
-      "bytes": 101235,
-      "sha256": "b35ab7cbb4f510b4188b7dc8f534478c3ff4ff21687f80eebd71504228b9ed4e"
+      "bytes": 103368,
+      "sha256": "5442a6ec65242fa5ec2d7c169251184aca0b260648d6f25c78b609df12be0ca6"
     },
     {
       "path": "marketing-library/03-screenshots/automations.jpg",
-      "source": "tools/readme-images/out/extras/automations.jpg",
+      "source": "tools/readme-images/out/copy-review/automations.jpg",
       "kind": "app capture copy",
-      "bytes": 101235,
-      "sha256": "b35ab7cbb4f510b4188b7dc8f534478c3ff4ff21687f80eebd71504228b9ed4e"
+      "bytes": 103368,
+      "sha256": "5442a6ec65242fa5ec2d7c169251184aca0b260648d6f25c78b609df12be0ca6"
     },
     {
       "path": "docs/img/care.jpg",
@@ -210,6 +210,20 @@
       "kind": "app capture copy",
       "bytes": 37285,
       "sha256": "76d412d814c8ee916ffd459cf1f01f844d122f091acd1c46c0bf4ef2dabbba3f"
+    },
+    {
+      "path": "docs/img/onboarding-copy.jpg",
+      "source": "tools/readme-images/out/copy-review/onboarding-copy.jpg",
+      "kind": "app capture",
+      "bytes": 164182,
+      "sha256": "b516766e36a8c922b3621b5a08a6e07d19bcca72c5a4a8ae19039255eb5314fd"
+    },
+    {
+      "path": "marketing-library/03-screenshots/onboarding-copy.jpg",
+      "source": "tools/readme-images/out/copy-review/onboarding-copy.jpg",
+      "kind": "app capture copy",
+      "bytes": 164182,
+      "sha256": "b516766e36a8c922b3621b5a08a6e07d19bcca72c5a4a8ae19039255eb5314fd"
     },
     {
       "path": "docs/img/overview.jpg",
@@ -551,155 +565,204 @@
       "path": "frontend/img/social-card.png",
       "source": "tools/readme-images/out/card-1200x630.png",
       "kind": "link preview",
-      "bytes": 147968,
-      "sha256": "e8e35f4a5a3602413252f5fef96b620c00e27256007bea58eae932d97cb820fd"
+      "bytes": 425774,
+      "sha256": "2868961cf061b28f591e5eed21d755ae27748dc0a0ae66a9c19b59118fb05b46"
     },
     {
       "path": "marketing-library/01-main-image/link-preview-card-1200x630.png",
       "source": "tools/readme-images/out/card-1200x630.png",
       "kind": "link preview copy",
-      "bytes": 147968,
-      "sha256": "e8e35f4a5a3602413252f5fef96b620c00e27256007bea58eae932d97cb820fd"
+      "bytes": 425774,
+      "sha256": "2868961cf061b28f591e5eed21d755ae27748dc0a0ae66a9c19b59118fb05b46"
     },
     {
       "path": "marketing-library/01-main-image/github-social-preview-1280x640.png",
       "source": "tools/readme-images/out/card-1280x640.png",
       "kind": "GitHub preview candidate",
-      "bytes": 157764,
-      "sha256": "53ee2db0b0d89c28e76f2a9c479dde2efb9e75002eba7f14962b415b57f57fca"
+      "bytes": 464827,
+      "sha256": "d3731c15ba7419031af73f89d1102d620c88eeb80c9ae8602fd935cf3811d3cf"
     },
     {
       "path": "marketing-library/09-current-campaign/01-fleet-landscape.png",
       "source": "tools/readme-images/out/01-fleet-landscape.png",
       "kind": "campaign card",
-      "bytes": 301472,
-      "sha256": "35d993f1fd6b489778d193a36313b83cace4b2ef8d45516090f4921fd1803233"
+      "bytes": 829499,
+      "sha256": "61ccb23c19dfe1fae68b0d2a7dd2a2ac684cdbdf0cac01ca344309dde48f2bba"
     },
     {
       "path": "marketing-library/09-current-campaign/02-needs-you-landscape.png",
       "source": "tools/readme-images/out/02-needs-you-landscape.png",
       "kind": "campaign card",
-      "bytes": 144509,
-      "sha256": "2d52dae22ca5e0c6b7c3269819aebc07fffae2b24a9c22c635321ce5a4f80fc0"
+      "bytes": 207168,
+      "sha256": "42b5146f4d6a72b71c0074f230852ff36bdf1d20ef959844dbfdf78a1104ba09"
     },
     {
       "path": "marketing-library/09-current-campaign/03-prepare-landscape.png",
       "source": "tools/readme-images/out/03-prepare-landscape.png",
       "kind": "campaign card",
-      "bytes": 224128,
-      "sha256": "5a8a25e0d7a9d09c2f15a3554e192debdbbc4174bce9914a7ad519fcbe1a41d1"
+      "bytes": 319791,
+      "sha256": "6eaffef3282e0436a17f3414a3f7b6aa670b2e1f767f07e64236ccf9c1a524a7"
     },
     {
       "path": "marketing-library/09-current-campaign/04-print-checks-landscape.png",
       "source": "tools/readme-images/out/04-print-checks-landscape.png",
       "kind": "campaign card",
-      "bytes": 298648,
-      "sha256": "f687d9908cbcc5571650d6629203b79c6cd6733c06a97ab5e2831a49aa76c4c5"
+      "bytes": 332842,
+      "sha256": "402ed5d1ecf14c252b6ffe46acd96861305c1a097737eb70126e9fa0fabdcf3c"
     },
     {
       "path": "marketing-library/09-current-campaign/05-digital-twin-landscape.png",
       "source": "tools/readme-images/out/05-digital-twin-landscape.png",
       "kind": "campaign card",
-      "bytes": 217386,
-      "sha256": "0e8e21d2999323cd449d2c92f1bb5778e0d4b0291626f5ba895e792ed475422e"
+      "bytes": 275122,
+      "sha256": "d93d9ba046610b3980a301b855296536417c5d399629a83eec00f90fe4892d20"
     },
     {
       "path": "marketing-library/09-current-campaign/06-first-connection-landscape.png",
       "source": "tools/readme-images/out/06-first-connection-landscape.png",
       "kind": "campaign card",
-      "bytes": 217876,
-      "sha256": "a7e96f9256bc3d7791354bc1001f5735be97f34dfae46464130066a468cde478"
+      "bytes": 302226,
+      "sha256": "0a179a020c4ba410815b93b349d90cd308c98c443459b041ab73feffd73361c1"
     },
     {
       "path": "marketing-library/09-current-campaign/01-fleet-square.png",
       "source": "tools/readme-images/out/01-fleet-square.png",
       "kind": "campaign card",
-      "bytes": 230303,
-      "sha256": "e18ded03e8b9c0fb975659eff4f14c29e80ad32f34a44491b9fc61c0bab63240"
+      "bytes": 521170,
+      "sha256": "e7dbee7f8271e18f3e58f08df7de716d5d82e6d03c3c339ad416528729e02682"
     },
     {
       "path": "marketing-library/09-current-campaign/02-needs-you-square.png",
       "source": "tools/readme-images/out/02-needs-you-square.png",
       "kind": "campaign card",
-      "bytes": 135539,
-      "sha256": "91490e7e2fface746c8c6e53d10620fb3c9919b6b7946d5cbd811cdde9ebfdac"
+      "bytes": 182268,
+      "sha256": "58d9dec4d726a7d728b41da7fbd764353baec27835a2c1629a1a095e5c8074b2"
     },
     {
       "path": "marketing-library/09-current-campaign/03-prepare-square.png",
       "source": "tools/readme-images/out/03-prepare-square.png",
       "kind": "campaign card",
-      "bytes": 166286,
-      "sha256": "d1c86399e3c89ad9343aec7db464443017fb4b1e43a5b8efde9597337a3e5ad0"
+      "bytes": 245099,
+      "sha256": "69bcb5c568015c5ab8730eb29a670198ce44778fcfee1150970ab3bcedef2721"
     },
     {
       "path": "marketing-library/09-current-campaign/04-print-checks-square.png",
       "source": "tools/readme-images/out/04-print-checks-square.png",
       "kind": "campaign card",
-      "bytes": 254294,
-      "sha256": "61383412b8747f25c8df7336c02912f41379e3b2b48ff53f2b56ddc89ccbae1d"
+      "bytes": 235000,
+      "sha256": "5cdc0c76bda35f31f62b2497f6f4432061ebbeb0250a636b10154388f00f177d"
     },
     {
       "path": "marketing-library/09-current-campaign/05-digital-twin-square.png",
       "source": "tools/readme-images/out/05-digital-twin-square.png",
       "kind": "campaign card",
-      "bytes": 152254,
-      "sha256": "eb743499d1f69a963d0d256c9aa71d0bcfaef8eccf061114805c7e462aac09ad"
+      "bytes": 223501,
+      "sha256": "e46a5cceee88a2aabdc4967acedc6b4c903b92a102bf066ac5d4fbb2d949db31"
     },
     {
       "path": "marketing-library/09-current-campaign/06-first-connection-square.png",
       "source": "tools/readme-images/out/06-first-connection-square.png",
       "kind": "campaign card",
-      "bytes": 155010,
-      "sha256": "38e4c2caa48971a80d2aeff4940ff0be69577924bb1a767d4b93b4814711534b"
+      "bytes": 236349,
+      "sha256": "ed9592ef0da69dc232fc86df216ea0bb301eb49ebd46a38ffcc2248e3001ed99"
     },
     {
       "path": "marketing-library/09-current-campaign/01-fleet-portrait.png",
       "source": "tools/readme-images/out/01-fleet-portrait.png",
       "kind": "campaign card",
-      "bytes": 298347,
-      "sha256": "5803aac787b7bba806c3646185797b640dbc0abb6acfa8dea13ea674bfb14025"
+      "bytes": 662855,
+      "sha256": "8f0ea20e525e31d6b4bf0a310e45f824412a0ac562ca29d79556636c8919573a"
     },
     {
       "path": "marketing-library/09-current-campaign/02-needs-you-portrait.png",
       "source": "tools/readme-images/out/02-needs-you-portrait.png",
       "kind": "campaign card",
-      "bytes": 143136,
-      "sha256": "052520646daf301e975c5709878fd8b47be5c737b2ca4cfbdf05077715d1e538"
+      "bytes": 218844,
+      "sha256": "7d26a096551865752182b4cd097c9ea8b2916fc1328a9cd892901cdb11bd0ab5"
     },
     {
       "path": "marketing-library/09-current-campaign/03-prepare-portrait.png",
       "source": "tools/readme-images/out/03-prepare-portrait.png",
       "kind": "campaign card",
-      "bytes": 257401,
-      "sha256": "eb3d783e49acf7ef55b4f859269dbf58f815948487b6543d0d08254b5cb6213e"
+      "bytes": 309825,
+      "sha256": "17bfd590ff1b48e6c3db98a3fdb3cac50067889d4f1c35188dec5aac0ba876a6"
     },
     {
       "path": "marketing-library/09-current-campaign/04-print-checks-portrait.png",
       "source": "tools/readme-images/out/04-print-checks-portrait.png",
       "kind": "campaign card",
-      "bytes": 302949,
-      "sha256": "6b2b413b69eb27fafa58614822959c916b0887d49815b63690f33bfd3ea25d24"
+      "bytes": 295484,
+      "sha256": "49e8ecec923ed83f8d1285599254d6e968b91619c0066d022ddf6a112baecf33"
     },
     {
       "path": "marketing-library/09-current-campaign/05-digital-twin-portrait.png",
       "source": "tools/readme-images/out/05-digital-twin-portrait.png",
       "kind": "campaign card",
-      "bytes": 254097,
-      "sha256": "ecdf850f90e6f53097b9570a2a8ee5a55ee3bd6d660ee9cfd089cdb947c4038d"
+      "bytes": 285799,
+      "sha256": "f2e5e5c55c790495869d43ba78fefe04c83e531b3e8e87aca68d77d781cb379d"
     },
     {
       "path": "marketing-library/09-current-campaign/06-first-connection-portrait.png",
       "source": "tools/readme-images/out/06-first-connection-portrait.png",
       "kind": "campaign card",
-      "bytes": 252222,
-      "sha256": "2a56b39de61fb36c71ad249c308caee3d0abc3a920e4b99309c331330a42a7fc"
+      "bytes": 305759,
+      "sha256": "653b40e07edefe6807e12010a8bc0c0e32eb8c1440db5fb6a20eb6045b42e412"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/01-fleet-feed.png",
+      "source": "tools/readme-images/out/01-fleet-feed.png",
+      "kind": "campaign card",
+      "bytes": 423995,
+      "sha256": "5371762eeb7697b3d377c3eac60a215d30d3bd7519960f29f7442d2f086e075a"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/02-needs-you-feed.png",
+      "source": "tools/readme-images/out/02-needs-you-feed.png",
+      "kind": "campaign card",
+      "bytes": 129707,
+      "sha256": "b2eafa58bbc257401059aafa1899f2fa4e51eb7f62f45c006c8c870fb95ce892"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/03-prepare-feed.png",
+      "source": "tools/readme-images/out/03-prepare-feed.png",
+      "kind": "campaign card",
+      "bytes": 180143,
+      "sha256": "dac18ab2ab339d047a8a763312c78b63eaa4985b0eee3a43cb9d3b7470c391eb"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/04-print-checks-feed.png",
+      "source": "tools/readme-images/out/04-print-checks-feed.png",
+      "kind": "campaign card",
+      "bytes": 188716,
+      "sha256": "9ab5964f2ea7cc70ab2749fcea5dd5c8ac8be7734d7170ab40aee81d43df0b69"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/05-digital-twin-feed.png",
+      "source": "tools/readme-images/out/05-digital-twin-feed.png",
+      "kind": "campaign card",
+      "bytes": 153007,
+      "sha256": "65090965825f6b9b9512d5a9c1684ffbac69bc80554f5f74ec34e54367094b26"
+    },
+    {
+      "path": "marketing-library/09-current-campaign/06-first-connection-feed.png",
+      "source": "tools/readme-images/out/06-first-connection-feed.png",
+      "kind": "campaign card",
+      "bytes": 181958,
+      "sha256": "7245d40218b6935152c5a3225ee46ba0a4edfe29ee9962ff0e5e3cf90b5ceda4"
     },
     {
       "path": "marketing-library/09-current-campaign/captions.json",
       "source": "tools/readme-images/out/campaign-manifest.json",
       "kind": "captions and alternatives",
-      "bytes": 10464,
-      "sha256": "1f796bc7c802cc17c6ea180ae5aafe095345644553b8252cf2fc06ff8cc8fa86"
+      "bytes": 19793,
+      "sha256": "a5b69fb2b8daa20a2f5b73ab422f5c6730630d2b1e5b35b4dc08cbc06ddd53fb"
+    },
+    {
+      "path": "tools/readme-images/img/brand-loop.png",
+      "source": "image_gen original conceptual artwork",
+      "kind": "conceptual brand art; not hardware or a physical print",
+      "bytes": 2070448,
+      "sha256": "58163befb4fc60cc0fca90747c2f2929a49e2fb03acbeff11de94e0721e5b565"
     }
   ]
 }

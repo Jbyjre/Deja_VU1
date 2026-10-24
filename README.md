@@ -7,9 +7,9 @@ on your own computer and opens in a browser, including a phone on the same
 network. No app account is needed. The core needs Python; slicing needs a
 separately installed compatible engine.
 
-![Deja Vu1: One screen for every U1 you run. Current 3D twin and Needs you panel from the simulated farm; physical U1 testing pending](frontend/img/social-card.png)
+![Deja Vu1: Your U1s. One workspace. Actual simulated-farm cards over conceptual blue loop artwork; physical U1 testing pending](frontend/img/social-card.png)
 
-<sub>Actual app, simulated farm. The 3D twin is a software model with estimated geometry, not a photograph of a connected printer. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
+<sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
 > **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
 > one and can spare 30 to 45 minutes, help run its first real connection. It's
@@ -84,7 +84,7 @@ and every change is in the public history.
 
 ## What's new
 
-- **A clearer first look:** current screenshots, readable share cards and shorter
+- **A clearer first look:** current screenshots, art-directed share cards and shorter
   descriptions show the fleet, preparation workspace and print checks. Demo data,
   engine estimates and unverified hardware are labelled where they appear.
 
@@ -176,7 +176,7 @@ they do not guarantee a successful print.
 
 ## What's in it
 
-![Every feature grouped by what it needs: 19 for running the farm and printing safely, 8 for care, control and the basics, 3 for farms and making, 7 optional, 2 waiting on hardware, and 10 games](docs/img/explainer-whats-in-it.jpg)
+![Workflow overview: watch the fleet, prepare a plate, inspect before starting, configure services and keep a recoverable copy, with physical-testing limits](docs/img/explainer-whats-in-it.jpg)
 
 Farm screenshots use **Demo data**. The current slice-preview capture contains
 actual engine estimates, not physical measurements. Older feature crops predate
@@ -397,7 +397,7 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The marketing-refresh verification passed **771 tests in 134.189 seconds** on
+The marketing-refresh verification passed **771 tests in 135.066 seconds** on
 Python 3.12.14/Linux, with app/demo servers stopped. The earlier interface-refresh
 run passed the same 771 cases on Python 3.13.16/Linux.
 The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
@@ -625,7 +625,8 @@ shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
 
 ## How to run it
 
-You need Python 3.8 or newer. Nothing else. **New to this? Follow
+The core dashboard needs Python 3.8 or newer. Slicing and optional camera or
+remote-access tools have separate requirements. **New to this? Follow
 [docs/getting-started.md](docs/getting-started.md)**: install Python,
 download the ZIP, double-click `start-windows.bat`, `start-mac.command` or
 `start-linux.sh`, and the dashboard opens in your browser.

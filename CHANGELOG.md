@@ -3,6 +3,20 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — campaign art direction and clearer app copy
+
+- Rebuilt the campaign around six distinct compositions: large typography,
+  cobalt/ink/paper fields, enlarged UI details, a dimensional conceptual loop,
+  a vermilion refusal panel and an owner-testing poster. Twenty-four exports
+  cover square, 4:5 feed, 16:9 and native 1200 × 628 horizontal feed layouts.
+  The loop is labelled AI-generated conceptual art, not hardware evidence.
+- Added purpose, stage and suggested primary text to campaign captions, with
+  a placement/use guide. Render checks now cover palette contrast, text bounds,
+  evidence/action overlap and file sizes. Marketing effectiveness is unmeasured.
+- Replaced vague onboarding titles and clarified phone pairing, automation
+  services and core-vs-optional requirements. The copy review records exact
+  before/after scope; most operational app strings retain their existing wording.
+
 ## Unreleased — public copy and marketing images
 
 - Shorter project-page and README introductions, consistent search/share
@@ -10,7 +24,7 @@ and what is and isn't verified.
   reported filament data, missing information, target update timing and
   separately installed slicing engines.
 - Current editorial screenshots, two share-image sizes, five explainer boards
-  and eighteen standalone campaign cards. Simulation, historical Linux engine
+  and the standalone campaign pack. Simulation, historical Linux engine
   evidence and estimated twin geometry are labelled. Existing versioned films
   and brand icons are preserved; current post/video descriptions are drafted.
 - Reproducible capture/render tools and a desktop/phone product-page check.

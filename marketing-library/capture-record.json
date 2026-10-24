@@ -87,8 +87,8 @@
     {
       "file": "automations.jpg",
       "selector": "#tab-automations",
-      "note": "Simulated farm; no physical U1 connected",
-      "capturedAt": "2026-10-23T21:42:43.125138+00:00"
+      "note": "Current automation wording and a sample notification rule; simulated farm",
+      "capturedAt": "2026-10-23T22:07:53.105608+00:00"
     },
     {
       "file": "photo-studio.jpg",
@@ -178,6 +178,12 @@
       "selector": "#tab-sandbox",
       "note": "Simulated farm; no physical U1 connected",
       "capturedAt": "2026-10-23T21:42:22.604752+00:00"
+    },
+    {
+      "file": "onboarding-copy.jpg",
+      "selector": "#setup-dialog",
+      "note": "Current onboarding wording; simulated-farm review, no physical U1",
+      "capturedAt": "2026-10-23T22:07:55.017641+00:00"
     }
   ],
   "errors": []
