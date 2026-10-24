@@ -4,6 +4,8 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -33,6 +35,9 @@ class AppUpdates(unittest.TestCase):
         (self.root / 'backend/app.py').write_text('# old')
         self.settings = patch.object(updates, '_PATH', str(self.root / 'prefs.json'))
         self.settings.start(); self.addCleanup(self.settings.stop)
+        # The pretend release is v0.2.0, so pretend 0.1.0 is installed, whatever VERSION says.
+        installed = patch.object(updates, 'version', return_value='0.1.0')
+        installed.start(); self.addCleanup(installed.stop)
 
     def release(self, data):
         return {'tag_name': 'v0.2.0', 'assets': [{'name': 'deja-vu1-update.zip',
@@ -106,10 +111,11 @@ class AppUpdates(unittest.TestCase):
         self.assertFalse(updates.apply_pending(self.root, lambda v: self.fail('must recover first')))
         self.assertEqual((self.root / 'backend/app.py').read_text(), '# old')
 
-    def test_git_checkout_refused(self):
+    def test_broken_git_checkout_refused_without_changes(self):
         (self.root / '.git').mkdir()
-        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), self.assertRaisesRegex(ValueError, 'development'):
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), self.assertRaisesRegex(ValueError, 'Nothing was changed'):
             updates.prepare(self.root)
+        self.assertEqual((self.root / 'backend/app.py').read_text(), '# old')
 
     def test_disabled_auto_check_never_uses_the_network(self):
         with patch.object(updates, '_read_url') as network:
@@ -126,3 +132,83 @@ class AppUpdates(unittest.TestCase):
                 updates.prepare(self.root, before_commit=busy)
         self.assertFalse((self.root / '.dejavu-update').exists())
         self.assertEqual((self.root / 'backend/app.py').read_text(), '# old')
+
+
+@unittest.skipUnless(shutil.which('git'), 'git is not installed')
+class GitCopyUpdates(unittest.TestCase):
+    """A copy made with git or GitHub Desktop: fast-forward only, never over local changes."""
+
+    def git(self, cwd, *args):
+        return subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                               '-c', 'init.defaultBranch=main', *args], cwd=cwd, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        self.github, self.author, self.copy = base / 'github.git', base / 'author', base / 'copy'
+        self.git(base, 'init', '--bare', '-q', str(self.github))
+        self.git(base, 'clone', '-q', str(self.github), str(self.author))
+        (self.author / 'VERSION').write_text('0.8.0\n')
+        (self.author / 'app.py').write_text('# old')
+        self.git(self.author, 'add', '.'); self.git(self.author, 'commit', '-qm', 'first')
+        self.git(self.author, 'push', '-q', 'origin', 'HEAD:main')
+        self.git(base, 'clone', '-q', '--branch', 'main', str(self.github), str(self.copy))
+        self.settings = patch.object(updates, '_PATH', str(base / 'prefs.json'))
+        self.settings.start(); self.addCleanup(self.settings.stop)
+
+    def publish(self, text='# new', ver='0.9.0'):
+        (self.author / 'app.py').write_text(text)
+        (self.author / 'VERSION').write_text(ver + '\n')
+        self.git(self.author, 'commit', '-qam', 'A new feature')
+        self.git(self.author, 'push', '-q', 'origin', 'HEAD:main')
+
+    def test_up_to_date_copy_has_nothing_to_install(self):
+        info = updates.git_release_info(updates.git_info(self.copy))
+        self.assertFalse(info['available'])
+        self.assertIn('latest', info['message'])
+
+    def test_new_commit_on_github_is_found_and_installed(self):
+        self.publish()
+        info = updates.git_release_info(updates.git_info(self.copy))
+        self.assertEqual((info['available'], info['installable'], info['version']), (True, True, '0.9.0'))
+        self.assertEqual(info['changes'], ['A new feature'])
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'):
+            self.assertEqual(updates.prepare(self.copy), {'ready': True, 'version': '0.9.0'})
+        self.assertEqual((self.copy / 'app.py').read_text(), '# new')
+        self.assertTrue(updates.apply_pending(self.copy, lambda v: v == '0.9.0'))
+        self.assertFalse((self.copy / '.dejavu-update').exists())
+
+    def test_files_changed_by_hand_are_never_overwritten(self):
+        self.publish()
+        (self.copy / 'app.py').write_text('# my own edit')
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), self.assertRaisesRegex(ValueError, 'changed by hand'):
+            updates.prepare(self.copy)
+        self.assertEqual((self.copy / 'app.py').read_text(), '# my own edit')
+
+    def test_failed_start_returns_to_the_previous_commit(self):
+        before = self.git(self.copy, 'rev-parse', 'HEAD')
+        self.publish()
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'):
+            updates.prepare(self.copy)
+        self.assertFalse(updates.apply_pending(self.copy, lambda v: False))
+        self.assertEqual(self.git(self.copy, 'rev-parse', 'HEAD'), before)
+        self.assertEqual((self.copy / 'app.py').read_text(), '# old')
+
+    def test_printer_starting_during_check_stops_the_update(self):
+        self.publish()
+        def busy():
+            raise ValueError('printer started printing')
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), self.assertRaisesRegex(ValueError, 'started printing'):
+            updates.prepare(self.copy, before_commit=busy)
+        self.assertEqual((self.copy / 'app.py').read_text(), '# old')
+        self.assertFalse((self.copy / '.dejavu-update').exists())
+
+    def test_github_desktop_git_is_found_on_windows(self):
+        local = Path(self.tmp.name) / 'local'
+        for ver in ('3.4.9', '3.10.1'):
+            exe = local / 'GitHubDesktop' / f'app-{ver}' / 'resources/app/git/cmd/git.exe'
+            exe.parent.mkdir(parents=True); exe.write_text('')
+        with patch.object(updates.shutil, 'which', return_value=None), patch.dict(os.environ, LOCALAPPDATA=str(local)):
+            self.assertIn('app-3.10.1', updates.find_git(windows=True))  # newest, compared as numbers

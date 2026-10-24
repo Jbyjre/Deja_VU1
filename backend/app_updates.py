@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
+import subprocess
 import threading
 import time
 from urllib.parse import urlparse
@@ -56,11 +57,146 @@ def save_settings(body):
     return status()
 
 
+def install_kind(root=ROOT):
+    """'git' for a copy made with git or GitHub Desktop, 'download' for a ZIP or release copy."""
+    return 'git' if (Path(root) / '.git').exists() else 'download'
+
+
 def status():
+    kind = install_kind()
+    launcher = os.environ.get('DEJAVU_LAUNCHER') == '1'
+    git_found = bool(find_git()) if kind == 'git' else None
     return {'version': version(), 'automatic': settings()['automatic'], 'latest': _last,
-            'install_supported': os.environ.get('DEJAVU_LAUNCHER') == '1' and not (ROOT / '.git').exists(),
+            'install_kind': kind, 'launcher': launcher, 'git_found': git_found,
+            'install_supported': launcher and (git_found if kind == 'git' else True),
             'busy': _busy,
             'note': 'Checks contact GitHub with the app name only. No profile name, printer details or settings are sent.'}
+
+
+# ---- copies made with git or GitHub Desktop -------------------------------
+# A git copy follows its branch on GitHub. Updating is a fast-forward only:
+# it refuses when files were changed by hand or the copy has its own commits,
+# so nothing local is ever overwritten or merged.
+
+def _desktop_git_key(path):
+    match = re.search(r'app-(\d+)\.(\d+)\.(\d+)', str(path))
+    return tuple(int(n) for n in match.groups()) if match else (0, 0, 0)
+
+
+def find_git(windows=None):
+    found = shutil.which('git')
+    if found:
+        return found
+    if os.name == 'nt' if windows is None else windows:
+        # GitHub Desktop ships its own git and does not add it to PATH.
+        base = Path(os.environ.get('LOCALAPPDATA', '')) / 'GitHubDesktop'
+        bundled = sorted(base.glob('app-*/resources/app/git/cmd/git.exe'), key=_desktop_git_key, reverse=True)
+        if bundled:
+            return str(bundled[0])
+    return None
+
+
+def _git(root, *args, timeout=60):
+    git = find_git()
+    if not git:
+        raise ValueError(GIT_MISSING)
+    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+    done = subprocess.run([git, '-C', str(root), *args], capture_output=True, text=True, timeout=timeout,
+                          stdin=subprocess.DEVNULL, creationflags=flags,
+                          env={**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'LC_ALL': 'C'})
+    if done.returncode:
+        raise RuntimeError(done.stderr.strip()[:300])
+    return done.stdout.strip()
+
+
+GIT_MISSING = ('Git was not found on this computer. In GitHub Desktop choose Fetch origin, then Pull origin, '
+               'then close and reopen the launcher.')
+
+
+def git_info(root=ROOT, fetch=True):
+    """Compare this copy with its branch on GitHub. Fetching downloads history only; no file changes."""
+    root = Path(root)
+    branch = _git(root, 'rev-parse', '--abbrev-ref', 'HEAD')
+    if branch == 'HEAD':
+        raise ValueError('This copy is not on a branch. Open it in GitHub Desktop and choose the main branch')
+    try:
+        upstream = _git(root, 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}')
+    except RuntimeError:
+        raise ValueError(f'The branch "{branch}" is not linked to GitHub. Open GitHub Desktop and publish or switch to main')
+    if fetch:
+        remote = upstream.split('/', 1)[0]
+        _git(root, 'fetch', '--quiet', remote, timeout=120)
+    behind = int(_git(root, 'rev-list', '--count', 'HEAD..@{u}'))
+    ahead = int(_git(root, 'rev-list', '--count', '@{u}..HEAD'))
+    changed = bool(_git(root, 'status', '--porcelain', '--untracked-files=no'))
+    try:
+        remote_version = _git(root, 'show', '@{u}:VERSION').strip()
+    except RuntimeError:
+        remote_version = version(root)
+    titles = _git(root, 'log', '--format=%s', '-n', '8', 'HEAD..@{u}').splitlines() if behind else []
+    return {'branch': branch, 'upstream': upstream, 'behind': behind, 'ahead': ahead, 'changed': changed,
+            'remote_version': remote_version, 'titles': titles, 'head': _git(root, 'rev-parse', 'HEAD')}
+
+
+def git_release_info(info):
+    behind, ready = info['behind'], info['behind'] and not info['ahead'] and not info['changed']
+    if not behind:
+        message = f'You have the latest version on GitHub ({info["branch"]}).'
+    elif info['changed']:
+        message = (f'{behind} update{"s" if behind != 1 else ""} on GitHub, but files in this folder were changed by hand. '
+                   'Nothing is overwritten: review them in GitHub Desktop, then pull there.')
+    elif info['ahead']:
+        message = 'This copy has its own commits. Update it in GitHub Desktop so nothing is lost.'
+    else:
+        message = f'{behind} update{"s" if behind != 1 else ""} ready from GitHub.'
+    return {'kind': 'git', 'version': info['remote_version'], 'available': bool(behind), 'installable': bool(ready),
+            'behind': behind, 'changes': info['titles'], 'branch': info['branch'],
+            'checked_at': int(time.time()), 'message': message}
+
+
+def _git_check():
+    global _last
+    with _lock:
+        try:
+            _last = git_release_info(git_info())
+        except ValueError as exc:
+            _last = {'kind': 'git', 'error': str(exc), 'checked_at': int(time.time())}
+        except Exception:
+            # No git output in the reply: remote addresses can contain credentials.
+            _last = {'kind': 'git', 'error': 'Could not reach GitHub with git. Check your internet connection, '
+                     'or update in GitHub Desktop (Fetch origin, then Pull origin).', 'checked_at': int(time.time())}
+        return status()
+
+
+def _git_prepare(root, before_commit):
+    global _busy
+    with _lock:
+        if _busy:
+            raise ValueError('An update is already being prepared')
+        _busy = True
+    try:
+        base = root / '.dejavu-update'
+        if base.exists():
+            raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
+        try:
+            info = git_info(root)
+        except RuntimeError:
+            raise ValueError('Could not reach GitHub with git. Nothing was changed')
+        result = git_release_info(info)
+        if not result['installable']:
+            raise ValueError(result['message'])
+        if before_commit:
+            before_commit()
+        # Journal before moving: the launcher returns to this commit if the new version does not start.
+        storage.save_json(str(base / 'git-pending.json'), {'version': result['version'], 'from': info['head']})
+        try:
+            _git(root, 'merge', '--ff-only', '--quiet', '@{u}', timeout=180)
+        except Exception:
+            shutil.rmtree(base, ignore_errors=True)
+            raise ValueError('Git could not update this copy. Nothing was changed; try Pull origin in GitHub Desktop')
+        return {'ready': True, 'version': result['version']}
+    finally:
+        _busy = False
 
 
 def _trusted_url(url):
@@ -104,6 +240,8 @@ def release_info(data):
 
 def check():
     global _last
+    if install_kind() == 'git':
+        return _git_check()
     with _lock:
         try:
             _last = release_info(json.loads(_read_url(API, 2 * 1024 * 1024)))
@@ -171,8 +309,8 @@ def prepare(root=ROOT, before_commit=None):
     root = Path(root)
     if os.environ.get('DEJAVU_LAUNCHER') != '1':
         raise ValueError('Close this server and open the app with its double-click launcher to install updates')
-    if (root / '.git').exists():
-        raise ValueError('This is a development checkout. Update it with git to protect local code changes')
+    if install_kind(root) == 'git':
+        return _git_prepare(root, before_commit)
     with _lock:
         if _busy:
             raise ValueError('An update is already being prepared')
@@ -211,6 +349,21 @@ def apply_pending(root, health_check):
     root = Path(root)
     base = root / '.dejavu-update'
     pending = base / 'pending.json'
+    git_pending = base / 'git-pending.json'
+    if git_pending.exists():
+        plan = json.loads(git_pending.read_text())
+        if not re.fullmatch(r'[0-9a-f]{40}', str(plan.get('from', ''))):
+            raise ValueError('Invalid update recovery plan; the recovery copy was kept')
+        started = health_check(plan['version'])
+        if not started:
+            try:
+                # --keep refuses rather than discarding anything changed since.
+                _git(root, 'reset', '--keep', plan['from'], timeout=120)
+            except Exception:
+                raise ValueError('The new version did not start and git could not return to the previous one. '
+                                 'Open GitHub Desktop to check the folder; the recovery note was kept')
+        shutil.rmtree(base)
+        return started
     if not pending.exists():
         return None
     plan = json.loads(pending.read_text())
@@ -263,7 +416,7 @@ def apply_pending(root, health_check):
 
 
 def automatic_check():
-    """Once per startup, at most once a day. Off until the owner opts in."""
+    """At startup and while running, at most once a day. Off until the owner opts in."""
     if not settings()['automatic']:
         return
     checked = storage.load_json(_PATH, {}).get('checked_at', 0)
@@ -274,3 +427,16 @@ def automatic_check():
         s = settings()
         s['checked_at'] = int(time.time())
         storage.save_json(_PATH, s)
+
+
+def automatic_loop(stop=None):
+    """Keep checking daily for a server left running for weeks."""
+    while True:
+        try:
+            automatic_check()
+        except Exception:
+            pass
+        if stop and stop.wait(3600):
+            return
+        if not stop:
+            time.sleep(3600)
