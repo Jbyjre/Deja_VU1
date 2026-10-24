@@ -406,7 +406,6 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
 .setup-settings .setup-check { display:flex; align-items:center; gap:10px; font-weight:400; min-height:44px; }
 .setup-check input { width:20px; height:20px; }
 .setup-highlight { outline:3px solid var(--accent)!important; outline-offset:4px; }
-.setup-tour { margin:auto 18px 18px auto; }
 @media(max-width:600px) {
   .launch-strip { gap:10px; margin-bottom:18px; }
   .launch-strip>div:first-child { width:100%; }
@@ -414,7 +413,6 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
   .feature-finder input, .feature-finder input:focus { width:100%; }
   .setup-dialog { padding:20px; }
   .setup-top { margin-bottom:18px; }
-  .setup-tour { margin:auto auto 88px; max-height:65dvh; }
 }
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more) {
   .glass-dialog.setup-dialog:not(.is-morph-target) { background:var(--paper-solid); backdrop-filter:none; -webkit-backdrop-filter:none; }
@@ -427,10 +425,8 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
   border:1px solid rgba(255,255,255,.95);box-shadow:0 24px 100px #15234140,inset 0 1px white;
   backdrop-filter:blur(.4px);-webkit-backdrop-filter:blur(.4px);
 }
-.glass-dialog.setup-dialog.setup-tour { position:fixed;inset:auto 18px 24px auto;margin:0;z-index:1000; }
 @media(max-width:600px) {
   .glass-dialog.setup-dialog:not(.is-morph-target) { padding:20px; }
-  .glass-dialog.setup-dialog.setup-tour { inset:auto 14px 175px;max-height:60dvh; }
 }
 #setup-title:focus { outline:none; }
 @media(prefers-reduced-transparency:reduce),(prefers-contrast:more) {

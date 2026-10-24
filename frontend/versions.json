@@ -1,0 +1,184 @@
+{
+  "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
+  "versions": [
+    {
+      "version": "0.8.0",
+      "date": "2026-10-24",
+      "name": "Updates that find you",
+      "published": true,
+      "summary": "Deja Vu1 now updates itself, copies made with git or GitHub Desktop included, and shows which version you run. A notification orb, an app window of its own and a much longer guided tour arrive with it.",
+      "highlights": [
+        {"title": "A version you can see", "tab": "modules", "target": "#version-card",
+         "text": "This number matches the release on GitHub. Every version below says what changed, and each one with a tour can walk you through it."},
+        {"title": "Updates for every kind of copy", "tab": "modules", "target": "#app-update-check",
+         "text": "A downloaded copy installs the published release. A copy made with git or GitHub Desktop pulls the newest version from GitHub, and stops if you edited its files by hand. Either way your settings and files stay put, and a failed start puts the old version back.",
+         "try": "Check for updates now"},
+        {"title": "The notification orb", "target": "#orb",
+         "text": "Messages rise out of this glass orb in the corner and sink back into it. Click it to read the last 30 and to see update news.",
+         "try": "Send a test message", "action": "orb-demo"},
+        {"title": "A window of its own", "tab": "modules", "target": "#desktop-card",
+         "text": "Install Deja Vu1 as an app, or have the launcher open it in its own window with no tabs or address bar. The browser tab still works."},
+        {"title": "A tour of every screen", "tab": "modules", "target": "#setup-replay",
+         "text": "Replay setup walks through every screen, about 25 stops, with something to try at most of them. It also explains the three demo printers: Workshop, Studio and Garage."}
+      ],
+      "changes": [
+        "Version history in Settings, matched to the VERSION file and to the GitHub release notes, with a full-screen interactive tour for each version.",
+        "In-app updates for git and GitHub Desktop copies: fast-forward only, refused when files were changed by hand, and rolled back if the new version fails its startup check.",
+        "Releases now publish by themselves: raising the VERSION number on main builds the update package and the GitHub release.",
+        "Automatic update checks, when you turn them on, now repeat daily while the server keeps running, not only at startup.",
+        "A translucent notification orb in the bottom-right corner replaces the messages at the top of the screen, with a history of the last 30.",
+        "Desktop app: install it from Chrome or Edge, or let the launcher open it in its own app window. Settings → Desktop app.",
+        "The setup tour now covers every screen with things to try, and explains the demo printers and the Photo studio tab.",
+        "The README and product page now open with the ways you can use Deja Vu1 and how the pieces connect."
+      ]
+    },
+    {
+      "version": "0.7.0",
+      "date": "2026-10-23",
+      "name": "The real Benchy and a working online demo",
+      "published": false,
+      "summary": "Real sample models, mixed layer heights you can plan, 106 slicer settings, a farm desk, a logbook and an online demo you can click around in.",
+      "highlights": [
+        {"title": "The real 3DBenchy", "tab": "files", "target": "#file-samples",
+         "text": "Add sample files gives the real 3DBenchy, a 24-tooth gear and a twisted vase, with G-code cut from them layer by layer."},
+        {"title": "The Layer stack", "tab": "files", "target": "#tab-layerplan",
+         "text": "Plan mixed layer heights: a base layer, times N for each head, with the reasons a choice is crossed out."},
+        {"title": "The project converter", "tab": "files", "target": "#convert-card",
+         "text": "Turn a Bambu Studio or MakerWorld project into one the U1 can print, with a report of every change."},
+        {"title": "A logbook per printer", "tab": "maintenance", "target": "#logbook",
+         "text": "Problems, fixes and print hours for each printer. Failed prints are logged by themselves."},
+        {"title": "Search everything", "target": "#feature-search",
+         "text": "Type here, or press Ctrl+K (Cmd+K on a Mac), to jump to any screen, setting, printer or file."}
+      ],
+      "changes": [
+        "Sample files: the real 3DBenchy (public domain), a gear and a twisted vase replace the cubes and the L-bracket.",
+        "The Layer stack for mixed layer heights, with four smart set-ups.",
+        "106 OrcaSlicer process settings in a tabbed editor.",
+        "Farm desk, telemetry panel and a logbook for each printer.",
+        "The converter moved to the top of Files; a finder searches the whole dashboard.",
+        "The online demo simulates print controls, temperatures, queueing, the logbook and the converter."
+      ]
+    },
+    {
+      "version": "0.6.0",
+      "date": "2026-10-23",
+      "name": "A realistic 3D twin and a livelier background",
+      "published": false,
+      "summary": "The digital twin became a detailed 3D model of the U1, and the background started reacting to your cursor.",
+      "highlights": [
+        {"title": "The 3D twin", "tab": "overview", "target": "#twin-card",
+         "text": "A detailed model of the U1 with live heads, bed, docks and spools. Drag to turn it; click a part for its details."},
+        {"title": "Model or drawing", "tab": "overview", "target": "#twin-modes",
+         "text": "Switch between the realistic model and an engineering drawing made from the same geometry."},
+        {"title": "A background that reacts", "tab": "modules", "target": "#appearance-card",
+         "text": "Dots, Constellation, Flow or Layer lines, in six colour sets. Try clicking the background, or triple-click it."}
+      ],
+      "changes": [
+        "Digital twin rebuilt in WebGL 2 with studio lighting, reflections and soft shadows; the drawing mode uses the same geometry.",
+        "Background: Dots by default, stronger reactions, Constellation style, Time of day colours and little surprises.",
+        "Launch videos version 14 and 15."
+      ]
+    },
+    {
+      "version": "0.5.0",
+      "date": "2026-10-22",
+      "name": "Interface refresh",
+      "published": false,
+      "summary": "A new background, rewritten games, a full-screen setup and one sentence under the tab bar saying what each screen is for.",
+      "highlights": [
+        {"title": "What each screen is for", "target": "#tab-intro",
+         "text": "This line changes with the tab and says what the screen does in one sentence."},
+        {"title": "Games while you wait", "tab": "games", "target": "#game-picker",
+         "text": "Pac-Man, Tetris, Snake and Sky Dash were rewritten to run smoothly at any screen refresh rate."}
+      ],
+      "changes": [
+        "Cursor-reactive background with Flow, Layer lines, Dots and Still.",
+        "First 3D twin beside the engineering drawing.",
+        "Pac-Man, Tetris, Snake and Sky Dash rewritten.",
+        "Full-screen setup with a Make it yours step; clearer tab names and introductions."
+      ]
+    },
+    {
+      "version": "0.4.0",
+      "date": "2026-10-21",
+      "name": "Slicing workspace and app-data recovery",
+      "published": false,
+      "summary": "One workspace for objects, profiles and tools, real slices with separate layer heights per head, and a full backup you can restore.",
+      "highlights": [
+        {"title": "Auto-print and slicing", "tab": "files", "target": "#tab-autoprint",
+         "text": "Pick a profile and your fitted tools, slice with an installed engine, and queue the result after a pre-flight check."},
+        {"title": "A full backup", "tab": "modules", "target": "#backup-btn",
+         "text": "Download all your settings, files and printer records as one ZIP. Restoring checks it first and never replaces your running data."}
+      ],
+      "changes": [
+        "Unified slicing workspace: objects, profiles, fitted tools, status and preview.",
+        "Separate physical-head layer heights for capable engines.",
+        "3MF plates separated with recovery data.",
+        "Full app-data backup with checksums and isolated recovery."
+      ]
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-10-20",
+      "name": "Plate editing, real slicing and a first updater",
+      "published": false,
+      "summary": "A plate editor, a real OrcaSlicer slice through the bridge, colour tiles from photos, camera snapshots and the first update checker.",
+      "highlights": [
+        {"title": "Setup and help", "target": "#setup-open",
+         "text": "A skippable setup you can replay any time. Your name, if you give one, stays in this browser."},
+        {"title": "Photo studio", "tab": "studio", "target": "#tab-studio",
+         "text": "Turn a photo into a colour-layered relief or tile using your four filament colours."},
+        {"title": "Camera snapshots", "target": "#camera-open",
+         "text": "Pictures from the selected printer's own camera."}
+      ],
+      "changes": [
+        "Undoable multi-model plate editor and 3MF save-as.",
+        "Installed-preset discovery and a verified real OrcaSlicer 2.4.2 slice on Linux.",
+        "Four-tool image tiles, swatch sheets and heightmap reliefs.",
+        "Stock camera snapshots and time-lapse from each printer's camera.",
+        "Setup, feature search and the first opt-in update checker."
+      ]
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-10-14",
+      "name": "Online demo, planner and printer finder",
+      "published": false,
+      "summary": "An online demo anyone can open, a mixed-nozzle planner, a printer finder and skip-one-object.",
+      "highlights": [
+        {"title": "Find printers", "tab": "fleet", "target": "#fleet-find",
+         "text": "Looks for U1 printers on your home network and tests the connection before adding one."},
+        {"title": "Skip one object", "tab": "control", "target": "#ctrl-plate",
+         "text": "When a print labels its objects, pick one on the bed map and stop only that one."}
+      ],
+      "changes": [
+        "Online demo on the public page.",
+        "Digital twin version 2, drawn the drafting way.",
+        "Mixed-nozzle planner and a nozzle check in Confirm Print.",
+        "Find printers on the network; double-click starters for Windows, Mac and Linux.",
+        "Skip one object, multi-plate conversion fixes, Spoolman import, Add to Home Screen."
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-08-04",
+      "name": "The first dashboard",
+      "published": false,
+      "summary": "The start: a real Moonraker connection, the fleet, live updates, controls, Photo-to-Print Studio and the maintenance module it began with.",
+      "highlights": [
+        {"title": "Your printers", "tab": "fleet", "target": "#fleet-grid",
+         "text": "One card per printer: state, progress, heads and health."},
+        {"title": "Honest controls", "tab": "control", "target": "#ctrl-pause-resume",
+         "text": "Pause, resume and cancel. A button shows what the printer reports back, never what it hoped for."},
+        {"title": "Care", "tab": "maintenance", "target": "#tasks",
+         "text": "Maintenance reminders counted from real print hours."}
+      ],
+      "changes": [
+        "Moonraker client written from Moonraker, Klipper and Snapmaker's U1 source.",
+        "Fleet command center, Photo-to-Print Studio, auto-print and the farm sandbox.",
+        "Live updates over WebSocket, files, G-code and 3D viewers, automations, phone layout.",
+        "Liquid Glass interface, games, printer control, pairing, notifications, filament tracking, maintenance."
+      ]
+    }
+  ]
+}
