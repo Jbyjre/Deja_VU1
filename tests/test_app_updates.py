@@ -126,3 +126,98 @@ class AppUpdates(unittest.TestCase):
                 updates.prepare(self.root, before_commit=busy)
         self.assertFalse((self.root / '.dejavu-update').exists())
         self.assertEqual((self.root / 'backend/app.py').read_text(), '# old')
+
+
+class NewestBuilds(unittest.TestCase):
+    """The "Newest builds" channel: only changed files, each checked against GitHub's record."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / 'backend/data').mkdir(parents=True)
+        (self.root / 'backend/data/fleet.json').write_text('private settings')
+        self.files = {'VERSION': b'0.1.0-dev\n', 'start.py': b'# launcher', 'backend/app.py': b'# server',
+                      'frontend/index.html': b'<html>same</html>'}
+        for name, data in self.files.items():
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / name).write_bytes(data)
+        self.remote = dict(self.files, **{'backend/app.py': b'# server, improved', 'frontend/new.js': b'// new',
+                                          'tests/test_x.py': b'# not shipped', 'backend/data/fleet.json': b'{}'})
+        self.settings = patch.object(updates, '_PATH', str(self.root / 'prefs.json'))
+        self.settings.start(); self.addCleanup(self.settings.stop)
+        self.downloads = []
+
+    def github(self, url, limit, tamper=None):
+        sha, tree = 'a' * 40, 'b' * 40
+        if url == updates.COMMIT_API:
+            return json.dumps({'sha': sha, 'commit': {'tree': {'sha': tree}, 'message': 'Better twin\n\nlong text',
+                                                      'committer': {'date': '2026-10-24T01:00:00Z'}}}).encode()
+        if url.startswith('https://api.github.com/repos/Jbyjre/Deja_VU1/git/trees/' + tree):
+            return json.dumps({'truncated': False, 'tree': [
+                {'path': p, 'type': 'blob', 'mode': '100644', 'size': len(d), 'sha': updates.git_blob_sha(d)}
+                for p, d in self.remote.items()]}).encode()
+        for path, data in self.remote.items():
+            if url == updates.RAW.format(repo=updates.REPO, sha=sha, path=updates.quote(path)):
+                self.downloads.append(path)
+                return (tamper or {}).get(path, data)
+        raise AssertionError('unexpected URL ' + url)
+
+    def test_check_counts_only_shipped_changed_files(self):
+        with patch.object(updates, '_read_url', side_effect=self.github):
+            info = updates.latest_info(self.root)
+        self.assertEqual((info['changed'], info['available'], info['title'], info['commit']), (2, True, 'Better twin', 'aaaaaaa'))
+        self.assertEqual(self.downloads, [])            # a check downloads no files
+
+    def test_install_downloads_only_what_changed_and_records_the_build(self):
+        updates.save_settings({'channel': 'latest'})
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(updates, '_read_url', side_effect=self.github):
+            result = updates.prepare(self.root)
+        self.assertEqual(sorted(self.downloads), ['backend/app.py', 'frontend/new.js'])
+        self.assertEqual(result['changed'], 2)
+        self.assertTrue(updates.apply_pending(self.root, lambda v: v == '0.1.0-dev'))
+        self.assertEqual((self.root / 'backend/app.py').read_bytes(), b'# server, improved')
+        self.assertEqual((self.root / 'frontend/new.js').read_bytes(), b'// new')
+        self.assertFalse((self.root / 'tests').exists())
+        self.assertEqual((self.root / 'backend/data/fleet.json').read_text(), 'private settings')
+        self.assertEqual(updates.build(self.root)['commit'], 'a' * 40)
+
+    def test_a_file_that_does_not_match_installs_nothing(self):
+        updates.save_settings({'channel': 'latest'})
+        bad = lambda url, limit: self.github(url, limit, tamper={'frontend/new.js': b'// swapped'})
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(updates, '_read_url', side_effect=bad):
+            with self.assertRaisesRegex(ValueError, 'did not match'):
+                updates.prepare(self.root)
+        self.assertFalse((self.root / '.dejavu-update').exists())
+        self.assertEqual((self.root / 'backend/app.py').read_bytes(), b'# server')
+
+    def test_up_to_date_says_so(self):
+        self.remote = dict(self.files)
+        with patch.object(updates, '_read_url', side_effect=self.github):
+            self.assertFalse(updates.latest_info(self.root)['available'])
+
+    def test_settings_are_checked(self):
+        for bad in ({'channel': 'nightly'}, {'auto_install': 'yes'}, {}):
+            with self.assertRaises(ValueError):
+                updates.save_settings(bad)
+        s = updates.save_settings({'channel': 'latest', 'auto_install': True, 'automatic': True})
+        self.assertEqual((s['channel'], s['auto_install'], s['automatic']), ('latest', True, True))
+
+    def test_the_watcher_installs_by_itself_only_when_asked(self):
+        updates.save_settings({'channel': 'latest', 'automatic': True})
+        installed = []
+        ready = {'install_supported': True, 'latest': {'installable': True}}
+        with patch.object(updates, 'check', return_value=ready):
+            stop = __import__('threading').Event()
+            with patch.object(updates, 'automatic_check', side_effect=[ready, None]):
+                def once(*a):
+                    stop.set()
+                    return True
+                with patch.object(stop, 'wait', side_effect=once):
+                    updates.watch(lambda: installed.append(1), stop=stop)
+        self.assertEqual(installed, [])                 # auto_install is off
+        updates.save_settings({'auto_install': True})
+        stop = __import__('threading').Event()
+        with patch.object(updates, 'automatic_check', return_value=ready), patch.object(stop, 'wait', side_effect=lambda *a: stop.set() or True):
+            updates.watch(lambda: installed.append(1), stop=stop)
+        self.assertEqual(installed, [1])

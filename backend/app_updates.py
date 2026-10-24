@@ -1,4 +1,15 @@
-"""Opt-in release checks and validated update staging. No user data is uploaded."""
+"""Opt-in update checks and validated update staging. No user data is uploaded.
+
+Two channels:
+  stable  - published GitHub releases with a checksummed update package;
+  latest  - the newest build on the main branch. Every app file is compared
+            with GitHub's record of it (its git blob hash), only the files
+            that differ are downloaded, and each download must hash to that
+            exact record before anything is staged.
+Either way the double-click launcher swaps the files in with the server
+stopped and rolls back if the new version doesn't start (apply_pending).
+Your data folder is never part of an update.
+"""
 import hashlib
 import io
 import json
@@ -7,9 +18,10 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
+import subprocess
 import threading
 import time
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError
 import zipfile
@@ -19,14 +31,22 @@ import storage
 ROOT = Path(__file__).resolve().parent.parent
 _DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, 'app-updates.json')
-API = 'https://api.github.com/repos/Jbyjre/Deja_VU1/releases/latest'
+REPO = 'Jbyjre/Deja_VU1'
+BRANCH = 'main'
+API = f'https://api.github.com/repos/{REPO}/releases/latest'
+COMMIT_API = f'https://api.github.com/repos/{REPO}/commits/{BRANCH}'
+TREE_API = 'https://api.github.com/repos/{repo}/git/trees/{tree}?recursive=1'
+RAW = 'https://raw.githubusercontent.com/{repo}/{sha}/{path}'
+CHANNELS = ('stable', 'latest')
+LATEST_EVERY = 15 * 60          # how often automatic checks look for a newer build
 MAX_BYTES = 128 * 1024 * 1024
 MAX_UNPACKED = 512 * 1024 * 1024
 _lock = threading.Lock()
 _last = None
 _busy = False
 ROOT_FILES = {'VERSION', 'start.py', 'start-windows.bat', 'start-mac.command',
-              'start-linux.sh', 'README.md', 'CHANGELOG.md', 'CLAUDE.md', 'LICENSE'}
+              'start-linux.sh', 'README.md', 'CHANGELOG.md', 'CLAUDE.md', 'LICENSE',
+              'SECURITY.md', 'CONTRIBUTING.md', 'BUILD.json'}
 
 
 def version(root=ROOT):
@@ -45,20 +65,50 @@ def version_key(value):
 
 
 def settings():
-    return {'automatic': False, **storage.load_json(_PATH, {})}
+    out = {'automatic': False, 'channel': 'stable', 'auto_install': False, **storage.load_json(_PATH, {})}
+    if out['channel'] not in CHANNELS:
+        out['channel'] = 'stable'
+    return out
 
 
 def save_settings(body):
-    if not isinstance(body.get('automatic'), bool):
+    changes = {}
+    if 'automatic' in body:
+        if not isinstance(body['automatic'], bool):
+            raise ValueError('Choose whether automatic update checks are on or off')
+        changes['automatic'] = body['automatic']
+    if 'auto_install' in body:
+        if not isinstance(body['auto_install'], bool):
+            raise ValueError('Choose whether updates install by themselves')
+        changes['auto_install'] = body['auto_install']
+    if 'channel' in body:
+        if body['channel'] not in CHANNELS:
+            raise ValueError('Choose stable releases or the newest builds')
+        changes['channel'] = body['channel']
+    if not changes:
         raise ValueError('Choose whether automatic update checks are on or off')
+    global _last
     with _lock:
-        storage.save_json(_PATH, {**settings(), 'automatic': body['automatic']})
+        before = settings()
+        storage.save_json(_PATH, {**before, **changes, 'checked_at': 0 if changes.get('channel', before['channel']) != before['channel'] else before.get('checked_at', 0)})
+        if changes.get('channel', before['channel']) != before['channel']:
+            _last = None            # a check on the other channel no longer applies
     return status()
 
 
+def build(root=ROOT):
+    """Which commit this copy came from, when it was installed by the updater."""
+    data = storage.load_json(str(Path(root) / 'BUILD.json'), {})
+    return {k: data[k] for k in ('commit', 'date', 'title') if isinstance(data.get(k), str)}
+
+
 def status():
-    return {'version': version(), 'automatic': settings()['automatic'], 'latest': _last,
-            'install_supported': os.environ.get('DEJAVU_LAUNCHER') == '1' and not (ROOT / '.git').exists(),
+    s = settings()
+    git = (ROOT / '.git').exists()
+    return {'version': version(), 'automatic': s['automatic'], 'channel': s['channel'], 'auto_install': s['auto_install'],
+            'latest': _last, 'build': build(),
+            'install_supported': os.environ.get('DEJAVU_LAUNCHER') == '1' and not git,
+            'git_checkout': git, 'launcher': os.environ.get('DEJAVU_LAUNCHER') == '1',
             'busy': _busy,
             'note': 'Checks contact GitHub with the app name only. No profile name, printer details or settings are sent.'}
 
@@ -66,7 +116,8 @@ def status():
 def _trusted_url(url):
     parsed = urlparse(url)
     if (parsed.scheme != 'https' or parsed.username or parsed.password or parsed.port not in (None, 443)
-            or parsed.hostname not in {'api.github.com', 'github.com', 'release-assets.githubusercontent.com'}):
+            or parsed.hostname not in {'api.github.com', 'github.com', 'release-assets.githubusercontent.com',
+                                   'raw.githubusercontent.com'}):
         raise ValueError('The release download address is not trusted')
     return url
 
@@ -104,17 +155,143 @@ def release_info(data):
 
 def check():
     global _last
+    channel = settings()['channel']
     with _lock:
         try:
-            _last = release_info(json.loads(_read_url(API, 2 * 1024 * 1024)))
+            _last = latest_info() if channel == 'latest' else release_info(json.loads(_read_url(API, 2 * 1024 * 1024)))
         except HTTPError as exc:
-            _last = {'error': 'No stable release has been published yet.' if exc.code == 404 else
+            _last = {'error': ('No stable release has been published yet. Choose "Newest builds" to get each '
+                               'improvement as soon as it is published.') if exc.code == 404 and channel == 'stable' else
                      'GitHub could not answer the update check. Try again later.', 'checked_at': int(time.time())}
+        except ValueError as exc:
+            _last = {'error': str(exc), 'checked_at': int(time.time())}
         except Exception:
             _last = {'error': 'Could not check GitHub. Check your internet connection or try again later.',
                      'checked_at': int(time.time())}
             # No exception text: proxy URLs and credentials must never enter a public response.
+        if _last is not None:
+            _last['channel'] = channel
         return status()
+
+
+# -- the newest build on main ---------------------------------------------------
+
+_HEX40 = re.compile(r'[0-9a-f]{40}')
+_hash_cache = {}
+
+
+def git_blob_sha(data):
+    """Git's own name for a file's content: sha1 of "blob <size>\0" + bytes."""
+    return hashlib.sha1(b'blob %d\x00' % len(data) + data).hexdigest()
+
+
+def _local_sha(path):
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    key = (str(path), st.st_size, st.st_mtime_ns)
+    hit = _hash_cache.get(key)
+    if hit is None:
+        try:
+            hit = git_blob_sha(path.read_bytes())
+        except OSError:
+            return None
+        _hash_cache[key] = hit
+    return hit
+
+
+def _newest(root):
+    """(commit sha, commit, {path: tree entry}, [paths that differ here])."""
+    commit = json.loads(_read_url(COMMIT_API, 2 * 1024 * 1024))
+    sha = str(commit.get('sha', ''))
+    tree_sha = str(((commit.get('commit') or {}).get('tree') or {}).get('sha', ''))
+    if not _HEX40.fullmatch(sha) or not _HEX40.fullmatch(tree_sha):
+        raise ValueError('GitHub gave an unexpected answer about the newest build')
+    tree = json.loads(_read_url(TREE_API.format(repo=REPO, tree=tree_sha), 32 * 1024 * 1024))
+    if tree.get('truncated'):
+        raise ValueError('The newest build lists too many files for the built-in updater')
+    wanted = {}
+    for entry in tree.get('tree') or []:
+        path = entry.get('path')
+        if (entry.get('type') == 'blob' and path != 'BUILD.json' and allowed_path(path)
+                and _HEX40.fullmatch(str(entry.get('sha', ''))) and entry.get('mode') in ('100644', '100755')):
+            wanted[path] = entry
+    for needed in ('VERSION', 'start.py', 'backend/app.py', 'frontend/index.html'):
+        if needed not in wanted:
+            raise ValueError('The newest build is missing required application files')
+    root = Path(root)
+    changed = sorted(p for p, e in wanted.items() if _local_sha(root / p) != e['sha'])
+    return sha, commit, wanted, changed
+
+
+def latest_info(root=ROOT):
+    sha, commit, wanted, changed = _newest(root)
+    meta = commit.get('commit') or {}
+    title = str(meta.get('message') or '').strip().splitlines()[0][:160] if meta.get('message') else ''
+    date = str((meta.get('committer') or {}).get('date') or '')[:25]
+    size = sum(int(wanted[p].get('size') or 0) for p in changed)
+    return {'channel': 'latest', 'commit': sha[:7], 'title': title, 'date': date,
+            'available': bool(changed), 'installable': bool(changed), 'changed': len(changed), 'bytes': size,
+            'checked_at': int(time.time()),
+            'message': (f'A newer build is ready: {len(changed)} file{"s" if len(changed) != 1 else ""} changed '
+                        f'({max(1, round(size / 1024))} KB).' if changed else 'You have the newest build.')}
+
+
+def _stage_latest(root, base, before_commit):
+    sha, commit, wanted, changed = _newest(root)
+    if not changed:
+        raise ValueError('You already have the newest build')
+    total = sum(int(wanted[p].get('size') or 0) for p in changed)
+    if total > MAX_BYTES:
+        raise ValueError('The newest build is too large for the built-in updater')
+    stage = base / 'stage'
+    for path in changed:
+        entry = wanted[path]
+        data = _read_url(RAW.format(repo=REPO, sha=sha, path=quote(path)), int(entry.get('size') or 0) + 1)
+        if git_blob_sha(data) != entry['sha']:
+            raise ValueError(f'{path} did not match GitHub\'s record of it. Nothing was installed')
+        dest = stage / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        if entry.get('mode') == '100755' or path.endswith(('.sh', '.command')):
+            dest.chmod(0o755)
+    meta = commit.get('commit') or {}
+    info = {'commit': sha, 'date': str((meta.get('committer') or {}).get('date') or '')[:25],
+            'title': str(meta.get('message') or '').strip().splitlines()[0][:160] if meta.get('message') else '',
+            'installed_at': int(time.time())}
+    (stage / 'BUILD.json').write_text(json.dumps(info, indent=2))
+    files = changed + ['BUILD.json']
+    _protect_data(root, files)
+    new_version = (stage / 'VERSION').read_text().strip() if 'VERSION' in changed else version(root)
+    if before_commit:
+        before_commit()
+    storage.save_json(str(base / 'pending.json'), {'version': new_version, 'files': files})
+    return {'ready': True, 'version': new_version, 'commit': sha[:7], 'changed': len(changed)}
+
+
+def git_update(root=ROOT):
+    """
+    A development copy (a git checkout) updates with git itself: a fast-forward
+    pull, refused if any tracked file has local changes, so nothing is lost.
+    """
+    root = Path(root)
+    if not (root / '.git').exists():
+        raise ValueError('This copy was not installed with git')
+    git = shutil.which('git')
+    if not git:
+        raise ValueError('Git is not installed on this computer')
+    env = dict(os.environ, GIT_TERMINAL_PROMPT='0')
+    dirty = subprocess.run([git, '-C', str(root), 'status', '--porcelain', '--untracked-files=no'],
+                           capture_output=True, text=True, timeout=30, env=env)
+    if dirty.returncode or dirty.stdout.strip():
+        raise ValueError('This copy has local code changes. Commit or set them aside first; nothing was changed')
+    pulled = subprocess.run([git, '-C', str(root), 'pull', '--ff-only'], capture_output=True, text=True,
+                            timeout=180, env=env)
+    words = re.sub(r'://[^/\s@]+@', '://', (pulled.stderr or pulled.stdout or '').strip())
+    if pulled.returncode:
+        raise ValueError('Git could not bring this copy up to date: ' + (words.splitlines() or ['no reason given'])[-1][:200])
+    return {'updated': 'Already up to date' not in (pulled.stdout or ''), 'version': version(root)}
 
 
 def allowed_path(name):
@@ -166,9 +343,10 @@ def unpack(data, target, expected_version):
     return [e.filename for e in entries]
 
 
-def prepare(root=ROOT, before_commit=None):
+def prepare(root=ROOT, before_commit=None, channel=None):
     global _busy
     root = Path(root)
+    channel = channel or settings()['channel']
     if os.environ.get('DEJAVU_LAUNCHER') != '1':
         raise ValueError('Close this server and open the app with its double-click launcher to install updates')
     if (root / '.git').exists():
@@ -178,6 +356,15 @@ def prepare(root=ROOT, before_commit=None):
             raise ValueError('An update is already being prepared')
         _busy = True
     try:
+        if channel == 'latest':
+            base = root / '.dejavu-update'
+            if base.exists():
+                raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
+            try:
+                return _stage_latest(root, base, before_commit)
+            except Exception:
+                shutil.rmtree(base, ignore_errors=True)
+                raise
         info = release_info(json.loads(_read_url(API, 2 * 1024 * 1024)))
         if not info['installable']:
             raise ValueError(info['message'])
@@ -263,14 +450,40 @@ def apply_pending(root, health_check):
 
 
 def automatic_check():
-    """Once per startup, at most once a day. Off until the owner opts in."""
-    if not settings()['automatic']:
-        return
-    checked = storage.load_json(_PATH, {}).get('checked_at', 0)
-    if time.time() - checked < 86400:
-        return
-    check()
+    """
+    One automatic check, if one is due: the newest builds every 15 minutes,
+    stable releases at most once a day. Off until the owner opts in.
+    Returns the result when a check ran.
+    """
+    s = settings()
+    if not s['automatic']:
+        return None
+    every = LATEST_EVERY if s['channel'] == 'latest' else 86400
+    if time.time() - s.get('checked_at', 0) < every:
+        return None
+    result = check()
     with _lock:
         s = settings()
         s['checked_at'] = int(time.time())
         storage.save_json(_PATH, s)
+    return result
+
+
+def watch(install, stop=None, tick=60):
+    """
+    For the server's lifetime: run automatic checks as they fall due and, if
+    the owner chose it, install a ready update through `install` (which
+    refuses while any real printer is busy; the next round tries again).
+    """
+    stop = stop or threading.Event()
+    while not stop.is_set():
+        try:
+            result = automatic_check()
+            s = settings()
+            if (result and s['auto_install'] and result.get('install_supported')
+                    and (result.get('latest') or {}).get('installable')):
+                install()
+        except Exception:
+            pass                 # a failed round is retried at the next check; nothing is half-installed
+        if stop.wait(tick):
+            break
