@@ -218,6 +218,7 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _BACKEND_DIR)
 
 import app_updates
+import desktop
 import automations
 import backup
 import project_plates
@@ -387,7 +388,7 @@ _APP_ROUTES = {
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings()}),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,
     # like the stream itself, which is when a frozen picture matters most.
@@ -938,6 +939,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return self._send_json(backup.discard_preview(self._read_json_body()))
             return self._send_json(backup.restore(self._read_json_body()))
 
+        if route == "/api/app/desktop":
+            return self._send_json(desktop.save_settings(self._read_json_body()))
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
         if route == "/api/app/updates/check":
@@ -1525,7 +1528,7 @@ class DejaVuServer(ThreadingHTTPServer):
 def main():
     server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
     live_feed.start()
-    threading.Thread(target=app_updates.automatic_check, daemon=True).start()
+    threading.Thread(target=app_updates.automatic_loop, daemon=True).start()
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")
