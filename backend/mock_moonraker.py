@@ -262,6 +262,7 @@ class SimulatedPrinter:
             self.time_scale = 1.0
             self.motion_phase = 0.0
             self.ripple = {}
+            self.sim_clock = 0.0
             # Sandbox network drop: while set, commands get no answer and
             # readers see the last state that arrived, labelled as stale.
             self.link_lost_at = None
