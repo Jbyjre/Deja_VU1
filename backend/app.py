@@ -76,6 +76,16 @@ API endpoints
   POST /api/printer/control/gcode        {"command": "G28"}
 
   GET  /api/print/confirm?file=...   the Confirm Print summary (gate)
+  GET  /api/print/preview            the running print's visible walls per toolhead (3D twin)
+  GET  /api/insights                 findings from the printer's own print history
+  GET  /api/app/memory               safety copies of the dashboard's records; repairs made
+  POST /api/app/memory/snapshot      make a safety copy now
+  POST /api/app/selfcheck            "Check it yourself": real checks run in this copy
+  POST /api/app/memory/restore       {"id", "file"?} write a safety copy back, then restart
+  GET  /api/import/orca              presets and recent projects found in Orca on this computer
+  POST /api/import/orca/projects     {"ids"} copy recent projects into Files
+  POST /api/import/orca/profile      {"name", "machine", "process", "filaments"} a profile from your presets
+  POST /api/app/updates/git          update a git checkout (fast-forward only)
 
   GET  /api/files                    the file library
   GET  /api/files/thumb?name=        a file's thumbnail (PNG)
@@ -149,6 +159,8 @@ API endpoints
   POST /api/pairing/code
   POST /api/pairing/redeem           {"code": "...", "device_name": "..."}
   POST /api/pairing/devices/<id>/unpair
+  GET  /api/pairing/status           device lock on?, this computer?, this device paired?
+  POST /api/pairing/lock             {"on": bool} only paired devices may use the dashboard
   GET  /api/handoff?device=          "continue where another device was"
   POST /api/handoff                  {"device_id", "device_name", "view"}
 
@@ -202,6 +214,7 @@ figures.
 """
 
 import ipaddress
+import http.cookies
 import json
 import os
 import re
@@ -246,6 +259,11 @@ import notifications
 import pairing
 import photo_studio
 import print_gate
+import print_preview
+import insights
+import memory
+import orca_import
+import selfcheck
 import print_queue
 import printer_control
 import sandbox
@@ -371,6 +389,8 @@ _DATA_ROUTES = {
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
     "/api/print/confirm": (None, lambda q: print_gate.summary(_q(q, "file"))),
+    "/api/print/preview": (None, lambda q: print_preview.for_current()),
+    "/api/insights": (None, lambda q: insights.current()),
     "/api/queue": ("print_queue", lambda q: print_queue.get()),
     "/api/timelapse": ("timelapse", lambda q: {
         "sessions": timelapse.sessions(mock_moonraker.selected_printer_id()),
@@ -388,6 +408,8 @@ _APP_ROUTES = {
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT}),
+    "/api/app/memory": (None, lambda q: memory.status()),
+    "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
     # printer figures: it stays readable while a printer's link is down,
     # like the stream itself, which is when a frozen picture matters most.
@@ -452,6 +474,7 @@ _CONTROL_ACTIONS = {
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
     "/api/printer/control/gcode": lambda body: printer_control.send_gcode(body.get("command")),
+    "/api/printer/control/restart": lambda body: printer_control.clear_error(),
 }
 
 # POST routes that act on a printer's queue - gated like the data routes.
@@ -527,12 +550,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     # -- helpers ----------------------------------------------------------
 
-    def _send_json(self, payload, status=200):
+    def _send_json(self, payload, status=200, cookie=None):
         """Send a Python dictionary back to the browser as JSON."""
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if cookie:
+            self.send_header("Set-Cookie", cookie)
         # Stop the browser caching API responses, so the dashboard always
         # shows current data when it refreshes.
         self.send_header("Cache-Control", "no-store")
@@ -680,8 +705,44 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                   f"DEJAVU_ALLOWED_HOSTS={_host_name(host)}"}, status=421)
         return False
 
+    # -- the device lock (pairing.py) ----------------------------------------
+
+    _OPEN_WHEN_LOCKED = {"/api/pairing/status", "/api/pairing/redeem"}
+
+    def _this_computer(self):
+        """A browser on this computer, reached as localhost (not via a tunnel or network address)."""
+        ip = (self.client_address or ("",))[0]
+        try:
+            loopback = ipaddress.ip_address(ip.split("%")[0]).is_loopback
+        except ValueError:
+            loopback = False
+        return loopback and _host_name(self.headers.get("Host", "")).lower() in ("localhost", "127.0.0.1", "::1")
+
+    def _device(self):
+        jar = http.cookies.SimpleCookie()
+        try:
+            jar.load(self.headers.get("Cookie", ""))
+        except http.cookies.CookieError:
+            return None
+        morsel = jar.get(pairing.COOKIE)
+        return pairing.device_for(morsel.value) if morsel else None
+
+    def _locked_out(self):
+        """With the device lock on, refuse an unpaired device (with a 401 that says how to pair)."""
+        route = urlparse(self.path).path
+        if route in self._OPEN_WHEN_LOCKED or not pairing.lock_enabled():
+            return False
+        if self._this_computer() or self._device():
+            return False
+        self._send_json({"error": "This dashboard only answers devices that have been paired with it. Enter the "
+                                  "pairing code shown on a paired device (Settings, Pair a phone), or open it on the "
+                                  "computer it runs on.", "pairing_required": True}, status=401)
+        return True
+
     def do_GET(self):
         if not self._host_allowed():
+            return None
+        if self.path.startswith("/api/") and self._locked_out():
             return None
         if self.path.startswith("/api/live") and websocket.is_upgrade_request(self.headers):
             return self._handle_websocket()
@@ -740,6 +801,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return None
         if not self._same_origin():
             return self._send_json({"error": "Refused: this request came from another website"}, status=403)
+        if self._locked_out():
+            return None
         return self._dispatch(self._handle_api_post)
 
     def _same_origin(self):
@@ -835,6 +898,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/pairing/devices":
             return self._send_json({"devices": pairing.list_devices()})
+        if route == "/api/pairing/status":
+            device = self._device()
+            return self._send_json({"lock": pairing.lock_enabled(), "this_computer": self._this_computer(),
+                                    "paired": bool(device), "device": device["name"] if device else None})
 
         if route == "/api/backup":
             if self._module_blocked("backup"):
@@ -945,21 +1012,44 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._send_json(app_updates.check())
         if route == "/api/app/updates/install":
             self._read_json_body()
-            def require_idle():
-                for pid in mock_moonraker.printer_ids():
-                    if mock_moonraker.is_real(pid):
-                        with mock_moonraker.use_printer(pid):
-                            state = mock_moonraker.get_printer_state()
-                        if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
-                            raise ValueError("Updates wait until all real printers are connected and idle")
-                if any(j.get("status") in ("waiting", "running") for j in slicer_bridge.jobs()):
-                    raise ValueError("Wait for slicing to finish before updating")
-            require_idle()
-            result = app_updates.prepare(before_commit=require_idle)
-            self._send_json(result)
-            self.server.update_restart = True
-            threading.Timer(0.5, self.server.shutdown).start()
-            return
+            result = _install_update(self.server)
+            return self._send_json(result)
+        if route == "/api/app/selfcheck":
+            self._read_json_body()
+            return self._send_json(selfcheck.run())
+        if route == "/api/app/memory/snapshot":
+            self._read_json_body()
+            return self._send_json(memory.snapshot("manual"))
+        if route == "/api/app/memory/restore":
+            body = self._read_json_body()
+            result = memory.restore(body.get("id"), body.get("file"))
+            # Every module re-reads the restored records after a restart.
+            if os.environ.get("DEJAVU_LAUNCHER") == "1":
+                result["restarting"] = True
+                self.server.update_restart = True
+                threading.Timer(0.5, self.server.shutdown).start()
+            else:
+                result["restart_needed"] = True
+            return self._send_json(result)
+        if route == "/api/import/orca/projects":
+            if self._module_blocked("file_library"):
+                return None
+            return self._send_json(orca_import.import_projects(self._read_json_body().get("ids")))
+        if route == "/api/import/orca/profile":
+            if self._module_blocked("auto_print"):
+                return None
+            return self._send_json(orca_import.import_profile(self._read_json_body()))
+        if route == "/api/app/updates/git":
+            # A development copy: git pull --ff-only, then a restart through
+            # the launcher if there is one (otherwise the person restarts it).
+            self._read_json_body()
+            _require_idle_for_update()
+            result = app_updates.git_update()
+            if result["updated"] and os.environ.get("DEJAVU_LAUNCHER") == "1":
+                result["restarting"] = True
+                self.server.update_restart = True
+                threading.Timer(0.5, self.server.shutdown).start()
+            return self._send_json(result)
 
         if route == "/api/tools/layer-plan":
             # A calculator: no printer needed, nothing stored.
@@ -1298,7 +1388,17 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/pairing/redeem":
             body = self._read_json_body()
             device = pairing.redeem_code(body.get("code"), body.get("device_name"))
-            return self._send_json(device)
+            # The device's key goes into a cookie the page's scripts can't read.
+            cookie = (f"{pairing.COOKIE}={device.pop('token')}; Path=/; Max-Age={pairing.COOKIE_DAYS * 86400}; "
+                      "HttpOnly; SameSite=Strict")
+            return self._send_json(device, cookie=cookie)
+
+        if route == "/api/pairing/lock":
+            body = self._read_json_body()
+            if not (self._this_computer() or self._device()):
+                raise ValueError("Pair this device first, or change the lock on the computer running Deja Vu1, "
+                                 "so nobody can lock you out")
+            return self._send_json({"lock": pairing.set_lock(body.get("on"))})
 
         if route.startswith("/api/pairing/devices/") and route.endswith("/unpair"):
             device_id = route[len("/api/pairing/devices/"):-len("/unpair")]
@@ -1522,10 +1622,36 @@ class DejaVuServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
 
+def _require_idle_for_update():
+    """Updates wait while a real printer is busy, out of reach, or a slice is running."""
+    for pid in mock_moonraker.printer_ids():
+        if mock_moonraker.is_real(pid):
+            with mock_moonraker.use_printer(pid):
+                state = mock_moonraker.get_printer_state()
+            if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
+                raise ValueError("Updates wait until all real printers are connected and idle")
+    if any(j.get("status") in ("waiting", "running") for j in slicer_bridge.jobs()):
+        raise ValueError("Wait for slicing to finish before updating")
+
+
+def _install_update(server):
+    """Stage an update (checked again just before it is committed), then restart into it."""
+    _require_idle_for_update()
+    try:
+        memory.snapshot("before-update")
+    except Exception:
+        pass                       # a safety copy that can't be written never blocks the update itself
+    result = app_updates.prepare(before_commit=_require_idle_for_update)
+    server.update_restart = True
+    threading.Timer(0.5, server.shutdown).start()
+    return result
+
+
 def main():
     server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
     live_feed.start()
-    threading.Thread(target=app_updates.automatic_check, daemon=True).start()
+    threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
+    threading.Thread(target=memory.watch, daemon=True).start()
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")

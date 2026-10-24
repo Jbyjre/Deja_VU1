@@ -16,6 +16,15 @@ without the details.
   `DEJAVU_ALLOWED_HOSTS` - which stops a web page from reaching it by
   pointing its own domain at your dashboard (`host_is_local` in
   `backend/app.py`).
+- **An optional device lock.** Settings → Paired devices → "Only paired
+  devices can use this dashboard". With it on, every device except the
+  computer the dashboard runs on (reached as `localhost`) must be paired with
+  a six-digit code before it can read or change anything. Each paired device
+  holds its own key in an HttpOnly cookie; only a hash of it is stored, and
+  unpairing withdraws it at once. Requests through a tunnel's domain or a
+  network address count as other devices, even from the same machine
+  (`backend/pairing.py`, `_locked_out` in `backend/app.py`). It is off by
+  default so nothing changes for existing set-ups.
 - **Away from home only through a tunnel.** The supported way in from
   outside is a Cloudflare Tunnel with access control in front of it - see
   [docs/remote-access.md](docs/remote-access.md). Don't forward a router

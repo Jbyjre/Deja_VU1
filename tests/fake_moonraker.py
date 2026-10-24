@@ -349,6 +349,19 @@ class FakeMoonraker:
                     if limit > 0:
                         jobs = jobs[start:start + limit]
                     return self._reply(200, {"result": {"count": len(jobs), "jobs": jobs}})
+                if parsed.path.startswith("/server/files/gcodes/"):
+                    # File download (Moonraker docs/external_api/file_manager.md,
+                    # "File download": GET /server/files/{root}/{filename}).
+                    from urllib.parse import unquote
+                    data = fake.files.get(unquote(parsed.path[len("/server/files/gcodes/"):]))
+                    if data is None:
+                        return self._error(404, "File does not exist")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/octet-stream")
+                    self.send_header("Content-Length", str(len(data)))
+                    self.end_headers()
+                    self.wfile.write(data)
+                    return
                 if parsed.path == "/server/files/metadata":
                     meta = fake.metadata.get(q.get("filename"))
                     if meta is None:

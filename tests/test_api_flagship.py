@@ -163,7 +163,7 @@ class TestSlicerRoutes(FlagshipAPI):
 
     def test_settings_check_and_slice_fail_in_words_without_a_slicer(self):
         status, body = self.request("/api/slicer/settings")
-        self.assertIn("Install OrcaSlicer yourself", body["problem"])
+        self.assertIn("Install Snapmaker Orca or OrcaSlicer yourself", body["problem"])
         status, body = self.request("/api/slicer/check", {})
         self.assertFalse(body["ok"])
         status, body = self.request("/api/slicer/settings", {"slicer_path": "/bin/sh"})

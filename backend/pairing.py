@@ -6,13 +6,17 @@ Lets a phone (or any second browser) find and remember this dashboard,
 without an account or a password. The desktop shows a short numeric code;
 entering that code on the phone adds it to the paired-devices list.
 
-This is about *connecting* devices, not about *restricting* access - the
-dashboard has no login wall and this doesn't add one. Anyone already on your
-home network could reach the same address directly. Pairing exists so your
-phone remembers "this is my printer's dashboard" and shows up in the
-Modules & Devices list, not to gate the API behind a secret.
+Pairing also gives each device a secret key, kept in that browser as a
+cookie (only a hash of it is stored here). With the device lock switched on
+(off by default), every device except this computer itself must be paired
+before it can read or change anything: the dashboard asks for a pairing code
+instead. This computer, reached as localhost, always works, so the owner can
+never be locked out; a request that arrives through a tunnel's domain or a
+network address counts as another device, even when it comes from this
+machine. Unpairing a device withdraws its key at once.
 """
 
+import hashlib
 import os
 import secrets
 import threading
@@ -21,6 +25,9 @@ import storage
 
 _DATA_DIR = storage.DATA_DIR
 _DEVICES_PATH = os.path.join(_DATA_DIR, "paired_devices.json")
+_ACCESS_PATH = os.path.join(_DATA_DIR, "access.json")
+COOKIE = "dv_device"
+COOKIE_DAYS = 365
 
 CODE_TTL_MINUTES = 10
 # Wrong guesses allowed per code. After that the code stops working and a
@@ -76,18 +83,50 @@ def redeem_code(code, device_name):
         _current_code = _code_expires_at = None
 
         device_name = str(device_name or "").strip()[:40] or "New device"
+        token = secrets.token_urlsafe(32)
         device = {
             "id": f"device-{secrets.token_hex(4)}",
             "name": device_name,
             "paired_at": datetime.now().isoformat(timespec="seconds"),
+            "key_hash": _hash(token),
         }
         devices.append(device)
         _save_devices(devices)
-        return device
+        return {**_public(device), "token": token}
+
+
+def _hash(token):
+    return hashlib.sha256(str(token).encode("utf-8")).hexdigest()
+
+
+def _public(device):
+    return {k: v for k, v in device.items() if k != "key_hash"}
+
+
+def device_for(token):
+    """The paired device holding this key, or None."""
+    if not token or len(str(token)) > 200:
+        return None
+    wanted = _hash(token)
+    for d in _load_devices():
+        if secrets.compare_digest(str(d.get("key_hash", "")), wanted):
+            return _public(d)
+    return None
+
+
+def lock_enabled():
+    return bool(storage.load_json(_ACCESS_PATH, {}).get("require_pairing"))
+
+
+def set_lock(on):
+    if not isinstance(on, bool):
+        raise ValueError("Choose whether the device lock is on or off")
+    storage.save_json(_ACCESS_PATH, {"require_pairing": on})
+    return lock_enabled()
 
 
 def list_devices():
-    return list(_load_devices())
+    return [_public(d) for d in _load_devices()]
 
 
 def unpair(device_id):
@@ -106,3 +145,4 @@ def reset():
     _code_expires_at = None
     _failed_attempts = 0
     _save_devices([])
+    storage.save_json(_ACCESS_PATH, {"require_pairing": False})

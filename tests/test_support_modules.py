@@ -100,7 +100,11 @@ class TestPairing(unittest.TestCase):
         generated = pairing.generate_code()
         device = pairing.redeem_code(generated["code"], "My Phone")
         self.assertEqual(device["name"], "My Phone")
+        # The device's key comes back once (the server puts it in a cookie); the list never shows it.
+        key = device.pop("token")
+        self.assertTrue(key)
         self.assertIn(device, pairing.list_devices())
+        self.assertNotIn(key, str(pairing.list_devices()))
 
     def test_wrong_code_is_rejected(self):
         pairing.generate_code()

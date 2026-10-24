@@ -125,7 +125,7 @@ class SlicerBridgeTest(unittest.TestCase):
 class TestSettings(SlicerBridgeTest):
     def test_off_until_set_up_and_says_why(self):
         s = slicer_bridge.public_settings()
-        self.assertIn("Install OrcaSlicer yourself", s["problem"])
+        self.assertIn("Install Snapmaker Orca or OrcaSlicer yourself", s["problem"])
         self.assertFalse(slicer_bridge.check()["ok"])
 
     def test_path_rules(self):

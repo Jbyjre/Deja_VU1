@@ -170,3 +170,44 @@ class RealPrinterMaintenanceStartingPoint(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestHeaterFaultRing(unittest.TestCase):
+    """A heater fault marks its own head, so that head's dock ring shows the fault, not "ready"."""
+
+    def setUp(self):
+        import mock_moonraker
+        mock_moonraker.reset_all()
+        self.addCleanup(mock_moonraker.reset_all)
+
+    def test_the_faulty_heads_ring_reads_error_until_cleared(self):
+        import led_status
+        import mock_moonraker
+        mock_moonraker.inject_heater_fault("T1")
+        rings = led_status.get_all_ring_states()
+        states = rings.get("rings", rings)
+        states = {r["toolhead"]: r["state"] for r in states} if isinstance(states, list) else states
+        self.assertEqual(states["T1"], "error")
+        mock_moonraker.clear_error()
+        self.assertEqual(mock_moonraker.get_printer_state()["toolheads"]["T1"]["status"], "docked")
+
+
+class TestFirmwareRestart(unittest.TestCase):
+    """Clearing an error (FIRMWARE_RESTART) is reachable, and only when there is an error."""
+
+    def setUp(self):
+        import mock_moonraker
+        mock_moonraker.reset_all()
+        self.addCleanup(mock_moonraker.reset_all)
+
+    def test_refused_unless_the_printer_reports_an_error(self):
+        import printer_control
+        with self.assertRaisesRegex(ValueError, "isn't reporting an error"):
+            printer_control.clear_error()          # the demo printer is mid-print
+
+    def test_an_errored_printer_comes_back(self):
+        import mock_moonraker
+        import printer_control
+        mock_moonraker.inject_jam("T0")
+        self.assertEqual(mock_moonraker.get_printer_state()["state"], "error")
+        self.assertEqual(printer_control.clear_error()["state"], "ready")
