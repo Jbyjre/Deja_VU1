@@ -103,6 +103,18 @@ def cancel_print():
     return mock_moonraker.cancel_print()
 
 
+def clear_error():
+    """
+    Klipper's FIRMWARE_RESTART, to recover a printer that has stopped with an
+    error. Only while it reports an error: a restart at any other time would
+    abandon a running print.
+    """
+    state = mock_moonraker.get_printer_state()
+    if state.get("state") != "error":
+        raise ValueError("The printer isn't reporting an error, so there is nothing to restart for")
+    return mock_moonraker.clear_error()
+
+
 def exclude_object(name):
     """
     Skip one labelled object for the rest of the print - the others carry

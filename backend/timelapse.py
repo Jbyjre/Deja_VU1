@@ -181,7 +181,8 @@ def frames(printer_id, session):
     folder = _dir(printer_id, session)
     if not os.path.isdir(folder):
         raise ValueError("No such time-lapse")
-    return sorted(n for n in os.listdir(folder) if n != "session.json")
+    # Hidden files (storage.py's last-good copy of session.json) are not frames.
+    return sorted(n for n in os.listdir(folder) if n != "session.json" and not n.startswith("."))
 
 
 def frame(printer_id, session, name):

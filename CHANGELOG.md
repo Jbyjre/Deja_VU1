@@ -3,6 +3,42 @@
 Newest first. Each entry says what changed for someone using the dashboard,
 and what is and isn't verified.
 
+## Unreleased — the real print in the twin, updates in the app, a memory that lasts
+
+- Digital twin: the print itself, from its own G-code (`backend/print_preview.py`,
+  `GET /api/print/preview`): outside walls per layer and head, in each head's loaded colour,
+  clipped at the layer being printed, the rest faint above; a Print close-up view. A real
+  printer's copy is downloaded with Moonraker's file download (checked in its docs); the
+  library or the samples otherwise. Case on / See-through / Case off, with frame, motors,
+  belts and lead screw (estimated, labelled); print, rest, labels and turntable options.
+- Engineering drawing: zoned border, numbered balloons with leaders and a parts list, notes,
+  centre lines, the print's height, the print in its colours, a full title block.
+- Demo: the Workshop printer prints a new sample, two two-colour Benchies
+  (`two_benchies_two_colours.gcode`), its head following the boat it prints. Tests that
+  assumed the old 4.6 h job were updated.
+- 3D viewer: a textured 276 × 293 mm plate with a grid on it only, a studio backdrop drawn
+  in the view, a contact shadow and better lighting; plate objects take loaded colours.
+- Mixed layer heights: rebuilt around a goal (detail, balanced, fastest, one height), plain
+  sentences per head with Thinner/Thicker, expert controls under Fine-tune. Rules unchanged.
+- Updates: a Newest builds channel (`backend/app_updates.py`): per-file git-hash checks
+  against GitHub's tree, only changed files downloaded, launcher rollback as before;
+  15-minute automatic checks, optional automatic install when idle; Update with git for
+  git copies; the page reloads itself after a restart.
+- Memory: last-good copies beside every record and self-repair (`backend/storage.py`);
+  safety copies every 6 hours, at start-up and before updates, restorable with undo
+  (`backend/memory.py`, Settings → Your data is safe).
+- Insights from the printer's history (`backend/insights.py`, Overview); Orca import of
+  recent projects and own presets (`backend/orca_import.py`, Files); an optional device
+  lock (`backend/pairing.py`); About, credits and Check it yourself (`backend/selfcheck.py`,
+  `CREDITS.md`).
+- Games moved to `frontend/games.js`, loaded when the Games tab opens.
+- Fixed: Snapmaker Orca is detected for slicing; API-key refusals over the WebSocket say
+  how to fix them; a heater fault shows on its own dock ring; Restart firmware clears an
+  error on a real printer (only while it reports one); time-lapse frame lists skip hidden
+  files.
+- Not verified: anything on a physical U1 or real phone; Orca import on Windows/macOS;
+  automatic install outside tests.
+
 ## Unreleased — technical tools, the real Benchy and a working online demo
 
 - Sample files: the real 3DBenchy (public domain, CC0, since February 2025; reduced from

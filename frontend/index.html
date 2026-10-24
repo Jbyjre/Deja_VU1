@@ -358,7 +358,7 @@
     <div class="live-row now-row">
       <section class="card liquid-glass twin-card" data-tint id="twin-card">
         <div class="card-head twin-head">
-          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do</p></div>
+          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do, and the print grows layer by layer in its real colours</p></div>
           <div class="twin-switches">
             <div class="pill-toggle twin-modes" id="twin-modes" role="group" aria-label="Show as">
               <button type="button" data-mode="model" class="active" aria-pressed="true">3D model</button>
@@ -368,11 +368,12 @@
               <button type="button" data-view="iso" class="active" aria-pressed="true">Angled</button>
               <button type="button" data-view="front" aria-pressed="false">Front</button>
               <button type="button" data-view="top" aria-pressed="false">Top</button>
+              <button type="button" data-view="print" aria-pressed="false" title="Close up on the print">Print</button>
             </div>
           </div>
         </div>
         <div id="twin-host" class="twin-host"></div>
-        <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout and which side feeds which head are estimated.</p>
+        <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them.</p>
       </section>
       <div class="col-stack now-side">
         <section class="card liquid-glass">
@@ -413,6 +414,12 @@
         <span class="stat-val" id="stat-due">—</span>
         <span class="stat-foot" id="stat-due-foot">No printer</span>
       </div>
+    </section>
+
+    <!-- What the printer's own history says (insights.js, /api/insights). -->
+    <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
+      <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
+      <div id="insights-body"><p class="log-empty">Loading…</p></div>
     </section>
 
     <div class="grid-2" style="margin-bottom:20px;">
@@ -631,14 +638,14 @@
 
     <section id="tab-layerplan" class="tab-sub" aria-labelledby="sub-layerplan-title">
       <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-layerplan-title">Mixed layer heights</h2>
-        <p>Fine layers where detail shows, thick fast layers where it doesn't: each head prints a whole number of base layers at once</p></div>
+        <p>Detail where it shows, speed where it doesn't</p></div>
       <section class="card liquid-glass lp-card">
-        <div class="card-head"><div><h2>Layer stack</h2><p class="card-sub">Choose one fine base layer, then how many base layers each head prints in one pass (×1, ×2, ×3…). Choices a nozzle can't print are crossed out, with the reason. Or press a smart set-up and adjust.</p></div>
-          <button class="btn small" type="button" id="lp-example">Try a detail + speed example</button></div>
+        <div class="card-head"><div><h2>Layer heights per head</h2><p class="card-sub">The U1 can carry a different nozzle in each head. A small nozzle lays thin layers for crisp detail; a big one lays thick layers and finishes its parts in fewer passes. Choose what matters most and Deja Vu1 works out each head's layer so they always meet up. Nothing here can be set wrong: anything a nozzle can't print is greyed out, with the reason.</p></div>
+          <button class="btn small" type="button" id="lp-example">Show me an example</button></div>
         <form class="lp-form" id="lp-form" novalidate>
           <div id="lp-stack"></div>
           <div class="lp-more">
-            <label>Part height, for pass counts <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
+            <label>How tall is the part? <span class="lp-unit"><input type="number" id="lp-part" min="1" max="270" step="1" value="30" inputmode="decimal"> mm</span></label>
             <button class="btn small" type="button" id="lp-fitted">Use this printer's fitted nozzles</button>
           </div>
         </form>
@@ -893,10 +900,40 @@
       <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
       <h3>App updates <span id="app-update-badge" hidden>New version available</span></h3>
       <p id="app-update-status" role="status">Loading app information…</p>
-      <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button></div>
-      <label class="setup-check"><input type="checkbox" id="app-update-auto"> Check automatically at startup (at most daily)</label>
-      <p class="field-hint">Off by default. Checks send no name or printer details. GitHub sees your connection's network address.</p>
+      <fieldset class="update-channel">
+        <legend class="sr-only">Which updates to get</legend>
+        <label><input type="radio" name="app-update-channel" value="latest"><span><b>Newest builds</b> Each improvement as soon as it is published, without downloading the app again. Only the files that changed are fetched, and each must match GitHub's own record of it before anything is replaced.</span></label>
+        <label><input type="radio" name="app-update-channel" value="stable"><span><b>Stable releases</b> Only versions published as releases: fewer, bigger steps.</span></label>
+      </fieldset>
+      <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button><button class="btn primary" id="app-update-git" hidden>Update with git &amp; restart</button></div>
+      <label class="setup-check"><input type="checkbox" id="app-update-auto"> Check automatically <span class="field-hint" id="app-update-auto-when">(newest builds every 15 minutes, releases once a day)</span></label>
+      <label class="setup-check"><input type="checkbox" id="app-update-autoinstall"> Install by itself when every printer is idle</label>
+      <p class="field-hint">Checks send no name or printer details. GitHub sees your connection's network address. Your data folder is never part of an update, and a safety copy is made first.</p>
       <p class="field-hint" id="app-update-note"></p>
+    </section>
+    <section class="card liquid-glass about-card" id="about-card">
+      <div class="card-head"><div><h2>About Deja Vu1</h2><p class="card-sub" id="about-version">A dashboard and print-preparation workspace for the Snapmaker U1.</p></div>
+        <button class="btn primary" type="button" id="selfcheck-run">Check it yourself</button></div>
+      <p class="about-what"><b>What it adds.</b> One screen for every U1 you run, over your own network: a live 3D twin that grows the print in its real colours, a check of every move in a file before it prints, a start button the server refuses when something is wrong, a converter for Bambu Studio and MakerWorld projects, a plate editor, layer heights per head, maintenance with a logbook, insights from your print history, and safety copies of everything it remembers. It talks to the printer through Moonraker's published interface and slices with the Orca engine you install.</p>
+      <p class="field-hint">Every claim here is meant to be checkable. <b>Check it yourself</b> runs real checks inside this copy in a few seconds; nothing is sent anywhere and no printer is contacted. The status of each feature, including what hasn't been tried on a physical U1 yet, is in the README.</p>
+      <ol class="selfcheck" id="selfcheck-list" hidden></ol>
+      <details class="about-credits"><summary>Built with and on</summary>
+        <ul>
+          <li><b>Moonraker</b> and <b>Klipper</b> (GPL-3.0), and Snapmaker's U1 builds of them: talked to through Moonraker's published interface. The client and the test stand-in were written from reading their source; no code was copied.</li>
+          <li><b>OrcaSlicer</b> and <b>Snapmaker Orca</b> (AGPL-3.0): the slicing engine you install yourself; nothing is bundled. U1 facts were read from their profiles and source.</li>
+          <li><b>3DBenchy</b> by Creative Tools: public domain (CC0); the sample prints are cut from it.</li>
+          <li>Fonts: <b>Bricolage Grotesque</b>, <b>Instrument Sans</b>, <b>IBM Plex Mono</b> (SIL Open Font License).</li>
+          <li>Snapmaker and U1 are Snapmaker's names. Deja Vu1 is independent and not made or endorsed by Snapmaker. It is written with the help of an AI coding assistant, from its owner's direction.</li>
+        </ul>
+        <p class="field-hint">The same list, with licences, is in CREDITS.md. Deja Vu1 itself is MIT licensed.</p>
+      </details>
+    </section>
+    <section class="card liquid-glass memory-card" id="memory-card">
+      <div class="card-head"><div><h2>Your data is safe</h2><p class="card-sub">Deja Vu1 keeps safety copies of everything it remembers (printers, spools, maintenance, the logbook, rules, queues and profiles) on this computer: every 6 hours, at start-up and before every update. If a file is ever damaged, it is repaired from them by itself.</p></div>
+        <button class="btn" type="button" id="mem-now">Make a safety copy now</button></div>
+      <p id="mem-status" role="status">Loading…</p>
+      <ul class="mem-list" id="mem-list"></ul>
+      <p class="field-hint">Restoring takes one more safety copy first, so a restore can itself be undone. The dashboard then restarts to read the restored records. Model files and camera pictures are covered by the full backup below, not by safety copies.</p>
     </section>
     <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
       <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
@@ -912,7 +949,9 @@
 
       <div style="display:flex; flex-direction:column; gap:20px;">
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Optional list of devices. This is not a login or access restriction.</p></div></div>
+          <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Phones and other computers you use with this dashboard.</p></div></div>
+          <label class="setup-check device-lock"><input type="checkbox" id="device-lock"> <span><b>Only paired devices can use this dashboard</b> Off by default. When on, any other device must enter a pairing code before it can see or control anything. This computer always works, so you can't lock yourself out. Pair your phone first.</span></label>
+          <p class="field-hint" id="device-lock-note" role="status"></p>
           <div id="pairing-code-display" style="display:none; text-align:center; margin-bottom:14px;">
             <div class="pair-code" id="pairing-code-text">— — —</div>
             <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
@@ -920,7 +959,8 @@
           <div id="device-list"></div>
           <button class="btn block" id="generate-code-btn" style="margin-top:12px;">+ Pair another device</button>
           <form id="redeem-form" style="display:flex; gap:8px; margin-top:10px;">
-            <input type="text" id="redeem-code" placeholder="Enter a code" style="flex:1;">
+            <label class="sr-only" for="redeem-code">Pairing code</label>
+            <input type="text" id="redeem-code" placeholder="Enter a code" inputmode="numeric" autocomplete="one-time-code" style="flex:1;">
             <button class="btn" type="submit">Pair</button>
           </form>
         </section>
@@ -1238,6 +1278,19 @@
   <div class="setup-body"><div id="setup-content"></div><p id="setup-status" role="status" aria-live="polite"></p></div>
   <div class="setup-footer"><button class="btn" id="setup-back">Back</button><button class="btn primary" id="setup-next">Continue</button></div>
 </dialog>
+<!-- Shown when the device lock is on and this device hasn't been paired (app.js showPairGate). -->
+<dialog class="pair-gate" id="pair-gate" aria-labelledby="pair-gate-title">
+  <form method="dialog" id="pair-gate-form">
+    <h2 id="pair-gate-title">Pair this device</h2>
+    <p>This dashboard only answers devices that have been paired with it. On a device that already works (or the computer it runs on), open Settings and press <b>Pair another device</b>, then type the six-digit code here.</p>
+    <label for="pair-gate-code">Pairing code</label>
+    <input id="pair-gate-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+    <label for="pair-gate-name">Name for this device <small>(optional)</small></label>
+    <input id="pair-gate-name" maxlength="40" placeholder="e.g. My phone">
+    <p class="field-hint" id="pair-gate-error" role="alert"></p>
+    <button class="btn primary" type="submit" id="pair-gate-go">Pair</button>
+  </form>
+</dialog>
 <script src="app.js"></script>
 <script src="backdrop.js"></script>
 <script src="viewer3d.js"></script>
@@ -1253,6 +1306,7 @@
 <script src="desk.js"></script>
 <script src="telemetry.js"></script>
 <script src="logbook.js"></script>
+<script src="insights.js"></script>
 <script src="printroom.js"></script>
 <script src="plate.js"></script>
 <script src="gcode-view.js"></script>

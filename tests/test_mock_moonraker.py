@@ -20,7 +20,7 @@ class TestFleetSimulation(unittest.TestCase):
     def test_default_printer_is_unchanged(self):
         state = mock_moonraker.get_printer_state()
         self.assertEqual(state["state"], "printing")
-        self.assertEqual(state["current_file"], "toolhead_cover.gcode")
+        self.assertEqual(state["current_file"], "two_benchies_two_colours.gcode")
         self.assertEqual(len(mock_moonraker.get_print_history()), 38)
 
     def test_printers_are_independent(self):
@@ -35,13 +35,14 @@ class TestFleetSimulation(unittest.TestCase):
                 pass
 
     def test_heaters_settle_toward_their_target(self):
-        mock_moonraker.set_target_temperature("T0", 200)
-        before = mock_moonraker.get_printer_state()["toolheads"]["T0"]["temperature"]
+        # T2: a head the running two-colour print never swaps in.
+        mock_moonraker.set_target_temperature("T2", 200)
+        before = mock_moonraker.get_printer_state()["toolheads"]["T2"]["temperature"]
         self.assertEqual(before, 32.5)                     # nothing happens until time passes
         mock_moonraker.advance(10)
-        mid = mock_moonraker.get_printer_state()["toolheads"]["T0"]["temperature"]
+        mid = mock_moonraker.get_printer_state()["toolheads"]["T2"]["temperature"]
         mock_moonraker.advance(200)
-        end = mock_moonraker.get_printer_state()["toolheads"]["T0"]["temperature"]
+        end = mock_moonraker.get_printer_state()["toolheads"]["T2"]["temperature"]
         self.assertTrue(before < mid < end <= 200)
         self.assertAlmostEqual(end, 200, delta=1)
 
@@ -142,9 +143,9 @@ class TestSandboxHooks(unittest.TestCase):
     def test_unscaled_advance_ignores_the_demo_speed(self):
         mock_moonraker.set_time_scale(100)
         before = mock_moonraker.get_printer_state()["progress"]
-        mock_moonraker.advance(36, scaled=False)      # 36 simulated seconds of a 4.6 h job
+        mock_moonraker.advance(36, scaled=False)      # 36 simulated seconds of a 1.58 h job
         gained = mock_moonraker.get_printer_state()["progress"] - before
-        self.assertAlmostEqual(gained, 36 / (4.6 * 3600), places=6)
+        self.assertAlmostEqual(gained, 36 / (1.58 * 3600), places=6)
 
     def test_wear_adds_completed_hours(self):
         hours = sum(j["print_duration_hours"] for j in mock_moonraker.get_print_history())

@@ -158,11 +158,17 @@ def slicer_path(settings=None):
     configured = (settings or get_settings()).get("slicer_path", "")
     if configured:
         return configured, "settings"
-    candidates = [shutil.which("orca-slicer"), shutil.which("OrcaSlicer"),
+    # Snapmaker's build names its program "snapmaker-orca" (its CMakeLists.txt,
+    # OUTPUT_NAME); the stock build "orca-slicer". The install folders below are
+    # the usual ones; each is only used if the program is really there.
+    candidates = [shutil.which("snapmaker-orca"), shutil.which("orca-slicer"), shutil.which("OrcaSlicer"),
+                  "/Applications/Snapmaker Orca.app/Contents/MacOS/Snapmaker Orca",
                   "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer"]
     if os.name == "nt":
-        candidates += [os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"),
-                                    "OrcaSlicer", "orca-slicer.exe")]
+        programs = os.environ.get("ProgramFiles", "C:\\Program Files")
+        candidates += [os.path.join(programs, "Snapmaker_Orca", "snapmaker-orca.exe"),
+                       os.path.join(programs, "Snapmaker Orca", "snapmaker-orca.exe"),
+                       os.path.join(programs, "OrcaSlicer", "orca-slicer.exe")]
     for candidate in candidates:
         if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate, "detected"
@@ -179,8 +185,9 @@ def _looks_like_orca(path):
 def _check_program(path, source):
     """Why this path can't be run, in words - or None when it can."""
     if not path:
-        return ("No slicer set up. Install OrcaSlicer yourself, then enter the full path to its "
-                "program (for example /Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer, "
+        return ("No slicer set up. Install Snapmaker Orca or OrcaSlicer yourself (Deja Vu1 finds them in "
+                "their usual places), or enter the full path to its program (for example "
+                "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer, "
                 "C:\\Program Files\\OrcaSlicer\\orca-slicer.exe, or the .AppImage you downloaded)")
     if not os.path.isabs(path):
         return "Use the full path to the slicer program, starting from the top of the disk"

@@ -41,7 +41,7 @@ Suggested topics: `snapmaker`, `snapmaker-u1`, `moonraker`, `klipper`,
 
 | Claim | Evidence or qualification |
 |---|---|
-| 759 tests passed | Clean full suite, Python 3.12.14/Linux, 128.765 seconds; PR #45 CI also passed |
+| 832 tests passed | Clean full suite, Python 3.13.17/Linux, 473.5 seconds (24 October 2026); earlier 759 on Python 3.12.14 with PR #45 CI passing |
 | Follow-up check | 36 targeted tests passed before the PR #45 merge |
 | Live updates | 250 ms target loop; actual freshness depends on printer/network response |
 | Per-head heights | Actual model extrusion, with clear pre-flight; first layers/features can differ |

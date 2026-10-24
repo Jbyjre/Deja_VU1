@@ -333,16 +333,41 @@ const DV3D = (() => {
 
   /* ---------------- the renderer ---------------- */
 
-  const MESH_VS = `attribute vec3 p; attribute vec3 n; attribute vec3 k; uniform mat4 m; varying vec3 vn; varying vec3 vk; varying float vz;
-    void main(){ vn = n; vk=k; vz = p.z; gl_Position = m * vec4(p, 1.0); }`;
+  const MESH_VS = `attribute vec3 p; attribute vec3 n; attribute vec3 k; uniform mat4 m; varying vec3 vn; varying vec3 vk; varying float vz; varying vec3 vw;
+    void main(){ vn = n; vk=k; vz = p.z; vw = p; gl_Position = m * vec4(p, 1.0); }`;
   /* Optional height bands (the Photo-to-Print Studio): up to four colours,
-     each from its start height upward - which filament prints where. */
-  const MESH_FS = `precision mediump float; varying vec3 vn; varying vec3 vk; varying float vz; uniform vec3 c; uniform vec3 l; uniform bool colored;
+     each from its start height upward - which filament prints where.
+     Lit like a product shot: light from the sky and a darker bounce from
+     below, a key light with a soft highlight, and a cool rim on the edges.
+     kind 1 is the build plate: textured PEI, a fine grain in its surface. */
+  const MESH_FS = `precision mediump float; varying vec3 vn; varying vec3 vk; varying float vz; varying vec3 vw; uniform vec3 c; uniform vec3 l; uniform vec3 eye; uniform bool colored; uniform int kind;
     uniform vec3 bc[4]; uniform float bz[4]; uniform int nb;
+    float hash(vec2 q) { return fract(sin(dot(q, vec2(127.1, 311.7))) * 43758.5453); }
     void main(){
       vec3 col = colored ? vk : c;
       for (int i = 0; i < 4; i++) { if (i < nb && vz >= bz[i] - 0.0005) col = bc[i]; }
-      float d = abs(dot(normalize(vn), l)); gl_FragColor = vec4(col * (0.38 + 0.62 * d), 1.0); }`;
+      vec3 nn = normalize(vn), v = normalize(eye - vw);
+      if (dot(nn, v) < 0.0) nn = -nn;
+      float shine = 0.32, power = 42.0;
+      if (kind == 1) { float g = hash(floor(vw.xy * 2.4)); col *= 0.86 + 0.22 * g; shine = 0.12; power = 18.0; }
+      vec3 L = normalize(l), h = normalize(L + v);
+      float diff = max(dot(nn, L), 0.0), hemi = 0.5 + 0.5 * nn.z;
+      vec3 amb = mix(vec3(0.20, 0.21, 0.24), vec3(0.62, 0.64, 0.70), hemi);
+      float spec = pow(max(dot(nn, h), 0.0), power) * shine;
+      float rim = pow(1.0 - max(dot(nn, v), 0.0), 3.0) * 0.22;
+      vec3 outc = col * (amb * 0.85 + diff * 0.8) + vec3(spec) + rim * vec3(0.55, 0.68, 0.9);
+      gl_FragColor = vec4(outc, 1.0); }`;
+  /* The studio backdrop: a soft graphite sweep, lighter above, with a
+     gentle vignette - drawn in the canvas, so there is no floor running
+     off to a hard edge. */
+  const BG_VS = `attribute vec2 a; varying vec2 q; void main(){ q = a * 0.5 + 0.5; gl_Position = vec4(a, 0.9999, 1.0); }`;
+  const BG_FS = `precision mediump float; varying vec2 q; uniform vec3 top; uniform vec3 bottom;
+    void main(){ vec3 col = mix(bottom, top, smoothstep(0.0, 1.0, q.y));
+      col *= 1.0 - 0.22 * smoothstep(0.35, 1.05, length((q - vec2(0.5, 0.58)) * vec2(1.0, 0.9)));
+      gl_FragColor = vec4(col, 1.0); }`;
+  /* A soft contact shadow under the model, on the plate. */
+  const SHADOW_VS = `attribute vec3 p; attribute vec2 a; uniform mat4 m; varying vec2 q; void main(){ q = a; gl_Position = m * vec4(p, 1.0); }`;
+  const SHADOW_FS = `precision mediump float; varying vec2 q; void main(){ float d = length(q); gl_FragColor = vec4(0.0, 0.0, 0.0, 0.42 * (1.0 - smoothstep(0.35, 1.0, d))); }`;
   const LINE_VS = `attribute vec3 p; attribute vec4 k; attribute float q; uniform mat4 m; varying vec4 vk; varying float vz; varying float vlayer;
     void main(){ vk = k; vz=p.z; vlayer=q; gl_PointSize=6.0; gl_Position = m * vec4(p, 1.0); }`;
   const LINE_FS = `precision mediump float; varying vec4 vk; varying float vz; varying float vlayer; uniform bool hideTravel; uniform float minZ; uniform float maxZ; uniform float minLayer; uniform float maxLayer;
@@ -371,7 +396,11 @@ const DV3D = (() => {
       this.panMode = false;
       this.meshProg = this.program(MESH_VS, MESH_FS);
       this.lineProg = this.program(LINE_VS, LINE_FS);
+      this.bgProg = this.program(BG_VS, BG_FS);
+      this.shadowProg = this.program(SHADOW_VS, SHADOW_FS);
+      this.bgQuad = this.buffer(new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]));
       this.bed = this.buildBed();
+      this.plate = this.buildPlate();
       this.bindInput();
       this.resizeObserver = new ResizeObserver(() => this.draw());
       this.resizeObserver.observe(canvas);
@@ -400,11 +429,42 @@ const DV3D = (() => {
       return b;
     }
 
+    /* Lines on the plate only: a fine 10 mm grid, every 50 mm a little
+     * stronger, and the 270 mm printable square as a clear border. */
     buildBed() {
-      const pos = [], col = [];
-      const push = (x1, y1, x2, y2, a) => { pos.push(x1, y1, 0, x2, y2, 0); col.push(.3, .34, .42, a, .3, .34, .42, a); };
-      for (let i = 0; i <= BED; i += 27) { push(i, 0, i, BED, i % 135 ? .16 : .34); push(0, i, BED, i, i % 135 ? .16 : .34); }
+      const pos = [], col = [], z = 0.08;
+      const push = (x1, y1, x2, y2, a) => { pos.push(x1, y1, z, x2, y2, z); col.push(.78, .84, .95, a, .78, .84, .95, a); };
+      for (let i = 10; i < BED; i += 10) { const a = i % 50 ? .07 : .16; push(i, 0, i, BED, a); push(0, i, BED, i, a); }
+      push(0, 0, BED, 0, .45); push(BED, 0, BED, BED, .45); push(BED, BED, 0, BED, .45); push(0, BED, 0, 0, .45);
       return { pos: this.buffer(new Float32Array(pos)), col: this.buffer(new Float32Array(col)), count: pos.length / 3 };
+    }
+
+    /* The U1's build plate: 276 x 293 mm of textured PEI with rounded
+     * corners (Snapmaker's Orca profile), its top at Z 0, 4 mm thick. */
+    buildPlate() {
+      const W = 276, D = 293, R = 8, cx = BED / 2, cy = BED / 2 + 0.5, ring = [];
+      for (const [qx, qy, a0] of [[1, 1, 0], [-1, 1, 90], [-1, -1, 180], [1, -1, 270]]) {
+        for (let k = 0; k <= 6; k++) { const a = (a0 + k * 15) * Math.PI / 180; ring.push([cx + qx * (W / 2 - R) + Math.cos(a) * R, cy + qy * (D / 2 - R) + Math.sin(a) * R]); }
+      }
+      const pos = [], nrm = [], tri = (a, b, c, n) => { pos.push(...a, ...b, ...c); nrm.push(...n, ...n, ...n); };
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i], q = ring[(i + 1) % ring.length];
+        tri([cx, cy, 0], [p[0], p[1], 0], [q[0], q[1], 0], [0, 0, 1]);
+        const dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy) || 1, n = [dy / l, -dx / l, 0];
+        tri([p[0], p[1], 0], [p[0], p[1], -4], [q[0], q[1], -4], n); tri([p[0], p[1], 0], [q[0], q[1], -4], [q[0], q[1], 0], n);
+      }
+      return { pos: this.buffer(new Float32Array(pos)), nrm: this.buffer(new Float32Array(nrm)), count: pos.length / 3 };
+    }
+
+    /* The contact shadow follows the model's footprint. */
+    setShadow(b) {
+      const gl = this.gl;
+      if (this.shadow) { gl.deleteBuffer(this.shadow.pos); gl.deleteBuffer(this.shadow.uv); this.shadow = null; }
+      if (!b) return;
+      const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, rx = (b.max[0] - b.min[0]) * 0.62 + 6, ry = (b.max[1] - b.min[1]) * 0.62 + 6, z = 0.04;
+      const p = [cx - rx, cy - ry, z, cx + rx, cy - ry, z, cx - rx, cy + ry, z, cx - rx, cy + ry, z, cx + rx, cy - ry, z, cx + rx, cy + ry, z];
+      const uv = [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1];
+      this.shadow = { pos: this.buffer(new Float32Array(p)), uv: this.buffer(new Float32Array(uv)) };
     }
 
     /* bands (optional): [{z, hex}] lowest first, heights in the model's own mm. */
@@ -419,6 +479,7 @@ const DV3D = (() => {
         pos[i] = mesh.positions[i] + dx; pos[i + 1] = mesh.positions[i + 1] + dy; pos[i + 2] = mesh.positions[i + 2] + dz;
       }
       this.mesh = { pos: this.buffer(pos), nrm: this.buffer(mesh.normals), count: pos.length / 3 };
+      this.setShadow(options.absolute ? mesh.bounds : { min: [b.min[0] + dx, b.min[1] + dy, 0], max: [b.max[0] + dx, b.max[1] + dy, 0] });
       if(mesh.colours){const display=new Float32Array(mesh.colours);for(let i=0;i<display.length;i+=3){const lum=.2126*display[i]+.7152*display[i+1]+.0722*display[i+2];if(lum<.12)for(let k=0;k<3;k++)display[i+k]+=.5-lum;}this.mesh.col=this.buffer(display);}
       this.color = hexToRGB(colorHex);
       // Like the toolpath view, lift near-black on screen only so it doesn't vanish.
@@ -497,6 +558,7 @@ const DV3D = (() => {
         for (const key of ['pos', 'nrm', 'col','lyr']) if (obj[key]) gl.deleteBuffer(obj[key]);
       }
       this.mesh = null; this.lines = null;this.markers=null;this.outline=null;this.toolSegments=null;
+      if (this.shadow) this.setShadow(null);
     }
 
     matrix() {
@@ -507,6 +569,7 @@ const DV3D = (() => {
         this.target[1] + this.dist * Math.cos(this.pitch) * Math.sin(this.yaw),
         this.target[2] + this.dist * Math.sin(this.pitch),
       ];
+      this.eye = e;
       return multiply(perspective(0.8, w / Math.max(1, h), 1, 4000), lookAt(e, this.target, [0, 0, 1]));
     }
 
@@ -536,6 +599,37 @@ const DV3D = (() => {
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       const m = this.matrix();
+
+      // The backdrop, then the plate and the model's shadow on it.
+      gl.disable(gl.DEPTH_TEST); gl.depthMask(false);
+      gl.useProgram(this.bgProg);
+      gl.uniform3fv(gl.getUniformLocation(this.bgProg, 'top'), [0.235, 0.255, 0.295]);
+      gl.uniform3fv(gl.getUniformLocation(this.bgProg, 'bottom'), [0.105, 0.115, 0.135]);
+      const ba = this.attrib(this.bgProg, 'a', this.bgQuad, 2);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disableVertexAttribArray(ba);
+      gl.enable(gl.DEPTH_TEST); gl.depthMask(true);
+      const light = [Math.cos(this.yaw + 0.6), Math.sin(this.yaw + 0.6), 0.8];
+      gl.useProgram(this.meshProg);
+      gl.uniformMatrix4fv(gl.getUniformLocation(this.meshProg, 'm'), false, m);
+      gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'eye'), this.eye);
+      gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'l'), light);
+      gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'c'), [0.2, 0.21, 0.23]);
+      gl.uniform1i(gl.getUniformLocation(this.meshProg, 'nb'), 0);
+      gl.uniform1i(gl.getUniformLocation(this.meshProg, 'colored'), false);
+      gl.uniform1i(gl.getUniformLocation(this.meshProg, 'kind'), 1);
+      const pp = this.attrib(this.meshProg, 'p', this.plate.pos, 3), pn = this.attrib(this.meshProg, 'n', this.plate.nrm, 3);
+      const pk = gl.getAttribLocation(this.meshProg, 'k'); gl.disableVertexAttribArray(pk); gl.vertexAttrib3f(pk, 1, 1, 1);
+      gl.drawArrays(gl.TRIANGLES, 0, this.plate.count);
+      gl.disableVertexAttribArray(pp); gl.disableVertexAttribArray(pn);
+      gl.uniform1i(gl.getUniformLocation(this.meshProg, 'kind'), 0);
+      if (this.shadow && this.mesh) {
+        gl.useProgram(this.shadowProg); gl.depthMask(false);
+        gl.uniformMatrix4fv(gl.getUniformLocation(this.shadowProg, 'm'), false, m);
+        const sp = this.attrib(this.shadowProg, 'p', this.shadow.pos, 3), sa = this.attrib(this.shadowProg, 'a', this.shadow.uv, 2);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        gl.disableVertexAttribArray(sp); gl.disableVertexAttribArray(sa); gl.depthMask(true);
+      }
 
       gl.useProgram(this.lineProg);
       gl.uniformMatrix4fv(gl.getUniformLocation(this.lineProg, 'm'), false, m);
@@ -580,9 +674,9 @@ const DV3D = (() => {
           gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'bc'), bc);
           gl.uniform1fv(gl.getUniformLocation(this.meshProg, 'bz'), bz);
         }
-        const l = [Math.cos(this.yaw + 0.6), Math.sin(this.yaw + 0.6), 0.8];
-        const ll = Math.hypot(...l);
-        gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'l'), l.map(v => v / ll));
+        gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'l'), light);
+        gl.uniform3fv(gl.getUniformLocation(this.meshProg, 'eye'), this.eye);
+        gl.uniform1i(gl.getUniformLocation(this.meshProg, 'kind'), 0);
         const mp = this.attrib(this.meshProg, 'p', this.mesh.pos, 3);
         const mn = this.attrib(this.meshProg, 'n', this.mesh.nrm, 3);
         const mk=gl.getAttribLocation(this.meshProg,'k');

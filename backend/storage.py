@@ -19,14 +19,19 @@ Anyone reading sees either the old file or the new one, never a mix.
 
 load_json() is the other half: if a file is damaged anyway (edited by hand,
 a disk fault), it is renamed to <name>.corrupt-<time> so nothing is lost,
-a note is printed, and the module carries on from its defaults instead of
-failing forever.
+and the dashboard repairs it rather than forgetting: first from the last
+good copy save_json() keeps beside every file (.<name>.prev), then from the
+newest automatic safety copy (memory.py). Only when neither has it does
+the module start over from its defaults. Every repair is noted, so the
+dashboard can say what it recovered.
 """
 
 import json
 import os
+import shutil
 import sys
 import tempfile
+import threading
 import time
 
 
@@ -57,8 +62,64 @@ def _data_dir():
 DATA_DIR = _data_dir()
 
 
+PREV_MAX_BYTES = 4 * 1024 * 1024       # larger files keep no previous copy (history caches and the like)
+_repairs = []                          # what load_json recovered, newest last (shown in Settings)
+_repairs_lock = threading.Lock()
+
+
+def prev_path(path):
+    """Where save_json keeps the last good copy of `path`: a hidden file beside it."""
+    folder, name = os.path.split(path)
+    return os.path.join(folder, f".{name}.prev")
+
+
+def repairs():
+    """What was repaired since the server started: [{file, from, at}]."""
+    with _repairs_lock:
+        return list(_repairs)
+
+
+def _note_repair(path, source):
+    entry = {"file": os.path.basename(path), "from": source, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    with _repairs_lock:
+        _repairs.append(entry)
+        del _repairs[:-20]
+    sys.stderr.write(f"  Note: {entry['file']} was damaged and has been repaired from {source}\n")
+
+
+def _write_atomic(path, text):
+    folder = os.path.dirname(path) or "."
+    fd, tmp = tempfile.mkstemp(prefix=".tmp-", suffix=".json", dir=folder)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _recover(path):
+    """A good earlier version of `path`: (data, where it came from), or (None, None)."""
+    try:
+        with open(prev_path(path), "r", encoding="utf-8") as fh:
+            return json.load(fh), "its last good copy"
+    except (OSError, ValueError, UnicodeDecodeError):
+        pass
+    try:
+        import memory                      # safety copies; imported late, it imports this module
+        return memory.recover(path)
+    except Exception:
+        return None, None
+
+
 def load_json(path, default):
-    """The file's contents, or `default` if it is missing or unreadable."""
+    """The file's contents, or `default` if it is missing and nothing can recover it."""
     try:
         with open(path, "r", encoding="utf-8") as fh:
             return json.load(fh)
@@ -66,15 +127,36 @@ def load_json(path, default):
         return default
     except (ValueError, UnicodeDecodeError):
         # json.JSONDecodeError is a ValueError. Keep the damaged file for
-        # inspection, then start over from the defaults.
+        # inspection, then repair it from an earlier good version if there
+        # is one, else start over from the defaults.
         aside = f"{path}.corrupt-{time.strftime('%Y%m%d-%H%M%S')}"
         try:
             os.replace(path, aside)
-            sys.stderr.write(f"  Warning: {os.path.basename(path)} was damaged; "
-                             f"moved it to {os.path.basename(aside)} and started fresh\n")
         except OSError:
             pass
+        data, source = _recover(path)
+        if data is not None:
+            try:
+                _write_atomic(path, json.dumps(data, indent=2))
+            except OSError:
+                pass
+            _note_repair(path, source)
+            return data
+        sys.stderr.write(f"  Warning: {os.path.basename(path)} was damaged and no earlier copy was found; "
+                         f"moved it to {os.path.basename(aside)} and started fresh\n")
         return default
+
+
+def _keep_previous(path):
+    """Copy the current file to its .prev before it is replaced, if it is good JSON."""
+    try:
+        if os.path.getsize(path) > PREV_MAX_BYTES:
+            return
+        with open(path, "r", encoding="utf-8") as fh:
+            json.load(fh)
+        shutil.copyfile(path, prev_path(path))
+    except (OSError, ValueError, UnicodeDecodeError):
+        pass                                 # a damaged or missing current file never replaces a good .prev
 
 
 def save_json(path, data, indent=2):
@@ -87,6 +169,8 @@ def save_json(path, data, indent=2):
             json.dump(data, fh, indent=indent)
             fh.flush()
             os.fsync(fh.fileno())
+        if os.path.exists(path):
+            _keep_previous(path)
         os.replace(tmp, path)
     except BaseException:
         try:

@@ -113,7 +113,7 @@
     } else if (names[step] === 'Your phone') {
       content.innerHTML=`<h2 id="setup-title">Your bench. In your pocket.</h2><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
     } else {
-      content.innerHTML='<h2 id="setup-title">Stay in control of updates.</h2><p>Settings → App updates checks GitHub for a newer release. Automatic checks start off. If you enable them, checks happen at startup, at most once a day.</p><p>Install from the double-click launcher when your printers are idle. The launcher keeps your data and restores the previous files if the new server fails its startup check.</p><p class="field-hint">The public demo cannot update a downloaded copy. Printer firmware updates are a separate feature.</p>';
+      content.innerHTML='<h2 id="setup-title">Stay up to date, without reinstalling.</h2><p>Settings → App updates gets new versions from inside the app. Choose <b>Newest builds</b> to get each improvement as soon as it is published (only changed files download, each checked against GitHub’s record), or <b>Stable releases</b> for fewer, bigger steps. Turn on automatic checks, and if you like, let updates install by themselves while every printer is idle.</p><p>Start Deja Vu1 with its double-click launcher: it swaps the files in, keeps your data, makes a safety copy first and puts the previous version back if the new one fails to start.</p><p class="field-hint">The public demo cannot update a downloaded copy. Printer firmware updates are a separate feature.</p>';
     }
     $('setup-status').textContent='';
     const title=$('setup-title');title.tabIndex=-1;title.focus({preventScroll:true});
@@ -138,25 +138,40 @@
   $('private-delete').onclick=()=>{save(key,'');greeting();toast('Name deleted from this browser','ok');};
   function renderUpdates() {
     const box=$('app-update-status'), check=$('app-update-check'), install=$('app-update-install');
-    if(tourOn()||serverMissing()){box.textContent='Public demo only. Updates belong to the copy running on your computer.';check.disabled=true;$('app-update-auto').disabled=true;install.hidden=true;return;}
+    const git=$('app-update-git');
+    if(tourOn()||serverMissing()){box.textContent='Public demo only. Updates belong to the copy running on your computer.';check.disabled=true;['app-update-auto','app-update-autoinstall'].forEach(i=>{$(i).disabled=true;});document.querySelectorAll('input[name=app-update-channel]').forEach(r=>{r.disabled=true;});install.hidden=true;git.hidden=true;return;}
     if(!info||info.error){box.textContent='App information is unavailable. Check that the server is running.';return;}
-    const latest=info.latest;
-    box.textContent=`Version ${info.version}. ${latest?(latest.error||latest.message):'No update check yet.'}`;
+    const latest=info.latest&&info.latest.channel===info.channel?info.latest:null;
+    const build=info.build&&info.build.commit?` · build ${info.build.commit.slice(0,7)}`:'';
+    const what=latest&&!latest.error&&latest.title?` Newest: “${latest.title}”${latest.date?`, ${new Date(latest.date).toLocaleString([],{dateStyle:'medium',timeStyle:'short'})}`:''}.`:'';
+    box.textContent=`Version ${info.version}${build}. ${latest?(latest.error||latest.message):'No update check yet.'}${what}`;
+    document.querySelectorAll('input[name=app-update-channel]').forEach(r=>{r.checked=r.value===info.channel;});
     $('app-update-auto').checked=!!info.automatic;
+    $('app-update-autoinstall').checked=!!info.auto_install;
+    $('app-update-autoinstall').disabled=!info.automatic;
     install.hidden=!(latest&&latest.installable&&info.install_supported);
-    $('app-update-note').textContent=info.install_supported?'Installing restarts the dashboard. Wait until every real printer is connected and idle.':'To install inside the app, use a downloaded release and its double-click launcher. Development copies are updated with git.';
+    git.hidden=!info.git_checkout;
+    $('app-update-note').textContent=info.install_supported?'Installing restarts the dashboard and reloads this page by itself. It waits while a real printer is printing, paused or out of reach.'
+      :info.git_checkout?'This copy was made with git: “Update with git” fetches the newest commits (only if you have no local code changes) and restarts.'
+      :'To install from inside the app, start Deja Vu1 with its double-click launcher (start-windows.bat, start-mac.command or start-linux.sh). Checks work either way.';
     $('app-update-badge').hidden=!(latest&&latest.available);
   }
   $('app-update-check').onclick=async e=>{
     const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Checking GitHub…';
     try{const r=await postJSON('/api/app/updates/check',{});info=r.body;renderUpdates();}catch(_){$('app-update-status').textContent='Could not check. Try again when your connection is back.';}finally{btn.disabled=false;}
   };
-  $('app-update-auto').onchange=async e=>{
-    const r=await postJSON('/api/app/updates/settings',{automatic:e.target.checked});if(r.ok){info=r.body;renderUpdates();}else{e.target.checked=!e.target.checked;toast(r.body.error||'Could not save that preference','bad');}
-  };
+  const savePref=async(body,undo)=>{const r=await postJSON('/api/app/updates/settings',body);if(r.ok){info=r.body;renderUpdates();}else{undo();toast(r.body.error||'Could not save that preference','bad');}};
+  $('app-update-auto').onchange=e=>savePref({automatic:e.target.checked},()=>{e.target.checked=!e.target.checked;});
+  $('app-update-autoinstall').onchange=e=>savePref({auto_install:e.target.checked},()=>{e.target.checked=!e.target.checked;});
+  document.querySelectorAll('input[name=app-update-channel]').forEach(r=>r.onchange=()=>savePref({channel:r.value},renderUpdates));
+  const restarted=()=>{$('app-update-status').textContent='Restarting into the new version. This page reloads by itself; keep the launcher window open.';if(window.DVWaitForRestart)DVWaitForRestart($('app-update-status'));else setTimeout(()=>location.reload(),8000);};
   $('app-update-install').onclick=async e=>{
-    const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Downloading and checking the release…';
-    try{const r=await postJSON('/api/app/updates/install',{});if(!r.ok)throw new Error(r.body.error);$('app-update-status').textContent='Restarting. Keep the launcher window open. Reload this page when it is ready.';setTimeout(()=>location.reload(),8000);}catch(e){$('app-update-status').textContent=e.message||'The update could not be installed.';btn.disabled=false;}
+    const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Downloading and checking every file…';
+    try{const r=await postJSON('/api/app/updates/install',{});if(!r.ok)throw new Error(r.body.error);restarted();}catch(e){$('app-update-status').textContent=e.message||'The update could not be installed.';btn.disabled=false;}
+  };
+  $('app-update-git').onclick=async e=>{
+    const btn=e.currentTarget;btn.disabled=true;$('app-update-status').textContent='Asking git for the newest commits…';
+    try{const r=await postJSON('/api/app/updates/git',{});if(!r.ok)throw new Error(r.body.error);if(r.body.restarting)restarted();else{$('app-update-status').textContent=r.body.updated?'Updated. Restart Deja Vu1 to use the new version.':'Already up to date.';btn.disabled=false;}}catch(e){$('app-update-status').textContent=e.message||'Git could not update this copy.';btn.disabled=false;}
   };
   // The search box lives in finder.js.
   let cameraRun = 0, cameraURL = null, cameraTimer = null;

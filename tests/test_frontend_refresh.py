@@ -19,7 +19,7 @@ def read(name):
 
 class TestPacmanMaze(unittest.TestCase):
     def setUp(self):
-        src = read("app.js")
+        src = read("games.js")          # the arcade, loaded when the Games tab opens
         body = re.search(r"function newPacmanArcade\(\)\{(.*?)\n\}\n", src, re.S)
         self.assertIsNotNone(body, "newPacmanArcade not found")
         block = re.search(r"const MAP=\[(.*?)\];", body.group(1), re.S)
@@ -115,8 +115,15 @@ class TestPageWiring(unittest.TestCase):
         intros = re.search(r"const TAB_INTROS = \{(.*?)\n\};", read("app.js"), re.S).group(1)
         self.assertEqual(tabs, set(re.findall(r"^\s+([a-z]+):", intros, re.M)))
 
+    def test_games_load_only_when_the_games_tab_opens(self):
+        app_src, page = read("app.js"), read("index.html")
+        self.assertNotIn("games.js", page)                  # not a start-up script
+        self.assertIn("s.src = 'games.js'", app_src)        # fetched by loadGames()
+        self.assertNotIn("function newPacmanArcade", app_src)
+        self.assertIn("initGames();", read("games.js"))
+
     def test_game_timers_go_through_the_frame_clock(self):
-        src = read("app.js")
+        src = read("games.js")
         # The three timer helpers the games use; a plain setInterval there
         # brings back the stutter and refresh-rate speed differences.
         for helper in ("function plusTools", "function gameTools", "function gamesToolsV2"):

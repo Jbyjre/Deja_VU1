@@ -68,7 +68,7 @@ import time
 import uuid
 from collections import deque
 from datetime import datetime
-from urllib.parse import urlencode, urlparse
+from urllib.parse import quote, urlencode, urlparse
 
 import gcode_tools
 import websocket as ws
@@ -590,6 +590,13 @@ def exclude_refusal(state, name):
     return None
 
 
+def refused_words(status, message):
+    """What to do when Moonraker refuses the dashboard itself (no or wrong API key)."""
+    return (f"Moonraker refused the dashboard ({status}: {message or 'Unauthorized'}). Remove this printer and add "
+            "it again with its API key (Fleet -> Add a printer), or add this computer's address "
+            "to [authorization] trusted_clients in moonraker.conf")
+
+
 def placeholder_state(printer_id, name, reason):
     """What a printer that has never answered reports: nothing but the reason."""
     return {"state": "error", "state_message": reason, "current_file": None, "progress": 0.0,
@@ -664,7 +671,7 @@ class HttpTransport:
         return f"Can't reach {ep}: {exc}"
 
     def request(self, method, path, query=None, body=None, raw_body=None, content_type=None,
-                timeout=READ_TIMEOUT, wrapped=True, max_bytes=MAX_RESPONSE, expected=()):
+                timeout=READ_TIMEOUT, wrapped=True, max_bytes=MAX_RESPONSE, expected=(), raw=False):
         """
         One request. Returns the reply's "result" (the whole reply when
         wrapped=False). Raises PrinterUnreachable when there was no whole
@@ -728,6 +735,11 @@ class HttpTransport:
             raise PrinterUnreachable(words) from None
 
         entry.update(status=status, ms=round((time.monotonic() - started) * 1000))
+        if raw and status and status < 400:
+            # A file download: the body is the file itself, not JSON.
+            entry["received"] = f"<{len(data)} bytes>"
+            self._log(entry)
+            return data
         try:
             decoded = json.loads(data.decode("utf-8")) if data else None
         except (UnicodeDecodeError, ValueError):
@@ -745,9 +757,7 @@ class HttpTransport:
             err = decoded.get("error") if isinstance(decoded, dict) else None
             message = clean_error(err.get("message") if isinstance(err, dict) else err)
             if status in (401, 403):
-                words = (f"Moonraker refused the dashboard ({status}: {message}). Remove this printer and add "
-                         "it again with its API key (Fleet -> Add a printer), or add this computer's address "
-                         "to [authorization] trusted_clients in moonraker.conf")
+                words = refused_words(status, message)
             elif status == 404:
                 words = f"Moonraker has no {path} ({message})"
             elif status == 503:
@@ -1244,6 +1254,9 @@ class MoonrakerPrinter:
         if "error" in reply:
             err = reply["error"] if isinstance(reply["error"], dict) else {"message": reply["error"]}
             words = clean_error(err.get("message"))
+            # Over the WebSocket too, a missing or wrong API key says how to fix it.
+            if err.get("code") in (401, 403):
+                words = refused_words(err.get("code"), words)
             entry["error"] = words
             self._record(entry)
             raise PrinterRefused(words)
@@ -1400,6 +1413,22 @@ class MoonrakerPrinter:
             else:
                 self._job = found
         self.on_change(self.id)
+
+    def gcode_version(self, filename):
+        """(size, modified) of a file on the printer, from Moonraker's metadata."""
+        meta = self.http.request("GET", "/server/files/metadata", {"filename": filename})
+        return (meta.get("size"), meta.get("modified")) if isinstance(meta, dict) else (None, None)
+
+    def fetch_gcode(self, filename, max_bytes):
+        """
+        The file itself, as the printer holds it (Moonraker's file download,
+        GET /server/files/gcodes/<name>; docs/external_api/file_manager.md).
+        """
+        name = str(filename or "").strip().lstrip("/")
+        if not name or ".." in name.split("/"):
+            raise ValueError("Choose a file on the printer")
+        return self.http.request("GET", "/server/files/gcodes/" + quote(name), raw=True,
+                                 timeout=120.0, max_bytes=max_bytes)
 
     def _load_history(self):
         jobs, start = [], 0

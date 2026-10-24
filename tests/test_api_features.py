@@ -60,12 +60,12 @@ class FeatureAPI(unittest.TestCase):
         fleet.reset()
         maintenance.reset_all_logs()
 
-    def request(self, path, body=None, raw=None, method=None):
+    def request(self, path, body=None, raw=None, method=None, timeout=10):
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
         req = Request(self.base + path, data=data, method=method or ("POST" if data is not None else "GET"),
                       headers={"Content-Type": "application/json"})
         try:
-            with urlopen(req, timeout=10) as resp:
+            with urlopen(req, timeout=timeout) as resp:
                 content = resp.read()
                 ctype = resp.headers.get("Content-Type", "")
                 return resp.status, (json.loads(content) if "json" in ctype else content)
@@ -166,7 +166,7 @@ class TestHonestControl(FeatureAPI):
         self.assertLess(body["server_ms"], 200)
 
     def test_start_print_goes_through_the_gate(self):
-        self.request("/api/files/samples", {})
+        self.request("/api/files/samples", {}, timeout=60)   # slices every sample: seconds on a slow machine
         self.request("/api/printer/control/cancel?demo=1", {})
         status, body = self.request("/api/printer/control/start?demo=1",
                                     {"filename": "unsafe_example_purge_past_bed.gcode", "confirmed": True})
@@ -204,7 +204,7 @@ class TestFilesAndConversion(FeatureAPI):
         self.assertEqual(self.request("/api/files/upload?name=evil.sh", raw=b"x")[0], 400)
 
     def test_convert_saves_a_u1_project(self):
-        self.request("/api/files/samples", {})
+        self.request("/api/files/samples", {}, timeout=60)   # slices every sample: seconds on a slow machine
         status, body = self.request("/api/convert", {"name": "sample_bambu_studio_layout.3mf"})
         self.assertEqual(status, 200)
         self.assertEqual(body["file"]["name"], "sample_bambu_studio_layout_U1.3mf")
@@ -219,7 +219,7 @@ class TestFilesAndConversion(FeatureAPI):
         self.assertTrue(body["stage"] and body["action"])
 
     def test_convert_moves_every_plate_onto_the_u1_grid(self):
-        self.request("/api/files/samples", {})
+        self.request("/api/files/samples", {}, timeout=60)   # slices every sample: seconds on a slow machine
         status, body = self.request("/api/convert", {"name": "sample_makerworld_three_plates.3mf"})
         self.assertEqual(status, 200)
         self.assertEqual(body["report"]["plates"]["moved"], ["1", "2", "3"])
@@ -232,11 +232,13 @@ class TestAutomationDemoPath(FeatureAPI):
     def test_build_a_rule_heat_the_nozzle_and_watch_it_fire(self):
         status, rule = self.request("/api/automations?demo=1", {"rule": {
             "printer": "u1-workshop",
-            "trigger": {"type": "temperature", "sensor": "T0", "op": "above", "value": 180},
+            # T2: a head the demo's two-colour print never swaps (T0 and T1
+            # go to standby between their turns, as on a real tool changer).
+            "trigger": {"type": "temperature", "sensor": "T2", "op": "above", "value": 180},
             "action": {"type": "pause"}}})
         self.assertEqual(status, 200)
         self.assertTrue(rule["demo"])
-        self.request("/api/printer/control/temperature?demo=1", {"toolhead": "T0", "target": 220})
+        self.request("/api/printer/control/temperature?demo=1", {"toolhead": "T2", "target": 220})
         for n in range(40):                          # let the heater climb, 250 ms at a time
             live_feed.mark_demo_seen()
             live_feed.tick(1.0, n)
@@ -246,7 +248,7 @@ class TestAutomationDemoPath(FeatureAPI):
         log = self.request("/api/automations/log")[1]["log"]
         self.assertEqual(len(log), 1)
         self.assertTrue(log[0]["ok"])
-        self.assertIn("T0 at", log[0]["trigger"])
+        self.assertIn("T2 at", log[0]["trigger"])
         self.assertEqual(self.request("/api/printer?demo=1")[1]["state"], "paused")
         events = [e for e in live_feed.events_since(0) if e["type"] == "automation"]
         self.assertEqual(events[0]["rule_id"], rule["id"])
