@@ -1,7 +1,7 @@
 {
   "name": "Deja Vu1 - U1 Dashboard & Model Preparation",
   "short_name": "Deja Vu1",
-  "description": "Monitor Snapmaker U1 printers, prepare models, slice with an external engine, inspect G-code and recover app data.",
+  "description": "See which U1 needs attention. Prepare plates, inspect layers and review print checks on your own computer. Slicing needs a separate engine.",
   "start_url": "./?dashboard",
   "scope": "./",
   "display": "standalone",
