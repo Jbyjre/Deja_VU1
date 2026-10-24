@@ -9,6 +9,19 @@ the app's version history (Settings → Version & updates, from
 
 Merged after the 0.8.0 release was published; part of the next version.
 
+## Unreleased: install in one paste
+
+- README, getting started and the product page now lead with copy-and-paste
+  install blocks: PowerShell for Windows, Terminal for Mac, Linux and a
+  Raspberry Pi. Each downloads the newest release into Documents, unzips it and
+  starts it; running it again repairs the app and keeps `backend/data/`. A
+  winget line installs Python on Windows. The ZIP download and GitHub Desktop
+  stay as no-code options. The product page has Copy buttons and an Install
+  link in its menu. `tests/test_install_blocks.py` keeps the three copies identical.
+- Tested: the Terminal block on Linux (download, unzip, start; the copy reports
+  itself as an updatable download and keeps saved data when run again). Not run
+  here: the PowerShell block on Windows and the Terminal block on a Mac.
+
 ## Unreleased: campaign art direction and clearer app copy
 
 - Rebuilt the campaign around six distinct compositions: large typography,

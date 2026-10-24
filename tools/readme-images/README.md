@@ -109,7 +109,7 @@ named in text.
 - `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
   earlier setup/studio captures, retained as historical comparisons.
 
-The current boards use the **852-case** suite count (By the numbers re-rendered 24 October 2026, version 0.8.0). The October marketing
+The current boards use the **855-case** suite count (By the numbers re-rendered 24 October 2026, version 0.8.0). The October marketing
 refresh recaptures the main editorial images and supplies a separate campaign
 pack. Versioned films and historical engine screenshots keep their original
 provenance; the library index identifies what is current.

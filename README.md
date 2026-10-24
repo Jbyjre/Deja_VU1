@@ -14,6 +14,9 @@ separately installed compatible engine.
 **Current version: 0.8.0** ([what's new](#whats-new-in-080) · [every version](CHANGELOG.md)).
 The app shows the same number in its header and in **Settings → Version & updates**.
 
+**Install in one paste** on [Windows](#windows-paste-into-powershell) or
+[Mac](#mac-paste-into-terminal), or use a [no-code option](#no-code-two-other-ways).
+
 > **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
 > one and can spare 30 to 45 minutes, help run its first real connection. It's
 > watch-only: you watch a print you're already running, and nothing is started
@@ -72,26 +75,81 @@ versions are in [`marketing-library/07-videos/`](marketing-library/07-videos/).<
 
 ## Install
 
-You need **Python 3.8 or newer** ([python.org](https://www.python.org/downloads/)).
-On Windows, tick **Add python.exe to PATH** in the installer.
+**The fastest way: paste a few lines.** Copy the block for your computer, paste
+it, and press Enter. It downloads the newest release into your Documents folder
+and starts it, in under a minute. Run the same block again any time to repair
+the app; your settings and files stay put.
 
-Then pick how you get the files. Both update from inside the app.
+### Windows: paste into PowerShell
 
-| | GitHub Desktop or git | A ZIP download |
+1. Open **PowerShell**: press the Windows key, type `PowerShell`, press Enter.
+2. **No Python yet?** Paste this line first, wait for it to finish, then close
+   PowerShell and open it again:
+
+   ```powershell
+   winget install -e --id Python.Python.3.12
+   ```
+
+3. Paste this block and press Enter:
+
+   ```powershell
+   $ProgressPreference = 'SilentlyContinue'
+   $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+   Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
+   Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
+   Start-Process "$dest\start-windows.bat"
+   ```
+
+A black window opens (that's the launcher) and your browser opens the dashboard.
+Keep the black window open. Next time, double-click `start-windows.bat` in
+**Documents → Deja_VU1**.
+
+### Mac: paste into Terminal
+
+1. Open **Terminal**: press Cmd + Space, type `Terminal`, press Enter.
+2. Paste this block and press Enter:
+
+   ```bash
+   curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+   python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+   cd ~/Documents/Deja_VU1 && python3 start.py
+   ```
+
+If your Mac says the `python3` command needs the command line developer tools,
+click **Install**, wait for it to finish, then paste the block again. That is
+how macOS adds Python. Keep the Terminal window open while you use Deja Vu1.
+Next time, double-click `start-mac.command` in **Documents → Deja_VU1**.
+
+The same block works on **Linux and a Raspberry Pi**.
+
+### No code? Two other ways
+
+Both need Python 3.8 or newer first: get it from
+[python.org](https://www.python.org/downloads/). On Windows, tick **Add python.exe
+to PATH** in the installer.
+
+- **Download a ZIP.** On the [newest release](https://github.com/Jbyjre/Deja_VU1/releases/latest),
+  click **deja-vu1-update.zip** (or **Source code (zip)**). Right-click the
+  download, choose **Extract All** (Windows) or double-click it (Mac), and move
+  the folder into Documents. Then double-click `start-windows.bat` or
+  `start-mac.command`. If macOS says it can't check the file, open **System
+  Settings → Privacy & Security** and choose **Open Anyway**.
+- **GitHub Desktop.** Choose **File → Clone repository → URL**, paste
+  `https://github.com/Jbyjre/Deja_VU1` and press **Clone**. Then **Repository →
+  Show in Explorer** (Finder on a Mac) and double-click the launcher.
+
+Developers can `git clone https://github.com/Jbyjre/Deja_VU1.git` and run
+`python3 start.py`.
+
+| How you installed | Updates follow | Best for |
 |---|---|---|
-| Get it | GitHub Desktop: **File → Clone repository → URL**, paste `https://github.com/Jbyjre/Deja_VU1`, **Clone**. Or in a terminal: `git clone https://github.com/Jbyjre/Deja_VU1.git` | The [newest release](https://github.com/Jbyjre/Deja_VU1/releases/latest) → **Source code (zip)**, or **Code → Download ZIP** on this page. Extract it into your Documents folder |
-| Updates follow | Every change merged into `main` | Each published release |
-| Best for | Getting fixes the day they land | Fewer, tested steps |
+| Pasted block or ZIP | Each published release (or, if you choose it in Settings, the newest build) | Most people |
+| GitHub Desktop or git | Every change merged into `main` | Getting fixes the day they land |
 
-**Start it:** double-click `start-windows.bat` (Windows), `start-mac.command`
-(Mac) or `start-linux.sh` (Linux). If macOS says it can't check the file, open
-**System Settings → Privacy & Security** and choose **Open Anyway**. Or open a
-terminal in the folder and run `python3 start.py`.
-
-Your browser opens the dashboard and setup begins. Setup lets you pick a look,
-connect your printer, take a tour of every screen, set up your phone and the
-desktop app, and turn on automatic update checks. Step-by-step help, with
-firewall and phone details: [getting started](docs/getting-started.md).
+All of them update from inside the app, in **Settings → Version & updates**.
+When the dashboard opens, setup begins: pick a look, connect your printer, take
+a tour of every screen, set up your phone and the desktop app, and turn on
+automatic update checks. Firewall and phone details: [getting started](docs/getting-started.md).
 
 ### The desktop app
 
@@ -194,6 +252,8 @@ older **App updates** section can also try **Check for updates** there.
 
 **Since 0.8.0** (on `main`, in the next release):
 
+- **Install in one paste:** copy one block into PowerShell (Windows) or Terminal
+  (Mac, Linux) and Deja Vu1 downloads and starts. See [Install](#install).
 - **A clearer first look:** current screenshots, art-directed share cards and shorter
   descriptions show the fleet, preparation workspace and print checks. Demo data,
   engine estimates and unverified hardware are labelled where they appear.
@@ -500,11 +560,12 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **852 tests in 473.0 seconds** on Python
-3.13.17/Linux, with app/demo servers stopped (24 October 2026, version 0.8.0: the print
+The latest clean full suite passed **855 tests in 473.3 seconds** on Python
+3.13.17/Linux, with app/demo servers stopped (24 October 2026: version 0.8.0's print
 preview, insights, safety copies, Orca import, device lock, self-check, git-copy updates,
-the desktop window choice and the version history). Before that: 783 tests in 428.9
-seconds, and 771 tests in 147.9 seconds.
+desktop window choice and version history, plus the install-block check added after it).
+Before that: 852 tests in 473.0 seconds, 783 tests in 428.9 seconds, and 771 tests in
+147.9 seconds.
 The run before it, for the slicing workspace, passed 759 tests in 128.765 seconds. PR #45 also passed GitHub Actions
 and was [merged](https://github.com/Jbyjre/Deja_VU1/pull/45). A follow-up targeted
 check passed 36 tests. Chromium checks at 1366/390 px covered editing, stable
@@ -561,7 +622,7 @@ and [release requirements](docs/releasing.md).
 
 ## Tech stack
 
-![By the numbers: 852 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 855 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -571,7 +632,7 @@ and [release requirements](docs/releasing.md).
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 852 cases
+- **Tests:** `unittest` from the standard library, 855 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -814,7 +875,7 @@ python3 backend/color_check.py
 Stop app/demo servers before the full suite:
 
 ```bash
-python3 -m unittest discover tests          # all 852, about eight minutes
+python3 -m unittest discover tests          # all 855, about eight minutes
 python3 -m unittest tests.test_api          # one file
 ```
 

@@ -19,8 +19,10 @@ def notes(version):
     lines += [f'- {change}' for change in entry['changes']]
     lines += ['', '### Install or update', '',
               '- **Already running Deja Vu1?** Open Settings → Version & updates → Check for updates.',
-              '- **New here?** Download `deja-vu1-update.zip` below (or the source code ZIP), extract it, '
-              'and double-click the launcher for your computer. Step by step: '
+              '- **New here?** Paste one block into PowerShell (Windows) or Terminal (Mac, Linux): '
+              '[install in one paste](https://github.com/Jbyjre/Deja_VU1#install). '
+              'No code: download `deja-vu1-update.zip` below, extract it, and double-click the launcher for '
+              'your computer. Step by step: '
               '[getting started](https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md).',
               '- **Try it first:** the [online demo](https://deja-vu1.jmath1110.workers.dev/?demo) needs no install.',
               '', 'In the app, Settings → Version & updates shows this version and can take you on a tour of it.']

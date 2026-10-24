@@ -27,7 +27,7 @@ Current share images and their captions: [09-current-campaign](09-current-campai
 | Topic | Supported wording | Avoid |
 |---|---|---|
 | Printer status | Reported state, shared through a 250 ms server loop; freshness varies | Guaranteed four updates per second from every printer |
-| Test evidence | Current suite: 852 cases; see validation for the latest run | Treating software tests as real-printer certification |
+| Test evidence | Current suite: 855 cases; see validation for the latest run | Treating software tests as real-printer certification |
 | Print checks | Blocking errors refuse; warnings need acknowledgement | Safe-print guarantees or automatic success |
 | Filament | Compare available reported material and colour; unknown stays unknown | Claiming an optical sensor measures the loaded spool today |
 | Slicing | A separately installed compatible engine produces G-code | A bundled slicer or guaranteed support for every engine |

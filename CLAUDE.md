@@ -50,6 +50,11 @@ trust the code and fix this file.
 - Default: commit finished work on a branch, open a PR, and merge it with one
   merge commit (the repo's convention) when there are no conflicts and checks
   are green or absent. Don't wait on pending CI. Never force-push.
+- Install (the owner, 24 October 2026): the copy-and-paste blocks (PowerShell for
+  Windows, Terminal for Mac/Linux) are the main install method in README, getting
+  started and welcome.html; ZIP and GitHub Desktop are the no-code options. The
+  blocks use `releases/latest/download/deja-vu1-update.zip`; keep all copies
+  identical (`tests/test_install_blocks.py`).
 - Versions (the owner, 24 October 2026): `VERSION`, the top entry of
   `frontend/versions.json` and a `## <version> (<date>): <name>` heading in
   CHANGELOG.md must agree (`tests/test_versions.py`). Merging a new stable

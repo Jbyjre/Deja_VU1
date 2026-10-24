@@ -268,6 +268,12 @@ section.band { padding: clamp(72px, 10vw, 132px) 0 0; }
 .flow-join i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); white-space: nowrap; font: 500 12px/1 var(--mono); font-style: normal; color: var(--ink-faint); }
 .flow-core { display: grid; gap: 4px; text-align: center; padding: 16px 24px; border-radius: 20px; max-width: 460px; background: color-mix(in oklch, var(--accent) 12%, white); border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent); }
 .flow-core span { color: var(--ink-dim); font-size: 14px; }
+.installs { display: grid; gap: 14px; min-width: 0; }
+.installs .terminal { min-width: 0; }
+.install-lead { color: var(--ink); font-size: 17px; }
+.install-note { color: var(--ink-dim); font-size: 14.5px; margin-top: -4px; }
+.install-note code { font: 500 .9em var(--mono); background: oklch(100% 0 0 / .7); padding: 1px 6px; border-radius: 6px; border: 1px solid var(--hair); overflow-wrap: anywhere; }
+.installs .terminal pre { font-size: 13px; line-height: 1.7; }
 .run { margin-top: 40px; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
 .terminal {
   border-radius: var(--radius); overflow: hidden;
@@ -368,7 +374,7 @@ footer p { max-width: 70ch; }
       <li><a href="#problems">Why</a></li>
       <li><a href="#inside">What's inside</a></li>
       <li><a href="#honest">Status</a></li>
-      <li><a href="#run">Run it</a></li>
+      <li><a href="#install">Install</a></li>
       <li><a href="./?demo">Demo</a></li>
     </ul>
   </nav>
@@ -390,7 +396,7 @@ footer p { max-width: 70ch; }
     <div class="hero-cta rise d3">
       <a class="btn primary" href="./?demo">Try the demo</a>
       <a class="btn" href="#film">Watch the film · 60 s</a>
-      <a class="btn" href="#run">Run it at home</a>
+      <a class="btn" href="#install">Install in one paste</a>
       <a class="btn" href="https://github.com/Jbyjre/Deja_VU1">Read the code</a>
       <span class="hero-note">No app account · Python 3.8+ · separate engine for slicing</span>
     </div>
@@ -569,19 +575,28 @@ footer p { max-width: 70ch; }
       <p class="eyebrow">Run it</p>
       <h2 id="run-title">Your computer runs it.<br>Your phone opens it.</h2>
       <div class="run">
-        <div class="terminal">
-          <div class="term-bar"><span>How it works</span></div>
-          <pre><code>Your phone browser
-        │ home Wi-Fi
-        ▼
-Your computer · Deja Vu1
-        │ home network
-        ▼
-Your U1 printer</code></pre>
-          <p style="padding:0 20px 20px">This public website plays a demo recording. It cannot control your printer. Real readings need your own running copy.</p>
+        <div class="installs" id="install">
+          <p class="install-lead"><b>Install in one paste.</b> Copy the block for your computer, paste it and press Enter. It downloads the newest release into Documents and starts it.</p>
+          <div class="terminal">
+            <div class="term-bar"><span>Windows · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Start-Process &quot;$dest\start-windows.bat&quot;">Copy</button></div>
+            <pre><code>$ProgressPreference = 'SilentlyContinue'
+$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
+Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
+Start-Process "$dest\start-windows.bat"</code></pre>
+          </div>
+          <p class="install-note">No Python yet? Paste <code>winget install -e --id Python.Python.3.12</code> into PowerShell first, then close and reopen it.</p>
+          <div class="terminal">
+            <div class="term-bar"><span>Mac, Linux, Raspberry Pi · paste into Terminal</span><button class="copy" type="button" data-copy="curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py">Copy</button></div>
+            <pre><code>curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre>
+          </div>
+          <p class="install-note">If a Mac asks to install the command line developer tools, click Install, then paste the block again: that is how macOS adds Python.</p>
+          <p class="install-note"><b>No code?</b> Install <a href="https://www.python.org/downloads/">Python 3.8+</a>, download the <a href="https://github.com/Jbyjre/Deja_VU1/releases/latest">newest release ZIP</a> (or clone it with GitHub Desktop), and double-click the launcher. This website plays a demo recording; real readings need your own running copy.</p>
         </div>
         <ol class="steps">
-          <li><b>On your computer.</b> Install Python 3.8+. Get Deja Vu1 with GitHub Desktop (clone the repository) or as a ZIP from GitHub. Double-click the Windows, Mac or Linux launcher. Keep that window open and the computer awake.</li>
+          <li><b>On your computer.</b> Paste the block for your computer, or use a no-code option: Python 3.8+, then the release ZIP or GitHub Desktop, then double-click the launcher. Keep its window open and the computer awake.</li>
           <li><b>Connect your printer.</b> Open Set up &amp; help, choose Connect my printer, then Find printers or enter its address. Test and connect. Keep Demo data off for real readings.</li>
           <li><b>On your phone at home.</b> Use the same Wi-Fi and open the computer’s “From a phone” address from the launcher, such as <code>http://192.168.1.20:8000</code>. Pairing is optional, not a login.</li>
           <li><b>Keep it on your home screen.</b> Safari → Share → Add to Home Screen, or Chrome’s menu → Add to Home screen. HTTP may offer only a shortcut; secure HTTPS enables full installation and the offline explanation. Offline never means live readings.</li>
@@ -614,7 +629,7 @@ Your U1 printer</code></pre>
 
 <script>
 /* The glass highlight follows the pointer (skipped when reduced motion is on),
-   and the Copy button copies the three commands. That's all the script does. */
+   and each Copy button copies its install block. That's all the script does. */
 (() => {
   const glass = [...document.querySelectorAll('.glass')];
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
