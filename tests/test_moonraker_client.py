@@ -347,6 +347,11 @@ class TestCommands(WireTest):
         self.fake.begin_print(name)
         self.assertTrue(wait_for(lambda: self.printer.snapshot()["state"] == "printing"))
 
+    def test_clear_error_sends_a_firmware_restart(self):
+        self.wait_connected()
+        self.printer.clear_error()
+        self.assertIn(("POST", "/printer/firmware_restart"), self.fake.requests)
+
     def test_pause_resume_cancel_are_read_back(self):
         self.printing()
         self.assertEqual(self.printer.pause_print()["state"], "paused")
@@ -579,6 +584,8 @@ class TestFailuresInWords(unittest.TestCase):
         printer.start()
         self.addCleanup(printer.stop)
         self.assertTrue(wait_for(lambda: "Unauthorized" in (printer.diagnostics()["last_error"] or "")))
+        # ... and says what to do about it, not just "Unauthorized".
+        self.assertIn("API key", printer.diagnostics()["last_error"])
         self.assertFalse(printer.is_connected())
         keyed = mc.MoonrakerPrinter("q", "Keyed", self.fake.url, api_key="secret")
         keyed.start()

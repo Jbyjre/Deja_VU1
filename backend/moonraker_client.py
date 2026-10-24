@@ -590,6 +590,13 @@ def exclude_refusal(state, name):
     return None
 
 
+def refused_words(status, message):
+    """What to do when Moonraker refuses the dashboard itself (no or wrong API key)."""
+    return (f"Moonraker refused the dashboard ({status}: {message or 'Unauthorized'}). Remove this printer and add "
+            "it again with its API key (Fleet -> Add a printer), or add this computer's address "
+            "to [authorization] trusted_clients in moonraker.conf")
+
+
 def placeholder_state(printer_id, name, reason):
     """What a printer that has never answered reports: nothing but the reason."""
     return {"state": "error", "state_message": reason, "current_file": None, "progress": 0.0,
@@ -750,9 +757,7 @@ class HttpTransport:
             err = decoded.get("error") if isinstance(decoded, dict) else None
             message = clean_error(err.get("message") if isinstance(err, dict) else err)
             if status in (401, 403):
-                words = (f"Moonraker refused the dashboard ({status}: {message}). Remove this printer and add "
-                         "it again with its API key (Fleet -> Add a printer), or add this computer's address "
-                         "to [authorization] trusted_clients in moonraker.conf")
+                words = refused_words(status, message)
             elif status == 404:
                 words = f"Moonraker has no {path} ({message})"
             elif status == 503:
@@ -1249,6 +1254,9 @@ class MoonrakerPrinter:
         if "error" in reply:
             err = reply["error"] if isinstance(reply["error"], dict) else {"message": reply["error"]}
             words = clean_error(err.get("message"))
+            # Over the WebSocket too, a missing or wrong API key says how to fix it.
+            if err.get("code") in (401, 403):
+                words = refused_words(err.get("code"), words)
             entry["error"] = words
             self._record(entry)
             raise PrinterRefused(words)

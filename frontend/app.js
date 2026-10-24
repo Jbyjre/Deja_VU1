@@ -369,6 +369,12 @@ async function tourControl(action, pid, body) {
     tourLog(pid, 'CANCEL_PRINT'); tourLog(pid, '// Print cancelled (online demo)');
     return tourDone(pid);
   }
+  if (action === 'restart') {
+    if (live.state !== 'error') return tourReply({ error: "The printer isn't reporting an error, so there is nothing to restart for" }, 400);
+    Object.assign(sim, { mode: 'ready', frozen: null, file: null, message: 'Firmware restarted (online demo)' });
+    tourLog(pid, 'FIRMWARE_RESTART'); tourLog(pid, '// Firmware restarted (online demo)');
+    return tourDone(pid);
+  }
   if (action === 'exclude') {
     const name = String(body.name || '');
     const objs = live.objects && live.objects.list || [];
@@ -1560,7 +1566,19 @@ function renderOverviewControl(state) {
       <div style="display:flex; gap:8px;">
         <button class="btn primary" id="ov-pause-resume" style="flex:1;">Pause</button>
         <button class="btn danger" id="ov-cancel" style="flex:1;">Cancel</button>
+      </div>
+      <div class="ov-restart" id="ov-restart-row" hidden>
+        <p class="field-hint" id="ov-error"></p>
+        <button class="btn" id="ov-restart" type="button">Restart firmware to clear the error</button>
       </div>`;
+  }
+  // A printer stopped with an error recovers with Klipper's firmware restart,
+  // offered only then (a restart at any other time would end a print).
+  const errored = state.state === 'error';
+  $('ov-restart-row').hidden = !errored;
+  if (errored) {
+    setText($('ov-error'), state.state_message ? `Stopped: ${state.state_message}. Fix the cause first, then restart.` : 'The printer stopped with an error.');
+    $('ov-restart').onclick = () => { if (confirm('Restart the printer\'s firmware (FIRMWARE_RESTART)? Do it once the cause of the error is fixed.')) controlAction('restart', $('ov-restart')); };
   }
   const running = state.state === 'printing' || state.state === 'paused';
   setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Idle');
@@ -1581,6 +1599,7 @@ const CONTROL_LABELS = {
   pause: { sending: 'Pausing…', done: 'Paused', failed: 'Pause failed', expect: s => s.state === 'paused' },
   resume: { sending: 'Resuming…', done: 'Resumed', failed: 'Resume failed', expect: s => s.state === 'printing' },
   cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state === 'ready' },
+  restart: { sending: 'Restarting…', done: 'Firmware restarted', failed: 'Restart failed', expect: s => s.state !== 'error' },
 };
 
 async function controlAction(action, button) {

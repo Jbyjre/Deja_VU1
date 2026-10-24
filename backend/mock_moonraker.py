@@ -1195,6 +1195,9 @@ def inject_heater_fault(toolhead=None):
         th = toolhead or printer.live["active_toolhead"] or "T0"
         if th not in TOOLHEADS:
             raise ValueError(f"Unknown toolhead: {th}")
+        # The faulty head is marked, as a jam marks its head, so its dock ring
+        # shows the fault instead of "ready" once the head is put away.
+        printer.live["toolheads"][th]["status"] = "error"
         # Klipper's own wording (klippy/extras/verify_heater.py).
         _stop_with_error(printer, f"Heater {th} not heating at expected rate")
         return printer.snapshot()
@@ -1242,7 +1245,9 @@ def load_filament(toolhead, color_index):
 
 def clear_error():
     """FIRMWARE_RESTART: an errored printer comes back idle; dock errors clear."""
-    printer = _sim()
+    printer = _current()
+    if printer.real:
+        return printer.clear_error()
     with printer.lock:
         printer.check_link("restart")
         live = printer.live

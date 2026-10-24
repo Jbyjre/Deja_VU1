@@ -474,6 +474,7 @@ _CONTROL_ACTIONS = {
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
     "/api/printer/control/gcode": lambda body: printer_control.send_gcode(body.get("command")),
+    "/api/printer/control/restart": lambda body: printer_control.clear_error(),
 }
 
 # POST routes that act on a printer's queue - gated like the data routes.
