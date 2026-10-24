@@ -1,7 +1,7 @@
-/* Deja Vu1 - memory and history.
+/* Deja Vu1 - memory, history and proof.
  *
- * Three small panels that help the dashboard remember and pick up where you
- * are:
+ * Small panels that help the dashboard remember, pick up where you are and
+ * show its work:
  *   - Overview, "What your history says": findings from the printer's own
  *     print history (backend/insights.py), each with what it is based on.
  *   - Settings, "Your data is safe": the safety copies backend/memory.py
@@ -9,6 +9,8 @@
  *   - Files, "Pick up where you left off": presets and recent projects
  *     found in Snapmaker Orca or OrcaSlicer on this computer
  *     (backend/orca_import.py), brought in with a click.
+ *   - Settings, "About Deja Vu1": what it adds, credits, and "Check it
+ *     yourself" (backend/selfcheck.py), real checks run in this copy.
  */
 'use strict';
 (() => {
@@ -93,6 +95,26 @@
     });
     window.addEventListener('dv-tab', e => { if (e.detail === 'modules') loadMemory(); });
     loadMemory();
+  }
+
+  /* ---- Settings: about, and check it yourself ------------------------------ */
+  const about = $('about-card');
+  if (about) {
+    getJSON('/api/app/info').then(info => {
+      if (info && info.version) $('about-version').textContent = `Version ${info.version}${info.build && info.build.commit ? ` · build ${info.build.commit.slice(0, 7)}` : ''} · MIT licence · a dashboard and print-preparation workspace for the Snapmaker U1.`;
+    }).catch(() => {});
+    $('selfcheck-run').onclick = async e => {
+      const b = e.currentTarget, list = $('selfcheck-list');
+      b.disabled = true; list.hidden = false;
+      paint(list, '<li class="sc-wait">Running the checks…</li>');
+      const r = await postJSON('/api/app/selfcheck', {}).catch(() => null);
+      b.disabled = false;
+      if (!r || !r.ok) { paint(list, `<li class="sc-wait">${esc((r && r.body && r.body.error) || 'The checks run in the copy of Deja Vu1 on your computer.')}</li>`); return; }
+      const d = r.body;
+      paint(list, d.results.map(x => `<li class="sc ${x.passed ? 'is-pass' : 'is-fail'}"><span class="sc-mark" aria-hidden="true">${x.passed ? '✓' : '✗'}</span>
+          <div><b>${esc(x.name)}</b> <span class="sr-only">${x.passed ? 'passed' : 'failed'}</span><p>${esc(x.what)}. ${esc(x.detail)}.</p></div></li>`).join('')
+        + `<li class="sc-sum">${d.passed} of ${d.total} passed in ${(d.ms / 1000).toFixed(1)} s on version ${esc(d.version)}. ${esc(d.full_suite)}.</li>`);
+    };
   }
 
   /* After an update or restore the server restarts: wait for the new one, then reload. */

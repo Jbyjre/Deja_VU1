@@ -911,6 +911,23 @@
       <p class="field-hint">Checks send no name or printer details. GitHub sees your connection's network address. Your data folder is never part of an update, and a safety copy is made first.</p>
       <p class="field-hint" id="app-update-note"></p>
     </section>
+    <section class="card liquid-glass about-card" id="about-card">
+      <div class="card-head"><div><h2>About Deja Vu1</h2><p class="card-sub" id="about-version">A dashboard and print-preparation workspace for the Snapmaker U1.</p></div>
+        <button class="btn primary" type="button" id="selfcheck-run">Check it yourself</button></div>
+      <p class="about-what"><b>What it adds.</b> One screen for every U1 you run, over your own network: a live 3D twin that grows the print in its real colours, a check of every move in a file before it prints, a start button the server refuses when something is wrong, a converter for Bambu Studio and MakerWorld projects, a plate editor, layer heights per head, maintenance with a logbook, insights from your print history, and safety copies of everything it remembers. It talks to the printer through Moonraker's published interface and slices with the Orca engine you install.</p>
+      <p class="field-hint">Every claim here is meant to be checkable. <b>Check it yourself</b> runs real checks inside this copy in a few seconds; nothing is sent anywhere and no printer is contacted. The status of each feature, including what hasn't been tried on a physical U1 yet, is in the README.</p>
+      <ol class="selfcheck" id="selfcheck-list" hidden></ol>
+      <details class="about-credits"><summary>Built with and on</summary>
+        <ul>
+          <li><b>Moonraker</b> and <b>Klipper</b> (GPL-3.0), and Snapmaker's U1 builds of them: talked to through Moonraker's published interface. The client and the test stand-in were written from reading their source; no code was copied.</li>
+          <li><b>OrcaSlicer</b> and <b>Snapmaker Orca</b> (AGPL-3.0): the slicing engine you install yourself; nothing is bundled. U1 facts were read from their profiles and source.</li>
+          <li><b>3DBenchy</b> by Creative Tools: public domain (CC0); the sample prints are cut from it.</li>
+          <li>Fonts: <b>Bricolage Grotesque</b>, <b>Instrument Sans</b>, <b>IBM Plex Mono</b> (SIL Open Font License).</li>
+          <li>Snapmaker and U1 are Snapmaker's names. Deja Vu1 is independent and not made or endorsed by Snapmaker. It is written with the help of an AI coding assistant, from its owner's direction.</li>
+        </ul>
+        <p class="field-hint">The same list, with licences, is in CREDITS.md. Deja Vu1 itself is MIT licensed.</p>
+      </details>
+    </section>
     <section class="card liquid-glass memory-card" id="memory-card">
       <div class="card-head"><div><h2>Your data is safe</h2><p class="card-sub">Deja Vu1 keeps safety copies of everything it remembers (printers, spools, maintenance, the logbook, rules, queues and profiles) on this computer: every 6 hours, at start-up and before every update. If a file is ever damaged, it is repaired from them by itself.</p></div>
         <button class="btn" type="button" id="mem-now">Make a safety copy now</button></div>

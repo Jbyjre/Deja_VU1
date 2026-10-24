@@ -80,6 +80,7 @@ API endpoints
   GET  /api/insights                 findings from the printer's own print history
   GET  /api/app/memory               safety copies of the dashboard's records; repairs made
   POST /api/app/memory/snapshot      make a safety copy now
+  POST /api/app/selfcheck            "Check it yourself": real checks run in this copy
   POST /api/app/memory/restore       {"id", "file"?} write a safety copy back, then restart
   GET  /api/import/orca              presets and recent projects found in Orca on this computer
   POST /api/import/orca/projects     {"ids"} copy recent projects into Files
@@ -262,6 +263,7 @@ import print_preview
 import insights
 import memory
 import orca_import
+import selfcheck
 import print_queue
 import printer_control
 import sandbox
@@ -1011,6 +1013,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             self._read_json_body()
             result = _install_update(self.server)
             return self._send_json(result)
+        if route == "/api/app/selfcheck":
+            self._read_json_body()
+            return self._send_json(selfcheck.run())
         if route == "/api/app/memory/snapshot":
             self._read_json_body()
             return self._send_json(memory.snapshot("manual"))

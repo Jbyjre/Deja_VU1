@@ -978,3 +978,17 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
 .pair-gate input { min-height: 44px; font-size: 18px; }
 #pair-gate-code { font: 600 24px/1 var(--font-mono); letter-spacing: .3em; text-align: center; }
 @media (prefers-reduced-transparency: reduce) { .pair-gate::backdrop { backdrop-filter: none; background: rgba(20, 24, 32, .7); } }
+
+/* About Deja Vu1 and "Check it yourself" (insights.js, backend/selfcheck.py). */
+.about-what { font-size: 14px; line-height: 1.55; color: var(--text-dim); max-width: 90ch; text-wrap: pretty; }
+.about-what b { color: var(--text); }
+.selfcheck { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 6px; }
+.selfcheck .sc { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .06); }
+.selfcheck .sc p { margin: 3px 0 0; font-size: 13px; line-height: 1.45; color: var(--text-dim); }
+.sc-mark { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; background: var(--ok, #2f9e44); }
+.sc.is-fail .sc-mark { background: var(--bad, #c8102e); }
+.sc.is-fail b { color: var(--bad-text, #b3261e); }
+.sc-sum, .sc-wait { font-size: 13px; color: var(--text-dim); padding: 6px 2px; }
+.about-credits { margin-top: 12px; }
+.about-credits summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
+.about-credits ul { margin: 8px 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }

@@ -46,7 +46,7 @@ _last = None
 _busy = False
 ROOT_FILES = {'VERSION', 'start.py', 'start-windows.bat', 'start-mac.command',
               'start-linux.sh', 'README.md', 'CHANGELOG.md', 'CLAUDE.md', 'LICENSE',
-              'SECURITY.md', 'CONTRIBUTING.md', 'BUILD.json'}
+              'SECURITY.md', 'CONTRIBUTING.md', 'CREDITS.md', 'BUILD.json'}
 
 
 def version(root=ROOT):
