@@ -2,6 +2,57 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.9.0",
+      "date": "2026-10-25",
+      "name": "Updates that install every time",
+      "published": true,
+      "summary": "The Install button works again, every merge on GitHub now becomes a release, and you can update with one pasted command. Settings can restart, repair or stop this copy, your phone connects by QR code, and every card explains itself.",
+      "highlights": [
+        {
+          "title": "Install works",
+          "tab": "modules",
+          "target": "#app-update-check",
+          "text": "0.8.0's Install button crashed before it downloaded anything. Now Check for updates, then Install, and Deja Vu1 restarts into the new version.",
+          "try": "Check for updates now"
+        },
+        {
+          "title": "A release with every merge",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every change merged on GitHub becomes a new numbered version, listed here. Updates arrive small and often."
+        },
+        {
+          "title": "Look after this copy",
+          "tab": "modules",
+          "target": "#vc-manage",
+          "text": "Restart the dashboard, put the published app files back, make a safety copy, or stop Deja Vu1. Your data stays put."
+        },
+        {
+          "title": "Update with a command",
+          "tab": "modules",
+          "target": "#vc-cmd",
+          "text": "Another way in: one paste for Windows or Mac and Linux stops Deja Vu1, installs the newest release and starts it again."
+        },
+        {
+          "title": "Your phone, by QR code",
+          "tab": "overview",
+          "target": "#overview-pair-btn",
+          "text": "Connect your phone shows a code. Point the phone's camera at it and the dashboard opens and pairs by itself."
+        }
+      ],
+      "changes": [
+        "Fixed: 0.8.0's Install button crashed in its slicing check before downloading anything. A failing check no longer blocks the update that fixes it.",
+        "Every merge to main publishes a numbered release by itself; automatic checks look for releases every hour.",
+        "Update with a command: one paste for PowerShell or Terminal, in Settings, the README, the guide and the product page.",
+        "Settings → Version & updates can Restart, Repair files, make a Safety copy now and Stop Deja Vu1.",
+        "Starting a second launcher opens the copy that is already running.",
+        "Shorter About and update text.",
+        "Your phone connects by scanning a QR code, and the typed address shows its colon.",
+        "Help on every card, a nine-stop quick tour, and Demo printer 1, 2 and 3.",
+        "Install in one paste, clearer screenshots and share cards."
+      ]
+    },
+    {
       "version": "0.8.0",
       "date": "2026-10-24",
       "name": "Updates that find you",

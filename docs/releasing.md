@@ -13,34 +13,55 @@ part of this release work.
 
 ## Publishing a version
 
-Releases publish by themselves. `.github/workflows/release.yml` runs on every
-push to `main` that changes `VERSION` or `frontend/versions.json`. When
-`VERSION` holds a stable number with no release yet, it runs the test suite,
-builds `deja-vu1-update.zip` with `tools/package-update.py`, writes the notes
-with `tools/release-notes.py` and publishes release `v<VERSION>`, marked latest.
-A `-dev` version, or one already released, publishes nothing.
+Every merge to `main` publishes a release (`.github/workflows/release.yml`), so
+updates come small and often.
 
-1. Test the change on Linux, Windows and macOS with disposable saved data where
-   you can. Run the full suite and the phone/real-printer checks. Keep claims honest.
-2. Raise `VERSION`. Add the version's entry at the top of `frontend/versions.json`:
-   name, date, summary, `highlights` (each one a stop on the version's in-app
-   tour, pointing at a real element) and `changes`. Add a
-   `## <version> (<date>): <name>` heading to `CHANGELOG.md`.
-   `tests/test_versions.py` fails if `VERSION`, the history, the changelog or
-   the release notes disagree, or if a tour stop points at nothing.
-3. Merge to `main`. Check the workflow run and the new release. GitHub records a
-   SHA-256 `digest` for each uploaded asset (a fingerprint of the bytes); the app
-   refuses an asset without one.
-   [GitHub release-asset API](https://docs.github.com/en/rest/releases/assets#get-a-release-asset).
-4. From a disposable older installation, check and install it using the UI.
-   Verify the new version, preserved data and startup.
+- If the merge raised `VERSION` to a stable number with no release yet, that
+  number is published.
+- Otherwise `tools/next-release.py` numbers the next patch release (0.9.0 ->
+  0.9.1): it writes `VERSION`, a new entry at the top of
+  `frontend/versions.json` (the merged pull request titles as its changes, one
+  tour stop at the version history) and a `CHANGELOG.md` heading, then the
+  workflow commits that as `Release <version>` and pushes it to `main`. A push
+  made with the workflow's own token starts no other workflow, so it can't loop.
+  If `main` moved meanwhile, it rebases and retries three times.
+- `main` already tagged with a release (a re-run) publishes nothing; so does a
+  `-dev` `VERSION`.
 
+Then it runs the test suite, builds `deja-vu1-update.zip` with
+`tools/package-update.py`, writes the notes with `tools/release-notes.py` and
+publishes release `v<version>`, marked latest, on that exact commit.
+
+For a release with its own name, summary and tour, raise `VERSION` by hand in
+the pull request: add the entry at the top of `frontend/versions.json` (name,
+date, summary, `highlights` pointing at real elements, `changes`) and a
+`## <version> (<date>): <name>` heading in `CHANGELOG.md`.
+`tests/test_versions.py` fails if they disagree or a tour stop points at nothing.
+
+GitHub records a SHA-256 `digest` for each uploaded asset; the app refuses an
+asset without one.
+[GitHub release-asset API](https://docs.github.com/en/rest/releases/assets#get-a-release-asset).
 To publish by hand instead, run `python3 tools/package-update.py` from a clean
 checkout (it needs git) and upload that exact ZIP to a release whose tag matches
-`VERSION`, such as `v0.8.0`.
+`VERSION`.
 
-0.8.0 is the first version published this way. Earlier version numbers were
-given afterwards to rounds of work and were never published as downloads.
+0.8.0 was the first version published this way. Its own Install button crashes
+in its slicing check (`slicer_bridge.jobs()` returned a dict it iterated as a
+list), so 0.8.0 copies update once with the one-paste command in the README
+(`tools/update_blocks.py`, kept identical everywhere by
+`tests/test_install_blocks.py`). Keep the first lines of `start-windows.bat`
+byte-for-byte the same: Windows re-reads a running batch file from its saved
+position after an update replaces it.
+
+## Ways to look after a copy
+
+Settings → Version & updates also offers **Restart** (`POST /api/app/restart`,
+launcher only: exit code 75, the launcher starts it again), **Repair files**
+(`POST /api/app/repair`: the newest release goes back over the app even at the
+same version, or for newest-files copies every file that differs from `main`;
+data untouched, refused for git copies), **Safety copy now** and **Stop**
+(`POST /api/app/stop`, only from the computer it runs on). Starting a second
+launcher while one runs opens the running copy instead.
 
 ## Copies made with git or GitHub Desktop
 
@@ -64,7 +85,7 @@ Tested with real git repositories on Linux; not yet run on Windows or macOS.
 
 ## What installation protects
 
-Checks are opt-in: at startup and then at most daily while the server runs, or run manually. Requests contain
+Checks are opt-in: at startup and then every hour while the server runs (every 15 minutes for newest files and git copies), or run manually. Requests contain
 the app name, not the private name, printer details, API keys or configuration.
 The server's public network address is visible to GitHub as for any web request.
 

@@ -52,12 +52,21 @@ trust the code and fix this file.
   started and welcome.html; ZIP and GitHub Desktop are the no-code options. The
   blocks use `releases/latest/download/deja-vu1-update.zip`; keep all copies
   identical (`tests/test_install_blocks.py`).
-- Versions (the owner, 24 October 2026): `VERSION`, the top entry of
+- Versions (the owner, 25 October 2026): **every merge to `main` is a release**, so
+  updates are constant and familiar. `VERSION`, the top entry of
   `frontend/versions.json` and a `## <version> (<date>): <name>` heading in
-  CHANGELOG.md must agree (`tests/test_versions.py`). Merging a new stable
-  `VERSION` to `main` publishes a GitHub release by itself
-  (`.github/workflows/release.yml`), so only raise it when a release is meant.
+  CHANGELOG.md must agree (`tests/test_versions.py`). Raise `VERSION` by hand for a
+  named release with its own tour; otherwise `.github/workflows/release.yml` runs
+  `tools/next-release.py` (next patch number, merged PR titles as changes), commits
+  `Release <version>` to `main` and publishes it. Don't hand-edit around that commit.
   A new version's `highlights` become its in-app tour; point each at a real element.
+- Updates (the owner, 25 October 2026): installing must work every time. 0.8.0's Install
+  button crashed in `_require_idle_for_update` (now guarded), so 0.8.0 copies need the
+  one-paste update once. The update blocks live in `tools/update_blocks.py`; README,
+  getting started, welcome.html and Settings show them identically
+  (`tests/test_install_blocks.py`). Settings can also Restart, Repair files, make a
+  Safety copy and Stop (`/api/app/restart|repair|stop`). Never change the first lines of
+  `start-windows.bat`: a running batch file is re-read from its old position after an update.
 
 ## How to work here (the method that has worked)
 
@@ -151,8 +160,9 @@ root should hand over to `welcome.html`.
   files repaired from it or a safety copy). `insights.py` (`/api/insights`, evidence
   thresholds), `orca_import.py` (Snapmaker_Orca / OrcaSlicer data folders, recent projects,
   user presets; paths never sent to the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
-- `app_updates.py`: channels `stable` (releases) and `latest` (main branch: per-file git blob
-  hashes against GitHub's tree, only changed files staged), `watch()` thread, `git_update()`.
+- `app_updates.py`: channels `stable` (releases, the default; checked hourly) and `latest` (main
+  branch: per-file git blob hashes against GitHub's tree, only changed files staged), `watch()`
+  thread, `git_update()`, `prepare(repair=True)` (same-version reinstall).
 - Demo printers are shown as "Demo printer 1/2/3" (ids `u1-workshop`/`u1-studio`/`u1-garage`, kept so
   saved records match; the owner found the old room names confusing). Sandbox ones continue the count.
 - `qr.py` (standard-library QR codes, checked against python-qrcode) and `phone_link()` in app.py
