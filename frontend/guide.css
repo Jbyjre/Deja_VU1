@@ -352,11 +352,80 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   .guide-card.is-chapter .guide-text { font-size: 15.5px; }
 }
 
+/* ---- your phone (phone.js) --------------------------------------------------
+   A floating sheet (glass over glass, so the deep lens). The QR code itself
+   sits on solid white with its quiet zone: cameras need the contrast. */
+
+.phone-dialog {
+  margin: auto; padding: 0; border: 0; background: transparent; color: var(--text);
+  width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: visible;
+}
+.phone-dialog::backdrop { background: var(--scrim); backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2); }
+.phone-dialog[open] { animation: phone-in .45s cubic-bezier(.2, .9, .25, 1.15); }
+@keyframes phone-in { from { opacity: 0; transform: translateY(22px) scale(.96); } }
+.phone-sheet {
+  position: relative; isolation: isolate; max-height: calc(100dvh - 24px); overflow: auto;
+  padding: clamp(18px, 3.4vw, 32px); border-radius: 32px;
+  background: rgba(252, 252, 254, .78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 2px 4px oklch(25% 0.02 265 / .16), 0 24px 60px oklch(25% 0.02 265 / .32);
+  backdrop-filter: blur(22px) saturate(1.7); -webkit-backdrop-filter: blur(22px) saturate(1.7);
+}
+.phone-sheet { backdrop-filter: blur(14px) saturate(1.7) url(#lg-distort-deep); }
+.phone-sheet::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, .08) 42%, rgba(255, 255, 255, .08) 60%, rgba(255, 255, 255, .6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.phone-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.phone-head h2 { margin: 4px 0 0; font: 700 clamp(24px, 3.6vw, 34px)/1.08 var(--font-display); letter-spacing: -.025em; text-wrap: balance; }
+.phone-grid { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: clamp(16px, 3vw, 30px); align-items: start; }
+.phone-qr { margin: 0; display: grid; gap: 10px; justify-items: center; }
+.phone-qr svg {
+  width: 100%; aspect-ratio: 1; border-radius: 22px; background: #fff;
+  box-shadow: 0 0 0 1px var(--hair), 0 10px 30px oklch(25% 0.02 265 / .16);
+  transition: opacity .3s ease, filter .3s ease, box-shadow .4s ease;
+}
+.phone-qr.is-done svg { box-shadow: 0 0 0 3px var(--ok), 0 10px 30px oklch(25% 0.02 265 / .16); }
+.phone-qr.is-spent svg { opacity: .25; filter: blur(2px); }
+.phone-qr figcaption { font: 500 12px/1.3 var(--font-mono); color: var(--text-faint); }
+.phone-list { margin: 0 0 14px; padding: 0; list-style: none; counter-reset: ph; display: grid; gap: 10px; }
+.phone-list li { counter-increment: ph; position: relative; padding-left: 38px; line-height: 1.45; }
+.phone-list li::before {
+  content: counter(ph); position: absolute; left: 0; top: -2px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font: 700 13px/1 var(--font-mono); color: var(--on-accent); background: var(--accent);
+}
+.phone-status { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 10px 14px; border-radius: 16px; font-weight: 500;
+  background: color-mix(in oklch, var(--accent) 10%, white); border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent); }
+.phone-status.is-done { background: color-mix(in oklch, var(--ok) 14%, white); border-color: color-mix(in oklch, var(--ok) 45%, transparent); }
+.phone-pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; animation: phone-pulse 1.6s ease-in-out infinite; }
+@keyframes phone-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 50%, transparent); } 50% { box-shadow: 0 0 0 8px transparent; } }
+.phone-tick { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #fff; font-weight: 800; flex: none; }
+.phone-type { padding: 14px 16px; border-radius: 20px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
+.phone-label { margin: 0 0 8px; font: 600 11.5px/1.4 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); }
+.phone-address { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.phone-address code { font: 600 clamp(19px, 2.6vw, 24px)/1.2 var(--font-mono); letter-spacing: -.01em; word-break: break-all; }
+.phone-colon { color: var(--accent-text); padding: 0 2px; border-radius: 4px; background: color-mix(in oklch, var(--accent) 16%, transparent); }
+.phone-code { font-family: var(--font-mono); letter-spacing: .08em; }
+.phone-help { margin-top: 16px; padding: 4px 16px; border-radius: 18px; background: rgba(255, 255, 255, .55); border: 1px solid var(--hair); }
+.phone-help summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--accent-text); }
+.phone-help summary:focus-visible, .phone-dialog .btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.phone-help ul { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 8px; font-size: 14px; color: var(--text-dim); }
+.phone-help code, .phone-type .field-hint code { font: 600 13px/1 var(--font-mono); }
+.phone-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.phone-foot .btn { min-height: 44px; min-width: 110px; }
+.phone-empty { display: grid; gap: 10px; justify-items: start; }
+.phone-empty .btn { min-height: 44px; }
+.phone-loading { color: var(--text-faint); }
+@media (max-width: 620px) {
+  .phone-grid { grid-template-columns: 1fr; }
+  .phone-qr { max-width: 230px; margin: 0 auto; }
+}
+
 /* ---- accessibility -------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   .orb, .orb-core, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-progress span { transition: opacity .15s ease !important; }
-  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .version-card.is-flash { animation: none !important; }
+  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .version-card.is-flash, .phone-dialog[open], .phone-pulse { animation: none !important; }
   .orb-bubble, .orb-bubble-wrap.is-out .orb-bubble { transform: none; }
   .orb:hover, .orb:active { transform: none; }
 }
@@ -367,9 +436,11 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   .orb { background: var(--paper-solid); }
   .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .guide .guide-card.is-chapter { background: var(--paper-solid); }
   .guide.is-chapter .guide-scrim { background: oklch(18% 0.02 265 / .72); }
+  .phone-sheet { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--paper-solid); }
+  .phone-dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(18% 0.02 265 / .72); }
 }
 @media (prefers-contrast: more) {
-  .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .ver-chip, .vc-update, .da-option { border: 2px solid var(--text); }
+  .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .ver-chip, .vc-update, .da-option, .phone-sheet, .phone-type { border: 2px solid var(--text); }
   .orb-glass { display: none; }
   .guide-ring { box-shadow: 0 0 0 200vmax oklch(10% 0 0 / .7), 0 0 0 3px var(--text); }
   .vc-number, .guide-hero { background: none; -webkit-text-fill-color: currentColor; color: var(--text); }

@@ -169,6 +169,31 @@ def home_address():
     return str(ip) if any(ip in ipaddress.ip_network(n) for n in HOME_RANGES) else None
 
 
+def home_addresses():
+    """
+    Every home-network address this computer has, the one its internet
+    traffic leaves by first. A computer with a VPN, a virtual machine or both
+    Wi-Fi and a cable has several, and the first is not always the one the
+    phone's Wi-Fi can reach, so the phone screen offers the others too.
+    """
+    found = []
+    first = home_address()
+    if first:
+        found.append(first)
+    try:
+        infos = socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET)
+    except (OSError, UnicodeError):
+        infos = []
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            continue
+        if any(ip in ipaddress.ip_network(n) for n in HOME_RANGES) and str(ip) not in found:
+            found.append(str(ip))
+    return found[:6]
+
+
 def home_network():
     """This computer's own home-network /24, or None (no route, or not a home range)."""
     ip = home_address()

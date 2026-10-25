@@ -1051,7 +1051,7 @@ function initTabs() {
   window.showTab = show;
 
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
-  $('overview-pair-btn').addEventListener('click', () => show('modules'));
+  $('overview-pair-btn').addEventListener('click', () => window.Phone && Phone.open());
 
   show(store.get(TAB_KEY) || 'overview');
 }
@@ -1893,6 +1893,7 @@ function initPairing() {
       loadDeviceLock();
     });
   }
+  $('phone-connect-btn').addEventListener('click', () => window.Phone && Phone.open());
   $('generate-code-btn').addEventListener('click', async () => {
     const { ok, body } = await postJSON('/api/pairing/code', {});
     if (!ok) { toast(`Couldn't make a code: ${body.error || 'unknown error'}`, 'bad'); return; }

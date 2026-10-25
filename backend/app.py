@@ -157,6 +157,7 @@ API endpoints
 
   GET  /api/pairing/devices
   POST /api/pairing/code
+  POST /api/pairing/link             {"base": page origin} address for a phone + a one-time code + its QR code
   POST /api/pairing/redeem           {"code": "...", "device_name": "..."}
   POST /api/pairing/devices/<id>/unpair
   GET  /api/pairing/status           device lock on?, this computer?, this device paired?
@@ -266,6 +267,7 @@ import memory
 import orca_import
 import selfcheck
 import print_queue
+import qr
 import printer_control
 import sandbox
 import sanity_check
@@ -324,6 +326,40 @@ def host_is_local(host):
     except ValueError:
         pass
     return name == "localhost" or "." not in name or name.endswith(_LOCAL_SUFFIXES)
+
+
+def phone_link(base=None):
+    """
+    What a phone needs to open this dashboard: the address, a fresh one-time
+    pairing code, and a QR code of the two together, so the phone's camera
+    opens and pairs it without typing (typed addresses are where phones go
+    wrong: "10.0.0.10.8000" or a missing "http://" becomes a web search).
+
+    `base` is the address the asking page was opened at. A page opened by a
+    network address or an allowed name (a tunnel domain) already works from
+    another device, so that one is used; localhost only works on this
+    computer, so then the computer's home-network address is used instead.
+    """
+    origin = None
+    try:
+        parts = urlparse(str(base or "").strip())
+        if (parts.scheme in ("http", "https") and parts.hostname and "@" not in parts.netloc
+                and parts.hostname not in ("localhost", "127.0.0.1", "::1")
+                and host_is_local(parts.netloc)):
+            origin = f"{parts.scheme}://{parts.netloc}"
+    except ValueError:
+        origin = None
+    addresses = discovery.home_addresses()
+    if origin is None and addresses:
+        origin = f"http://{addresses[0]}:{PORT}"
+    shown = _host_name(urlparse(origin).netloc) if origin else None
+    code = pairing.generate_code()
+    out = {"origin": origin, "port": PORT, "code": code["code"], "expires_at": code["expires_at"],
+           "others": [f"http://{a}:{PORT}" for a in addresses if a != shown]}
+    if origin:
+        out["url"] = f"{origin}/?pair={code['code']}"
+        out["qr"] = qr.rows(out["url"])
+    return out
 
 
 def _chamber():
@@ -1388,6 +1424,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/pairing/code":
             return self._send_json(pairing.generate_code())
 
+        if route == "/api/pairing/link":
+            return self._send_json(phone_link(self._read_json_body().get("base")))
+
         if route == "/api/pairing/redeem":
             body = self._read_json_body()
             device = pairing.redeem_code(body.get("code"), body.get("device_name"))
@@ -1650,6 +1689,19 @@ def _install_update(server):
     return result
 
 
+def _print_phone_qr(url):
+    """The phone address as a QR code in the launcher window, if the console can draw it."""
+    try:
+        lines = qr.terminal(url)
+        encoding = getattr(sys.stdout, "encoding", None) or "ascii"
+        "".join(lines).encode(encoding)
+    except (UnicodeError, LookupError, ValueError):
+        return                       # a console that can't draw block characters just shows the address
+    print("  Or point the phone's camera at this code (or press 'Connect your phone' in the dashboard):")
+    for line in lines:
+        print("  " + line)
+
+
 def main():
     server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
     live_feed.start()
@@ -1661,6 +1713,7 @@ def main():
     lan = discovery.home_address()
     if lan:
         print(f"  From a phone on the same Wi-Fi:  http://{lan}:{PORT}")
+        _print_phone_qr(f"http://{lan}:{PORT}/")
     real = fleet.registered()
     if real and modules.is_enabled("printer_link"):
         print(f"  Connecting to {len(real)} printer(s) added by address;")

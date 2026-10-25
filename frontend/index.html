@@ -448,9 +448,9 @@
       <section class="card liquid-glass pair-card">
         <div>
           <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
-          <p class="card-sub" style="max-width:52ch;">Open this computer’s address on your phone using the same Wi-Fi. No Deja Vu1 account is needed; pairing is optional.</p>
+          <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
         </div>
-        <button class="btn primary" id="overview-pair-btn">Pair a phone</button>
+        <button class="btn primary" id="overview-pair-btn">Connect your phone</button>
       </section>
     </div>
   </section>
@@ -1000,7 +1000,8 @@
             <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
           </div>
           <div id="device-list"></div>
-          <button class="btn block" id="generate-code-btn" style="margin-top:12px;">+ Pair another device</button>
+          <button class="btn block primary" id="phone-connect-btn" style="margin-top:12px;">Connect a phone with a QR code</button>
+          <button class="btn block" id="generate-code-btn" style="margin-top:8px;">Show a pairing code only</button>
           <form id="redeem-form" style="display:flex; gap:8px; margin-top:10px;">
             <label class="sr-only" for="redeem-code">Pairing code</label>
             <input type="text" id="redeem-code" placeholder="Enter a code" inputmode="numeric" autocomplete="one-time-code" style="flex:1;">
@@ -1364,6 +1365,7 @@
 <script src="farm.js"></script>
 <script src="guide.js"></script>
 <script src="launchpad.js"></script>
+<script src="phone.js"></script>
 <script src="versions.js"></script>
 <script src="finder.js"></script>
 <script src="desk.js"></script>

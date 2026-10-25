@@ -2,6 +2,9 @@
 'use strict';
 (() => {
   const key = 'dejavu1.private-name', seenKey = 'dejavu1.setup-seen';
+  // A phone that arrived by scanning the QR code (phone.js) joins a dashboard that is
+  // already set up on the computer, so it goes straight to the dashboard, not setup.
+  const viaPhoneLink = new URLSearchParams(location.search).has('pair');
   const read = k => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
   const save = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); return true; } catch (_) { return false; } };
   const dialog = $('setup-dialog'), content = $('setup-content');
@@ -36,7 +39,7 @@
   function phoneText() {
     if (tourOn()) return 'This public site is a demo recording. Download and run Deja Vu1 on your computer first; then open that computer’s address on your phone.';
     const address = info && info.phone_address ? `http://${info.phone_address}:${info.port}` : 'the “From a phone” address printed in the launcher window';
-    return `Keep the computer and printer on. Connect your phone to the same home Wi-Fi, then open ${address}. Use the computer’s address, not localhost or the printer’s address.`;
+    return `No camera handy? Connect your phone to the same home Wi-Fi and type ${address} into its browser. Use the computer’s address, not localhost or the printer’s address.`;
   }
   const installText = 'On iPhone: open Safari → Share → Add to Home Screen. On Android: open Chrome’s menu → Add to Home screen (or Install app, when offered). A normal http:// home-network address may only offer a shortcut; offline support and full app installation need a secure https:// address. Browser options vary.';
   function render() {
@@ -113,7 +116,10 @@
         Guide.everything({onEnd:()=>{step=Math.min(at+1,names.length-1);dialog.showModal();render();}});
       };
     } else if (names[step] === 'Your phone') {
-      content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. It needs no app store and no account.</p><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. No app store, no account, and nothing to type: scan a code with the phone’s camera.</p>
+        <div class="setup-choices"><button class="btn primary" id="setup-phone">Show the code to scan</button></div>
+        <p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi (not a guest network). Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>Typing it instead? Use a colon before the port number (<code>:8000</code>), not a dot; with a dot, phones search the web instead. A “Refused” message means the address is not allowed: ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      $('setup-phone').onclick=()=>window.Phone&&Phone.open();
     } else if (names[step] === 'Desktop app') {
       content.innerHTML=`<h2 id="setup-title">A window of its own.</h2>
         <p class="setup-lead">You are not stuck in a browser tab. Pick how Deja Vu1 opens on this computer; you can change it in Settings → Desktop app.</p>
@@ -256,6 +262,6 @@
   greeting();
   // versions.js loads after this file, so wait until every script has run.
   const allLoaded=new Promise(r=>document.readyState==='loading'?addEventListener('DOMContentLoaded',r,{once:true}):r());
-  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(!read(seenKey))open();});
+  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(viaPhoneLink)save(seenKey,'1');else if(!read(seenKey))open();});
   if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
