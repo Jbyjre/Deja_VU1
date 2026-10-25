@@ -126,7 +126,7 @@ async function checkServer() {
  * shows its figures as real. */
 const realFetch = window.fetch.bind(window);
 const tour = { on: false, rec: null, started: 0, misses: new Set(),
-  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {} } };
+  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {}, maint: {} } };
 const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
 const TOUR_REFUSED = "This is the online demo: a recording of the simulated farm, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
@@ -208,6 +208,28 @@ async function tourGet(url) {
       const extra = pid => (tour.sim.queued[pid] || []);
       if (path === '/api/queue' && Array.isArray(body.items)) body.items = body.items.concat(extra(printer));
       if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); });
+      return tourReply(body, tour.rec.bodies[rec].status);
+    }
+  }
+  if (path === '/api/maintenance' || path === '/api/maintenance/history') {
+    // "Mark done" in the online demo: the recorded task starts its count again here.
+    const rec = tour.rec.get[tourKey(path, new URLSearchParams({ printer }))];
+    const done = tour.sim.maint[printer] || [];
+    if (rec !== undefined && done.length) {
+      const body = JSON.parse(JSON.stringify(tour.rec.bodies[rec].body));
+      if (path === '/api/maintenance/history') {
+        body.history = done.slice().reverse().concat(body.history || []);
+      } else if (Array.isArray(body.tasks)) {
+        body.tasks.forEach(t => {
+          const d = done.find(x => x.task_id === t.id);
+          if (!d) return;
+          const reset = r => r.replace(/^[\d.]+ of/, '0 of');
+          Object.assign(t, { status: 'ok', percent: 0, last_done_at: d.completed_at, reason: reset(t.reason || ''),
+            all_reasons: (t.all_reasons || []).map(reset), usage_since: { days_since: 0, hours_since: 0, prints_since: 0 } });
+        });
+        body.summary = { overdue: 0, due_soon: 0, ok: 0 };
+        body.tasks.forEach(t => { body.summary[t.status] = (body.summary[t.status] || 0) + 1; });
+      }
       return tourReply(body, tour.rec.bodies[rec].status);
     }
   }
@@ -446,6 +468,16 @@ async function tourPost(url, body) {
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname === '/api/maintenance/done') {
+    const rec = tour.rec.get[tourKey('/api/maintenance', new URLSearchParams({ printer: pid }))];
+    const task = rec !== undefined && (tour.rec.bodies[rec].body.tasks || []).find(t => t.id === parsed.task_id);
+    if (!task) return tourReply({ error: 'That task is not on this printer' }, 400);
+    const list = (tour.sim.maint[pid] || (tour.sim.maint[pid] = [])).filter(x => x.task_id !== task.id);
+    list.push({ task_id: task.id, task_name: `${task.name} (online demo)`, printer_hours_at_completion: null,
+      completed_at: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19) });
+    tour.sim.maint[pid] = list;
+    return tourReply({ ok: true, online_demo: true });
+  }
   if (url.pathname.startsWith('/api/logbook')) {
     const list = tour.sim.logbook[pid] || (tour.sim.logbook[pid] = []);
     if (url.pathname === '/api/logbook/add') {
@@ -1230,7 +1262,7 @@ async function loadMaintenanceLog() {
   box.innerHTML = history.map(item => `
     <div class="log-row">
       <span>${esc(item.task_name)}</span>
-      <span>${esc(item.completed_at.replace('T', ' ').slice(0, 16))} · ${item.printer_hours_at_completion.toFixed(0)} h</span>
+      <span>${esc(item.completed_at.replace('T', ' ').slice(0, 16))}${typeof item.printer_hours_at_completion === 'number' ? ` · ${item.printer_hours_at_completion.toFixed(0)} h` : ''}</span>
     </div>`).join('');
 }
 

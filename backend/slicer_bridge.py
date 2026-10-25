@@ -782,6 +782,12 @@ def jobs():
         return {"jobs": [dict(_jobs[j]) for j in reversed(_order) if _jobs[j].get('printer_id') == pid]}
 
 
+def any_active():
+    """Is a slice waiting or running for any printer? (Updates wait for it.)"""
+    with _lock:
+        return any(job.get('status') in ('waiting', 'running') for job in _jobs.values())
+
+
 def cancel_job(job_id):
     with _lock:
         job = _jobs.get(job_id)

@@ -160,6 +160,8 @@
   $('setup-next').onclick=()=>{if(step===names.length-1)finish();else{step++;render();}};
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
   dialog.addEventListener('cancel',e=>{e.preventDefault();finish();});
+  // However the sheet closes, the page behind it must come back (full-screen setup hides it).
+  dialog.addEventListener('close',()=>{if(!dialog.open){dialog.classList.remove('is-full');document.documentElement.classList.remove('setup-full-open');}});
   $('private-name').addEventListener('input',e=>{save(key,e.target.value.trim().slice(0,40));$('private-greeting').textContent=e.target.value.trim()?`Hello, ${e.target.value.trim()}`:'Your print bench';});
   $('private-delete').onclick=()=>{save(key,'');greeting();toast('Name deleted from this browser','ok');};
   /* ---- the desktop app -----------------------------------------------------

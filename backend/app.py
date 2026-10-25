@@ -1672,7 +1672,7 @@ def _require_idle_for_update():
                 state = mock_moonraker.get_printer_state()
             if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
                 raise ValueError("Updates wait until all real printers are connected and idle")
-    if any(j.get("status") in ("waiting", "running") for j in slicer_bridge.jobs()):
+    if slicer_bridge.any_active():
         raise ValueError("Wait for slicing to finish before updating")
 
 

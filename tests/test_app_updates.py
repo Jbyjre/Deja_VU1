@@ -307,3 +307,28 @@ class GitCopyUpdates(unittest.TestCase):
             exe.parent.mkdir(parents=True); exe.write_text('')
         with patch.object(updates.shutil, 'which', return_value=None), patch.dict(os.environ, LOCALAPPDATA=str(local)):
             self.assertIn('app-3.10.1', updates.find_git(windows=True))  # newest, compared as numbers
+
+
+class UpdatesWaitForSlicing(unittest.TestCase):
+    """The update gate read the slice-job list wrongly and crashed (a 500 on every install)."""
+
+    def setUp(self):
+        import app as dv_app
+        import slicer_bridge
+        self.app, self.bridge = dv_app, slicer_bridge
+        self.saved = dict(slicer_bridge._jobs)
+        slicer_bridge._jobs.clear()
+
+    def tearDown(self):
+        self.bridge._jobs.clear()
+        self.bridge._jobs.update(self.saved)
+
+    def test_no_slicing_lets_an_update_through(self):
+        self.app._require_idle_for_update()          # the demo printers are simulated, so nothing else waits
+
+    def test_a_slice_for_any_printer_holds_the_update(self):
+        self.bridge._jobs['j1'] = {'id': 'j1', 'status': 'running', 'printer_id': 'some-other-printer'}
+        with self.assertRaisesRegex(ValueError, 'slicing'):
+            self.app._require_idle_for_update()
+        self.bridge._jobs['j1']['status'] = 'done'
+        self.app._require_idle_for_update()
