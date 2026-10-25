@@ -1,14 +1,17 @@
 name: Release
 
-# Publishes a GitHub release whenever main gets a new stable VERSION number.
-# The app's updater reads that release: downloaded copies install the
-# deja-vu1-update.zip attached here, checked against GitHub's SHA-256 digest.
-# Nothing happens for a -dev version or one already released.
+# Every merge to main publishes a GitHub release, so updates stay small and
+# frequent. If the merge raised VERSION by hand, that number is published.
+# Otherwise tools/next-release.py numbers the next patch release (0.9.0 ->
+# 0.9.1), writes it into VERSION, frontend/versions.json and CHANGELOG.md, and
+# commits that to main first. The app's updater reads the release: downloaded
+# copies install the deja-vu1-update.zip attached here, checked against
+# GitHub's SHA-256 digest. A push made with this workflow's token starts no
+# other workflow, so the release commit cannot loop.
 
 on:
   push:
     branches: [main]
-    paths: [VERSION, frontend/versions.json]
   workflow_dispatch:
 
 permissions:
@@ -22,30 +25,51 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
+      - name: Check out main with its tags
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Decide whether to publish
+      - name: Decide the version
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="$(tr -d '[:space:]' < VERSION)"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "VERSION is $version, not a stable number: nothing to publish."
             echo "publish=false" >> "$GITHUB_OUTPUT"
-          elif gh release view "v$version" > /dev/null 2>&1; then
-            echo "v$version is already released."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          if git tag --points-at HEAD | grep -q '^v'; then
+            echo "main is already released as $(git tag --points-at HEAD | head -1)."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if gh release view "v$version" > /dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            released="$version"
+            version="$(python tools/next-release.py "v$released")"
+            echo "VERSION was still $released, already released: numbering this release $version."
+            git add VERSION frontend/versions.json CHANGELOG.md
+            git commit -m "Release $version"
+            for attempt in 1 2 3; do
+              git pull --rebase --quiet origin main && git push origin HEAD:main && break
+              sleep $((attempt * 5))
+            done
+            git fetch --quiet origin main
+            test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
 
       - name: Run test suite
         if: steps.version.outputs.publish == 'true'
@@ -64,4 +88,5 @@ jobs:
         run: |
           version="${{ steps.version.outputs.version }}"
           gh release create "v$version" "$RUNNER_TEMP/deja-vu1-update.zip" \
-            --title "Deja Vu1 $version" --notes-file "$RUNNER_TEMP/notes.md" --target "$GITHUB_SHA" --latest
+            --title "Deja Vu1 $version" --notes-file "$RUNNER_TEMP/notes.md" \
+            --target "${{ steps.version.outputs.sha }}" --latest

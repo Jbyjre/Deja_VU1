@@ -15,6 +15,7 @@ import os
 import sys
 import threading
 import unittest
+from unittest.mock import patch
 from http.server import HTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -400,6 +401,23 @@ class TestAppLevelRoutesIgnoreConnectionState(APITestCase):
         status, body = self.get("/api/filament")
         self.assertEqual(status, 200)
         self.assertIn("spools", body)
+
+
+class TestManageTheApp(APITestCase):
+    """Restart and stop: refused plainly where they can't work, never a silent no-op."""
+
+    def test_restart_without_the_launcher_says_how(self):
+        with patch.dict(os.environ, {"DEJAVU_LAUNCHER": ""}):
+            code, body = self.post("/api/app/restart", {})
+        self.assertEqual(code, 400)
+        self.assertIn("launcher", body["error"])
+
+    def test_only_this_computer_can_stop_it(self):
+        with patch.object(dv_app.DejaVuHandler, "_this_computer", return_value=False):
+            code, body = self.post("/api/app/stop", {})
+        self.assertEqual(code, 403)
+        self.assertIn("computer it runs on", body["error"])
+        self.assertEqual(self.get("/api/health")[0], 200)     # still running
 
 
 class TestCostCalculatorRoutes(APITestCase):

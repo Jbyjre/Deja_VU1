@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Current version: 0.8.0** ([what's new](#whats-new-in-080) · [every version](CHANGELOG.md)).
+**Current version: 0.9.0** ([what's new](#whats-new-in-090) · [every version](CHANGELOG.md)).
 The app shows the same number in its header and in **Settings → Version & updates**.
 
 **Install in one paste** on [Windows](#windows-paste-into-powershell) or
@@ -166,38 +166,79 @@ Both show the same dashboard. The launcher window still runs it, so keep that op
 
 ## Update
 
-Open **Settings → Version & updates** and press **Check for updates**, then
-**Install**. Or turn on **Look for updates by itself**: the app checks at
-startup and once a day, and the glass orb in the bottom-right corner tells you
-when a new version is ready.
+Every change merged on GitHub becomes a new numbered release, so updates are
+small and frequent. Three ways to get one:
 
-| Your copy | What Install does |
-|---|---|
-| Made with GitHub Desktop or git | Pulls the newest version of `main` from GitHub, as a fast-forward only. If you changed any of its files by hand, it stops and changes nothing |
-| Downloaded as a ZIP | Downloads the newest release, checks its SHA-256 fingerprint, replaces the app files and restarts |
+1. **In the app:** **Settings → Version & updates → Check for updates**, then
+   **Install**. Or tick **Look for updates by itself** (every hour) and the glass
+   orb tells you when one is ready.
+2. **One paste:** paste the block below into a new PowerShell or Terminal window.
+   It stops Deja Vu1 in `Documents`, installs the newest release over it and
+   starts it again. The same block is in **Settings → Version & updates →
+   Update with a command**.
+3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
+   the launcher again.
 
-Both keep your settings and files, restart the dashboard, and put the previous
-version back if the new one fails to start. Two conditions: start Deja Vu1 with
-the launcher, and wait until your printers are idle.
+Your settings, printers and files are never part of an update, a safety copy
+comes first, and the old version comes back if the new one fails to start.
 
-### Coming from an older copy
+> **On 0.8.0?** Its Install button has a bug and can't install anything. Use the
+> one-paste update below once; from 0.9.0 on, the button works.
 
-If your Settings has no **Version & updates** card, your copy predates the
-updater that handles it. Update it by hand, once:
+#### Windows: update in one paste
 
-- **GitHub Desktop:** open it, choose the **Deja_VU1** repository, press **Fetch
-  origin**, then **Pull origin**. Close the launcher window and start it again.
-- **git:** run `git pull` in the folder, then restart the launcher.
-- **ZIP:** download the new version into a new folder. Copy the old folder's
-  `backend/data` into the new one, then start the new one. Keep the old folder
-  until the new one works.
+```powershell
+$ProgressPreference = 'SilentlyContinue'
+$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
+Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
+Start-Process "$dest\start-windows.bat"
+```
 
-From then on, updates come through the app. A downloaded copy that shows an
-older **App updates** section can also try **Check for updates** there.
+#### Mac, Linux: update in one paste
 
-## What's new since 0.8.0
+Open a **new** Terminal window (the one running Deja Vu1 is busy), then paste:
 
-On the main branch; part of the next version.
+```bash
+curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+cd ~/Documents/Deja_VU1 && python3 start.py
+```
+
+The Windows block was written from Microsoft's documentation and has not been
+run on a Windows computer yet; the Mac and Linux block was tested on Linux.
+If you installed Deja Vu1 somewhere other than `Documents`, change
+`Deja_VU1`'s folder in the block, or download the release ZIP and extract it
+over your folder.
+
+### Coming from a copy older than 0.8.0
+
+If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
+origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
+one-paste update above (or extract the newest release ZIP over the old folder).
+
+## What's new in 0.9.0
+
+- **Updates that install every time.** 0.8.0's **Install** button crashed
+  before it downloaded anything. Fixed, and a broken check can no longer lock
+  a copy out of the update that fixes it.
+- **A release with every merge.** Each change merged on GitHub publishes a new
+  numbered release by itself, so updates arrive small and often.
+- **Update with a command.** One paste for Windows or Mac and Linux, in
+  Settings and below, for when the button can't help.
+- **Look after this copy.** Settings → Version & updates can now **Restart**,
+  **Repair files** (put the published app files back, data untouched), make a
+  **Safety copy now** and **Stop** Deja Vu1. Starting a second launcher opens
+  the one already running instead of failing.
+- **Shorter words.** Settings → About and the update card say less, more
+  plainly.
+- **Install in one paste:** copy one block into PowerShell (Windows) or Terminal
+  (Mac, Linux) and Deja Vu1 downloads and starts. See [Install](#install).
+- **A clearer first look:** current screenshots, art-directed share cards and shorter
+  descriptions show the fleet, preparation workspace and print checks.
 
 - **Your phone, by scanning a code.** **Overview → Connect your phone** shows a
   QR code. Point the phone's camera at it, tap the link, and the dashboard
@@ -213,8 +254,7 @@ On the main branch; part of the next version.
   screen also has a **Show me this screen** button with a few more tips.
 - **Demo printer 1, 2 and 3.** The pretend printers had room names (Workshop,
   Studio, Garage) that read like parts of the app.
-- **Fixes:** installing an update no longer fails with a server error; the
-  3D twin stops drawing while it is out of sight (it was using about a
+- **Fixes:** the 3D twin stops drawing while it is out of sight (it was using about a
   processor core); and a few smaller ones, listed in the [changelog](CHANGELOG.md).
 
 <img src="docs/img/phone-connect.jpg" width="49%" alt="Connect your phone: a glass sheet titled Point your phone's camera here, with a large QR code, three steps (join the same Wi-Fi, open the Camera, that's it), Waiting for your phone, and the address 192.168.1.23:8000 with its colon highlighted for typing instead"> <img src="docs/img/tour.jpg" width="49%" alt="The quick tour at its third stop: the page dimmed except the 3D twin card, with a glass callout titled Your printer, live in 3D whose pointer and pulsing beacon touch the card's edge, a Show it as a drawing button, Back and Next, and dots for the nine stops">
@@ -279,15 +319,7 @@ On the main branch; part of the next version.
   key says how to fix it; a heater fault shows on its own dock ring; and a printer stopped with
   an error can be recovered with Restart firmware.
 
-**Since 0.8.0** (on `main`, in the next release):
-
-- **Install in one paste:** copy one block into PowerShell (Windows) or Terminal
-  (Mac, Linux) and Deja Vu1 downloads and starts. See [Install](#install).
-- **A clearer first look:** current screenshots, art-directed share cards and shorter
-  descriptions show the fleet, preparation workspace and print checks. Demo data,
-  engine estimates and unverified hardware are labelled where they appear.
-
-<img src="docs/img/version-history.jpg" width="49%" alt="Settings, Version and updates: the installed version v0.8.0 in large print-line lettering, named Updates that find you, a Tour what's new button, a note that this copy was made with git or GitHub Desktop and pulls updates from GitHub, Check for updates, the automatic-check switch and the start of the version history"> <img src="docs/img/whats-new.jpg" width="49%" alt="The full-screen What's new tour for v0.8.0: the version number, its name, a one-paragraph summary and the five stops of the tour">
+<img src="docs/img/version-history.jpg" width="49%" alt="Settings, Version and updates: the installed version v0.9.0 in large print-line lettering, named Updates that install every time, a Tour what's new button, Check for updates and the automatic-check switches, a glass strip of four buttons (Restart, Repair files, Safety copy now, Stop Deja Vu1) and the start of Update with a command"> <img src="docs/img/whats-new.jpg" width="49%" alt="The full-screen What's new tour for v0.8.0: the version number, its name, a one-paragraph summary and the five stops of the tour">
 
 <img src="docs/img/orb.jpg" width="49%" alt="The notification orb in the bottom-right corner with three messages risen out of it: Pause confirmed by the printer, a filament jam on T2 marked as a problem, and You have the latest version on GitHub with a Version history button">
 
@@ -590,9 +622,10 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **871 tests in 472.8 seconds** on Python
-3.13.17/Linux, with app/demo servers stopped (25 October 2026: the QR code maker and phone
-link, the update gate fix and the help notes). Before that: 855 tests in 473.3 seconds
+The latest clean full suite passed **879 tests in 469.2 seconds** on Python
+3.13/Linux, with app/demo servers stopped (25 October 2026: version 0.9.0's repair, restart
+and stop, the update commands and the release with every merge). Before that: 871 tests
+(the QR code maker and phone link, the update gate fix and the help notes), and 855 tests in 473.3 seconds
 (24 October 2026: version 0.8.0's print
 preview, insights, safety copies, Orca import, device lock, self-check, git-copy updates,
 desktop window choice and version history, plus the install-block check added after it).
@@ -613,7 +646,7 @@ recorded static demo passed at both widths.
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests | Physical cameras and simultaneous real printers |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
-| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | v0.8.0 is the first release, published by the workflow on merge; a real update from it to a later release, GitHub Desktop's own git and Windows/macOS have not been tried yet |
+| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested; the Windows paste block, GitHub Desktop's own git and macOS have not been run yet |
 | Desktop app, version history, tours, notification orb | Unit tests (desktop window choice, version history kept in step with VERSION, the changelog and the release notes); Chromium at 1366/390 px, including the online demo | Installing as an app was not tried in a real Chrome or Edge window; the launcher's app window was not opened on Windows or macOS |
 | Layer stack, Orca-style process settings | Unit tests for the thick-layer options and all 106 settings (names and choices checked against OrcaSlicer's option table); Chromium at 1366/390 px | No real slice with the new options in this round; whether an engine lists the thick-layer options is read from its own schema |
 | Farm desk, telemetry, logbook, finder, converter card | Unit tests (logbook, printer page link) and Chromium at 1366/390 px on the simulated farm | Real farms, real spools and real printers' web pages unverified |

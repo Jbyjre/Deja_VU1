@@ -187,44 +187,51 @@ window leaves the dashboard running for your phone.
 
 ## Updating
 
-Open **Settings → Version & updates**. It shows the version you run, how your
-copy updates and what every version changed. Press **Check for updates**; when
-one is ready, press **Install**. To have Deja Vu1 look by itself, turn on **Look
-for updates by itself**: it checks at startup and once a day, and the glass orb
-in the bottom-right corner tells you. A check sends GitHub no name, printer
-details or settings; GitHub still sees the network address making the request.
+Every change merged on GitHub becomes a new numbered release, so updates come
+small and often. Your settings, printers and files are never part of one, a
+safety copy comes first, and the old version comes back if the new one fails
+to start.
 
-- **A copy made with GitHub Desktop or git** pulls the newest version of `main`
-  from GitHub. It only moves forward: if you changed any of its files by hand,
-  or it has commits of its own, it stops and changes nothing. On Windows it also
-  finds the copy of git that GitHub Desktop keeps for itself.
-- **A downloaded copy** installs the newest published release. It checks the
-  download's SHA-256 fingerprint before using it.
+1. **In the app:** **Settings → Version & updates → Check for updates**, then
+   **Install**. Tick **Look for updates by itself** to have it check every hour;
+   the glass orb in the bottom-right corner tells you. Start Deja Vu1 with its
+   launcher, and wait until every real printer is idle.
+2. **One paste**, when the button can't help (0.8.0's Install button has a bug,
+   so 0.8.0 copies need this once). It stops Deja Vu1 in Documents, installs the
+   newest release over it and starts it again.
 
-Either way: start Deja Vu1 with its launcher, and wait until every real printer
-is idle and slicing has finished. Install keeps the data folder, restarts the
-dashboard, and puts the previous version back if the new one fails its startup
-check. Keep the launcher window open. Printer firmware updates are separate.
+   **Windows:** open a new **PowerShell** window and paste:
 
-### Updating an older copy for the first time
+   ```powershell
+   $ProgressPreference = 'SilentlyContinue'
+   $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+   try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+   Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+   Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
+   Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
+   Start-Process "$dest\start-windows.bat"
+   ```
 
-If Settings has no **Version & updates** card, your copy is older than the
-updater for it. Update by hand once; after that, updates come through the app.
+   **Mac, Linux or Raspberry Pi:** open a **new** Terminal window and paste:
 
-1. Close the launcher window to stop Deja Vu1.
-2. Then, depending on how you got it:
-   - **GitHub Desktop:** open GitHub Desktop and choose the **Deja_VU1**
-     repository at the top left. Press **Fetch origin**, then **Pull origin**
-     when it appears. If GitHub Desktop says you changed files, it lists them;
-     you made no deliberate changes, so **Discard changes** is usually right,
-     but read the list first. Your settings live in `backend/data/`, which git
-     ignores and never lists.
-   - **git:** open a terminal in the folder and run `git pull`.
-   - **ZIP:** download the newest version into a new folder. Copy the whole
-     `backend/data/` folder from the old copy into the new one. Keep the old
-     folder until the new one works. If you set `DEJAVU_DATA_DIR`, keep pointing
-     to that same folder instead.
-3. Start the launcher again. The header shows the new version.
+   ```bash
+   curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+   curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+   python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+   cd ~/Documents/Deja_VU1 && python3 start.py
+   ```
+
+   The same blocks are in **Settings → Version & updates → Update with a
+   command**. The Windows block has not been run on a Windows computer yet; the
+   Mac and Linux block was tested on Linux.
+3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
+   the launcher again. If it says you changed files, read the list; **Discard
+   changes** is usually right. Your settings live in `backend/data/`, which git
+   never lists.
+
+**Look after this copy** in the same card can also **Restart** the dashboard,
+**Repair files** (put the published app files back, data untouched), make a
+**Safety copy now** and **Stop** Deja Vu1.
 
 The built-in **app-data backup** (Settings) includes settings, library files and
 per-printer records, with validated recovery into a separate copy. Make one
@@ -236,6 +243,6 @@ engines/presets; see [backup and recovery](backup-and-recovery.md).
 The Linux launcher, disposable update/rollback processes and git-copy updates
 (against real git repositories on Linux) have automated checks. Installing the
 desktop app in a real Chrome or Edge window, the launcher's app window on Windows
-or macOS, and an update between two published releases have not been tried yet. Windows/macOS double-click launching, a real U1, real iPhone/Android
+or macOS, the Windows update block and an update between two published releases have not been tried yet. Windows/macOS double-click launching, a real U1, real iPhone/Android
 installation, home firewalls and remote access still need device testing. An
 emulated phone-sized browser is useful for layout, but does not prove those.

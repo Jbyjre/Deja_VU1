@@ -86,6 +86,9 @@ API endpoints
   POST /api/import/orca/projects     {"ids"} copy recent projects into Files
   POST /api/import/orca/profile      {"name", "machine", "process", "filaments"} a profile from your presets
   POST /api/app/updates/git          update a git checkout (fast-forward only)
+  POST /api/app/repair               put the newest published files back over this copy, then restart
+  POST /api/app/restart              restart the dashboard (launcher only)
+  POST /api/app/stop                 stop the dashboard (from this computer only)
 
   GET  /api/files                    the file library
   GET  /api/files/thumb?name=        a file's thumbnail (PNG)
@@ -1053,6 +1056,25 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             self._read_json_body()
             result = _install_update(self.server)
             return self._send_json(result)
+        if route == "/api/app/repair":
+            # The newest published files over this copy, even at the same version.
+            self._read_json_body()
+            return self._send_json(_install_update(self.server, repair=True))
+        if route == "/api/app/restart":
+            self._read_json_body()
+            if os.environ.get("DEJAVU_LAUNCHER") != "1":
+                raise ValueError("This copy was started without the double-click launcher, so it can't restart itself. "
+                                 "Close its window and start it again")
+            _restart_soon(self.server)
+            return self._send_json({"restarting": True, "version": app_updates.version()})
+        if route == "/api/app/stop":
+            # Only from the computer it runs on: a phone could stop it but never start it again.
+            self._read_json_body()
+            if not self._this_computer():
+                return self._send_json({"error": "Stop Deja Vu1 from the computer it runs on. "
+                                                 "A phone can't start it again"}, status=403)
+            threading.Timer(0.5, self.server.shutdown).start()
+            return self._send_json({"stopping": True})
         if route == "/api/app/selfcheck":
             self._read_json_body()
             return self._send_json(selfcheck.run())
@@ -1065,8 +1087,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             # Every module re-reads the restored records after a restart.
             if os.environ.get("DEJAVU_LAUNCHER") == "1":
                 result["restarting"] = True
-                self.server.update_restart = True
-                threading.Timer(0.5, self.server.shutdown).start()
+                _restart_soon(self.server)
             else:
                 result["restart_needed"] = True
             return self._send_json(result)
@@ -1086,8 +1107,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             result = app_updates.git_update()
             if result["updated"] and os.environ.get("DEJAVU_LAUNCHER") == "1":
                 result["restarting"] = True
-                self.server.update_restart = True
-                threading.Timer(0.5, self.server.shutdown).start()
+                _restart_soon(self.server)
             return self._send_json(result)
 
         if route == "/api/tools/layer-plan":
@@ -1672,20 +1692,32 @@ def _require_idle_for_update():
                 state = mock_moonraker.get_printer_state()
             if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
                 raise ValueError("Updates wait until all real printers are connected and idle")
-    if slicer_bridge.any_active():
+    try:
+        slicing = slicer_bridge.any_active()
+    except Exception:
+        # 0.8.0 crashed right here, so its Install button never worked. A broken
+        # slicing check must never lock a copy out of the update that fixes it.
+        traceback.print_exc()
+        slicing = False
+    if slicing:
         raise ValueError("Wait for slicing to finish before updating")
 
 
-def _install_update(server):
+def _restart_soon(server):
+    """Stop serving; the launcher sees exit code 75 and starts the server again."""
+    server.update_restart = True
+    threading.Timer(0.5, server.shutdown).start()
+
+
+def _install_update(server, repair=False):
     """Stage an update (checked again just before it is committed), then restart into it."""
     _require_idle_for_update()
     try:
         memory.snapshot("before-update")
     except Exception:
         pass                       # a safety copy that can't be written never blocks the update itself
-    result = app_updates.prepare(before_commit=_require_idle_for_update)
-    server.update_restart = True
-    threading.Timer(0.5, server.shutdown).start()
+    result = app_updates.prepare(before_commit=_require_idle_for_update, repair=repair)
+    _restart_soon(server)
     return result
 
 

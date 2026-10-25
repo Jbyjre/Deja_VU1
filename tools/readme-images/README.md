@@ -46,7 +46,7 @@ names and the nine-stop tour) and adds `phone-connect` and `help-note`.
 | `appearance.jpg` | Settings → Appearance (`#appearance-card`) |
 | `twin-drawing.jpg` | Overview twin → T0 chip → Drawing, Angled (`#twin-card`); launch Chromium with `--use-gl=swiftshader --enable-unsafe-swiftshader` in the sandbox |
 | `setup.jpg` | Set up & help → Continue: the full-screen "Make it yours" step, after moving the mouse across it |
-| `version-history.jpg` | Settings → Version & updates (`#version-card`), with the server started through `start.py` so it reads as a launcher copy; the floating orb, live pill and handoff bar hidden; cropped to the top 1640 px |
+| `version-history.jpg` | Settings → Version & updates (`#version-card`), with the server started through `start.py` so it reads as a launcher copy; 800 px wide at 2x in a 2600 px tall window (no scrolling, so the sticky bar stays clear), Update with a command opened; the floating orb, live pill and handoff bar hidden; cropped to the top 1640 px |
 | `desktop-app.jpg` | Settings → Desktop app (`#desktop-card`), floating pieces hidden |
 | `whats-new.jpg` | `Versions.tour('0.8.0')`: the opening card, 800 × 900 at 2x |
 | `tour.jpg` | `Guide.everything({ startAt: 2 })`: the quick tour's 3D twin stop (its glass callout and beacon), 1280 × 860 at 2x (`capture-round-five.js`) |

@@ -7,9 +7,40 @@ the app's version history (Settings → Version & updates, from
 0.8.0 were given afterwards to rounds of work, dated from the git history;
 0.8.0 is the first version published as a download.
 
-Merged after the 0.8.0 release was published; part of the next version.
+From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
+raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
-## Unreleased: your phone by QR code, help on every card, a nine-stop tour, clearer demo printers
+## 0.9.0 (25 October 2026): updates that install every time
+
+- **Fixed: 0.8.0's Install button could never install.** Its check for running
+  slice jobs read the job list wrongly and crashed with a server error before
+  anything was downloaded, on every copy and every channel (reproduced with the
+  real 0.8.0 release). The check was fixed on `main`, and now a check that fails
+  this way is logged and no longer blocks the update that fixes it. 0.8.0 copies
+  need one manual update (the one-paste command below); from 0.9.0 on the button
+  works. Tested end to end on Linux: a downloaded copy installed the published
+  release and the newest files from GitHub, then restarted.
+- **A release with every merge.** The release workflow now runs on every merge
+  to `main`. If `VERSION` is new it publishes it; otherwise it numbers the next
+  patch release, writes it into `VERSION`, `frontend/versions.json` and this
+  changelog, commits that to `main` and publishes it. Automatic checks for
+  releases now run every hour instead of once a day.
+- **Update with a command.** One paste for PowerShell or Terminal stops Deja Vu1
+  in Documents (politely through the new stop action, or by ending its server
+  process on older copies), installs the newest release over it and starts it.
+  It is in the README, the getting-started guide, the product page and Settings,
+  and `tests/test_install_blocks.py` keeps every copy identical. The Mac/Linux
+  block was run on Linux against the real 0.8.0 release; the Windows block has
+  not been run on Windows yet.
+- **Look after this copy.** Settings → Version & updates gains Restart, Repair
+  files (the newest published files go back over the app, even at the same
+  version; data untouched), Safety copy now and Stop (from the computer it runs
+  on only). A failed install opens the update command.
+- **A second launcher opens the first.** Starting Deja Vu1 while it already runs
+  opens the running copy instead of failing with a misleading Python message.
+- **Shorter words.** The About card and the update card say less, more plainly.
+
+### Also in 0.9.0: your phone by QR code, help on every card, a nine-stop tour, clearer demo printers
 
 - **Your phone, by scanning a code.** Overview → Connect your phone (also in
   Settings and setup) shows a QR code of this computer's address with a
@@ -53,7 +84,7 @@ Merged after the 0.8.0 release was published; part of the next version.
   390 px and on the online demo. Not tested: a real phone camera scanning the
   code, a real home network, Windows' firewall prompt.
 
-## Unreleased: install in one paste
+### Also in 0.9.0: install in one paste
 
 - README, getting started and the product page now lead with copy-and-paste
   install blocks: PowerShell for Windows, Terminal for Mac, Linux and a
@@ -66,7 +97,7 @@ Merged after the 0.8.0 release was published; part of the next version.
   itself as an updatable download and keeps saved data when run again). Not run
   here: the PowerShell block on Windows and the Terminal block on a Mac.
 
-## Unreleased: campaign art direction and clearer app copy
+### Also in 0.9.0: campaign art direction and clearer app copy
 
 - Rebuilt the campaign around six distinct compositions: large typography,
   cobalt/ink/paper fields, enlarged UI details, a dimensional conceptual loop,
@@ -80,7 +111,7 @@ Merged after the 0.8.0 release was published; part of the next version.
   services and core-vs-optional requirements. The copy review records exact
   before/after scope; most operational app strings retain their existing wording.
 
-## Unreleased: public copy and marketing images
+### Also in 0.9.0: public copy and marketing images
 
 - Shorter project-page and README introductions, consistent search/share
   descriptions, and a visible first-connection invitation. Claims distinguish

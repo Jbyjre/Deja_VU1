@@ -19,6 +19,9 @@ def notes(version):
     lines += [f'- {change}' for change in entry['changes']]
     lines += ['', '### Install or update', '',
               '- **Already running Deja Vu1?** Open Settings → Version & updates → Check for updates.',
+              '- **On 0.8.0, or Install can\'t finish?** Paste the update command for your computer: '
+              '[update in one paste](https://github.com/Jbyjre/Deja_VU1#update). 0.8.0\'s Install button has a bug, '
+              'so 0.8.0 copies need this once.',
               '- **New here?** Paste one block into PowerShell (Windows) or Terminal (Mac, Linux): '
               '[install in one paste](https://github.com/Jbyjre/Deja_VU1#install). '
               'No code: download `deja-vu1-update.zip` below, extract it, and double-click the launcher for '

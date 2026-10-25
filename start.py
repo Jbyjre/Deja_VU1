@@ -41,9 +41,25 @@ def open_when_ready():
         print("Deja Vu1 opened in its own app window. Keep this window open; closing it stops the dashboard.", flush=True)
 
 
+def already_running():
+    """The version of a Deja Vu1 that already answers on this port, or None."""
+    try:
+        with urlopen(f"http://127.0.0.1:{PORT}/api/app/info", timeout=1) as response:
+            return json.load(response).get("version") or "unknown"
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
 def supervise():
     """Keep one server process; install only after that process has stopped."""
     sys.path.insert(0, os.path.join(HERE, "backend"))
+    running = already_running()
+    if running:
+        # A second launcher can't take the port; open the one that is running instead.
+        print(f"Deja Vu1 {running} is already running at http://localhost:{PORT}. Opening it.", flush=True)
+        print("To start this copy instead, close the other Deja Vu1 window first.", flush=True)
+        open_when_ready()
+        return 0
     import app_updates
     env = dict(os.environ, DEJAVU_LAUNCHER="1")
     env.setdefault("DEJAVU_DATA_DIR", os.path.join(HERE, "backend", "data"))
