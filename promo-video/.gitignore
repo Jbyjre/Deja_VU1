@@ -23,3 +23,9 @@ v15/*/assets/audio/
 v15/*/.hyperframes/
 v15/build/sfx_*.json
 v15/build/music_*.json
+# version 16 (V1, 16:9 only): the same generated files
+v16/*/assets/footage/
+v16/*/assets/audio/
+v16/*/.hyperframes/
+v16/build/sfx_*.json
+v16/build/music_*.json

@@ -22,18 +22,15 @@ trust the code and fix this file.
   mechanically everywhere: "bring back the laptop and phone" meant about half
   the scenes, not every one. Re-read every earlier request in the thread
   before finishing, and go a step beyond each one.
-- Launch video: 60 seconds for the marketing cuts, both 16:9 and 9:16 (the owner, version 13;
-  version 12's 75-second cuts are kept beside them) unless the owner says otherwise
-  (`promo-video/README.md` holds the owner's other video preferences). The next
-  videos must show the live Dots background reacting to the cursor and the new
-  realistic 3D twin (the owner, 23 October 2026; details in that README). The owner
-  calls version 12's 75 s pair "V1" and version 13's 60 s pair "V2". Version 14
-  (`promo-video/v14/`, its own build, sharing only capture/, footage and music/) is V1
-  cut to 60 s with the twin and background. Version 15 (`promo-video/v15/`) is V2
-  updated the same way. The original V1 and V2 files are kept beside both.
-- Next marketing video: show the 3DBenchy instead of the block/cube, then replace the film in
-  the README and on the product page (the owner, 23 October 2026; `promo-video/README.md` "Next
-  run" lists the stale names in `capture/shots.js`). Don't edit the video unless asked.
+- Launch video (the owner, 25 October 2026): **16:9 only** from now on, one cut per version (no
+  9:16). Set aside, and never build on or reuse: the owner's "V2" (version 13's 60 s pair and
+  version 15, its update) and the marketing videos ChatGPT made (none are in this repository).
+  The current line is "V1" (version 12's 75 s pair, version 14 at 60 s, version 16). Marketing cuts
+  are 60 seconds and show the live Dots background and the 3D twin (`promo-video/README.md` holds the
+  owner's other video preferences). Each new version shows what changed in the app since the last.
+  Version 16 (`promo-video/v16/`, 16:9 only) shows the 3DBenchy, the quick tour and scanning a QR
+  code onto a phone; it replaced the film in the README and on the product page. Older finished
+  files stay in `marketing-library/07-videos/`. Don't edit the video unless asked.
 - Every change must also be reflected in the online demo (the owner's rule,
   October 2026; README "For developers and AI coding sessions"). Frontend
   changes reach it by themselves, but check `/?demo` on a static server; a new
@@ -144,7 +141,7 @@ root should hand over to `welcome.html`.
 - `sample_files.py` + `sample_slicer.py` + `sample_assets/3dbenchy.stl`: the sample set (the
   real 3DBenchy, CC0, 60k triangles; a gear and a vase from formulas) and a deliberately simple
   slicer that cuts real layers for the sample G-code. Old cube/bracket names live in `LEGACY`.
-  The default demo printer (U1 · Workshop) prints `two_benchies_two_colours.gcode` (orange hull
+  The default demo printer (Demo printer 1, id `u1-workshop`) prints `two_benchies_two_colours.gcode` (orange hull
   / black cabin and the reverse, deck at 15 mm); its `object_tools` plan drives the active head.
 - `print_preview.py` (`GET /api/print/preview`): the running print's outer walls and top
   surfaces per head and object from its own G-code (real printer: Moonraker file download;
@@ -156,6 +153,11 @@ root should hand over to `welcome.html`.
   user presets; paths never sent to the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
 - `app_updates.py`: channels `stable` (releases) and `latest` (main branch: per-file git blob
   hashes against GitHub's tree, only changed files staged), `watch()` thread, `git_update()`.
+- Demo printers are shown as "Demo printer 1/2/3" (ids `u1-workshop`/`u1-studio`/`u1-garage`, kept so
+  saved records match; the owner found the old room names confusing). Sandbox ones continue the count.
+- `qr.py` (standard-library QR codes, checked against python-qrcode) and `phone_link()` in app.py
+  (`POST /api/pairing/link`: address + one-time code + QR rows). `frontend/phone.js` shows the sheet,
+  and on the phone redeems `?pair=` by itself (setup is skipped for a phone arriving that way).
 - `pairing.py`: device keys (hash stored, HttpOnly cookie) and the optional device lock
   (`app.py` `_locked_out`; localhost via loopback is always allowed).
 - `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
@@ -172,7 +174,7 @@ root should hand over to `welcome.html`.
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `guide.js` → `launchpad.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
+  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -208,9 +210,12 @@ root should hand over to `welcome.html`.
 - `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
   message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
   and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.
-- `guide.js`: the tour engine (`Guide.start(steps)`, spotlight or full-screen
-  chapter steps, "Try it" actions limited to buttons a person could press) and
-  the tour of every screen (`Guide.everything()`, setup's "The tour" step).
+- `guide.js`: the tour engine (`Guide.start(steps)`: a glass callout with a tail and a beacon that
+  springs from stop to stop, across screens, below the sticky top bar; full-screen chapters for
+  version tours; "Try it" actions limited to buttons a person could press). The quick tour
+  (`Guide.everything()`, setup's "The tour" step) is nine stops; the owner found the old 53 far too
+  many, so keep it short. More detail lives in `Guide.screen(tab)`, 1 to 4 stops per screen, opened
+  by "Show me this screen" in the line under the tab bar.
 - `versions.js` + `versions.json`: Settings → Version & updates, the header
   version chip, "Updated to…" news and each version's tour (`Versions.tour(v)`).
   Works on the static demo (plain file). `launchpad.js` holds setup and the

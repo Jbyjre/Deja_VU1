@@ -12,31 +12,40 @@ music attribution and simulated-data notice when posting.
 Launch-video tooling and historical cuts filmed from the app's simulated farm.
 These tools are separate from the Python-only application.
 
-**Next run: show the 3DBenchy (the owner, 23 October 2026; not filmed yet).** The owner asked
-that the next marketing video show the Benchy instead of "the weird block" (the L-shaped
-`dock_bracket.stl` in the prepare/slice scene and the 20 mm cube in Confirm Print and elsewhere),
-and that once it is rendered the new film replaces the current one in the repository README and on
-the product page. Nothing was re-filmed in the session that added this note. What changed in the
-app, and what the filming scripts must follow:
+**The owner's rules from 25 October 2026 (they override older notes below):**
 
-- "Add sample files" now gives `3dbenchy.stl` (the real 3DBenchy, public domain since February
-  2025), `3dbenchy_pla.gcode` (cut from it, 240 layers), `benchy_gear_vase_skip_one.gcode`
-  (three labelled objects; skip `SPUR_GEAR.STL_ID_1_COPY_0`), `hex_coaster_three_colour.gcode`
-  (T0 to T2), `spur_gear_24t.stl`, `twisted_vase.stl`, the unsafe example (same name) and the three
-  3MF projects (now carrying the Benchy, gear and vase).
-- `capture/shots.js` still names the old files: line ~82 `two_colour_coaster.gcode` ->
-  `hex_coaster_three_colour.gcode`; line ~188 `calibration_cube_20mm.gcode` -> `3dbenchy_pla.gcode`;
-  lines ~241-242 `dock_bracket.stl` -> `3dbenchy.stl`. Update them before filming; the old names
-  are still buildable by `sample_files.build()` but no longer appear in the library.
-- After the render: re-encode the 16:9 cut for the web (under 25 MB, Cloudflare's per-file limit;
-  the current one is H.264 CRF 25, 30 fps, 1920x1080, AAC 128k, about 10 MB) to
-  `frontend/media/`, take a new poster frame (`frontend/media/*-poster.jpg`) and README picture
-  (`docs/img/launch-video-v1.jpg`, with the play button), and point `frontend/welcome.html`
-  (`#film`, and the `og:video` tags) and the README's "Watch the 60-second launch film" link at it.
-- Also worth showing now: the Layer stack (Files), the converter card, the Farm desk (Printers),
-  the Telemetry panel (Overview) and the Orca-style process settings.
+- **16:9 only.** One cut per version, 1920 × 1080. No 9:16 cut any more; the vertical projects of
+  earlier versions are kept as history only.
+- **Version 2 is set aside.** The owner's "V2" (version 13's 60 s pair and version 15, its update)
+  and the marketing videos ChatGPT made are not to be built on or reused (none of the ChatGPT videos
+  are in this repository). The "V1" line (version 12, version 14, version 16) is the current one.
+- **Show what changed.** Each new version recognises the app's updates since the last one.
 
-**Current status (version 13, October 2026):** two new 60-second cuts (the owner: "do a
+**Version 16 (25 October 2026): V1, 60 s, 16:9, with what changed.** In its own folder, `v16/`
+(`build/` and the HyperFrames project `main/`), sharing only the filming scripts, footage and
+`music/` with earlier versions. Version 14's opening (hook, what it is for, the name, how it works)
+and its music (`compose10.py`, 160 BPM, recorded piano, bass and drums), then:
+
+- **Every printer** (2.5 bars), **Needs you** (2), **Confirm Print** (3.5, now the 3DBenchy, all
+  checks passing on a sandbox printer), **prepare & slice** (3, the Benchy duplicated, the copy on
+  head T1, arranged), **the 3D twin** (4.5: the model, then the drawing, version 15's tighter take).
+- **New: the quick tour** (4 bars, on the laptop): the tour's own glass callout glides from Needs
+  you to the twin, over to Printers and on to Files (`tour_v16`).
+- **New: your phone** (3 bars): Connect your phone opens the sheet with its QR code (`phone_qr`);
+  as it is scanned the laptop steps back and the phone comes forward, the dashboard open on it and
+  paired (`phone_paired`). Both are filmed under the example address `http://192.168.1.23:8000`
+  (`capture/rec.js` `alias`; the end card says it is an example).
+- **And plenty more** (screenshots of the real panels, `stills_v16`): the farm desk, mixed layer
+  heights, the converter, live telemetry, automations (no longer a feature scene of its own) and
+  version & updates. The Orca-style process settings were planned too, but they only appear once a
+  slicing engine is installed, which the filming machine does not have.
+- **The end card** shows the real install block from the README (Mac and Linux Terminal), pasted in
+  one go, with the PowerShell and ZIP routes named under it, in place of `git clone`.
+- The how-it-works printers are "Printer 1/2/3" (the app's demo printers are now "Demo printer
+  1/2/3"). `capture/shots.js` now uses `3dbenchy_pla.gcode`, `3dbenchy.stl` and
+  `hex_coaster_three_colour.gcode` in place of the retired cube, bracket and coaster names.
+
+**Version 13 (October 2026; set aside by the owner on 25 October 2026 as "V2"):** two new 60-second cuts (the owner: "do a
 60-second video, in both formats"), retold the way product-launch films explain a feature: the
 problem first, the answer, how it works in one breath, then six features, each headline landing on
 its own before the app shows it working. New music: a bright lounge-jazz tune at 144 BPM with a
@@ -140,7 +149,8 @@ swirling and lighting up around the cursor, with hidden surprises. When the vide
 | `main/`, `vertical/` | The [HyperFrames](https://github.com/heygen-com/hyperframes) projects: 16:9 (1920 × 1080) and 9:16 (1080 × 1920), both 60 s (version 13; 75 s up to version 12). `index.html` is generated by `build.py`. |
 | `v1/` | The first version's compositions, for reference. |
 | `v14/` | Version 14, the owner's "V1" (version 12) re-cut to 60 s: its own `build/` (template, timeline, layouts, `build.py`, `stills.sh`) and HyperFrames projects `main/` and `vertical/`. Built with `python3 v14/build/build.py main` (or `vertical`); renders go to `v14/renders/`. |
-| `v15/` | Version 15, the owner's "V2" (version 13) updated the same way: its own `build/` and HyperFrames projects; `python3 v15/build/build.py main` (or `vertical`), renders in `v15/renders/`, cards by `v15/build/stills.sh`. |
+| `v15/` | Version 15 (set aside with V2), the owner's "V2" (version 13) updated the same way: its own `build/` and HyperFrames projects; `python3 v15/build/build.py main` (or `vertical`), renders in `v15/renders/`, cards by `v15/build/stills.sh`. |
+| `v16/` | Version 16, V1 at 60 s in 16:9 only, with what changed in the app: its own `build/` and HyperFrames project `main/`. Built with `python3 v16/build/build.py`; renders in `v16/renders/`. |
 
 Existing on-screen figures came from the simulated farm or the README at filming
 time. Historical test counts are not current. Keep simulated readings, engine
@@ -188,6 +198,15 @@ cd ../vertical && npx hyperframes@0.8.166 render --fps 60 --quality delivery --v
 cd ../.. && python3 v14/build/finish.py main v14/renders/main.mp4 v14/renders/deja-vu1-launch-v1-60s-16x9.mp4
 python3 v14/build/finish.py vertical v14/renders/vertical.mp4 v14/renders/deja-vu1-launch-v1-60s-9x16.mp4
 bash v14/build/stills.sh
+```
+
+Version 16 (16:9 only) films `fleet_bg overview_jam confirm_ok prepare twin3d_tight tour_v16
+phone_qr phone_paired stills_v16`, then:
+
+```bash
+python3 v16/build/build.py
+cd v16/main && npx hyperframes@0.8.166 render --fps 60 --quality delivery --video-frame-format png --output ../renders/main.mp4
+cd ../.. && python3 v16/build/finish.py main v16/renders/main.mp4 v16/renders/deja-vu1-launch-v16-60s-16x9.mp4
 ```
 
 To try a shot quickly, film it at a low frame rate somewhere else first:
