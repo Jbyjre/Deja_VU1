@@ -39,6 +39,7 @@ TREE_API = 'https://api.github.com/repos/{repo}/git/trees/{tree}?recursive=1'
 RAW = 'https://raw.githubusercontent.com/{repo}/{sha}/{path}'
 CHANNELS = ('stable', 'latest')
 LATEST_EVERY = 15 * 60          # how often automatic checks look for a newer build
+RELEASE_EVERY = 60 * 60         # and for a new release: every merge to main publishes one
 MAX_BYTES = 128 * 1024 * 1024
 MAX_UNPACKED = 512 * 1024 * 1024
 _lock = threading.Lock()
@@ -272,18 +273,24 @@ def _read_url(url, limit):
     return data
 
 
-def release_info(data):
+def release_info(data, repair=False):
     tag = data.get('tag_name', '')
     if data.get('draft') or data.get('prerelease') or '-' in tag:
         raise ValueError('Only stable published releases can be installed')
     newer = version_key(tag) > version_key(version())
+    if repair:
+        # Repair puts the published files back over this copy, so the same version counts.
+        newer = version_key(tag) >= version_key(version())
     asset = next((a for a in data.get('assets', []) if a.get('name') == 'deja-vu1-update.zip'), None)
     digest = (asset or {}).get('digest', '') or ''
     verified = bool(re.fullmatch(r'sha256:[0-9a-fA-F]{64}', digest))
     return {'version': tag.lstrip('v'), 'available': newer, 'installable': newer and verified,
             'url': (asset or {}).get('browser_download_url'), 'digest': digest,
             'checked_at': int(time.time()),
-            'message': ('A newer version is ready.' if newer else 'You have the latest stable version.')
+            'message': ('A newer version is ready.' if newer and not repair else
+                        'The published files are ready to go back over this copy.' if newer else
+                        'This copy is newer than the newest release, so there is nothing to repair it from.'
+                        if repair else 'You have the latest stable version.')
                        + (' This release has no verified update package yet.' if newer and not verified else '')}
 
 
@@ -377,7 +384,7 @@ def latest_info(root=ROOT):
 def _stage_latest(root, base, before_commit):
     sha, commit, wanted, changed = _newest(root)
     if not changed:
-        raise ValueError('You already have the newest build')
+        raise ValueError('Every file already matches the newest build. Nothing needed changing')
     total = sum(int(wanted[p].get('size') or 0) for p in changed)
     if total > MAX_BYTES:
         raise ValueError('The newest build is too large for the built-in updater')
@@ -479,13 +486,20 @@ def unpack(data, target, expected_version):
     return [e.filename for e in entries]
 
 
-def prepare(root=ROOT, before_commit=None, channel=None):
+def prepare(root=ROOT, before_commit=None, channel=None, repair=False):
+    """
+    Stage an update for the launcher to apply. With repair=True the newest
+    published files go back over this copy even when the version is the same,
+    which mends files that were deleted or changed by hand.
+    """
     global _busy
     root = Path(root)
     channel = channel or settings()['channel']
     if os.environ.get('DEJAVU_LAUNCHER') != '1':
         raise ValueError('Close this server and open the app with its double-click launcher to install updates')
     if install_kind(root) == 'git':
+        if repair:
+            raise ValueError('This copy was made with git. Repair it in GitHub Desktop: Repository, then Discard all changes')
         return _git_prepare(root, before_commit)
     with _lock:
         if _busy:
@@ -501,7 +515,7 @@ def prepare(root=ROOT, before_commit=None, channel=None):
             except Exception:
                 shutil.rmtree(base, ignore_errors=True)
                 raise
-        info = release_info(json.loads(_read_url(API, 2 * 1024 * 1024)))
+        info = release_info(json.loads(_read_url(API, 2 * 1024 * 1024)), repair)
         if not info['installable']:
             raise ValueError(info['message'])
         data = _read_url(info['url'], MAX_BYTES)
@@ -603,13 +617,13 @@ def apply_pending(root, health_check):
 def automatic_check():
     """
     One automatic check, if one is due: the newest builds (and git copies, which
-    follow main) every 15 minutes, stable releases at most once a day. Off until
+    follow main) every 15 minutes, releases every hour. Off until
     the owner opts in. Returns the result when a check ran.
     """
     s = settings()
     if not s['automatic']:
         return None
-    every = LATEST_EVERY if s['channel'] == 'latest' or install_kind() == 'git' else 86400
+    every = LATEST_EVERY if s['channel'] == 'latest' or install_kind() == 'git' else RELEASE_EVERY
     if time.time() - s.get('checked_at', 0) < every:
         return None
     result = check()

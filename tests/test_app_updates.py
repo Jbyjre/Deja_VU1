@@ -55,6 +55,19 @@ class AppUpdates(unittest.TestCase):
         self.assertTrue(updates.release_info(self.release(package()))['installable'])
         self.assertFalse(updates.settings()['automatic'])
 
+    def test_repair_reinstalls_the_same_version(self):
+        same = patch.object(updates, 'version', return_value='0.2.0')
+        with same:
+            self.assertFalse(updates.release_info(self.release(package()))['installable'])
+            self.assertTrue(updates.release_info(self.release(package()), repair=True)['installable'])
+            data = package()
+            with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(updates, '_read_url',
+                    side_effect=[json.dumps(self.release(data)).encode(), data]):
+                self.assertEqual(updates.prepare(self.root, repair=True)['version'], '0.2.0')
+        self.assertTrue(updates.apply_pending(self.root, lambda v: v == '0.2.0'))
+        self.assertEqual((self.root / 'backend/app.py').read_text(), '# new')
+        self.assertEqual((self.root / 'backend/data/fleet.json').read_text(), 'private settings')
+
     def test_checksum_failure_leaves_installation_untouched(self):
         data = package()
         with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(updates, '_read_url',
@@ -325,6 +338,12 @@ class UpdatesWaitForSlicing(unittest.TestCase):
 
     def test_no_slicing_lets_an_update_through(self):
         self.app._require_idle_for_update()          # the demo printers are simulated, so nothing else waits
+
+    def test_a_broken_slicing_check_never_locks_out_the_fix(self):
+        # 0.8.0's Install button crashed in this check every time; a crash here now lets the update through.
+        with patch.object(self.bridge, 'any_active', side_effect=AttributeError('boom')), \
+                patch('traceback.print_exc'):
+            self.app._require_idle_for_update()
 
     def test_a_slice_for_any_printer_holds_the_update(self):
         self.bridge._jobs['j1'] = {'id': 'j1', 'status': 'running', 'printer_id': 'some-other-printer'}
