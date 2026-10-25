@@ -29,7 +29,7 @@ The app shows the same number in its header and in **Settings → Version & upda
 | Look around before installing | The [online demo](https://deja-vu1.jmath1110.workers.dev/?demo), in any browser | Nothing. It plays a recording of three simulated printers |
 | Run your printers from your computer | A browser tab at `http://localhost:8000` | Windows, Mac, Linux or a Raspberry Pi, with Python 3.8 or newer |
 | Keep it out of the browser | The **desktop app**: its own window, with an icon in the Start menu or Dock | Chrome or Edge on that computer ([how](#the-desktop-app)) |
-| Check prints from the sofa | Your **phone**, on the same home Wi-Fi | The computer's address, which the launcher window prints |
+| Check prints from the sofa | Your **phone**, on the same home Wi-Fi | Nothing to type: **Connect your phone** on the Overview shows a code to scan with the phone's camera |
 | Check prints away from home | Your phone through **Tailscale** or a **Cloudflare tunnel** | A private connection you set up ([guide](docs/remote-access.md)) |
 
 Every way except the online demo opens the same dashboard, served by the same
@@ -194,6 +194,28 @@ updater that handles it. Update it by hand, once:
 From then on, updates come through the app. A downloaded copy that shows an
 older **App updates** section can also try **Check for updates** there.
 
+## What's new since 0.8.0
+
+On the main branch; part of the next version.
+
+- **Your phone, by scanning a code.** **Overview → Connect your phone** shows a
+  QR code. Point the phone's camera at it, tap the link, and the dashboard
+  opens on the phone and pairs itself. Typing still works, and the address
+  now picks out its colon: `10.0.0.10:8000`, not `10.0.0.10.8000` (with a
+  dot, phones search the web instead and show unrelated pages).
+- **A quick tour of nine stops**, about a minute, instead of 53. A glass
+  callout points at each part and glides to the next, across screens. Each
+  screen also has a **Show me this screen** button with a few more tips.
+- **Demo printer 1, 2 and 3.** The pretend printers had room names (Workshop,
+  Studio, Garage) that read like parts of the app.
+- **Fixes:** installing an update no longer fails with a server error; the
+  3D twin stops drawing while it is out of sight (it was using about a
+  processor core); and a few smaller ones, listed in the [changelog](CHANGELOG.md).
+
+<img src="docs/img/phone-connect.jpg" width="49%" alt="Connect your phone: a glass sheet titled Point your phone's camera here, with a large QR code, three steps (join the same Wi-Fi, open the Camera, that's it), Waiting for your phone, and the address 192.168.1.23:8000 with its colon highlighted for typing instead"> <img src="docs/img/tour.jpg" width="49%" alt="The quick tour at its third stop: the page dimmed except the 3D twin card, with a glass callout titled Your printer, live in 3D whose pointer and pulsing beacon touch the card's edge, a Show it as a drawing button, Back and Next, and dots for the nine stops">
+
+<sub>Simulated farm, Demo data on. The phone address is an example.</sub>
+
 ## What's new in 0.8.0
 
 - **Updates that find you.** Releases now publish on GitHub by themselves, and
@@ -204,9 +226,9 @@ older **App updates** section can also try **Check for updates** there.
   corner and sink back in. Click it for the last 30.
 - **A window of its own.** Install Deja Vu1 as an app, or let the launcher open
   it in an app window.
-- **A tour of every screen.** Setup's tour now covers every screen in 54 stops,
-  with things to try. It also explains that Workshop, Studio and Garage are
-  three pretend demo printers, and that Photo studio is a separate tool.
+- **A tour of every screen.** Setup's tour covered every screen in 54 stops,
+  with things to try. (Since then it is a nine-stop quick tour, and the demo
+  printers are called Demo printer 1, 2 and 3.)
 
 **Also in 0.8.0:**
 
@@ -214,7 +236,7 @@ older **App updates** section can also try **Check for updates** there.
   file being printed (downloaded from the printer, or from your file library) and grows the
   outside walls of every layer up to the one being printed, each in the colour loaded in the
   head that prints it; the rest of the print shows faintly above. A new **Print** view closes
-  in on the plate. The demo's Workshop printer now prints two 3DBenchy boats in two colours,
+  in on the plate. The demo's first printer (now Demo printer 1) prints two 3DBenchy boats in two colours,
   orange hull and black cabin and the reverse, swapping heads on every layer.
 - **Take the case off:** the 3D model has a Case on / See-through / Case off switch. With the
   case off you see the frame, the CoreXY motors, belts and idlers and the Z lead screw (drawn
@@ -260,7 +282,7 @@ older **App updates** section can also try **Check for updates** there.
 
 <img src="docs/img/version-history.jpg" width="49%" alt="Settings, Version and updates: the installed version v0.8.0 in large print-line lettering, named Updates that find you, a Tour what's new button, a note that this copy was made with git or GitHub Desktop and pulls updates from GitHub, Check for updates, the automatic-check switch and the start of the version history"> <img src="docs/img/whats-new.jpg" width="49%" alt="The full-screen What's new tour for v0.8.0: the version number, its name, a one-paragraph summary and the five stops of the tour">
 
-<img src="docs/img/tour.jpg" width="49%" alt="A stop of the tour of every screen: the page is dimmed except the 3D model and Drawing switch of the digital twin, with a card titled Model or drawing, a Show the drawing button, Back and Next, at stop 13 of 48"> <img src="docs/img/orb.jpg" width="49%" alt="The notification orb in the bottom-right corner with three messages risen out of it: Pause confirmed by the printer, a filament jam on T2 marked as a problem, and You have the latest version on GitHub with a Version history button">
+<img src="docs/img/orb.jpg" width="49%" alt="The notification orb in the bottom-right corner with three messages risen out of it: Pause confirmed by the printer, a filament jam on T2 marked as a problem, and You have the latest version on GitHub with a Version history button">
 
 <img src="docs/img/desktop-app.jpg" alt="Settings, Desktop app: Install it as an app with an Install Deja Vu1 button and browser-specific help, and Open as a window when the launcher starts, with the choices In its own app window, In a browser tab and Don't open anything">
 
@@ -365,7 +387,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command, each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
 | **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer actually reports back. A command the printer refuses is shown as refused, in words, never as done. |
 | **Finish time on the clock** | Alongside "2 h 17 min left", every running print says when it will finish ("done 2:42 PM", "tomorrow 1:05 AM") on the status ribbon, the fleet cards and the live pill, from the same estimate. |
-| **The browser tab follows the print** | The page title mirrors the selected printer, "53% · U1 · Workshop · Deja Vu1" (or Paused, Finished, Needs attention), and the tab's icon draws the progress ring, so a background tab still tells you how it's going. |
+| **The browser tab follows the print** | The page title mirrors the selected printer, "53% · Demo printer 1 · Deja Vu1" (or Paused, Finished, Needs attention), and the tab's icon draws the progress ring, so a background tab still tells you how it's going. |
 | **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
 | **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast, see [docs/architecture.md](docs/architecture.md). |
 
@@ -373,7 +395,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 
 <sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
 
-![Three simulated printer cards: Workshop printing, Studio paused and Garage reporting a dock fault, with progress, temperatures and fleet controls](docs/img/fleet.jpg)
+![Three simulated printer cards: Demo printer 1 printing, Demo printer 2 paused and Demo printer 3 reporting a dock fault, with progress, temperatures and fleet controls](docs/img/fleet.jpg)
 
 <sub>**Printers** (the Fleet view): every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
 
@@ -445,7 +467,7 @@ per-part settings remain limited. Conversion is not proof of printability.
 
 | Feature | What it does |
 |---|---|
-| **Fleet command center** | Tick several printers in the Printers tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately ("Pause: 2 of 3 confirmed; failed on U1 · Garage", with each printer's reason, such as "Nothing is printing right now", in its own row), never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
+| **Fleet command center** | Tick several printers in the Printers tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately ("Pause: 2 of 3 confirmed; failed on Demo printer 3", with each printer's reason, such as "Nothing is printing right now", in its own row), never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
 | **Photo-to-Print Studio** | Make four-tool dithered tiles, measured-swatch layered models, calibration sheets and closed image-heightmap reliefs. The older absorption-based relief editor remains available. New generation sends a reduced pixel grid to the local app server; legacy relief calculation stays in the browser. Generated files enter the normal preparation/slicing workflow. Physical colour accuracy is unverified. |
 | **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios (a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue) and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
 
@@ -465,8 +487,9 @@ per-part settings remain limited. Conversion is not proof of printability.
 On a phone the layout is rebuilt thumb-first: the main sections and the
 Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
 screen, with the print's progress on a line just above them on every tab.
-Open the computer’s address on your phone over your home Wi-Fi.
-**Settings → Pair another device** is optional bookkeeping; it is not a login.
+To open it on your phone, press **Connect your phone** on the Overview and
+scan the code with the phone's camera (same home Wi-Fi). Pairing happens by
+itself; it is optional bookkeeping, not a login.
 
 **Add to Home Screen** gives it a proper icon and name, opening without the
 browser's bars where the phone allows.
@@ -839,8 +862,8 @@ network, and checks each one), or type its Moonraker address (usually
 `http://<printer-ip>:7125`) and press **Test** first. See
 [docs/real-printer.md](docs/real-printer.md).
 Or flip the **Demo data** switch in the header to fill it with the simulated
-print history. On a phone, open the computer’s **From a phone** address
-printed in the launcher. Pairing is optional.
+print history. On a phone, press **Connect your phone** on the Overview and
+scan the code, or type the **From a phone** address printed in the launcher.
 
 With demo data on, a quick tour of the newer parts: **Printers** to switch
 between the three simulated printers; **Files → Add sample files**, open

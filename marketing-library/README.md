@@ -64,19 +64,22 @@ review. An image showing a stand-in printer never establishes a physical U1.
 
 ## Existing films and animation
 
-[07-videos](07-videos/) retains the existing films:
+[07-videos](07-videos/) holds the films. **Use version 16.** The owner (25 October 2026)
+set aside the "V2" films (v13 and v15) and every 9:16 cut; they stay here as history
+only, not for posting. ChatGPT-made videos are set aside too (none are in this folder).
 
 | Files | Version |
 |---|---|
-| `deja-vu1-launch-16x9.mp4`, `deja-vu1-launch-9x16.mp4` | v12, 75 s, original V1 |
-| `deja-vu1-launch-60s-16x9.mp4`, `deja-vu1-launch-60s-9x16.mp4` | v13, 60 s, original V2 |
-| `deja-vu1-launch-v1-60s-16x9.mp4`, `deja-vu1-launch-v1-60s-9x16.mp4` | v14, V1 cut to 60 s with newer twin/background |
-| `deja-vu1-launch-v2-60s-16x9.mp4`, `deja-vu1-launch-v2-60s-9x16.mp4` | v15, V2 updated with newer twin/background |
+| `deja-vu1-launch-v16-60s-16x9.mp4` | **v16, current.** V1 at 60 s, 16:9 only: the 3DBenchy, the quick tour and scanning onto a phone |
+| `deja-vu1-launch-v1-60s-16x9.mp4`, `deja-vu1-launch-v1-60s-9x16.mp4` | v14, V1 cut to 60 s with newer twin/background (9:16 set aside) |
+| `deja-vu1-launch-16x9.mp4`, `deja-vu1-launch-9x16.mp4` | v12, 75 s, original V1 (9:16 set aside) |
+| `deja-vu1-launch-60s-16x9.mp4`, `deja-vu1-launch-60s-9x16.mp4` | v13, 60 s, original V2 (set aside) |
+| `deja-vu1-launch-v2-60s-16x9.mp4`, `deja-vu1-launch-v2-60s-9x16.mp4` | v15, V2 updated (set aside) |
 
-The films were not re-rendered in this still-image/copy refresh. Their on-screen
-counts and claims belong to their versions. Use the new campaign cards for
+Each film's on-screen counts and claims belong to its version (v16 shows 867
+automated tests, counted on 25 October 2026). Use the new campaign cards for
 current standalone graphics and COPY.md for the reviewed video description.
-[08-feature-cards](08-feature-cards/) contains the preserved video-derived cards;
+[08-feature-cards](08-feature-cards/) contains video-derived cards (`v16-60s/` from v16);
 it is not the current campaign pack. [05-animation](05-animation/) retains the
 simulated-jam and layer-preview GIFs; these are demonstrations, not physical prints.
 

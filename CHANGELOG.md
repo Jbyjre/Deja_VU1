@@ -9,6 +9,42 @@ the app's version history (Settings → Version & updates, from
 
 Merged after the 0.8.0 release was published; part of the next version.
 
+## Unreleased: your phone by QR code, a nine-stop tour, clearer demo printers
+
+- **Your phone, by scanning a code.** Overview → Connect your phone (also in
+  Settings and setup) shows a QR code of this computer's address with a
+  one-time pairing code in it. The phone's camera opens the dashboard and the
+  phone pairs itself; the sheet on the computer says when it has. Typing
+  stays possible, with the colon picked out, because a dot in its place
+  (`10.0.0.10.8000`) or a missing `http://` makes phones search the web and
+  show unrelated pages about routers. Help covers the firewall, guest Wi-Fi,
+  VPNs and computers with more than one address. A phone arriving by the code
+  skips the computer's setup. The launcher window draws the code too.
+  `backend/qr.py` makes the codes with the standard library only.
+- **A quick tour of nine stops** replaces the 53-stop tour of every screen. A
+  glass callout with a pointer and a pulsing beacon glides from stop to stop
+  across screens, and the page stays clickable. Every screen has a "Show me
+  this screen" button with one to four more tips. Version tours use the same
+  callouts.
+- **Demo printer 1, 2 and 3.** The pretend printers were called U1 · Workshop,
+  Studio and Garage, which read like parts of the app. Saved records still
+  match (their ids did not change).
+- **Fixes found by pressing every button on every screen:** installing an
+  update failed with a server error before it started (the slicing check
+  misread its job list); if setup closed some other way, the header and tabs
+  stayed hidden; the online demo's "Mark done" showed an error; tour stops
+  could sit under the sticky top bar; the 3D twin kept drawing while out of
+  sight (about a CPU core in software WebGL), and now draws only when seen.
+- **Launch film version 16**, 16:9 only, now on the product page and in the
+  README: the 3DBenchy, the quick tour and scanning onto a phone. By the
+  owner's decision the "V2" films and 9:16 cuts are set aside.
+- Tested: 867 automated tests; QR codes identical, module for module, to
+  python-qrcode across 872 cases and read back by zxing-cpp and OpenCV; the
+  phone flow end to end in Chromium (a computer page and an iPhone-sized page
+  on a network address); every visible button on every screen at 1366 and
+  390 px and on the online demo. Not tested: a real phone camera scanning the
+  code, a real home network, Windows' firewall prompt.
+
 ## Unreleased: install in one paste
 
 - README, getting started and the product page now lead with copy-and-paste

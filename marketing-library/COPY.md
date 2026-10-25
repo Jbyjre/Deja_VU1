@@ -103,7 +103,8 @@ https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connection.md
 A tour of Deja Vu1, a free, open-source workspace for Snapmaker U1 printers.
 Runs on your computer; opens in your browser. Slicing needs a separate engine.
 
-Every printer in this film is simulated. The twin is a software model with
+Every printer in this film is simulated, and the phone's home-network address
+is an example. The twin is a software model with
 estimated body size and internal geometry. No physical U1 connection is verified,
 and print checks do not guarantee a successful print. Older films contain
 historical test counts; use the repository for current results.
@@ -115,4 +116,6 @@ First connection: https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connec
 Independent project; not affiliated with or endorsed by Snapmaker.
 Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0.
 
-Keep that piano attribution when posting the existing version 12–15 films.
+Keep that piano attribution when posting the films (version 16 uses the same
+recorded piano, bass and drums as versions 12 and 14). Post version 16, 16:9;
+the V2 films and 9:16 cuts are set aside.
