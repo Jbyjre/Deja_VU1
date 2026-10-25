@@ -51,7 +51,7 @@ class TestBroadcast(FleetCommandTest):
         self.assertIn("Nothing is printing", rows["u1-garage"]["error"])
         self.assertFalse(result["all_ok"])
         self.assertEqual((result["ok_count"], result["failed_count"]), (1, 2))
-        self.assertIn("U1 · Studio", result["headline"])
+        self.assertIn("Demo printer 2", result["headline"])
         self.assertNotIn("all", result["headline"].split(":")[1])
 
     def test_printer_failure_is_reported_as_the_printer_s(self):
@@ -157,7 +157,7 @@ class TestRouting(FleetCommandTest):
 
     def test_send_a_file_to_another_printer_s_queue(self):
         result = fleet.route_file("3dbenchy_pla.gcode", "u1-garage")
-        self.assertEqual(result["to_name"], "U1 · Garage")
+        self.assertEqual(result["to_name"], "Demo printer 3")
         self.assertEqual([i["filename"] for i in print_queue.get("u1-garage")["items"]],
                          ["3dbenchy_pla.gcode"])
 

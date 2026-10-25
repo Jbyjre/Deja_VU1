@@ -177,12 +177,15 @@ def _build_print_history(rng, job_count=38, days_back=64):
 # One simulated printer
 # ---------------------------------------------------------------------------
 
-# How each simulated printer starts. The first one is the original single
+# How each simulated printer starts. Shown as "Demo printer 1/2/3" so it is
+# plain they are pretend. They were "U1 · Workshop/Studio/Garage", which read
+# like features (Photo studio is a tab); the ids keep those names so saved
+# records still match. The first one is the original single
 # printer this project always simulated - its numbers are unchanged, so every
 # existing screen and test sees exactly what it saw before.
 _FLEET_SPEC = [
     {
-        "id": "u1-workshop", "name": "U1 · Workshop", "seed": 20260907,
+        "id": "u1-workshop", "name": "Demo printer 1", "seed": 20260907,
         "jobs": 38, "days": 64,
         # Printing the two-colour Benchy pair from the sample files
         # (sample_files.two_colour_benchy_pair_gcode): orange in T0 and
@@ -209,7 +212,7 @@ _FLEET_SPEC = [
         },
     },
     {
-        "id": "u1-studio", "name": "U1 · Studio", "seed": 7117,
+        "id": "u1-studio", "name": "Demo printer 2", "seed": 7117,
         # A mixed-nozzle machine: a 0.2 mm detail nozzle on T3.
         "nozzles": {"T3": 0.2},
         "jobs": 24, "days": 40,
@@ -222,7 +225,7 @@ _FLEET_SPEC = [
         },
     },
     {
-        "id": "u1-garage", "name": "U1 · Garage", "seed": 3301,
+        "id": "u1-garage", "name": "Demo printer 3", "seed": 3301,
         "jobs": 30, "days": 55,
         "scenario": {
             "state": "ready", "file": None,
