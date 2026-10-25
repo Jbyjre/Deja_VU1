@@ -155,8 +155,11 @@ window.Guide = (() => {
     card.scrollTop = 0;
     if (target) {
       ring.hidden = false; beacon.hidden = false;
-      const tall = target.getBoundingClientRect().height > innerHeight * .7;
-      target.scrollIntoView({ block: tall ? 'start' : 'center', behavior: still() ? 'instant' : 'smooth' });
+      // Centre the target in the space under the sticky top bar; a tall one starts just below it.
+      const bar = document.querySelector('.topbar'), r = target.getBoundingClientRect();
+      const top = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().bottom + 12 : 12;
+      const room = innerHeight - top, y = r.height > room * .85 ? r.top - top : r.top - top - (room - r.height) / 2;
+      scrollTo({ top: Math.max(0, scrollY + y), behavior: still() ? 'instant' : 'smooth' });
     } else {
       ring.hidden = true; beacon.hidden = true;
       card.style.transform = '';

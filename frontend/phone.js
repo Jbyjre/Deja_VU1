@@ -74,6 +74,8 @@ window.Phone = (() => {
       return;
     }
     link = data;
+    // The port and scheme of the address shown (a tunnel or proxy may differ from the server's own).
+    const shown = new URL(data.origin), port = shown.port, scheme = shown.protocol.replace(':', '');
     const others = (data.others || []).slice(0, 4);
     body.innerHTML = `
       <div class="phone-grid">
@@ -89,7 +91,7 @@ window.Phone = (() => {
             <p class="phone-label">No camera? Type this into Safari or Chrome’s address bar</p>
             <div class="phone-address"><code>${addressHtml(data.origin)}</code>
               <button type="button" class="btn small" data-phone="copy">Copy</button></div>
-            <p class="field-hint">Use a <b>colon</b> before ${esc(String(data.port))}, not a dot. If your phone shows search results, type <code>http://</code> in front.
+            <p class="field-hint">${port ? `Use a <b>colon</b> before ${esc(port)}, not a dot. ` : ''}If your phone shows search results, type <code>${esc(scheme)}://</code> in front.
               Pairing code, if asked: <b class="phone-code">${esc(String(data.code).replace(/(\d{3})(\d{3})/, '$1 $2'))}</b></p>
           </div>
         </div>
