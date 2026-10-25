@@ -2,6 +2,9 @@
 'use strict';
 (() => {
   const key = 'dejavu1.private-name', seenKey = 'dejavu1.setup-seen';
+  // A phone that arrived by scanning the QR code (phone.js) joins a dashboard that is
+  // already set up on the computer, so it goes straight to the dashboard, not setup.
+  const viaPhoneLink = new URLSearchParams(location.search).has('pair');
   const read = k => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
   const save = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); return true; } catch (_) { return false; } };
   const dialog = $('setup-dialog'), content = $('setup-content');
@@ -36,7 +39,7 @@
   function phoneText() {
     if (tourOn()) return 'This public site is a demo recording. Download and run Deja Vu1 on your computer first; then open that computer’s address on your phone.';
     const address = info && info.phone_address ? `http://${info.phone_address}:${info.port}` : 'the “From a phone” address printed in the launcher window';
-    return `Keep the computer and printer on. Connect your phone to the same home Wi-Fi, then open ${address}. Use the computer’s address, not localhost or the printer’s address.`;
+    return `Connect your phone to the same home Wi-Fi and type ${address} into its browser. Use the computer’s address, not localhost or the printer’s address.`;
   }
   const installText = 'On iPhone: open Safari → Share → Add to Home Screen. On Android: open Chrome’s menu → Add to Home screen (or Install app, when offered). A normal http:// home-network address may only offer a shortcut; offline support and full app installation need a secure https:// address. Browser options vary.';
   function render() {
@@ -51,25 +54,25 @@
     document.documentElement.classList.add('setup-full-open');
     if (step === 0) {
       content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">Set up your U1 workspace.</h2>
-        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer and talks to your printer over your home network. Open it in a browser tab, in its own app window, or on your phone. Core printer data stays on your network. Optional services connect only when configured.</p>
-        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Review the job:</strong> check the file, tools and printer before starting.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
+        <p class="setup-lead">Deja Vu1 runs on this computer and keeps an eye on your Snapmaker U1 printers over your home Wi-Fi. Open it here, in its own window, or on your phone. Your printer data stays at home.</p>
+        <ul class="setup-points"><li><strong>Watch it live:</strong> your printer in 3D, its progress and temperatures.</li><li><strong>Check before printing:</strong> the file, the colours and the printer, before anything starts.</li><li><strong>Look after it:</strong> upkeep reminders and your filament.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
         <p class="field-hint">${esc(privacy)}</p>`;
       $('setup-name').addEventListener('input', e => { if (!save(key, e.target.value.trim().slice(0,40))) $('setup-status').textContent='This browser is not allowing saved preferences.'; greeting(); });
     } else if (names[step] === 'Make it yours') {
-      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and its colours. Move your mouse (or drag a finger) around this screen to see it react. You can change it any time in Settings → Appearance.</p><div id="setup-backdrop"></div>`;
+      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
       if (typeof Backdrop !== 'undefined') Backdrop.picker($('setup-backdrop'));
     } else if (names[step] === 'Your printer') {
-      content.innerHTML = `<h2 id="setup-title">Choose your starting point.</h2><p>Demo figures are labelled. Connecting a real printer does not start a print.</p>
-        <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo">Explore demo data</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" ${tourOn()?'disabled':''}>Connect my printer</button></div>
+      content.innerHTML = `<h2 id="setup-title">Your printer, or a demo first?</h2><p class="setup-lead">The demo fills every screen with pretend printers, labelled as pretend. Connecting your own printer never starts a print.</p>
+        <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo">Try the demo</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" ${tourOn()?'disabled':''}>Connect my printer</button></div>
         ${tourOn()?'<p class="setup-note">Public demo · a recording only. To connect a printer, run the download on your own computer.</p>':''}
         <div id="setup-connect" ${mode==='demo'||tourOn()?'hidden':''}>
-          <button class="btn" id="setup-find">Find printers</button><div id="setup-found"></div>
+          <button class="btn" id="setup-find">Find printers on my Wi-Fi</button><div id="setup-found"></div>
           <label for="setup-url">Printer address</label><input id="setup-url" type="url" placeholder="http://192.168.1.50:7125">
-          <label for="setup-key">API key <span class="field-hint">Only if your printer asks for one</span></label><input id="setup-key" type="password" autocomplete="off">
+          <label for="setup-key">Access key <span class="field-hint">Only if your printer asks for one</span></label><input id="setup-key" type="password" autocomplete="off">
           <button class="btn primary" id="setup-test">Test and connect</button>
-          <p class="field-hint">No answer? Wake the printer, check its address on its screen or in your router, and use the same home network. Guest Wi-Fi can keep devices apart. Port 7125 is Moonraker’s usual address.</p>
+          <p class="field-hint">No answer? Wake the printer and put it on the same Wi-Fi as this computer (not a guest network). Its address is on the printer’s screen or in your router’s list of devices, and usually ends in :7125.</p>
         </div>`;
       $('setup-demo').onclick=()=>{mode='demo';setDemo(true);render();};
       $('setup-real').onclick=()=>{mode='real';setDemo(false);render();};
@@ -102,9 +105,9 @@
         } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not connect. Check the address and try again.';btn.disabled=false;}
       };
     } else if (step === TOUR) {
-      content.innerHTML=`<h2 id="setup-title">Take the tour.</h2>
-        <p class="setup-lead">${Guide.count()} short stops covering every screen. Each stop lights up the real part of the dashboard and says what it does; many have something to try.</p>
-        <ul class="setup-points"><li><strong>The big picture:</strong> how your computer, screens and printers connect.</li><li><strong>The names you’ll see:</strong> Workshop, Studio and Garage are three pretend demo printers, and Photo studio is a different thing again.</li><li><strong>Every screen:</strong> Overview, Printers, Control, Files, Photo studio, Automations, Care, Settings and Games.</li></ul>
+      content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
+        <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
+        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> the “Show me this screen” button under the tab bar has a few tips for whichever screen is open.</li></ul>
         <div class="setup-choices"><button class="btn primary" id="setup-guide">Start the tour</button></div>
         <p class="field-hint">The tour never moves or starts a printer. End it any time with × or Esc; it comes back here. Replay it later from Settings → Your space.</p>`;
       $('setup-guide').onclick=()=>{
@@ -113,7 +116,11 @@
         Guide.everything({onEnd:()=>{step=Math.min(at+1,names.length-1);dialog.showModal();render();}});
       };
     } else if (names[step] === 'Your phone') {
-      content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. It needs no app store and no account.</p><p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi. Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>A “Refused” message means the address is not allowed. Ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. No app store, no account, and nothing to type: scan a code with the phone’s camera.</p>
+        <div class="setup-choices setup-phone-go"><button class="btn primary" id="setup-phone">Show the code to scan</button></div>
+        <div class="setup-ways"><div class="setup-way"><strong>No camera handy?</strong><span>${esc(phoneText())}</span></div>
+        <div class="setup-way"><strong>Keep it on your Home Screen</strong><span>${esc(installText)}</span></div></div><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi (not a guest network). Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>Typing it instead? Use a colon before the port number (<code>:8000</code>), not a dot; with a dot, phones search the web instead. A “Refused” message means the address is not allowed: ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+      $('setup-phone').onclick=()=>window.Phone&&Phone.open();
     } else if (names[step] === 'Desktop app') {
       content.innerHTML=`<h2 id="setup-title">A window of its own.</h2>
         <p class="setup-lead">You are not stuck in a browser tab. Pick how Deja Vu1 opens on this computer; you can change it in Settings → Desktop app.</p>
@@ -127,12 +134,12 @@
       $('setup-window').onclick=()=>saveWindow('window',$('setup-desktop-note'));
       if(tourOn()||serverMissing()){$('setup-install').disabled=true;$('setup-window').disabled=true;}
     } else {
-      const kind=info&&info.install_kind==='git'?'Your copy was made with git or GitHub Desktop, so updates pull the newest version straight from GitHub.':'Updates come from inside the app: Newest builds fetch each improvement as soon as it is published (only the changed files, each checked against GitHub’s record), or Stable releases give fewer, bigger steps. Choose in Settings.';
+      const kind=info&&info.install_kind==='git'?'Your copy came from git or GitHub Desktop, so updates come straight from GitHub.':'Updates arrive inside the app. In Settings you choose newest builds (each fix as it lands) or stable releases (fewer, bigger steps).';
       content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
         <p class="setup-lead">This is Deja Vu1 <strong>v${esc(Versions.installed()||'?')}</strong>. ${esc(tourOn()||serverMissing()?'Updates belong to the copy on your own computer.':kind)}</p>
         <label class="setup-check setup-check-big"><input type="checkbox" id="setup-auto" ${info&&info.automatic?'checked':''} ${tourOn()||serverMissing()?'disabled':''}> Look for updates by itself</label>
-        <p>When one is ready, the glass orb in the bottom-right corner tells you. Installing keeps your settings and files, makes a safety copy first, restarts the dashboard, and puts the old version back if the new one fails to start. Settings can also let updates install by themselves while every printer is idle. Start Deja Vu1 with its double-click launcher.</p>
-        <p class="field-hint">A check sends GitHub no name, printer details or settings. Settings → Version &amp; updates has the version history and a tour of each version. Printer firmware updates are separate.</p>`;
+        <p>When an update is ready, the glass orb in the bottom-right corner tells you. Installing keeps your settings and files, and puts the old version back if the new one won’t start.</p>
+        <details class="setup-more"><summary>More about updates</summary><p>Deja Vu1 makes a safety copy before it installs anything, then restarts itself. Settings can let updates install on their own while every printer is idle. Start Deja Vu1 with its double-click launcher so it can restart after an update.</p><p class="field-hint">Checking sends GitHub no name, printer details or settings. Settings → Version &amp; updates lists every version and has a tour of each. Printer firmware updates are separate and come from Snapmaker.</p></details>`;
       $('setup-auto').onchange=async e=>{const r=await postJSON('/api/app/updates/settings',{automatic:e.target.checked});if(!r.ok){e.target.checked=!e.target.checked;$('setup-status').textContent=r.body.error||'Could not save that.';}else{info={...info,...r.body};Versions.refresh();}};
     }
     $('setup-status').textContent='';
@@ -154,6 +161,8 @@
   $('setup-next').onclick=()=>{if(step===names.length-1)finish();else{step++;render();}};
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
   dialog.addEventListener('cancel',e=>{e.preventDefault();finish();});
+  // However the sheet closes, the page behind it must come back (full-screen setup hides it).
+  dialog.addEventListener('close',()=>{if(!dialog.open){dialog.classList.remove('is-full');document.documentElement.classList.remove('setup-full-open');}});
   $('private-name').addEventListener('input',e=>{save(key,e.target.value.trim().slice(0,40));$('private-greeting').textContent=e.target.value.trim()?`Hello, ${e.target.value.trim()}`:'Your print bench';});
   $('private-delete').onclick=()=>{save(key,'');greeting();toast('Name deleted from this browser','ok');};
   /* ---- the desktop app -----------------------------------------------------
@@ -256,6 +265,6 @@
   greeting();
   // versions.js loads after this file, so wait until every script has run.
   const allLoaded=new Promise(r=>document.readyState==='loading'?addEventListener('DOMContentLoaded',r,{once:true}):r());
-  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(!read(seenKey))open();});
+  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(viaPhoneLink)save(seenKey,'1');else if(!read(seenKey))open();});
   if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

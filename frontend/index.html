@@ -131,7 +131,7 @@
 
 <main class="wrap">
   <section class="launch-strip" aria-label="Setup and feature finder">
-    <div><p class="eyebrow">DEJA VU1 / YOUR WORKSHOP</p><strong id="private-greeting">Your print bench</strong></div>
+    <div><p class="eyebrow">DEJA VU1 / YOUR PRINTERS</p><strong id="private-greeting">Your print bench</strong></div>
     <div class="feature-finder"><label class="sr-only" for="feature-search">Search screens, settings, printers and files</label><input id="feature-search" type="search" placeholder="Search screens, printers, files…" autocomplete="off" spellcheck="false"><div id="feature-results" class="liquid-glass" hidden></div></div>
     <button class="btn" id="setup-open">Set up &amp; help</button>
     <button class="btn" id="camera-open">Camera</button>
@@ -448,9 +448,9 @@
       <section class="card liquid-glass pair-card">
         <div>
           <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
-          <p class="card-sub" style="max-width:52ch;">Open this computer’s address on your phone using the same Wi-Fi. No Deja Vu1 account is needed; pairing is optional.</p>
+          <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
         </div>
-        <button class="btn primary" id="overview-pair-btn">Pair a phone</button>
+        <button class="btn primary" id="overview-pair-btn">Connect your phone</button>
       </section>
     </div>
   </section>
@@ -895,7 +895,7 @@
   <!-- ============================================================ -->
   <section id="tab-modules" class="tab-panel" hidden>
     <section class="card liquid-glass setup-settings" data-browser-only>
-      <div class="card-head"><div><h2>Your space</h2><p class="card-sub">A little help, whenever you need it.</p></div><div class="setup-choices"><button class="btn primary" id="guide-replay" type="button">Tour every screen</button><button class="btn" id="setup-replay">Replay setup</button></div></div>
+      <div class="card-head"><div><h2>Your space</h2><p class="card-sub">A little help, whenever you need it.</p></div><div class="setup-choices"><button class="btn primary" id="guide-replay" type="button">Take the quick tour</button><button class="btn" id="setup-replay">Replay setup</button><button class="btn" type="button" data-glossary>What the words mean</button></div></div>
       <label for="private-name">Your name · optional</label>
       <div class="inline-form"><input id="private-name" maxlength="40" autocomplete="off"><button class="btn" id="private-delete">Delete name</button></div>
       <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
@@ -1000,7 +1000,8 @@
             <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
           </div>
           <div id="device-list"></div>
-          <button class="btn block" id="generate-code-btn" style="margin-top:12px;">+ Pair another device</button>
+          <button class="btn block primary" id="phone-connect-btn" style="margin-top:12px;">Connect a phone with a QR code</button>
+          <button class="btn block" id="generate-code-btn" style="margin-top:8px;">Show a pairing code only</button>
           <form id="redeem-form" style="display:flex; gap:8px; margin-top:10px;">
             <label class="sr-only" for="redeem-code">Pairing code</label>
             <input type="text" id="redeem-code" placeholder="Enter a code" inputmode="numeric" autocomplete="one-time-code" style="flex:1;">
@@ -1364,6 +1365,8 @@
 <script src="farm.js"></script>
 <script src="guide.js"></script>
 <script src="launchpad.js"></script>
+<script src="phone.js"></script>
+<script src="explain.js"></script>
 <script src="versions.js"></script>
 <script src="finder.js"></script>
 <script src="desk.js"></script>

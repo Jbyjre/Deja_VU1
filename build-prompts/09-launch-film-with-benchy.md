@@ -1,5 +1,8 @@
 # Next launch film: the 3DBenchy, then swap the film everywhere
 
+**Done in version 16 (25 October 2026, `promo-video/v16/`).** The owner then also set aside
+version 2 and 9:16 cuts: from now on only 16:9. Kept below for the record.
+
 The owner (23 October 2026) wants the next run of the marketing video to show the
 3DBenchy instead of the L-shaped block and the 20 mm cube, and, once rendered, to
 replace the film in the repository README and on the product page.

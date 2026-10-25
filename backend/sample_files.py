@@ -542,7 +542,7 @@ def three_colour_coaster_gcode():
     A 90 mm hexagonal coaster in three colours: an orange base (T0), then a
     black outer ring (T1), a green middle ring (T2) and an orange centre (T0)
     on top, changing tool three times on every top layer the way a real
-    multi-colour U1 print does. The colours are what the simulated Garage
+    multi-colour U1 print does. The colours are what the simulated Demo printer 3
     printer has loaded, so the demo can really print it.
     """
     base = [_hexagon(45)]

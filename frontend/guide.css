@@ -271,6 +271,8 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .setup-way { display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
 .setup-way span { color: var(--text-dim); font-size: 14px; }
 .setup-way .btn { justify-self: start; margin-top: 6px; }
+.setup-phone-go { margin: 18px 0 4px; }
+#setup-connect { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--hair); }
 .setup-dialog .setup-check-big { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
 .setup-dialog .setup-check-big input { display: inline-block; width: 22px; height: 22px; min-height: 0; margin: 0; flex: 0 0 auto; }
 
@@ -286,29 +288,105 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
 }
 .guide.is-free:not(.is-chapter) .guide-scrim { backdrop-filter: none; -webkit-backdrop-filter: none; }
+/* The spotlight. It glides (and overshoots a touch, like the callout) from
+   stop to stop; a soft dim, not a blackout, so the page still reads. */
 .guide-ring {
   position: fixed; left: 0; top: 0; width: 120px; height: 60px; border-radius: 16px;
-  box-shadow: 0 0 0 200vmax var(--scrim), 0 0 0 2px var(--accent), 0 0 0 7px color-mix(in oklch, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 200vmax var(--scrim),
+    0 0 0 1.5px rgba(255, 255, 255, .9), 0 0 0 4px color-mix(in oklch, var(--accent) 70%, transparent),
+    0 0 26px 6px color-mix(in oklch, var(--accent) 30%, transparent);
   will-change: transform;
-  transition: transform .45s cubic-bezier(.2, .8, .2, 1), width .45s cubic-bezier(.2, .8, .2, 1),
-              height .45s cubic-bezier(.2, .8, .2, 1), border-radius .45s ease;
+  transition: transform .62s var(--guide-spring), width .62s var(--guide-spring),
+              height .62s var(--guide-spring), border-radius .45s ease;
 }
-.guide-ring[hidden] { display: none; }
+.guide-ring[hidden], .guide-beacon[hidden] { display: none; }
+:root { --guide-spring: cubic-bezier(.34, 1.32, .5, 1); }
+
+/* Where the callout's tail points: a beacon on the spotlight's edge. */
+.guide-beacon {
+  position: fixed; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--accent) 60%);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .9), 0 2px 6px oklch(25% 0.02 265 / .3);
+  transition: transform .62s var(--guide-spring);
+}
+.guide-beacon::after {
+  content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid var(--accent);
+  animation: guide-beacon 1.8s cubic-bezier(.2, .7, .3, 1) infinite;
+}
+@keyframes guide-beacon { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+
+/* The callout: a floating piece of glass (tier 3: small and free, so the
+   strongest shadow), bending what is behind it where the browser can. */
 .guide .guide-card {
-  position: fixed; left: 0; top: 0; width: min(380px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
-  padding: 18px 20px 16px; border-radius: 26px; pointer-events: auto; color: var(--text);
-  background: rgba(252, 252, 254, .9);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 2px 4px oklch(25% 0.02 265 / .14), 0 18px 50px oklch(25% 0.02 265 / .3);
-  transition: transform .45s cubic-bezier(.2, .8, .2, 1);
+  position: fixed; left: 0; top: 0; width: min(360px, calc(100vw - 24px)); pointer-events: auto; color: var(--text);
+  border-radius: 26px; isolation: isolate;
+  background: rgba(250, 251, 255, .72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 rgba(255, 255, 255, .25),
+    0 2px 4px oklch(25% 0.02 265 / .16), 0 18px 46px oklch(25% 0.02 265 / .32);
+  backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  transition: transform .62s var(--guide-spring);
 }
+.guide .guide-card { backdrop-filter: blur(14px) saturate(1.8) url(#lg-distort-live); }
+/* the glint, following the pointer */
+.guide .guide-card::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: radial-gradient(220px 220px at var(--mx, 30%) var(--my, 8%), rgba(255, 255, 255, .9), transparent 66%);
+  mix-blend-mode: overlay; opacity: .8;
+}
+/* the rim, lit from the top left */
+.guide .guide-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, .1) 42%, rgba(255, 255, 255, .1) 60%, rgba(255, 255, 255, .7));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.guide-body { position: relative; z-index: 1; max-height: calc(100dvh - 40px); overflow: auto; padding: 16px 18px 14px; border-radius: inherit; }
+.guide-body.is-in { animation: guide-body-in .42s cubic-bezier(.2, .8, .2, 1); }
+@keyframes guide-body-in { from { opacity: 0; transform: translateY(6px); filter: blur(2px); } }
+/* The tail: a small glass triangle outside the edge nearest the spotlight. */
+.guide-tail {
+  position: absolute; z-index: 0; width: 13px; height: 24px; pointer-events: none;
+  background: rgba(250, 251, 255, .72);
+  backdrop-filter: blur(22px) saturate(1.8); -webkit-backdrop-filter: blur(22px) saturate(1.8);
+  transition: left .62s var(--guide-spring), top .62s var(--guide-spring);
+}
+.guide-card:not([data-tail]) .guide-tail { display: none; }
+.guide-card[data-tail="left"] .guide-tail { left: -12.5px; top: calc(var(--tail) - 12px); clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.guide-card[data-tail="right"] .guide-tail { left: calc(100% - .5px); top: calc(var(--tail) - 12px); clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.guide-card[data-tail="top"] .guide-tail, .guide-card[data-tail="bottom"] .guide-tail { width: 24px; height: 13px; left: calc(var(--tail) - 12px); }
+.guide-card[data-tail="top"] .guide-tail { top: -12.5px; clip-path: polygon(0 100%, 50% 0, 100% 100%); }
+.guide-card[data-tail="bottom"] .guide-tail { top: calc(100% - .5px); clip-path: polygon(0 0, 50% 100%, 100% 0); }
+/* A stop with nothing to point at floats in the middle. */
+.guide .guide-card.is-free:not(.is-chapter) {
+  inset: 0; margin: auto; width: min(440px, calc(100vw - 32px)); height: fit-content; transform: none !important;
+  animation: guide-chapter-in .5s var(--guide-spring);
+}
+.guide .guide-card.is-free:not(.is-chapter) .guide-body { padding: 22px 24px 18px; }
+.guide-dots { display: inline-flex; align-items: center; gap: 5px; }
+.guide-dots i { display: block; width: 6px; height: 6px; border-radius: 3px; background: oklch(30% 0.02 265 / .2); transition: width .35s ease, background-color .35s ease; }
+.guide-dots i.done { background: color-mix(in oklch, var(--accent) 55%, transparent); }
+.guide-dots i.now { width: 18px; background: var(--accent); }
+/* "Show me this screen", in the line under the tab bar. */
+.tips-btn {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; min-height: 30px; padding: 3px 12px 3px 10px;
+  border-radius: 999px; border: 1px solid rgba(255, 255, 255, .85); cursor: pointer; vertical-align: middle;
+  font: 600 12.5px/1 var(--font-sans); color: var(--accent-text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .85), rgba(255, 255, 255, .55));
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px oklch(25% 0.02 265 / .06), 0 3px 10px oklch(25% 0.02 265 / .08);
+  backdrop-filter: blur(10px) saturate(1.4); -webkit-backdrop-filter: blur(10px) saturate(1.4);
+  transition: transform .25s var(--guide-spring), box-shadow .25s ease;
+}
+.tips-btn:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 #fff, 0 2px 4px oklch(25% 0.02 265 / .08), 0 8px 18px oklch(25% 0.02 265 / .12); }
+.tips-btn:active { transform: scale(.97); }
+.tips-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .guide .guide-card.is-chapter {
   inset: 0; margin: auto; width: min(760px, calc(100vw - 32px)); height: fit-content; max-height: calc(100dvh - 32px);
-  padding: clamp(22px, 4vw, 44px); border-radius: 34px; transform: none !important;
+  border-radius: 34px; transform: none !important;
   background: rgba(252, 252, 254, .93);
   animation: guide-chapter-in .5s cubic-bezier(.2, .8, .2, 1);
 }
 @keyframes guide-chapter-in { from { opacity: 0; transform: translateY(18px) scale(.97); } }
-.guide-top { display: flex; align-items: center; gap: 10px; }
+.guide .guide-card.is-chapter .guide-body { padding: clamp(22px, 4vw, 44px); max-height: calc(100dvh - 32px); }
+.guide-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .guide-top .eyebrow { flex: 1; min-width: 0; }
 .guide-count { font: 500 12px/1 var(--font-mono); color: var(--text-faint); }
 .guide-x {
@@ -316,8 +394,6 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   font-size: 19px; line-height: 1; color: var(--text-dim); cursor: pointer;
 }
 .guide-x:focus-visible, .guide-card .btn:focus-visible, .guide-card .chip-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-.guide-progress { height: 3px; margin: 12px 0 14px; border-radius: 3px; background: oklch(30% 0.02 265 / .08); overflow: hidden; }
-.guide-progress span { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform .45s ease; }
 .guide-title { margin: 0 0 8px; font: 700 21px/1.2 var(--font-display); letter-spacing: -.01em; text-wrap: balance; }
 .guide-title:focus { outline: none; }
 .guide-card.is-chapter .guide-title { font-size: clamp(28px, 4.4vw, 46px); line-height: 1.05; letter-spacing: -.025em; margin-bottom: 14px; }
@@ -347,16 +423,152 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .guide-changes { margin: 8px 0; padding-left: 20px; display: grid; gap: 8px; }
 
 @media (max-width: 720px) {
-  .guide .guide-card { width: calc(100vw - 24px); max-height: 46dvh; padding: 16px; }
-  .guide .guide-card.is-chapter { max-height: calc(100dvh - 24px); }
+  .guide .guide-card { width: calc(100vw - 24px); }
+  .guide-body { max-height: 46dvh; padding: 14px 16px 12px; }
+  .guide .guide-card.is-chapter .guide-body, .guide .guide-card.is-free .guide-body { max-height: calc(100dvh - 24px); }
+  .tips-btn { margin: 6px 0 0; }
   .guide-card.is-chapter .guide-text { font-size: 15.5px; }
 }
+
+/* ---- your phone (phone.js) --------------------------------------------------
+   A floating sheet (glass over glass, so the deep lens). The QR code itself
+   sits on solid white with its quiet zone: cameras need the contrast. */
+
+.phone-dialog {
+  margin: auto; padding: 0; border: 0; background: transparent; color: var(--text);
+  width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: visible;
+}
+.phone-dialog::backdrop { background: var(--scrim); backdrop-filter: blur(8px) saturate(1.2); -webkit-backdrop-filter: blur(8px) saturate(1.2); }
+.phone-dialog[open] { animation: phone-in .45s cubic-bezier(.2, .9, .25, 1.15); }
+@keyframes phone-in { from { opacity: 0; transform: translateY(22px) scale(.96); } }
+.phone-sheet {
+  position: relative; isolation: isolate; max-height: calc(100dvh - 24px); overflow: auto;
+  padding: clamp(18px, 3.4vw, 32px); border-radius: 32px;
+  background: rgba(252, 252, 254, .78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 2px 4px oklch(25% 0.02 265 / .16), 0 24px 60px oklch(25% 0.02 265 / .32);
+  backdrop-filter: blur(22px) saturate(1.7); -webkit-backdrop-filter: blur(22px) saturate(1.7);
+}
+.phone-sheet { backdrop-filter: blur(14px) saturate(1.7) url(#lg-distort-deep); }
+.phone-sheet::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, .08) 42%, rgba(255, 255, 255, .08) 60%, rgba(255, 255, 255, .6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.phone-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.phone-head h2 { margin: 4px 0 0; font: 700 clamp(24px, 3.6vw, 34px)/1.08 var(--font-display); letter-spacing: -.025em; text-wrap: balance; }
+.phone-grid { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: clamp(16px, 3vw, 30px); align-items: start; }
+.phone-qr { margin: 0; display: grid; gap: 10px; justify-items: center; }
+.phone-qr svg {
+  width: 100%; aspect-ratio: 1; border-radius: 22px; background: #fff;
+  box-shadow: 0 0 0 1px var(--hair), 0 10px 30px oklch(25% 0.02 265 / .16);
+  transition: opacity .3s ease, filter .3s ease, box-shadow .4s ease;
+}
+.phone-qr.is-done svg { box-shadow: 0 0 0 3px var(--ok), 0 10px 30px oklch(25% 0.02 265 / .16); }
+.phone-qr.is-spent svg { opacity: .25; filter: blur(2px); }
+.phone-qr figcaption { font: 500 12px/1.3 var(--font-mono); color: var(--text-faint); }
+.phone-list { margin: 0 0 14px; padding: 0; list-style: none; counter-reset: ph; display: grid; gap: 10px; }
+.phone-list li { counter-increment: ph; position: relative; padding-left: 38px; line-height: 1.45; }
+.phone-list li::before {
+  content: counter(ph); position: absolute; left: 0; top: -2px; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font: 700 13px/1 var(--font-mono); color: var(--on-accent); background: var(--accent);
+}
+.phone-status { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 10px 14px; border-radius: 16px; font-weight: 500;
+  background: color-mix(in oklch, var(--accent) 10%, white); border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent); }
+.phone-status.is-done { background: color-mix(in oklch, var(--ok) 14%, white); border-color: color-mix(in oklch, var(--ok) 45%, transparent); }
+.phone-pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; animation: phone-pulse 1.6s ease-in-out infinite; }
+@keyframes phone-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--accent) 50%, transparent); } 50% { box-shadow: 0 0 0 8px transparent; } }
+.phone-tick { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ok); color: #fff; font-weight: 800; flex: none; }
+.phone-type { padding: 14px 16px; border-radius: 20px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
+.phone-label { margin: 0 0 8px; font: 600 11.5px/1.4 var(--font-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); }
+.phone-address { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.phone-address code { font: 600 clamp(19px, 2.6vw, 24px)/1.2 var(--font-mono); letter-spacing: -.01em; word-break: break-all; }
+.phone-colon { color: var(--accent-text); padding: 0 2px; border-radius: 4px; background: color-mix(in oklch, var(--accent) 16%, transparent); }
+.phone-code { font-family: var(--font-mono); letter-spacing: .08em; }
+.phone-help { margin-top: 16px; padding: 4px 16px; border-radius: 18px; background: rgba(255, 255, 255, .55); border: 1px solid var(--hair); }
+.phone-help summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--accent-text); }
+.phone-help summary:focus-visible, .phone-dialog .btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.phone-help ul { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 8px; font-size: 14px; color: var(--text-dim); }
+.phone-help code, .phone-type .field-hint code { font: 600 13px/1 var(--font-mono); }
+.phone-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.phone-foot .btn { min-height: 44px; min-width: 110px; }
+.phone-empty { display: grid; gap: 10px; justify-items: start; }
+.phone-empty .btn { min-height: 44px; }
+.phone-loading { color: var(--text-faint); }
+@media (max-width: 620px) {
+  .phone-grid { grid-template-columns: 1fr; }
+  .phone-qr { max-width: 230px; margin: 0 auto; }
+}
+
+/* ---- plain-language help (explain.js) -----------------------------------------
+   A small ⓘ after each card title; the title itself opens it too. The note is a
+   small floating piece of glass with a pointer up to the ⓘ. */
+
+.xp-title { cursor: pointer; }
+.xp-btn {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 8px; padding: 0;
+  vertical-align: 2px; border-radius: 50%; cursor: pointer; flex: none;
+  font: italic 700 13px/1 Georgia, "Times New Roman", serif; color: var(--accent-text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .55));
+  border: 1px solid color-mix(in oklch, var(--accent) 35%, rgba(255, 255, 255, .8));
+  box-shadow: inset 0 1px 0 #fff, 0 1px 3px oklch(25% 0.02 265 / .12);
+  transition: transform .25s var(--guide-spring), background-color .2s ease, box-shadow .2s ease;
+}
+.xp-btn:hover, .xp-title:hover .xp-btn { transform: scale(1.1); box-shadow: inset 0 1px 0 #fff, 0 3px 10px color-mix(in oklch, var(--accent) 30%, transparent); }
+.xp-btn[aria-expanded="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.xp-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+.xp-pop {
+  position: fixed; z-index: 280; width: min(360px, calc(100vw - 24px)); padding: 14px 16px 14px;
+  border-radius: 22px; color: var(--text); isolation: isolate;
+  background: rgba(250, 251, 255, .82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 2px 4px oklch(25% 0.02 265 / .14), 0 16px 40px oklch(25% 0.02 265 / .26);
+  backdrop-filter: blur(20px) saturate(1.7); -webkit-backdrop-filter: blur(20px) saturate(1.7);
+}
+.xp-pop { backdrop-filter: blur(14px) saturate(1.7) url(#lg-distort-live); }
+.xp-pop[hidden] { display: none; }
+.xp-pop.is-in { animation: xp-in .32s var(--guide-spring); }
+@keyframes xp-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+.xp-pop.is-above.is-in { animation-name: xp-in-up; }
+@keyframes xp-in-up { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+.xp-pop::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(160deg, #fff, rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, .6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.xp-pop::before {        /* the pointer, aimed at the ⓘ */
+  content: ""; position: absolute; top: -8px; left: calc(var(--xp-arrow, 32px) - 9px); width: 18px; height: 9px;
+  background: rgba(250, 251, 255, .86); clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+.xp-pop.is-above::before { top: auto; bottom: -8px; clip-path: polygon(0 0, 50% 100%, 100% 0); }
+.xp-pop.is-sheet { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; max-height: 70dvh; overflow: auto; }
+.xp-pop.is-sheet::before, .xp-pop.is-center::before { display: none; }
+.xp-pop.is-center { inset: 0; margin: auto; width: min(560px, calc(100vw - 24px)); height: fit-content; max-height: 82dvh; overflow: auto; padding: 20px 22px; }
+.xp-pop.is-center .xp-gloss { max-height: none; overflow: visible; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; }
+.xp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.xp-head strong { flex: 1; font: 650 16.5px/1.25 var(--font-display); letter-spacing: -.01em; }
+.xp-badge { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex: none;
+  font: italic 700 12px/1 Georgia, serif; color: var(--on-accent); background: var(--accent); }
+.xp-x { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255, 255, 255, .7); font-size: 18px; line-height: 1; color: var(--text-dim); cursor: pointer; }
+.xp-pop p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.5; color: var(--text-dim); text-wrap: pretty; }
+.xp-pop p.xp-what { font-size: 15px; color: var(--text); }
+.xp-pop p.xp-tip { padding-left: 10px; border-left: 3px solid color-mix(in oklch, var(--accent) 55%, transparent); font-size: 13.5px; }
+.xp-term { display: inline; padding: 0; border: 0; background: none; font: inherit; color: var(--accent-text); cursor: pointer;
+  text-decoration: underline dotted; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.xp-term[aria-expanded="true"] { text-decoration-style: solid; }
+.xp-pop .xp-def { margin: -2px 0 10px; padding: 9px 11px; border-radius: 12px; font-size: 13.5px; color: var(--text);
+  background: color-mix(in oklch, var(--accent) 9%, white); border: 1px solid color-mix(in oklch, var(--accent) 25%, transparent); animation: xp-in .25s ease; }
+.xp-more { margin-top: 2px; min-height: 36px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--hair);
+  background: rgba(255, 255, 255, .7); font: 600 13.5px/1 var(--font-sans); color: var(--accent-text); cursor: pointer; }
+.xp-term:focus-visible, .xp-x:focus-visible, .xp-more:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
+.xp-gloss { margin: 0; display: grid; gap: 10px; max-height: min(60dvh, 520px); overflow: auto; }
+.xp-gloss dt { font-weight: 650; font-size: 14.5px; }
+.xp-gloss dd { margin: 2px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-dim); }
 
 /* ---- accessibility -------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .orb, .orb-core, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-progress span { transition: opacity .15s ease !important; }
-  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .version-card.is-flash { animation: none !important; }
+  .orb, .orb-core, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-beacon, .guide-tail, .guide-dots i, .tips-btn, .xp-btn { transition: opacity .15s ease !important; }
+  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse, .xp-pop.is-in, .xp-pop .xp-def { animation: none !important; }
   .orb-bubble, .orb-bubble-wrap.is-out .orb-bubble { transform: none; }
   .orb:hover, .orb:active { transform: none; }
 }
@@ -365,11 +577,16 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
     backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
   }
   .orb { background: var(--paper-solid); }
-  .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .guide .guide-card.is-chapter { background: var(--paper-solid); }
+  .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .guide .guide-card.is-chapter, .guide-tail, .tips-btn { background: var(--paper-solid); }
+  .guide-tail, .tips-btn, .xp-pop { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .xp-pop, .xp-pop::before { background: var(--paper-solid); }
   .guide.is-chapter .guide-scrim { background: oklch(18% 0.02 265 / .72); }
+  .phone-sheet { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--paper-solid); }
+  .phone-dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(18% 0.02 265 / .72); }
 }
 @media (prefers-contrast: more) {
-  .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .ver-chip, .vc-update, .da-option { border: 2px solid var(--text); }
+  .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .ver-chip, .vc-update, .da-option, .phone-sheet, .phone-type, .tips-btn, .xp-pop, .xp-btn { border: 2px solid var(--text); }
+  .guide-tail { background: var(--text); }
   .orb-glass { display: none; }
   .guide-ring { box-shadow: 0 0 0 200vmax oklch(10% 0 0 / .7), 0 0 0 3px var(--text); }
   .vc-number, .guide-hero { background: none; -webkit-text-fill-color: currentColor; color: var(--text); }

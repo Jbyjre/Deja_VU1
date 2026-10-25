@@ -60,7 +60,8 @@ You need your own running copy for real readings.
    need your operating system's permission to open; do not disable its security.
 4. Your browser opens [the local dashboard](http://localhost:8000). Keep the
    launcher window open. Closing it stops the dashboard. The launcher also
-   prints **From a phone**, followed by your computer's home-network address.
+   prints **From a phone**, followed by your computer's home-network address,
+   and, where the console can draw it, a QR code of it for the phone's camera.
 5. Follow **Set up & help**, or skip and replay it from **Settings**. Your
    optional name stays only in this browser, on this device. It is never sent
    to the dashboard server; delete it in Settings. It does not sync to a phone.
@@ -79,7 +80,7 @@ You need your own running copy for real readings.
    [first connection](first-connection.md).
 
 You can also add or edit printers under **Printers → Add a printer**. Adding a
-printer does not start a print. To explore first, choose **Explore demo data**;
+printer does not start a print. To explore first, choose **Try the demo**;
 simulated figures are labelled and simulated commands cannot control a real U1.
 
 ## On my phone at home
@@ -87,20 +88,31 @@ simulated figures are labelled and simulated commands cannot control a real U1.
 1. Leave Deja Vu1 running and the computer awake. Put the phone, computer and
    printer on the same trusted home network. Avoid guest Wi-Fi, which can keep
    devices apart.
-2. On the phone open Safari (iPhone) or Chrome (Android). Type the full **From a
-   phone** address from the launcher, for example `http://192.168.1.20:8000`.
-   **Use the computer's address, not the printer's.** `localhost` on your phone
-   means the phone itself, so it will not reach your computer.
-3. If the launcher cannot find an address: Windows → Settings → Network &
+2. **The easy way: scan a code.** On the computer, press **Connect your phone**
+   on the Overview (it is also in Settings → Paired devices and in setup). A QR
+   code appears. Open the phone's **Camera**, point it at the code and tap the
+   link that pops up. The dashboard opens on the phone and the phone pairs
+   itself; the computer shows "connected and paired". The code works for 10
+   minutes and only once; **New code** makes another. The launcher window
+   draws the same address as a code too, when the console can.
+3. **Or type it.** On the phone open Safari (iPhone) or Chrome (Android) and type
+   the address the sheet (or the launcher's **From a phone** line) shows, for
+   example `192.168.1.20:8000`. Use a **colon** before the port number, not a
+   dot: `192.168.1.20.8000` is not an address, so the phone searches the web and
+   shows unrelated pages about routers. If search results appear anyway, type
+   `http://` in front. **Use the computer's address, not the printer's.**
+   `localhost` on your phone means the phone itself, so it will not reach your
+   computer.
+4. If the launcher cannot find an address: Windows → Settings → Network &
    internet → your active connection → properties → IPv4 address; Mac → System
    Settings → Network → your active connection → Details → TCP/IP; Linux → your
    desktop's network connection details, or run `hostname -I` and choose the
    address belonging to your home network. Several addresses can appear if
    you have a VPN. These OS screens vary by version.
-4. Select your real printer and leave **Demo data** off on this browser too.
+5. Select your real printer and leave **Demo data** off on this browser too.
    The phone shares server settings, files and printers; browser preferences
    such as the name, selected printer and demo choice are separate.
-5. On iPhone, **Share → Add to Home Screen**; enable **Open as Web App** if
+6. On iPhone, **Share → Add to Home Screen**; enable **Open as Web App** if
    offered. On Android, Chrome menu → **Add to Home screen** or **Install app**,
    whichever appears. [Apple's instructions](https://support.apple.com/guide/iphone/iphea86e5236/ios)
    and [Chrome's instructions](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DAndroid&hl=en).
@@ -115,8 +127,8 @@ queue commands offline**. A previously loaded secure installation shows a
 anything until reconnected. Browser installation rules vary.
 [Browser requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
 
-**Pair another device is optional device bookkeeping, not a login or a step
-needed to open the dashboard.** Anyone with network access to this dashboard
+**Pairing is optional device bookkeeping, not a login or a step needed to open
+the dashboard** (scanning the code just does it for you). Anyone with network access to this dashboard
 can operate it. Use the remote guide below for access away from home.
 
 ## On my phone away from home

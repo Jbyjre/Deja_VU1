@@ -8,6 +8,8 @@ const fs = require('fs'), os = require('os');
 
 const ROOT = path.join(__dirname, '..', '..');
 const PORT = +(process.env.APP_PORT || 8791);
+// Version 16: the home-network address the phone scenes show (see rec.js `alias`).
+const HOME = 'http://192.168.1.23:8000';
 let server = null;
 
 async function restartServer() {
@@ -79,7 +81,7 @@ const SHOTS = {
   // Files: the two-colour coaster in 3D, scrubbed layer by layer, then turned.
   async coaster_3d() {
     const st = await r.open(); await r.demoOn(st); await samples(st);
-    await st.page.locator('text=two_colour_coaster.gcode').first().click();
+    await st.page.locator('text=hex_coaster_three_colour.gcode').first().click();
     await r.settle(st, 6000);
     const s = await r.box(st, '#vt-range');
     await st.page.mouse.move(s.x + s.width - 120, s.y + 90); st.mx = s.x + s.width - 120; st.my = s.y + 90;
@@ -185,7 +187,8 @@ const SHOTS = {
     await r.settle(st, 3000);
     await st.page.evaluate(() => scrollTo(0, 0)); await r.settle(st, 500);
     await samples(st);
-    const CUBE = '.fcd-name:text("calibration_cube_20mm.gcode") >> visible=true';
+    // Version 16: the 3DBenchy (the owner: the Benchy instead of the block and the cube).
+    const CUBE = '.fcd-name:text("3dbenchy_pla.gcode") >> visible=true';
     await intoView(st, CUBE, false);
     await st.page.mouse.move(900, 560); st.mx = 900; st.my = 560;
     r.start(st, 'confirm_ok');
@@ -195,6 +198,7 @@ const SHOTS = {
     await intoView(st, '#fd-print', true);
     await r.click(st, '#fd-print', MV, PA); r.mark(st, 'print');
     await r.wait(st, 2300); r.mark(st, 'dialog');
+    console.log('confirm says:', (await st.page.textContent('#confirm-body')).replace(/\s+/g, ' ').slice(0, 160));
     await r.click(st, '#confirm-go', MV, 400); r.mark(st, 'start');
     await sleep(800);
     await r.wait(st, 2200);
@@ -238,8 +242,8 @@ const SHOTS = {
       return (await getJSON(api('/api/tools/assignments'))).heads.map(h => h.toolhead + h.color_hex).join(' ');
     }));
     await samples(st);
-    await intoView(st, 'text=dock_bracket.stl', false);
-    await st.page.locator('text=dock_bracket.stl').first().click();
+    await intoView(st, '.fcd-name:text("3dbenchy.stl") >> visible=true', false);
+    await st.page.locator('.fcd-name:text("3dbenchy.stl") >> visible=true').first().click();
     await r.settle(st, 6000);
     await st.page.locator('#plate-colour').uncheck();
     await st.page.locator('button:has-text("Apply object settings")').first().click();
@@ -564,6 +568,112 @@ const SHOTS = {
     for (let i = 0; i < 5; i++) { await r.wait(st, 633); await r.key(st, 'Space'); }   // 0.65 s flaps fly clean (tested)
     await r.wait(st, 200);
     r.stop(st); return st;
+  },
+  // ===== version 16 (16:9 only): what changed in the app =====
+  // The quick tour (frontend/guide.js): the welcome callout is already up (started off camera, as
+  // setup's "Start the tour" would), then on film: Show me, and the glass callout glides from Needs
+  // you to the 3D twin, over to the Printers screen, then to Files.
+  async tour_v16() {
+    const st = await r.open(); await r.demoOn(st);
+    await st.page.evaluate(() => { scrollTo(0, 0); Guide.everything(); });
+    await r.settle(st, 1200);
+    const go = '.guide-card [data-act=next]';
+    await st.page.mouse.move(980, 700); st.mx = 980; st.my = 700;
+    r.start(st, 'tour_v16');
+    await r.wait(st, 250);
+    await r.click(st, go, MV, PA); r.mark(st, 'needs');
+    await r.wait(st, 1250);
+    await r.click(st, go, MV, PA); r.mark(st, 'twin');
+    await r.wait(st, 1250);
+    await r.click(st, go, MV, PA); r.mark(st, 'fleet');
+    await r.wait(st, 1250);
+    await r.click(st, go, MV, PA); r.mark(st, 'files');
+    await r.wait(st, 1300);
+    console.log('tour at:', await st.page.textContent('#guide-title'));
+    r.stop(st); return st;
+  },
+  // Your phone, the computer's side: Connect your phone opens the sheet with its QR code; the phone
+  // scans it (here the script redeems the code as an iPhone would, the moment the phone shot shows
+  // it arriving) and the sheet says it is connected. Filmed under a home-network address so the
+  // sheet shows the address a phone would really open.
+  async phone_qr() {
+    const st = await r.open({ alias: HOME, url: HOME + '/?dashboard' }); await r.demoOn(st);
+    await intoView(st, '#overview-pair-btn', false);
+    await st.page.mouse.move(700, 420); st.mx = 700; st.my = 420;
+    r.start(st, 'phone_qr');
+    await r.wait(st, 250);
+    await r.click(st, '#overview-pair-btn', MV, PA); r.mark(st, 'sheet');
+    await sleep(600); await r.wait(st, 900);
+    const code = (await st.page.textContent('.phone-code')).replace(/\s/g, '');
+    console.log('sheet shows:', await st.page.textContent('.phone-address code'), 'code', code);
+    await r.move(st, 760, 640, 600);
+    await r.wait(st, 300);
+    await fetch(`http://localhost:${PORT}/api/pairing/redeem`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, device_name: 'iPhone' }) });
+    r.mark(st, 'scanned');
+    for (let i = 0; i < 200 && !(await st.page.$('.phone-status.is-done')); i++) await r.frame(st);
+    r.mark(st, 'paired');
+    await r.wait(st, 1600);
+    r.stop(st); return st;
+  },
+  // Your phone, the phone's side: it opens the link from the code (?pair=), pairs itself and lands
+  // on the dashboard (no setup), saying so.
+  async phone_paired() {
+    const link = await (await fetch(`http://localhost:${PORT}/api/pairing/link`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base: HOME }) })).json();
+    const st = await r.open({ width: 390, height: 844, dpr: 3, mobile: true, alias: HOME, url: `${HOME}/?pair=${link.code}`,
+      ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+    await st.page.locator('label[for=demo-toggle]').click({ force: true });
+    await r.settle(st, 1800);
+    await st.page.mouse.move(250, 600); st.mx = 250; st.my = 600;
+    r.start(st, 'phone_paired');
+    await r.wait(st, 1200);
+    await r.scrollBy(st, 300, 900);
+    await r.wait(st, 1500);
+    console.log('phone says:', await st.page.evaluate(() => [...document.querySelectorAll('.orb-bubble')].map(b => b.textContent.trim().slice(0, 60)).join(' | ')));
+    r.stop(st); return st;
+  },
+  // Stills for "and plenty more" (screenshots of the real panels, not film): the farm desk, mixed
+  // layer heights, the converter, live telemetry, automations and version & updates.
+  async stills_v16() {
+    const st = await r.open(); await r.demoOn(st);
+    const out = path.join(process.env.FOOTAGE_DIR || path.join(__dirname, '..', 'footage'), 'stills_v16');
+    fs.mkdirSync(out, { recursive: true });
+    // Panels only: the floating pieces (progress pill, message orb and its bubbles, the hand-off bar)
+    // and the film's cursor are hidden while the stills are taken.
+    await st.page.addStyleTag({ content: '#live-pill, .orb-dock, #handoff, #__cur { visibility: hidden !important; }' });
+    const shoot = async (name, tabName, sel, before) => {
+      await st.page.evaluate(t => showTab(t), tabName); await r.settle(st, 1200);
+      if (before) { await before(); await r.settle(st, 1500); }
+      const el = st.page.locator(sel).first();
+      if (!(await el.isVisible().catch(() => false))) { console.log('still', name, 'NOT FOUND', sel); return; }
+      await el.scrollIntoViewIfNeeded(); await st.page.evaluate(() => scrollBy(0, -90)); await r.settle(st, 900);
+      // A 16:10 frame (the card's shape) around the panel; CDP's clip is in page coordinates.
+      const b = await el.boundingBox(), sy = await st.page.evaluate(() => scrollY);
+      const w = Math.min(st.width - 16, Math.max(b.width + 24, 760)), h = Math.round(w * 10 / 16);
+      const x = Math.min(Math.max(8, b.x + b.width / 2 - w / 2), st.width - 8 - w);
+      const y = b.height + 24 > h ? b.y - 12 : b.y + b.height / 2 - h / 2;
+      const clip = { x, y: Math.max(0, y + sy), width: w, height: h };
+      await r.still(st, path.join(out, name + '.png'), clip);
+      console.log('still', name, Math.round(clip.width), 'x', Math.round(clip.height), 'panel', Math.round(b.width), 'x', Math.round(b.height));
+    };
+    await shoot('desk', 'fleet', '#tab-desk');
+    await shoot('layers', 'files', '#tab-layerplan');
+    await shoot('convert', 'files', '#convert-card', async () => {
+      await st.page.locator('#cv-sample').click();
+      for (let i = 0; i < 40 && !(await st.page.locator('#cv-report .convert-report').count()); i++) await sleep(500);
+      await r.settle(st, 1200);
+    });
+    await shoot('telemetry', 'overview', '#telemetry');
+    await shoot('automations', 'automations', '#rule-list', async () => {
+      await st.page.locator('text=Tell me when a print finishes').first().click();
+      await r.settle(st, 800);
+      await st.page.locator('#rule-form button:has-text("Save rule")').first().click();
+    });
+    // The process settings only show once a slicing engine is installed (not on the filming
+    // machine), so the version card, how the app keeps itself current, takes their place.
+    await shoot('updates', 'modules', '#version-card');
+    return st;
   },
 };
 

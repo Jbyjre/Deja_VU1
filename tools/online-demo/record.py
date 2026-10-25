@@ -12,7 +12,7 @@ loops. Nothing in it comes from a real printer.
 It starts the real server in a temporary data folder (your own settings and
 files are never read), turns on the sample files, asks every GET route the
 way the dashboard does, then reads the live feed once a second. Halfway
-through, the Workshop printer jams, so the recording shows what happens
+through, Demo printer 1 (u1-workshop) jams, so the recording shows what happens
 when a print needs you. It also runs the 3MF converter on each sample
 project and keeps the real reports and converted files, so the demo's
 "Convert for Snapmaker U1" works. Output: frontend/demo/ (recording.json,
@@ -37,7 +37,7 @@ import urllib.request
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUT = os.path.join(ROOT, "frontend", "demo")
 SECONDS = 150          # length of the loop
-JAM_AT = 75            # the Workshop printer jams here
+JAM_AT = 75            # Demo printer 1 (u1-workshop) jams here
 LARGE = 150_000        # answers bigger than this (bytes of JSON) get their own file
 
 # Routes the recording doesn't hold as fixed answers: the live feed is

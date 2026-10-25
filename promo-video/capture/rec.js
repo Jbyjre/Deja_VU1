@@ -58,9 +58,22 @@ const SYNC = `(() => {
   }
 })()`;
 
-async function open({ width = 1440, height = 900, dpr = 2, fps = +(process.env.FILM_FPS || 60), url = 'http://localhost:' + (process.env.APP_PORT || 8791) + '/?dashboard', mobile = false } = {}) {
+// Version 16: `alias` films the app under a home-network address (the phone scenes show the
+// address a phone would open, e.g. http://192.168.1.23:8000). The filming machine has no such
+// address, so the browser's requests to it are sent to the app running here instead; the page
+// itself only ever sees the alias. (WebSockets are not rerouted; the app's polling takes over.)
+async function open({ width = 1440, height = 900, dpr = 2, fps = +(process.env.FILM_FPS || 60), url = 'http://localhost:' + (process.env.APP_PORT || 8791) + '/?dashboard', mobile = false, alias = null, ua = null } = {}) {
   const browser = await chromium.launch({ args: ['--hide-scrollbars'] });
-  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, isMobile: mobile, hasTouch: mobile });
+  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, isMobile: mobile, hasTouch: mobile, ...(ua ? { userAgent: ua } : {}) });
+  if (alias) {
+    const real = 'http://localhost:' + (process.env.APP_PORT || 8791);
+    // The app checks that a POST's Origin is the address it was sent to; a tunnel names that
+    // address in X-Forwarded-Host, so the reroute does the same.
+    const host = new URL(alias).host;
+    await ctx.route(u => u.href.startsWith(alias), route => route.continue({ url: real + route.request().url().slice(alias.length),
+      headers: { ...route.request().headers(), 'x-forwarded-host': host } }));
+    await ctx.routeWebSocket(u => u.href.startsWith(alias.replace(/^http/, 'ws')), ws => ws.close());
+  }
   await ctx.addInitScript(CURSOR);
   const page = await ctx.newPage();
   const t0 = Date.now();

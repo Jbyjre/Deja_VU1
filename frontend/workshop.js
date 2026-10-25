@@ -800,6 +800,17 @@ const Workshop = (() => {
     // The drawing works in CSS pixels (so its labels stay a readable size
     // on a phone), which means it is redrawn when the card changes width.
     if (window.ResizeObserver) new ResizeObserver(() => drawTwin(true)).observe($('wf'));
+    // Draw only while the twin can be seen. A print moves the heads about 30 times a second, and
+    // drawing the 3D model each time cost a whole CPU core in software WebGL even on another
+    // screen or scrolled out of view. Readings that arrive meanwhile are kept, and the twin
+    // catches up the moment it comes back into view.
+    if (window.IntersectionObserver && !twin.watch) {
+      twin.watch = new IntersectionObserver(entries => {
+        twin.visible = entries.some(e => e.isIntersecting);
+        if (twin.visible && twin.stale) { twin.stale = false; queueTwin(); }
+      });
+      twin.watch.observe($('twin-card'));
+    }
     twin.built = true;
     setTwinMode(twin.mode);
   }
@@ -923,6 +934,7 @@ const Workshop = (() => {
    * (measured: drawing every frame cost the Overview ~2 fps more on a
    * slowed CPU). Dragging draws straight away (setView). */
   function queueTwin() {
+    if (twin.visible === false) { twin.stale = true; return; }   // out of sight: catch up when seen
     if (twin.queued) return;
     twin.queued = true;
     const wait = Math.max(0, 32 - (performance.now() - (twin.drawnAt || 0)));

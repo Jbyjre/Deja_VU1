@@ -138,7 +138,7 @@ def build_farm(count, busy_fraction=0.5, seed=None):
     rng.shuffle(busy_flags)
     added = []
     for i, busy in enumerate(busy_flags):
-        pid = mock_moonraker.add_printer(f"Sim {existing + i + 1:02d}", rng.randrange(1, 10 ** 6),
+        pid = mock_moonraker.add_printer(f"Demo printer {existing + i + 4}", rng.randrange(1, 10 ** 6),
                                          _scenario_for(rng, busy), jobs=rng.randrange(6, 30),
                                          days=rng.randrange(14, 60))
         with mock_moonraker.use_printer(pid):

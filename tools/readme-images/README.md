@@ -17,6 +17,10 @@ below identifies their source. For farm captures:
 3. Capture each panel as its own element, then save as JPG, at most 1600 px
    wide (phone shots 760 px).
 
+`capture-round-five.js` retakes `fleet`, `farm-desk`, `telemetry`, `twin-health-chamber`,
+`twin-detail`, `overview`, `phone`, `tour` and `confirm-print-refused` (the demo printers' new
+names and the nine-stop tour) and adds `phone-connect` and `help-note`.
+
 | File | What to open |
 |---|---|
 | `overview.jpg` | Overview: the top 640 px of a 1100 px-wide window at 1.45x (header, tabs, ribbon, tab sentence, Needs you) |
@@ -30,7 +34,7 @@ below identifies their source. For farm captures:
 | `dock-rings.jpg` | The "Dock status rings" card (`#rings`) |
 | `modules.jpg` | Settings: the Modules card |
 | `photo-studio.jpg` | Photo studio → Try a test pattern |
-| `twin-health-chamber.jpg` | Overview: the twin row (`.now-row`: 3D model, Printer control, Print health), printer U1 · Workshop; hide `.topbar` and `.live-pill` first so they don't overlap |
+| `twin-health-chamber.jpg` | Overview: the twin row (`.now-row`: 3D model, Printer control, Print health), printer Demo printer 1; hide `.topbar` and `.live-pill` first so they don't overlap |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |
 | `twin-detail.jpg` | Overview: the digital twin (`#twin-card`) in 3D model mode, the T0 chip clicked so its details show |
 | `layer-planner.jpg` | Files: the Layer stack card (`.lp-card`) → Try a detail + speed example (`capture-round-four.js`) |
@@ -45,7 +49,9 @@ below identifies their source. For farm captures:
 | `version-history.jpg` | Settings → Version & updates (`#version-card`), with the server started through `start.py` so it reads as a launcher copy; the floating orb, live pill and handoff bar hidden; cropped to the top 1640 px |
 | `desktop-app.jpg` | Settings → Desktop app (`#desktop-card`), floating pieces hidden |
 | `whats-new.jpg` | `Versions.tour('0.8.0')`: the opening card, 800 × 900 at 2x |
-| `tour.jpg` | `Guide.everything({ startAt: 12 })`: the "Model or drawing" stop, 800 × 900 at 2x |
+| `tour.jpg` | `Guide.everything({ startAt: 2 })`: the quick tour's 3D twin stop (its glass callout and beacon), 1280 × 860 at 2x (`capture-round-five.js`) |
+| `help-note.jpg` | Overview → the ⓘ on the Digital twin card, with its word “heads” opened (`capture-round-five.js`) |
+| `phone-connect.jpg` | Overview → Connect your phone: the sheet with its QR code, opened under the example address `http://192.168.1.23:8000` rerouted to the local app (`capture-round-five.js`) |
 | `orb.jpg` | Three example messages sent with `toast()` on the Overview; the bottom-right 420 × 400 of an 800 × 760 window at 2x. Use truthful example wording (no versions that don't exist) |
 | `phone.jpg` | Overview at 390 × 844 |
 
