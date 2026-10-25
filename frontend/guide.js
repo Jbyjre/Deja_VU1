@@ -335,5 +335,12 @@ window.Guide = (() => {
     if (b) screen(b.dataset.tips);
   });
 
+  // The first screen's intro line is written before this script loads, so it gets its button here.
+  document.addEventListener('DOMContentLoaded', () => {
+    const intro = document.getElementById('tab-intro'), tab = document.querySelector('.navtab.active')?.dataset.tab;
+    if (intro && tab && SCREENS[tab] && !intro.querySelector('[data-tips]'))
+      intro.insertAdjacentHTML('beforeend', ` <button type="button" class="tips-btn" data-tips="${tab}"><span aria-hidden="true">✦</span> Show me this screen</button>`);
+  });
+
   return { start, end, everything, screen, count, has: tab => !!SCREENS[tab], active: () => !!root };
 })();

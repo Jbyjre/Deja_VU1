@@ -272,6 +272,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .setup-way span { color: var(--text-dim); font-size: 14px; }
 .setup-way .btn { justify-self: start; margin-top: 6px; }
 .setup-phone-go { margin: 18px 0 4px; }
+#setup-connect { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--hair); }
 .setup-dialog .setup-check-big { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
 .setup-dialog .setup-check-big input { display: inline-block; width: 22px; height: 22px; min-height: 0; margin: 0; flex: 0 0 auto; }
 
@@ -498,11 +499,76 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   .phone-qr { max-width: 230px; margin: 0 auto; }
 }
 
+/* ---- plain-language help (explain.js) -----------------------------------------
+   A small ⓘ after each card title; the title itself opens it too. The note is a
+   small floating piece of glass with a pointer up to the ⓘ. */
+
+.xp-title { cursor: pointer; }
+.xp-btn {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; margin-left: 8px; padding: 0;
+  vertical-align: 2px; border-radius: 50%; cursor: pointer; flex: none;
+  font: italic 700 13px/1 Georgia, "Times New Roman", serif; color: var(--accent-text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .9), rgba(255, 255, 255, .55));
+  border: 1px solid color-mix(in oklch, var(--accent) 35%, rgba(255, 255, 255, .8));
+  box-shadow: inset 0 1px 0 #fff, 0 1px 3px oklch(25% 0.02 265 / .12);
+  transition: transform .25s var(--guide-spring), background-color .2s ease, box-shadow .2s ease;
+}
+.xp-btn:hover, .xp-title:hover .xp-btn { transform: scale(1.1); box-shadow: inset 0 1px 0 #fff, 0 3px 10px color-mix(in oklch, var(--accent) 30%, transparent); }
+.xp-btn[aria-expanded="true"] { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.xp-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+.xp-pop {
+  position: fixed; z-index: 280; width: min(360px, calc(100vw - 24px)); padding: 14px 16px 14px;
+  border-radius: 22px; color: var(--text); isolation: isolate;
+  background: rgba(250, 251, 255, .82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 2px 4px oklch(25% 0.02 265 / .14), 0 16px 40px oklch(25% 0.02 265 / .26);
+  backdrop-filter: blur(20px) saturate(1.7); -webkit-backdrop-filter: blur(20px) saturate(1.7);
+}
+.xp-pop { backdrop-filter: blur(14px) saturate(1.7) url(#lg-distort-live); }
+.xp-pop[hidden] { display: none; }
+.xp-pop.is-in { animation: xp-in .32s var(--guide-spring); }
+@keyframes xp-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+.xp-pop.is-above.is-in { animation-name: xp-in-up; }
+@keyframes xp-in-up { from { opacity: 0; transform: translateY(6px) scale(.97); } }
+.xp-pop::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(160deg, #fff, rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, .6));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.xp-pop::before {        /* the pointer, aimed at the ⓘ */
+  content: ""; position: absolute; top: -8px; left: calc(var(--xp-arrow, 32px) - 9px); width: 18px; height: 9px;
+  background: rgba(250, 251, 255, .86); clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+.xp-pop.is-above::before { top: auto; bottom: -8px; clip-path: polygon(0 0, 50% 100%, 100% 0); }
+.xp-pop.is-sheet { left: 12px !important; right: 12px; top: auto !important; bottom: 12px; width: auto; max-height: 70dvh; overflow: auto; }
+.xp-pop.is-sheet::before, .xp-pop.is-center::before { display: none; }
+.xp-pop.is-center { inset: 0; margin: auto; width: min(560px, calc(100vw - 24px)); height: fit-content; max-height: 82dvh; overflow: auto; padding: 20px 22px; }
+.xp-pop.is-center .xp-gloss { max-height: none; overflow: visible; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; }
+.xp-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.xp-head strong { flex: 1; font: 650 16.5px/1.25 var(--font-display); letter-spacing: -.01em; }
+.xp-badge { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; flex: none;
+  font: italic 700 12px/1 Georgia, serif; color: var(--on-accent); background: var(--accent); }
+.xp-x { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--hair); background: rgba(255, 255, 255, .7); font-size: 18px; line-height: 1; color: var(--text-dim); cursor: pointer; }
+.xp-pop p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.5; color: var(--text-dim); text-wrap: pretty; }
+.xp-pop p.xp-what { font-size: 15px; color: var(--text); }
+.xp-pop p.xp-tip { padding-left: 10px; border-left: 3px solid color-mix(in oklch, var(--accent) 55%, transparent); font-size: 13.5px; }
+.xp-term { display: inline; padding: 0; border: 0; background: none; font: inherit; color: var(--accent-text); cursor: pointer;
+  text-decoration: underline dotted; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.xp-term[aria-expanded="true"] { text-decoration-style: solid; }
+.xp-pop .xp-def { margin: -2px 0 10px; padding: 9px 11px; border-radius: 12px; font-size: 13.5px; color: var(--text);
+  background: color-mix(in oklch, var(--accent) 9%, white); border: 1px solid color-mix(in oklch, var(--accent) 25%, transparent); animation: xp-in .25s ease; }
+.xp-more { margin-top: 2px; min-height: 36px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--hair);
+  background: rgba(255, 255, 255, .7); font: 600 13.5px/1 var(--font-sans); color: var(--accent-text); cursor: pointer; }
+.xp-term:focus-visible, .xp-x:focus-visible, .xp-more:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
+.xp-gloss { margin: 0; display: grid; gap: 10px; max-height: min(60dvh, 520px); overflow: auto; }
+.xp-gloss dt { font-weight: 650; font-size: 14.5px; }
+.xp-gloss dd { margin: 2px 0 0; font-size: 14px; line-height: 1.5; color: var(--text-dim); }
+
 /* ---- accessibility -------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .orb, .orb-core, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-beacon, .guide-tail, .guide-dots i, .tips-btn { transition: opacity .15s ease !important; }
-  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse { animation: none !important; }
+  .orb, .orb-core, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-beacon, .guide-tail, .guide-dots i, .tips-btn, .xp-btn { transition: opacity .15s ease !important; }
+  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse, .xp-pop.is-in, .xp-pop .xp-def { animation: none !important; }
   .orb-bubble, .orb-bubble-wrap.is-out .orb-bubble { transform: none; }
   .orb:hover, .orb:active { transform: none; }
 }
@@ -512,13 +578,14 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   }
   .orb { background: var(--paper-solid); }
   .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .guide .guide-card.is-chapter, .guide-tail, .tips-btn { background: var(--paper-solid); }
-  .guide-tail, .tips-btn { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .guide-tail, .tips-btn, .xp-pop { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .xp-pop, .xp-pop::before { background: var(--paper-solid); }
   .guide.is-chapter .guide-scrim { background: oklch(18% 0.02 265 / .72); }
   .phone-sheet { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: var(--paper-solid); }
   .phone-dialog::backdrop { backdrop-filter: none; -webkit-backdrop-filter: none; background: oklch(18% 0.02 265 / .72); }
 }
 @media (prefers-contrast: more) {
-  .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .ver-chip, .vc-update, .da-option, .phone-sheet, .phone-type, .tips-btn { border: 2px solid var(--text); }
+  .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .ver-chip, .vc-update, .da-option, .phone-sheet, .phone-type, .tips-btn, .xp-pop, .xp-btn { border: 2px solid var(--text); }
   .guide-tail { background: var(--text); }
   .orb-glass { display: none; }
   .guide-ring { box-shadow: 0 0 0 200vmax oklch(10% 0 0 / .7), 0 0 0 3px var(--text); }

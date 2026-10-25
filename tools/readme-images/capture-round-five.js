@@ -101,5 +101,18 @@ const hideFloating = page => page.evaluate(() => document.querySelectorAll('.han
     await page.locator('.phone-sheet').screenshot({ path: png });
     jpg(png, 'phone-connect.jpg'); console.log('wrote phone-connect.jpg'); await page.context().close(); }
 
+  // New: a help note (the ⓘ on the Digital twin card) with one of its words opened.
+  { const page = await open(browser, { width: 1100, height: 900 });
+    await hideFloating(page);
+    await page.evaluate(() => document.getElementById('twin-card').scrollIntoView({ block: 'center' }));
+    await wait(800);
+    await page.click('#twin-card h2 .xp-btn'); await wait(500);
+    await page.click('.xp-pop .xp-term >> nth=0'); await wait(500);
+    const png = path.join(tmp, 'help-note.png');
+    const pop = await page.locator('.xp-pop').boundingBox(), h2 = await page.locator('#twin-card h2').boundingBox();
+    const x = Math.max(0, Math.min(pop.x, h2.x) - 24), y = Math.max(0, Math.min(pop.y, h2.y) - 24);
+    await page.screenshot({ path: png, clip: { x, y, width: Math.min(1100 - x, pop.width + 260), height: Math.min(900 - y, Math.max(pop.y + pop.height, h2.y + h2.height) - y + 24) } });
+    jpg(png, 'help-note.jpg'); console.log('wrote help-note.jpg'); await page.context().close(); }
+
   await browser.close();
 })();

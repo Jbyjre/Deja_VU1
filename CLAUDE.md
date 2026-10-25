@@ -174,7 +174,7 @@ root should hand over to `welcome.html`.
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
+  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -216,6 +216,11 @@ root should hand over to `welcome.html`.
   (`Guide.everything()`, setup's "The tour" step) is nine stops; the owner found the old 53 far too
   many, so keep it short. More detail lives in `Guide.screen(tab)`, 1 to 4 stops per screen, opened
   by "Show me this screen" in the line under the tab bar.
+- `explain.js`: plain-language help. An ⓘ after each known card title (HELP, keyed by the title's
+  letters and digits; a MutationObserver decorates cards drawn later) opens a glass note; `[[word]]`
+  links a GLOSS definition that opens in place; `[data-glossary]` opens the whole list. The owner
+  wants the app understandable at a glance: write notes in the stop-slop style (you, active verbs, no
+  filler or em dashes). `tests/test_explain.py` fails when a note's card is renamed or removed.
 - `versions.js` + `versions.json`: Settings → Version & updates, the header
   version chip, "Updated to…" news and each version's tour (`Versions.tour(v)`).
   Works on the static demo (plain file). `launchpad.js` holds setup and the

@@ -54,25 +54,25 @@
     document.documentElement.classList.add('setup-full-open');
     if (step === 0) {
       content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">Set up your U1 workspace.</h2>
-        <p class="setup-lead">Deja Vu1 is a dashboard for your Snapmaker U1. It runs on this computer and talks to your printer over your home network. Open it in a browser tab, in its own app window, or on your phone. Core printer data stays on your network. Optional services connect only when configured.</p>
-        <ul class="setup-points"><li><strong>See it live:</strong> a 3D twin of your printer, progress and temperatures.</li><li><strong>Review the job:</strong> check the file, tools and printer before starting.</li><li><strong>Look after it:</strong> maintenance reminders and your filament shelf.</li></ul>
+        <p class="setup-lead">Deja Vu1 runs on this computer and keeps an eye on your Snapmaker U1 printers over your home Wi-Fi. Open it here, in its own window, or on your phone. Your printer data stays at home.</p>
+        <ul class="setup-points"><li><strong>Watch it live:</strong> your printer in 3D, its progress and temperatures.</li><li><strong>Check before printing:</strong> the file, the colours and the printer, before anything starts.</li><li><strong>Look after it:</strong> upkeep reminders and your filament.</li></ul>
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
         <p class="field-hint">${esc(privacy)}</p>`;
       $('setup-name').addEventListener('input', e => { if (!save(key, e.target.value.trim().slice(0,40))) $('setup-status').textContent='This browser is not allowing saved preferences.'; greeting(); });
     } else if (names[step] === 'Make it yours') {
-      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and its colours. Move your mouse (or drag a finger) around this screen to see it react. You can change it any time in Settings → Appearance.</p><div id="setup-backdrop"></div>`;
+      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
       if (typeof Backdrop !== 'undefined') Backdrop.picker($('setup-backdrop'));
     } else if (names[step] === 'Your printer') {
-      content.innerHTML = `<h2 id="setup-title">Choose your starting point.</h2><p>Demo figures are labelled. Connecting a real printer does not start a print.</p>
-        <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo">Explore demo data</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" ${tourOn()?'disabled':''}>Connect my printer</button></div>
+      content.innerHTML = `<h2 id="setup-title">Your printer, or a demo first?</h2><p class="setup-lead">The demo fills every screen with pretend printers, labelled as pretend. Connecting your own printer never starts a print.</p>
+        <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo">Try the demo</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" ${tourOn()?'disabled':''}>Connect my printer</button></div>
         ${tourOn()?'<p class="setup-note">Public demo · a recording only. To connect a printer, run the download on your own computer.</p>':''}
         <div id="setup-connect" ${mode==='demo'||tourOn()?'hidden':''}>
-          <button class="btn" id="setup-find">Find printers</button><div id="setup-found"></div>
+          <button class="btn" id="setup-find">Find printers on my Wi-Fi</button><div id="setup-found"></div>
           <label for="setup-url">Printer address</label><input id="setup-url" type="url" placeholder="http://192.168.1.50:7125">
-          <label for="setup-key">API key <span class="field-hint">Only if your printer asks for one</span></label><input id="setup-key" type="password" autocomplete="off">
+          <label for="setup-key">Access key <span class="field-hint">Only if your printer asks for one</span></label><input id="setup-key" type="password" autocomplete="off">
           <button class="btn primary" id="setup-test">Test and connect</button>
-          <p class="field-hint">No answer? Wake the printer, check its address on its screen or in your router, and use the same home network. Guest Wi-Fi can keep devices apart. Port 7125 is Moonraker’s usual address.</p>
+          <p class="field-hint">No answer? Wake the printer and put it on the same Wi-Fi as this computer (not a guest network). Its address is on the printer’s screen or in your router’s list of devices, and usually ends in :7125.</p>
         </div>`;
       $('setup-demo').onclick=()=>{mode='demo';setDemo(true);render();};
       $('setup-real').onclick=()=>{mode='real';setDemo(false);render();};
@@ -134,12 +134,12 @@
       $('setup-window').onclick=()=>saveWindow('window',$('setup-desktop-note'));
       if(tourOn()||serverMissing()){$('setup-install').disabled=true;$('setup-window').disabled=true;}
     } else {
-      const kind=info&&info.install_kind==='git'?'Your copy was made with git or GitHub Desktop, so updates pull the newest version straight from GitHub.':'Updates come from inside the app: Newest builds fetch each improvement as soon as it is published (only the changed files, each checked against GitHub’s record), or Stable releases give fewer, bigger steps. Choose in Settings.';
+      const kind=info&&info.install_kind==='git'?'Your copy came from git or GitHub Desktop, so updates come straight from GitHub.':'Updates arrive inside the app. In Settings you choose newest builds (each fix as it lands) or stable releases (fewer, bigger steps).';
       content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
         <p class="setup-lead">This is Deja Vu1 <strong>v${esc(Versions.installed()||'?')}</strong>. ${esc(tourOn()||serverMissing()?'Updates belong to the copy on your own computer.':kind)}</p>
         <label class="setup-check setup-check-big"><input type="checkbox" id="setup-auto" ${info&&info.automatic?'checked':''} ${tourOn()||serverMissing()?'disabled':''}> Look for updates by itself</label>
-        <p>When one is ready, the glass orb in the bottom-right corner tells you. Installing keeps your settings and files, makes a safety copy first, restarts the dashboard, and puts the old version back if the new one fails to start. Settings can also let updates install by themselves while every printer is idle. Start Deja Vu1 with its double-click launcher.</p>
-        <p class="field-hint">A check sends GitHub no name, printer details or settings. Settings → Version &amp; updates has the version history and a tour of each version. Printer firmware updates are separate.</p>`;
+        <p>When an update is ready, the glass orb in the bottom-right corner tells you. Installing keeps your settings and files, and puts the old version back if the new one won’t start.</p>
+        <details class="setup-more"><summary>More about updates</summary><p>Deja Vu1 makes a safety copy before it installs anything, then restarts itself. Settings can let updates install on their own while every printer is idle. Start Deja Vu1 with its double-click launcher so it can restart after an update.</p><p class="field-hint">Checking sends GitHub no name, printer details or settings. Settings → Version &amp; updates lists every version and has a tour of each. Printer firmware updates are separate and come from Snapmaker.</p></details>`;
       $('setup-auto').onchange=async e=>{const r=await postJSON('/api/app/updates/settings',{automatic:e.target.checked});if(!r.ok){e.target.checked=!e.target.checked;$('setup-status').textContent=r.body.error||'Could not save that.';}else{info={...info,...r.body};Versions.refresh();}};
     }
     $('setup-status').textContent='';

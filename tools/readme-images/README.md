@@ -19,7 +19,7 @@ below identifies their source. For farm captures:
 
 `capture-round-five.js` retakes `fleet`, `farm-desk`, `telemetry`, `twin-health-chamber`,
 `twin-detail`, `overview`, `phone`, `tour` and `confirm-print-refused` (the demo printers' new
-names and the nine-stop tour) and adds `phone-connect`.
+names and the nine-stop tour) and adds `phone-connect` and `help-note`.
 
 | File | What to open |
 |---|---|
@@ -50,6 +50,7 @@ names and the nine-stop tour) and adds `phone-connect`.
 | `desktop-app.jpg` | Settings → Desktop app (`#desktop-card`), floating pieces hidden |
 | `whats-new.jpg` | `Versions.tour('0.8.0')`: the opening card, 800 × 900 at 2x |
 | `tour.jpg` | `Guide.everything({ startAt: 2 })`: the quick tour's 3D twin stop (its glass callout and beacon), 1280 × 860 at 2x (`capture-round-five.js`) |
+| `help-note.jpg` | Overview → the ⓘ on the Digital twin card, with its word “heads” opened (`capture-round-five.js`) |
 | `phone-connect.jpg` | Overview → Connect your phone: the sheet with its QR code, opened under the example address `http://192.168.1.23:8000` rerouted to the local app (`capture-round-five.js`) |
 | `orb.jpg` | Three example messages sent with `toast()` on the Overview; the bottom-right 420 × 400 of an 800 × 760 window at 2x. Use truthful example wording (no versions that don't exist) |
 | `phone.jpg` | Overview at 390 × 844 |

@@ -1018,15 +1018,15 @@ const TAB_KEY = 'dejavu1.tab';
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Control', files: 'Files', studio: 'Photo studio',
   automations: 'Automations', maintenance: 'Care', modules: 'Settings', games: 'Games' };
 const TAB_INTROS = {
-  overview: 'What needs you, then the selected printer right now: its live 3D twin, quick controls and health.',
-  fleet: 'Every printer you have added, at a glance. Add one by its network address, or try simulated printers in the sandbox.',
-  control: 'Drive the selected printer: temperatures, moving the head, the objects on the plate and a command console. Anything the printer refuses is shown as refused.',
-  files: 'Your print files. Upload, preview in 3D, slice with your own OrcaSlicer and queue prints. Every print is checked before it starts.',
-  studio: 'Turn a photo into a printable multi-colour tile or relief, using the filament colours you have.',
-  automations: '"When this happens, do that" rules, such as a message when a print finishes. They run on this computer, with no cloud.',
-  maintenance: 'Care for the printer: maintenance reminders based on print hours, and your filament shelf.',
-  modules: 'Your version and its updates, the desktop app, how the dashboard looks, which features are on, paired phones and notifications.',
-  games: 'Something to play while a print runs. Nothing here reads or controls the printer.',
+  overview: 'What needs you, then the printer you picked: its live 3D model, controls and health.',
+  fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
+  control: 'Drive the printer you picked: pause, skip a failed object, temperatures and moving the head. If the printer says no, you see why.',
+  files: 'Your print files. Look inside them, prepare and slice models, and queue prints. Every print gets checked before it starts.',
+  studio: 'Turn a photo into a colour print, using the filaments you have loaded.',
+  automations: '“When this happens, do that” rules, like a message when a print finishes. They run on this computer, not in the cloud.',
+  maintenance: 'Keep the printer in shape: upkeep reminders from real print hours, a logbook, and your spools.',
+  modules: 'Updates, how the dashboard looks, which features are on, your phone and messages.',
+  games: 'Something to play while a print runs. Nothing here touches a printer.',
 };
 
 /* Settings is long, so it opens with a row of links to each of its cards,

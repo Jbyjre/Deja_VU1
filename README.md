@@ -204,6 +204,10 @@ On the main branch; part of the next version.
   opens on the phone and pairs itself. Typing still works, and the address
   now picks out its colon: `10.0.0.10:8000`, not `10.0.0.10.8000` (with a
   dot, phones search the web instead and show unrelated pages).
+- **Help on every card.** Press the small ⓘ after a card's title (or the title
+  itself) for a short note: what it is, how to use it, and a tip. Underlined
+  words such as G-code or slicer open their meaning in place. **Settings → Your
+  space → What the words mean** lists them all.
 - **A quick tour of nine stops**, about a minute, instead of 53. A glass
   callout points at each part and glides to the next, across screens. Each
   screen also has a **Show me this screen** button with a few more tips.
@@ -214,6 +218,8 @@ On the main branch; part of the next version.
   processor core); and a few smaller ones, listed in the [changelog](CHANGELOG.md).
 
 <img src="docs/img/phone-connect.jpg" width="49%" alt="Connect your phone: a glass sheet titled Point your phone's camera here, with a large QR code, three steps (join the same Wi-Fi, open the Camera, that's it), Waiting for your phone, and the address 192.168.1.23:8000 with its colon highlighted for typing instead"> <img src="docs/img/tour.jpg" width="49%" alt="The quick tour at its third stop: the page dimmed except the 3D twin card, with a glass callout titled Your printer, live in 3D whose pointer and pulsing beacon touch the card's edge, a Show it as a drawing button, Back and Next, and dots for the nine stops">
+
+<img src="docs/img/help-note.jpg" width="49%" alt="A help note opened from the ⓘ on the Digital twin card: what the twin is, the word heads opened to explain T0 to T3, how to turn it and see the drawing, a tip that some inside sizes are estimates, and a Show me around this screen button">
 
 <sub>Simulated farm, Demo data on. The phone address is an example.</sub>
 
@@ -584,8 +590,10 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **855 tests in 473.3 seconds** on Python
-3.13.17/Linux, with app/demo servers stopped (24 October 2026: version 0.8.0's print
+The latest clean full suite passed **871 tests in 472.8 seconds** on Python
+3.13.17/Linux, with app/demo servers stopped (25 October 2026: the QR code maker and phone
+link, the update gate fix and the help notes). Before that: 855 tests in 473.3 seconds
+(24 October 2026: version 0.8.0's print
 preview, insights, safety copies, Orca import, device lock, self-check, git-copy updates,
 desktop window choice and version history, plus the install-block check added after it).
 Before that: 852 tests in 473.0 seconds, 783 tests in 428.9 seconds, and 771 tests in
@@ -613,6 +621,7 @@ recorded static demo passed at both widths.
 | The print inside the twin, case off, drawing sheet | Preview built from the file's own G-code, tested on the two-colour sample and hand-written files; the real-printer download tested against the Moonraker stand-in; Chromium screenshots at 1366/390 px; frame time measured in software rendering (the print adds about a fifth; case off costs about 2.7× there) | Not seen with a physical U1's own files; frame, motors and lead screw sizes are typical, not measured |
 | Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
 | Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
+| Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
 | Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
 
 Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified

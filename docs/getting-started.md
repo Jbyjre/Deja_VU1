@@ -80,7 +80,7 @@ You need your own running copy for real readings.
    [first connection](first-connection.md).
 
 You can also add or edit printers under **Printers → Add a printer**. Adding a
-printer does not start a print. To explore first, choose **Explore demo data**;
+printer does not start a print. To explore first, choose **Try the demo**;
 simulated figures are labelled and simulated commands cannot control a real U1.
 
 ## On my phone at home

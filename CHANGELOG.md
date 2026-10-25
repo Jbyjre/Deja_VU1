@@ -9,7 +9,7 @@ the app's version history (Settings → Version & updates, from
 
 Merged after the 0.8.0 release was published; part of the next version.
 
-## Unreleased: your phone by QR code, a nine-stop tour, clearer demo printers
+## Unreleased: your phone by QR code, help on every card, a nine-stop tour, clearer demo printers
 
 - **Your phone, by scanning a code.** Overview → Connect your phone (also in
   Settings and setup) shows a QR code of this computer's address with a
@@ -26,6 +26,13 @@ Merged after the 0.8.0 release was published; part of the next version.
   across screens, and the page stays clickable. Every screen has a "Show me
   this screen" button with one to four more tips. Version tours use the same
   callouts.
+- **Help on every card.** A small ⓘ sits after each of the 65 card titles. Press it, or the
+  title itself, for a short note: what the card is, how you use it, and sometimes a tip.
+  Words such as G-code, slicer, 3MF or heads are underlined in the notes; press one to see
+  what it means right there. Settings → Your space → What the words mean lists them all, and
+  Ctrl+K finds it. Each screen's intro line, setup and the update step are shorter and plainer,
+  with the fine print folded under "More about…". `tests/test_explain.py` checks every note
+  still matches a card and keeps the wording free of filler.
 - **Demo printer 1, 2 and 3.** The pretend printers were called U1 · Workshop,
   Studio and Garage, which read like parts of the app. Saved records still
   match (their ids did not change).
@@ -33,7 +40,8 @@ Merged after the 0.8.0 release was published; part of the next version.
   update failed with a server error before it started (the slicing check
   misread its job list); if setup closed some other way, the header and tabs
   stayed hidden; the online demo's "Mark done" showed an error; tour stops
-  could sit under the sticky top bar; the 3D twin kept drawing while out of
+  could sit under the sticky top bar; the first screen lacked its "Show me this
+  screen" button; the 3D twin kept drawing while out of
   sight (about a CPU core in software WebGL), and now draws only when seen.
 - **Launch film version 16**, 16:9 only, now on the product page and in the
   README: the 3DBenchy, the quick tour and scanning onto a phone. By the
