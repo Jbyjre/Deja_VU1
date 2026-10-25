@@ -61,3 +61,39 @@ class VersionHistory(unittest.TestCase):
         self.assertIn("a.get('name') == 'deja-vu1-update.zip'", (ROOT / 'backend/app_updates.py').read_text())
         self.assertIn('tools/package-update.py', workflow)
         self.assertIn('tools/release-notes.py', workflow)
+
+
+class EveryMergeIsARelease(unittest.TestCase):
+    """A merge that did not raise VERSION still becomes the next numbered release."""
+
+    def test_workflow_runs_on_every_merge_and_numbers_the_next_one(self):
+        workflow = (ROOT / '.github/workflows/release.yml').read_text(encoding='utf-8')
+        self.assertNotIn('paths:', workflow)                    # every push to main, not only VERSION changes
+        self.assertIn('tools/next-release.py', workflow)
+        self.assertIn('git push origin HEAD:main', workflow)
+
+    def test_next_release_writes_an_entry_the_version_tests_accept(self):
+        import datetime
+        import importlib.util
+        import shutil
+        import tempfile
+        spec = importlib.util.spec_from_file_location('next_release', ROOT / 'tools/next-release.py')
+        nr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(nr)
+        self.assertEqual(nr.bump('0.9.0'), '0.9.1')
+        self.assertEqual(nr.bump('1.9.19'), '1.9.20')
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'frontend').mkdir()
+            shutil.copy(ROOT / 'frontend/versions.json', root / 'frontend/versions.json')
+            shutil.copy(ROOT / 'CHANGELOG.md', root / 'CHANGELOG.md')
+            new = nr.bump(app_updates.version(ROOT))
+            nr.write(root, new, ['Smoother updates', 'A fix'], datetime.date(2099, 1, 2))
+            self.assertEqual((root / 'VERSION').read_text().strip(), new)
+            top = json.loads((root / 'frontend/versions.json').read_text(encoding='utf-8'))['versions'][0]
+            self.assertEqual((top['version'], top['name'], top['changes'], top['published']),
+                             (new, 'Smoother updates', ['Smoother updates', 'A fix'], True))
+            self.assertTrue(top['highlights'][0]['target'].startswith('#'))
+            log = (root / 'CHANGELOG.md').read_text(encoding='utf-8')
+            self.assertIn(f'## {new} (2 January 2099): Smoother updates\n\n- Smoother updates\n- A fix\n', log)
+            self.assertLess(log.index(f'## {new} '), log.index(f'## {HISTORY[0]["version"]} '))
