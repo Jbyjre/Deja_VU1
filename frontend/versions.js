@@ -19,17 +19,16 @@ window.Versions = (() => {
   const day = d => { try { return new Date(`${d}T12:00:00`).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }); } catch (_) { return d; } };
 
   function kindText() {
-    if (offline()) return 'This is the online demo, showing the newest version. Updates belong to the copy running on your own computer.';
+    if (offline()) return 'This is the online demo. Updates belong to the copy on your own computer.';
     if (!info) return 'App information is unavailable. Check that the launcher window is still open.';
     if (info.install_kind === 'git') {
-      if (!info.git_found) return 'This copy was made with git or GitHub Desktop, but git is not where the app can find it. Update in GitHub Desktop: Fetch origin, then Pull origin, then reopen the launcher.';
-      if (!info.launcher) return 'This copy was made with git or GitHub Desktop, and was started without the double-click launcher. Close it and start it with the launcher to update from here.';
-      return 'This copy was made with git or GitHub Desktop. Updates pull the newest version from GitHub, and stop if you changed any of its files by hand.';
+      if (!info.git_found) return 'A GitHub Desktop copy, but git can’t be found. In GitHub Desktop: Fetch origin, then Pull origin.';
+      if (!info.launcher) return 'A GitHub Desktop copy, started without the launcher. Start it with the launcher to update from here.';
+      return 'A GitHub Desktop copy: updates pull from GitHub, and stop if you changed its files by hand.';
     }
-    const build = info.build && info.build.commit ? ` It is build ${info.build.commit.slice(0, 7)}.` : '';
-    if (!info.launcher) return `This copy was started without the double-click launcher. Close it and start it with the launcher (start-windows.bat, start-mac.command or start-linux.sh) to install updates from here; checks work either way.${build}`;
-    return (info.channel === 'latest' ? 'This copy was downloaded from GitHub and gets the newest builds: only the files that changed, each checked against GitHub’s record.'
-      : 'This copy was downloaded from GitHub. Updates install the newest published release.') + build;
+    const build = info.build && info.build.commit ? ` Build ${info.build.commit.slice(0, 7)}.` : '';
+    if (!info.launcher) return `Started without the double-click launcher, so it can check but not install. Start it with the launcher, or use the update command below.${build}`;
+    return (info.channel === 'latest' ? 'Gets the newest files from GitHub, each checked first.' : 'Gets each new release from GitHub.') + build;
   }
 
   // A check made on the other channel no longer applies; a git copy's answer always does.
@@ -61,14 +60,15 @@ window.Versions = (() => {
       $('app-update-auto').checked = !!info.automatic;
       $('app-update-autoinstall').checked = !!info.auto_install;
       $('app-update-autoinstall').disabled = !info.automatic;
-      $('app-update-auto-when').textContent = info.install_kind === 'git' ? '(every 15 minutes)' : '(newest builds every 15 minutes, releases once a day)';
+      $('app-update-auto-when').textContent = info.install_kind === 'git' || info.channel === 'latest' ? '(every 15 minutes)' : '(every hour)';
       install.hidden = !(latest && latest.installable && info.install_supported);
       install.textContent = latest && latest.version && latest.kind !== 'git' ? `Install v${latest.version} & restart` : 'Install update & restart';
       // Without the launcher, a git copy can still pull; the person restarts it afterwards.
       git.hidden = !(info.install_kind === 'git' && info.git_found && !info.launcher);
-      $('app-update-note').textContent = !install.hidden ? 'Installing makes a safety copy, restarts the dashboard and reloads this page by itself. It waits while a real printer is printing, paused or out of reach.'
-        : !git.hidden ? '“Update with git” fetches the newest commits (only if you have no local code changes). Restart Deja Vu1 afterwards.' : '';
+      $('app-update-note').textContent = !install.hidden ? 'Installing restarts the dashboard and reloads this page. It waits while a real printer is busy or out of reach.'
+        : !git.hidden ? 'Update with git, then restart Deja Vu1.' : '';
     }
+    manageState();
     const coming = $('vc-coming'), changes = (latest && latest.changes) || [];
     coming.hidden = !changes.length;
     coming.innerHTML = changes.length ? `<li class="vc-coming-head">Coming in this update</li>${changes.map(c => `<li>${esc(c)}</li>`).join('')}` : '';
@@ -216,8 +216,83 @@ window.Versions = (() => {
       $('app-update-status').textContent = 'Restarting. Keep the launcher window open; this page reloads by itself.';
       toast('Installing the update. The dashboard restarts in a moment.', 'info', 9000);
       waitForRestart(r.body.version);
-    } catch (err) { $('app-update-status').textContent = err.message || 'The update could not be installed.'; btn.disabled = false; }
+    } catch (err) {
+      $('app-update-status').textContent = `${err.message || 'The update could not be installed.'} Nothing was changed. You can also update with the command below.`;
+      btn.disabled = false; showCommand();
+    }
   };
+
+  /* ---- look after this copy ------------------------------------------------ */
+  const launcherOnly = 'Start Deja Vu1 with its double-click launcher to use this.';
+  function manageState() {
+    const demo = offline(), launcher = !!(info && info.launcher), git = !!(info && info.install_kind === 'git');
+    $('app-restart').disabled = demo || !launcher;
+    $('app-repair').disabled = demo || !launcher || git;
+    $('app-safety').disabled = demo;
+    $('app-stop').disabled = demo || !info;
+    $('vc-manage-note').textContent = demo ? 'Public demo only.' : !info ? '' : !launcher ? `Restart and Repair: ${launcherOnly}`
+      : git ? 'Repair a GitHub Desktop copy there: Repository, then Discard all changes.' : '';
+  }
+  const say = (text, kind) => { $('vc-manage-note').textContent = text; if (kind) toast(text, kind); };
+  async function restartWith(route, button, doing, done) {
+    button.disabled = true; say(doing);
+    try {
+      const r = await postJSON(route, {});
+      if (!r.ok) throw new Error(r.body.error);
+      say(done, 'info'); waitForRestart(r.body.version || installed());
+    } catch (err) { say(err.message || 'That didn’t work. Nothing was changed.', 'bad'); button.disabled = false; if (route === '/api/app/repair') showCommand(); }
+  }
+  $('app-restart').onclick = e => restartWith('/api/app/restart', e.currentTarget, 'Restarting…', 'Restarting. This page reloads by itself.');
+  $('app-repair').onclick = e => {
+    if (!confirm('Repair files?\n\nDeja Vu1 downloads the newest release from GitHub, puts its app files back over this copy and restarts. Your settings, printers and files stay. A safety copy is made first.')) return;
+    restartWith('/api/app/repair', e.currentTarget, 'Downloading and checking the files…', 'Repaired. Restarting; this page reloads by itself.');
+  };
+  $('app-safety').onclick = async e => {
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      const r = await postJSON('/api/app/memory/snapshot', {});
+      if (!r.ok) throw new Error(r.body.error);
+      say('Safety copy made. Your data is safe lists it.', 'ok');
+    } catch (err) { say(err.message || 'The safety copy could not be made.', 'bad'); }
+    btn.disabled = false;
+  };
+  $('app-stop').onclick = async e => {
+    if (!confirm('Stop Deja Vu1?\n\nThe dashboard closes on this computer and on your phone. Prints already running carry on. Start it again with the double-click launcher.')) return;
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      const r = await postJSON('/api/app/stop', {});
+      if (!r.ok) throw new Error(r.body.error);
+      say('Deja Vu1 has stopped. Start it again with the double-click launcher.', 'info');
+    } catch (err) { say(err.message || 'Deja Vu1 could not be stopped from here.', 'bad'); btn.disabled = false; }
+  };
+  // The pointer moves a soft glint along the glass strip.
+  const strip = $('vc-manage');
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    strip.addEventListener('pointermove', e => {
+      const r = strip.getBoundingClientRect();
+      strip.style.setProperty('--gx', `${Math.round(((e.clientX - r.left) / r.width) * 100)}%`);
+    });
+  }
+
+  /* ---- update with a command ------------------------------------------------ */
+  function pickOS(os) {
+    document.querySelectorAll('#vc-cmd [data-os]').forEach(b => { const on = b.dataset.os === os; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+    document.querySelectorAll('#vc-cmd [data-os-block]').forEach(b => { b.hidden = b.dataset.osBlock !== os; });
+  }
+  function showCommand() {
+    $('version-card').classList.add('is-failed');
+    $('vc-cmd').open = true;
+  }
+  pickOS(/Win/i.test(navigator.userAgent) ? 'win' : 'unix');
+  document.querySelectorAll('#vc-cmd [data-os]').forEach(b => { b.onclick = () => pickOS(b.dataset.os); });
+  document.querySelectorAll('#vc-cmd .vc-copy').forEach(b => {
+    b.onclick = async () => {
+      const text = b.parentElement.querySelector('code').textContent;
+      try { await navigator.clipboard.writeText(text); b.textContent = 'Copied'; toast('Update command copied. Paste it into a new window.', 'ok'); }
+      catch (_) { const range = document.createRange(); range.selectNodeContents(b.parentElement.querySelector('code')); getSelection().removeAllRanges(); getSelection().addRange(range); b.textContent = 'Press Ctrl+C'; }
+      setTimeout(() => { b.textContent = 'Copy'; }, 2500);
+    };
+  });
 
   // Reload once the new server answers, rather than after a fixed guess.
   function waitForRestart(version, tries = 0) {
