@@ -44,7 +44,7 @@
           "title": "A tour of every screen",
           "tab": "modules",
           "target": "#setup-replay",
-          "text": "Replay setup walks through every screen in 54 stops, with something to try at most of them. It also explains the three demo printers: Workshop, Studio and Garage."
+          "text": "Replay setup walks through the dashboard with something to try at most stops. (Since this version it has become a nine-stop quick tour, with a few more tips on each screen, and the demo printers are called Demo printer 1, 2 and 3.)"
         },
         {
           "title": "The real print in the twin",

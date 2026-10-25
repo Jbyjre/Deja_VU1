@@ -1,13 +1,19 @@
-/* Guided tours. One engine runs two kinds:
-     - the tour of every screen (Settings → Tour every screen, and setup), and
+/* Guided tours. One engine runs three kinds:
+     - the quick tour (setup, Settings → Your space): nine stops that hop
+       between screens, about a minute,
+     - "Show me this screen": a few stops on the open screen (the button in
+       the line under the tab bar), and
      - each version's "What's new" tour (versions.js).
-   A step either spotlights a real part of the dashboard (the rest of the page
-   dims; you can still click anything) or fills the screen as a chapter card.
-   Tours never send printer commands; "Try it" buttons only press buttons a
-   person could press, and anything that would change a printer is left out. */
+   A stop spotlights a real part of the dashboard with a glass callout whose
+   tail points at it; the callout glides to the next stop, across screens,
+   and the page stays usable, so "Try it" means really trying it. A step
+   with no target floats in the middle; a chapter (version tours) fills the
+   screen. Tours never send printer commands: "Try it" buttons only press
+   buttons a person could press, and anything that would change a printer is
+   left out. */
 'use strict';
 window.Guide = (() => {
-  let root, ring, card, steps = [], at = 0, opts = {}, returnTab = null, returnFocus = null, raf = 0, target = null;
+  let root, ring, card, beacon, steps = [], at = 0, opts = {}, returnTab = null, returnFocus = null, raf = 0, target = null;
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const narrow = () => matchMedia('(max-width: 720px)').matches;
 
@@ -15,11 +21,20 @@ window.Guide = (() => {
     root = document.createElement('div');
     root.className = 'guide';
     root.innerHTML = `<div class="guide-scrim"></div><div class="guide-ring" aria-hidden="true"></div>
-      <section class="guide-card liquid-glass deep" role="dialog" aria-modal="false" aria-labelledby="guide-title"></section>`;
+      <div class="guide-beacon" aria-hidden="true"></div>
+      <section class="guide-card" role="dialog" aria-modal="false" aria-labelledby="guide-title">
+        <div class="guide-tail" aria-hidden="true"></div><div class="guide-body"></div></section>`;
     ring = root.querySelector('.guide-ring');
+    beacon = root.querySelector('.guide-beacon');
     card = root.querySelector('.guide-card');
     document.body.append(root);
     card.addEventListener('click', onCardClick);
+    // The glint on the glass follows the pointer, as on the dashboard's own glass.
+    card.addEventListener('pointermove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${((e.clientX - r.left) / r.width) * 100}%`);
+      card.style.setProperty('--my', `${((e.clientY - r.top) / r.height) * 100}%`);
+    });
   }
 
   /* Things a "Try it" button may do. Each is something a person can do by hand. */
@@ -33,6 +48,7 @@ window.Guide = (() => {
     'open-orb': () => setTimeout(() => window.Orb && Orb.open(), 60),
     'check-updates': () => $('app-update-check')?.click(),
     'install-app': () => $('da-install')?.click(),
+    'phone': () => window.Phone && Phone.open(),
     'sandbox': () => $('tab-sandbox')?.scrollIntoView({ block: 'center' }),
   };
 
@@ -44,10 +60,16 @@ window.Guide = (() => {
     return el;
   }
 
+  /* Where the callout goes: beside the spotlight where it fits (right, then
+     left), else below or above it; on a phone, docked to the top or bottom
+     edge. Its tail points back at the spotlight, and the beacon sits where
+     the tail points. */
   function place() {
     raf = 0;
     if (!root || !target) return;
-    const pad = 8, r = target.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+    const pad = 8, vw = innerWidth, vh = innerHeight, raw = target.getBoundingClientRect();
+    // Only the part of the target that is on screen counts.
+    const r = { left: Math.max(raw.left, 0), right: Math.min(raw.right, vw), top: Math.max(raw.top, 0), bottom: Math.min(raw.bottom, vh) };
     const x = Math.max(4, r.left - pad), y = Math.max(4, r.top - pad);
     const w = Math.min(vw - 8, r.right + pad) - x, h = Math.min(vh - 8, r.bottom + pad) - y;
     const radius = parseFloat(getComputedStyle(target).borderTopLeftRadius) || 12;
@@ -55,23 +77,35 @@ window.Guide = (() => {
     ring.style.width = `${Math.max(24, w)}px`;
     ring.style.height = `${Math.max(24, h)}px`;
     ring.style.borderRadius = `${Math.min(radius + pad, 40)}px`;
-    // The card goes beside the spotlight where it fits, else above or below it.
-    const c = card.getBoundingClientRect(), gap = 16;
-    let left, top;
+    const c = card.getBoundingClientRect(), gap = 22, cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    let left, top, side;
     if (narrow()) {
       left = 12;
-      top = (r.top + r.bottom) / 2 > vh / 2 ? 12 : vh - c.height - 12;
+      if (cy > vh / 2) { top = 12; side = 'bottom'; } else { top = vh - c.height - 12; side = 'top'; }
     } else if (r.right + gap + c.width < vw - 12) {
-      left = r.right + gap; top = r.top;
+      left = r.right + gap; top = cy - Math.min(c.height / 2, 60); side = 'left';
     } else if (r.left - gap - c.width > 12) {
-      left = r.left - gap - c.width; top = r.top;
+      left = r.left - gap - c.width; top = cy - Math.min(c.height / 2, 60); side = 'right';
     } else {
-      left = r.left + r.width / 2 - c.width / 2;
-      top = r.bottom + gap + c.height < vh - 12 ? r.bottom + gap : r.top - gap - c.height;
+      left = cx - c.width / 2;
+      if (r.bottom + gap + c.height < vh - 12) { top = r.bottom + gap; side = 'top'; } else { top = r.top - gap - c.height; side = 'bottom'; }
     }
     left = Math.min(Math.max(12, left), vw - c.width - 12);
     top = Math.min(Math.max(12, top), vh - c.height - 12);
     card.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
+    // The tail, on the callout's edge nearest the spotlight, aimed at its middle.
+    card.dataset.tail = side;
+    const along = side === 'left' || side === 'right'
+      ? Math.min(Math.max(cy - top, 26), c.height - 26)
+      : Math.min(Math.max(cx - left, 30), c.width - 30);
+    card.style.setProperty('--tail', `${Math.round(along)}px`);
+    let bx, by;
+    if (side === 'left') { bx = x + w; by = top + along; }
+    else if (side === 'right') { bx = x; by = top + along; }
+    else if (side === 'top') { bx = left + along; by = y + h; }
+    else { bx = left + along; by = y; }
+    bx = Math.min(Math.max(bx, x), x + w); by = Math.min(Math.max(by, y), y + h);
+    beacon.style.transform = `translate(${Math.round(bx)}px, ${Math.round(by)}px)`;
   }
   const schedule = () => { if (!raf) raf = requestAnimationFrame(place); };
 
@@ -84,6 +118,12 @@ window.Guide = (() => {
 
   const val = v => (typeof v === 'function' ? v() : v);
 
+  function dots() {
+    if (steps.length > 14) return `<span class="guide-count">${at + 1} / ${steps.length}</span>`;
+    return `<span class="guide-dots" role="img" aria-label="Stop ${at + 1} of ${steps.length}">${steps.map((_, i) =>
+      `<i class="${i < at ? 'done' : i === at ? 'now' : ''}"></i>`).join('')}</span>`;
+  }
+
   function render() {
     const step = steps[at];
     const tryLabel = val(step.try), html = val(step.html);
@@ -94,13 +134,13 @@ window.Guide = (() => {
     root.classList.toggle('is-chapter', !!step.chapter);
     root.classList.toggle('is-free', !step.chapter && !target);
     const section = [...steps.slice(0, at + 1)].reverse().find(s => s.section)?.section || opts.name || 'Tour';
-    const pct = Math.round(((at + 1) / steps.length) * 100);
     card.classList.toggle('is-chapter', !!step.chapter);
-    card.innerHTML = `
+    card.classList.toggle('is-free', !step.chapter && !target);
+    const body = card.querySelector('.guide-body');
+    body.innerHTML = `
       <div class="guide-top"><span class="eyebrow">${esc(step.eyebrow || section)}</span>
-        <span class="guide-count">${at + 1} / ${steps.length}</span>
+        ${dots()}
         <button type="button" class="guide-x" data-act="end" aria-label="End the tour">×</button></div>
-      <div class="guide-progress" aria-hidden="true"><span style="transform:scaleX(${pct / 100})"></span></div>
       ${step.hero ? `<div class="guide-hero" aria-hidden="true">${esc(step.hero)}</div>` : ''}
       <h2 id="guide-title" class="guide-title">${esc(step.title)}</h2>
       <div class="guide-text">${html || `<p>${esc(step.text || '')}</p>`}</div>
@@ -108,18 +148,24 @@ window.Guide = (() => {
       ${tryLabel ? `<button type="button" class="btn guide-try" data-act="try">${esc(tryLabel)} <span aria-hidden="true">↗</span></button>` : ''}
       ${step.chapter ? chapterList() : ''}
       <div class="guide-foot">
-        <button type="button" class="btn" data-act="back" ${at === 0 ? 'disabled' : ''}>Back</button>
-        <button type="button" class="btn primary" data-act="next">${at === steps.length - 1 ? (opts.doneLabel || 'Finish') : 'Next'}</button>
+        <button type="button" class="btn" data-act="back" ${at === 0 ? 'hidden' : ''}>Back</button>
+        <button type="button" class="btn primary" data-act="next">${at === steps.length - 1 ? (opts.doneLabel || 'Finish') : at === 0 && opts.startLabel ? opts.startLabel : 'Next'}</button>
       </div>`;
+    body.classList.remove('is-in'); void body.offsetWidth; body.classList.add('is-in');
     card.scrollTop = 0;
     if (target) {
-      target.scrollIntoView({ block: target.getBoundingClientRect().height > innerHeight * .7 ? 'start' : 'center', behavior: 'instant' });
-      ring.hidden = false;
+      ring.hidden = false; beacon.hidden = false;
+      const tall = target.getBoundingClientRect().height > innerHeight * .7;
+      target.scrollIntoView({ block: tall ? 'start' : 'center', behavior: still() ? 'instant' : 'smooth' });
     } else {
-      ring.hidden = true;
+      ring.hidden = true; beacon.hidden = true;
       card.style.transform = '';
+      delete card.dataset.tail;
     }
     requestAnimationFrame(place);
+    // Smooth scrolling moves the target after this; the scroll listener keeps the
+    // callout on it, and one more placement once it settles catches the end.
+    setTimeout(schedule, 420);
     const title = $('guide-title');
     title.tabIndex = -1;
     title.focus({ preventScroll: true });
@@ -146,12 +192,13 @@ window.Guide = (() => {
       else if (ACTIONS[step.action]) ACTIONS[step.action]();
       else if (step.target) document.querySelector(step.target)?.click?.();
       b.classList.add('is-done');
-      schedule();
+      setTimeout(schedule, 60);
     }
   }
 
   function onKey(e) {
     if (!root || e.defaultPrevented || e.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (document.querySelector('dialog[open]:modal')) return;   // a sheet the tour opened answers its own keys
     if (e.key === 'Escape') { e.preventDefault(); end(false); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); go(at + 1); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); go(at - 1); }
@@ -189,116 +236,101 @@ window.Guide = (() => {
     if (opts.onEnd) opts.onEnd(finished);
   }
 
-  /* ---- the tour of every screen ------------------------------------------ */
-  const demoNote = () => (demoOn || tourOn()) ? '' : '<p class="guide-aside">Tip: the screens fill up with Demo data on. The button below turns it on; the switch in the header turns it off again.</p>';
-  const EVERYTHING = [
-    { chapter: true, section: 'The big picture', eyebrow: 'Welcome to the tour', title: 'One dashboard, any screen.',
-      html: () => `<p>Deja Vu1 runs on one computer at home. That computer talks to your U1 printers over your home network. Every screen you use, a browser tab, the desktop app window or your phone, opens the same dashboard from that computer.</p>
-        <div class="guide-map" aria-label="How it connects">
-          <div class="gm-node"><strong>Your screens</strong><span>Browser tab · App window · Phone</span></div>
-          <div class="gm-line"><span>home Wi-Fi</span></div>
-          <div class="gm-node is-core"><strong>The computer running Deja Vu1</strong><span>the launcher window keeps it on</span></div>
-          <div class="gm-line"><span>home network</span></div>
-          <div class="gm-node"><strong>Your U1 printers</strong><span>up to 12</span></div>
-        </div>
-        <p>This tour visits every screen in ${count()} stops, a few minutes in all. Use the arrow keys or the buttons, jump to any part below, and end it with × whenever you like. Nothing here moves or starts a printer.</p>` },
-    { chapter: true, section: 'Workshop, Studio, Garage', eyebrow: 'The names you will see', title: 'Workshop, Studio and Garage are pretend printers.',
-      html: () => `<p>With <strong>Demo data</strong> on, Deja Vu1 runs three simulated U1s so you can learn without risk. They are named after rooms in a house:</p>
-        <ul class="guide-trio">
-          <li><strong>U1 · Workshop</strong><span>prints, and jams halfway through in the online demo</span></li>
-          <li><strong>U1 · Studio</strong><span>paused partway through a print</span></li>
-          <li><strong>U1 · Garage</strong><span>idle, with filament loaded, ready to start</span></li>
-        </ul>
-        <p>They are examples, not parts of the app. Your own printer appears under the name you give it, and the demo printers never touch a real one.</p>
-        <p>Two more names look similar. <strong>Photo studio</strong> is a tab that turns pictures into prints. <strong>Your workshop</strong>, above the search box, is what the dashboard calls your print bench.</p>
-        ${demoNote()}`,
-      try: () => (demoOn || tourOn()) ? null : 'Turn on Demo data', action: 'demo-on' },
-
-    { section: 'Around the edges', title: 'Choose a printer', target: '#printer-chip',
-      text: 'Every screen shows the printer picked here. With Demo data on, the list holds Workshop, Studio and Garage.', try: 'Open the list', action: 'printer-menu' },
-    { title: 'Demo data', target: 'label[for=demo-toggle]',
-      text: 'On: simulated printers and figures, clearly labelled. Off: only your real printers. Without a printer and with this off, the dashboard shows no numbers at all rather than inventing them.' },
-    { title: 'Connection', target: '#conn', when: () => !narrow(), text: 'Whether the selected printer is connected, and how its readings arrive.' },
-    { title: 'Search everything', target: '#feature-search',
-      text: 'Find any screen, setting, printer or file. Press Ctrl+K (Cmd+K on a Mac) from anywhere.', try: 'Search for “twin”', action: 'focus-search' },
-    { title: 'Help and the camera', target: '#setup-open', closest: '.launch-strip',
-      text: 'Set up & help replays setup. Camera opens the selected printer’s own camera picture.' },
-    { title: 'The screens', target: '#tabbar', when: () => !narrow(),
-      text: 'Nine screens. The line under this bar always says, in one sentence, what the open screen is for.' },
-    { title: 'The screens', target: '#thumb-dock', when: () => narrow(),
-      text: 'On a phone the screens sit at the bottom, in reach of your thumb. More holds the rest.' },
-    { title: 'The status ribbon', target: '#status-ribbon',
-      text: 'Stays on every screen, games included, so a finished or failed print is never missed.' },
-
-    { chapter: true, section: 'Overview', eyebrow: 'Screen 1 of 9', title: 'Overview: what needs you, right now.',
-      html: '<p>The screen to keep open. Problems first, then the selected printer: its live 3D twin, quick controls, health and readings.</p>' },
-    { tab: 'overview', title: 'Needs you', target: '#attention', text: 'Jams, errors, finished prints and due maintenance, most urgent first, for every printer.' },
-    { tab: 'overview', title: 'The digital twin', target: '#twin-card',
-      text: 'A 3D model of the U1 that moves with the real one: heads, bed, docks, spools and the print itself. Drag to turn it, click a part for its details.' },
-    { tab: 'overview', title: 'Model or drawing', target: '#twin-modes',
-      text: 'The same printer as an engineering drawing with dimensions, made from the same geometry.', try: 'Show the drawing', action: 'twin-drawing' },
-    { tab: 'overview', title: 'Quick controls', target: '#overview-control',
-      text: 'Pause, resume and the most-used actions. A button reports what the printer says back, and shows a refusal in words.' },
-    { tab: 'overview', title: 'Health', target: '#health-host', text: 'A health score from temperatures, errors and maintenance, with the reasons.' },
-    { tab: 'overview', title: 'Live telemetry', target: '#telemetry', text: 'The selected printer’s readings as they arrive, and how often they arrive.' },
-    { tab: 'overview', title: 'Insights', target: '#insights-card', text: 'Patterns from the printer’s own history: what tends to fail, which files print well, and where the hours go.' },
-
-    { chapter: true, section: 'Printers', eyebrow: 'Screen 2 of 9', title: 'Printers: the whole farm.',
-      html: '<p>Every printer you have added, side by side. Command several at once, plan what to print where, and practise on simulated printers.</p>' },
-    { tab: 'fleet', title: 'Printer cards', target: '#fleet-grid', text: 'One card per printer: state, progress, its four heads’ colours, temperatures and health. Drag a file onto a card to queue it there.' },
-    { tab: 'fleet', title: 'Command several', target: '#fc-bar', text: 'Tick printers, then preheat, pause, resume, home or cancel them together. Each printer’s answer is listed on its own line.' },
-    { tab: 'fleet', title: 'The farm desk', target: '#tab-desk', text: 'Which printer suits a file best, what could print right now, and how long your filament lasts.' },
-    { tab: 'fleet', title: 'Add your printer', target: '#fleet-registry', text: 'Find printers finds U1s on your home network; or type the printer’s address. Test before adding. Adding never starts a print.' },
-    { tab: 'fleet', title: 'The farm sandbox', target: '#tab-sandbox', text: 'Add up to 24 more simulated printers and fire jams, errors and finishes on purpose, to see how the dashboard reacts.' },
-
-    { chapter: true, section: 'Control', eyebrow: 'Screen 3 of 9', title: 'Control: drive one printer.',
-      html: '<p>Everything for the selected printer: pause and cancel, the objects on the plate, temperatures, moving the head and a command console.</p>' },
-    { tab: 'control', title: 'Pause, resume, cancel', target: '#ctrl-pause-resume', closest: '.card', text: 'The current print and its controls. Cancel asks you to confirm first.' },
-    { tab: 'control', title: 'Skip one object', target: '#ctrl-plate', text: 'When a print labels its objects, pick a failed one on the bed map and stop only that one.' },
-    { tab: 'control', title: 'Temperatures and movement', target: '#ctrl-temps', text: 'Set nozzle and bed temperatures, home and move the head, and send G-code commands.' },
-
-    { chapter: true, section: 'Files', eyebrow: 'Screen 4 of 9', title: 'Files: from a model to a print.',
-      html: '<p>Convert projects, keep your files, look inside them in 3D, slice with your own engine and queue prints. Every print is checked before it starts.</p>' },
-    { tab: 'files', title: 'Convert a project', target: '#convert-card', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
-    { tab: 'files', title: 'Your files', target: '#file-drop', closest: '.card', text: 'Drop G-code, STL or 3MF files here. Click one for its 3D view, layers, plate editor and checks.', try: 'Add the sample files', action: 'samples', when: () => !tourOn() },
-    { tab: 'files', title: 'The queue', target: '#queue-host', closest: '.card', text: 'Prints waiting their turn, per printer. Confirm Print checks each one before it starts.' },
-    { tab: 'files', title: 'Auto-print', target: '#tab-autoprint', text: 'Slice with an OrcaSlicer you installed, using your profiles and the heads actually fitted, then queue the result.' },
-    { tab: 'files', title: 'Mixed layer heights', target: '#tab-layerplan', text: 'Plan a different layer height per head. Crossed-out choices say why they won’t work.' },
-    { tab: 'files', title: 'Import from Orca', target: '#orca-import', text: 'Bring in recent projects and your own presets from OrcaSlicer or Snapmaker Orca on this computer.' },
-
-    { chapter: true, section: 'Photo studio', eyebrow: 'Screen 5 of 9', title: 'Photo studio: pictures into prints.',
-      html: '<p>Not the Studio printer. This tab turns a photo into a multi-colour tile or relief, using the four filament colours you have loaded. It works in the browser, even without the server.</p>' },
-    { tab: 'studio', title: 'Make a colour print from a photo', target: '#st-body', text: 'Drop a photo, choose the colours, and save a 3MF or STL to print.' },
-
-    { chapter: true, section: 'Automations and Care', eyebrow: 'Screens 6 and 7 of 9', title: 'Rules that run by themselves, and looking after the printer.',
-      html: '<p><strong>Automations</strong> are “when this happens, do that” rules. <strong>Care</strong> keeps maintenance, the logbook and your filament shelf.</p>' },
-    { tab: 'automations', title: 'Automations', target: '#rule-list', closest: '.card', text: 'For example: send a message to your phone when a print finishes. Rules run on your computer, with no cloud.' },
-    { tab: 'maintenance', title: 'Maintenance', target: '#tasks', closest: '.card', text: 'Reminders counted from real print hours. Mark a task done and the count starts again.' },
-    { tab: 'maintenance', title: 'The logbook', target: '#logbook', text: 'Problems, fixes and print hours for each printer. Failed prints add themselves.' },
-    { tab: 'maintenance', title: 'Filament and colour', target: '#tab-filament', text: 'Your spools, what is loaded in each head, and how much is left.' },
-
-    { chapter: true, section: 'Settings and Games', eyebrow: 'Screens 8 and 9 of 9', title: 'Make it yours, keep it current.',
-      html: '<p>Settings holds your version and updates, the desktop app, the look, which features are on, phones and notifications. Games are for while a print runs.</p>' },
-    { tab: 'modules', title: 'Version and updates', target: '#version-card',
-      text: 'Which version you run, how this copy updates, and every version’s changes with a tour of each.' },
-    { tab: 'modules', title: 'The desktop app', target: '#desktop-card', text: 'Install Deja Vu1 as an app, or have the launcher open it in a window of its own.' },
-    { tab: 'modules', title: 'Appearance', target: '#appearance-card', text: 'The background and its colours. Try clicking the page background, or triple-clicking it.' },
-    { tab: 'modules', title: 'Modules', target: '#module-list', closest: '.card', text: 'Switch whole features on or off. A switched-off feature stops completely, background work included.' },
-    { tab: 'modules', title: 'Backup', target: '#backup-btn', closest: '.card', text: 'Download all your settings and files as one ZIP, and restore it safely later.' },
-    { tab: 'modules', title: 'Your data is safe', target: '#memory-card', text: 'Safety copies every six hours, at start-up and before each update. Restore one with a click, and undo that too.' },
-    { tab: 'modules', title: 'About and Check it yourself', target: '#about-card', text: 'What Deja Vu1 adds, who it builds on, and a self-check you can run to see the safety rules working.' },
-    { tab: 'modules', title: 'Device lock', target: '#device-lock', closest: '.card', text: 'Optional: only phones and computers you have paired can use the dashboard.' },
-    { tab: 'games', title: 'Games', target: '#game-picker', text: 'Pac-Man, Tetris, Snake and Sky Dash. Nothing here reads or controls a printer.' },
-
-    { title: 'The notification orb', target: '#orb',
-      text: 'Messages rise out of this orb and sink back in. Click it to read the last 30, and for version and update news.', try: 'Send a test message', action: 'orb-demo' },
-    { chapter: true, section: 'Done', eyebrow: 'End of the tour', title: 'You’ve seen every screen.',
-      html: `<p>Replay this tour any time from <strong>Settings → Your space → Tour every screen</strong>. Each version also has its own tour of what it added, in <strong>Settings → Version &amp; updates</strong>.</p>
-        <p>Ready for your own printer? <strong>Printers → Add a printer</strong>, or run setup again.</p>` },
+  /* ---- the quick tour ----------------------------------------------------- */
+  const needsDemo = () => !(demoOn || tourOn());
+  const QUICK = [
+    { eyebrow: 'Quick tour', title: 'A quick look around.',
+      html: () => `<p>Nine stops across the dashboard, about a minute. Each one points at the real thing, and you can click it while the tour waits.</p>
+        ${needsDemo() ? '<p class="guide-aside">The screens are empty until a printer is connected. Demo data fills them with pretend printers (Demo printer 1, 2 and 3) so there is something to see. The switch in the header turns it off again.</p>' : ''}`,
+      try: () => needsDemo() ? 'Turn on demo data' : null, action: 'demo-on' },
+    { tab: 'overview', target: '#attention', title: 'What needs you',
+      text: 'Jams, errors, finished prints and maintenance that is due, for every printer, most urgent first. Keep this screen open and nothing slips by.' },
+    { tab: 'overview', target: '#twin-card', title: 'Your printer, live in 3D',
+      text: 'A model of the U1 that moves with the real one: heads, bed, spools and the print itself, layer by layer. Drag to turn it; click a head for its details.',
+      try: 'Show it as a drawing', action: 'twin-drawing' },
+    { tab: 'fleet', target: '#fleet-grid', title: 'Every printer at once',
+      text: 'One card per printer: progress, its four colours, temperatures and health. Tick several to pause or preheat them together.' },
+    { tab: 'files', target: '#file-drop', closest: '.card', title: 'From a file to a print',
+      text: 'Drop G-code, STL or 3MF files here. Look inside in 3D, slice with your own slicer, and queue it. Every print is checked before it starts.',
+      try: () => tourOn() ? null : 'Add the sample files', action: 'samples' },
+    { tab: 'control', target: '#ctrl-pause-resume', closest: '.card', title: 'Drive one printer',
+      text: 'Pause, resume or cancel, stop just one failed object, set temperatures and move the head. Every button says what the printer answered.' },
+    { tab: 'maintenance', target: '#tasks', closest: '.card', title: 'Looking after it',
+      text: 'Maintenance reminders counted from real print hours, a logbook of problems and fixes, and your filament shelf.' },
+    { target: '#feature-search', title: 'Find anything',
+      text: 'Any screen, setting, printer or file. Press Ctrl+K (Cmd+K on a Mac) from anywhere.', try: 'Search for “twin”', action: 'focus-search' },
+    { tab: 'overview', target: '#overview-pair-btn', closest: '.card', title: 'On your phone too',
+      text: 'Scan a code with your phone’s camera and the same dashboard opens there. Nothing to type, no app store.',
+      try: 'Connect your phone', action: 'phone' },
+    { target: '#orb', title: 'Messages live here',
+      text: 'Updates and alerts rise out of this orb and sink back in. Click it to read the last 30.', try: 'Send a test message', action: 'orb-demo' },
+    { eyebrow: 'That’s the tour', title: 'You’re ready.',
+      html: `<p>Every screen has a <strong>Show me this screen</strong> button under the tab bar with a few more tips.</p>
+        <p>Replay this tour from <strong>Settings → Your space</strong>. Ready for your own printer? <strong>Printers → Add a printer</strong>.</p>` },
   ];
 
-  function everything(options = {}) { start(EVERYTHING, { name: 'Tour every screen', ...options }); }
-  function count() { return EVERYTHING.filter(s => !s.when || s.when()).length; }
+  /* ---- "Show me this screen": a few stops per screen ------------------------ */
+  const SCREENS = {
+    overview: [
+      { target: '#attention', title: 'Needs you', text: 'Jams, errors, finished prints and due maintenance, most urgent first, for every printer.' },
+      { target: '#twin-modes', title: 'Model or drawing', text: 'The same printer as an engineering drawing with dimensions, made from the same geometry.', try: 'Show the drawing', action: 'twin-drawing' },
+      { target: '#overview-control', title: 'Quick controls', text: 'Pause, resume and the most-used actions. A refusal from the printer is shown in words.' },
+      { target: '#telemetry', title: 'Live readings and health', text: 'Readings as they arrive, how often they arrive, and a health score with its reasons.' },
+    ],
+    fleet: [
+      { target: '#fleet-grid', title: 'Printer cards', text: 'State, progress, the four heads’ colours, temperatures and health. Drag a file onto a card to queue it there.' },
+      { target: '#fc-bar', title: 'Command several', text: 'Tick printers, then preheat, pause, resume, home or cancel them together. Each printer’s answer gets its own line.' },
+      { target: '#tab-desk', title: 'The farm desk', text: 'Which printer suits a file best, what could print right now, and how long your filament lasts.' },
+      { target: '#fleet-registry', title: 'Add your printer', text: 'Find printers looks for U1s on your home network, or type its address. Test first; adding never starts a print. Below: a sandbox of extra pretend printers to practise on.' },
+    ],
+    control: [
+      { target: '#ctrl-pause-resume', closest: '.card', title: 'Pause, resume, cancel', text: 'The current print and its controls. Cancel asks first.' },
+      { target: '#ctrl-plate', title: 'Skip one object', text: 'When a print labels its objects, pick a failed one on the bed map and stop only that one.' },
+      { target: '#ctrl-temps', title: 'Temperatures and movement', text: 'Nozzle and bed temperatures, homing, moving the head, and a G-code console.' },
+    ],
+    files: [
+      { target: '#convert-card', title: 'Convert a project', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
+      { target: '#file-drop', closest: '.card', title: 'Your files', text: 'Click a file for its 3D view, layers, plate editor and checks.', try: () => tourOn() ? null : 'Add the sample files', action: 'samples' },
+      { target: '#queue-host', closest: '.card', title: 'The queue', text: 'Prints waiting their turn, per printer. Confirm Print checks each one before it starts.' },
+      { target: '#tab-layerplan', title: 'Slicing and layer heights', text: 'Auto-print slices with an OrcaSlicer you installed; Mixed layer heights plans a height per head; Import from Orca brings in your presets.' },
+    ],
+    studio: [
+      { target: '#st-body', title: 'Pictures into prints', text: 'Drop a photo, choose from the four colours you have loaded, and save a 3MF or STL tile or relief. Works in the browser.' },
+    ],
+    automations: [
+      { target: '#rule-list', closest: '.card', title: 'When this, do that', text: 'For example, a message to your phone when a print finishes. Rules run on your computer, with no cloud.' },
+    ],
+    maintenance: [
+      { target: '#tasks', closest: '.card', title: 'Maintenance', text: 'Reminders counted from real print hours. Mark a task done and its count starts again.' },
+      { target: '#logbook', title: 'The logbook', text: 'Problems, fixes and print hours for each printer. Failed prints add themselves.' },
+      { target: '#tab-filament', title: 'Filament and colour', text: 'Your spools, what each head has loaded, and how much is left.' },
+    ],
+    modules: [
+      { target: '#version-card', title: 'Version and updates', text: 'Which version you run, how it updates, and every version’s changes with a tour of each.' },
+      { target: '#appearance-card', title: 'Appearance', text: 'The background and its colours. Try clicking the page background, or triple-clicking it.' },
+      { target: '#module-list', closest: '.card', title: 'Modules', text: 'Switch whole features on or off. A switched-off feature stops completely, background work included.' },
+      { target: '#memory-card', title: 'Your data is safe', text: 'Safety copies every six hours, at start-up and before each update; restore one with a click. Below: backups, phones and the device lock.' },
+    ],
+    games: [
+      { target: '#game-picker', title: 'Games', text: 'Pac-Man, Tetris, Snake and Sky Dash, for while a print runs. Nothing here reads or controls a printer.' },
+    ],
+  };
 
-  return { start, end, everything, count, active: () => !!root };
+  function everything(options = {}) { start(QUICK, { name: 'Quick tour', startLabel: 'Show me', ...options }); }
+  function screen(tab, options = {}) {
+    const list = SCREENS[tab];
+    if (!list) return;
+    const name = (typeof TAB_NAMES !== 'undefined' && TAB_NAMES[tab]) || tab;
+    start(list.map(s => ({ tab, eyebrow: name, ...s })), { name, doneLabel: 'Got it', keepTab: true, ...options });
+  }
+  // Stops that point at something (the welcome and the ending don't count).
+  function count() { return QUICK.filter(s => s.target && (!s.when || s.when())).length; }
+
+  // The "Show me this screen" button in the line under the tab bar (app.js puts it there).
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-tips]');
+    if (b) screen(b.dataset.tips);
+  });
+
+  return { start, end, everything, screen, count, has: tab => !!SCREENS[tab], active: () => !!root };
 })();

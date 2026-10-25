@@ -788,7 +788,7 @@ function hoursLeft(state) {
 
 /* ---- the browser tab mirrors the print -------------------------------------
  * With the dashboard in a background tab, its title and icon still say how
- * the print is going: "46% · U1 · Workshop", "Paused · …", "Finished · …".
+ * the print is going: "46% · Demo printer 1", "Paused · …", "Finished · …".
  * The icon draws the same progress ring. Both change only when what they
  * show changes, not on every live update. */
 const BASE_TITLE = document.title;
@@ -1041,7 +1041,8 @@ function initTabs() {
     panels.forEach(p => { p.hidden = p.id !== `tab-${name}`; });
     store.set(TAB_KEY, name);
     const intro = $('tab-intro');
-    if (intro && TAB_INTROS[name]) intro.innerHTML = `<strong>${esc(TAB_NAMES[name] || name)}</strong> ${esc(TAB_INTROS[name])}`;
+    if (intro && TAB_INTROS[name]) intro.innerHTML = `<strong>${esc(TAB_NAMES[name] || name)}</strong> ${esc(TAB_INTROS[name])}`
+      + (window.Guide && Guide.has(name) ? ` <button type="button" class="tips-btn" data-tips="${esc(name)}"><span aria-hidden="true">✦</span> Show me this screen</button>` : '');
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);

@@ -105,9 +105,9 @@
         } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not connect. Check the address and try again.';btn.disabled=false;}
       };
     } else if (step === TOUR) {
-      content.innerHTML=`<h2 id="setup-title">Take the tour.</h2>
-        <p class="setup-lead">${Guide.count()} short stops covering every screen. Each stop lights up the real part of the dashboard and says what it does; many have something to try.</p>
-        <ul class="setup-points"><li><strong>The big picture:</strong> how your computer, screens and printers connect.</li><li><strong>The names you’ll see:</strong> Workshop, Studio and Garage are three pretend demo printers, and Photo studio is a different thing again.</li><li><strong>Every screen:</strong> Overview, Printers, Control, Files, Photo studio, Automations, Care, Settings and Games.</li></ul>
+      content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
+        <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
+        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> the “Show me this screen” button under the tab bar has a few tips for whichever screen is open.</li></ul>
         <div class="setup-choices"><button class="btn primary" id="setup-guide">Start the tour</button></div>
         <p class="field-hint">The tour never moves or starts a printer. End it any time with × or Esc; it comes back here. Replay it later from Settings → Your space.</p>`;
       $('setup-guide').onclick=()=>{
