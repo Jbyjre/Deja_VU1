@@ -39,7 +39,7 @@
   function phoneText() {
     if (tourOn()) return 'This public site is a demo recording. Download and run Deja Vu1 on your computer first; then open that computer’s address on your phone.';
     const address = info && info.phone_address ? `http://${info.phone_address}:${info.port}` : 'the “From a phone” address printed in the launcher window';
-    return `No camera handy? Connect your phone to the same home Wi-Fi and type ${address} into its browser. Use the computer’s address, not localhost or the printer’s address.`;
+    return `Connect your phone to the same home Wi-Fi and type ${address} into its browser. Use the computer’s address, not localhost or the printer’s address.`;
   }
   const installText = 'On iPhone: open Safari → Share → Add to Home Screen. On Android: open Chrome’s menu → Add to Home screen (or Install app, when offered). A normal http:// home-network address may only offer a shortcut; offline support and full app installation need a secure https:// address. Browser options vary.';
   function render() {
@@ -117,8 +117,9 @@
       };
     } else if (names[step] === 'Your phone') {
       content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. No app store, no account, and nothing to type: scan a code with the phone’s camera.</p>
-        <div class="setup-choices"><button class="btn primary" id="setup-phone">Show the code to scan</button></div>
-        <p>${esc(phoneText())}</p><p>${esc(installText)}</p><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi (not a guest network). Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>Typing it instead? Use a colon before the port number (<code>:8000</code>), not a dot; with a dot, phones search the web instead. A “Refused” message means the address is not allowed: ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+        <div class="setup-choices setup-phone-go"><button class="btn primary" id="setup-phone">Show the code to scan</button></div>
+        <div class="setup-ways"><div class="setup-way"><strong>No camera handy?</strong><span>${esc(phoneText())}</span></div>
+        <div class="setup-way"><strong>Keep it on your Home Screen</strong><span>${esc(installText)}</span></div></div><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi (not a guest network). Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>Typing it instead? Use a colon before the port number (<code>:8000</code>), not a dot; with a dot, phones search the web instead. A “Refused” message means the address is not allowed: ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
       $('setup-phone').onclick=()=>window.Phone&&Phone.open();
     } else if (names[step] === 'Desktop app') {
       content.innerHTML=`<h2 id="setup-title">A window of its own.</h2>
