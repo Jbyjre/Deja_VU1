@@ -615,6 +615,11 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 
 ## Rendering cost
 
+Version 16 (60 s, 16:9 only, 8 video windows from 8 shots plus 6 screenshots): rendered in 9 min
+24 s. Filming the 3D twin alongside another shot crawled at about 10 s a frame until the app stopped
+drawing the twin while it is out of sight (frontend/workshop.js); after that the fleet shot filmed in
+131 s and the twin alone in about 7.5 minutes.
+
 Version 15 (60 s each, 8 video windows from 7 shots plus 6 stills; one new shot, `twin3d_tight`,
 filmed in about 5 minutes): the 16:9 cut rendered in 14 min 42 s, the 9:16 in 14 min 14 s. Version 14
 was rendered again after the automation-callout fix: 16 min 32 s and 15 min 29 s (four renders in a
