@@ -91,7 +91,7 @@ plan = plan_main(S)
 # Version 17: where the filmed app swaps its whole view in one frame, a short dissolve. Each entry:
 # (video id, shot, mark, search from / to in seconds around the mark, dissolve length). The frame
 # with the largest change in that window is the swap; the frame before it is saved as a picture.
-SOFT = [('v-ok', 'confirm_ok', 'start', 0, 1.6, .35),       # Start print: the app shows the Overview
+SOFT = [('v-ok', 'confirm_ok', 'start', -.25, 1.6, .35),    # Start print: the app shows the Overview (the mark comes after the press)
         ('v-pp', 'prepare', 'arrange', -.1, 1.0, .3),       # Arrange: both boats move, the view re-frames
         ('v-tw', 'twin3d_tight', 'drawing', -.05, .8, .3)]  # the 3D model becomes the drawing, on the bar
 

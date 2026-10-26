@@ -534,7 +534,9 @@
         rigTo(PH0 - .5, .9, 'back', { opacity: .55 }, 'power3.inOut');
         tl.fromTo('#ph', { opacity: 0, x: 380, y: 30, rotationY: -30, rotationX: 6, transformPerspective: 1800 },
           { opacity: 1, x: 0, y: 0, rotationY: -11, rotationX: 2, duration: .8, ease: 'expo.out', immediateRender: false }, PH0 - .3);
-        tl.to('#ph', { rotationY: -2, duration: SEG.cp.t1 - PH0 - .2, ease: 'sine.inOut' }, PH0 + .5);
+        // version 17: the drift ends as the phone's exit begins (version 16's ran 0.2 s into the exit,
+        // so two tweens turned the phone at once; HyperFrames' check flagged it)
+        tl.to('#ph', { rotationY: -2, duration: SEG.more - .45 - (PH0 + .5), ease: 'sine.inOut' }, PH0 + .5);
         cue(PH0 - .3, 'phone');
         ripple(PH0, FRW * .7, FRH * .5, .8);
       }

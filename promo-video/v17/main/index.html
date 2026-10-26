@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=1920, height=1080" />
-    <title>Deja Vu1 launch film, V1 at 60 s (main)</title>
+    <title>Deja Vu1 launch film, version 17 (main)</title>
     <script src="vendor/gsap.min.js"></script>
     <style>
       @font-face { font-family: "Bricolage Grotesque"; src: url("fonts/BricolageGrotesque-var.woff2") format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; }
@@ -118,7 +118,11 @@
          (version 7 had it tipped forward to 78, which read as half-closed). The camera moves it
          with translateZ (a dolly) rather than scale, so depth stays true. */
       #stage { position: absolute; inset: 0; perspective: 2600px; perspective-origin: 50% 50%; }
-      #rig { position: absolute; left: 50%; top: 50%; width: 1300px; height: 840px; margin: -420px 0 0 -650px; opacity: 0; transform-style: preserve-3d; }
+      /* Version 17: the laptop fades through #rigfade, a flat wrapper that holds the perspective.
+         Opacity below 1 on #rig itself made the browser flatten the 3D laptop for as long as it
+         lasted: version 16's keyboard deck vanished and the screen jumped in one frame (45.2 s). */
+      #rigfade { position: absolute; inset: 0; perspective: 2600px; perspective-origin: 50% 50%; opacity: 0; }
+      #rig { position: absolute; left: 50%; top: 50%; width: 1300px; height: 840px; margin: -420px 0 0 -650px; transform-style: preserve-3d; }
       .lid { position: absolute; left: 0; top: 0; width: 1300px; height: 840px; border-radius: 30px 30px 8px 8px; transform-origin: 50% 100%; transform-style: preserve-3d;
         background: #0a0b0d; box-shadow: inset 0 0 0 3px #b9bec6, inset 0 0 0 5px #1a1c20; }
       .lid-back { position: absolute; inset: 0; border-radius: inherit; transform: translateZ(-14px); background: linear-gradient(180deg, #c9cdd4, #aeb3bb); }
@@ -143,6 +147,8 @@
       .floor { position: absolute; left: -60px; top: -40px; width: 1420px; height: 960px; transform: translateZ(-24px);
         background: radial-gradient(50% 46% at 50% 48%, rgba(20,25,40,.30), rgba(20,25,40,.10) 60%, transparent 75%); filter: blur(18px); }
       .layer { position: absolute; inset: 0; opacity: 0; }
+      /* version 17: the frame before an instant change in the filmed app, laid over it and faded */
+      .cam img.soft { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; }
       #simtag { position: absolute; z-index: 40; opacity: 0; }
 
       /* the phone */
@@ -311,10 +317,10 @@
       <div id="corner"><svg width="44" height="44" aria-hidden="true"><use href="#app-icon"/></svg>Deja Vu1</div>
 
       <div id="stage">
-        <div id="rig">
+        <div id="rigfade"><div id="rig">
           <div class="deck"><div class="floor"></div><div class="hinge"></div><div class="keys" id="keys"></div><div class="pad"></div><div class="lip"><div class="notch"></div></div></div>
           <div class="lid" id="lid"><div class="lid-back"></div><div class="lid-edge"></div><div class="cam-dot"></div><div class="screen" id="screen"><div class="glare"></div></div></div>
-        </div>
+        </div></div>
         <div class="phone" id="ph"><div class="pscreen" id="ph-screen"><div class="island"></div></div></div>
       </div>
 
@@ -327,7 +333,7 @@
       <div id="caps"></div>
 
       <div id="more"><div id="more-t">And plenty more.</div><div id="more-g"></div></div>
-      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">867 automated tests.</div></div>
+      <div id="values"><div class="v">Free.</div><div class="v">Open source.</div><div class="v">Runs on your network.</div><div class="v">No account.</div><div class="v faint">903 automated tests.</div></div>
 
       <div id="end">
         <div id="end-row"><svg class="icon" width="128" height="128" aria-hidden="true"><use href="#app-icon"/></svg><div class="wordmark" id="end-word">Deja Vu1</div></div>
@@ -359,6 +365,12 @@
     </div>
 
     <script>
+      // Version 17 (16:9 only, 60 s): version 16 made smoother, and "and plenty more" shows what changed
+      // in the app since. Measured on version 16, frame by frame: the laptop flattened for a frame when
+      // it dimmed (45.2 s; it now fades through #rigfade), the filmed app swapped whole views in one
+      // frame (the Overview after Start, Arrange, the drawing; each now dissolves, SEG.soft), dialog
+      // backdrops and the tour's spotlight snapped on (fixed in the app itself), a held frame before
+      // the name, and an end card that stood still for five seconds (it now drifts closer).
       // Version 16 (16:9 only; the owner set version 2 and 9:16 aside on 25 October 2026): version 14's
       // story and music, showing what changed in the app: the 3DBenchy in Confirm Print and prepare &
       // slice, the quick tour whose glass callouts glide around the app, and scanning a QR code to open
@@ -378,7 +390,7 @@
       const FMT = 'main', V9 = FMT === 'vertical';
       const M = {"v-fl": {"start": 7.283, "marks": {"drift": 0.85, "ripple": 2.067, "tab": 3.7, "cards": 5.6, "sandbox": 7.8, "hover": 8.55, "hover2": 11}, "clicks": [2.017, 3.65]}, "v-ov": {"start": 17.5, "marks": {"jam": 1.783, "row": 3.867}, "clicks": []}, "v-ok": {"start": 18.4, "marks": {"open": 0.9, "print": 2.933, "dialog": 5.233, "start": 6.167}, "clicks": [0.85, 2.883, 6.117]}, "v-pp": {"start": 24.35, "marks": {"dup": 1.033, "tool": 2.283, "blue": 3.267, "arrange": 4.6}, "clicks": [0.983, 2.217, 3.217, 4.55]}, "v-tw": {"start": 29.483, "marks": {"grab": 1.183, "release": 1.8, "pick": 3.283, "drawing": 5.017}, "clicks": [1.183, 3.283, 4.967]}, "v-tg": {"start": 37.017, "marks": {"needs": 0.983, "twin": 2.967, "fleet": 4.95, "files": 6.933}, "clicks": [0.933, 2.917, 4.9, 6.883]}, "v-cp": {"start": 42.867, "marks": {"sheet": 0.983, "scanned": 2.783, "paired": 2.95}, "clicks": [0.933]}, "v-ph": {"start": 45.15, "marks": {}, "clicks": []}};
       const TY = [[54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9, 54.9], [54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97, 54.97], [55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04, 55.04]];
-      const SEG = {"fl": {"t0": 14.25, "t1": 18.0}, "ov": {"t0": 18.0, "t1": 21.0}, "ok": {"t0": 21.0, "t1": 26.25}, "pp": {"t0": 26.25, "t1": 30.75}, "tw": {"t0": 30.75, "t1": 37.5}, "tg": {"t0": 37.5, "t1": 43.5}, "cp": {"t0": 43.5, "t1": 48.0}, "values": 51.0, "end": 54.0, "twinCut": 34.5, "beat": 0.375, "hiw": {"t0": 9.0, "s2": 10.5, "s3": 12.0}, "more": 48.0, "length": 60.0, "phone": 45.65, "enter": 55.65};
+      const SEG = {"fl": {"t0": 14.25, "t1": 18.0}, "ov": {"t0": 18.0, "t1": 21.0}, "ok": {"t0": 21.0, "t1": 26.25}, "pp": {"t0": 26.25, "t1": 30.75}, "tw": {"t0": 30.75, "t1": 37.5}, "tg": {"t0": 37.5, "t1": 43.5}, "cp": {"t0": 43.5, "t1": 48.0}, "values": 51.0, "end": 54.0, "twinCut": 34.5, "beat": 0.375, "hiw": {"t0": 9.0, "s2": 10.5, "s3": 12.0}, "more": 48.0, "length": 60.0, "phone": 45.65, "enter": 55.65, "soft": [{"vid": "v-ok", "t": 24.55, "img": "assets/soft/v-ok.jpg", "d": 0.35}, {"vid": "v-pp", "t": 28.9333, "img": "assets/soft/v-pp.jpg", "d": 0.3}, {"vid": "v-tw", "t": 34.483, "img": "assets/soft/v-tw.jpg", "d": 0.3}]};
       const $ = (s) => document.querySelector(s);
       const FW = 1440, FH = 900, SW = 1240, SH = 775;       // filmed page (CSS px), laptop screen
       const FRW = V9 ? 1080 : 1920, FRH = V9 ? 1920 : 1080;  // the film's frame
@@ -413,6 +425,9 @@
         ly: '<rect x="8" y="8" width="32" height="6" rx="2"/><rect x="8" y="18" width="32" height="10" rx="2"/><rect class="heat" x="8" y="32" width="32" height="8" rx="2"/>',
         te: '<path d="M5 26h8l4-12 6 22 5-14 3 4h12"/>',
         up: '<path d="M38 20a15 15 0 1 0 1 9"/><path class="heat" d="M39 8v12H27"/>',
+        // version 17: help on every card (an i in a circle), your phone from anywhere (a phone and a globe)
+        hp: '<circle cx="24" cy="24" r="18"/><path d="M24 22v11"/><circle class="fill" cx="24" cy="15.5" r="2.4"/>',
+        aw: '<rect x="6" y="6" width="20" height="36" rx="4"/><path d="M13 11h6"/><circle class="heat" cx="34" cy="28" r="9"/><path class="heat" d="M25 28h18M34 19c-3 3-3 15 0 18M34 19c3 3 3 15 0 18"/>',
       };
       const svgIcon = (id) => `<svg class="ico" viewBox="0 0 48 48" aria-hidden="true">${IC[id]}</svg>`;
 
@@ -471,10 +486,12 @@
       const PRINTERS = ['Printer 1', 'Printer 2', 'Printer 3'];     // version 16: your printers, by number (the demo names changed)
       // "And plenty more": the supporting features, as screenshots of their real panels (version 16:
       // what is new since version 14, and automations, which was a feature of its own).
+      // Version 17: what is new since version 16 takes the second row: your phone from any network
+      // (Away from home, 0.11.0), updates that install every time (0.9.0) and help on every card.
       const MORE = [
-        { id: 'dk', lb: 'Farm desk', img: 'desk' }, { id: 'ly', lb: 'Mixed layer heights', img: 'layers' },
-        { id: 'cv', lb: 'Files ready for the U1', img: 'convert' }, { id: 'te', lb: 'Live telemetry', img: 'telemetry' },
-        { id: 'au', lb: 'Automations, no cloud', img: 'automations' }, { id: 'up', lb: 'Updates that find you', img: 'updates' },
+        { id: 'dk', lb: 'Farm desk', img: 'desk' }, { id: 'cv', lb: 'Files ready for the U1', img: 'convert' },
+        { id: 'au', lb: 'Automations, no cloud', img: 'automations' }, { id: 'aw', lb: 'Your phone, from anywhere', img: 'away' },
+        { id: 'up', lb: 'Updates that install every time', img: 'updates' }, { id: 'hp', lb: 'Help on every card', img: 'help' },
       ];
 
       // where the twin shot's camera and callouts go (page px, measured on the filmed shot)
@@ -562,8 +579,10 @@
       window.__cues = CUES;
       // A smooth move of the whole laptop (and its hinge) to a pose.
       function rigTo(t, d, pose, extra = {}, ease = 'power2.inOut') {
-        const { lid, ...p } = POSE[pose];
-        tl.to('#rig', { ...p, ...extra, duration: d, ease }, t);
+        const { lid, ...p } = POSE[pose], { opacity, ...rest } = extra;
+        tl.to('#rig', { ...p, ...rest, duration: d, ease }, t);
+        // version 17: never opacity on the 3D rig itself (it flattens); its flat wrapper fades instead
+        if (opacity !== undefined) tl.to('#rigfade', { opacity, duration: d, ease }, t);
         tl.to('#lid', { rotationX: lid, duration: d, ease }, t);
       }
       function camK(v, r) {
@@ -694,7 +713,8 @@
       });
       tl.fromTo('#purpose', { scale: 1 }, { scale: 1.025, duration: 3.6, ease: 'none', immediateRender: false }, P0);
       tl.set('#purpose', { opacity: 1 }, 0);
-      tl.to('#purpose', { y: V9 ? -160 : -120, opacity: 0, duration: .3, ease: 'power2.in' }, 4.5 * BAR - .34);
+      // version 17: overlaps the name by a frame or two (version 16 held still for two frames between them)
+      tl.to('#purpose', { y: V9 ? -160 : -120, opacity: 0, duration: .34, ease: 'power2.in' }, 4.5 * BAR - .3);
 
       // bar 4.5: the name, on a full chord and a cymbal
       const NAME = cue(4.5 * BAR, 'name');
@@ -711,7 +731,7 @@
       // the phone come in around it, joined by the network, a pulse on each wire every quarter of
       // a second (the app's four updates a second). =====
       const H0 = SEG.hiw.t0, HS = [H0, SEG.hiw.s2, SEG.hiw.s3], H1 = SEG.fl.t0;
-      tl.set('#rig', { opacity: 1 }, H0 - .55);
+      tl.set('#rigfade', { opacity: 1 }, H0 - .55);
       tl.set('#L-fl', { opacity: 1 }, H0 - .55);
       rigTo(H0 - .55, .9, 'hub', {}, 'expo.out');
       tl.fromTo('#corner', { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: .5, ease: 'power3.out', immediateRender: false }, H0);
@@ -881,16 +901,31 @@
         rigTo(PH0 - .5, .9, 'back', { opacity: .55 }, 'power3.inOut');
         tl.fromTo('#ph', { opacity: 0, x: 380, y: 30, rotationY: -30, rotationX: 6, transformPerspective: 1800 },
           { opacity: 1, x: 0, y: 0, rotationY: -11, rotationX: 2, duration: .8, ease: 'expo.out', immediateRender: false }, PH0 - .3);
-        tl.to('#ph', { rotationY: -2, duration: SEG.cp.t1 - PH0 - .2, ease: 'sine.inOut' }, PH0 + .5);
+        // version 17: the drift ends as the phone's exit begins (version 16's ran 0.2 s into the exit,
+        // so two tweens turned the phone at once; HyperFrames' check flagged it)
+        tl.to('#ph', { rotationY: -2, duration: SEG.more - .45 - (PH0 + .5), ease: 'sine.inOut' }, PH0 + .5);
         cue(PH0 - .3, 'phone');
         ripple(PH0, FRW * .7, FRH * .5, .8);
       }
+
+      // Version 17: a short dissolve wherever the filmed app swaps its whole view in one frame (the
+      // Overview after Start, Arrange, the drawing). build.py finds that frame in the footage and
+      // saves the one before it; that picture lies over the footage, inside the same camera, and
+      // fades as the new view arrives, so the app's change reads as a cut of a third of a second.
+      (SEG.soft || []).forEach(c => {
+        const img = document.createElement('img'), video = document.getElementById(c.vid);
+        img.className = 'soft'; img.src = c.img; img.alt = '';
+        video.parentNode.insertBefore(img, video.nextSibling);      // over the footage, under the callouts
+        tl.set(img, { opacity: 1 }, c.t - 2 / 60);
+        tl.to(img, { opacity: 0, duration: c.d, ease: 'power1.inOut' }, c.t);
+      });
 
       // ===== bars 32-34: "and plenty more": the supporting features as stills (version 14: one per
       // eighth note, so all six are up for a second and a half) =====
       capOut('cp', SEG.more - .36);
       tl.to('#ph', { opacity: 0, x: 420, y: 0, rotationY: -28, duration: .55, ease: 'power2.in' }, SEG.more - .45);
-      tl.to('#rig', { z: POSE.R.z - 700, y: '-=120', opacity: 0, duration: .5, ease: 'power2.in' }, SEG.more - .4);
+      tl.to('#rig', { z: POSE.R.z - 700, y: '-=120', duration: .5, ease: 'power2.in' }, SEG.more - .4);
+      tl.to('#rigfade', { opacity: 0, duration: .5, ease: 'power2.in' }, SEG.more - .4);
       tl.to('#corner', { opacity: 0, duration: .3, ease: 'power1.in' }, SEG.more - .3);
       { const M0 = SEG.more;
         tl.set('#more', { opacity: 1 }, M0);
@@ -919,6 +954,8 @@
         tl.fromTo('#end-tag', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .55, ease: 'power3.out', immediateRender: false }, E + .25);
         tl.fromTo('#term', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: .6, ease: 'power3.out', immediateRender: false }, E + .45);
         ripple(E, FRW / 2, FRH * (V9 ? .2 : .2), 1);
+        // version 17: the end card drifts a little closer to the last frame (version 16 stood still for 5 s)
+        tl.fromTo('#end', { scale: 1, transformOrigin: '50% 45%' }, { scale: 1.025, duration: SEG.length - E, ease: 'sine.out', immediateRender: false }, E);
         // version 14: get started folds in here, under the install lines
         tl.fromTo('#end-get', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .5, ease: 'power3.out', immediateRender: false }, E + 1.2);
         tl.fromTo('#end-meta', { opacity: 0 }, { opacity: 1, duration: .5 }, E + 1.5);
