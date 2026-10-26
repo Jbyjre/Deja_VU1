@@ -141,9 +141,18 @@ for vid, name, mk, a, b, dur in SOFT:
     j = i0 + int(d[i0:i1].argmax()) + 1                 # the first frame of the new view
     near = sorted(d[max(0, i0 - 30):i1 + 30])
     print(f'soft cut {vid}: frame {j} ({j / fps:.3f} s), change {d[j - 1]:.1f} against a typical {near[len(near) // 2]:.2f}')
-    img = f'assets/soft/{vid}.jpg'
-    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-ss', f'{PAD_START + (j - 1) / fps:.4f}', '-i',
-                    os.path.join(PROJ, 'assets', 'footage', name + '.mp4'), '-frames:v', '1', '-q:v', '1', os.path.join(PROJ, img)], check=True)
+    # picked by frame number in the padded clip the film plays (a seek by time landed a frame late
+    # on the first build, so the picture already showed the new view), then checked: it must match
+    # the old view, not the new one
+    img, n = f'assets/soft/{vid}.jpg', round(PAD_START * fps) + j - 1
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', os.path.join(PROJ, 'assets', 'footage', name + '.mp4'),
+                    '-vf', f'select=eq(n\\,{n})', '-frames:v', '1', '-q:v', '1', os.path.join(PROJ, img)], check=True)
+    import numpy as np
+    grab = lambda args: np.frombuffer(subprocess.run(['ffmpeg', '-v', 'error', *args, '-vf', 'scale=160:100:flags=area,format=gray',
+                                                      '-f', 'rawvideo', '-'], capture_output=True, check=True).stdout, np.uint8).astype(np.float32)
+    pic, clip = grab(['-i', os.path.join(PROJ, img)]), grab(['-i', os.path.join(FOOTAGE, name + '.mp4')]).reshape(-1, 16000)
+    old, new = np.abs(pic - clip[j - 1]).mean(), np.abs(pic - clip[j]).mean()
+    assert old < new / 3, (vid, 'the saved picture is not the view before the swap', old, new)
     soft.append({'vid': vid, 't': round(marks[vid]['start'] + j / fps, 4), 'img': img, 'd': dur})
 
 # The end card: the install block from the README (Mac and Linux; Windows has the same in

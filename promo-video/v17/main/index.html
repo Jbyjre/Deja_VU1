@@ -916,8 +916,11 @@
         const img = document.createElement('img'), video = document.getElementById(c.vid);
         img.className = 'soft'; img.src = c.img; img.alt = '';
         video.parentNode.insertBefore(img, video.nextSibling);      // over the footage, under the callouts
-        tl.set(img, { opacity: 1 }, c.t - 2 / 60);
-        tl.to(img, { opacity: 0, duration: c.d, ease: 'power1.inOut' }, c.t);
+        // the rendered video shows a clip's frame one frame early (measured on the first render: the
+        // Arrange swap showed at 28.900 s, not 28.933 s), so the picture is up a few frames before
+        // and fades from the frame the swap really appears
+        tl.set(img, { opacity: 1 }, c.t - 4 / 60);
+        tl.to(img, { opacity: 0, duration: c.d, ease: 'power1.inOut' }, c.t - 1 / 60);
       });
 
       // ===== bars 32-34: "and plenty more": the supporting features as stills (version 14: one per
