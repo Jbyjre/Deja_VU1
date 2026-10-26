@@ -112,14 +112,45 @@ simulated figures are labelled and simulated commands cannot control a real U1.
 5. Select your real printer and leave **Demo data** off on this browser too.
    The phone shares server settings, files and printers; browser preferences
    such as the name, selected printer and demo choice are separate.
-6. On iPhone, **Share → Add to Home Screen**; enable **Open as Web App** if
-   offered. On Android, Chrome menu → **Add to Home screen** or **Install app**,
-   whichever appears. [Apple's instructions](https://support.apple.com/guide/iphone/iphea86e5236/ios)
-   and [Chrome's instructions](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DAndroid&hl=en).
+6. To put it on the home screen, open **More → Install app** on the phone. It
+   shows the steps for that phone, below.
 
-A plain `http://192.168…` address may offer only a shortcut. A PWA is a website
-that can install with an app-like window; full install support and the offline
-page require HTTPS (a secure address), or localhost on the computer itself.
+### Install it on your phone
+
+**Why Android first offers only a shortcut.** Chrome installs a website as an
+app only from a secure address: `https://` with a valid certificate, `localhost`,
+or an address you list in Chrome's own setting **Insecure origins treated as
+secure**. That rule is in Chrome's source code
+(`components/webapps/browser/installable/installable_evaluator.cc`, and the
+`unsafely-treat-insecure-origin-as-secure` entry in `chrome://flags`, offered on
+Android too). Your phone opens Deja Vu1 at a plain home-network address such as
+`http://192.168.1.20:8000`, so Chrome's **Add to Home screen** makes a shortcut
+that opens in a browser tab.
+
+**The fix, once per phone (Android, Chrome):**
+
+1. On the phone, open **More → Install app** in Deja Vu1. It shows the two
+   things to copy.
+2. Paste `chrome://flags/#unsafely-treat-insecure-origin-as-secure` into
+   Chrome's address bar and open it.
+3. Under **Insecure origins treated as secure**, paste the dashboard's address
+   exactly as the phone opens it (for example `http://192.168.1.20:8000`, with
+   `http://` and the port), and set it to **Enabled**.
+4. Tap **Relaunch**, come back to Deja Vu1 and press **Install Deja Vu1** (or
+   Chrome's menu ⋮ → **Add to Home screen** → **Install**).
+
+This trusts only that one address, your own computer on your own Wi-Fi. If the
+computer's address changes, add the new one the same way.
+
+**Without the setting:** open Deja Vu1 through an `https://` address, such as
+Tailscale Serve or a Cloudflare Tunnel ([remote access](remote-access.md)).
+Chrome can install from those directly.
+
+**iPhone:** Safari → **Share → Add to Home Screen**; enable **Open as Web App**
+if offered. [Apple's instructions](https://support.apple.com/guide/iphone/iphea86e5236/ios).
+
+A PWA is a website that can install with an app-like window; full install
+support and the offline page require a secure address as above.
 Deja Vu1 includes an app manifest, icons and a service worker, the small browser
 script that supplies its offline page. It **does not cache printer readings or
 queue commands offline**. A previously loaded secure installation shows a

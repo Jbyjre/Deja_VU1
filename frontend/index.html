@@ -9,13 +9,13 @@
      welcome.html), so it carries the same card as the product page. -->
 <meta name="description" content="See which Snapmaker U1 needs attention. Prepare plates, inspect G-code and review print checks in a free, open-source workspace on your own computer.">
 <meta property="og:title" content="Deja Vu1: one screen for every Snapmaker U1 you run">
-<meta property="og:description" content="One screen for your U1 printers, from plate preparation to print checks. Free and open source. Explore the simulated farm; physical U1 testing is still ahead.">
+<meta property="og:description" content="One screen for your U1 printers, from plate preparation to print checks. Free and open source. Try the demo in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://deja-vu1.jmath1110.workers.dev/img/social-card.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Deja Vu1: Your U1s. One workspace. Actual simulated-farm cards over conceptual blue loop art. Physical U1 testing pending.">
+<meta property="og:image:alt" content="Deja Vu1: Your U1s. One workspace. Printer cards from the actual app, with demo printers, over conceptual blue loop art.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%234a8df8' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%234a8df8'/%3E%3C/svg%3E">
 <!-- Add to Home Screen: a real icon and name, opening without browser chrome where the phone allows. -->
@@ -155,8 +155,8 @@
 
   <div class="notice liquid-glass" id="notice" hidden>
     <span class="notice-mark" aria-hidden="true">!</span>
-    <p><strong>Demo data.</strong> No printer is connected. Every figure below
-       is simulated so the dashboard can be previewed.</p>
+    <p><strong>Demo data.</strong> <span class="notice-long">No printer is connected. Every figure below
+       is simulated so the dashboard can be previewed.</span><span class="notice-short">Pretend printers, for a look around.</span></p>
   </div>
 
   <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
@@ -253,13 +253,21 @@
         <label class="sr-only" for="fleet-add-name">Printer name</label>
         <input type="text" id="fleet-add-name" placeholder="Name (Bench U1)" maxlength="40" required>
         <label class="sr-only" for="fleet-add-url">Moonraker address</label>
-        <input type="url" id="fleet-add-url" placeholder="http://192.168.1.50:7125" required>
+        <input type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" id="fleet-add-url" placeholder="192.168.1.50 or http://192.168.1.50:7125" required>
         <label class="sr-only" for="fleet-add-key">Moonraker API key (only if your Moonraker asks for one)</label>
         <input type="password" id="fleet-add-key" placeholder="API key (only if needed)" autocomplete="off" maxlength="128">
         <button class="btn" type="button" id="fleet-add-test">Test</button>
         <button class="btn primary" type="submit">Add printer</button>
       </form>
       <p class="test-result" id="fleet-test-result" role="status" hidden></p>
+      <form id="fleet-login" class="inline-form fleet-login" hidden>
+        <p class="field-hint">This printer's web page asks for a sign-in. Enter that username and password once: the app reads the printer's API key with them and keeps only the key. The password is never saved.</p>
+        <label class="sr-only" for="fleet-login-user">Printer username</label>
+        <input type="text" id="fleet-login-user" placeholder="Username (often admin)" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="64">
+        <label class="sr-only" for="fleet-login-pass">Printer password</label>
+        <input type="password" id="fleet-login-pass" placeholder="Password" autocomplete="current-password" maxlength="256">
+        <button class="btn" type="submit">Sign in</button>
+      </form>
     </section>
 
     <!-- Folded into this tab so every section is always in the tab bar. -->
@@ -445,7 +453,7 @@
         </div>
         <div id="cost-body"></div>
       </section>
-      <section class="card liquid-glass pair-card">
+      <section class="card liquid-glass pair-card desk-only">
         <div>
           <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
           <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
@@ -584,7 +592,7 @@
       <section class="card liquid-glass" id="ap-off" hidden></section>
       <div id="ap-body">
         <div class="grid-2">
-          <section class="card liquid-glass">
+          <section class="card liquid-glass desk-only">
             <div class="card-head">
               <div><h2>Slicer</h2><p class="card-sub">OrcaSlicer, installed by you. The dashboard runs its command line; it never downloads or installs anything.</p></div>
               <span class="badge badge-optional">Optional</span>
@@ -605,7 +613,7 @@
               for real, printable layers before it's added, and records which Orca version made it.</p>
           </section>
 
-          <section class="card liquid-glass">
+          <section class="card liquid-glass desk-only">
             <div class="card-head"><div><h2>Profiles</h2><p class="card-sub">Which Orca presets to slice with: the .json files Orca keeps for your printer, print settings and filament.</p></div></div>
             <ul class="ap-profiles" id="ap-profiles"></ul>
             <form id="ap-profile-form" class="ap-form">
@@ -820,7 +828,7 @@
               <p class="empty-sub">Ring colours follow live printer state.</p>
             </div>
           </div>
-          <p class="log-empty" id="rings-note" hidden>Showing what the LEDs would display. Physical rings pending hardware access.</p>
+          <p class="log-empty" id="rings-note" hidden>Showing what the LEDs would display.</p>
         </section>
 
         <section class="card liquid-glass">
@@ -836,7 +844,7 @@
               <p class="empty-sub">Needs a print file and a sensor reading.</p>
             </div>
           </div>
-          <p class="log-empty" id="colors-note" hidden>Detected values are simulated. Physical sensor pending hardware access.</p>
+          <p class="log-empty" id="colors-note" hidden>Detected values are demo data.</p>
         </section>
       </div>
 
@@ -900,6 +908,11 @@
       <div class="inline-form"><input id="private-name" maxlength="40" autocomplete="off"><button class="btn" id="private-delete">Delete name</button></div>
       <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
     </section>
+    <section class="card liquid-glass phone-install-card phone-only" id="phone-install-card" data-browser-only>
+      <div class="card-head"><div><h2>Install on this phone</h2><p class="card-sub">Open Deja Vu1 from your home screen, full screen, like any other app.</p></div></div>
+      <div id="phone-install-body"></div>
+    </section>
+
     <section class="card liquid-glass version-card" id="version-card" data-browser-only>
       <div class="card-head"><div><h2>Version &amp; updates <span id="app-update-badge" class="vc-badge" hidden>New version available</span></h2><p class="card-sub">Your version, its updates, and ways to look after this copy.</p></div></div>
       <div class="vc-hero">
@@ -956,7 +969,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
       <h3 class="vc-h">Version history</h3>
       <ol class="vc-history" id="version-history" aria-label="Every version, newest first"></ol>
     </section>
-    <section class="card liquid-glass desktop-card" id="desktop-card" data-browser-only>
+    <section class="card liquid-glass desktop-card desk-only" id="desktop-card" data-browser-only>
       <div class="card-head"><div><h2>Desktop app</h2><p class="card-sub">Use Deja Vu1 in its own window instead of a browser tab. Same dashboard, same data, nothing extra to download.</p></div></div>
       <div class="da-options">
         <article class="da-option">
@@ -982,7 +995,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
       <div class="card-head"><div><h2>About Deja Vu1</h2><p class="card-sub" id="about-version">A dashboard and print-preparation workspace for the Snapmaker U1.</p></div>
         <button class="btn primary" type="button" id="selfcheck-run">Check it yourself</button></div>
       <p class="about-what">Watch every U1, prepare plates and check each file before it prints. It runs on your computer, talks to the printer through Moonraker and slices with the Orca engine you install.</p>
-      <p class="field-hint"><b>Check it yourself</b> runs real checks in this copy. Nothing is sent and no printer is contacted. The README lists what hasn&rsquo;t been tried on a real U1 yet.</p>
+      <p class="field-hint"><b>Check it yourself</b> runs real checks in this copy. Nothing is sent and no printer is contacted.</p>
       <ol class="selfcheck" id="selfcheck-list" hidden></ol>
       <details class="about-credits"><summary>Built with and on</summary>
         <ul>
@@ -1024,7 +1037,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
             <p class="log-empty">Enter this code on your phone within 10 minutes.</p>
           </div>
           <div id="device-list"></div>
-          <button class="btn block primary" id="phone-connect-btn" style="margin-top:12px;">Connect a phone with a QR code</button>
+          <button class="btn block primary desk-only" id="phone-connect-btn" style="margin-top:12px;">Connect a phone with a QR code</button>
           <button class="btn block" id="generate-code-btn" style="margin-top:8px;">Show a pairing code only</button>
           <form id="redeem-form" style="display:flex; gap:8px; margin-top:10px;">
             <label class="sr-only" for="redeem-code">Pairing code</label>
@@ -1064,7 +1077,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
           <div data-module-off="notifications" hidden></div>
         </section>
 
-        <section class="card liquid-glass">
+        <section class="card liquid-glass desk-only">
           <div class="card-head"><div><h2>Printer firmware &amp; app recovery</h2><p class="card-sub">App updates are above. Back up app data, then validate and restore into a separate recovery folder. Printer firmware and external engine installations are separate.</p></div></div>
           <div id="updates-body" class="log-empty">—</div>
           <div style="display:flex; gap:8px; margin-top:14px;" data-module-body="backup">
@@ -1134,8 +1147,9 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
           <label class="sr-only" for="camera-url">Camera stream address</label>
           <input type="url" id="camera-url" placeholder="http://printer/webcam/…" aria-describedby="camera-url-hint">
           <button class="btn" type="submit">Save</button>
+          <button class="btn primary" type="button" id="camera-find">Find my printer's camera</button>
         </form>
-        <p class="field-hint" id="camera-url-hint">Usually <code>http://&lt;printer address&gt;/webcam/?action=stream</code></p>
+        <p class="field-hint" id="camera-url-hint" role="status">Press <b>Find my printer's camera</b> and the app asks the selected printer which camera it has, checks the picture and saves the address. On the Extended Firmware it is usually <code>http://&lt;printer address&gt;/webcam/stream.mjpg</code>.</p>
         <details class="webrtc-setup" id="webrtc-setup" hidden>
           <summary>Low-latency camera (optional, needs go2rtc)</summary>
           <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
@@ -1148,7 +1162,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
           </form>
         </details>
         <details class="stock-camera"><summary>U1 built-in camera</summary>
-          <p class="field-hint">For the stock U1 camera: JPEG pictures requested directly from the selected printer. Requires compatible firmware; not yet verified on a physical U1. The stream address above is for a separately configured camera.</p>
+          <p class="field-hint">For the stock U1 camera: JPEG pictures requested directly from the selected printer. Requires compatible firmware. The stream address above is for a separately configured camera.</p>
           <button class="btn" id="stock-camera-start" type="button">Show built-in camera</button>
           <button class="btn" id="stock-camera-stop" type="button" hidden>Stop camera</button>
           <p id="stock-camera-status" role="status"></p><img id="stock-camera-image" alt="Selected printer camera" hidden style="width:100%;border-radius:16px">
@@ -1158,7 +1172,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
         <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
         <div id="timelapse-host"></div>
       </section>
-      <section class="card liquid-glass" data-browser-only>
+      <section class="card liquid-glass desk-only" data-browser-only>
         <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">A private connection to your home computer</p></div></div>
         <p class="card-sub">Keep this computer awake. Use Tailscale on your computer and phone with private Serve, or configure Cloudflare Access before exposing a tunnel. This dashboard has no login, and pairing does not restrict access. Do not forward its port through your router. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md" target="_blank" rel="noopener">Remote setup guide</a>.</p>
       </section>
@@ -1284,12 +1298,21 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
     <button data-tab="files"><span class="bn-ico" aria-hidden="true">▤</span>Files</button>
     <button id="bn-more" type="button" aria-haspopup="true"><span class="bn-ico" aria-hidden="true">⋯</span>More</button>
   </nav>
-  <div class="more-sheet liquid-glass" id="more-sheet" hidden>
-    <button data-tab="studio">Photo studio</button>
-    <button data-tab="automations">Automations</button>
-    <button data-tab="maintenance">Care · maintenance &amp; filament</button>
-    <button data-tab="modules">Settings · modules &amp; devices</button>
-    <button data-tab="games">Games</button>
+  <div class="more-sheet liquid-glass" id="more-sheet" role="dialog" aria-label="More" hidden>
+    <div class="ms-search" id="ms-search"></div>
+    <div class="ms-grid" role="group" aria-label="More screens">
+      <button data-tab="maintenance"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><b>Care</b><small>Maintenance &amp; filament</small></button>
+      <button data-tab="automations"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg><b>Automations</b><small>If this, then that</small></button>
+      <button data-tab="studio"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01"/></svg><b>Photo studio</b><small>Photo to print</small></button>
+      <button data-tab="games"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.5a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.3a2 2 0 0 1-3.4-.9l-.6-2.5A4 4 0 0 1 7 9zM8 11.5v3M6.5 13h3M15.5 12.5h.01M17.5 14h.01"/></svg><b>Games</b><small>While it prints</small></button>
+      <button data-tab="modules" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><b>Settings</b><small>Look, phone, camera, modules</small></button>
+    </div>
+    <div class="ms-tools" role="group" aria-label="Help and tools">
+      <button type="button" data-more="camera">Camera</button>
+      <button type="button" data-more="tips">Show me this screen</button>
+      <button type="button" data-more="help">Help &amp; setup</button>
+      <button type="button" data-more="install">Install app</button>
+    </div>
   </div>
 </div>
 

@@ -5,22 +5,22 @@
     "title": "Your U1s. One workspace.",
     "body": "See the fleet. Prepare the next plate.",
     "image": "img/fleet-cards.jpg",
-    "alt": "Your U1s. One workspace. A conceptual blue loop sculpture behind actual simulated-farm printer cards; no physical U1 test verified.",
-    "evidence": "Actual app · simulated farm",
-    "limit": "Physical U1 testing pending",
+    "alt": "Your U1s. One workspace. A conceptual blue loop sculpture behind printer cards from the actual app, showing demo printers.",
+    "evidence": "Actual app · demo printers",
+    "limit": "Free · runs on your own computer",
     "cta": "Explore the demo",
-    "caption": "Deja Vu1 brings U1 printer status into one local dashboard. These three printers are simulated; no physical U1 has been connected yet. Try the demo: https://deja-vu1.jmath1110.workers.dev/?demo The cobalt loop is AI-generated conceptual brand art, not hardware or a print result.",
+    "caption": "Deja Vu1 brings U1 printer status into one local dashboard. The three printers pictured are the built-in demo. Try it: https://deja-vu1.jmath1110.workers.dev/?demo The cobalt loop is AI-generated conceptual brand art, not hardware or a print result.",
     "design": "fleet",
     "lines": [
       "Your U1s.",
       "One workspace."
     ],
-    "detail": "ACTUAL APP / SIMULATED FARM",
+    "detail": "ACTUAL APP / DEMO PRINTERS",
     "annotation": "CONCEPTUAL BRAND ART",
     "destination": "deja-vu1.jmath1110.workers.dev",
     "stage": "Discover",
-    "purpose": "Invite a first visit to the simulated farm",
-    "primaryText": "See the fleet. Prepare the next plate. Physical U1 testing pending."
+    "purpose": "Invite a first visit to the demo",
+    "primaryText": "See the fleet. Prepare the next plate."
   },
   {
     "id": "02-needs-you",

@@ -105,10 +105,30 @@ class TestPageWiring(unittest.TestCase):
 
     def test_background_defaults_to_dots_with_surprises_on(self):
         src = read("backdrop.js")
-        self.assertIn("const DEFAULT = { style: 'dots', palette: 'glacier', energy: 'lively', surprises: true };", src)
+        self.assertIn("const DEFAULT = { style: 'dots', palette: 'glacier', energy: 'lively', surprises: true, dot: '' };", src)
         # Reduced motion switches the background to Still and the surprises off.
         self.assertIn("const effectiveStyle = () => (reducedMotion() ? 'still' : prefs.style);", src)
         self.assertIn("prefs.surprises && !reducedMotion()", src)
+
+    def test_every_dot_is_one_colour_the_owner_can_choose(self):
+        # The owner (October 2026): no print-progress band in filament colours;
+        # one dot colour, set in Settings -> Appearance.
+        src = read("backdrop.js")
+        self.assertNotIn("progress", re.search(r"return \{ STYLES.*?\};", src).group(0))
+        self.assertNotIn("fill.c", src)
+        self.assertIn("c.dot = hexToRgb(prefs.dot) || c.glow;", src)
+        self.assertIn("return colours.dot;", src)
+        self.assertIn('data-dot-custom', src)
+        self.assertNotIn("Backdrop.progress", read("app.js"))
+
+    def test_phone_layout_keeps_features_in_the_more_sheet(self):
+        page = read("index.html")
+        for act in ("camera", "tips", "help", "install"):
+            self.assertIn(f'data-more="{act}"', page)
+        for tab in ("maintenance", "automations", "studio", "games", "modules"):
+            self.assertRegex(page, rf'<div class="ms-grid"[^>]*>[\s\S]*?data-tab="{tab}"')
+        self.assertIn('id="phone-install-card"', page)
+        self.assertIn(".desk-only { display: none !important; }", read("theme.css"))
 
     def test_every_tab_has_an_introduction(self):
         tabs = set(re.findall(r'class="navtab[^"]*" data-tab="([a-z]+)"', read("index.html")))

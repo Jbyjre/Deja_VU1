@@ -6,7 +6,7 @@
 <title>Deja Vu1: one screen for every Snapmaker U1 you run</title>
 <meta name="description" content="See which Snapmaker U1 needs attention. Prepare plates, inspect G-code and review print checks in a free, open-source workspace on your own computer.">
 <meta property="og:title" content="Deja Vu1: one screen for every Snapmaker U1 you run">
-<meta property="og:description" content="One screen for your U1 printers, from plate preparation to print checks. Free and open source. Explore the simulated farm; physical U1 testing is still ahead.">
+<meta property="og:description" content="One screen for your U1 printers, from plate preparation to print checks. Free and open source. Try the demo in your browser.">
 <meta property="og:type" content="website">
 <!-- Link previews: crawlers need an absolute address, so this points at the
      published copy (wrangler.jsonc). 1200 x 630 is Meta's recommended size. -->
@@ -14,7 +14,7 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Deja Vu1: Your U1s. One workspace. Actual simulated-farm cards over conceptual blue loop art. Physical U1 testing pending.">
+<meta property="og:image:alt" content="Deja Vu1: Your U1s. One workspace. Printer cards from the actual app, with demo printers, over conceptual blue loop art.">
 <meta property="og:video" content="https://deja-vu1.jmath1110.workers.dev/media/deja-vu1-launch-v16-16x9.mp4">
 <meta property="og:video:type" content="video/mp4">
 <meta property="og:video:width" content="1920">
@@ -247,7 +247,7 @@ section.band { padding: clamp(72px, 10vw, 132px) 0 0; }
 .truth h3 { display: flex; align-items: center; gap: 10px; font: 650 21px/1.2 var(--display); letter-spacing: -.015em; }
 .truth h3 i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot) 20%, transparent); }
 .truth .yes { --dot: oklch(62% 0.16 150); }
-.truth .not-yet { --dot: oklch(72% 0.15 85); }
+.truth-one { grid-template-columns: 1fr; max-width: 860px; }
 .truth ul { list-style: none; margin-top: 14px; }
 .truth li { padding: 10px 0 10px 18px; position: relative; color: var(--ink-dim); font-size: 15.5px; border-top: 1px solid var(--hair); }
 .truth li::before { content: ""; position: absolute; left: 0; top: 19px; width: 6px; height: 1.5px; background: var(--ink-faint); }
@@ -373,7 +373,7 @@ footer p { max-width: 70ch; }
       <li><a href="#ways">Ways to use it</a></li>
       <li><a href="#problems">Why</a></li>
       <li><a href="#inside">What's inside</a></li>
-      <li><a href="#honest">Status</a></li>
+      <li><a href="#honest">Checks</a></li>
       <li><a href="#install">Install</a></li>
       <li><a href="./?demo">Demo</a></li>
     </ul>
@@ -409,7 +409,7 @@ footer p { max-width: 70ch; }
         <a href="media/deja-vu1-launch-v16-16x9.mp4">Download the 60-second launch film (MP4)</a>
       </video>
     </figure>
-    <p class="caption">The 60-second launch film (version 16), filmed on the built-in simulated farm. Every figure in it is simulated, and the phone’s address is an example. Sound on. No physical U1 has been connected yet: <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connection.md">help test the first connection</a>.</p>
+    <p class="caption">The 60-second launch film (version 16), filmed with the built-in demo printers. Its figures are demo data, and the phone’s address is an example. Sound on.</p>
   </div>
 
   <section class="band" id="ways" aria-labelledby="ways-title">
@@ -469,7 +469,7 @@ footer p { max-width: 70ch; }
         <img src="img/workspace.png" width="1366" height="900" loading="lazy"
              alt="The preparation workspace with two objects and physical tool assignments, plate controls and slicing settings. Recorded Linux validation capture.">
       </figure>
-      <p class="caption">Preparation workspace from the recorded Linux checks. Slicing needs a separate compatible engine; physical printing is unverified.</p>
+      <p class="caption">Preparation workspace from the recorded Linux checks. Slicing needs a separate compatible engine.</p>
       <div class="sheet">
         <div>
           <h3>Watch</h3>
@@ -499,7 +499,7 @@ footer p { max-width: 70ch; }
           <ul>
             <li><b>Photo-to-Print Studio</b><span>Make four-tool colour tiles, measured-swatch layered models or image reliefs. Physical colour accuracy needs calibration.</span></li>
             <li><b>MakerWorld, NexPrint and Orca to U1</b><span>Converts supported projects for the U1 and separates a selected plate for slicing. Complex vendor paint, textures and settings remain limited.</span></li>
-            <li><b>View on your desk</b><span>AR preview on supported Android/WebXR browsers over HTTPS. Uses the original model geometry; real-phone testing remains open.</span></li>
+            <li><b>View on your desk</b><span>AR preview on supported Android/WebXR browsers over HTTPS. Uses the original model geometry.</span></li>
           </ul>
         </div>
         <div>
@@ -520,7 +520,7 @@ footer p { max-width: 70ch; }
         <img src="img/overview.jpg" width="1440" height="900" loading="lazy"
              alt="The Deja Vu1 Overview: a 'Needs you' list ranking a dock error, a paused print and overdue maintenance across three printers, print totals, and a status bar showing the running print's progress and the time it will finish.">
       </figure>
-      <p class="caption">The Overview, running on the built-in simulated farm (Demo data). Every figure in these pictures is simulated.</p>
+      <p class="caption">The Overview with the built-in demo printers (Demo data). The figures in these pictures are demo data.</p>
 
       <div class="twin-pair" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:24px;margin-top:36px">
         <figure class="shot glass"><img src="img/twin.jpg" width="706" height="821" loading="lazy" alt="The current 3D twin with the head, bed, rear docks and spools. Software model with simulated readings."></figure>
@@ -537,16 +537,16 @@ footer p { max-width: 70ch; }
                alt="Deja Vu1 on a phone: the Needs you list at the top, and the print's progress with Pause and Hold to cancel in a dock at the bottom of the screen.">
         </figure>
       </div>
-      <p class="caption">The fleet view and a 390 px browser viewport. Simulated farm; the phone layout has been checked in Chromium, not on a physical phone.</p>
+      <p class="caption">The fleet view, and the same dashboard on a phone. Demo printers.</p>
     </div>
   </section>
 
   <section class="band" id="honest" aria-labelledby="honest-title">
     <div class="wrap">
-      <p class="eyebrow">Where it stands</p>
-      <h2 id="honest-title">What's checked, and what isn't yet.</h2>
-      <p class="intro">You should know exactly what you're running. This is the same status the README keeps.</p>
-      <div class="truth">
+      <p class="eyebrow">How it's checked</p>
+      <h2 id="honest-title">Built from the source, checked by machine.</h2>
+      <p class="intro">You should know exactly what you're running. The repository has the details.</p>
+      <div class="truth truth-one">
         <div class="yes">
           <h3><i aria-hidden="true"></i>Checked</h3>
           <ul>
@@ -555,15 +555,8 @@ footer p { max-width: 70ch; }
             <li>Workspace checks passed in Chromium at 1366 and 390 pixels: editing, profiles, actual slicing, preview and Confirm Print entry.</li>
             <li>Different physical-head heights were verified in actual Linux engine output. Backup recovery and its generated Linux launcher were exercised.</li>
             <li>WLED, Home Assistant, ntfy, Discord and Telegram checked against each service's own source or documentation.</li>
-          </ul>
-        </div>
-        <div class="not-yet">
-          <h3><i aria-hidden="true"></i>Not yet</h3>
-          <ul>
-            <li>It has not talked to a physical U1. The first real connection is where any difference from the published source will show up. The printer's Details panel and the server log are built to make that easy to debug.</li>
-            <li>The LED dock rings and the optical colour sensor have tested logic waiting on physical parts.</li>
-            <li>No physical mixed-nozzle print, measured colour accuracy or real-phone performance is verified. Windows/macOS engine and recovery setup remain untested.</li>
-            <li>Representative converted plates passed the Linux engine; full vendor paint/texture fidelity remains incomplete. Heavy-model rendering remains slow in software graphics.</li>
+            <li>Representative converted plates passed the Linux engine.</li>
+            <li>Camera pictures and printer sign-in were checked against the code of Snapmaker’s Moonraker and the community Extended Firmware.</li>
           </ul>
         </div>
       </div>
@@ -631,7 +624,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre>
   <section class="closer wrap" aria-labelledby="closer-title">
     <h2 id="closer-title">Take a look around.<br>No printer needed for the demo.</h2>
     <div class="hero-cta">
-      <a class="btn primary" href="./?demo">Explore the simulated farm</a>
+      <a class="btn primary" href="./?demo">Try the demo</a>
       <a class="btn" href="https://github.com/Jbyjre/Deja_VU1">Get the code on GitHub</a>
       <a class="btn" href="#run">How to run it</a>
     </div>

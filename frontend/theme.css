@@ -303,7 +303,9 @@ input[type="number"], input[inputmode], #gcode-input, .console, code, pre { font
   0%, 100% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 20%, transparent); }
   50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--dot) 8%, transparent); }
 }
-@media (max-width: 620px) {
+/* The buttons are one short word, so they stay beside the item down to the
+   narrowest phones; only below 360 px do they drop under it. */
+@media (max-width: 359px) {
   .att-item { grid-template-columns: 10px minmax(0, 1fr); }
   .att-item .btn { grid-column: 2; justify-self: start; margin-top: 4px; }
 }
@@ -724,6 +726,17 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
 }
 .bp-palette.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 .bp-swatch { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+/* Dot colour: round wells, 36px targets; the first follows the colour set. */
+.bp-dots { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bp-dot { position: relative; width: 36px; height: 36px; padding: 4px; border-radius: 50%; border: 2px solid transparent;
+  background: none; cursor: pointer; display: grid; place-items: center; }
+.bp-dot > span { width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.bp-dot-auto { background: radial-gradient(circle at 50% 50%, var(--bp-auto, #3f8cff) 0 5px, transparent 5.5px),
+  repeating-conic-gradient(from 0deg, rgba(0, 0, 0, .06) 0 25%, rgba(255, 255, 255, .9) 0 50%) 50% / 8px 8px; }
+.bp-dot.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.bp-dot:focus-visible, .bp-dot:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bp-dot-custom { overflow: hidden; background: conic-gradient(#ff6b6b, #ffd36b, #6bdc8b, #6bb8ff, #b48bff, #ff6b6b); }
+.bp-dot-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .bp-note { margin: 10px 0 0; font-size: 13px; color: var(--text-dim); }
 @media (prefers-contrast: more) {
   .bp-style, .bp-palette { border-color: var(--text-dim); }
@@ -988,3 +1001,95 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
 .about-credits { margin-top: 12px; }
 .about-credits summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; align-items: center; }
 .about-credits ul { margin: 8px 0; padding-left: 20px; display: grid; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+
+/* ---- Phone: one thing at a time ---------------------------------------------
+   A phone keeps every feature it can really use and drops what belongs to the
+   computer running Deja Vu1 (.desk-only: the desktop app, update commands,
+   recovery folders, tunnel setup, slicer paths, the phone QR code itself).
+   The strip under the header (search, Camera, Set up & help) and the line
+   under the tab bar move into the More sheet; the status strip steps aside
+   while the print bar in the dock says the same thing. */
+.notice-short, .mod-more { display: none; }
+@media (min-width: 721px) { .phone-only { display: none !important; } }
+@media (max-width: 720px) {
+  .desk-only { display: none !important; }
+  section.phone-only:not([hidden]) { display: block; }
+  a.chip-btn.phone-only { display: inline-flex; }
+  .launch-strip, .tab-intro { display: none; }
+
+  /* Demo data stays labelled, in one line. */
+  .notice { padding: 8px 14px; margin-bottom: 12px; gap: 10px; border-radius: 18px; }
+  .notice .notice-mark { width: 22px; height: 22px; font-size: 12px; }
+  .notice p { font-size: 13.5px; line-height: 1.35; }
+  .notice-long { display: none; }
+  .notice-short { display: inline; }
+  body:has(.quick-actions:not([hidden])) .status-ribbon { display: none; }
+
+  /* The print bar: one row, thumb height. Control has its own buttons, Games its own screen. */
+  .quick-actions { flex-wrap: nowrap; align-items: center; gap: 6px; padding: 6px; border-radius: 22px; }
+  .qa-status { flex: 1 1 auto; flex-direction: column; align-items: stretch; justify-content: center; gap: 5px;
+    min-height: 44px; padding: 0 4px 0 8px; font-size: 11.5px; }
+  .qa-status-text { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .qa-status-bar { flex: 0 0 4px; width: 100%; }
+  .quick-actions .qa-btn, .quick-actions .qa-danger { flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 16px; font-size: 13px; }
+  body[data-tab="control"] .quick-actions, body[data-tab="games"] .quick-actions { display: none; }
+
+  /* More: a floating sheet (tier 3), search on top, then screens, then tools.
+     Tiles sit 10px inside a 28px sheet, so their corners are 18px (concentric). */
+  .more-sheet { gap: 10px; padding: 10px; border-radius: 28px; overflow: auto;
+    max-height: calc(100dvh - var(--dock-h, 150px) - 40px); background: rgba(250, 250, 252, .9);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .14), 0 14px 34px rgba(0, 0, 0, .26); }
+  .ms-search .feature-finder { margin: 0; }
+  .ms-search .feature-finder input, .ms-search .feature-finder input:focus { width: 100%; }
+  .ms-search .fx-hint { display: none; }
+  .ms-search #feature-results { top: auto; bottom: calc(100% + 8px); left: 0; right: 0; width: auto;
+    max-height: 55dvh; overflow: auto; transform-origin: bottom center; }
+  .ms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .more-sheet .ms-grid button { display: grid; grid-template-columns: 32px 1fr; grid-template-rows: auto auto;
+    column-gap: 10px; align-items: center; min-height: 62px; padding: 10px 12px; border-radius: 18px;
+    text-align: left; background: rgba(255, 255, 255, .62); border: 1px solid rgba(0, 0, 0, .06); }
+  .ms-grid .ms-wide { grid-column: 1 / -1; }
+  .ms-ico { grid-row: 1 / 3; width: 32px; height: 32px; padding: 6px; border-radius: 50%; box-sizing: border-box;
+    fill: none; stroke: var(--accent-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    background: color-mix(in oklch, var(--accent) 16%, white); }
+  /* The sheet opens above the tab bar, and has the dock to itself while open. */
+  .thumb-dock > .bottom-nav { order: 10; }
+  .thumb-dock:has(> .more-sheet:not([hidden])) > :not(.more-sheet, .bottom-nav),
+  body:has(.more-sheet:not([hidden])) .orb-dock { display: none; }
+  .ms-grid b { font: 600 14px/1.15 var(--font-sans); color: var(--text); }
+  .ms-grid small { font: 500 11.5px/1.25 var(--font-sans); color: var(--text-faint); }
+  .more-sheet .ms-grid button.active, .more-sheet .ms-grid button[aria-current="page"] { border-color: color-mix(in oklch, var(--accent) 55%, transparent); }
+  .ms-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+  .more-sheet .ms-tools button { flex: 1 1 calc(50% - 6px); min-height: 44px; border-radius: 14px; font: 600 13px/1.1 var(--font-sans);
+    background: rgba(255, 255, 255, .45); border: 1px solid rgba(0, 0, 0, .06); }
+  .more-sheet button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+  /* Settings: one swipeable row of links, the newest two versions, the first
+     six modules (one tap for the rest). Stop stays on the computer: from a
+     phone it would leave nothing to start Deja Vu1 again with. */
+  .settings-jumps { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
+  .settings-jumps::-webkit-scrollbar { display: none; }
+  .settings-jumps > * { flex: 0 0 auto; }
+  #app-stop { display: none; }
+  .vc-history > li:nth-child(n+3) { display: none; }
+  #module-list:not(.is-open) > .modrow:nth-child(n+7) { display: none; }
+  .mod-more { display: flex; justify-content: center; margin-top: 4px; }
+
+  :root { --orb: 44px; }
+  .topbar-inner { padding: 7px 10px; gap: 8px; }
+  .topbar .brand-mark { flex-basis: 34px; width: 34px; height: 34px; }
+  .att-item { padding: 10px 2px; gap: 2px 12px; }
+}
+.pi-steps { margin: 10px 0; padding-left: 22px; display: grid; gap: 10px; font-size: 14.5px; line-height: 1.45; }
+.pi-steps li > span { display: block; }
+.pi-copy { display: flex !important; align-items: center; gap: 8px; margin-top: 6px; }
+.pi-copy code { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 500 12.5px/1.35 var(--font-mono);
+  padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
+.pi-done { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.install-dialog .pi-body { padding: 0 4px 6px; }
+@media (prefers-reduced-transparency: reduce) {
+  .more-sheet, .more-sheet .ms-grid button { background: #fff; }
+}
+@media (prefers-contrast: more) {
+  .more-sheet .ms-grid button, .more-sheet .ms-tools button, .pi-copy code { border: 1.5px solid var(--text); }
+}

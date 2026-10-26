@@ -322,6 +322,10 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .setup-way .btn { justify-self: start; margin-top: 6px; }
 .setup-phone-go { margin: 18px 0 4px; }
 #setup-connect { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--hair); }
+#setup-login { margin-top: 10px; padding: 10px 14px 12px; border-radius: 16px; background: rgba(255, 255, 255, .55); border: 1px solid var(--hair); }
+#setup-login .field-hint { margin-top: 0; }
+.setup-key-more { margin: 10px 0 4px; }
+.setup-key-more summary { cursor: pointer; color: var(--text-dim); font-size: 14px; min-height: 24px; }
 .setup-dialog .setup-check-big { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, .7); border: 1px solid var(--hair); }
 .setup-dialog .setup-check-big input { display: inline-block; width: 22px; height: 22px; min-height: 0; margin: 0; flex: 0 0 auto; }
 
