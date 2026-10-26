@@ -58,7 +58,7 @@ window.Finder = (() => {
     ['Dock status rings', 'Care', 'led ring lights dock status', 'Dock status rings'],
     ['Right colour loaded?', 'Care', 'colour check color match wrong filament', 'Right colour loaded?'],
     ['Filament inventory', 'Care', 'spools spoolman inventory grams stock filament left', 'Filament inventory'],
-    ['Appearance', 'Settings', 'theme background dots constellation colours accent look style', 'Appearance'],
+    ['Appearance', 'Settings', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
     ['Modules · turn features on or off', 'Settings', 'modules features enable disable switch on off', 'Modules'],
     ['Paired devices', 'Settings', 'pair phone devices tablets lock only paired access password login security', 'Paired devices'],
     ['Your data is safe · safety copies', 'Settings', 'safety copy snapshot restore undo lost settings memory data recover', 'Your data is safe'],
@@ -84,6 +84,8 @@ window.Finder = (() => {
     ['Convert the 3-plate MakerWorld sample', 'Do', 'converter try sample bambu makerworld', async () => { go('#convert-card'); document.getElementById('cv-sample')?.click(); }],
     ['Open 3DBenchy', 'Do', 'benchy boat test model calibration', async () => { showTab('files'); if (window.Workshop) Workshop.openFile('3dbenchy.stl'); }],
     ['Set up and help', 'Do', 'setup help guide getting started tour', () => document.getElementById('setup-open')?.click()],
+    ['Install the app on this phone', 'Do', 'install app phone home screen android chrome iphone pwa shortcut', () => window.Phone && Phone.install()],
+    ['Find my printer\'s camera', 'Do', 'camera find webcam stream mjpeg extended firmware', async () => { showTab('modules'); document.getElementById('camera-find')?.scrollIntoView({ block: 'center' }); }],
   ];
   const SUGGESTED = ['Needs you', 'Bambu / MakerWorld to U1 converter', 'Layer stack · mixed layer heights', 'Add a printer', 'Open the camera'];
 

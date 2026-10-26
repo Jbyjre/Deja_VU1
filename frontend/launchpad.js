@@ -69,10 +69,16 @@
         ${tourOn()?'<p class="setup-note">Public demo · a recording only. To connect a printer, run the download on your own computer.</p>':''}
         <div id="setup-connect" ${mode==='demo'||tourOn()?'hidden':''}>
           <button class="btn" id="setup-find">Find printers on my Wi-Fi</button><div id="setup-found"></div>
-          <label for="setup-url">Printer address</label><input id="setup-url" type="url" placeholder="http://192.168.1.50:7125">
-          <label for="setup-key">Access key <span class="field-hint">Only if your printer asks for one</span></label><input id="setup-key" type="password" autocomplete="off">
+          <label for="setup-url">Printer address</label><input id="setup-url" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="192.168.1.50">
+          <div id="setup-login" hidden>
+            <p class="field-hint">This printer asks for a sign-in. Use the username and password from its web page. Only the printer’s key is kept, never the password.</p>
+            <label for="setup-user">Printer username</label><input id="setup-user" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="admin">
+            <label for="setup-pass">Printer password</label><input id="setup-pass" type="password" autocomplete="current-password">
+          </div>
+          <details class="setup-key-more"><summary>I have an API key instead</summary>
+          <label for="setup-key">API key</label><input id="setup-key" type="password" autocomplete="off"></details>
           <button class="btn primary" id="setup-test">Test and connect</button>
-          <p class="field-hint">No answer? Wake the printer and put it on the same Wi-Fi as this computer (not a guest network). Its address is on the printer’s screen or in your router’s list of devices, and usually ends in :7125.</p>
+          <p class="field-hint">No answer? Wake the printer and put it on the same Wi-Fi as this computer (not a guest network). Its address is on the printer’s screen or in your router’s list of devices. Type just the numbers; the app adds the rest.</p>
         </div>`;
       $('setup-demo').onclick=()=>{mode='demo';setDemo(true);render();};
       $('setup-real').onclick=()=>{mode='real';setDemo(false);render();};
@@ -92,8 +98,19 @@
         btn.disabled=true;$('setup-status').textContent='Testing the printer connection…';
         try {
           const body={moonraker_url:url,api_key:apiKey};
+          // A printer behind a web-page sign-in: read its key with that sign-in first.
+          if(!apiKey&&!$('setup-login').hidden&&$('setup-pass').value){
+            $('setup-status').textContent='Signing in to the printer…';
+            const login=await postJSON('/api/printers/login',{moonraker_url:url,username:$('setup-user').value,password:$('setup-pass').value});
+            $('setup-pass').value='';
+            if(view!==generation)return;
+            if(!login.ok)throw new Error(login.body.error);
+            body.api_key=login.body.api_key;body.moonraker_url=login.body.url;
+          }
           const test=await postJSON('/api/printers/test',body);
           if(view!==generation)return;
+          if(test.ok&&test.body.url)body.moonraker_url=test.body.url;
+          if(test.ok&&test.body.needs_key){$('setup-login').hidden=false;$('setup-user').focus();}
           if(!test.ok||!test.body.ok||test.body.error)throw new Error(test.body.error||'The printer did not answer.');
           const r=await postJSON('/api/fleet/registry',{...body,name:'My U1'});
           if(!r.ok)throw new Error(r.body.error);
@@ -184,7 +201,7 @@
   function installHelp() {
     if (tourOn() || serverMissing()) return 'This public page is a demo recording. Download Deja Vu1 and run it on your computer, then install that copy.';
     if (standalone()) return 'You are using the installed app right now.';
-    if (!window.isSecureContext) return 'Install it on the computer that runs Deja Vu1, at http://localhost:8000. On a phone, use Add to Home Screen instead.';
+    if (!window.isSecureContext) return 'Install it on the computer that runs Deja Vu1, at http://localhost:8000. On a phone, open More → Install app.';
     if (installEvent) return 'Your browser is ready: press Install Deja Vu1.';
     return {
       Edge: 'In Edge: the app icon at the right of the address bar, or the menu (…) → Apps → Install this site as an app.',
@@ -229,7 +246,8 @@
   $('da-install').onclick = () => install();
   $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
   $('guide-replay').onclick = () => Guide.everything();
-  window.DesktopApp = { install, help: installHelp };
+  window.DesktopApp = { install, help: installHelp, canPrompt: () => !!installEvent, standalone };
+  addEventListener('beforeinstallprompt', () => window.Phone && Phone.refreshInstall());
 
   // The search box lives in finder.js.
   let cameraRun = 0, cameraURL = null, cameraTimer = null;

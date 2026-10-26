@@ -195,7 +195,7 @@ window.Phone = (() => {
         body: JSON.stringify({ code, device_name: deviceName() }) });
       const body = await r.json().catch(() => ({}));
       if (r.ok) {
-        toast(`Paired. This ${deviceName() === 'Browser' ? 'device' : 'phone'} is on the list now. Tip: add it to your Home Screen for one-tap access.`, 'ok', 9000);
+        toast(`Paired. This ${deviceName() === 'Browser' ? 'device' : 'phone'} is on the list now. Tip: More → Install app puts it on your home screen.`, 'ok', 9000);
         // A pairing-code prompt may have opened (device lock) before the key arrived.
         const reloadIfAsked = () => { if (document.querySelector('#pair-gate[open]')) location.reload(); };
         reloadIfAsked(); setTimeout(reloadIfAsked, 1500);
@@ -205,6 +205,89 @@ window.Phone = (() => {
     } catch { /* no server: nothing to pair with */ }
   }
 
-  document.addEventListener('DOMContentLoaded', redeemFromLink);
-  return { open, close };
+  /* ---- Installing on the phone itself ----------------------------------------
+     Chrome installs a web app only from a secure address: https with a valid
+     certificate, localhost, or an address on its "Insecure origins treated as
+     secure" list (Chromium: components/webapps/browser/installable/
+     installable_evaluator.cc IsContentSecure, and the
+     unsafely-treat-insecure-origin-as-secure flag in chrome://flags, which
+     fills that list on Android too). A phone opens this dashboard at
+     http://<computer>:8000, so without one of those Chrome offers only a
+     shortcut. This says which case the phone is in, and the steps for it. */
+  const FLAG = 'chrome://flags/#unsafely-treat-insecure-origin-as-secure';
+  function platform() {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+    if (/Android/.test(ua)) return /Chrome\//.test(ua) && !/EdgA|SamsungBrowser|Firefox|OPR/.test(ua) ? 'android-chrome' : 'android-other';
+    return 'other';
+  }
+  function copyButton(text, label) {
+    return `<button type="button" class="btn small" data-install-copy="${esc(text)}">${esc(label || 'Copy')}</button>`;
+  }
+  function installHtml() {
+    const app = window.DesktopApp;
+    if (app && app.standalone()) return '<p class="pi-done"><span class="phone-tick" aria-hidden="true">✓</span> You’re using the installed app right now.</p>';
+    if (tourOn()) return '<p>This public page is a recording. Run Deja Vu1 on your computer, open it on your phone, then install it from there.</p>';
+    if (app && app.canPrompt()) return `<p>Your phone is ready. One tap adds Deja Vu1 to your home screen.</p>
+      <button type="button" class="btn primary block" data-install="go">Install Deja Vu1</button>`;
+    const kind = platform(), origin = location.origin;
+    if (kind === 'ios') return `<ol class="pi-steps">
+        <li>Tap the <b>Share</b> button in Safari.</li>
+        <li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li></ol>
+      <p class="field-hint">It opens full screen from your home screen. Safari only offers this from its own Share menu.</p>`;
+    if (window.isSecureContext) return `<ol class="pi-steps">
+        <li>Open the browser menu <b>⋮</b>.</li>
+        <li>Choose <b>Install app</b> or <b>Add to Home screen</b>, then <b>Install</b>.</li></ol>
+      <p class="field-hint">If only “Create shortcut” shows, reload this page once and try again.</p>`;
+    if (kind === 'android-chrome') return `<p>Chrome installs apps only from secure addresses. Your phone opens Deja Vu1 at <code>${esc(origin)}</code>, a home-network address, so Chrome offers just a shortcut. Tell Chrome to trust this one address, once:</p>
+      <ol class="pi-steps">
+        <li><span>Copy this, paste it into Chrome’s address bar and open it.</span><span class="pi-copy"><code>${esc(FLAG)}</code>${copyButton(FLAG)}</span></li>
+        <li><span>Under <b>Insecure origins treated as secure</b>, paste this address into the box and set it to <b>Enabled</b>.</span><span class="pi-copy"><code>${esc(origin)}</code>${copyButton(origin)}</span></li>
+        <li><span>Tap <b>Relaunch</b> at the bottom.</span></li>
+        <li><span>Come back here. An <b>Install Deja Vu1</b> button appears, or use the menu <b>⋮</b> → <b>Add to Home screen</b> → <b>Install</b>.</span></li>
+      </ol>
+      <p class="field-hint">This trusts only <code>${esc(origin)}</code>, your own computer on your own Wi-Fi. If the computer’s address changes, add the new one the same way. Another route: open Deja Vu1 through an https address from a private tunnel (Settings → Away from home on the computer), and Chrome can install it with no setting at all.</p>`;
+    if (kind === 'android-other') return `<p>Open this page in <b>Chrome</b> to install it as an app: copy the address below into Chrome, then come back to <b>More → Install app</b>.</p>
+      <p class="pi-copy"><code>${esc(origin)}</code>${copyButton(origin)}</p>`;
+    return '<p>Open this dashboard on your phone (Settings → Paired devices on the computer shows a code to scan), then choose <b>More → Install app</b> there.</p>';
+  }
+  function renderInstall(host) {
+    if (!host) return;
+    host.innerHTML = installHtml();
+    host.onclick = async (e) => {
+      const c = e.target.closest('[data-install-copy]');
+      if (c) {
+        const text = c.dataset.installCopy;
+        (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+          .then(() => toast('Copied', 'ok'), () => toast(text, 'info', 10000));
+      } else if (e.target.closest('[data-install="go"]') && window.DesktopApp) {
+        await DesktopApp.install();
+        refreshInstall();
+      }
+    };
+  }
+  let installDialog = null;
+  function refreshInstall() {
+    renderInstall($('phone-install-body'));
+    if (installDialog && installDialog.open) renderInstall(installDialog.querySelector('.pi-body'));
+  }
+  function install() {
+    if (!installDialog) {
+      installDialog = document.createElement('dialog');
+      installDialog.className = 'phone-dialog install-dialog';
+      installDialog.setAttribute('aria-labelledby', 'pi-title');
+      installDialog.innerHTML = `<div class="phone-sheet">
+          <header class="phone-head"><div><p class="eyebrow">Your phone</p><h2 id="pi-title">Install Deja Vu1</h2></div>
+          <button type="button" class="guide-x" aria-label="Close">×</button></header>
+          <div class="pi-body"></div></div>`;
+      installDialog.addEventListener('click', e => { if (e.target === installDialog || e.target.closest('.guide-x')) installDialog.close(); });
+      document.body.append(installDialog);
+    }
+    renderInstall(installDialog.querySelector('.pi-body'));
+    if (!installDialog.open) installDialog.showModal();
+  }
+  addEventListener('appinstalled', () => setTimeout(refreshInstall, 50));
+
+  document.addEventListener('DOMContentLoaded', () => { redeemFromLink(); refreshInstall(); });
+  return { open, close, install, refreshInstall };
 })();

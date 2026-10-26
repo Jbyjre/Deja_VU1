@@ -105,6 +105,20 @@ def sync_real_printers():
                 continue                  # an address saved before validation was this strict
 
 
+def normalise_url(url):
+    """
+    What people type, as a Moonraker address: "192.168.1.50" or
+    "u1.local" become http://...:7125 (the port Moonraker listens on; the
+    printer's own web page on port 80 forwards to the same Moonraker).
+    """
+    url = str(url or "").strip().rstrip("/")
+    if url and "://" not in url:
+        url = "http://" + url
+        if not re.search(r":\d+$", url):
+            url += ":7125"
+    return url
+
+
 def check_url(url):
     """A Moonraker address the dashboard can connect to, or a reason in words."""
     if not _URL.match(str(url or "").strip()):
@@ -117,7 +131,7 @@ def check_url(url):
 
 def add(name, moonraker_url, api_key=None):
     name = str(name or "").strip()[:40]
-    url = str(moonraker_url or "").strip()
+    url = normalise_url(moonraker_url)
     api_key = str(api_key or "").strip()
     if not name:
         raise ValueError("Give the printer a name")

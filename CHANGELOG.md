@@ -10,6 +10,72 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.10.0 (26 October 2026): connections you can count on
+
+- **Printer connections checked against the printers' own code.** Every
+  connection path was read against Snapmaker's `u1-moonraker` (`a308cfa`, still
+  the newest), Snapmaker's `u1-klipper` (now `93cb12f`, firmware 2.0.0) and the
+  community Extended Firmware (`417e639`, with its camera service `v4l2-mpp`
+  `9279584`). These are GPL-3 projects and Deja Vu1 is MIT, so no code was
+  copied: the addresses, login rules, camera paths and message formats were
+  matched to what their code does.
+- **Printers with a login.** The Extended Firmware's "Web Authentication"
+  switches off Moonraker's trusted-network rule and creates an `admin` user
+  with a random password. **Add a printer** and setup now offer a sign-in when
+  a printer asks for one: `POST /access/login`, then `GET /access/api_key` with
+  that token (both from Moonraker's `authorization.py`). Only the key is saved;
+  the password is used for those two requests and never stored or logged
+  (`POST /api/printers/login`).
+- **Addresses as people type them.** `192.168.1.50` or `u1.local` become
+  `http://…:7125`; the address boxes no longer insist on `http://`.
+- **Camera.** Pictures come first from the camera Moonraker lists
+  (`/server/webcams/list`; the Extended Firmware publishes
+  `/webcam/snapshot.jpg` there), then from Snapmaker's own monitor. The monitor
+  request now carries the integer `req_id` that `repeater.py` expects, waits
+  past its 10-second limit, and a `{"state": "failed"}` reply is shown as a
+  failure instead of being taken for success. If both fail, both reasons are
+  shown. A listed camera address is only ever fetched from the printer itself.
+- **Find my printer's camera** (Settings → Camera, `POST /api/camera/find`)
+  tries the listed camera's MJPEG feed (`/webcam/stream.mjpg` on the Extended
+  Firmware), checks that a picture really arrives and saves it.
+- **Firmware 2.0.0 file names.** Klipper ends a command's arguments at `#`, `*`
+  or `;` (`klippy/gcode.py`), and 2.0.0 refuses the resulting empty name. Start
+  now refuses such a name first, in words. The app's own uploads already
+  replace those characters.
+- **A simpler phone.** The strip under the header (search, Camera, Set up &
+  help) and the line under the tab bar move into **More**, which becomes a
+  sheet: search, Care, Automations, Photo studio, Games, Settings, then Camera,
+  Show me this screen, Help & setup and Install app. The demo notice is one
+  line, the print bar is one row (hidden on Control, which has its own
+  buttons), the status strip steps aside while the print bar shows the same
+  thing, and "Needs you" keeps its buttons beside each item. Cards that belong
+  to the computer stay there: the desktop app, the update commands, recovery
+  folders, remote-access setup, slicer paths, Stop and the phone QR code.
+  Settings shows the newest two versions and the first six modules, with one
+  tap for the rest. Measured at 390 px wide against 0.9.0, the page
+  is shorter on every screen: Settings 16,779 → 9,952 pixels, Overview
+  5,825 → 5,062, Files 5,154 → 4,775, Care 4,959 → 4,542, Control 2,470 → 2,091.
+- **Install on Android.** Chrome installs a web app only from a secure address
+  (Chromium `installable_evaluator.cc`): HTTPS with a valid certificate,
+  localhost, or an address in its "Insecure origins treated as secure" setting
+  (`chrome://flags`, available on Android). A phone opens Deja Vu1 at a plain
+  home-network address, so Chrome offered only a shortcut. **More → Install
+  app** (and Settings → Install on this phone) now detects the case: a one-tap
+  Install button when Chrome allows it; otherwise the exact setting and this
+  computer's address with copy buttons; Safari's Share steps on iPhone; and the
+  HTTPS tunnel as the other route.
+- **One dot colour.** While a print ran, the dots filled from the bottom in the
+  filament's colours, which read as an orange line over black. Every dot is now
+  one colour, the colour set's own unless **Settings → Appearance → Dot colour**
+  picks another (seven presets or any colour).
+- **Wording.** The app, the product page and the link-preview image no longer
+  carry testing-status notes. Demo data stays labelled as demo data. The
+  README's Current status keeps the full record.
+- Verified: the full suite, Chromium at 1366 px and at 412 px (the Pixel 6 Pro's
+  width) on the local server, a network address and the static online demo.
+  Not verified: a physical U1, a real Extended Firmware camera, a real Android
+  install through the Chrome setting.
+
 ## 0.9.0 (25 October 2026): updates that install every time
 
 - **Fixed: 0.8.0's Install button could never install.** Its check for running

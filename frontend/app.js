@@ -128,7 +128,7 @@ const realFetch = window.fetch.bind(window);
 const tour = { on: false, rec: null, started: 0, misses: new Set(),
   sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {}, maint: {} } };
 const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
-const TOUR_REFUSED = "This is the online demo: a recording of the simulated farm, so nothing here reaches a printer. "
+const TOUR_REFUSED = "This is the online demo: a recording of the demo printers, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
 const TOUR_IGNORED = new Set(['demo', 'since', 'v', 't', '_', 'device']);
 
@@ -150,7 +150,7 @@ async function startTour() {
   showTourBar();
   setTimeout(() => {
     const toggle = $('demo-toggle');
-    if (toggle) { toggle.checked = true; toggle.disabled = true; toggle.title = 'The online demo always shows the simulated farm'; }
+    if (toggle) { toggle.checked = true; toggle.disabled = true; toggle.title = 'The online demo always shows the demo printers'; }
     if (window.Workshop) Workshop.reconnect();
   }, 0);
   return true;
@@ -527,9 +527,9 @@ function showTourBar() {
   const r = tour.rec, minutes = Math.round(r.frames.length * (r.step || 1) / 6) / 10;
   bar.innerHTML = `<span class="notice-mark" aria-hidden="true">i</span>
     <div class="sbn-body">
-      <p><strong>Online demo.</strong> A recording of ${r.printers.length} simulated U1s that loops every
+      <p><strong>Online demo.</strong> <span class="notice-long">A recording of ${r.printers.length} demo printers that loops every
         ${minutes} minutes, and one jams halfway. Click anything: what would change something says so,
-        because nothing here reaches a printer. Every figure is simulated.</p>
+        because nothing here reaches a printer.</span><span class="notice-short">${r.printers.length} demo printers, recorded. Nothing here reaches a printer.</span></p>
       <p><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md">Run it with your own printer</a>
         &middot; <a href="welcome.html">What Deja Vu1 is</a></p>
     </div>`;
@@ -1042,7 +1042,9 @@ function initSettingsJumps() {
     const title = h.textContent.replace(/\s+/g, ' ').trim().replace(/ New version available$/, '');
     if (!title || card.closest('[hidden]') && card.closest('[hidden]') !== panel) return;
     if (!card.id) card.id = `set-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || i}`;
-    links.push(`<a href="#${card.id}" class="chip-btn">${esc(title)}</a>`);
+    // A card shown only on a computer or only on a phone takes its link with it.
+    const where = card.classList.contains('desk-only') ? ' desk-only' : card.classList.contains('phone-only') ? ' phone-only' : '';
+    links.push(`<a href="#${card.id}" class="chip-btn${where}">${esc(title)}</a>`);
   });
   nav.innerHTML = `<span>Jump to</span>${links.join('')}`;
   nav.addEventListener('click', e => {
@@ -1072,6 +1074,7 @@ function initTabs() {
     });
     panels.forEach(p => { p.hidden = p.id !== `tab-${name}`; });
     store.set(TAB_KEY, name);
+    document.body.dataset.tab = name;
     const intro = $('tab-intro');
     if (intro && TAB_INTROS[name]) intro.innerHTML = `<strong>${esc(TAB_NAMES[name] || name)}</strong> ${esc(TAB_INTROS[name])}`
       + (window.Guide && Guide.has(name) ? ` <button type="button" class="tips-btn" data-tips="${esc(name)}"><span aria-hidden="true">✦</span> Show me this screen</button>` : '');
@@ -1112,17 +1115,11 @@ function renderStatusRibbon(data) {
     $('rb-done').hidden = true;
     lastPrinterState = null;
     mirrorInTab(null);
-    if (typeof Backdrop !== 'undefined') Backdrop.progress(null);
     return;
   }
 
   lastPrinterState = data;
   mirrorInTab(data);
-  // The background fills up as the print does (backdrop.js).
-  if (typeof Backdrop !== 'undefined') {
-    const head = data.toolheads && data.toolheads[data.active_toolhead];
-    Backdrop.progress(['printing', 'paused'].includes(data.state) ? data.progress : null, head && head.filament_color_hex);
-  }
   const isPrinting = data.state === 'printing';
   ribbon.classList.toggle('is-live', isPrinting);
 
@@ -1822,7 +1819,14 @@ async function loadModules() {
         <input type="checkbox" ${m.enabled ? 'checked' : ''} data-module="${esc(m.id)}" aria-label="${esc(m.name)}">
         <span class="switch-track ${m.enabled ? 'is-on' : ''}" aria-hidden="true"><span class="switch-knob"></span></span>
       </label>
-    </div>`).join('');
+    </div>`).join('')
+    // A phone shows the first few; the rest are one tap away (theme.css).
+    + `<button type="button" class="btn block mod-more" aria-expanded="false">Show all ${(data.modules || []).length} modules</button>`;
+  host.querySelector('.mod-more').addEventListener('click', e => {
+    const open = host.classList.toggle('is-open');
+    e.currentTarget.setAttribute('aria-expanded', String(open));
+    e.currentTarget.textContent = open ? 'Show fewer' : `Show all ${(data.modules || []).length} modules`;
+  });
 
   // The switch stays where you put it but dims while the server saves it;
   // if the server says no, it goes back and says why.

@@ -33,6 +33,37 @@ class StockCamera(unittest.TestCase):
             stock_camera.snapshot(self.printer)
         self.assertIsNone(stock_camera._sessions['camera-test'].frame)
 
+    def test_monitor_request_carries_the_req_id_snapmaker_expects(self):
+        stock_camera.snapshot(self.printer)
+        start = self.fake.camera_params[0]
+        self.assertEqual((start['domain'], start['interval']), ('lan', 0))
+        self.assertIsInstance(start['req_id'], int)
+
+    def test_a_failed_state_reply_is_a_failure_not_a_picture(self):
+        # u1-moonraker repeater.py answers {"state": "failed"} instead of an error.
+        self.fake.camera_failed = 'camera service busy'
+        with self.assertRaisesRegex(ValueError, 'camera service busy'):
+            stock_camera.snapshot(self.printer)
+
+    def test_listed_webcam_is_used_first_and_only_on_the_printer(self):
+        # The Extended Firmware lists its camera with Moonraker (/webcam/snapshot.jpg).
+        host, port = self.fake.url.split('//')[1].split(':')
+        self.fake.webcams = [
+            {'name': 'elsewhere', 'enabled': True, 'snapshot_url': 'http://203.0.113.9/snap.jpg'},
+            {'name': 'case', 'enabled': True, 'service': 'webrtc-camerastreamer', 'stream_url': '/webcam/webrtc',
+             'snapshot_url': f'http://{host}:{port}/webcam/snapshot.jpg'}]
+        self.fake.webcam_picture = b'\xff\xd8extended-firmware\xff\xd9'
+        self.assertEqual(stock_camera.snapshot(self.printer), self.fake.webcam_picture)
+        self.assertEqual(self.fake.camera_params, [])
+        self.assertEqual(stock_camera._sessions['camera-test'].source, 'webcam')
+
+    def test_a_broken_listed_webcam_falls_back_to_the_monitor(self):
+        host, port = self.fake.url.split('//')[1].split(':')
+        self.fake.webcams = [{'name': 'case', 'enabled': True, 'snapshot_url': f'http://{host}:{port}/webcam/snapshot.jpg'}]
+        picture = stock_camera.snapshot(self.printer)
+        self.assertTrue(picture.startswith(b'\xff\xd8fake-camera-fixture'))
+        self.assertEqual(stock_camera._sessions['camera-test'].source, 'monitor')
+
     def test_printers_do_not_share_camera_sessions(self):
         other = FakeMoonraker()
         self.addCleanup(other.close)

@@ -54,6 +54,8 @@ API endpoints
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
   POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125)
   POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
+  POST /api/printers/login            read a printer's API key with its web-page login {"moonraker_url", "username", "password"}
+  POST /api/camera/find               find and save the selected printer's camera feed
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
 
@@ -1361,9 +1363,21 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("fleet"):
                 return None
             body = self._read_json_body()
-            url = str(body.get("moonraker_url") or "").strip()
+            url = fleet.normalise_url(body.get("moonraker_url"))
             fleet.check_url(url)
-            return self._send_json(discovery.probe(url, str(body.get("api_key") or "").strip() or None))
+            return self._send_json({**discovery.probe(url, str(body.get("api_key") or "").strip() or None),
+                                    "url": url})
+
+        if route == "/api/printers/login":
+            # Signs in once with the printer's own username and password and
+            # hands back its API key. Neither the password nor the key is saved here.
+            if self._module_blocked("fleet"):
+                return None
+            body = self._read_json_body()
+            url = fleet.normalise_url(body.get("moonraker_url"))
+            fleet.check_url(url)
+            key = discovery.key_from_login(url, body.get("username"), body.get("password"))
+            return self._send_json({"url": url, "api_key": key})
 
         if route == "/api/fleet/registry":
             if self._module_blocked("fleet"):
@@ -1380,6 +1394,19 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("camera"):
                 return None
             return self._send_json(camera.save_settings(self._read_json_body()))
+
+        if route == "/api/camera/find":
+            # Reads the selected printer's camera list and saves the first
+            # feed that really answers with a picture.
+            if self._module_blocked("camera"):
+                return None
+            self._read_json_body()
+            printer = mock_moonraker.real_printer(mock_moonraker.selected_printer_id())
+            if printer is None:
+                raise ValueError("Choose a connected printer first. Demo printers have no camera")
+            found = camera.find_printer_stream(printer)
+            camera.save_settings({"stream_url": found["stream_url"]})
+            return self._send_json(found)
 
         if route == "/api/camera/webrtc/settings":
             if self._module_blocked("webrtc_camera"):

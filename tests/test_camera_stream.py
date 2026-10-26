@@ -112,3 +112,38 @@ class TestFramesWithoutAViewer(unittest.TestCase):
     def test_nothing_is_read_without_a_camera(self):
         camera.save_settings({"stream_url": ""})
         self.assertFalse(camera.keep_frames_coming(3))
+
+
+class TestFindPrinterCamera(unittest.TestCase):
+    """The camera Moonraker lists (moonraker/components/webcam.py), as the Extended Firmware publishes it."""
+
+    def test_candidates_follow_the_listed_camera_and_stay_on_the_printer(self):
+        cams = [{"name": "case", "enabled": True, "service": "webrtc-camerastreamer",
+                 "stream_url": "/webcam/webrtc", "snapshot_url": "/webcam/snapshot.jpg"},
+                {"name": "off", "enabled": False, "stream_url": "/webcam2/webrtc"},
+                {"name": "far", "enabled": True, "service": "mjpegstreamer", "stream_url": "http://203.0.113.9/x"}]
+        got = camera.stream_candidates("http://192.168.1.5", cams)
+        self.assertEqual(got[:3], ["http://192.168.1.5/webcam/stream.mjpg", "http://192.168.1.5/webcam/?action=stream",
+                                   "http://192.168.1.5/webcam/snapshot.jpg"])
+        self.assertFalse(any("203.0.113.9" in u or "webcam2" in u for u in got))
+
+    def test_an_mjpeg_service_uses_its_own_stream_address(self):
+        cams = [{"enabled": True, "service": "mjpegstreamer-adaptive", "stream_url": "/cam/?action=stream"}]
+        self.assertEqual(camera.stream_candidates("http://10.0.0.2", cams)[0], "http://10.0.0.2/cam/?action=stream")
+
+    def test_find_saves_the_first_feed_that_really_answers(self):
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import moonraker_client as mc
+        from fake_moonraker import FakeMoonraker
+        fake = FakeMoonraker()
+        self.addCleanup(fake.close)
+        fake.webcam_picture = JPEG
+        host_port = fake.url.split("//")[1]
+        fake.webcams = [{"name": "case", "enabled": True, "service": "webrtc-camerastreamer",
+                         "stream_url": f"http://{host_port}/webcam/webrtc"}]
+        printer = mc.MoonrakerPrinter("find-cam", "Bench", fake.url)
+        found = camera.find_printer_stream(printer, timeout=2)
+        self.assertEqual(found["stream_url"], f"http://{host_port}/webcam/stream.mjpg")
+        fake.webcam_picture = None
+        with self.assertRaisesRegex(ValueError, "No camera feed answered"):
+            camera.find_printer_stream(printer, timeout=1)

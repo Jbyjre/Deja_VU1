@@ -274,6 +274,9 @@ dialog.glass-dialog:has(.wide) { width: min(980px, calc(100vw - 32px)); }
 .reg-err { color: var(--bad-text); font-weight: 600; }
 .inline-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .inline-form input[type="text"], .inline-form input[type="url"], .inline-form input[type="search"] { flex: 1 1 200px; min-width: 0; }
+.fleet-login { padding-top: 4px; }
+.fleet-login .field-hint { flex: 1 1 100%; margin: 0; }
+.fleet-login input[type="password"] { flex: 1 1 160px; min-width: 0; }
 
 /* ---- overview: live row --------------------------------------------------------- */
 

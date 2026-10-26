@@ -17,10 +17,12 @@
  * hidden things: a ripple where you click an empty part of the page, a
  * bloom after three quick clicks, a charge-and-release on a long press, a
  * sweep across the screen as each minute turns over, the time drawn in dots
- * on the hour, a burst in the filament's colour when a print finishes, and
- * two secrets typed on the keyboard. New surprises go in SURPRISES below.
- * While a print runs, Dots and Constellation fill from the bottom up in
- * its filament's colour, as far as the print has got (`progress`).
+ * on the hour, a burst when a print finishes, and two secrets typed on the
+ * keyboard. New surprises go in SURPRISES below.
+ *
+ * Every dot is one colour (the owner, October 2026: a print-progress fill
+ * in the filament's colours read as a stray orange line over black). It is
+ * the colour set's own colour unless "Dot colour" in the picker sets another.
  *
  * Cost, which matters because the glass bars blur what is behind them: the
  * canvas only draws while something is moving (the pointer, a ripple, a
@@ -55,14 +57,20 @@ const Backdrop = (() => {
     lively: { label: 'Lively', reach: 1, push: 1, swirl: 1, spring: 1 },
     wild:   { label: 'Wild',   reach: 1.35, push: 1.7, swirl: 1.6, spring: 0.8 },
   };
-  const DEFAULT = { style: 'dots', palette: 'glacier', energy: 'lively', surprises: true };
+  const DEFAULT = { style: 'dots', palette: 'glacier', energy: 'lively', surprises: true, dot: '' };
+  /* Dot colour choices; '' follows the colour set. Any other #rrggbb comes
+   * from the colour well. Mid-tone, so the pale page keeps its text contrast. */
+  const DOTS = [
+    { id: '', label: 'Match the colours' },
+    { id: '#3f8cff', label: 'Blue' }, { id: '#18b07b', label: 'Green' }, { id: '#8a5cf6', label: 'Violet' },
+    { id: '#e0567a', label: 'Pink' }, { id: '#f08a24', label: 'Orange' }, { id: '#5d6f8c', label: 'Slate' }, { id: '#1c1c1e', label: 'Black' },
+  ];
 
   let prefs = load();
   let canvas = null, ctx = null, W = 0, H = 0, dpr = 1, raf = 0, last = 0, lastInput = -1e9, energy = 0, clock = 0;
   const pointer = { x: -1e4, y: -1e4, sx: -1e4, sy: -1e4, vx: 0, vy: 0, t: 0, inside: false, down: 0, downAt: 0 };
   let blobs = [], glow = { x: 0, y: 0, a: 0 }, trail = [], grid = null, colours = null;
   let waves = [], sweeps = [], sparks = [], mask = null, charge = null, rainbow = 0;
-  let fill = null;              // a running print: { p: 0..1, c: [r, g, b] }
   const pickers = new Set();
 
   function load() {
@@ -75,6 +83,7 @@ const Backdrop = (() => {
       if (PALETTES[saved.palette]) out.palette = saved.palette;
       if (ENERGY[saved.energy]) out.energy = saved.energy;
       if (typeof saved.surprises === 'boolean') out.surprises = saved.surprises;
+      if (hexToRgb(saved.dot)) out.dot = saved.dot.toLowerCase();
     } catch (e) { /* private mode or blocked storage: the defaults are fine */ }
     return out;
   }
@@ -117,6 +126,11 @@ const Backdrop = (() => {
     };
   }
   function resolveColours() {
+    const c = paletteColours();
+    c.dot = hexToRgb(prefs.dot) || c.glow;
+    return c;
+  }
+  function paletteColours() {
     const p = PALETTES[prefs.palette] || PALETTES.glacier;
     if (prefs.palette === 'daylight') return daylight();
     if (prefs.palette !== 'filament') {
@@ -140,7 +154,7 @@ const Backdrop = (() => {
       const [r, g, b] = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
       return [r + 30, g + 30, b + 30];
     }
-    return colours.glow;
+    return colours.dot;
   }
 
   /* ---- setup ---- */
@@ -273,7 +287,7 @@ const Backdrop = (() => {
   }
   function bloom(x, y) {
     for (let i = 0; i < 4; i++) setTimeout(() => ripple(x, y, 1.2 + i * 0.35), i * 140);
-    sparksAt(x, y, 46, colours.blobs.concat([litColour()]));
+    sparksAt(x, y, 46, [litColour()]);
   }
   function sparksAt(x, y, n, palette) {
     if (!surprisesOn()) return;
@@ -297,9 +311,8 @@ const Backdrop = (() => {
     mask = { text, t: 0, dur: seconds, cells: null };
     wake();
   }
-  function celebrate(hexes) {
-    const list = (Array.isArray(hexes) ? hexes : [hexes]).map(hexToRgb).filter(Boolean);
-    const pal = list.length ? list : [litColour()];
+  function celebrate() {
+    const pal = [litColour()];
     bloom(W / 2, H * 0.4);
     setTimeout(() => sparksAt(W * 0.25, H * 0.3, 40, pal), 250);
     setTimeout(() => sparksAt(W * 0.75, H * 0.3, 40, pal), 450);
@@ -601,32 +614,21 @@ const Backdrop = (() => {
       ctx.strokeStyle = css(litColour(), 0.32); ctx.stroke(path);
       ctx.strokeStyle = css(litColour(), 0.14); ctx.stroke(hub);
     }
-    // Four brightness buckets keep this to a handful of fills.
+    // Four brightness buckets keep this to a handful of fills, all one colour:
+    // a lit dot is the same colour, only bigger and stronger.
     const buckets = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
-    const textDots = new Path2D(), filled = new Path2D(), layer = new Path2D();
-    // A running print fills the dots from the bottom up, in its filament's
-    // colour, as far as it has got; the row at the top is the layer printing now.
-    const fillY = fill ? H * (1 - fill.p) : Infinity;
+    const textDots = new Path2D();
     for (let i = 0; i < n; i++) {
       const x = hx[i] + ox[i], y = hy[i] + oy[i], b = Math.min(1, gl[i]);
       if (lit[i] > 0.05) { const r = 2 + lit[i] * 2.6; textDots.moveTo(x + r, y); textDots.arc(x, y, r, 0, Math.PI * 2); continue; }
       const moved = Math.min(1, (Math.abs(ox[i]) + Math.abs(oy[i])) / 30);
       const r = (joined ? 1.5 : 1.35) + b * 1.9 + moved * 0.9;
       const q = b < 0.08 ? 0 : b < 0.35 ? 1 : b < 0.7 ? 2 : 3;
-      if (q === 0 && hy[i] >= fillY) {
-        const top = hy[i] - fillY < STEP;
-        (top ? layer : filled).moveTo(x + r + (top ? 0.4 : 0), y); (top ? layer : filled).arc(x, y, r + (top ? 0.4 : 0), 0, Math.PI * 2);
-        continue;
-      }
       buckets[q].moveTo(x + r, y); buckets[q].arc(x, y, r, 0, Math.PI * 2);
     }
     const glowC = litColour();
-    ctx.fillStyle = css(colours.ink, joined ? 0.24 : 0.2); ctx.fill(buckets[0]);
-    if (fill) {
-      ctx.fillStyle = css(mix(colours.ink, fill.c, 0.85), 0.42); ctx.fill(filled);
-      ctx.fillStyle = css(fill.c, 0.9); ctx.fill(layer);
-    }
-    ctx.fillStyle = css(mix(colours.ink, glowC, 0.45), 0.4); ctx.fill(buckets[1]);
+    ctx.fillStyle = css(glowC, joined ? 0.3 : 0.26); ctx.fill(buckets[0]);
+    ctx.fillStyle = css(glowC, 0.42); ctx.fill(buckets[1]);
     ctx.fillStyle = css(glowC, 0.6); ctx.fill(buckets[2]);
     ctx.fillStyle = css(glowC, 0.85); ctx.fill(buckets[3]);
     if (mask) { ctx.fillStyle = css(glowC, 0.9); ctx.fill(textDots); }
@@ -651,6 +653,15 @@ const Backdrop = (() => {
             <span class="bp-name">${p.label}</span>
           </button>`).join('')}</div>
       </fieldset>
+      <fieldset class="bp-group"><legend>Dot colour</legend>
+        <div class="bp-dots" role="group" aria-label="Dot colour">${DOTS.map(d => `
+          <button type="button" class="bp-dot" data-dot="${d.id}" aria-pressed="false" title="${d.label}" aria-label="${d.label}">
+            <span aria-hidden="true" ${d.id ? `style="background:${d.id}"` : 'class="bp-dot-auto"'}></span></button>`).join('')}
+          <label class="bp-dot bp-dot-custom" title="Any colour"><span class="sr-only">Any colour</span>
+            <input type="color" data-dot-custom value="#3f8cff"></label>
+        </div>
+        <p class="bp-hint">Every dot uses this one colour, at rest and when it lights up.</p>
+      </fieldset>
       <div class="bp-row">
         <fieldset class="bp-group"><legend>Reaction</legend>
           <div class="pill-toggle bp-energy" role="group" aria-label="How strongly the background reacts">${Object.entries(ENERGY).map(([id, e]) => `
@@ -666,8 +677,11 @@ const Backdrop = (() => {
       const s = e.target.closest('[data-style]'), p = e.target.closest('[data-palette]'), en = e.target.closest('[data-energy]');
       if (s) set({ style: s.dataset.style });
       if (p) set({ palette: p.dataset.palette });
+      const d = e.target.closest('[data-dot]');
+      if (d) { set({ dot: d.dataset.dot }); ripple(innerWidth / 2, innerHeight / 2, 0.9); }
       if (en) { set({ energy: en.dataset.energy }); ripple(innerWidth / 2, innerHeight / 2, 1.2); }
     });
+    host.querySelector('[data-dot-custom]').addEventListener('input', (e) => set({ dot: e.target.value }));
     host.querySelector('[data-surprises]').addEventListener('change', (e) => {
       set({ surprises: e.target.checked });
       if (e.target.checked) { const r = e.target.getBoundingClientRect(); bloom(r.left + r.width / 2, r.top); }
@@ -688,10 +702,15 @@ const Backdrop = (() => {
     host.style.setProperty('--bp-a', css(c.blobs[0]));
     host.style.setProperty('--bp-b', css(c.blobs[1]));
     host.style.setProperty('--bp-c', css(c.blobs[2]));
-    host.style.setProperty('--bp-ink', css(c.ink, 0.35));
-    host.style.setProperty('--bp-glow', css(c.glow));
+    host.style.setProperty('--bp-ink', css(c.dot, 0.35));
+    host.style.setProperty('--bp-glow', css(c.dot));
+    host.style.setProperty('--bp-auto', css(paletteColours().glow));
     const mark = (sel, key) => host.querySelectorAll(sel).forEach(b => { const on = b.dataset[key] === prefs[key === 'energy' ? 'energy' : key]; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
     mark('[data-style]', 'style'); mark('[data-palette]', 'palette'); mark('[data-energy]', 'energy');
+    const preset = DOTS.some(d => d.id === prefs.dot);
+    host.querySelectorAll('[data-dot]').forEach(b => { const on = b.dataset.dot === prefs.dot; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+    const well = host.querySelector('[data-dot-custom]');
+    if (well) { well.closest('.bp-dot').classList.toggle('active', !preset); if (!preset) well.value = prefs.dot; }
     const box = host.querySelector('[data-surprises]');
     if (box) { box.checked = prefs.surprises; box.disabled = reducedMotion(); }
     const note = host.querySelector('[data-note]');
@@ -710,6 +729,7 @@ const Backdrop = (() => {
     if (!STYLES[prefs.style]) prefs.style = DEFAULT.style;
     if (!PALETTES[prefs.palette]) prefs.palette = DEFAULT.palette;
     if (!ENERGY[prefs.energy]) prefs.energy = DEFAULT.energy;
+    if (prefs.dot && !hexToRgb(prefs.dot)) prefs.dot = DEFAULT.dot;
     save();
     apply();
   }
@@ -717,15 +737,5 @@ const Backdrop = (() => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
 
-  /* The dashboard tells the background about a running print (app.js,
-   * renderStatusRibbon); null when nothing is printing. Dots and
-   * Constellation show it; the other styles ignore it. */
-  function progress(p, hex) {
-    const next = p == null || !isFinite(p) ? null : { p: Math.max(0, Math.min(1, p)), c: hexToRgb(hex) || (colours ? colours.glow : [63, 140, 255]) };
-    const same = (!next && !fill) || (next && fill && Math.abs(next.p - fill.p) < 0.002 && next.c.join() === fill.c.join());
-    fill = next;
-    if (!same && !raf && ctx) drawFrame(0);
-  }
-
-  return { STYLES, PALETTES, ENERGY, get: () => ({ ...prefs }), set, picker, ripple, bloom, celebrate, sweep, showText, progress };
+  return { STYLES, PALETTES, ENERGY, DOTS, get: () => ({ ...prefs }), set, picker, ripple, bloom, celebrate, sweep, showText };
 })();

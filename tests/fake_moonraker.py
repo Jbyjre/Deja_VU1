@@ -77,6 +77,12 @@ class FakeMoonraker:
         self.refuse_start_busy = u1        # the U1's 200-with-error start refusal
         self.corrupt_uploads = False
         self.http_faults = {}              # path -> {"status", "body", "delay", "truncate", "html"}
+        self.webcams = []                  # what /server/webcams/list answers (Moonraker's webcam.py)
+        self.webcam_picture = None         # bytes served at /webcam/snapshot.jpg and as /webcam/stream.mjpg
+        self.camera_params = []            # every camera.* params received (u1-moonraker wants req_id)
+        self.camera_failed = None          # repeater.py's {"state": "failed", "message": ...} reply
+        self.users = {}                    # username -> password; /access/login hands out a token
+        self._tokens = set()
         self.answer_pings = True
         self.gcode_errors = {}             # script prefix -> Klipper error message
         self.scripts = []                  # every gcode script received
@@ -283,7 +289,9 @@ class FakeMoonraker:
                 self._reply(status, {"error": {"code": status, "message": message}})
 
             def _authorised(self):
-                return not fake.api_key or self.headers.get("X-Api-Key") == fake.api_key
+                bearer = (self.headers.get("Authorization") or "")[7:]
+                return (not fake.api_key or self.headers.get("X-Api-Key") == fake.api_key
+                        or bearer in fake._tokens)
 
             def _fault(self, path):
                 f = fake.http_faults.get(path)
@@ -319,6 +327,29 @@ class FakeMoonraker:
                 if not self._authorised():
                     return self._error(401, "Unauthorized")
                 q = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+                if parsed.path == "/server/webcams/list":
+                    return self._reply(200, {"result": {"webcams": fake.webcams}})
+                if parsed.path == "/access/api_key":
+                    if (self.headers.get("Authorization") or "")[7:] not in fake._tokens:
+                        return self._error(401, "Unauthorized")
+                    return self._reply(200, {"result": fake.api_key})
+                if parsed.path in ("/webcam/snapshot.jpg", "/webcam/stream.mjpg"):
+                    if fake.webcam_picture is None:
+                        return self._error(404, "Not Found")
+                    if parsed.path.endswith(".jpg"):
+                        # stream-http.py streams the JPEG without a length and closes.
+                        self.send_response(200)
+                        self.send_header("Content-Type", "image/jpeg")
+                        self.end_headers()
+                        self.wfile.write(fake.webcam_picture)
+                        self.close_connection = True
+                        return None
+                    self.send_response(200)
+                    self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+                    self.end_headers()
+                    self.wfile.write(b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + fake.webcam_picture + b"\r\n")
+                    self.close_connection = True
+                    return None
                 # Moonraker serves its JSON-RPC methods over HTTP as well
                 # (server.info -> GET /server/info), with the same result.
                 if parsed.path == "/server/files/camera/monitor.jpg":
@@ -380,6 +411,19 @@ class FakeMoonraker:
                 raw = self.rfile.read(length) if length else b""
                 if self._fault(parsed.path):
                     return None
+                if parsed.path == "/access/login":
+                    # authorization.py: no sign-in needed to sign in; a wrong
+                    # password is "Invalid Password", an unknown user "Unregistered User".
+                    creds = json.loads(raw or b"{}")
+                    user = creds.get("username")
+                    if user not in fake.users:
+                        return self._error(400, f"Unregistered User: {user}")
+                    if fake.users[user] != creds.get("password"):
+                        return self._error(400, "Invalid Password")
+                    token = f"token-{len(fake._tokens) + 1}"
+                    fake._tokens.add(token)
+                    return self._reply(200, {"result": {"username": user, "token": token, "source": "moonraker",
+                                                        "refresh_token": "r-" + token, "action": "user_logged_in"}})
                 if not self._authorised():
                     return self._error(401, "Unauthorized")
                 if parsed.path == "/server/files/upload":
@@ -522,8 +566,11 @@ class FakeMoonraker:
         if self.api_key and not client["identified"]:
             return err(401, "Unauthorized")
         if method in ("camera.start_monitor", "camera.stop_monitor"):
+            self.camera_params.append(params)
             if getattr(self, "camera_refused", False):
                 return err(404, "Camera method not available")
+            if self.camera_failed and method == "camera.start_monitor":
+                return ok({"state": "failed", "message": self.camera_failed})
             self.camera_monitoring = method == "camera.start_monitor"
             self.camera_client = client["id"]
             return ok({"monitoring": self.camera_monitoring})

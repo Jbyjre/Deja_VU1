@@ -2,6 +2,50 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.10.0",
+      "date": "2026-10-26",
+      "name": "Connections you can count on",
+      "published": true,
+      "summary": "Printers with a password, the Extended Firmware's camera and printer firmware 2.0.0 now connect the way their own code expects. The phone layout is simpler, Android phones can install the app, and the background dots are one colour you choose.",
+      "highlights": [
+        {
+          "title": "Sign in to your printer",
+          "tab": "fleet",
+          "target": "#fleet-add-url",
+          "text": "Type just the printer's numbers. If its web page asks for a login, enter that username and password once: the app reads the printer's key and never keeps the password."
+        },
+        {
+          "title": "Find my printer's camera",
+          "tab": "modules",
+          "target": "#camera-find",
+          "text": "One press asks the printer which camera it has, checks that a picture really arrives and saves the address. Works with the Extended Firmware's camera."
+        },
+        {
+          "title": "One dot colour",
+          "tab": "modules",
+          "target": "#appearance-card",
+          "text": "Every background dot is now one colour. Pick it under Dot colour, or choose any colour at all."
+        },
+        {
+          "title": "A simpler phone",
+          "tab": "modules",
+          "target": "#device-lock",
+          "text": "Open Deja Vu1 on your phone: search, help, camera and the rarer screens live under More, and More → Install app puts it on the home screen."
+        }
+      ],
+      "changes": [
+        "Printers whose web page asks for a login (the Extended Firmware's Web Authentication) connect with that username and password, used once to read the printer's API key. The password is never saved.",
+        "Printer addresses can be typed as just the numbers (192.168.1.50); the app adds http:// and Moonraker's port.",
+        "Camera: the camera Moonraker lists (the Extended Firmware's /webcam/snapshot.jpg) is used first, then Snapmaker's own monitor, now sent with the req_id it expects and with a failed reply shown as a failure.",
+        "Settings → Camera → Find my printer's camera fills in and checks the live feed address.",
+        "Printer firmware 2.0.0: a file whose name contains #, * or ; is refused before sending, in words, because the U1 cannot start it.",
+        "Phone: a shorter first screen, a one-row print bar, and a More sheet with search, every other screen, Camera, help and Install app. Computer-only cards stay on the computer.",
+        "Android: Install app explains the one Chrome setting a home-network address needs, with copy buttons, and installs in one tap once Chrome allows it.",
+        "Background: all dots are one colour (no more orange and black band while printing), chosen under Settings → Appearance → Dot colour.",
+        "The app and product page drop the testing-status notes; the link preview image was redrawn."
+      ]
+    },
+    {
       "version": "0.9.0",
       "date": "2026-10-25",
       "name": "Updates that install every time",

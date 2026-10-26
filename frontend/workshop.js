@@ -591,6 +591,10 @@ const Workshop = (() => {
     out.hidden = false;
     out.className = `test-result ${r.ok && !r.error ? 'is-ok' : 'is-warn'}`;
     out.textContent = describeProbe(r);
+    // A printer behind a web-page sign-in: offer that sign-in instead of
+    // asking for an API key the owner has never seen.
+    $('fleet-login').hidden = !r.needs_key;
+    if (r.url) $('fleet-add-url').value = r.url;
   }
 
   function initFleet() {
@@ -603,11 +607,25 @@ const Workshop = (() => {
       btn.disabled = false; btn.textContent = 'Test';
       showTest(r.ok ? r.body : { ok: false, error: r.body.error });
     });
+    $('fleet-login').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = e.submitter || e.target.querySelector('button');
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      const r = await postJSON('/api/printers/login', { moonraker_url: $('fleet-add-url').value,
+        username: $('fleet-login-user').value, password: $('fleet-login-pass').value });
+      $('fleet-login-pass').value = '';
+      btn.disabled = false; btn.textContent = 'Sign in';
+      if (!r.ok) { showTest({ ok: false, needs_key: true, error: r.body.error }); return; }
+      $('fleet-add-key').value = r.body.api_key;
+      const t = await postJSON('/api/printers/test', { moonraker_url: r.body.url, api_key: r.body.api_key });
+      showTest(t.ok ? t.body : { ok: false, error: t.body.error });
+      if (t.ok && t.body.ok) toast('Signed in. The printer\'s key is filled in: press Add printer', 'ok', 6000);
+    });
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,
                                                          api_key: $('fleet-add-key').value });
-      if (r.ok) { toast(`${r.body.name} added, connecting to it now`, 'ok', 5000); e.target.reset(); }
+      if (r.ok) { toast(`${r.body.name} added, connecting to it now`, 'ok', 5000); e.target.reset(); $('fleet-login').hidden = true; }
       else toast(`Couldn't add it: ${r.body.error}`, 'bad', 6000);
       loadRegistry();
       // Show the connection opening (or why it can't) without a reload.
@@ -2727,6 +2745,14 @@ const Workshop = (() => {
       toast(r.ok ? 'Camera address saved' : `Not saved: ${r.body.error}`, r.ok ? 'ok' : 'bad');
       loadCamera();
     });
+    $('camera-find').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true; btn.textContent = 'Looking…';
+      const r = await postJSON(api('/api/camera/find'), {});
+      btn.disabled = false; btn.textContent = 'Find my printer\'s camera';
+      if (r.ok) { $('camera-url').value = r.body.stream_url; toast('Found the printer\'s camera and saved its address', 'ok'); loadCamera(); }
+      else toast(r.body.error || 'No camera answered', 'bad', 9000);
+    });
     $('webrtc-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await postJSON('/api/camera/webrtc/settings', { go2rtc_url: $('webrtc-url').value.trim(), stream: $('webrtc-stream').value.trim() });
@@ -2857,6 +2883,18 @@ const Workshop = (() => {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !sheet.hidden) { setSheet(false); more.focus(); }
     });
+    // The sheet's own tools: what the computer shows in the strip under the
+    // header (search, Camera, Set up & help) and the line under the tab bar.
+    sheet.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-more]');
+      if (!b) return;
+      setSheet(false);
+      const act = b.dataset.more;
+      if (act === 'camera') $('camera-open').click();
+      else if (act === 'help') $('setup-open').click();
+      else if (act === 'tips') { if (window.Guide && Guide.has(currentTab())) Guide.screen(currentTab()); else toast('This screen has no extra tips', 'info'); }
+      else if (act === 'install' && window.Phone) Phone.install();
+    });
     $('qa-next').addEventListener('click', (e) => startNext(e.currentTarget));
     $('live-pill').addEventListener('click', () => showTab('control'));
     $('qa-status').addEventListener('click', () => showTab('control'));
@@ -2874,10 +2912,16 @@ const Workshop = (() => {
    * the end of every tab can always be scrolled clear of it. */
   function initDockStack() {
     const dock = $('thumb-dock'), pill = $('live-pill'), offer = $('handoff');
+    const finder = qs('.feature-finder'), finderHome = qs('.launch-strip');
     const phone = window.matchMedia('(max-width: 720px)');
     const place = () => {
       if (phone.matches) dock.prepend(offer, pill);
       else dock.before(pill, offer);
+      // On a phone the search lives at the top of the More sheet.
+      if (finder && finderHome) {
+        if (phone.matches) $('ms-search').append(finder);
+        else if (!finderHome.contains(finder)) finderHome.querySelector('div').after(finder);
+      }
     };
     phone.addEventListener('change', place);
     place();
@@ -3134,7 +3178,7 @@ const Workshop = (() => {
       <div><span class="stat-key">Filament</span><b>${Number(s.grams).toFixed(1)} g ${esc(s.material)}</b></div>
       <div><span class="stat-key">Cost</span><b>${money(s.cost.total_cost)}</b></div>`;
     // The background joins in: a burst in the print's filament colour.
-    if (typeof Backdrop !== 'undefined') Backdrop.celebrate([s.color || '#4a8df8']);
+    if (typeof Backdrop !== 'undefined') Backdrop.celebrate();
     const dialog = $('celebrate-dialog');
     qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#4a8df8');
     qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#4a8df8');

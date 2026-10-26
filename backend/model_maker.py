@@ -211,7 +211,7 @@ def build(body):
         data=archive.getvalue()
     name=mode+'-'+uuid.uuid4().hex[:10]+'.3mf'
     entry=file_library.save(name,data,origin='generated',note='Generated '+mode+' model; inspect and slice before printing')
-    return {'file':entry,'preview':preview,'note':'This is model geometry, not G-code. Slice it to obtain real time and filament figures. Physical colour matching is unverified.'}
+    return {'file':entry,'preview':preview,'note':'This is model geometry, not G-code. Slice it to obtain real time and filament figures. Colours depend on your filaments: a printed swatch sheet shows the real result.'}
 
 
 def check_slice_contract(data,process,materials=None,preferred_heights=None):
