@@ -65,6 +65,7 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import outbound
@@ -207,3 +208,83 @@ def relay(upstream, write, should_stop):
             break
         splitter.feed(chunk)
         write(chunk)
+
+
+# ---------------------------------------------------------------------------
+# Finding the printer's own camera feed
+# ---------------------------------------------------------------------------
+# Moonraker lists the cameras it knows (GET /server/webcams/list, from
+# moonraker/components/webcam.py); a partial address there is on the printer
+# itself, port 80. The community Extended Firmware lists its camera with the
+# WebRTC player as stream_url ("/webcam/webrtc") and serves the same picture
+# as MJPEG beside it ("/webcam/stream.mjpg", from its stream-http service).
+# The older mjpg-streamer convention is "/webcam/?action=stream".
+
+_MJPEG_SERVICES = ("mjpegstreamer", "mjpegstreamer-adaptive", "uv4l-mjpeg", "ipstream")
+
+
+def _printer_address(base, url):
+    """An http(s) address on the printer's own host, or None for anything elsewhere."""
+    host = urllib.parse.urlsplit(base).hostname
+    full = url if "://" in url else f"http://{host}/{url.lstrip('/')}"
+    parts = urllib.parse.urlsplit(full)
+    if parts.scheme not in ("http", "https") or parts.hostname != host:
+        return None
+    return full
+
+
+def stream_candidates(base, webcams):
+    """Addresses worth trying for an MJPEG feed, best first, all on the printer at `base`."""
+    out = []
+
+    def add(url):
+        full = _printer_address(base, url) if url else None
+        if full and full not in out:
+            out.append(full)
+
+    for cam in webcams or []:
+        if not isinstance(cam, dict) or cam.get("enabled") is False:
+            continue
+        stream = str(cam.get("stream_url") or "").strip()
+        service = str(cam.get("service") or "").lower()
+        if stream and service in _MJPEG_SERVICES:
+            add(stream)
+        full = _printer_address(base, stream) if stream else None
+        if full:
+            folder = urllib.parse.urljoin(full, "./")
+            add(folder + "stream.mjpg")
+            add(folder + "?action=stream")
+        add(str(cam.get("snapshot_url") or "").strip())
+    for path in ("/webcam/stream.mjpg", "/webcam/?action=stream"):
+        add(path)
+    return out
+
+
+def find_printer_stream(printer, timeout=4):
+    """
+    The first camera address on this printer that really answers with a
+    picture: {"stream_url", "tried"}. Raises ValueError with what was tried.
+    """
+    webcams = []
+    try:
+        listed = printer.http.request("GET", "/server/webcams/list", timeout=timeout)
+        webcams = (listed or {}).get("webcams") or [] if isinstance(listed, dict) else []
+    except Exception:
+        webcams = []
+    base = f"{'https' if printer.endpoint.tls else 'http'}://{printer.endpoint.host}"
+    tried = []
+    for url in stream_candidates(base, webcams):
+        try:
+            upstream = open_stream(url, timeout=timeout)
+        except ValueError as exc:
+            tried.append(f"{url}: {exc}")
+            continue
+        try:
+            ctype = upstream.headers.get("Content-Type", "")
+        finally:
+            upstream.close()
+        if looks_like_camera(ctype):
+            return {"stream_url": url, "tried": len(tried) + 1}
+        tried.append(f"{url}: answered {ctype or 'with no content type'}, not a picture")
+    raise ValueError("No camera feed answered on the printer. Tried " + "; ".join(tried[:4])
+                     + ". The built-in camera's still pictures still work under U1 built-in camera.")

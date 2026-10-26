@@ -8,8 +8,15 @@ install on the printer.
 
 1. Find the printer's address on your network - the same one Fluidd or
    Mainsail uses, usually `http://<printer-ip>:7125`.
-2. In the dashboard: **Printers → Add a printer**. Give it a name, paste the
-   address, and add an API key only if your Moonraker asks for one.
+2. In the dashboard: **Printers → Add a printer**. Give it a name and type the
+   address (just `192.168.1.50` is enough: the app adds `http://` and port
+   7125). Press **Test**. If the printer's web page asks for a login (the
+   Extended Firmware's **Web Authentication** creates an `admin` user with a
+   random password), a sign-in row appears: enter that username and password
+   once. The app signs in (`POST /access/login`), reads the printer's API key
+   with that token (`GET /access/api_key`, both from Moonraker's
+   `authorization.py`) and keeps only the key. You can also paste an API key
+   yourself.
 3. It connects straight away. The row shows **Connected** within a few
    seconds, or says in words why it isn't (see below). The dashboard then
    opens on that printer, with demo data off.
@@ -57,7 +64,9 @@ on the same network (some routers block multicast; step 2 covers that).
 | Wrong address or port | "…refused the connection - is Moonraker running there, and is <port> its port? (Moonraker usually uses 7125)" |
 | Printer off / not on this network | "No answer from … within 5 s - is the printer on and on this network?" |
 | A name that doesn't resolve | "Can't find 'u1.local' on the network - check the printer's address" |
-| Moonraker wants a key | "Not connected: Unauthorized", or "Moonraker refused the live connection (401) - it needs an API key, or this computer added to trusted_clients". Remove the printer and add it again with its key (**Printers → Add a printer**), or add this computer to `[authorization] trusted_clients` |
+| Moonraker wants a key | "The printer answered and asks for a sign-in", "Not connected: Unauthorized", or "Moonraker refused the live connection (401) - it needs an API key, or this computer added to trusted_clients". Remove the printer and add it again, using the sign-in row or its key (**Printers → Add a printer**), or add this computer to `[authorization] trusted_clients` |
+| Wrong printer password | "The printer didn't accept that username and password. Check them on the printer's own web page and try again" |
+| A file name with `#`, `*` or `;` | "The U1 can't start a file whose name contains #, * or ;". Klipper ends a command's arguments at those characters (`klippy/gcode.py`), and firmware 2.0.0 refuses the empty name that results. Rename the file |
 | Moonraker up, Klipper not | "Moonraker is running, but Klipper isn't connected to it" (retried every 2 s, as Moonraker's docs say) |
 | Klipper restarting | The printer shows an error ("Moonraker is running, but Klipper isn't connected to it", or "Klipper is starting up"), then recovers by itself |
 | Wi-Fi drops | Its last reading stays on screen, labelled "No answer since 14:02"; commands are refused (the dashboard says no printer is connected); it reconnects by itself (1 s, 2 s, 4 s … up to 30 s apart) |
@@ -79,7 +88,8 @@ Sources, at the commits read:
 - Moonraker - [Arksine/moonraker](https://github.com/Arksine/moonraker) `1cfb0c4`
 - Snapmaker's U1 Moonraker - [Snapmaker/u1-moonraker](https://github.com/Snapmaker/u1-moonraker) `a308cfa`
 - Klipper - [Klipper3d/klipper](https://github.com/Klipper3d/klipper) `ce7002b`
-- Snapmaker's U1 Klipper - [Snapmaker/u1-klipper](https://github.com/Snapmaker/u1-klipper) `10f2f69`
+- Snapmaker's U1 Klipper - [Snapmaker/u1-klipper](https://github.com/Snapmaker/u1-klipper) `10f2f69`, re-read at `93cb12f` (firmware 2.0.0, October 2026)
+- The community Extended Firmware - [paxx12/SnapmakerU1-Extended-Firmware](https://github.com/paxx12/SnapmakerU1-Extended-Firmware) `417e639`, and its camera service [paxx12/v4l2-mpp](https://github.com/paxx12/v4l2-mpp) `9279584` (camera addresses, the Web Authentication login)
 
 What reading them changed - each of these would have been a bug on the
 first real connection, and none of them could show up against the
@@ -170,9 +180,20 @@ Said plainly, because a good test suite is not a real machine:
   objects aren't labelled.
 - **Filament after a touchscreen change.** Asked for every 30 s as well as
   pushed. This interval is a design choice, not measured device latency.
-- **The U1's own chamber camera.** Camera → Show built-in camera opens a
-  dedicated monitor connection using `camera.start_monitor`, reads the selected
-  printer's JPEG endpoint and closes it after idle time. Automated tests use a
+- **The U1's own chamber camera.** Camera → Show built-in camera first asks
+  Moonraker which cameras it knows (`/server/webcams/list`, Moonraker's
+  `webcam.py`). The Extended Firmware lists its camera there with
+  `snapshot_url: /webcam/snapshot.jpg`, served on port 80; a partial address is
+  on the printer itself, the way Moonraker resolves it. If no listed camera
+  answers, it opens a dedicated monitor connection using Snapmaker's
+  `camera.start_monitor` (WebSocket only, with the integer `req_id` that
+  `repeater.py` expects; a `{"state": "failed"}` reply counts as a failure),
+  reads `/server/files/camera/monitor.jpg` and closes it after idle time. A
+  listed address on any other machine is ignored. Automated tests use a
   stand-in. Camera quality, refresh cadence and compatibility on physical U1
-  firmware remain unverified. The manual stream and time-lapse settings are
+  firmware remain unverified.
+- **Find my printer's camera** (Settings → Camera) tries the listed camera's
+  MJPEG feed next to its player (`/webcam/stream.mjpg` from the Extended
+  Firmware's `stream-http.py`), then `/webcam/?action=stream`, keeps the first
+  that answers with a picture and saves it as the live feed address. The manual stream and time-lapse settings are
   separate, globally configured features.

@@ -251,8 +251,8 @@ def convert(data):
                                "nexprint": "NexPrint (Elegoo Slicer)",
                                "orca": "OrcaSlicer"}[source],
               "application": application, "changes": [], "kept": [], "warnings": [],
-              "unverified": ("Built from Snapmaker Orca's source code and profile files; not yet "
-                             "confirmed by opening the result in Snapmaker Orca itself.")}
+              "unverified": ("Built from Snapmaker Orca's source code and profile files. Open it in "
+                             "Snapmaker Orca to look over the plates before you print.")}
     new = dict(config)
 
     def change(key, value):

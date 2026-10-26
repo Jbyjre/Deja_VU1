@@ -76,7 +76,36 @@ class TestProbe(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertTrue(r["needs_key"])
         self.assertIn("API key", r["error"])
+        self.assertIn("sign-in", r["error"])
         self.assertTrue(discovery.probe(fake.url, "abcdef0123456789abcdef0123456789")["ok"])
+
+    def test_signing_in_with_the_web_page_login_reads_the_key(self):
+        # The Extended Firmware's "Web Authentication" makes an admin user
+        # and turns off the trusted-network rule (force_logins).
+        key = "abcdef0123456789abcdef0123456789"
+        fake = FakeMoonraker(api_key=key)
+        self.addCleanup(fake.close)
+        fake.users = {"admin": "s3cret-pass"}
+        self.assertEqual(discovery.key_from_login(fake.url, "admin", "s3cret-pass"), key)
+        self.assertIn(("POST", "/access/login"), fake.requests)
+        self.assertTrue(discovery.probe(fake.url, discovery.key_from_login(fake.url, "admin", "s3cret-pass"))["ok"])
+
+    def test_a_wrong_printer_password_is_said_in_words(self):
+        fake = FakeMoonraker(api_key="abcdef0123456789abcdef0123456789")
+        self.addCleanup(fake.close)
+        fake.users = {"admin": "right"}
+        for user, password in (("admin", "wrong"), ("nobody", "right")):
+            with self.assertRaisesRegex(ValueError, "didn't accept that username and password"):
+                discovery.key_from_login(fake.url, user, password)
+        with self.assertRaisesRegex(ValueError, "Enter the username and password"):
+            discovery.key_from_login(fake.url, "admin", "")
+
+    def test_typed_addresses_get_the_moonraker_port(self):
+        self.assertEqual(fleet.normalise_url("192.168.1.50"), "http://192.168.1.50:7125")
+        self.assertEqual(fleet.normalise_url(" u1.local "), "http://u1.local:7125")
+        self.assertEqual(fleet.normalise_url("192.168.1.50:80"), "http://192.168.1.50:80")
+        self.assertEqual(fleet.normalise_url("https://p.example/"), "https://p.example")
+        fleet.check_url(fleet.normalise_url("10.0.0.7"))
 
     def test_nothing_listening_is_said_in_words(self):
         s = socket.socket()

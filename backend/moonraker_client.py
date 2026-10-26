@@ -1603,6 +1603,12 @@ class MoonrakerPrinter:
                          "size": item.get("size", len(data))}, "action": reply.get("action", "create_file")}
 
     def start_print(self, filename, job=None):
+        # Klipper ends a command's arguments at "#", "*" or ";" (gcode.py),
+        # so SDCARD_PRINT_FILE gets no name; U1 firmware 2.0.0 then refuses
+        # with "Confirm whether the filename is legal" (virtual_sdcard.py).
+        if any(c in str(filename) for c in "#*;"):
+            raise ValueError(f"The U1 can't start a file whose name contains #, * or ; ({filename}). "
+                             "Rename it, then start it again")
         state = self._fresh_state()
         if state["state"] in ("printing", "paused"):
             raise ValueError("The printer is busy with another print")

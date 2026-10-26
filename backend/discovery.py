@@ -22,6 +22,7 @@ are U1s, and says in words which need an API key.
 
 import ipaddress
 import random
+import re
 import socket
 import struct
 import threading
@@ -236,8 +237,8 @@ def probe(url, api_key=None, timeout=3.0):
     if not info["ok"]:
         if info.get("status") in (401, 403):
             out["needs_key"] = True
-            out["error"] = ("Moonraker answered, and wants an API key (or this computer added to its "
-                            "[authorization] trusted_clients)")
+            out["error"] = ("The printer answered and asks for a sign-in. Enter the username and "
+                            "password from its web page (or its API key)")
         else:
             out["error"] = info["error"]
         return out
@@ -255,6 +256,41 @@ def probe(url, api_key=None, timeout=3.0):
     if out["klippy_state"] != "ready":
         out["error"] = f"Moonraker is running, but Klipper is {out['klippy_state']} - the printer may still be starting"
     return out
+
+
+def key_from_login(url, username, password, timeout=6.0):
+    """
+    The printer's Moonraker API key, read once with its own username and
+    password, for printers whose web page asks for a login (the Extended
+    Firmware's "Web Authentication" creates an "admin" user and switches off
+    the trusted-network rule). Moonraker's routes, from its source
+    (moonraker/components/authorization.py): POST /access/login
+    {username, password, source} -> {"token", ...}; GET /access/api_key with
+    "Authorization: Bearer <token>" -> the key. The password is used for
+    these two requests only and never saved; the key is what gets saved.
+    """
+    url = str(url or "").strip().rstrip("/")
+    username = str(username or "").strip()
+    if not username or not password:
+        raise ValueError("Enter the username and password you use for the printer's web page")
+    login = outbound.send(f"{url}/access/login", "the printer", method="POST", timeout=timeout,
+                          payload={"username": username, "password": str(password), "source": "moonraker"})
+    if not login["ok"]:
+        reason = login["error"] or ""
+        if login.get("status") in (400, 401, 403, 404) or "Invalid Password" in reason or "Unregistered" in reason:
+            raise ValueError("The printer didn't accept that username and password. "
+                             "Check them on the printer's own web page and try again")
+        raise ValueError(reason or "The printer didn't answer the sign-in")
+    body = login.get("body")
+    token = ((body or {}).get("result") or {}).get("token") if isinstance(body, dict) else None
+    if not isinstance(token, str) or not token:
+        raise ValueError("The printer answered the sign-in, but without a sign-in token")
+    key = outbound.send(f"{url}/access/api_key", "the printer", method="GET", timeout=timeout,
+                        headers={"Authorization": f"Bearer {token}"})
+    result = key["body"].get("result") if key["ok"] and isinstance(key.get("body"), dict) else None
+    if not isinstance(result, str) or not re.fullmatch(r"[A-Za-z0-9_\-]{8,128}", result):
+        raise ValueError(key.get("error") or "The printer signed you in but didn't hand over its API key")
+    return result
 
 
 def discover(registered_urls=(), wait=1.5, sweep_network=True, hosts=None):

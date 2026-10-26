@@ -181,7 +181,7 @@ def _write_to_hardware(ring_states):
     already final.
     """
     raise NotImplementedError(
-        "LED hardware driver not implemented. Awaiting physical U1 access."
+        "LED hardware driver not implemented yet."
     )
 
 

@@ -276,6 +276,32 @@ class TestPrinting(RealPrinterAPI):
         self.assertEqual(status, 502)
         self.assertIn("Must home axis first", body["error"])
 
+    def test_sign_in_and_bare_addresses_through_the_api(self):
+        key = "abcdef0123456789abcdef0123456789"
+        locked = FakeMoonraker(api_key=key)
+        self.addCleanup(locked.close)
+        locked.users = {"admin": "pw-from-firmware-config"}
+        bare = locked.url.split("//")[1]
+        status, body = self.request("/api/printers/test", {"moonraker_url": bare})
+        self.assertEqual((status, body["needs_key"], body["url"]), (200, True, locked.url))
+        status, body = self.request("/api/printers/login", {"moonraker_url": bare, "username": "admin",
+                                                            "password": "nope"})
+        self.assertEqual(status, 400)
+        self.assertIn("didn't accept", body["error"])
+        status, body = self.request("/api/printers/login", {"moonraker_url": bare, "username": "admin",
+                                                            "password": "pw-from-firmware-config"})
+        self.assertEqual((status, body["api_key"]), (200, key))
+        status, body = self.request("/api/printers/test", {"moonraker_url": bare, "api_key": key})
+        self.assertTrue(body["ok"], body)
+
+    def test_a_name_klipper_cannot_parse_is_refused_before_sending(self):
+        # Klipper ends arguments at "#", "*" or ";" (u1-klipper gcode.py), so
+        # firmware 2.0.0 refuses SDCARD_PRINT_FILE with an empty name.
+        printer = mock_moonraker.real_printer(self.pid)
+        with self.assertRaisesRegex(ValueError, "contains #"):
+            printer.start_print("bracket#2.gcode")
+        self.assertFalse(any(s.startswith("SDCARD_PRINT_FILE") for s in self.fake.scripts))
+
     def test_unknown_filament_asks_for_a_look_instead_of_guessing(self):
         file_library.add_samples()
         pc = self.fake.status["print_task_config"]
