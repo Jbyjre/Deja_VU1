@@ -18,39 +18,69 @@ Phone ── private encrypted connection ── computer running Deja Vu1
 ## Recommended: a private Tailscale connection
 
 Tailscale is a VPN: it gives approved devices a private network across the
-internet. Install it separately; Deja Vu1 does not bundle or configure it.
+internet. It's free for personal use; install it separately (Deja Vu1 does not
+bundle it).
 
 1. Install [Tailscale](https://tailscale.com/download) on the computer running
-   Deja Vu1 and on your phone. Sign both into your own Tailscale account and
-   complete any device approval your account requires.
-2. Start Deja Vu1 with its launcher. Confirm `http://localhost:8000` opens on
-   that computer.
-3. In Terminal (Mac/Linux) or PowerShell (Windows) on that computer, run:
+   Deja Vu1 and on your phone. Sign both into **the same** Tailscale account and
+   connect.
+2. On that computer, open Deja Vu1 at `http://localhost:8000` → **Settings →
+   Away from home** and press **Turn on Away from home**.
+3. The first time, Tailscale may ask you to switch on HTTPS for your account:
+   the card shows a **Switch on HTTPS in Tailscale** button. Sign in, press
+   Enable, and come back; the card notices by itself.
+4. The card then shows a private `https://<computer>.<tailnet>.ts.net` address
+   and a code. With Tailscale connected on the phone, point the phone's camera
+   at the code. Deja Vu1 opens and pairs. On the phone, **More → Install app**
+   puts it on the home screen; an https address installs without any Chrome
+   setting.
+5. Test it: turn the phone's Wi-Fi off, keep Tailscale connected, and open the
+   app on mobile data.
 
-   ```sh
-   tailscale serve --bg http://127.0.0.1:8000
-   ```
+What the button does: it runs Tailscale's own command,
+`tailscale serve --bg --yes http://127.0.0.1:8000`, which shares the dashboard
+privately with your Tailscale devices (**Serve**). It never uses **Funnel**,
+Tailscale's public sharing, which would put this login-less dashboard on the
+internet. Switching sharing on or off works only from the computer itself
+(`localhost`), never from a phone or through the shared address. **Stop
+sharing** runs `tailscale serve --https=443 off`.
 
-4. Follow Tailscale's displayed setup link if it asks you to enable HTTPS.
-   Copy the resulting `https://…ts.net` address. **Use Serve**, which is private
-   to your Tailscale network. Funnel is a separate public-sharing feature and
-   is unsuitable for this app without added authentication.
-5. On the phone, connect Tailscale, turn Wi-Fi off briefly to test mobile data,
-   and open that HTTPS address. Only approved devices allowed by your Tailscale
-   access policy should be able to reach it. Limit that policy to the people
-   who may control your printers.
-6. Add this HTTPS address to the home screen using Safari or Chrome. Keep
-   Tailscale connected when you use it away from home. Turn Wi-Fi back on after
-   testing if you normally use it at home.
+Only approved devices allowed by your Tailscale access policy can reach the
+address. Limit that policy to the people who may control your printers. A phone
+coming through Tailscale is never treated as "this computer": Tailscale passes
+on the address the phone asked for, so the optional device lock still applies.
 
-`.ts.net` names are already allowed by Deja Vu1. Check the setup with
-`tailscale serve status`; to stop sharing, use `tailscale serve --https=443 off`.
-This stops the HTTPS sharing configured above, not Deja Vu1 itself.
+**By hand, if you prefer:** run `tailscale serve --bg http://127.0.0.1:8000` in
+Terminal (Mac/Linux) or PowerShell (Windows), follow any HTTPS link it prints,
+and open the `https://…ts.net` address it shows. Check with
+`tailscale serve status`; stop with `tailscale serve --https=443 off`.
 [Official Serve command reference](https://tailscale.com/docs/reference/tailscale-cli/serve).
 
-HTTPS certificates can publish the device's domain name in public certificate
-records; choose a neutral machine name if that matters to you.
+**On Linux**, Tailscale may refuse a normal user. It then says, in its own
+words, to run `sudo tailscale set --operator=$USER` once; the card shows that
+message.
+
+**Without https:** a phone with Tailscale connected can also open
+`http://<the computer's 100.x.y.z address>:8000` (the card lists it under
+"Without https"). It works, but Chrome can't install a plain http address as an
+app.
+
+`.ts.net` names are already allowed by Deja Vu1. HTTPS certificates can publish
+the device's domain name in public certificate records; choose a neutral
+machine name if that matters to you.
 [Official HTTPS guidance](https://tailscale.com/docs/how-to/set-up-https-certificates).
+
+## The printer from anywhere (Extended Firmware)
+
+Usually the printer stays on your home Wi-Fi and the Deja Vu1 computer stays
+with it; only the phone travels. If you'd rather run Deja Vu1 on a computer
+somewhere else, the community Extended Firmware can put the **printer itself**
+on your Tailscale network: firmware-config → Remote Access → VPN Provider →
+Tailscale (its own [VPN guide](https://github.com/paxx12/SnapmakerU1-Extended-Firmware/blob/main/docs/vpn.md)).
+Its Moonraker trusts Tailscale addresses (`100.64.0.0/10`), so in Deja Vu1 add
+the printer by its Tailscale address, for example `100.95.6.132` (the app adds
+`:7125`). That firmware marks the VPN as experimental and warns it uses extra
+processor time and memory, which may affect prints; follow its advice.
 
 ## Alternative: Cloudflare Tunnel with Access
 

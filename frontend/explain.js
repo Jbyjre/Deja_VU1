@@ -137,8 +137,8 @@ window.Explain = (() => {
     'camera': ['The printer’s own camera picture, passed through this dashboard.',
       'Press Find my printer’s camera and the app asks the printer for its camera and checks the picture.'],
     'time lapses': ['Short movies of your prints: one picture every two layers, played back here.', ''],
-    'away from home': ['How to reach this dashboard when you are out, through a private connection like Tailscale.',
-      'The dashboard has no login. Use a private connection, never an open one.'],
+    'away from home': ['Open Deja Vu1 on your phone from any network, through Tailscale: a free app that links only your own devices.',
+      'Turn it on here on the computer, then scan the code with your phone. Nothing is opened to the internet.'],
     'demo controls': ['Buttons for trying things out while demo data is on.', ''],
   };
 

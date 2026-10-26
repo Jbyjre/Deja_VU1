@@ -164,11 +164,17 @@ can operate it. Use the remote guide below for access away from home.
 
 ## On my phone away from home
 
-Use [the private remote-access guide](remote-access.md). The recommended route
-is Tailscale on your computer and phone, with Tailscale Serve supplying a private
-HTTPS address. The alternative is a Cloudflare tunnel protected by Cloudflare
-Access **before** you make the address reachable. Neither is built into Deja Vu1.
-Never forward the dashboard's port through your router: the app has no login.
+1. Install [Tailscale](https://tailscale.com/download) (free) on the computer
+   running Deja Vu1 and on your phone, signed in to the same account.
+2. On the computer: **Settings → Away from home → Turn on Away from home**.
+3. Point the phone's camera at the code it shows. Deja Vu1 opens on the phone
+   at a private `https://…ts.net` address that works on any network while
+   Tailscale is connected. **More → Install app** keeps it on the home screen.
+
+Tailscale itself is a separate app; Deja Vu1 runs its commands for you and
+never makes the dashboard public. Details, and the Cloudflare Access
+alternative: [the private remote-access guide](remote-access.md). Never forward
+the dashboard's port through your router: the app has no login.
 
 ## If the phone cannot open it
 

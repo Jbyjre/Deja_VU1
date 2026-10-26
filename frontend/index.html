@@ -1172,9 +1172,10 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
         <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
         <div id="timelapse-host"></div>
       </section>
-      <section class="card liquid-glass desk-only" data-browser-only>
-        <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">A private connection to your home computer</p></div></div>
-        <p class="card-sub">Keep this computer awake. Use Tailscale on your computer and phone with private Serve, or configure Cloudflare Access before exposing a tunnel. This dashboard has no login, and pairing does not restrict access. Do not forward its port through your router. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md" target="_blank" rel="noopener">Remote setup guide</a>.</p>
+      <section class="card liquid-glass remote-card" id="remote-card" data-browser-only>
+        <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">Open Deja Vu1 on your phone from anywhere: mobile data, work, a friend’s Wi-Fi.</p></div></div>
+        <div id="remote-body" role="status" aria-live="polite"><p class="log-empty">Checking this computer…</p></div>
+        <p class="field-hint remote-why">Private: it uses Tailscale, a free app on this computer and your phone, signed in to your own account. Only your own devices can open the address, and nothing is opened to the internet. The printer stays on your home Wi-Fi with this computer. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md" target="_blank" rel="noopener">The full guide</a></p>
       </section>
       <section class="card liquid-glass" id="demo-tools-card" hidden>
         <div class="card-head"><div><h2>Demo controls</h2><p class="card-sub">Only with demo data on, for trying things out</p></div></div>
@@ -1247,7 +1248,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
   </section>
   <button class="orb" id="orb" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="orb-panel">
     <span class="orb-glass" aria-hidden="true"></span>
-    <span class="orb-core" aria-hidden="true"></span>
     <span class="orb-count" id="orb-count" hidden></span>
   </button>
 </div>

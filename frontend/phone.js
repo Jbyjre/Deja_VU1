@@ -288,6 +288,83 @@ window.Phone = (() => {
   }
   addEventListener('appinstalled', () => setTimeout(refreshInstall, 50));
 
-  document.addEventListener('DOMContentLoaded', () => { redeemFromLink(); refreshInstall(); });
-  return { open, close, install, refreshInstall };
+  /* ---- Away from home (backend/remote.py) -----------------------------------
+     Tailscale on this computer and the phone gives the dashboard a private
+     https://….ts.net address that works on any network. Switching it on or
+     off changes this computer's settings, so the server only allows that
+     from the computer itself; elsewhere this card just shows the address. */
+  const onThisComputer = () => ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname);
+  let remoteTimer = 0, remoteBusy = false;
+  function copyRow(text) {
+    return `<div class="phone-address"><code>${esc(text)}</code><button type="button" class="btn small" data-install-copy="${esc(text)}">Copy</button></div>`;
+  }
+  function remoteHtml(r) {
+    const computer = onThisComputer();
+    if (r.server_missing) return '<p>Away from home needs Deja Vu1 running on your computer.</p>';
+    if (r.shared_url) {
+      const usingIt = location.origin === r.shared_url;
+      return `<p class="remote-on"><span class="phone-tick" aria-hidden="true">✓</span> <b>${usingIt ? 'You’re using the private address right now.' : 'On. Your phone can open Deja Vu1 from anywhere.'}</b></p>
+        ${copyRow(r.shared_url)}
+        ${computer ? `<div class="remote-grid"><figure class="phone-qr remote-qr" id="remote-qr" aria-live="off"></figure>
+          <ol class="pi-steps"><li>On your phone, open <b>Tailscale</b> and make sure it’s connected.</li>
+            <li>Point the phone’s camera at this code and tap the link. It opens and pairs by itself.</li>
+            <li>Keep it: on the phone, <b>More → Install app</b>. This address is https, so Chrome installs it straight away.</li></ol></div>
+          <div class="setup-choices"><button type="button" class="btn" data-remote="stop">Stop sharing</button></div>`
+          : '<p class="field-hint">Keep Tailscale connected on this phone. To stop sharing, use this card on the computer running Deja Vu1.</p>'}`;
+    }
+    if (!r.installed) return `<p><b>Tailscale isn’t on this computer yet.</b> It takes about five minutes, once:</p>
+      <ol class="pi-steps"><li>Install <b>Tailscale</b> on this computer and on your phone (<a href="https://tailscale.com/download" target="_blank" rel="noopener">tailscale.com/download</a>, or the App Store or Google Play).</li>
+        <li>Sign in to the <b>same account</b> on both, and connect.</li>
+        <li>Come back here and press <b>Check again</b>.</li></ol>
+      <div class="setup-choices"><button type="button" class="btn" data-remote="check">Check again</button></div>`;
+    if (!r.running) return `<p><b>Tailscale is installed but not connected</b>${r.state ? ` (it says “${esc(r.state)}”)` : ''}. Open the Tailscale app, sign in and connect, then press <b>Check again</b>.</p>
+      ${r.error ? `<p class="field-hint">${esc(r.error)}</p>` : ''}
+      <div class="setup-choices"><button type="button" class="btn" data-remote="check">Check again</button></div>`;
+    if (r.waiting) return `<p><b>One more step, once:</b> Tailscale needs secure addresses (HTTPS) switched on for your account.</p>
+      ${r.approval_url ? `<p><a class="btn primary" href="${esc(r.approval_url)}" target="_blank" rel="noopener">Switch on HTTPS in Tailscale</a></p>` : ''}
+      <p class="field-hint">Sign in, press Enable, and come back. This card notices by itself.</p>`;
+    return `<p>Tailscale is connected on this computer as <b>${esc(r.name || 'this computer')}</b>. Turn on a private address for Deja Vu1:</p>
+      ${computer ? '<div class="setup-choices"><button type="button" class="btn primary" data-remote="share">Turn on Away from home</button></div>'
+        : '<p class="field-hint">Turn it on from the computer running Deja Vu1: Settings → Away from home.</p>'}
+      ${r.http_url ? `<details class="remote-plain"><summary>Without https</summary><p class="field-hint">A phone with Tailscale on can also open this plain address. It works, but Chrome can’t install it as an app.</p>${copyRow(r.http_url)}</details>` : ''}`;
+  }
+  async function loadRemote() {
+    const host = $('remote-body');
+    if (!host || remoteBusy) return;
+    clearTimeout(remoteTimer);
+    if (tourOn()) { host.innerHTML = '<p>This is the online demo. On your own copy, this card sets up a private address for your phone with Tailscale.</p>'; return; }
+    const r = await getJSON('/api/remote').catch(() => ({ error: 'The dashboard didn’t answer' }));
+    host.innerHTML = remoteHtml(r);
+    host.onclick = onRemoteClick;
+    if (r.shared_url && onThisComputer()) {
+      const link = await postJSON('/api/remote/link', {});
+      const fig = $('remote-qr');
+      if (fig && link.ok && link.body.qr) fig.innerHTML = qrSvg(link.body.qr);
+    }
+    // While Tailscale waits for HTTPS to be switched on, look again every few seconds.
+    if (r.waiting && document.querySelector('#tab-modules:not([hidden])')) remoteTimer = setTimeout(loadRemote, 3000);
+  }
+  async function onRemoteClick(e) {
+    const copy = e.target.closest('[data-install-copy]');
+    if (copy) {
+      const text = copy.dataset.installCopy;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+        .then(() => toast('Copied', 'ok'), () => toast(text, 'info', 10000));
+      return;
+    }
+    const b = e.target.closest('[data-remote]');
+    if (!b) return;
+    if (b.dataset.remote === 'check') return loadRemote();
+    remoteBusy = true; b.disabled = true;
+    b.textContent = b.dataset.remote === 'share' ? 'Turning on…' : 'Stopping…';
+    const r = await postJSON(`/api/remote/${b.dataset.remote}`, {});
+    remoteBusy = false;
+    if (!r.ok) toast(r.body.error || 'Tailscale didn’t do that', 'bad', 10000);
+    else if (b.dataset.remote === 'share' && r.body.shared_url) toast('Away from home is on', 'ok');
+    loadRemote();
+  }
+  window.addEventListener('dv-tab', e => { if (e.detail === 'modules') loadRemote(); else clearTimeout(remoteTimer); });
+
+  document.addEventListener('DOMContentLoaded', () => { redeemFromLink(); refreshInstall(); if (document.querySelector('#tab-modules:not([hidden])')) loadRemote(); });
+  return { open, close, install, refreshInstall, loadRemote };
 })();

@@ -73,7 +73,7 @@ window.Finder = (() => {
     ['Home Assistant bridge', 'Settings', 'home assistant hass sensors mqtt smart home', 'Home Assistant bridge'],
     ['Camera settings', 'Settings', 'camera webcam stream mjpeg webrtc go2rtc', 'Camera'],
     ['Time-lapses', 'Settings', 'timelapse time-lapse video recording', 'Time-lapses'],
-    ['Away from home', 'Settings', 'remote access tunnel cloudflare outside internet', 'Away from home'],
+    ['Away from home', 'Settings', 'remote access tunnel tailscale anywhere mobile data outside internet different wifi network phone', 'Away from home'],
     ['Demo controls', 'Settings', 'demo data simulated sample', 'Demo controls'],
     ['Games', 'Games', 'games tetris pacman pac-man snake sky dash play bored', 'tab:games'],
   ];
