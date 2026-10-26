@@ -72,6 +72,15 @@ class EveryMergeIsARelease(unittest.TestCase):
         self.assertIn('tools/next-release.py', workflow)
         self.assertIn('git push origin HEAD:main', workflow)
 
+    def test_a_marketing_video_merge_publishes_no_release(self):
+        # The owner (26 October 2026): the one merge that is not a release. The message reaches the
+        # shell through env, never pasted into the script, so a merge title cannot run as code.
+        workflow = (ROOT / '.github/workflows/release.yml').read_text(encoding='utf-8')
+        self.assertIn("MESSAGE: ${{ github.event.head_commit.message }}", workflow)
+        self.assertIn("grep -qiF '[marketing video]'", workflow)
+        decide = workflow.index('[marketing video]\'; then')
+        self.assertLess(decide, workflow.index('python tools/next-release.py'))   # checked before any numbering
+
     def test_next_release_writes_an_entry_the_version_tests_accept(self):
         import datetime
         import importlib.util

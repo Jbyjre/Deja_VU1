@@ -8,6 +8,10 @@ name: Release
 # copies install the deja-vu1-update.zip attached here, checked against
 # GitHub's SHA-256 digest. A push made with this workflow's token starts no
 # other workflow, so the release commit cannot loop.
+#
+# The one exception (the owner, 26 October 2026): a marketing-video merge
+# publishes no release. Its merge message carries the tag [marketing video];
+# its changes ride along with the next release.
 
 on:
   push:
@@ -40,7 +44,14 @@ jobs:
         id: version
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          MESSAGE: ${{ github.event.head_commit.message }}
         run: |
+          if [ "$EVENT" = "push" ] && printf '%s' "$MESSAGE" | grep -qiF '[marketing video]'; then
+            echo "A marketing-video merge: no release (it rides along with the next one)."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           version="$(tr -d '[:space:]' < VERSION)"
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "VERSION is $version, not a stable number: nothing to publish."

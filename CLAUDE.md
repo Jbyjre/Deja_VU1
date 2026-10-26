@@ -57,7 +57,9 @@ trust the code and fix this file.
   blocks use `releases/latest/download/deja-vu1-update.zip`; keep all copies
   identical (`tests/test_install_blocks.py`).
 - Versions (the owner, 25 October 2026): **every merge to `main` is a release**, so
-  updates are constant and familiar. `VERSION`, the top entry of
+  updates are constant and familiar. The one exception (the owner, 26 October 2026):
+  a marketing-video merge is not a release; put `[marketing video]` in its merge
+  message (the workflow checks it first, `tests/test_versions.py`). `VERSION`, the top entry of
   `frontend/versions.json` and a `## <version> (<date>): <name>` heading in
   CHANGELOG.md must agree (`tests/test_versions.py`). Raise `VERSION` by hand for a
   named release with its own tour; otherwise `.github/workflows/release.yml` runs
