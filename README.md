@@ -30,7 +30,7 @@ The app shows the same number in its header and in **Settings → Version & upda
 | Run your printers from your computer | A browser tab at `http://localhost:8000` | Windows, Mac, Linux or a Raspberry Pi, with Python 3.8 or newer |
 | Keep it out of the browser | The **desktop app**: its own window, with an icon in the Start menu or Dock | Chrome or Edge on that computer ([how](#the-desktop-app)) |
 | Check prints from the sofa | Your **phone**, on the same home Wi-Fi | Nothing to type: **Connect your phone** on the Overview shows a code to scan with the phone's camera. On the phone, **More → Install app** puts it on the home screen |
-| Check prints away from home | Your phone through **Tailscale** or a **Cloudflare tunnel** | A private connection you set up ([guide](docs/remote-access.md)) |
+| Check prints away from home | Your phone through **Tailscale** (Settings → **Away from home** sets it up with one button) or a **Cloudflare tunnel** | Tailscale on the computer and phone, or a tunnel you set up ([guide](docs/remote-access.md)) |
 
 Every way except the online demo opens the same dashboard, served by the same
 computer. Pause a print on your phone and the computer's screen shows it paused.
@@ -219,6 +219,20 @@ over your folder.
 If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
+
+## What's new in 0.11.0
+
+- **Your phone, from anywhere.** Settings → **Away from home**: with
+  [Tailscale](https://tailscale.com/download) on your computer and phone (free,
+  your own account), one button gives Deja Vu1 a private `https://…ts.net`
+  address. Scan the code with your phone and it opens on mobile data or any
+  Wi-Fi, and Chrome can install it straight away. Only your own devices can
+  open it; nothing is opened to the internet. ([Guide](docs/remote-access.md))
+- **The printer itself, too.** On the Extended Firmware, its own Tailscale
+  option lets a computer elsewhere add the printer by its Tailscale address.
+- **A glass orb.** The notification orb has no dot in the middle any more: the
+  whole see-through sphere turns green, amber or red with a message, and back
+  to blue once you've read it.
 
 ## What's new in 0.10.0
 
@@ -652,9 +666,10 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **893 tests in 482.6 seconds** on Python
-3.13/Linux, with app/demo servers stopped (26 October 2026: version 0.10.0's printer
-sign-in, camera sources, firmware 2.0.0 file names, phone layout and dot colour). Before that:
+The latest clean full suite passed **903 tests in 485.8 seconds** on Python
+3.13/Linux, with app/demo servers stopped (26 October 2026: version 0.11.0's Away from home
+and glass orb). Before that: 893 tests in 482.6 seconds (version 0.10.0's printer
+sign-in, camera sources, firmware 2.0.0 file names, phone layout and dot colour), and
 879 tests in 469.2 seconds (version 0.9.0's repair, restart and stop, the update commands and the
 release with every merge), and 871 tests
 (the QR code maker and phone link, the update gate fix and the help notes), and 855 tests in 473.3 seconds
@@ -687,6 +702,7 @@ recorded static demo passed at both widths.
 | Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
 | Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
 | Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
+| Away from home, glass orb (0.11.0) | Unit tests against a stand-in `tailscale` program answering in the formats of Tailscale's source (`eba00ab`); the server refuses a phone or tailnet request to switch sharing (403); the code's link checked; Chromium at 1366/412 px | No real Tailscale account, HTTPS approval, phone on mobile data or Extended Firmware VPN tried |
 | Printer sign-in, typed addresses, camera sources, firmware 2.0.0 file names (0.10.0) | Read against Snapmaker's u1-moonraker `a308cfa` and u1-klipper `93cb12f`, the Extended Firmware `417e639` and its camera service `9279584`; stand-in Moonraker tests for the login, the key, the camera list, the snapshot, the MJPEG feed, `req_id` and a failed reply, through the real server | No physical U1, real Extended Firmware camera or Web Authentication tried |
 | Simpler phone, Install app, one dot colour (0.10.0) | Chromium at 1366, 412 and 390 px on the local server, a network address and the static online demo; page heights measured against 0.9.0; Chrome's install rule and its setting read from Chromium's source | Not installed on a real Pixel or iPhone yet |
 | Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
