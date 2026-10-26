@@ -181,12 +181,10 @@ class CalibrationProcess(unittest.TestCase):
         self.assertNotEqual(initial, maker.process_signature(process, [dict(material, filament_flow_ratio=['1.02'])]))
 
     def test_saved_process_changes_invalidate_measurements(self):
-        with (
-            tempfile.TemporaryDirectory() as folder,
-            patch.object(maker, '_PATH', os.path.join(folder, 'cal.json')),
-            patch('model_maker.palette', return_value=[{'nozzle': 0.4}] * 4),
-            patch('model_maker.profile_process', return_value='original') as process,
-        ):
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(maker, '_PATH', os.path.join(folder, 'cal.json')), \
+                patch('model_maker.palette', return_value=[{'nozzle': 0.4}] * 4), \
+                patch('model_maker.profile_process', return_value='original') as process:
             maker.save_calibration({'measured': True, 'colours': ['#123456'] * 16, 'profile': 'chosen'})
             self.assertEqual(maker.settings()['calibration_state'], 'valid')
             process.return_value = 'changed'
