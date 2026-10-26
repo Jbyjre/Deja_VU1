@@ -5868,7 +5868,7 @@ function initSkyDash() {
 /* ---- Game 2: Echo Maze (real CSS 3D room-by-room maze) ------------------*/
 
 function initEchoMaze() {
-  // Best is now the deepest level reached rather than a raw step count —
+  // Best is now the deepest level reached rather than a raw step count:
   // once a hunting pursuer and growing mazes exist, "fewest steps" from the
   // old scoring model can't be compared across different maze sizes, so
   // this evolves to a level-based best like Block World and Brick Break use.
@@ -6568,7 +6568,7 @@ function initBeacon() {
     btn.addEventListener('pointerleave', up);
     btn.addEventListener('pointercancel', up);
   });
-  // On touch, a finger can slide off a small button while still held down —
+  // On touch, a finger can slide off a small button while still held down,
   // pointerleave won't always catch that. A document-wide release clears
   // every held key so a stray touch never leaves movement stuck on.
   beaconPointerUpHandler = () => {
