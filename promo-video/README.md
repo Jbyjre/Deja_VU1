@@ -18,8 +18,48 @@ These tools are separate from the Python-only application.
   earlier versions are kept as history only.
 - **Version 2 is set aside.** The owner's "V2" (version 13's 60 s pair and version 15, its update)
   and the marketing videos ChatGPT made are not to be built on or reused (none of the ChatGPT videos
-  are in this repository). The "V1" line (version 12, version 14, version 16) is the current one.
+  are in this repository). The "V1" line (version 12, version 14, version 16, version 17) is the current one.
 - **Show what changed.** Each new version recognises the app's updates since the last one.
+
+**Version 17 (26 October 2026): version 16, smoother, with what changed.** The owner: "Update the
+current video, make it smoother and better, be thorough." In its own folder, `v17/` (copied from
+`v16/`), the same story, music and timings. Version 16's master was measured frame by frame first
+(`v17/build/smoothness.py`: each frame against the one before; a jump is one frame changing over
+eight times as much as the frames around it, a held frame is one frame with no change mid-motion).
+It found six jumps and one held frame; each was traced to its cause and fixed where it starts:
+
+- **45.2 s, the laptop flattened for a frame** as it dimmed for the phone. Any opacity below 1 on
+  `#rig` (`transform-style: preserve-3d`) makes the browser flatten it, so the keyboard deck
+  vanished and the screen jumped. The laptop now fades through `#rigfade`, a flat wrapper that
+  holds the perspective (`scene.html`, `rigTo` in `scene.js`).
+- **21.3 s and 43.85 s, sheet backdrops snapped on**, and **38.0 s, the tour's callout jumped to the
+  corner** while its spotlight's dim snapped on. Both were the app itself, so the app was fixed
+  (`frontend/workshop.css`: every dialog backdrop fades in over 0.28 s; `frontend/guide.js`/`.css`:
+  the callout glides from where it floated, a spotlight shown again fades in). Off with reduced motion.
+- **24.55 s, 28.9 s and 34.5 s, the filmed app swapped a whole view in one frame** (the Overview
+  after Start print, Arrange, the 3D model becoming the drawing). `build.py` (`SOFT`) finds each
+  swap in the footage (the largest change in a window around its mark), saves the frame before it
+  by frame number, checks that it matches the old view, and `scene.js` lays it over the footage and
+  dissolves it in a third of a second. The renderer shows a clip's frame one frame early, so the
+  picture is up a few frames before and fades from the frame the swap really appears.
+- **6.73 s, a held frame** before the name: the opening now overlaps the name by a frame or two.
+- **The end card stood still for five seconds**; it now drifts 2.5 % closer to the last frame.
+- **The twin's heads moved about 20 times a second, unevenly**, once the glide ended (a new
+  picture every 2 to 3 frames in the footage). `frontend/workshop.js` `queueTwin` waited 32 ms on
+  a timer and then for a display frame, which usually landed on the third; it now skips whole frames
+  until 30 ms have passed: an even 30 a second on a 60 Hz screen, as its comment always intended.
+- **The phone's drift ran 0.2 s into its exit**, so two tweens turned it at once (HyperFrames'
+  `check` flagged it); the drift now ends as the exit begins.
+- **The web copy is 60 fps** (version 16's was 30 fps at 1.4 Mbit/s) and stays under Cloudflare's
+  25 MiB file limit.
+
+"And plenty more" shows what changed since version 16 (`capture/shots.js` `stills_v17`): your phone
+from anywhere (Settings → Away from home; this filming machine has no Tailscale, so the card shows
+its real first step), updates that install every time (the version card at v0.11.0, with "Look after
+this copy") and help on every card (a help note open on Needs you), beside the farm desk, the
+converter and automations. The film's footage shows the app's new glass orb by itself. 903 automated
+tests (a full run passed on 26 October 2026). The stills now stay inside the page (version 16's
+converter still ran past the page's end into blank grey) and tall panels start under the hidden top bar.
 
 **Version 16 (25 October 2026): V1, 60 s, 16:9, with what changed.** In its own folder, `v16/`
 (`build/` and the HyperFrames project `main/`), sharing only the filming scripts, footage and
@@ -151,6 +191,7 @@ swirling and lighting up around the cursor, with hidden surprises. When the vide
 | `v14/` | Version 14, the owner's "V1" (version 12) re-cut to 60 s: its own `build/` (template, timeline, layouts, `build.py`, `stills.sh`) and HyperFrames projects `main/` and `vertical/`. Built with `python3 v14/build/build.py main` (or `vertical`); renders go to `v14/renders/`. |
 | `v15/` | Version 15 (set aside with V2), the owner's "V2" (version 13) updated the same way: its own `build/` and HyperFrames projects; `python3 v15/build/build.py main` (or `vertical`), renders in `v15/renders/`, cards by `v15/build/stills.sh`. |
 | `v16/` | Version 16, V1 at 60 s in 16:9 only, with what changed in the app: its own `build/` and HyperFrames project `main/`. Built with `python3 v16/build/build.py`; renders in `v16/renders/`. |
+| `v17/` | Version 17, version 16 made smoother (measured frame by frame) with what changed since: its own `build/` (with `smoothness.py`, the measurement) and HyperFrames project `main/`. Built with `python3 v17/build/build.py`; renders in `v17/renders/`. |
 
 Existing on-screen figures came from the simulated farm or the README at filming
 time. Historical test counts are not current. Keep simulated readings, engine
@@ -198,6 +239,18 @@ cd ../vertical && npx hyperframes@0.8.166 render --fps 60 --quality delivery --v
 cd ../.. && python3 v14/build/finish.py main v14/renders/main.mp4 v14/renders/deja-vu1-launch-v1-60s-16x9.mp4
 python3 v14/build/finish.py vertical v14/renders/vertical.mp4 v14/renders/deja-vu1-launch-v1-60s-9x16.mp4
 bash v14/build/stills.sh
+```
+
+Version 17 (16:9 only) films `fleet_bg overview_jam confirm_ok prepare twin3d_tight tour_v16
+phone_qr phone_paired stills_v17`, then builds, renders, finishes, measures and makes the web copy:
+
+```bash
+python3 v17/build/build.py
+cd v17/main && npx hyperframes@0.8.166 render --fps 60 --quality delivery --video-frame-format png --output ../renders/main.mp4
+cd ../.. && python3 v17/build/finish.py main v17/renders/main.mp4 v17/renders/deja-vu1-launch-v17-60s-16x9.mp4
+python3 v17/build/smoothness.py v17/renders/deja-vu1-launch-v17-60s-16x9.mp4
+bash v17/build/web.sh      # the 60 fps web copy and poster for frontend/media/
+bash v17/build/stills.sh   # the feature cards
 ```
 
 Version 16 (16:9 only) films `fleet_bg overview_jam confirm_ok prepare twin3d_tight tour_v16
@@ -362,6 +415,18 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 - *safe areas*: captions, steps and cards stay inside the title-safe box (80% of the frame).
 
 ## Lessons learned (each cost a re-render or a re-shoot)
+
+- (v17) Never put opacity (or filter) on an element with `transform-style: preserve-3d`: the
+  browser flattens it for as long as the value is below 1, and a 3D laptop visibly changes shape
+  in one frame. Fade a flat parent that holds the perspective instead.
+- (v17) An ffmpeg seek by time (`-ss` before `-i`) into the padded clips can land a frame late;
+  pick a frame by number (`select=eq(n\,N)`) when one exact frame matters, and check it.
+- (v17) HyperFrames shows a `<video>`'s frame one frame early compared with `start + n / fps`
+  (the Arrange swap showed at 28.900 s, computed 28.933 s). Anything that must line up with one
+  filmed frame starts a frame or two early.
+- (v17) Measure before judging smoothness by eye: `smoothness.py` found every pop the eye would
+  catch at full speed, and two (the held frame before the name, the twin's uneven 20 updates a
+  second) that it would only feel.
 
 - (v15) Version 14's first render kept "Ready-made rules" up until 0.6 s before the Save click,
   but the filmed scroll to Save starts 1.07 s before it, so for half a second the label pointed at
