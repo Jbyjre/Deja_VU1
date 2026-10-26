@@ -63,7 +63,7 @@ come from the resolved presets. Smooth-plate temperature fields apply only to
 that bed type. Edit-as-new keeps the previous profile for recovery. External
 exported preset paths remain external resources and must be backed up separately.
 
-## Genuine different heights per head
+## Different heights per head
 
 Choose **Different preferred heights per head** in a native profile. It uses the
 saved physical-head heights, not the older standalone calculator's drawing.

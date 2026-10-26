@@ -147,7 +147,7 @@ simulation:
 
 ## What cannot be checked without the printer
 
-Said plainly, because a good test suite is not a real machine:
+A good test suite is not a real machine:
 
 - **None of this has talked to a physical U1.** The stand-in follows the
   source; if Snapmaker's firmware on a real machine differs from the
