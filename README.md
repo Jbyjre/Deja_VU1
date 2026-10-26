@@ -70,8 +70,11 @@ computer. Pause a print on your phone and the computer's screen shows it paused.
 
 <sub>Click the picture to watch it on the product page, or
 [download the full-quality MP4](marketing-library/07-videos/deja-vu1-launch-v17-60s-16x9.mp4)
-(51 MB). It shows the 3DBenchy, the quick tour and scanning onto a phone. Filmed
-on the simulated farm; the phone's address in it is an example. Earlier versions
+(53 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone and what
+came since: your phone from anywhere, updates that install every time and help on
+every card. Version 17 plays at 60 frames a second on the product page too, and
+was measured frame by frame for smoothness. Filmed on the simulated farm; the
+phone's address in it is an example. Earlier versions
 are in [`marketing-library/07-videos/`](marketing-library/07-videos/).</sub>
 
 ## Install

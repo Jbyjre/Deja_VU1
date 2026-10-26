@@ -61,6 +61,13 @@ converter and automations. The film's footage shows the app's new glass orb by i
 tests (a full run passed on 26 October 2026). The stills now stay inside the page (version 16's
 converter still ran past the page's end into blank grey) and tall panels start under the hidden top bar.
 
+**Measured result** (`smoothness.py`, 26 October 2026): version 16's master, 6 jumps and 1 held frame;
+version 17's master, 0 jumps and 0 held frames. What remains is the twin's head moving evenly every
+other frame (32.2 to 34.0 s, the app's 30-a-second limit while a print runs), reported apart. The web
+copy (`frontend/media/`, 60 fps, 22.9 MiB) has no jumps and compares with its master at an SSIM of
+0.9953 (version 16's 30 fps copy: 0.9935 against its own master). Master: -16.0 LUFS, true peak
+-2.2 dBFS. Not checked by ear or on a phone screen; judged on frame measurements and still frames.
+
 **Version 16 (25 October 2026): V1, 60 s, 16:9, with what changed.** In its own folder, `v16/`
 (`build/` and the HyperFrames project `main/`), sharing only the filming scripts, footage and
 `music/` with earlier versions. Version 14's opening (hook, what it is for, the name, how it works)
@@ -679,6 +686,10 @@ Measured on the build: the band's hit lands within 25 ms of each feature change.
 - HyperFrames telemetry was switched off (`npx hyperframes telemetry disable`).
 
 ## Rendering cost
+
+Version 17 (60 s, 16:9 only, the same 8 video windows and 6 screenshots, plus 3 dissolve frames):
+rendered in 8 min 58 s (frame capture 8 min 32 s). All 8 video shots were filmed twice (the second
+time after the twin fix) in about 13 and 16 minutes; the 3D twin alone took 4 to 5 minutes.
 
 Version 16 (60 s, 16:9 only, 8 video windows from 8 shots plus 6 screenshots): rendered in 9 min
 24 s. Filming the 3D twin alongside another shot crawled at about 10 s a frame until the app stopped

@@ -8,6 +8,10 @@ reports the two things that read as a stutter:
   frame, an overlay that snaps on, a 3D object that flattens for a frame);
 - a held frame: a frame with no change in the middle of motion.
 
+Content that updates evenly every other frame (30 times a second inside a 60 fps film, such as
+the app's 3D twin while a print runs, which it deliberately draws at most 30 times a second) is
+reported apart as half-rate motion: it is even, not a stutter.
+
 Version 16 measured 6 jumps (the largest 67.1 at 24.55 s); version 17 is checked the same way.
 A continuous move between scenes changes a lot on many frames in a row and is not counted.
 
@@ -38,7 +42,11 @@ def report(path):
     # what the neighbouring frames do (about a quarter of a second either side)
     med = np.array([np.median(d[max(0, i - 8):i + 9]) for i in range(len(d))])
     jumps = [i for i in range(len(d)) if d[i] > 2 and d[i] / (med[i] + .3) > 8]
+    still = lambda k: 0 <= k < len(d) and d[k] < .05
     held = [i for i in range(1, len(d) - 1) if d[i] < .15 * min(d[i - 1], d[i + 1]) and min(d[i - 1], d[i + 1]) > .4]
+    # every other frame unchanged, before or after: even half-rate motion, not a stutter
+    half = [i for i in held if still(i - 2) or still(i + 2)]
+    held = [i for i in held if i not in half]
     print(f'{path}: {len(d) + 1} frames at {fps:g} fps')
     print(f'  jumps (one frame changing over 8 times its neighbours): {len(jumps)}')
     for i in jumps:
@@ -46,6 +54,8 @@ def report(path):
     print(f'  held frames in motion: {len(held)}')
     for i in held:
         print(f'    {(i + 1) / fps:7.3f} s  before {d[i - 1]:.2f}, this {d[i]:.2f}, after {d[i + 1]:.2f}')
+    if half:
+        print(f'  half-rate motion (even, every other frame): {len(half)} frames, {(half[0] + 1) / fps:.2f} to {(half[-1] + 1) / fps:.2f} s')
     return len(jumps), len(held)
 
 
