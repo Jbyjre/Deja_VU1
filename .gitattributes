@@ -4,3 +4,8 @@
 frontend/demo/** linguist-generated=true
 promo-video/** linguist-vendored=true
 marketing-library/** linguist-documentation=true
+
+# Leave the large film folders out of GitHub's "Download ZIP" and source archives.
+# The files stay in the repository and its history.
+marketing-library export-ignore
+promo-video export-ignore
