@@ -10,6 +10,37 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.11.0 (26 October 2026): your phone, from anywhere
+
+- **Away from home.** Settings → Away from home now does the setup. It finds
+  Tailscale on this computer (`tailscale status --json`), and **Turn on Away from
+  home** runs Tailscale's own `tailscale serve --bg --yes http://127.0.0.1:<port>`,
+  which shares the dashboard privately with your own Tailscale devices at an
+  `https://<computer>.<tailnet>.ts.net` address. Funnel (public sharing) is never
+  used. If the tailnet hasn't switched HTTPS on, the link Tailscale prints becomes
+  a button and the card checks again every few seconds until it is done. Then it
+  shows the address and a code to scan, with the one-time pairing code in it.
+  **Stop sharing** runs `tailscale serve --https=443 off`. Formats were read from
+  Tailscale's source (`ipn/ipnstate`, `ipn/serve.go`, `cmd/tailscale/cli`).
+- **Only this computer can switch it.** `POST /api/remote/share` and `/stop`
+  answer 403 unless the request is from this computer at `localhost`. Tailscale
+  Serve passes on the phone's own Host header (`ipn/ipnlocal/serve.go`), so a
+  phone through the share is never taken for this computer and the device lock
+  still applies.
+- **Installable away from home.** The shared address is https, so Chrome on the
+  phone installs Deja Vu1 without the home-network setting.
+- **The printer itself.** The remote guide covers the Extended Firmware's
+  experimental Tailscale option, which lets a computer elsewhere add the printer
+  by its Tailscale address.
+- **A glass orb.** The notification orb loses its centre dot. The whole
+  translucent sphere carries the colour (blue at rest, green, amber or red for a
+  message) and glides between them; unread messages make it glow softly.
+- Verified: unit tests against a stand-in `tailscale` program in Tailscale's
+  formats (not connected, connected, HTTPS approval, sharing, stopping, its own
+  refusal) and through the real server (a phone's or a tailnet request is refused
+  with 403); Chromium at 1366 px and 412 px. Not verified: a real Tailscale
+  account, phone or printer.
+
 ## 0.10.0 (26 October 2026): connections you can count on
 
 - **Printer connections checked against the printers' own code.** Every

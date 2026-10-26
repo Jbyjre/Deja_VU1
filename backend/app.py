@@ -56,6 +56,9 @@ API endpoints
   POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
   POST /api/printers/login            read a printer's API key with its web-page login {"moonraker_url", "username", "password"}
   POST /api/camera/find               find and save the selected printer's camera feed
+  GET  /api/remote                    Tailscale on this computer: connected? shared address?
+  POST /api/remote/share|stop         share the dashboard privately with Tailscale Serve, or stop (this computer only)
+  POST /api/remote/link               a pairing QR code for the shared address
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
 
@@ -282,6 +285,7 @@ import tool_setup
 import plate_project
 import model_maker
 import updates
+import remote
 import websocket
 import wled_bridge
 
@@ -449,6 +453,7 @@ _APP_ROUTES = {
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
+    "/api/remote": (None, lambda q: remote.status(PORT)),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings()}),
     "/api/app/memory": (None, lambda q: memory.status()),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
@@ -1473,6 +1478,21 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/pairing/link":
             return self._send_json(phone_link(self._read_json_body().get("base")))
+
+        if route in ("/api/remote/share", "/api/remote/stop", "/api/remote/link"):
+            body = self._read_json_body()
+            if route == "/api/remote/link":
+                # A code to scan at home: the phone then opens the private address anywhere.
+                shared = remote.status(PORT)["shared_url"]
+                if not shared:
+                    raise ValueError("Turn on Away from home first, on the computer running Deja Vu1")
+                return self._send_json(phone_link(shared))
+            # Sharing changes this computer's Tailscale settings, so only this
+            # computer may switch it (not a phone, not through the share itself).
+            if not self._this_computer():
+                return self._send_json({"error": "Switch Away from home on or off on the computer running "
+                                                 "Deja Vu1, at http://localhost:%d" % PORT}, status=403)
+            return self._send_json(remote.share(PORT) if route == "/api/remote/share" else remote.stop(PORT))
 
         if route == "/api/pairing/redeem":
             body = self._read_json_body()

@@ -2,6 +2,32 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.11.0",
+      "date": "2026-10-26",
+      "name": "Your phone, from anywhere",
+      "published": true,
+      "summary": "Open Deja Vu1 on your phone on any network, privately, with one button and a code to scan. The notification orb is now a single glass sphere that changes colour.",
+      "highlights": [
+        {
+          "title": "Away from home",
+          "tab": "modules",
+          "target": "#remote-card",
+          "text": "With Tailscale on this computer and your phone, one button gives Deja Vu1 a private address. Scan the code and your phone opens it on mobile data or any Wi-Fi."
+        },
+        {
+          "title": "A glass orb",
+          "target": "#orb",
+          "text": "Notifications live in one translucent sphere. It glows green, amber or red with a new message, and turns blue again once you've read them."
+        }
+      ],
+      "changes": [
+        "Settings → Away from home finds Tailscale on this computer, turns on private sharing (Tailscale Serve, never Funnel) with one button, walks through switching on HTTPS once, and shows a code for the phone. Only this computer can switch it on or off.",
+        "The shared address is https, so Chrome on the phone installs Deja Vu1 directly.",
+        "The remote guide covers the Extended Firmware's own Tailscale option for reaching the printer itself.",
+        "The notification orb has no centre dot: the whole sphere takes the message's colour and stays see-through."
+      ]
+    },
+    {
       "version": "0.10.0",
       "date": "2026-10-26",
       "name": "Connections you can count on",

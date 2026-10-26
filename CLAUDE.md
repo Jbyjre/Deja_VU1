@@ -435,6 +435,13 @@ prove a public deployment.
   returns only the API key; never store or log the password. `fleet.normalise_url()`
   turns `192.168.1.50` into `http://192.168.1.50:7125`. Upstream code (u1-moonraker,
   u1-klipper, the Extended Firmware) is GPL-3: match its behaviour, never paste it.
+- `remote.py` (Settings → Away from home, `GET /api/remote`, `POST /api/remote/share|stop|link`):
+  runs Tailscale's own CLI (`status --json`, `serve status --json`, `serve --bg --yes
+  http://127.0.0.1:<port>`, `serve --https=443 off`); never Funnel. Share/stop answer 403
+  unless `_this_computer()` (Serve keeps the phone's Host header, so tailnet phones are
+  never "this computer"). Tests use a stand-in `tailscale` in `tests/test_remote.py`.
+- The notification orb (`guide.css`) is one translucent sphere tinted by `--orb-tint`
+  (the owner, 26 October 2026: no centre dot); `data-kind` ok/warn/bad changes the tint.
 - Phone layout (≤ 720 px, end of `theme.css`): `.desk-only` cards are hidden on phones
   (desktop app, update commands, recovery, tunnel setup, slicer paths, Stop, phone QR);
   `.phone-only` the reverse. The launch strip and tab intro move into the More sheet

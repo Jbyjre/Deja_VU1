@@ -24,7 +24,7 @@ window.Orb = (() => {
     orb.classList.toggle('has-unread', !!n);
   }
 
-  // The orb takes in a message: a short squeeze, and its core takes the message's colour.
+  // The orb takes in a message: a short squeeze, and the whole sphere takes the message's colour.
   function gulp(kind) {
     orb.dataset.kind = kind;
     if (still()) return;

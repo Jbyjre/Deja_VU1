@@ -46,7 +46,7 @@ LARGE = 150_000        # answers bigger than this (bytes of JSON) get their own 
 TIMELINE = {"/api/live/snapshot", "/api/live/events", "/api/fleet"}
 NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/camera/stream",
                 "/api/backup", "/api/timelapse/frame", "/api/live",
-                "/api/camera/snapshot", "/api/app/info"}
+                "/api/camera/snapshot", "/api/app/info", "/api/remote"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file"}
 # Parameters that don't change the answer, so they aren't part of the key.

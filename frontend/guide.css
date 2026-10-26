@@ -24,22 +24,28 @@
 }
 .orb-dock > * { pointer-events: auto; }
 
+/* The orb is one translucent glass sphere, tinted all over by --orb-tint
+   (the owner, October 2026: no dot in the middle). A message changes the
+   whole sphere's colour; it stays see-through. Registered so the colour
+   glides instead of jumping; browsers without @property simply switch. */
+@property --orb-tint { syntax: '<color>'; inherits: true; initial-value: #4a8df8; }
 .orb {
+  --orb-tint: var(--accent);
   position: relative; width: var(--orb); height: var(--orb); padding: 0; border-radius: 50%;
-  border: 0; cursor: pointer; color: var(--accent);
+  border: 0; cursor: pointer;
   /* Tier 3: small and floating freely, so the strongest shadow on the page. */
   background:
-    radial-gradient(circle at 30% 26%, rgba(255, 255, 255, .95) 0 8%, rgba(255, 255, 255, .35) 22%, transparent 48%),
-    radial-gradient(circle at 70% 88%, color-mix(in oklch, var(--accent-light) 40%, transparent), transparent 62%),
-    rgba(255, 255, 255, .22);
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, .9) 0 7%, rgba(255, 255, 255, .28) 20%, transparent 44%),
+    radial-gradient(circle at 62% 92%, color-mix(in oklch, var(--orb-tint) 55%, transparent), transparent 64%),
+    radial-gradient(circle at 50% 50%, color-mix(in oklch, var(--orb-tint) 14%, transparent) 0 52%, color-mix(in oklch, var(--orb-tint) 34%, transparent) 100%);
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, .95),
-    inset 0 -6px 14px oklch(30% 0.04 265 / .14),
+    inset 0 -7px 16px color-mix(in oklch, var(--orb-tint) 30%, transparent),
     0 2px 4px oklch(25% 0.02 265 / .18),
-    0 14px 34px oklch(25% 0.02 265 / .3);
+    0 14px 34px color-mix(in oklch, var(--orb-tint) 22%, oklch(25% 0.02 265 / .24));
   backdrop-filter: blur(24px) saturate(1.7);
   -webkit-backdrop-filter: blur(24px) saturate(1.7);
-  transition: transform .3s cubic-bezier(.2, .8, .2, 1);
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1), --orb-tint .6s ease;
 }
 /* Lensing where the browser can (Chromium); others keep the blur above. */
 .orb { backdrop-filter: blur(14px) saturate(1.7) url(#lg-distort); }
@@ -47,31 +53,24 @@
 .orb:active { transform: scale(.94); }
 .orb:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 4px; }
 
-/* The rim, the moving glint and the layer lines inside. */
+/* The rim and the glint that follows the pointer. */
 .orb-glass {
   position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background:
-    radial-gradient(circle at var(--ox, 34%) var(--oy, 22%), rgba(255, 255, 255, .85), transparent 38%),
-    repeating-linear-gradient(180deg, oklch(30% 0.03 265 / .07) 0 1px, transparent 1px 4px);
+  background: radial-gradient(circle at var(--ox, 34%) var(--oy, 22%), rgba(255, 255, 255, .7), transparent 36%);
   -webkit-mask: radial-gradient(circle, #000 64%, transparent 71%);
           mask: radial-gradient(circle, #000 64%, transparent 71%);
 }
 .orb-glass::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, .1) 45%, rgba(255, 255, 255, .55));
+  background: linear-gradient(160deg, rgba(255, 255, 255, 1), color-mix(in oklch, var(--orb-tint) 30%, rgba(255, 255, 255, .1)) 45%, rgba(255, 255, 255, .55));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
-.orb-core {
-  position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, currentColor 58%, color-mix(in oklch, currentColor 70%, black));
-  box-shadow: 0 0 14px color-mix(in oklch, currentColor 60%, transparent);
-  transition: color .5s ease, transform .4s cubic-bezier(.3, 1.5, .5, 1);
-}
-.orb[data-kind="ok"] { color: var(--ok); }
-.orb[data-kind="warn"] { color: #d9a400; }
-.orb[data-kind="bad"] { color: var(--bad); }
-.orb.has-unread .orb-core { animation: orb-breathe 2.8s ease-in-out infinite; }
+.orb[data-kind="ok"] { --orb-tint: var(--ok); }
+.orb[data-kind="warn"] { --orb-tint: #e0aa00; }
+.orb[data-kind="bad"] { --orb-tint: var(--bad); }
+/* Unread messages: the whole sphere glows softly in its colour. */
+.orb.has-unread { animation: orb-breathe 2.8s ease-in-out infinite; }
 .orb.has-update::before {
   content: ""; position: absolute; inset: -4px; border-radius: 50%; pointer-events: none;
   border: 2px solid transparent;
@@ -86,7 +85,7 @@
   display: grid; place-items: center; font: 700 11.5px/1 var(--font-mono); color: #fff;
   background: var(--accent-text); box-shadow: 0 0 0 2px rgba(255, 255, 255, .95);
 }
-@keyframes orb-breathe { 50% { transform: scale(1.25); } }
+@keyframes orb-breathe { 50% { box-shadow: inset 0 1px 1px rgba(255, 255, 255, .95), inset 0 -9px 20px color-mix(in oklch, var(--orb-tint) 45%, transparent), 0 2px 4px oklch(25% 0.02 265 / .18), 0 0 26px color-mix(in oklch, var(--orb-tint) 45%, transparent); } }
 @keyframes orb-gulp { 40% { transform: scale(.9); } 70% { transform: scale(1.07); } }
 @keyframes orb-spin { to { transform: rotate(1turn); } }
 
@@ -620,8 +619,8 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 /* ---- accessibility -------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .orb, .orb-core, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-beacon, .guide-tail, .guide-dots i, .tips-btn, .xp-btn { transition: opacity .15s ease !important; }
-  .orb.has-unread .orb-core, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse, .xp-pop.is-in, .xp-pop .xp-def { animation: none !important; }
+  .orb, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-beacon, .guide-tail, .guide-dots i, .tips-btn, .xp-btn { transition: opacity .15s ease !important; }
+  .orb.has-unread, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse, .xp-pop.is-in, .xp-pop .xp-def { animation: none !important; }
   .orb-bubble, .orb-bubble-wrap.is-out .orb-bubble { transform: none; }
   .orb:hover, .orb:active { transform: none; }
 }
@@ -629,7 +628,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   .orb, .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .guide.is-chapter .guide-scrim, .guide.is-free .guide-scrim {
     backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
   }
-  .orb { background: var(--paper-solid); }
+  .orb { background: color-mix(in oklch, var(--orb-tint) 30%, var(--paper-solid)); }
   .orb-bubble, .orb-dock .orb-panel, .guide .guide-card, .guide .guide-card.is-chapter, .guide-tail, .tips-btn { background: var(--paper-solid); }
   .guide-tail, .tips-btn, .xp-pop { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
   .xp-pop, .xp-pop::before { background: var(--paper-solid); }
