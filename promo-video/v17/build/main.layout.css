@@ -1,0 +1,29 @@
+      /* 16:9: the caption on one side, the laptop (or, full screen, the app) behind or beside it. */
+      :root { --p-for: 22px; --p-head: 170px; --p-tile: 112px; --p-item: 42px; --p-gap: 40px; --brand-size: 150px; --brand-sub: 56px; --cap-h: 64px; --cap-s: 27px; --co-size: 32px;
+        --values-size: 110px; --term-size: 18px; }
+      #purpose { left: 150px; right: 150px; }
+      #p-list { flex-direction: row; }
+      .pi { flex: 1; }
+      .cap { top: 0; bottom: 0; width: 650px; display: flex; align-items: center; }
+      .cap.L { left: 150px; } .cap.R { right: 150px; }
+      #corner { left: 110px; top: 64px; }
+      #simtag { right: 110px; top: 66px; }
+      #ph { left: 1150px; top: 80px; scale: .84; }   /* closer to a real phone's size beside the laptop */
+      #ha-card { left: 110px; top: 560px; width: 480px; }
+      #end-row { top: 150px; }
+      #end-word { font-size: 132px; }
+      #end-tag { top: 340px; }
+      #term { left: 192px; width: 1536px; top: 450px; }   /* version 16: the real install block, 130 characters wide */
+      #end-meta { top: 780px; }
+      #end-fine { top: 900px; }
+      /* version 10 (title-safe: everything that matters stays 192 px from the sides, 108 from top and bottom) */
+      :root { --hook: 150px; --node: 120px; --node-lb: 17px; --step-h: 50px; --step-s: 25px; --more-t: 84px; --more-gap: 24px; --mc-lb: 26px; --sc-h: 50px; --sc-m: 23px; }
+      #hook { left: 192px; right: 192px; }
+      .step { left: 50%; width: 1180px; margin-left: -590px; bottom: 108px; }
+      #more-t { left: 192px; top: 120px; }
+      #more-g { left: 192px; right: 192px; top: 236px; grid-template-columns: repeat(3, 1fr); }
+      :root { --sh: 120px; }
+      #shelf { left: 1316px; top: 408px; }
+      /* version 14: get started folds into the end card */
+      :root { --end-get: 26px; --cap-fine: 17px; }
+      #end-get { top: 708px; }

@@ -29,3 +29,9 @@ v16/*/assets/audio/
 v16/*/.hyperframes/
 v16/build/sfx_*.json
 v16/build/music_*.json
+# version 17 (V1 made smoother, 16:9 only): the same generated files
+v17/*/assets/footage/
+v17/*/assets/audio/
+v17/*/.hyperframes/
+v17/build/sfx_*.json
+v17/build/music_*.json
