@@ -29,7 +29,7 @@ The app shows the same number in its header and in **Settings → Version & upda
 | Look around before installing | The [online demo](https://deja-vu1.jmath1110.workers.dev/?demo), in any browser | Nothing. It plays a recording of three simulated printers |
 | Run your printers from your computer | A browser tab at `http://localhost:8000` | Windows, Mac, Linux or a Raspberry Pi, with Python 3.8 or newer |
 | Keep it out of the browser | The **desktop app**: its own window, with an icon in the Start menu or Dock | Chrome or Edge on that computer ([how](#the-desktop-app)) |
-| Check prints from the sofa | Your **phone**, on the same home Wi-Fi | Nothing to type: **Connect your phone** on the Overview shows a code to scan with the phone's camera |
+| Check prints from the sofa | Your **phone**, on the same home Wi-Fi | Nothing to type: **Connect your phone** on the Overview shows a code to scan with the phone's camera. On the phone, **More → Install app** puts it on the home screen |
 | Check prints away from home | Your phone through **Tailscale** or a **Cloudflare tunnel** | A private connection you set up ([guide](docs/remote-access.md)) |
 
 Every way except the online demo opens the same dashboard, served by the same
@@ -219,6 +219,36 @@ over your folder.
 If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
+
+## What's new in 0.10.0
+
+- **Connections checked against the printers' own code.** Every connection path
+  was read against Snapmaker's Moonraker and Klipper (now firmware 2.0.0) and
+  the community Extended Firmware, and matched to what that code does.
+- **Printers with a login.** If a printer's web page asks for a username and
+  password (the Extended Firmware's Web Authentication), **Add a printer** asks
+  for them once, reads the printer's key with them, and keeps only the key.
+- **Type just the numbers.** `192.168.1.50` is enough; the app adds the rest.
+- **The printer's camera, found for you.** Settings → Camera → **Find my
+  printer's camera** asks the printer which camera it has, checks a picture
+  really arrives and saves it. Camera pictures try the Extended Firmware's
+  camera first, then Snapmaker's own, and say why if neither answers.
+- **A simpler phone.** One short line for demo data, a one-row print bar, and
+  a **More** sheet with search, every other screen, Camera, help and Install
+  app. Cards that belong to the computer stay on the computer. Every screen is
+  shorter; Settings is 41% shorter.
+- **Install on Android.** **More → Install app** shows a one-tap Install button
+  when Chrome allows it, and otherwise the one Chrome setting a home-network
+  address needs, with copy buttons. ([Why Chrome asks](docs/getting-started.md#install-it-on-your-phone))
+- **One dot colour.** The background no longer fills with the filament's
+  colours while printing (it read as a stray orange line over black). Pick the
+  dots' colour under Settings → Appearance → **Dot colour**.
+- **Firmware 2.0.0.** A file whose name contains `#`, `*` or `;` is refused
+  before sending, with the reason, because the U1 can't start it.
+
+<img src="docs/img/phone-simpler.jpg" width="100%" alt="Three phone screens. Left: the Overview with a one-line demo notice, the Needs you list with its buttons beside each item, a one-row print bar with Pause and Hold to cancel, and the tab bar. Middle: the More sheet open above the tab bar, with a search box, tiles for Care, Automations, Photo studio, Games and Settings, and buttons for Camera, Show me this screen, Help and setup and Install app. Right: Install Deja Vu1, with four steps to trust this one home-network address in Chrome, each with a Copy button">
+
+<sub>Demo printers, Demo data on. The addresses are examples.</sub>
 
 ## What's new in 0.9.0
 
@@ -622,9 +652,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest clean full suite passed **879 tests in 469.2 seconds** on Python
-3.13/Linux, with app/demo servers stopped (25 October 2026: version 0.9.0's repair, restart
-and stop, the update commands and the release with every merge). Before that: 871 tests
+The latest clean full suite passed **893 tests in 482.6 seconds** on Python
+3.13/Linux, with app/demo servers stopped (26 October 2026: version 0.10.0's printer
+sign-in, camera sources, firmware 2.0.0 file names, phone layout and dot colour). Before that:
+879 tests in 469.2 seconds (version 0.9.0's repair, restart and stop, the update commands and the
+release with every merge), and 871 tests
 (the QR code maker and phone link, the update gate fix and the help notes), and 855 tests in 473.3 seconds
 (24 October 2026: version 0.8.0's print
 preview, insights, safety copies, Orca import, device lock, self-check, git-copy updates,
@@ -655,6 +687,8 @@ recorded static demo passed at both widths.
 | Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
 | Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
 | Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
+| Printer sign-in, typed addresses, camera sources, firmware 2.0.0 file names (0.10.0) | Read against Snapmaker's u1-moonraker `a308cfa` and u1-klipper `93cb12f`, the Extended Firmware `417e639` and its camera service `9279584`; stand-in Moonraker tests for the login, the key, the camera list, the snapshot, the MJPEG feed, `req_id` and a failed reply, through the real server | No physical U1, real Extended Firmware camera or Web Authentication tried |
+| Simpler phone, Install app, one dot colour (0.10.0) | Chromium at 1366, 412 and 390 px on the local server, a network address and the static online demo; page heights measured against 0.9.0; Chrome's install rule and its setting read from Chromium's source | Not installed on a real Pixel or iPhone yet |
 | Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
 
 Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified

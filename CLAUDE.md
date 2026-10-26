@@ -168,6 +168,9 @@ root should hand over to `welcome.html`.
 - `qr.py` (standard-library QR codes, checked against python-qrcode) and `phone_link()` in app.py
   (`POST /api/pairing/link`: address + one-time code + QR rows). `frontend/phone.js` shows the sheet,
   and on the phone redeems `?pair=` by itself (setup is skipped for a phone arriving that way).
+  `Phone.install()` (More → Install app, Settings → Install on this phone) picks the install steps:
+  Chrome installs only from https, localhost or an address in chrome://flags "Insecure origins
+  treated as secure" (Chromium `installable_evaluator.cc`), so a plain LAN address gets those steps.
 - `pairing.py`: device keys (hash stored, HttpOnly cookie) and the optional device lock
   (`app.py` `_locked_out`; localhost via loopback is always allowed).
 - `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
@@ -196,7 +199,9 @@ root should hand over to `welcome.html`.
   Constellation, Flow, Layer lines, Still; six colour sets incl. Time of day;
   Reaction Gentle/Lively/Wild; "Little surprises": click ripple, triple-click
   bloom, long-press charge, minute sweep, the time in dots on the hour, a burst
-  when a print finishes, two keyboard secrets). New surprises go in its
+  when a print finishes, two keyboard secrets). Every dot is ONE colour (the owner,
+  26 October 2026): the set's own or Settings → Appearance → Dot colour (`prefs.dot`);
+  no print-progress fill in filament colours. New surprises go in its
   SURPRISES section. It draws only while something moves; reduced motion turns
   it Still with no surprises. Content cards drop their blur while it can move.
 - `twin3d.js` + `twin3d-scene.js`: the digital twin (WebGL 2, no library), with the real print
@@ -419,8 +424,25 @@ prove a public deployment.
   The launcher opens it once per start, not after an update restart.
 - `backend/stock_camera.py`: separate authenticated stock camera monitor per
   real printer. Snapshot GET is module-gated; demo returns a labelled SVG.
-  Real camera unverified; time-lapse now uses each stock camera. Manual MJPEG
-  remains a separate global viewing feed.
+  Tries the camera Moonraker lists first (`/server/webcams/list`; the Extended
+  Firmware's `/webcam/snapshot.jpg`, printer host only), then Snapmaker's
+  `camera.start_monitor` (WebSocket only, integer `req_id`, `{"state":"failed"}` is
+  a failure). Real camera unverified; time-lapse uses each printer's camera. Manual
+  MJPEG remains a separate global viewing feed; `camera.find_printer_stream()`
+  (`POST /api/camera/find`) fills it from the printer's own list.
+- Printer sign-in: `discovery.key_from_login()` (`POST /api/printers/login`) uses the
+  printer's web-page login once (Moonraker `/access/login` → `/access/api_key`) and
+  returns only the API key; never store or log the password. `fleet.normalise_url()`
+  turns `192.168.1.50` into `http://192.168.1.50:7125`. Upstream code (u1-moonraker,
+  u1-klipper, the Extended Firmware) is GPL-3: match its behaviour, never paste it.
+- Phone layout (≤ 720 px, end of `theme.css`): `.desk-only` cards are hidden on phones
+  (desktop app, update commands, recovery, tunnel setup, slicer paths, Stop, phone QR);
+  `.phone-only` the reverse. The launch strip and tab intro move into the More sheet
+  (`#more-sheet`: search, screens, Camera/tips/help/Install). Keep the first phone
+  screen short; give new computer-only cards `desk-only`.
+- App wording (the owner, 26 October 2026): the app and product page carry no
+  "untested / only simulated / testing pending" notes; demo data stays labelled as
+  demo data. README "Current status" and docs keep the full verification record.
 - `frontend/launchpad.js`: skippable setup, private browser name, feature search,
   update settings and camera snapshots. Browser-only names never enter requests.
 - `sw.js` caches only `offline.html`, never API replies or commands. HTTP LAN
