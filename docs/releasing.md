@@ -14,7 +14,9 @@ part of this release work.
 ## Publishing a version
 
 Every merge to `main` publishes a release (`.github/workflows/release.yml`), so
-updates come small and often.
+updates come small and often. The one exception (the owner, 26 October 2026): a
+marketing-video merge publishes none. Put `[marketing video]` in its merge
+message; its changes are published with the next release.
 
 - If the merge raised `VERSION` to a stable number with no release yet, that
   number is published.

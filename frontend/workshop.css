@@ -94,6 +94,10 @@ dialog.glass-dialog {
   margin: auto; overflow: visible;
 }
 dialog.glass-dialog::backdrop { background: rgba(28, 32, 44, .22); }
+/* Every sheet's dimmed backdrop fades in with the sheet rather than snapping on. */
+dialog[open]::backdrop { animation: backdrop-in .28s ease-out; }
+@keyframes backdrop-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { dialog[open]::backdrop { animation: none; } }
 .dialog-panel {
   padding: 24px; max-height: calc(100vh - 48px); overflow: auto; overscroll-behavior: contain;
 }

@@ -955,12 +955,16 @@ const Workshop = (() => {
     if (twin.visible === false) { twin.stale = true; return; }   // out of sight: catch up when seen
     if (twin.queued) return;
     twin.queued = true;
-    const wait = Math.max(0, 32 - (performance.now() - (twin.drawnAt || 0)));
-    setTimeout(() => requestAnimationFrame(() => {
+    // Whole display frames are skipped until 30 ms have passed since the last drawing: every
+    // other frame on a 60 Hz screen. (A 32 ms timer before the frame usually overshot to the
+    // third frame, so a print moved the heads about 20 times a second, unevenly.)
+    const draw = () => {
+      if (performance.now() - (twin.drawnAt || 0) < 30) { requestAnimationFrame(draw); return; }
       twin.queued = false;
       if (twin.model) { twin.drawnAt = performance.now(); twin.model.update(twin.state, twin.pos); renderChips(); }
       else drawTwin();
-    }), wait);
+    };
+    requestAnimationFrame(draw);
   }
 
   /* ---- solids, in printer millimetres (X right, Y back, Z up) ----------

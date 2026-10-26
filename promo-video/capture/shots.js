@@ -45,6 +45,50 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
 // Version 3: every action is quicker (cursor moves of about a third of a second), so the
 // footage itself feels fast; the edit then only has to hold each moment for a beat.
 const MV = 480, PA = 200;   // cursor travel and the pause before a click, in ms (v8: brisker than v5-v7's 620 / 260)
+// Stills for "and plenty more" (screenshots of the real panels, not film), written to
+// footage/<folder>/<name>.png in a 16:10 frame (the card's shape) around each panel.
+// Version 17: `also` names another element (a help note that opened beside its card) the frame
+// takes in as well, and `minW` lets a narrow card have a narrower frame (no half a neighbour).
+// The frame now stays inside the page (version 16's converter still ran past its end into blank
+// grey), and a panel taller than the frame starts just under the top bar, which is hidden.
+async function stillShooter(st, folder) {
+  const out = path.join(process.env.FOOTAGE_DIR || path.join(__dirname, '..', 'footage'), folder);
+  fs.mkdirSync(out, { recursive: true });
+  // Panels only: the floating pieces (progress pill, message orb and its bubbles, the hand-off bar)
+  // and the film's cursor are hidden while the stills are taken.
+  await st.page.addStyleTag({ content: '#live-pill, .orb-dock, #handoff, #__cur, .topbar { visibility: hidden !important; }' });
+  return async (name, tabName, sel, before, also, minW = 760) => {
+    await st.page.evaluate(t => showTab(t), tabName); await r.settle(st, 1200);
+    // a note that opens beside its card is opened once the card is in view (scrolling closes it)
+    if (before && !also) { await before(); await r.settle(st, 1500); }
+    const el = st.page.locator(sel).first();
+    if (!(await el.isVisible().catch(() => false))) { console.log('still', name, 'NOT FOUND', sel); return; }
+    await el.scrollIntoViewIfNeeded(); await st.page.evaluate(() => scrollBy(0, -90)); await r.settle(st, 900);
+    if ((await el.boundingBox()).height + 24 > (st.width - 16) * 10 / 16) {
+      await el.evaluate(e => scrollTo(0, e.getBoundingClientRect().top + scrollY - 100)); await r.settle(st, 900);
+    }
+    if (before && also) { await before(); await r.settle(st, 1500); }
+    // A 16:10 frame (the card's shape) around the panel; CDP's clip is in page coordinates.
+    let b = await el.boundingBox();
+    if (also) {
+      const a = await st.page.locator(also).first().boundingBox();
+      if (a) { const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y);
+        b = { x: x0, y: y0, width: Math.max(a.x + a.width, b.x + b.width) - x0, height: Math.max(a.y + a.height, b.y + b.height) - y0 }; }
+    }
+    const [sy, docH] = await st.page.evaluate(() => [scrollY, document.documentElement.scrollHeight]);
+    const w = Math.min(st.width - 16, Math.max(b.width + 24, minW)), h = Math.round(w * 10 / 16);
+    const x = Math.min(Math.max(8, b.x + b.width / 2 - w / 2), st.width - 8 - w);
+    const y = b.height + 24 > h ? b.y - 12 : b.y + b.height / 2 - h / 2;
+    const clip = { x, y: Math.max(0, Math.min(y + sy, docH - h)), width: w, height: h };
+    // only what is in the window is painted: bring the whole frame into it first
+    if (clip.y < sy || clip.y + h > sy + st.height) {
+      await st.page.evaluate(top => scrollTo(0, top), clip.y - (st.height - h) / 2); await r.settle(st, 900);
+    }
+    await r.still(st, path.join(out, name + '.png'), clip);
+    console.log('still', name, Math.round(clip.width), 'x', Math.round(clip.height), 'panel', Math.round(b.width), 'x', Math.round(b.height));
+  };
+}
+
 const SHOTS = {
   // Overview: Needs you, then a jam fired from the sandbox arrives live.
   async overview_jam() {
@@ -635,28 +679,34 @@ const SHOTS = {
   },
   // Stills for "and plenty more" (screenshots of the real panels, not film): the farm desk, mixed
   // layer heights, the converter, live telemetry, automations and version & updates.
+  // Version 17: "and plenty more" shows what changed since version 16: Away from home (your phone
+  // from any network; this filming machine has no Tailscale, so the card shows its real first
+  // step), the version card (v0.11.0, updates that install every time) and a help note opened
+  // on a card. The farm desk, the converter and automations stay.
+  async stills_v17() {
+    const st = await r.open(); await r.demoOn(st);
+    const shoot = await stillShooter(st, 'stills_v17');
+    await shoot('desk', 'fleet', '#tab-desk');
+    await shoot('convert', 'files', '#convert-card', async () => {
+      await st.page.locator('#cv-sample').click();
+      for (let i = 0; i < 40 && !(await st.page.locator('#cv-report .convert-report').count()); i++) await sleep(500);
+      await r.settle(st, 1200);
+    });
+    await shoot('automations', 'automations', '#rule-list', async () => {
+      await st.page.locator('text=Tell me when a print finishes').first().click();
+      await r.settle(st, 800);
+      await st.page.locator('#rule-form button:has-text("Save rule")').first().click();
+    });
+    await shoot('away', 'modules', '#remote-card', null, null, 590);
+    await shoot('updates', 'modules', '#version-card');
+    await shoot('help', 'overview', '#attention', async () => {
+      await st.page.locator('#attention .xp-btn').first().click();
+    }, '.xp-pop');
+    return st;
+  },
   async stills_v16() {
     const st = await r.open(); await r.demoOn(st);
-    const out = path.join(process.env.FOOTAGE_DIR || path.join(__dirname, '..', 'footage'), 'stills_v16');
-    fs.mkdirSync(out, { recursive: true });
-    // Panels only: the floating pieces (progress pill, message orb and its bubbles, the hand-off bar)
-    // and the film's cursor are hidden while the stills are taken.
-    await st.page.addStyleTag({ content: '#live-pill, .orb-dock, #handoff, #__cur { visibility: hidden !important; }' });
-    const shoot = async (name, tabName, sel, before) => {
-      await st.page.evaluate(t => showTab(t), tabName); await r.settle(st, 1200);
-      if (before) { await before(); await r.settle(st, 1500); }
-      const el = st.page.locator(sel).first();
-      if (!(await el.isVisible().catch(() => false))) { console.log('still', name, 'NOT FOUND', sel); return; }
-      await el.scrollIntoViewIfNeeded(); await st.page.evaluate(() => scrollBy(0, -90)); await r.settle(st, 900);
-      // A 16:10 frame (the card's shape) around the panel; CDP's clip is in page coordinates.
-      const b = await el.boundingBox(), sy = await st.page.evaluate(() => scrollY);
-      const w = Math.min(st.width - 16, Math.max(b.width + 24, 760)), h = Math.round(w * 10 / 16);
-      const x = Math.min(Math.max(8, b.x + b.width / 2 - w / 2), st.width - 8 - w);
-      const y = b.height + 24 > h ? b.y - 12 : b.y + b.height / 2 - h / 2;
-      const clip = { x, y: Math.max(0, y + sy), width: w, height: h };
-      await r.still(st, path.join(out, name + '.png'), clip);
-      console.log('still', name, Math.round(clip.width), 'x', Math.round(clip.height), 'panel', Math.round(b.width), 'x', Math.round(b.height));
-    };
+    const shoot = await stillShooter(st, 'stills_v16');
     await shoot('desk', 'fleet', '#tab-desk');
     await shoot('layers', 'files', '#tab-layerplan');
     await shoot('convert', 'files', '#convert-card', async () => {

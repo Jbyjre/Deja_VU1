@@ -352,6 +352,10 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
               height .62s var(--guide-spring), border-radius .45s ease;
 }
 .guide-ring[hidden], .guide-beacon[hidden] { display: none; }
+/* Shown again, the spotlight and its beacon fade in where they belong (no glide from the corner). */
+.guide-ring, .guide-beacon { animation: guide-fade-in .35s ease-out; }
+.guide-ring.is-fresh, .guide-beacon.is-fresh { transition: none; }
+@keyframes guide-fade-in { from { opacity: 0; } }
 :root { --guide-spring: cubic-bezier(.34, 1.32, .5, 1); }
 
 /* Where the callout's tail points: a beacon on the spotlight's edge. */
@@ -620,7 +624,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 
 @media (prefers-reduced-motion: reduce) {
   .orb, .orb-bubble, .orb-bubble-wrap, .orb-dock .orb-panel, .guide, .guide-ring, .guide .guide-card, .guide-beacon, .guide-tail, .guide-dots i, .tips-btn, .xp-btn { transition: opacity .15s ease !important; }
-  .orb.has-unread, .orb.has-update::before, .orb.is-gulp, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse, .xp-pop.is-in, .xp-pop .xp-def { animation: none !important; }
+  .orb.has-unread, .orb.has-update::before, .orb.is-gulp, .guide-ring, .guide-beacon, .guide .guide-card.is-chapter, .guide .guide-card.is-free, .guide-body.is-in, .guide-beacon::after, .version-card.is-flash, .phone-dialog[open], .phone-pulse, .xp-pop.is-in, .xp-pop .xp-def { animation: none !important; }
   .orb-bubble, .orb-bubble-wrap.is-out .orb-bubble { transform: none; }
   .orb:hover, .orb:active { transform: none; }
 }

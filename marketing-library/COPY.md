@@ -116,6 +116,6 @@ First connection: https://github.com/Jbyjre/Deja_VU1/blob/main/docs/first-connec
 Independent project; not affiliated with or endorsed by Snapmaker.
 Piano: Salamander Grand Piano by Alexander Holm, CC BY 3.0.
 
-Keep that piano attribution when posting the films (version 16 uses the same
-recorded piano, bass and drums as versions 12 and 14). Post version 16, 16:9;
+Keep that piano attribution when posting the films (versions 16 and 17 use the same
+recorded piano, bass and drums as versions 12 and 14). Post version 17, 16:9;
 the V2 films and 9:16 cuts are set aside.

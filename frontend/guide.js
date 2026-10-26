@@ -106,6 +106,7 @@ window.Guide = (() => {
     else { bx = left + along; by = y; }
     bx = Math.min(Math.max(bx, x), x + w); by = Math.min(Math.max(by, y), y + h);
     beacon.style.transform = `translate(${Math.round(bx)}px, ${Math.round(by)}px)`;
+    if (ring.classList.contains('is-fresh')) { void ring.offsetWidth; ring.classList.remove('is-fresh'); beacon.classList.remove('is-fresh'); }
   }
   const schedule = () => { if (!raf) raf = requestAnimationFrame(place); };
 
@@ -131,6 +132,9 @@ window.Guide = (() => {
     if (step.tab) showTab(step.tab);
     target = step.chapter ? null : resolve(step);
     const missing = !step.chapter && step.target && !target;
+    // A callout floating in the middle glides from there to its first spotlight,
+    // rather than starting again from the corner of the screen.
+    const from = card.classList.contains('is-free') || card.classList.contains('is-chapter') ? card.getBoundingClientRect() : null;
     root.classList.toggle('is-chapter', !!step.chapter);
     root.classList.toggle('is-free', !step.chapter && !target);
     const section = [...steps.slice(0, at + 1)].reverse().find(s => s.section)?.section || opts.name || 'Tour';
@@ -154,7 +158,15 @@ window.Guide = (() => {
     body.classList.remove('is-in'); void body.offsetWidth; body.classList.add('is-in');
     card.scrollTop = 0;
     if (target) {
+      // A spotlight that was hidden fades in where it belongs instead of flying in from the corner.
+      if (ring.hidden) { ring.classList.add('is-fresh'); beacon.classList.add('is-fresh'); }
       ring.hidden = false; beacon.hidden = false;
+      if (from && from.width) {
+        card.style.transition = 'none';
+        card.style.transform = `translate(${Math.round(from.left)}px, ${Math.round(from.top)}px)`;
+        void card.offsetWidth;
+        card.style.transition = '';
+      }
       // Centre the target in the space under the sticky top bar; a tall one starts just below it.
       const bar = document.querySelector('.topbar'), r = target.getBoundingClientRect();
       const top = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().bottom + 12 : 12;
