@@ -7,7 +7,7 @@ anyone can send - see [docs/beta-testing.md](docs/beta-testing.md).
 
 ```bash
 python3 backend/app.py                 # http://localhost:8000
-python3 -m unittest discover tests     # the whole suite, about two and a half minutes
+python3 -m unittest discover tests     # the whole suite: 8 to 13 minutes, depending on the computer
 ```
 
 Python 3.8 or newer, nothing else. Flip **Demo data** in the header to try

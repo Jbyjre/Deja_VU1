@@ -115,11 +115,17 @@ gets credit. Write so the answers are easy to find.
   `docs/slicer-workspace-validation.md` and `marketing-library/COPY.md`.
 - Python: match the file you are in. One statement per line (no `if x:return y`, no
   `a=1;b=2`), about 120 columns at most, comments only for the why.
-  `ruff check --select E701,E702 backend tests tools` must stay clean.
+  `ruff check --select E701,E702 backend tests tools` must stay clean. GitHub Actions
+  still runs Python 3.8, so write no parenthesised `with (a, b):` (3.9 and later only);
+  `ruff format` adds one unless it is told `--target-version py38`. Parse the files with a
+  real 3.8 (`uv python install 3.8`) before pushing a mass reformat.
 - JavaScript: Prettier with single quotes, two spaces, 120 columns, no trailing
   commas, arrows without parentheses for one argument.
 - A formatting-only change proves it: compare the syntax trees before and after
-  (Python `ast.dump`, JavaScript acorn) and say so in the commit message.
+  (Python `ast.dump`, JavaScript acorn) and say so in the commit message. Then run the
+  whole suite: a few tests read source files as text (`tests/test_frontend_refresh.py`
+  reads `games.js`), so they can break on layout alone. Write such tests so they do not
+  depend on spacing.
 
 ## Commands
 

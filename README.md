@@ -671,8 +671,8 @@ completed hardware drivers.
 The latest full run passed **904 tests in 793.4 seconds** on Python 3.13/Linux,
 with the app and demo servers stopped (26 October 2026, on the `main` branch at
 version 0.11.0). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13.
-Earlier full runs passed 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests, one
-for each round of work. The slicing-workspace round
+Earlier full runs passed 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
 actual slicing, preview, plate selection and Confirm Print entry, and the

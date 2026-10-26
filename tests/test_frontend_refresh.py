@@ -20,11 +20,11 @@ def read(name):
 class TestPacmanMaze(unittest.TestCase):
     def setUp(self):
         src = read("games.js")          # the arcade, loaded when the Games tab opens
-        body = re.search(r"function newPacmanArcade\(\)\{(.*?)\n\}\n", src, re.S)
+        body = re.search(r"function newPacmanArcade\s*\(\)\s*\{(.*?)\n\}\n", src, re.S)
         self.assertIsNotNone(body, "newPacmanArcade not found")
-        block = re.search(r"const MAP=\[(.*?)\];", body.group(1), re.S)
+        block = re.search(r"const MAP\s*=\s*\[(.*?)\];", body.group(1), re.S)
         self.rows = re.findall(r"'([^']*)'", block.group(1))
-        self.tunnel = int(re.search(r"TUNNEL=(\d+)", body.group(1)).group(1))
+        self.tunnel = int(re.search(r"TUNNEL\s*=\s*(\d+)", body.group(1)).group(1))
 
     def open_cell(self, c, r):
         if r == self.tunnel:
@@ -148,7 +148,7 @@ class TestPageWiring(unittest.TestCase):
         # brings back the stutter and refresh-rate speed differences.
         for helper in ("function plusTools", "function gameTools", "function gamesToolsV2"):
             start = src.index(helper)
-            body = src[start:src.index("\n", start + 200) if helper == "function plusTools" else src.index("\n}\n", start)]
+            body = src[start:src.index("\n}\n", start)]
             self.assertIn("frameEvery(", body, helper)
             self.assertNotIn("setInterval(", body, helper)
 
