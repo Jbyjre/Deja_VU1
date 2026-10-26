@@ -35,6 +35,21 @@ here with what Deja Vu1 does with each.
   the SIL Open Font License; their licences are beside them in
   `frontend/fonts/`.
 
+## In the launch-film folders
+
+`promo-video/` and `marketing-library/` hold the launch films and the tools that
+made them. The app does not need them.
+
+- **GSAP 3.14.2** (GreenSock) sits in each film's `vendor/` folder. Its own
+  header reads "Copyright 2025, GreenSock. All rights reserved. Subject to the
+  terms at https://gsap.com/standard-license." This project's MIT licence does
+  not cover it.
+- **Film music** is played from recorded instruments: the Salamander Grand Piano
+  V3 by Alexander Holm (CC BY 3.0, so every post of a film must credit it), the
+  VSCO 2 CE solo contrabass, Virtuosity Drums, and the VCSL vibraphone and shaker
+  (all CC0). `promo-video/music/fetch_samples.sh` downloads the samples; they
+  are not stored in this repository.
+
 ## Names
 
 Snapmaker and U1 are Snapmaker's names. Deja Vu1 is an independent project,
