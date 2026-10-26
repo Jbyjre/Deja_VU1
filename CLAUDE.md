@@ -25,12 +25,16 @@ trust the code and fix this file.
 - Launch video (the owner, 25 October 2026): **16:9 only** from now on, one cut per version (no
   9:16). Set aside, and never build on or reuse: the owner's "V2" (version 13's 60 s pair and
   version 15, its update) and the marketing videos ChatGPT made (none are in this repository).
-  The current line is "V1" (version 12's 75 s pair, version 14 at 60 s, version 16). Marketing cuts
+  The current line is "V1" (version 12's 75 s pair, version 14 at 60 s, versions 16 and 17). Marketing cuts
   are 60 seconds and show the live Dots background and the 3D twin (`promo-video/README.md` holds the
   owner's other video preferences). Each new version shows what changed in the app since the last.
   Version 16 (`promo-video/v16/`, 16:9 only) shows the 3DBenchy, the quick tour and scanning a QR
-  code onto a phone; it replaced the film in the README and on the product page. Older finished
-  files stay in `marketing-library/07-videos/`. Don't edit the video unless asked.
+  code onto a phone. Version 17 (`promo-video/v17/`, the owner, 26 October 2026: "make it smoother
+  and better") is version 16 measured frame by frame and smoothed (no 3D flattening when the laptop
+  dims, dissolves where the filmed app swaps a whole view, a 60 fps web copy), with what changed
+  since in "and plenty more"; it replaced the film in the README and on the product page. Check a
+  new cut with a frame-difference pass over the master (`promo-video/README.md`, version 17). Older
+  finished files stay in `marketing-library/07-videos/`. Don't edit the video unless asked.
 - Every change must also be reflected in the online demo (the owner's rule,
   October 2026; README "For developers and AI coding sessions"). Frontend
   changes reach it by themselves, but check `/?demo` on a static server; a new
