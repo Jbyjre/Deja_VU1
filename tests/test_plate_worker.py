@@ -28,7 +28,8 @@ class GeometryWorker(unittest.TestCase):
         self.assertEqual(result['pairs'],[[0,1]])
 
     def test_coplanar_triangles_with_overlapping_boxes_are_separate(self):
-        a=[0,0,0,4,0,0,0,4,0];b=[3,3,0,5,3,0,3,5,0]
+        a = [0, 0, 0, 4, 0, 0, 0, 4, 0]
+        b = [3, 3, 0, 5, 3, 0, 3, 5, 0]
         self.assertEqual(self.run_worker({'type':'contact','meshes':[a,b]})['pairs'],[])
 
     def test_ray_picks_actual_surface(self):

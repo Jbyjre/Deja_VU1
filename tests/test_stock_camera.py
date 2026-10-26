@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import sys
 import tempfile
@@ -17,7 +16,8 @@ class StockCamera(unittest.TestCase):
         self.addCleanup(self.fake.close)
         self.addCleanup(stock_camera.stop_all)
         self.warm = patch.object(stock_camera, 'WARMUP_SECONDS', 0)
-        self.warm.start(); self.addCleanup(self.warm.stop)
+        self.warm.start()
+        self.addCleanup(self.warm.stop)
         self.printer = mc.MoonrakerPrinter('camera-test', 'Bench', self.fake.url, api_key='private-key')
 
     def test_authenticated_picture_and_stop(self):
@@ -77,16 +77,21 @@ class StockCamera(unittest.TestCase):
         import mock_moonraker as fleet
         import timelapse
         import storage
-        self.printer.start();self.addCleanup(self.printer.stop)
+
+        self.printer.start()
+        self.addCleanup(self.printer.stop)
         deadline=time.monotonic()+5
-        while not self.printer.is_connected() and time.monotonic()<deadline:time.sleep(.02)
+        while not self.printer.is_connected() and time.monotonic() < deadline:
+            time.sleep(0.02)
         self.assertTrue(self.printer.is_connected())
         with tempfile.TemporaryDirectory() as folder,patch.object(timelapse,'_ROOT',folder),patch.dict(fleet._REAL,{'camera-test':self.printer}),patch('modules.is_enabled',return_value=True):
             session=timelapse.begin('camera-test','fixture.gcode','printer camera')
             try:
                 timelapse._capture_camera('camera-test',5,session)
                 meta=storage.load_json(timelapse._meta_path('camera-test',session),{})
-                self.assertEqual(meta['frames'],1);self.assertIsNone(meta['last_error'])
+                self.assertEqual(meta['frames'], 1)
+                self.assertIsNone(meta['last_error'])
                 self.assertTrue(Path(timelapse._dir('camera-test',session),'00001.jpg').read_bytes().startswith(b'\xff\xd8'))
                 self.assertTrue(self.fake.camera_monitoring)
-            finally:timelapse._active.pop('camera-test',None)
+            finally:
+                timelapse._active.pop('camera-test', None)

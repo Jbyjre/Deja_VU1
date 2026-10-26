@@ -42,13 +42,19 @@ class FakeGo2rtc(BaseHTTPRequestHandler):
             import base64
             want = "Basic " + base64.b64encode(":".join(FakeGo2rtc.credentials).encode()).decode()
             if self.headers.get("Authorization") != want:
-                self.send_response(401); self.end_headers(); self.wfile.write(b"Unauthorized")
+                self.send_response(401)
+                self.end_headers()
+                self.wfile.write(b"Unauthorized")
                 return
         if url.path != "/api/webrtc" or parse_qs(url.query).get("src") != ["u1"]:
-            self.send_response(404); self.end_headers(); self.wfile.write(b"stream not found")
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"stream not found")
             return
         if FakeGo2rtc.reply == "error":
-            self.send_response(500); self.end_headers(); self.wfile.write(b"codecs not matched")
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(b"codecs not matched")
             return
         out = b"<html>not sdp</html>" if FakeGo2rtc.reply == "garbage" else \
             json.dumps({"type": "answer", "sdp": ANSWER_SDP}).encode()
@@ -74,7 +80,8 @@ class WebRTCCamera(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         for s in (cls.fake, cls.server):
-            s.shutdown(); s.server_close()
+            s.shutdown()
+            s.server_close()
 
     def setUp(self):
         webrtc_camera.reset()

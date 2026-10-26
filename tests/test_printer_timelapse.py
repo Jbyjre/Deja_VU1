@@ -12,7 +12,8 @@ class PrinterTimelapse(unittest.TestCase):
         timelapse.reset()
         self.addCleanup(timelapse.reset)
         self.enabled=patch('modules.is_enabled',return_value=True)
-        self.enabled.start();self.addCleanup(self.enabled.stop)
+        self.enabled.start()
+        self.addCleanup(self.enabled.stop)
 
     def capture(self,pid,session,data=b'\xff\xd8picture\xff\xd9'):
         with patch.object(mock_moonraker,'camera_snapshot',return_value=(data,'image/jpeg')):
@@ -47,4 +48,5 @@ class PrinterTimelapse(unittest.TestCase):
             camera.assert_not_called()
 
     def test_parent_path_is_refused(self):
-        with self.assertRaises(ValueError):timelapse.frames('..','..')
+        with self.assertRaises(ValueError):
+            timelapse.frames('..', '..')

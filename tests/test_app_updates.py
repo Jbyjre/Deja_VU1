@@ -21,7 +21,8 @@ def package(extra=None):
     files.update(extra or {})
     b = io.BytesIO()
     with zipfile.ZipFile(b, 'w') as z:
-        for n, value in files.items(): z.writestr(n, value)
+        for n, value in files.items():
+            z.writestr(n, value)
     return b.getvalue()
 
 
@@ -34,10 +35,12 @@ class AppUpdates(unittest.TestCase):
         (self.root / 'backend/data/fleet.json').write_text('private settings')
         (self.root / 'backend/app.py').write_text('# old')
         self.settings = patch.object(updates, '_PATH', str(self.root / 'prefs.json'))
-        self.settings.start(); self.addCleanup(self.settings.stop)
+        self.settings.start()
+        self.addCleanup(self.settings.stop)
         # The pretend release is v0.2.0, so pretend 0.1.0 is installed, whatever VERSION says.
         installed = patch.object(updates, 'version', return_value='0.1.0')
-        installed.start(); self.addCleanup(installed.stop)
+        installed.start()
+        self.addCleanup(installed.stop)
 
     def release(self, data):
         return {'tag_name': 'v0.2.0', 'assets': [{'name': 'deja-vu1-update.zip',
@@ -72,7 +75,8 @@ class AppUpdates(unittest.TestCase):
         data = package()
         with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(updates, '_read_url',
                 side_effect=[json.dumps(self.release(data)).encode(), b'wrong download']):
-            with self.assertRaisesRegex(ValueError, 'checksum'): updates.prepare(self.root)
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                updates.prepare(self.root)
         self.assertEqual((self.root / 'backend/app.py').read_text(), '# old')
         self.assertFalse((self.root / '.dejavu-update').exists())
 
@@ -164,7 +168,8 @@ class NewestBuilds(unittest.TestCase):
         self.remote = dict(self.files, **{'backend/app.py': b'# server, improved', 'frontend/new.js': b'// new',
                                           'tests/test_x.py': b'# not shipped', 'backend/data/fleet.json': b'{}'})
         self.settings = patch.object(updates, '_PATH', str(self.root / 'prefs.json'))
-        self.settings.start(); self.addCleanup(self.settings.stop)
+        self.settings.start()
+        self.addCleanup(self.settings.stop)
         self.downloads = []
 
     def github(self, url, limit, tamper=None):
@@ -260,11 +265,13 @@ class GitCopyUpdates(unittest.TestCase):
         self.git(base, 'clone', '-q', str(self.github), str(self.author))
         (self.author / 'VERSION').write_text('0.8.0\n')
         (self.author / 'app.py').write_text('# old')
-        self.git(self.author, 'add', '.'); self.git(self.author, 'commit', '-qm', 'first')
+        self.git(self.author, 'add', '.')
+        self.git(self.author, 'commit', '-qm', 'first')
         self.git(self.author, 'push', '-q', 'origin', 'HEAD:main')
         self.git(base, 'clone', '-q', '--branch', 'main', str(self.github), str(self.copy))
         self.settings = patch.object(updates, '_PATH', str(base / 'prefs.json'))
-        self.settings.start(); self.addCleanup(self.settings.stop)
+        self.settings.start()
+        self.addCleanup(self.settings.stop)
 
     def publish(self, text='# new', ver='0.9.0'):
         (self.author / 'app.py').write_text(text)
@@ -317,7 +324,8 @@ class GitCopyUpdates(unittest.TestCase):
         local = Path(self.tmp.name) / 'local'
         for ver in ('3.4.9', '3.10.1'):
             exe = local / 'GitHubDesktop' / f'app-{ver}' / 'resources/app/git/cmd/git.exe'
-            exe.parent.mkdir(parents=True); exe.write_text('')
+            exe.parent.mkdir(parents=True)
+            exe.write_text('')
         with patch.object(updates.shutil, 'which', return_value=None), patch.dict(os.environ, LOCALAPPDATA=str(local)):
             self.assertIn('app-3.10.1', updates.find_git(windows=True))  # newest, compared as numbers
 
