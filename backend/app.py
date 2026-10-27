@@ -1278,6 +1278,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return self._send_json(slicer_bridge.save_settings(body))
             if verb == "check":
                 return self._send_json(slicer_bridge.check())
+            if verb == "find":
+                return self._send_json(slicer_bridge.find_slicers())
             if verb == "profiles":
                 return self._send_json(slicer_bridge.add_profile(body.get("name"), body.get("machine"),
                                                                  body.get("process"), body.get("filaments")))

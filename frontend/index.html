@@ -161,7 +161,7 @@
 
   <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
     <!-- Nine tabs, every one always showing: Sandbox lives in Printers
-         (data-tab "fleet"), Auto-print in Files, Filament & colour in Care. -->
+         (data-tab "fleet"), Slicing in Files, Filament & colour in Care. -->
     <button class="navtab active" data-tab="overview">Overview</button>
     <button class="navtab" data-tab="fleet">Printers</button>
     <button class="navtab" data-tab="control">Control</button>
@@ -588,7 +588,12 @@
 
     <!-- Folded into this tab so every section is always in the tab bar. -->
     <section id="tab-autoprint" class="tab-sub" aria-labelledby="sub-autoprint-title">
-      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Auto-print</h2><p>Slice models with your own OrcaSlicer and queue the result</p></div>
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Slicing</h2><p>Turn a model into a print file with the slicer you already use, then check and queue it</p></div>
+      <section class="card liquid-glass slice-ready" id="slice-ready" aria-labelledby="sr-title">
+        <div class="card-head"><div><h2 id="sr-title">Get ready to slice</h2><p class="card-sub">Five steps, once. Each one says what it needs and has one button.</p></div><span class="sr-count" id="sr-count" aria-live="polite"></span></div>
+        <ol class="sr-steps" id="sr-steps"></ol>
+        <div class="sr-ready" id="sr-ready" hidden></div>
+      </section>
       <section class="card liquid-glass" id="ap-off" hidden></section>
       <div id="ap-body">
         <div class="grid-2">

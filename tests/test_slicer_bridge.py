@@ -165,6 +165,48 @@ class TestSettings(SlicerBridgeTest):
         self.assertIn("didn't answer like OrcaSlicer", result["error"])
 
 
+class TestFindSlicers(SlicerBridgeTest):
+    """"Find it for me": the usual install places, one level deep, nothing run."""
+
+    def place(self, *parts, executable=True, content="#!/bin/sh\n"):
+        path = os.path.join(self.tmp, "places", *parts)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            fh.write(content)
+        os.chmod(path, 0o755 if executable else 0o644)
+        return path
+
+    def test_finds_programs_and_skips_installers_projects_and_archives(self):
+        appimage = self.place("Downloads", "OrcaSlicer_Linux_V2.3.0.AppImage", executable=False)
+        opt = self.place("opt", "Snapmaker_Orca", "bin", "snapmaker-orca")
+        for skipped in ("OrcaSlicer_Linux_V2.3.0.zip", "OrcaSlicer_Installer", "orca_benchy.stl", ".orca-hidden"):
+            self.place("Downloads", skipped)
+        self.place("Downloads", "orca-notes", executable=False)          # not a program
+        places = [(os.path.join(self.tmp, "places", "Downloads"), "Downloads"),
+                  (os.path.join(self.tmp, "places", "opt"), "/opt"),
+                  (os.path.join(self.tmp, "places", "missing"), "nowhere")]
+        found = slicer_bridge.find_slicers(places)["found"]
+        self.assertEqual([f["path"] for f in found], [opt, appimage])   # runnable Snapmaker Orca first
+        self.assertEqual(found[0]["name"], "Snapmaker Orca")
+        self.assertTrue(found[0]["runnable"])
+        self.assertFalse(found[1]["runnable"])
+        self.assertIn("allow it to run", found[1]["hint"])
+
+    def test_marks_the_one_in_use_and_lists_each_program_once(self):
+        orca = self.place("Applications", "OrcaSlicer", "orca-slicer")
+        os.symlink(orca, os.path.join(self.tmp, "places", "Applications", "orca-link"))
+        slicer_bridge.save_settings({"slicer_path": orca})
+        found = slicer_bridge.find_slicers([(os.path.join(self.tmp, "places", "Applications"), "Applications")])["found"]
+        self.assertEqual(len(found), 1)
+        self.assertTrue(found[0]["in_use"])
+
+    def test_the_answer_is_capped(self):
+        for i in range(slicer_bridge.MAX_FOUND + 5):
+            self.place("Downloads", f"orca-slicer-{i}")
+        found = slicer_bridge.find_slicers([(os.path.join(self.tmp, "places", "Downloads"), "Downloads")])["found"]
+        self.assertEqual(len(found), slicer_bridge.MAX_FOUND)
+
+
 class TestProfiles(SlicerBridgeTest):
     def test_presets_are_checked_before_orca_runs(self):
         with self.assertRaisesRegex(ValueError, "this slot needs a machine"):

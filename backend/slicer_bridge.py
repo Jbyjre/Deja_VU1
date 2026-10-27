@@ -49,6 +49,7 @@ import os
 import re
 import shutil
 import signal
+import sys
 import subprocess
 import tempfile
 import threading
@@ -173,6 +174,102 @@ def slicer_path(settings=None):
         if candidate and os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate, "detected"
     return "", "settings"
+
+
+MAX_FOUND = 12          # programs listed by find_slicers
+_MAX_LISTED = 400       # entries read per folder, so a huge Downloads folder stays quick
+
+
+def _search_places():
+    """Where people usually keep the slicer: (folder, label) pairs, one level deep."""
+    home = os.path.expanduser("~")
+    if sys.platform == "darwin":
+        return [("/Applications", "Applications"), (os.path.join(home, "Applications"), "your Applications"),
+                (os.path.join(home, "Downloads"), "Downloads")]
+    if os.name == "nt":
+        places = []
+        for var, label in (("ProgramFiles", "Program Files"), ("ProgramFiles(x86)", "Program Files (x86)"),
+                           ("LOCALAPPDATA", "your programs")):
+            base = os.environ.get(var)
+            if base:
+                places.append((os.path.join(base, "Programs") if var == "LOCALAPPDATA" else base, label))
+        return places + [(os.path.join(home, "Downloads"), "Downloads"), (os.path.join(home, "Desktop"), "Desktop")]
+    # Linux: AppImages are usually left in Downloads or Applications; Flatpak
+    # installs leave a launcher in its exports folder.
+    return [(os.path.join(home, "Applications"), "Applications"), (os.path.join(home, "Downloads"), "Downloads"),
+            (os.path.join(home, "Desktop"), "Desktop"), (home, "your home folder"),
+            (os.path.join(home, ".local", "bin"), "your programs"), ("/opt", "/opt"),
+            ("/usr/local/bin", "installed programs"), ("/usr/bin", "installed programs"),
+            ("/var/lib/flatpak/exports/bin", "Flatpak"),
+            (os.path.join(home, ".local", "share", "flatpak", "exports", "bin"), "Flatpak")]
+
+
+def _listing(folder):
+    try:
+        with os.scandir(folder) as it:
+            return [entry for _, entry in zip(range(_MAX_LISTED), it)]
+    except OSError:
+        return []
+
+
+def _could_be_program(path):
+    """A file named like the slicer that is a program, not an installer or a project."""
+    name = os.path.basename(path).lower()
+    if "orca" not in name or name.startswith(".") or any(w in name for w in ("install", "setup", "uninst")):
+        return False
+    if not os.path.isfile(path):
+        return False
+    if os.name == "nt":
+        return name.endswith(".exe")
+    return name.endswith(".appimage") or ("." not in name and os.access(path, os.X_OK))
+
+
+def _program_files(entry):
+    """The slicer programs a folder entry stands for: itself, or those inside an app folder."""
+    name = entry.name.lower()
+    if "orca" not in name or name.startswith("."):
+        return []
+    try:
+        is_dir = entry.is_dir()
+    except OSError:
+        return []
+    if not is_dir:
+        return [entry.path] if _could_be_program(entry.path) else []
+    inner = os.path.join(entry.path, "Contents", "MacOS") if name.endswith(".app") else entry.path
+    found = [e.path for e in _listing(inner) if _could_be_program(e.path)]
+    if not found and not name.endswith(".app"):       # /opt/OrcaSlicer/bin/orca-slicer
+        found = [e.path for e in _listing(os.path.join(entry.path, "bin")) if _could_be_program(e.path)]
+    return found
+
+
+def find_slicers(places=None):
+    """
+    Look for installed Snapmaker Orca and OrcaSlicer programs in the usual
+    places. Nothing is run or changed; the person picks one and it is saved
+    as the slicer path the normal way (save_settings, then check).
+    """
+    current, _ = slicer_path()
+    seen, found = set(), []
+    for folder, label in (places if places is not None else _search_places()):
+        for entry in _listing(folder):
+            for path in _program_files(entry):
+                real = os.path.realpath(path)
+                if real in seen or len(found) >= MAX_FOUND:
+                    continue
+                seen.add(real)
+                runnable = os.access(path, os.X_OK)
+                found.append({
+                    "path": path,
+                    "name": "Snapmaker Orca" if "snapmaker" in path.lower() else "OrcaSlicer",
+                    "where": label,
+                    "runnable": runnable,
+                    "hint": None if runnable else "Found, but it isn't allowed to run yet. On Linux, right-click it, "
+                                                  "open Properties and allow it to run as a program (or chmod +x it).",
+                    "in_use": bool(current) and os.path.realpath(current) == real,
+                })
+    found.sort(key=lambda f: (not f["in_use"], not f["runnable"], f["name"] != "Snapmaker Orca"))
+    return {"found": found, "searched": sorted({label for _, label in (places if places is not None else _search_places())}),
+            "current": current or None}
 
 
 def _looks_like_orca(path):
@@ -490,7 +587,7 @@ def _profile(profile_id, settings):
     pid = profile_id or settings.get("default_profile")
     prof = next((p for p in settings["profiles"] if p["id"] == pid), None)
     if prof is None:
-        raise ValueError("Choose a slicing profile first (Files → Auto-print pipeline → Profiles)")
+        raise ValueError("Choose a slicing profile first (Files → Slicing → Profiles)")
     return prof
 
 

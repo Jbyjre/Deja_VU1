@@ -1679,7 +1679,7 @@ const Workshop = (() => {
     $('file-upload').addEventListener('change', (e) => { uploadFiles([...e.target.files]); e.target.value = ''; });
     $('file-samples').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
-      btn.disabled = true; btn.textContent = 'Adding… (about 10 s the first time)';
+      btn.disabled = true; btn.textContent = 'Adding… (about 15 s the first time)';
       const r = await postJSON('/api/files/samples', {});
       btn.disabled = false; btn.textContent = 'Add sample files';
       toast(r.ok ? (r.body.added.length ? `Added ${r.body.added.length} sample files` : 'The sample files are already here') : `Couldn't add samples: ${r.body.error}`, r.ok ? 'ok' : 'bad');

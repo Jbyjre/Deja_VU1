@@ -621,29 +621,138 @@ const Farm = (() => {
     const data = await getJSON(api('/api/slicer/settings')).catch(() => null);
     if (forPrinter !== currentPrinter) return;
     // No server: its cards already say they need one.
-    if (data && data.server_missing) { body.hidden = false; off.hidden = true; return; }
+    if (data && data.server_missing) { body.hidden = false; off.hidden = true; $('slice-ready').hidden = true; return; }
     ap.enabled = !isModuleDisabled(data) && !!data;
+    $('slice-ready').hidden = !data;
     if (!ap.enabled) {
+      ap.settings = null;
+      renderReady();
       body.hidden = true; off.hidden = false;
       off.innerHTML = `
         <div class="empty">
           <span class="empty-mark" aria-hidden="true"></span>
-          <p class="empty-title">The auto-print pipeline is off</p>
-          <p class="empty-sub">It slices STL and 3MF models with OrcaSlicer, a separate, free program you install yourself.
+          <p class="empty-title">Slicing is off</p>
+          <p class="empty-sub">It slices STL and 3MF models with Snapmaker Orca or OrcaSlicer, free programs you install yourself.
             Nothing is downloaded or installed by this dashboard. Turn it on to set it up.</p>
-          <button class="btn primary" type="button" id="ap-enable">Turn on auto-print</button>
+          <button class="btn primary" type="button" id="ap-enable">Turn on slicing</button>
         </div>`;
-      $('ap-enable').addEventListener('click', async (e) => {
-        const r = await busy(e.currentTarget, 'Turning on…', () => postJSON('/api/modules/auto_print/toggle', { enabled: true }));
-        if (r.ok) { toast('Auto-print is on. Now point it at your OrcaSlicer', 'ok'); loadAutoPrint(); if (typeof loadModules === 'function') loadModules(); }
-        else toast(`Couldn't turn it on: ${r.body.error}`, 'bad');
-      });
+      $('ap-enable').addEventListener('click', e => turnOn(e.currentTarget));
       return;
     }
     body.hidden = false; off.hidden = true;
     ap.settings = data;
     renderSlicer();
     await Promise.all([loadModels(), loadJobs()]);
+    renderReady();
+  }
+
+  async function turnOn(btn) {
+    const r = await busy(btn, 'Turning on…', () => postJSON('/api/modules/auto_print/toggle', { enabled: true }));
+    if (r.ok) { toast('Slicing is on. Next, find your slicer program', 'ok'); await loadAutoPrint(); if (typeof loadModules === 'function') loadModules(); }
+    else toast(`Couldn't turn it on: ${r.body.error}`, 'bad');
+  }
+
+  /* ---- "Get ready to slice": the setup as five steps, the first one not
+     done is the only one with a button. Rebuilt from the same answers as
+     the cards below it, so the two never disagree. ---- */
+  const SLICERS = [
+    ['Snapmaker Orca', 'https://github.com/Snapmaker/OrcaSlicer/releases', 'Snapmaker’s own version, with the U1 built in'],
+    ['OrcaSlicer', 'https://github.com/SoftFever/OrcaSlicer/releases', 'The original, also free and open source'],
+  ];
+  const fileName = p => String(p || '').split(/[\\/]/).pop();
+
+  function readySteps() {
+    const s = ap.enabled ? ap.settings : null, check = s && s.last_check;
+    const program = !!s && !s.problem, answered = program && !!(check && check.ok);
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const how = s && ({ detected: 'Found by itself', environment: 'Set when the server started' }[s.path_source] || 'Your choice');
+    return [
+      { key: 'on', done: ap.enabled, title: 'Turn on slicing',
+        now: 'Deja Vu1 uses a slicer you install yourself. Nothing is downloaded.', ok: 'On', act: 'Turn on slicing' },
+      { key: 'find', done: program, title: 'Find your slicer program',
+        now: s && s.slicer_path ? s.problem : 'Snapmaker Orca or OrcaSlicer, installed on this computer.',
+        ok: s ? `${how}: ${fileName(s.slicer_path)}` : '', act: 'Find it for me' },
+      { key: 'check', done: answered, title: 'Check that it answers',
+        now: check && !check.ok ? `The last check failed: ${check.error}` : 'Runs the slicer once, with no window, to read its version.',
+        ok: check && check.ok ? check.detail : '', act: 'Check it' },
+      { key: 'profile', done: !!(s && s.profiles.length), title: 'Pick your print settings',
+        now: 'Choose the printer, process and filaments from the presets your slicer already has.',
+        ok: s ? plural(s.profiles.length, 'saved profile') : '', act: 'Choose presets' },
+      { key: 'model', done: ap.models.length > 0, title: 'Add a model',
+        now: 'An STL or 3MF file. The sample 3DBenchy makes a good first slice.',
+        ok: plural(ap.models.length, 'model') + ' in your library', act: 'Add the sample models' },
+    ];
+  }
+
+  function foundList() {
+    const f = ap.found;
+    if (!f) return '';
+    if (f.error) return `<p class="ap-warn">${esc(f.error)}</p>`;
+    if (!f.found.length) return `<div class="sr-found is-empty"><p>Nothing found in ${esc(f.searched.join(', '))}.
+      Install one of these free slicers, open it once, then press <b>Find it for me</b> again:</p>
+      <ul class="sr-get">${SLICERS.map(([n, url, why]) => `<li><a class="btn small" href="${url}" target="_blank" rel="noopener">${esc(n)} <span aria-hidden="true">↗</span></a> <span>${esc(why)}</span></li>`).join('')}</ul>
+      <button class="btn small desk-only" type="button" data-sr-type>It’s installed somewhere else: type its location</button></div>`;
+    return `<ul class="sr-found">${f.found.map((x, i) => `<li><span><b>${esc(x.name)}</b> <small>in ${esc(x.where)}</small><code>${esc(x.path)}</code>
+      ${x.hint ? `<small class="ap-warn">${esc(x.hint)}</small>` : ''}</span>
+      ${x.in_use ? '<span class="pill">In use</span>' : `<button class="btn small${i ? '' : ' primary'}" type="button" data-sr-use="${i}" ${x.runnable ? '' : 'disabled'}>Use this</button>`}</li>`).join('')}</ul>`;
+  }
+
+  function renderReady() {
+    const host = $('sr-steps');
+    if (!host) return;
+    const steps = readySteps(), at = steps.findIndex(st => !st.done);
+    paint($('sr-count'), at < 0 ? 'Ready' : `${at} of ${steps.length} done`);
+    $('sr-count').classList.toggle('is-ready', at < 0);
+    paint(host, steps.map((st, i) => {
+      const state = st.done ? 'is-done' : i === at ? 'is-now' : 'is-later';
+      return `<li class="sr-step ${state}" data-step="${st.key}">
+        <span class="sr-mark" aria-hidden="true">${st.done ? '✓' : i + 1}</span>
+        <div class="sr-body"><p class="sr-title">${esc(st.title)}<span class="sr-only">${st.done ? ' (done)' : i === at ? ' (next)' : ''}</span></p>
+          <p class="sr-sub">${esc(st.done ? st.ok : st.now || '')}</p>
+          ${st.key === 'find' && (i === at || ap.found) ? foundList() : ''}</div>
+        ${i === at ? (st.key === 'find' && ap.found && !ap.found.error && ap.found.found.length
+            ? '<button class="btn small" type="button" data-sr-act="find">Look again</button>'
+            : `<button class="btn primary small" type="button" data-sr-act="${st.key}">${esc(st.act)}</button>`)
+          : st.done && st.key === 'find' ? '<button class="btn small" type="button" data-sr-act="find">Look again</button>' : ''}
+      </li>`;
+    }).join(''));
+    const ready = $('sr-ready'), first = ap.models.find(m => m.name === '3dbenchy.stl') || ap.models[0];
+    ready.hidden = at >= 0;
+    if (at < 0 && first) paint(ready, `<p><b>Ready.</b> Open a model to arrange its plate, then press <b>Slice plate</b>. The result opens in the layer preview and still passes Confirm Print before it starts.</p>
+      <button class="btn primary" type="button" data-sr-open="${esc(first.name)}">Open ${esc(first.name)}</button>`);
+  }
+
+  async function readyAction(key, btn) {
+    if (key === 'on') return turnOn(btn);
+    if (key === 'find') {
+      const r = await busy(btn, 'Looking…', () => postJSON(api('/api/slicer/find'), {}));
+      ap.found = r.ok ? r.body : { error: r.body.error || `HTTP ${r.status}` };
+      return renderReady();
+    }
+    if (key === 'check') return $('ap-check').click();
+    if (key === 'profile') {
+      const card = document.querySelector('.native-profile');
+      card?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      return $('np-scan')?.click();
+    }
+    if (key === 'model') {
+      const r = await busy(btn, 'Adding… (about 15 s)', () => postJSON('/api/files/samples', {}));
+      if (!r.ok) return toast(`Couldn't add samples: ${r.body.error}`, 'bad');
+      if (window.Workshop) Workshop.loadFiles();
+      await loadModels();
+      renderReady();
+    }
+  }
+
+  async function useSlicer(i, btn) {
+    const pick = ap.found && ap.found.found[i];
+    if (!pick) return;
+    const saved = await apPost('/api/slicer/settings', { slicer_path: pick.path }, btn, 'Saving…');
+    if (!saved.ok) return;
+    ap.found = null;
+    const r = await busy(btn, 'Checking…', () => postJSON('/api/slicer/check', {}));
+    if (r.ok) toast(r.body.ok ? r.body.detail : `Check failed: ${r.body.error}`, r.body.ok ? 'ok' : 'bad', 8000);
+    await loadAutoPrint();
   }
 
   function renderSlicer() {
@@ -690,6 +799,7 @@ const Farm = (() => {
       ? ap.models.map(f => `<option value="${esc(f.name)}" ${f.name === keep ? 'selected' : ''}>${esc(f.name)}</option>`).join('')
       : '<option value="">No STL or 3MF models in the library</option>';
     updateSliceButtons();
+    renderReady();
   }
 
   function updateSliceButtons() {
@@ -767,6 +877,13 @@ const Farm = (() => {
 
   function initAutoPrint() {
     if (!$('tab-autoprint')) return;
+    $('slice-ready').addEventListener('click', e => {
+      const act = e.target.closest('[data-sr-act]'), use = e.target.closest('[data-sr-use]'), open = e.target.closest('[data-sr-open]');
+      if (act) readyAction(act.dataset.srAct, act);
+      else if (use) useSlicer(+use.dataset.srUse, use);
+      else if (open && window.Workshop) Workshop.openFile(open.dataset.srOpen);
+      else if (e.target.closest('[data-sr-type]')) { $('ap-path').scrollIntoView({ block: 'center' }); $('ap-path').focus(); }
+    });
     $('ap-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const body = { timeout_s: +$('ap-timeout').value, preset_folder:$('ap-preset-folder').value };
@@ -795,7 +912,7 @@ const Farm = (() => {
 
   function onTab(tab) {
     if (tab === 'fleet') { loadFileStrip(); loadQueues(); loadHistory(); }
-    // Sandbox is part of the Fleet tab, Auto-print part of Files.
+    // Sandbox is part of the Fleet tab, Slicing part of Files.
     if (tab === 'fleet') { loadSandbox(); startPolling(); } else stopPolling();
     if (tab === 'files') loadAutoPrint();
   }

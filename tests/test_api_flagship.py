@@ -91,7 +91,7 @@ class TestGating(FlagshipAPI):
         cases = {
             "fleet_command": [("/api/fleet/history?demo=1", None), ("/api/fleet/broadcast?demo=1", {"action": "home"})],
             "photo_studio": [("/api/studio/palette", None)],
-            "auto_print": [("/api/slicer/settings", None), ("/api/slicer/check", {})],
+            "auto_print": [("/api/slicer/settings", None), ("/api/slicer/check", {}), ("/api/slicer/find", {})],
             "sandbox": [("/api/sandbox?demo=1", None), ("/api/sandbox/step?demo=1", {"seconds": 5})],
         }
         modules.set_enabled("auto_print", True)
@@ -172,6 +172,14 @@ class TestSlicerRoutes(FlagshipAPI):
         status, body = self.request("/api/slicer/slice", {"name": "part.stl"})
         self.assertEqual(status, 400)
         self.assertIn("No slicer set up", body["error"])
+
+    def test_find_lists_what_it_searched_and_changes_nothing(self):
+        before = self.request("/api/slicer/settings")[1]
+        status, body = self.request("/api/slicer/find", {})
+        self.assertEqual(status, 200)
+        self.assertIsInstance(body["found"], list)
+        self.assertTrue(body["searched"])
+        self.assertEqual(self.request("/api/slicer/settings")[1]["slicer_path"], before["slicer_path"])
 
     def test_queueing_a_slice_is_a_printer_action(self):
         self.request("/api/files/upload?name=part.stl", raw=box_stl())

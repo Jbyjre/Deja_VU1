@@ -241,9 +241,9 @@ REGISTRY = [
     },
     {
         "id": "auto_print",
-        "name": "Auto-print pipeline",
-        "description": "Slices STL and 3MF models with OrcaSlicer, a separate program "
-                        "you install, and puts the G-code in the library or queue.",
+        "name": "Slicing (auto-print)",
+        "description": "Slices STL and 3MF models with Snapmaker Orca or OrcaSlicer, a separate "
+                        "program you install, and puts the G-code in the library or queue.",
         "status": "optional",
         "default_enabled": False,
     },
