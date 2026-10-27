@@ -820,6 +820,9 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
    the tab bar's filled accent pill, so the two never compete. Glass tier 1:
    it sits on the page, it doesn't float above it. */
 .sec-off { display: none !important; }
+.grid-2.sec-single { grid-template-columns: minmax(0, 1fr); }
+.sec-enter { animation: sec-in .26s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes sec-in { from { opacity: 0; transform: translateY(8px); } }
 .sec-bar { margin: -6px 0 18px; display: flex; }
 .sec-track {
   display: inline-flex; align-items: center; gap: 2px; padding: 4px; max-width: 100%;
@@ -852,7 +855,7 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
   .sec-track { border: 1.5px solid var(--text); }
   .sec-track button[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: -2px; }
 }
-@media (prefers-reduced-motion: reduce) { .sec-track button, .sec-track button::before { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .sec-track button, .sec-track button::before { transition: none; } .sec-enter { animation: none; } }
 #tab-modules section.card { scroll-margin-top: 110px; }
 
 /* ==========================================================================

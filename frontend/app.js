@@ -1092,13 +1092,23 @@ window.Sections = (() => {
     });
     // A grid or column whose every card is in another part goes too, so no gap is left.
     wrappers.forEach(w => w.classList.toggle('sec-off', units.some(u => w.contains(u)) && units.every(u => !w.contains(u) || u.classList.contains('sec-off'))));
+    // A two-column row left with one card gives it the whole width.
+    panel.querySelectorAll('.grid-2').forEach(g => g.classList.toggle('sec-single',
+      [...g.children].filter(c => !c.hidden && !c.classList.contains('sec-off')).length === 1));
     panel.querySelectorAll('.sec-bar button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sec === now)));
   }
   function choose(tab, key, remember = true) {
     if (!SECTIONS[tab] || (key !== 'all' && !SECTIONS[tab].some(([k]) => k === key))) return;
+    const panel = $(`tab-${tab}`), was = new Set(unitsOf(panel).filter(u => u.classList.contains('sec-off')));
     chosen[tab] = key;
     if (remember) store.set(SECTION_KEY + tab, key);
     apply(tab);
+    // Only the cards that just appeared fade in; the 5-second refresh never replays it.
+    unitsOf(panel).filter(u => was.has(u) && !u.classList.contains('sec-off')).forEach(u => {
+      u.classList.remove('sec-enter'); void u.offsetWidth; u.classList.add('sec-enter');
+      const done = e => { if (e.target === u) { u.classList.remove('sec-enter'); u.removeEventListener('animationend', done); } };
+      u.addEventListener('animationend', done);
+    });
   }
   /* Opens the part that holds `el`, so it can be seen. */
   function reveal(el) {
