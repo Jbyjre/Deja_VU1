@@ -594,3 +594,5 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
   .sr-step.is-later { opacity: 1; }
   .sr-mark, .sr-found > li { border-color: var(--text); }
 }
+/* A printer that isn't a U1: what it reported about itself, under its name. */
+.fc-kind { margin: -4px 0 8px; font: 600 11.5px/1.35 var(--font-mono); color: var(--text-faint); letter-spacing: .02em; }

@@ -25,6 +25,7 @@ import threading
 from datetime import datetime
 
 import gcode_tools
+import machines
 import mesh_tools
 import safe_zip
 import sample_files
@@ -176,18 +177,21 @@ _analysis_cache = {}
 _analysis_lock = threading.Lock()
 
 
-def checked(name):
-    """The G-code analysis without a toolpath, for the gate and the queue (a copy each time)."""
+def checked(name, machine=None):
+    """
+    The G-code analysis without a toolpath, for the gate and the queue (a
+    copy each time), checked against `machine` (machines.py; the U1 if None).
+    """
     import copy
     path = _path(name)
     st = os.stat(path)
-    key = (clean_name(name), st.st_mtime_ns, st.st_size)
+    key = (clean_name(name), st.st_mtime_ns, st.st_size, machines.key(machine))
     with _analysis_lock:
         hit = _analysis_cache.get(key)
     if hit is None:
-        hit = gcode_tools.analyze(read_text(name), want_toolpath=False)
+        hit = gcode_tools.analyze(read_text(name), want_toolpath=False, machine=machine)
         with _analysis_lock:
-            for old in [k for k in _analysis_cache if k[0] == key[0]]:
+            for old in [k for k in _analysis_cache if k[0] == key[0] and k[1:3] != key[1:3]]:   # older versions
                 del _analysis_cache[old]
             _analysis_cache[key] = hit
             while len(_analysis_cache) > _ANALYSIS_KEEP:

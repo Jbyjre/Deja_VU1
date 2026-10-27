@@ -366,6 +366,7 @@ const Workshop = (() => {
             <h3 class="fc-name">${esc(p.name)}${p.sandbox ? ' <span class="fc-sim">sandbox</span>' : ''}</h3>
             <span class="fc-state" data-f="state"></span>
           </div>
+          <p class="fc-kind" data-f="machine" hidden></p>
           <div class="fc-main">
             <div class="fc-ring" data-f="ring"></div>
             <div class="fc-info">
@@ -388,6 +389,10 @@ const Workshop = (() => {
       const f = (k) => qs(`[data-f="${k}"]`, card);
       card.classList.toggle('is-selected', p.id === (currentPrinter || live.fleet[0].id));
       setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : STATE_HEX[p.state] || '#ffffff');
+      // Any printer but a U1 says what it is, from its own report (machines.py).
+      const kind = f('machine'), other = p.machine && !p.machine.reference;
+      kind.hidden = !other;
+      if (other) { setText(kind, `${p.machine.label} · untested type`); kind.title = p.machine.note || ''; }
       const st = f('state');
       setText(st, STATE_WORD[p.state] || p.state);
       setVar(st, '--dot', STATE_COLOR[p.state] || '');
@@ -1407,6 +1412,14 @@ const Workshop = (() => {
       queueTwin();
     });
     queueTwin();
+    // The twin is a U1. Any other printer gets what it said about itself instead of the wrong machine.
+    const m = state.machine, other = !!(m && !m.reference);
+    $('twin-card').classList.toggle('is-other-printer', other);
+    $('twin-other').hidden = !other;
+    if (other) paint($('twin-other'), `<p class="twin-other-kind">${esc(m.label)}</p>
+      <dl><dt>Heads</dt><dd>${esc(m.heads)}</dd><dt>Nozzle</dt><dd>${m.nozzle_mm ? esc(m.nozzle_mm) + ' mm' : 'not reported'}</dd>
+      <dt>Position</dt><dd>X ${esc(twin.pos ? twin.pos[0].toFixed(1) : '…')} · Y ${esc(twin.pos ? twin.pos[1].toFixed(1) : '…')} · Z ${esc(twin.pos ? twin.pos[2].toFixed(2) : '…')} mm</dd></dl>
+      <p class="field-hint">The 3D twin models the Snapmaker U1 only, so it isn't drawn for this printer. ${esc(m.note || '')}</p>`);
     const active = state.toolheads && state.toolheads[state.active_toolhead] ? state.active_toolhead : null;
     setVar($('twin-card'), '--glass-tint', active ? state.toolheads[active].filament_color_hex : '#9aa3b5');
     const layer = state.layer || { current: 0, total: 0 };

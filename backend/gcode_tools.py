@@ -25,6 +25,8 @@ import json
 import math
 import re
 
+import machines
+
 BUILD_X, BUILD_Y, BUILD_Z = 270.0, 270.0, 270.0   # Snapmaker U1, mm
 # Snapmaker Orca's U1 profile places the printable area 0.5-270.5 by
 # 1-271, so allow a little slack before calling an extrusion out of bounds.
@@ -270,11 +272,19 @@ def _path_length(start, points):
     return total
 
 
-def analyze(text, want_toolpath=True):
+def analyze(text, want_toolpath=True, machine=None):
     """
     Walk the whole file. Returns metadata, movement statistics, the
     pre-flight findings and (optionally) a toolpath for the 3D viewer.
+    machine (machines.py) is the printer it is checked against; the U1 when
+    not given. A printer that didn't report its size gets no bounds check,
+    and a note saying so, rather than a guessed one.
     """
+    m = machine or machines.U1
+    who = "U1" if m.get("reference") else "printer"
+    valid_tools = VALID_TOOLS if m.get("reference") else set(range(m.get("heads") or 1))
+    bounded = bool(m.get("min_mm") and m.get("max_mm"))
+    (lo_x, lo_y, _), (hi_x, hi_y, hi_z) = (m["min_mm"], m["max_mm"]) if bounded else ((0, 0, 0), (0, 0, 0))
     meta = parse_metadata(text)
     pos = {"X": 0.0, "Y": 0.0, "Z": 0.0, "E": 0.0}
     absolute, abs_e = True, True
@@ -356,7 +366,7 @@ def analyze(text, want_toolpath=True):
                         "position": [pos['X'], pos['Y'], pos['Z']],
                     }
                 )
-            if tool not in VALID_TOOLS:
+            if tool not in valid_tools:
                 # T4 and up are how a slicer numbers the extra slots of a
                 # filament add-on (multiACE: T = unit * 4 + slot, T4-T15).
                 # They mean nothing to a stock U1 until the add-on's own
@@ -365,9 +375,10 @@ def analyze(text, want_toolpath=True):
                 # the way to fix it.
                 hint = (" - if this file was sliced for multiACE or another filament add-on, run the add-on's "
                         "post-processor on it first (multiACE rewrites T4-T15 into ACE_SWAP_HEAD swaps)"
-                        if 4 <= tool <= 15 else "")
+                        if 4 <= tool <= 15 and m.get("reference") else "")
+                heads = f"T0-T{len(valid_tools) - 1}" if len(valid_tools) > 1 else "only T0"
                 flag("error", "unknown_tool", line_no,
-                     f"Asks for toolhead {head}; the U1 has T0-T3{hint}")
+                     f"Asks for toolhead {head}; the {who} has {heads}{hint}")
             continue
         if head == "PRINT_START":
             seen_print_start, homed, heated = True, True, True
@@ -436,13 +447,13 @@ def analyze(text, want_toolpath=True):
         if is_arc:
             # The U1's own gcode_arcs.py refuses these - the print would stop.
             if not absolute:
-                flag("error", "arc_relative", line_no, "An arc (G2/G3) in relative mode - the U1 refuses it")
+                flag("error", "arc_relative", line_no, f"An arc (G2/G3) in relative mode - the {who} refuses it")
                 continue
             if "R" in words:
-                flag("error", "arc_radius", line_no, "An arc given by R - the U1 only takes I and J")
+                flag("error", "arc_radius", line_no, f"An arc given by R - the {who} only takes I and J")
                 continue
             if not (words.get("I") or words.get("J")):
-                flag("error", "arc_no_centre", line_no, "An arc (G2/G3) without I or J - the U1 refuses it")
+                flag("error", "arc_no_centre", line_no, f"An arc (G2/G3) without I or J - the {who} refuses it")
                 continue
         for axis in ("X", "Y", "Z"):
             if axis in words:
@@ -491,11 +502,11 @@ def analyze(text, want_toolpath=True):
                 flag("error", "below_bed", line_no,
                      f"Extrudes at Z={z:.2f} - the nozzle would press into the bed")
             for px, py, pz in points:
-                if not (-BOUNDS_SLACK <= px <= BUILD_X + BOUNDS_SLACK and
-                        -BOUNDS_SLACK <= py <= BUILD_Y + BOUNDS_SLACK and pz <= BUILD_Z):
+                if bounded and not (lo_x - BOUNDS_SLACK <= px <= hi_x + BOUNDS_SLACK and
+                                    lo_y - BOUNDS_SLACK <= py <= hi_y + BOUNDS_SLACK and pz <= hi_z):
                     flag("error", "out_of_bounds", line_no,
-                         f"Extrudes at X{px:.1f} Y{py:.1f} Z{pz:.1f}, outside the U1's "
-                         f"{BUILD_X:.0f} x {BUILD_Y:.0f} x {BUILD_Z:.0f} mm build volume")
+                         f"Extrudes at X{px:.1f} Y{py:.1f} Z{pz:.1f}, outside the {who}'s "
+                         f"{hi_x - lo_x:.0f} x {hi_y - lo_y:.0f} x {hi_z:.0f} mm build volume")
                     break
                 for i, v in enumerate((px, py, pz)):
                     ext_min[i] = min(ext_min[i], v)
@@ -507,9 +518,9 @@ def analyze(text, want_toolpath=True):
         else:
             travel_mm += dist if is_arc else math.hypot(dx, dy)
             for px, py, pz in points:
-                if not (-TRAVEL_SLACK <= px <= BUILD_X + TRAVEL_SLACK and
-                        -TRAVEL_SLACK <= py <= BUILD_Y + TRAVEL_SLACK and
-                        pz <= BUILD_Z + TRAVEL_SLACK):
+                if bounded and not (lo_x - TRAVEL_SLACK <= px <= hi_x + TRAVEL_SLACK and
+                                    lo_y - TRAVEL_SLACK <= py <= hi_y + TRAVEL_SLACK and
+                                    pz <= hi_z + TRAVEL_SLACK):
                     flag("warning", "travel_out_of_bounds", line_no,
                          f"Travels to X{px:.1f} Y{py:.1f} Z{pz:.1f}, past the build volume - "
                          "Klipper stops the print on a move beyond its axis limits")
@@ -530,7 +541,7 @@ def analyze(text, want_toolpath=True):
     has_extrusion = ext_min[0] != math.inf
     if not has_extrusion:
         flag("error", "no_extrusion", 0, "The file never extrudes plastic - nothing would print")
-    if not seen_print_start:
+    if not seen_print_start and m.get("reference"):     # other printers name their start macro their own way
         flag("warning", "no_print_start", 0,
              "No PRINT_START line. Snapmaker Orca's U1 profile starts every print with "
              "PRINT_START (homing, auto-feed, flow calibration); this file skips it")
@@ -548,6 +559,10 @@ def analyze(text, want_toolpath=True):
         if extra > 0 and "more_like_this" not in f:
             f["more_like_this"] = extra
 
+    if not bounded:
+        flag("warning", "volume_unknown", None,
+             "This printer didn't report its size, so moves weren't checked against its build volume "
+             "(Klipper still stops a move beyond its own limits)")
     errors = [f for f in findings if f["level"] == "error"]
     warnings = [f for f in findings if f["level"] == "warning"]
     result = {
@@ -576,6 +591,7 @@ def analyze(text, want_toolpath=True):
             "verdict": "blocked" if errors else ("check" if warnings else "clear"),
             "errors": errors,
             "warnings": warnings,
+            "checked_against": machines.label(m),
         },
     }
     if want_toolpath:

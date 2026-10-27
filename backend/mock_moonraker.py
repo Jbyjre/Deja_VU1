@@ -63,6 +63,7 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
+import machines
 import moonraker_client
 
 # Filament colors we pretend the user owns. Used by the color checker module.
@@ -347,6 +348,7 @@ class SimulatedPrinter:
             "layer": {"current": layer, "total": s["layers"]},
             "printer_id": self.id,
             "printer_name": self.name,
+            "machine": machines.public(machines.U1),    # every simulated printer is a U1
             **({"objects": _plate(s.get("objects") or _demo_objects(s["file"]))} if printing else {}),
         }
 
