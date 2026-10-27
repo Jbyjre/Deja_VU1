@@ -502,6 +502,7 @@ async function tourPost(url, body) {
     list.push({ id: 'demo-' + Date.now(), filename: name, status: 'queued', note: 'online demo', added_at: new Date().toISOString().slice(0, 19), online_demo: true });
     return tourReply({ routed: name, to: target, online_demo: true });
   }
+  if (url.pathname === '/api/slicer/find') return tourReply({ error: 'The online demo runs in your browser, so there is no computer here to search. In Deja Vu1 on your computer, this looks in your Applications, Downloads and program folders.', online_demo: true }, 409);
   if (url.pathname === '/api/files/opened') return tourReply({ ok: true, online_demo: true });
   if (url.pathname === '/api/files/delete') {
     const name = String(parsed.name || '');
@@ -1029,35 +1030,121 @@ const TAB_INTROS = {
   games: 'Something to play while a print runs. Nothing here touches a printer.',
 };
 
-/* Settings is long, so it opens with a row of links to each of its cards,
-   built from the cards' own titles (nothing to keep in step by hand). */
-function initSettingsJumps() {
-  const panel = $('tab-modules');
-  if (!panel || $('settings-jumps')) return;
-  const nav = document.createElement('nav');
-  nav.id = 'settings-jumps'; nav.className = 'settings-jumps'; nav.setAttribute('aria-label', 'Settings sections');
-  const links = [];
-  panel.querySelectorAll('section.card h2').forEach((h, i) => {
-    const card = h.closest('section.card');
-    const title = h.textContent.replace(/\s+/g, ' ').trim().replace(/ New version available$/, '');
-    if (!title || card.closest('[hidden]') && card.closest('[hidden]') !== panel) return;
-    if (!card.id) card.id = `set-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || i}`;
-    // A card shown only on a computer or only on a phone takes its link with it.
-    const where = card.classList.contains('desk-only') ? ' desk-only' : card.classList.contains('phone-only') ? ' phone-only' : '';
-    links.push(`<a href="#${card.id}" class="chip-btn${where}">${esc(title)}</a>`);
-  });
-  nav.innerHTML = `<span>Jump to</span>${links.join('')}`;
-  nav.addEventListener('click', e => {
-    const a = e.target.closest('a[href^="#"]');
-    if (!a) return;
-    e.preventDefault();
-    $(a.getAttribute('href').slice(1))?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  });
-  panel.prepend(nav);
-}
+/* ---- sections: one part of a busy screen at a time -------------------------
+   Screens with many cards open on their first part, with a row of buttons
+   for the others and "Everything" for the old long page. Cards are sorted
+   by their title (or id), so a card another script adds later lands in its
+   part; a card no rule names joins the first part, so nothing is ever lost.
+   Anything that scrolls to a card in a hidden part (search, tours, "Slice…"
+   buttons) opens that part first. */
+const SECTIONS = {
+  overview: [
+    ['now', 'Right now', ['#attention', '#twin-card', 'printer control', 'print health', 'use this dashboard']],
+    ['live', 'Live readings', ['#telemetry', 'chamber climate']],
+    ['history', 'History & upkeep', ['.stats', '#insights-card', 'maintenance', 'print cost']],
+  ],
+  fleet: [
+    ['printers', 'Your printers', ['your printers', 'add a printer']],
+    ['desk', 'Farm desk', ['#tab-desk', 'farm history']],
+    ['sandbox', 'Practice farm', ['#tab-sandbox']],
+  ],
+  files: [
+    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail']],
+    ['slicing', 'Slicing', ['#tab-autoprint']],
+    ['layers', 'Layer heights', ['#tab-layerplan']],
+  ],
+  maintenance: [
+    ['upkeep', 'Upkeep', ['maintenance', '#logbook', 'swapped a nozzle']],
+    ['filament', 'Filament & colour', ['#tab-filament']],
+  ],
+  modules: [
+    ['copy', 'This copy', ['your space', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
+    ['look', 'Look & feel', ['#appearance-card', 'preferences']],
+    ['features', 'Features', ['modules', 'print cost pricing']],
+    ['phone', 'Phone & away', ['paired devices', '#remote-card']],
+    ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
+    ['camera', 'Camera', ['camera', 'time-lapses']],
+  ],
+};
+const SECTION_KEY = 'dejavu1.section.';
+
+window.Sections = (() => {
+  const chosen = {};
+  const UNIT = 'section.card, section.stats, .tab-sub';
+  const unitsOf = panel => [...panel.querySelectorAll(UNIT)].filter(u => !u.parentElement.closest(UNIT));
+  const titleOf = u => (u.querySelector('h2')?.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const matches = (u, rule, title) => rule[0] === '#' ? u.id === rule.slice(1)
+    : rule[0] === '.' ? u.classList.contains(rule.slice(1)) : title.startsWith(rule);
+  function groupOf(tab, unit) {
+    const title = titleOf(unit);
+    const hit = SECTIONS[tab].find(([, , rules]) => rules.some(r => matches(unit, r, title)));
+    return (hit || SECTIONS[tab][0])[0];
+  }
+  function apply(tab) {
+    const panel = $(`tab-${tab}`), groups = SECTIONS[tab];
+    if (!panel || !groups) return;
+    const now = chosen[tab];
+    const units = unitsOf(panel);
+    const wrappers = new Set();
+    units.forEach(u => {
+      u.classList.toggle('sec-off', now !== 'all' && groupOf(tab, u) !== now);
+      for (let p = u.parentElement; p && p !== panel; p = p.parentElement) wrappers.add(p);
+    });
+    // A grid or column whose every card is in another part goes too, so no gap is left.
+    wrappers.forEach(w => w.classList.toggle('sec-off', units.some(u => w.contains(u)) && units.every(u => !w.contains(u) || u.classList.contains('sec-off'))));
+    panel.querySelectorAll('.sec-bar button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sec === now)));
+  }
+  function choose(tab, key, remember = true) {
+    if (!SECTIONS[tab] || (key !== 'all' && !SECTIONS[tab].some(([k]) => k === key))) return;
+    chosen[tab] = key;
+    if (remember) store.set(SECTION_KEY + tab, key);
+    apply(tab);
+  }
+  /* Opens the part that holds `el`, so it can be seen. */
+  function reveal(el) {
+    const panel = el?.closest?.('.tab-panel');
+    const tab = panel?.id.replace(/^tab-/, '');
+    if (!tab || !SECTIONS[tab] || !el.closest('.sec-off')) return;
+    const unit = el.matches(UNIT) && !el.parentElement.closest(UNIT) ? el : unitsOf(panel).find(u => u.contains(el));
+    if (unit) choose(tab, groupOf(tab, unit));
+  }
+  function init() {
+    for (const tab of Object.keys(SECTIONS)) {
+      const panel = $(`tab-${tab}`);
+      if (!panel) continue;
+      const saved = store.get(SECTION_KEY + tab);
+      chosen[tab] = saved === 'all' || SECTIONS[tab].some(([k]) => k === saved) ? saved : SECTIONS[tab][0][0];
+      const bar = document.createElement('nav');
+      bar.className = 'sec-bar'; bar.setAttribute('aria-label', `Parts of ${TAB_NAMES[tab] || tab}`);
+      bar.innerHTML = `<div class="sec-track">${[...SECTIONS[tab], ['all', 'Everything']].map(([k, label]) =>
+        `<button type="button" data-sec="${k}" aria-pressed="false"${k === 'all' ? ' class="sec-all"' : ''}>${esc(label)}</button>`).join('')}</div>`;
+      bar.addEventListener('click', e => {
+        const b = e.target.closest('button[data-sec]');
+        if (!b) return;
+        choose(tab, b.dataset.sec);
+        b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+      panel.prepend(bar);
+      apply(tab);
+      // Cards drawn later (telemetry, logbook, the farm desk…) are sorted as they arrive.
+      let queued = 0;
+      new MutationObserver(records => {
+        if (queued || !records.some(r => [...r.addedNodes].some(n => n.nodeType === 1 && n.matches(UNIT)))) return;
+        queued = requestAnimationFrame(() => { queued = 0; apply(tab); });
+      }).observe(panel, { childList: true, subtree: true });
+    }
+    // Every way of jumping to a card (search, tours, links) goes through scrollIntoView.
+    const scrollTo = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (...args) {
+      if (this.closest && this.closest('.sec-off')) reveal(this);
+      return scrollTo.apply(this, args);
+    };
+  }
+  return { init, reveal, choose, current: tab => chosen[tab] };
+})();
 
 function initTabs() {
-  initSettingsJumps();
+  Sections.init();
   const tabs = document.querySelectorAll('.navtab[data-tab]');
   const panels = document.querySelectorAll('.tab-panel');
 
@@ -1081,8 +1168,12 @@ function initTabs() {
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);
-    // A short wait: the cards above it fill in first, so the section doesn't slide away.
-    if (FOLDED[requested]) setTimeout(() => $(`tab-${requested}`)?.scrollIntoView({ block: 'start' }), 350);
+    // A folded section's old name opens its part; after a short wait (the
+    // cards above it fill in first) it scrolls there, so it doesn't slide away.
+    if (FOLDED[requested]) {
+      Sections.reveal($(`tab-${requested}`)?.querySelector('h2') || $(`tab-${requested}`));
+      setTimeout(() => $(`tab-${requested}`)?.scrollIntoView({ block: 'start' }), 350);
+    }
   }
   window.showTab = show;
 

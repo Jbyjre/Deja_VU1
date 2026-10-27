@@ -56,6 +56,7 @@ window.Guide = (() => {
     if (!step.target) return null;
     let el = document.querySelector(step.target);
     if (el && step.closest) el = el.closest(step.closest) || el;
+    if (el && window.Sections) Sections.reveal(el);   // a card in a hidden part of the screen
     if (!el || el.closest('[hidden]') || !el.getClientRects().length) return null;
     return el;
   }
@@ -307,7 +308,7 @@ window.Guide = (() => {
       { target: '#convert-card', title: 'Convert a project', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
       { target: '#file-drop', closest: '.card', title: 'Your files', text: 'Click a file for its 3D view, layers, plate editor and checks.', try: () => tourOn() ? null : 'Add the sample files', action: 'samples' },
       { target: '#queue-host', closest: '.card', title: 'The queue', text: 'Prints waiting their turn, per printer. Confirm Print checks each one before it starts.' },
-      { target: '#tab-layerplan', title: 'Slicing and layer heights', text: 'Auto-print slices with an OrcaSlicer you installed; Mixed layer heights plans a height per head; Import from Orca brings in your presets.' },
+      { target: '#tab-layerplan', title: 'Slicing and layer heights', text: 'Slicing runs the Snapmaker Orca or OrcaSlicer you installed; Mixed layer heights plans a height per head; Import from Orca brings in your presets.' },
     ],
     studio: [
       { target: '#st-body', title: 'Pictures into prints', text: 'Drop a photo, choose from the four colours you have loaded, and save a 3MF or STL tile or relief. Works in the browser.' },
