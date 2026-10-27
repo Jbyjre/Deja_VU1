@@ -1067,6 +1067,8 @@ const SECTIONS = {
   ],
 };
 const SECTION_KEY = 'dejavu1.section.';
+// Fixed ids for each screen's row of parts, so tours can point at them.
+const SECTION_BAR_IDS = { overview: 'sec-overview', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules' };
 
 window.Sections = (() => {
   const chosen = {};
@@ -1126,7 +1128,7 @@ window.Sections = (() => {
       const saved = store.get(SECTION_KEY + tab);
       chosen[tab] = saved === 'all' || SECTIONS[tab].some(([k]) => k === saved) ? saved : SECTIONS[tab][0][0];
       const bar = document.createElement('nav');
-      bar.className = 'sec-bar'; bar.setAttribute('aria-label', `Parts of ${TAB_NAMES[tab] || tab}`);
+      bar.className = 'sec-bar'; bar.id = SECTION_BAR_IDS[tab]; bar.setAttribute('aria-label', `Parts of ${TAB_NAMES[tab] || tab}`);
       bar.innerHTML = `<div class="sec-track">${[...SECTIONS[tab], ['all', 'Everything']].map(([k, label]) =>
         `<button type="button" data-sec="${k}" aria-pressed="false"${k === 'all' ? ' class="sec-all"' : ''}>${esc(label)}</button>`).join('')}</div>`;
       bar.addEventListener('click', e => {
