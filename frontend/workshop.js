@@ -2260,6 +2260,8 @@ const Workshop = (() => {
         <div><span class="stat-key">Cost</span><b>${money(gate.cost.total_cost)}</b></div>
         <div><span class="stat-key">Pre-flight</span><b>${{ clear: 'Clear', check: 'Warnings', blocked: 'Blocked' }[gate.preflight.verdict]}</b></div>
       </div>
+      ${gate.preflight.checked_against && gate.preflight.checked_against !== 'Snapmaker U1'
+        ? `<p class="field-hint">Checked against this printer's own report: ${esc(gate.preflight.checked_against)}.</p>` : ''}
       <h3 class="fd-h">Filament, as the printer reports it loaded</h3>
       ${fil || '<p class="log-empty">The file doesn\'t say which toolheads it uses.</p>'}
       ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : `${esc(s.spool)}: ${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;

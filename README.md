@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.11.0** ([what's new](#whats-new-in-0110) · [every version](CHANGELOG.md)).
+**Latest named release: 0.12.0** ([what's new](#whats-new-in-0120) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -224,6 +224,30 @@ over your folder.
 If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
+
+## What's new in 0.12.0
+
+- **One thing at a time.** Overview, Printers, Files, Care and Settings open on
+  one part of the screen, with a row of buttons for the others (Overview: Right
+  now, Live readings, History & upkeep) and **Everything** for the full page.
+  Settings is no longer one 8,800-pixel scroll. Your choice is remembered, and
+  search, tours and links open the part that holds what they point at.
+- **Get ready to slice.** Files → Slicing opens with five steps: turn slicing on,
+  find your slicer, check it answers, pick your print settings, add a model. The
+  next step is lit and has the only button. **Find it for me** looks for Snapmaker
+  Orca and OrcaSlicer in your Applications, Downloads and program folders, so you
+  don't type a path; nothing runs until you press **Use this**. If it finds none,
+  it links both free slicers. When Slice is greyed out, the plate says why and
+  links the set-up.
+- **Other Klipper printers.** Any printer that runs Klipper with Moonraker can be
+  added. Deja Vu1 reads its size and heads from the printer itself and checks
+  files against them, so a file too big for a 235 mm bed is refused there.
+  Its card says it is an untested type. ([How it works](docs/real-printer.md#other-klipper-printers))
+- **Search lands again.** The search box's "Go to" results opened nothing for
+  most places (a title's ⓘ button got in the way of matching it). Fixed, with a
+  test for every place.
+- **Smaller.** Two unused copies of older launch films are gone: each update
+  download drops from 74 MB to 56 MB.
 
 ## What's new in 0.11.0
 
