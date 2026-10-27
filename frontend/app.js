@@ -1084,6 +1084,7 @@ window.Sections = (() => {
     const panel = $(`tab-${tab}`), groups = SECTIONS[tab];
     if (!panel || !groups) return;
     const now = chosen[tab];
+    panel.classList.toggle('sec-one', now !== 'all');
     const units = unitsOf(panel);
     const wrappers = new Set();
     units.forEach(u => {

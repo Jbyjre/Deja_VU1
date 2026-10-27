@@ -821,6 +821,9 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
    it sits on the page, it doesn't float above it. */
 .sec-off { display: none !important; }
 .grid-2.sec-single { grid-template-columns: minmax(0, 1fr); }
+/* One part showing: its heading needs no divider from a section above it. */
+.sec-one > .tab-sub { margin-top: 0; }
+.sec-one > .tab-sub > .tab-sub-head { border-top: 0; padding-top: 2px; }
 .sec-enter { animation: sec-in .26s cubic-bezier(.2, .7, .2, 1) both; }
 @keyframes sec-in { from { opacity: 0; transform: translateY(8px); } }
 .sec-bar { margin: -6px 0 18px; display: flex; }

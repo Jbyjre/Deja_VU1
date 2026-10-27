@@ -20,20 +20,21 @@ window.Finder = (() => {
   const PLACES = [
     ['Needs you', 'Overview', 'attention alerts problems errors jam warnings to do', 'Needs you'],
     ['Digital twin', 'Overview', '3d model printer view drawing engineering realistic twin case off see-through print benchy colours', 'Digital twin'],
-    ['What your history says', 'Overview', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
+    ['What your history says', 'Overview › History & upkeep', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
     ['Printer control', 'Overview', 'pause resume cancel stop print buttons', 'Printer control'],
     ['Print health', 'Overview', 'first layer quality health score', 'Print health'],
-    ['Chamber climate', 'Overview', 'chamber temperature humidity enclosure air', 'Chamber climate'],
-    ['Print cost', 'Overview', 'price money electricity cost per print spend', 'Print cost'],
+    ['Telemetry · live readings', 'Overview › Live readings', 'telemetry live readings numbers temperatures nozzle bed position layer progress swaps sensors', 'Telemetry'],
+    ['Chamber climate', 'Overview › Live readings', 'chamber temperature humidity enclosure air', 'Chamber climate'],
+    ['Print cost', 'Overview › History & upkeep', 'price money electricity cost per print spend', 'Print cost'],
     ['Use it on your phone', 'Overview', 'phone mobile qr code scan camera pair handoff', 'Use this dashboard on your phone'],
     ['What the words mean', 'Settings', 'glossary words meaning help explain jargon g-code slicer stl 3mf moonraker nozzle head', 'Your space'],
     ['Objects on the plate', 'Control', 'skip object exclude cancel one part plate objects', 'Objects on the plate'],
     ['Home axes', 'Control', 'home g28 xyz axes', 'Home axes'],
     ['G-code console', 'Control', 'terminal command macro gcode console klipper', 'G-code console'],
     ['Your printers', 'Printers', 'fleet farm printers cards all printers', 'Your printers'],
-    ['Farm history', 'Printers', 'stats history chart success rate hours prints', 'Farm history'],
+    ['Farm history', 'Printers › Farm desk', 'stats history chart success rate hours prints', 'Farm history'],
     ['Add a printer', 'Printers', 'connect ip address moonraker discover find printer network new printer', 'Add a printer'],
-    ['Farm sandbox', 'Printers', 'simulate sandbox test events scenario practice', 'Farm sandbox'],
+    ['Farm sandbox', 'Printers › Practice farm', 'simulate sandbox test events scenario practice', 'Farm sandbox'],
     ['Dispatch timeline', 'Printers › Farm desk', 'dispatch schedule timeline gantt plan day plates clear overnight when free', 'Dispatch'],
     ['Best printer for a file', 'Printers › Farm desk', 'best printer which printer match colours route send to', 'Best printer for a file'],
     ['Print right now', 'Printers › Farm desk', 'what can i print now loaded colours match idle', 'Print right now'],
@@ -42,10 +43,11 @@ window.Finder = (() => {
     ['File library', 'Files', 'files upload gcode stl 3mf obj models library', 'File library'],
     ['Print queue', 'Files', 'queue next schedule auto advance waiting jobs', 'Print queue'],
     ['Bambu / MakerWorld to U1 converter', 'Files', 'convert converter bambu makerworld elegoo x1c p1s a1 h2d 3mf project import printables', '#convert-card'],
+    ['Get ready to slice', 'Files › Slicing', 'set up slicing setup find my slicer orca orcaslicer snapmaker orca install connect program path', 'Get ready to slice'],
     ['Slicer and profiles', 'Files › Slicing', 'slice slicer orca orcaslicer engine profile process preset quality speed infill supports', 'Slicer'],
     ['Slice a model', 'Files › Slicing', 'slice now gcode from model stl', 'Slice a model'],
     ['Tools & filaments', 'Files › Slicing', 'tools heads nozzles t0 t1 t2 t3 colours materials toolheads setup', 'Tools & filaments'],
-    ['Layer heights per head · mixed layer heights', 'Files', 'mixed layer height per head nozzle detail speed fast fine thick thin variable', 'Layer heights per head'],
+    ['Layer heights per head · mixed layer heights', 'Files › Layer heights', 'mixed layer height per head nozzle detail speed fast fine thick thin variable', 'Layer heights per head'],
     ['Pick up where you left off · Orca import', 'Files', 'import orca orcaslicer snapmaker orca presets projects recent bring in migrate existing', 'Pick up where you left off'],
     ['Photo-to-Print studio', 'Photo studio', 'photo image picture heightmap tiles lithophane colour mosaic', 'Photo-to-Print Studio'],
     ['Automation rules', 'Automations', 'automations rules if this then notify trigger', 'Rules'],
@@ -54,10 +56,10 @@ window.Finder = (() => {
     ['Logbook · problems and fixes', 'Care', 'logbook log problems fixes clog jam repair history notes what fixed', 'Logbook'],
     ['Maintenance tasks', 'Care', 'upkeep service lube belts clean grease rods maintenance due', 'Maintenance'],
     ['Swapped a nozzle or hotend', 'Care', 'nozzle swap hotend change replace', 'Swapped a nozzle or hotend?'],
-    ['Filament & colour', 'Care', 'filament colour color spool loaded', 'Filament & colour'],
-    ['Dock status rings', 'Care', 'led ring lights dock status', 'Dock status rings'],
-    ['Right colour loaded?', 'Care', 'colour check color match wrong filament', 'Right colour loaded?'],
-    ['Filament inventory', 'Care', 'spools spoolman inventory grams stock filament left', 'Filament inventory'],
+    ['Filament & colour', 'Care › Filament & colour', 'filament colour color spool loaded', 'Filament & colour'],
+    ['Dock status rings', 'Care › Filament & colour', 'led ring lights dock status', 'Dock status rings'],
+    ['Right colour loaded?', 'Care › Filament & colour', 'colour check color match wrong filament', 'Right colour loaded?'],
+    ['Filament inventory', 'Care › Filament & colour', 'spools spoolman inventory grams stock filament left', 'Filament inventory'],
     ['Appearance', 'Settings', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
     ['Modules · turn features on or off', 'Settings', 'modules features enable disable switch on off', 'Modules'],
     ['Paired devices', 'Settings', 'pair phone devices tablets lock only paired access password login security', 'Paired devices'],
@@ -164,7 +166,9 @@ window.Finder = (() => {
   function go(target) {
     if (target.startsWith('tab:')) { showTab(target.slice(4)); focusPanel(document.getElementById('tab-' + target.slice(4))); return; }
     let el = target.startsWith('#') ? document.querySelector(target) : null;
-    if (!el) el = [...document.querySelectorAll('main h2, main h3')].find(h => h.textContent.trim() === target) || null;
+    // A title's own words: without its ⓘ help button (explain.js) or screen-reader-only text.
+    const words = h => { const c = h.cloneNode(true); c.querySelectorAll('.xp-btn, .sr-only, .vc-badge').forEach(n => n.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+    if (!el) el = [...document.querySelectorAll('main h2, main h3')].find(h => words(h) === target) || null;
     const tab = el && el.closest('.tab-panel');
     if (tab) showTab(tab.id.replace(/^tab-/, ''));
     if (!el) return;
