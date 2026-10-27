@@ -35,20 +35,16 @@ here with what Deja Vu1 does with each.
   the SIL Open Font License; their licences are beside them in
   `frontend/fonts/`.
 
-## In the launch-film folders
+## In the launch film
 
-`promo-video/` and `marketing-library/` hold the launch films and the tools that
-made them. The app does not need them.
+`frontend/media/` holds the launch film the product page plays. The app does
+not need it. The film's working files and the tools that made it are kept in
+the owner's private repository.
 
-- **GSAP 3.14.2** (GreenSock) sits in each film's `vendor/` folder. Its own
-  header reads "Copyright 2025, GreenSock. All rights reserved. Subject to the
-  terms at https://gsap.com/standard-license." This project's MIT licence does
-  not cover it.
 - **Film music** is played from recorded instruments: the Salamander Grand Piano
   V3 by Alexander Holm (CC BY 3.0, so every post of a film must credit it), the
   VSCO 2 CE solo contrabass, Virtuosity Drums, and the VCSL vibraphone and shaker
-  (all CC0). `promo-video/music/fetch_samples.sh` downloads the samples; they
-  are not stored in this repository.
+  (all CC0).
 
 ## Names
 

@@ -71,13 +71,12 @@ computer. Pause a print on your phone and the computer's screen shows it paused.
 [![Deja Vu1 launch film (version 17, 60 seconds, 16:9): "Run your 3D printers from one screen." Click to watch.](docs/img/launch-video-v17.jpg)](https://deja-vu1.jmath1110.workers.dev/#film)
 
 <sub>Click the picture to watch it on the product page, or
-[download the full-quality MP4](marketing-library/07-videos/deja-vu1-launch-v17-60s-16x9.mp4)
-(53 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone and what
+[download the MP4](frontend/media/deja-vu1-launch-v17-16x9.mp4)
+(24 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone and what
 came since: your phone from anywhere, updates that install every time and help on
 every card. Version 17 plays at 60 frames a second on the product page too, and
 was measured frame by frame for smoothness. Filmed on the simulated farm; the
-phone's address in it is an example. Earlier versions
-are in [`marketing-library/07-videos/`](marketing-library/07-videos/).</sub>
+phone's address in it is an example.</sub>
 
 ## Install
 
@@ -224,6 +223,46 @@ over your folder.
 If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
+
+### Installed with git or GitHub Desktop before 27 October 2026?
+
+On 27 October 2026 the project's history on GitHub was rewritten to take out
+internal marketing and planning folders. Every saved version (commit) got a new
+ID, so a copy made with git or GitHub Desktop before that date can't update the
+usual way. **Settings → Version & updates** says "This copy has its own
+commits", and GitHub Desktop offers to pull and push at the same time. Don't
+pull or push there: that would merge the old history back into your copy.
+
+Copies installed from the ZIP or with the one-paste blocks are not affected.
+
+Do this once. Your settings, printers and files in `backend/data/` stay put.
+
+**If git works in a terminal** (Mac, Linux, or Windows with Git installed),
+close Deja Vu1, open PowerShell or Terminal in your `Deja_VU1` folder and run:
+
+```text
+git fetch origin
+git reset --keep origin/main
+```
+
+`git reset --keep` moves your copy onto the new history. It removes the moved
+folders, leaves `backend/data/` alone, and stops without changing anything if
+it would overwrite a file you edited by hand. Then start the launcher again.
+
+**With GitHub Desktop only:**
+
+1. Close Deja Vu1.
+2. Copy the `data` folder from `backend/` in your `Deja_VU1` folder to a safe
+   place, such as your desktop.
+3. In GitHub Desktop choose **Repository → Remove** and tick the box that also
+   moves the folder to the Recycle Bin (Trash on a Mac).
+4. Choose **File → Clone repository**, pick `Jbyjre/Deja_VU1` and clone it to
+   the same place.
+5. Copy your saved `data` folder back into `backend/` in the new folder.
+6. Start the launcher.
+
+The terminal steps were tested on Linux against a copy of the old history. The
+GitHub Desktop steps have not been tried on Windows or macOS.
 
 ## What's new in 0.12.0
 
@@ -624,7 +663,7 @@ browser's bars where the phone allows.
 | Module | What it does |
 |---|---|
 | **Dock status rings** | Proposed rings beside the toolhead docks: soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault. The on-screen logic is implemented; physical ring drivers and validation are unfinished. The separate WLED bridge can send the same state to a configured strip. |
-| **"Right colour loaded?"** | Proposed optical check against the file’s expected colour. Comparison logic and simulation exist; sensor hardware, driver and calibration are unfinished. |
+| **"Right colour loaded?"** | Proposed optical check for spools the printer can't identify. A sensor with its own white LED reads the filament inside a dark housing at a rear filament inlet, and Deja Vu1 compares that with the colour the file expects. Two sensors (TCS34725 and AS7341) are to be tested side by side on real spools. Comparison logic and simulation exist; no parts are bought yet, and the sensor driver, calibration and housing are unfinished. [Design](docs/hardware-modules.md#module-3---right-colour-loaded-checker) |
 
 ![The Dock status rings panel: four rings for T0 to T3, three soft white for docked and ready and one red for needs attention, marked HARDWARE PENDING, with the note that it shows what the LEDs would display](docs/img/dock-rings.jpg)
 
@@ -747,12 +786,10 @@ watertightness or toolhead clearance. AR still uses original source geometry.
 
 Open work includes physical testing, feeder control, full format fidelity,
 heavy-model rendering and older launch media. The heater-fault ring and the
-unreachable firmware restart were fixed in this round. The share cards, product-page
-images and main editorial screenshots were captured again for the marketing refresh;
-the media library distinguishes these from older reference images and the preserved
-version 12–15 films. Older editorial crops are not refreshed.
-See [full validation](docs/slicer-workspace-validation.md),
-[remaining-work goals](build-prompts/07-physical-validation-and-format-fidelity.md)
+unreachable firmware restart were fixed in this round. The share card, product-page
+images and main editorial screenshots were captured again in October 2026; older
+editorial crops are not refreshed.
+See [full validation](docs/slicer-workspace-validation.md)
 and [release requirements](docs/releasing.md).
 
 ## What this project wrote, and what it builds on
@@ -926,11 +963,14 @@ shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
 2. Confirm maintenance thresholds against how the machine actually wears.
 3. Build the LED rings, print the dock brackets, wire the WS2812 chain,
    implement the driver (or wire up WLED instead).
-4. Build the color checker, print the sensor housings, mount on the filament
-   path, implement the sensor read and calibration.
-5. Connect the pre-print blocking (built: it already refuses a print whose
-   file doesn't match the filament the printer reports) to the optical
-   colour sensor once it exists.
+4. Build the colour checker: test the TCS34725 and AS7341 side by side on
+   real spools, print the sensor blocks for the rear filament inlets,
+   implement the sensor read and calibration, and check the readings
+   against Snapmaker RFID spools, whose colours the printer reports.
+5. Feed the sensor into Confirm Print. It already refuses a print whose
+   file doesn't match the colour the printer reports; a sensor mismatch
+   starts as a warning with a one-click accept until tests show the sensor
+   is accurate.
 6. Open the converter's output in Snapmaker Orca to confirm it, and test
    the Cloudflare Tunnel setup end to end.
 7. Run the auto-print pipeline against a real OrcaSlicer install, open a

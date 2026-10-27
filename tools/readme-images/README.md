@@ -77,8 +77,8 @@ Reset the sandbox afterwards (`POST /api/sandbox/reset?demo=1`).
 
 ## Explainers and the social card
 
-`boards.html` holds the five explainer boards (one `<section>` each) and
-`card.html` the share-card entry point. It opens the fleet campaign composition,
+`boards.html` holds the five explainer boards (one `<section>` each).
+`card.html`, `card.css`, `card.js` and `card.json` draw the link-preview card,
 using `img/fleet-cards.jpg` and `img/brand-loop.png`. The latter is conceptual
 brand art; it is not hardware evidence. Every fact on them comes from the code: the
 dock states from `backend/led_status.py`, the seven checks from
@@ -86,7 +86,8 @@ dock states from `backend/led_status.py`, the seven checks from
 runner. Change them when the code changes.
 
 ```bash
-node tools/readme-images/render.js     # needs Playwright and a Chromium
+node tools/readme-images/render.js          # boards and the link-preview card
+node tools/readme-images/render.js --card   # the link-preview card only
 ```
 
 It writes PNGs and 1600 px-wide, quality-90 JPG boards into
@@ -115,10 +116,8 @@ named in text.
 - `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
   earlier setup/studio captures, retained as historical comparisons.
 
-The current boards use the **920-case** suite count (By the numbers re-rendered 27 October 2026, version 0.12.0). The October marketing
-refresh recaptures the main editorial images and supplies a separate campaign
-pack. Versioned films and historical engine screenshots keep their original
-provenance; the library index identifies what is current.
+The current boards use the **920-case** suite count (By the numbers re-rendered 27 October 2026, version 0.12.0).
+Historical engine screenshots keep their original provenance.
 
 [Workspace validation](../../docs/slicer-workspace-validation.md) records engine,
 browser, recovery and performance evidence, including rendering regressions.
@@ -134,9 +133,9 @@ local fixture app and configured engine. Keep recording/browser servers stopped
 while running `python3 -m unittest discover tests`. Media tools require Node,
 Playwright and Chromium; these are not app runtime dependencies.
 
-## October 2026 marketing refresh
+## Recapturing the pictures
 
-Use the actual app on an isolated simulated farm for product imagery:
+Use the actual app on an isolated simulated farm:
 
 ```bash
 node tools/readme-images/capture.js
@@ -154,49 +153,27 @@ refusal, test-pattern preview and sandbox scenario are actual UI interactions.
 Element captures hide the unrelated sticky header; viewport captures retain the
 normal layout. Phone images are browser viewports, not physical-phone evidence.
 
-Copy editorial JPGs to matching names in `docs/img/` and `marketing-library/`.
-The current 3D/front/top/phone twin views go in `04-digital-twin/`; the other
-editorial captures go in `03-screenshots/`. Copy `overview.jpg`, `fleet.jpg`,
-`phone.jpg`, `twin-3d-printing.jpg` (as `twin.jpg`) and `twin-drawing.jpg` into
-`frontend/img/`. The workspace image is the preserved
-`docs/img/slicer-after-workspace-1366.png`, copied to `frontend/img/workspace.png`;
-keep its historical Linux-validation caption. Copy `twin-model.jpg` as
-`tools/readme-images/img/twin.jpg` for the twin campaign. Fleet and attention
-compositions use `fleet-cards.jpg` and `needs-you.jpg` beside it.
+`sync.py` copies the captures to matching names in `docs/img/`; `overview.jpg`,
+`fleet.jpg`, `phone.jpg`, `twin-3d-printing.jpg` (as `twin.jpg`) and
+`twin-drawing.jpg` into `frontend/img/`; `twin-model.jpg`, `needs-you.jpg` and
+`fleet-cards.jpg` into `tools/readme-images/img/`; the boards into `docs/img/`;
+and the 1200 × 630 card to `frontend/img/social-card.png`. The workspace image
+is the preserved `docs/img/slicer-after-workspace-1366.png`, copied to
+`frontend/img/workspace.png`; keep its historical Linux-validation caption.
 
-The renderer also makes six subjects in landscape, square, portrait and native horizontal-feed formats.
-Its source is `campaign.json`; `campaign.html`, `campaign.css` and `campaign.js` typeset that content, and
-`render.js` checks bounds and missing images at each output size. Copy the 24
-PNGs and `campaign-manifest.json` (as `captions.json`) into
-`marketing-library/09-current-campaign/`. Each manifest entry supplies the
-format, caption, text alternative and evidence limits. Inspect the final files;
-bounds checks do not establish good composition or accessibility.
-
-`sync.py` performs these copies, merges the capture records and writes
-`marketing-library/current-assets.json` with byte sizes and SHA-256 hashes.
-Run it after rendering; keep capture and render output together until it completes.
+`check-marketing.js` checks the shipped product page (`frontend/welcome.html`)
+and the recorded demo at 1366 and 390 px from disk: one heading, no sideways
+scrolling, every section link and picture present.
 
 The core app still requires no media packages. These authoring tools require
 Node, Playwright and Chromium; the copy script uses Python’s standard library.
-Boards render directly at 1600 px and quality 90. Share images
-remain PNG at their native sizes. Preserve versioned films and their music
-notices. Use the campaign pack for current standalone images, rather than
-silently relabelling old video stills.
+Boards render directly at 1600 px and quality 90. Share images remain PNG at
+their native sizes.
 
+`img/brand-loop.png` is AI-generated conceptual brand artwork. It is
+deliberately separate from actual app screenshots and is never evidence of a
+physical print or add-on.
 
-### Art-directed campaign follow-up
-
-`campaign.css` and `campaign.js` now provide six distinct compositions. Run
-`node tools/readme-images/render.js --campaign` to render only share/campaign
-assets, then `python3 tools/readme-images/sync.py` to update the shipped copies.
-The renderer also checks authored text palette pairs, evidence/action overlap
-and the reviewed 5 MB feed limit. Inspect actual images and reduced-size previews;
-these checks do not certify every screenshot pixel or marketing effectiveness.
-
-`img/brand-loop.png` is AI-generated conceptual brand artwork. Its original is
-retained in the workspace’s generated-images folder. It is deliberately separate
-from actual app screenshots and is never evidence of a physical print or add-on.
-Captions and README explain that distinction. The artwork is bundled into the
-PNG share/campaign exports; the product page does not download the large source.
-See `marketing-library/AD-GUIDE.md` for message and placement choices and
-`docs/copy-review.md` for the exact scope of wording changes.
+The 24 campaign cards, the marketing library and the launch films moved to the
+owner's private repository on 27 October 2026, with the script that copies
+these pictures into that library.

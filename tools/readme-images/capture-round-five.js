@@ -12,8 +12,8 @@ const base = `http://127.0.0.1:${port}`;
 const out = path.resolve(__dirname, '../../docs/img');
 const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'dv-shots5-'));
 // The phone sheet shows the address a phone would open. This machine may have none, so the
-// browser opens the app under an example home address and its requests are sent here (as the
-// launch film's filming does, promo-video/capture/rec.js `alias`).
+// browser opens the app under an example home address and its requests are sent here (the same
+// `alias` trick the launch film's filming script uses).
 const HOME = 'http://192.168.1.23:8000';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const jpg = (png, file, max = 1600) => execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', png, '-vf', `scale=min(${max}\\,iw):-2`, '-q:v', '3', path.join(out, file)]);

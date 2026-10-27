@@ -9,16 +9,23 @@ The plan
 --------
 A multi-toolhead printer makes it easy to load the wrong spool. You start a
 two-color print, walk away, and come back to find the logo printed in grey
-instead of orange. Nothing was broken - the printer had no way to know.
+instead of orange. Confirm Print (print_gate.py) already refuses a file whose
+colours don't match what the printer reports, but a spool without an RFID tag
+and with no colour typed on the printer's screen reports no colour, so it can
+only say "check it by eye".
 
-This module will read an optical color sensor (TCS34725 or similar) mounted in
-the filament path ahead of each toolhead. Before a print starts, it compares
-what the sensor actually sees against what the print file says it expects, and
-warns on a mismatch.
+This module will read an optical colour sensor with its own white LED, in a
+dark printed block at each of the U1's rear filament inlets. Two candidates
+are to be tested side by side on real spools: the TCS34725 (RGB + clear, I2C
+0x29) and the AS7341 (8 visible channels + clear + near-infrared, I2C 0x39).
+A TCA9548A multiplexer (0x70) lets four identical sensors share one bus, and a
+Raspberry Pi Pico W sends the readings to Deja Vu1 over Wi-Fi.
 
-Deliberately no RFID or NFC tags: those only work with tagged spools from
-specific vendors. An optical sensor works with any filament the user already
-owns, which matters for an open-source add-on.
+Planned behaviour: check when filament is loaded and at Confirm Print, never
+mid-print; stay quiet when the readings agree; a sensor mismatch is a warning
+with a one-click accept until real tests prove the sensor accurate; a
+low-confidence reading says "couldn't read". Tagged Snapmaker spools, whose
+colours the printer reports, are the reference colours for those tests.
 
 What is here today
 ------------------
@@ -29,8 +36,8 @@ faked - `read_sensor()` returns a plausible value instead of measuring light.
 Why no driver code yet
 ----------------------
 The sensor talks I2C, and the U1's sealed Rockchip SoC exposes no GPIO or I2C
-pins. The sensor will hang off the same external companion board as the LED
-module. See docs/hardware-modules.md.
+pins. The sensor hangs off the external Pico W, never the printer's board. No
+parts are bought yet. See docs/hardware-modules.md, Module 3.
 """
 
 import random
@@ -119,9 +126,9 @@ def connect_sensor(toolhead_id):
     """
     NOT IMPLEMENTED. Will open the I2C connection to a toolhead's color sensor.
 
-    Once built, this will initialize the TCS34725 on the companion board and
-    set its gain and integration time - the two settings that control how
-    sensitive the reading is and how long each measurement takes.
+    Once built, this will select the sensor's channel on the TCA9548A and
+    set the sensor's gain and integration time - the two settings that
+    control how sensitive the reading is and how long each measurement takes.
 
     Returns False today so callers know to fall back to simulation.
     """
@@ -133,8 +140,9 @@ def calibrate(toolhead_id):
     NOT IMPLEMENTED. Will white-balance the sensor.
 
     Optical sensors read differently depending on ambient light and how far
-    the filament sits from the lens. This will take a reference reading
-    against a known white target so later readings can be corrected.
+    the filament sits from the lens. The dark housing fixes both; this will
+    still take a reference reading against a known white target so later
+    readings can be corrected.
     """
     raise NotImplementedError(
         "Sensor calibration not implemented. Awaiting physical hardware."
@@ -263,7 +271,7 @@ def simulate():
 
     print()
     print(f"Overall: {data['overall'].upper()}")
-    print("Pending hardware: TCS34725 color sensor per toolhead.")
+    print("Pending hardware: a TCS34725 or AS7341 colour sensor per filament inlet.")
     print("=" * 62)
 
 
