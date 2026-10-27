@@ -264,7 +264,10 @@ to start.
 3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
    the launcher again. If it says you changed files, read the list; **Discard
    changes** is usually right. Your settings live in `backend/data/`, which git
-   never lists.
+   never lists. Cloned before 27 October 2026? GitHub's history was rewritten
+   that day, so follow the one-time steps in the README
+   ([installed with git or GitHub Desktop before 27 October 2026](../README.md#installed-with-git-or-github-desktop-before-27-october-2026))
+   instead of pulling.
 
 **Look after this copy** in the same card can also **Restart** the dashboard,
 **Repair files** (put the published app files back, data untouched), make a

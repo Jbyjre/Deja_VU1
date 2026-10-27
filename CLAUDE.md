@@ -26,15 +26,22 @@ trust the code and fix this file.
   9:16). Set aside, and never build on or reuse: the owner's "V2" (version 13's 60 s pair and
   version 15, its update) and the marketing videos ChatGPT made (none are in this repository).
   The current line is "V1" (version 12's 75 s pair, version 14 at 60 s, versions 16 and 17). Marketing cuts
-  are 60 seconds and show the live Dots background and the 3D twin (`promo-video/README.md` holds the
-  owner's other video preferences). Each new version shows what changed in the app since the last.
-  Version 16 (`promo-video/v16/`, 16:9 only) shows the 3DBenchy, the quick tour and scanning a QR
-  code onto a phone. Version 17 (`promo-video/v17/`, the owner, 26 October 2026: "make it smoother
-  and better") is version 16 measured frame by frame and smoothed (no 3D flattening when the laptop
-  dims, dissolves where the filmed app swaps a whole view, a 60 fps web copy), with what changed
-  since in "and plenty more"; it replaced the film in the README and on the product page. Check a
-  new cut with a frame-difference pass over the master (`promo-video/README.md`, version 17). Older
-  finished files stay in `marketing-library/07-videos/`. Don't edit the video unless asked.
+  are 60 seconds and show the live Dots background and the 3D twin. Each new version shows what changed
+  in the app since the last. Version 16 shows the 3DBenchy, the quick tour and scanning a QR code onto a
+  phone. Version 17 (the owner, 26 October 2026: "make it smoother and better") is version 16 measured
+  frame by frame and smoothed (no 3D flattening when the laptop dims, dissolves where the filmed app
+  swaps a whole view, a 60 fps web copy), with what changed since in "and plenty more"; it replaced the
+  film in the README and on the product page. Check a new cut with a frame-difference pass over the
+  master. Don't edit the video unless asked.
+- Internal material lives in the owner's private repository, `Jbyjre/Deja-VU1-Studio` (moved
+  27 October 2026, with this repository's history rewritten to drop it): `promo-video/` (the film
+  tooling; its `README.md` holds the owner's other video preferences and the version 17 checks),
+  `marketing-library/` (finished films in `07-videos/`, `COPY.md`, `MESSAGING.md`, `AD-GUIDE.md`),
+  `build-prompts/` (planned build sessions; current goals in
+  `07-physical-validation-and-format-fidelity.md`), `docs/marketing-refresh.md`, `docs/copy-review.md`
+  and `tools/campaign/` (the 24 campaign cards and the library copy step). Never add them back
+  here. Ask for the private repository to be attached to the session when a task needs it. The
+  public film copy for the product page stays in `frontend/media/`.
 - Every change must also be reflected in the online demo (the owner's rule,
   October 2026; README "For developers and AI coding sessions"). Frontend
   changes reach it by themselves, but check `/?demo` on a static server; a new
@@ -94,8 +101,8 @@ trust the code and fix this file.
    ("What's new", status table), CHANGELOG, this file, and the pictures
    (`tools/readme-images/`) and the online demo recording if screens or
    routes changed.
-6. Work too big for the session goes in `build-prompts/` as a prompt that
-   gives the next session goals and freedom, not steps.
+6. Work too big for the session goes in the private repository's `build-prompts/` as a
+   prompt that gives the next session goals and freedom, not steps.
 7. No subagents; keep output short; read files with offset and limit.
 
 ## Writing and code style (the owner, 26 October 2026)
@@ -112,7 +119,7 @@ gets credit. Write so the answers are easy to find.
   trailers). Hiding it would be a bigger risk than showing it.
 - Quote a test count and date only from a run you made, and change every copy
   together: README, the "By the numbers" board (`tools/readme-images/boards.html`),
-  `docs/slicer-workspace-validation.md` and `marketing-library/COPY.md`.
+  `docs/slicer-workspace-validation.md` and the private repository's `marketing-library/COPY.md`.
 - Python: match the file you are in. One statement per line (no `if x:return y`, no
   `a=1;b=2`), about 120 columns at most, comments only for the why.
   `ruff check --select E701,E702 backend tests tools` must stay clean. GitHub Actions
@@ -332,10 +339,12 @@ non-programmers), `architecture.md` (the long version), `real-printer.md`,
 
 `docs/img/`: the README's pictures (screenshots from the simulated farm, five
 explainer boards, a GIF). `tools/readme-images/README.md` says how each was
-made; the boards and the social card are HTML in that folder, rendered by
-`tools/readme-images/render.js` (needs Playwright). Boards quote figures from
-the code (test count, sensor count, Confirm Print checks): update them when
-those change.
+made; the boards and the social card are HTML in that folder (`boards.html`,
+`card.html` with `card.css`, `card.js` and `card.json`), rendered by
+`tools/readme-images/render.js` (needs Playwright; `--card` for the card only).
+Boards quote figures from the code (test count, sensor count, Confirm Print
+checks): update them when those change. `sync.py` copies captures and renders
+into `docs/img/`, `frontend/img/` and `tools/readme-images/img/` only.
 
 `frontend/img/social-card.png` is the link-preview card (1200 × 630). Both
 `index.html` and `welcome.html` name it by absolute URL on the published
@@ -343,17 +352,14 @@ worker (`deja-vu1.jmath1110.workers.dev`), because crawlers need a full
 address; `test_link_preview_image_is_the_bundled_card` checks it. Rename the
 worker in `wrangler.jsonc` and those tags must change too.
 
-`marketing-library/` and `build-prompts/` are temporary, for the owner:
-copies of every marketing picture plus `MESSAGING.md` (the agreed feature
-order and wording), and one prompt per planned build session. Nothing reads
-them; both go before the launch post. Current follow-up goals are in
-`build-prompts/07-physical-validation-and-format-fidelity.md`; older briefs are historical.
-
-`promo-video/`: the launch video (HyperFrames compositions, frame-by-frame filming
-scripts that drive the app on the simulated farm, recorded-instrument music; versions 14
-and 15 live in `promo-video/v14/` and `v15/`);
-`promo-video/README.md` is its working guide. The finished videos are copied into
-`marketing-library/07-videos/`.
+`docs/hardware-modules.md` Module 3 is the colour checker design, written to
+match the owner's 27 October 2026 email to Snapmaker's community team: TCS34725
+and AS7341 tested side by side, a TCA9548A multiplexer and a Pico W over Wi-Fi,
+a dark printed block at each rear filament inlet, TD second (TD1s values typed
+in), a sensor mismatch as a warning with one-click accept, reported-colour
+mismatches still blocking. Keep README's status row, `color_check.py`'s
+docstring, `architecture.md` and the explain.js note in step with it. Only the
+comparison and simulation exist; the planned behaviour is not written.
 
 `wrangler.jsonc`: Cloudflare publishes `frontend/` as a static site with no
 Python behind it. Each PR gets a "Workers Builds" check and a preview-URL
@@ -512,7 +518,7 @@ prove a public deployment.
 - Viewer now has multi-model plate editing and native 3MF save-as, core/vertex
   colours, bounded mesh contact and surface measurements. Complex paint/texture rendering, simultaneous multi-plate editing and AR's edited geometry are still incomplete. Single-plate selection/separation is now verified.
   Real Orca 2.4.2 Linux slices are verified; physical U1 printing is not.
-- Detailed remaining work: `build-prompts/05-launch-follow-through.md`.
+- Detailed remaining work: the private repository's `build-prompts/05-launch-follow-through.md`.
 
 Round-two evidence lives in `docs/native-studio-validation.md` and
 `docs/viewer-performance.json`. The software-rendered 200k-triangle test is not
@@ -555,26 +561,13 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   Software-rendered heavy model frame pacing remains poor; disclose regressions.
 
 
-## Public marketing refresh
+## Public marketing material
 
-Current campaign copy is in `marketing-library/COPY.md`, with claim limits in
-`MESSAGING.md`. Twenty-four standalone cards are generated from
-`tools/readme-images/campaign.json` and `campaign.html`; they are separate from
-historical video-extracted cards. The library index and capture record distinguish
-fresh simulated-farm screenshots from historical Linux engine validation images.
-Use `capture.js`, `render.js` and `check-marketing.js` in that tools folder.
-Do not infer physical readiness, guaranteed update freshness, complete conversion
-fidelity, or a competition/detector score from marketing material. Existing v12–15
-films are preserved, not relabelled as current captures. Repository description
-and social-preview settings are supplied as reviewable copy/assets, not changed
-outside the PR. This refresh must remain unmerged until the owner asks.
-
-
-Campaign follow-up: `campaign.html`, `campaign.css`, `campaign.js` and JSON now
-produce 24 images (six subjects × four formats), including a native horizontal
-feed export. `img/brand-loop.png` is explicitly AI-generated conceptual artwork,
-not a physical print or accessory. Preserve that distinction in captions.
-`marketing-library/AD-GUIDE.md` maps messages to destinations and placements;
-`docs/copy-review.md` records the scoped copy edits. The renderer checks authored
-palette pairs and evidence/action bounds; these are not an accessibility or ad
-performance certification. Use `render.js --campaign` for campaign-only refreshes.
+The campaign copy, claim limits, ad guide and the 24 campaign cards moved to the
+private repository on 27 October 2026 (see the working rules). What stays here:
+the README screenshots, explainer boards and link-preview card
+(`tools/readme-images/`), and `check-marketing.js`, which checks the product page
+and recorded demo. `img/brand-loop.png` is AI-generated conceptual artwork, not a
+physical print or accessory; preserve that distinction in captions. Do not infer
+physical readiness, guaranteed update freshness, complete conversion fidelity, or
+a competition/detector score from marketing material.

@@ -71,13 +71,12 @@ computer. Pause a print on your phone and the computer's screen shows it paused.
 [![Deja Vu1 launch film (version 17, 60 seconds, 16:9): "Run your 3D printers from one screen." Click to watch.](docs/img/launch-video-v17.jpg)](https://deja-vu1.jmath1110.workers.dev/#film)
 
 <sub>Click the picture to watch it on the product page, or
-[download the full-quality MP4](marketing-library/07-videos/deja-vu1-launch-v17-60s-16x9.mp4)
-(53 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone and what
+[download the MP4](frontend/media/deja-vu1-launch-v17-16x9.mp4)
+(24 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone and what
 came since: your phone from anywhere, updates that install every time and help on
 every card. Version 17 plays at 60 frames a second on the product page too, and
 was measured frame by frame for smoothness. Filmed on the simulated farm; the
-phone's address in it is an example. Earlier versions
-are in [`marketing-library/07-videos/`](marketing-library/07-videos/).</sub>
+phone's address in it is an example.</sub>
 
 ## Install
 
@@ -224,6 +223,46 @@ over your folder.
 If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
+
+### Installed with git or GitHub Desktop before 27 October 2026?
+
+On 27 October 2026 the project's history on GitHub was rewritten to take out
+internal marketing and planning folders. Every saved version (commit) got a new
+ID, so a copy made with git or GitHub Desktop before that date can't update the
+usual way. **Settings → Version & updates** says "This copy has its own
+commits", and GitHub Desktop offers to pull and push at the same time. Don't
+pull or push there: that would merge the old history back into your copy.
+
+Copies installed from the ZIP or with the one-paste blocks are not affected.
+
+Do this once. Your settings, printers and files in `backend/data/` stay put.
+
+**If git works in a terminal** (Mac, Linux, or Windows with Git installed),
+close Deja Vu1, open PowerShell or Terminal in your `Deja_VU1` folder and run:
+
+```text
+git fetch origin
+git reset --keep origin/main
+```
+
+`git reset --keep` moves your copy onto the new history. It removes the moved
+folders, leaves `backend/data/` alone, and stops without changing anything if
+it would overwrite a file you edited by hand. Then start the launcher again.
+
+**With GitHub Desktop only:**
+
+1. Close Deja Vu1.
+2. Copy the `data` folder from `backend/` in your `Deja_VU1` folder to a safe
+   place, such as your desktop.
+3. In GitHub Desktop choose **Repository → Remove** and tick the box that also
+   moves the folder to the Recycle Bin (Trash on a Mac).
+4. Choose **File → Clone repository**, pick `Jbyjre/Deja_VU1` and clone it to
+   the same place.
+5. Copy your saved `data` folder back into `backend/` in the new folder.
+6. Start the launcher.
+
+The terminal steps were tested on Linux against a copy of the old history. The
+GitHub Desktop steps have not been tried on Windows or macOS.
 
 ## What's new in 0.12.0
 
@@ -747,12 +786,10 @@ watertightness or toolhead clearance. AR still uses original source geometry.
 
 Open work includes physical testing, feeder control, full format fidelity,
 heavy-model rendering and older launch media. The heater-fault ring and the
-unreachable firmware restart were fixed in this round. The share cards, product-page
-images and main editorial screenshots were captured again for the marketing refresh;
-the media library distinguishes these from older reference images and the preserved
-version 12–15 films. Older editorial crops are not refreshed.
-See [full validation](docs/slicer-workspace-validation.md),
-[remaining-work goals](build-prompts/07-physical-validation-and-format-fidelity.md)
+unreachable firmware restart were fixed in this round. The share card, product-page
+images and main editorial screenshots were captured again in October 2026; older
+editorial crops are not refreshed.
+See [full validation](docs/slicer-workspace-validation.md)
 and [release requirements](docs/releasing.md).
 
 ## What this project wrote, and what it builds on
