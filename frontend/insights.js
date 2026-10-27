@@ -172,7 +172,7 @@
                 <label>Filament<select name="filament">${opts(p.filament)}</select></label>
                 <label>Profile name<input name="name" maxlength="60" placeholder="My Orca settings"></label>
                 <button class="btn small primary" type="submit">Make a slicing profile</button>
-                <p class="field-hint">Uses your preset files where they are, so later edits in the slicer carry over. Slicing needs Auto-print switched on.</p></form>`
+                <p class="field-hint">Uses your preset files where they are, so later edits in the slicer carry over. Slicing needs to be on (Files › Slicing).</p></form>`
               : `<p class="log-empty">${p.machine.length + p.process.length + p.filament.length ? 'A profile needs one printer, one process and one filament preset of your own.' : 'No presets of your own yet: the slicer’s built-in Snapmaker presets are used through Profiles & tools.'}</p>`}</div>
           </div></div>`;
       }).join('') + `<p class="field-hint">${esc(data.note)}</p>`);

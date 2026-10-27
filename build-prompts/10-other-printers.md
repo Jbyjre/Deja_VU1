@@ -1,9 +1,14 @@
-# Note: other printers (planning only, nothing built)
+# Note: other printers (first step built in 0.12.0)
 
 The owner (24 October 2026) wants to start supporting printers beyond the
 Snapmaker U1, especially ones with ordinary hardware that already work, or
-could be made to work, with this app. This is a note for a later session,
-not a request to build it now.
+could be made to work, with this app. 0.12.0 built the first step
+(backend/machines.py, docs/real-printer.md "Other Klipper printers"): a non-U1
+printer's volume, heads, kinematics and nozzle come from its own Klipper report,
+the pre-flight and Confirm Print use them, cards say "untested type", and the
+twin card shows the printer's facts instead of a U1. Still open: the slicing
+workspace and converter for other printers' presets, a simple generic twin,
+and a physical non-U1 printer.
 
 ## Why it is close
 

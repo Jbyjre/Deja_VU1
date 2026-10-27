@@ -67,7 +67,8 @@ def history_job(n, status="completed", start=1_700_000_000.0, duration=3600.0, f
 
 class FakeMoonraker:
     def __init__(self, u1=True, extruders=4, chamber="temperature_sensor chamber", api_key=None,
-                 layer_info=True, update_manager=False):
+                 layer_info=True, update_manager=False, axis_maximum=(270.0, 270.0, 270.0),
+                 axis_minimum=(0.0, 0.0, 0.0), kinematics="corexy", nozzle_diameter=0.4):
         self.lock = threading.RLock()
         self.api_key = api_key
         self.klippy_state = "ready"
@@ -104,7 +105,9 @@ class FakeMoonraker:
                             "info": {"total_layer": None, "current_layer": None}},
             "virtual_sdcard": {"file_path": None, "progress": 0.0, "is_active": False, "file_position": 0,
                                "file_size": 0},
-            "toolhead": {"extruder": "extruder", "position": [135.0, 135.0, 10.0, 0.0], "homed_axes": "xyz"},
+            # kinematics get_status adds the axis limits (klippy/kinematics/cartesian.py, corexy.py)
+            "toolhead": {"extruder": "extruder", "position": [135.0, 135.0, 10.0, 0.0], "homed_axes": "xyz",
+                         "axis_minimum": list(axis_minimum) + [0.0], "axis_maximum": list(axis_maximum) + [0.0]},
             "gcode_move": {"gcode_position": [135.0, 135.0, 10.0, 0.0]},
             "heater_bed": {"temperature": 24.0, "target": 0.0, "power": 0.0},
             # extras/exclude_object.py get_status (Snapmaker's u1-klipper fork)
@@ -129,8 +132,12 @@ class FakeMoonraker:
             }
         if chamber:
             self.status[chamber] = {"temperature": 31.5}
+        if not u1:
+            # configfile get_status: {"settings": {section: {option: value}}} (klippy/configfile.py)
+            self.status["configfile"] = {"settings": {"printer": {"kinematics": kinematics},
+                                                      "extruder": {"nozzle_diameter": nozzle_diameter}}}
         self.layer_info = layer_info
-        self.objects = sorted(self.status) + ["gcode", "configfile", "heaters", "mcu"]
+        self.objects = sorted(set(self.status) | {"gcode", "configfile", "heaters", "mcu"})
 
         handler = self._handler_class()
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler)

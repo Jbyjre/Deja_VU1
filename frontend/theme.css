@@ -815,9 +815,50 @@ html[data-backdrop]:not([data-backdrop="still"]) .liquid-glass:is(.card, .stats,
    muddy grey whenever black filament was loaded. The model itself shows
    the colours. */
 .liquid-glass.card.twin-card[data-tint] { background: var(--paper); }
-.settings-jumps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; }
-.settings-jumps > span { font: 600 12px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); margin-right: 4px; }
-.settings-jumps .chip-btn { text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+/* Sections (app.js Sections): a quiet glass track under the tab intro. The
+   chosen part is a raised white chip with an accent dot, a step down from
+   the tab bar's filled accent pill, so the two never compete. Glass tier 1:
+   it sits on the page, it doesn't float above it. */
+.sec-off { display: none !important; }
+.grid-2.sec-single { grid-template-columns: minmax(0, 1fr); }
+/* One part showing: its heading needs no divider from a section above it. */
+.sec-one > .tab-sub { margin-top: 0; }
+.sec-one > .tab-sub > .tab-sub-head { border-top: 0; padding-top: 2px; }
+.sec-enter { animation: sec-in .26s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes sec-in { from { opacity: 0; transform: translateY(8px); } }
+.sec-bar { margin: -6px 0 18px; display: flex; }
+.sec-track {
+  display: inline-flex; align-items: center; gap: 2px; padding: 4px; max-width: 100%;
+  border-radius: 999px; background: rgba(255, 255, 255, .46);
+  border: 1px solid oklch(30% 0.02 265 / .09);
+  backdrop-filter: blur(10px) saturate(1.35); -webkit-backdrop-filter: blur(10px) saturate(1.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 1px 2px oklch(25% 0.02 265 / .04), 0 2px 6px oklch(25% 0.02 265 / .06);
+}
+.sec-track button {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 14px;
+  border: 0; border-radius: 999px; background: transparent; cursor: pointer; white-space: nowrap;
+  font: 600 13px/1 var(--font-sans); color: var(--text-dim);
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.sec-track button::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .28;
+  transition: opacity .18s ease, background .18s ease, transform .18s ease;
+}
+.sec-track button:hover { background: rgba(255, 255, 255, .55); color: var(--text); }
+.sec-track button[aria-pressed="true"] {
+  background: var(--paper-solid); color: var(--text);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px oklch(25% 0.02 265 / .10), 0 3px 10px oklch(25% 0.02 265 / .08);
+}
+.sec-track button[aria-pressed="true"]::before { background: var(--accent); opacity: 1; transform: scale(1.15); }
+.sec-track button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sec-track .sec-all { margin-left: 4px; position: relative; }
+.sec-track .sec-all::after { content: ""; position: absolute; left: -4px; top: 9px; bottom: 9px; width: 1px; background: var(--hair); }
+@media (prefers-reduced-transparency: reduce) { .sec-track { background: var(--paper-solid); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+@media (prefers-contrast: more) {
+  .sec-track { border: 1.5px solid var(--text); }
+  .sec-track button[aria-pressed="true"] { outline: 2px solid var(--text); outline-offset: -2px; }
+}
+@media (prefers-reduced-motion: reduce) { .sec-track button, .sec-track button::before { transition: none; } .sec-enter { animation: none; } }
 #tab-modules section.card { scroll-margin-top: 110px; }
 
 /* ==========================================================================
@@ -1064,12 +1105,12 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
     background: rgba(255, 255, 255, .45); border: 1px solid rgba(0, 0, 0, .06); }
   .more-sheet button:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 
-  /* Settings: one swipeable row of links, the newest two versions, the first
+  /* Settings: one swipeable row of parts, the newest two versions, the first
      six modules (one tap for the rest). Stop stays on the computer: from a
      phone it would leave nothing to start Deja Vu1 again with. */
-  .settings-jumps { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
-  .settings-jumps::-webkit-scrollbar { display: none; }
-  .settings-jumps > * { flex: 0 0 auto; }
+  .sec-bar { margin: -4px -16px 14px; padding: 2px 16px 4px; overflow-x: auto; scrollbar-width: none; }
+  .sec-bar::-webkit-scrollbar { display: none; }
+  .sec-track { max-width: none; flex: 0 0 auto; }
   #app-stop { display: none; }
   .vc-history > li:nth-child(n+3) { display: none; }
   #module-list:not(.is-open) > .modrow:nth-child(n+7) { display: none; }

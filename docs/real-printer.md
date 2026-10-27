@@ -145,6 +145,35 @@ simulation:
   and the file's layer height (the way Mainsail and Fluidd do), and marked
   as an estimate.
 
+## Other Klipper printers
+
+Deja Vu1 is made for the Snapmaker U1, but any printer that runs Klipper with
+Moonraker connects the same way (Printers → Add a printer). It is marked as an
+**untested type** on its card. What changes for it:
+
+- **It describes itself.** The build volume comes from Klipper's own axis
+  limits (`axis_minimum` and `axis_maximum` in the `toolhead` status, from the
+  kinematics' `get_status`), the heads from the extruders it lists, and the
+  kinematics and nozzle size from its config file (`configfile` → `settings`,
+  read once per connection). Checked against Klipper's source at `ee2c6fb`.
+  A U1 is recognised by `print_task_config`, an object only Snapmaker's Klipper has.
+- **Files are checked against it.** The pre-flight and Confirm Print use that
+  printer's own volume and head count: a file that fits a U1 but not a 235 mm
+  bed is refused, and `T1` on a one-head printer is refused. A printer that
+  doesn't report its size gets a warning that the bounds check is off, never a
+  guessed size. The `PRINT_START` warning is for the U1 only, since other
+  printers name their start macro their own way.
+- **U1-only parts stay empty.** Dock sensors, loaded-filament colours and the
+  3D twin are the U1's; the twin card shows the printer's reported size, heads,
+  nozzle and position instead.
+- **Its address.** Some printers put Moonraker behind their own web page instead
+  of port 7125. Type the full address (`http://192.168.1.50`) and Deja Vu1 uses
+  it as typed.
+
+The slicing workspace, mixed layer heights and the converter still target the
+U1's presets. Tested only against the Moonraker stand-in playing a one-head
+235 × 235 × 250 mm cartesian printer; no physical non-U1 printer yet.
+
 ## What cannot be checked without the printer
 
 A good test suite is not a real machine:

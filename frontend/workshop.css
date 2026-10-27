@@ -1144,3 +1144,12 @@ body.is-scrolled .topbar {
 @media (max-width: 720px) { .lb-add { grid-template-columns: 1fr; } }
 
 .fc-web { display: block; margin-top: 8px; text-align: center; font: 600 12px/1.4 var(--font-mono); color: var(--accent-text); text-underline-offset: 2px; }
+
+/* A printer that isn't a U1 (machines.py): the twin card says what it is
+   instead of drawing the wrong machine. */
+.twin-card.is-other-printer :is(#twin-host, .twin-switches, .twin-note, .twin-tools, .twin-chips, .twin-readout) { display: none !important; }
+.twin-other { margin-top: 12px; padding: 18px; border-radius: 16px; background: var(--paper-solid, #fff); border: 1px solid var(--hair, rgba(0, 0, 0, .08)); }
+.twin-other-kind { margin: 0 0 10px; font: 650 17px/1.3 var(--font-display); }
+.twin-other dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 10px; font-size: 13.5px; }
+.twin-other dt { color: var(--text-faint); }
+.twin-other dd { margin: 0; font-family: var(--font-mono); }

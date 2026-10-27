@@ -512,7 +512,7 @@ window.PrintRoom = (() => {
       const save = $('np-form').querySelector('.btn.primary');
       if (!d?.available) {
         $('np-status').textContent =
-          (d?.problem || d?.error || 'Enable Auto-print, install an engine and check its path.') +
+          (d?.problem || d?.error || 'Turn on slicing, install a slicer and check it in Get ready to slice.') +
           ' The settings below are shown for reference; saving a profile needs the engine’s presets.';
         $('np-form').hidden = false;
         $('np-form').classList.add('is-preview');

@@ -10,6 +10,45 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.12.0 (27 October 2026): one thing at a time
+
+- **One part of a screen at a time.** Overview (Right now, Live readings,
+  History & upkeep), Printers (Your printers, Farm desk, Practice farm), Files
+  (Your files, Slicing, Layer heights), Care (Upkeep, Filament & colour) and
+  Settings (This copy, Look & feel, Features, Phone & away, Alerts & smart home,
+  Camera) open on their first part, with **Everything** for the full page. Measured
+  at 1366 px: Settings went from 8,803 to 4,643 pixels tall, Printers from 4,233 to
+  1,544, Files from 3,047 to 1,410. Cards are sorted by id or title (`app.js`
+  `SECTIONS`), so cards drawn later find their part and a card no rule names joins
+  the first one. Search, tours and links open the part that holds their target.
+- **Get ready to slice.** Files → Slicing starts with five steps: turn on, find the
+  slicer, check it answers, pick presets, add a model. **Find it for me**
+  (`POST /api/slicer/find`) lists Snapmaker Orca and OrcaSlicer programs in the
+  usual install folders, one level deep, skipping installers, archives and project
+  files; nothing runs until **Use this**, which saves the path and checks it. With
+  nothing found it links both slicers' GitHub release pages. Walked through in
+  Chromium with a stand-in program; no real Windows or macOS install searched yet.
+- **Other Klipper printers** (`backend/machines.py`). A printer without Snapmaker's
+  `print_task_config` is described from its own report: volume from the toolhead's
+  `axis_minimum` / `axis_maximum`, heads from its extruders, kinematics and nozzle
+  from `configfile` settings (Klipper `ee2c6fb`). The pre-flight and Confirm Print
+  check files against that printer; an unreported size turns the bounds check off
+  with a warning. Its card says "untested type"; the twin card shows its facts
+  instead of a U1. Tested against the Moonraker stand-in playing a one-head
+  235 × 235 × 250 mm printer; no physical non-U1 printer.
+- **Search fixed.** `finder.js` compared titles that explain.js had given an ⓘ
+  button, so 55 of 58 "Go to" places opened nothing. Titles are compared without
+  it; `tests/test_finder.py` checks every place names a real card.
+- **Wording.** "Auto-print" reads "Slicing" wherever a person sees it (the module
+  id stays `auto_print`). The greyed-out Slice button on a plate says why and links
+  the set-up.
+- **Smaller downloads.** The unused version 1 and 16 web films left
+  `frontend/media/` (masters stay in `marketing-library/07-videos/`): the update
+  package is 56 MB instead of 74 MB.
+- **Not verified:** a physical U1 or non-U1 printer, the slicer search on Windows
+  or macOS, real phones. With software graphics, the 3D twin in view costs about
+  460 ms a frame on both 0.11.1 and this version; real GPUs unmeasured here.
+
 ## 0.11.1 (27 October 2026): Clean up code layout and public wording before Phase 2
 
 - Clean up code layout and public wording before Phase 2

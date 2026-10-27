@@ -71,6 +71,7 @@ from datetime import datetime
 from urllib.parse import quote, urlencode, urlparse
 
 import gcode_tools
+import machines
 import websocket as ws
 
 CONNECT_TIMEOUT = 5.0          # opening a connection to the printer
@@ -519,6 +520,7 @@ def translate_state(status, ctx):
         "printer_name": ctx.get("name"),
         "klipper_state": raw,
         "real": True,
+        "machine": machines.public(ctx.get("machine")),
     }
     plate = plate_objects(_obj(status, "exclude_object"))
     if plate and state in ("printing", "paused"):
@@ -931,7 +933,8 @@ _BASE_OBJECTS = {
     "webhooks": ["state", "state_message"],
     "print_stats": ["state", "filename", "print_duration", "total_duration", "filament_used", "message", "info"],
     "virtual_sdcard": ["progress", "is_active", "file_position", "file_size"],
-    "toolhead": ["extruder", "position", "homed_axes"],
+    # axis_minimum / axis_maximum: the build volume (Klipper kinematics get_status)
+    "toolhead": ["extruder", "position", "homed_axes", "axis_minimum", "axis_maximum"],
     "gcode_move": ["gcode_position"],
     "heater_bed": ["temperature", "target"],
     "print_task_config": ["filament_exist", "filament_type", "filament_color_rgba", "filament_vendor",
@@ -968,6 +971,8 @@ class MoonrakerPrinter:
 
         self._status = {}              # the merged subscription
         self._objects = []             # what printer.objects.list said
+        self._is_u1 = None             # print_task_config listed: Snapmaker's U1 Klipper
+        self._config = {}              # kinematics and nozzle from a non-U1 printer's config
         self._extruders = {}           # {"T0": "extruder", ...}
         self._chamber = None
         self._subscription = {}
@@ -1162,6 +1167,10 @@ class MoonrakerPrinter:
         extruders = {toolhead_for(o): o for o in objects if toolhead_for(o)}
         chamber = next((o for o in objects if _CHAMBER_RE.match(o)), None)
         subscription = {k: v for k, v in _BASE_OBJECTS.items() if k in objects}
+        # print_task_config exists only on Snapmaker's U1 Klipper. Any other
+        # printer is described from its own config: kinematics and nozzle.
+        is_u1 = "print_task_config" in objects
+        config = {} if is_u1 else self._config_facts(objects)
         subscription.update({name: _EXTRUDER_FIELDS for name in extruders.values()})
         if chamber:
             subscription[chamber] = ["temperature"]
@@ -1169,6 +1178,7 @@ class MoonrakerPrinter:
         full = result.get("status", {}) if isinstance(result, dict) else {}
         with self.lock:
             self._objects = objects
+            self._is_u1, self._config = is_u1, config
             self._extruders = extruders
             self._chamber = chamber
             self._subscription = subscription
@@ -1349,10 +1359,30 @@ class MoonrakerPrinter:
             "source": "moonraker",
         }
 
+    def _config_facts(self, objects):
+        """Kinematics and nozzle from Klipper's config file, read once per connection."""
+        if "configfile" not in objects:
+            return {}
+        try:
+            got = self._call("printer.objects.query", {"objects": {"configfile": ["settings"]}})
+            settings = ((got or {}).get("status", {}).get("configfile", {}) or {}).get("settings") or {}
+        except Exception:                      # noqa: BLE001 - a missing fact, never a failed connection
+            return {}
+        return {"kinematics": _str((settings.get("printer") or {}).get("kinematics")),
+                "nozzle_mm": _num((settings.get("extruder") or {}).get("nozzle_diameter"))}
+
+    def _machine(self):
+        """The U1 profile, or this printer described from its own report (machines.py)."""
+        if self._is_u1 is not False:           # a U1, or not known yet: the U1 as before
+            return machines.U1
+        th = _obj(self._status, "toolhead")
+        return machines.from_klipper(th.get("axis_minimum"), th.get("axis_maximum"), len(self._extruders),
+                                     self._config.get("kinematics"), self._config.get("nozzle_mm"))
+
     def _ctx(self):
         return {"printer_id": self.id, "name": self.name, "extruders": self._extruders,
                 "chamber": self._chamber, "job": self._job, "klippy_state": self._klippy_state,
-                "klippy_message": self._klippy_message}
+                "klippy_message": self._klippy_message, "machine": self._machine()}
 
     def snapshot(self):
         with self.lock:

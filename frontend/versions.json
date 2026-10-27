@@ -2,6 +2,47 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.12.0",
+      "date": "2026-10-27",
+      "name": "One thing at a time",
+      "published": true,
+      "summary": "Busy screens show one part at a time, slicing sets itself up in five steps with a slicer finder, other Klipper printers can join, and search goes where it says.",
+      "highlights": [
+        {
+          "title": "One part at a time",
+          "tab": "overview",
+          "target": "#sec-overview",
+          "text": "Each busy screen opens on one part. These buttons show the others, and Everything shows the whole page. Your choice is remembered."
+        },
+        {
+          "title": "Get ready to slice",
+          "tab": "files",
+          "target": "#slice-ready",
+          "text": "Five steps, once. Find it for me looks for Snapmaker Orca or OrcaSlicer on this computer, so you never type a path. The next step always has the only button."
+        },
+        {
+          "title": "Other Klipper printers",
+          "tab": "fleet",
+          "target": "#other-printers",
+          "text": "Any printer that runs Klipper with Moonraker can join. Deja Vu1 reads its size and heads from the printer and checks every file against them."
+        },
+        {
+          "title": "Search that lands",
+          "target": "#feature-search",
+          "text": "Type what you want, like slicer or telemetry, and press Enter. It opens the right screen and the right part. On a phone, search is under More."
+        }
+      ],
+      "changes": [
+        "Overview, Printers, Files, Care and Settings open on one part of the screen, with buttons for the other parts and Everything for the full page. Settings is no longer one long scroll. Search, tours and links open the part that holds what they point at.",
+        "Files → Slicing starts with Get ready to slice: turn on, find the slicer, check it, pick presets, add a model. Find it for me lists Snapmaker Orca and OrcaSlicer programs in the usual folders; Use this saves and checks one. With none found, it links both free slicers.",
+        "When Slice is greyed out on a plate, it says why and links the set-up. \"Auto-print\" now reads \"Slicing\" everywhere.",
+        "Printers that run Klipper with Moonraker connect as an untested type. Their size, heads, kinematics and nozzle come from the printer's own report, and the pre-flight and Confirm Print check files against them. A printer that doesn't report its size gets a warning, never a guess.",
+        "The search box's Go to results open their card again: a title's help button had stopped most of them matching.",
+        "On Overview, the phone card sits under Print health, and a row left with one card uses the full width.",
+        "Two unused launch-film copies are gone: each update download is 56 MB instead of 74 MB."
+      ]
+    },
+    {
       "version": "0.11.1",
       "date": "2026-10-27",
       "name": "Clean up code layout and public wording before Phase 2",

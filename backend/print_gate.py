@@ -102,8 +102,9 @@ def summary(filename, printer_state=None):
     """The whole Confirm Print screen for one file on the selected printer."""
     if file_library.kind_of(filename) != "gcode":
         raise ValueError("Only G-code files can be printed - slice models first")
-    analysis = file_library.checked(filename)
     state = printer_state or mock_moonraker.get_printer_state()
+    # Checked against the printer it is for: its own size and heads.
+    analysis = file_library.checked(filename, state.get("machine"))
     blocking, warnings, info = [], [], []
     if modules.is_enabled('filament_inventory'):
         warnings += tool_setup.check_saved(state)

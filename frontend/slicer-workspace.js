@@ -73,8 +73,13 @@ window.DVWorkspace = (() => {
         const select = $('sw-profile'), keep = select.value;
         paint(select, (data?.profiles || []).map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.layer_mode==='per_tool'?' · per-tool heights':''}</option>`).join('') || '<option value="">No saved profiles</option>');
         select.value = (data?.profiles||[]).some(p=>p.id===keep)?keep:data?.default_profile||select.value;
-        $('sw-slice').disabled = !!data?.problem || !(data?.profiles?.length) || !!data?.module_disabled || !DVPlate.active?.canSlice();
-        if ($('sw-slice').disabled) $('sw-job').textContent = data?.problem || 'Enable Auto-print and save a profile in Profiles & tools.';
+        const setup = data?.module_disabled ? 'Slicing is off.' : data?.problem || (!(data?.profiles?.length) ? 'No slice profile saved yet.' : '');
+        $('sw-slice').disabled = !!setup || !DVPlate.active?.canSlice();
+        if (setup) {
+          // Say why, and offer the way there: the five-step set-up in Files › Slicing.
+          $('sw-job').innerHTML = `${esc(setup)} <button class="btn small" type="button" id="sw-setup-link">Set up slicing</button>`;
+          $('sw-setup-link').onclick = () => { Sections.choose('files', 'slicing'); $('slice-ready').scrollIntoView({ block: 'start' }); };
+        } else if ($('sw-slice').disabled) $('sw-job').textContent = 'Keep every object inside the 270 mm build volume before slicing.';
       } catch (e) { if(valid()) $('sw-job').textContent = e.message; }
     }
     $('sw-edit-profile').onclick = async () => { mode('setup'); await PrintRoom.editProfile($('sw-profile').value); };

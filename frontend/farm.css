@@ -539,3 +539,60 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 .dk-facts dd { margin: 4px 0 0; font: 600 16px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .dk-facts .is-key { background: color-mix(in oklch, var(--accent) 12%, white); }
 @media (prefers-contrast: more) { .dk-track, .dk-bar, .dk-facts div { border: 1.5px solid var(--text); } }
+
+/* ---- Get ready to slice (farm.js renderReady) --------------------------
+   A rail of five steps joined by a thin line, like layers stacking up: done
+   steps are green and quiet, the next one is lifted with its single button,
+   later ones wait faded. */
+.slice-ready .card-head { align-items: flex-start; }
+.sr-count {
+  flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; white-space: nowrap;
+  font: 600 12px/1 var(--font-mono); letter-spacing: .04em; color: var(--text-dim);
+  background: rgba(0, 0, 0, .04); border: 1px solid var(--hair, rgba(0, 0, 0, .08));
+}
+.sr-count.is-ready { color: var(--ok-text); background: color-mix(in srgb, var(--ok) 14%, white); border-color: color-mix(in srgb, var(--ok) 35%, white); }
+.sr-steps { list-style: none; margin: 14px 0 0; padding: 0; position: relative; }
+.sr-step { position: relative; display: grid; grid-template-columns: 30px 1fr auto; gap: 4px 14px; align-items: start; padding: 12px 12px 12px 8px; border-radius: 14px; }
+.sr-step + .sr-step { margin-top: 2px; }
+.sr-step:not(:last-child)::after {
+  content: ""; position: absolute; left: 22px; top: 42px; bottom: -14px; width: 2px; border-radius: 2px;
+  background: var(--hair, rgba(0, 0, 0, .08));
+}
+.sr-step.is-done:not(:last-child)::after { background: color-mix(in srgb, var(--ok) 45%, white); }
+.sr-mark {
+  position: relative; z-index: 1; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 13px/1 var(--font-mono); color: var(--text-faint); background: var(--paper-solid, #fff);
+  border: 1.5px solid var(--hair, rgba(0, 0, 0, .12));
+}
+.sr-step.is-done .sr-mark { color: #fff; background: var(--ok); border-color: var(--ok); }
+.sr-step.is-now { background: color-mix(in srgb, var(--accent) 7%, rgba(255, 255, 255, .6)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
+.sr-step.is-now .sr-mark { color: var(--accent-text); border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent); }
+.sr-step.is-later { opacity: .58; }
+.sr-title { margin: 4px 0 0; font: 650 15px/1.3 var(--font-display); letter-spacing: -.005em; color: var(--text); }
+.sr-sub { margin: 3px 0 0; font-size: 13.5px; line-height: 1.45; color: var(--text-faint); text-wrap: pretty; overflow-wrap: anywhere; }
+.sr-step.is-now .sr-sub { color: var(--text-dim); }
+.sr-step > .btn { align-self: center; white-space: nowrap; }
+.sr-found { list-style: none; margin: 10px 0 2px; padding: 0; display: grid; gap: 8px; }
+.sr-found > li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--paper-solid, #fff); border: 1px solid var(--hair, rgba(0, 0, 0, .08)); }
+.sr-found > li > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sr-found small { color: var(--text-faint); font-size: 12px; }
+.sr-found code { font-size: 11.5px; color: var(--text-dim); overflow-wrap: anywhere; }
+.sr-found.is-empty { display: block; padding: 12px 14px; border-radius: 12px; background: var(--paper-solid, #fff); border: 1px solid var(--hair, rgba(0, 0, 0, .08)); }
+.sr-found.is-empty p { margin: 0 0 8px; font-size: 13.5px; color: var(--text-dim); }
+.sr-get { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.sr-get li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-faint); }
+.sr-get a.btn { text-decoration: none; }
+.sr-ready { margin-top: 14px; padding: 14px 16px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  background: color-mix(in srgb, var(--ok) 10%, white); border: 1px solid color-mix(in srgb, var(--ok) 30%, white); }
+.sr-ready p { margin: 0; max-width: 70ch; font-size: 14px; color: var(--text-dim); }
+@media (max-width: 720px) {
+  .sr-step { grid-template-columns: 30px 1fr; }
+  .sr-step > .btn { grid-column: 2; justify-self: start; margin-top: 6px; }
+}
+@media (prefers-contrast: more) {
+  .sr-step.is-now { box-shadow: inset 0 0 0 2px var(--text); }
+  .sr-step.is-later { opacity: 1; }
+  .sr-mark, .sr-found > li { border-color: var(--text); }
+}
+/* A printer that isn't a U1: what it reported about itself, under its name. */
+.fc-kind { margin: -4px 0 8px; font: 600 11.5px/1.35 var(--font-mono); color: var(--text-faint); letter-spacing: .02em; }

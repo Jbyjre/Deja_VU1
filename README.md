@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.11.0** ([what's new](#whats-new-in-0110) · [every version](CHANGELOG.md)).
+**Latest named release: 0.12.0** ([what's new](#whats-new-in-0120) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -224,6 +224,30 @@ over your folder.
 If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
+
+## What's new in 0.12.0
+
+- **One thing at a time.** Overview, Printers, Files, Care and Settings open on
+  one part of the screen, with a row of buttons for the others (Overview: Right
+  now, Live readings, History & upkeep) and **Everything** for the full page.
+  Settings is no longer one 8,800-pixel scroll. Your choice is remembered, and
+  search, tours and links open the part that holds what they point at.
+- **Get ready to slice.** Files → Slicing opens with five steps: turn slicing on,
+  find your slicer, check it answers, pick your print settings, add a model. The
+  next step is lit and has the only button. **Find it for me** looks for Snapmaker
+  Orca and OrcaSlicer in your Applications, Downloads and program folders, so you
+  don't type a path; nothing runs until you press **Use this**. If it finds none,
+  it links both free slicers. When Slice is greyed out, the plate says why and
+  links the set-up.
+- **Other Klipper printers.** Any printer that runs Klipper with Moonraker can be
+  added. Deja Vu1 reads its size and heads from the printer itself and checks
+  files against them, so a file too big for a 235 mm bed is refused there.
+  Its card says it is an untested type. ([How it works](docs/real-printer.md#other-klipper-printers))
+- **Search lands again.** The search box's "Go to" results opened nothing for
+  most places (a title's ⓘ button got in the way of matching it). Fixed, with a
+  test for every place.
+- **Smaller.** Two unused copies of older launch films are gone: each update
+  download drops from 74 MB to 56 MB.
 
 ## What's new in 0.11.0
 
@@ -668,10 +692,10 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **904 tests in 793.4 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (26 October 2026, on the `main` branch at
-version 0.11.0). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13.
-Earlier full runs passed 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+The latest full run passed **920 tests in 569.3 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (27 October 2026, version 0.12.0 before its
+merge). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13.
+Earlier full runs passed 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -696,6 +720,7 @@ recorded static demo passed at both widths.
 | Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
 | Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
 | Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
+| Parts of a screen, Get ready to slice, other Klipper printers, search (0.12.0) | Chromium at 1366/390 px on the local server and the static online demo: every part of every sectioned screen, all 60 search places reach a visible card, the 0.12.0 and quick tours find their stops; the slicer search walked end to end with a stand-in program (found, used, checked); a stand-in one-head 235 × 235 × 250 mm Klipper printer added through the app, its card and twin card shown; unit tests for the search, the profiles and Confirm Print against a smaller printer | The slicer search not run on a real Windows or macOS install; no physical non-U1 printer; the slicing workspace and converter still target U1 presets |
 | Away from home, glass orb (0.11.0) | Unit tests against a stand-in `tailscale` program answering in the formats of Tailscale's source (`eba00ab`); the server refuses a phone or tailnet request to switch sharing (403); the code's link checked; Chromium at 1366/412 px | No real Tailscale account, HTTPS approval, phone on mobile data or Extended Firmware VPN tried |
 | Printer sign-in, typed addresses, camera sources, firmware 2.0.0 file names (0.10.0) | Read against Snapmaker's u1-moonraker `a308cfa` and u1-klipper `93cb12f`, the Extended Firmware `417e639` and its camera service `9279584`; stand-in Moonraker tests for the login, the key, the camera list, the snapshot, the MJPEG feed, `req_id` and a failed reply, through the real server | No physical U1, real Extended Firmware camera or Web Authentication tried |
 | Simpler phone, Install app, one dot colour (0.10.0) | Chromium at 1366, 412 and 390 px on the local server, a network address and the static online demo; page heights measured against 0.9.0; Chrome's install rule and its setting read from Chromium's source | Not installed on a real Pixel or iPhone yet |
@@ -745,7 +770,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 904 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis build volume the pre-flight checks against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 920 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -755,7 +780,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 904 cases
+- **Tests:** `unittest` from the standard library, 920 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 

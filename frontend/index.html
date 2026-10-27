@@ -161,7 +161,7 @@
 
   <nav class="tabbar liquid-glass" id="tabbar" aria-label="Dashboard sections">
     <!-- Nine tabs, every one always showing: Sandbox lives in Printers
-         (data-tab "fleet"), Auto-print in Files, Filament & colour in Care. -->
+         (data-tab "fleet"), Slicing in Files, Filament & colour in Care. -->
     <button class="navtab active" data-tab="overview">Overview</button>
     <button class="navtab" data-tab="fleet">Printers</button>
     <button class="navtab" data-tab="control">Control</button>
@@ -243,6 +243,7 @@
       <div class="card-head">
         <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. It connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p></div>
       </div>
+      <p class="field-hint other-printers" id="other-printers">Another printer that runs Klipper with Moonraker adds the same way. Deja Vu1 reads its size and heads from the printer, checks files against them, and marks it as an untested type. If its Moonraker answers on the printer's own web page instead of port 7125, type the full address, such as <code>http://192.168.1.50</code>.</p>
       <div id="fleet-registry"></div>
       <div class="find-row">
         <button class="btn" type="button" id="fleet-find">Find printers on my network</button>
@@ -381,6 +382,7 @@
             </div>
           </div>
         </div>
+        <div class="twin-other" id="twin-other" hidden></div>
         <div id="twin-host" class="twin-host"></div>
         <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them.</p>
       </section>
@@ -397,6 +399,13 @@
             <div><h2>Print health</h2><p class="card-sub">A score out of 100 from maintenance, filament and pre-flight checks. Higher is better.</p></div>
           </div>
           <div id="health-host"></div>
+        </section>
+        <section class="card liquid-glass pair-card desk-only">
+          <div>
+            <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
+            <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
+          </div>
+          <button class="btn primary" id="overview-pair-btn">Connect your phone</button>
         </section>
       </div>
     </div>
@@ -452,13 +461,6 @@
           <div><h2>Print cost</h2><p class="card-sub">Filament plus electricity, estimated as you go</p></div>
         </div>
         <div id="cost-body"></div>
-      </section>
-      <section class="card liquid-glass pair-card desk-only">
-        <div>
-          <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
-          <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
-        </div>
-        <button class="btn primary" id="overview-pair-btn">Connect your phone</button>
       </section>
     </div>
   </section>
@@ -588,7 +590,12 @@
 
     <!-- Folded into this tab so every section is always in the tab bar. -->
     <section id="tab-autoprint" class="tab-sub" aria-labelledby="sub-autoprint-title">
-      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Auto-print</h2><p>Slice models with your own OrcaSlicer and queue the result</p></div>
+      <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Slicing</h2><p>Turn a model into a print file with the slicer you already use, then check and queue it</p></div>
+      <section class="card liquid-glass slice-ready" id="slice-ready" aria-labelledby="sr-title">
+        <div class="card-head"><div><h2 id="sr-title">Get ready to slice</h2><p class="card-sub">Five steps, once. Each one says what it needs and has one button.</p></div><span class="sr-count" id="sr-count" aria-live="polite"></span></div>
+        <ol class="sr-steps" id="sr-steps"></ol>
+        <div class="sr-ready" id="sr-ready" hidden></div>
+      </section>
       <section class="card liquid-glass" id="ap-off" hidden></section>
       <div id="ap-body">
         <div class="grid-2">

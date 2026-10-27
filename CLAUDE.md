@@ -173,6 +173,13 @@ root should hand over to `welcome.html`.
   (one WebSocket for live state, plus HTTP for commands, history and
   uploads). Every new printer function needs both paths. Demo and sandbox
   hooks must start with `_sim()`, which refuses real printers.
+- `machines.py`: printer profiles. The U1 (`machines.U1`) is the reference and the default; any
+  other Klipper printer is `from_klipper()`, built only from what it reports (toolhead
+  `axis_minimum`/`axis_maximum`, its extruders, `configfile` kinematics and nozzle;
+  `print_task_config` marks a U1). Every printer state carries `machine` on both paths;
+  `gcode_tools.analyze(machine=...)`, `file_library.checked()` and Confirm Print use it. An
+  unreported size disables the bounds check with a warning, never a guess. Cards say
+  "untested type"; the twin card shows the printer's facts instead of a U1.
 - `fleet.py` (printer registry: at most 12, in `backend/data/fleet.json`),
   `live_feed.py` (250 ms tick, print-event detection, side effects),
   `sandbox.py` (up to 24 added simulated printers plus the 3 built in).
@@ -220,6 +227,12 @@ root should hand over to `welcome.html`.
   (29 module ids), `storage.py` (atomic JSON).
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
+- Sections (`app.js` `SECTIONS`, `window.Sections`): Overview, Printers, Files, Care and
+  Settings show one part at a time (plus "Everything"). Cards are sorted by `#id`, `.class`
+  or the start of their h2 title; a card no rule names joins the first part. Anything that
+  scrolls to a hidden card opens its part (`Sections.reveal`, via a `scrollIntoView` wrapper;
+  `guide.js` resolve calls it too). A new card on those screens needs a rule, or it lands
+  in the first part.
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
@@ -281,6 +294,13 @@ root should hand over to `welcome.html`.
   `theme.css` is the "Layer lines" design layer and loads last.
 - `welcome.html`: the product page. On a static host `/api/modules` returns
   404 and `app.js` hands over to it; `/?demo` and `/?dashboard` skip that.
+- Files › Slicing opens with "Get ready to slice" (`farm.js` `renderReady`): five steps, the
+  first undone one has the only button. "Find it for me" is `POST /api/slicer/find`
+  (`slicer_bridge.find_slicers`: usual install folders, one level deep, names containing
+  "orca", no installers or archives, nothing run). People read "Slicing", never "Auto-print";
+  the module id stays `auto_print`.
+- `finder.js` matches titles without explain.js's ⓘ button (`.xp-btn`); `tests/test_finder.py`
+  checks every place names a real card.
 - `layer-stack.js` (mixed heights: base × N per head, smart set-ups; rules mirror
   `slicing_contract.tool_layers`), `finder.js` (Ctrl/Cmd+K search), `desk.js` (Farm desk in
   Printers), `telemetry.js` (Overview readout, fed by workshop's `dv-state` event),
