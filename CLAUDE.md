@@ -34,7 +34,8 @@ trust the code and fix this file.
   film in the README and on the product page. Check a new cut with a frame-difference pass over the
   master. Don't edit the video unless asked.
 - Internal material lives in the owner's private repository, `Jbyjre/Deja-VU1-Studio` (moved
-  27 October 2026, with this repository's history rewritten to drop it): `promo-video/` (the film
+  27 October 2026; dropping it from this repository's history is still to do, and the kit for
+  that is the private repository's `history-rewrite/`): `promo-video/` (the film
   tooling; its `README.md` holds the owner's other video preferences and the version 17 checks),
   `marketing-library/` (finished films in `07-videos/`, `COPY.md`, `MESSAGING.md`, `AD-GUIDE.md`),
   `build-prompts/` (planned build sessions; current goals in
