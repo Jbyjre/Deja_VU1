@@ -529,8 +529,10 @@ Hardware-pending placeholders. The decision logic (state → colour, colour
 distance) is real and tested. The hardware write / sensor read is faked -
 so with a real printer the colour check reports "no sensor fitted" rather
 than passing a simulated reading (with its deliberate demo mismatch) off as
-that printer's, and the rings say what they *would* show. See
-`hardware-modules.md`.
+that printer's, and the rings say what they *would* show. The colour
+checker's design (a TCS34725 or AS7341 sensor in a dark block at each rear
+filament inlet, read by a Pico W over Wi-Fi) and its planned behaviour are in
+`hardware-modules.md`, Module 3.
 
 ### `backend/app.py`
 The web server, built on Python's standard-library `http.server`. Serves the

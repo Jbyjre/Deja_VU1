@@ -624,7 +624,7 @@ browser's bars where the phone allows.
 | Module | What it does |
 |---|---|
 | **Dock status rings** | Proposed rings beside the toolhead docks: soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault. The on-screen logic is implemented; physical ring drivers and validation are unfinished. The separate WLED bridge can send the same state to a configured strip. |
-| **"Right colour loaded?"** | Proposed optical check against the file’s expected colour. Comparison logic and simulation exist; sensor hardware, driver and calibration are unfinished. |
+| **"Right colour loaded?"** | Proposed optical check for spools the printer can't identify. A sensor with its own white LED reads the filament inside a dark housing at a rear filament inlet, and Deja Vu1 compares that with the colour the file expects. Two sensors (TCS34725 and AS7341) are to be tested side by side on real spools. Comparison logic and simulation exist; no parts are bought yet, and the sensor driver, calibration and housing are unfinished. [Design](docs/hardware-modules.md#module-3---right-colour-loaded-checker) |
 
 ![The Dock status rings panel: four rings for T0 to T3, three soft white for docked and ready and one red for needs attention, marked HARDWARE PENDING, with the note that it shows what the LEDs would display](docs/img/dock-rings.jpg)
 
@@ -926,11 +926,14 @@ shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
 2. Confirm maintenance thresholds against how the machine actually wears.
 3. Build the LED rings, print the dock brackets, wire the WS2812 chain,
    implement the driver (or wire up WLED instead).
-4. Build the color checker, print the sensor housings, mount on the filament
-   path, implement the sensor read and calibration.
-5. Connect the pre-print blocking (built: it already refuses a print whose
-   file doesn't match the filament the printer reports) to the optical
-   colour sensor once it exists.
+4. Build the colour checker: test the TCS34725 and AS7341 side by side on
+   real spools, print the sensor blocks for the rear filament inlets,
+   implement the sensor read and calibration, and check the readings
+   against Snapmaker RFID spools, whose colours the printer reports.
+5. Feed the sensor into Confirm Print. It already refuses a print whose
+   file doesn't match the colour the printer reports; a sensor mismatch
+   starts as a warning with a one-click accept until tests show the sensor
+   is accurate.
 6. Open the converter's output in Snapmaker Orca to confirm it, and test
    the Cloudflare Tunnel setup end to end.
 7. Run the auto-print pipeline against a real OrcaSlicer install, open a
