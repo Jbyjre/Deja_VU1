@@ -10,6 +10,11 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.11.1 (27 October 2026): Clean up code layout and public wording before Phase 2
+
+- Clean up code layout and public wording before Phase 2
+- A smoother launch film (version 17), tour, sheets and 3D twin [marketing video]
+
 ## 0.11.0 (26 October 2026): your phone, from anywhere
 
 - **Away from home.** Settings → Away from home now does the setup. It finds
