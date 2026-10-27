@@ -57,7 +57,8 @@ class TestBackup(unittest.TestCase):
     def test_exports_tool_and_measured_recipe_records(self):
         with tempfile.TemporaryDirectory() as folder,mock.patch.object(backup,'_DATA_DIR',folder):
             for name in ('tool_setup.json','colour_calibration.json'):
-                with open(os.path.join(folder,name),'w') as f:f.write('{}')
+                with open(os.path.join(folder, name), 'w') as f:
+                    f.write('{}')
             _,data=backup.create_backup()
             with zipfile.ZipFile(BytesIO(data)) as archive:
                 self.assertIn('tool_setup.json',archive.namelist())

@@ -3,7 +3,7 @@
 Open an STL or 3MF file in **Files** and, on a phone that supports it,
 tap **View on your desk**. The phone's camera opens, you point it at a
 table, and you tap to place the model there **at its real printed size**.
-It helps you check how big a print will actually be before you spend hours
+It helps you check how big a print will be before you spend hours
 printing it.
 
 **Works on Android/WebXR browsers; iOS Safari has no equivalent.**
@@ -58,7 +58,7 @@ It can be switched off in **Settings → Modules → View on your desk (AR)**.
   no page errors.
 - Tested with a **stand-in for a phone's WebXR** injected into the page.
   The session asks for `hit-test` and `dom-overlay`, the ring and then the
-  model are really drawn (pixels checked), the placed size reads
+  model are drawn (pixels checked), the placed size reads
   3.0 × 4.0 × 2.5 cm for the 30 × 40 × 25 mm sample bracket, and **Done**
   ends the session cleanly. This ran at desktop and phone sizes, with
   touch.

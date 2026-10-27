@@ -333,8 +333,10 @@ class TestJobs(SlicerBridgeTest):
         os.environ['FAKE_ORCA_GCODE']+='\nG90\nM83\nG1 X290 Y0 Z0.2 E5\n'
         with unittest.mock.patch.object(print_queue,'add',wraps=print_queue.add) as add:
             job=slicer_bridge.wait(slicer_bridge.start_job('spur_gear_24t.stl',queue_to='u1-garage')['id'])
-        self.assertEqual(job['status'],'failed');self.assertIn('Pre-flight blocked',job['error'])
-        self.assertEqual(job['report']['files'][0]['preflight'],'blocked');add.assert_not_called()
+        self.assertEqual(job['status'], 'failed')
+        self.assertIn('Pre-flight blocked', job['error'])
+        self.assertEqual(job['report']['files'][0]['preflight'], 'blocked')
+        add.assert_not_called()
 
     def test_missing_engine_estimates_remain_unknown(self):
         profile=self.configure()
@@ -370,10 +372,12 @@ class TestAutoDetect(unittest.TestCase):
 
 class TestSliceCancellation(SlicerBridgeTest):
     def test_running_engine_is_stopped_and_never_queued(self):
-        self.configure();os.environ['FAKE_ORCA_MODE']='hang'
+        self.configure()
+        os.environ['FAKE_ORCA_MODE'] = 'hang'
         job=slicer_bridge.start_job('spur_gear_24t.stl',queue_to=mock_moonraker.selected_printer_id())
         end=time.time()+5
-        while not os.path.exists(self.args_file) and time.time()<end:time.sleep(.02)
+        while not os.path.exists(self.args_file) and time.time() < end:
+            time.sleep(0.02)
         self.assertTrue(os.path.exists(self.args_file))
         slicer_bridge.cancel_job(job['id'])
         result=slicer_bridge.wait(job['id'],timeout=5)
@@ -382,20 +386,25 @@ class TestSliceCancellation(SlicerBridgeTest):
         self.assertEqual(self.library_names(),['spur_gear_24t.stl'])
 
     def test_other_printer_cannot_cancel_or_list_job(self):
-        self.configure();os.environ['FAKE_ORCA_MODE']='hang'
+        self.configure()
+        os.environ['FAKE_ORCA_MODE'] = 'hang'
         job=slicer_bridge.start_job('spur_gear_24t.stl')
         with mock_moonraker.selection_only('u1-studio'):
-            with self.assertRaisesRegex(ValueError,'this printer'):slicer_bridge.cancel_job(job['id'])
+            with self.assertRaisesRegex(ValueError, 'this printer'):
+                slicer_bridge.cancel_job(job['id'])
             self.assertNotIn(job['id'],[j['id'] for j in slicer_bridge.jobs()['jobs']])
-        slicer_bridge.cancel_job(job['id']);self.assertEqual(slicer_bridge.wait(job['id'],5)['status'],'cancelled')
+        slicer_bridge.cancel_job(job['id'])
+        self.assertEqual(slicer_bridge.wait(job['id'], 5)['status'], 'cancelled')
 
 
 class TestExportedHeightContracts(SlicerBridgeTest):
     def test_exported_preferences_cannot_bypass_engine_capability_check(self):
         self.configure()
-        with open(self.machine,encoding='utf-8') as stream:data=json.load(stream)
+        with open(self.machine, encoding='utf-8') as stream:
+            data = json.load(stream)
         data.update(extruder_layer_height=['.1','.2','.1','.1'],nozzle_diameter=['.4']*4)
-        with open(self.machine,'w',encoding='utf-8') as stream:json.dump(data,stream)
+        with open(self.machine, 'w', encoding='utf-8') as stream:
+            json.dump(data, stream)
         with self.assertRaisesRegex(ValueError,'shared-height fallback is refused'):
             slicer_bridge.slice_model('spur_gear_24t.stl')
         self.assertFalse(os.path.exists(self.args_file))

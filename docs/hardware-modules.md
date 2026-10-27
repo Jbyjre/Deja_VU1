@@ -136,7 +136,7 @@ An optical sensor reads whatever filament is already on the shelf, including
 unbranded and re-spooled material. For an open-source add-on aimed at people
 who buy filament on price, that is the difference between useful and useless.
 
-The tradeoff is honest: optical sensing detects color, not material. It
+The limit: optical sensing detects color, not material. It
 cannot tell PLA from PETG of the same color. Material still has to come from
 the slicer's own settings.
 

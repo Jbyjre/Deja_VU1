@@ -98,6 +98,35 @@ trust the code and fix this file.
    gives the next session goals and freedom, not steps.
 7. No subagents; keep output short; read files with offset and limit.
 
+## Writing and code style (the owner, 26 October 2026)
+
+Judges and forum readers asked the same three things of Snapmaker Innovation Fund
+Phase 1 entries: what did the author write, is it tested and reproducible, and who
+gets credit. Write so the answers are easy to find.
+
+- Public text (README, docs, app strings, descriptions): name who does what, state
+  the fact, stop. No em dashes, no "not X, it's Y" turns, no stock praise words
+  (seamless, robust, powerful), no adverbs for emphasis. Keep the limits in the
+  same plain words the README uses ("has never talked to a real U1").
+- Never remove or soften the AI-assistance disclosure (README, CREDITS.md, commit
+  trailers). Hiding it would be a bigger risk than showing it.
+- Quote a test count and date only from a run you made, and change every copy
+  together: README, the "By the numbers" board (`tools/readme-images/boards.html`),
+  `docs/slicer-workspace-validation.md` and `marketing-library/COPY.md`.
+- Python: match the file you are in. One statement per line (no `if x:return y`, no
+  `a=1;b=2`), about 120 columns at most, comments only for the why.
+  `ruff check --select E701,E702 backend tests tools` must stay clean. GitHub Actions
+  still runs Python 3.8, so write no parenthesised `with (a, b):` (3.9 and later only);
+  `ruff format` adds one unless it is told `--target-version py38`. Parse the files with a
+  real 3.8 (`uv python install 3.8`) before pushing a mass reformat.
+- JavaScript: Prettier with single quotes, two spaces, 120 columns, no trailing
+  commas, arrows without parentheses for one argument.
+- A formatting-only change proves it: compare the syntax trees before and after
+  (Python `ast.dump`, JavaScript acorn) and say so in the commit message. Then run the
+  whole suite: a few tests read source files as text (`tests/test_frontend_refresh.py`
+  reads `games.js`), so they can break on layout alone. Write such tests so they do not
+  depend on spacing.
+
 ## Commands
 
 ```bash

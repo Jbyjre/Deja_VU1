@@ -245,7 +245,8 @@ def iter_3mf(data):
 
     objects, build, metadata = load(main)
     source_unit=metadata['_geometry_unit']
-    if source_unit not in UNIT_MM:raise MeshError('The 3MF uses an unknown measurement unit')
+    if source_unit not in UNIT_MM:
+        raise MeshError('The 3MF uses an unknown measurement unit')
     unit_scale=UNIT_MM[source_unit]
     items = build or [(oid, None) for oid in objects]
     count = [0]
@@ -308,7 +309,8 @@ def iter_obj(data, on_vertex=None, on_face=None):
             if len(point) != 3 or not _finite(point) or len(vertices) >= MAX_TRIANGLES * 3:
                 raise MeshError("OBJ has invalid or too many vertices")
             vertices.append(point)
-            if on_vertex:on_vertex(fields)
+            if on_vertex:
+                on_vertex(fields)
         elif fields[0] == "f":
             if len(fields) != 4:
                 raise MeshError("Export OBJ with triangulated faces; polygons are not supported yet")
@@ -325,7 +327,8 @@ def iter_obj(data, on_vertex=None, on_face=None):
             count += 1
             if count > MAX_TRIANGLES:
                 raise MeshError("OBJ has too many triangles")
-            if on_face:on_face(indices)
+            if on_face:
+                on_face(indices)
             yield tuple(vertices[i] for i in indices)
     if not count:
         raise MeshError("OBJ has no triangular faces")

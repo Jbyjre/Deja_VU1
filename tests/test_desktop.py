@@ -15,10 +15,13 @@ class DesktopWindow(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         p = patch.object(desktop, '_PATH', os.path.join(self.tmp.name, 'desktop.json'))
-        p.start(); self.addCleanup(p.stop)
+        p.start()
+        self.addCleanup(p.stop)
         env = patch.dict(os.environ, {}, clear=False)
-        env.start(); self.addCleanup(env.stop)
-        os.environ.pop('DEJAVU_WINDOW', None); os.environ.pop('DEJAVU_NO_BROWSER', None)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop('DEJAVU_WINDOW', None)
+        os.environ.pop('DEJAVU_NO_BROWSER', None)
 
     def test_browser_tab_is_the_default_and_choices_are_checked(self):
         self.assertEqual(desktop.settings()['open_as'], 'browser')
@@ -52,14 +55,16 @@ class DesktopWindow(unittest.TestCase):
     def test_nothing_opens_when_asked(self):
         with patch.object(desktop.webbrowser, 'open') as tab, patch.object(desktop.subprocess, 'Popen') as popen:
             self.assertEqual(desktop.open_dashboard('http://localhost:8000', 'none'), 'none')
-            tab.assert_not_called(); popen.assert_not_called()
+            tab.assert_not_called()
+            popen.assert_not_called()
 
     def test_windows_prefers_edge_which_windows_includes(self):
         base = Path(self.tmp.name)
         edge = base / 'x86' / 'Microsoft' / 'Edge' / 'Application' / 'msedge.exe'
         chrome = base / 'pf' / 'Google' / 'Chrome' / 'Application' / 'chrome.exe'
         for f in (edge, chrome):
-            f.parent.mkdir(parents=True); f.write_text('')
+            f.parent.mkdir(parents=True)
+            f.write_text('')
         env = {'PROGRAMFILES(X86)': str(base / 'x86'), 'PROGRAMFILES': str(base / 'pf'), 'LOCALAPPDATA': str(base / 'none')}
         with patch.dict(os.environ, env), patch.object(desktop.os.path, 'join', lambda *a: '/'.join(a).replace('\\', '/')):
             self.assertEqual(desktop.app_browser('windows')[0], 'Microsoft Edge')

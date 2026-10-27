@@ -33,7 +33,8 @@ class OrcaFolder(unittest.TestCase):
         conf = {"app": {"language": "en"}, "recent_projects": {"001": str(self.project), "002": str(Path(tmp.name) / "gone.3mf")}}
         (self.root / "Snapmaker_Orca.conf").write_text(json.dumps(conf) + "\n# MD5 checksum 0123456789abcdef\n")
         env = patch.dict(os.environ, DEJAVU_ORCA_DIR=str(self.root))
-        env.start(); self.addCleanup(env.stop)
+        env.start()
+        self.addCleanup(env.stop)
 
     def test_presets_and_projects_are_found_without_paths_reaching_the_browser(self):
         out = orca_import.public()

@@ -60,9 +60,11 @@ def save(body):
         import filament_inventory
         inventory={s['id']:s for s in filament_inventory.get_inventory()}
         for h in checked:
-            if not h['spool_id']:continue
+            if not h['spool_id']:
+                continue
             spool=inventory.get(h['spool_id'])
-            if not spool:raise ValueError(f"{h['toolhead']}: that spool no longer exists. Choose another or select by hand")
+            if not spool:
+                raise ValueError(f"{h['toolhead']}: that spool no longer exists. Choose another or select by hand")
             if spool['material'].upper()!=h['material'] or spool['color_hex'].lower()!=h['color_hex']:
                 raise ValueError(f"{h['toolhead']}: the selected spool has a different material or colour. Update the spool or choose by hand")
     pid = mock_moonraker.selected_printer_id()

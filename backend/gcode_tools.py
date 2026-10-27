@@ -317,16 +317,21 @@ def analyze(text, want_toolpath=True):
     for line_no, raw in enumerate(text.split("\n"), start=1):
         line_count = line_no
         if re.match(r'\s*;\s*(?:LAYER_CHANGE\b|LAYER\s*:\s*\d+|layer num/total_layer_count\s*:)',raw,re.I):
-            layer_index+=1;layer_table.append({'index':layer_index,'z':None,'line':line_no})
+            layer_index += 1
+            layer_table.append({'index': layer_index, 'z': None, 'line': line_no})
         height_comment=re.match(r'\s*;\s*(?:Z|Z_HEIGHT)\s*:\s*([-+0-9.eE]+)',raw,re.I)
         if height_comment and layer_table:
-            try:comment_z=float(height_comment.group(1))
-            except ValueError:comment_z=None
-            if comment_z is not None and math.isfinite(comment_z):layer_table[-1]['z']=comment_z
+            try:
+                comment_z = float(height_comment.group(1))
+            except ValueError:
+                comment_z = None
+            if comment_z is not None and math.isfinite(comment_z):
+                layer_table[-1]['z'] = comment_z
         feature_match = re.match(r"\s*;\s*(?:TYPE|FEATURE)\s*:\s*(.{1,80})", raw, re.I)
         if feature_match:
             name=feature_match.group(1).strip()
-            if name not in feature_names and len(feature_names)<80:feature_names.append(name)
+            if name not in feature_names and len(feature_names) < 80:
+                feature_names.append(name)
             feature=feature_names.index(name) if name in feature_names else 0
         head, params, code = klipper_command(raw)
         if not head:
@@ -341,7 +346,16 @@ def analyze(text, want_toolpath=True):
             continue
         if head.startswith("T") and head[1:].isdigit():
             tool = int(head[1:])
-            if want_toolpath and len(markers)<10000:markers.append({"kind":"toolchange","line":line_no,"tool":tool,"layer":layer_index,"position":[pos['X'],pos['Y'],pos['Z']]})
+            if want_toolpath and len(markers) < 10000:
+                markers.append(
+                    {
+                        "kind": "toolchange",
+                        "line": line_no,
+                        "tool": tool,
+                        "layer": layer_index,
+                        "position": [pos['X'], pos['Y'], pos['Z']],
+                    }
+                )
             if tool not in VALID_TOOLS:
                 # T4 and up are how a slicer numbers the extra slots of a
                 # filament add-on (multiACE: T = unit * 4 + slot, T4-T15).
@@ -467,7 +481,8 @@ def analyze(text, want_toolpath=True):
 
         x, y, z = pos["X"], pos["Y"], pos["Z"]
         if extruding:
-            if layer_table and layer_table[-1]['z'] is None:layer_table[-1]['z']=z
+            if layer_table and layer_table[-1]['z'] is None:
+                layer_table[-1]['z'] = z
             if not heated:
                 flag("warning", "cold_extrusion", line_no,
                      "Extrudes before any nozzle heating command")

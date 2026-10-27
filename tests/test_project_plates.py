@@ -40,14 +40,17 @@ class PlateSeparation(unittest.TestCase):
 
     def test_unknown_plate_and_malformed_project_are_refused(self):
         for data,index in [(b'broken','1'),(self.converted,'9')]:
-            with self.assertRaises(ValueError):project_plates.extract(data,index)
+            with self.assertRaises(ValueError):
+                project_plates.extract(data, index)
 
     def test_xml_declarations_and_nonfinite_transforms_are_refused(self):
         for replacement in [b'<!DOCTYPE model><config/>',b'<config><plate><model_instance><metadata key="object_id" value="999"/><metadata key="instance_id" value="0"/></model_instance></plate></config>']:
             out=io.BytesIO()
             with zipfile.ZipFile(io.BytesIO(self.converted)) as src,zipfile.ZipFile(out,'w') as dest:
-                for n in src.namelist():dest.writestr(n,replacement if n=='Metadata/model_settings.config' else src.read(n))
-            with self.assertRaises(ValueError):project_plates.extract(out.getvalue(),'1')
+                for n in src.namelist():
+                    dest.writestr(n, replacement if n == 'Metadata/model_settings.config' else src.read(n))
+            with self.assertRaises(ValueError):
+                project_plates.extract(out.getvalue(), '1')
 
 
 class EnginePresetSlots(unittest.TestCase):

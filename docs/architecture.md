@@ -105,7 +105,7 @@ Pretends to be Moonraker. Generates 38 fake print jobs spread over about two
 months, plus mutable live printer state, a console log of commands sent to
 it, and simulated update-status. Print history uses a fixed random seed so
 it's identical on every run; live state is a real mutable in-memory object -
-pause/resume/cancel and temperature changes genuinely change what
+pause/resume/cancel and temperature changes change what
 `get_printer_state()` returns next, the same way a real printer's state
 changes and then forgets it on a power cycle (this file resets on restart
 too, deliberately).
@@ -387,7 +387,7 @@ reported as failed. The simulation reads the same labels from the file it
 was started with (`gcode_tools.object_definition`), so the demo behaves like
 the printer.
 
-### Filament: asked for, not only waited for
+### Filament: the client also asks for it
 A missed `print_task_config` notification must not leave stale filament
 information indefinitely. The real client also asks for it directly every 30 s
 (`MoonrakerPrinter._requery_filament`, `printer.objects.query`), so a

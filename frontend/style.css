@@ -220,7 +220,7 @@ body {
 /* Card content has to sit above the two pseudo-element layers. */
 .liquid-glass > * { position: relative; z-index: 1; }
 
-/* A "well" or "divider-row/col" sits inside a glass card's own padding —
+/* A "well" or "divider-row/col" sits inside a glass card's own padding,
    concentric, and plain (no second backdrop-filter: glass can't sample
    glass, and repeated small panels each getting their own blur is both the
    #1 visual tell of fake glass and a real performance cost). */
