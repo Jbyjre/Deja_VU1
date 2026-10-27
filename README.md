@@ -224,14 +224,18 @@ If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
 origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
 one-paste update above (or extract the newest release ZIP over the old folder).
 
-### Installed with git or GitHub Desktop before 27 October 2026?
+### Installed with git or GitHub Desktop before the history rewrite?
 
-On 27 October 2026 the project's history on GitHub was rewritten to take out
-internal marketing and planning folders. Every saved version (commit) got a new
-ID, so a copy made with git or GitHub Desktop before that date can't update the
-usual way. **Settings → Version & updates** says "This copy has its own
-commits", and GitHub Desktop offers to pull and push at the same time. Don't
-pull or push there: that would merge the old history back into your copy.
+The internal marketing and planning folders moved to a private repository on
+27 October 2026. The project's history on GitHub is still to be rewritten so
+the old saved versions don't carry them either; the CHANGELOG will give the
+date. Until then, git and GitHub Desktop copies update as usual.
+
+After the rewrite, every saved version (commit) has a new ID, so a copy made
+with git or GitHub Desktop before it can't update the usual way. **Settings →
+Version & updates** says "This copy has its own commits", and GitHub Desktop
+offers to pull and push at the same time. Don't pull or push there: that would
+merge the old history back into your copy.
 
 Copies installed from the ZIP or with the one-paste blocks are not affected.
 
@@ -261,8 +265,8 @@ it would overwrite a file you edited by hand. Then start the launcher again.
 5. Copy your saved `data` folder back into `backend/` in the new folder.
 6. Start the launcher.
 
-The terminal steps were tested on Linux against a copy of the old history. The
-GitHub Desktop steps have not been tried on Windows or macOS.
+The terminal steps were tested on Linux against a rehearsal of the rewrite.
+The GitHub Desktop steps have not been tried on Windows or macOS.
 
 ## What's new in 0.12.0
 

@@ -10,13 +10,13 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
-**27 October 2026, history rewritten.** The internal folders `marketing-library/`,
-`promo-video/` and `build-prompts/` moved to the owner's private repository and
-were removed from this repository's whole history, so every commit ID changed.
-The six release tags were moved to the matching new commits; every file outside
-those folders is the same in each release, and the release downloads are
-unchanged. Copies installed with git or GitHub Desktop before this date need a
-one-time step: see [the README](README.md#installed-with-git-or-github-desktop-before-27-october-2026).
+**27 October 2026, internal folders moved.** `marketing-library/`, `promo-video/`
+and `build-prompts/` moved to the owner's private repository. Removing them from
+this repository's history is still to do. When it happens, every commit ID
+changes, the six release tags move to the matching new commits with every file
+outside those folders unchanged, and the release downloads stay as they are.
+Copies installed with git or GitHub Desktop before then will need a one-time
+step: see [the README](README.md#installed-with-git-or-github-desktop-before-the-history-rewrite).
 The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
