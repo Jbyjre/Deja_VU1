@@ -499,7 +499,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 /* Small embedded slicer previews (48 px) stay crisp instead of smeared. */
 .fcd-thumb img.is-tiny { image-rendering: pixelated; object-fit: none; transform: scale(2.4); }
 .fcd-kind { font: 700 13px/1 var(--font-mono); color: rgba(255, 255, 255, .6); }
-.fcd-name { font-weight: 600; font-size: 13px; word-break: break-word; }
+.fcd-name { font-weight: 600; font-size: 13px; overflow-wrap: break-word; text-wrap: pretty; }
 .fcd-meta { font-size: 11.5px; color: var(--text-faint); }
 .fcd-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 .kind-tag, .origin-tag, .pf-badge {
@@ -544,6 +544,56 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 .fd-actions a.btn { text-decoration: none; }
 .convert-report { padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, .5); font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
 .convert-report code, .diff-key code { font-size: 11.5px; }
+/* Colours on the U1's heads (workshop.js renderColours). The four heads read
+   as a row of docks, like the printer's own; each filament row picks one. */
+.cm { display: grid; gap: 12px; padding: 14px; border-radius: 16px; background: var(--paper-solid, rgba(255, 255, 255, .6)); border: 1px solid var(--hair, rgba(0, 0, 0, .08)); }
+.cm-head { display: grid; gap: 2px; }
+.cm-head .fd-h { margin: 0; }
+.cm-sub { margin: 0; font-size: 12.5px; color: var(--text-faint); }
+.cm-heads { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.cm-headcard {
+  display: grid; justify-items: center; gap: 3px; padding: 10px 6px 9px; border-radius: 14px; text-align: center;
+  background: rgba(255, 255, 255, .7); border: 1px solid var(--hair, rgba(0, 0, 0, .08));
+  transition: transform .25s cubic-bezier(.3, 1.3, .5, 1), opacity .2s ease;
+}
+.cm-headcard.is-idle { opacity: .55; }
+.cm-dot {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--sw);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .7), inset 0 -4px 8px rgba(0, 0, 0, .18), 0 0 0 1px rgba(0, 0, 0, .14), 0 3px 8px rgba(0, 0, 0, .12);
+}
+.cm-headcard.is-idle .cm-dot { background: repeating-linear-gradient(45deg, rgba(0, 0, 0, .06) 0 4px, transparent 4px 8px); }
+.cm-hname { font: 650 12.5px/1.2 var(--font-sans); }
+.cm-hwhat { font-size: 11.5px; line-height: 1.3; color: var(--text-dim); overflow-wrap: anywhere; }
+.cm-hfrom { font: 500 10.5px/1.3 var(--font-mono); color: var(--text-faint); }
+.cm-loaded { display: inline-flex; align-items: center; gap: 4px; font: 500 10.5px/1 var(--font-mono); color: var(--text-faint); }
+.cm-loaded .cm-swatch { width: 10px; height: 10px; }
+.cm-rows { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.cm-row {
+  display: grid; grid-template-columns: auto 1fr minmax(124px, auto); align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .55);
+}
+.cm-row.is-unused { opacity: .7; }
+.cm-row select { min-height: 32px; }
+.cm-swatch {
+  width: 22px; height: 22px; border-radius: 7px; background: var(--sw); flex: none; display: inline-block;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .16), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+.cm-swatch.is-empty { background: repeating-linear-gradient(45deg, rgba(0, 0, 0, .1) 0 3px, transparent 3px 6px); }
+.cm-fname { display: grid; font-size: 13px; line-height: 1.35; min-width: 0; }
+.cm-fname b { font-weight: 650; }
+.cm-fname small { font-size: 11.5px; color: var(--text-faint); }
+.cm-warn { margin: 0; padding: 8px 12px; border-radius: 12px; font-size: 13px; color: var(--warn-text); background: color-mix(in oklch, var(--warn) 16%, transparent); }
+.cm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cm-status { margin: 0; font-size: 13px; min-height: 1em; }
+.cm-status:empty { display: none; }
+@media (max-width: 520px) {
+  .cm-heads { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cm-row { grid-template-columns: auto 1fr; }
+  .cm-row select { grid-column: 1 / -1; width: 100%; }
+}
+@media (prefers-contrast: more) {
+  .cm, .cm-headcard, .cm-row { border: 1px solid currentColor; }
+}
 .convert-fail { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--bad) 8%, white); color: color-mix(in srgb, var(--bad) 70%, black); font-size: 13px; }
 .fd-u1-ready { align-self: center; font-size: 13px; color: var(--text-dim); }
 .convert-fail { display: flex; flex-direction: column; gap: 6px; }
@@ -1153,3 +1203,21 @@ body.is-scrolled .topbar {
 .twin-other dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 10px; font-size: 13.5px; }
 .twin-other dt { color: var(--text-faint); }
 .twin-other dd { margin: 0; font-family: var(--font-mono); }
+
+/* The twin's sync line: a dot that breathes while it is in step with the printer. */
+.twin-sync {
+  display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 7px 12px; width: fit-content; max-width: 100%;
+  border-radius: 999px; font-size: 12.5px; line-height: 1.35; color: var(--text-dim);
+  background: rgba(255, 255, 255, .55); border: 1px solid var(--hair, rgba(0, 0, 0, .08));
+  font-variant-numeric: tabular-nums;
+}
+.twin-sync[hidden] { display: none; }
+.twin-sync-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 color-mix(in oklch, var(--ok) 60%, transparent); animation: twin-sync 2s ease-out infinite; }
+.twin-sync[data-kind="warn"] .twin-sync-dot { background: #d9a400; animation: none; }
+@keyframes twin-sync { 0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--ok) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+@media (prefers-reduced-motion: reduce) { .twin-sync-dot { animation: none; } }
+
+/* Something on its way: the text breathes instead of sitting still. */
+.log-empty.is-loading { animation: is-loading 1.6s ease-in-out infinite; }
+@keyframes is-loading { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .log-empty.is-loading { animation: none; } }

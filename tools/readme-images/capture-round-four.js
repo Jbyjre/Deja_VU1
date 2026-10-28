@@ -28,7 +28,9 @@ const shots = [
   await post('/api/files/samples');
   for (const id of ['auto_print', 'filament_inventory', 'print_queue', 'maintenance', 'cost_calculator', 'converter']) await post(`/api/modules/${id}/toggle`, { enabled: true });
   for (const [f, to] of [['3dbenchy_pla.gcode', 'u1-garage'], ['hex_coaster_three_colour.gcode', 'u1-garage'], ['benchy_gear_vase_skip_one.gcode', 'u1-workshop']]) await post('/api/fleet/route?demo=1', { filename: f, to });
-  for (const [file, tab, sel, prep, width] of shots) {
+  // ONLY=converter.jpg,twin-detail.jpg retakes just those.
+  const only = (process.env.ONLY || '').split(',').filter(Boolean);
+  for (const [file, tab, sel, prep, width] of shots.filter(s => !only.length || only.includes(s[0]))) {
     const page = await browser.newPage({ viewport: { width, height: 1000 }, deviceScaleFactor: 2 });
     await page.goto(`${base}/?dashboard`, { waitUntil: 'load' });
     await page.waitForTimeout(1200);

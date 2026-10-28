@@ -21,6 +21,71 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.0 (28 October 2026): in step with the print
+
+- **The 3D twin follows the print's own G-code.** The preview of the running
+  file (`backend/print_preview.py`) now carries a timeline: where the nozzle is
+  after each move, which byte of the file that move ends at, and when it happens
+  by the file's own feed rates. On a real printer Deja Vu1 now also reads
+  Klipper's `motion_report.live_position` (where the nozzle is now; `toolhead`'s
+  `position` is the last command and runs up to a second or two ahead) and
+  `virtual_sdcard.file_position` (the byte read up to), both named in Klipper's
+  `docs/Status_Reference.md`. Each reading looks for the nozzle along the path
+  just before that byte, which fixes the moment in the file; between readings
+  the nozzle runs along the G-code at the pace the printer has been keeping, and
+  each reading pulls it back into step over a third of a second. The walls
+  appear where and when they are laid (each bit of wall carries the time it is
+  printed), the plastic just laid glows for three seconds, and a move the file
+  doesn't hold (a tool change, a purge, a park) shows the live position instead.
+  A line under the twin says whether it is in step. Tested in Node against the
+  two-Benchy sample with a printer simulated from the same file: one reading
+  finds the moment exactly, and with readings four times a second and the
+  printer at 0.8 times the file's speeds the playhead stayed within 0.016 s.
+  The simulated printer, which reports no live position, is followed from its
+  progress. A U1 that prints a file's T1 on another head (`extruder_map`) now
+  colours the walls by the head that prints them. Not yet seen on a physical U1.
+- **Colours from any slicer, on four heads.** `backend/colour_map.py` reads which
+  filaments a project actually uses (each object's and part's filament, per-feature
+  settings, height ranges and the colour painted on each triangle) and suggests a
+  head for each: unused ones are dropped, four or fewer keep a head each, and more
+  than four are grouped by how alike they look (OKLab), never putting two
+  materials on one head while another grouping exists. With a printer connected,
+  **Match the printer's heads** sends each colour to the closest loaded head. A
+  new panel in Files, **Colours on the U1's heads**, shows the four heads and a
+  row per filament to change; **Save a copy with these heads** writes a project
+  that uses at most four (`GET /api/colours/plan`, `POST /api/colours/apply`).
+  The painted-triangle format, the per-feature setting names and how Orca opens
+  PrusaSlicer files were read from OrcaSlicer's source (commit `97e6c71`). The
+  converter applies the plan by itself to a project with more than four filaments,
+  so a five-colour MakerWorld project converts instead of only warning, and the
+  slicing workspace points to the panel instead of refusing with "more material
+  slots". A new sample, `sample_makerworld_five_colours.3mf`, is a Benchy painted
+  in five colours with a sixth, unused slot. Opening a saved copy in Snapmaker
+  Orca has not been tried.
+- **More slicers.** The converter now takes projects from Creality Print, QIDI
+  Studio, Flashforge's Orca and other OrcaSlicer forks (recognised by their
+  project settings) and from PrusaSlicer, whose own layout Orca opens with its
+  paint and per-object extruders (its colours are listed for you to load).
+  **Pick up where you left off** also finds recent projects from Bambu Studio,
+  Creality Print, Elegoo Slicer, QIDI Studio, Flashforge Orca and PrusaSlicer
+  (folder names from each project's `version.inc`; PrusaSlicer's
+  `PrusaSlicer.ini`), and a profile made from your Orca presets can now set a
+  filament for each of the four heads. Cura's `;TYPE:WALL-OUTER` and
+  `;TYPE:SKIN` (read in CuraEngine's `gcodeExport.cpp`) are drawn in the twin.
+- **Slicing, clearer.** In the slicing workspace, converting a project made for
+  another printer and fitting its colours now sit under the slice bar instead of
+  inside the folded "Source & import information".
+- **Notifications.** A repeated message counts up (×2, ×3) instead of stacking, a
+  long message stays longer (about a quarter of a second a word, nine seconds for a
+  problem), a hairline shows the time left and stops while you point at it, a
+  message that arrives while the tab is hidden waits for you, a bubble can be
+  flicked away on a touch screen, and the list survives a reload in the same tab.
+  "Open the same here?" moves into the orb after nine seconds, button and all.
+- **Faster, tidier.** Large JSON replies (a print's preview, the file list) are
+  sent compressed when the browser accepts it: the two-Benchy preview drops from
+  842 KB to 271 KB. File names wrap after `_`, `-` and `.` instead of mid-word,
+  and search fits its placeholder.
+
 ## 0.12.0 (27 October 2026): one thing at a time
 
 - **One part of a screen at a time.** Overview (Right now, Live readings,

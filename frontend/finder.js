@@ -254,7 +254,7 @@ window.Finder = (() => {
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-controls', 'feature-results');
   input.setAttribute('aria-expanded', 'false');
-  input.placeholder = 'Search screens, printers, files…';
+  input.placeholder = 'Search everything…';
   const hint = document.createElement('kbd');
   hint.className = 'fx-hint'; hint.setAttribute('aria-hidden', 'true'); hint.textContent = mac ? '⌘K' : 'Ctrl K';
   input.after(hint);

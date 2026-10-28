@@ -44,23 +44,65 @@ window.Orb = (() => {
     setTimeout(() => item.wrap.remove(), still() ? 0 : 520);
   }
 
-  function arm(item) {
+  /* A bubble's life: `left` ms to go, paused while pointed at, focused, or
+   * while the tab is hidden (a message that arrives while you are away waits
+   * for you). The thin line along its bottom shows the time left. */
+  function arm(item, left = item.ms) {
     clearTimeout(item.timer);
-    item.timer = setTimeout(() => remove(item), item.ms);
+    item.left = left;
+    item.started = performance.now();
+    item.wrap.style.setProperty('--life', `${left}ms`);
+    item.wrap.style.setProperty('--from', (left / item.ms).toFixed(3));
+    if (item.life) { item.life.style.animation = 'none'; void item.life.offsetWidth; item.life.style.animation = ''; }
+    item.wrap.classList.remove('is-held');
+    if (document.hidden) { hold(item); return; }
+    item.timer = setTimeout(() => remove(item), left);
+  }
+  function hold(item) {
+    if (item.gone) return;
+    clearTimeout(item.timer);
+    if (!item.wrap.classList.contains('is-held')) item.left = Math.max(1200, item.left - (performance.now() - item.started));
+    item.wrap.classList.add('is-held');
+  }
+  const live = () => [...stack.querySelectorAll('.orb-bubble-wrap:not(.is-out)')].map(w => w._item).filter(Boolean);
+  document.addEventListener('visibilitychange', () => live().forEach(item => (document.hidden ? hold(item) : arm(item, item.left))));
+
+  // Time to read it: about a quarter of a second a word, longer for a problem.
+  function readingTime(message, kind, ms, action) {
+    const words = message.split(/\s+/).length;
+    let t = Math.max(ms, 2600 + words * 250);
+    if (kind === 'bad') t = Math.max(t, 9000);
+    if (action) t += 3000;
+    return Math.min(t, 16000);
   }
 
   function notify(message, kind = 'info', ms = 4200, options = {}) {
     kind = KIND[kind] ? kind : 'info';
-    const entry = { message: String(message), kind, at: Date.now(), action: options.action || null };
+    message = String(message);
+    // The same message again while it is still showing: count it, don't stack it.
+    const twin = live().find(item => item.message === message && item.kind === kind && !item.entry.action && !options.action);
+    if (twin) {
+      twin.entry.count = (twin.entry.count || 1) + 1;
+      twin.entry.at = Date.now();
+      twin.badge.textContent = `×${twin.entry.count}`;
+      twin.badge.hidden = false;
+      twin.wrap.classList.remove('is-bump'); void twin.wrap.offsetWidth; twin.wrap.classList.add('is-bump');
+      arm(twin);
+      save();
+      if (!panel.hidden) renderList();
+      return twin;
+    }
+    const entry = { message, kind, at: Date.now(), action: options.action || null, count: 1 };
     history.unshift(entry);
     history.length = Math.min(history.length, KEEP);
+    save();
 
     const wrap = document.createElement('div');
     wrap.className = `orb-bubble-wrap is-${kind}`;
     const bubble = document.createElement('div');
     bubble.className = 'orb-bubble';
     bubble.setAttribute('role', kind === 'bad' ? 'alert' : 'status');
-    bubble.innerHTML = `<span class="ob-kind">${esc(KIND[kind])}</span><span class="ob-text"></span>`;
+    bubble.innerHTML = `<span class="ob-kind">${esc(KIND[kind])}<b class="ob-count" hidden></b></span><span class="ob-text"></span><span class="ob-life" aria-hidden="true"></span>`;
     bubble.querySelector('.ob-text').textContent = entry.message;
     if (entry.action) {
       const b = document.createElement('button');
@@ -74,21 +116,54 @@ window.Orb = (() => {
     bubble.append(close);
     wrap.append(bubble);
     stack.append(wrap);
-    const item = { wrap, kind, ms: Math.max(2500, ms + (entry.action ? 3000 : 0)), timer: 0, gone: false };
+    const item = { wrap, kind, message, entry, badge: bubble.querySelector('.ob-count'), life: bubble.querySelector('.ob-life'),
+                   ms: readingTime(message, kind, ms, entry.action), timer: 0, gone: false, left: 0, started: 0 };
     // Pointing at a message, or tabbing into it, holds it until you move away.
-    wrap.addEventListener('pointerenter', () => clearTimeout(item.timer));
-    wrap.addEventListener('pointerleave', () => arm(item));
-    wrap.addEventListener('focusin', () => clearTimeout(item.timer));
-    wrap.addEventListener('focusout', () => arm(item));
-    const shown = [...stack.querySelectorAll('.orb-bubble-wrap:not(.is-out)')];
-    shown.slice(0, Math.max(0, shown.length - MAX_SHOWN)).forEach(w => w._item && remove(w._item, false));
+    wrap.addEventListener('pointerenter', () => hold(item));
+    wrap.addEventListener('pointerleave', () => arm(item, item.left));
+    wrap.addEventListener('focusin', () => hold(item));
+    wrap.addEventListener('focusout', () => arm(item, item.left));
+    swipeAway(bubble, item);
     wrap._item = item;
+    const shown = live();
+    shown.slice(0, Math.max(0, shown.length - MAX_SHOWN)).forEach(old => remove(old, false));
     requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('is-in')));
     orb.dataset.kind = kind;
     arm(item);
     if (!panel.hidden) renderList();
     return item;
   }
+
+  // On a touch screen a bubble can be flicked sideways to dismiss it.
+  function swipeAway(bubble, item) {
+    let x0 = null, dx = 0;
+    bubble.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' || e.target.closest('button')) return;
+      x0 = e.clientX; dx = 0; bubble.setPointerCapture(e.pointerId); bubble.classList.add('is-drag');
+    });
+    bubble.addEventListener('pointermove', e => {
+      if (x0 == null) return;
+      dx = Math.max(-40, e.clientX - x0);
+      bubble.style.transform = `translateX(${dx}px)`;
+      bubble.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 220));
+    });
+    const end = () => {
+      if (x0 == null) return;
+      x0 = null; bubble.classList.remove('is-drag'); bubble.style.transform = ''; bubble.style.opacity = '';
+      if (dx > 90) remove(item, true);
+    };
+    bubble.addEventListener('pointerup', end);
+    bubble.addEventListener('pointercancel', end);
+  }
+
+  // The list survives a page reload in this tab (not the buttons: they belonged to the old page).
+  function save() {
+    try { sessionStorage.setItem('dv-orb', JSON.stringify(history.map(({ message, kind, at, count }) => ({ message, kind, at, count })))); } catch (e) { /* private mode */ }
+  }
+  try {
+    const kept = JSON.parse(sessionStorage.getItem('dv-orb') || '[]');
+    if (Array.isArray(kept)) kept.slice(0, KEEP).forEach(h => h && typeof h.message === 'string' && KIND[h.kind] && history.push({ ...h, action: null }));
+  } catch (e) { /* nothing kept */ }
 
   function ago(t) {
     const s = Math.round((Date.now() - t) / 1000);
@@ -101,7 +176,7 @@ window.Orb = (() => {
     list.replaceChildren(...history.map(h => {
       const li = document.createElement('li');
       li.className = `is-${h.kind}`;
-      li.innerHTML = `<span class="ol-kind">${esc(KIND[h.kind])}</span><time class="ol-time">${esc(ago(h.at))}</time><span class="ol-text"></span>`;
+      li.innerHTML = `<span class="ol-kind">${esc(KIND[h.kind])}${h.count > 1 ? ` <b class="ob-count">×${h.count}</b>` : ''}</span><time class="ol-time" datetime="${new Date(h.at).toISOString()}">${esc(ago(h.at))}</time><span class="ol-text"></span>`;
       li.querySelector('.ol-text').textContent = h.message;
       if (h.action) {
         const b = document.createElement('button');
@@ -147,7 +222,7 @@ window.Orb = (() => {
     setTimeout(() => { if (!panel.classList.contains('is-in')) panel.hidden = true; }, still() ? 0 : 260);
   }
   orb.addEventListener('click', () => (panel.hidden ? open() : close()));
-  $('orb-clear').onclick = () => { history.length = 0; renderList(); };
+  $('orb-clear').onclick = () => { history.length = 0; save(); renderList(); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !panel.hidden) { close(); orb.focus(); } });
   document.addEventListener('pointerdown', e => { if (!panel.hidden && !dock.contains(e.target)) close(); });
 

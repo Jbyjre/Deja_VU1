@@ -142,7 +142,7 @@
     box.id = 'orca-import';
     box.setAttribute('aria-labelledby', 'oi-title');
     box.innerHTML = `<div class="card-head"><div><h2 id="oi-title">Pick up where you left off</h2>
-        <p class="card-sub">Already using Snapmaker Orca or OrcaSlicer? Bring your recent projects into Files and turn your own printer, process and filament presets into a slicing profile here. Nothing in the slicer is changed.</p></div>
+        <p class="card-sub">Keep your slicer and use Deja Vu1 beside it. Bring recent projects from Snapmaker Orca, OrcaSlicer, Bambu Studio, Creality Print, Elegoo Slicer, QIDI Studio, Flashforge Orca or PrusaSlicer into Files, where their colours are fitted to the U1's four heads. Turn your own Orca presets into a slicing profile. Nothing in the slicer is changed.</p></div>
         <button class="btn" type="button" id="oi-look">Look on this computer</button></div>
       <div id="oi-body" hidden></div>`;
     const anchor = $('convert-card');
@@ -151,25 +151,28 @@
     const opts = (list, keep) => list.filter(keep || (() => true)).map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.account ? ` (${esc(p.account)})` : ''}${p.usable ? '' : ' · not usable'}</option>`).join('');
     async function look() {
       const out = $('oi-body'); out.hidden = false;
-      paint(out, '<p class="log-empty">Looking for Snapmaker Orca and OrcaSlicer…</p>');
+      paint(out, '<p class="log-empty">Looking for your slicers…</p>');
       const data = await getJSON('/api/import/orca').catch(() => null);
       if (!data || data.error || !Array.isArray(data.apps)) {
         paint(out, `<p class="log-empty">${esc((data && data.error) || 'This works in the copy of Deja Vu1 on the computer where your slicer is installed.')}</p>`); return;
       }
       found = data;
-      if (!data.found) { paint(out, '<p class="log-empty">Neither Snapmaker Orca nor OrcaSlicer has a settings folder on this computer. If your slicer is on another computer, run Deja Vu1 there, or add projects with Files → Upload.</p>'); return; }
+      if (!data.found) { paint(out, `<p class="log-empty">No slicer settings folder found. Looked in ${esc(data.looked_in || 'the usual places')}. If your slicer is on another computer, run Deja Vu1 there, or add projects with Files → Upload.</p>`); return; }
       paint(out, data.apps.map((a, ai) => {
-        const p = a.presets, u1 = x => x.u1;
+        const p = a.presets, u1 = x => x.u1, own = ['Snapmaker Orca', 'OrcaSlicer', 'Orca'].includes(a.app);
         return `<div class="oi-app"><h3>${esc(a.app)}</h3>
           <div class="oi-cols">
             <div><h4>Recent projects <small>${a.projects.length}</small></h4>
               ${a.projects.length ? `<ul class="oi-projects">${a.projects.map(j => `<li><label><input type="checkbox" value="${esc(j.id)}" data-app="${ai}"${j.in_library ? '' : ' checked'}> <span>${esc(j.name)}</span> <small>${Math.max(1, Math.round(j.bytes / 1024))} KB${j.in_library ? ' · already in Files' : ''}</small></label></li>`).join('')}</ul>
                 <button class="btn small primary" type="button" data-bring="${ai}">Copy into Files</button>` : '<p class="log-empty">No recent projects listed.</p>'}</div>
             <div><h4>Your presets <small>${p.machine.length + p.process.length + p.filament.length}</small></h4>
-              ${p.machine.length && p.process.length && p.filament.length ? `<form class="oi-profile" data-app="${ai}">
+              ${!own ? `<p class="log-empty">${esc(a.app)}'s presets build on its own printers' profiles, which the U1 engine doesn't have. Its projects come in with their colours; Profiles & tools sets up the U1.</p>`
+              : p.machine.length && p.process.length && p.filament.length ? `<form class="oi-profile" data-app="${ai}">
                 <label>Printer<select name="machine">${opts(p.machine.filter(u1).concat(p.machine.filter(x => !x.u1)))}</select></label>
                 <label>Process<select name="process">${opts(p.process)}</select></label>
-                <label>Filament<select name="filament">${opts(p.filament)}</select></label>
+                <fieldset class="oi-heads"><legend>Filament in each head</legend>
+                  ${[1, 2, 3, 4].map(h => `<label>Head ${h}<select name="filament${h}">${h > 1 ? '<option value="">Not used</option>' : ''}${opts(p.filament)}</select></label>`).join('')}
+                </fieldset>
                 <label>Profile name<input name="name" maxlength="60" placeholder="My Orca settings"></label>
                 <button class="btn small primary" type="submit">Make a slicing profile</button>
                 <p class="field-hint">Uses your preset files where they are, so later edits in the slicer carry over. Slicing needs to be on (Files › Slicing).</p></form>`
@@ -194,7 +197,8 @@
       if (!f) return;
       e.preventDefault();
       const fd = new FormData(f);
-      const r = await postJSON('/api/import/orca/profile', { name: fd.get('name'), machine: fd.get('machine'), process: fd.get('process'), filaments: [fd.get('filament')] }).catch(() => null);
+      const filaments = [1, 2, 3, 4].map(h => fd.get(`filament${h}`)).filter(Boolean);
+      const r = await postJSON('/api/import/orca/profile', { name: fd.get('name'), machine: fd.get('machine'), process: fd.get('process'), filaments }).catch(() => null);
       if (r && r.ok) { toast('Slicing profile made from your presets', 'ok'); window.dispatchEvent(new CustomEvent('dv-refresh')); }
       else toast((r && r.body && r.body.error) || 'The profile was not made', 'bad');
     });

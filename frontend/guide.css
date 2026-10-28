@@ -127,7 +127,27 @@
 .orb-bubble-wrap.is-warn { --t: #d9a400; }
 .orb-bubble-wrap.is-bad { --t: var(--bad); }
 .ob-kind { font: 600 10.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); flex: 1 0 100%; }
-.ob-text { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.ob-text { flex: 1 1 200px; min-width: 0; overflow-wrap: break-word; text-wrap: pretty; }
+.ob-count {
+  display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 999px; letter-spacing: 0;
+  font: 700 10.5px/1 var(--font-mono); color: var(--text); background: oklch(30% 0.02 265 / .08);
+}
+.ob-count[hidden] { display: none; }
+/* Time left, as a hairline along the bottom; it stops while the bubble is held. */
+.ob-life {
+  position: absolute; left: 16px; right: 16px; bottom: 5px; height: 2px; border-radius: 2px;
+  background: color-mix(in oklch, var(--t, var(--accent)) 55%, transparent); transform-origin: left;
+  animation: ob-life var(--life, 4s) linear forwards;
+}
+.orb-bubble-wrap.is-held .ob-life { animation-play-state: paused; }
+.orb-bubble-wrap.is-bump .orb-bubble { animation: ob-bump .36s cubic-bezier(.3, 1.4, .5, 1); }
+.orb-bubble.is-drag { transition: none; }
+@keyframes ob-life { from { transform: scaleX(var(--from, 1)); } to { transform: scaleX(0); } }
+@keyframes ob-bump { 40% { transform: scale(1.035); } }
+@media (prefers-reduced-motion: reduce) {
+  .ob-life { animation: none; opacity: 0; }
+  .orb-bubble-wrap.is-bump .orb-bubble { animation: none; }
+}
 .ob-action { flex: 0 0 auto; }
 .ob-close {
   position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
