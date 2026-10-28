@@ -764,10 +764,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **920 tests in 569.3 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (27 October 2026, version 0.12.0 before its
-merge). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13.
-Earlier full runs passed 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+The latest full run passed **948 tests in 761.9 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (28 October 2026, version 0.13.0 before its
+merge, in a cloud sandbox slower than the earlier machine). GitHub Actions runs the
+suite on Python 3.8, 3.10, 3.12 and 3.13.
+Earlier full runs passed 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -841,7 +842,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 920 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 948 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -851,7 +852,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 920 cases
+- **Tests:** `unittest` from the standard library, 948 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
