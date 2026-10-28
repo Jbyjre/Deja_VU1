@@ -66,17 +66,19 @@ computer. Pause a print on your phone and the computer's screen shows it paused.
 - **Your printers** need nothing installed. Deja Vu1 talks to Moonraker, the web
   service already running on every U1.
 
-### Watch the 60-second launch film
+### Watch the 75-second launch film
 
-[![Deja Vu1 launch film (version 17, 60 seconds, 16:9): "Run your 3D printers from one screen." Click to watch.](docs/img/launch-video-v17.jpg)](https://deja-vu1.jmath1110.workers.dev/#film)
+[![Deja Vu1 launch film (version 18, 75 seconds, 16:9): "Run your 3D printers from one screen." Click to watch.](docs/img/launch-video-v18.jpg)](https://deja-vu1.jmath1110.workers.dev/#film)
 
 <sub>Click the picture to watch it on the product page, or
-[download the MP4](frontend/media/deja-vu1-launch-v17-16x9.mp4)
-(24 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone and what
-came since: your phone from anywhere, updates that install every time and help on
-every card. Version 17 plays at 60 frames a second on the product page too, and
-was measured frame by frame for smoothness. Filmed on the simulated farm; the
-phone's address in it is an example.</sub>
+[download the MP4](frontend/media/deja-vu1-launch-v18-16x9.mp4)
+(23 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone, your phone
+from anywhere, updates that install every time and help on every card. Version 18
+tells the same story as version 17 at a calmer pace: 75 seconds instead of 60, the
+music slower, each caption and label on screen longer, and the scenes filmed again
+with slower cursor moves. It plays at 60 frames a second and was measured frame by
+frame for smoothness. Filmed on the simulated farm; the phone's address in it is an
+example.</sub>
 
 ## Install
 

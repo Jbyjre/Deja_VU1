@@ -25,14 +25,18 @@ trust the code and fix this file.
 - Launch video (the owner, 25 October 2026): **16:9 only** from now on, one cut per version (no
   9:16). Set aside, and never build on or reuse: the owner's "V2" (version 13's 60 s pair and
   version 15, its update) and the marketing videos ChatGPT made (none are in this repository).
-  The current line is "V1" (version 12's 75 s pair, version 14 at 60 s, versions 16 and 17). Marketing cuts
-  are 60 seconds and show the live Dots background and the 3D twin. Each new version shows what changed
+  The current line is "V1" (version 12's 75 s pair, version 14 at 60 s, versions 16, 17 and 18). Marketing
+  cuts show the live Dots background and the 3D twin; they were 60 seconds until version 18 (the owner,
+  27 October 2026: version 17 was "really hard to understand and really fast"; make it 75 seconds, add
+  no information, show it better and smoother, not too much at once). Each new version shows what changed
   in the app since the last. Version 16 shows the 3DBenchy, the quick tour and scanning a QR code onto a
   phone. Version 17 (the owner, 26 October 2026: "make it smoother and better") is version 16 measured
   frame by frame and smoothed (no 3D flattening when the laptop dims, dissolves where the filmed app
   swaps a whole view, a 60 fps web copy), with what changed since in "and plenty more"; it replaced the
-  film in the README and on the product page. Check a new cut with a frame-difference pass over the
-  master. Don't edit the video unless asked.
+  film in the README and on the product page. Version 18 is version 17 at 75 s and calmer: the same music at
+  128 BPM, the time shared out by reading time (about 0.3 s a word plus 0.5 s), the scenes filmed again at
+  a calmer pace; it replaced version 17 in the README and on the product page. Check a new cut with a
+  frame-difference pass over the master, and check each caption is up long enough to read. Don't edit the video unless asked.
 - Internal material lives in the owner's private repository, `Jbyjre/Deja-VU1-Studio` (moved
   27 October 2026; dropping it from this repository's history is still to do, and the kit for
   that is the private repository's `history-rewrite/`): `promo-video/` (the film
