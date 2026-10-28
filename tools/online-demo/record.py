@@ -99,7 +99,8 @@ class Server:
         url = f"http://127.0.0.1:{self.port}{path}"
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"} if data else {})
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:
+            # Adding the twelve sample files builds and summarises each one: well over 20 s on a slow machine.
+            with urllib.request.urlopen(req, timeout=180) as r:
                 return r.status, r.headers.get("Content-Type", ""), r.read()
         except urllib.error.HTTPError as e:
             return e.code, e.headers.get("Content-Type", ""), e.read()

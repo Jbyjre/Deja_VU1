@@ -617,7 +617,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 
 <sub>**Skip one object:** pick the failed part on the plate map, confirm, and the rest keep printing.</sub>
 
-<img align="right" width="300" src="docs/img/converter.jpg" alt="The converter card at the top of Files: Bambu Studio or MakerWorld project to Snapmaker U1, with the report for the three-plate MakerWorld sample: saved as a U1 copy, all three plates re-placed on the 270 mm bed and the creator's own changes kept">
+<img align="right" width="300" src="docs/img/converter.jpg" alt="The converter card at the top of Files: a project from any slicer to Snapmaker U1, with the report for the three-plate MakerWorld sample: saved as a U1 copy, all three plates re-placed on the 270 mm bed and the creator's own changes kept">
 
 **Converting a supported project:** keep the original, review the conversion
 report, then select a plate for slicing. All three plates of the recorded test

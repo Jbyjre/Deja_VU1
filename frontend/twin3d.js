@@ -1019,11 +1019,13 @@ const Twin3D = (() => {
       return out;
     }
 
+    // What a drawing really costs: until the next frame can start, less one frame's time. Software
+    // graphics does its work in the browser's GPU process, which the script's own clock never sees.
     let drawMs = 0;
     function render() {
       const began = performance.now();
       draw();
-      drawMs = drawMs * 0.8 + (performance.now() - began) * 0.2;
+      requestAnimationFrame(() => { drawMs = drawMs * 0.7 + Math.max(0, performance.now() - began - 17) * 0.3; });
     }
     function draw() {
       queued = false;

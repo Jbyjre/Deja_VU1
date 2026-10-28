@@ -64,9 +64,9 @@ window.Explain = (() => {
     'g code console': ['Type commands straight to the printer, in [[G-code]].',
       'For people who know the commands. The printer’s replies show underneath.'],
     // ---- Files
-    'bambu studio or makerworld project to snapmaker u1': ['Turn a project made for a Bambu printer, often from MakerWorld, into one the U1 can print.',
+    'a project from any slicer to snapmaker u1': ['Turn a project made for another printer into one the U1 can print: from MakerWorld, Printables, Bambu Studio, OrcaSlicer, Creality Print, Elegoo, QIDI or PrusaSlicer.',
       'Choose the [[3MF]] file. You get a U1 copy and a report of every change. Your original stays as it was.',
-      'It keeps the designer’s walls, infill and supports, and moves each plate to fit the U1.'],
+      'It keeps the designer’s walls, infill, supports and painted colours, and moves each plate to fit the U1. Five or more colours are fitted onto the four [[heads]]: open the project in Files to choose which head prints each.'],
     'file library': ['Your print files: [[G-code]] ready to print, and [[STL]] or [[3MF]] models to look at and prepare.',
       'Drop files here. Click one to see it in 3D, check it, or print it. Add sample files gives you a few to try.'],
     'print queue': ['Prints waiting their turn on each printer.',

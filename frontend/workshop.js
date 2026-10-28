@@ -965,14 +965,16 @@ const Workshop = (() => {
     // third frame, so a print moved the heads about 20 times a second, unevenly.)
     // Following a print's G-code the twin draws every frame where the model costs little to draw
     // (a real graphics card). Where it costs more (software drawing) it leaves the page at least
-    // two thirds of the time: a 40 ms drawing waits 120 ms before the next.
+    // two thirds of the time: a 40 ms drawing waits 120 ms before the next, and a very slow one
+    // draws no more than about once a second.
     const draw = () => {
       const cost = twin.model ? twin.model.drawCost() : 0;
-      const gap = cost < 8 ? 0 : Math.min(400, Math.max(30, cost * 3));
+      const gap = cost < 8 ? 0 : Math.min(Math.max(1000 - cost, 250), Math.max(30, cost * 3));
       if (performance.now() - (twin.drawnAt || 0) < gap) { requestAnimationFrame(draw); return; }
       twin.queued = false;
       if (twin.model) {
-        twin.drawnAt = performance.now();
+        // The drawing itself happens a frame later and takes `cost`: count the gap from its end.
+        twin.drawnAt = performance.now() + cost;
         twin.model.update(twin.state, twin.pos);
         renderChips();
         const sync = twin.model.syncInfo();
