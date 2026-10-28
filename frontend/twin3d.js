@@ -328,7 +328,7 @@ const Twin3D = (() => {
   uniform vec3 uBase; uniform float uRough; uniform float uMetal; uniform float uAlpha; uniform float uGlow;
   uniform int uKind; uniform sampler2D uTex; uniform sampler2D uShadow; uniform vec3 uEye; uniform float uSel; uniform vec3 uBg;
   uniform vec3 uKey; uniform vec3 uFill; uniform vec4 uFoot;
-  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes;
+  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; uniform float uPlay;
   out vec4 outColor;
   const float PI = 3.14159265;
   /* The studio backdrop: lighter above, a soft vignette. The floor uses
@@ -366,8 +366,11 @@ const Twin3D = (() => {
   vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
   void main() {
     // The print grows to the nozzle's height (mode 1); its rest is drawn above (mode 2).
-    if (uClip.x > 0.5 && uClip.x < 1.5 && vW.z > uClip.y) discard;
-    if (uClip.x > 1.5 && vW.z <= uClip.y) discard;
+    // Following the G-code (uPlay >= 0), each bit of wall appears the moment
+    // the file lays it: vUV.x is when, in seconds, and vUV.y marks it timed.
+    bool timed = uPlay >= 0.0 && vUV.y > 0.5;
+    if (uClip.x > 0.5 && uClip.x < 1.5 && (timed ? vUV.x > uPlay : vW.z > uClip.y)) discard;
+    if (uClip.x > 1.5 && (timed ? vUV.x <= uPlay : vW.z <= uClip.y)) discard;
     vec3 N = normalize(vN), V = normalize(uEye - vP);
     if (uKind == 6) {
       // The floor: only the shadow and a soft contact darkening show.
@@ -418,8 +421,12 @@ const Twin3D = (() => {
     if (uGlow > 0.0) col = mix(col, base * 1.25, uGlow);
     // Picked: a blue glow round its edges, so its own colour stays true.
     if (uSel > 0.0) { float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0); col = col * (1.0 + 0.1 * uSel) + vec3(0.1, 0.32, 1.0) * (0.12 + 0.75 * fr) * uSel; }
-    // The layer being laid now reads a touch brighter: fresh, still warm plastic.
-    if (uKind == 9 && uClip.x > 0.5 && uClip.x < 1.5 && vW.z > uClip.y - uLayerH * 1.01) col += base * 0.35 + vec3(0.03);
+    // The plastic just laid reads a touch brighter: fresh, still warm. Following
+    // the G-code it fades over the last few seconds behind the nozzle.
+    if (uKind == 9 && uClip.x > 0.5 && uClip.x < 1.5) {
+      if (timed) { float age = uPlay - vUV.x; if (age < 3.0) col += (base * 0.35 + vec3(0.03)) * (1.0 - age / 3.0); }
+      else if (vW.z > uClip.y - uLayerH * 1.01) col += base * 0.35 + vec3(0.03);
+    }
     if (uKind == 10) { // the case, see-through: an outline of light, no body
       float f = pow(1.0 - max(dot(N, V), 0.0), 3.0);
       col = mix(col, env(R, 0.25), 0.55);
@@ -433,20 +440,20 @@ const Twin3D = (() => {
     outColor = vec4(pow(aces(col * 0.95), vec3(1.0 / 2.2)), alpha);
   }`;
   const SHADOW_VS = `#version 300 es
-  in vec3 aPos; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; out float vZ;
-  void main() { vec3 p = aPos * uS + uT; vZ = p.z; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
+  in vec3 aPos; in vec2 aUV; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; out float vZ; out vec2 vT;
+  void main() { vec3 p = aPos * uS + uT; vZ = p.z; vT = aUV; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
   const SHADOW_FS = `#version 300 es
-  precision highp float; in float vZ; uniform vec2 uClip; out vec4 o;
-  void main() { if (uClip.x > 0.5 && vZ > uClip.y) discard; o = vec4(1.0); }`;
+  precision highp float; in float vZ; in vec2 vT; uniform vec2 uClip; uniform float uPlay; out vec4 o;
+  void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vT.y > 0.5) ? vT.x > uPlay : vZ > uClip.y)) discard; o = vec4(1.0); }`;
   /* The drawing's first pass: surface direction and part id, per pixel. */
   const GB_FS = `#version 300 es
   precision highp float;
-  in vec3 vN; in vec3 vW; uniform float uId; uniform vec2 uClip; out vec4 o;
-  void main() { if (uClip.x > 0.5 && vW.z > uClip.y) discard; o = vec4(normalize(vN) * 0.5 + 0.5, uId / 255.0); }`;
+  in vec3 vN; in vec3 vW; in vec2 vUV; uniform float uId; uniform vec2 uClip; uniform float uPlay; out vec4 o;
+  void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vUV.y > 0.5) ? vUV.x > uPlay : vW.z > uClip.y)) discard; o = vec4(normalize(vN) * 0.5 + 0.5, uId / 255.0); }`;
   /* Picking: each pickable part paints its id. */
   const ID_FS = `#version 300 es
-  precision highp float; in vec3 vW; uniform float uId; uniform vec2 uClip; out vec4 o;
-  void main() { if (uClip.x > 0.5 && vW.z > uClip.y) discard; o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`;
+  precision highp float; in vec3 vW; in vec2 vUV; uniform float uId; uniform vec2 uClip; uniform float uPlay; out vec4 o;
+  void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vUV.y > 0.5) ? vUV.x > uPlay : vW.z > uClip.y)) discard; o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`;
   const BG_FS = `#version 300 es
   precision highp float; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; out vec4 o;
   void main() {
@@ -491,6 +498,128 @@ const Twin3D = (() => {
   }`;
 
   /* ---- the viewer --------------------------------------------------- */
+  /* ---- following the print's own G-code ------------------------------
+   * The timeline (backend/print_preview.py) says, for points through the
+   * file, which byte they end at, when they happen (seconds of nominal
+   * print time) and where the nozzle is. Each reading from the printer
+   * gives the byte it has read up to (Klipper's file_position) and, on a
+   * real printer, where the nozzle is right now (motion_report
+   * live_position). The nozzle is looked for along the path just before
+   * the byte read, which pins down the exact moment in the file; between
+   * readings the playhead runs along the G-code at the speed the printer
+   * has been keeping, and each reading pulls it back into step over a
+   * third of a second (a jump only when it is more than a few seconds
+   * out). Moves the file doesn't hold (a tool change, homing, a pause
+   * park) don't match the path: then the nozzle simply follows the
+   * printer's live position until it rejoins the path. */
+  const newFollow = () => ({ track: null, on: false, play: 0, rate: 1, pending: 0, last: 0, prevM: null, prevW: 0, tRead: 0, off: false,
+                             live: null, pos: [135, 135, 0], started: false, err: null, paused: false, matched: 0, readings: 0 });
+  function buildTrack(tl, along, k) {
+    if (!tl || !Array.isArray(tl.track) || tl.track.length < 10 || !(tl.bytes > 0)) return null;
+    const n = Math.floor(tl.track.length / 5), B = new Float64Array(n), T = new Float64Array(n);
+    const pts = new Float64Array(n * 4 + along.length);
+    let b = 0, t = 0, x = 0, y = 0, z = 0;
+    for (let i = 0; i < n; i++) {
+      b += tl.track[i * 5]; t += tl.track[i * 5 + 1]; x += tl.track[i * 5 + 2]; y += tl.track[i * 5 + 3]; z += tl.track[i * 5 + 4];
+      B[i] = b; T[i] = t / 1000;
+      pts[i * 4] = t / 1000; pts[i * 4 + 1] = x * k; pts[i * 4 + 2] = y * k; pts[i * 4 + 3] = z * k;
+    }
+    pts.set(along, n * 4);
+    // Every point in time order, keyframes and path points together.
+    const m = pts.length / 4, order = new Uint32Array(m);
+    for (let i = 0; i < m; i++) order[i] = i;
+    order.sort((a, c) => pts[a * 4] - pts[c * 4]);
+    const P = { T: new Float64Array(m), X: new Float32Array(m), Y: new Float32Array(m), Z: new Float32Array(m) };
+    for (let i = 0; i < m; i++) { const o = order[i] * 4; P.T[i] = pts[o]; P.X[i] = pts[o + 1]; P.Y[i] = pts[o + 2]; P.Z[i] = pts[o + 3]; }
+    return { B, T, P, bytes: tl.bytes, seconds: tl.seconds || T[n - 1] };
+  }
+  // The last index whose value is <= v.
+  const below = (arr, v) => { let lo = 0, hi = arr.length - 1; if (hi < 0 || v < arr[0]) return -1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (arr[mid] <= v) lo = mid; else hi = mid - 1; } return lo; };
+  function timeAtByte(tr, byte) {
+    const i = below(tr.B, byte);
+    if (i < 0) return 0;
+    if (i >= tr.B.length - 1) return tr.T[tr.T.length - 1];
+    const f = (byte - tr.B[i]) / Math.max(1, tr.B[i + 1] - tr.B[i]);
+    return tr.T[i] + (tr.T[i + 1] - tr.T[i]) * Math.max(0, Math.min(1, f));
+  }
+  function posAt(tr, t) {
+    const P = tr.P, i = below(P.T, t);
+    if (i < 0) return [P.X[0], P.Y[0], P.Z[0]];
+    if (i >= P.T.length - 1) return [P.X[i], P.Y[i], P.Z[i]];
+    const span = P.T[i + 1] - P.T[i], f = span > 1e-6 ? Math.max(0, Math.min(1, (t - P.T[i]) / span)) : 1;
+    return [P.X[i] + (P.X[i + 1] - P.X[i]) * f, P.Y[i] + (P.Y[i + 1] - P.Y[i]) * f, P.Z[i] + (P.Z[i + 1] - P.Z[i]) * f];
+  }
+  // Where along the path, between two times, the nozzle at p is: {t, d (mm)}. Height counts four times over.
+  function nearest(tr, p, t0, t1) {
+    const P = tr.P;
+    let i = Math.max(0, below(P.T, t0)), best = null;
+    const last = Math.min(P.T.length - 1, Math.max(i + 1, below(P.T, t1) + 1));
+    for (; i < last; i++) {
+      const ax = P.X[i], ay = P.Y[i], az = P.Z[i], bx = P.X[i + 1] - ax, by = P.Y[i + 1] - ay, bz = (P.Z[i + 1] - az) * 4;
+      const px = p[0] - ax, py = p[1] - ay, pz = (p[2] - az) * 4, ll = bx * bx + by * by + bz * bz;
+      const f = ll > 1e-9 ? Math.max(0, Math.min(1, (px * bx + py * by + pz * bz) / ll)) : 0;
+      const d = Math.hypot(px - bx * f, py - by * f, pz - bz * f);
+      // Ties go to the later point: the printer is as far on as it can be.
+      if (!best || d <= best.d + 1e-6) best = { d, t: P.T[i] + (P.T[i + 1] - P.T[i]) * f };
+    }
+    return best;
+  }
+  const LEAD_S = 0.8;   // without a live position: how far motion trails the byte read (Klipper buffers ~1 s)
+  function syncFrom(follow, st, file, now) {
+    const tr = follow.track;
+    const printing = st && ['printing', 'paused'].includes(st.state);
+    if (!tr || !st || file !== st.current_file || !printing) { follow.on = false; return; }
+    const sync = st.sync || {};
+    const byte = typeof sync.file_position === 'number' && sync.file_size === tr.bytes ? sync.file_position
+      : (typeof st.progress === 'number' ? st.progress * tr.bytes : null);
+    if (byte == null) { follow.on = false; return; }
+    const tRead = timeAtByte(tr, byte);
+    let m = null;
+    follow.readings++;
+    follow.hasLive = Array.isArray(sync.live);
+    if (follow.hasLive) {
+      const hit = nearest(tr, sync.live, tRead - 12, tRead + 0.5);
+      if (hit && hit.d < 2.5) { m = hit.t; follow.off = false; follow.matched++; follow.err = hit.d; }
+      else { follow.off = true; follow.live = sync.live.slice(0, 3); follow.err = hit ? hit.d : null; }
+    } else {
+      m = Math.max(0, tRead - (st.real ? LEAD_S : 0)); follow.off = false; follow.err = null;
+    }
+    follow.tRead = tRead;
+    follow.paused = st.state === 'paused';
+    follow.on = true;
+    if (m == null) return;
+    if (!follow.started || Math.abs(m - follow.play) > 5) {
+      follow.play = m; follow.pending = 0; follow.started = true; follow.prevM = null;
+      follow.pos = posAt(tr, m);
+    } else {
+      follow.pending = m - follow.play;
+    }
+    // The pace the printer keeps against the file's own (acceleration, speed factor, limits).
+    if (follow.prevM != null && !follow.paused) {
+      const dw = (now - follow.prevW) / 1000;
+      if (dw > 0.15 && dw < 5) {
+        const r = Math.max(0, Math.min(3, (m - follow.prevM) / dw));
+        follow.rate += 0.3 * (r - follow.rate);
+      }
+    }
+    follow.prevM = m; follow.prevW = now;
+  }
+  function advance(follow, now) {
+    const tr = follow.track, dt = Math.min(0.25, Math.max(0, (now - (follow.last || now)) / 1000));
+    follow.last = now;
+    if (!tr || !follow.on) return;
+    if (follow.off && follow.live) {
+      const a = 1 - Math.exp(-dt / 0.12);
+      follow.pos = follow.pos.map((v, i) => v + (follow.live[i] - v) * a);
+      return;
+    }
+    if (!follow.paused) follow.play += follow.rate * dt;
+    const c = follow.pending * (1 - Math.exp(-dt / 0.3));
+    follow.play += c; follow.pending -= c;
+    follow.play = Math.max(0, Math.min(follow.play, follow.tRead + 0.05));
+    follow.pos = posAt(tr, follow.play);
+  }
+
   function create(host, { onPick } = {}) {
     const wrap = document.createElement('div');
     wrap.className = 'twin3d';
@@ -667,51 +796,66 @@ const Twin3D = (() => {
      * One mesh per toolhead and object, so each takes its head's colour
      * and a skipped object can be greyed out. */
     function setPrint(data) {
-      printMeshes.forEach(m => free(m.mesh)); printMeshes = []; print = null;
+      printMeshes.forEach(m => free(m.mesh)); printMeshes = []; print = null; follow.track = null; follow.on = false;
       if (!data || !data.tools || !Array.isArray(data.layers) || !data.layers.length) { queue(); return; }
       const L = data.layers, k = data.unit_mm || 0.01, groups = new Map();
       const group = (tool, obj) => { const key = `${tool}|${obj}`; if (!groups.has(key)) groups.set(key, { tool, obj, g: geo() }); return groups.get(key).g; };
       let hMin = Infinity, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+      // The nozzle's way along the drawn paths, finer than the timeline's keyframes:
+      // [seconds, x, y, z] per point, merged with the track below.
+      const along = [];
+      const timesOf = (list, i) => (Array.isArray(list) && Array.isArray(list[i]) ? list[i] : null);
       for (const [tool, sets] of Object.entries(data.tools)) {
-        for (const path of sets.walls || []) {
-          const layer = L[path[0]]; if (!layer) continue;
-          const z1 = layer.z, z0 = z1 - (layer.h || 0.2), g = group(tool, path[1]);
+        (sets.walls || []).forEach((path, pi) => {
+          const layer = L[path[0]]; if (!layer) return;
+          const z1 = layer.z, z0 = z1 - (layer.h || 0.2), g = group(tool, path[1]), tt = timesOf(sets.walls_t, pi);
           hMin = Math.min(hMin, layer.h || 0.2);
-          let x = path[2] * k, y = path[3] * k;
+          let x = path[2] * k, y = path[3] * k, t = tt ? tt[0] / 1000 : 0, on = tt ? 1 : 0;
           grow(x, y);
-          for (let i = 4; i + 1 < path.length; i += 2) {
+          if (tt) along.push(t, x, y, z1);
+          for (let i = 4, j = 1; i + 1 < path.length; i += 2, j++) {
             const nx = x + path[i] * k, ny = y + path[i + 1] * k, dx = nx - x, dy = ny - y, l = Math.hypot(dx, dy);
+            const nt = tt ? t + (tt[j] || 0) / 1000 : 0;
             grow(nx, ny);
-            if (l > 1e-4) { const n = [dy / l, -dx / l, 0]; quadV(g, [[x, y, z0], n], [[nx, ny, z0], n], [[nx, ny, z1], n], [[x, y, z1], n]); }
-            x = nx; y = ny;
+            if (l > 1e-4) { const n = [dy / l, -dx / l, 0], a = [t, on], b = [nt, on]; quadV(g, [[x, y, z0], n, a], [[nx, ny, z0], n, b], [[nx, ny, z1], n, b], [[x, y, z1], n, a]); }
+            if (tt) along.push(nt, nx, ny, z1);
+            x = nx; y = ny; t = nt;
           }
-        }
-        for (const path of sets.fill || []) {
-          const layer = L[path[0]]; if (!layer) continue;
-          const z = layer.z, g = group(tool, path[1]), up = [0, 0, 1], w = 0.24;
-          let x = path[2] * k, y = path[3] * k;
-          for (let i = 4; i + 1 < path.length; i += 2) {
+        });
+        (sets.fill || []).forEach((path, pi) => {
+          const layer = L[path[0]]; if (!layer) return;
+          const z = layer.z, g = group(tool, path[1]), up = [0, 0, 1], w = 0.24, tt = timesOf(sets.fill_t, pi);
+          let x = path[2] * k, y = path[3] * k, t = tt ? tt[0] / 1000 : 0, on = tt ? 1 : 0;
+          if (tt) along.push(t, x, y, z);
+          for (let i = 4, j = 1; i + 1 < path.length; i += 2, j++) {
             const nx = x + path[i] * k, ny = y + path[i + 1] * k, dx = nx - x, dy = ny - y, l = Math.hypot(dx, dy);
-            if (l > 1e-4) { const ox = -dy / l * w, oy = dx / l * w; quadV(g, [[x - ox, y - oy, z], up], [[nx - ox, ny - oy, z], up], [[nx + ox, ny + oy, z], up], [[x + ox, y + oy, z], up]); }
-            x = nx; y = ny;
+            const nt = tt ? t + (tt[j] || 0) / 1000 : 0;
+            if (l > 1e-4) { const ox = -dy / l * w, oy = dx / l * w, a = [t, on], b = [nt, on]; quadV(g, [[x - ox, y - oy, z], up, a], [[nx - ox, ny - oy, z], up, b], [[nx + ox, ny + oy, z], up, b], [[x + ox, y + oy, z], up, a]); }
+            if (tt) along.push(nt, nx, ny, z);
+            x = nx; y = ny; t = nt;
           }
-        }
+        });
       }
       groups.forEach(({ tool, obj, g }) => { if (g.v.length) printMeshes.push({ tool, obj, mesh: upload(g) }); });
       print = { file: data.file, layers: L, objects: data.objects || [], colours: data.file_colours || [], layerH: isFinite(hMin) ? hMin : 0.2, top: L[L.length - 1].z,
         centre: isFinite(x0) ? [(x0 + x1) / 2, (y0 + y1) / 2] : [135, 135], size: isFinite(x0) ? Math.max(x1 - x0, y1 - y0, L[L.length - 1].z) : 60 };
+      follow.track = buildTrack(data.timeline, along, k);
+      follow.started = false;
       queue();
     }
 
+    const follow = newFollow();
+    const following = () => follow.on && !!follow.track && !!print;
+
     /* ---- what moves: everything that depends on the printer's state ---- */
     function liveScene() {
-      const st = state || {}, [x, y, z] = pos, bedTop = TIP - Math.max(0, Math.min(BED, z));
+      const st = state || {}, synced = following(), [x, y, z] = synced ? follow.pos : pos, bedTop = TIP - Math.max(0, Math.min(BED, z));
       const heads = Object.entries(st.toolheads || {});
       const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
       const printing = ['printing', 'paused'].includes(st.state);
       const items = [];
-      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool });
+      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, play: o.play, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool });
       // Bed: plate, its label strip, heater, carrier.
       const bedId = 2, bedSel = selected === 'bed' ? 1 : 0, heat = st.bed && st.bed.target > 0 ? Math.min(1, (st.bed.temp || 0) / 110) : 0;
       add(dyn.carrier.mesh, MAT.rail, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
@@ -739,16 +883,19 @@ const Twin3D = (() => {
         // file's own colour if the head reports none), up to the layer being
         // printed; the rest of the print faintly above, if asked for.
         const L = print.layers, cur = st.layer && st.layer.current ? Math.min(L.length, st.layer.current) : 0;
-        const clipZ = finished ? print.top + 1 : cur ? L[cur - 1].z + 0.001 : Math.max(0.2, z) + 0.001;
+        const clipZ = finished ? print.top + 1 : synced ? Math.max(0.2, z) + 0.001 : cur ? L[cur - 1].z + 0.001 : Math.max(0.2, z) + 0.001;
+        const play = synced && !finished ? follow.play : null;
+        // A U1 can print a file's T1 on another head (extruder_map); colour by the head that prints it.
+        const physical = tool => (st.extruder_map && st.extruder_map[tool]) || tool;
         const excluded = new Set((plate && plate.excluded) || []);
         pickNames = print.objects.slice();
         if (showPrint) printMeshes.forEach(m => {
-          const head = st.toolheads && st.toolheads[m.tool], name = print.objects[m.obj];
+          const head = st.toolheads && st.toolheads[physical(m.tool)], name = print.objects[m.obj];
           const colour = (head && srgb(head.filament_color_hex)) || srgb(print.colours[+String(m.tool).slice(1)]) || lin(.6, .6, .62);
           const skip = name && excluded.has(name);
           const id = m.obj >= 0 ? 40 + m.obj : 0, sel = name && selected === `obj:${name}` ? 1 : 0;
-          add(m.mesh, { c: skip ? lin(.55, .55, .57) : colour, r: .5, m: 0, kind: 'print' }, { t: [0, 0, bedTop], id, sel, clip: [1, bedTop + clipZ], layerH: print.layerH, printed: true, tool: +String(m.tool).slice(1) || 0 });
-          if (showRest && !finished && !skip) add(m.mesh, { ...MAT.ghost, c: colour, a: .1 }, { t: [0, 0, bedTop], clip: [2, bedTop + clipZ], rest: true });
+          add(m.mesh, { c: skip ? lin(.55, .55, .57) : colour, r: .5, m: 0, kind: 'print' }, { t: [0, 0, bedTop], id, sel, clip: [1, bedTop + clipZ], play, layerH: print.layerH, printed: true, tool: +String(physical(m.tool)).slice(1) || 0 });
+          if (showRest && !finished && !skip) add(m.mesh, { ...MAT.ghost, c: colour, a: .1 }, { t: [0, 0, bedTop], clip: [2, bedTop + clipZ], play, rest: true });
         });
       } else if (partsMeshes.length) {
         pickNames = partsMeshes.map(p => p.name);
@@ -841,6 +988,7 @@ const Twin3D = (() => {
     function drawItem(prog, it) {
       gl.uniform3fv(prog.u.uT, it.t); gl.uniform3fv(prog.u.uS, it.s);
       if (prog.u.uClip) gl.uniform2f(prog.u.uClip, it.clip ? it.clip[0] : 0, it.clip ? it.clip[1] : 0);
+      if (prog.u.uPlay) gl.uniform1f(prog.u.uPlay, it.play != null ? it.play : -1);
       gl.bindVertexArray(it.mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, it.mesh.count);
     }
     function allItems(live) {
@@ -871,9 +1019,16 @@ const Twin3D = (() => {
       return out;
     }
 
+    let drawMs = 0;
     function render() {
+      const began = performance.now();
+      draw();
+      drawMs = drawMs * 0.8 + (performance.now() - began) * 0.2;
+    }
+    function draw() {
       queued = false;
       if (!state || !resize()) return;
+      if (following()) advance(follow, performance.now());
       screenUpdate();
       const live = liveScene(), all = allItems(live);
       const M = matrices();
@@ -883,7 +1038,9 @@ const Twin3D = (() => {
       const clear = items.filter(it => it.mat.a != null && it.mat.a < 1);
       inkSvg.innerHTML = '';
       // Shadows: only when something that casts one has moved.
-      const sk = JSON.stringify([pos.map(v => Math.round(v)), state.state, partsKey.length, Object.keys(loopMeshes).map(k => loopMeshes[k].key),
+      // Following the G-code the head moves every frame; the shadow only needs redoing as it moves on.
+      const shadowPos = following() ? follow.pos.map(v => Math.round(v / 4)).concat(Math.round(follow.play / 2)) : pos.map(v => Math.round(v));
+      const sk = JSON.stringify([shadowPos, state.state, partsKey.length, Object.keys(loopMeshes).map(k => loopMeshes[k].key),
         caseMode, cam.focus > 0.5, showPrint, print && print.file, state.layer && state.layer.current]);
       if (sk !== shadowKey) {
         shadowKey = sk;
@@ -910,7 +1067,7 @@ const Twin3D = (() => {
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, shadowTex); gl.uniform1i(u.uShadow, 1);
       // The floor first, then everything solid.
       gl.uniform1i(u.uKind, 6); gl.uniform4f(u.uFoot, 135, 135, 330, 300);
-      gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]); gl.uniform2f(u.uClip, 0, 0);
+      gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]); gl.uniform2f(u.uClip, 0, 0); gl.uniform1f(u.uPlay, -1);
       gl.bindVertexArray(floor.vao); gl.drawArrays(gl.TRIANGLES, 0, floor.count);
       opaque.forEach(it => { setMat(u, it.mat, it); drawItem(P.main, it); });
       // See-through things last, farthest first, without hiding what's behind.
@@ -1254,7 +1411,18 @@ const Twin3D = (() => {
 
     return {
       el: wrap,
-      update(s, p) { state = s; if (p) pos = p; queue(); },
+      update(s, p) {
+        if (s !== state) syncFrom(follow, s, print && print.file, performance.now());
+        state = s; if (p) pos = p; queue();
+      },
+      /* Following the G-code: whether it is, and how well (for the card's
+       * sync note). drift: seconds between the playhead and the last reading. */
+      drawCost() { return drawMs; },
+      syncInfo() {
+        if (!following()) return null;
+        return { play: follow.play, total: follow.track.seconds, rate: follow.rate, offPath: follow.off, paused: follow.paused,
+                 live: !!follow.hasLive, error_mm: follow.err, drift: follow.pending, matched: follow.matched, readings: follow.readings };
+      },
       select(id) { selected = id || ''; queue(); },
       setView,
       setStyle(s) { style = s === 'drawing' ? 'drawing' : 'model'; wrap.dataset.style = style; canvas.setAttribute('aria-label', style === 'drawing' ? 'Engineering drawing of the printer. Drag to turn, scroll to zoom.' : '3D model of the printer. Drag to turn, scroll or pinch to zoom.'); queue(); },
@@ -1301,5 +1469,5 @@ const Twin3D = (() => {
     };
   }
 
-  return { create, ENVELOPE, BODY };
+  return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance } };
 })();

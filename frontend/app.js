@@ -36,6 +36,12 @@ function esc(text) {
   }[c]));
 }
 
+/* A file name, escaped, that may wrap after "_", "-", "." or a space and nowhere else:
+ * "benchy_gear_vase.gcode" breaks before "gcode", never inside a word. */
+function escName(text) {
+  return esc(text).replace(/([_.\-])(?=[^_.\-])/g, '$1<wbr>');
+}
+
 /* Which module owns each data route (the server lists them with the
  * modules), and which modules are off. A route of a switched-off module
  * would only answer 403, which every browser logs as an error, so it isn't
@@ -2285,7 +2291,7 @@ function loadGames() {
 }
 function startCurrentGame() {
   const host = $('game-host');
-  if (host && !host.childElementCount) host.innerHTML = '<p class="log-empty">Loading the arcade…</p>';
+  if (host && !host.childElementCount) host.innerHTML = '<p class="log-empty is-loading">Loading the arcade…</p>';
   loadGames().then(() => setTimeout(() => {
     // games.js has replaced this function and its own installers have run;
     // start a game unless one already started for the open tab.

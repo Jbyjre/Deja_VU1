@@ -12,6 +12,7 @@ window.Explain = (() => {
     'needs you': ['Everything that wants you right now, from every printer: jams, errors, finished prints and maintenance that is due.',
       'The most urgent item sits on top. Each row has a button that takes you where you can deal with it.'],
     'digital twin': ['A 3D copy of the printer you picked. It moves when the real one moves: the four [[heads]], the [[plate]], the spools, and the print growing layer by layer.',
+      'While a file prints, the nozzle follows that file’s own [[G-code]] and is checked against the printer about four times a second, so each wall appears where and when it is laid. The line under the model says whether it is in step.',
       'Drag to turn it. Click a head to see its filament and temperature. Drawing shows the same printer as a technical drawing with sizes.',
       'The outer size comes from Snapmaker. Some inside parts are estimates, marked ≈.'],
     'printer control': ['Pause or cancel the print on the printer you picked at the top.',

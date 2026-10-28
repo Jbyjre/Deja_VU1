@@ -106,7 +106,9 @@ API endpoints
   POST /api/files/edit               {"name", "edits": [...]}
   POST /api/files/restore            {"name"}
   POST /api/files/opened             {"name"}
-  POST /api/convert                  {"name"} MakerWorld/NexPrint -> U1
+  POST /api/convert                  {"name", "plan"?} MakerWorld/NexPrint/Orca forks/PrusaSlicer -> U1
+  GET  /api/colours/plan?name=       a project's filaments and the suggested head for each
+  POST /api/colours/apply            {"name", "plan"} a copy using at most the U1's four heads
   GET  /api/logbook?q=               this printer's logbook: problems, fixes, print hours (search with q)
   POST /api/logbook/add              {"problem", "fix", "tags"}
   POST /api/logbook/<id>/fix | delete
@@ -222,6 +224,7 @@ the same whether or not a printer is connected, because they aren't printer
 figures.
 """
 
+import gzip
 import ipaddress
 import http.cookies
 import json
@@ -249,6 +252,7 @@ import process_settings
 import camera
 import color_check
 import comparison
+import colour_map
 import converter_3mf
 import cost_calculator
 import discovery
@@ -477,6 +481,7 @@ _APP_ROUTES = {
         _q(q, "q", "") or None)),
     "/api/files/analysis": ("file_library", lambda q: file_library.analysis(_q(q, "name"))),
     "/api/files/plates": ("file_library", lambda q: project_plates.describe(_q(q, 'name'))),
+    "/api/colours/plan": ("converter", lambda q: _colour_plan(_q(q, "name"), _q(q, "demo", "") == "1")),
     "/api/profiles/diff": ("file_library", lambda q: comparison.diff_profiles(_q(q, "a"), _q(q, "b"))),
     "/api/fleet/registry": ("fleet", lambda q: fleet.registry()),
     "/api/printers/diagnostics": ("fleet", lambda q: fleet.diagnostics(_q(q, "printer"))),
@@ -489,6 +494,31 @@ _APP_ROUTES = {
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
 }
+
+def _loaded_heads(demo=False):
+    """What each head of the selected printer holds now, for matching a project's colours; None if unknown."""
+    if not (mock_moonraker.is_connected() or demo):
+        return None
+    heads = (mock_moonraker.get_printer_state() or {}).get("toolheads") or {}
+    out = []
+    for i in range(colour_map.HEADS):
+        h = heads.get(f"T{i}") or {}
+        known = h.get("filament_known", True) and h.get("filament_loaded") is not False
+        out.append({"toolhead": f"T{i}", "colour": colour_map.clean_hex(h.get("filament_color_hex")) if known else None,
+                    "type": (h.get("filament_material") or "") if known else ""})
+    return out if any(h["colour"] for h in out) else None
+
+
+def _colour_plan(name, demo=False):
+    """A project's filaments, which the model uses, and the suggested heads (GET /api/colours/plan)."""
+    info = colour_map.read(file_library.read_bytes(name))
+    loaded = _loaded_heads(demo)
+    info["suggested"] = colour_map.suggest(info["filaments"])
+    info["matched"] = colour_map.suggest(info["filaments"], loaded) if loaded else None
+    info["loaded"] = loaded
+    info["heads"] = colour_map.HEADS
+    return info
+
 
 def module_routes():
     """
@@ -599,10 +629,17 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     def _send_json(self, payload, status=200, cookie=None):
         """Send a Python dictionary back to the browser as JSON."""
-        body = json.dumps(payload).encode("utf-8")
+        body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        gzipped = len(body) > 32 * 1024 and "gzip" in (self.headers.get("Accept-Encoding") or "")
+        if gzipped:
+            # Large replies (a print's preview, the file list) load several times faster compressed.
+            body = gzip.compress(body, 5)
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if gzipped:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
         if cookie:
             self.send_header("Set-Cookie", cookie)
         # Stop the browser caching API responses, so the dashboard always
@@ -1313,12 +1350,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             name = body.get("name")
             try:
-                data, report = converter_3mf.convert(file_library.read_bytes(name))
+                data, report = converter_3mf.convert(file_library.read_bytes(name), body.get("plan"))
             except converter_3mf.ConversionError as exc:
                 return self._send_json(exc.as_dict(), status=400)
             new_name = converter_3mf.converted_name(file_library.clean_name(name))
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
+            return self._send_json({"file": entry, "report": report})
+
+        if route == "/api/colours/apply":
+            if self._module_blocked("converter") or self._module_blocked("file_library"):
+                return None
+            body = self._read_json_body()
+            name = body.get("name")
+            data, report = colour_map.apply(file_library.read_bytes(name), body.get("plan"))
+            entry = file_library.save(colour_map.mapped_name(file_library.clean_name(name)), data, origin="colours",
+                                      note=f"{name} with its colours on the U1's heads ({report['summary']})")
             return self._send_json({"file": entry, "report": report})
 
         if route.startswith("/api/logbook"):

@@ -48,7 +48,8 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 "/api/backup", "/api/timelapse/frame", "/api/live",
                 "/api/camera/snapshot", "/api/app/info", "/api/remote"}
 # Routes that need a file name, and the parameter it goes in.
-PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file"}
+PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
+            "/api/colours/plan": "name"}
 # Parameters that don't change the answer, so they aren't part of the key.
 IGNORED = {"demo", "since", "v", "t", "_", "device"}
 # Routes the dashboard asks with set parameters, and each set it uses.
@@ -156,7 +157,7 @@ def record():
                                 keep(key_for(path, params), *srv.get(path, **params))
                     continue
                 if path in PER_FILE:
-                    for name in (names if path == "/api/files/plates" else gcode):
+                    for name in (names if path in ("/api/files/plates", "/api/colours/plan") else gcode):
                         params = {"demo": 1, "printer": pid, PER_FILE[path]: name}
                         keep(key_for(path, params), *srv.get(path, **params))
                     continue

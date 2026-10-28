@@ -72,8 +72,15 @@ class TestConverter(unittest.TestCase):
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as z:
             z.writestr("3D/3dmodel.model", '<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
+                                           '<metadata name="Application">Cura 5.8</metadata></model>')
+        with self.assertRaisesRegex(converter_3mf.ConversionError, "are supported"):
+            converter_3mf.convert(buf.getvalue())
+        # A PrusaSlicer 3MF with no project settings in it is only a model.
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("3D/3dmodel.model", '<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">'
                                            '<metadata name="Application">PrusaSlicer-2.8</metadata></model>')
-        with self.assertRaisesRegex(converter_3mf.ConversionError, "Only MakerWorld"):
+        with self.assertRaisesRegex(converter_3mf.ConversionError, "only contains the model"):
             converter_3mf.convert(buf.getvalue())
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as z:
@@ -87,12 +94,15 @@ class TestConverter(unittest.TestCase):
         with self.assertRaisesRegex(converter_3mf.ConversionError, "already"):
             converter_3mf.convert(out)
 
-    def test_too_many_filaments_is_warned_about(self):
+    def test_more_filaments_than_heads_are_fitted_to_four(self):
+        # Six AMS slots, but the model only prints with the first one.
         data = sample_files._project_3mf("BambuStudio-01.10", {
             "printer_model": "Bambu Lab P1S", "filament_type": ["PLA"] * 6,
             "filament_colour": ["#000000"] * 6, "nozzle_diameter": ["0.4"], "layer_height": "0.2"})
-        _, report = converter_3mf.convert(data)
-        self.assertTrue(any("4 toolheads" in w for w in report["warnings"]))
+        out, report = converter_3mf.convert(data)
+        self.assertEqual(report["colours"]["dropped"], [2, 3, 4, 5, 6])
+        self.assertEqual(_config(out)["filament_colour"], ["#000000"])
+        self.assertFalse(any("4 toolheads" in w for w in report["warnings"]))
 
     def test_converted_name(self):
         self.assertEqual(converter_3mf.converted_name("dragon.gcode.3mf"), "dragon_U1.3mf")
@@ -190,7 +200,7 @@ class TestErrors(unittest.TestCase):
         cases = [b"not a zip"]
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as z:
-            z.writestr("3D/3dmodel.model", '<model><metadata name="Application">PrusaSlicer-2.8</metadata></model>')
+            z.writestr("3D/3dmodel.model", '<model><metadata name="Application">Cura 5.8</metadata></model>')
         cases.append(buf.getvalue())
         out, _ = converter_3mf.convert(sample_files.bambu_style_project())
         cases.append(out)

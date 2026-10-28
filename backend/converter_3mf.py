@@ -51,6 +51,7 @@ import zipfile
 import math
 from xml.parsers import expat
 
+import colour_map
 import safe_zip
 
 CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
@@ -179,7 +180,7 @@ def _read_application(archive):
     return found.get("application", "")
 
 
-def detect_source(application, config):
+def detect_source(application, config, prusa=False):
     """Which ecosystem a project came from, judged from what it says about itself."""
     printer = str((config or {}).get("printer_model") or "")
     app = application.lower()
@@ -193,6 +194,12 @@ def detect_source(application, config):
         return "makerworld"
     if app.startswith("elegooslicer") or "elegoo" in printer.lower():
         return "nexprint"
+    if prusa or app.startswith("prusaslicer") or app.startswith("superslicer"):
+        return "prusa"
+    # Creality Print, Anycubic Slicer Next, QIDI Studio, Flashforge Orca and
+    # other forks write the same project_settings.config as Orca does.
+    if config is not None and ("filament_colour" in config or "inherits_group" in config):
+        return "orca_family"
     return "unknown"
 
 
@@ -210,11 +217,26 @@ def _split_keys(text):
     return [k for k in re.split(r"[;,]", text or "") if k]
 
 
-def convert(data):
+def convert(data, plan=None, loaded=None):
     """
     Convert project bytes. Returns (new_bytes, report). Raises
     ConversionError with a plain explanation when it can't.
+
+    A project with more than four filaments (or a chosen plan) is first put
+    onto the U1's four heads by colour_map; plan and loaded are passed on.
     """
+    colour_report = None
+    try:
+        info = colour_map.read(data)
+    except colour_map.ColourMapError:
+        info = None
+    if info and info["format"] == "prusa":
+        return _convert_prusa(data, info, plan, loaded)
+    if info and (len(info["filaments"]) > U1_TOOLHEADS or plan is not None):
+        try:
+            data, colour_report = colour_map.apply(data, plan, loaded)
+        except colour_map.ColourMapError as exc:
+            raise ConversionError(str(exc), "bad_settings")
     try:
         archive = safe_zip.open_archive(data, "3MF project")
     except safe_zip.DamagedArchive as exc:
@@ -239,8 +261,9 @@ def convert(data):
                               "snapmaker")
     if source == "unknown":
         raise ConversionError(
-            "Only MakerWorld (Bambu Studio), NexPrint (Elegoo Slicer) and OrcaSlicer projects are "
-            f"supported. This file says it was made by '{application or 'an unnamed program'}'", "unsupported")
+            "Projects from Bambu Studio, OrcaSlicer and its forks (Elegoo, Creality, Anycubic, QIDI) and "
+            f"PrusaSlicer are supported. This file says it was made by '{application or 'an unnamed program'}'",
+            "unsupported")
     if config is None:
         raise ConversionError(
             "This 3MF only contains the model, with no print settings to convert. Open it "
@@ -249,7 +272,8 @@ def convert(data):
     report = {"source": source,
               "source_label": {"makerworld": "MakerWorld (Bambu Studio)",
                                "nexprint": "NexPrint (Elegoo Slicer)",
-                               "orca": "OrcaSlicer"}[source],
+                               "orca": "OrcaSlicer"}.get(source) or colour_map.source_label(application, "orca"),
+              "colours": colour_report,
               "application": application, "changes": [], "kept": [], "warnings": [],
               "unverified": ("Built from Snapmaker Orca's source code and profile files. Open it in "
                              "Snapmaker Orca to look over the plates before you print.")}
@@ -312,6 +336,8 @@ def convert(data):
         report["warnings"].append(
             f"Filament{'s' if len(missing) > 1 else ''} {', '.join(map(str, missing))} had no colour in the "
             "project; set to white - pick the real colour in Snapmaker Orca")
+    if colour_report:
+        report["warnings"].extend(colour_report["warnings"])
     if count > U1_TOOLHEADS:
         report["warnings"].append(
             f"This project uses {count} filaments; the U1 has {U1_TOOLHEADS} toolheads. "
@@ -387,6 +413,29 @@ def convert(data):
             "slice again in Snapmaker Orca")
     report["removed_parts"] = dropped
     return out.getvalue(), report
+
+
+def _convert_prusa(data, info, plan, loaded):
+    """
+    A PrusaSlicer project for the U1. Snapmaker Orca opens these with their
+    geometry, paint and each object's extruder number, and keeps its own
+    printer and filament settings (OrcaSlicer Plater.cpp, En3mfType::From_Prusa),
+    so only the colours need to fit four heads; the settings stay as they are.
+    """
+    try:
+        new, colours = colour_map.apply(data, plan, loaded)
+    except colour_map.ColourMapError as exc:
+        raise ConversionError(str(exc), "bad_settings")
+    heads = ", ".join(f"head {h['head'] + 1}: {h['name']} {h['type'] or ''}".strip() for h in colours["heads"])
+    report = {"source": "prusa", "source_label": info["source_label"], "application": info["application"],
+              "colours": colours, "changes": [], "kept": [], "warnings": list(colours["warnings"]),
+              "original_printer": "the PrusaSlicer printer", "printer_profile": "Snapmaker U1 (pick it in Snapmaker Orca)",
+              "print_profile": "Snapmaker Orca's own", "layer_height": None, "filament_profiles": [],
+              "plates": None, "removed_parts": [],
+              "unverified": ("Snapmaker Orca reads PrusaSlicer projects through OrcaSlicer's importer. Open it with "
+                             "the Snapmaker U1 printer selected and check the colours before you slice.")}
+    report["warnings"].insert(0, f"Load these colours: {heads}")
+    return new, report
 
 
 # ---------------------------------------------------------------------------

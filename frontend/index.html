@@ -132,7 +132,7 @@
 <main class="wrap">
   <section class="launch-strip" aria-label="Setup and feature finder">
     <div><p class="eyebrow">DEJA VU1 / YOUR PRINTERS</p><strong id="private-greeting">Your print bench</strong></div>
-    <div class="feature-finder"><label class="sr-only" for="feature-search">Search screens, settings, printers and files</label><input id="feature-search" type="search" placeholder="Search screens, printers, files…" autocomplete="off" spellcheck="false"><div id="feature-results" class="liquid-glass" hidden></div></div>
+    <div class="feature-finder"><label class="sr-only" for="feature-search">Search screens, settings, printers and files</label><input id="feature-search" type="search" placeholder="Search everything…" autocomplete="off" spellcheck="false"><div id="feature-results" class="liquid-glass" hidden></div></div>
     <button class="btn" id="setup-open">Set up &amp; help</button>
     <button class="btn" id="camera-open">Camera</button>
   </section>
@@ -384,7 +384,8 @@
         </div>
         <div class="twin-other" id="twin-other" hidden></div>
         <div id="twin-host" class="twin-host"></div>
-        <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them.</p>
+        <p class="twin-sync" id="twin-sync" role="status" hidden><span class="twin-sync-dot" aria-hidden="true"></span><span id="twin-sync-text"></span></p>
+        <p class="field-hint twin-note">Modelled on Snapmaker's official product picture and published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 390 &times; 460 &times; 480 mm), the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them. While it prints, the nozzle runs along that G-code and is checked against the printer's own position about four times a second, so the walls appear where and when they are laid.</p>
       </section>
       <div class="col-stack now-side">
         <section class="card liquid-glass">
@@ -437,7 +438,7 @@
     <!-- What the printer's own history says (insights.js, /api/insights). -->
     <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
       <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
-      <div id="insights-body"><p class="log-empty">Loading…</p></div>
+      <div id="insights-body"><p class="log-empty is-loading">Loading…</p></div>
     </section>
 
     <div class="grid-2" style="margin-bottom:20px;">
@@ -536,14 +537,14 @@
     <section class="card liquid-glass convert-card" id="convert-card" aria-labelledby="cv-title">
       <div class="cv-copy">
         <span class="eyebrow">CONVERTER · 3MF PROJECTS</span>
-        <h2 id="cv-title">Bambu Studio or MakerWorld project <span aria-hidden="true">→</span><span class="sr-only">to</span> Snapmaker U1</h2>
-        <p class="card-sub">Keeps the designer's walls, infill, supports and prime tower. Swaps the printer and filament presets for U1 ones and re-places every plate on the U1's 270 mm bed. Your original file is never changed; the U1 copy is saved beside it.</p>
+        <h2 id="cv-title">A project from any slicer <span aria-hidden="true">→</span><span class="sr-only">to</span> Snapmaker U1</h2>
+        <p class="card-sub">MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer, Creality Print, Elegoo, QIDI or PrusaSlicer. Keeps the designer's walls, infill, supports and painted colours. Swaps the printer and filament presets for U1 ones, fits five or more colours onto the four heads (alike colours share one) and re-places every plate on the U1's 270 mm bed. Your original file is never changed; the U1 copy is saved beside it.</p>
         <ol class="cv-steps"><li>Choose a .3mf</li><li>Read the report</li><li>Open the U1 copy and slice</li></ol>
       </div>
       <div class="cv-actions">
         <label class="btn primary cv-pick">Choose a .3mf…<input type="file" id="cv-file" accept=".3mf"></label>
         <button class="btn" id="cv-sample" type="button">Try the 3-plate MakerWorld sample</button>
-        <p class="field-hint" id="cv-note" role="status" aria-live="polite">Also works for Elegoo Slicer projects. Files made for another U1 are left as they are.</p>
+        <p class="field-hint" id="cv-note" role="status" aria-live="polite">Projects already set up for a U1 are left as they are. Open any project in Files to choose which head prints each colour.</p>
       </div>
       <div class="cv-report" id="cv-report" hidden></div>
     </section>

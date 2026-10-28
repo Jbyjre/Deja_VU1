@@ -963,13 +963,43 @@ const Workshop = (() => {
     // Whole display frames are skipped until 30 ms have passed since the last drawing: every
     // other frame on a 60 Hz screen. (A 32 ms timer before the frame usually overshot to the
     // third frame, so a print moved the heads about 20 times a second, unevenly.)
+    // Following a print's G-code the twin draws every frame where the model costs little to draw
+    // (a real graphics card). Where it costs more (software drawing) it leaves the page at least
+    // two thirds of the time: a 40 ms drawing waits 120 ms before the next.
     const draw = () => {
-      if (performance.now() - (twin.drawnAt || 0) < 30) { requestAnimationFrame(draw); return; }
+      const cost = twin.model ? twin.model.drawCost() : 0;
+      const gap = cost < 8 ? 0 : Math.min(400, Math.max(30, cost * 3));
+      if (performance.now() - (twin.drawnAt || 0) < gap) { requestAnimationFrame(draw); return; }
       twin.queued = false;
-      if (twin.model) { twin.drawnAt = performance.now(); twin.model.update(twin.state, twin.pos); renderChips(); }
-      else drawTwin();
+      if (twin.model) {
+        twin.drawnAt = performance.now();
+        twin.model.update(twin.state, twin.pos);
+        renderChips();
+        const sync = twin.model.syncInfo();
+        renderSync(sync);
+        if (sync && !sync.paused && !matchMedia('(prefers-reduced-motion: reduce)').matches) queueTwin();
+      } else drawTwin();
     };
     requestAnimationFrame(draw);
+  }
+
+  /* One line under the twin: is it in step with the printer? Updated twice a second. */
+  function renderSync(sync) {
+    const el = $('twin-sync');
+    if (!el || (performance.now() - (twin.syncAt || 0) < 500 && !!sync === !el.hidden)) return;
+    twin.syncAt = performance.now();
+    el.hidden = !sync;
+    if (!sync) return;
+    const clock = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+    const where = `${clock(sync.play)} of ${clock(sync.total)} into the file`;
+    let kind = 'ok', text;
+    if (sync.offPath) { kind = 'warn'; text = 'A move outside the file (a tool change, a purge or a park): showing where the nozzle is now'; }
+    else if (sync.paused) { kind = 'warn'; text = `Paused ${where}`; }
+    else if (sync.live) text = `In step with the printer, ${where}${sync.error_mm != null ? ` (within ${sync.error_mm < 0.1 ? '0.1' : sync.error_mm.toFixed(1)} mm)` : ''}`;
+    else text = `Following the file from where the printer is reading, ${where}`;
+    el.dataset.kind = kind;
+    const t = $('twin-sync-text');
+    if (t.textContent !== text) t.textContent = text;
   }
 
   /* ---- solids, in printer millimetres (X right, Y back, Z up) ----------
@@ -1590,7 +1620,7 @@ const Workshop = (() => {
         the pre-flight check, edits, converting and printing need the Deja Vu1 server.</p>` +
       (files.local.length ? files.local.map(f => `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
           <span class="fcd-thumb"><span class="fcd-kind">${esc(f.kind.toUpperCase())}</span></span>
-          <span class="fcd-name">${esc(f.name)}</span>
+          <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${f.local.size < 1048576 ? `${Math.max(1, Math.round(f.local.size / 1024))} KB` : `${(f.local.size / 1048576).toFixed(1)} MB`}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span><span class="origin-tag">on this device</span></span>
         </button>`).join('')
@@ -1630,9 +1660,9 @@ const Workshop = (() => {
         : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(0)).join(' × ')} mm · ${(s.triangles || 0).toLocaleString()} triangles` : (s.error || ''));
       return `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
           <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
-          <span class="fcd-name">${esc(f.name)}</span>
+          <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
-          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc(f.origin)}</span>` : ''}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate' }[f.origin] || f.origin)}</span>` : ''}</span>
         </button>`;
     }).join('') : empty('No files yet', 'Add your own G-code, STL, OBJ or 3MF files, or the sample files to try things out.');
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b.classList.contains('file-card') ? b : null));
@@ -1983,6 +2013,7 @@ const Workshop = (() => {
           <button class="btn danger" id="fd-delete" type="button">Delete</button>
         </div>
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
+        <div id="fd-colours-host"></div>
         <div id="fd-compare-host"></div>
         <div id="fd-convert-report"></div>`}`;
       await modelTools(entry, mesh, viewer, side);
@@ -1993,6 +2024,7 @@ const Workshop = (() => {
       }
       $('fd-delete').addEventListener('click', () => deleteFile(entry.name));
       if ($('fd-convert')) $('fd-convert').addEventListener('click', (e) => convertFile(entry.name, e.currentTarget));
+      if (is3mf && !modGate.off.has('converter')) renderColours(entry);
       renderCompare(entry);
       setupAR(entry, mesh);
       window.dispatchEvent(new CustomEvent('dv-model-open', { detail: entry }));
@@ -2036,11 +2068,116 @@ const Workshop = (() => {
       re-placed on the U1's 270 mm bed, each object keeping its spot, height and turn${n > 1 ? ' - so every plate opens where it belongs in Snapmaker Orca' : ''}.</p>`;
   }
 
+  /* Colours on the heads: which of the project's filaments the model uses,
+   * and which of the U1's four heads prints each one. The server suggests
+   * a plan (alike colours share a head, unused ones are dropped, or each
+   * colour goes to the closest loaded head); the person can change any row.
+   * Convert and "Save a copy" both use the plan shown. */
+  const HEAD_COUNT = 4;
+  async function renderColours(entry) {
+    const host = $('fd-colours-host');
+    if (!host) return;
+    files.colourPlan = null;
+    const data = await getJSON(api(`/api/colours/plan?name=${enc(entry.name)}`)).catch(() => null);
+    if (files.open !== entry || !data || !Array.isArray(data.filaments)) return;
+    const fil = data.filaments, used = fil.filter(f => f.used);
+    // A single-colour project with nothing to decide gets no panel.
+    if (fil.length <= 1 && used.length <= 1) return;
+    let plan = (data.suggested || []).slice();
+    files.colourPlan = fil.length > HEAD_COUNT ? plan : null;
+    const swatch = (c, label) => `<span class="cm-swatch${c ? '' : ' is-empty'}" style="--sw:${esc(c || 'transparent')}" aria-hidden="true"></span><span class="sr-only">${esc(label || '')}</span>`;
+    const headsOf = () => {
+      const heads = [];
+      for (let h = 0; h < HEAD_COUNT; h++) {
+        const members = fil.filter((f, i) => plan[i] === h);
+        const lead = members.slice().sort((a, b) => (b.used - a.used) || (b.painted - a.painted) || (a.n - b.n))[0];
+        heads.push({ h, members, lead });
+      }
+      return heads;
+    };
+    const draw = () => {
+      const heads = headsOf();
+      const mixed = heads.filter(x => new Set(x.members.map(f => (f.type || 'PLA').split(/[\s+-]/)[0])).size > 1);
+      const missing = fil.filter((f, i) => f.used && plan[i] == null);
+      host.innerHTML = `
+        <section class="cm" aria-labelledby="cm-title">
+          <div class="cm-head">
+            <h3 class="fd-h" id="cm-title">Colours on the U1's heads</h3>
+            <p class="cm-sub">${esc(data.source_label)} · ${fil.length} filament${fil.length === 1 ? '' : 's'} listed, ${used.length} used by the model</p>
+          </div>
+          <ol class="cm-heads" aria-label="What each head prints">
+            ${heads.map(x => `<li class="cm-headcard${x.lead ? '' : ' is-idle'}">
+              <span class="cm-dot" style="--sw:${esc((x.lead && x.lead.colour) || 'transparent')}"></span>
+              <span class="cm-hname">Head ${x.h + 1}</span>
+              <span class="cm-hwhat">${x.lead ? `${esc(x.lead.name)}${x.lead.type ? ` · ${esc(x.lead.type)}` : ''}` : 'Not used'}</span>
+              ${x.members.length > 1 ? `<span class="cm-hfrom">filaments ${x.members.map(f => f.n).join(' + ')}</span>` : ''}
+              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, 'Loaded now')} loaded</span>` : ''}
+            </li>`).join('')}
+          </ol>
+          <div class="cm-rows" role="list">
+            ${fil.map((f, i) => `<div class="cm-row${f.used ? '' : ' is-unused'}" role="listitem">
+              ${swatch(f.colour, f.name)}
+              <span class="cm-fname"><b>Filament ${f.n}</b> ${esc(f.name)}${f.type ? ` · ${esc(f.type)}` : ''}
+                <small>${f.used ? (f.painted ? `painted on ${f.painted.toLocaleString()} triangle${f.painted === 1 ? '' : 's'}` : 'used by an object') : 'not used by the model'}</small></span>
+              <label class="sr-only" for="cm-sel-${i}">Head for filament ${f.n}</label>
+              <select id="cm-sel-${i}" data-i="${i}">
+                <option value="">${f.used ? 'Choose a head' : 'Leave out'}</option>
+                ${Array.from({ length: HEAD_COUNT }, (_, h) => `<option value="${h}"${plan[i] === h ? ' selected' : ''}>Head ${h + 1}</option>`).join('')}
+              </select>
+            </div>`).join('')}
+          </div>
+          ${mixed.length ? `<p class="cm-warn" role="alert">Head ${mixed.map(x => x.h + 1).join(' and ')} would get different materials, which print at different temperatures. Choose another head for one of them.</p>` : ''}
+          ${missing.length ? `<p class="cm-warn" role="alert">Filament ${missing.map(f => f.n).join(', ')} is used by the model and needs a head.</p>` : ''}
+          ${data.format === 'prusa' ? '<p class="log-empty">Snapmaker Orca opens PrusaSlicer projects with its own filament colours: load the colours above in those heads, or slice it here in Deja Vu1.</p>' : ''}
+          ${data.unreadable_paint ? `<p class="log-empty">${data.unreadable_paint} painted triangles couldn't be read and stay as they are.</p>` : ''}
+          <div class="cm-actions">
+            <button class="btn small" type="button" data-cm="suggest">Group alike colours</button>
+            ${data.matched ? '<button class="btn small" type="button" data-cm="match">Match the printer\'s heads</button>' : ''}
+            <button class="btn small primary" type="button" data-cm="save"${missing.length ? ' disabled' : ''}>Save a copy with these heads</button>
+          </div>
+          <p class="cm-status" role="status" aria-live="polite"></p>
+        </section>`;
+      qsa('select[data-i]', host).forEach(sel => sel.addEventListener('change', () => {
+        plan[+sel.dataset.i] = sel.value === '' ? null : +sel.value;
+        files.colourPlan = plan.slice();
+        draw();
+        const again = $(sel.id);
+        if (again) again.focus();
+      }));
+      qsa('[data-cm]', host).forEach(b => b.addEventListener('click', () => onAction(b)));
+    };
+    const onAction = async b => {
+      if (b.dataset.cm === 'suggest' || b.dataset.cm === 'match') {
+        plan = ((b.dataset.cm === 'match' ? data.matched : data.suggested) || []).slice();
+        files.colourPlan = plan.slice();
+        draw();
+        toast(b.dataset.cm === 'match' ? 'Each colour now goes to the closest loaded head' : 'Alike colours now share a head', 'ok');
+        return;
+      }
+      if (typeof tourOn === 'function' && tourOn()) { toast('Saving a copy needs the local Deja Vu1 app. The public demo is a recording.', 'warn'); return; }
+      b.disabled = true;
+      const r = await postJSON('/api/colours/apply', { name: entry.name, plan });
+      b.disabled = false;
+      const status = qs('.cm-status', host);
+      if (!r.ok) {
+        if (status) status.textContent = (r.body && r.body.error) || 'The copy could not be saved';
+        toast('Colours not saved', 'warn');
+        return;
+      }
+      if (status) status.innerHTML = `Saved as <button class="chip-btn" type="button" data-open-file="${esc(r.body.file.name)}">${esc(r.body.file.name)}</button>. ${esc(r.body.report.summary)}.`;
+      toast(`Saved ${r.body.file.name}`, 'ok', 4200, { action: { label: 'Open', run: () => openFile(r.body.file.name) } });
+      await loadFiles();
+      qsa('[data-open-file]', host).forEach(x => x.onclick = () => openFile(x.dataset.openFile));
+    };
+    draw();
+  }
+
   async function convertFile(name, button, target) {
     const label = button.textContent;
     button.disabled = true;
     button.textContent = 'Converting…';
-    const r = await postJSON('/api/convert', { name });
+    const plan = files.open && files.open.name === name ? files.colourPlan : null;
+    const r = await postJSON('/api/convert', plan ? { name, plan } : { name });
     button.disabled = false;
     button.textContent = label;
     const host = target || $('fd-convert-report');
@@ -2816,16 +2953,29 @@ const Workshop = (() => {
     // In words: "Your iPhone was on Files · U1 Workshop · benchy.gcode".
     const tabName = (typeof TAB_NAMES !== 'undefined' && TAB_NAMES[offer.tab]) || offer.tab;
     const where = [tabName, offer.printer ? printerName(offer.printer) : null, offer.file].filter(Boolean).join(' · ');
-    $('handoff-text').textContent = `Your ${offer.device_name} was on ${where}. Open the same here?`;
-    el.hidden = false;
-    $('handoff-go').onclick = async () => {
+    const text = `Your ${offer.device_name} was on ${where}. Open the same here?`;
+    $('handoff-text').textContent = text;
+    const go = async () => {
       el.hidden = true;
       dismissedOffer = offer.at;
       if (offer.printer && offer.printer !== currentPrinter) selectPrinter(offer.printer);
       if (offer.tab) showTab(offer.tab);
       if (offer.file) { await loadFiles(); openFile(offer.file); }
     };
+    $('handoff-go').onclick = go;
     $('handoff-dismiss').onclick = () => { el.hidden = true; dismissedOffer = offer.at; };
+    if (!el.hidden) return;
+    el.hidden = false;
+    // The offer waits a few seconds, then moves into the notification orb (button and all), so it
+    // doesn't sit over the page; pointing at it or tabbing into it keeps it where it is.
+    clearTimeout(checkHandoff.fold);
+    const fold = () => {
+      if (el.hidden || el.matches(':hover') || el.contains(document.activeElement)) { if (!el.hidden) checkHandoff.fold = setTimeout(fold, 3000); return; }
+      el.hidden = true;
+      dismissedOffer = offer.at;
+      toast(text, 'info', 3000, { action: { label: 'Open here', run: go } });
+    };
+    checkHandoff.fold = setTimeout(fold, 9000);
   }
 
   /* ================================================================

@@ -525,6 +525,8 @@ def translate_state(status, ctx):
     plate = plate_objects(_obj(status, "exclude_object"))
     if plate and state in ("printing", "paused"):
         out["objects"] = plate
+    if state in ("printing", "paused"):
+        out["sync"] = print_sync(vsd, gm, _obj(status, "motion_report"))
     table = ptc.get("extruder_map_table")
     if isinstance(table, list) and extruders:
         # Only the physical heads' slots: the U1 pads the table to 32 logical
@@ -533,6 +535,31 @@ def translate_state(status, ctx):
                    if isinstance(table[i], int) and table[i] != i and f"T{table[i]}" in extruders}
         if mapping:
             out["extruder_map"] = mapping
+    return out
+
+
+def print_sync(vsd, gm, mr):
+    """
+    Where the running print is, for the 3D twin to follow its own G-code:
+    the byte Klipper has read up to in the file (virtual_sdcard
+    file_position) and the nozzle's position now (motion_report
+    live_position), in the file's coordinates (less the G-code offset, so
+    the per-head offsets of a tool changer don't move it off the path).
+    """
+    out = {"file_position": None, "file_size": None, "live": None, "speed_factor": None}
+    pos, size = _num(vsd.get("file_position")), _num(vsd.get("file_size"))
+    if pos is not None and size and 0 <= pos <= size:
+        out["file_position"], out["file_size"] = int(pos), int(size)
+    live = mr.get("live_position")
+    if isinstance(live, (list, tuple)) and len(live) >= 3:
+        origin = gm.get("homing_origin")
+        origin = list(origin)[:3] if isinstance(origin, (list, tuple)) and len(origin) >= 3 else [0.0, 0.0, 0.0]
+        vals = [_num(live[i]) for i in range(3)]
+        offs = [_num(origin[i], 0.0) for i in range(3)]
+        if all(v is not None and abs(v) < 1e5 for v in vals):
+            out["live"] = [round(vals[i] - (offs[i] or 0.0), 3) for i in range(3)]
+    sf = _num(gm.get("speed_factor"))
+    out["speed_factor"] = sf if sf and 0 < sf < 20 else None
     return out
 
 
@@ -935,7 +962,11 @@ _BASE_OBJECTS = {
     "virtual_sdcard": ["progress", "is_active", "file_position", "file_size"],
     # axis_minimum / axis_maximum: the build volume (Klipper kinematics get_status)
     "toolhead": ["extruder", "position", "homed_axes", "axis_minimum", "axis_maximum"],
-    "gcode_move": ["gcode_position"],
+    "gcode_move": ["gcode_position", "homing_origin", "speed_factor"],
+    # Where the nozzle is now (toolhead "position" is the last command,
+    # which runs up to a second or two ahead of the motion; Klipper
+    # docs/Status_Reference.md). Feeds the 3D twin's G-code sync.
+    "motion_report": ["live_position", "live_velocity"],
     "heater_bed": ["temperature", "target"],
     "print_task_config": ["filament_exist", "filament_type", "filament_color_rgba", "filament_vendor",
                           "extruder_map_table"],

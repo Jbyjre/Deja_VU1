@@ -37,6 +37,16 @@ window.DVWorkspace = (() => {
     const source = left.querySelector('details');
     for (const n of [...side.children]) if (n !== controls) relocate(n, source);
     relocate(controls, inspector); side.append(inspector);
+    // What needs deciding before slicing a project made elsewhere (its colours on the four heads,
+    // converting it for the U1) sits in plain sight under the slice bar, not in the folded details.
+    const intake = document.createElement('div'); intake.className = 'sw-import'; head.append(intake);
+    if ($('fd-convert')) {
+      const note = document.createElement('div'); note.className = 'sw-import-row';
+      note.innerHTML = '<p class="sw-import-note"><b>Made for another printer.</b> Convert it to open in Snapmaker Orca with the U1\'s own settings, or slice it here with a U1 profile.</p>';
+      intake.append(note); relocate($('fd-convert'), note);
+    }
+    relocate($('fd-convert-report'), intake);
+    relocate($('fd-colours-host'), intake);
     const setup = document.createElement('div'); setup.className = 'sw-setup-host'; setup.hidden = true;
     setup.innerHTML = '<h3>Printer, materials & process</h3><p class="field-hint">Save changes as a new profile. Installed presets stay intact.</p><div id="sw-engine-host"></div><div id="sw-tools-host"></div><div id="sw-process-host"></div>';
     side.append(setup);
