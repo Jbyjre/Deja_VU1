@@ -259,6 +259,30 @@ unpacked (a zip bomb is refused in words), and every kind of damage is a
 worded refusal, never a crash. `sample_files.py`
 builds the "Add sample files" set, each labelled for what it is.
 
+### The twin in step with the print
+`print_preview.py` (`GET /api/print/preview`) reads the running file once:
+the outer walls and top surfaces per head and object, each point with its
+time by the file's own feed rates, and a timeline of the nozzle (byte offset
+after each move's line, time, x, y, z; at most about 60,000 points, thinned
+evenly in time, layer and tool changes always kept). Byte offsets count bytes
+(`surrogateescape` keeps every byte), so they match Klipper's
+`virtual_sdcard.file_position`. On a real printer `moonraker_client.py`
+also subscribes to `motion_report.live_position` (the nozzle now; `toolhead`
+`position` is the last command and runs ahead) and `gcode_move.homing_origin`,
+and each state carries `sync` = {file_position, file_size, live (less the
+G-code offset), speed_factor}. In the browser `Twin3D.sync` (`twin3d.js`)
+turns a reading into a moment of the file: the byte read gives the latest
+moment possible, and the live position is matched along the path in the 12
+seconds before it (height counted four times over). Between readings the
+playhead advances at the pace measured between readings, and each reading's
+difference is taken up over 0.3 s (a jump only past 5 s). No match within
+2.5 mm means a move the file doesn't hold (tool change, park), and the twin
+shows the live position. Without a live position (the simulated printer) the
+progress fraction places it, as Klipper defines progress from the file
+position. Each wall vertex carries its time in the shader, so walls are
+clipped by time and appear as they are laid. `tests/test_twin_sync.py` runs
+this code in Node against the sample file.
+
 ### Starting prints safely
 `print_gate.py` is the Confirm Print summary and the interlock:
 `printer_control.start_print()` re-runs it at the moment of starting and
@@ -300,9 +324,33 @@ Every run is logged with what actually happened. Rules made with demo data
 on only watch simulated printers and label anything they send "[Demo
 data]".
 
+### Colours on four heads
+`colour_map.py` reads which filaments a project uses: each object's and
+part's `extruder` and the per-feature filament settings in
+`Metadata/model_settings.config` (PrusaSlicer: `Slic3r_PE_model.config`),
+height-range modifiers in `layer_config_ranges.xml`, and the paint on each
+triangle (`paint_color`; PrusaSlicer `slic3rpe:mmu_segmentation`). Paint is a
+string of hex digits read from the end, one 4-bit code each: a leaf holds its
+state in the top two bits (3 means "the next digit holds state - 3"), any other
+code splits the triangle into children that follow (OrcaSlicer
+`TriangleSelector.cpp` serialize/deserialize, `97e6c71`). Only the states are
+rewritten; splits are copied. The plan is a head per filament: unused ones are
+dropped, four or fewer keep their own, more are merged by average OKLab distance
+with a large penalty for mixing materials, or each goes to the nearest loaded
+head. Writing the plan cuts every per-filament list in `project_settings.config`
+to the heads used (slot k is head k; an empty slot keeps filament 1's settings),
+rebuilds the purge matrix from the largest member values and renumbers
+`extruder`, `support_filament`, `wipe_tower_filament` and the `*_filament_id`
+keys (legacy keys whose "1" meant "default" keep it). The converter runs it
+first for a project with more than four filaments.
+
 ### Conversion
 `converter_3mf.py` rewrites only `Metadata/project_settings.config` of a
-MakerWorld (Bambu Studio) or NexPrint (Elegoo Slicer) project. It follows
+MakerWorld (Bambu Studio), NexPrint (Elegoo Slicer), OrcaSlicer or Orca-fork
+project (Creality Print, QIDI Studio, Flashforge: recognised by their project
+settings). A PrusaSlicer project keeps its own layout: Orca opens it with its
+paint and per-object extruders and its own printer settings (`Plater.cpp`,
+`En3mfType::From_Prusa`), so only its colours are fitted. It follows
 Snapmaker Orca's own loader (`PresetBundle.cpp`, `Preset.cpp`
 `load_external_preset`): `inherits_group` names Snapmaker's U1 profiles
 and `different_settings_to_system` lists what the project keeps, so every

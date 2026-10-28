@@ -205,11 +205,22 @@ root should hand over to `welcome.html`.
 - `print_preview.py` (`GET /api/print/preview`): the running print's outer walls and top
   surfaces per head and object from its own G-code (real printer: Moonraker file download;
   else library or samples), delta-encoded, cached per file version. Drawn by twin3d.js.
+  Each path point has its nominal time (`walls_t`/`fill_t`) and `timeline` maps file bytes to
+  time and nozzle position. Real printers add `state.sync` (Klipper `file_position`, and
+  `motion_report.live_position` less `homing_origin`); `Twin3D.sync` in twin3d.js follows the
+  G-code between readings and re-syncs on each (tested in Node: `tests/test_twin_sync.py`).
+  Byte offsets must count bytes: decode files with `surrogateescape`, never `replace`.
+- `colour_map.py` (`GET /api/colours/plan`, `POST /api/colours/apply`, module `converter`):
+  which filaments a 3MF really uses (objects, parts, per-feature keys, height ranges, painted
+  triangles) and a head for each; writes a copy using at most four. Orca family and PrusaSlicer
+  layouts; paint codec per OrcaSlicer TriangleSelector. The converter runs it for more than four
+  filaments. Panel: workshop.js `renderColours`, moved under the slice bar by slicer-workspace.js.
 - `memory.py` (safety copies in `<data>/snapshots/`, every 6 h / start-up / before updates,
   restore with undo) and `storage.py` (`.<name>.prev` last-good copy on every save; damaged
   files repaired from it or a safety copy). `insights.py` (`/api/insights`, evidence
-  thresholds), `orca_import.py` (Snapmaker_Orca / OrcaSlicer data folders, recent projects,
-  user presets; paths never sent to the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
+  thresholds), `orca_import.py` (recent projects from eight slicers' data folders, keys from each
+  one's `version.inc`; user presets from Snapmaker_Orca / OrcaSlicer only; paths never sent to
+  the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
 - `app_updates.py`: channels `stable` (releases, the default; checked hourly) and `latest` (main
   branch: per-file git blob hashes against GitHub's tree, only changed files staged), `watch()`
   thread, `git_update()`, `prepare(repair=True)` (same-version reinstall).
@@ -281,6 +292,9 @@ root should hand over to `welcome.html`.
 - `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
   message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
   and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.
+  A repeat of a showing message counts up (×2); time on screen grows with the words;
+  timers pause while held or while the tab is hidden; history survives a reload
+  (sessionStorage, without actions). The handoff offer folds into the orb after 9 s.
 - `guide.js`: the tour engine (`Guide.start(steps)`: a glass callout with a tail and a beacon that
   springs from stop to stop, across screens, below the sticky top bar; full-screen chapters for
   version tours; "Try it" actions limited to buttons a person could press). The quick tour

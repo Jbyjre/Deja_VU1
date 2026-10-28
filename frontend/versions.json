@@ -2,6 +2,46 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.13.0",
+      "date": "2026-10-28",
+      "name": "In step with the print",
+      "published": true,
+      "summary": "The 3D twin runs along the print's own G-code and keeps in step with the printer, projects from any slicer bring their colours onto the four heads, and notifications count repeats and wait for you.",
+      "highlights": [
+        {
+          "title": "In step with the print",
+          "tab": "overview",
+          "target": "#twin-card",
+          "text": "While a print runs, the nozzle follows the file's own G-code and is checked against the printer about four times a second. Walls appear where and when they are laid. The line under the twin says whether it is in step."
+        },
+        {
+          "title": "Colours on four heads",
+          "tab": "files",
+          "target": "#convert-card",
+          "text": "Bring a project from MakerWorld, Printables, Bambu Studio, Creality Print, PrusaSlicer or another slicer. Open it to see which head prints each colour; five or more colours are grouped by likeness, and you can change any of them."
+        },
+        {
+          "title": "From your slicer",
+          "tab": "files",
+          "target": "#orca-import",
+          "text": "Look on this computer finds recent projects in eight slicers, so you can keep your slicer and use Deja Vu1 beside it."
+        },
+        {
+          "title": "Calmer notifications",
+          "target": "#orb",
+          "text": "A repeated message counts up instead of stacking, a long one stays longer, and the line along the bottom shows the time left. Point at a message to hold it."
+        }
+      ],
+      "changes": [
+        "The 3D twin follows the running print's own G-code: each reading of the printer's live position and the byte it has read fixes the moment in the file, and between readings the nozzle runs along the path at the printer's own pace. Walls appear where and when they are laid; a tool change or park shows the live position. Tested against a printer simulated from the sample file: within 0.016 s between readings.",
+        "Files shows Colours on the U1's heads for a multi-colour project: which filaments the model uses, a suggested head for each (alike colours share, unused ones are left out, or the closest loaded head), and Save a copy with these heads. The converter fits five or more colours by itself.",
+        "The converter takes projects from Creality Print, QIDI Studio, Flashforge Orca, other Orca forks and PrusaSlicer, besides MakerWorld, NexPrint and OrcaSlicer. Pick up where you left off finds recent projects in eight slicers, and an Orca preset profile can set a filament per head.",
+        "Converting and fitting colours sit under the slice bar in the slicing workspace.",
+        "Notifications count repeats, stay longer for long messages, show the time left, wait while the tab is hidden and can be flicked away on a phone. Open the same here? moves into the orb after nine seconds.",
+        "Large replies are sent compressed (a print preview from 842 KB to 271 KB), file names wrap at underscores and dots, and Cura's outer walls and skins are drawn in the twin."
+      ]
+    },
+    {
       "version": "0.12.0",
       "date": "2026-10-27",
       "name": "One thing at a time",

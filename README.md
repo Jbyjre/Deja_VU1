@@ -268,6 +268,33 @@ it would overwrite a file you edited by hand. Then start the launcher again.
 The terminal steps were tested on Linux against a rehearsal of the rewrite.
 The GitHub Desktop steps have not been tried on Windows or macOS.
 
+## What's new in 0.13.0
+
+- **The 3D twin keeps in step with the print.** While a file prints, the nozzle
+  in the twin runs along that file's own G-code, and about four times a second
+  Deja Vu1 checks it against where the printer says its nozzle is now and how far
+  into the file it has read. Walls appear where and when they are laid, the
+  plastic just laid glows briefly, and a tool change or park shows the real
+  position until the nozzle is back on the path. This works for G-code from any
+  slicer, because it reads the file being printed. A line under the twin says
+  whether it is in step. Tested against a printer simulated from the sample file
+  (within 0.016 s between readings); not yet seen on a physical U1.
+- **Colours from any slicer, on four heads.** Open a multi-colour project in Files
+  and **Colours on the U1's heads** shows which filaments the model really uses
+  and which head prints each. Five or more colours are grouped by how alike they
+  look, unused AMS slots are left out, and with a printer connected each colour
+  can go to the closest loaded head. Change any row, then **Save a copy with
+  these heads**. The converter now takes projects from MakerWorld, Printables
+  (PrusaSlicer), NexPrint, Bambu Studio, OrcaSlicer, Creality Print, QIDI Studio,
+  Flashforge Orca and other Orca forks, and fits their colours by itself.
+- **Keep your slicer.** **Pick up where you left off** finds recent projects in
+  eight slicers on this computer, and a profile made from your Orca presets can
+  set a filament for each head. In the slicing workspace, converting and fitting
+  colours now sit under the slice bar.
+- **Calmer notifications.** Repeats count up instead of stacking, long messages
+  stay longer, a hairline shows the time left, and a message that arrives while
+  the tab is hidden waits for you.
+
 ## What's new in 0.12.0
 
 - **One thing at a time.** Overview, Printers, Files, Care and Settings open on
@@ -499,9 +526,11 @@ your phone.
 
 **File fit.** The pre-flight check flags extrusion outside the 270 × 270 × 270 mm
 build volume, unknown toolheads and unsafe temperatures, with line numbers.
-MakerWorld, NexPrint and OrcaSlicer projects can be converted where their
-settings and geometry are supported. Select one plate for slicing; complete
-vendor paint and texture fidelity is still limited.
+Projects from MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer and its
+forks (Creality, Elegoo, QIDI, Flashforge) and PrusaSlicer can be converted where
+their settings and geometry are supported, with five or more colours fitted to
+the four heads. Select one plate for slicing; complete vendor texture fidelity
+is still limited.
 
 **Filament.** Four toolheads mean four chances to load the wrong spool. Deja Vu1
 compares the colour each toolhead was sliced for with what the printer reports,
@@ -531,7 +560,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **Start a print from your phone** | Pick a file, read one Confirm Print summary (pre-flight check, filament match, spool weight, maintenance, time, grams and cost) and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
 | **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more, with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
 | **Mixed-nozzle planner** | Calculates a common grid and checks preferred heights against U1 nozzle limits. It does not slice. The workspace separately sends validated preferences to a capable engine; Confirm Print checks fitted nozzles. |
-| **MakerWorld / NexPrint / OrcaSlicer → U1** | Converts supported projects for the U1 while retaining source settings and colours. Multi-plate layouts use the U1 grid; select and separate one plate for local slicing. Failures include a reason and copyable report. Complete vendor extension/texture fidelity is not guaranteed. |
+| **Projects from other slicers → U1** | Converts MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer, Creality Print, QIDI Studio, Flashforge Orca and PrusaSlicer projects for the U1 while retaining source settings and painted colours; **Colours on the U1's heads** fits any number of colours onto the four heads (alike colours share, unused slots are left out, or the closest loaded head) and saves a copy. Multi-plate layouts use the U1 grid; select and separate one plate for local slicing. Failures include a reason and copyable report. Complete vendor extension/texture fidelity is not guaranteed. |
 | **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
@@ -763,6 +792,7 @@ recorded static demo passed at both widths.
 | Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
 | Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
 | Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
+| G-code sync of the 3D twin, colours on four heads, slicer import (0.13.0) | Klipper's `live_position` and `file_position` read from its `docs/Status_Reference.md`; the twin's sync run in Node against the two-Benchy sample and a printer simulated from it (exact on each reading, within 0.016 s between readings at 0.8× speed, pauses and tool changes handled); paint codes, per-feature filament settings and Orca's PrusaSlicer import read from OrcaSlicer `97e6c71`; Cura tags from CuraEngine; slicer folder names from each slicer's `version.inc`; unit tests for the paint codec, the plan and the rewritten projects; Chromium at 1366/390 px | No physical U1, so the sync has not met real readings; a mapped project not yet opened in Snapmaker Orca; the slicer search for recent projects not run on a real Windows or macOS install |
 | Parts of a screen, Get ready to slice, other Klipper printers, search (0.12.0) | Chromium at 1366/390 px on the local server and the static online demo: every part of every sectioned screen, all 60 search places reach a visible card, the 0.12.0 and quick tours find their stops; the slicer search walked end to end with a stand-in program (found, used, checked); a stand-in one-head 235 × 235 × 250 mm Klipper printer added through the app, its card and twin card shown; unit tests for the search, the profiles and Confirm Print against a smaller printer | The slicer search not run on a real Windows or macOS install; no physical non-U1 printer; the slicing workspace and converter still target U1 presets |
 | Away from home, glass orb (0.11.0) | Unit tests against a stand-in `tailscale` program answering in the formats of Tailscale's source (`eba00ab`); the server refuses a phone or tailnet request to switch sharing (403); the code's link checked; Chromium at 1366/412 px | No real Tailscale account, HTTPS approval, phone on mobile data or Extended Firmware VPN tried |
 | Printer sign-in, typed addresses, camera sources, firmware 2.0.0 file names (0.10.0) | Read against Snapmaker's u1-moonraker `a308cfa` and u1-klipper `93cb12f`, the Extended Firmware `417e639` and its camera service `9279584`; stand-in Moonraker tests for the login, the key, the camera list, the snapshot, the MJPEG feed, `req_id` and a failed reply, through the real server | No physical U1, real Extended Firmware camera or Web Authentication tried |
