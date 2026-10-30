@@ -49,7 +49,9 @@ the owner's private repository.
 ## Names
 
 Snapmaker and U1 are Snapmaker's names. Deja Vu1 is an independent project,
-not made or endorsed by Snapmaker. The digital twin is drawn from
+not made or endorsed by Snapmaker. Snapmaker is sending the project a U1
+through its Innovation Fund's hardware sponsorship (October 2026), for
+testing on a real printer. The digital twin is drawn from
 Snapmaker's published product picture and specifications; where a size is
 estimated, the app says so.
 

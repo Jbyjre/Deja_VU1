@@ -8,6 +8,11 @@ source already turned up about a dozen things that would each have been a bug
 on a first real connection. The first real connection is where anything the source
 doesn't show will turn up, and this page is how to help find it.
 
+Snapmaker shipped a U1 to the maintainer on 29 October 2026 through the
+Innovation Fund's hardware sponsorship, so the first connection will run on that
+printer. A session on your U1 still helps: a second printer, on another network
+and with other filaments, catches things one printer can't.
+
 ## What it involves
 
 - **About 30 to 45 minutes**, on a video call with the maintainer or on your

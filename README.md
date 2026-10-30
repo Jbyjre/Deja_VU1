@@ -19,10 +19,13 @@ in **Settings → Version & updates**.
 **Install in one paste** on [Windows](#windows-paste-into-powershell) or
 [Mac](#mac-paste-into-terminal), or use a [no-code option](#no-code-two-other-ways).
 
-> **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
-> one and can spare 30 to 45 minutes, help run its first real connection. It's
-> watch-only: you watch a print you're already running, and nothing is started
-> or paused from Deja Vu1. **[How it works, and how to sign up](docs/first-connection.md)**
+> **A real U1 is on its way.** Snapmaker is sending Deja Vu1 a U1 through the
+> Innovation Fund's hardware sponsorship (shipped 29 October 2026). Until it
+> arrives, Deja Vu1 has never talked to a real U1; the [roadmap](#roadmap) lists
+> the tests it will run first. If you own a U1 and can spare 30 to 45 minutes, you
+> can still help with a second printer. It's watch-only: you watch a print you're
+> already running, and nothing is started or paused from Deja Vu1.
+> **[How it works, and how to sign up](docs/first-connection.md)**
 
 ## Ways to use it
 
@@ -758,7 +761,9 @@ printer figures, so they work the same with or without a printer connected.
 
 ## Current status
 
-**No physical U1 or real phone has been verified.** Printer controls, filament
+**No physical U1 or real phone has been verified.** Snapmaker shipped a U1 for
+testing on 29 October 2026 (Innovation Fund hardware sponsorship); the
+[roadmap](#roadmap) lists the order of the first tests. Printer controls, filament
 readback, camera/time-lapse and queue handling have simulator and authenticated
 stand-in coverage. Start with the [watch-only first connection](docs/first-connection.md).
 LED rings and the optical colour sensor have tested decision logic, without
@@ -990,11 +995,15 @@ shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
 
 ## Roadmap
 
-**With access to a U1:**
+**With the sponsored U1 (shipped 29 October 2026):**
 
 1. Connect to a real U1 and work through [the list of things only a real
    machine can confirm](docs/real-printer.md#what-cannot-be-checked-without-the-printer)
-   (the Details panel shows every exchange).
+   (the Details panel shows every exchange). In order: watch only (live readings
+   against the U1's own screen, reconnects); read back the fitted nozzles and
+   loaded filaments; one small known-safe print through pre-flight and Confirm
+   Print; then pause, resume, cancel, error recovery and queue handoff. Each stage
+   goes into [Current status](#current-status) with what was seen.
 2. Confirm maintenance thresholds against how the machine actually wears.
 3. Build the LED rings, print the dock brackets, wire the WS2812 chain,
    implement the driver (or wire up WLED instead).
