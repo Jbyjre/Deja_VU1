@@ -21,6 +21,10 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.2 (30 October 2026): Say that Snapmaker is sending a U1 for testing
+
+- Say that Snapmaker is sending a U1 for testing
+
 ## 0.13.1 (30 October 2026): CLAUDE.md, sessions merge their own pull request once the work is done
 
 - CLAUDE.md, sessions merge their own pull request once the work is done
