@@ -59,6 +59,11 @@ trust the code and fix this file.
 - Default: commit finished work on a branch, open a PR, and merge it with one
   merge commit (the repo's convention) when there are no conflicts and checks
   are green or absent. Don't wait on pending CI. Never force-push.
+- Auto-merge: allowed (the owner, 29 October 2026). Most sessions merge their own
+  pull request once the work is done and checked; ask first when the work is
+  unfinished, when it puts something public the owner has not seen, or when the
+  owner says not to merge. This is merging only: no PR/CI watching or GitHub
+  auto-merge toggle unless asked. The private repository's CLAUDE.md says the same.
 - Install (the owner, 24 October 2026): the copy-and-paste blocks (PowerShell for
   Windows, Terminal for Mac/Linux) are the main install method in README, getting
   started and welcome.html; ZIP and GitHub Desktop are the no-code options. The
