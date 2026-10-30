@@ -21,6 +21,10 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.1 (30 October 2026): CLAUDE.md, sessions merge their own pull request once the work is done
+
+- CLAUDE.md, sessions merge their own pull request once the work is done
+
 ## 0.13.0 (28 October 2026): in step with the print
 
 - **The 3D twin follows the print's own G-code.** The preview of the running

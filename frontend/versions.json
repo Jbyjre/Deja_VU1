@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.13.1",
+      "date": "2026-10-30",
+      "name": "CLAUDE.md, sessions merge their own pull request once the work is done",
+      "published": true,
+      "summary": "One change merged on GitHub since the last release.",
+      "changes": [
+        "CLAUDE.md, sessions merge their own pull request once the work is done"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.13.0",
       "date": "2026-10-28",
       "name": "In step with the print",
