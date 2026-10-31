@@ -245,7 +245,7 @@ to start.
    $ProgressPreference = 'SilentlyContinue'
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
    try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
-   Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+   Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
    Start-Process "$dest\start-windows.bat"
@@ -260,7 +260,7 @@ to start.
    cd ~/Documents/Deja_VU1 && python3 start.py
    ```
 
-   The same blocks are in **Settings → Version & updates → Update with a
+   The same blocks are in **Settings → Version & updates → Update or repair with a
    command**. The Windows block has not been run on a Windows computer yet; the
    Mac and Linux block was tested on Linux.
 3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
@@ -279,6 +279,34 @@ The built-in **app-data backup** (Settings) includes settings, library files and
 per-printer records, with validated recovery into a separate copy. Make one
 before your first update. It excludes printer firmware and external
 engines/presets; see [backup and recovery](backup-and-recovery.md).
+
+### If Deja Vu1 won't open
+
+Your browser says "Deja Vu1 isn't running right now", or the dashboard stopped
+answering? Paste one block. It starts Deja Vu1 in Documents if it isn't
+running, then that window shows **Deja Vu1 is ready and fully working**, or what
+is wrong and the next block to paste. Leave the window open: closing it stops
+Deja Vu1.
+
+   **Windows:** open a new **PowerShell** window and paste:
+
+   ```powershell
+   $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+   if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
+   Set-Location $dest
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+   ```
+
+   **Mac, Linux or Raspberry Pi:** open a new Terminal window and paste:
+
+   ```bash
+   [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
+   cd ~/Documents/Deja_VU1 && python3 start.py
+   ```
+
+If that window still shows a problem, paste the update block above: it also
+repairs a copy, putting fresh app files in place. Your settings, printers and
+files stay.
 
 ## What has not been proved yet
 

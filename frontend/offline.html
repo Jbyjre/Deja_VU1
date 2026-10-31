@@ -1,16 +1,41 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f0f1f5"><title>Deja Vu1 · Offline</title><style>body{font:18px/1.6 system-ui,sans-serif;background:#f0f1f5;color:#232d3d;max-width:560px;margin:10vh auto;padding:28px}h1{line-height:1.15}a{display:inline-block;padding:12px 20px;background:#164fc9;color:white;border-radius:12px;text-decoration:none;margin:0 8px 8px 0}a.alt{background:#fff;color:#164fc9;border:1px solid #c5d3f2}code{font-size:.92em;background:#e2e5ec;padding:1px 6px;border-radius:6px}ol{padding-left:1.2em}#check{color:#4b5568}</style>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f0f1f5"><title>Deja Vu1 · Offline</title><style>body{font:18px/1.6 system-ui,sans-serif;background:#f0f1f5;color:#232d3d;max-width:640px;margin:8vh auto;padding:0 16px 28px}h1{line-height:1.15;margin-bottom:.4em}h2{font-size:1.05em;margin:1.6em 0 .3em}a.btn{display:inline-block;padding:12px 20px;background:#164fc9;color:white;border-radius:12px;text-decoration:none;margin:0 8px 8px 0}a.alt{background:#fff;color:#164fc9;border:1px solid #c5d3f2}code{font-size:.92em;background:#e2e5ec;padding:1px 6px;border-radius:6px}ol{padding-left:1.2em}#check{color:#4b5568}.note{background:#fff;border:1px solid #c5d3f2;border-radius:14px;padding:12px 16px}.os{display:flex;gap:6px;margin:8px 0}.os button,.copy{font:inherit;font-size:15px;padding:6px 14px;border-radius:10px;border:1px solid #c5d3f2;background:#fff;color:#164fc9;cursor:pointer}.os button[aria-pressed=true]{background:#164fc9;color:#fff}.term{position:relative;background:#1f2533;color:#eef1f6;border-radius:14px;margin:6px 0 14px}.term pre{margin:0;padding:48px 16px 16px;overflow-x:auto;font:500 12.5px/1.6 ui-monospace,Menlo,Consolas,monospace;white-space:pre}.term .copy{position:absolute;top:8px;right:8px}.term code{background:none;padding:0;border-radius:0;font-size:1em;color:inherit}.term[hidden]{display:none}details{margin-top:8px}summary{cursor:pointer;color:#164fc9}small{color:#4b5568}</style>
 <h1 id="title">Your dashboard is out of reach.</h1>
 <p id="lead">No live printer readings are available. No controls have been sent or queued.</p>
+<p class="note" id="updating" hidden>Deja Vu1 is installing an update and restarting. This usually takes under a minute. This page goes back to your dashboard by itself.</p>
 <div id="here" hidden>
 <p>The Deja Vu1 program on this computer is stopped or still starting. The dashboard, demo data included, comes from that program, so it has to be running.</p>
+<h2>Start it again</h2>
 <ol><li>Open your Deja Vu1 folder.</li><li>Double-click <code>start-windows.bat</code> (Windows), <code>start-mac.command</code> (Mac) or <code>start-linux.sh</code> (Linux).</li><li>Leave the window that opens running. Closing it stops the dashboard.</li></ol>
-<p>The address is <code>http://localhost:8000</code> unless you chose another port.</p>
-<p>So this doesn't happen again: in Deja Vu1, open <strong>Settings → Desktop app</strong> and turn on <strong>Start Deja Vu1 when this computer starts</strong>.</p>
+<h2>Or paste one block</h2>
+<p>Copy this into a new PowerShell window (Windows) or Terminal window (Mac, Linux) and press Enter. It starts Deja Vu1 if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. Leave the window open.</p>
+<div class="os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
+<div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
+<div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+<details><summary>Still not working? Repair the app files</summary>
+<p>This block stops any stuck copy, downloads fresh app files from GitHub, puts them in your Deja Vu1 folder in Documents and starts it. Your settings, printers and files stay.</p>
+<div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
+$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
+Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
+Start-Process "$dest\start-windows.bat"</code></pre></div>
+<div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+</details>
+<p><small>These blocks use the Deja Vu1 folder in Documents. If yours is somewhere else, double-click the launcher in that folder instead. The address is <code>http://localhost:8000</code> unless you chose another port.</small></p>
+<p>So this doesn&rsquo;t happen again: in Deja Vu1, open <strong>Settings &rarr; Desktop app</strong> and turn on <strong>Start Deja Vu1 when this computer starts</strong>.</p>
 </div>
-<div id="away"><p>Keep the computer running Deja Vu1 awake, leave its launcher window open, and reconnect to your home Wi-Fi or your private remote connection.</p></div>
+<div id="away"><p>Keep the computer running Deja Vu1 awake, leave its launcher window open, and reconnect to your home Wi-Fi or your private remote connection. On that computer, Settings &rarr; Version &amp; updates has a block that starts Deja Vu1 and checks it.</p></div>
 <p id="check" aria-live="polite"></p>
-<a href="./?dashboard">Try again</a>
-<a class="alt" href="https://deja-vu1.jmath1110.workers.dev/?demo" target="_blank" rel="noopener">Explore with demo data meanwhile</a>
+<a class="btn" href="./?dashboard">Try again</a>
+<a class="btn alt" href="https://deja-vu1.jmath1110.workers.dev/?demo" target="_blank" rel="noopener">Explore with demo data meanwhile</a>
 <p><small>The demo runs online from the published copy, with the same screens and a simulated printer farm. It needs an internet connection.</small></p>
 <p><small>This page only explains the connection problem. It does not show saved printer readings.</small></p>
 <script>
@@ -22,12 +47,32 @@
     document.getElementById('title').textContent = 'Deja Vu1 isn\u2019t running right now.';
     document.getElementById('lead').textContent = 'Your settings and files are safe, and nothing was sent to a printer.';
   }
+  var updating = 0;
+  try { updating = Number(sessionStorage.getItem('dv-updating')) || 0; } catch (e) { updating = 0; }
+  if (Date.now() - updating < 5 * 60 * 1000) {
+    document.getElementById('updating').hidden = false;
+    document.getElementById('title').textContent = 'Deja Vu1 is restarting.';
+  }
+  function pick(os) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-os]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-os') === os)); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-block]'), function (b) { b.hidden = b.getAttribute('data-block') !== os; });
+  }
+  pick(/Win/i.test(navigator.userAgent) ? 'win' : 'unix');
+  Array.prototype.forEach.call(document.querySelectorAll('[data-os]'), function (b) { b.onclick = function () { pick(b.getAttribute('data-os')); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('.copy'), function (b) {
+    b.onclick = function () {
+      var code = b.parentNode.querySelector('code'), done = function (t) { b.textContent = t; setTimeout(function () { b.textContent = 'Copy'; }, 2500); };
+      var select = function () { var r = document.createRange(); r.selectNodeContents(code); getSelection().removeAllRanges(); getSelection().addRange(r); done('Press Ctrl+C'); };
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(code.textContent).then(function () { done('Copied'); }, select);
+      else select();
+    };
+  });
   var check = document.getElementById('check'), tries = 0;
   function again() {
     tries++;
     check.textContent = 'Checking again every 3 seconds. This page goes back to your dashboard by itself when Deja Vu1 answers.';
     fetch('/api/modules', { cache: 'no-store' }).then(function (r) {
-      if (r.ok) location.replace('./?dashboard');
+      if (r.ok) { try { sessionStorage.removeItem('dv-updating'); } catch (e) {} location.replace('./?dashboard'); }
       else setTimeout(again, 3000);
     }).catch(function () { setTimeout(again, tries < 200 ? 3000 : 15000); });
   }

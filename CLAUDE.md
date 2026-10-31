@@ -82,7 +82,7 @@ trust the code and fix this file.
   A new version's `highlights` become its in-app tour; point each at a real element.
 - Updates (the owner, 25 October 2026): installing must work every time. 0.8.0's Install
   button crashed in `_require_idle_for_update` (now guarded), so 0.8.0 copies need the
-  one-paste update once. The update blocks live in `tools/update_blocks.py`; README,
+  one-paste update once. The update and Start and check blocks live in `backend/paste_blocks.py` (re-exported by `tools/update_blocks.py`); README,
   getting started, welcome.html and Settings show them identically
   (`tests/test_install_blocks.py`). Settings can also Restart, Repair files, make a
   Safety copy and Stop (`/api/app/restart|repair|stop`). Never change the first lines of
@@ -613,6 +613,25 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   `.cmd`, a macOS LaunchAgent or an XDG autostart entry, each with `DEJAVU_NO_BROWSER=1`.
   Only Linux is exercised here. `start.py` restarts a crashed server (not exit 0, 75, 3 or a
   signal), at most `CRASH_LIMIT` times in `CRASH_WINDOW`. `offline.html` links the online demo.
+- Updates never leave the dashboard down (the owner, 31 October 2026: Install "did nothing", then the offline
+  page). `_install_update(background=True)` checks the launcher and idle printers at once (refusals name the
+  printer), then `_run_install` runs on a thread; `app_updates.job()` (in `/api/app/info` as `update_job`) carries
+  the step and download bytes, and versions.js `followJob()` shows it and resumes after a reload. start.py never
+  dies on an update error: `apply_update()` catches anything from `apply_pending`, writes
+  `<data>/update-result.json` (`readiness.last_update()`, shown as a toast) and `<data>/logs/launcher.log`, and
+  starts the server anyway. `apply_pending` removes `pending.json` first (`_discard`), so a folder Windows keeps
+  locked is never applied or rolled back twice, and sets `last_error`. The health check matches
+  `DEJAVU_LAUNCH_ID` or the PID, never through a proxy, for up to `START_WAIT` (90 s). The server closes its port
+  before its slow clean-up, so reloads fail fast to the offline page instead of hanging.
+- `readiness.py` (`POST /api/app/ready`, Settings → Check it all works, `start.py --check`, and the launcher window
+  after every start): ok / note / bad per check, `next` names the block ("start" or "repair"). The launcher adds
+  the address, page and demo data over HTTP. Older servers (404) get a note, not a failure.
+- `paste_blocks.py` is the one source of the Start and check and update blocks (it travels with updates;
+  `tools/update_blocks.py` re-exports it). Copies: README, getting started, index.html (`data-start-block`,
+  `data-os-block`), offline.html (`data-block`) and welcome.html (update blocks only); `tests/test_install_blocks.py`.
+  The Windows update block also stops the parent launcher (only a parent running start.py). offline.html is cached
+  by sw.js: bump `OFFLINE_CACHE` when it changes. app.js `watchServer()` shows the "stopped answering" strip.
+  The server logs only POSTs and refused requests, so the ready display stays readable.
 - `drawSafely(part, fn)` in app.js: workshop `applyState`, the fleet message and the ribbon's card
   renderers each draw inside it, so one failing part no longer skips the rest; the first failure per
   part is a toast naming it. `watchForUpdate()` (every 15 s) reloads open pages when `/api/app/info`
