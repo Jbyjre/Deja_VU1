@@ -588,6 +588,27 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   Software-rendered heavy model frame pacing remains poor; disclose regressions.
 
 
+## Real-printer audit (31 October 2026)
+
+- `toolhead_position` is motion_report `live_position` (where the nozzle is) with
+  `position_source: "live"`, else toolhead `position` (the end of the last queued move)
+  labelled `"commanded"`; `homed_axes` is reported. The U1's Klipper always loads
+  motion_report (`klippy/stepper.py`) and keeps the latest move (`chelper/trapq.c`).
+  workshop.js moves the twin's nozzle with a critically damped spring (`SPRING_W`),
+  not the shared easing, so 4 Hz readings don't make it step.
+- A `link_lost` state (pushed to a page that is already open) disables Pause/Cancel/Home and
+  never offers the firmware restart; `linkLostWords()` in app.js says why. A fresh page gets
+  `{"connected": false}` instead, so `EMPTY('No printer connected', ...)` names an added printer
+  that isn't answering (`unreachablePrinter()`, from `/api/fleet/registry` via `addedPrinters`,
+  loaded before the cards draw). Every Cancel button asks twice (`confirmCancel`).
+- The U1 ignores PAUSE over a skipped object (`pause_resume.py`); `pause_print` says so.
+- `fleet.normalise_url` keeps only scheme, host and port; `/api/printers/test` retries
+  `:7125` when no port was typed. Reconnects wait at most `RECONNECT_MAX` (10 s).
+- `app._bind()` retries a busy port, then prints what to do and exits `PORT_IN_USE` (3);
+  `start.py` returns 0 for it (the Windows batch file would blame Python) and opens the
+  browser only when `/api/app/info` answers. `offline.html` (served by `sw.js`) explains
+  a stopped program on localhost and returns to the dashboard when the server answers.
+
 ## Public marketing material
 
 The campaign copy, claim limits, ad guide and the 24 campaign cards moved to the

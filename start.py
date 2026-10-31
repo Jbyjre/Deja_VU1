@@ -23,6 +23,7 @@ if sys.version_info < (3, 8):
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("PORT", 8000))
+PORT_IN_USE = 3                # backend/app.py exits with this when the port is taken
 
 
 def open_when_ready():
@@ -30,9 +31,14 @@ def open_when_ready():
     for _ in range(100):
         try:
             with socket.create_connection(("127.0.0.1", PORT), timeout=0.2):
-                break
+                pass
         except OSError:
             time.sleep(0.1)
+            continue
+        # Something answers on the port: open it only if it is Deja Vu1, never another program.
+        if already_running():
+            break
+        time.sleep(0.1)
     else:
         return
     import desktop
@@ -105,6 +111,10 @@ def supervise():
                 threading.Thread(target=open_when_ready, daemon=True).start()
             code = child.wait()
             child = None
+            if code == PORT_IN_USE:
+                # The server has said why in words. Exit quietly, so the Windows
+                # launcher doesn't add its "needs Python" note to a port problem.
+                return 0
             if code != 75:
                 return code
     finally:

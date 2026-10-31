@@ -294,6 +294,27 @@ class TestPrinting(RealPrinterAPI):
         status, body = self.request("/api/printers/test", {"moonraker_url": bare, "api_key": key})
         self.assertTrue(body["ok"], body)
 
+    def test_a_web_page_address_falls_back_to_moonrakers_port(self):
+        # "http://<printer>" is its web page (port 80). When nothing there is
+        # Moonraker, the test tries port 7125 and hands back the address that answered.
+        import discovery
+        asked = []
+
+        def probe(url, api_key=None, timeout=3.0):
+            asked.append(url)
+            ok = url.endswith(":7125")
+            return {"ok": ok, "url": url, "moonraker_version": None, "klippy_state": "ready" if ok else None,
+                    "u1": ok, "toolheads": 4 if ok else None, "needs_key": False,
+                    "error": None if ok else "Something answered there, but it isn't Moonraker"}
+        with patch.object(discovery, "probe", probe):
+            status, body = self.request("/api/printers/test", {"moonraker_url": "http://192.0.2.7/#/"})
+            self.assertEqual((status, body["ok"], body["url"]), (200, True, "http://192.0.2.7:7125"))
+            self.assertEqual(asked, ["http://192.0.2.7", "http://192.0.2.7:7125"])
+            asked.clear()
+            status, body = self.request("/api/printers/test", {"moonraker_url": "http://192.0.2.7:8080"})
+            self.assertEqual((body["ok"], body["url"]), (False, "http://192.0.2.7:8080"))
+            self.assertEqual(asked, ["http://192.0.2.7:8080"])
+
     def test_a_name_klipper_cannot_parse_is_refused_before_sending(self):
         # Klipper ends arguments at "#", "*" or ";" (u1-klipper gcode.py), so
         # firmware 2.0.0 refuses SDCARD_PRINT_FILE with an empty name.

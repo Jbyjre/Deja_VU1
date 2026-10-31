@@ -783,12 +783,17 @@ function paint(host, html) {
   return first;
 }
 
-const EMPTY = (title, sub) => `
+const EMPTY = (title, sub) => {
+  // Every "No printer connected" card names an added printer that isn't answering instead.
+  const away = title === 'No printer connected' && unreachablePrinter();
+  if (away) [title, sub] = unreachableWords(away);
+  return `
   <div class="empty">
     <span class="empty-mark" aria-hidden="true"></span>
     <p class="empty-title">${esc(title)}</p>
     <p class="empty-sub">${esc(sub)}</p>
   </div>`;
+};
 
 /* ---- temperature units --------------------------------------------------
  * A real user-facing preference: stored per-viewer, used everywhere a
@@ -964,6 +969,32 @@ function needsServerEmpty(what) {
     <p class="empty-sub">${esc(what ? `${what[0].toUpperCase()}${what.slice(1)} runs` : 'This runs')} on the server, which isn't running at this address.
       <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>
   </div>`;
+}
+
+/* Printers added by address, from the dashboard's own list (/api/fleet/registry,
+ * loaded by workshop.js): names and link words, never printer figures. */
+let addedPrinters = [];
+
+/* The added printer this screen is waiting for, when none of them answers. With
+ * demo data off, "No printer connected" would read as if it had been removed. */
+function unreachablePrinter() {
+  if (demoOn || serverMissing() || !addedPrinters.length || addedPrinters.some(p => p.connected)) return null;
+  return addedPrinters.find(p => p.id === currentPrinter) || addedPrinters[0];
+}
+
+async function loadAddedPrinters() {
+  const data = await getJSON('/api/fleet/registry').catch(() => null);
+  if (data && Array.isArray(data.printers)) addedPrinters = data.printers;
+}
+
+/* [title, sub] for a printer that was added but isn't answering. */
+function unreachableWords(p) {
+  const why = String(p.link || '').replace(/^Not connected:\s*/i, '').replace(/[.\s]+$/, '');
+  if (!why || /^connecting/i.test(why)) {
+    return [`Connecting to ${p.name}…`, 'This takes a few seconds once it is switched on.'];
+  }
+  return [`${p.name} isn't answering`,
+    `${why}. Check it is switched on and on the same network. The dashboard keeps trying by itself.`];
 }
 
 /* "No printer" wording, unless there's no server to have a printer at all. */
@@ -1219,12 +1250,15 @@ function renderStatusRibbon(data) {
 
   if (!hasData(data) || !data.state) {
     ribbon.classList.remove('is-live');
-    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.' : 'No printer connected.';
+    const away = unreachablePrinter();
+    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.'
+      : away ? `${unreachableWords(away)[0]}. Retrying by itself.` : 'No printer connected.';
     bar.hidden = true;
     pct.hidden = true;
     $('rb-done').hidden = true;
     lastPrinterState = null;
     mirrorInTab(null);
+    renderOverviewControl(null);
     return;
   }
 
@@ -1238,7 +1272,8 @@ function renderStatusRibbon(data) {
     bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
-    setText(text, `${data.printer_name ? data.printer_name + ' · ' : ''}${word}: ${data.current_file || 'unknown file'}`);
+    const who = data.printer_name ? data.printer_name + ' · ' : '';
+    setText(text, `${who}${word}: ${data.current_file || 'unknown file'}` + (data.link_lost ? ' · no live link, last reading' : ''));
     bar.hidden = false; pct.hidden = false;
     // Eases like the other progress visuals (Workshop.tween: each frame
     // closes a fixed fraction of the gap), so switching printers glides.
@@ -1466,8 +1501,9 @@ function renderControlTab(state) {
   renderPlate(state);
   if (!state || !state.state) {
     dot.style.background = '';
-    text.textContent = 'No printer connected';
-    sub.textContent = '';
+    const away = unreachablePrinter();
+    text.textContent = away ? unreachableWords(away)[0] : 'No printer connected';
+    sub.textContent = away ? unreachableWords(away)[1] : '';
     pauseResume.disabled = true;
     pauseResume.textContent = 'Pause';
     cancel.disabled = true;
@@ -1480,11 +1516,12 @@ function renderControlTab(state) {
     return;
   }
 
-  const running = state.state === 'printing' || state.state === 'paused';
+  const lost = !!state.link_lost;
+  const running = (state.state === 'printing' || state.state === 'paused') && !lost;
   const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
   if (dot.style.background !== dotColor) dot.style.background = dotColor;
   setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
-  setText(sub, running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
+  setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
   if (pauseResume.dataset.phase !== 'sending') {
@@ -1493,16 +1530,19 @@ function renderControlTab(state) {
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
-  cancel.onclick = () => controlAction('cancel', cancel);
+  cancel.onclick = () => confirmCancel(cancel);
 
-  const homeTitle = running ? 'Not while a print is running or paused' : '';
+  const busy = state.state === 'printing' || state.state === 'paused';
+  const homeBlocked = busy || lost;
+  const homeTitle = lost ? 'The printer is not answering' : busy ? 'Not while a print is running or paused' : '';
   // Said on the card too: a tooltip never shows on a phone.
   const homeWhy = $('home-why');
-  if (homeWhy && homeWhy.hidden !== !running) homeWhy.hidden = !running;
+  const showWhy = busy && !lost;
+  if (homeWhy && homeWhy.hidden !== !showWhy) homeWhy.hidden = !showWhy;
   homeButtons.forEach(b => {
     // Homing mid-print would drive the toolhead through the print; the
     // server refuses it too, but the button shouldn't offer it.
-    if (b.dataset.phase !== 'sending' && b.disabled !== running) b.disabled = running;
+    if (b.dataset.phase !== 'sending' && b.disabled !== homeBlocked) b.disabled = homeBlocked;
     if (b.title !== homeTitle) b.title = homeTitle;
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
@@ -1716,13 +1756,19 @@ function renderOverviewControl(state) {
   }
   // A printer stopped with an error recovers with Klipper's firmware restart,
   // offered only then (a restart at any other time would end a print).
-  const errored = state.state === 'error';
-  $('ov-restart-row').hidden = !errored;
-  if (errored) {
+  // A printer the dashboard can't reach isn't "stopped with an error": a
+  // restart couldn't reach it either, so the card says what is wrong instead.
+  const lost = !!state.link_lost;
+  const errored = state.state === 'error' && !lost;
+  $('ov-restart-row').hidden = !errored && !lost;
+  $('ov-restart').hidden = !errored;
+  if (lost) {
+    setText($('ov-error'), linkLostWords(state));
+  } else if (errored) {
     setText($('ov-error'), state.state_message ? `Stopped: ${state.state_message}. Fix the cause first, then restart.` : 'The printer stopped with an error.');
     $('ov-restart').onclick = () => { if (confirm('Restart the printer\'s firmware (FIRMWARE_RESTART)? Do it once the cause of the error is fixed.')) controlAction('restart', $('ov-restart')); };
   }
-  const running = state.state === 'printing' || state.state === 'paused';
+  const running = (state.state === 'printing' || state.state === 'paused') && !lost;
   setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Idle');
   const barWidth = `${Math.round((state.progress || 0) * 100)}%`;
   if ($('ov-bar').style.width !== barWidth) $('ov-bar').style.width = barWidth;
@@ -1734,7 +1780,7 @@ function renderOverviewControl(state) {
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
-  cancel.onclick = () => controlAction('cancel', cancel);
+  cancel.onclick = () => confirmCancel(cancel);
 }
 
 const CONTROL_LABELS = {
@@ -1743,6 +1789,40 @@ const CONTROL_LABELS = {
   cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state === 'ready' },
   restart: { sending: 'Restarting…', done: 'Firmware restarted', failed: 'Restart failed', expect: s => s.state !== 'error' },
 };
+
+/* A real printer the dashboard has lost (or never reached), in words. */
+function linkLostWords(state) {
+  const name = state.printer_name || 'The printer';
+  if (state.never_connected) {
+    return `${name} hasn't answered yet${state.state_message ? ` (${state.state_message})` : ''}. ` +
+      'Check it is switched on and on the same network. The dashboard keeps trying by itself.';
+  }
+  const at = state.link_lost_at && new Date(state.link_lost_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `No live link to ${name}${at ? ` since ${at}` : ''}. Its last reading is shown. ` +
+    'Controls come back when it answers; the dashboard keeps trying.';
+}
+
+/* Cancelling a print can't be undone, so one click (or a stray tap on a
+ * phone) only arms the button; a second press within 4 s cancels. The fleet
+ * bar and the quick-action bar already ask the same way. */
+function confirmCancel(button) {
+  if (button.dataset.armed) {
+    clearTimeout(Number(button.dataset.armed));
+    delete button.dataset.armed;
+    button.classList.remove('is-armed');
+    button.textContent = button.dataset.label;
+    controlAction('cancel', button);
+    return;
+  }
+  button.dataset.label = button.textContent;
+  button.textContent = 'Press again to cancel';
+  button.classList.add('is-armed');
+  button.dataset.armed = String(setTimeout(() => {
+    delete button.dataset.armed;
+    button.classList.remove('is-armed');
+    button.textContent = button.dataset.label;
+  }, 4000));
+}
 
 async function controlAction(action, button) {
   const outcome = await runCommand(button, `/api/printer/control/${action}`, {}, CONTROL_LABELS[action]);
@@ -2348,6 +2428,8 @@ if (!['dashboard', 'demo'].some(k => new URLSearchParams(location.search).has(k)
 async function refreshAll() {
   try {
     await loadConnection();
+    // Before the cards draw: an added printer that isn't answering is named in them.
+    if (!liveData()) await loadAddedPrinters();
     await Promise.all([
       loadMaintenance(), loadRings(), loadColorCheck(), loadStatusRibbon(),
       loadFilament(), loadCompare(), loadModules(), loadDevices(),

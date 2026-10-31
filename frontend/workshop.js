@@ -61,12 +61,36 @@ const Workshop = (() => {
     const k = 1 - Math.pow(1 - EASE_RATE, dt * 60);
     return current + (target - current) * k;
   }
-  const smooth = new Map();          // key -> {value, target, apply}
+  /* The twin's nozzle gets a critically damped spring instead: readings
+   * come four times a second (Klipper's 250 ms status timer), and plain
+   * easing reaches each one in about 80 ms and waits, so a moving head
+   * stepped. The spring keeps position and speed continuous, trails the
+   * printer by about 2/SPRING_W seconds at a steady speed, and never runs
+   * past the reading (a critically damped follower doesn't overshoot when
+   * the head stops). Solved exactly per frame, so a long frame can't make it
+   * unstable. */
+  const SPRING_W = 7;
+  function springStep(e, dt) {
+    if (REDUCED.matches) { e.value = e.target.slice(); e.vel = e.target.map(() => 0); return false; }
+    const w = SPRING_W, decay = Math.exp(-w * dt);
+    let moving = false;
+    e.vel = e.vel || e.value.map(() => 0);
+    e.value = e.value.map((x, i) => {
+      const err = x - e.target[i], v = e.vel[i], c = v + w * err;
+      const nerr = (err + c * dt) * decay;
+      e.vel[i] = (v - w * c * dt) * decay;
+      if (Math.abs(nerr) > 0.02 || Math.abs(e.vel[i]) > 0.05) moving = true;
+      return e.target[i] + nerr;
+    });
+    if (!moving) { e.value = e.target.slice(); e.vel = e.target.map(() => 0); }
+    return moving;
+  }
+  const smooth = new Map();          // key -> {value, target, apply, spring, vel}
   let animating = false, lastFrame = 0;
-  function tween(key, target, apply) {
+  function tween(key, target, apply, spring) {
     const entry = smooth.get(key);
     if (entry) { entry.target = target; entry.apply = apply; }
-    else smooth.set(key, { value: target, target, apply });
+    else smooth.set(key, { value: target, target, apply, spring: !!spring });
     if (!entry) apply(target);
     if (!animating) { animating = true; lastFrame = performance.now(); requestAnimationFrame(frame); }
   }
@@ -75,7 +99,9 @@ const Workshop = (() => {
     lastFrame = now;
     let moving = false;
     for (const e of smooth.values()) {
-      if (Array.isArray(e.target)) {
+      if (e.spring && Array.isArray(e.target)) {
+        if (springStep(e, dt)) moving = true;
+      } else if (Array.isArray(e.target)) {
         e.value = e.value.map((v, i) => ease(v, e.target[i], dt));
         if (e.value.some((v, i) => Math.abs(v - e.target[i]) > 0.02)) moving = true;
         else e.value = e.target.slice();
@@ -290,7 +316,9 @@ const Workshop = (() => {
     chip.hidden = !liveData() && !registry.length;
     const id = currentPrinter || (live.fleet[0] && live.fleet[0].id);
     const row = live.fleet.find(p => p.id === id);
-    $('printer-chip-name').textContent = row ? row.name : (printerState && printerState.printer_name) || 'Printer';
+    const added = registry.find(p => p.id === id) || (registry.length === 1 && registry[0]);
+    $('printer-chip-name').textContent = row ? row.name
+      : (printerState && printerState.printer_name) || (added && added.name) || 'Printer';
     const state = row ? row.state : (printerState && printerState.state);
     chip.style.setProperty('--pc-color', STATE_HEX[state] || '#8e8e93');
   }
@@ -523,6 +551,7 @@ const Workshop = (() => {
     const data = await getJSON('/api/fleet/registry').catch(() => ({}));
     if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Printer fleet'); return; }
     registry = data.printers || [];
+    addedPrinters = registry;
     host.innerHTML = registry.length ? registry.map(p => `
       <div class="reg-row">
         <span class="reg-name">${esc(p.name)}</span>
@@ -610,6 +639,8 @@ const Workshop = (() => {
       btn.disabled = true; btn.textContent = 'Testing…';
       const r = await postJSON('/api/printers/test', { moonraker_url: $('fleet-add-url').value, api_key: $('fleet-add-key').value });
       btn.disabled = false; btn.textContent = 'Test';
+      // The address that answered (tidied, or on Moonraker's own port) is the one to add.
+      if (r.ok && r.body.url && (r.body.ok || r.body.needs_key)) $('fleet-add-url').value = r.body.url;
       showTest(r.ok ? r.body : { ok: false, error: r.body.error });
     });
     $('fleet-login').addEventListener('submit', async (e) => {
@@ -628,6 +659,15 @@ const Workshop = (() => {
     });
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submit = e.submitter || e.target.querySelector('button[type=submit]');
+      const label = submit ? submit.textContent : '';
+      if (submit) { submit.disabled = true; submit.textContent = 'Checking the address…'; }
+      // Add the address that really answers (a pasted web-page address becomes Moonraker's).
+      // A printer that is switched off is still added; it connects when it comes on.
+      const t = await postJSON('/api/printers/test',
+        { moonraker_url: $('fleet-add-url').value, api_key: $('fleet-add-key').value });
+      if (t.ok && t.body.url && (t.body.ok || t.body.needs_key)) $('fleet-add-url').value = t.body.url;
+      if (submit) { submit.disabled = false; submit.textContent = label; }
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,
                                                          api_key: $('fleet-add-key').value });
       if (r.ok) { toast(`${r.body.name} added, connecting to it now`, 'ok', 5000); e.target.reset(); $('fleet-login').hidden = true; }
@@ -1418,7 +1458,8 @@ const Workshop = (() => {
     if (!host) return;
     const views = $('wf-views');
     if (!state) {
-      setText($('twin-sub'), 'Waiting for a printer connection');
+      const away = unreachablePrinter();
+      setText($('twin-sub'), away ? unreachableWords(away)[0] : 'Waiting for a printer connection');
       host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null; twin.model = null; twin.printKey = null;
       if (views) views.hidden = true;
       if ($('twin-modes')) $('twin-modes').hidden = true;
@@ -1442,7 +1483,7 @@ const Workshop = (() => {
         if (twin.trail.length > 90) twin.trail.shift();
       }
       queueTwin();
-    });
+    }, true);
     queueTwin();
     // The twin is a U1. Any other printer gets what it said about itself instead of the wrong machine.
     const m = state.machine, other = !!(m && !m.reference);
@@ -1460,7 +1501,11 @@ const Workshop = (() => {
     const nb = ' ';
     setText($('twin-readout'), `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
       (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
-    setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}`);
+    // A real printer that hasn't homed doesn't know where its head is, and a dropped link
+    // means the drawing shows the last reading: both said in words, never drawn as live.
+    const unhomed = typeof state.homed_axes === 'string' && state.homed_axes.length < 3;
+    setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}` +
+      (state.link_lost ? ' · no live link, last reading shown' : unhomed ? ' · not homed, position unknown' : ''));
   }
 
   /* Print health: one animated dial. */
@@ -2988,10 +3033,14 @@ const Workshop = (() => {
     const bar = $('quick-actions');
     const running = state.state === 'printing' || state.state === 'paused';
     if (bar.hidden !== !running) bar.hidden = !running;
+    // With the link down a press can't reach the printer: the bar stays, its buttons wait.
+    const reachable = running && !state.link_lost;
+    const qaCancel = $('qa-cancel');
+    if (qaCancel && qaCancel.disabled !== !reachable) qaCancel.disabled = !reachable;
     const pause = $('qa-pause');
     if (pause.dataset.phase !== 'sending') {
       setText(pause, state.state === 'paused' ? 'Resume' : 'Pause');
-      if (pause.disabled !== !running) pause.disabled = !running;
+      if (pause.disabled !== !reachable) pause.disabled = !reachable;
     }
     pause.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pause);
   }
@@ -3389,14 +3438,17 @@ const Workshop = (() => {
 
   async function refresh() {
     $('demo-tools-card').hidden = !demoOn;
+    // The empty cards name an added printer that isn't answering, so its list comes first.
+    const reg = liveData() ? null : loadRegistry();
     if (!liveData()) {
+      await reg;
       printerState = null;
       $('live-pill').hidden = true;
       $('quick-actions').hidden = true;
       renderTwin(null);
       renderFleet([]);
     }
-    await Promise.all([loadHealth(), loadChamber(), loadFiles(), loadQueue(), loadRegistry(),
+    await Promise.all([loadHealth(), loadChamber(), loadFiles(), loadQueue(), reg || loadRegistry(),
       loadRules(), loadRuleLog(), loadForecast(), loadSideBySide(), loadTimelapse()]);
     if (liveData()) refreshPrinter();
     renderChip();

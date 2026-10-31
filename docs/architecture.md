@@ -155,7 +155,7 @@ when the `printer_link` module is on). It keeps a WebSocket open to
 Moonraker (JSON-RPC: identify, `server.info`, `printer.objects.list`,
 `printer.objects.subscribe`), merges each partial `notify_status_update`
 into its copy, re-subscribes after a Klipper restart, pings every 15 s and
-reconnects on its own (1 s up to 30 s apart). History and file metadata are
+reconnects on its own (1 s, doubling, up to 10 s apart). History and file metadata are
 fetched over HTTP on a worker thread, so reading them never waits on the
 network. Commands go over HTTP, each checked first against a fresh
 reading and then read back until the printer reports the change (or said

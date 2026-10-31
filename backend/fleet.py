@@ -110,13 +110,28 @@ def normalise_url(url):
     What people type, as a Moonraker address: "192.168.1.50" or
     "u1.local" become http://...:7125 (the port Moonraker listens on; the
     printer's own web page on port 80 forwards to the same Moonraker).
+    Only the scheme, host and port count, so an address copied from the
+    browser bar ("http://192.168.1.50/#/", "192.168.1.50/fluidd") works too.
     """
-    url = str(url or "").strip().rstrip("/")
-    if url and "://" not in url:
+    url = str(url or "").strip()
+    if not url:
+        return ""
+    typed_scheme = "://" in url
+    if not typed_scheme:
         url = "http://" + url
-        if not re.search(r":\d+$", url):
-            url += ":7125"
-    return url
+    scheme, _, rest = url.partition("://")
+    host = re.split(r"[/?#]", rest, maxsplit=1)[0]
+    if not typed_scheme and host and not re.search(r":\d+$", host):
+        host += ":7125"
+    return f"{scheme.lower()}://{host}"
+
+
+def moonraker_port_variant(url):
+    """The same address on Moonraker's own port, when no port was given (None otherwise)."""
+    url = str(url or "").rstrip("/")
+    if not url or re.search(r":\d+$", url.split("://", 1)[-1]):
+        return None
+    return url + ":7125"
 
 
 def check_url(url):

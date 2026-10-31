@@ -1,6 +1,6 @@
 /* Never cache printer readings, API replies, control requests or the app shell.
    Only a clearly offline explanation survives loss of the server. */
-const OFFLINE_CACHE = 'dejavu-offline-v1';
+const OFFLINE_CACHE = 'dejavu-offline-v2';
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(OFFLINE_CACHE).then(cache => cache.add('offline.html')).then(() => self.skipWaiting()));
 });
