@@ -21,6 +21,10 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.4 (31 October 2026): Get ready for a real U1: connection, controls and the twin following the head
+
+- Get ready for a real U1: connection, controls and the twin following the head
+
 ## 0.13.3 (31 October 2026): Make the 3D twin match the production U1 in Snapmaker's photos
 
 - Make the 3D twin match the production U1 in Snapmaker's photos

@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.13.4",
+      "date": "2026-10-31",
+      "name": "Get ready for a real U1: connection, controls and the twin following the head",
+      "published": true,
+      "summary": "One change merged on GitHub since the last release.",
+      "changes": [
+        "Get ready for a real U1: connection, controls and the twin following the head"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.13.3",
       "date": "2026-10-31",
       "name": "Make the 3D twin match the production U1 in Snapmaker's photos",
