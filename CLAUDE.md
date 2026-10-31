@@ -56,13 +56,14 @@ trust the code and fix this file.
   the account's usage limit mid-run.)
 - Never change model, effort, fast mode or permission mode unless asked.
 - Confirm before delete, overwrite, force-push or reset --hard.
-- Default: commit finished work on a branch, open a PR, and merge it with one
-  merge commit (the repo's convention) when there are no conflicts and checks
-  are green or absent. Don't wait on pending CI. Never force-push.
-- Auto-merge: allowed (the owner, 29 October 2026). Most sessions merge their own
-  pull request once the work is done and checked; ask first when the work is
-  unfinished, when it puts something public the owner has not seen, or when the
-  owner says not to merge. This is merging only: no PR/CI watching or GitHub
+- Merging (the owner, 31 October 2026): every Claude Code session that edits this repository
+  merges its own finished work without being told to. Commit on the session's branch, push, open
+  the pull request, check the work (tests, screenshots or measurements the task calls for), then
+  merge it with one merge commit (the repo's convention). Don't ask first, also when the change
+  goes public. The one exception: don't merge when the owner says not to. A merge conflict or a
+  failing required check is yours to fix before merging; if you can't, say what blocks it. Don't
+  wait on pending CI, never force-push, and say what was merged and how to undo it
+  (`git revert -m 1 <merge commit>`). This is merging only: no PR/CI watching or GitHub
   auto-merge toggle unless asked. The private repository's CLAUDE.md says the same.
 - Install (the owner, 24 October 2026): the copy-and-paste blocks (PowerShell for
   Windows, Terminal for Mac/Linux) are the main install method in README, getting
