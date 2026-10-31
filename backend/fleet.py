@@ -234,8 +234,8 @@ def diagnostics(printer_id):
 
 def _alerts(state, maint):
     alerts = []
-    for th, dock in state["toolheads"].items():
-        if dock["status"] == "error":
+    for th, dock in (state.get("toolheads") or {}).items():
+        if dock.get("status") == "error":
             alerts.append({"level": "error", "text": f"Dock {th} error"})
     if state["state"] == "error" and not state.get("never_connected"):
         alerts.append({"level": "error", "text": state.get("state_message") or "Printer error"})
@@ -263,6 +263,7 @@ def summary_for(printer_id, state=None):
     elapsed = state.get("print_duration_hours") or 0.0
     remaining = (elapsed / progress - elapsed) if 0 < progress < 1 and state["state"] == "printing" else None
     active = state.get("active_toolhead")
+    head = (state.get("toolheads") or {}).get(active) or {}
     return {
         "id": printer_id,
         "name": mock_moonraker.printer_name(printer_id),
@@ -272,12 +273,12 @@ def summary_for(printer_id, state=None):
         "progress": round(progress, 4),
         "remaining_hours": round(remaining, 3) if remaining is not None else None,
         "active_toolhead": active,
-        "active_color": state["toolheads"][active]["filament_color_hex"] if active else None,
-        "nozzle_temperature": state["toolheads"][active]["temperature"] if active else None,
+        "active_color": head.get("filament_color_hex"),
+        "nozzle_temperature": head.get("temperature"),
         "bed_temperature": state.get("bed_temperature"),
         "chamber_temperature": state.get("chamber_temperature"),
-        "docks": {th: {"status": d["status"], "color": d["filament_color_hex"]}
-                  for th, d in state["toolheads"].items()},
+        "docks": {th: {"status": d.get("status"), "color": d.get("filament_color_hex")}
+                  for th, d in (state.get("toolheads") or {}).items()},
         "alerts": _alerts(state, maint),
         "health": health["score"],
         "link_lost": bool(state.get("link_lost")),
@@ -298,7 +299,13 @@ def overview():
         except ValueError:
             continue                          # removed while the overview was being made
         except Exception as exc:              # noqa: BLE001 - one printer can't sink the overview
-            row = {"id": pid, "name": pid, "state": "error", "state_message": f"Couldn't read it: {exc}",
+            import sys
+            sys.stderr.write(f"  fleet overview: {pid} couldn't be summarised: {exc!r}\n")
+            try:
+                name = mock_moonraker.printer_name(pid)
+            except Exception:                 # noqa: BLE001 - the id still names it
+                name = pid
+            row = {"id": pid, "name": name, "state": "error", "state_message": f"Couldn't read it: {exc}",
                    "alerts": [{"level": "error", "text": "Couldn't read this printer"}], "docks": {},
                    "progress": 0.0, "health": None, "link_lost": True}
         row["demo"] = not mock_moonraker.is_real(pid)

@@ -613,6 +613,11 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   `.cmd`, a macOS LaunchAgent or an XDG autostart entry, each with `DEJAVU_NO_BROWSER=1`.
   Only Linux is exercised here. `start.py` restarts a crashed server (not exit 0, 75, 3 or a
   signal), at most `CRASH_LIMIT` times in `CRASH_WINDOW`. `offline.html` links the online demo.
+- `drawSafely(part, fn)` in app.js: workshop `applyState`, the fleet message and the ribbon's card
+  renderers each draw inside it, so one failing part no longer skips the rest; the first failure per
+  part is a toast naming it. `watchForUpdate()` (every 15 s) reloads open pages when `/api/app/info`
+  reports a new version or build. `fleet.summary_for` tolerates missing heads; a row that still fails
+  keeps the printer's name and is printed in the terminal, as is a failed fleet refresh.
 
 ## Public marketing material
 

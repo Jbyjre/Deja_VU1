@@ -720,6 +720,25 @@ async function runCommand(button, path, body, labels) {
   return { ok: true, result, confirmed };
 }
 
+/* One part of the screen that can't draw must never blank the others: the
+ * live update draws the ribbon, the cards, the twin and the controls in turn,
+ * and an error in one used to skip every part after it. The failure is said
+ * once per part, in words a person can pass on, and logged in full. */
+const drawFailed = new Set();
+function drawSafely(part, fn) {
+  try {
+    return fn();
+  } catch (err) {
+    console.error(`Deja Vu1: ${part} could not be drawn`, err);
+    if (!drawFailed.has(part)) {
+      drawFailed.add(part);
+      toast(`${part} couldn't be drawn (${err && err.message ? err.message : err}). The rest of the dashboard ` +
+        'keeps working. Please send this message to the developer.', 'bad', 15000);
+    }
+    return undefined;
+  }
+}
+
 function hasData(payload) {
   return payload && payload.connected !== undefined
     ? (payload.connected || payload.demo)
@@ -1285,8 +1304,8 @@ function renderStatusRibbon(data) {
     $('rb-done').hidden = !finish;
   }
 
-  renderOverviewControl(data);
-  renderControlTab(data);
+  drawSafely('Printer control on Overview', () => renderOverviewControl(data));
+  drawSafely('The Control screen', () => renderControlTab(data));
 }
 
 /* ---- Module: Maintenance ---------------------------------------------- */
@@ -2485,8 +2504,37 @@ loadNotificationSettings();
 
 // Printer state itself arrives live (workshop.js, every 250 ms over the
 // WebSocket). These slower panels only need a periodic refresh.
+/* An update can come from anywhere: Install on another page or the phone,
+ * automatic updates, or the one-paste command. A page left open would keep
+ * running the old dashboard against the new server, so each page notices the
+ * new version and reloads (or offers to, while something is being typed). */
+const updateWatch = { version: null, offered: false };
+async function watchForUpdate() {
+  if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
+  let info;
+  try { info = await (await fetch('/api/app/info', { cache: 'no-store' })).json(); } catch (_) { return; }
+  const v = info && info.version;
+  if (!v) return;
+  // The build changes too on the "newest builds" channel, where the number can stay the same.
+  const key = `${v}|${info.build || ''}`;
+  if (!updateWatch.version) { updateWatch.version = key; return; }
+  if (key === updateWatch.version || updateWatch.offered) return;
+  updateWatch.offered = true;
+  const el = document.activeElement;
+  const typing = el && (el.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value));
+  if (typing || document.querySelector('dialog[open]')) {
+    toast(`Deja Vu1 was updated to v${v}. Reload this page to use it.`, 'info', 60000,
+      { action: { label: 'Reload', run: () => location.reload() } });
+  } else {
+    toast(`Deja Vu1 was updated to v${v}. Reloading this page…`, 'ok', 3000);
+    setTimeout(() => location.reload(), 1500);
+  }
+}
+let updateTicks = 0;
+
 setInterval(() => {
   loadConnection().catch(() => {});
+  if (updateTicks++ % 3 === 0) watchForUpdate();
   if (liveData()) {
     loadRings(); loadColorCheck(); loadCost();
     if (!window.Workshop || !Workshop.isLive()) loadStatusRibbon();
