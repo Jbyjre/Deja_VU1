@@ -24,6 +24,8 @@ if sys.version_info < (3, 8):
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("PORT", 8000))
 PORT_IN_USE = 3                # backend/app.py exits with this when the port is taken
+CRASH_LIMIT = 5                # restarts after a crash allowed within CRASH_WINDOW seconds
+CRASH_WINDOW = 600
 
 
 def open_when_ready():
@@ -71,6 +73,7 @@ def supervise():
     env.setdefault("DEJAVU_DATA_DIR", os.path.join(HERE, "backend", "data"))
     child = None
     opened = False
+    crashes = []
 
     def launch():
         return subprocess.Popen([sys.executable, os.path.join(HERE, "backend", "app.py")],
@@ -115,8 +118,22 @@ def supervise():
                 # The server has said why in words. Exit quietly, so the Windows
                 # launcher doesn't add its "needs Python" note to a port problem.
                 return 0
-            if code != 75:
+            if code in (0, 75, -2, -15):
+                # 0: stopped on purpose (Settings > Stop, Ctrl+C); 75: an update restart;
+                # -2 / -15: interrupted or told to end by the system.
+                if code != 75:
+                    return code
+                continue
+            # Anything else is a crash. Start it again, so the dashboard stays reachable,
+            # unless it keeps failing (then the reason above is what to read).
+            now = time.monotonic()
+            crashes = [t for t in crashes if now - t < CRASH_WINDOW] + [now]
+            if len(crashes) > CRASH_LIMIT:
+                print(f"Deja Vu1 stopped unexpectedly {len(crashes)} times in a few minutes, so it was "
+                      "left stopped. The reason is printed above.", flush=True)
                 return code
+            print(f"Deja Vu1 stopped unexpectedly (exit code {code}). Starting it again...", flush=True)
+            time.sleep(2)
     finally:
         if child and child.poll() is None:
             child.terminate()

@@ -608,6 +608,11 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   `start.py` returns 0 for it (the Windows batch file would blame Python) and opens the
   browser only when `/api/app/info` answers. `offline.html` (served by `sw.js`) explains
   a stopped program on localhost and returns to the dashboard when the server answers.
+- `autostart.py` (Settings → Desktop app → Start with this computer, `POST /api/app/autostart`,
+  this computer only; status in `/api/app/info`): one sign-in file, the Windows Startup folder
+  `.cmd`, a macOS LaunchAgent or an XDG autostart entry, each with `DEJAVU_NO_BROWSER=1`.
+  Only Linux is exercised here. `start.py` restarts a crashed server (not exit 0, 75, 3 or a
+  signal), at most `CRASH_LIMIT` times in `CRASH_WINDOW`. `offline.html` links the online demo.
 
 ## Public marketing material
 

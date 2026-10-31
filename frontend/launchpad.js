@@ -145,11 +145,15 @@
           <div class="setup-way"><strong>Install it as an app</strong><span>An icon in the Start menu or Dock and its own window, from Chrome or Edge.</span><button class="btn primary" id="setup-install">Install Deja Vu1</button></div>
           <div class="setup-way"><strong>Open as a window at start</strong><span>The launcher opens a window with no tabs or address bar.</span><button class="btn" id="setup-window">Use an app window</button></div>
           <div class="setup-way"><strong>Keep the browser tab</strong><span>Nothing changes. It opens in your usual browser.</span></div>
+          <div class="setup-way"><strong>Start with this computer</strong><span>Deja Vu1 starts when you sign in, so the dashboard is always ready to open.</span><button class="btn" id="setup-autostart">Start it with this computer</button></div>
         </div>
         <p class="field-hint" id="setup-desktop-note">${esc(installHelp())}</p>`;
       $('setup-install').onclick=()=>install($('setup-desktop-note'));
       $('setup-window').onclick=()=>saveWindow('window',$('setup-desktop-note'));
-      if(tourOn()||serverMissing()){$('setup-install').disabled=true;$('setup-window').disabled=true;}
+      const auto=info&&info.autostart;
+      $('setup-autostart').onclick=async()=>{await saveAutostart(true);const on=!!(info&&info.autostart&&info.autostart.on);$('setup-autostart').textContent=on?'Starts with this computer':'Start it with this computer';$('setup-autostart').disabled=on;};
+      if(auto&&auto.on){$('setup-autostart').textContent='Starts with this computer';$('setup-autostart').disabled=true;}
+      if(tourOn()||serverMissing()||!auto||!auto.supported){$('setup-install').disabled=tourOn()||serverMissing();$('setup-window').disabled=tourOn()||serverMissing();$('setup-autostart').disabled=true;}
     } else {
       const kind=info&&info.install_kind==='git'?'Your copy came from git or GitHub Desktop, so updates come straight from GitHub.':'Updates arrive inside the app. In Settings you choose newest builds (each fix as it lands) or stable releases (fewer, bigger steps).';
       content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
@@ -242,8 +246,23 @@
     $('da-window-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !d ? 'Loading…'
       : d.window_browser ? `The app window uses ${d.window_browser}, found on this computer. Applies the next time you start the launcher.`
       : 'Neither Edge nor Chrome was found on this computer, so an app window would open as a normal tab.';
+    const a = info && info.autostart, box = $('da-autostart');
+    box.disabled = offline || !a || !a.supported;
+    box.checked = !!(a && a.on);
+    $('da-autostart-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !a ? 'Loading…'
+      : !a.supported ? 'This system has no sign-in start list Deja Vu1 knows how to use.'
+      : a.on ? 'On. Deja Vu1 starts when you sign in, without opening a browser; open the dashboard or the installed app when you want it.'
+      : 'Off. Until you start the launcher, the dashboard address shows an offline page.';
+  }
+  async function saveAutostart(on) {
+    const r = await postJSON('/api/app/autostart', { on });
+    if (!r.ok) { toast(r.body.error || 'Could not change that setting', 'bad'); renderDesktop(); return; }
+    if (info) info.autostart = r.body;
+    toast(on ? 'Deja Vu1 will start when this computer starts' : 'Deja Vu1 will no longer start with this computer', 'ok', 6000);
+    renderDesktop();
   }
   $('da-install').onclick = () => install();
+  $('da-autostart').onchange = e => saveAutostart(e.target.checked);
   $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
   $('guide-replay').onclick = () => Guide.everything();
   window.DesktopApp = { install, help: installHelp, canPrompt: () => !!installEvent, standalone };

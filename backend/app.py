@@ -244,6 +244,7 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _BACKEND_DIR)
 
 import app_updates
+import autostart
 import desktop
 import automations
 import backup
@@ -459,7 +460,7 @@ _APP_ROUTES = {
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/remote": (None, lambda q: remote.status(PORT)),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings()}),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status()}),
     "/api/app/memory": (None, lambda q: memory.status()),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
@@ -1092,6 +1093,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/app/desktop":
             return self._send_json(desktop.save_settings(self._read_json_body()))
+        if route == "/api/app/autostart":
+            # It writes into this computer's sign-in items, so only a browser on this computer may.
+            body = self._read_json_body()
+            if not self._this_computer():
+                return self._send_json({"error": "Change this on the computer that runs Deja Vu1"}, status=403)
+            return self._send_json(autostart.set_on(bool(body.get("on"))))
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
         if route == "/api/app/updates/check":
