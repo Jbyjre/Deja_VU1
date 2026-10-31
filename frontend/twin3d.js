@@ -12,22 +12,34 @@
  * the parts growing on the plate, the touchscreen showing the printer's state.
  *
  * Where the shapes come from:
- * - Snapmaker's official product picture of the U1 (shipped with Snapmaker's
- *   Orca slicer profile): the white rounded body with a black rim around the
- *   open top, the framed smoked-glass door with its handle and hinge screws,
- *   the touchscreen above the door right of centre, the wordmark, the side panel's tilted oval
- *   with two spool drums and perforated vents, the side feeder marked 1 and 2,
- *   four black toolheads with yellow accents parked at the back inside the
- *   chamber (level with the carriage; only their loops rise above), each with a
- *   tall loop of filament tube, and the bed's "BUILD VOLUME" strip.
+ * - Snapmaker's product photos of the production U1 (front, both sides, back
+ *   and three-quarter views on Snapmaker's own shop and product pages,
+ *   October 2026) and the picture shipped with Snapmaker's Orca slicer
+ *   profile: the white body with rounded corners and a grey top frame held
+ *   by four screws; the black-framed glass door with its handle; the
+ *   touchscreen above the door, its right edge in line with the door's; the
+ *   wordmark above the door's left edge; on each side a tilted, recessed oval
+ *   with two spools on white hubs (upper spool towards the back, lower towards
+ *   the front) and perforated vents between them; a feeder on each side near
+ *   the back (white front, black back, marked 1 and 2); a shelf across the top
+ *   of the back with a curved underside, where the filament tubes come out and
+ *   hang down to the feeders; a large see-through opening low in the back
+ *   (whether it is glazed could not be confirmed) and the power socket, switch,
+ *   USB and network ports beside it; four black toolheads with yellow edges and
+ *   a hazard label, docked at the back with their tops level with the frame;
+ *   from each a tall loop of tube that leaves the head, rises and drops back
+ *   into the shelf; the white carriage with an orange fan, in front of the head
+ *   it carries; the textured plate's "BUILD VOLUME" strip.
  * - Snapmaker's slicer profile: a 276 x 293 mm textured PEI plate and a
  *   270 mm print height. Snapmaker's spec: 584 x 499 x 730 mm overall.
  * - Reviews: CoreXY, carbon-fibre rods on the X axis, docks at the rear,
  *   two spools a side.
- * - Estimated from the picture (labelled so in the card): the body is about
- *   390 x 460 x 480 mm, so the spool drums make up the 584 mm width and the
- *   tube loops the 730 mm height. Dock spacing, which side feeds which head,
- *   and the inside layout are drawn by eye.
+ * - Measured from the photos, scaled by the published 499 mm depth (so
+ *   estimates, labelled so in the card): a body about 456 mm wide and 458 mm
+ *   tall (the front is square), 450 mm deep plus a 49 mm shelf; the spool
+ *   pockets 24 mm deep, which is how two 1 kg spools a side fit in the 584 mm
+ *   width; spool, feeder, screen, wordmark and door positions. Dock spacing,
+ *   the gantry heights and the inside layout are drawn by eye.
  *
  * Coordinates are the printer's own millimetres (X right, Y back, Z up); the
  * bed's printable corner is 0, 0. WebGL's axes are used only in the shaders.
@@ -36,17 +48,21 @@
 
 const Twin3D = (() => {
   /* ---- the machine, in millimetres ---------------------------------- */
-  const BODY = { x0: -60, x1: 330, y0: -95, y1: 365, z0: 8, z1: 488, r: 46 };   // about 390 x 460 x 480
+  // The body: x0..x1 by y0..y1 below the shelf, out to yb above it (shelf
+  // from zs up, with a curved underside of radius rs). About 456 x 499 x 458.
+  const BODY = { x0: -93, x1: 363, y0: -95, y1: 355, yb: 404, z0: 8, z1: 466, zs: 352, rs: 49, r: 35 };
   const ENVELOPE = { x0: -157, x1: 427, y0: -95, y1: 404, z0: 0, z1: 730 };      // 584 x 499 x 730 published
   const BED = 270, PLATE = { w: 276, d: 293 };
-  const TIP = 375;                    // nozzle tip height when Z is 0
-  const RAIL_Z = 452;                 // the gantry
+  const TIP = 368;                    // nozzle tip height when Z is 0: parked heads' tops sit level with the frame
+  const RAIL_Z = 420;                 // the gantry: two X rods, 16 mm above and below this
+  const GANTRY_DY = -34;              // the carriage and rods run in front of the head they carry
   // Docks sit level with the carriage, as a tool changer's must, so parked
   // heads stay inside the chamber below the rim (as in Snapmaker's picture,
   // where only their tube loops rise above the body).
-  const DOCK = { y: 316, tip: TIP, xs: [18, 76, 134, 192] };
+  const DOCK = { y: 304, tip: TIP, xs: [30, 100, 170, 240] };
   const HEAD = { w: 54, d: 52, h: 96 };
-  const HUB = { upper: [245, 341], lower: [115, 142] };   // side-panel spool positions: [y, z]
+  // Spool centres [y, z] on the side; how far a spool's centre sits out from the wall; the pocket's depth and radius.
+  const HUB = { upper: [196, 316], lower: [69, 133], out: 14.5, pocket: 24, R: 110 };
   const VIEWS = { iso: [-32, 20], front: [0, 3], top: [0, 89], print: [-22, 40] };
 
   const srgb = (hex) => {
@@ -58,7 +74,11 @@ const Twin3D = (() => {
   /* Materials: linear base colour, roughness, metalness, plus how it's drawn. */
   const MAT = {
     body:     { c: lin(.89, .895, .9), r: .38, m: 0 },
-    bodyIn:   { c: lin(.46, .47, .49), r: .8, m: 0 },   // the chamber reads lit in the picture
+    bodyIn:   { c: lin(.1, .1, .105), r: .7, m: 0 },   // the chamber is black in Snapmaker's photos
+    pocket:   { c: lin(.84, .845, .85), r: .45, m: 0 },
+    lid:      { c: lin(.66, .67, .69), r: .48, m: .05 },   // the grey top frame
+    led:      { c: [1, 1, 1], r: .3, m: 0, glow: 1 },
+    kraft:    { c: lin(.74, .58, .42), r: .86, m: 0 },   // Snapmaker's cardboard spools
     rim:      { c: lin(.05, .05, .055), r: .45, m: 0 },
     frame:    { c: lin(.07, .07, .075), r: .35, m: 0 },
     glass:    { c: lin(.2, .21, .22), r: .04, m: 0, a: .12, kind: 'glass' },   // clear enough to see the chamber, as in the picture
@@ -72,11 +92,11 @@ const Twin3D = (() => {
     alu:      { c: lin(.72, .74, .77), r: .32, m: 1 },
     rail:     { c: lin(.2, .21, .23), r: .38, m: .7 },
     carbon:   { c: lin(.07, .07, .08), r: .25, m: .2, kind: 'carbon' },
-    pei:      { c: lin(.2, .2, .21), r: .75, m: 0, kind: 'pei' },
-    hub:      { c: lin(.93, .935, .94), r: .3, m: 0, a: .88, kind: 'clear' },
-    tube:     { c: lin(.86, .87, .95), r: .2, m: 0, a: .7, kind: 'clear' },
+    pei:      { c: lin(.38, .35, .33), r: .75, m: 0, kind: 'pei' },   // warm grey, sampled from the photos
+    hub:      { c: lin(.93, .935, .94), r: .34, m: 0 },
+    tube:     { c: lin(.88, .78, .66), r: .22, m: 0, a: .72, kind: 'clear' },   // beige in the photos
     cable:    { c: lin(.04, .04, .045), r: .45, m: 0 },
-    flange:   { c: lin(.06, .06, .07), r: .3, m: 0, a: .82, kind: 'clear' },
+    rearGlass: { c: lin(.2, .21, .22), r: .04, m: 0, a: .06, kind: 'glass' },
     rubber:   { c: lin(.03, .03, .03), r: .9, m: 0 },
     extrusion:{ c: lin(.62, .64, .67), r: .42, m: 1, kind: 'brushed' },   // anodised aluminium frame
     motor:    { c: lin(.06, .06, .065), r: .55, m: .2 },
@@ -230,22 +250,23 @@ const Twin3D = (() => {
     x.fillText('BUILD VOLUME   |   270 × 270 × 270 mm', w / 2, h / 2 + 2);
     x.fillStyle = '#f2b51b'; [w - 120, w - 80].forEach(cx => { x.beginPath(); x.arc(cx, h / 2, 13, 0, 7); x.fill(); });
   });
-  /* The side panel: a tilted oval groove with two triangles of vent holes. */
-  const sideArt = () => canvasOf(1024, 1068, (x, w, h) => {
+  /* The floor of the side pocket: vent holes in a fine grid where the two
+   * spools leave it bare, as in the photos. Mapped over the side's y and z. */
+  const sideArt = () => canvasOf(1024, Math.round(1024 * (BODY.z1 - BODY.z0) / (BODY.y1 - BODY.y0)), (x, w, h) => {
     x.clearRect(0, 0, w, h);
     const k = w / (BODY.y1 - BODY.y0), kz = h / (BODY.z1 - BODY.z0), toPx = (y, z) => [(y - BODY.y0) * k, (BODY.z1 - z) * kz];
-    const [ax, ay] = toPx(...HUB.upper), [bx, by] = toPx(...HUB.lower), R = 112 * k;
+    const [ax, ay] = toPx(...HUB.upper), [bx, by] = toPx(...HUB.lower), R = (HUB.R - 4) * k;
     const ang = Math.atan2(by - ay, bx - ax);
-    const stadium = (r) => { x.beginPath(); x.arc(ax, ay, r, ang + Math.PI / 2, ang + Math.PI * 1.5); x.arc(bx, by, r, ang - Math.PI / 2, ang + Math.PI / 2); x.closePath(); };
-    x.lineWidth = 5; x.strokeStyle = 'rgba(0,0,0,.16)'; stadium(R); x.stroke();
-    x.lineWidth = 3; x.strokeStyle = 'rgba(255,255,255,.75)'; stadium(R - 4); x.stroke();
-    const mx = (ax + bx) / 2, my = (ay + by) / 2;
-    x.fillStyle = 'rgba(0,0,0,.28)';
-    for (const side of [-1, 1]) for (let r = 0; r < 9; r++) for (let c = 0; c <= r; c++) {
-      const u = (c - r / 2) * 11, v = r * 11, px = mx + side * 38 * Math.cos(ang) + u * Math.cos(ang + Math.PI / 2) * 1 + (side > 0 ? v : -v) * Math.cos(ang) * .2;
-      const py = my + (side > 0 ? -1 : 1) * (60 + v) + u * .2;
-      x.beginPath(); x.arc(px, py, 2.6, 0, 7); x.fill();
+    x.save();
+    x.beginPath(); x.arc(ax, ay, R, ang + Math.PI / 2, ang + Math.PI * 1.5); x.arc(bx, by, R, ang - Math.PI / 2, ang + Math.PI / 2); x.closePath(); x.clip();
+    // A soft shade where the wall meets the floor.
+    x.lineWidth = 10 * k; x.strokeStyle = 'rgba(0,0,0,.08)'; x.stroke();
+    const step = 5.5 * k, r = 1.25 * k, keep = (px, py) => Math.hypot(px - ax, py - ay) > 103 * k && Math.hypot(px - bx, py - by) > 103 * k;
+    x.fillStyle = 'rgba(28,30,34,.62)';
+    for (let py = 0; py < h; py += step) for (let px = (Math.round(py / step) % 2) * step / 2; px < w; px += step) {
+      if (keep(px, py)) { x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
     }
+    x.restore();
   });
   const feederArt = () => canvasOf(256, 320, (x, w, h) => {
     x.fillStyle = '#eceef0'; x.fillRect(0, 0, w, h);
@@ -253,12 +274,40 @@ const Twin3D = (() => {
     [[1, 95], [2, 225]].forEach(([n, y]) => { x.fillText(`${n}·`, 46, y); x.beginPath(); x.arc(170, y, 22, 0, 7); x.fill(); });
     x.beginPath(); x.arc(120, 160, 16, 0, 7); x.lineWidth = 6; x.strokeStyle = '#2a2c30'; x.stroke();
   });
+  /* A docked head's front: yellow edges, a status window with three lights,
+   * a round button and the yellow hot-surface label low down. */
   const headArt = () => canvasOf(128, 256, (x, w, h) => {
     x.fillStyle = '#121214'; x.fillRect(0, 0, w, h);
-    x.fillStyle = '#b9bbc0'; x.fillRect(30, 30, 68, 34);
-    x.fillStyle = '#4b4d52'; x.fillRect(46, 40, 36, 14);
-    x.strokeStyle = '#8c8f95'; x.lineWidth = 5; x.beginPath(); x.arc(64, 112, 15, 0, 7); x.stroke();
-    x.fillStyle = '#f4b417'; x.fillRect(0, 0, 9, h);
+    x.fillStyle = '#f4b417'; x.fillRect(0, 0, 8, h); x.fillRect(w - 8, 0, 8, h);
+    x.fillStyle = '#2a2c31'; x.fillRect(34, 26, 60, 26);
+    x.fillStyle = '#7ee08a'; [50, 64, 78].forEach(cx => { x.beginPath(); x.arc(cx, 39, 3.4, 0, 7); x.fill(); });
+    x.strokeStyle = '#8c8f95'; x.lineWidth = 4; x.beginPath(); x.arc(64, 92, 12, 0, 7); x.stroke();
+    x.fillStyle = '#a8abb1'; x.fillRect(44, 126, 40, 8);
+    x.fillStyle = '#f4b417'; x.beginPath(); x.moveTo(64, 168); x.lineTo(92, 214); x.lineTo(36, 214); x.closePath(); x.fill();
+    x.strokeStyle = '#121214'; x.lineWidth = 3; x.beginPath(); x.moveTo(64, 180); x.lineTo(84, 209); x.lineTo(44, 209); x.closePath(); x.stroke();
+    x.beginPath(); x.moveTo(56, 204); x.quadraticCurveTo(60, 196, 56, 190); x.moveTo(64, 204); x.quadraticCurveTo(68, 196, 64, 190); x.moveTo(72, 204); x.quadraticCurveTo(76, 196, 72, 190); x.lineWidth = 2.5; x.stroke();
+  });
+  /* The carriage's front: white, the wordmark, and the orange fan. */
+  const carriageArt = () => canvasOf(256, 384, (x, w, h) => {
+    x.fillStyle = '#eef0f2'; x.fillRect(0, 0, w, h);
+    x.fillStyle = 'rgba(70,72,78,.85)'; x.font = `500 34px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('snapmaker', w / 2, 92);
+    const cx = w / 2, cy = 236;
+    x.fillStyle = '#d9dcdf'; x.beginPath(); x.arc(cx, cy, 82, 0, 7); x.fill();
+    x.fillStyle = '#f39a12'; x.beginPath(); x.arc(cx, cy, 72, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(150,70,0,.55)'; x.lineWidth = 4;
+    for (let i = 0; i < 24; i++) { const t = i / 24 * Math.PI * 2; x.beginPath(); x.moveTo(cx + Math.cos(t) * 40, cy + Math.sin(t) * 40); x.lineTo(cx + Math.cos(t + .35) * 70, cy + Math.sin(t + .35) * 70); x.stroke(); }
+    x.fillStyle = '#ffb53a'; x.beginPath(); x.arc(cx, cy, 36, 0, 7); x.fill();
+  });
+  /* The back's lower corner: USB, network, the red switch and the socket. */
+  const portsArt = () => canvasOf(128, 384, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    x.fillStyle = '#1b1c1f'; x.fillRect(16, 20, 40, 26); x.fillRect(72, 18, 40, 32);
+    x.fillStyle = '#e8b21a'; x.fillRect(24, 28, 24, 8);
+    x.fillStyle = '#1b1c1f'; x.fillRect(30, 150, 68, 84);
+    x.fillStyle = '#d0262b'; x.fillRect(40, 162, 48, 60);
+    x.fillStyle = '#1b1c1f'; x.beginPath(); x.roundRect ? x.roundRect(18, 258, 92, 106, 8) : x.rect(18, 258, 92, 106); x.fill();
+    x.fillStyle = '#3a3c41'; x.fillRect(38, 284, 52, 56);
+    x.fillStyle = '#111'; [[50, 312], [64, 302], [78, 312]].forEach(([px, py]) => x.fillRect(px - 3, py - 8, 6, 16));
   });
   /* The touchscreen, redrawn from the printer's state. */
   function screenArt(c, st) {
@@ -678,11 +727,11 @@ const Twin3D = (() => {
 
     /* ---- build the machine once ---- */
     if (typeof Twin3DScene === 'undefined') { wrap.remove(); return null; }
-    const S = Twin3DScene.build({ geo, slab, annulus, lathe, tube, panel, box, rrect, circle, BODY, BED, PLATE, TIP, RAIL_Z, DOCK, HEAD, HUB });
+    const S = Twin3DScene.build({ geo, slab, annulus, lathe, tube, panel, box, rrect, circle, quadV, tri, norm, BODY, BED, PLATE, TIP, RAIL_Z, DOCK, HEAD, HUB });
     const parts = S.statics.map(p => ({ ...p, mesh: upload(p.g) }));
     const dyn = Object.fromEntries(Object.entries(S.dynamic).map(([k, p]) => [k, { ...p, mesh: upload(p.g) }]));
     const tex = {
-      logo: texture(logoArt()), label: texture(labelArt()), side: texture(sideArt()), feeder: texture(feederArt()), head: texture(headArt()),
+      logo: texture(logoArt()), label: texture(labelArt()), side: texture(sideArt()), feeder: texture(feederArt()), head: texture(headArt()), carriage: texture(carriageArt()), ports: texture(portsArt()),
     };
     const screenCanvas = canvasOf(512, 320, () => {});
     tex.screen = texture(screenCanvas);
@@ -862,11 +911,15 @@ const Twin3D = (() => {
       add(dyn.heater.mesh, MAT.alu, { t: [0, 0, bedTop], id: bedId, sel: bedSel, colour: heat > 0.3 ? lin(.85, .6, .45) : null });
       add(dyn.plate.mesh, MAT.pei, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
       add(dyn.label.mesh, MAT.decal, { t: [0, 0, bedTop], id: bedId, tex: tex.label, sel: bedSel });
-      // Gantry: the X rods at the head's Y, its two Y carriages, the carriage.
-      add(dyn.xbeam.mesh, MAT.carbon, { t: [0, y, 0] });
-      add(dyn.ycar.mesh, MAT.rail, { t: [0, y, 0] });
-      add(dyn.xbelt.mesh, MAT.belt, { t: [0, y, 0] });
-      add(dyn.carriage.mesh, MAT.body, { t: [x, y, 0] });
+      // Gantry: the X rods, its two Y carriages, the carriage, all just in
+      // front of the head they carry (the nozzle itself is at x, y). In the
+      // Print view the rods and carriage turn to glass, like the head's body.
+      const gy = y + GANTRY_DY;
+      add(dyn.xbeam.mesh, MAT.carbon, { t: [0, gy, 0], body: true });
+      add(dyn.ycar.mesh, MAT.rail, { t: [0, gy, 0] });
+      add(dyn.xbelt.mesh, MAT.belt, { t: [0, gy, 0], body: true });
+      add(dyn.carriage.mesh, MAT.body, { t: [x, gy, 0], body: true });
+      add(dyn.carriageFace.mesh, MAT.decal, { t: [x, gy, 0], tex: tex.carriage, body: true });
       // The parts, grown to the current height.
       const plate = st.objects && Array.isArray(st.objects.list) ? st.objects : null;
       const finished = st.state === 'complete';
@@ -911,7 +964,7 @@ const Twin3D = (() => {
       labels = [];
       heads.forEach(([name, d], i) => {
         const on = name === active, id = 10 + i, sel = selected === `head:${name}` ? 1 : 0;
-        const hx = on ? x : DOCK.xs[i % 4], hy = on ? y - 30 : DOCK.y, tipZ = on ? TIP : DOCK.tip;
+        const hx = on ? x : DOCK.xs[i % 4], hy = on ? y : DOCK.y, tipZ = on ? TIP : DOCK.tip;
         const fault = d.status === 'error', colour = srgb(d.filament_color_hex) || lin(.6, .6, .62);
         const hot = (d.temperature || 0) > 60;
         const t = [hx, hy, tipZ], body = on;   // the working head's body turns to glass in the Print view
@@ -921,29 +974,24 @@ const Twin3D = (() => {
         add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: 0.9, body });
         add(dyn.nozzle.mesh, MAT.steel, { t, id });
         add(dyn.block.mesh, { c: hot ? lin(.95, .45, .18) : lin(.16, .16, .17), r: .5, m: 0 }, { t, id, glow: hot ? Math.min(0.55, ((d.temperature || 0) - 60) / 300) : 0 });
-        // Filament loop: from the top of the head up and back down to the rear wall.
+        // Tube loop: from the top of the head up and back down into the shelf at the back.
         const lk = `${name}|${Math.round(hx)}|${Math.round(hy)}|${tipZ}|${d.filament_color_hex}`;
         if (!loopMeshes[name] || loopMeshes[name].key !== lk) {
-          if (loopMeshes[name]) ['ptfe', 'cable', 'fil', 'clips'].forEach(k => free(loopMeshes[name][k]));
-          // As in Snapmaker's picture: a tall upside-down U that leaves the
-          // top of the head on one side and returns on the other, a white
-          // filament tube and a black cable side by side, held by clips.
-          const z0 = tipZ + HEAD.h + 2, top = 724, half = 17;
-          const route = (dy, lean) => {
-            const pts = [];
-            for (let k = 0; k <= 16; k++) {
-              const a = Math.PI * k / 16, sx = -Math.cos(a), up = Math.sin(a);
-              const zz = z0 + (top - z0) * Math.pow(up, 0.55);
-              pts.push([hx + sx * (half + lean * up), hy + dy + 6 * up, zz]);
-            }
-            return pts;
-          };
+          if (loopMeshes[name]) ['ptfe', 'cable', 'fil', 'clips', 'stems'].forEach(k => free(loopMeshes[name][k]));
+          // As in Snapmaker's photos: a black sleeve straight up from the head,
+          // then a beige filament tube and a black cable side by side, held by
+          // clips, in a tall loop (wider at the top) that turns back over the
+          // body and drops through a sleeve into the shelf above its dock.
+          const z0 = tipZ + HEAD.h + 2, top = 724, ex = DOCK.xs[i % 4], ey = (BODY.y1 + BODY.yb) / 2 + 4, ez = BODY.z1, h = top - z0;
+          const path = [[hx, hy, z0], [hx, hy, z0 + 72], [hx * 0.85 + ex * 0.15, hy - 24, z0 + h * 0.7], [(hx + ex) / 2, (hy + ey) / 2 - 8, top],
+            [hx * 0.15 + ex * 0.85, ey + 34, ez + (top - ez) * 0.62], [ex, ey, ez + 86], [ex, ey, ez - 6]];
+          const route = dx => path.map(p => [p[0] + dx, p[1], p[2]]);
           const clips = geo();
-          for (const k of [3, 13]) {
-            const a = Math.PI * k / 16, up = Math.sin(a), zz = z0 + (top - z0) * Math.pow(up, 0.55), x = hx - Math.cos(a) * (half + 3 * up);
-            box(clips, x - 4, hy - 9 + 6 * up, zz - 5, x + 4, hy + 9 + 6 * up, zz + 5, 1.5);
-          }
-          loopMeshes[name] = { key: lk, ptfe: upload(tube(geo(), route(-4, 3), 3.1, 12, 8)), fil: upload(tube(geo(), route(-4, 3), 0.9, 6, 8)), cable: upload(tube(geo(), route(4, 3), 2.7, 10, 8)), clips: upload(clips) };
+          for (const p of [path[1], path[2], path[4], path[5]]) box(clips, p[0] - 7.5, p[1] - 4.5, p[2] - 4, p[0] + 7.5, p[1] + 4.5, p[2] + 4, 1.5);
+          const stems = geo();
+          tube(stems, [path[0], [hx, hy, z0 + 36], path[1]], 4.8, 12, 4);
+          tube(stems, [[ex, ey, ez + 86], [ex, ey, ez + 40], [ex, ey, ez - 6]], 4.8, 12, 4);
+          loopMeshes[name] = { key: lk, ptfe: upload(tube(geo(), route(-3.6), 3.1, 12, 8)), fil: upload(tube(geo(), route(-3.6), 0.9, 6, 8)), cable: upload(tube(geo(), route(3.6), 2.7, 10, 8)), clips: upload(clips), stems: upload(stems) };
         }
         const lm = loopMeshes[name];
         // The loops count as part of the case in the drawing: they would
@@ -952,15 +1000,18 @@ const Twin3D = (() => {
         add(lm.fil, { c: colour, r: .4, m: 0 }, { id, lining: true, loop: true });
         add(lm.ptfe, MAT.tube, { id, lining: true, loop: true });
         add(lm.clips, MAT.cable, { id, lining: true, loop: true });
+        add(lm.stems, MAT.cable, { id, lining: true, loop: true });
         const at = style === 'drawing' ? [hx, hy, tipZ + HEAD.h + 14] : [hx, hy, tipZ + HEAD.h + 24];
         labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature });
       });
-      // Spools on the side drums, in the loaded colours (T0, T1 left; T2, T3 right: by eye).
+      // Spools on the side hubs, in the loaded colours: T0, T1 left (spools 1 and 2), T2, T3 right (3 and 4),
+      // the first of each pair on the upper hub, as Snapmaker numbers them. The filament runs to the feeder.
       heads.slice(0, 4).forEach(([name, d], i) => {
-        const left = i < 2, hub = i % 2 ? HUB.lower : HUB.upper, sx = left ? BODY.x0 - 58 : BODY.x1 + 58;
+        const left = i < 2, hub = i % 2 ? HUB.lower : HUB.upper, sx = left ? BODY.x0 - HUB.out : BODY.x1 + HUB.out;
         const colour = srgb(d.filament_color_hex) || lin(.6, .6, .62), sel = selected === `head:${name}` ? 1 : 0;
         add(dyn.spoolCore.mesh, { c: colour, r: .5, m: 0, kind: 'spool' }, { t: [sx, hub[0], hub[1]], id: 20 + i, sel, colour: null, footOverride: [hub[0], hub[1]] });
-        add(dyn.spoolFlange.mesh, MAT.flange, { t: [sx, hub[0], hub[1]], id: 20 + i, sel });
+        add(dyn.spoolFlange.mesh, MAT.kraft, { t: [sx, hub[0], hub[1]], id: 20 + i, sel });
+        add(dyn[`strand${i}`].mesh, { c: colour, r: .4, m: 0 }, { id: 20 + i, shell: true });
       });
       return { items, bedTop, active };
     }
@@ -1177,8 +1228,8 @@ const Twin3D = (() => {
         dim([px0, pr.centre[1], T], [px0, pr.centre[1], T + done], [-30, 0, 0], `${done.toFixed(1)}/${pr.top.toFixed(1)}`);
       }
       // The case's size: estimated from Snapmaker's picture, hence the ≈.
-      if (showCase && v === 'front') { dim([BODY.x0, BODY.y0, 0], [BODY.x1, BODY.y0, 0], [0, 0, -46], `≈390${nb}mm`); dim([BODY.x0, BODY.y0, 0], [BODY.x0, BODY.y0, BODY.z1], [-150, 0, 0], `≈488${nb}mm`); }
-      if (showCase && v === 'top') { dim([BODY.x0, BODY.y0, BODY.z1], [BODY.x1, BODY.y0, BODY.z1], [0, -40, 0], `≈390${nb}mm`); dim([BODY.x1, BODY.y0, BODY.z1], [BODY.x1, BODY.y1, BODY.z1], [110, 0, 0], `≈460${nb}mm`); }
+      if (showCase && v === 'front') { dim([BODY.x0, BODY.y0, 0], [BODY.x1, BODY.y0, 0], [0, 0, -46], `≈${BODY.x1 - BODY.x0}${nb}mm`); dim([BODY.x0, BODY.y0, 0], [BODY.x0, BODY.y0, BODY.z1], [-150, 0, 0], `≈${BODY.z1}${nb}mm`); }
+      if (showCase && v === 'top') { dim([BODY.x0, BODY.y0, BODY.z1], [BODY.x1, BODY.y0, BODY.z1], [0, -40, 0], `≈${BODY.x1 - BODY.x0}${nb}mm`); dim([BODY.x1, BODY.y0, BODY.z1], [BODY.x1, BODY.yb, BODY.z1], [110, 0, 0], `≈${BODY.yb - BODY.y0}${nb}mm`); }
       // The heads' balloons: the drafting way of naming parts.
       labels.forEach(l => {
         const p = P2(...l.at), sw = /^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999';

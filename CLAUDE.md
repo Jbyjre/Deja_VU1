@@ -283,11 +283,17 @@ root should hand over to `welcome.html`.
   an engineering drawing made from the same geometry (edge-detection ink plus
   SVG dimensions, balloons and title block). Driven by workshop.js
   (`setTwinMode`, `queueTwin`); the old SVG `drawTwin` is the fallback without
-  WebGL 2. The look comes from Snapmaker's official product picture (shipped in
-  Snapmaker's Orca profile, `resources/profiles/Snapmaker/Snapmaker U1_cover.png`)
-  and the plate size from that profile (276 × 293 mm); only facts were used,
-  not files (that repo is AGPL). The body's own size (~390 × 460 × 480 mm),
-  dock spacing and inside layout are estimates; the card says so.
+  WebGL 2. The look comes from Snapmaker's product photos of the production U1
+  (front, both sides, back, three-quarter views; Snapmaker's shop and product
+  pages, checked 30 October 2026) and the plate size from Snapmaker's Orca
+  profile (276 × 293 mm); only facts were used, not files (that repo is AGPL).
+  Body ≈ 456 × 499 × 458 mm (`BODY`: square front, 450 mm deep plus a 49 mm shelf
+  across the top of the back with a curved underside), measured from the photos
+  scaled by the published 499 mm depth; recessed side pockets (`HUB`) hold the
+  spools so 584 mm overall fits. The gantry runs `GANTRY_DY` in front of the head
+  it carries, so the nozzle is drawn at the G-code position. Dock spacing, gantry
+  heights and inside layout are estimates; the card says so. Whether the back
+  opening is glazed is unconfirmed (drawn as faint glass).
 - Games (`games.js`, moved out of app.js; fetched by app.js `loadGames()` the first time the
   Games tab opens, so it is not in index.html's script list): every game timer goes through `frameEvery()` (rAF-driven fixed
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
