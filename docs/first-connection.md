@@ -66,7 +66,7 @@ its controls. Keep it on your home network for the session (see
    explains each message.
 6. Watch your print for a few minutes. Compare the dock states, temperatures,
    progress and finish time with the printer's own screen.
-7. While nothing is printing, press **Printers → Home all** and watch the 3D twin
+7. While nothing is printing, press **Control → Home all** and watch the 3D twin
    on Overview. Its head should travel with the printer's head, at about the
    same pace (it trails by about a third of a second), and stop where the
    printer stops. Until the printer has homed, the twin card says "not homed,
