@@ -21,6 +21,10 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.7 (31 October 2026): Make updates finish every time, and say plainly when Deja Vu1 is ready
+
+- Make updates finish every time, and say plainly when Deja Vu1 is ready
+
 ## 0.13.6 (31 October 2026): Keep every part drawing with a real printer, and reload pages after any update
 
 - Keep every part drawing with a real printer, and reload pages after any update
