@@ -56,13 +56,14 @@ trust the code and fix this file.
   the account's usage limit mid-run.)
 - Never change model, effort, fast mode or permission mode unless asked.
 - Confirm before delete, overwrite, force-push or reset --hard.
-- Default: commit finished work on a branch, open a PR, and merge it with one
-  merge commit (the repo's convention) when there are no conflicts and checks
-  are green or absent. Don't wait on pending CI. Never force-push.
-- Auto-merge: allowed (the owner, 29 October 2026). Most sessions merge their own
-  pull request once the work is done and checked; ask first when the work is
-  unfinished, when it puts something public the owner has not seen, or when the
-  owner says not to merge. This is merging only: no PR/CI watching or GitHub
+- Merging (the owner, 31 October 2026): every Claude Code session that edits this repository
+  merges its own finished work without being told to. Commit on the session's branch, push, open
+  the pull request, check the work (tests, screenshots or measurements the task calls for), then
+  merge it with one merge commit (the repo's convention). Don't ask first, also when the change
+  goes public. The one exception: don't merge when the owner says not to. A merge conflict or a
+  failing required check is yours to fix before merging; if you can't, say what blocks it. Don't
+  wait on pending CI, never force-push, and say what was merged and how to undo it
+  (`git revert -m 1 <merge commit>`). This is merging only: no PR/CI watching or GitHub
   auto-merge toggle unless asked. The private repository's CLAUDE.md says the same.
 - Install (the owner, 24 October 2026): the copy-and-paste blocks (PowerShell for
   Windows, Terminal for Mac/Linux) are the main install method in README, getting
@@ -283,11 +284,17 @@ root should hand over to `welcome.html`.
   an engineering drawing made from the same geometry (edge-detection ink plus
   SVG dimensions, balloons and title block). Driven by workshop.js
   (`setTwinMode`, `queueTwin`); the old SVG `drawTwin` is the fallback without
-  WebGL 2. The look comes from Snapmaker's official product picture (shipped in
-  Snapmaker's Orca profile, `resources/profiles/Snapmaker/Snapmaker U1_cover.png`)
-  and the plate size from that profile (276 × 293 mm); only facts were used,
-  not files (that repo is AGPL). The body's own size (~390 × 460 × 480 mm),
-  dock spacing and inside layout are estimates; the card says so.
+  WebGL 2. The look comes from Snapmaker's product photos of the production U1
+  (front, both sides, back, three-quarter views; Snapmaker's shop and product
+  pages, checked 30 October 2026) and the plate size from Snapmaker's Orca
+  profile (276 × 293 mm); only facts were used, not files (that repo is AGPL).
+  Body ≈ 456 × 499 × 458 mm (`BODY`: square front, 450 mm deep plus a 49 mm shelf
+  across the top of the back with a curved underside), measured from the photos
+  scaled by the published 499 mm depth; recessed side pockets (`HUB`) hold the
+  spools so 584 mm overall fits. The gantry runs `GANTRY_DY` in front of the head
+  it carries, so the nozzle is drawn at the G-code position. Dock spacing, gantry
+  heights and inside layout are estimates; the card says so. Whether the back
+  opening is glazed is unconfirmed (drawn as faint glass).
 - Games (`games.js`, moved out of app.js; fetched by app.js `loadGames()` the first time the
   Games tab opens, so it is not in index.html's script list): every game timer goes through `frameEvery()` (rAF-driven fixed
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
