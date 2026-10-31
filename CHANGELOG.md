@@ -21,6 +21,10 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.5 (31 October 2026): Keep the dashboard reachable: start with the computer, restart after a crash
+
+- Keep the dashboard reachable: start with the computer, restart after a crash
+
 ## 0.13.4 (31 October 2026): Get ready for a real U1: connection, controls and the twin following the head
 
 - Get ready for a real U1: connection, controls and the twin following the head
