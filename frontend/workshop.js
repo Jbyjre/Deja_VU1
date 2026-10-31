@@ -163,7 +163,7 @@ const Workshop = (() => {
         live.lastAt = performance.now();
         applyState(msg.state);
       } else if (msg.type === 'fleet') {
-        renderFleet(msg.printers);
+        drawSafely('Your printers', () => renderFleet(msg.printers));
       } else if (msg.type === 'event') {
         live.lastEvent = Math.max(live.lastEvent, msg.event.id);
         onEvent(msg.event);
@@ -195,7 +195,7 @@ const Workshop = (() => {
       (ev && ev.events || []).forEach(e => { live.lastEvent = Math.max(live.lastEvent, e.id); onEvent(e); });
       if (tick++ % 2 === 0) {
         const fleet = await getJSON(api('/api/fleet')).catch(() => null);
-        if (fleet && fleet.printers) renderFleet(fleet.printers);
+        if (fleet && fleet.printers) drawSafely('Your printers', () => renderFleet(fleet.printers));
       }
       // Polling started because the WebSocket failed - often just a server
       // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
@@ -230,14 +230,14 @@ const Workshop = (() => {
     if (!state || !state.state) return;
     printerState = state;
     lastPrinterState = state;
-    renderStatusRibbon(state);
-    renderPill(state);
-    renderTwin(state);
-    renderQuickActions(state);
-    updateChamberNow(state);
-    renderChip();
-    tintRoom(state);
-    window.dispatchEvent(new CustomEvent('dv-state', { detail: state }));
+    drawSafely('The status bar', () => renderStatusRibbon(state));
+    drawSafely('The live pill', () => renderPill(state));
+    drawSafely('The 3D twin', () => renderTwin(state));
+    drawSafely('The quick Pause and Cancel bar', () => renderQuickActions(state));
+    drawSafely('The chamber reading', () => updateChamberNow(state));
+    drawSafely('The printer picker', () => renderChip());
+    drawSafely('The room tint', () => tintRoom(state));
+    drawSafely('The live readout', () => window.dispatchEvent(new CustomEvent('dv-state', { detail: state })));
     if (fromCommand) refreshSoon();
   }
 
@@ -367,7 +367,7 @@ const Workshop = (() => {
 
   function renderFleet(printers) {
     live.fleet = printers || [];
-    renderAttention(live.fleet);
+    drawSafely('Needs you', () => renderAttention(live.fleet));
     // The remembered printer can be gone (removed, or a sandbox printer torn
     // down). Every request would then ask for an unknown printer and every
     // panel would say nothing is connected, so fall back to the default.
@@ -1620,7 +1620,8 @@ const Workshop = (() => {
     const pct = Math.round(state.progress * 100);
     const left = hoursLeft(state);
     const active = state.active_toolhead;
-    setVar(pill, '--glass-tint', active ? state.toolheads[active].filament_color_hex : STATE_HEX[state.state]);
+    const head = active && state.toolheads ? state.toolheads[active] : null;
+    setVar(pill, '--glass-tint', (head && head.filament_color_hex) || STATE_HEX[state.state]);
     if (pill.dataset.state !== state.state) pill.dataset.state = state.state;
     const title = `${state.printer_name ? state.printer_name + ' · ' : ''}${state.state === 'complete' ? 'Done' : pct + '%'}`;
     const sub = state.state === 'paused' ? `Paused: ${state.current_file || ''}` :
