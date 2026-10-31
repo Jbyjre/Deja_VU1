@@ -110,7 +110,8 @@ the app; your settings and files stay put.
 
 A black window opens (that's the launcher) and your browser opens the dashboard.
 Keep the black window open. Next time, double-click `start-windows.bat` in
-**Documents → Deja_VU1**.
+**Documents → Deja_VU1**. To have it start by itself whenever you sign in, turn on
+**Settings → Desktop app → Start Deja Vu1 when this computer starts**.
 
 ### Mac: paste into Terminal
 
@@ -126,7 +127,8 @@ Keep the black window open. Next time, double-click `start-windows.bat` in
 If your Mac says the `python3` command needs the command line developer tools,
 click **Install**, wait for it to finish, then paste the block again. That is
 how macOS adds Python. Keep the Terminal window open while you use Deja Vu1.
-Next time, double-click `start-mac.command` in **Documents → Deja_VU1**.
+Next time, double-click `start-mac.command` in **Documents → Deja_VU1**. To have it start by itself whenever you sign in, turn on
+**Settings → Desktop app → Start Deja Vu1 when this computer starts**.
 
 The same block works on **Linux and a Raspberry Pi**.
 

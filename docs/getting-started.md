@@ -59,7 +59,9 @@ You need your own running copy for real readings.
    open Terminal in the folder and run `python3 start.py`. Downloaded files may
    need your operating system's permission to open; do not disable its security.
 4. Your browser opens [the local dashboard](http://localhost:8000). Keep the
-   launcher window open. Closing it stops the dashboard. The launcher also
+   launcher window open. Closing it stops the dashboard (if it stops by itself after a
+   crash, the launcher starts it again). To have it start whenever you sign in, turn on
+   **Settings → Desktop app → Start Deja Vu1 when this computer starts**. The launcher also
    prints **From a phone**, followed by your computer's home-network address,
    and, where the console can draw it, a QR code of it for the phone's camera.
 5. Follow **Set up & help**, or skip and replay it from **Settings**. Your

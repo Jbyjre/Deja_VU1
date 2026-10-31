@@ -81,3 +81,54 @@ class LauncherProcesses(unittest.TestCase):
                             except subprocess.TimeoutExpired:
                                 os.killpg(proc.pid, signal.SIGKILL)
                                 proc.wait(5)
+
+
+CRASH_ONCE = '''
+from pathlib import Path
+marker = Path("crashed-once")
+if not marker.exists():
+    marker.write_text("1")
+    raise RuntimeError("a crash on the first start")
+''' + SERVER
+
+
+@unittest.skipIf(os.name == 'nt', 'POSIX process cleanup; Windows launcher needs a Windows check')
+class LauncherRestartsAfterACrash(unittest.TestCase):
+    def test_a_crashed_server_is_started_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'backend/data').mkdir(parents=True)
+            shutil.copy2(ROOT / 'start.py', root / 'start.py')
+            for name in ('app_updates.py', 'storage.py'):
+                shutil.copy2(ROOT / 'backend' / name, root / 'backend' / name)
+            (root / 'VERSION').write_text('0.1.0')
+            (root / 'backend/app.py').write_text(CRASH_ONCE)
+            with socket.socket() as probe:
+                probe.bind(('127.0.0.1', 0))
+                port = probe.getsockname()[1]
+            env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1', DEJAVU_DATA_DIR=str(root / 'backend/data'))
+            with tempfile.TemporaryFile() as output:
+                proc = subprocess.Popen([sys.executable, 'start.py'], cwd=root, env=env,
+                                        stdout=output, stderr=output, start_new_session=True)
+                try:
+                    answered = None
+                    deadline = time.monotonic() + 15
+                    while time.monotonic() < deadline and proc.poll() is None:
+                        try:
+                            with urlopen(f'http://127.0.0.1:{port}/api/app/info', timeout=.3) as r:
+                                answered = json.load(r)['version']
+                            break
+                        except (OSError, ValueError):
+                            time.sleep(.1)
+                    self.assertEqual(answered, '0.1.0')
+                    self.assertTrue((root / 'crashed-once').exists())
+                    output.seek(0)
+                    self.assertIn(b'Starting it again', output.read())
+                finally:
+                    if proc.poll() is None:
+                        os.killpg(proc.pid, signal.SIGINT)
+                        try:
+                            proc.wait(8)
+                        except subprocess.TimeoutExpired:
+                            os.killpg(proc.pid, signal.SIGKILL)
+                            proc.wait(5)

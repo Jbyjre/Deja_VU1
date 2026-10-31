@@ -332,6 +332,8 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .da-modes { border: 0; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
 .da-modes label { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 500; cursor: pointer; }
 .da-modes input { width: 18px; height: 18px; accent-color: var(--accent-text); }
+.da-autostart { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 500; cursor: pointer; }
+.da-autostart input { width: 18px; height: 18px; flex: none; accent-color: var(--accent-text); }
 
 /* ---- setup additions ------------------------------------------------------- */
 
