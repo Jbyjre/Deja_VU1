@@ -57,16 +57,24 @@ its controls. Keep it on your home network for the session (see
 3. Open **http://localhost:8000** in a browser on that computer. It will say
    no printer is connected.
 4. **Printers → Add a printer.** Give it a name, paste the address, and add an API
-   key only if your Moonraker asks for one.
+   key only if your Moonraker asks for one. The printer's IP address alone
+   (`192.168.1.50`) is enough. An address copied from the browser bar while the
+   printer's web page is open (`http://192.168.1.50/#/`) works too: **Test** and
+   **Add printer** tidy it and, when nothing on port 80 is Moonraker, use port 7125.
 5. Within a few seconds the row shows **Connected**, or says in words why it
    isn't. [real-printer.md](real-printer.md#what-happens-if-something-is-wrong)
    explains each message.
 6. Watch your print for a few minutes. Compare the dock states, temperatures,
    progress and finish time with the printer's own screen.
-7. Open **Details** on the printer's row. It shows whether the link is open,
+7. While nothing is printing, press **Control → Home all** and watch the 3D twin
+   on Overview. Its head should travel with the printer's head, at about the
+   same pace (it trails by about a third of a second), and stop where the
+   printer stops. Until the printer has homed, the twin card says "not homed,
+   position unknown".
+8. Open **Details** on the printer's row. It shows whether the link is open,
    Klipper's state, which toolheads and chamber sensor were found, how much
    print history was read, and the newest 14 exchanges with Moonraker.
-8. Save the full record, once right after connecting and again at the end:
+9. Save the full record, once right after connecting and again at the end:
    open **http://localhost:8000/api/fleet/registry**, find your printer's `id`
    (it looks like `printer-1a2b3c`), then open
    `http://localhost:8000/api/printers/diagnostics?printer=` followed by that

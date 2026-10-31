@@ -91,6 +91,10 @@ PING_INTERVAL = 15.0
 FILAMENT_REQUERY = 30.0
 DEAD_AFTER = 60.0              # nothing heard (not even a pong) for this long: reconnect
 KLIPPY_RETRY = 2.0             # Moonraker's docs: ask again in 2 s while Klipper starts
+# The longest wait between connection attempts. A try on a home network costs
+# one refused or unanswered connection, so a printer that has just been
+# switched on is found within about 10 s rather than half a minute.
+RECONNECT_MAX = 10.0
 LOG_LINES = 300
 
 CLIENT_VERSION = "1.0"
@@ -217,6 +221,8 @@ def clean_error(message):
     configured"}'); that becomes 'extruder1 not configured (code ...)'.
     """
     text = str(message or "").strip()
+    if text.startswith("!! "):
+        text = text[3:].strip()
     if text.startswith("{"):
         try:
             data = json.loads(text)
@@ -224,9 +230,7 @@ def clean_error(message):
             data = None
         if isinstance(data, dict) and (data.get("msg") or data.get("message")):
             code = data.get("coded") or data.get("code")
-            text = str(data.get("msg") or data.get("message")) + (f" (code {code})" if code else "")
-    if text.startswith("!! "):
-        text = text[3:]
+            text = str(data.get("msg") or data.get("message")).strip() + (f" (code {code})" if code else "")
     return text[:500] or "no reason given"
 
 
@@ -484,9 +488,7 @@ def translate_state(status, ctx):
 
     extruders = ctx.get("extruders") or {}
     toolheads, active = _toolheads(status, extruders, ptc)
-    pos = _obj(status, "toolhead").get("position")
-    pos = list(pos)[:3] if isinstance(pos, (list, tuple)) else []
-    pos += [0.0] * (3 - len(pos))
+    pos, source = live_or_commanded(_obj(status, "toolhead"), _obj(status, "motion_report"))
     chamber_obj = ctx.get("chamber")
     chamber = _num(_obj(status, chamber_obj).get("temperature")) if chamber_obj else None
 
@@ -515,6 +517,7 @@ def translate_state(status, ctx):
         "bed_target": _num(bed.get("target"), 0.0),
         "chamber_temperature": chamber,
         "toolhead_position": [round(_num(v, 0.0), 2) for v in pos],
+        "position_source": source,
         "layer": {"current": current, "total": total, **({"estimated": True} if estimated_layer else {})},
         "printer_id": ctx.get("printer_id"),
         "printer_name": ctx.get("name"),
@@ -522,6 +525,9 @@ def translate_state(status, ctx):
         "real": True,
         "machine": machines.public(ctx.get("machine")),
     }
+    homed = _obj(status, "toolhead").get("homed_axes")
+    if isinstance(homed, str):
+        out["homed_axes"] = "".join(a for a in "xyz" if a in homed.lower())
     plate = plate_objects(_obj(status, "exclude_object"))
     if plate and state in ("printing", "paused"):
         out["objects"] = plate
@@ -536,6 +542,27 @@ def translate_state(status, ctx):
         if mapping:
             out["extruder_map"] = mapping
     return out
+
+
+def live_or_commanded(th, mr):
+    """
+    Where the nozzle is, in the toolhead's coordinates: motion_report's
+    live_position when the printer reports one, else toolhead "position".
+    toolhead "position" is the end of the last move queued, so during a slow
+    move (homing, a hand-typed G1, a park) it is already at the destination;
+    live_position is where the motion is now. The U1's Klipper always loads
+    motion_report (u1-klipper klippy/stepper.py) and keeps the latest move
+    in its history (chelper/trapq.c), so an idle printer reads its rest
+    position. Returns ([x, y, z], "live" | "commanded").
+    """
+    live = mr.get("live_position")
+    if isinstance(live, (list, tuple)) and len(live) >= 3:
+        vals = [_num(live[i]) for i in range(3)]
+        if all(v is not None and abs(v) < 1e5 for v in vals):
+            return vals, "live"
+    pos = th.get("position")
+    pos = [_num(v, 0.0) for v in list(pos)[:3]] if isinstance(pos, (list, tuple)) else []
+    return pos + [0.0] * (3 - len(pos)), "commanded"
 
 
 def print_sync(vsd, gm, mr):
@@ -970,7 +997,8 @@ _BASE_OBJECTS = {
     "heater_bed": ["temperature", "target"],
     "print_task_config": ["filament_exist", "filament_type", "filament_color_rgba", "filament_vendor",
                           "extruder_map_table"],
-    "exclude_object": ["objects", "excluded_objects", "current_object"],
+    # in_excluded_region exists on the U1's fork only (a missing field is left out)
+    "exclude_object": ["objects", "excluded_objects", "current_object", "in_excluded_region"],
 }
 # state, nozzle_diameter and the swap counters exist only on Snapmaker's
 # U1 Klipper (klippy/kinematics/extruder.py get_status, u1-klipper 10f2f69);
@@ -1095,7 +1123,7 @@ class MoonrakerPrinter:
                 backoff = 1.0
             if self._stop.wait(backoff):
                 break
-            backoff = min(30.0, backoff * 2)
+            backoff = min(RECONNECT_MAX, backoff * 2)
 
     def _down(self, reason):
         with self.lock:
@@ -1619,8 +1647,19 @@ class MoonrakerPrinter:
         if state["state"] != "printing":
             raise ValueError("Nothing is printing right now")
         self._log_command("pause", state.get("current_file"))
+        skipping = self._in_excluded_region()
         self.http.request("POST", "/printer/print/pause", timeout=COMMAND_TIMEOUT)
-        return self._await(lambda s: s["state"] == "paused", STATE_WAIT)
+        state = self._await(lambda s: s["state"] == "paused", STATE_WAIT)
+        # The U1 answers ok and carries on while the nozzle is over a skipped
+        # object (u1-klipper extras/pause_resume.py cmd_PAUSE), so say why.
+        if state["state"] != "paused" and (skipping or self._in_excluded_region()):
+            raise PrinterRefused("The printer doesn't pause while the nozzle is passing over a skipped object. "
+                                 "Press Pause again in a moment")
+        return state
+
+    def _in_excluded_region(self):
+        with self.lock:
+            return (self._status.get("exclude_object") or {}).get("in_excluded_region") is True
 
     def resume_print(self):
         state = self._fresh_state()

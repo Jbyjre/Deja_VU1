@@ -224,6 +224,7 @@ the same whether or not a printer is connected, because they aren't printer
 figures.
 """
 
+import errno
 import gzip
 import ipaddress
 import http.cookies
@@ -1419,8 +1420,16 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             url = fleet.normalise_url(body.get("moonraker_url"))
             fleet.check_url(url)
-            return self._send_json({**discovery.probe(url, str(body.get("api_key") or "").strip() or None),
-                                    "url": url})
+            key = str(body.get("api_key") or "").strip() or None
+            result = discovery.probe(url, key)
+            # "http://192.168.1.50" is the printer's web page; when nothing
+            # there speaks Moonraker, try Moonraker's own port before saying no.
+            other = fleet.moonraker_port_variant(url)
+            if other and not result["ok"] and not result["needs_key"]:
+                second = discovery.probe(other, key)
+                if second["ok"] or second["needs_key"]:
+                    result, url = second, other
+            return self._send_json({**result, "url": url})
 
         if route == "/api/printers/login":
             # Signs in once with the printer's own username and password and
@@ -1830,8 +1839,37 @@ def _print_phone_qr(url):
         print("  " + line)
 
 
+PORT_IN_USE = 3                # exit code: another program holds the port (start.py reads it)
+
+
+def _bind(attempts=10, wait=0.5):
+    """
+    The server on PORT. A port still held by a copy that is closing frees
+    itself within a few seconds, so it is asked again; a port another program
+    keeps is said in words with what to do, never as a traceback.
+    """
+    for attempt in range(attempts):
+        try:
+            return DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
+        except OSError as exc:
+            in_use = exc.errno in (errno.EADDRINUSE, 10048) or getattr(exc, "winerror", None) == 10048
+            if not in_use:
+                raise
+            if attempt + 1 < attempts:
+                time.sleep(wait)
+    print("=" * 58)
+    print(f"  Deja Vu1 couldn't start: port {PORT} is already in use by another program.")
+    print("  Close that program (or another Deja Vu1 window) and start Deja Vu1 again,")
+    print("  or start it on a different port, for example 8001:")
+    print("    Windows (PowerShell):  $env:PORT=8001; py -3 start.py")
+    print("    Mac or Linux:          PORT=8001 python3 start.py")
+    print("  Then open http://localhost:8001")
+    print("=" * 58, flush=True)
+    sys.exit(PORT_IN_USE)
+
+
 def main():
-    server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
+    server = _bind()
     live_feed.start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
     threading.Thread(target=memory.watch, daemon=True).start()

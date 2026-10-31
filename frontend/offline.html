@@ -1,1 +1,30 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f0f1f5"><title>Deja Vu1 · Offline</title><style>body{font:18px/1.6 system-ui,sans-serif;background:#f0f1f5;color:#232d3d;max-width:540px;margin:12vh auto;padding:28px}h1{line-height:1.15}a{display:inline-block;padding:12px 20px;background:#164fc9;color:white;border-radius:12px}</style><h1>Your dashboard is out of reach.</h1><p>No live printer readings are available. No controls have been sent or queued.</p><p>Keep the computer running Deja Vu1 awake, leave its launcher window open, and reconnect to your home Wi-Fi or your private remote connection.</p><a href="./?dashboard">Try again</a><p><small>This page only explains the connection problem. It does not show saved printer readings.</small></p></html>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f0f1f5"><title>Deja Vu1 · Offline</title><style>body{font:18px/1.6 system-ui,sans-serif;background:#f0f1f5;color:#232d3d;max-width:560px;margin:10vh auto;padding:28px}h1{line-height:1.15}a{display:inline-block;padding:12px 20px;background:#164fc9;color:white;border-radius:12px;text-decoration:none}code{font-size:.92em;background:#e2e5ec;padding:1px 6px;border-radius:6px}ol{padding-left:1.2em}#check{color:#4b5568}</style>
+<h1>Your dashboard is out of reach.</h1>
+<p>No live printer readings are available. No controls have been sent or queued.</p>
+<div id="here" hidden>
+<p>The Deja Vu1 program is not running on this computer, or it is still starting.</p>
+<ol><li>Open your Deja Vu1 folder.</li><li>Double-click <code>start-windows.bat</code> (Windows), <code>start-mac.command</code> (Mac) or <code>start-linux.sh</code> (Linux).</li><li>Leave the window that opens running. Closing it stops the dashboard.</li></ol>
+<p>The address is <code>http://localhost:8000</code> unless you chose another port.</p>
+</div>
+<div id="away"><p>Keep the computer running Deja Vu1 awake, leave its launcher window open, and reconnect to your home Wi-Fi or your private remote connection.</p></div>
+<p id="check" aria-live="polite"></p>
+<a href="./?dashboard">Try again</a>
+<p><small>This page only explains the connection problem. It does not show saved printer readings.</small></p>
+<script>
+(function () {
+  var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  document.getElementById('here').hidden = !local;
+  document.getElementById('away').hidden = local;
+  var check = document.getElementById('check'), tries = 0;
+  function again() {
+    tries++;
+    check.textContent = 'Checking again every 3 seconds. This page goes back to your dashboard by itself when Deja Vu1 answers.';
+    fetch('/api/modules', { cache: 'no-store' }).then(function (r) {
+      if (r.ok) location.replace('./?dashboard');
+      else setTimeout(again, 3000);
+    }).catch(function () { setTimeout(again, tries < 200 ? 3000 : 15000); });
+  }
+  again();
+})();
+</script>
+</html>

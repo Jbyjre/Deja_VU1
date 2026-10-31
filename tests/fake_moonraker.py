@@ -109,6 +109,10 @@ class FakeMoonraker:
             "toolhead": {"extruder": "extruder", "position": [135.0, 135.0, 10.0, 0.0], "homed_axes": "xyz",
                          "axis_minimum": list(axis_minimum) + [0.0], "axis_maximum": list(axis_maximum) + [0.0]},
             "gcode_move": {"gcode_position": [135.0, 135.0, 10.0, 0.0]},
+            # Always loaded (u1-klipper klippy/stepper.py); the nozzle's position now
+            # (extras/motion_report.py get_status)
+            "motion_report": {"live_position": [135.0, 135.0, 10.0, 0.0], "live_velocity": 0.0,
+                              "live_extruder_velocity": 0.0},
             "heater_bed": {"temperature": 24.0, "target": 0.0, "power": 0.0},
             # extras/exclude_object.py get_status (Snapmaker's u1-klipper fork)
             "exclude_object": {"objects": [], "excluded_objects": [], "current_object": None,
@@ -448,6 +452,10 @@ class FakeMoonraker:
                     return self._reply(200, {"result": {"eventtime": time.monotonic(),
                                                         "status": fake._query(args.get("objects"))}})
                 if path == "/printer/print/pause":
+                    # u1-klipper pause_resume.py cmd_PAUSE: over an excluded object it
+                    # answers ok and doesn't pause.
+                    if fake.status["exclude_object"].get("in_excluded_region"):
+                        return self._reply(200, {"result": "ok"})
                     if not fake.is_paused:
                         fake.is_paused = True
                         if state == "printing":
