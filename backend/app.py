@@ -279,6 +279,7 @@ import print_preview
 import insights
 import memory
 import orca_import
+import readiness
 import selfcheck
 import print_queue
 import qr
@@ -460,7 +461,9 @@ _APP_ROUTES = {
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/remote": (None, lambda q: remote.status(PORT)),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status()}),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
+                                       "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
+                                       "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
@@ -710,14 +713,23 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         return b"".join(data)
 
     def log_message(self, fmt, *args):
-        """Keep the terminal quiet - one tidy line per request."""
+        """
+        Keep the launcher window readable: one tidy line per action (POST) or
+        refused request. Pages and readings that loaded fine (every GET, several
+        a second) are not listed, so "ready and fully working" stays on screen.
+        """
         # A garbled request line (https:// sent to this plain-HTTP port, a
         # port scanner) is logged before self.path exists.
         path = getattr(self, "path", "").split("?")[0]
-        if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff",
-                    "/api/fleet/queues", "/api/sandbox", "/api/slicer/jobs"):
+        command = getattr(self, "command", None) or "?"
+        if fmt != '"%s" %s %s' or len(args) < 2:
+            sys.stderr.write(f"  {command} {path}: {fmt % args}\n")
             return
-        sys.stderr.write(f"  {self.command} {path}\n")
+        status = str(args[1])
+        quiet = ("/api/live/snapshot", "/api/live/events", "/api/app/ready")
+        if status[:1] not in ("4", "5") and (command in ("GET", "HEAD") or path in quiet):
+            return
+        sys.stderr.write(f"  {command} {path}" + (f" (answered {status})" if status[:1] in ("4", "5") else "") + "\n")
 
     def _module_blocked(self, module_id):
         if module_id and not modules.is_enabled(module_id):
@@ -1106,12 +1118,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._send_json(app_updates.check())
         if route == "/api/app/updates/install":
             self._read_json_body()
-            result = _install_update(self.server)
-            return self._send_json(result)
+            return self._send_json(_install_update(self.server, background=True))
         if route == "/api/app/repair":
             # The newest published files over this copy, even at the same version.
             self._read_json_body()
-            return self._send_json(_install_update(self.server, repair=True))
+            return self._send_json(_install_update(self.server, repair=True, background=True))
+        if route == "/api/app/ready":
+            # "Is it really working?" in words: the launcher window, Settings and start.py --check show it.
+            self._read_json_body()
+            return self._send_json(readiness.report(PORT))
         if route == "/api/app/restart":
             self._read_json_body()
             if os.environ.get("DEJAVU_LAUNCHER") != "1":
@@ -1797,13 +1812,20 @@ class DejaVuServer(ThreadingHTTPServer):
 
 
 def _require_idle_for_update():
-    """Updates wait while a real printer is busy, out of reach, or a slice is running."""
+    """Updates wait while a real printer is busy, out of reach, or a slice is running. Said with the printer's name."""
+    names = {p.get("id"): p.get("name") for p in fleet.registered()}
     for pid in mock_moonraker.printer_ids():
         if mock_moonraker.is_real(pid):
             with mock_moonraker.use_printer(pid):
                 state = mock_moonraker.get_printer_state()
-            if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
-                raise ValueError("Updates wait until all real printers are connected and idle")
+            name = names.get(pid) or "A printer you added"
+            if not mock_moonraker.is_connected(pid):
+                raise ValueError(f"{name} isn't answering right now, so the update waits: Deja Vu1 can't see whether it "
+                                 "is printing. Check the printer is switched on and on the same network, or remove it "
+                                 "under Printers, then press Install again")
+            if state.get("state") in ("printing", "paused"):
+                raise ValueError(f"{name} is {state.get('state')}. The update waits until it has finished, so a print "
+                                 "is never interrupted. Press Install again afterwards, or turn on automatic updates")
     try:
         slicing = slicer_bridge.any_active()
     except Exception:
@@ -1815,21 +1837,59 @@ def _require_idle_for_update():
         raise ValueError("Wait for slicing to finish before updating")
 
 
-def _restart_soon(server):
+def _restart_soon(server, wait=0.5):
     """Stop serving; the launcher sees exit code 75 and starts the server again."""
     server.update_restart = True
-    threading.Timer(0.5, server.shutdown).start()
+    threading.Timer(wait, server.shutdown).start()
 
 
-def _install_update(server, repair=False):
-    """Stage an update (checked again just before it is committed), then restart into it."""
-    _require_idle_for_update()
+def _install_update(server, repair=False, background=False):
+    """
+    Stage an update (checked again just before it is committed), then restart into it.
+    Every refusal that can be known at once comes back at once, in words. With
+    background=True (the Install and Repair buttons) the download runs on its own
+    thread and app_updates.job() reports each step, so a reload finds it.
+    """
+    if os.environ.get("DEJAVU_LAUNCHER") != "1":
+        raise ValueError("This copy was started without the double-click launcher, so it can't restart into an "
+                         "update. Close its window and start Deja Vu1 with the launcher, or paste the update block")
+    if app_updates.job_running():
+        raise ValueError("An update is already being installed. This page shows its progress")
+    app_updates.set_job("working", "checking", repair=repair)
     try:
-        memory.snapshot("before-update")
-    except Exception:
-        pass                       # a safety copy that can't be written never blocks the update itself
-    result = app_updates.prepare(before_commit=_require_idle_for_update, repair=repair)
-    _restart_soon(server)
+        _require_idle_for_update()
+    except Exception as exc:
+        app_updates.set_job("idle")
+        raise
+    if not background:
+        return _run_install(server, repair, raise_errors=True)
+    threading.Thread(target=_run_install, args=(server, repair), name="update-install", daemon=True).start()
+    return {"started": True, "job": app_updates.job()}
+
+
+def _run_install(server, repair, raise_errors=False):
+    def step(name, **extra):
+        app_updates.set_job("working", name, repair=repair, **extra)
+    try:
+        step("safety")
+        try:
+            memory.snapshot("before-update")
+        except Exception:
+            pass                   # a safety copy that can't be written never blocks the update itself
+        result = app_updates.prepare(before_commit=_require_idle_for_update, repair=repair, step=step)
+    except Exception as exc:
+        words = app_updates._words(exc)
+        print(f"  The update could not be installed: {words}", flush=True)
+        if not isinstance(exc, ValueError):
+            traceback.print_exc()
+        app_updates.set_job("failed", "failed", words, repair=repair)
+        if raise_errors:
+            raise
+        return None
+    app_updates.set_job("restarting", "restarting", repair=repair, version=result.get("version"))
+    print(f"  Update {result.get('version', '')} is ready. Restarting into it now.", flush=True)
+    # A moment longer than before, so the page that pressed Install hears "restarting" first.
+    _restart_soon(server, wait=1.5)
     return result
 
 
@@ -1902,12 +1962,20 @@ def main():
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
-        live_feed.stop()
-        import stock_camera
-        stock_camera.stop_all()
+        # Let go of the port first. Left open while the rest closes, it accepted
+        # browsers' connections without answering them, so a reload hung.
         server.server_close()
+        cleanup = threading.Thread(target=_close_down, name="close-down", daemon=True)
+        cleanup.start()
+        cleanup.join(timeout=4)    # a camera or printer that won't let go never holds up a restart
     if getattr(server, "update_restart", False):
         sys.exit(75)
+
+
+def _close_down():
+    live_feed.stop()
+    import stock_camera
+    stock_camera.stop_all()
 
 
 if __name__ == "__main__":

@@ -114,8 +114,8 @@ window.Explain = (() => {
       'Failed prints and pauses add themselves. Add your own notes too.'],
     // ---- Settings
     'your space': ['Help when you want it: the quick tour, setup again, and the meaning of the words used here.', ''],
-    'version updates': ['Your version, its updates, and buttons to restart, repair or stop this copy.',
-      'If Install can’t finish, open Update with a command and paste it into a new window.'],
+    'version updates': ['Your version, its updates, and buttons to restart, repair, stop or check this copy.',
+      'Check it all works says in plain words whether everything runs. If the dashboard won’t open, paste the Start and check command into a new window.'],
     'desktop app': ['Use Deja Vu1 in its own window, with its own icon, instead of a browser tab.',
       'Same dashboard, same data. Installing needs Chrome or Edge.'],
     'install on this phone': ['Put Deja Vu1 on this phone’s home screen, so it opens full screen like any app.',

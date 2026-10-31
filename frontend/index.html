@@ -938,6 +938,7 @@
       <div class="vc-update">
         <p class="vc-kind" id="vc-kind"></p>
         <p id="app-update-status" role="status">Loading app information&hellip;</p>
+        <div class="vc-progress" id="app-update-progress" hidden><div class="vc-bar" id="app-update-bar" role="progressbar" aria-label="Update progress" aria-valuemin="0" aria-valuemax="100"><span></span></div><p class="vc-step" id="app-update-step"></p></div>
         <ul class="vc-coming" id="vc-coming" hidden></ul>
         <fieldset class="update-channel" id="app-update-channels">
           <legend class="sr-only">Which updates to get</legend>
@@ -956,16 +957,29 @@
         <button type="button" class="vc-tool" id="app-repair"><b>Repair files</b><span>Put the published app files back. Your data stays.</span></button>
         <button type="button" class="vc-tool" id="app-safety"><b>Safety copy now</b><span>Save your settings and records before a change.</span></button>
         <button type="button" class="vc-tool is-stop" id="app-stop"><b>Stop Deja Vu1</b><span>Close it on this computer. The launcher starts it again.</span></button>
+        <button type="button" class="vc-tool" id="app-ready"><b>Check it all works</b><span>Pages, demo data, printers, saved data and updates, checked now.</span></button>
       </div>
       <p class="field-hint" id="vc-manage-note" role="status"></p>
+      <div class="vc-ready" id="app-ready-box" role="status" hidden></div>
+      <details class="vc-cmd" id="vc-fix">
+        <summary><b>Start and check with a command</b> <span>If the dashboard stops answering or won&rsquo;t start</span></summary>
+        <p>Paste this into a new PowerShell (Windows) or Terminal (Mac, Linux) window. It starts Deja Vu1 in Documents if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. Leave the window open: closing it stops Deja Vu1.</p>
+        <div class="pill-toggle vc-os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
+        <div class="vc-term" data-start-block="win"><button class="btn small vc-copy" type="button">Copy</button><pre><code>$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
+        <div class="vc-term" data-start-block="unix" hidden><button class="btn small vc-copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+      </details>
       <details class="vc-cmd" id="vc-cmd">
-        <summary><b>Update with a command</b> <span>Another way, if the button can&rsquo;t install</span></summary>
+        <summary><b>Update or repair with a command</b> <span>Another way, if the button can&rsquo;t install</span></summary>
         <p>Paste this into a new PowerShell (Windows) or Terminal (Mac, Linux) window. It stops Deja Vu1 in Documents, installs the newest release over it and starts it again. Your data stays.</p>
         <div class="pill-toggle vc-os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
         <div class="vc-term" data-os-block="win"><button class="btn small vc-copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
-Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
 Start-Process "$dest\start-windows.bat"</code></pre></div>

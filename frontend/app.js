@@ -2532,6 +2532,60 @@ async function watchForUpdate() {
 }
 let updateTicks = 0;
 
+/* ---- the program stopped answering ----------------------------------------
+ * A page left open when Deja Vu1 stops (its window closed, an update
+ * restarting, the computer asleep) used to sit there with stale figures. Now
+ * it says so in a strip at the top, keeps trying every 4 seconds, and after
+ * 20 seconds offers the page with the paste-in fix. When the program answers
+ * again the strip goes, and a restarted program reloads the page. */
+const serverWatch = { fails: 0, since: 0, pid: null, el: null };
+function serverStrip(text, help) {
+  if (!serverWatch.el) {
+    const el = document.createElement('div');
+    el.className = 'server-lost';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<b></b> <span></span> <a href="offline.html">How to start it again</a>';
+    document.body.appendChild(el);
+    serverWatch.el = el;
+  }
+  serverWatch.el.querySelector('b').textContent = text;
+  serverWatch.el.querySelector('span').textContent = help;
+  serverWatch.el.querySelector('a').hidden = !help.includes('start');
+  serverWatch.el.hidden = false;
+}
+async function watchServer() {
+  if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
+  let d = null;
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 3500);
+  try { d = await (await fetch('/api/app/info', { cache: 'no-store', signal: stop.signal })).json(); } catch (_) { d = null; }
+  clearTimeout(timer);
+  if (d && d.version) {
+    const restarted = serverWatch.pid && d.server_pid && d.server_pid !== serverWatch.pid;
+    serverWatch.pid = d.server_pid || serverWatch.pid;
+    if (serverWatch.fails >= 2 || restarted) {
+      if (serverWatch.el) serverWatch.el.hidden = true;
+      const el = document.activeElement;
+      const typing = el && (el.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value));
+      if (restarted && !typing && !document.querySelector('dialog[open]')) {
+        toast('Deja Vu1 is back. Reloading this page…', 'ok', 3000);
+        setTimeout(() => location.reload(), 1200);
+      } else if (serverWatch.fails >= 2) toast('Deja Vu1 is answering again.', 'ok');
+    }
+    serverWatch.fails = 0;
+    return;
+  }
+  if (++serverWatch.fails === 1) serverWatch.since = Date.now();
+  if (serverWatch.fails < 2) return;
+  let updating = 0;
+  try { updating = Number(sessionStorage.getItem('dv-updating')) || 0; } catch (_) { updating = 0; }
+  const secs = Math.round((Date.now() - serverWatch.since) / 1000);
+  if (Date.now() - updating < 5 * 60 * 1000 && secs < 90) serverStrip('Deja Vu1 is restarting after the update.', 'This page carries on by itself in a moment.');
+  else if (secs < 20) serverStrip('Deja Vu1 stopped answering.', 'Trying again every few seconds…');
+  else serverStrip('Deja Vu1 isn’t answering.', 'If its window was closed, start it again. This page reconnects by itself.');
+}
+setInterval(watchServer, 4000);
+
 setInterval(() => {
   loadConnection().catch(() => {});
   if (updateTicks++ % 3 === 0) watchForUpdate();

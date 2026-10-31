@@ -184,7 +184,7 @@ small and frequent. Three ways to get one:
 2. **One paste:** paste the block below into a new PowerShell or Terminal window.
    It stops Deja Vu1 in `Documents`, installs the newest release over it and
    starts it again. The same block is in **Settings → Version & updates →
-   Update with a command**.
+   Update or repair with a command**.
 3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
    the launcher again.
 
@@ -200,7 +200,7 @@ comes first, and the old version comes back if the new one fails to start.
 $ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
-Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
 Start-Process "$dest\start-windows.bat"
@@ -222,6 +222,38 @@ run on a Windows computer yet; the Mac and Linux block was tested on Linux.
 If you installed Deja Vu1 somewhere other than `Documents`, change
 `Deja_VU1`'s folder in the block, or download the release ZIP and extract it
 over your folder.
+
+### If Deja Vu1 won't open
+
+If the browser shows "Deja Vu1 isn't running right now" or the dashboard stops
+answering, paste one block into a new PowerShell (Windows) or Terminal (Mac,
+Linux) window. It starts Deja Vu1 in `Documents` if it isn't running. Then that
+window shows **Deja Vu1 is ready and fully working**, with one line each for the
+address, the page, the program, its files, demo data, every printer you added,
+saved data and updates. If something is wrong it names it and prints the next
+block to paste. Leave the window open: closing it stops Deja Vu1. The same
+blocks are on the offline page and in **Settings → Version & updates**.
+
+#### Windows: start and check in one paste
+
+```powershell
+$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+```
+
+#### Mac, Linux: start and check in one paste
+
+```bash
+[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
+cd ~/Documents/Deja_VU1 && python3 start.py
+```
+
+Still not working? The update block above also repairs: it stops a stuck copy,
+puts fresh app files in place and starts Deja Vu1 again. The double-click
+launcher shows the same check every time it starts, and
+`python3 start.py --check` checks a running copy without starting anything.
 
 ### Coming from a copy older than 0.8.0
 
@@ -272,6 +304,37 @@ it would overwrite a file you edited by hand. Then start the launcher again.
 
 The terminal steps were tested on Linux against a rehearsal of the rewrite.
 The GitHub Desktop steps have not been tried on Windows or macOS.
+
+## Updates that finish, and a check that says it works (0.13.7)
+
+- **Install shows each step.** The download runs in the background with a
+  progress bar (for example "Downloading version 0.13.7: 23.4 of 55.3 MB"),
+  then "Checking the download", then "Restarting". A reload, or another page,
+  picks the same progress up. Before this, the 58 MB download ran inside the
+  button press with one line of text, so on a slow connection Install looked as
+  if it did nothing.
+- **An update can no longer leave Deja Vu1 stopped.** If anything goes wrong
+  while the launcher puts the new files in place (for example Windows keeping a
+  folder locked during an antivirus scan), it puts the old files back, notes
+  why, and starts the dashboard anyway. Before this, such an error closed the
+  launcher and with it the dashboard, and leftover update files could stop
+  every later start. The dashboard says when an update was undone, and why.
+- **"Deja Vu1 is ready and fully working."** The launcher window shows this
+  check every time it starts: the address answers, the page loads, every file
+  it needs is there, demo data comes back, each printer you added says its link
+  state in words, settings can be saved, and how the last update went. If
+  something is wrong it names it and prints the block to paste next.
+  **Settings → Version & updates → Check it all works** shows the same list.
+- **One paste to start and check.** The offline page, Settings and this README
+  carry a Start and check block for PowerShell and Terminal
+  ([If Deja Vu1 won't open](#if-deja-vu1-wont-open)).
+- **A page notices when the program stops answering** and says so in a strip at
+  the top, reconnects by itself and reloads once the program is back.
+- **Refusals name the printer.** "My U1 is printing. The update waits until it
+  has finished" replaces "Updates wait until all real printers are connected
+  and idle".
+- The launcher window no longer lists every page request, so the check stays on
+  screen. It keeps a dated log in `backend/data/logs/launcher.log`.
 
 ## What's new in 0.13.0
 
@@ -791,7 +854,7 @@ recorded static demo passed at both widths.
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests | Physical cameras and simultaneous real printers |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
-| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested; the Windows paste block, GitHub Desktop's own git and macOS have not been run yet |
+| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested. 0.13.7: Install as a background job with progress, the launcher surviving a failed apply, the launch id and the ready check are tested on Linux, including a real install of the published 0.13.6 release with a stand-in printer connected and a reload mid-download. The Windows paste blocks, GitHub Desktop's own git and macOS have not been run yet |
 | Desktop app, version history, tours, notification orb | Unit tests (desktop window choice, version history kept in step with VERSION, the changelog and the release notes); Chromium at 1366/390 px, including the online demo | Installing as an app was not tried in a real Chrome or Edge window; the launcher's app window was not opened on Windows or macOS |
 | Layer stack, Orca-style process settings | Unit tests for the thick-layer options and all 106 settings (names and choices checked against OrcaSlicer's option table); Chromium at 1366/390 px | No real slice with the new options in this round; whether an engine lists the thick-layer options is read from its own schema |
 | Farm desk, telemetry, logbook, finder, converter card | Unit tests (logbook, printer page link) and Chromium at 1366/390 px on the simulated farm | Real farms, real spools and real printers' web pages unverified |
