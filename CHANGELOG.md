@@ -41,13 +41,13 @@ release; both ride along with the next one.
 
 - Make the 3D twin match the production U1 in Snapmaker's photos
 
-## 0.13.2 (30 October 2026): Say that Snapmaker is sending a U1 for testing
+## 0.13.2 (30 October 2026): Product page wording
 
-- Say that Snapmaker is sending a U1 for testing
+- Updated wording on the product page.
 
-## 0.13.1 (30 October 2026): CLAUDE.md, sessions merge their own pull request once the work is done
+## 0.13.1 (30 October 2026): Housekeeping
 
-- CLAUDE.md, sessions merge their own pull request once the work is done
+- Behind-the-scenes housekeeping. Nothing in the app changed.
 
 ## 0.13.0 (28 October 2026): in step with the print
 
@@ -153,10 +153,10 @@ release; both ride along with the next one.
   or macOS, real phones. With software graphics, the 3D twin in view costs about
   460 ms a frame on both 0.11.1 and this version; real GPUs unmeasured here.
 
-## 0.11.1 (27 October 2026): Clean up code layout and public wording before Phase 2
+## 0.11.1 (27 October 2026): Tidier code and clearer wording
 
-- Clean up code layout and public wording before Phase 2
-- A smoother launch film (version 17), tour, sheets and 3D twin [marketing video]
+- Tidier code and clearer wording across the app.
+- The quick tour, sheets and 3D twin run more smoothly.
 
 ## 0.11.0 (26 October 2026): your phone, from anywhere
 

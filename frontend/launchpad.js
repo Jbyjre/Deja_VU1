@@ -170,14 +170,7 @@
     returnFocus=document.activeElement;step=0;mode=tourOn()?'demo':'real';
     dialog.showModal();render();refreshInfo();
   }
-  $('setup-open').onclick=open;$('setup-replay').onclick=open;
-  function openCamera() {
-    showTab('modules');
-    const camera=document.querySelector('.stock-camera');
-    camera.open=true;camera.scrollIntoView({block:'center',behavior:'instant'});
-    $('stock-camera-start').focus({preventScroll:true});
-  }
-  $('camera-open').onclick=openCamera;
+  $('setup-replay').onclick=open;
   $('setup-skip').onclick=finish;
   $('setup-next').onclick=()=>{if(step===names.length-1)finish();else{step++;render();}};
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
@@ -283,7 +276,7 @@
     $('stock-camera-start').hidden=true;$('stock-camera-stop').hidden=false;
     async function frame(){
       if(run!==cameraRun)return;
-      if(printer!==currentPrinter||document.hidden||$('tab-modules').hidden){stopStock();return;}
+      if(printer!==currentPrinter||document.hidden||$('tab-control').hidden){stopStock();return;}
       try{
         $('stock-camera-status').textContent=demoOn?'Demo illustration · not a camera photo':'Requesting a new camera picture…';
         const response=await fetch(api('/api/camera/snapshot?t='+Date.now()));

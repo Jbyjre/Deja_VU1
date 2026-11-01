@@ -1,4 +1,4 @@
-/* Telemetry (Overview): the selected printer's live readings in one dense,
+/* Telemetry (Printer → Live readings): the selected printer's live readings in one dense,
  * instrument-style panel. Every head's temperature against its target with
  * a short trace, filament, nozzle and dock counters; bed, chamber, position,
  * layer and timing. Readings come straight from the live state (dv-state);
@@ -7,8 +7,8 @@
  */
 'use strict';
 window.Telemetry = (() => {
-  const attention = document.getElementById('attention');
-  if (!attention) return null;
+  const slot = document.getElementById('telemetry-slot');
+  if (!slot) return null;
   const card = document.createElement('section');
   card.className = 'card liquid-glass telemetry';
   card.id = 'telemetry';
@@ -16,13 +16,22 @@ window.Telemetry = (() => {
   card.hidden = true;
   card.innerHTML = `<div class="card-head"><div><h2 id="tm-title">Telemetry</h2><p class="card-sub" id="tm-sub">Live readings from the selected printer</p></div>
     <span class="tm-rate" id="tm-rate" aria-hidden="true"></span></div><div id="tm-body"></div>`;
-  attention.after(card);
+  slot.replaceWith(card);
   const HISTORY = 90;
   const traces = {};
   let last = 0, printer = null, samples = 0, firstAt = 0;
 
   const num = (v, d = 1) => v == null || !isFinite(v) ? '—' : Number(v).toFixed(d);
-  const dur = h => { if (h == null || !isFinite(h)) return '—'; const m = Math.round(h * 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+  // How long the readout has been running, the way people say it: 45 s, 12 min 5 s, 3 h 04 min, 2 days 3 h.
+  const since = secs => {
+    const s = Math.max(0, Math.floor(secs));
+    if (s < 60) return `${s} s`;
+    if (s < 3600) return `${Math.floor(s / 60)} min ${s % 60} s`;
+    if (s < 86400) return `${Math.floor(s / 3600)} h ${String(Math.floor(s % 3600 / 60)).padStart(2, '0')} min`;
+    const d = Math.floor(s / 86400);
+    return `${d} day${d === 1 ? '' : 's'} ${Math.floor(s % 86400 / 3600)} h`;
+  };
+  const dur = h => { if (h == null || !isFinite(h)) return '—'; const m = Math.round(h * 60); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`; };
   function trace(key, value) {
     const t = traces[key] || (traces[key] = []);
     if (value != null && isFinite(value)) t.push(value);
@@ -60,7 +69,7 @@ window.Telemetry = (() => {
     const pos = st.toolhead_position || [];
     const layer = st.layer || {};
     $('tm-sub').textContent = `${st.printer_name || 'Printer'} · ${st.state_message || st.state}`;
-    $('tm-rate').textContent = `${samples} readings · ${Math.round((now - firstAt) / 1000)} s`;
+    $('tm-rate').textContent = `${samples.toLocaleString()} readings · ${since((now - firstAt) / 1000)}`;
     const kv = [
       ['State', esc(st.state || '—')], ['File', esc(st.current_file || '—')],
       ['Layer', layer.total ? `${layer.current} / ${layer.total}` : '—'], ['Z', pos[2] != null ? `${num(pos[2], 2)} mm` : '—'],

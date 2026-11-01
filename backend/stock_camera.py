@@ -28,6 +28,7 @@ import moonraker_client as mc
 IDLE_SECONDS = 40
 RENEW_SECONDS = 180
 WARMUP_SECONDS = 1.5
+SHARE_SECONDS = 0.15
 MAX_FRAME = 8 * 1024 * 1024
 # The printer's own forwarding gives up after 10 s (repeater.py timeout=10),
 # so wait a little longer than that to hear its reason.
@@ -209,8 +210,9 @@ class Monitor:
                 self.timer = threading.Timer(IDLE_SECONDS, self.close)
                 self.timer.daemon = True
                 self.timer.start()
-                # Concurrent viewers share one recent frame; never share between printers.
-                if self.frame and time.monotonic() - self.frame_at < 0.8:
+                # Concurrent viewers share one recent frame; never share between printers. Short, so one
+                # viewer asking as fast as pictures arrive still gets a new one each time.
+                if self.frame and time.monotonic() - self.frame_at < SHARE_SECONDS:
                     return self.frame
                 reasons = []
                 if self.source != 'monitor' and self._listed_webcam():

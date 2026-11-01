@@ -555,8 +555,25 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/temperature": lambda body: printer_control.set_temperature(
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
+    "/api/printer/control/bed-temperature": lambda b: printer_control.set_bed_temperature(b.get("target")),
     "/api/printer/control/gcode": lambda body: printer_control.send_gcode(body.get("command")),
     "/api/printer/control/restart": lambda body: printer_control.clear_error(),
+    # Hands-on controls (printer_control.jog and the rest): every value checked before any G-code.
+    "/api/printer/control/jog": lambda b: printer_control.jog(b.get("axis"), b.get("distance"), b.get("speed")),
+    "/api/printer/control/move": lambda b: printer_control.move_to(b.get("x"), b.get("y"), b.get("z"), b.get("speed")),
+    "/api/printer/control/z-nudge": lambda b: printer_control.z_nudge(b.get("delta")),
+    "/api/printer/control/extrude": lambda b: printer_control.extrude(b.get("length"), b.get("speed", 5)),
+    "/api/printer/control/speed": lambda b: printer_control.set_factor("speed", b.get("percent")),
+    "/api/printer/control/flow": lambda b: printer_control.set_factor("flow", b.get("percent")),
+    "/api/printer/control/fan": lambda b: printer_control.set_fan(b.get("percent")),
+    "/api/printer/control/pressure-advance": lambda b: printer_control.set_pressure_advance(
+        b.get("toolhead"), b.get("value"), b.get("smooth_time")),
+    "/api/printer/control/limits": lambda b: printer_control.set_limits(b.get("velocity"), b.get("accel")),
+    "/api/printer/control/motors-off": lambda b: printer_control.motors_off(),
+    "/api/printer/control/bed-mesh": lambda b: printer_control.bed_mesh(),
+    "/api/printer/control/macro": lambda b: printer_control.run_macro(b.get("name")),
+    "/api/printer/control/tool": lambda b: printer_control.pick_up(b.get("toolhead")),
+    "/api/printer/control/estop": lambda b: printer_control.emergency_stop(),
 }
 
 # POST routes that act on a printer's queue - gated like the data routes.
@@ -1576,7 +1593,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/pairing/redeem":
             body = self._read_json_body()
-            device = pairing.redeem_code(body.get("code"), body.get("device_name"))
+            known = self._device()
+            device = pairing.redeem_code(body.get("code"), body.get("device_name"),
+                                         replaces=known.get("id") if known else None)
             # The device's key goes into a cookie the page's scripts can't read.
             cookie = (f"{pairing.COOKIE}={device.pop('token')}; Path=/; Max-Age={pairing.COOKIE_DAYS * 86400}; "
                       "HttpOnly; SameSite=Strict")

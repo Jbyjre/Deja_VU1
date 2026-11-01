@@ -432,10 +432,14 @@ const Twin3D = (() => {
     if (dot(N, V) < 0.0) N = -N;
     vec3 base = uBase; float rough = uRough, alpha = uAlpha;
     if (uKind == 1) { vec4 t = texture(uTex, vUV); base = pow(t.rgb, vec3(2.2)); alpha = t.a * uAlpha; if (alpha < 0.02) discard; }
-    if (uKind == 2) { float n = hash(floor(vW.xy * 1.6)); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
+    // Fine surface patterns fade to their average where a cell is smaller than a
+    // pixel; without it the bed's speckle crawled and flickered as the view turned.
+    if (uKind == 2) { vec2 q = vW.xy * 1.6; float aa = clamp(max(fwidth(q.x), fwidth(q.y)) * 1.5 - 0.5, 0.0, 1.0);
+      float n = mix(hash(floor(q)), 0.5, aa); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
     if (uKind == 3) { float r = length(vW.yz - vec2(0.0)); }
     if (uKind == 4) { float l = fract(vW.z / 1.4); base *= 0.9 + 0.1 * smoothstep(0.1, 0.5, l) * smoothstep(0.9, 0.5, l); }
-    if (uKind == 5) { float w = abs(sin((vW.x + vW.y + vW.z) * 1.7)); base *= 0.85 + 0.3 * w; }
+    if (uKind == 5) { float k = (vW.x + vW.y + vW.z) * 1.7, aa = clamp(fwidth(k) * 0.6 - 0.3, 0.0, 1.0);
+      float w = mix(abs(sin(k)), 0.637, aa); base *= 0.85 + 0.3 * w; }
     if (uKind == 7) { float rr = length(vW.yz - uFoot.xy); base *= 0.86 + 0.14 * smoothstep(0.3, 0.7, fract(rr / 1.75)); }
     if (uKind == 9) {
       // Printed plastic: a faint ridge per layer, fading out where layers
@@ -444,7 +448,8 @@ const Twin3D = (() => {
       float ridge = smoothstep(0.0, 0.3, f) * smoothstep(1.0, 0.7, f);
       base *= mix(0.8 + 0.2 * ridge, 0.92, aa); rough = 0.48;
     }
-    if (uKind == 11) { float n = hash(vec2(floor(vW.z * 3.0 + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))); base *= 0.93 + 0.1 * n; }
+    if (uKind == 11) { float k = vW.z * 3.0, aa = clamp(fwidth(k) * 1.5 - 0.5, 0.0, 1.0);
+      float n = mix(hash(vec2(floor(k + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))), 0.5, aa); base *= 0.93 + 0.1 * n; }
     if (uKind == 12) { base *= 0.72 + 0.28 * smoothstep(0.15, 0.85, abs(fract(vW.z / 2.0) * 2.0 - 1.0)); }
     vec3 F0 = mix(vec3(0.04), base, uMetal);
     vec3 col = vec3(0.0);
@@ -1358,14 +1363,76 @@ const Twin3D = (() => {
      *      reset, click to pick ---- */
     const touches = new Map();
     let drag = null, spin = 0;
+
+    /* Moving the real head from the twin. With move mode on, a drag across the
+     * model carries a target over the nozzle's plane (the head moves in X and Y
+     * at the nozzle tip's height; the bed moves in Z), labelled with its X and Y
+     * and kept inside the printer. Letting go hands the point to the page, which
+     * sends it through the same checked move command as the Move card. */
+    let moveFn = null, moveDrag = null;
+    const marker = document.createElement('div');
+    marker.className = 'twin-move-marker'; marker.hidden = true; marker.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(marker);
+    function invert(m) {
+      const o = new Array(16);
+      o[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+      o[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+      o[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+      o[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+      o[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+      o[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+      o[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+      o[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+      o[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+      o[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+      o[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+      o[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+      o[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+      o[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+      o[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+      o[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+      const det = m[0] * o[0] + m[1] * o[4] + m[2] * o[8] + m[3] * o[12];
+      return Math.abs(det) < 1e-12 ? null : o.map(v => v / det);
+    }
+    const apply4 = (m, v) => [0, 1, 2, 3].map(i => m[i] * v[0] + m[4 + i] * v[1] + m[8 + i] * v[2] + m[12 + i] * v[3]);
+    // Model millimetres (x, y, z up) are drawn as GL (x, z, -y).
+    function nozzlePlanePoint(clientX, clientY) {
+      const r = canvas.getBoundingClientRect(), inv = invert(matrices().VP);
+      if (!inv || !r.width) return null;
+      const nx = (clientX - r.left) / r.width * 2 - 1, ny = 1 - (clientY - r.top) / r.height * 2;
+      const at = z => { const o = apply4(inv, [nx, ny, z, 1]); return o.map(c => c / o[3]); };
+      const a = at(-1), b = at(1), t = (TIP - a[1]) / (b[1] - a[1]);
+      if (!Number.isFinite(t) || t < 0) return null;
+      const m = (state && state.machine) || {}, lo = m.min_mm || [0, 0, 0], hi = m.max_mm || [270, 270, 270];
+      const x = Math.min(hi[0], Math.max(lo[0], a[0] + t * (b[0] - a[0])));
+      const y = Math.min(hi[1], Math.max(lo[1], -(a[2] + t * (b[2] - a[2]))));
+      return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+    }
+    function showMarker(pt) {
+      const c = apply4(matrices().VP, [pt[0], TIP, -pt[1], 1]);
+      marker.style.left = `${((c[0] / c[3]) * 0.5 + 0.5) * W}px`;
+      marker.style.top = `${(1 - ((c[1] / c[3]) * 0.5 + 0.5)) * H}px`;
+      marker.dataset.label = `X ${pt[0].toFixed(1)} · Y ${pt[1].toFixed(1)}`;
+      marker.hidden = false;
+    }
+
     canvas.addEventListener('pointerdown', e => {
       canvas.setPointerCapture?.(e.pointerId);
+      if (moveFn && e.button === 0 && !e.shiftKey && !touches.size && style === 'model') {
+        const pt = nozzlePlanePoint(e.clientX, e.clientY);
+        if (pt) { moveDrag = { id: e.pointerId, pt }; cancelAnimationFrame(spin); showMarker(pt); return; }
+      }
       cancelAnimationFrame(spin); cam.vyaw = cam.vpitch = 0;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), yaw: cam.yaw, pitch: cam.pitch, tx: cam.tx, ty: cam.ty, pan: e.button === 2 || e.shiftKey, moved: false, zoom: cam.zoom, spread: 0 };
       if (touches.size === 2) { const [a, b] = [...touches.values()]; drag.spread = Math.hypot(a.x - b.x, a.y - b.y); }
     });
     canvas.addEventListener('pointermove', e => {
+      if (moveDrag && e.pointerId === moveDrag.id) {
+        const pt = nozzlePlanePoint(e.clientX, e.clientY);
+        if (pt) { moveDrag.pt = pt; showMarker(pt); }
+        return;
+      }
       if (!drag || !touches.has(e.pointerId)) return;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2 && drag.spread) {
@@ -1387,6 +1454,13 @@ const Twin3D = (() => {
       queue();
     });
     const end = e => {
+      if (moveDrag && e.pointerId === moveDrag.id) {
+        const pt = moveDrag.pt;
+        moveDrag = null;
+        setTimeout(() => { marker.hidden = true; }, 900);
+        if (e.type === 'pointerup' && moveFn) moveFn({ x: pt[0], y: pt[1] });
+        return;
+      }
       touches.delete(e.pointerId);
       if (drag && !drag.moved && e.type === 'pointerup' && onPick) {
         const t = e.target.closest && e.target.closest('[data-id]');
@@ -1493,6 +1567,8 @@ const Twin3D = (() => {
       },
       printInfo() { return print ? { file: print.file, layers: print.layers.length, top: print.top, objects: print.objects.slice() } : null; },
       onViewChange(fn) { viewChanged = fn; },
+      /* fn({x, y}) is called when a drag in move mode is let go; null turns move mode off. */
+      setMoveMode(fn) { moveFn = typeof fn === 'function' ? fn : null; wrap.classList.toggle('is-moving-head', !!moveFn); if (!moveFn) marker.hidden = true; },
       zoomBy(f) { cam.zoom = Math.max(0.6, Math.min(8, cam.zoom * f)); queue(); },
       /* A picture of what's on screen, with the drawing's labels baked in. */
       async download(filename) {

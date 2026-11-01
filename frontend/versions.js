@@ -112,7 +112,7 @@ window.Versions = (() => {
     const e = entry(v), actions = [];
     if (e && e.highlights && e.highlights.length) actions.push({ label: 'What’s new', run: () => tour(e.version) });
     if (latest && latest.available) actions.push({ label: latest.version ? `Get v${latest.version}` : 'Get the update', primary: true, run: openCard });
-    else actions.push({ label: 'Version history', run: openCard });
+    else actions.push({ label: 'Version history', run: openHistory });
     Orb.setApp({ version: v ? `v${v}` : '', update: !!(latest && latest.available),
       text: latest && latest.available ? `${readyName(latest)} is ready to install.` : (e ? e.name : 'Deja Vu1'), actions });
   }
@@ -122,6 +122,15 @@ window.Versions = (() => {
     const card = $('version-card');
     card.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     card.classList.remove('is-flash'); void card.offsetWidth; card.classList.add('is-flash');
+  }
+
+  /* The version number in the header opens the list of every version, not the top of the card. */
+  function openHistory() {
+    showTab('modules');
+    const list = $('version-history');
+    const head = list && list.previousElementSibling ? list.previousElementSibling : $('version-card');
+    head.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    list.classList.remove('is-flash'); void list.offsetWidth; list.classList.add('is-flash');
   }
 
   /* A version's tour: a full-screen opening card, a stop per highlight, then the full list. */
@@ -177,7 +186,7 @@ window.Versions = (() => {
     if (b) tour(b.dataset.vtour);
   });
   $('vc-tour').onclick = () => tour(installed());
-  $('ver-chip').onclick = openCard;
+  $('ver-chip').onclick = openHistory;
   $('app-update-check').onclick = async e => {
     const btn = e.currentTarget;
     btn.disabled = true; $('app-update-status').textContent = 'Asking GitHub…';

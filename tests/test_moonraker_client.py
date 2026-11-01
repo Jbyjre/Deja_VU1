@@ -311,6 +311,23 @@ class TestConnecting(WireTest):
         self.assertIn("print_task_config", diag["objects_subscribed"])
         self.assertTrue(any(e["method"] == "printer.objects.subscribe" for e in diag["log"]))
 
+    def test_the_name_set_on_the_printer_is_shown(self):
+        # The owner renamed the U1 on the printer and the dashboard kept showing the typed name.
+        self.wait_connected()
+        self.assertEqual(self.printer.snapshot()["printer_name"], "Test U1")    # no system_info: typed name
+        self.fake.device_name = "Workbench U1"
+        named = self.connect()
+        self.wait_connected(named)
+        self.assertEqual(named.snapshot()["printer_name"], "Workbench U1")
+        self.assertEqual(named.diagnostics()["name"], "Workbench U1")
+
+    def test_the_factory_name_keeps_the_typed_name(self):
+        self.assertIsNone(mc.device_name_from({"system_info": {"product_info": {"device_name": "Snapmaker U1"}}}))
+        self.assertIsNone(mc.device_name_from({"system_info": {"product_info": {"device_name": 7}}}))
+        self.assertIsNone(mc.device_name_from(None))
+        self.assertEqual(mc.device_name_from({"system_info": {"product_info": {"device_name": "  Shop\n U1 "}}}),
+                         "Shop U1")
+
     def test_a_status_update_changes_only_what_it_names(self):
         self.wait_connected()
         self.fake.set("extruder1", temperature=180.0)
