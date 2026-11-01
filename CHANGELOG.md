@@ -21,6 +21,10 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.13.8 (1 November 2026): Give each printer its own page with full controls, and make Overview a page o...
+
+- Give each printer its own page with full controls, and make Overview a page of cards
+
 ## 0.13.7 (31 October 2026): Make updates finish every time, and say plainly when Deja Vu1 is ready
 
 - Make updates finish every time, and say plainly when Deja Vu1 is ready
