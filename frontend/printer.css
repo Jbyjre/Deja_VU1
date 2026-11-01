@@ -246,3 +246,25 @@ body.has-printer .topbar-right > .switch:not(:has(input:checked)) { display: non
 .add-printer > summary::after { content: "+"; margin-left: 8px; font-weight: 700; }
 .add-printer[open] > summary::after { content: "−"; }
 .add-printer[open] > summary { margin-bottom: 12px; }
+
+/* ---- Files › Slicing ------------------------------------------------------ */
+/* The grid of slicer and profile cards ended flush against Slice a model, so the
+   two cards looked stacked on top of each other. */
+#ap-body > .grid-2 { margin-bottom: 20px; }
+#ap-body > .grid-2 > .card { margin-bottom: 0; }
+
+/* Layer heights per head: a strip of its own under the slice bar, and a real
+   heading in the Tools & filaments card. */
+.sw-layers {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 0; padding: 12px 14px;
+  border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, rgba(255, 255, 255, .7));
+}
+.sw-layers-title { font: 700 14px/1.2 var(--font-sans); }
+.sw-layers-what { flex: 1 1 260px; font-size: 13px; color: var(--text-dim); }
+.ts-stack-title { font-size: 18px; margin: 18px 0 6px; }
+.ts-stack-wrap { padding: 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, rgba(255, 255, 255, .6)); margin: 16px 0; }
+/* A hint inside a column form takes its own height (the general .field-hint
+   flex basis is a width in rows, and became 140 px of empty height here). */
+.ap-form > .field-hint, .ap-form > .log-empty { flex: none; align-self: stretch; }

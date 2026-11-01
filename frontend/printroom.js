@@ -11,8 +11,8 @@ window.PrintRoom = (() => {
     host.id = 'tool-setup';
     host.className = 'card liquid-glass';
     host.innerHTML = `<div class="card-head"><div><span class="eyebrow">PREPARE · FOUR PHYSICAL HEADS</span><h2>Tools & filaments</h2><p class="card-sub">One saved setup for this printer, used when preparing and checking a print.</p></div></div>
-      <p id="ts-note" role="status">Choose a printer, then load its saved choices.</p><button class="btn" id="ts-load">Load this printer’s setup</button>
-      <form id="ts-form" hidden><div id="ts-heads" class="tool-setup-grid"></div><section class="ts-stack-wrap" aria-labelledby="ts-stack-title"><h3 id="ts-stack-title">Layer heights · per head</h3><p class="field-hint">Every head prints a whole number of base layers per pass. Leave all on ×1 for an ordinary single-height print; a process profile set to “Mixed” uses these heights.</p><div id="ts-stack"></div></section><div class="fd-actions"><button class="btn primary">Save preparation choices</button><button type="button" class="btn" id="ts-guard">Check feeder compatibility</button></div></form><p id="ts-result" role="status" aria-live="polite"></p>`;
+      <p id="ts-note" role="status">Choose a printer, then load its saved choices.</p><button class="btn" id="ts-load">Reload this printer’s setup</button>
+      <form id="ts-form" hidden><div id="ts-heads" class="tool-setup-grid"></div><section class="ts-stack-wrap" aria-labelledby="ts-stack-title"><h3 id="ts-stack-title" class="ts-stack-title">Layer heights per head</h3><p class="field-hint">Every head prints a whole number of base layers per pass. Leave all on ×1 for an ordinary single-height print; a process profile set to “Mixed” uses these heights.</p><div id="ts-stack"></div></section><div class="fd-actions"><button class="btn primary">Save preparation choices</button><button type="button" class="btn" id="ts-guard">Check feeder compatibility</button></div></form><p id="ts-result" role="status" aria-live="polite"></p>`;
     $('tab-autoprint').insertBefore(host, $('ap-off'));
     $('ts-load').onclick = load;
     $('ts-form').onsubmit = async e => {
@@ -627,5 +627,16 @@ window.PrintRoom = (() => {
   }
   mount();
   profiles();
+  // The tools and their per-head layer heights show by themselves when Slicing is
+  // open, instead of waiting behind a Load button. Load stays for reloading.
+  function autoLoad() {
+    const part = window.Sections && Sections.current('files');
+    const open = !$('tab-files').hidden && (part === 'slicing' || part === 'all');
+    if (open && !busy && loadedFor !== currentPrinter && (demoOn || realOn)) load();
+  }
+  window.addEventListener('dv-tab', () => setTimeout(autoLoad, 0));
+  window.addEventListener('dv-section', () => setTimeout(autoLoad, 0));
+  window.addEventListener('dv-state', () => { if (loadedFor && loadedFor !== currentPrinter) setTimeout(autoLoad, 0); });
+  setTimeout(autoLoad, 0);
   return { load, rows, editProfile: (...args) => editProfile(...args) };
 })();
