@@ -432,10 +432,14 @@ const Twin3D = (() => {
     if (dot(N, V) < 0.0) N = -N;
     vec3 base = uBase; float rough = uRough, alpha = uAlpha;
     if (uKind == 1) { vec4 t = texture(uTex, vUV); base = pow(t.rgb, vec3(2.2)); alpha = t.a * uAlpha; if (alpha < 0.02) discard; }
-    if (uKind == 2) { float n = hash(floor(vW.xy * 1.6)); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
+    // Fine surface patterns fade to their average where a cell is smaller than a
+    // pixel; without it the bed's speckle crawled and flickered as the view turned.
+    if (uKind == 2) { vec2 q = vW.xy * 1.6; float aa = clamp(max(fwidth(q.x), fwidth(q.y)) * 1.5 - 0.5, 0.0, 1.0);
+      float n = mix(hash(floor(q)), 0.5, aa); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
     if (uKind == 3) { float r = length(vW.yz - vec2(0.0)); }
     if (uKind == 4) { float l = fract(vW.z / 1.4); base *= 0.9 + 0.1 * smoothstep(0.1, 0.5, l) * smoothstep(0.9, 0.5, l); }
-    if (uKind == 5) { float w = abs(sin((vW.x + vW.y + vW.z) * 1.7)); base *= 0.85 + 0.3 * w; }
+    if (uKind == 5) { float k = (vW.x + vW.y + vW.z) * 1.7, aa = clamp(fwidth(k) * 0.6 - 0.3, 0.0, 1.0);
+      float w = mix(abs(sin(k)), 0.637, aa); base *= 0.85 + 0.3 * w; }
     if (uKind == 7) { float rr = length(vW.yz - uFoot.xy); base *= 0.86 + 0.14 * smoothstep(0.3, 0.7, fract(rr / 1.75)); }
     if (uKind == 9) {
       // Printed plastic: a faint ridge per layer, fading out where layers
@@ -444,7 +448,8 @@ const Twin3D = (() => {
       float ridge = smoothstep(0.0, 0.3, f) * smoothstep(1.0, 0.7, f);
       base *= mix(0.8 + 0.2 * ridge, 0.92, aa); rough = 0.48;
     }
-    if (uKind == 11) { float n = hash(vec2(floor(vW.z * 3.0 + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))); base *= 0.93 + 0.1 * n; }
+    if (uKind == 11) { float k = vW.z * 3.0, aa = clamp(fwidth(k) * 1.5 - 0.5, 0.0, 1.0);
+      float n = mix(hash(vec2(floor(k + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))), 0.5, aa); base *= 0.93 + 0.1 * n; }
     if (uKind == 12) { base *= 0.72 + 0.28 * smoothstep(0.15, 0.85, abs(fract(vW.z / 2.0) * 2.0 - 1.0)); }
     vec3 F0 = mix(vec3(0.04), base, uMetal);
     vec3 col = vec3(0.0);
