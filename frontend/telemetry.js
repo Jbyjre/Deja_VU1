@@ -1,4 +1,4 @@
-/* Telemetry (Overview): the selected printer's live readings in one dense,
+/* Telemetry (Printer → Live readings): the selected printer's live readings in one dense,
  * instrument-style panel. Every head's temperature against its target with
  * a short trace, filament, nozzle and dock counters; bed, chamber, position,
  * layer and timing. Readings come straight from the live state (dv-state);
@@ -7,8 +7,8 @@
  */
 'use strict';
 window.Telemetry = (() => {
-  const attention = document.getElementById('attention');
-  if (!attention) return null;
+  const slot = document.getElementById('telemetry-slot');
+  if (!slot) return null;
   const card = document.createElement('section');
   card.className = 'card liquid-glass telemetry';
   card.id = 'telemetry';
@@ -16,7 +16,7 @@ window.Telemetry = (() => {
   card.hidden = true;
   card.innerHTML = `<div class="card-head"><div><h2 id="tm-title">Telemetry</h2><p class="card-sub" id="tm-sub">Live readings from the selected printer</p></div>
     <span class="tm-rate" id="tm-rate" aria-hidden="true"></span></div><div id="tm-body"></div>`;
-  attention.after(card);
+  slot.replaceWith(card);
   const HISTORY = 90;
   const traces = {};
   let last = 0, printer = null, samples = 0, firstAt = 0;

@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="workshop.css">
 <link rel="stylesheet" href="farm.css">
+<link rel="stylesheet" href="printer.css">
 <link rel="stylesheet" href="guide.css">
 <link rel="stylesheet" href="theme.css">
 <link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -112,7 +113,9 @@
               aria-haspopup="menu" aria-expanded="false">
         <span class="pc-dot" aria-hidden="true"></span>
         <span class="pc-name" id="printer-chip-name">Default printer</span>
+        <span class="pc-status" id="pc-status"></span><span class="pc-finish" id="pc-finish"></span>
         <span class="pc-caret" aria-hidden="true">▾</span>
+        <span class="pc-progress" aria-hidden="true"><i id="pc-progress"></i></span>
       </button>
       <div class="conn" id="conn">
         <span class="conn-dot" aria-hidden="true"></span>
@@ -132,8 +135,6 @@
   <section class="launch-strip" aria-label="Setup and feature finder">
     <div><p class="eyebrow">DEJA VU1 / YOUR PRINTERS</p><strong id="private-greeting">Your print bench</strong></div>
     <div class="feature-finder"><label class="sr-only" for="feature-search">Search screens, settings, printers and files</label><input id="feature-search" type="search" placeholder="Search everything…" autocomplete="off" spellcheck="false"><div id="feature-results" class="liquid-glass" hidden></div></div>
-    <button class="btn" id="setup-open">Set up &amp; help</button>
-    <button class="btn" id="camera-open">Camera</button>
   </section>
 
 
@@ -163,7 +164,7 @@
          (data-tab "fleet"), Slicing in Files, Filament & colour in Care. -->
     <button class="navtab active" data-tab="overview">Overview</button>
     <button class="navtab" data-tab="fleet">Printers</button>
-    <button class="navtab" data-tab="control">Control</button>
+    <button class="navtab" data-tab="control">Printer</button>
     <button class="navtab" data-tab="files">Files</button>
     <button class="navtab" data-tab="studio">Photo studio</button>
     <button class="navtab" data-tab="automations">Automations</button>
@@ -172,9 +173,10 @@
     <button class="navtab" data-tab="games">Games</button>
   </nav>
 
-  <!-- Always visible so a finished or failed print is never missed just
-       because you're on another tab, or mid-game. -->
-  <div class="status-ribbon liquid-glass" id="status-ribbon">
+  <!-- The printer's state now rides in the printer button in the top bar
+       (always visible); this strip stays in the page, hidden, for the code
+       and tests that read its words. -->
+  <div class="status-ribbon liquid-glass" id="status-ribbon" hidden>
     <span class="rb-dot" aria-hidden="true"></span>
     <span class="rb-text" id="rb-text">No printer connected.</span>
     <div class="rb-bar" id="rb-bar" hidden><span id="rb-bar-fill"></span></div>
@@ -186,7 +188,7 @@
   </div>
 
   <!-- What the open tab is for, in one sentence (app.js TAB_INTROS). -->
-  <p class="tab-intro" id="tab-intro"><strong>Overview</strong> What needs you, then the selected printer right now: its live 3D twin, quick controls and health.</p>
+  <p class="tab-intro" id="tab-intro"><strong>Overview</strong> What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.</p>
 
   <!-- ============================================================ -->
   <!-- FLEET                                                         -->
@@ -362,52 +364,37 @@
       <ol class="att-list" id="attention-list"></ol>
     </section>
 
-    <!-- Your printer right now: the live twin, with its quick controls and
-         health score beside it. -->
-    <div class="live-row now-row">
-      <section class="card liquid-glass twin-card" data-tint id="twin-card">
-        <div class="card-head twin-head">
-          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do, and the print grows layer by layer in its real colours</p></div>
-          <div class="twin-switches">
-            <div class="pill-toggle twin-modes" id="twin-modes" role="group" aria-label="Show as">
-              <button type="button" data-mode="model" class="active" aria-pressed="true">3D model</button>
-              <button type="button" data-mode="drawing" aria-pressed="false">Drawing</button>
-            </div>
-            <div class="pill-toggle wf-views" id="wf-views" role="group" aria-label="View" hidden>
-              <button type="button" data-view="iso" class="active" aria-pressed="true">Angled</button>
-              <button type="button" data-view="front" aria-pressed="false">Front</button>
-              <button type="button" data-view="top" aria-pressed="false">Top</button>
-              <button type="button" data-view="print" aria-pressed="false" title="Close up on the print">Print</button>
-            </div>
-          </div>
-        </div>
-        <div class="twin-other" id="twin-other" hidden></div>
-        <div id="twin-host" class="twin-host"></div>
-        <p class="twin-sync" id="twin-sync" role="status" hidden><span class="twin-sync-dot" aria-hidden="true"></span><span id="twin-sync-text"></span></p>
-        <p class="field-hint twin-note">Modelled on Snapmaker's product photos of the U1 (front, sides, back and top) and its published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 456 &times; 499 &times; 458 mm, measured from the photos), the spool and feeder positions, the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them. While it prints, the nozzle runs along that G-code and is checked against the printer's own position about four times a second, so the walls appear where and when they are laid.</p>
+    <!-- Overview: one card per kind of thing happening now (printer-page.js fills the ov- cards).
+         The twin, the controls and the history live on each printer's own page (Printer tab). -->
+    <div class="ov-grid">
+      <section class="card liquid-glass ov-card ov-now" id="ov-now" aria-labelledby="ov-now-title">
+        <div class="card-head"><div><h2 id="ov-now-title">Right now</h2><p class="card-sub" id="ov-now-sub">The selected printer</p></div>
+          <button class="btn small" type="button" data-go-printer>Open printer</button></div>
+        <div id="ov-now-body"></div>
       </section>
-      <div class="col-stack now-side">
-        <section class="card liquid-glass">
-          <div class="card-head">
-            <div><h2>Printer control</h2><p class="card-sub">Pause or stop the current print</p></div>
-          </div>
-          <div id="overview-control" data-module-body="printer_control"></div>
-          <div data-module-off="printer_control" hidden></div>
-        </section>
-        <section class="card liquid-glass">
-          <div class="card-head">
-            <div><h2>Print health</h2><p class="card-sub">A score out of 100 from maintenance, filament and pre-flight checks. Higher is better.</p></div>
-          </div>
-          <div id="health-host"></div>
-        </section>
-        <section class="card liquid-glass pair-card desk-only">
-          <div>
-            <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
-            <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
-          </div>
-          <button class="btn primary" id="overview-pair-btn">Connect your phone</button>
-        </section>
-      </div>
+      <section class="card liquid-glass ov-card ov-camera" id="ov-camera" aria-labelledby="ov-camera-title">
+        <div class="card-head"><div><h2 id="ov-camera-title">Camera</h2><p class="card-sub">The selected printer, live</p></div></div>
+        <div class="pcam" data-cam="overview"></div>
+      </section>
+      <section class="card liquid-glass ov-card ov-temps" id="ov-temps" aria-labelledby="ov-temps-title">
+        <div class="card-head"><div><h2 id="ov-temps-title">Temperatures</h2><p class="card-sub">Each head, the bed and the chamber, against their targets</p></div></div>
+        <div id="ov-temps-body"></div>
+      </section>
+      <section class="card liquid-glass ov-card ov-quick" id="ov-quick" aria-labelledby="ov-quick-title">
+        <div class="card-head"><div><h2 id="ov-quick-title">Quick control</h2><p class="card-sub">Pause, resume or stop the print</p></div></div>
+        <div id="overview-control" data-module-body="printer_control"></div>
+        <div data-module-off="printer_control" hidden></div>
+      </section>
+      <section class="card liquid-glass ov-card ov-printers" id="ov-printers" aria-labelledby="ov-printers-title">
+        <div class="card-head"><div><h2 id="ov-printers-title">Your printers</h2><p class="card-sub">Open one to control it</p></div></div>
+        <ul class="ov-plist" id="ov-printers-list"></ul>
+      </section>
+      <section class="card liquid-glass ov-card ov-upkeep" id="ov-upkeep">
+        <div class="card-head">
+          <div><h2>Maintenance</h2><p class="card-sub">Jobs coming due, by print hours since you last did them</p></div>
+        </div>
+        <div id="overview-maintenance"></div>
+      </section>
     </div>
 
     <section class="stats liquid-glass divider-row cols-4" aria-label="Printer totals">
@@ -434,57 +421,110 @@
       </div>
     </section>
 
-    <!-- What the printer's own history says (insights.js, /api/insights). -->
-    <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
-      <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
-      <div id="insights-body"><p class="log-empty is-loading">Loading…</p></div>
+    <section class="card liquid-glass pair-card desk-only">
+      <div>
+        <h2 style="margin-bottom:6px;">Use this dashboard on your phone</h2>
+        <p class="card-sub" style="max-width:52ch;">Scan a code with your phone’s camera, on the same Wi-Fi. Nothing to type, no app store and no account.</p>
+      </div>
+      <button class="btn primary" id="overview-pair-btn">Connect your phone</button>
     </section>
-
-    <div class="grid-2" style="margin-bottom:20px;">
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Maintenance</h2><p class="card-sub">Jobs that are due, by print hours since you last did them</p></div>
-        </div>
-        <div id="overview-maintenance"></div>
-      </section>
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Chamber climate</h2><p class="card-sub" id="ch-sub">Temperature inside the enclosure, last 30 minutes</p></div>
-        </div>
-        <div id="chamber-host"></div>
-      </section>
-    </div>
-
-    <div class="grid-2">
-      <section class="card liquid-glass">
-        <div class="card-head">
-          <div><h2>Print cost</h2><p class="card-sub">Filament plus electricity, estimated as you go</p></div>
-        </div>
-        <div id="cost-body"></div>
-      </section>
-    </div>
   </section>
 
   <!-- ============================================================ -->
-  <!-- PRINTER CONTROL                                               -->
+  <!-- PRINTER: one printer's own page (data-tab "control" kept)     -->
   <!-- ============================================================ -->
   <section id="tab-control" class="tab-panel" hidden>
-    <section class="card liquid-glass" data-server-what="Printer status and controls" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <span class="conn-dot" id="ctrl-state-dot" aria-hidden="true" style="width:9px;height:9px;"></span>
+    <section class="card liquid-glass pp-head" id="pp-head" data-server-what="Printer status and controls">
+      <div class="pp-who">
+        <span class="conn-dot" id="ctrl-state-dot" aria-hidden="true"></span>
         <div>
-          <div id="ctrl-state-text" style="font:700 14px/1 var(--font-mono);">No printer connected</div>
-          <div id="ctrl-state-sub" class="card-sub" style="margin-top:4px;"></div>
+          <h2 class="pp-name" id="pp-name">Printer</h2>
+          <div class="pp-state"><span id="ctrl-state-text">No printer connected</span> <span id="ctrl-state-sub" class="card-sub"></span></div>
         </div>
       </div>
-      <div style="display:flex; gap:10px;" data-module-body="printer_control">
+      <div class="pp-actions" data-module-body="printer_control">
         <button class="btn primary" id="ctrl-pause-resume" disabled>Pause</button>
         <button class="btn danger" id="ctrl-cancel" disabled>Cancel print</button>
+        <button class="btn estop" id="pp-estop" type="button" disabled title="Stops every motor and heater at once (M112). The printer then needs a firmware restart.">Emergency stop</button>
       </div>
     </section>
 
     <!-- With printer control switched off, its controls aren't offered - just the switch. -->
     <section class="card liquid-glass" data-module-off="printer_control" hidden></section>
+
+    <div class="pp-stage">
+      <section class="card liquid-glass twin-card" data-tint id="twin-card">
+        <div class="card-head twin-head">
+          <div><h2>Digital twin</h2><p class="card-sub" id="twin-sub">A live copy of your printer: the head, bed and spools move as the real ones do, and the print grows layer by layer in its real colours</p></div>
+          <div class="twin-switches">
+            <div class="pill-toggle twin-modes" id="twin-modes" role="group" aria-label="Show as">
+              <button type="button" data-mode="model" class="active" aria-pressed="true">3D model</button>
+              <button type="button" data-mode="drawing" aria-pressed="false">Drawing</button>
+            </div>
+            <div class="pill-toggle wf-views" id="wf-views" role="group" aria-label="View" hidden>
+              <button type="button" data-view="iso" class="active" aria-pressed="true">Angled</button>
+              <button type="button" data-view="front" aria-pressed="false">Front</button>
+              <button type="button" data-view="top" aria-pressed="false">Top</button>
+              <button type="button" data-view="print" aria-pressed="false" title="Close up on the print">Print</button>
+            </div>
+          </div>
+        </div>
+        <div class="twin-other" id="twin-other" hidden></div>
+        <div id="twin-host" class="twin-host"></div>
+        <p class="twin-sync" id="twin-sync" role="status" hidden><span class="twin-sync-dot" aria-hidden="true"></span><span id="twin-sync-text"></span></p>
+        <p class="field-hint twin-note">Modelled on Snapmaker's product photos of the U1 (front, sides, back and top) and its published figures (584 &times; 499 &times; 730 mm overall, a 276 &times; 293 mm plate, a 270 mm print cube). The body's own size (about 456 &times; 499 &times; 458 mm, measured from the photos), the spool and feeder positions, the dock spacing, the inside layout, the frame, motors and lead screw seen with the case off, and which side feeds which head are estimated. The print is drawn from its own G-code: the outside walls of every layer, in the colour loaded in the head that prints them. While it prints, the nozzle runs along that G-code and is checked against the printer's own position about four times a second, so the walls appear where and when they are laid.</p>
+      </section>
+      <div class="pp-side">
+        <section class="card liquid-glass pp-camera" id="pp-camera-card" aria-labelledby="pp-camera-title">
+          <div class="card-head"><div><h2 id="pp-camera-title">Camera</h2><p class="card-sub">Watch what your controls do</p></div></div>
+          <div class="pcam" data-cam="printer"></div>
+        </section>
+        <section class="card liquid-glass pp-move" id="pp-move" aria-labelledby="pp-move-title" data-module-body="printer_control">
+          <div class="card-head"><div><h2 id="pp-move-title">Move</h2><p class="card-sub" id="pp-move-sub">Home first, then move by the step you pick</p></div></div>
+          <div id="pp-move-body"></div>
+          <div class="pp-home" role="group" aria-label="Home">
+            <button class="btn small" data-home="X" disabled>Home X</button>
+            <button class="btn small" data-home="Y" disabled>Home Y</button>
+            <button class="btn small" data-home="Z" disabled>Home Z</button>
+            <button class="btn small primary" data-home="all" disabled>Home all</button>
+          </div>
+          <p class="log-empty home-why" id="home-why" hidden>Moving and homing wait until no print is running or paused: they would drive the head through the print.</p>
+        </section>
+      </div>
+    </div>
+
+    <section class="card liquid-glass pp-heaters" id="pp-heaters" aria-labelledby="pp-heaters-title" data-module-body="printer_control">
+      <div class="card-head"><div><h2 id="pp-heaters-title">Temperatures</h2><p class="card-sub">Set a target for any head or the bed, or warm up for a material</p></div>
+        <div class="pp-presets" id="pp-presets"></div></div>
+      <div class="divider-row cols-4" id="ctrl-temps"></div>
+      <div class="pp-bed" id="pp-bed"></div>
+    </section>
+
+    <div class="grid-2" data-module-body="printer_control">
+      <section class="card liquid-glass pp-extrude" id="pp-extrude" aria-labelledby="pp-extrude-title">
+        <div class="card-head"><div><h2 id="pp-extrude-title">Extrude</h2><p class="card-sub">Push filament through the hot head, or pull it back</p></div></div>
+        <div id="pp-extrude-body"></div>
+      </section>
+      <section class="card liquid-glass pp-tune" id="pp-tune" aria-labelledby="pp-tune-title">
+        <div class="card-head"><div><h2 id="pp-tune-title">Tune</h2><p class="card-sub">Speed, flow, fan and pressure advance. These work during a print too.</p></div></div>
+        <div id="pp-tune-body"></div>
+      </section>
+    </div>
+
+    <div class="grid-2" data-module-body="printer_control">
+      <section class="card liquid-glass pp-macros" id="pp-macros" aria-labelledby="pp-macros-title">
+        <div class="card-head"><div><h2 id="pp-macros-title">Printer's own buttons</h2><p class="card-sub">Bed mesh, motors off and the macros your printer lists</p></div></div>
+        <div id="pp-macros-body"></div>
+      </section>
+      <section class="card liquid-glass pp-console" id="pp-console">
+        <div class="card-head"><div><h2>G-code console</h2><p class="card-sub">Type any command the printer understands</p></div></div>
+        <div class="console-log" id="gcode-log"></div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="gcode-input" placeholder="Send a G-code command…" style="flex:1;" disabled aria-label="G-code command">
+          <button class="btn primary" id="gcode-send" disabled>Send</button>
+        </div>
+      </section>
+    </div>
 
     <!-- Skip one object mid-print (Klipper's exclude_object). Shown while a
          print runs; the list is the control, the map shows where each is. -->
@@ -504,27 +544,68 @@
       </section>
     </div>
 
-    <section class="liquid-glass divider-row cols-4" id="ctrl-temps" style="margin-bottom:20px;" data-module-body="printer_control"></section>
 
-    <div class="grid-2" data-module-body="printer_control">
+    <div id="telemetry-slot"></div>
+    <section class="card liquid-glass" id="chamber-card">
+      <div class="card-head">
+        <div><h2>Chamber climate</h2><p class="card-sub" id="ch-sub">Temperature inside the enclosure, last 30 minutes</p></div>
+      </div>
+      <div id="chamber-host"></div>
+    </section>
+
+
+    <!-- What the printer's own history says (insights.js, /api/insights). -->
+    <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
+      <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
+      <div id="insights-body"><p class="log-empty is-loading">Loading…</p></div>
+    </section>
+
+    <div class="grid-2">
       <section class="card liquid-glass">
-        <div class="card-head"><div><h2>Home axes</h2></div></div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn" data-home="X" disabled>Home X</button>
-          <button class="btn" data-home="Y" disabled>Home Y</button>
-          <button class="btn" data-home="Z" disabled>Home Z</button>
-          <button class="btn primary" data-home="all" disabled>Home all</button>
+        <div class="card-head">
+          <div><h2>Print health</h2><p class="card-sub">A score out of 100 from maintenance, filament and pre-flight checks. Higher is better.</p></div>
         </div>
-        <p class="log-empty home-why" id="home-why" hidden>Homing waits until no print is running or paused - it would drive the toolhead through the print.</p>
+        <div id="health-host"></div>
       </section>
-
       <section class="card liquid-glass">
-        <div class="card-head"><div><h2>G-code console</h2></div></div>
-        <div class="console-log" id="gcode-log"></div>
-        <div style="display:flex; gap:8px;">
-          <input type="text" id="gcode-input" placeholder="Send a G-code command…" style="flex:1;" disabled>
-          <button class="btn primary" id="gcode-send" disabled>Send</button>
+        <div class="card-head">
+          <div><h2>Print cost</h2><p class="card-sub">Filament plus electricity, estimated as you go</p></div>
         </div>
+        <div id="cost-body"></div>
+      </section>
+    </div>
+
+    <div class="grid-2">
+      <section class="card liquid-glass" id="camera-card">
+        <div class="card-head"><div><h2>Camera settings</h2><p class="card-sub">Which camera feed to use. The picture itself shows on the Control part, beside the twin.</p></div></div>
+        <form id="camera-form" class="inline-form">
+          <label class="sr-only" for="camera-url">Camera stream address</label>
+          <input type="url" id="camera-url" placeholder="http://printer/webcam/…" aria-describedby="camera-url-hint">
+          <button class="btn" type="submit">Save</button>
+          <button class="btn primary" type="button" id="camera-find">Find my printer's camera</button>
+        </form>
+        <p class="field-hint" id="camera-url-hint" role="status">Press <b>Find my printer's camera</b> and the app asks the selected printer which camera it has, checks the picture and saves the address. On the Extended Firmware it is usually <code>http://&lt;printer address&gt;/webcam/stream.mjpg</code>.</p>
+        <details class="webrtc-setup" id="webrtc-setup" hidden>
+          <summary>Low-latency camera (optional, needs go2rtc)</summary>
+          <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
+          <form id="webrtc-form" class="inline-form">
+            <label class="sr-only" for="webrtc-url">go2rtc address</label>
+            <input type="url" id="webrtc-url" placeholder="http://192.168.1.50:1984">
+            <label class="sr-only" for="webrtc-stream">Stream name in go2rtc</label>
+            <input type="text" id="webrtc-stream" placeholder="u1" class="webrtc-stream" autocomplete="off" spellcheck="false">
+            <button class="btn" type="submit">Save</button>
+          </form>
+        </details>
+        <details class="stock-camera"><summary>U1 built-in camera</summary>
+          <p class="field-hint">For the stock U1 camera: JPEG pictures requested directly from the selected printer. Requires compatible firmware. The stream address above is for a separately configured camera.</p>
+          <button class="btn" id="stock-camera-start" type="button">Show built-in camera</button>
+          <button class="btn" id="stock-camera-stop" type="button" hidden>Stop camera</button>
+          <p id="stock-camera-status" role="status"></p><img id="stock-camera-image" alt="Selected printer camera" hidden style="width:100%;border-radius:16px">
+        </details><div id="camera-host" class="camera-host"></div>
+      </section>
+      <section class="card liquid-glass" id="timelapse-card">
+        <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
+        <div id="timelapse-host"></div>
       </section>
     </div>
   </section>
@@ -915,6 +996,11 @@
       <div class="inline-form"><input id="private-name" maxlength="40" autocomplete="off"><button class="btn" id="private-delete">Delete name</button></div>
       <p class="field-hint">Only saved in this browser on this device. Never sent to the server, logs, backups or update checks.</p>
     </section>
+    <section class="card liquid-glass demo-card" id="demo-card">
+      <div class="card-head"><div><h2>Demo data</h2><p class="card-sub">Pretend printers for a look around. Nothing they show is real, and nothing is sent to your printer.</p></div>
+        <label class="switch" for="demo-setting"><span class="switch-label">Show demo printers</span>
+          <input type="checkbox" id="demo-setting"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
+    </section>
     <section class="card liquid-glass phone-install-card phone-only" id="phone-install-card" data-browser-only>
       <div class="card-head"><div><h2>Install on this phone</h2><p class="card-sub">Open Deja Vu1 from your home screen, full screen, like any other app.</p></div></div>
       <div id="phone-install-body"></div>
@@ -1168,37 +1254,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
       </div>
     </div>
     <div class="grid-2" style="margin-top:20px;">
-      <section class="card liquid-glass">
-        <div class="card-head"><div><h2>Camera</h2><p class="card-sub">MJPEG stream from the printer, relayed through this dashboard</p></div></div>
-        <form id="camera-form" class="inline-form">
-          <label class="sr-only" for="camera-url">Camera stream address</label>
-          <input type="url" id="camera-url" placeholder="http://printer/webcam/…" aria-describedby="camera-url-hint">
-          <button class="btn" type="submit">Save</button>
-          <button class="btn primary" type="button" id="camera-find">Find my printer's camera</button>
-        </form>
-        <p class="field-hint" id="camera-url-hint" role="status">Press <b>Find my printer's camera</b> and the app asks the selected printer which camera it has, checks the picture and saves the address. On the Extended Firmware it is usually <code>http://&lt;printer address&gt;/webcam/stream.mjpg</code>.</p>
-        <details class="webrtc-setup" id="webrtc-setup" hidden>
-          <summary>Low-latency camera (optional, needs go2rtc)</summary>
-          <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
-          <form id="webrtc-form" class="inline-form">
-            <label class="sr-only" for="webrtc-url">go2rtc address</label>
-            <input type="url" id="webrtc-url" placeholder="http://192.168.1.50:1984">
-            <label class="sr-only" for="webrtc-stream">Stream name in go2rtc</label>
-            <input type="text" id="webrtc-stream" placeholder="u1" class="webrtc-stream" autocomplete="off" spellcheck="false">
-            <button class="btn" type="submit">Save</button>
-          </form>
-        </details>
-        <details class="stock-camera"><summary>U1 built-in camera</summary>
-          <p class="field-hint">For the stock U1 camera: JPEG pictures requested directly from the selected printer. Requires compatible firmware. The stream address above is for a separately configured camera.</p>
-          <button class="btn" id="stock-camera-start" type="button">Show built-in camera</button>
-          <button class="btn" id="stock-camera-stop" type="button" hidden>Stop camera</button>
-          <p id="stock-camera-status" role="status"></p><img id="stock-camera-image" alt="Selected printer camera" hidden style="width:100%;border-radius:16px">
-        </details><div id="camera-host" class="camera-host"></div>
-      </section>
-      <section class="card liquid-glass">
-        <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
-        <div id="timelapse-host"></div>
-      </section>
       <section class="card liquid-glass remote-card" id="remote-card" data-browser-only>
         <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">Open Deja Vu1 on your phone from anywhere: mobile data, work, a friend’s Wi-Fi.</p></div></div>
         <div id="remote-body" role="status" aria-live="polite"><p class="log-empty">Checking this computer…</p></div>
@@ -1321,7 +1376,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
   <nav class="bottom-nav liquid-glass" aria-label="Main sections">
     <button data-tab="overview"><span class="bn-ico" aria-hidden="true">◉</span>Now</button>
     <button data-tab="fleet"><span class="bn-ico" aria-hidden="true">▦</span>Printers</button>
-    <button data-tab="control"><span class="bn-ico" aria-hidden="true">⏯</span>Control</button>
+    <button data-tab="control"><span class="bn-ico" aria-hidden="true">⏯</span>Printer</button>
     <button data-tab="files"><span class="bn-ico" aria-hidden="true">▤</span>Files</button>
     <button id="bn-more" type="button" aria-haspopup="true"><span class="bn-ico" aria-hidden="true">⋯</span>More</button>
   </nav>
@@ -1332,7 +1387,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
       <button data-tab="automations"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg><b>Automations</b><small>If this, then that</small></button>
       <button data-tab="studio"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01"/></svg><b>Photo studio</b><small>Photo to print</small></button>
       <button data-tab="games"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.5a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.3a2 2 0 0 1-3.4-.9l-.6-2.5A4 4 0 0 1 7 9zM8 11.5v3M6.5 13h3M15.5 12.5h.01M17.5 14h.01"/></svg><b>Games</b><small>While it prints</small></button>
-      <button data-tab="modules" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><b>Settings</b><small>Look, phone, camera, modules</small></button>
+      <button data-tab="modules" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><b>Settings</b><small>Look, phone, modules</small></button>
     </div>
     <div class="ms-tools" role="group" aria-label="Help and tools">
       <button type="button" data-more="camera">Camera</button>
@@ -1445,6 +1500,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
 <script src="finder.js"></script>
 <script src="desk.js"></script>
 <script src="telemetry.js"></script>
+<script src="printer-page.js"></script>
 <script src="logbook.js"></script>
 <script src="insights.js"></script>
 <script src="printroom.js"></script>

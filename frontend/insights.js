@@ -51,8 +51,8 @@
         : `<p class="log-empty">Not enough prints yet to say anything with confidence (at least ${data.minimum || 5}).</p>`}`);
   }
   if (card) {
-    window.addEventListener('dv-tab', e => { if (e.detail === 'overview') loadInsights(); });
-    window.addEventListener('dv-refresh', () => { if (!$('tab-overview').hidden) loadInsights(); });
+    window.addEventListener('dv-tab', e => { if (e.detail === 'control') loadInsights(); });
+    window.addEventListener('dv-refresh', () => { if (!$('tab-control').hidden) loadInsights(); });
     window.addEventListener('dv-live-event', e => { if (e.detail && e.detail.type === 'print_event' && ['finished', 'failed', 'cancelled'].includes(e.detail.event)) loadInsights(); });
     setTimeout(loadInsights, 600);
   }

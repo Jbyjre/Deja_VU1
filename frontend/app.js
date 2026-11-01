@@ -423,6 +423,21 @@ async function tourControl(action, pid, body) {
     tourLog(pid, `SET_HEATER_TEMPERATURE HEATER=${th} TARGET=${target}`);
     return tourDone(pid);
   }
+  const HANDS_ON = {
+    jog: b => `G91 · G1 ${b.axis}${b.distance} · G90`, move: b => `G90 · G1 ${['x', 'y', 'z'].filter(k => b[k] != null).map(k => k.toUpperCase() + b[k]).join(' ')}`,
+    'z-nudge': b => `SET_GCODE_OFFSET Z_ADJUST=${b.delta} MOVE=1`, extrude: b => `M83 · G1 E${b.length}`,
+    speed: b => `M220 S${b.percent}`, flow: b => `M221 S${b.percent}`, fan: b => `M106 S${Math.round((b.percent || 0) * 2.55)}`,
+    'pressure-advance': b => `SET_PRESSURE_ADVANCE ADVANCE=${b.value}`, limits: b => `SET_VELOCITY_LIMIT VELOCITY=${b.velocity} ACCEL=${b.accel}`,
+    'motors-off': () => 'M84', 'bed-mesh': () => 'BED_MESH_CALIBRATE', macro: b => String(b.name || ''), tool: b => String(b.toolhead || ''),
+    estop: () => 'M112', 'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
+  };
+  if (HANDS_ON[action]) {
+    const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool'];
+    if (moves.includes(action) && ['printing', 'paused'].includes(live.state)) return tourReply({ error: 'Not while a print is running or paused - it would move the head through the print' }, 400);
+    tourLog(pid, HANDS_ON[action](body || {}));
+    tourLog(pid, 'ok (online demo: nothing was sent to a printer)');
+    return tourDone(pid);
+  }
   if (action === 'home') { tourLog(pid, `G28 ${(body.axes || ['X', 'Y', 'Z']).join(' ')}`); tourLog(pid, '// Homed (online demo)'); return tourDone(pid); }
   if (action === 'gcode') {
     const cmd = String(body.command || '').trim().slice(0, 200);
@@ -468,7 +483,7 @@ async function tourPost(url, body) {
   let parsed = {};
   try { parsed = JSON.parse(body || '{}'); } catch (_) { parsed = {}; }
   const pid = url.searchParams.get('printer') || (typeof currentPrinter !== 'undefined' && currentPrinter) || tour.rec.default_printer;
-  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start)$/);
+  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start|restart|jog|move|z-nudge|extrude|speed|flow|fan|pressure-advance|limits|motors-off|bed-mesh|macro|tool|estop|bed-temperature)$/);
   if (control) {
     const answer = await tourControl(control[1], pid, parsed);
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
@@ -944,6 +959,8 @@ async function loadConnection() {
   const label = $('conn-label');
   const wasReal = realOn;
   realOn = !!data.connected || (data.printers || []).some(p => p.connected);
+  // With a real printer, demo data is a Settings choice, not a switch in the top bar.
+  document.body.classList.toggle('has-printer', realOn);
   // A printer connecting (or dropping) while the page is open: open or
   // close the live connection to match, without waiting for a reload.
   if (wasReal !== realOn && window.Workshop) setTimeout(() => Workshop.reconnect(), 0);
@@ -1073,12 +1090,12 @@ function initServerBanner() {
 const TAB_KEY = 'dejavu1.tab';
 /* One plain sentence per tab, shown under the tab bar, so a first-time
    visitor knows what each section is for before reading it. */
-const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Control', files: 'Files', studio: 'Photo studio',
+const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
   automations: 'Automations', maintenance: 'Care', modules: 'Settings', games: 'Games' };
 const TAB_INTROS = {
-  overview: 'What needs you, then the printer you picked: its live 3D model, controls and health.',
+  overview: 'What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.',
   fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
-  control: 'Drive the printer you picked: pause, skip a failed object, temperatures and moving the head. If the printer says no, you see why.',
+  control: 'Everything about one printer: its live 3D twin and camera, moving and heating it, tuning, its readings and its history. If the printer says no, you see why.',
   files: 'Your print files. Look inside them, prepare and slice models, and queue prints. Every print gets checked before it starts.',
   studio: 'Turn a photo into a colour print, using the filaments you have loaded.',
   automations: '“When this happens, do that” rules, like a message when a print finishes. They run on this computer, not in the cloud.',
@@ -1095,10 +1112,12 @@ const TAB_INTROS = {
    Anything that scrolls to a card in a hidden part (search, tours, "Slice…"
    buttons) opens that part first. */
 const SECTIONS = {
-  overview: [
-    ['now', 'Right now', ['#attention', '#twin-card', 'printer control', 'print health', 'use this dashboard']],
-    ['live', 'Live readings', ['#telemetry', 'chamber climate']],
-    ['history', 'History & upkeep', ['.stats', '#insights-card', 'maintenance', 'print cost']],
+  control: [
+    ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
+      '#pp-macros', '#pp-console', '#ctrl-plate']],
+    ['live', 'Live readings', ['#telemetry', '#chamber-card']],
+    ['history', 'History & upkeep', ['#insights-card', 'print health', 'print cost']],
+    ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
   ],
   fleet: [
     ['printers', 'Your printers', ['your printers', 'add a printer']],
@@ -1115,17 +1134,16 @@ const SECTIONS = {
     ['filament', 'Filament & colour', ['#tab-filament']],
   ],
   modules: [
-    ['copy', 'This copy', ['your space', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
+    ['copy', 'This copy', ['your space', '#demo-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
     ['look', 'Look & feel', ['#appearance-card', 'preferences']],
     ['features', 'Features', ['modules', 'print cost pricing']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
-    ['camera', 'Camera', ['camera', 'time-lapses']],
   ],
 };
 const SECTION_KEY = 'dejavu1.section.';
 // Fixed ids for each screen's row of parts, so tours can point at them.
-const SECTION_BAR_IDS = { overview: 'sec-overview', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules' };
+const SECTION_BAR_IDS = { control: 'sec-control', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules' };
 
 window.Sections = (() => {
   const chosen = {};
@@ -1163,6 +1181,7 @@ window.Sections = (() => {
     chosen[tab] = key;
     if (remember) store.set(SECTION_KEY + tab, key);
     apply(tab);
+    window.dispatchEvent(new CustomEvent('dv-section', { detail: { tab, key } }));
     // Only the cards that just appeared fade in; the 5-second refresh never replays it.
     unitsOf(panel).filter(u => was.has(u) && !u.classList.contains('sec-off')).forEach(u => {
       u.classList.remove('sec-enter'); void u.offsetWidth; u.classList.add('sec-enter');
@@ -1261,6 +1280,23 @@ async function loadStatusRibbon() {
   renderStatusRibbon(await getJSON(api('/api/printer')));
 }
 
+/* The printer button in the top bar carries the state the old strip under the
+ * tabs did: a word, the progress and the finish time, so it's never out of
+ * sight on any tab. */
+function renderChipStatus(data) {
+  const chip = $('printer-chip'), status = $('pc-status'), bar = $('pc-progress');
+  if (!chip || !status) return;
+  const st = data && data.state ? (data.link_lost ? 'lost' : data.state) : 'none';
+  if (chip.dataset.state !== st) chip.dataset.state = st;
+  const running = st === 'printing' || st === 'paused';
+  const finish = running ? doneAt(hoursLeft(data)) : '';
+  const words = { printing: 'Printing', paused: 'Paused', complete: 'Finished', error: 'Stopped', ready: 'Ready', lost: 'No live link', none: '' }[st] || st;
+  setText(status, running ? `${words} ${Math.round((data.progress || 0) * 100)}%` : words);
+  setText($('pc-finish'), finish ? `done ${finish}` : '');
+  const w = running || st === 'complete' ? `${((data.progress || 0) * 100).toFixed(1)}%` : '0%';
+  if (bar && bar.style.width !== w) bar.style.width = w;
+}
+
 function renderStatusRibbon(data) {
   const ribbon = $('status-ribbon');
   const text = $('rb-text');
@@ -1268,6 +1304,7 @@ function renderStatusRibbon(data) {
   const fill = $('rb-bar-fill');
   const pct = $('rb-pct');
 
+  drawSafely('The printer button', () => renderChipStatus(data));
   if (!hasData(data) || !data.state) {
     ribbon.classList.remove('is-live');
     const away = unreachablePrinter();
@@ -1288,7 +1325,7 @@ function renderStatusRibbon(data) {
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
-    setText(text, data.state === 'error' ? `Error: ${data.state_message || ''}` : 'Idle: no print running.');
+    setText(text, data.state === 'error' ? `Error: ${data.state_message || ''}` : 'Ready for a print.');
     bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
@@ -1538,9 +1575,9 @@ function renderControlTab(state) {
 
   const lost = !!state.link_lost;
   const running = (state.state === 'printing' || state.state === 'paused') && !lost;
-  const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
+  const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--ink-ready)'));
   if (dot.style.background !== dotColor) dot.style.background = dotColor;
-  setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
+  setText(text, state.state === 'ready' ? 'Ready for a print' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
   setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
@@ -1789,7 +1826,7 @@ function renderOverviewControl(state) {
     $('ov-restart').onclick = () => { if (confirm('Restart the printer\'s firmware (FIRMWARE_RESTART)? Do it once the cause of the error is fixed.')) controlAction('restart', $('ov-restart')); };
   }
   const running = (state.state === 'printing' || state.state === 'paused') && !lost;
-  setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Idle');
+  setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Ready for a print');
   const barWidth = `${Math.round((state.progress || 0) * 100)}%`;
   if ($('ov-bar').style.width !== barWidth) $('ov-bar').style.width = barWidth;
   const pauseResume = $('ov-pause-resume');
@@ -2470,6 +2507,12 @@ function initPressedSync() {
 function initDemoToggle() {
   const toggle = $('demo-toggle');
   toggle.checked = demoOn;
+  const mirror = $('demo-setting');
+  if (mirror) {
+    mirror.checked = demoOn;
+    mirror.addEventListener('change', () => { toggle.checked = mirror.checked; toggle.dispatchEvent(new Event('change')); });
+    toggle.addEventListener('change', () => { mirror.checked = toggle.checked; });
+  }
   toggle.addEventListener('change', () => {
     demoOn = toggle.checked;
     store.set(STORE_KEY, demoOn ? '1' : '0');

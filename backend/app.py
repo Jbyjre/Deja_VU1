@@ -555,6 +555,7 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/temperature": lambda body: printer_control.set_temperature(
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
+    "/api/printer/control/bed-temperature": lambda b: printer_control.set_bed_temperature(b.get("target")),
     "/api/printer/control/gcode": lambda body: printer_control.send_gcode(body.get("command")),
     "/api/printer/control/restart": lambda body: printer_control.clear_error(),
     # Hands-on controls (printer_control.jog and the rest): every value checked before any G-code.

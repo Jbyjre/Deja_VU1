@@ -46,9 +46,10 @@ const Workshop = (() => {
     if (s < 86400) return `${Math.round(s / 3600)} h ago`;
     return `${Math.round(s / 86400)} d ago`;
   };
-  const STATE_COLOR = { printing: 'var(--ok)', paused: 'var(--warn)', error: 'var(--bad)', complete: 'var(--accent)', ready: 'var(--text-faint)' };
-  const STATE_HEX = { printing: '#34c759', paused: '#ffcc00', error: '#ff3b30', complete: '#4a8df8', ready: '#8e8e93' };
-  const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Idle' };
+  // A ready printer is "on and waiting", drawn in the page's own ink, never a dim grey.
+  const STATE_COLOR = { printing: 'var(--ok)', paused: 'var(--warn)', error: 'var(--bad)', complete: 'var(--accent)', ready: 'var(--ink-ready)' };
+  const STATE_HEX = { printing: '#34c759', paused: '#ffcc00', error: '#ff3b30', complete: '#4a8df8', ready: '#1d1d1f' };
+  const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Ready' };
 
   /* Continuous visuals ease toward each new reading instead of jumping.
    * This is the easing Block World already uses for movement (initBeacon
@@ -349,10 +350,10 @@ const Workshop = (() => {
     renderChip();
     qsa('.fleet-card').forEach(c => c.classList.toggle('is-selected', c.dataset.printer === id));
     // From the chip's menu you stay where you were; the tab reloads for the
-    // printer you picked. From a fleet card you go to its overview.
+    // printer you picked. From a fleet card you go to that printer's own page.
     if (stay) { refreshAll(); onTab(currentTab()); toast(`Now showing ${printerName(id)}`, 'info', 2200); return; }
-    const go = () => { showTab('overview'); refreshAll(); };
-    if (fromEl) morph(fromEl, () => qs('#tab-overview .live-row') || qs('#tab-overview'), go);
+    const go = () => { showTab('control'); refreshAll(); };
+    if (fromEl) morph(fromEl, () => qs('#tab-control .pp-stage') || qs('#tab-control'), go);
     else go();
     reportView();
   }
@@ -416,7 +417,7 @@ const Workshop = (() => {
       if (!card) return;
       const f = (k) => qs(`[data-f="${k}"]`, card);
       card.classList.toggle('is-selected', p.id === (currentPrinter || live.fleet[0].id));
-      setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : STATE_HEX[p.state] || '#ffffff');
+      setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : p.state === 'ready' ? '#ffffff' : STATE_HEX[p.state] || '#ffffff');
       // Any printer but a U1 says what it is, from its own report (machines.py).
       const kind = f('machine'), other = p.machine && !p.machine.reference;
       kind.hidden = !other;
@@ -431,8 +432,8 @@ const Workshop = (() => {
       const arc = qs('.rs-fill', ring), circ = 2 * Math.PI * 15.5;
       setVar(arc, 'stroke', STATE_HEX[p.state] || '#8e8e93');
       setVar(arc, 'stroke-dashoffset', String(circ * (1 - progress)));
-      setText(qs('.fc-pct', ring), `${Math.round(progress * 100)}%`);
-      setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'No job'));
+      setText(qs('.fc-pct', ring), p.state === 'ready' ? 'Ready' : `${Math.round(progress * 100)}%`);
+      setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'Ready for a print'));
       setText(f('meta'), p.remaining_hours != null
         ? `${fmtHours(p.remaining_hours)} left · done ${doneAt(p.remaining_hours)}` : (p.state_message || ''));
       setHTML(f('docks'), Object.entries(p.docks || {}).map(([th, d]) => `
@@ -463,7 +464,7 @@ const Workshop = (() => {
    * queue is files really waiting. */
 
   const attention = { queues: {}, queuesAt: 0, queueOff: false };
-  const TAB_LABEL = { control: 'Control', files: 'Files', maintenance: 'Care' };
+  const TAB_LABEL = { control: 'Printer', files: 'Files', maintenance: 'Care' };
   const SOON_HOURS = 0.25;   // "about to finish" means within 15 minutes
 
   async function refreshAttentionQueues() {
@@ -1427,7 +1428,7 @@ const Workshop = (() => {
           ${row('Swaps', swaps)}
           ${row('This print', job)}
         </dl>
-        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open in Control</button></div>`;
+        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open printer</button></div>`;
     } else if (id.startsWith('obj:')) {
       const name = id.slice(4), plate = st.objects || {}, o = (plate.list || []).find(v => v.name === name);
       if (!o) { twin.pick = null; box.hidden = true; return; }
@@ -1447,7 +1448,7 @@ const Workshop = (() => {
           <button type="button" class="wf-x" data-act="close" aria-label="Close details">✕</button></div>
         <dl class="wf-facts">${row('Temperature', `${deg(st.bed_temperature)}${st.bed_target ? ` → ${deg(st.bed_target)}` : ''}`)}
           ${row('Below the nozzle', `${twin.pos[2].toFixed(2)} mm`)}${row('Chamber', deg(st.chamber_temperature))}</dl>
-        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open in Control</button></div>`;
+        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open printer</button></div>`;
     }
     if (box.hidden !== !html) box.hidden = !html;
     setHTML(box, html);
@@ -1607,9 +1608,9 @@ const Workshop = (() => {
    * progress, so the floating pill only appears once the ribbon has been
    * scrolled out of view - otherwise the two say the same thing and the
    * pill sits on top of whatever is in the bottom-right corner. */
-  if ('IntersectionObserver' in window && $('status-ribbon')) {
+  if ('IntersectionObserver' in window && $('printer-chip')) {
     new IntersectionObserver(([entry]) => document.body.classList.toggle('ribbon-in-view', entry.isIntersecting))
-      .observe($('status-ribbon'));
+      .observe($('printer-chip'));
   }
 
   function renderPill(state) {
@@ -2753,7 +2754,7 @@ const Workshop = (() => {
       $('camera-reload').addEventListener('click', () => { stopCamera(); startCamera(); });
       cam.built = true;
     }
-    if (document.querySelector('#tab-modules:not([hidden])')) { stopCamera(); startCamera(); }
+    if (document.querySelector('#tab-control:not([hidden]) #camera-card:not(.sec-off)')) { stopCamera(); startCamera(); }
   }
 
   function setCamMode(mode, why) {
@@ -2985,6 +2986,11 @@ const Workshop = (() => {
   let dismissedOffer = 0;
 
   function currentTab() { return store.get('dejavu1.tab') || 'overview'; }
+  // The full camera (Printer → Camera & time-lapses) runs only while its part is open.
+  window.addEventListener('dv-section', e => {
+    if (e.detail.tab !== 'control') return;
+    if (e.detail.key === 'camera' || e.detail.key === 'all') loadCamera(); else stopCamera();
+  });
 
   function reportView() {
     if (modGate.off.has('handoff')) return;      // switched off: nothing to report, and no refused request
@@ -3111,8 +3117,8 @@ const Workshop = (() => {
       if (!b) return;
       setSheet(false);
       const act = b.dataset.more;
-      if (act === 'camera') $('camera-open').click();
-      else if (act === 'help') $('setup-open').click();
+      if (act === 'camera') { showTab('control'); window.Sections && Sections.reveal($('pp-camera-card')); $('pp-camera-card').scrollIntoView({ block: 'start' }); }
+      else if (act === 'help') $('setup-replay').click();
       else if (act === 'tips') { if (window.Guide && Guide.has(currentTab())) Guide.screen(currentTab()); else toast('This screen has no extra tips', 'info'); }
       else if (act === 'install' && window.Phone) Phone.install();
     });
@@ -3431,7 +3437,7 @@ const Workshop = (() => {
     if (name === 'fleet') loadRegistry();
     if (name === 'files') { loadFiles(); loadQueue(); }
     if (name === 'automations') { ruleForm(); loadRules(); loadRuleLog(); }
-    if (name === 'modules') { loadCamera(); loadTimelapse(); } else stopCamera();
+    if (name === 'control') { loadCamera(); loadTimelapse(); } else stopCamera();
     if (name === 'maintenance') { loadForecast(); loadSideBySide(); }   // Filament & colour lives here
     window.dispatchEvent(new CustomEvent('dv-tab', { detail: name }));
     reportView();
