@@ -1548,6 +1548,11 @@ const Workshop = (() => {
 
   /* Chamber climate: a read-only reading, where Klipper reports one. */
   let chamberHistory = [];
+  // The first 5 seconds of a recording are left out: right after the link to the
+  // printer opens, the first readings can be off and pulled the graph out of shape.
+  const SETTLE_S = 5;
+  const pageStart = Date.now() / 1000;
+  const settled = list => list.length ? list.filter(s => s.t >= list[0].t + SETTLE_S) : list;
   async function loadChamber() {
     const host = $('chamber-host');
     if (!host) return;
@@ -1559,7 +1564,8 @@ const Workshop = (() => {
       host.dataset.built = '';
       return;
     }
-    chamberHistory = data.history.map(s => ({ t: s.t, c: s.chamber, b: s.bed }));
+    chamberHistory = settled(data.history.map(s => ({ t: s.t, c: s.chamber, b: s.bed }))
+      .filter(s => s.c != null && isFinite(s.c)));
     if (!host.dataset.built) {
       host.dataset.built = '1';
       host.innerHTML = `<div class="ch-now"><span id="ch-val">—</span><small>chamber</small></div>
@@ -1575,6 +1581,7 @@ const Workshop = (() => {
     tween('chamber', state.chamber_temperature, (v) => setText(val, formatTemp(v)));
     const last = chamberHistory[chamberHistory.length - 1];
     const now = Date.now() / 1000;
+    if (now - pageStart < SETTLE_S && !last) return;
     if (!last || now - last.t >= 5) {
       chamberHistory.push({ t: now, c: state.chamber_temperature, b: state.bed_temperature });
       if (chamberHistory.length > 360) chamberHistory.shift();
