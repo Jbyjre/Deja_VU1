@@ -77,6 +77,20 @@ window.Telemetry = (() => {
       [reported == null && est != null ? 'Remaining (est.)' : 'Remaining', printing ? dur(est) : '—'], ['Done at', eta ? eta.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'],
       ['Active head', esc(st.active_toolhead || '—')], ['Position X / Y', pos.length ? `${num(pos[0], 1)} / ${num(pos[1], 1)}` : '—'],
     ];
+    // What the printer's own web page shows besides: overrides, fan, limits, homing, the bed mesh and the
+    // idle timer. A figure the printer doesn't report is left out rather than shown as a guess.
+    const t = st.tuning || {}, pct = v => v == null ? null : `${Math.round(v * 100)} %`;
+    const activePA = st.active_toolhead && heads[st.active_toolhead] ? heads[st.active_toolhead].pressure_advance : null;
+    [['Speed', pct(t.speed_factor)], ['Flow', pct(t.extrude_factor)],
+     ['Part fan', t.part_fan == null ? null : `${Math.round(t.part_fan * 100)} %${t.part_fan_rpm ? ` · ${Math.round(t.part_fan_rpm)} rpm` : ''}`],
+     ['Pressure advance', activePA == null ? null : `${num(activePA, 3)} (${esc(st.active_toolhead)})`],
+     ['Max speed / accel', t.max_velocity == null ? null : `${num(t.max_velocity, 0)} mm/s · ${num(t.max_accel, 0)} mm/s²`],
+     ['Homed', st.homed_axes == null ? null : (st.homed_axes ? st.homed_axes.toUpperCase() : 'not homed')],
+     ['Bed mesh', t.bed_mesh ? esc(t.mesh_profile || 'none loaded') : null],
+     ['Printer says', t.idle_state ? esc(t.idle_state) : null],
+     ...(t.sensors || []).map(x => [esc(x.name), x.temperature == null ? null : `${num(x.temperature)} °C`]),
+     ...(t.fans || []).map(f => [esc(f.name), f.speed == null ? null : `${Math.round(f.speed * 100)} %`]),
+    ].forEach(([k, v]) => { if (v != null) kv.push([k, v]); });
     const rows = Object.entries(heads).map(([th, h]) => `<tr class="${th === st.active_toolhead ? 'is-active' : ''}">
         <th scope="row"><span class="tm-th">${esc(th)}</span></th>
         <td><span class="tm-status is-${esc(h.status || 'unknown')}">${esc(h.status || '—')}</span></td>

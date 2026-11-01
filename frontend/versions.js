@@ -254,7 +254,7 @@ window.Versions = (() => {
       const mb = n => (n / 1048576).toFixed(1);
       words = `Downloading version ${job.version || ''}: ${mb(job.done || 0)} of ${mb(job.total)} MB (${pct}%)`.replace('version :', 'the update:');
     } else if (job.state === 'restarting') {
-      pct = 100; words = `Restarting into version ${job.version || 'the new version'}. This page reloads by itself; keep the launcher window open.`;
+      pct = 100; words = `Restarting into version ${job.version || 'the new version'}. This page reloads by itself.`;
     }
     bar.classList.toggle('is-unknown', pct === null);
     bar.style.setProperty('--done', `${pct === null ? 30 : Math.max(4, pct)}%`);
@@ -404,7 +404,7 @@ window.Versions = (() => {
       box.hidden = false;
       $('app-update-bar').classList.add('is-unknown');
       $('app-update-step').textContent = secs < 60
-        ? `Restarting${version ? ` into version ${version}` : ''}: ${secs} s. This page reloads by itself; keep the launcher window open.`
+        ? `Restarting${version ? ` into version ${version}` : ''}: ${secs} s. This page reloads by itself.`
         : `This is taking longer than usual (${secs} s). Look at the Deja Vu1 window: it says what is happening. If it shows an error or has closed, paste the Start and check command below.`;
       if (secs >= 60) { $('vc-fix').open = true; }
       waitForRestart(version, tries + 1, started, before);

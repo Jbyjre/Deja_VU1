@@ -67,7 +67,8 @@ class InstallBlocks(unittest.TestCase):
 
     def test_blocks_start_the_app_and_never_touch_saved_data(self):
         blocks = markdown_blocks('README.md')
-        self.assertIn('start-windows.bat', blocks['powershell'])
+        # Started apart from the window, so closing PowerShell doesn't stop it (the owner, 1 November 2026).
+        self.assertIn('start.py --background', blocks['powershell'])
         self.assertIn('python3 start.py', blocks['bash'])
         self.assertIn('chmod +x', blocks['bash'])          # the double-click launchers stay runnable
         for block in blocks.values():
@@ -91,7 +92,8 @@ class UpdateBlocks(unittest.TestCase):
             self.assertIn(ASSET, block)
             self.assertNotIn('backend/data', block)
             self.assertNotRegex(block, r'\b(rm|del|Remove-Item)\b')
-        self.assertIn('start-windows.bat', update_blocks.POWERSHELL)
+        self.assertIn('start.py --background', update_blocks.POWERSHELL)
+        self.assertIn('start.py --background', update_blocks.BASH)
         self.assertIn('python3 start.py', update_blocks.BASH)
 
 

@@ -101,6 +101,7 @@ window.Explain = (() => {
     'pick up where you left off': ['Bring in your recent projects and your own settings from OrcaSlicer or Snapmaker Orca on this computer.',
       'Nothing in the slicer changes. Deja Vu1 makes copies.'],
     // ---- Photo studio
+    'photo to print': ['A small extra: turn a photo into a print made of coloured layers, using the filaments you have loaded.', 'It opens the Photo studio. Nothing is sent to a printer until you choose to.'],
     'photo to print studio': ['Turn a photo into a print made of coloured layers, using the filament colours you have loaded.',
       'Drop a picture, adjust it, and save a [[3MF]] or [[STL]] to print. It all happens in your browser.'],
     'from image to print project': ['Make colour tiles, a measured layer print, or a raised relief from a picture.',

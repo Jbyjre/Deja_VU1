@@ -52,11 +52,12 @@ _DATA_DIR = storage.DATA_DIR
 _RULES_PATH = os.path.join(_DATA_DIR, "automations.json")
 _LOG_PATH = os.path.join(_DATA_DIR, "automation_log.json")
 
-TRIGGERS = {"temperature", "state", "filament_mismatch", "maintenance_overdue"}
+TRIGGERS = {"temperature", "state", "filament_mismatch", "maintenance_overdue", "progress", "time_left", "layer",
+            "error", "link_lost"}
 SENSORS = {"chamber", "bed", "active_nozzle", "T0", "T1", "T2", "T3"}
 STATE_EVENTS = {"started", "finished", "failed", "paused", "resumed", "cancelled"}
 CONDITIONS = {"always", "while_printing", "outside_quiet_hours"}
-ACTIONS = {"notify", "light", "home_assistant", "pause"}
+ACTIONS = {"notify", "light", "home_assistant", "pause", "cool_down", "macro"}
 MAX_RULES = 50
 
 _lock = threading.RLock()
@@ -110,7 +111,7 @@ def validate(rule):
     action = rule.get("action") or {}
     ttype = trigger.get("type")
     if ttype not in TRIGGERS:
-        raise ValueError("Pick a trigger: temperature, state, filament_mismatch or maintenance_overdue")
+        raise ValueError("Pick a trigger: " + ", ".join(sorted(TRIGGERS)))
     clean_trigger = {"type": ttype}
     if ttype == "temperature":
         if trigger.get("sensor") not in SENSORS:
@@ -125,6 +126,21 @@ def validate(rule):
         if trigger.get("event") not in STATE_EVENTS:
             raise ValueError("Pick a print event: " + ", ".join(sorted(STATE_EVENTS)))
         clean_trigger["event"] = trigger["event"]
+    elif ttype == "progress":
+        value = _number(trigger.get("value"), "The percentage")
+        if not 1 <= value <= 100:
+            raise ValueError("The percentage must be between 1 and 100")
+        clean_trigger["value"] = round(value)
+    elif ttype == "time_left":
+        value = _number(trigger.get("value"), "The minutes")
+        if not 1 <= value <= 1440:
+            raise ValueError("Minutes left must be between 1 and 1440")
+        clean_trigger["value"] = round(value)
+    elif ttype == "layer":
+        value = _number(trigger.get("value"), "The layer")
+        if not 1 <= value <= 100000 or value != int(value):
+            raise ValueError("The layer must be a whole number from 1")
+        clean_trigger["value"] = int(value)
     elif ttype == "maintenance_overdue":
         task = trigger.get("task") or "any"
         if task != "any" and task not in {t["id"] for t in maintenance.TASKS}:
@@ -137,7 +153,7 @@ def validate(rule):
 
     atype = action.get("type")
     if atype not in ACTIONS:
-        raise ValueError("Pick an action: notify, light, home_assistant or pause")
+        raise ValueError("Pick an action: " + ", ".join(sorted(ACTIONS)))
     clean_action = {"type": atype}
     if atype == "notify":
         message = str(action.get("message") or "").strip()
@@ -159,6 +175,11 @@ def validate(rule):
                 or entity[7:].lower() != entity[7:]:
             raise ValueError("Entity must look like sensor.printer_alert")
         clean_action.update(entity_id=entity, state=str(action.get("state") or "on")[:60])
+    elif atype == "macro":
+        macro = str(action.get("name") or "").strip().upper()
+        if not macro or len(macro) > 64 or not macro.replace("_", "").isalnum():
+            raise ValueError("Type the macro's name as the printer lists it, like LIGHT_OFF")
+        clean_action["name"] = macro
 
     printer = rule.get("printer") or "any"
     if printer != "any" and not mock_moonraker.has_printer(printer):
@@ -185,9 +206,20 @@ def _describe(trigger, action):
         what = f"print {trigger['event']}"
     elif t == "filament_mismatch":
         what = "filament mismatch"
+    elif t == "progress":
+        what = f"print reaches {trigger['value']}%"
+    elif t == "time_left":
+        what = f"{trigger['value']} min left"
+    elif t == "layer":
+        what = f"layer {trigger['value']} starts"
+    elif t == "error":
+        what = "the printer reports an error"
+    elif t == "link_lost":
+        what = "the printer stops answering"
     else:
         what = "maintenance overdue"
-    return f"When {what} → {action['type'].replace('_', ' ')}"
+    doing = {"cool_down": "cool down", "macro": f"run {action.get('name', 'macro')}"}.get(action["type"])
+    return f"When {what} → {doing or action['type'].replace('_', ' ')}"
 
 
 def add_rule(rule, demo):
@@ -268,7 +300,7 @@ def _mismatch(printer_id, state):
 def _overdue(printer_id, task):
     with mock_moonraker.use_printer(printer_id):
         tasks = maintenance.get_status()["tasks"]
-    hits = [t["name"] for t in tasks if t["status"] == "overdue" and task in ("any", t["id"])]
+    hits = [t["name"] for t in tasks if t["status"] == "overdue" and not t.get("snoozed_until") and task in ("any", t["id"])]
     return bool(hits), ", ".join(hits)
 
 
@@ -285,6 +317,21 @@ def _trigger_now(rule, printer_id, state, events, cache):
     if t == "state":
         hit = trigger["event"] in events
         return hit, f"print {trigger['event']}: {state.get('current_file') or ''}".strip()
+    printing = state.get("state") in ("printing", "paused")
+    if t == "progress":
+        pct = (state.get("progress") or 0) * 100
+        return printing and pct >= trigger["value"], f"{pct:.0f}% done: {state.get('current_file') or ''}".strip()
+    if t == "time_left":
+        left = _hours_left(state)
+        hit = printing and left is not None and 0 < left * 60 <= trigger["value"]
+        return hit, f"about {round(left * 60) if left is not None else '?'} min left: {state.get('current_file') or ''}".strip()
+    if t == "layer":
+        layer = (state.get("layer") or {}).get("current")
+        return printing and isinstance(layer, int) and layer >= trigger["value"], f"layer {layer}"
+    if t == "error":
+        return state.get("state") == "error" and not state.get("link_lost"), state.get("state_message") or "error"
+    if t == "link_lost":
+        return bool(state.get("link_lost")), "no answer from the printer"
     if t == "filament_mismatch":
         if "mismatch" not in cache:
             cache["mismatch"] = _mismatch(printer_id, state)
@@ -295,6 +342,15 @@ def _trigger_now(rule, printer_id, state, events, cache):
             cache[key] = _overdue(printer_id, trigger["task"])
         return cache[key]
     return False, None
+
+
+def _hours_left(state):
+    """The printer's own remaining time, else one estimated from the time so far and the progress."""
+    left = state.get("remaining_hours")
+    if isinstance(left, (int, float)):
+        return float(left)
+    p, spent = state.get("progress") or 0, state.get("print_duration_hours") or 0
+    return spent * (1 - p) / p if p > 0.02 and spent else None
 
 
 def _condition_ok(rule, state):
@@ -387,7 +443,8 @@ def run_action(rule, printer_id, detail, manual=False):
     import modules
     action = rule["action"]
     owner = {"notify": "notifications", "light": "wled_bridge",
-             "home_assistant": "home_assistant_bridge", "pause": "printer_control"}.get(action["type"])
+             "home_assistant": "home_assistant_bridge", "pause": "printer_control",
+             "cool_down": "printer_control", "macro": "printer_control"}.get(action["type"])
     if not modules.is_enabled("automations") or (owner and not modules.is_enabled(owner)):
         return _record(rule, printer_id, detail, {"ok": False,
                        "error": "Action stopped: its feature is switched off in Settings"}, manual=manual)
@@ -432,6 +489,25 @@ def run_action(rule, printer_id, detail, manual=False):
             result = {"ok": True, "detail": f"Paused the print on {printer_name}"}
         except (ValueError, mock_moonraker.PrinterCommandError) as exc:
             result = {"ok": False, "error": f"Pause failed: {exc}"}
+    elif kind == "cool_down":
+        try:
+            with mock_moonraker.use_printer(printer_id):
+                if (mock_moonraker.get_printer_state() or {}).get("state") == "printing":
+                    raise ValueError("not while it prints")
+                for head in mock_moonraker.TOOLHEADS:
+                    mock_moonraker.set_target_temperature(head, 0.0)
+                mock_moonraker.set_bed_temperature(0.0)
+            result = {"ok": True, "detail": f"Heaters off on {printer_name}"}
+        except (ValueError, mock_moonraker.PrinterCommandError) as exc:
+            result = {"ok": False, "error": f"Cool down failed: {exc}"}
+    elif kind == "macro":
+        import printer_control
+        try:
+            with mock_moonraker.use_printer(printer_id):
+                printer_control.run_macro(action["name"])
+            result = {"ok": True, "detail": f"Ran {action['name']} on {printer_name}"}
+        except (ValueError, mock_moonraker.PrinterCommandError) as exc:
+            result = {"ok": False, "error": f"{action['name']} failed: {exc}"}
     else:
         result = {"ok": False, "error": f"Unknown action {kind}"}
     return _record(rule, printer_id, detail, result, manual=manual)

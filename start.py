@@ -5,6 +5,11 @@ Double-click start-windows.bat (Windows), start-mac.command (macOS) or
 start-linux.sh (Linux), or run:  python3 start.py
 Close the window (or press Ctrl+C) to stop it.
 
+  python3 start.py --background   starts it apart from this window, so it keeps
+                                  running after the window closes (the Start
+                                  blocks use this); --autostart also starts it
+                                  at every sign-in (Settings -> Desktop app)
+
 Once the dashboard answers, this window shows whether Deja Vu1 is ready and
 fully working, or what is wrong and which block to paste next. If Deja Vu1 is
 already running, it shows that check for the running copy and opens it.
@@ -98,7 +103,8 @@ def open_when_ready():
     import desktop
     opened = desktop.open_dashboard(f"http://localhost:{PORT}")
     if opened == "window":
-        print("Deja Vu1 opened in its own app window. Keep this window open; closing it stops the dashboard.", flush=True)
+        print("Deja Vu1 opened in its own app window." + ("" if os.environ.get("DEJAVU_BACKGROUND_PARENT") else
+              " Keep this window open; closing it stops the dashboard."), flush=True)
 
 
 def already_running():
@@ -283,7 +289,7 @@ def supervise():
         before = app_updates.version()
         pending = os.path.isdir(os.path.join(HERE, ".dejavu-update"))
         if pending:
-            say("Installing the update. The dashboard is back in a moment; keep this window open.")
+            say("Installing the update. The dashboard is back in a moment" + ("." if os.environ.get("DEJAVU_BACKGROUND") else "; keep this window open."))
         try:
             result = app_updates.apply_pending(HERE, healthy)
         except Exception as exc:
@@ -350,6 +356,66 @@ def supervise():
             stop(child)
 
 
+# ---- running apart from this window -----------------------------------------
+
+def start_in_background():
+    """
+    Start Deja Vu1 so it keeps running after this window closes, wait until it
+    answers, show the ready check and open it. On Windows it runs without a console
+    window (pythonw.exe when there is one, and a detached process either way); on
+    macOS and Linux in a session of its own, so closing Terminal doesn't end it.
+    The launcher it starts is the same one as always: it restarts the server after
+    a crash and installs updates. Its output goes to <data>/logs/background.log.
+    """
+    sys.path.insert(0, os.path.join(HERE, "backend"))
+    os.environ["DEJAVU_BACKGROUND_PARENT"] = "1"
+    running = already_running()
+    if not running:
+        folder = os.path.join(DATA_DIR, "logs")
+        os.makedirs(folder, exist_ok=True)
+        out_path = os.path.join(folder, "background.log")
+        if os.path.exists(out_path) and os.path.getsize(out_path) > LOG_LIMIT:
+            os.remove(out_path)
+        env = dict(os.environ, DEJAVU_NO_BROWSER="1", DEJAVU_BACKGROUND="1")
+        env.pop("DEJAVU_BACKGROUND_PARENT", None)
+        python = sys.executable
+        with open(out_path, "ab") as out:
+            kwargs = {"cwd": HERE, "env": env, "stdin": subprocess.DEVNULL, "stdout": out,
+                      "stderr": subprocess.STDOUT, "close_fds": True}
+            if os.name == "nt":
+                quiet = os.path.join(os.path.dirname(python), "pythonw.exe")
+                python = quiet if os.path.exists(quiet) else python
+                kwargs["creationflags"] = 0x00000008 | 0x00000200      # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+            else:
+                kwargs["start_new_session"] = True
+            subprocess.Popen([python, os.path.join(HERE, "start.py")], **kwargs)
+        say("Starting Deja Vu1 in the background…")
+        deadline = time.monotonic() + START_WAIT
+        while time.monotonic() < deadline and not already_running():
+            time.sleep(0.5)
+        running = already_running()
+        if not running:
+            say(f"Deja Vu1 didn't answer within {START_WAIT} s. What it printed is in {out_path}")
+            return 1
+    else:
+        print(f"Deja Vu1 {running} is already running at http://localhost:{PORT}.", flush=True)
+    if "--autostart" in sys.argv[1:]:
+        try:
+            import autostart
+            if not autostart.status()["on"]:
+                autostart.set_on(True)
+                say("It will also start by itself when you sign in to this computer "
+                    "(turn that off in Settings -> Desktop app).")
+        except (OSError, ValueError) as exc:
+            say(f"Starting at sign-in couldn't be switched on: {exc}")
+    show_ready()
+    if os.environ.get("DEJAVU_NO_BROWSER") != "1":
+        open_when_ready()
+    say(f"Deja Vu1 keeps running after you close this window. Open http://localhost:{PORT} any time. "
+        "To stop it: Settings -> Version & updates -> Stop.")
+    return 0
+
+
 def show_port_in_use():
     import readiness
     windows = os.name == "nt"
@@ -362,6 +428,7 @@ def show_port_in_use():
 
 if __name__ == "__main__":
     try:
-        sys.exit(check_only() if "--check" in sys.argv[1:] else supervise())
+        args = sys.argv[1:]
+        sys.exit(check_only() if "--check" in args else start_in_background() if "--background" in args else supervise())
     except KeyboardInterrupt:
         print("Stopped.")

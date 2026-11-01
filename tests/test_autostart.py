@@ -36,7 +36,9 @@ class StartWithThisComputer(unittest.TestCase):
         where, text = self.toggle("win32")
         self.assertTrue(where.endswith(os.path.join("Start Menu", "Programs", "Startup", "Deja Vu1.cmd")))
         self.assertIn("set DEJAVU_NO_BROWSER=1\r\n", text)
-        self.assertIn(f'start "Deja Vu1" /min cmd /c "{HERE}{os.sep}start-windows.bat"', text)
+        # In the background: no console window is left that closing would stop Deja Vu1.
+        self.assertIn(f'"{HERE}{os.sep}start.py" --background', text)
+        self.assertNotIn('start-windows.bat', text)
 
     def test_mac_launch_agent_is_a_valid_plist(self):
         where, text = self.toggle("darwin")

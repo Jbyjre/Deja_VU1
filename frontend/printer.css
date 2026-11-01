@@ -197,7 +197,10 @@
   .topbar-right .printer-chip { max-width: none; flex: 1 1 auto; }
   .printer-chip .pc-name { max-width: 30vw; }
   .pp-actions .btn.estop { flex: 1 1 100%; }
-  .pp-heaters #ctrl-temps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* !important only to beat style.css's one-column phone rule for every divider row. */
+  .pp-heaters #ctrl-temps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .pp-heaters #ctrl-temps > :nth-child(2n) { border-right: none; }
+  .pp-heaters #ctrl-temps > * { border-bottom: 1px solid rgba(0, 0, 0, .06); }
   .pp-heaters #ctrl-temps > div { padding: 10px; }
   /* Phones get the twin and its controls, not the long note about how it was modelled. */
   .pp-stage .twin-note { display: none; }
@@ -237,4 +240,90 @@ body.has-printer .topbar-right > .switch:not(:has(input:checked)) { display: non
 .twin-move-marker::after {
   content: attr(data-label); position: absolute; left: 50%; top: -30px; transform: translateX(-50%); white-space: nowrap;
   padding: 4px 8px; border-radius: 999px; font: 600 11px/1 var(--font-mono); color: #fff; background: rgba(0, 0, 0, .7);
+}
+
+/* Printers → Add a printer: the form folds away under one button. */
+.add-printer { margin-top: 12px; }
+.add-printer > summary { list-style: none; display: inline-flex; cursor: pointer; }
+.add-printer > summary::-webkit-details-marker { display: none; }
+.add-printer > summary::after { content: "+"; margin-left: 8px; font-weight: 700; }
+.add-printer[open] > summary::after { content: "−"; }
+.add-printer[open] > summary { margin-bottom: 12px; }
+
+/* ---- Files › Slicing ------------------------------------------------------ */
+/* The grid of slicer and profile cards ended flush against Slice a model, so the
+   two cards looked stacked on top of each other. */
+#ap-body > .grid-2 { margin-bottom: 20px; }
+#ap-body > .grid-2 > .card { margin-bottom: 0; }
+
+/* Layer heights per head: a strip of its own under the slice bar, and a real
+   heading in the Tools & filaments card. */
+.sw-layers {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 10px 0 0; padding: 12px 14px;
+  border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, rgba(255, 255, 255, .7));
+}
+.sw-layers-title { font: 700 14px/1.2 var(--font-sans); }
+.sw-layers-what { flex: 1 1 260px; font-size: 13px; color: var(--text-dim); }
+.ts-stack-title { font-size: 18px; margin: 18px 0 6px; }
+.ts-stack-wrap { padding: 16px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, rgba(255, 255, 255, .6)); margin: 16px 0; }
+/* A hint inside a column form takes its own height (the general .field-hint
+   flex basis is a width in rows, and became 140 px of empty height here). */
+.ap-form > .field-hint, .ap-form > .log-empty { flex: none; align-self: stretch; }
+
+/* ---- Files › Pick up where you left off ------------------------------------ */
+.oi-summary { font-size: 13.5px; margin: 6px 0 12px; }
+.oi-safe { display: block; margin-top: 4px; font-size: 12.5px; color: var(--text-faint); }
+details.oi-app { border: 1px solid rgba(0, 0, 0, .08); border-radius: 16px; padding: 0 14px; margin-bottom: 10px; background: rgba(255, 255, 255, .45); }
+details.oi-app > summary { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; padding: 12px 0; cursor: pointer; min-height: 44px; }
+details.oi-app > summary span { font-size: 12.5px; color: var(--text-faint); }
+details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); margin-bottom: 12px; }
+.oi-projects.is-long li:nth-child(n + 7) { display: none; }
+.oi-more { margin-right: 8px; }
+
+/* ---- Preferences tab -------------------------------------------------------- */
+.prefs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px 28px; }
+.pref h3 { font-size: 14px; margin-bottom: 6px; }
+.pref select { min-height: 40px; width: 100%; }
+.pref-wide { grid-column: 1 / -1; }
+.pref-check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.pref-check input { margin-top: 3px; }
+.pref-presets { display: grid; gap: 10px; margin: 10px 0; }
+.pref-preset { display: flex; gap: 12px; flex-wrap: wrap; }
+.pref-preset label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+.pref-preset input { width: 120px; min-height: 38px; }
+.pref-preset-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---- Automations -------------------------------------------------------------- */
+.automations-grid { margin-top: 20px; margin-bottom: 20px; }
+.automations-grid > .card { margin-bottom: 0; }
+.rf-presets-lead { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.rf-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.rf-group-name { flex: 0 0 100%; font: 600 10.5px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); margin-top: 4px; }
+
+/* ---- Care: snooze and the swap form ------------------------------------------- */
+.task-actions { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.task-snooze { min-height: 36px; font-size: 12.5px; }
+.swap-form { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.swap-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+.swap-form select, .swap-form input { min-height: 40px; }
+.swap-form .swap-note { flex: 1 1 220px; }
+
+/* ---- Settings: how-to notes for notifications and remote access --------------- */
+.notif-how, .remote-ways { margin: 4px 0 14px; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .06); }
+.notif-how > summary, .remote-ways > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; min-height: 32px; display: flex; align-items: center; }
+.notif-steps, .remote-ways ul { margin: 8px 0 4px 18px; display: grid; gap: 8px; font-size: 13px; line-height: 1.5; }
+
+/* ---- Phones: most things, not everything (the owner, 1 November 2026) ----------
+   Tighter cards so more fits on a screen, and the computer-only tools left out:
+   typing G-code and changing speed limits are jobs for the computer. */
+@media (max-width: 720px) {
+  .card { padding: 18px 16px; margin-bottom: 14px; }
+  .grid-2 .card, .automations-grid { margin-bottom: 14px; }
+  .card-sub { font-size: 12.5px; }
+  #pp-console, #pp-limits, #pp-goto { display: none; }
+  .ov-printers.is-single { display: none; }
+  .ov-word { font-size: 20px; }
+  .ov-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

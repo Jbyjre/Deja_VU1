@@ -238,7 +238,15 @@ root should hand over to `welcome.html`.
   `Phone.install()` (More → Install app, Settings → Install on this phone) picks the install steps:
   Chrome installs only from https, localhost or an address in chrome://flags "Insecure origins
   treated as secure" (Chromium `installable_evaluator.cc`), so a plain LAN address gets those steps.
-- `pairing.py`: device keys (hash stored, HttpOnly cookie) and the optional device lock
+- `modules.DEFAULTS_ON` (filament_inventory, sanity_check, compare, auto_print) start on; a copy
+  saved before November 2026 switches them on once (`_defaults` version in modules.json).
+- `maintenance.snooze()` (1, 3 or 7 days): a snoozed task keeps its status in Care but leaves
+  the overdue/due-soon counts, Needs you and maintenance rules until then. `record_swap(...,
+  nozzle=)` also writes that head's nozzle into `tool_setup`.
+- Automations triggers also include progress, time_left, layer, error, link_lost; actions
+  cool_down (never mid-print) and macro (must be one the printer lists).
+- `pairing.py`: device keys (hash stored, HttpOnly cookie); redeeming again from an already
+  paired browser replaces its entry (`replaces=`), so one phone never counts twice; and the optional device lock
   (`app.py` `_locked_out`; localhost via loopback is always allowed).
 - `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
   `PrintConfig.cpp`), served by `GET /api/slicer/schema` and used by `slicer_profiles.validate_options`.
@@ -252,15 +260,33 @@ root should hand over to `welcome.html`.
   (29 module ids), `storage.py` (atomic JSON).
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
-- Sections (`app.js` `SECTIONS`, `window.Sections`): Overview, Printers, Files, Care and
-  Settings show one part at a time (plus "Everything"). Cards are sorted by `#id`, `.class`
+- Tabs (the owner's review, 1 November 2026): Overview is a page of cards about now (Needs you,
+  Right now, camera, temperatures, quick control, your printers, maintenance, totals; no twin).
+  Printer (data-tab `control`, kept for saved tabs and tours) is one printer's own page: the twin
+  with the camera and Move pad beside it, Temperatures (warm-up presets from Preferences),
+  Extrude, Tune, the printer's own buttons (bed mesh, motors off, its macros) and the console;
+  parts Control, Live readings, History & upkeep, Camera & time-lapses. Opening a printer goes
+  there. Preferences (`prefs`) is its own tab; Photo studio has no tab button (Files' Photo to
+  print card, search and the More sheet open it). The printer button in the top bar carries the
+  state the old strip under the tabs did (`renderChipStatus`); `#status-ribbon` stays hidden.
+- `printer-page.js` + `printer.css`: the Printer page controls, the Overview cards, the camera
+  view (`.pcam`: the saved stream, else one snapshot after another, at most five a second,
+  only while visible) and the Preferences tab. Server side: `printer_control.jog` and the
+  rest (`/api/printer/control/jog|move|z-nudge|extrude|speed|flow|fan|pressure-advance|limits|
+  motors-off|bed-mesh|macro|tool|estop|bed-temperature`) build standard Klipper G-code after
+  checking every value; motion is refused mid-print, tuning is not. Both paths go through
+  `mock_moonraker.tune()`. Real printers report `state.tuning` (fan, overrides, limits,
+  idle_timeout, bed_mesh, macros without a leading _, other fans/sensors) and per-head
+  pressure advance; the U1's own name comes from `machine.system_info` product_info.device_name.
+- Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and
+  Settings show one part at a time (plus "Everything"). `dv-section` fires on each change. Cards are sorted by `#id`, `.class`
   or the start of their h2 title; a card no rule names joins the first part. Anything that
   scrolls to a hidden card opens its part (`Sections.reveal`, via a `scrollIntoView` wrapper;
   `guide.js` resolve calls it too). A new card on those screens needs a rule, or it lands
   in the first part.
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
+  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `printer-page.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -300,7 +326,7 @@ root should hand over to `welcome.html`.
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
   October 2026; the older game code below them in games.js is legacy.
-- CSS order: `style.css` → `workshop.css` → `farm.css` → `guide.css` → `theme.css`.
+- CSS order: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css`.
 - `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
   message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
   and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.
@@ -608,6 +634,11 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   `start.py` returns 0 for it (the Windows batch file would blame Python) and opens the
   browser only when `/api/app/info` answers. `offline.html` (served by `sw.js`) explains
   a stopped program on localhost and returns to the dashboard when the server answers.
+- `start.py --background` (the owner, 1 November 2026: closing PowerShell must not stop Deja Vu1)
+  starts the launcher detached (Windows: pythonw/DETACHED_PROCESS; macOS/Linux: its own session),
+  waits for it, shows the ready check and exits; output in `<data>/logs/background.log`. The Start
+  blocks add `--autostart`; Update and Install blocks also start it with `--background`. The
+  Windows sign-in entry runs `start.py --background`, never a console window.
 - `autostart.py` (Settings → Desktop app → Start with this computer, `POST /api/app/autostart`,
   this computer only; status in `/api/app/info`): one sign-in file, the Windows Startup folder
   `.cmd`, a macOS LaunchAgent or an XDG autostart entry, each with `DEJAVU_NO_BROWSER=1`.

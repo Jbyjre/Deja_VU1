@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.12.0** ([what's new](#whats-new-in-0120) · [every version](CHANGELOG.md)).
+**Latest named release: 0.14.0** ([what's new](#whats-new-in-0140) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -105,13 +105,15 @@ the app; your settings and files stay put.
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-   Start-Process "$dest\start-windows.bat"
+   Set-Location $dest
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
    ```
 
-A black window opens (that's the launcher) and your browser opens the dashboard.
-Keep the black window open. Next time, double-click `start-windows.bat` in
-**Documents → Deja_VU1**. To have it start by itself whenever you sign in, turn on
-**Settings → Desktop app → Start Deja Vu1 when this computer starts**.
+Deja Vu1 starts in the background and your browser opens the dashboard. You can
+close the PowerShell window: Deja Vu1 keeps running, and it starts by itself
+whenever you sign in (turn that off in **Settings → Desktop app**). Double-clicking
+`start-windows.bat` in **Documents → Deja_VU1** also works, but that window must
+stay open.
 
 ### Mac: paste into Terminal
 
@@ -121,7 +123,7 @@ Keep the black window open. Next time, double-click `start-windows.bat` in
    ```bash
    curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
    python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-   cd ~/Documents/Deja_VU1 && python3 start.py
+   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
    ```
 
 If your Mac says the `python3` command needs the command line developer tools,
@@ -203,7 +205,8 @@ try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Timeo
 Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-Start-Process "$dest\start-windows.bat"
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
 ```
 
 #### Mac, Linux: update in one paste
@@ -214,7 +217,7 @@ Open a **new** Terminal window (the one running Deja Vu1 is busy), then paste:
 curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 && python3 start.py
+cd ~/Documents/Deja_VU1 && python3 start.py --background
 ```
 
 The Windows block was written from Microsoft's documentation and has not been
@@ -240,14 +243,14 @@ blocks are on the offline page and in **Settings → Version & updates**.
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
 ```
 
 #### Mac, Linux: start and check in one paste
 
 ```bash
 [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 && python3 start.py
+cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 ```
 
 Still not working? The update block above also repairs: it stops a stuck copy,
@@ -335,6 +338,27 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
   and idle".
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new in 0.14.0
+
+- **Each printer has its own page.** Printer (where Control was) puts the 3D twin,
+  the camera and a Move pad side by side, then temperatures with warm-up buttons,
+  extrude and retract, speed, flow, part fan and pressure advance, the printer's own
+  macros and bed mesh, motors off, the console and an emergency stop. Every command
+  is checked before it is sent and says what the printer answered. Moving waits for
+  an idle printer; tuning works during a print. Tested against the simulated printer
+  and the Moonraker stand-in; not yet tried on a physical U1.
+- **Overview is a page of cards** about what is happening now: Needs you, Right
+  now, the camera, temperatures, quick control, your printers and maintenance.
+- **No window has to stay open.** The Start block starts Deja Vu1 in the background
+  and at every sign-in, so closing PowerShell or Terminal no longer stops it.
+  Tested on Linux; Windows and macOS are not tested yet.
+- **The twin behaves.** The head stays inside the printer while it homes, the bed no
+  longer flickers while it turns, Turn slowly is a button, and Move head lets you
+  drag the real head.
+- **Less nagging, more control.** A finished print celebrates without a pop-up, due
+  maintenance can wait with Not now, automations have five new triggers, two new
+  actions and ten examples, and Preferences has its own tab.
 
 ## What's new in 0.13.0
 

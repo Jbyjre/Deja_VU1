@@ -21,7 +21,7 @@ so swapping in a real printer later changes nothing in this file.
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import mock_moonraker
 from mock_moonraker import get_print_history
@@ -365,15 +365,54 @@ def _evaluate_event_task(task, entry, usage):
     }
 
 
-def record_swap(kind, toolhead, note=""):
+SNOOZE_DAYS = (1, 3, 7)
+
+
+def snooze(task_id, days):
+    """Not now: hide a due task from the alerts for 1, 3 or 7 days. It stays listed in Care."""
+    if not isinstance(task_id, str) or task_id not in _TASKS_BY_ID:
+        raise ValueError(f"Unknown maintenance task: {task_id}")
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        raise ValueError("Snooze for 1, 3 or 7 days")
+    if days not in SNOOZE_DAYS:
+        raise ValueError("Snooze for 1, 3 or 7 days")
+    log = _load_log()
+    until = (datetime.now() + timedelta(days=days)).isoformat(timespec="seconds")
+    log["tasks"].setdefault(task_id, {})["snoozed_until"] = until
+    _save_log(log)
+    return get_status()
+
+
+def record_swap(kind, toolhead, note="", nozzle=None):
     """
     Record that a nozzle or hotend was swapped. The calibration task becomes
-    due straight away and stays due until it is marked done.
+    due straight away and stays due until it is marked done. With the new
+    nozzle's size, that head's saved tool setup (tool_setup.py) takes it too,
+    so slicing and the pre-print checks use the nozzle that is really fitted.
     """
     if kind not in ("nozzle", "hotend"):
         raise ValueError("kind must be 'nozzle' or 'hotend'")
     if toolhead not in mock_moonraker.TOOLHEADS:
         raise ValueError(f"Unknown toolhead: {toolhead}")
+    setup_note = None
+    if nozzle not in (None, ""):
+        import layer_planner
+        import tool_setup
+        size = layer_planner._nozzle(nozzle)
+        heads = tool_setup.get()["heads"]
+        if len(heads) == 4:
+            lo, hi = layer_planner.U1_LIMITS[size]
+            for h in heads:
+                if h["toolhead"] == toolhead:
+                    h["nozzle"] = size
+                    h["height"] = round(min(hi, max(lo, h["height"])), 2)
+            tool_setup.save({"heads": heads})
+            setup_note = f"{toolhead} now has a {size:g} mm nozzle in its tool setup"
+        else:
+            setup_note = "No tool setup saved for this printer yet: set the nozzle in Files › Slicing › Tools & filaments"
+        note = (f"{size:g} mm nozzle. " + (note or "")).strip()
     log = _load_log()
     now = datetime.now().isoformat(timespec="seconds")
     log["tasks"]["calibration"]["swap_pending"] = {"kind": kind, "toolhead": toolhead, "at": now}
@@ -385,7 +424,10 @@ def record_swap(kind, toolhead, note=""):
         "note": note,
     })
     _save_log(log)
-    return get_status()
+    status = get_status()
+    if setup_note:
+        status["tool_setup"] = setup_note
+    return status
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +448,16 @@ def get_status():
         for task in TASKS
     ]
 
+    # A snoozed task keeps its real status and stays on the list, but it doesn't
+    # count as overdue (Needs you, printer cards, automations) until the snooze ends.
+    now = datetime.now()
+    for r in results:
+        until = (log["tasks"].get(r["id"]) or {}).get("snoozed_until")
+        try:
+            r["snoozed_until"] = until if until and datetime.fromisoformat(until) > now else None
+        except (TypeError, ValueError):
+            r["snoozed_until"] = None
+
     # Sort by how far through the interval each task is, most urgent first.
     results.sort(key=lambda r: r["percent"], reverse=True)
 
@@ -414,8 +466,9 @@ def get_status():
         "totals": get_printer_totals(),
         "tasks": results,
         "summary": {
-            "overdue": sum(1 for r in results if r["status"] == "overdue"),
-            "due_soon": sum(1 for r in results if r["status"] == "due_soon"),
+            "overdue": sum(1 for r in results if r["status"] == "overdue" and not r["snoozed_until"]),
+            "due_soon": sum(1 for r in results if r["status"] == "due_soon" and not r["snoozed_until"]),
+            "snoozed": sum(1 for r in results if r["snoozed_until"] and r["status"] != "ok"),
             "ok": sum(1 for r in results if r["status"] == "ok"),
         },
     }

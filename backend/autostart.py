@@ -8,8 +8,9 @@ already running whenever its address or the installed app is opened, instead
 of showing the offline page because nobody started the launcher.
 
   - Windows: "Deja Vu1.cmd" in the Startup folder
-    (%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup), which runs
-    start-windows.bat in a minimised window.
+    (%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup), which starts
+    Deja Vu1 in the background (start.py --background, with pythonw.exe when
+    there is one), so no console window is left that closing would stop it.
   - macOS: a LaunchAgent, ~/Library/LaunchAgents/io.github.jbyjre.dejavu1.plist,
     with RunAtLoad (it runs start.py at each sign-in).
   - Linux desktops: ~/.config/autostart/deja-vu1.desktop (the XDG autostart
@@ -63,12 +64,16 @@ def content(platform=None, here=HERE, python=None):
     python = python or sys.executable
     start = os.path.join(here, "start.py")
     if kind == "windows":
-        bat = os.path.join(here, "start-windows.bat")
+        folder = os.path.dirname(python)
+        quiet = os.path.join(folder, "pythonw.exe")
+        if os.path.basename(python).lower() == "pythonw.exe" or os.path.exists(quiet):
+            run = f'start "" "{quiet if os.path.exists(quiet) else python}" "{start}" --background\r\n'
+        else:
+            run = f'start "Deja Vu1" /min "{python}" "{start}" --background\r\n'
         return ("@echo off\r\n"
                 "rem Starts Deja Vu1 at sign-in. Turn it off in Deja Vu1: Settings, Desktop app.\r\n"
                 "set DEJAVU_NO_BROWSER=1\r\n"
-                f'cd /d "{here}"\r\n'
-                f'start "Deja Vu1" /min cmd /c "{bat}"\r\n')
+                f'cd /d "{here}"\r\n' + run)
     if kind == "mac":
         return ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '

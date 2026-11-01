@@ -30,7 +30,8 @@ You need your own running copy for real readings.
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-   Start-Process "$dest\start-windows.bat"
+   Set-Location $dest
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
    ```
 
    **Mac, Linux or Raspberry Pi:** open **Terminal** (on a Mac: Cmd + Space, type
@@ -39,7 +40,7 @@ You need your own running copy for real readings.
    ```bash
    curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
    python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-   cd ~/Documents/Deja_VU1 && python3 start.py
+   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
    ```
 
    If a Mac says the `python3` command needs the command line developer tools,
@@ -58,10 +59,11 @@ You need your own running copy for real readings.
    or **start-linux.sh**. On Mac/Linux, if the file opens as text or cannot run,
    open Terminal in the folder and run `python3 start.py`. Downloaded files may
    need your operating system's permission to open; do not disable its security.
-4. Your browser opens [the local dashboard](http://localhost:8000). Keep the
-   launcher window open. Closing it stops the dashboard (if it stops by itself after a
-   crash, the launcher starts it again). To have it start whenever you sign in, turn on
-   **Settings → Desktop app → Start Deja Vu1 when this computer starts**. The launcher also
+4. Your browser opens [the local dashboard](http://localhost:8000). A double-clicked
+   launcher's window must stay open: closing it stops the dashboard (if it stops by itself
+   after a crash, the launcher starts it again). The paste blocks above start Deja Vu1 in
+   the background instead, so no window has to stay open, and it starts by itself whenever
+   you sign in (**Settings → Desktop app → Start Deja Vu1 when this computer starts**). The launcher also
    prints **From a phone**, followed by your computer's home-network address,
    and, where the console can draw it, a QR code of it for the phone's camera.
 5. Follow **Set up & help**, or skip and replay it from **Settings**. Your
@@ -248,7 +250,8 @@ to start.
    Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-   Start-Process "$dest\start-windows.bat"
+   Set-Location $dest
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
    ```
 
    **Mac, Linux or Raspberry Pi:** open a **new** Terminal window and paste:
@@ -257,7 +260,7 @@ to start.
    curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
    curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
    python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-   cd ~/Documents/Deja_VU1 && python3 start.py
+   cd ~/Documents/Deja_VU1 && python3 start.py --background
    ```
 
    The same blocks are in **Settings → Version & updates → Update or repair with a
@@ -285,8 +288,8 @@ engines/presets; see [backup and recovery](backup-and-recovery.md).
 Your browser says "Deja Vu1 isn't running right now", or the dashboard stopped
 answering? Paste one block. It starts Deja Vu1 in Documents if it isn't
 running, then that window shows **Deja Vu1 is ready and fully working**, or what
-is wrong and the next block to paste. Leave the window open: closing it stops
-Deja Vu1.
+is wrong and the next block to paste. Then close the window if you like: Deja Vu1
+keeps running in the background, and starts by itself whenever you sign in.
 
    **Windows:** open a new **PowerShell** window and paste:
 
@@ -294,14 +297,14 @@ Deja Vu1.
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
    if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
    Set-Location $dest
-   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
    ```
 
    **Mac, Linux or Raspberry Pi:** open a new Terminal window and paste:
 
    ```bash
    [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-   cd ~/Documents/Deja_VU1 && python3 start.py
+   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
    ```
 
 If that window still shows a problem, paste the update block above: it also

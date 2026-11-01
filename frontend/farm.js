@@ -166,10 +166,10 @@ const Farm = (() => {
     if (isModuleDisabled(data)) { host.innerHTML = '<p class="log-empty">The file library is off.</p>'; return; }
     cmd.files = ((data && data.files) || []).filter(f => f.kind === 'gcode');
     host.innerHTML = cmd.files.length ? `
-      <span class="fr-label">Send a file</span>
+      <span class="fr-label">Queue a print</span>
       ${cmd.files.slice(0, 14).map(f => `<button class="chip-btn fc-file ${cmd.picked === f.name ? 'is-picked' : ''}" type="button"
           draggable="true" data-file="${esc(f.name)}" aria-pressed="${cmd.picked === f.name}">${esc(f.name)}</button>`).join('')}
-      <span class="fc-files-hint">Drag onto a printer, or tap one and choose "Queue here".</span>`
+      <span class="fc-files-hint">These are print files (G-code) from your library. Drag one onto a printer card, or tap it and press "Queue here" on a printer. It waits in that printer's queue and starts only after its Confirm Print check.</span>`
       : '<p class="log-empty">No G-code in the library yet. Add some in Files to send it to a printer from here.</p>';
   }
 
