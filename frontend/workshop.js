@@ -3461,11 +3461,22 @@ const Workshop = (() => {
     });
   }
 
-  /* The celebration: the live pill's glass grows into the summary card. */
-  let lastCelebrated = null;
+  /* A finished print: the background dots celebrate and a message rises out of
+   * the orb, with See summary for the details. Nothing waits for a click, so a
+   * farm of printers finishing one after another never stacks up pop-ups, and
+   * the dots celebrate at most once every 10 seconds however many finish. */
+  let lastCelebrated = null, lastBurst = 0;
   function celebrate(event) {
     if (lastCelebrated === event.id) return;
     lastCelebrated = event.id;
+    const s = event.summary;
+    if (Date.now() - lastBurst > 10000 && typeof Backdrop !== 'undefined') { lastBurst = Date.now(); Backdrop.celebrate(); }
+    toast(`${event.printer_name} finished ${s.file} · ${fmtHours(s.hours)} · ${Number(s.grams).toFixed(1)} g`, 'ok', 9000,
+      { action: { label: 'See summary', run: () => showSummary(event) } });
+  }
+
+  /* The summary card: the live pill's glass grows into it. */
+  function showSummary(event) {
     const s = event.summary;
     $('celebrate-title').textContent = `${event.printer_name}: print finished`;
     $('celebrate-sub').textContent = s.file;
@@ -3473,8 +3484,6 @@ const Workshop = (() => {
       <div><span class="stat-key">Time</span><b>${fmtHours(s.hours)}</b></div>
       <div><span class="stat-key">Filament</span><b>${Number(s.grams).toFixed(1)} g ${esc(s.material)}</b></div>
       <div><span class="stat-key">Cost</span><b>${money(s.cost.total_cost)}</b></div>`;
-    // The background joins in: a burst in the print's filament colour.
-    if (typeof Backdrop !== 'undefined') Backdrop.celebrate();
     const dialog = $('celebrate-dialog');
     qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#4a8df8');
     qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#4a8df8');
