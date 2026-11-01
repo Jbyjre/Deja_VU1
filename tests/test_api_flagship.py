@@ -10,6 +10,7 @@ import os
 import sys
 import threading
 import unittest
+from unittest import mock
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -102,8 +103,13 @@ class TestGating(FlagshipAPI):
                 self.assertEqual((status, payload.get("module_disabled")), (403, True), path)
             modules.set_enabled(module_id, True)
 
-    def test_auto_print_is_off_by_default(self):
-        self.assertEqual(self.request("/api/slicer/settings")[0], 403)
+    def test_slicing_is_on_from_the_start_and_runs_nothing_until_a_slicer_is_chosen(self):
+        # On by default since November 2026 (modules.DEFAULTS_ON); its set-up asks for the slicer.
+        with mock.patch("slicer_bridge.subprocess.Popen") as started:
+            status, body = self.request("/api/slicer/settings")
+        self.assertEqual(status, 200)
+        self.assertIsNone(body["last_check"])
+        started.assert_not_called()
 
     def test_broadcast_needs_printer_control_on(self):
         modules.set_enabled("printer_control", False)

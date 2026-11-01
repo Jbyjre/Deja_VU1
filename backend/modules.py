@@ -73,7 +73,7 @@ REGISTRY = [
         "description": "Tracks spools on hand, flags files needing a "
                         "colour you don't have, nudges on idle spools.",
         "status": "optional",
-        "default_enabled": False,
+        "default_enabled": True,
     },
     {
         "id": "sanity_check",
@@ -81,7 +81,7 @@ REGISTRY = [
         "description": "Combines maintenance, dock, and colour status "
                         "into one verdict before you print.",
         "status": "optional",
-        "default_enabled": False,
+        "default_enabled": True,
     },
     {
         "id": "compare",
@@ -89,7 +89,7 @@ REGISTRY = [
         "description": "Compares the next job against your history and "
                         "flags likely causes from past failures.",
         "status": "optional",
-        "default_enabled": False,
+        "default_enabled": True,
     },
     {
         "id": "updates",
@@ -245,7 +245,7 @@ REGISTRY = [
         "description": "Slices STL and 3MF models with Snapmaker Orca or OrcaSlicer, a separate "
                         "program you install, and puts the G-code in the library or queue.",
         "status": "optional",
-        "default_enabled": False,
+        "default_enabled": True,
     },
     {
         "id": "sandbox",
@@ -268,8 +268,14 @@ REGISTRY = [
 _BY_ID = {m["id"]: m for m in REGISTRY}
 
 
+DEFAULTS_VERSION = 2
+DEFAULTS_ON = ("filament_inventory", "sanity_check", "compare", "auto_print")
+
+
 def _default_state():
-    return {m["id"]: m["default_enabled"] for m in REGISTRY}
+    state = {m["id"]: m["default_enabled"] for m in REGISTRY}
+    state["_defaults"] = DEFAULTS_VERSION
+    return state
 
 
 def _load_state():
@@ -282,7 +288,16 @@ def _load_state():
         state = _default_state()
         _save_state(state)
     for module_id, enabled in _default_state().items():
-        state.setdefault(module_id, enabled)
+        if module_id != "_defaults":
+            state.setdefault(module_id, enabled)
+    # November 2026: four features people need from day one start switched on
+    # (DEFAULTS_ON). A copy saved before then still holds the old "off" default
+    # for them, so they are switched on once; anything turned off afterwards stays off.
+    if state.get("_defaults", 1) < DEFAULTS_VERSION:
+        for module_id in DEFAULTS_ON:
+            state[module_id] = True
+        state["_defaults"] = DEFAULTS_VERSION
+        _save_state(state)
     return state
 
 
