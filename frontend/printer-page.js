@@ -231,6 +231,7 @@ window.PrinterPage = (() => {
   function renderPrinters() {
     const list = $('ov-printers-list');
     if (!list) return;
+    $('ov-printers')?.classList.toggle('is-single', fleet.length <= 1);
     if (!fleet.length) { paint(list, '<li class="log-empty">No printers yet. Add one under Printers.</li>'); return; }
     paint(list, fleet.map(p => {
       const pct = Math.round((p.progress || 0) * 100);

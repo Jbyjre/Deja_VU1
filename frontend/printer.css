@@ -197,7 +197,10 @@
   .topbar-right .printer-chip { max-width: none; flex: 1 1 auto; }
   .printer-chip .pc-name { max-width: 30vw; }
   .pp-actions .btn.estop { flex: 1 1 100%; }
-  .pp-heaters #ctrl-temps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* !important only to beat style.css's one-column phone rule for every divider row. */
+  .pp-heaters #ctrl-temps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .pp-heaters #ctrl-temps > :nth-child(2n) { border-right: none; }
+  .pp-heaters #ctrl-temps > * { border-bottom: 1px solid rgba(0, 0, 0, .06); }
   .pp-heaters #ctrl-temps > div { padding: 10px; }
   /* Phones get the twin and its controls, not the long note about how it was modelled. */
   .pp-stage .twin-note { display: none; }
@@ -311,3 +314,16 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
 .notif-how, .remote-ways { margin: 4px 0 14px; padding: 10px 14px; border-radius: 14px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .06); }
 .notif-how > summary, .remote-ways > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; min-height: 32px; display: flex; align-items: center; }
 .notif-steps, .remote-ways ul { margin: 8px 0 4px 18px; display: grid; gap: 8px; font-size: 13px; line-height: 1.5; }
+
+/* ---- Phones: most things, not everything (the owner, 1 November 2026) ----------
+   Tighter cards so more fits on a screen, and the computer-only tools left out:
+   typing G-code and changing speed limits are jobs for the computer. */
+@media (max-width: 720px) {
+  .card { padding: 18px 16px; margin-bottom: 14px; }
+  .grid-2 .card, .automations-grid { margin-bottom: 14px; }
+  .card-sub { font-size: 12.5px; }
+  #pp-console, #pp-limits, #pp-goto { display: none; }
+  .ov-printers.is-single { display: none; }
+  .ov-word { font-size: 20px; }
+  .ov-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
