@@ -1093,7 +1093,7 @@ const TAB_KEY = 'dejavu1.tab';
 /* One plain sentence per tab, shown under the tab bar, so a first-time
    visitor knows what each section is for before reading it. */
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
-  automations: 'Automations', maintenance: 'Care', modules: 'Settings', games: 'Games' };
+  automations: 'Automations', maintenance: 'Care', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
 const TAB_INTROS = {
   overview: 'What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.',
   fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
@@ -1102,7 +1102,8 @@ const TAB_INTROS = {
   studio: 'Turn a photo into a colour print, using the filaments you have loaded.',
   automations: '“When this happens, do that” rules, like a message when a print finishes. They run on this computer, not in the cloud.',
   maintenance: 'Keep the printer in shape: upkeep reminders from real print hours, a logbook, and your spools.',
-  modules: 'Updates, how the dashboard looks, which features are on, your phone and messages.',
+  prefs: 'How the dashboard looks and behaves on this device: units, warm-up buttons, cameras, the background and more.',
+  modules: 'Updates, which features are on, your phone, messages and your data.',
   games: 'Something to play while a print runs. Nothing here touches a printer.',
 };
 
@@ -1127,7 +1128,7 @@ const SECTIONS = {
     ['sandbox', 'Practice farm', ['#tab-sandbox']],
   ],
   files: [
-    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail']],
+    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail', '#studio-link']],
     ['slicing', 'Slicing', ['#tab-autoprint']],
     ['layers', 'Layer heights', ['#tab-layerplan']],
   ],
@@ -1137,7 +1138,6 @@ const SECTIONS = {
   ],
   modules: [
     ['copy', 'This copy', ['your space', '#demo-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
-    ['look', 'Look & feel', ['#appearance-card', 'preferences']],
     ['features', 'Features', ['modules', 'print cost pricing']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
@@ -1274,7 +1274,9 @@ function initTabs() {
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
   $('overview-pair-btn').addEventListener('click', () => window.Phone && Phone.open());
 
-  show(store.get(TAB_KEY) || 'overview');
+  // Preferences → Open on: a fixed screen, or the one used last.
+  const opening = store.get('dejavu1.pref.start');
+  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'overview'));
 }
 
 /* ---- status ribbon (always visible) --------------------------------------*/

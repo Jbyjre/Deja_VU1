@@ -166,9 +166,9 @@
     <button class="navtab" data-tab="fleet">Printers</button>
     <button class="navtab" data-tab="control">Printer</button>
     <button class="navtab" data-tab="files">Files</button>
-    <button class="navtab" data-tab="studio">Photo studio</button>
     <button class="navtab" data-tab="automations">Automations</button>
     <button class="navtab" data-tab="maintenance">Care</button>
+    <button class="navtab" data-tab="prefs">Preferences</button>
     <button class="navtab" data-tab="modules">Settings</button>
     <button class="navtab" data-tab="games">Games</button>
   </nav>
@@ -673,6 +673,12 @@
       <div id="fd-gcode" class="fd-gcode" hidden></div>
     </section>
 
+    <!-- Photo studio is a smaller extra, opened from here instead of its own tab. -->
+    <section class="card liquid-glass studio-link" id="studio-link">
+      <div class="card-head"><div><h2>Photo to print</h2><p class="card-sub">Turn a photo into a colour print with the filaments you have loaded. A fun extra.</p></div>
+        <button class="btn" type="button" data-open-tab="studio">Open Photo studio</button></div>
+    </section>
+
     <!-- Folded into this tab so every section is always in the tab bar. -->
     <section id="tab-autoprint" class="tab-sub" aria-labelledby="sub-autoprint-title">
       <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Slicing</h2><p>Turn a model into a print file with the slicer you already use, then check and queue it</p></div>
@@ -991,6 +997,64 @@
   </section>
 
   <!-- ============================================================ -->
+  <!-- PREFERENCES: how the dashboard looks and behaves on this device -->
+  <!-- ============================================================ -->
+  <section id="tab-prefs" class="tab-panel" hidden>
+    <section class="card liquid-glass prefs-card" id="prefs-card" data-browser-only>
+      <div class="card-head"><div><h2>Preferences</h2><p class="card-sub">Choices that make everyday printing quicker. Saved in this browser on this device.</p></div></div>
+      <div class="prefs-grid">
+        <div class="pref">
+          <h3>Temperature units</h3>
+          <div class="pill-toggle" role="group" aria-label="Temperature units">
+            <button id="units-c" class="active">°C</button>
+            <button id="units-f">°F</button>
+          </div>
+        </div>
+        <div class="pref">
+          <h3>Open on</h3>
+          <p class="field-hint">The screen Deja Vu1 shows when you open it.</p>
+          <select id="pref-start" aria-label="Screen to open on">
+            <option value="last">The screen I used last</option>
+            <option value="overview">Overview</option>
+            <option value="control">Printer</option>
+            <option value="files">Files</option>
+          </select>
+        </div>
+        <div class="pref">
+          <h3>Moving the head</h3>
+          <p class="field-hint">The step the Move pad starts on.</p>
+          <select id="pref-step" aria-label="Default movement step">
+            <option value="0.1">0.1 mm</option><option value="1">1 mm</option><option value="10">10 mm</option><option value="100">100 mm</option>
+          </select>
+        </div>
+        <div class="pref">
+          <h3>Cameras</h3>
+          <label class="pref-check"><input type="checkbox" id="pref-cam"> Start a camera by itself when its card is on screen</label>
+          <p class="field-hint">Off: each camera waits for Turn camera on. Saves Wi-Fi on a slow network.</p>
+        </div>
+        <div class="pref">
+          <h3>When a print finishes</h3>
+          <label class="pref-check"><input type="checkbox" id="pref-celebrate"> Celebrate with the background dots</label>
+          <p class="field-hint">You always get a message in the orb either way.</p>
+        </div>
+        <div class="pref pref-wide">
+          <h3>Warm-up buttons</h3>
+          <p class="field-hint">The material buttons on the Printer page heat the head on the toolhead and the bed to these.</p>
+          <div id="pref-presets" class="pref-presets"></div>
+          <div class="pref-preset-actions"><button class="btn small" type="button" id="pref-presets-save">Save warm-up buttons</button>
+            <button class="btn small" type="button" id="pref-presets-reset">Back to PLA, PETG, TPU</button></div>
+        </div>
+      </div>
+    </section>
+    <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
+      <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
+      <div data-backdrop-picker></div>
+      <fieldset class="bp-group"><legend>Accent colour</legend><p class="field-hint">Used for buttons, the selected tab and highlights.</p><div id="accent-swatches" style="display:flex; gap:9px; flex-wrap:wrap;"></div></fieldset>
+      <p class="field-hint">Saved only in this browser. Nothing here is sent to the printer or the server.</p>
+    </section>
+  </section>
+
+  <!-- ============================================================ -->
   <!-- MODULES & DEVICES                                             -->
   <!-- ============================================================ -->
   <section id="tab-modules" class="tab-panel" hidden>
@@ -1132,12 +1196,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
       <ul class="mem-list" id="mem-list"></ul>
       <p class="field-hint">Restoring takes one more safety copy first, so a restore can itself be undone. The dashboard then restarts to read the restored records. Model files and camera pictures are covered by the full backup below, not by safety copies.</p>
     </section>
-    <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
-      <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
-      <div data-backdrop-picker></div>
-      <fieldset class="bp-group"><legend>Accent colour</legend><p class="field-hint">Used for buttons, the selected tab and highlights.</p><div id="accent-swatches" style="display:flex; gap:9px; flex-wrap:wrap;"></div></fieldset>
-      <p class="field-hint">Saved only in this browser. Nothing here is sent to the printer or the server.</p>
-    </section>
     <div class="grid-2" style="align-items:start;">
       <section class="card liquid-glass">
         <div class="card-head"><div><h2>Modules</h2><p class="card-sub">Turn features on or off</p></div></div>
@@ -1163,14 +1221,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
           </form>
         </section>
 
-        <section class="card liquid-glass" data-browser-only>
-          <div class="card-head"><div><h2>Preferences</h2></div></div>
-          <p class="card-sub" style="margin-bottom:8px;">Temperature units</p>
-          <div class="pill-toggle" role="group" aria-label="Temperature units">
-            <button id="units-c" class="active">°C</button>
-            <button id="units-f">°F</button>
-          </div>
-        </section>
 
         <section class="card liquid-glass">
           <div class="card-head"><div><h2>Notifications</h2></div></div>
@@ -1390,8 +1440,9 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
       <button data-tab="maintenance"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><b>Care</b><small>Maintenance &amp; filament</small></button>
       <button data-tab="automations"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg><b>Automations</b><small>If this, then that</small></button>
       <button data-tab="studio"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01"/></svg><b>Photo studio</b><small>Photo to print</small></button>
+      <button data-tab="prefs"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6"/></svg><b>Preferences</b><small>Units, warm-up, look</small></button>
       <button data-tab="games"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.5a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.3a2 2 0 0 1-3.4-.9l-.6-2.5A4 4 0 0 1 7 9zM8 11.5v3M6.5 13h3M15.5 12.5h.01M17.5 14h.01"/></svg><b>Games</b><small>While it prints</small></button>
-      <button data-tab="modules" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><b>Settings</b><small>Look, phone, modules</small></button>
+      <button data-tab="modules" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><b>Settings</b><small>Updates, phone, modules</small></button>
     </div>
     <div class="ms-tools" role="group" aria-label="Help and tools">
       <button type="button" data-more="camera">Camera</button>

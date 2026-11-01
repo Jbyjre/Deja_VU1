@@ -3470,7 +3470,8 @@ const Workshop = (() => {
     if (lastCelebrated === event.id) return;
     lastCelebrated = event.id;
     const s = event.summary;
-    if (Date.now() - lastBurst > 10000 && typeof Backdrop !== 'undefined') { lastBurst = Date.now(); Backdrop.celebrate(); }
+    const dots = store.get('dejavu1.pref.celebrate') !== 'off';
+    if (dots && Date.now() - lastBurst > 10000 && typeof Backdrop !== 'undefined') { lastBurst = Date.now(); Backdrop.celebrate(); }
     toast(`${event.printer_name} finished ${s.file} · ${fmtHours(s.hours)} · ${Number(s.grams).toFixed(1)} g`, 'ok', 9000,
       { action: { label: 'See summary', run: () => showSummary(event) } });
   }

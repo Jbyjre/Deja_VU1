@@ -59,7 +59,8 @@ window.PrinterPage = (() => {
         <span class="pcam-mode" role="status"></span>
         <button class="pcam-toggle" type="button" aria-pressed="false">Turn camera on</button>
       </div><p class="pcam-note" hidden></p>`;
-    const cam = { host, run: 0, on: store.get(`dejavu1.cam.${host.dataset.cam}`) !== 'off', url: null, timer: 0 };
+    const saved = store.get(`dejavu1.cam.${host.dataset.cam}`);
+    const cam = { host, run: 0, on: saved ? saved !== 'off' : store.get('dejavu1.pref.cam') !== 'off', url: null, timer: 0 };
     cam.frame = host.querySelector('.pcam-frame');
     cam.img = host.querySelector('.pcam-img');
     cam.mode = host.querySelector('.pcam-mode');
@@ -542,7 +543,41 @@ window.PrinterPage = (() => {
     renderMacros(s);
   }
 
+  /* Preferences tab: the choices above, kept in this browser. */
+  function initPrefs() {
+    const start = $('pref-start'), stepSel = $('pref-step'), camBox = $('pref-cam'), cel = $('pref-celebrate');
+    if (!start) return;
+    start.value = store.get('dejavu1.pref.start') || 'last';
+    start.onchange = () => { store.set('dejavu1.pref.start', start.value); toast('Saved: Deja Vu1 opens there next time', 'ok'); };
+    stepSel.value = String(step());
+    stepSel.onchange = () => { store.set(STEP_KEY, stepSel.value); const host = $('pp-move-body'); host && host.querySelectorAll('[data-step]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.step === stepSel.value))); };
+    camBox.checked = store.get('dejavu1.pref.cam') !== 'off';
+    camBox.onchange = () => { store.set('dejavu1.pref.cam', camBox.checked ? 'on' : 'off'); cams.forEach(c => { store.set(`dejavu1.cam.${c.host.dataset.cam}`, camBox.checked ? 'on' : 'off'); c.on = camBox.checked; }); syncCams(); };
+    cel.checked = store.get('dejavu1.pref.celebrate') !== 'off';
+    cel.onchange = () => store.set('dejavu1.pref.celebrate', cel.checked ? 'on' : 'off');
+    const draw = list => {
+      $('pref-presets').innerHTML = list.map((p, i) => `<div class="pref-preset" data-i="${i}">
+        <label>Name <input type="text" maxlength="12" value="${esc(p.name)}" data-k="name"></label>
+        <label>Nozzle °C <input type="number" min="0" max="300" step="1" value="${esc(p.nozzle)}" data-k="nozzle"></label>
+        <label>Bed °C <input type="number" min="0" max="120" step="1" value="${esc(p.bed)}" data-k="bed"></label></div>`).join('');
+    };
+    draw(presets());
+    $('pref-presets-save').onclick = () => {
+      const list = [...document.querySelectorAll('#pref-presets .pref-preset')].map(row => {
+        const v = k => row.querySelector(`[data-k="${k}"]`).value;
+        return { name: v('name').trim(), nozzle: Number(v('nozzle')), bed: Number(v('bed')) };
+      }).filter(p => p.name);
+      const bad = list.find(p => !(p.nozzle >= 0 && p.nozzle <= 300 && p.bed >= 0 && p.bed <= 120));
+      if (bad) { toast(`${bad.name}: nozzle 0 to 300 °C, bed 0 to 120 °C`, 'warn'); return; }
+      store.set(PRESET_KEY, JSON.stringify(list));
+      const pre = $('pp-presets'); if (pre) { delete pre.dataset.built; renderHeaters(state); }
+      toast('Warm-up buttons saved', 'ok');
+    };
+    $('pref-presets-reset').onclick = () => { store.set(PRESET_KEY, ''); draw(DEFAULT_PRESETS); const pre = $('pp-presets'); if (pre) { delete pre.dataset.built; renderHeaters(state); } };
+  }
+
   function init() {
+    initPrefs();
     document.querySelectorAll('.pcam[data-cam]').forEach(initCam);
     document.addEventListener('click', e => {
       const open = e.target.closest('[data-open-printer]');
@@ -552,6 +587,8 @@ window.PrinterPage = (() => {
         return;
       }
       if (e.target.closest('[data-go-printer]')) showTab('control');
+      const tab = e.target.closest('[data-open-tab]');
+      if (tab) showTab(tab.dataset.openTab);
     });
     $('pp-estop')?.addEventListener('click', e => {
       if (!confirm('Emergency stop? Every motor and heater stops at once and any print is lost. The printer then needs a firmware restart.')) return;
