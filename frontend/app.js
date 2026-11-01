@@ -2230,6 +2230,13 @@ async function loadNotificationSettings() {
 }
 
 function initNotifications() {
+  // A long random ntfy name: anyone who knows a name can read its messages, so it must not be guessable.
+  $('notif-ntfy-make')?.addEventListener('click', () => {
+    const bytes = new Uint8Array(9);
+    crypto.getRandomValues(bytes);
+    $('notif-ntfy').value = 'dejavu1-' + [...bytes].map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 14);
+    toast('Subscribe to this exact name in the ntfy app, then press Save and Send test', 'info', 7000);
+  });
   $('notif-save').addEventListener('click', async () => {
     const { ok, body } = await postJSON('/api/notifications/settings', {
       ntfy_topic: $('notif-ntfy').value.trim(),

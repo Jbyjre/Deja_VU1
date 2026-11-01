@@ -1224,9 +1224,21 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 
 
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Notifications</h2></div></div>
+          <div class="card-head"><div><h2>Notifications</h2><p class="card-sub">Messages on your phone when something happens, even with the dashboard closed. Set up one service, then pick what to hear about in Automations.</p></div></div>
+          <details class="notif-how" open>
+            <summary>How to set it up (about 2 minutes)</summary>
+            <ol class="notif-steps">
+              <li><b>Easiest: ntfy, free, no account.</b> Install the <b>ntfy</b> app on your phone (App Store or Google Play). Press <b>Make a private name</b> below, then in the app tap <b>+</b> and subscribe to that exact name. Press <b>Save</b>, then <b>Send test</b>. Anyone who knows an ntfy name can read its messages, which is why the name is long and random.</li>
+              <li><b>Discord:</b> in your server, Server Settings → Integrations → Webhooks → New Webhook → Copy Webhook URL, and paste it below.</li>
+              <li><b>Telegram:</b> message <b>@BotFather</b>, send /newbot and copy the token it gives you. Send your new bot any message, then open https://api.telegram.org/bot&lt;token&gt;/getUpdates in a browser and copy the number after "chat":{"id":. Paste both below.</li>
+              <li><b>Then choose what to hear about:</b> <button class="btn small" type="button" data-open-tab="automations">Open Automations</button> and pick an example such as <i>Tell me when a print finishes</i> or <i>10 minutes left</i>.</li>
+            </ol>
+          </details>
           <div class="field-stack" data-module-body="notifications">
-            <label class="field">ntfy.sh topic<input type="text" id="notif-ntfy" placeholder="my-u1-alerts"></label>
+            <div class="field-row field-row-end">
+              <label class="field">ntfy name (topic)<input type="text" id="notif-ntfy" placeholder="dejavu1-…" spellcheck="false" autocomplete="off"></label>
+              <button class="btn small" type="button" id="notif-ntfy-make">Make a private name</button>
+            </div>
             <label class="field">Discord webhook URL<input type="password" id="notif-discord" placeholder="https://discord.com/api/webhooks/…" autocomplete="new-password" spellcheck="false"></label>
             <div class="field-row">
               <label class="field">Telegram bot token<input type="password" id="notif-telegram-token" autocomplete="new-password" spellcheck="false"></label>
@@ -1312,6 +1324,15 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
       <section class="card liquid-glass remote-card" id="remote-card" data-browser-only>
         <div class="card-head"><div><h2>Away from home</h2><p class="card-sub">Open Deja Vu1 on your phone from anywhere: mobile data, work, a friend’s Wi-Fi.</p></div></div>
         <div id="remote-body" role="status" aria-live="polite"><p class="log-empty">Checking this computer…</p></div>
+        <details class="remote-ways">
+          <summary>Is Tailscale worth it? Other ways to reach Deja Vu1 off your Wi-Fi</summary>
+          <ul>
+            <li><b>Tailscale (recommended).</b> A free app for personal use. Install it on this computer and your phone and sign in to the same account; they can then reach each other privately from anywhere, mobile data included. Turn on sharing here once and scan the code. Nothing is opened to the internet, and only your own devices get in.</li>
+            <li><b>Only messages, no remote screen.</b> If you just want to know when a print finishes or fails, Notifications (below) and an Automations rule are enough. Nothing to install on the computer.</li>
+            <li><b>Cloudflare Tunnel with Access.</b> A web address of your own (needs your own domain and a Cloudflare account). More set-up, and you must add Cloudflare Access as the login, because Deja Vu1 has none. The guide below has the steps.</li>
+            <li><b>Not this: opening a port on your router.</b> Deja Vu1 has no login, so anyone on the internet who found it could use your printer.</li>
+          </ul>
+        </details>
         <p class="field-hint remote-why">Private: it uses Tailscale, a free app on this computer and your phone, signed in to your own account. Only your own devices can open the address, and nothing is opened to the internet. The printer stays on your home Wi-Fi with this computer. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md" target="_blank" rel="noopener">The full guide</a></p>
       </section>
       <section class="card liquid-glass" id="demo-tools-card" hidden>
