@@ -751,6 +751,9 @@ const Workshop = (() => {
           title="Turns the model slowly so you can see it from every side. Drag to stop and look around.">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v2.8h-2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>Turn slowly</span></button>
+        <button type="button" class="btn small twin-move" id="twin-move" aria-pressed="false" data-model-only
+          title="Drag across the model to move the real head there. Home first.">Move head</button>
+        <button type="button" class="btn small" id="twin-home" data-model-only data-module-body="printer_control">Home all</button>
         <div class="pill-toggle twin-case" id="twin-case" role="group" aria-label="Case" data-model-only>
           <button type="button" data-case="closed" aria-pressed="true" class="active">Case on</button>
           <button type="button" data-case="glass" aria-pressed="false">See-through</button>
@@ -848,6 +851,16 @@ const Workshop = (() => {
     // The model's options, kept in this browser.
     document.querySelectorAll('#twin-case button').forEach(b => b.addEventListener('click', () => { twin.view3d.case = b.dataset.case; applyTwinOptions(); }));
     document.querySelectorAll('#twin-more input[data-opt]').forEach(i => i.addEventListener('change', () => { twin.view3d[i.dataset.opt] = i.checked; applyTwinOptions(); }));
+    $('twin-move').addEventListener('click', () => {
+      twin.moveOn = !twin.moveOn;
+      applyTwinOptions();
+      if (twin.moveOn) toast('Drag across the model and let go: the real head moves there. Press Move head again to turn the model instead.', 'info', 6000);
+    });
+    $('twin-home').addEventListener('click', e => {
+      const st = twin.state;
+      if (st && (st.state === 'printing' || st.state === 'paused')) { toast('Homing waits until the print finishes or is cancelled', 'warn'); return; }
+      runCommand(e.currentTarget, '/api/printer/control/home', { axes: ['X', 'Y', 'Z'] }, { sending: 'Homing…', done: 'Homed XYZ', failed: 'Homing failed' });
+    });
     $('twin-spin').addEventListener('click', () => {
       twin.view3d.spin = !twin.view3d.spin;
       applyTwinOptions();
@@ -887,11 +900,25 @@ const Workshop = (() => {
     setTwinMode(twin.mode);
   }
 
+  /* A drag let go on the twin in move mode: the same checked move as the Move card. */
+  function twinMoveTo(pt) {
+    const st = twin.state;
+    if (!st || st.link_lost) { toast('The printer is not answering', 'warn'); return; }
+    if (st.state === 'printing' || st.state === 'paused') { toast('Moving waits until the print finishes or is cancelled: it would drive the head through the print', 'warn', 6000); return; }
+    const homed = st.homed_axes;
+    if (typeof homed === 'string' && !(homed.includes('x') && homed.includes('y'))) { toast('Home X and Y first (Home all, beside Move head)', 'warn', 6000); return; }
+    runCommand($('twin-move'), '/api/printer/control/move', { x: pt.x, y: pt.y },
+      { sending: 'Moving…', done: `Head moving to X ${pt.x} · Y ${pt.y}`, failed: 'Move refused' });
+  }
+
   function applyTwinOptions() {
     const o = twin.view3d;
     try { localStorage.setItem('dejavu1.twin-view', JSON.stringify(o)); } catch (e) { /* not remembered */ }
     document.querySelectorAll('#twin-case button').forEach(b => { const on = b.dataset.case === o.case; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
     document.querySelectorAll('#twin-more input[data-opt]').forEach(i => { i.checked = !!o[i.dataset.opt]; });
+    const mv = $('twin-move');
+    if (mv) { mv.setAttribute('aria-pressed', String(!!twin.moveOn)); setText(mv, twin.moveOn ? 'Moving head · done' : 'Move head'); }
+    if (twin.model && twin.model.setMoveMode) twin.model.setMoveMode(twin.moveOn ? twinMoveTo : null);
     const spin = $('twin-spin');
     if (spin) { spin.setAttribute('aria-pressed', String(!!o.spin)); spin.classList.toggle('active', !!o.spin); setText(spin.querySelector('span'), o.spin ? 'Turning · stop' : 'Turn slowly'); }
     if (twin.model) { twin.model.setCaseMode(o.case); twin.model.setOptions({ print: o.print, rest: o.rest, tags: o.tags, spin: o.spin }); }

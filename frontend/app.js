@@ -724,6 +724,8 @@ async function runCommand(button, path, body, labels) {
     return { ok: false, result };
   }
   const state = result.body.confirmed_state;
+  // Hands-on printer commands show up in the G-code console straight away.
+  if (/^\/api\/printer\/control\//.test(String(path).replace(/^https?:\/\/[^/]+/, '').split('?')[0]) && typeof loadPrinterConsole === 'function') setTimeout(loadPrinterConsole, 0);
   const confirmed = !labels.expect || (state && labels.expect(state));
   if (state && window.Workshop) Workshop.applyState(state, true);
   if (button) { button.textContent = original; button.disabled = false; button.dataset.phase = confirmed ? 'done' : 'failed'; setTimeout(() => delete button.dataset.phase, 1600); }
