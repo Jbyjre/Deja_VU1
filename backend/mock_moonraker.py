@@ -242,6 +242,15 @@ _FLEET_SPEC = [
 ]
 
 
+# Simulated printers list the macros a U1 owner sees in the printer's own web page
+# only by kind: demo data, never a claim about which macros a real U1 has.
+DEMO_MACROS = ["PREHEAT_PLA", "CLEAN_NOZZLE", "LIGHT_ON", "LIGHT_OFF"]
+def _demo_tuning():
+    return {"speed_factor": 1.0, "extrude_factor": 1.0, "part_fan": 0.0, "max_velocity": 500, "max_accel": 20000,
+            "config_velocity": 500, "config_accel": 20000, "z_offset": 0.0, "macros": list(DEMO_MACROS),
+            "bed_mesh": True, "mesh_profile": None, "idle_state": "Ready", "fans": [], "sensors": []}
+
+
 class SimulatedPrinter:
     """Everything one printer knows: its past, its present, its console."""
 
@@ -321,6 +330,8 @@ class SimulatedPrinter:
                 # What the U1's firmware reports per toolhead (u1-klipper
                 # extruder.get_status); simulated lifetime counts here.
                 "nozzle_diameter": nozzles.get(th, 0.4),
+                "pressure_advance": 0.04,
+                "smooth_time": 0.04,
                 "swaps": 180 + (seed // (i + 3)) % 900,
                 "swap_retries": (seed >> i) % 4,
                 "swap_errors": 1 if (seed + i) % 7 == 0 else 0,
@@ -345,6 +356,8 @@ class SimulatedPrinter:
             # [temperature_sensor chamber] section when the machine has one.
             "chamber_temperature": 34.0 if printing else 25.5,
             "toolhead_position": [135.0, 135.0, round(layer * 0.2, 2)],
+            "homed_axes": "xyz",
+            "tuning": _demo_tuning(),
             "layer": {"current": layer, "total": s["layers"]},
             "printer_id": self.id,
             "printer_name": self.name,
@@ -979,7 +992,72 @@ def run_gcode(command):
         printer.check_link("gcode")
         printer.check_failure("gcode")
         printer.log("gcode", command)
+        if command.strip().upper().split(" ")[0] == "M112":
+            printer.live["state"] = "error"
+            printer.live["state_message"] = "Emergency stop: Klipper is shut down. Restart the firmware to go on"
+            return {"command": command, "response": "Emergency stop sent - Klipper is now shut down"}
     return {"command": command, "response": "ok"}
+
+
+_TUNE_TIMEOUTS = {"bed_mesh": 600, "move": 120, "jog": 60, "tool": 180, "macro": 600}
+
+
+def tune(action, script, effect):
+    """
+    A hands-on command built and checked by printer_control (move, extrude,
+    speed, flow, fan, pressure advance, limits, bed mesh, macro, head change).
+    A real printer runs the G-code through POST /printer/gcode/script and the
+    fresh state comes back; a simulated one changes the same fields.
+    """
+    printer = _current()
+    if printer.real:
+        return printer.tune(action, script, _TUNE_TIMEOUTS.get(action))
+    with printer.lock:
+        printer.check_link(action)
+        printer.check_failure(action)
+        live = printer.live
+        tuning = live.setdefault("tuning", _demo_tuning())
+        if action in ("jog", "move"):
+            pos = list(live.get("toolhead_position") or [0.0, 0.0, 0.0])
+            for i, axis in enumerate("XYZ"):
+                if action == "jog" and effect.get("axis") == axis:
+                    pos[i] += effect["distance"]
+                elif action == "move" and axis in effect.get("to", {}):
+                    pos[i] = effect["to"][axis]
+            lows, highs = live["machine"]["min_mm"], live["machine"]["max_mm"]
+            # Klipper refuses a move past an axis limit ("Move out of range"); so does the simulation.
+            if any(not (lows[i] <= pos[i] <= highs[i]) for i in range(3)):
+                raise ValueError("Move out of range: that would go past the edge of the printer")
+            live["toolhead_position"] = [round(v, 2) for v in pos]
+        elif action == "speed":
+            tuning["speed_factor"] = effect["percent"] / 100
+        elif action == "flow":
+            tuning["extrude_factor"] = effect["percent"] / 100
+        elif action == "fan":
+            tuning["part_fan"] = round(effect["percent"] / 100, 3)
+        elif action == "pressure_advance":
+            head = live["toolheads"][effect["head"]]
+            head["pressure_advance"] = effect["value"]
+            if effect.get("smooth_time") is not None:
+                head["smooth_time"] = effect["smooth_time"]
+        elif action == "limits":
+            for key in ("velocity", "accel"):
+                if key in effect:
+                    tuning[f"max_{key}"] = effect[key]
+        elif action == "motors_off":
+            live["homed_axes"] = ""
+        elif action == "bed_mesh":
+            live["homed_axes"] = "xyz"
+            tuning["mesh_profile"] = "default"
+        elif action == "z_nudge":
+            tuning["z_offset"] = round((tuning.get("z_offset") or 0.0) + effect["delta"], 3)
+        elif action == "tool":
+            for th, data in live["toolheads"].items():
+                if data["status"] != "error":
+                    data["status"] = "active" if th == effect["head"] else "docked"
+            live["active_toolhead"] = effect["head"]
+        printer.log(action, script.replace("\n", " · "))
+        return printer.snapshot()
 
 
 def get_console_log(limit=30):

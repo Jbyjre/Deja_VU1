@@ -415,6 +415,9 @@ def _toolheads(status, extruders, ptc):
             "swaps": _count(e.get("switch_count")),
             "swap_retries": _count(e.get("retry_count")),
             "swap_errors": _count(e.get("error_count")),
+            "pressure_advance": _num(e.get("pressure_advance")),
+            "smooth_time": _num(e.get("smooth_time")),
+            "can_extrude": e.get("can_extrude") if isinstance(e.get("can_extrude"), bool) else None,
         }
     return out, active
 
@@ -525,6 +528,7 @@ def translate_state(status, ctx):
         "real": True,
         "machine": machines.public(ctx.get("machine")),
     }
+    out["tuning"] = tuning_from(status, ctx.get("extras") or {})
     homed = _obj(status, "toolhead").get("homed_axes")
     if isinstance(homed, str):
         out["homed_axes"] = "".join(a for a in "xyz" if a in homed.lower())
@@ -542,6 +546,39 @@ def translate_state(status, ctx):
         if mapping:
             out["extruder_map"] = mapping
     return out
+
+
+def _pretty(obj_name):
+    return obj_name.split(" ", 1)[-1].replace("_", " ")
+
+
+def tuning_from(status, extras):
+    """Speed and flow overrides, fans, limits, other sensors, macros and the bed mesh, as one block."""
+    gm, th, fan = _obj(status, "gcode_move"), _obj(status, "toolhead"), _obj(status, "fan")
+    speed = _num(fan.get("speed"))
+    fans = []
+    for name in extras.get("fans") or []:
+        f = _obj(status, name)
+        fans.append({"name": _pretty(name), "speed": _num(f.get("speed")), "temperature": _num(f.get("temperature"))})
+    sensors = [{"name": _pretty(name), "temperature": _num(_obj(status, name).get("temperature"))}
+               for name in extras.get("sensors") or []]
+    mesh = _obj(status, "bed_mesh")
+    return {
+        "speed_factor": _num(gm.get("speed_factor")),
+        "extrude_factor": _num(gm.get("extrude_factor")),
+        "part_fan": speed if speed is not None and 0 <= speed <= 1 else None,
+        "part_fan_rpm": _num(fan.get("rpm")),
+        "max_velocity": _num(th.get("max_velocity")),
+        "max_accel": _num(th.get("max_accel")),
+        "config_velocity": extras.get("config_velocity"),
+        "config_accel": extras.get("config_accel"),
+        "idle_state": _str(_obj(status, "idle_timeout").get("state")),
+        "bed_mesh": bool(extras.get("bed_mesh")),
+        "mesh_profile": _str(mesh.get("profile_name")) or None,
+        "macros": list(extras.get("macros") or []),
+        "fans": fans,
+        "sensors": sensors,
+    }
 
 
 FACTORY_NAMES = {"snapmaker u1", ""}
@@ -999,8 +1036,13 @@ _BASE_OBJECTS = {
     "print_stats": ["state", "filename", "print_duration", "total_duration", "filament_used", "message", "info"],
     "virtual_sdcard": ["progress", "is_active", "file_position", "file_size"],
     # axis_minimum / axis_maximum: the build volume (Klipper kinematics get_status)
-    "toolhead": ["extruder", "position", "homed_axes", "axis_minimum", "axis_maximum"],
-    "gcode_move": ["gcode_position", "homing_origin", "speed_factor"],
+    "toolhead": ["extruder", "position", "homed_axes", "axis_minimum", "axis_maximum", "max_velocity", "max_accel"],
+    "gcode_move": ["gcode_position", "homing_origin", "speed_factor", "extrude_factor"],
+    # The part-cooling fan, the idle timer's word for the printer and the loaded bed mesh
+    # (Klipper docs/Status_Reference.md: fan, idle_timeout, bed_mesh).
+    "fan": ["speed", "rpm"],
+    "idle_timeout": ["state"],
+    "bed_mesh": ["profile_name"],
     # Where the nozzle is now (toolhead "position" is the last command,
     # which runs up to a second or two ahead of the motion; Klipper
     # docs/Status_Reference.md). Feeds the 3D twin's G-code sync.
@@ -1015,7 +1057,22 @@ _BASE_OBJECTS = {
 # U1 Klipper (klippy/kinematics/extruder.py get_status, u1-klipper 10f2f69);
 # Klipper leaves out fields an object doesn't have, so asking costs nothing.
 _EXTRUDER_FIELDS = ["temperature", "target", "state", "nozzle_diameter",
-                    "switch_count", "retry_count", "error_count"]
+                    "switch_count", "retry_count", "error_count", "pressure_advance", "smooth_time", "can_extrude"]
+# Other fans and temperature sensors a printer lists, shown beside the heaters the way the
+# printer's own web page does. Capped so a printer with dozens can't flood the live stream.
+_EXTRA_FAN_TYPES = ("heater_fan", "controller_fan", "fan_generic", "temperature_fan")
+EXTRA_LIMIT = 12
+MACRO_LIMIT = 40
+
+
+def extras_from(objects, chamber=None):
+    """objects.list -> (macros, fans, sensors): the printer's own buttons and readings."""
+    objects = [o for o in objects if isinstance(o, str)]
+    macros = sorted({o.split(" ", 1)[1].upper() for o in objects
+                     if o.startswith("gcode_macro ") and not o.split(" ", 1)[1].startswith("_")})[:MACRO_LIMIT]
+    fans = [o for o in objects if o.split(" ", 1)[0] in _EXTRA_FAN_TYPES and " " in o][:EXTRA_LIMIT]
+    sensors = [o for o in objects if o.startswith("temperature_sensor ") and o != chamber][:EXTRA_LIMIT]
+    return macros, fans, sensors
 
 
 class MoonrakerPrinter:
@@ -1046,6 +1103,7 @@ class MoonrakerPrinter:
         self._config = {}              # kinematics and nozzle from a non-U1 printer's config
         self._extruders = {}           # {"T0": "extruder", ...}
         self._chamber = None
+        self._extras = {}
         self._subscription = {}
         self._filament_asked = float("-inf")
         self._klippy_state = None
@@ -1263,6 +1321,10 @@ class MoonrakerPrinter:
         subscription.update({name: _EXTRUDER_FIELDS for name in extruders.values()})
         if chamber:
             subscription[chamber] = ["temperature"]
+        macros, fans, sensors = extras_from(objects, chamber)
+        subscription.update({name: ["speed", "temperature"] if name.startswith("temperature_fan") else ["speed"]
+                             for name in fans})
+        subscription.update({name: ["temperature"] for name in sensors})
         result = self._call("printer.objects.subscribe", {"objects": subscription})
         full = result.get("status", {}) if isinstance(result, dict) else {}
         with self.lock:
@@ -1270,6 +1332,11 @@ class MoonrakerPrinter:
             self._is_u1, self._config = is_u1, config
             self._extruders = extruders
             self._chamber = chamber
+            self._extras = {"macros": macros, "fans": fans, "sensors": sensors,
+                            "bed_mesh": "bed_mesh" in objects,
+                            # The limits Klipper started with: hand changes never go above them.
+                            "config_velocity": _num(_obj(full, "toolhead").get("max_velocity")),
+                            "config_accel": _num(_obj(full, "toolhead").get("max_accel"))}
             self._subscription = subscription
             self._klippy_state = None if state == "ready" else state
             self._klippy_message = None
@@ -1470,7 +1537,7 @@ class MoonrakerPrinter:
 
     def _ctx(self):
         return {"printer_id": self.id, "name": self.name, "extruders": self._extruders,
-                "chamber": self._chamber, "job": self._job, "klippy_state": self._klippy_state,
+                "chamber": self._chamber, "job": self._job, "extras": self._extras, "klippy_state": self._klippy_state,
                 "klippy_message": self._klippy_message, "machine": self._machine()}
 
     def snapshot(self):
@@ -1848,6 +1915,14 @@ class MoonrakerPrinter:
             return {"command": command, "response": "Emergency stop sent - Klipper is now shut down"}
         result = self._gcode(command)
         return {"command": command, "response": result if isinstance(result, str) else "ok"}
+
+    def tune(self, action, script, timeout=None):
+        """A hands-on command checked by printer_control: run it, then report the fresh state."""
+        state = self._fresh_state()
+        if action in ("jog", "move", "motors_off", "bed_mesh", "tool") and state["state"] in ("printing", "paused"):
+            raise ValueError("Not while a print is running or paused - it would move the head through the print")
+        self._gcode(script, timeout=timeout or GCODE_TIMEOUT)
+        return self._fresh_state()
 
     def clear_error(self):
         self._require_link()
