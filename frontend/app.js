@@ -948,6 +948,7 @@ async function loadConnection() {
   // close the live connection to match, without waiting for a reload.
   if (wasReal !== realOn && window.Workshop) setTimeout(() => Workshop.reconnect(), 0);
 
+  pill.classList.toggle('is-live', !!data.connected);
   if (data.connected) {
     pill.classList.remove('is-demo');
     label.textContent = 'Connected';
