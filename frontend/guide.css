@@ -212,6 +212,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   border-radius: 999px; border: 1px solid var(--hair); background: rgba(255, 255, 255, .55);
   font: 600 11px/1 var(--font-mono); color: var(--text-dim); cursor: pointer; vertical-align: middle;
 }
+.ver-chip::after { content: "›"; font-size: 13px; line-height: 1; opacity: .7; }
 .ver-chip:hover { color: var(--accent-text); border-color: color-mix(in oklch, var(--accent) 40%, transparent); }
 .ver-chip:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .ver-chip.has-update::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff; }
@@ -270,7 +271,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .vh-more summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
 .vh-more ul { margin: 4px 0 4px; padding-left: 18px; font-size: 13.5px; color: var(--text-dim); }
 .vh-more li + li { margin-top: 4px; }
-.version-card.is-flash { animation: vc-flash 1.2s ease; }
+.version-card.is-flash, .vc-history.is-flash { animation: vc-flash 1.2s ease; }
 @keyframes vc-flash { 0%, 60% { box-shadow: 0 0 0 3px var(--accent), var(--shadow-card); } }
 
 /* Look after this copy: one shared glass strip (tier 1, inline in its card)
