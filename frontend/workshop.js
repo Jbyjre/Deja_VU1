@@ -407,8 +407,8 @@ const Workshop = (() => {
           <div class="fc-temps" data-f="temps"></div>
           <ul class="fc-alerts" data-f="alerts"></ul>
           <div class="fc-queue" data-f="queue"></div>
-          <button class="btn block fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
-          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer">Printer's own page (Fluidd) ↗</a>` : ''}
+          <button class="btn block primary fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
+          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer" title="The web page built into the printer">Printer's built-in page ↗</a>` : ''}
         </article>`).join('');
       qsa('[data-open]', grid).forEach(btn => btn.addEventListener('click', () => selectPrinter(btn.dataset.open, btn.closest('.fleet-card'))));
     }
@@ -553,6 +553,10 @@ const Workshop = (() => {
     if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Printer fleet'); return; }
     registry = data.printers || [];
     addedPrinters = registry;
+    // The add form stays folded once a printer is added; with none yet, it opens by itself.
+    const form = $('add-printer-form');
+    if (form && !registry.length && !form.dataset.touched) form.open = true;
+    if (form && !form.dataset.wired) { form.dataset.wired = '1'; form.addEventListener('toggle', () => { form.dataset.touched = '1'; }); }
     host.innerHTML = registry.length ? registry.map(p => `
       <div class="reg-row">
         <span class="reg-name">${esc(p.name)}</span>

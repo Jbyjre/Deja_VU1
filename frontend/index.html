@@ -242,10 +242,13 @@
     </section>
     <section class="card liquid-glass">
       <div class="card-head">
-        <div><h2>Add a printer</h2><p class="card-sub">By its Moonraker address on your home network. It connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p></div>
+        <div><h2>Add a printer</h2><p class="card-sub">Your added printers. Open the form below to add another by its address on your home network.</p></div>
       </div>
-      <p class="field-hint other-printers" id="other-printers">Another printer that runs Klipper with Moonraker adds the same way. Deja Vu1 reads its size and heads from the printer, checks files against them, and marks it as an untested type. If its Moonraker answers on the printer's own web page instead of port 7125, type the full address, such as <code>http://192.168.1.50</code>.</p>
       <div id="fleet-registry"></div>
+      <details class="add-printer" id="add-printer-form">
+      <summary class="btn add-printer-toggle">Add another printer</summary>
+      <p class="field-hint">Deja Vu1 connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p>
+      <p class="field-hint other-printers" id="other-printers">Another printer that runs Klipper with Moonraker adds the same way. Deja Vu1 reads its size and heads from the printer, checks files against them, and marks it as an untested type. If its Moonraker answers on the printer's own web page instead of port 7125, type the full address, such as <code>http://192.168.1.50</code>.</p>
       <div class="find-row">
         <button class="btn" type="button" id="fleet-find">Find printers on my network</button>
         <span class="find-note" id="fleet-find-note">Asks the network who runs Moonraker, then tries port 7125 on your home network. Nothing leaves your network.</span>
@@ -270,6 +273,7 @@
         <input type="password" id="fleet-login-pass" placeholder="Password" autocomplete="current-password" maxlength="256">
         <button class="btn" type="submit">Sign in</button>
       </form>
+      </details>
     </section>
 
     <!-- Folded into this tab so every section is always in the tab bar. -->

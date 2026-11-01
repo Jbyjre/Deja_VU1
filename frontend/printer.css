@@ -238,3 +238,11 @@ body.has-printer .topbar-right > .switch:not(:has(input:checked)) { display: non
   content: attr(data-label); position: absolute; left: 50%; top: -30px; transform: translateX(-50%); white-space: nowrap;
   padding: 4px 8px; border-radius: 999px; font: 600 11px/1 var(--font-mono); color: #fff; background: rgba(0, 0, 0, .7);
 }
+
+/* Printers → Add a printer: the form folds away under one button. */
+.add-printer { margin-top: 12px; }
+.add-printer > summary { list-style: none; display: inline-flex; cursor: pointer; }
+.add-printer > summary::-webkit-details-marker { display: none; }
+.add-printer > summary::after { content: "+"; margin-left: 8px; font-weight: 700; }
+.add-printer[open] > summary::after { content: "−"; }
+.add-printer[open] > summary { margin-bottom: 12px; }

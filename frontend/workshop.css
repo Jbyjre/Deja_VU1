@@ -1193,7 +1193,7 @@ body.is-scrolled .topbar {
 .lb-del:focus-visible { outline: 2px solid var(--accent); }
 @media (max-width: 720px) { .lb-add { grid-template-columns: 1fr; } }
 
-.fc-web { display: block; margin-top: 8px; text-align: center; font: 600 12px/1.4 var(--font-mono); color: var(--accent-text); text-underline-offset: 2px; }
+.fc-web { display: block; margin-top: 8px; text-align: center; font: 500 11px/1.4 var(--font-sans); color: var(--text-faint); text-underline-offset: 2px; }
 
 /* A printer that isn't a U1 (machines.py): the twin card says what it is
    instead of drawing the wrong machine. */

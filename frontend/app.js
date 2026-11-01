@@ -1227,6 +1227,9 @@ window.Sections = (() => {
     // Every way of jumping to a card (search, tours, links) goes through scrollIntoView.
     const scrollTo = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = function (...args) {
+      // A folded section (<details>) opens when something points into it.
+      const fold = this.closest && this.closest('details:not([open])');
+      if (fold && fold !== this) fold.open = true;
       if (this.closest && this.closest('.sec-off')) reveal(this);
       return scrollTo.apply(this, args);
     };
