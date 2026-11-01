@@ -198,7 +198,11 @@ class TestSnoozeAndSwap(unittest.TestCase):
             maintenance.snooze(due["id"], 30)
 
     def test_a_swap_with_a_size_updates_that_heads_tool_setup(self):
+        import storage
         import tool_setup
+        # Put the shared test data back afterwards: a saved setup would add a nozzle note to every later check.
+        before = storage.load_json(tool_setup._PATH, {})
+        self.addCleanup(storage.save_json, tool_setup._PATH, before)
         heads = [{"toolhead": f"T{i}", "color_hex": "#ffffff", "material": "PLA", "nozzle": 0.4, "height": 0.28}
                  for i in range(4)]
         tool_setup.save({"heads": heads})
