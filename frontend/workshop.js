@@ -2595,22 +2595,38 @@ const Workshop = (() => {
   const TRIGGERS = {
     temperature: 'A temperature crosses a line',
     state: 'A print starts, pauses, finishes…',
+    progress: 'A print reaches a percentage',
+    time_left: 'A print has only so many minutes left',
+    layer: 'A print reaches a layer',
+    error: 'The printer reports an error',
+    link_lost: 'The printer stops answering',
     filament_mismatch: 'The loaded filament doesn\'t match the file',
     maintenance_overdue: 'Maintenance becomes overdue',
   };
-  const ACTIONS = { notify: 'Send a notification', light: 'Set the light colour (WLED)', home_assistant: 'Set a Home Assistant sensor', pause: 'Pause the print' };
+  const ACTIONS = { notify: 'Send a notification', pause: 'Pause the print', cool_down: 'Turn the heaters off',
+    macro: 'Run one of the printer\'s macros', light: 'Set the light colour (WLED)', home_assistant: 'Set a Home Assistant sensor' };
+  // Worked examples, grouped by what people ask for most. Each fills the form; nothing saves until Save rule.
   const PRESETS = [
-    { label: 'Pause if the nozzle passes 260°C', rule: { trigger: { type: 'temperature', sensor: 'active_nozzle', op: 'above', value: 260 }, action: { type: 'pause' } } },
-    { label: 'Tell me when a print finishes', rule: { trigger: { type: 'state', event: 'finished' }, action: { type: 'notify', message: 'Print finished', priority: 'normal' } } },
-    { label: 'Amber light when paused', rule: { trigger: { type: 'state', event: 'paused' }, action: { type: 'light', color: '#ffaa00' } } },
-    { label: 'Alert on wrong filament', rule: { trigger: { type: 'filament_mismatch' }, action: { type: 'notify', message: 'Wrong filament loaded', priority: 'high' } } },
+    { group: 'Know what is happening', label: 'Tell me when a print finishes', rule: { trigger: { type: 'state', event: 'finished' }, action: { type: 'notify', message: 'Print finished', priority: 'normal' } } },
+    { group: 'Know what is happening', label: '10 minutes left: get ready', rule: { trigger: { type: 'time_left', value: 10 }, action: { type: 'notify', message: 'About 10 minutes left', priority: 'normal' } } },
+    { group: 'Know what is happening', label: 'Halfway there', rule: { trigger: { type: 'progress', value: 50 }, action: { type: 'notify', message: 'Print is halfway', priority: 'normal' } } },
+    { group: 'Know what is happening', label: 'Check the first layers at layer 3', rule: { trigger: { type: 'layer', value: 3 }, action: { type: 'notify', message: 'Layer 3: check the first layers stuck', priority: 'normal' } } },
+    { group: 'Catch problems', label: 'Urgent message on a printer error', rule: { trigger: { type: 'error' }, action: { type: 'notify', message: 'The printer stopped with an error', priority: 'high' } } },
+    { group: 'Catch problems', label: 'Tell me if the printer stops answering', rule: { trigger: { type: 'link_lost' }, action: { type: 'notify', message: 'The printer stopped answering', priority: 'high' } } },
+    { group: 'Catch problems', label: 'Alert on wrong filament', rule: { trigger: { type: 'filament_mismatch' }, action: { type: 'notify', message: 'Wrong filament loaded', priority: 'high' } } },
+    { group: 'Look after the printer', label: 'Heaters off after a cancelled print', rule: { trigger: { type: 'state', event: 'cancelled' }, action: { type: 'cool_down' } } },
+    { group: 'Look after the printer', label: 'Tell me when maintenance is due', rule: { trigger: { type: 'maintenance_overdue', task: 'any' }, action: { type: 'notify', message: 'Maintenance is due', priority: 'normal' } } },
+    { group: 'Look after the printer', label: 'Pause if the nozzle passes 260°C', rule: { trigger: { type: 'temperature', sensor: 'active_nozzle', op: 'above', value: 260 }, action: { type: 'pause' } } },
+    { group: 'Lights', label: 'Amber light when paused', rule: { trigger: { type: 'state', event: 'paused' }, action: { type: 'light', color: '#ffaa00' } } },
   ];
 
   function ruleForm() {
     const form = $('rule-form');
     const printers = live.fleet.length ? live.fleet : [];
     form.innerHTML = `
-      <div class="rf-presets" role="group" aria-label="Start from an example">${PRESETS.map((p, i) => `<button class="chip-btn" type="button" data-preset="${i}">${esc(p.label)}</button>`).join('')}</div>
+      <div class="rf-presets" role="group" aria-label="Start from an example"><p class="rf-presets-lead">Start from an example, then change anything:</p>
+        ${[...new Set(PRESETS.map(p => p.group))].map(g => `<div class="rf-group"><span class="rf-group-name">${esc(g)}</span>${PRESETS.map((p, i) => p.group === g
+          ? `<button class="chip-btn" type="button" data-preset="${i}">${esc(p.label)}</button>` : '').join('')}</div>`).join('')}</div>
       <fieldset class="rf-step"><legend>When</legend>
         <label class="sr-only" for="rf-trigger">Trigger</label>
         <select id="rf-trigger">${Object.entries(TRIGGERS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select>
@@ -2640,6 +2656,11 @@ const Workshop = (() => {
           <select id="rf-sensor" aria-label="Which temperature"><option value="active_nozzle">Active nozzle</option><option>T0</option><option>T1</option><option>T2</option><option>T3</option><option value="bed">Bed</option><option value="chamber">Chamber</option></select>
           <select id="rf-op" aria-label="Above or below"><option value="above">goes above</option><option value="below">drops below</option></select>
           <input type="number" id="rf-value" value="240" aria-label="Temperature in °C" style="width:90px"> °C`
+        : t === 'progress' ? `<label class="rf-inline">at <input type="number" id="rf-value" value="50" min="1" max="100" style="width:80px" aria-label="Percentage"> % done</label>`
+        : t === 'time_left' ? `<label class="rf-inline">with <input type="number" id="rf-value" value="10" min="1" max="1440" style="width:80px" aria-label="Minutes left"> minutes or less left</label>`
+        : t === 'layer' ? `<label class="rf-inline">layer <input type="number" id="rf-value" value="3" min="1" step="1" style="width:90px" aria-label="Layer number"></label>`
+        : t === 'error' ? '<span class="log-empty">Fires once when the printer stops with an error (not when it just stops answering).</span>'
+        : t === 'link_lost' ? '<span class="log-empty">Fires once when Deja Vu1 loses its live link to the printer.</span>'
         : t === 'state' ? `<select id="rf-event" aria-label="Print event">${['started', 'paused', 'resumed', 'finished', 'failed', 'cancelled'].map(e => `<option>${e}</option>`).join('')}</select>`
           : t === 'maintenance_overdue' ? `<select id="rf-task" aria-label="Maintenance task"><option value="any">Any task</option><option value="nozzle_check">Nozzle check</option><option value="bed_level">Bed levelling</option><option value="belt_tension">Belt tension</option><option value="lubrication">Lubrication</option><option value="dock_alignment">Dock alignment</option><option value="fan_clean">Fan cleaning</option><option value="calibration">Recalibration</option></select>` : '';
     };
@@ -2648,7 +2669,9 @@ const Workshop = (() => {
       host.innerHTML = a === 'notify' ? `<input type="text" id="rf-message" placeholder="Message" value="Check the printer" aria-label="Notification message"><select id="rf-priority" aria-label="Priority"><option value="normal">Normal (respects quiet hours)</option><option value="high">Urgent (always sends)</option></select>`
         : a === 'light' ? `<input type="color" id="rf-color" value="#ffaa00" aria-label="Light colour"> <span class="log-empty">Sent to the WLED strip set up in Settings</span>`
           : a === 'home_assistant' ? `<input type="text" id="rf-entity" value="sensor.dejavu1_alert" aria-label="Entity"> <input type="text" id="rf-state" value="on" aria-label="State" style="width:90px">`
-            : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
+            : a === 'macro' ? `<input type="text" id="rf-macro" placeholder="LIGHT_OFF" aria-label="Macro name" style="text-transform:uppercase"> <span class="log-empty">As the printer lists it under Printer → Printer's own buttons</span>`
+              : a === 'cool_down' ? '<span class="log-empty">Sets every head and the bed to off on the printer that triggered the rule. Never while it prints.</span>'
+                : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
     };
     $('rf-trigger').addEventListener('change', tparams);
     $('rf-action').addEventListener('change', aparams);
@@ -2659,6 +2682,8 @@ const Workshop = (() => {
       $('rf-trigger').value = p.trigger.type; tparams();
       if (p.trigger.sensor) { $('rf-sensor').value = p.trigger.sensor; $('rf-op').value = p.trigger.op; $('rf-value').value = p.trigger.value; }
       if (p.trigger.event) $('rf-event').value = p.trigger.event;
+      if (p.trigger.value != null && !p.trigger.sensor) $('rf-value').value = p.trigger.value;
+      if (p.trigger.task) $('rf-task').value = p.trigger.task;
       $('rf-action').value = p.action.type; aparams();
       if (p.action.message) { $('rf-message').value = p.action.message; $('rf-priority').value = p.action.priority; }
       if (p.action.color) $('rf-color').value = p.action.color;
@@ -2671,10 +2696,12 @@ const Workshop = (() => {
       if (t === 'temperature') Object.assign(trigger, { sensor: $('rf-sensor').value, op: $('rf-op').value, value: +$('rf-value').value });
       if (t === 'state') trigger.event = $('rf-event').value;
       if (t === 'maintenance_overdue') trigger.task = $('rf-task').value;
+      if (['progress', 'time_left', 'layer'].includes(t)) trigger.value = +$('rf-value').value;
       const action = { type: a };
       if (a === 'notify') Object.assign(action, { message: $('rf-message').value, priority: $('rf-priority').value });
       if (a === 'light') action.color = $('rf-color').value;
       if (a === 'home_assistant') Object.assign(action, { entity_id: $('rf-entity').value, state: $('rf-state').value });
+      if (a === 'macro') action.name = $('rf-macro').value.trim().toUpperCase();
       const rule = { name: $('rf-name').value, trigger, action, condition: $('rf-condition').value, printer: $('rf-printer').value, cooldown_s: +$('rf-cooldown').value };
       const r = await runCommand($('rf-save'), demoOn ? '/api/automations?demo=1' : '/api/automations', { rule },
         { sending: 'Saving…', done: 'Rule saved', failed: 'Rule not saved' });
@@ -2685,8 +2712,12 @@ const Workshop = (() => {
   function sentence(rule) {
     const t = rule.trigger, a = rule.action;
     const when = t.type === 'temperature' ? `${t.sensor.replace('_', ' ')} ${t.op === 'above' ? 'goes above' : 'drops below'} ${formatTemp(t.value)}`
+      : t.type === 'progress' ? `a print reaches ${t.value}%` : t.type === 'time_left' ? `a print has ${t.value} minutes or less left`
+      : t.type === 'layer' ? `a print reaches layer ${t.value}` : t.type === 'error' ? 'the printer reports an error'
+      : t.type === 'link_lost' ? 'the printer stops answering'
       : t.type === 'state' ? `a print ${t.event}` : t.type === 'filament_mismatch' ? 'the loaded filament doesn\'t match' : `maintenance${t.task && t.task !== 'any' ? ` (${t.task.replace('_', ' ')})` : ''} is overdue`;
-    const then = a.type === 'notify' ? `send "${a.message}"` : a.type === 'light' ? `set the light to <span class="chip" style="background:${esc(a.color)}"></span>` : a.type === 'home_assistant' ? `set ${esc(a.entity_id)} to "${esc(a.state)}"` : 'pause the print';
+    const then = a.type === 'notify' ? `send "${a.message}"` : a.type === 'light' ? `set the light to <span class="chip" style="background:${esc(a.color)}"></span>` : a.type === 'home_assistant' ? `set ${esc(a.entity_id)} to "${esc(a.state)}"`
+      : a.type === 'cool_down' ? 'turn the heaters off' : a.type === 'macro' ? `run ${a.name}` : 'pause the print';
     const cond = { always: '', while_printing: ' while printing', outside_quiet_hours: ' outside quiet hours' }[rule.condition];
     return `When ${esc(when)}${cond}, ${a.type === 'light' ? then : esc(then)}${rule.printer !== 'any' ? ` on ${esc(printerName(rule.printer))}` : ''}.`;
   }
@@ -2711,7 +2742,7 @@ const Workshop = (() => {
           <button class="btn small" data-rule-test="${esc(r.id)}" type="button">Test</button>
           <button class="btn small danger" data-rule-delete="${esc(r.id)}" type="button">Delete</button>
         </div>
-      </div>`).join('') : '<p class="log-empty">No rules yet. Pick an example above to start.</p>';
+      </div>`).join('') : '<p class="log-empty">No rules yet. Pick an example under New rule to start.</p>';
     qsa('[data-rule-toggle]', host).forEach(c => c.addEventListener('change', async () => {
       const r = await postJSON(`/api/automations/${enc(c.dataset.ruleToggle)}/update`, { changes: { enabled: c.checked } });
       if (!r.ok) toast(`Couldn't change it: ${r.body.error}`, 'bad');

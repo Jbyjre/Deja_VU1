@@ -291,3 +291,10 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
 .pref-preset label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
 .pref-preset input { width: 120px; min-height: 38px; }
 .pref-preset-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---- Automations -------------------------------------------------------------- */
+.automations-grid { margin-top: 20px; margin-bottom: 20px; }
+.automations-grid > .card { margin-bottom: 0; }
+.rf-presets-lead { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.rf-group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.rf-group-name { flex: 0 0 100%; font: 600 10.5px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); margin-top: 4px; }

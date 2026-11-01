@@ -160,3 +160,47 @@ class TestFiring(AutomationCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNewTriggersAndActions(AutomationCase):
+    """November 2026: progress, minutes left, layer, error and lost-link triggers; cool-down and macro actions."""
+
+    def state(self, **changes):
+        s = mock_moonraker.get_printer_state()
+        s.update(changes)
+        return s
+
+    def test_progress_minutes_and_layer_fire_once_each(self):
+        for trig in ({"type": "progress", "value": 50}, {"type": "time_left", "value": 10}, {"type": "layer", "value": 3}):
+            automations.add_rule(rule(trig, cooldown_s=0), demo=True)
+        pid = "u1-workshop"
+        early = self.state(state="printing", progress=0.2, print_duration_hours=1.0, layer={"current": 1, "total": 100})
+        self.assertEqual(automations.evaluate(pid, early, set(), True), [])
+        late = self.state(state="printing", progress=0.95, print_duration_hours=1.9, layer={"current": 95, "total": 100})
+        self.assertEqual(len(automations.evaluate(pid, late, set(), True)), 3)     # 50 %, 6 min left, layer 95
+        self.assertEqual(automations.evaluate(pid, late, set(), True), [])          # once, not every tick
+
+    def test_error_and_lost_link_are_told_apart(self):
+        automations.add_rule(rule({"type": "error"}, cooldown_s=0), demo=True)
+        automations.add_rule(rule({"type": "link_lost"}, cooldown_s=0), demo=True)
+        pid = "u1-workshop"
+        self.assertEqual(len(automations.evaluate(pid, self.state(state="error", state_message="Heater fault"), set(), True)), 1)
+        lost = self.state(state="printing", link_lost=True)
+        self.assertEqual(len(automations.evaluate(pid, lost, set(), True)), 1)
+
+    def test_rejects_bad_new_values(self):
+        for trig in ({"type": "progress", "value": 0}, {"type": "time_left", "value": 5000}, {"type": "layer", "value": 2.5}):
+            with self.assertRaises(ValueError):
+                automations.validate(rule(trig))
+        with self.assertRaises(ValueError):
+            automations.validate(rule({"type": "error"}, action={"type": "macro", "name": "rm -rf"}))
+
+    def test_cool_down_never_runs_mid_print_and_macros_must_be_listed(self):
+        r = automations.add_rule(rule({"type": "error"}, action={"type": "cool_down"}), demo=True)
+        out = automations.run_action(r, "u1-workshop", "test")      # the demo printer 1 is printing
+        self.assertFalse(out["ok"])
+        self.assertIn("not while it prints", out["error"])
+        m = automations.add_rule(rule({"type": "error"}, action={"type": "macro", "name": "NOT_THERE"}), demo=True)
+        self.assertFalse(automations.run_action(m, "u1-garage", "test")["ok"])
+        ok = automations.add_rule(rule({"type": "error"}, action={"type": "macro", "name": "light_on"}), demo=True)
+        self.assertTrue(automations.run_action(ok, "u1-garage", "test")["ok"])
