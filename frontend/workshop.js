@@ -1469,14 +1469,15 @@ const Workshop = (() => {
     if (views && views.hidden) views.hidden = false;
     if ($('twin-modes') && $('twin-modes').hidden) $('twin-modes').hidden = false;
     if (!twin.built) buildTwin();
-    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; }
+    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; twin.held = null; }
     if (twin.state && twin.state.current_file !== state.current_file) { twin.job = null; twin.jobAt = 0; }
     twin.state = state;
     if (twin.model) syncTwinPrint(state);
     const [x, y, z] = state.toolhead_position || [135, 135, 0];
+    const [dx, dy, dz] = drawnPosition(state, [x, y, z]);
     // A new layer (or no print running) starts a fresh trail.
     if (twin.trailZ === null || Math.abs(z - twin.trailZ) > 0.05 || state.state !== 'printing') { twin.trail = []; twin.trailZ = z; }
-    tween('twin-head', [x, y, z], (pos) => {
+    tween('twin-head', [dx, dy, dz], (pos) => {
       twin.pos = pos;
       if (twin.state && twin.state.state === 'printing') {
         const last = twin.trail[twin.trail.length - 1];
@@ -1507,6 +1508,26 @@ const Workshop = (() => {
     const unhomed = typeof state.homed_axes === 'string' && state.homed_axes.length < 3;
     setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}` +
       (state.link_lost ? ' · no live link, last reading shown' : unhomed ? ' · not homed, position unknown' : ''));
+  }
+
+  /* Where the twin draws the head. While an axis homes, Klipper reports a
+   * position it has made up for that axis (homing sets one before the move),
+   * so a homing head was drawn flying out of the machine. An axis that isn't
+   * homed holds where it was last drawn, and every axis stays inside the
+   * printer's reported limits; once homed, the spring glides it to the real
+   * place. The readout under the twin still shows the printer's own numbers. */
+  function drawnPosition(state, raw) {
+    const m = state.machine || {};
+    const lo = Array.isArray(m.min_mm) && m.min_mm.length === 3 ? m.min_mm : [0, 0, 0];
+    const hi = Array.isArray(m.max_mm) && m.max_mm.length === 3 ? m.max_mm : [270, 270, 270];
+    const homed = typeof state.homed_axes === 'string' ? state.homed_axes : 'xyz';
+    const held = twin.held || (twin.held = [null, null, null]);
+    return raw.map((v, i) => {
+      const ok = homed.includes('xyz'[i]) && Number.isFinite(v);
+      if (ok) held[i] = Math.min(hi[i], Math.max(lo[i], v));
+      else if (held[i] == null) held[i] = i === 2 ? hi[i] / 2 : (lo[i] + hi[i]) / 2;
+      return held[i];
+    });
   }
 
   /* Print health: one animated dial. */
