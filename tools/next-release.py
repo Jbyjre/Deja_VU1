@@ -36,6 +36,16 @@ def titles(since, root=ROOT):
     return found
 
 
+# Release notes are read by everyone who uses the app, so notes about how the
+# project itself is run (coding-session instructions, the private repository,
+# marketing films) never become a line in the version history.
+_INTERNAL = re.compile(r'\[marketing video\]|CLAUDE\.md|private repo|build-prompt|launch film|marketing', re.I)
+
+
+def public(changes):
+    return [c for c in changes if not _INTERNAL.search(c)]
+
+
 def bump(version):
     major, minor, patch = (int(n) for n in re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', version).groups())
     return f'{major}.{minor}.{patch + 1}'
@@ -43,7 +53,7 @@ def bump(version):
 
 def write(root, new, changes, today):
     root = pathlib.Path(root)
-    changes = changes or ['Small improvements and fixes']
+    changes = public(changes or []) or ['Small improvements and fixes']
     name = changes[0].rstrip('.')
     if len(name) > 80:
         name = name[:77].rstrip() + '...'
@@ -52,7 +62,7 @@ def write(root, new, changes, today):
     data = json.loads(path.read_text(encoding='utf-8'))
     data['versions'].insert(0, {
         'version': new, 'date': today.isoformat(), 'name': name, 'published': True,
-        'summary': (f'{len(changes)} changes' if len(changes) != 1 else 'One change') + ' merged on GitHub since the last release.',
+        'summary': changes[0].rstrip('.') + '.' if len(changes) == 1 else f'{len(changes)} improvements, listed below.',
         'changes': changes,
         'highlights': [{'title': 'What changed', 'tab': 'modules', 'target': '#version-history',
                         'text': 'Every version is listed here, newest first. Open What changed for the full list.'}],

@@ -6,7 +6,7 @@
       "date": "2026-10-31",
       "name": "Make updates finish every time, and say plainly when Deja Vu1 is ready",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Make updates finish every time, and say plainly when Deja Vu1 is ready.",
       "changes": [
         "Make updates finish every time, and say plainly when Deja Vu1 is ready"
       ],
@@ -24,7 +24,7 @@
       "date": "2026-10-31",
       "name": "Keep every part drawing with a real printer, and reload pages after any update",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Keep every part drawing with a real printer, and reload pages after any update.",
       "changes": [
         "Keep every part drawing with a real printer, and reload pages after any update"
       ],
@@ -42,7 +42,7 @@
       "date": "2026-10-31",
       "name": "Keep the dashboard reachable: start with the computer, restart after a crash",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Keep the dashboard reachable: start with the computer, restart after a crash.",
       "changes": [
         "Keep the dashboard reachable: start with the computer, restart after a crash"
       ],
@@ -60,7 +60,7 @@
       "date": "2026-10-31",
       "name": "Get ready for a real U1: connection, controls and the twin following the head",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Get ready for a real U1: connection, controls and the twin following the head.",
       "changes": [
         "Get ready for a real U1: connection, controls and the twin following the head"
       ],
@@ -78,7 +78,7 @@
       "date": "2026-10-31",
       "name": "Make the 3D twin match the production U1 in Snapmaker's photos",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Make the 3D twin match the production U1 in Snapmaker's photos.",
       "changes": [
         "Make the 3D twin match the production U1 in Snapmaker's photos"
       ],
@@ -94,11 +94,11 @@
     {
       "version": "0.13.2",
       "date": "2026-10-30",
-      "name": "Say that Snapmaker is sending a U1 for testing",
+      "name": "Product page wording",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Updated wording on the product page.",
       "changes": [
-        "Say that Snapmaker is sending a U1 for testing"
+        "Updated wording on the product page."
       ],
       "highlights": [
         {
@@ -112,11 +112,11 @@
     {
       "version": "0.13.1",
       "date": "2026-10-30",
-      "name": "CLAUDE.md, sessions merge their own pull request once the work is done",
+      "name": "Housekeeping",
       "published": true,
-      "summary": "One change merged on GitHub since the last release.",
+      "summary": "Behind-the-scenes housekeeping. Nothing in the app changed.",
       "changes": [
-        "CLAUDE.md, sessions merge their own pull request once the work is done"
+        "Behind-the-scenes housekeeping. Nothing in the app changed."
       ],
       "highlights": [
         {
@@ -136,7 +136,7 @@
       "highlights": [
         {
           "title": "In step with the print",
-          "tab": "overview",
+          "tab": "control",
           "target": "#twin-card",
           "text": "While a print runs, the nozzle follows the file's own G-code and is checked against the printer about four times a second. Walls appear where and when they are laid. The line under the twin says whether it is in step."
         },
@@ -176,8 +176,8 @@
       "highlights": [
         {
           "title": "One part at a time",
-          "tab": "overview",
-          "target": "#sec-overview",
+          "tab": "control",
+          "target": "#sec-control",
           "text": "Each busy screen opens on one part. These buttons show the others, and Everything shows the whole page. Your choice is remembered."
         },
         {
@@ -204,19 +204,19 @@
         "When Slice is greyed out on a plate, it says why and links the set-up. \"Auto-print\" now reads \"Slicing\" everywhere.",
         "Printers that run Klipper with Moonraker connect as an untested type. Their size, heads, kinematics and nozzle come from the printer's own report, and the pre-flight and Confirm Print check files against them. A printer that doesn't report its size gets a warning, never a guess.",
         "The search box's Go to results open their card again: a title's help button had stopped most of them matching.",
-        "On Overview, the phone card sits under Print health, and a row left with one card uses the full width.",
-        "Two unused launch-film copies are gone: each update download is 56 MB instead of 74 MB."
+        "A row left with one card uses the full width.",
+        "Each update download is 56 MB instead of 74 MB."
       ]
     },
     {
       "version": "0.11.1",
       "date": "2026-10-27",
-      "name": "Clean up code layout and public wording before Phase 2",
+      "name": "Tidier code and clearer wording",
       "published": true,
-      "summary": "2 changes merged on GitHub since the last release.",
+      "summary": "2 improvements, listed below.",
       "changes": [
-        "Clean up code layout and public wording before Phase 2",
-        "A smoother launch film (version 17), tour, sheets and 3D twin [marketing video]"
+        "Tidier code and clearer wording across the app.",
+        "The quick tour, sheets and 3D twin run more smoothly."
       ],
       "highlights": [
         {
@@ -395,13 +395,13 @@
         },
         {
           "title": "The real print in the twin",
-          "tab": "overview",
+          "tab": "control",
           "target": "#twin-card",
           "text": "The twin reads the file being printed and grows each layer's outside walls in the colour loaded in the head printing it. Take the case off to see the frame, motors and belts."
         },
         {
           "title": "Insights from your history",
-          "tab": "overview",
+          "tab": "control",
           "target": "#insights-card",
           "text": "Patterns from the printer's own history: what tends to fail, which files print well, and where time goes."
         },
@@ -482,7 +482,7 @@
       "highlights": [
         {
           "title": "The 3D twin",
-          "tab": "overview",
+          "tab": "control",
           "target": "#twin-card",
           "text": "A detailed model of the U1 with live heads, bed, docks and spools. Drag to turn it; click a part for its details."
         },
@@ -501,8 +501,7 @@
       ],
       "changes": [
         "Digital twin rebuilt in WebGL 2 with studio lighting, reflections and soft shadows; the drawing mode uses the same geometry.",
-        "Background: Dots by default, stronger reactions, Constellation style, Time of day colours and little surprises.",
-        "Launch videos version 14 and 15."
+        "Background: Dots by default, stronger reactions, Constellation style, Time of day colours and little surprises."
       ]
     },
     {
@@ -567,8 +566,9 @@
       "highlights": [
         {
           "title": "Setup and help",
-          "target": "#setup-open",
-          "text": "A skippable setup you can replay any time. Your name, if you give one, stays in this browser."
+          "target": "#setup-replay",
+          "text": "A skippable setup you can replay any time. Your name, if you give one, stays in this browser.",
+          "tab": "modules"
         },
         {
           "title": "Photo studio",
@@ -578,8 +578,9 @@
         },
         {
           "title": "Camera snapshots",
-          "target": "#camera-open",
-          "text": "Pictures from the selected printer's own camera."
+          "target": "#pp-camera-card",
+          "text": "Pictures from the selected printer's own camera.",
+          "tab": "control"
         }
       ],
       "changes": [
@@ -634,7 +635,7 @@
         {
           "title": "Honest controls",
           "tab": "control",
-          "target": "#ctrl-pause-resume",
+          "target": "#pp-head",
           "text": "Pause, resume and cancel. A button shows what the printer reports back, never what it hoped for."
         },
         {
