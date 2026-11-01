@@ -21,6 +21,24 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+## 0.14.0 (1 November 2026): Your printer, its own page
+
+- Each printer has its own page (Printer, where Control was): the 3D twin with the camera and a Move pad beside it, temperatures with PLA, PETG and TPU warm-up buttons, extrude and retract, speed, flow, part fan and pressure advance, the printer's own macros and bed mesh, motors off, the G-code console and an emergency stop. Opening a printer goes there.
+- Overview is a page of cards about now: Needs you, Right now, the camera, temperatures, quick control, your printers, maintenance and totals.
+- The camera and time-lapses moved from Settings to the printer page, and the camera picture refreshes as fast as the printer makes pictures.
+- The name you gave the printer on the printer itself is shown everywhere. Connected is green, a ready printer says Ready, and the printer button in the top bar shows its state, progress and finish time.
+- Deja Vu1 keeps running after the PowerShell or Terminal window is closed, and the Start block also starts it at sign-in.
+- The twin keeps the head inside the printer while it homes, no longer flickers while it turns, has a Turn slowly button, and lets you drag the real head with Move head.
+- Slicing shows Layer heights per head under the slice bar and loads your tools by itself; the slicing cards no longer run into each other.
+- A finished print sets off the background dots and a message, with no pop-up to close.
+- Automations: rules for a percentage, minutes left, a layer, an error or a lost printer; actions to turn the heaters off or run a printer macro; ten examples to start from.
+- Care: Not now snoozes a due task without hiding it; a recorded nozzle swap updates that head's nozzle for slicing.
+- Preferences has its own tab: units, the screen to open on, the Move step, cameras, the finish celebration and your warm-up temperatures.
+- Notifications and remote access explain how to set them up; Look on this computer is short and clear; phones get a tighter layout without the computer-only tools.
+- One phone that pairs twice is listed once, and the version history reads as app news.
+
+Not yet tried on a physical U1: the new movement, extrude, tuning, macro, bed mesh and emergency stop commands (tested against the simulated printer and the Moonraker stand-in), and the background start on Windows and macOS (tested on Linux).
+
 ## 0.13.8 (1 November 2026): Give each printer its own page with full controls, and make Overview a page o...
 
 - Give each printer its own page with full controls, and make Overview a page of cards
