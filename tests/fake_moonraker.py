@@ -85,6 +85,7 @@ class FakeMoonraker:
         self.users = {}                    # username -> password; /access/login hands out a token
         self._tokens = set()
         self.answer_pings = True
+        self.device_name = None            # product_info.device_name (u1-moonraker machine.py); None: no endpoint
         self.gcode_errors = {}             # script prefix -> Klipper error message
         self.scripts = []                  # every gcode script received
         self.requests = []                 # (method, path)
@@ -589,6 +590,11 @@ class FakeMoonraker:
             self.camera_monitoring = method == "camera.start_monitor"
             self.camera_client = client["id"]
             return ok({"monitoring": self.camera_monitoring})
+        if method == "machine.system_info" and self.device_name is not None:
+            # u1-moonraker components/machine.py: product_info holds the name set on the printer.
+            return ok({"system_info": {"product_info": {"machine_type": "Snapmaker U1", "serial_number": "",
+                                                        "nozzle_diameter": [0.4] * 4,
+                                                        "device_name": self.device_name}}})
         if method == "server.info":
             return ok({"klippy_connected": self.klippy_state != "disconnected", "klippy_state": self.klippy_state,
                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],
