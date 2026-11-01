@@ -1576,7 +1576,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/pairing/redeem":
             body = self._read_json_body()
-            device = pairing.redeem_code(body.get("code"), body.get("device_name"))
+            known = self._device()
+            device = pairing.redeem_code(body.get("code"), body.get("device_name"),
+                                         replaces=known.get("id") if known else None)
             # The device's key goes into a cookie the page's scripts can't read.
             cookie = (f"{pairing.COOKIE}={device.pop('token')}; Path=/; Max-Age={pairing.COOKIE_DAYS * 86400}; "
                       "HttpOnly; SameSite=Strict")

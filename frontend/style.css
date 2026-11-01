@@ -321,7 +321,6 @@ body {
 }
 @keyframes breathe { 50% { opacity: .4; } }
 
-.device-count { font: 600 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); white-space: nowrap; }
 
 /* ---- demo switch ------------------------------------------------------ */
 

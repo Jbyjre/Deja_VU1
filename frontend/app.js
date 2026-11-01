@@ -2061,7 +2061,6 @@ async function loadDevices() {
   const data = await getJSON('/api/pairing/devices');
   const devices = data.devices || [];
   const host = $('device-list');
-  const count = $('device-count');
 
   host.innerHTML = devices.length ? devices.map(d => `
     <div class="log-row">
@@ -2077,13 +2076,6 @@ async function loadDevices() {
       postJSON(api(`/api/pairing/devices/${btn.dataset.unpair}/unpair`), {}).then(loadDevices);
     });
   });
-
-  if (devices.length) {
-    count.hidden = false;
-    count.textContent = `${devices.length} device${devices.length === 1 ? '' : 's'} paired`;
-  } else {
-    count.hidden = true;
-  }
 }
 
 /* While a code is on screen, the other device redeems it somewhere else, so

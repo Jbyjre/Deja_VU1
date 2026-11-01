@@ -754,7 +754,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
   .topbar-inner { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; }
   .brand p { display: none; }
   .topbar-right { width: auto; flex: 1; justify-content: flex-end; gap: 8px; flex-wrap: nowrap; min-width: 0; }
-  .conn, .device-count { display: none; }
+  .conn { display: none; }
   .printer-chip { max-width: 46vw; min-width: 0; flex: 0 1 auto; }
   .pc-name { overflow: hidden; text-overflow: ellipsis; }
   .switch-label { font-size: 10px; }
