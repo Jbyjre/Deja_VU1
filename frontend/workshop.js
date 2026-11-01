@@ -747,6 +747,10 @@ const Workshop = (() => {
         <button type="button" class="btn small" data-twin="zoom-out" aria-label="Zoom out">−</button>
         <button type="button" class="btn small" data-twin="zoom-in" aria-label="Zoom in">+</button>
         <button type="button" class="btn small" data-twin="reset">Reset view</button>
+        <button type="button" class="btn small twin-spin" id="twin-spin" aria-pressed="false" data-model-only
+          title="Turns the model slowly so you can see it from every side. Drag to stop and look around.">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v2.8h-2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Turn slowly</span></button>
         <div class="pill-toggle twin-case" id="twin-case" role="group" aria-label="Case" data-model-only>
           <button type="button" data-case="closed" aria-pressed="true" class="active">Case on</button>
           <button type="button" data-case="glass" aria-pressed="false">See-through</button>
@@ -758,7 +762,6 @@ const Workshop = (() => {
             <label><input type="checkbox" data-opt="print"> The print, in its colours</label>
             <label><input type="checkbox" data-opt="rest"> What's left to print, faintly</label>
             <label><input type="checkbox" data-opt="tags"> Head labels</label>
-            <label><input type="checkbox" data-opt="spin"> Turn slowly</label>
           </div>
         </details>
         <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> <span>Outer size</span></label>
@@ -845,6 +848,11 @@ const Workshop = (() => {
     // The model's options, kept in this browser.
     document.querySelectorAll('#twin-case button').forEach(b => b.addEventListener('click', () => { twin.view3d.case = b.dataset.case; applyTwinOptions(); }));
     document.querySelectorAll('#twin-more input[data-opt]').forEach(i => i.addEventListener('change', () => { twin.view3d[i.dataset.opt] = i.checked; applyTwinOptions(); }));
+    $('twin-spin').addEventListener('click', () => {
+      twin.view3d.spin = !twin.view3d.spin;
+      applyTwinOptions();
+      if (twin.view3d.spin && matchMedia('(prefers-reduced-motion: reduce)').matches) toast('Your system asks for reduced motion, so the model stays still', 'info');
+    });
     document.addEventListener('click', (e) => { const d = $('twin-more'); if (d && d.open && !d.contains(e.target)) d.open = false; });
     $('wf-outer').addEventListener('change', (e) => { twin.outer = e.target.checked; if (twin.model) twin.model.setCase(twin.outer); else drawTwin(true); });
     $('wf-picks').addEventListener('click', (e) => {
@@ -884,6 +892,8 @@ const Workshop = (() => {
     try { localStorage.setItem('dejavu1.twin-view', JSON.stringify(o)); } catch (e) { /* not remembered */ }
     document.querySelectorAll('#twin-case button').forEach(b => { const on = b.dataset.case === o.case; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
     document.querySelectorAll('#twin-more input[data-opt]').forEach(i => { i.checked = !!o[i.dataset.opt]; });
+    const spin = $('twin-spin');
+    if (spin) { spin.setAttribute('aria-pressed', String(!!o.spin)); spin.classList.toggle('active', !!o.spin); setText(spin.querySelector('span'), o.spin ? 'Turning · stop' : 'Turn slowly'); }
     if (twin.model) { twin.model.setCaseMode(o.case); twin.model.setOptions({ print: o.print, rest: o.rest, tags: o.tags, spin: o.spin }); }
   }
 

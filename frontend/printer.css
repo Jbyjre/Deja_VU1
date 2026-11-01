@@ -220,3 +220,8 @@ body.has-printer .topbar-right > .switch:not(:has(input:checked)) { display: non
 @media (max-width: 720px) {
   .topbar-right > .switch .switch-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+
+/* The twin's turntable: its own button, pressed while it turns. */
+.twin-spin { display: inline-flex; align-items: center; gap: 6px; }
+.twin-spin svg { width: 14px; height: 14px; }
+.twin-spin[aria-pressed="true"] { background: var(--text); color: #fff; border-color: var(--text); }
