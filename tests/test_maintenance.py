@@ -172,3 +172,38 @@ class TestMarkDone(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSnoozeAndSwap(unittest.TestCase):
+    """Upkeep stays listed but stops nagging while snoozed; a swap's nozzle size reaches the tool setup."""
+
+    def setUp(self):
+        maintenance.reset_log()
+        mock_moonraker.reset_live_state()
+        self.addCleanup(maintenance.reset_log)
+
+    def test_a_snoozed_task_stays_listed_but_leaves_the_alerts(self):
+        status = maintenance.get_status()
+        due = next(t for t in status["tasks"] if t["status"] != "ok")
+        before = status["summary"]["overdue"] + status["summary"]["due_soon"]
+        after = maintenance.snooze(due["id"], 3)
+        row = next(t for t in after["tasks"] if t["id"] == due["id"])
+        self.assertTrue(row["snoozed_until"])
+        self.assertEqual(row["status"], due["status"])                 # still really due
+        self.assertEqual(after["summary"]["overdue"] + after["summary"]["due_soon"], before - 1)
+        self.assertEqual(after["summary"]["snoozed"], 1)
+        done = maintenance.mark_done(due["id"])
+        self.assertIsNone(next(t for t in done["tasks"] if t["id"] == due["id"])["snoozed_until"])
+        with self.assertRaises(ValueError):
+            maintenance.snooze(due["id"], 30)
+
+    def test_a_swap_with_a_size_updates_that_heads_tool_setup(self):
+        import tool_setup
+        heads = [{"toolhead": f"T{i}", "color_hex": "#ffffff", "material": "PLA", "nozzle": 0.4, "height": 0.28}
+                 for i in range(4)]
+        tool_setup.save({"heads": heads})
+        result = maintenance.record_swap("nozzle", "T2", note="hardened", nozzle=0.2)
+        self.assertIn("T2 now has a 0.2 mm nozzle", result["tool_setup"])
+        t2 = next(h for h in tool_setup.get()["heads"] if h["toolhead"] == "T2")
+        self.assertEqual((t2["nozzle"], t2["height"]), (0.2, 0.14))     # height pulled inside the 0.2 mm limits
+        self.assertIn("0.2 mm nozzle. hardened", maintenance.get_history()[0]["note"])

@@ -2786,10 +2786,16 @@ const Workshop = (() => {
   function initSwap() {
     $('swap-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!demoOn) { toast('No printer connected. Turn on demo data to try this on a simulated printer', 'warn'); return; }
-      const r = await runCommand(e.submitter || null, '/api/maintenance/swap', { kind: $('swap-kind').value, toolhead: $('swap-toolhead').value },
+      if (!demoOn && !realOn) { toast('No printer connected. Turn on demo data to try this on a simulated printer', 'warn'); return; }
+      const body = { kind: $('swap-kind').value, toolhead: $('swap-toolhead').value, nozzle: $('swap-nozzle').value, note: $('swap-note').value };
+      const r = await runCommand(e.submitter || null, '/api/maintenance/swap', body,
         { sending: 'Recording…', done: 'Swap recorded, recalibration is now due', failed: 'Not recorded' });
-      if (r.ok) { loadMaintenance(); loadHealth(); }
+      if (r.ok) {
+        if (r.result.body.tool_setup) toast(r.result.body.tool_setup, 'info', 7000);
+        $('swap-note').value = '';
+        loadMaintenance(); loadHealth();
+        if (window.PrintRoom && PrintRoom.load) PrintRoom.load();
+      }
     });
   }
 

@@ -1377,9 +1377,13 @@ function renderTaskRow(task) {
         </div>
         <div class="task-desc">${esc(task.description)}</div>
         <div class="bar"><span style="width:${Math.min(task.percent, 100)}%"></span></div>
-        <div class="task-meta">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min</div>
+        <div class="task-meta">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min${task.snoozed_until ? ` · <b>snoozed until ${esc(new Date(task.snoozed_until).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))}</b>` : ''}</div>
       </div>
-      <button class="btn" data-task="${esc(task.id)}">Mark done</button>
+      <div class="task-actions">
+        <button class="btn" data-task="${esc(task.id)}">Mark done</button>
+        ${task.status !== 'ok' && !task.snoozed_until ? `<select class="task-snooze" data-snooze="${esc(task.id)}" aria-label="Remind me later about ${esc(task.name)}">
+          <option value="">Not now…</option><option value="1">Remind me tomorrow</option><option value="3">In 3 days</option><option value="7">In a week</option></select>` : ''}
+      </div>
     </div>`;
 }
 
@@ -1413,20 +1417,28 @@ async function loadMaintenance() {
   $('stat-filament').textContent = (totals.total_filament_grams / 1000).toFixed(1) + ' kg';
   $('stat-filament-foot').textContent = unit;
   $('stat-due').textContent = data.summary.overdue;
-  $('stat-due-foot').textContent = `${data.summary.due_soon} due soon`;
+  $('stat-due-foot').textContent = `${data.summary.due_soon} due soon` + (data.summary.snoozed ? ` · ${data.summary.snoozed} snoozed` : '');
 
   document.querySelectorAll('.stat').forEach(t => t.classList.remove('is-empty'));
   $('stat-due').closest('.stat').classList.toggle('is-alert', data.summary.overdue > 0);
 
   $('tasks').innerHTML = data.tasks.map(renderTaskRow).join('');
   stagger([...document.querySelectorAll('#tasks .task')]);
-  document.querySelectorAll('#tasks .btn').forEach(button => {
+  document.querySelectorAll('#tasks .btn[data-task]').forEach(button => {
     button.addEventListener('click', () => markDone(button));
   });
+  // Not now: the task stays listed here, but leaves Needs you and the alerts until then.
+  document.querySelectorAll('#tasks [data-snooze]').forEach(sel => sel.addEventListener('change', async () => {
+    if (!sel.value) return;
+    const r = await postJSON(api('/api/maintenance/snooze'), { task_id: sel.dataset.snooze, days: +sel.value });
+    if (r.ok) toast(`Snoozed: it comes back ${sel.value === '1' ? 'tomorrow' : `in ${sel.value} days`}, and stays listed here`, 'ok');
+    else toast(`Couldn't snooze it: ${r.body.error || r.status}`, 'bad');
+    loadMaintenance();
+  }));
 
   // Overview tab gets the top 3 most urgent, read-only.
   paint($('overview-maintenance'), data.tasks.length
-    ? data.tasks.slice(0, 3).map(t => `
+    ? data.tasks.filter(t => !t.snoozed_until).slice(0, 3).map(t => `
         <div class="task ${t.status}" style="margin-bottom:9px;">
           <div>
             <div class="task-name">${esc(t.name)} <span class="pill">${STATUS_TEXT[t.status]}</span></div>

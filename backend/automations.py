@@ -300,7 +300,7 @@ def _mismatch(printer_id, state):
 def _overdue(printer_id, task):
     with mock_moonraker.use_printer(printer_id):
         tasks = maintenance.get_status()["tasks"]
-    hits = [t["name"] for t in tasks if t["status"] == "overdue" and task in ("any", t["id"])]
+    hits = [t["name"] for t in tasks if t["status"] == "overdue" and not t.get("snoozed_until") and task in ("any", t["id"])]
     return bool(hits), ", ".join(hits)
 
 

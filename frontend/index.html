@@ -899,13 +899,13 @@
     </section>
     <section class="card liquid-glass">
       <div class="card-head">
-        <div><h2>Swapped a nozzle or hotend?</h2><p class="card-sub">Record it and "Recalibrate" comes due straight away, until you mark it done.</p></div>
+        <div><h2>Swapped a nozzle or hotend?</h2><p class="card-sub">Record it here. Its size goes into that head's tool setup, so slicing and the pre-print checks use the nozzle that is really fitted, and "Recalibrate" comes due until you mark it done.</p></div>
       </div>
-      <form id="swap-form" class="inline-form">
-        <label class="sr-only" for="swap-kind">What was swapped</label>
-        <select id="swap-kind"><option value="nozzle">Nozzle</option><option value="hotend">Hotend</option></select>
-        <label class="sr-only" for="swap-toolhead">Toolhead</label>
-        <select id="swap-toolhead"><option>T0</option><option>T1</option><option>T2</option><option>T3</option></select>
+      <form id="swap-form" class="swap-form">
+        <label>What <select id="swap-kind"><option value="nozzle">Nozzle</option><option value="hotend">Hotend</option></select></label>
+        <label>Head <select id="swap-toolhead"><option>T0</option><option>T1</option><option>T2</option><option>T3</option></select></label>
+        <label>New nozzle <select id="swap-nozzle"><option value="">Same size</option><option value="0.2">0.2 mm</option><option value="0.4">0.4 mm</option><option value="0.6">0.6 mm</option><option value="0.8">0.8 mm</option></select></label>
+        <label class="swap-note">Note <input type="text" id="swap-note" maxlength="120" placeholder="Hardened steel, for CF filament"></label>
         <button class="btn primary" type="submit">Record swap</button>
       </form>
     </section>

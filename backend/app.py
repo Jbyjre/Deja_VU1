@@ -60,7 +60,8 @@ API endpoints
   POST /api/remote/share|stop         share the dashboard privately with Tailscale Serve, or stop (this computer only)
   POST /api/remote/link               a pairing QR code for the shared address
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
-  POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
+  POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
+  POST /api/maintenance/snooze       hide a due task from alerts for a while {"task_id", "days": 1|3|7}
 
   GET  /api/leds                     simulated LED ring states
   GET  /api/colorcheck               simulated filament color check
@@ -1227,7 +1228,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/maintenance/swap":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.record_swap(
-                body.get("kind"), body.get("toolhead"), note=body.get("note", "")))
+                body.get("kind"), body.get("toolhead"), note=body.get("note", ""), nozzle=body.get("nozzle")))
+
+        if route == "/api/maintenance/snooze":
+            return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.snooze(
+                body.get("task_id") or "", body.get("days")), require="task_id")
 
         if route.startswith("/api/modules/") and route.endswith("/toggle"):
             module_id = route[len("/api/modules/"):-len("/toggle")]
