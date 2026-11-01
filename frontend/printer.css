@@ -268,3 +268,13 @@ body.has-printer .topbar-right > .switch:not(:has(input:checked)) { display: non
 /* A hint inside a column form takes its own height (the general .field-hint
    flex basis is a width in rows, and became 140 px of empty height here). */
 .ap-form > .field-hint, .ap-form > .log-empty { flex: none; align-self: stretch; }
+
+/* ---- Files › Pick up where you left off ------------------------------------ */
+.oi-summary { font-size: 13.5px; margin: 6px 0 12px; }
+.oi-safe { display: block; margin-top: 4px; font-size: 12.5px; color: var(--text-faint); }
+details.oi-app { border: 1px solid rgba(0, 0, 0, .08); border-radius: 16px; padding: 0 14px; margin-bottom: 10px; background: rgba(255, 255, 255, .45); }
+details.oi-app > summary { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; padding: 12px 0; cursor: pointer; min-height: 44px; }
+details.oi-app > summary span { font-size: 12.5px; color: var(--text-faint); }
+details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); margin-bottom: 12px; }
+.oi-projects.is-long li:nth-child(n + 7) { display: none; }
+.oi-more { margin-right: 8px; }

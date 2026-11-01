@@ -158,14 +158,21 @@
       }
       found = data;
       if (!data.found) { paint(out, `<p class="log-empty">No slicer settings folder found. Looked in ${esc(data.looked_in || 'the usual places')}. If your slicer is on another computer, run Deja Vu1 there, or add projects with Files → Upload.</p>`); return; }
-      paint(out, data.apps.map((a, ai) => {
+      // One line first, then a folded row per slicer (the first one open), so a computer
+      // with several slicers and dozens of projects doesn't pour everything out at once.
+      const count = (a) => a.presets.machine.length + a.presets.process.length + a.presets.filament.length;
+      const summary = `<p class="oi-summary">Found <b>${data.apps.length}</b> slicer${data.apps.length === 1 ? '' : 's'}: ${data.apps.map(a =>
+        `${esc(a.app)} (${a.projects.length} project${a.projects.length === 1 ? '' : 's'}${count(a) ? `, ${count(a)} presets` : ''})`).join(' · ')}.
+        <span class="oi-safe">Deja Vu1 only reads these slicers' own folders and copies the projects you tick. It never changes them.</span></p>`;
+      paint(out, summary + data.apps.map((a, ai) => {
         const p = a.presets, u1 = x => x.u1, own = ['Snapmaker Orca', 'OrcaSlicer', 'Orca'].includes(a.app);
-        return `<div class="oi-app"><h3>${esc(a.app)}</h3>
+        return `<details class="oi-app"${ai === 0 ? ' open' : ''}><summary><b>${esc(a.app)}</b><span>${a.projects.length} recent project${a.projects.length === 1 ? '' : 's'} · ${count(a)} presets</span></summary>
           <div class="oi-cols">
-            <div><h4>Recent projects <small>${a.projects.length}</small></h4>
-              ${a.projects.length ? `<ul class="oi-projects">${a.projects.map(j => `<li><label><input type="checkbox" value="${esc(j.id)}" data-app="${ai}"${j.in_library ? '' : ' checked'}> <span>${esc(j.name)}</span> <small>${Math.max(1, Math.round(j.bytes / 1024))} KB${j.in_library ? ' · already in Files' : ''}</small></label></li>`).join('')}</ul>
-                <button class="btn small primary" type="button" data-bring="${ai}">Copy into Files</button>` : '<p class="log-empty">No recent projects listed.</p>'}</div>
-            <div><h4>Your presets <small>${p.machine.length + p.process.length + p.filament.length}</small></h4>
+            <div><h4>1 · Copy projects into Files <small>${a.projects.length}</small></h4>
+              ${a.projects.length ? `<ul class="oi-projects${a.projects.length > 6 ? ' is-long' : ''}">${a.projects.map(j => `<li><label><input type="checkbox" value="${esc(j.id)}" data-app="${ai}"${j.in_library ? '' : ' checked'}> <span>${esc(j.name)}</span> <small>${Math.max(1, Math.round(j.bytes / 1024))} KB${j.in_library ? ' · already in Files' : ''}</small></label></li>`).join('')}</ul>
+                ${a.projects.length > 6 ? `<button class="btn small oi-more" type="button" data-more>Show all ${a.projects.length}</button>` : ''}
+                <button class="btn small primary" type="button" data-bring="${ai}">Copy ticked into Files</button>` : '<p class="log-empty">No recent projects listed.</p>'}</div>
+            <div><h4>2 · Make a slicing profile <small>${p.machine.length + p.process.length + p.filament.length}</small></h4>
               ${!own ? `<p class="log-empty">${esc(a.app)}'s presets build on its own printers' profiles, which the U1 engine doesn't have. Its projects come in with their colours; Profiles & tools sets up the U1.</p>`
               : p.machine.length && p.process.length && p.filament.length ? `<form class="oi-profile" data-app="${ai}">
                 <label>Printer<select name="machine">${opts(p.machine.filter(u1).concat(p.machine.filter(x => !x.u1)))}</select></label>
@@ -177,11 +184,18 @@
                 <button class="btn small primary" type="submit">Make a slicing profile</button>
                 <p class="field-hint">Uses your preset files where they are, so later edits in the slicer carry over. Slicing needs to be on (Files › Slicing).</p></form>`
               : `<p class="log-empty">${p.machine.length + p.process.length + p.filament.length ? 'A profile needs one printer, one process and one filament preset of your own.' : 'No presets of your own yet: the slicer’s built-in Snapmaker presets are used through Profiles & tools.'}</p>`}</div>
-          </div></div>`;
+          </div></details>`;
       }).join('') + `<p class="field-hint">${esc(data.note)}</p>`);
     }
     $('oi-look').onclick = look;
     box.addEventListener('click', async e => {
+      const more = e.target.closest('[data-more]');
+      if (more) {
+        const list = more.parentElement.querySelector('.oi-projects');
+        more.dataset.all = more.dataset.all || more.textContent;
+        more.textContent = list.classList.toggle('is-long') ? more.dataset.all : 'Show fewer';
+        return;
+      }
       const b = e.target.closest('[data-bring]');
       if (!b) return;
       const ids = [...box.querySelectorAll(`input[type=checkbox][data-app="${b.dataset.bring}"]:checked`)].map(i => i.value);
