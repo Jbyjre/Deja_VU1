@@ -2476,6 +2476,20 @@ if (!['dashboard', 'demo'].some(k => new URLSearchParams(location.search).has(k)
     .catch(() => {});
 }
 
+/* The time at the bottom of the page is when the dashboard last heard from the
+ * printer. It used to be written only on a full refresh, so it sat still (3:50:28
+ * at 4:02) while live readings kept arriving. Now every live reading moves it, at
+ * most once a second, and the 5-second refresh keeps it going without a printer. */
+let stampAt = 0;
+function stampNow() {
+  const now = Date.now();
+  if (now - stampAt < 1000) return;
+  stampAt = now;
+  const el = $('stamp');
+  if (el) { el.textContent = `Updated ${new Date(now).toLocaleTimeString()}`; el.dateTime = new Date(now).toISOString(); }
+}
+window.addEventListener('dv-state', stampNow);
+
 async function refreshAll() {
   try {
     await loadConnection();
@@ -2487,7 +2501,7 @@ async function refreshAll() {
       loadUpdates(), loadPrinterControl(), loadCost(),
     ]);
     if (window.Workshop) await Workshop.refresh();
-    $('stamp').textContent = new Date().toLocaleTimeString();
+    stampNow();
   } catch (err) {
     console.error('Dashboard failed to load:', err);
     $('foot-state').textContent = 'Could not reach the backend.';
@@ -2625,7 +2639,7 @@ async function watchServer() {
 setInterval(watchServer, 4000);
 
 setInterval(() => {
-  loadConnection().catch(() => {});
+  loadConnection().then(stampNow).catch(() => {});
   if (updateTicks++ % 3 === 0) watchForUpdate();
   if (liveData()) {
     loadRings(); loadColorCheck(); loadCost();
