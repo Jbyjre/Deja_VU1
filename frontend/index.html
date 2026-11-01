@@ -1116,14 +1116,14 @@
       <div class="vc-ready" id="app-ready-box" role="status" hidden></div>
       <details class="vc-cmd" id="vc-fix">
         <summary><b>Start and check with a command</b> <span>If the dashboard stops answering or won&rsquo;t start</span></summary>
-        <p>Paste this into a new PowerShell (Windows) or Terminal (Mac, Linux) window. It starts Deja Vu1 in Documents if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. Leave the window open: closing it stops Deja Vu1.</p>
+        <p>Paste this into a new PowerShell (Windows) or Terminal (Mac, Linux) window. It starts Deja Vu1 in Documents if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. Deja Vu1 then keeps running after you close the window, and starts by itself when you sign in.</p>
         <div class="pill-toggle vc-os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
         <div class="vc-term" data-start-block="win"><button class="btn small vc-copy" type="button">Copy</button><pre><code>$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
         <div class="vc-term" data-start-block="unix" hidden><button class="btn small vc-copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre></div>
       </details>
       <details class="vc-cmd" id="vc-cmd">
         <summary><b>Update or repair with a command</b> <span>Another way, if the button can&rsquo;t install</span></summary>
@@ -1135,11 +1135,12 @@ try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Timeo
 Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-Start-Process "$dest\start-windows.bat"</code></pre></div>
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }</code></pre></div>
         <div class="vc-term" data-os-block="unix" hidden><button class="btn small vc-copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
       </details>
       <h3 class="vc-h">Version history</h3>
       <ol class="vc-history" id="version-history" aria-label="Every version, newest first"></ol>

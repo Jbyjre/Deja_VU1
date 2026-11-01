@@ -101,7 +101,7 @@ window.Phone = (() => {
         <ul>
           <li><b>Same Wi-Fi, not a guest network.</b> Guest networks keep devices apart on purpose. Mobile data won’t reach your home either.</li>
           <li><b>Allow Python through the firewall.</b> When Windows asks about Python, tick <i>Private networks</i> and press Allow. Missed it? Search Windows for “Allow an app through Windows Firewall” and tick Python’s Private box. On a Mac, allow incoming connections for Python. Don’t turn the firewall off.</li>
-          <li><b>Keep the launcher window open</b> and the computer awake. Closing it stops the dashboard.</li>
+          <li><b>Keep the computer awake.</b> Deja Vu1 runs in the background on it; if the phone can't reach it, open http://localhost:8000 on the computer.</li>
           <li><b>VPN on either device?</b> Pause it and try again.</li>
           ${others.length ? `<li><b>This computer has more than one address.</b> If the code doesn’t open, try typing ${others.map(o => `<code>${addressHtml(o)}</code>`).join(' or ')}.</li>` : ''}
         </ul>

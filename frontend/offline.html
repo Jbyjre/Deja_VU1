@@ -7,14 +7,14 @@
 <h2>Start it again</h2>
 <ol><li>Open your Deja Vu1 folder.</li><li>Double-click <code>start-windows.bat</code> (Windows), <code>start-mac.command</code> (Mac) or <code>start-linux.sh</code> (Linux).</li><li>Leave the window that opens running. Closing it stops the dashboard.</li></ol>
 <h2>Or paste one block</h2>
-<p>Copy this into a new PowerShell window (Windows) or Terminal window (Mac, Linux) and press Enter. It starts Deja Vu1 if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. Leave the window open.</p>
+<p>Copy this into a new PowerShell window (Windows) or Terminal window (Mac, Linux) and press Enter. It starts Deja Vu1 if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. You can close the window afterwards: Deja Vu1 keeps running, and starts by itself when you sign in.</p>
 <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
 <div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
 <div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre></div>
 <details><summary>Still not working? Repair the app files</summary>
 <p>This block stops any stuck copy, downloads fresh app files from GitHub, puts them in your Deja Vu1 folder in Documents and starts it. Your settings, printers and files stay.</p>
 <div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
@@ -23,16 +23,17 @@ try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Timeo
 Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-Start-Process "$dest\start-windows.bat"</code></pre></div>
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }</code></pre></div>
 <div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre></div>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
 </details>
 <p><small>These blocks use the Deja Vu1 folder in Documents. If yours is somewhere else, double-click the launcher in that folder instead. The address is <code>http://localhost:8000</code> unless you chose another port.</small></p>
 <p>So this doesn&rsquo;t happen again: in Deja Vu1, open <strong>Settings &rarr; Desktop app</strong> and turn on <strong>Start Deja Vu1 when this computer starts</strong>.</p>
 </div>
-<div id="away"><p>Keep the computer running Deja Vu1 awake, leave its launcher window open, and reconnect to your home Wi-Fi or your private remote connection. On that computer, Settings &rarr; Version &amp; updates has a block that starts Deja Vu1 and checks it.</p></div>
+<div id="away"><p>Keep the computer running Deja Vu1 awake (Deja Vu1 runs in the background, no window needed), and reconnect to your home Wi-Fi or your private remote connection. On that computer, Settings &rarr; Version &amp; updates has a block that starts Deja Vu1 and checks it.</p></div>
 <p id="check" aria-live="polite"></p>
 <a class="btn" href="./?dashboard">Try again</a>
 <a class="btn alt" href="https://deja-vu1.jmath1110.workers.dev/?demo" target="_blank" rel="noopener">Explore with demo data meanwhile</a>

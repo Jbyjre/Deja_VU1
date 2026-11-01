@@ -264,7 +264,11 @@ def render(rep, stream=None, windows=None, width=62):
     lines.append('')
     if rep['ready']:
         lines.append(f"  Open {rep['url']} in your browser.")
-        lines.append('  Leave this window open: closing it stops Deja Vu1.')
+        if os.environ.get('DEJAVU_BACKGROUND_PARENT') or os.environ.get('DEJAVU_BACKGROUND'):
+            lines.append('  It keeps running after you close this window.')
+        else:
+            lines.append('  Leave this window open: closing it stops Deja Vu1. (The Start block in')
+            lines.append('  Settings starts it in the background instead, so no window is needed.)')
     elif rep.get('next'):
         windows = os.name == 'nt' if windows is None else windows
         shell = 'PowerShell' if windows else 'Terminal'
