@@ -587,9 +587,17 @@ class FakeMoonraker:
                 return err(404, "Camera method not available")
             if self.camera_failed and method == "camera.start_monitor":
                 return ok({"state": "failed", "message": self.camera_failed})
+            if method == "camera.start_monitor" and getattr(self, "camera_reply_delay", 0):
+                # The camera starts at once; only its answer is slow (the repeater can wait 10 s).
+                self.camera_monitoring = True
+                time.sleep(self.camera_reply_delay)
             self.camera_monitoring = method == "camera.start_monitor"
             self.camera_client = client["id"]
-            return ok({"monitoring": self.camera_monitoring})
+            reply = {"monitoring": self.camera_monitoring}
+            if method == "camera.start_monitor":
+                # Snapmaker's camera service: {"state": "success", "url": <where the pictures are>}.
+                reply.update(state="success", url=getattr(self, "camera_url", None) or "/server/files/camera/monitor.jpg")
+            return ok(reply)
         if method == "machine.system_info" and self.device_name is not None:
             # u1-moonraker components/machine.py: product_info holds the name set on the printer.
             return ok({"system_info": {"product_info": {"machine_type": "Snapmaker U1", "serial_number": "",

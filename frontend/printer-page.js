@@ -112,6 +112,26 @@ window.PrinterPage = (() => {
       return;
     }
     cam.frame.dataset.mode = 'pictures';
+    // A real printer's built-in camera comes as one live stream (Deja Vu1 fetches each new
+    // picture as soon as the last arrived). Demo data, or a stream that won't start, uses
+    // single pictures below, which also show the reason when the camera can't start.
+    if (!demoOn && !cam.noLive) {
+      let live = false;
+      cam.img.onload = () => {
+        if (run !== cam.run) return;
+        cam.img.hidden = false;
+        if (!live) { live = true; setText(cam.mode, 'Live'); note(cam, ''); }
+      };
+      cam.img.onerror = () => {
+        if (run !== cam.run) return;
+        cam.img.onload = cam.img.onerror = null;
+        if (live) { cam.timer = setTimeout(() => { if (run === cam.run) { cam.frame.dataset.mode = 'off'; startCam(cam); } }, 1500); return; }
+        cam.noLive = true;                 // this printer: single pictures from now on
+        startCam(cam);
+      };
+      cam.img.src = api(`/api/camera/live?t=${Date.now()}`);
+      return;
+    }
     let shown = 0, began = performance.now();
     const next = async () => {
       if (run !== cam.run) return;
