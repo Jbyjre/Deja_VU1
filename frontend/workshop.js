@@ -3604,7 +3604,7 @@ const Workshop = (() => {
   }
 
   return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph,
-           openFile, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
+           openFile, openConfirm, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
 })();
 
 window.Workshop = Workshop;

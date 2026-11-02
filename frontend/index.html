@@ -502,6 +502,7 @@
         <div class="pp-presets" id="pp-presets"></div></div>
       <div class="divider-row cols-4" id="ctrl-temps"></div>
       <div class="pp-bed" id="pp-bed"></div>
+      <div class="pp-chart" id="pp-chart"></div>
     </section>
 
     <div class="grid-2" data-module-body="printer_control">
@@ -516,8 +517,19 @@
     </div>
 
     <div class="grid-2" data-module-body="printer_control">
+      <section class="card liquid-glass pp-outputs" id="pp-outputs" aria-labelledby="pp-outputs-title">
+        <div class="card-head"><div><h2 id="pp-outputs-title">Fans, lights and sensors</h2><p class="card-sub">The printer's other fans and lights, its filament sensors, endstops and feeding</p></div></div>
+        <div id="pp-outputs-body"></div>
+      </section>
+      <section class="card liquid-glass pp-mesh" id="pp-mesh" aria-labelledby="pp-mesh-title">
+        <div class="card-head"><div><h2 id="pp-mesh-title">Bed mesh</h2><p class="card-sub">How flat the bed measured, point by point</p></div></div>
+        <div id="pp-mesh-body"></div>
+      </section>
+    </div>
+
+    <div class="grid-2" data-module-body="printer_control">
       <section class="card liquid-glass pp-macros" id="pp-macros" aria-labelledby="pp-macros-title">
-        <div class="card-head"><div><h2 id="pp-macros-title">Printer's own buttons</h2><p class="card-sub">Bed mesh, motors off and the macros your printer lists</p></div></div>
+        <div class="card-head"><div><h2 id="pp-macros-title">Printer's own buttons</h2><p class="card-sub">Motors off and the macros your printer lists</p></div></div>
         <div id="pp-macros-body"></div>
       </section>
       <section class="card liquid-glass pp-console" id="pp-console">
@@ -527,6 +539,13 @@
           <input type="text" id="gcode-input" placeholder="Send a G-code command…" style="flex:1;" disabled aria-label="G-code command">
           <button class="btn primary" id="gcode-send" disabled>Send</button>
         </div>
+      </section>
+    </div>
+
+    <div data-module-body="printer_control">
+      <section class="card liquid-glass pp-print" id="pp-print" aria-labelledby="pp-print-title">
+        <div class="card-head"><div><h2 id="pp-print-title">Print a file</h2><p class="card-sub">Add a G-code file, preview it and start it on this printer</p></div></div>
+        <div id="pp-print-body"></div>
       </section>
     </div>
 
@@ -1579,6 +1598,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="desk.js"></script>
 <script src="telemetry.js"></script>
 <script src="printer-page.js"></script>
+<script src="printer-extras.js"></script>
 <script src="logbook.js"></script>
 <script src="insights.js"></script>
 <script src="printroom.js"></script>

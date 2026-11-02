@@ -142,6 +142,14 @@ class FakeMoonraker:
             self.status["configfile"] = {"settings": {"printer": {"kinematics": kinematics},
                                                       "extruder": {"nozzle_diameter": nozzle_diameter}}}
         self.layer_info = layer_info
+        # Moonraker's temperature_store (components/data_store.py): one reading a second per
+        # sensor, "temperatures"/"targets"/"powers"; None means the endpoint isn't there.
+        self.temperature_store = None
+        # extras/query_endstops.py _handle_web_request: {name: "open" | "TRIGGERED"}
+        self.endstops = {"x": "open", "y": "open", "z": "TRIGGERED"}
+        # klippy/webhooks.py _handle_help: {COMMAND: description}
+        self.gcode_help = {"HELP": "Report the list of available extended G-Code commands",
+                           "QUERY_ENDSTOPS": "Report on the status of each endstop"}
         self.objects = sorted(set(self.status) | {"gcode", "configfile", "heaters", "mcu"})
 
         handler = self._handler_class()
@@ -410,6 +418,20 @@ class FakeMoonraker:
                     if meta is None:
                         return self._error(404, f"Metadata not available for <{q.get('filename')}>")
                     return self._reply(200, {"result": meta})
+                if parsed.path == "/printer/objects/query":
+                    # HTTP form of printer.objects.query: ?name=field1,field2 (an empty value: every field).
+                    raw = parse_qs(parsed.query, keep_blank_values=True)
+                    wanted = {k: (v[0].split(",") if v[0] else None) for k, v in raw.items()}
+                    return self._reply(200, {"result": {"eventtime": time.monotonic(),
+                                                        "status": fake._query(wanted)}})
+                if parsed.path == "/server/temperature_store":
+                    if fake.temperature_store is None:
+                        return self._error(404, "Not Found")
+                    return self._reply(200, {"result": fake.temperature_store})
+                if parsed.path == "/printer/query_endstops/status":
+                    return self._reply(200, {"result": dict(fake.endstops)})
+                if parsed.path == "/printer/gcode/help":
+                    return self._reply(200, {"result": dict(fake.gcode_help)})
                 if parsed.path == "/machine/update/status":
                     if not fake.update_manager:
                         return self._error(404, "Not Found")

@@ -478,28 +478,25 @@ window.PrinterPage = (() => {
     const host = $('pp-macros-body');
     if (!host) return;
     const t = (s && s.tuning) || {};
-    const sig = JSON.stringify([t.macros, t.bed_mesh, t.mesh_profile, canDrive(s), busy(s)]);
+    const sig = JSON.stringify([t.macros, canDrive(s), busy(s)]);
     if (host.dataset.sig === sig) return;
     host.dataset.sig = sig;
     if (!canDrive(s)) { host.innerHTML = '<p class="log-empty">Waiting for the printer.</p>'; return; }
     const off = busy(s) ? 'disabled' : '';
     host.innerHTML = `
       <div class="mc-main">
-        ${t.bed_mesh !== false ? `<button type="button" class="btn" data-act="bed-mesh" ${off}>Probe the bed (bed mesh)</button>` : ''}
         <button type="button" class="btn" data-act="motors-off" ${off}>Motors off</button>
       </div>
-      ${t.mesh_profile ? `<p class="field-hint">Bed mesh in use: <b>${esc(t.mesh_profile)}</b></p>` : ''}
       ${(t.macros || []).length ? `<p class="mc-label">Your printer's macros</p>
-        <div class="mc-list">${t.macros.map(m => `<button type="button" class="pchip" data-macro="${esc(m)}">${esc(m.replace(/_/g, ' ').toLowerCase())}</button>`).join('')}</div>`
+        <div class="mc-list">${t.macros.map(m => `<button type="button" class="pchip" data-macro="${esc(m)}">${esc(m.replace(/_/g, ' ').toLowerCase())}</button>`).join('')}</div>
+        <p class="field-hint">A macro marked … takes settings: press it to fill them in.</p>`
         : '<p class="field-hint">This printer lists no macros of its own.</p>'}
-      ${busy(s) ? '<p class="field-hint">Probing and motors off wait until the print ends.</p>' : ''}`;
+      ${busy(s) ? '<p class="field-hint">Motors off waits until the print ends.</p>' : ''}`;
     host.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
-      const mesh = b.dataset.act === 'bed-mesh';
-      if (mesh && !confirm('Probe the bed now? The printer homes if it needs to, then touches the bed at many points. Keep the bed clear.')) return;
-      runCommand(b, `/api/printer/control/${b.dataset.act}`, {},
-        { sending: mesh ? 'Probing…' : 'Turning off…', done: mesh ? 'Bed mesh done' : 'Motors off', failed: 'Refused' });
+      runCommand(b, `/api/printer/control/${b.dataset.act}`, {}, { sending: 'Turning off…', done: 'Motors off', failed: 'Refused' });
     }));
     host.querySelectorAll('[data-macro]').forEach(b => b.addEventListener('click', () => {
+      if (window.PrinterExtras && PrinterExtras.macroClicked(b)) return;
       if (busy(state) && !confirm(`Run ${b.dataset.macro} while the printer is printing?`)) return;
       runCommand(b, '/api/printer/control/macro', { name: b.dataset.macro },
         { sending: 'Running…', done: `${b.dataset.macro} ran`, failed: `${b.dataset.macro} refused` });
@@ -549,10 +546,8 @@ window.PrinterPage = (() => {
     const extra = s && s.tuning ? [...(s.tuning.sensors || []), ...(s.tuning.fans || []).filter(f => f.temperature != null)] : [];
     let more = $('pp-sensors');
     if (!more) { more = document.createElement('p'); more.id = 'pp-sensors'; more.className = 'pp-sensors field-hint'; bed.after(more); }
-    setText(more, [
-      ...extra.map(x => `${x.name} ${formatTemp(x.temperature)}`),
-      ...((s && s.tuning && s.tuning.fans) || []).filter(f => f.speed != null).map(f => `${f.name} ${Math.round(f.speed * 100)}%`),
-    ].join(' · '));
+    // Fan speeds live in Fans, lights and sensors; this line is for temperatures only.
+    setText(more, extra.map(x => `${x.name} ${formatTemp(x.temperature)}`).join(' · '));
   }
 
   function renderPage(s) {

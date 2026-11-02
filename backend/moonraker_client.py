@@ -72,6 +72,7 @@ from urllib.parse import quote, urlencode, urlparse
 
 import gcode_tools
 import machines
+import printer_extras
 import websocket as ws
 
 CONNECT_TIMEOUT = 5.0          # opening a connection to the printer
@@ -559,7 +560,24 @@ def tuning_from(status, extras):
     fans = []
     for name in extras.get("fans") or []:
         f = _obj(status, name)
-        fans.append({"name": _pretty(name), "speed": _num(f.get("speed")), "temperature": _num(f.get("temperature"))})
+        fans.append({"id": _short(name), "name": _pretty(name), "speed": _num(f.get("speed")),
+                     "temperature": _num(f.get("temperature")),
+                     # Only fan_generic takes SET_FAN_SPEED; the others follow their heater or board.
+                     "settable": name.startswith("fan_generic ")})
+    leds = []
+    for name in extras.get("leds") or []:
+        data = _obj(status, name).get("color_data")
+        first = data[0] if isinstance(data, list) and data and isinstance(data[0], list) else None
+        leds.append({"id": _short(name), "name": _pretty(name),
+                     "color": [_num(v, 0.0) for v in first[:4]] if first else None})
+    pins = [{"id": _short(name), "name": _pretty(name), "value": _num(_obj(status, name).get("value"))}
+            for name in extras.get("pins") or []]
+    runout = []
+    for name in extras.get("runout") or []:
+        r = _obj(status, name)
+        runout.append({"id": _short(name), "name": _pretty(name),
+                       "detected": r.get("filament_detected") if isinstance(r.get("filament_detected"), bool) else None,
+                       "enabled": r.get("enabled") if isinstance(r.get("enabled"), bool) else None})
     sensors = [{"name": _pretty(name), "temperature": _num(_obj(status, name).get("temperature"))}
                for name in extras.get("sensors") or []]
     mesh = _obj(status, "bed_mesh")
@@ -578,6 +596,10 @@ def tuning_from(status, extras):
         "macros": list(extras.get("macros") or []),
         "fans": fans,
         "sensors": sensors,
+        "leds": leds,
+        "pins": pins,
+        "runout": runout,
+        "feeder": bool(extras.get("feeder")),
     }
 
 
@@ -1072,18 +1094,32 @@ _EXTRUDER_FIELDS = ["temperature", "target", "state", "nozzle_diameter",
 # Other fans and temperature sensors a printer lists, shown beside the heaters the way the
 # printer's own web page does. Capped so a printer with dozens can't flood the live stream.
 _EXTRA_FAN_TYPES = ("heater_fan", "controller_fan", "fan_generic", "temperature_fan")
+# Lights (Klipper's led, neopixel, dotstar and the PCA chips all report color_data and take SET_LED),
+# output pins (shown, never switched from here: on the U1 they include each head's heater switch,
+# eN_heat_sw in Snapmaker's published config) and filament runout sensors.
+_LED_TYPES = ("led", "neopixel", "dotstar", "pca9533", "pca9632")
+_RUNOUT_TYPES = ("filament_switch_sensor", "filament_motion_sensor")
 EXTRA_LIMIT = 12
 MACRO_LIMIT = 40
 
 
 def extras_from(objects, chamber=None):
-    """objects.list -> (macros, fans, sensors): the printer's own buttons and readings."""
+    """objects.list -> the printer's own buttons and readings, by kind."""
     objects = [o for o in objects if isinstance(o, str)]
     macros = sorted({o.split(" ", 1)[1].upper() for o in objects
                      if o.startswith("gcode_macro ") and not o.split(" ", 1)[1].startswith("_")})[:MACRO_LIMIT]
-    fans = [o for o in objects if o.split(" ", 1)[0] in _EXTRA_FAN_TYPES and " " in o][:EXTRA_LIMIT]
+
+    def of(kinds):
+        return [o for o in objects if o.split(" ", 1)[0] in kinds and " " in o][:EXTRA_LIMIT]
     sensors = [o for o in objects if o.startswith("temperature_sensor ") and o != chamber][:EXTRA_LIMIT]
-    return macros, fans, sensors
+    return {"macros": macros, "fans": of(_EXTRA_FAN_TYPES), "sensors": sensors, "leds": of(_LED_TYPES),
+            "pins": of(("output_pin",)), "runout": of(_RUNOUT_TYPES),
+            "feeder": "gcode_macro _FILAMENT_FEED_VARIABLE" in objects and "gcode_macro AUTO_FEEDING" in objects}
+
+
+def _short(obj_name):
+    """"fan_generic cavity_fan" -> "cavity_fan": the name Klipper's commands take."""
+    return obj_name.split(" ", 1)[-1]
 
 
 class MoonrakerPrinter:
@@ -1115,6 +1151,7 @@ class MoonrakerPrinter:
         self._extruders = {}           # {"T0": "extruder", ...}
         self._chamber = None
         self._extras = {}
+        self._macro_info = None
         self._subscription = {}
         self._filament_asked = float("-inf")
         self._klippy_state = None
@@ -1349,10 +1386,13 @@ class MoonrakerPrinter:
         subscription.update({name: _EXTRUDER_FIELDS for name in extruders.values()})
         if chamber:
             subscription[chamber] = ["temperature"]
-        macros, fans, sensors = extras_from(objects, chamber)
+        extras = extras_from(objects, chamber)
         subscription.update({name: ["speed", "temperature"] if name.startswith("temperature_fan") else ["speed"]
-                             for name in fans})
-        subscription.update({name: ["temperature"] for name in sensors})
+                             for name in extras["fans"]})
+        subscription.update({name: ["temperature"] for name in extras["sensors"]})
+        subscription.update({name: ["color_data"] for name in extras["leds"]})
+        subscription.update({name: ["value"] for name in extras["pins"]})
+        subscription.update({name: ["filament_detected", "enabled"] for name in extras["runout"]})
         result = self._call("printer.objects.subscribe", {"objects": subscription})
         full = result.get("status", {}) if isinstance(result, dict) else {}
         with self.lock:
@@ -1360,12 +1400,12 @@ class MoonrakerPrinter:
             self._is_u1, self._config = is_u1, config
             self._extruders = extruders
             self._chamber = chamber
-            self._extras = {"macros": macros, "fans": fans, "sensors": sensors,
-                            "bed_mesh": "bed_mesh" in objects,
+            self._extras = {**extras, "bed_mesh": "bed_mesh" in objects,
                             # The limits Klipper started with: hand changes never go above them.
                             "config_velocity": _num(_obj(full, "toolhead").get("max_velocity")),
                             "config_accel": _num(_obj(full, "toolhead").get("max_accel"))}
             self._subscription = subscription
+            self._macro_info = None    # read again from the printer's config after each reconnect
             self._klippy_state = None if state == "ready" else state
             self._klippy_message = None
             # Merged into what was known before the link dropped, not
@@ -1710,6 +1750,49 @@ class MoonrakerPrinter:
             raise
         return packages_from_update_status(result)
 
+    def extra(self, kind):
+        """What the Printer page reads on request (printer_extras.py): straight from Moonraker each time."""
+        self._require_link()
+        if kind == "temperatures":
+            store = self.http.request("GET", "/server/temperature_store", query={"include_monitors": "false"})
+            return printer_extras.temperatures_from_store(store)
+        if kind == "endstops":
+            return {"endstops": printer_extras.endstops_from(
+                self.http.request("GET", "/printer/query_endstops/status"))}
+        if kind == "help":
+            return {"commands": printer_extras.help_from(self.http.request("GET", "/printer/gcode/help"))}
+        if kind == "mesh":
+            with self.lock:
+                has_mesh = bool(self._extras.get("bed_mesh"))
+            if not has_mesh:
+                return {"none": "This printer has no bed mesh set up in its configuration"}
+            reply = self.http.request("GET", "/printer/objects/query", query={
+                "bed_mesh": "profile_name,probed_matrix,mesh_min,mesh_max,profiles"}, max_bytes=4 * 1024 * 1024)
+            return printer_extras.mesh_from_status(_obj(_obj(reply, "status"), "bed_mesh"))
+        if kind == "macros":
+            with self.lock:
+                listed, cached = list(self._extras.get("macros") or []), self._macro_info
+            if cached is None:
+                # The whole printer config, once per connection: the macros' own text says which settings they take.
+                reply = self.http.request("GET", "/printer/objects/query", query={"configfile": "config"},
+                                          max_bytes=8 * 1024 * 1024)
+                cached = printer_extras.macros_from_config(_obj(_obj(_obj(reply, "status"), "configfile"), "config"),
+                                                           listed)
+                with self.lock:
+                    self._macro_info = cached
+            return {"macros": cached}
+        if kind == "feeding":
+            with self.lock:
+                has_feeder, heads = bool(self._extras.get("feeder")), sorted(self._extruders)
+            if not has_feeder:
+                return {"heads": [], "none": "This printer doesn't list Snapmaker's automatic feeding macros"}
+            name = "gcode_macro _FILAMENT_FEED_VARIABLE"
+            reply = self.http.request("GET", "/printer/objects/query",
+                                      query={name: "module_sequence,channel_sequence"})
+            return {"heads": printer_extras.feeding_from(_obj(_obj(reply, "status"), name), heads),
+                    "macro": "AUTO_FEEDING"}
+        raise ValueError(f"Unknown reading: {kind}")
+
     def diagnostics(self):
         """What a first real connection needs someone to see: state, and every exchange."""
         with self.lock:
@@ -1948,7 +2031,8 @@ class MoonrakerPrinter:
     def tune(self, action, script, timeout=None):
         """A hands-on command checked by printer_control: run it, then report the fresh state."""
         state = self._fresh_state()
-        if action in ("jog", "move", "motors_off", "bed_mesh", "tool") and state["state"] in ("printing", "paused"):
+        if action in ("jog", "move", "motors_off", "bed_mesh", "tool", "mesh_profile", "feed") \
+                and state["state"] in ("printing", "paused"):
             raise ValueError("Not while a print is running or paused - it would move the head through the print")
         self._gcode(script, timeout=timeout or GCODE_TIMEOUT)
         return self._fresh_state()

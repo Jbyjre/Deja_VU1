@@ -428,11 +428,17 @@ async function tourControl(action, pid, body) {
     'z-nudge': b => `SET_GCODE_OFFSET Z_ADJUST=${b.delta} MOVE=1`, extrude: b => `M83 · G1 E${b.length}`,
     speed: b => `M220 S${b.percent}`, flow: b => `M221 S${b.percent}`, fan: b => `M106 S${Math.round((b.percent || 0) * 2.55)}`,
     'pressure-advance': b => `SET_PRESSURE_ADVANCE ADVANCE=${b.value}`, limits: b => `SET_VELOCITY_LIMIT VELOCITY=${b.velocity} ACCEL=${b.accel}`,
-    'motors-off': () => 'M84', 'bed-mesh': () => 'BED_MESH_CALIBRATE', macro: b => String(b.name || ''), tool: b => String(b.toolhead || ''),
+    'motors-off': () => 'M84', 'bed-mesh': () => 'BED_MESH_CALIBRATE', tool: b => String(b.toolhead || ''),
+    macro: b => [String(b.name || ''), ...Object.entries(b.params || {}).map(([k, v]) => `${k}=${v}`)].join(' '),
+    'fan-generic': b => `SET_FAN_SPEED FAN=${b.name} SPEED=${((b.percent || 0) / 100).toFixed(2)}`,
+    led: b => `SET_LED LED=${b.name} WHITE=${Number(b.white || 0).toFixed(2)}`,
+    runout: b => `SET_FILAMENT_SENSOR SENSOR=${b.name} ENABLE=${b.enabled ? 1 : 0}`,
+    'mesh-profile': b => b.action === 'load' ? `BED_MESH_PROFILE LOAD=${b.profile}` : 'BED_MESH_CLEAR',
+    feed: b => `AUTO_FEEDING EXTRUDER=${String(b.toolhead || 'T0').slice(1)}`,
     estop: () => 'M112', 'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
   };
   if (HANDS_ON[action]) {
-    const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool'];
+    const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool', 'mesh-profile', 'feed'];
     if (moves.includes(action) && ['printing', 'paused'].includes(live.state)) return tourReply({ error: 'Not while a print is running or paused - it would move the head through the print' }, 400);
     tourLog(pid, HANDS_ON[action](body || {}));
     tourLog(pid, 'ok (online demo: nothing was sent to a printer)');
@@ -1121,7 +1127,7 @@ const TAB_INTROS = {
 const SECTIONS = {
   control: [
     ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
-      '#pp-macros', '#pp-console', '#ctrl-plate']],
+      '#pp-outputs', '#pp-mesh', '#pp-macros', '#pp-console', '#pp-print', '#ctrl-plate']],
     ['live', 'Live readings', ['#telemetry', '#chamber-card']],
     ['history', 'History & upkeep', ['#insights-card', 'print health', 'print cost']],
     ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
@@ -1956,7 +1962,9 @@ function gcodeSuggestions(state) {
     input.setAttribute('list', 'gcode-hints');
   }
   const macros = ((state && state.tuning && state.tuning.macros) || []).map(m => [typeof m === 'string' ? m : m.name, 'Printer macro']);
-  const html = [...macros, ...GCODE_HINTS, ...gcodeHistoryList().slice(0, 10).map(c => [c, 'Sent before'])]
+  // The printer's own HELP list (printer-extras.js) comes after the common commands.
+  const own = window.PrinterExtras ? PrinterExtras.helpHints() : [];
+  const html = [...macros, ...GCODE_HINTS, ...gcodeHistoryList().slice(0, 10).map(c => [c, 'Sent before']), ...own]
     .filter((h, i, all) => h[0] && all.findIndex(x => x[0] === h[0]) === i)
     .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
   if (list.dataset.html !== html) { list.innerHTML = html; list.dataset.html = html; }

@@ -192,6 +192,72 @@
 .tn-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .tn-form input { width: 92px; }
 
+/* Temperature chart (printer-extras.js): solid line the reading, dashed the target */
+.pp-chart { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(0, 0, 0, .07); }
+.tc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tc-head .mc-label { margin: 0; }
+.tc-range { display: flex; gap: 4px; }
+.tc-range .pchip[aria-checked="true"] { background: var(--text); color: #fff; border-color: var(--text); }
+.tc-plot { margin-top: 8px; }
+.tc-plot svg { display: block; overflow: visible; }
+.tc-grid { stroke: rgba(0, 0, 0, .07); stroke-width: 1; }
+.tc-tick { font: 500 10px var(--font-mono); fill: var(--text-faint); }
+.tc-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.tc-target { fill: none; stroke-width: 1.25; stroke-dasharray: 5 4; opacity: .7; }
+.tc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 12.5px; color: var(--text-dim); }
+.tc-key { display: inline-flex; align-items: center; gap: 6px; }
+.tc-key i { width: 14px; height: 3px; border-radius: 2px; }
+.tc-key b { font: 700 12.5px/1 var(--font-mono); color: var(--text); }
+.tc-to { font: 500 11.5px/1 var(--font-mono); color: var(--text-faint); }
+
+/* Bed mesh: front of the bed at the bottom, as you stand at the printer */
+.mesh-map { position: relative; aspect-ratio: 1; max-width: 300px; margin: 4px auto 10px; border-radius: 10px; overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.mesh-map svg { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
+.mesh-axis { position: absolute; font: 600 10px/1 var(--font-mono); color: var(--text-dim); background: rgba(255, 255, 255, .8);
+  padding: 3px 6px; border-radius: 999px; }
+.mesh-front { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.mesh-scale { display: flex; align-items: center; gap: 8px; max-width: 300px; margin: 0 auto 8px; font: 600 11px/1 var(--font-mono); color: var(--text-dim); }
+.mesh-scale i { flex: 1; height: 8px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06); }
+.mesh-facts { text-align: center; font-size: 12.5px; color: var(--text-dim); margin: 0 0 12px; }
+.mesh-facts b { font-family: var(--font-mono); color: var(--text); }
+.mesh-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.mesh-actions select { min-height: 32px; }
+
+/* Fans, lights and sensors */
+.pp-outputs .tn-row { grid-template-columns: 110px minmax(0, 1fr) 40px 14px; }
+.pp-outputs .tn-row label { text-transform: capitalize; }
+.px-sensors { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin-bottom: 6px; }
+.px-sensor { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .55);
+  border: 1px solid rgba(0, 0, 0, .07); font-size: 12.5px; cursor: pointer; min-height: 40px; }
+.px-sensor span { display: grid; gap: 3px; font-weight: 600; }
+.px-sensor span::first-line { text-transform: capitalize; }
+.px-sensor b { font: 600 11px/1 var(--font-mono); color: var(--text-faint); }
+.px-sensor b.is-ok { color: var(--ok-text); }
+.px-sensor b.is-warn { color: var(--warn-text); }
+.px-sensor input { accent-color: var(--text); width: 18px; height: 18px; }
+.px-endstops { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.px-es { display: inline-block; font: 600 12px/1 var(--font-mono); padding: 5px 9px; border-radius: 999px; background: rgba(0, 0, 0, .05); }
+.px-es.is-hit { background: color-mix(in oklch, var(--accent) 18%, white); color: var(--accent-text); }
+.mc-list .pchip small { font: 500 10.5px/1 var(--font-mono); color: var(--text-faint); margin-left: 4px; text-transform: none; }
+.demo-note { display: inline-block; font: 600 10.5px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .4px;
+  color: var(--text-faint); margin: 0 0 6px; }
+
+/* Macro settings: a chip that takes settings ends in an ellipsis */
+.mc-list .pchip.has-params::after { content: " …"; }
+.macro-form { margin: 4px 0 12px; padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .07); }
+.macro-form .mc-label { text-transform: uppercase; }
+.macro-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 6px; }
+.macro-fields label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.macro-fields input { width: 100%; }
+.macro-fields input:invalid:not(:placeholder-shown) { outline: 2px solid var(--bad); }
+
+/* Print a file */
+.pf-upload { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.pf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pf-list li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .06); }
+.pf-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12.5px/1.3 var(--font-mono); }
+
 @media (max-width: 720px) {
   .pc-finish { display: none; }
   .topbar-right .printer-chip { max-width: none; flex: 1 1 auto; }
@@ -323,6 +389,7 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
   .grid-2 .card, .automations-grid { margin-bottom: 14px; }
   .card-sub { font-size: 12.5px; }
   #pp-console, #pp-limits, #pp-goto { display: none; }
+  .pp-outputs .tn-row { grid-template-columns: 90px minmax(0, 1fr) 36px 14px; }
   .ov-printers.is-single { display: none; }
   .ov-word { font-size: 20px; }
   .ov-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
