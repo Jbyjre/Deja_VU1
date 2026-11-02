@@ -178,6 +178,35 @@ def _program(port):
     return _check('program', 'Program', 'ok', f'Version {version}, running with its launcher on port {port}')
 
 
+def _keeps_running():
+    """Whether Deja Vu1 runs without a window and comes back by itself (sign-in, wake, a stop)."""
+    import autostart
+    import storage
+    out = []
+    if os.environ.get('DEJAVU_LAUNCHER') == '1' and os.environ.get('DEJAVU_BACKGROUND') != '1':
+        out.append(_check('window', 'Window', 'note', 'Deja Vu1 runs inside a window here, so closing that window '
+                          'stops it', 'Start it once with the double-click launcher or the Start block: from 0.15.0 '
+                          'it then runs without a window'))
+    try:
+        a = autostart.status()
+    except Exception as exc:
+        return out + [_check('autostart', 'Starts itself', 'note', f"Couldn't read it: {exc}")]
+    if not a.get('supported'):
+        return out
+    if a.get('on') and a.get('how') == 'task':
+        out.append(_check('autostart', 'Starts itself', 'ok', 'At sign-in and after waking, and checked every '
+                          '5 minutes (Windows Task Scheduler)'))
+    elif a.get('on'):
+        out.append(_check('autostart', 'Starts itself', 'ok', 'At sign-in' + (
+            ', and again if it stops with an error' if a.get('keeps_running') else '')))
+    elif autostart.chosen_off(storage.DATA_DIR):
+        out.append(_check('autostart', 'Starts itself', 'note', 'Off, as you chose', 'Settings > Desktop app'))
+    else:
+        out.append(_check('autostart', 'Starts itself', 'note', 'Off: after a restart Deja Vu1 waits to be '
+                          'started', 'Settings > Desktop app > Start Deja Vu1 when this computer starts'))
+    return out
+
+
 def _updates():
     import app_updates
     job = app_updates.job()
@@ -204,7 +233,7 @@ def _updates():
 def report(port):
     """Every check, the overall answer and which block helps next."""
     checks = []
-    for fn in (lambda: [_program(port)], lambda: [_pages()], lambda: [_demo()], _printers,
+    for fn in (lambda: [_program(port)], _keeps_running, lambda: [_pages()], lambda: [_demo()], _printers,
                lambda: [_saved_data()], lambda: [_updates()]):
         try:
             checks.extend(fn())
@@ -267,8 +296,8 @@ def render(rep, stream=None, windows=None, width=62):
         if os.environ.get('DEJAVU_BACKGROUND_PARENT') or os.environ.get('DEJAVU_BACKGROUND'):
             lines.append('  It keeps running after you close this window.')
         else:
-            lines.append('  Leave this window open: closing it stops Deja Vu1. (The Start block in')
-            lines.append('  Settings starts it in the background instead, so no window is needed.)')
+            lines.append('  This copy runs inside this window: closing it stops Deja Vu1. Start it')
+            lines.append('  with its double-click launcher instead and no window is needed.')
     elif rep.get('next'):
         windows = os.name == 'nt' if windows is None else windows
         shell = 'PowerShell' if windows else 'Terminal'
@@ -281,3 +310,75 @@ def render(rep, stream=None, windows=None, width=62):
         lines.extend('    ' + line for line in paste_blocks.for_this_computer(rep['next'], windows).splitlines())
     lines.append('')
     return '\n'.join(lines)
+
+
+# ---- a report to send for help ---------------------------------------------
+
+_SECRET = re.compile(r'(?i)((?:api[_-]?key|token|password|passwd|secret|authorization)["\'=: ]+)([^\s"\',&]+)')
+LOG_LINES = 120
+
+
+def _tail(path, lines=LOG_LINES):
+    try:
+        with open(path, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            f.seek(max(0, f.tell() - 64 * 1024))
+            text = f.read().decode('utf-8', 'replace')
+    except OSError:
+        return None
+    return '\n'.join(text.splitlines()[-lines:])
+
+
+def help_report(port):
+    """
+    What someone helping needs, as plain text to paste: version, system, how
+    Deja Vu1 was started and starts by itself, the readiness check, each real
+    printer's connection report and the last lines of each log. Keys, tokens and
+    passwords are blanked; only this computer may ask for it (it shows folders).
+    """
+    import platform
+    import sys
+    import autostart
+    import launch_link
+    import mock_moonraker
+    import storage
+    data = storage.DATA_DIR
+    out = [f"Deja Vu1 help report, {time.strftime('%Y-%m-%d %H:%M:%S %z')}"]
+    try:
+        import app_updates
+        out.append(f"Version {app_updates.version()} | Python {sys.version.split()[0]} ({sys.executable}) | "
+                   f"{platform.platform()} | port {port}")
+    except Exception as exc:
+        out.append(f"Version unknown: {exc!r}")
+    how = ", ".join(f"{k}={os.environ.get(k)}" for k in ('DEJAVU_LAUNCHER', 'DEJAVU_LAUNCHER_VERSION',
+                                                         'DEJAVU_BACKGROUND') if os.environ.get(k))
+    out.append("Started: " + (how or "without the launcher"))
+    for name, fn in (("Starts by itself", autostart.status), ("Start link", launch_link.status)):
+        try:
+            out.append(f"{name}: {json.dumps(fn())}")
+        except Exception as exc:
+            out.append(f"{name}: couldn't read ({exc!r})")
+    out.append(f"Stopped on purpose: {autostart.stopped_on_purpose(data)}")
+    rep = report(port)
+    out.append("")
+    out.append("Check: " + rep['headline'])
+    out += [f"  [{c['state']}] {c['label']}: {c['detail']}" + (f" -> {c['fix']}" if c.get('fix') and c['state'] != 'ok'
+                                                                else '') for c in rep['checks']]
+    for pid in mock_moonraker.printer_ids():
+        if not mock_moonraker.is_real(pid):
+            continue
+        diag = mock_moonraker.diagnostics(pid) or {}
+        out.append("")
+        out.append(f"Printer {diag.get('name') or pid}: connected={diag.get('connected')} door={diag.get('door')} "
+                   f"klippy={diag.get('klippy_state')} last_error={diag.get('last_error')!r} "
+                   f"key_set={diag.get('api_key_set')}")
+        for entry in (diag.get('log') or [])[:25]:
+            out.append("  " + json.dumps(entry, default=str)[:300])
+    for name in ('launcher.log', 'background.log', 'launcher-output.log', 'server.log', 'background-start.log'):
+        text = _tail(os.path.join(data, 'logs', name))
+        if text:
+            out += ["", f"--- {name} (last lines) ---", text]
+    last = last_update(data)
+    if last:
+        out += ["", f"Last update: {json.dumps(last)}"]
+    return _SECRET.sub(lambda m: m.group(1) + '[hidden]', '\n'.join(out))

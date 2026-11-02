@@ -244,8 +244,10 @@
     box.checked = !!(a && a.on);
     $('da-autostart-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !a ? 'Loading…'
       : !a.supported ? 'This system has no sign-in start list Deja Vu1 knows how to use.'
-      : a.on ? 'On. Deja Vu1 starts when you sign in, without opening a browser; open the dashboard or the installed app when you want it.'
-      : 'Off. Until you start the launcher, the dashboard address shows an offline page.';
+      : a.on && a.how === 'task' ? 'On. Windows starts Deja Vu1 when you sign in and after the computer wakes, and checks every 5 minutes that it is running, all without a window. Settings › Version & updates › Stop keeps it stopped until you start it again or restart the computer.'
+      : a.on && a.keeps_running ? 'On. Deja Vu1 starts when you sign in, without a window, and macOS starts it again if it stops with an error.'
+      : a.on ? 'On. Deja Vu1 starts when you sign in, without opening a browser; open the dashboard or the installed app when you want it.' + (a.note ? ' ' + a.note : '')
+      : 'Off. After a restart, Deja Vu1 waits until you start it: the offline page has a Start button for that.';
   }
   async function saveAutostart(on) {
     const r = await postJSON('/api/app/autostart', { on });

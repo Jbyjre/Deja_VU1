@@ -301,6 +301,7 @@ window.Versions = (() => {
     $('app-safety').disabled = demo;
     $('app-stop').disabled = demo || !info;
     $('app-ready').disabled = demo || !info;
+    $('app-report').disabled = demo || !info;
     $('vc-manage-note').textContent = demo ? 'Public demo only.' : !info ? '' : !launcher ? `Restart and Repair: ${launcherOnly}`
       : git ? 'Repair a GitHub Desktop copy there: Repository, then Discard all changes.' : '';
   }
@@ -331,6 +332,23 @@ window.Versions = (() => {
       $('vc-fix').open = true;
     }
     btn.disabled = offline();
+  };
+  $('app-report').onclick = async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const r = await postJSON('/api/app/report', {});
+    btn.disabled = offline();
+    if (!r.ok) { toast(r.body.error || 'The report couldn’t be made', 'bad'); return; }
+    const box = $('app-ready-box');
+    box.hidden = false;
+    box.className = 'vc-ready';
+    box.innerHTML = '<h4>Report for help</h4><p>Copied. Paste it into your message. Keys and passwords are left out.</p><textarea class="vc-report" readonly rows="8"></textarea>';
+    const area = box.querySelector('textarea');
+    area.value = r.body.text;
+    try { await navigator.clipboard.writeText(r.body.text); } catch (_) {
+      area.focus(); area.select();
+      box.querySelector('p').textContent = 'Press Ctrl+C (Cmd+C on a Mac) to copy it, then paste it into your message. Keys and passwords are left out.';
+    }
   };
   function showReady(rep) {
     const box = $('app-ready-box'), mark = { ok: '✓', note: '!', bad: '✗' };

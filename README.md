@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.14.0** ([what's new](#whats-new-in-0140) · [every version](CHANGELOG.md)).
+**Latest named release: 0.15.0** ([what's new](#whats-new-in-0150) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -130,9 +130,9 @@ stay open.
 
 If your Mac says the `python3` command needs the command line developer tools,
 click **Install**, wait for it to finish, then paste the block again. That is
-how macOS adds Python. Keep the Terminal window open while you use Deja Vu1.
-Next time, double-click `start-mac.command` in **Documents → Deja_VU1**. To have it start by itself whenever you sign in, turn on
-**Settings → Desktop app → Start Deja Vu1 when this computer starts**.
+how macOS adds Python. You can close the Terminal window afterwards: Deja Vu1 keeps
+running without it and starts by itself whenever you sign in (**Settings → Desktop app**
+turns that off). To start it by hand, double-click `start-mac.command` in **Documents → Deja_VU1**.
 
 The same block works on **Linux and a Raspberry Pi**.
 
@@ -236,8 +236,10 @@ Linux) window. It starts Deja Vu1 in `Documents` if it isn't running. Then that
 window shows **Deja Vu1 is ready and fully working**, with one line each for the
 address, the page, the program, its files, demo data, every printer you added,
 saved data and updates. If something is wrong it names it and prints the next
-block to paste. Leave the window open: closing it stops Deja Vu1. The same
-blocks are on the offline page and in **Settings → Version & updates**.
+block to paste. You can close the window afterwards: Deja Vu1 keeps running.
+The same blocks are on the offline page and in **Settings → Version & updates**.
+Since 0.15.0 the offline page first reconnects by itself, then offers a
+**Start Deja Vu1** button, so the blocks are rarely needed.
 
 #### Windows: start and check in one paste
 
@@ -340,6 +342,23 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
   and idle".
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new in 0.15.0
+
+- **Every button gets its answer again.** Started without a window, 0.14.0 lost the
+  answer to every button (moving, homing, adding a printer), so buttons asked
+  whether the dashboard server was running. Fixed, and reproduced and checked on
+  Linux; what Deja Vu1 writes now goes to files in `backend/data/logs`.
+- **Always there.** Every way of starting it runs Deja Vu1 without a window. On
+  Windows, Task Scheduler starts it at sign-in and after waking and checks every
+  5 minutes; a stuck Deja Vu1 restarts after about 2 minutes. Tested on Linux;
+  Windows and macOS are not tested yet.
+- **The offline page is a last resort.** It reconnects by itself first, then offers
+  a **Start Deja Vu1** button; the paste-in commands come last.
+- **A live camera.** A printer's own camera shows as a live picture, up to 15 a
+  second, and Deja Vu1 reaches the printer on port 7125 or its web port 80.
+  Not yet tried on a physical U1.
+- **Copy a report for help** in Settings → Version & updates.
 
 ## What's new in 0.14.0
 
@@ -877,7 +896,8 @@ recorded static demo passed at both widths.
 | Different per-head heights | External Linux engine; actual model extrusion and clear pre-flight | No physical mixed-nozzle print; Windows/macOS setup unverified |
 | Plate editing and conversion | Transforms, source-preserving saves, per-object wall paths; all three selected fixture plates slice | Complete vendor textures, subdivided paint and per-part semantics |
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
-| Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests | Physical cameras and simultaneous real printers |
+| Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
+| Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
 | App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested. 0.13.7: Install as a background job with progress, the launcher surviving a failed apply, the launch id and the ready check are tested on Linux, including a real install of the published 0.13.6 release with a stand-in printer connected and a reload mid-download. The Windows paste blocks, GitHub Desktop's own git and macOS have not been run yet |

@@ -112,8 +112,7 @@ class RealPrinterAPI(unittest.TestCase):
 class TestReading(RealPrinterAPI):
     def test_selected_stock_camera_is_real_and_module_gated(self):
         self.addCleanup(stock_camera.stop_all)
-        with patch.object(stock_camera, 'WARMUP_SECONDS', 0):
-            status, picture = self.request('/api/camera/snapshot?printer=' + self.pid)
+        status, picture = self.request('/api/camera/snapshot?printer=' + self.pid)
         self.assertEqual(status, 200)
         self.assertIsInstance(picture, bytes)
         self.assertTrue(picture.startswith(b'\xff\xd8'))
@@ -122,6 +121,24 @@ class TestReading(RealPrinterAPI):
         status, body = self.request('/api/camera/snapshot?printer=' + self.pid)
         self.assertEqual(status, 403)
         self.assertTrue(body.get('module_disabled'))
+
+    def test_live_camera_is_one_continuous_stream_of_pictures(self):
+        # The Printer page's camera: one MJPEG stream instead of a request per picture.
+        self.addCleanup(stock_camera.stop_all)
+        with urlopen(self.base + '/api/camera/live?printer=' + self.pid, timeout=10) as resp:
+            self.assertTrue(resp.headers['Content-Type'].startswith('multipart/x-mixed-replace; boundary=dvframe'))
+            self.assertEqual(resp.readline(), b'--dvframe\r\n')
+            self.assertEqual(resp.readline(), b'Content-Type: image/jpeg\r\n')
+            size = int(resp.readline().split(b':')[1])
+            self.assertEqual(resp.readline(), b'\r\n')
+            picture = resp.read(size)
+        self.assertTrue(picture.startswith(b'\xff\xd8') and picture.endswith(b'\xff\xd9'))
+        # A simulated printer has no live stream (the page shows single demo pictures), and
+        # nothing is ever invented without a printer.
+        for query in ('printer=u1-garage&demo=1', 'printer=u1-garage'):
+            status, body = self.request('/api/camera/live?' + query)
+            self.assertIn(body, (NO_PRINTER, {"error": "Live pictures come from a real printer. The demo shows "
+                                                       "single pictures"}))
 
     def test_camera_never_invents_a_picture_without_printer_or_demo(self):
         status, body = self.request('/api/camera/snapshot?printer=u1-garage')

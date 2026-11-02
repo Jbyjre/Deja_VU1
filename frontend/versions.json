@@ -2,6 +2,44 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.15.0",
+      "date": "2026-11-02",
+      "name": "Always there",
+      "published": true,
+      "summary": "Every button gets its answer again when Deja Vu1 runs without a window, Deja Vu1 starts and stays running by itself, and the printer's camera comes as a live picture.",
+      "changes": [
+        "Started without a window, Deja Vu1 0.14.0 lost the answer to every button you pressed, so buttons said the dashboard server might not be running. Every button gets its answer again, and what Deja Vu1 writes goes to files in its logs folder.",
+        "Every way of starting Deja Vu1 (the double-click files and the paste blocks) runs it without a window, so closing a window never stops it.",
+        "On Windows, Deja Vu1 now starts by itself when you sign in and after the computer wakes, and Windows checks every 5 minutes that it is running. Stop in Settings keeps it stopped until you start it again or restart the computer.",
+        "If Deja Vu1 keeps running but stops answering, it is restarted after about 2 minutes. If it stops, it starts again within seconds.",
+        "The page you see when Deja Vu1 isn't answering waits and reconnects by itself first, then offers a Start Deja Vu1 button. The paste-in commands are the last thing on it.",
+        "A printer's own camera shows as a live picture, up to 15 a second, on the Printer page and Overview. The camera starts faster, uses the picture address the printer gives and tries the printer's web port too.",
+        "Deja Vu1 reaches the printer through either port it answers on, 7125 or the web port 80, and switches by itself when one doesn't answer.",
+        "A button whose answer is lost says it isn't known whether the printer got the command, so you check before sending it again.",
+        "Settings, Version & updates, Copy a report for help: version, how Deja Vu1 started, the checks, the printer link and recent notes, ready to paste. Keys and passwords are left out."
+      ],
+      "highlights": [
+        {
+          "title": "Always there",
+          "tab": "modules",
+          "target": "#da-autostart",
+          "text": "Deja Vu1 starts when you sign in and after the computer wakes, with no window to keep open."
+        },
+        {
+          "title": "A live camera",
+          "tab": "control",
+          "target": "#pp-camera-card",
+          "text": "Your printer's camera as a live picture, beside the twin and the controls."
+        },
+        {
+          "title": "Ask for help in one click",
+          "tab": "modules",
+          "target": "#app-report",
+          "text": "Copy a report with what happened on this computer, ready to paste into a message."
+        }
+      ]
+    },
+    {
       "version": "0.14.0",
       "date": "2026-11-01",
       "name": "Your printer, its own page",

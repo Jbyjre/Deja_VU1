@@ -739,6 +739,17 @@ class Endpoint:
             raise ValueError("That port isn't a number between 1 and 65535")
         self.label = f"{self.host}:{self.port}"
 
+    def other_door(self):
+        """
+        The U1's Moonraker answers on two doors: its own port, 7125, and the
+        printer's web server on port 80, which forwards to it (the printer's own
+        web page reaches it that way). The other one, or None.
+        """
+        if self.tls or self.port not in (80, 7125):
+            return None
+        host = f"[{self.host}]" if ":" in self.host else self.host
+        return Endpoint(f"http://{host}" + ("" if self.port == 7125 else ":7125"))
+
     def host_header(self):
         host = f"[{self.host}]" if ":" in self.host else self.host
         default = 443 if self.tls else 80
@@ -1181,12 +1192,20 @@ class MoonrakerPrinter:
 
     def _run(self):
         backoff = 1.0
+        misses = 0
         while not self._stop.is_set():
             began = time.monotonic()
             try:
                 self._connect_once()
             except (PrinterCommandError, ws.ProtocolError, ws.ConnectionClosed, OSError, ValueError) as exc:
                 self._down(str(exc) or exc.__class__.__name__)
+                # Nothing answered on this door (refused, timed out, unreachable): after two tries
+                # in a row, try the printer's other door (port 80 is the one its own web page uses).
+                if isinstance(exc, (OSError, PrinterUnreachable)) and not self._link_up:
+                    misses += 1
+                    if misses >= 2:
+                        misses = 0
+                        self._switch_door()
             except Exception as exc:          # noqa: BLE001 - the connection must keep trying
                 self._down(f"Unexpected error: {exc!r}")
             if time.monotonic() - began > 60:
@@ -1194,6 +1213,15 @@ class MoonrakerPrinter:
             if self._stop.wait(backoff):
                 break
             backoff = min(RECONNECT_MAX, backoff * 2)
+
+    def _switch_door(self):
+        other = self.endpoint.other_door()
+        if other is None:
+            return
+        self._note("trying the printer's other port", error=f"{self.endpoint.label} -> {other.label}")
+        with self.lock:
+            self.endpoint = other
+            self.http.endpoint = other
 
     def _down(self, reason):
         with self.lock:
@@ -1686,6 +1714,7 @@ class MoonrakerPrinter:
         """What a first real connection needs someone to see: state, and every exchange."""
         with self.lock:
             return {"id": self.id, "name": self.name, "url": self.url, "connected": self._link_up,
+                    "door": self.endpoint.label,
                     "connected_at": self._connected_at, "link_lost_at": self._link_lost_at,
                     "last_error": self._last_error, "klippy_state": self._klippy_state or
                     ((self._status.get("webhooks") or {}).get("state")),

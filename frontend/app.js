@@ -614,7 +614,11 @@ async function postJSON(url, payload) {
   } catch (_) {
     // The server stopped, or Wi-Fi dropped. Report it like any refusal so
     // no button is left saying "Sending…" forever.
-    return { ok: false, status: 0, body: { error: "Couldn't reach the dashboard server - is it still running?" } };
+    // A command may have reached the printer before the reply was lost, so say what isn't known.
+    const control = /\/api\/printer\/(control|command|pause|resume|cancel|home)/.test(String(url));
+    return { ok: false, status: 0, lost: true, body: { error: control
+      ? 'Deja Vu1 didn\u2019t answer, so it isn\u2019t known whether the printer got this. Check the printer before sending it again'
+      : 'Deja Vu1 didn\u2019t answer. It may be restarting; try again in a moment' } };
   }
   const body = await response.json().catch(() => ({}));
   if (response.status === 401 && body.pairing_required) showPairGate();
@@ -1630,7 +1634,8 @@ function renderControlTab(state) {
   if (gcodeInput.disabled) gcodeInput.disabled = false;
   if (gcodeSend.disabled) gcodeSend.disabled = false;
   gcodeSend.onclick = () => sendGcode();
-  gcodeInput.onkeydown = (e) => { if (e.key === 'Enter') sendGcode(); };
+  gcodeInput.onkeydown = gcodeKeys;
+  gcodeSuggestions(state);
 
   // Build the temperature row once, then only update the numbers - four
   // live updates a second must never wipe out a target being typed.
@@ -1906,10 +1911,62 @@ async function controlAction(action, button) {
   return outcome;
 }
 
+/* Console helpers: Up and Down bring back earlier commands (kept in this browser,
+ * newest first, at most 50), and the box suggests the printer's own macros and the
+ * common commands with what each does. */
+const GCODE_HINTS = [
+  ['G28', 'Home all axes'], ['G28 X Y', 'Home X and Y'], ['G28 Z', 'Home Z'], ['M84', 'Motors off'],
+  ['G90', 'Absolute moves'], ['G91', 'Relative moves'], ['G1 Z10 F600', 'Move Z to 10 mm'],
+  ['M104 S210', 'Nozzle to 210 °C'], ['M140 S60', 'Bed to 60 °C'], ['M106 S255', 'Part fan full'], ['M107', 'Part fan off'],
+  ['M220 S100', 'Speed 100%'], ['M221 S100', 'Flow 100%'], ['BED_MESH_CALIBRATE', 'Measure the bed'],
+  ['SET_PRESSURE_ADVANCE ADVANCE=0.04', 'Pressure advance'], ['QUERY_ENDSTOPS', 'Endstop states'],
+  ['GET_POSITION', 'Where the head is'], ['STATUS', 'Klipper status'], ['HELP', 'Every command the printer knows']
+];
+let gcodeHistory = null, gcodeAt = -1;
+function gcodeHistoryList() {
+  if (!gcodeHistory) {
+    try { gcodeHistory = JSON.parse(localStorage.getItem('dejavu1.gcode.history') || '[]'); } catch (_) { gcodeHistory = []; }
+    if (!Array.isArray(gcodeHistory)) gcodeHistory = [];
+  }
+  return gcodeHistory;
+}
+function rememberGcode(command) {
+  const list = gcodeHistoryList().filter(c => c !== command);
+  list.unshift(command);
+  gcodeHistory = list.slice(0, 50);
+  gcodeAt = -1;
+  try { localStorage.setItem('dejavu1.gcode.history', JSON.stringify(gcodeHistory)); } catch (_) { /* a convenience only */ }
+}
+function gcodeKeys(e) {
+  if (e.key === 'Enter') { sendGcode(); return; }
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const list = gcodeHistoryList();
+  if (!list.length) return;
+  e.preventDefault();
+  gcodeAt = Math.max(-1, Math.min(list.length - 1, gcodeAt + (e.key === 'ArrowUp' ? 1 : -1)));
+  e.currentTarget.value = gcodeAt < 0 ? '' : list[gcodeAt];
+}
+function gcodeSuggestions(state) {
+  const input = $('gcode-input');
+  let list = $('gcode-hints');
+  if (!list) {
+    list = document.createElement('datalist');
+    list.id = 'gcode-hints';
+    input.after(list);
+    input.setAttribute('list', 'gcode-hints');
+  }
+  const macros = ((state && state.tuning && state.tuning.macros) || []).map(m => [typeof m === 'string' ? m : m.name, 'Printer macro']);
+  const html = [...macros, ...GCODE_HINTS, ...gcodeHistoryList().slice(0, 10).map(c => [c, 'Sent before'])]
+    .filter((h, i, all) => h[0] && all.findIndex(x => x[0] === h[0]) === i)
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
+  if (list.dataset.html !== html) { list.innerHTML = html; list.dataset.html = html; }
+}
+
 async function sendGcode() {
   const input = $('gcode-input');
   const command = input.value.trim();
   if (!command) return;
+  rememberGcode(command);
   const outcome = await runCommand($('gcode-send'), '/api/printer/control/gcode', { command },
     { sending: 'Sending…', done: `Sent ${command}`, failed: `${command} failed` });
   if (outcome.ok) input.value = '';
@@ -2620,13 +2677,16 @@ function serverStrip(text, help) {
     const el = document.createElement('div');
     el.className = 'server-lost';
     el.setAttribute('role', 'status');
-    el.innerHTML = '<b></b> <span></span> <a href="offline.html">How to start it again</a>';
+    el.innerHTML = '<b></b> <span></span> <a class="sl-start" href="deja-vu1://start" hidden>Start Deja Vu1</a> <a href="offline.html">How to start it again</a>';
     document.body.appendChild(el);
     serverWatch.el = el;
   }
   serverWatch.el.querySelector('b').textContent = text;
   serverWatch.el.querySelector('span').textContent = help;
-  serverWatch.el.querySelector('a').hidden = !help.includes('start');
+  const longGone = help.includes('start');
+  serverWatch.el.querySelector('a[href="offline.html"]').hidden = !longGone;
+  // The start link only works on the computer Deja Vu1 runs on (it registers it there).
+  serverWatch.el.querySelector('.sl-start').hidden = !longGone || !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   serverWatch.el.hidden = false;
 }
 async function watchServer() {

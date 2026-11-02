@@ -31,7 +31,10 @@ class BackgroundStart(unittest.TestCase):
         self.answers = iter([None, None, "0.14.0", "0.14.0", "0.14.0"])
         self.patches = [mock.patch.object(self.start, "already_running", side_effect=lambda: next(self.answers, "0.14.0")),
                         mock.patch.object(self.start, "show_ready"), mock.patch.object(self.start, "open_when_ready"),
-                        mock.patch.object(self.start.time, "sleep")]
+                        mock.patch.object(self.start.time, "sleep"),
+                        # The real one makes this test process's own output go through a thread.
+                        mock.patch.object(self.start, "quiet_console"),
+                        mock.patch.dict(os.environ, {"DEJAVU_NO_REGISTER": "1"})]
         for p in self.patches:
             p.start()
             self.addCleanup(p.stop)
@@ -39,7 +42,7 @@ class BackgroundStart(unittest.TestCase):
     def run_it(self, os_name):
         with mock.patch.object(self.start.subprocess, "Popen") as popen, mock.patch.object(self.start.os, "name", os_name), \
                 mock.patch.object(self.start.sys, "argv", ["start.py", "--background"]), \
-                mock.patch.dict(os.environ, {"DEJAVU_NO_BROWSER": "1"}):
+                mock.patch.dict(os.environ, {"DEJAVU_NO_BROWSER": "1", "DEJAVU_NO_REGISTER": "1"}):
             code = self.start.start_in_background()
         return code, popen
 
@@ -47,7 +50,8 @@ class BackgroundStart(unittest.TestCase):
         code, popen = self.run_it("posix")
         self.assertEqual(code, 0)
         args, kwargs = popen.call_args
-        self.assertTrue(args[0][-1].endswith("start.py"))
+        self.assertTrue(args[0][-2].endswith("start.py"))
+        self.assertEqual(args[0][-1], "--foreground")          # the launcher itself, in its own session
         self.assertTrue(kwargs["start_new_session"])         # closing Terminal sends no hang-up to it
         self.assertEqual(kwargs["env"]["DEJAVU_NO_BROWSER"], "1")
         self.assertEqual(kwargs["stdin"], self.start.subprocess.DEVNULL)
@@ -58,6 +62,45 @@ class BackgroundStart(unittest.TestCase):
         kwargs = popen.call_args[1]
         self.assertEqual(kwargs["creationflags"] & 0x00000008, 0x00000008)     # DETACHED_PROCESS
         self.assertNotIn("start_new_session", kwargs)
+
+    def test_windows_leaves_the_windows_job_and_still_starts_where_a_job_forbids_that(self):
+        calls = []
+
+        def popen(command, **kwargs):
+            calls.append(kwargs["creationflags"])
+            if kwargs["creationflags"] & 0x01000000:
+                raise PermissionError("Access is denied")
+            return mock.Mock()
+        with mock.patch.object(self.start.subprocess, "Popen", side_effect=popen), \
+                mock.patch.object(self.start.os, "name", "nt"), \
+                mock.patch.dict(os.environ, {"DEJAVU_NO_BROWSER": "1", "DEJAVU_NO_REGISTER": "1"}):
+            self.assertEqual(self.start.start_in_background(), 0)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[0] & 0x01000000)                  # CREATE_BREAKAWAY_FROM_JOB first
+        self.assertFalse(calls[1] & 0x01000000)
+        self.assertTrue(calls[1] & 0x08000000)                  # CREATE_NO_WINDOW either way
+
+    def test_every_way_in_starts_it_apart_from_the_window(self):
+        with mock.patch.object(self.start, "start_in_background", return_value=0) as bg, \
+                mock.patch.object(self.start, "supervise", return_value=0) as sup:
+            for args in ([], ["--background"], ["--background", "--autostart"], ["--from-link"]):
+                self.start.main(args)
+            self.assertEqual(bg.call_count, 4)
+            sup.assert_not_called()
+            self.start.main(["--foreground"])
+            sup.assert_called_with()
+            self.start.main(["--ensure"])
+            sup.assert_called_with(ensure=True)
+
+    def test_the_five_minute_check_leaves_a_stopped_copy_stopped(self):
+        sys_path = str(ROOT / "backend")
+        import sys
+        sys.path.insert(0, sys_path)
+        import autostart
+        autostart.mark_stopped(self.start.DATA_DIR)
+        self.assertEqual(self.start.supervise(ensure=True), 0)
+        self.assertTrue(autostart.stopped_on_purpose(self.start.DATA_DIR))
+        self.start.already_running.assert_not_called()
 
     def test_a_running_copy_is_only_checked(self):
         self.answers = iter(["0.14.0"] * 5)

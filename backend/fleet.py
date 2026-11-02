@@ -134,6 +134,13 @@ def moonraker_port_variant(url):
     return url + ":7125"
 
 
+def web_port_variant(url):
+    """The same printer through its web server on port 80, for an address on Moonraker's port 7125 (else None)."""
+    url = str(url or "").rstrip("/")
+    m = re.match(r"^(http://[^/]+?):7125$", url)
+    return m.group(1) if m else None
+
+
 def check_url(url):
     """A Moonraker address the dashboard can connect to, or a reason in words."""
     if not _URL.match(str(url or "").strip()):

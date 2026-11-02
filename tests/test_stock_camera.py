@@ -15,9 +15,6 @@ class StockCamera(unittest.TestCase):
         self.fake = FakeMoonraker(api_key='private-key')
         self.addCleanup(self.fake.close)
         self.addCleanup(stock_camera.stop_all)
-        self.warm = patch.object(stock_camera, 'WARMUP_SECONDS', 0)
-        self.warm.start()
-        self.addCleanup(self.warm.stop)
         self.printer = mc.MoonrakerPrinter('camera-test', 'Bench', self.fake.url, api_key='private-key')
 
     def test_authenticated_picture_and_stop(self):
@@ -63,6 +60,44 @@ class StockCamera(unittest.TestCase):
         picture = stock_camera.snapshot(self.printer)
         self.assertTrue(picture.startswith(b'\xff\xd8fake-camera-fixture'))
         self.assertEqual(stock_camera._sessions['camera-test'].source, 'monitor')
+
+    def test_the_picture_address_the_printer_names_is_used(self):
+        # The start reply's "url" says where the pictures are.
+        host, port = self.fake.url.split('//')[1].split(':')
+        self.fake.camera_url = f'http://{host}:{port}/webcam/snapshot.jpg'
+        self.fake.webcam_picture = b'\xff\xd8named-by-the-printer\xff\xd9'
+        first = stock_camera.snapshot(self.printer)
+        deadline = time.monotonic() + 3
+        picture = first
+        while picture != self.fake.webcam_picture and time.monotonic() < deadline:
+            time.sleep(0.1)
+            picture = stock_camera.snapshot(self.printer)
+        self.assertEqual(picture, self.fake.webcam_picture)
+
+    def test_a_named_address_on_another_machine_is_ignored(self):
+        self.fake.camera_url = 'http://203.0.113.9/steal.jpg'
+        for _ in range(3):
+            picture = stock_camera.snapshot(self.printer)
+            time.sleep(0.1)
+        self.assertTrue(picture.startswith(b'\xff\xd8fake-camera-fixture'))
+
+    def test_a_slow_start_reply_does_not_hold_up_the_picture(self):
+        # The printer's repeater can take up to 10 s to answer; the picture is asked for meanwhile.
+        self.fake.camera_reply_delay = 3
+        started = time.monotonic()
+        picture = stock_camera.snapshot(self.printer)
+        self.assertLess(time.monotonic() - started, 2.5)
+        self.assertTrue(picture.startswith(b'\xff\xd8'))
+
+    def test_stop_names_the_domain_and_req_id(self):
+        stock_camera.snapshot(self.printer)
+        stock_camera.stop_all()
+        deadline = time.monotonic() + 2
+        while len(self.fake.camera_params) < 2 and time.monotonic() < deadline:
+            time.sleep(0.05)
+        stop = self.fake.camera_params[-1]
+        self.assertEqual(stop['domain'], 'lan')
+        self.assertIsInstance(stop['req_id'], int)
 
     def test_printers_do_not_share_camera_sessions(self):
         other = FakeMoonraker()

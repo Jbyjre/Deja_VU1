@@ -28,6 +28,40 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.15.0 (2 November 2026): Always there
+
+- Started without a window, Deja Vu1 0.14.0 lost the answer to every button you pressed, so buttons said the dashboard server might not be running. Every button gets its answer again, and what Deja Vu1 writes goes to files in its logs folder.
+- Every way of starting Deja Vu1 (the double-click files and the paste blocks) runs it without a window, so closing a window never stops it.
+- On Windows, Deja Vu1 now starts by itself when you sign in and after the computer wakes, and Windows checks every 5 minutes that it is running. Stop in Settings keeps it stopped until you start it again or restart the computer.
+- If Deja Vu1 keeps running but stops answering, it is restarted after about 2 minutes. If it stops, it starts again within seconds.
+- The page you see when Deja Vu1 isn't answering waits and reconnects by itself first, then offers a Start Deja Vu1 button. The paste-in commands are the last thing on it.
+- A printer's own camera shows as a live picture, up to 15 a second, on the Printer page and Overview. The camera starts faster, uses the picture address the printer gives and tries the printer's web port too.
+- Deja Vu1 reaches the printer through either port it answers on, 7125 or the web port 80, and switches by itself when one doesn't answer.
+- A button whose answer is lost says it isn't known whether the printer got the command, so you check before sending it again.
+- Settings, Version & updates, Copy a report for help: version, how Deja Vu1 started, the checks, the printer link and recent notes, ready to paste. Keys and passwords are left out.
+
+**What went wrong, and the evidence.** The owner reported (2 November 2026) that
+after pasting the Start block the dashboard loaded, but moving or homing "didn't go
+through", connecting kept asking whether the dashboard server was on, and a reload
+showed the offline page. The 0.14.0 background start runs the server with
+`pythonw.exe` and no console on Windows, so Python starts it with no output streams
+(`sys.stderr` is `None`). The server wrote one line per command to `sys.stderr`
+while sending the reply, so every command (POST) raised an error and the browser's
+connection closed with no answer; pages and readings (GET) were not logged and kept
+working. Reproduced on Linux by starting the server with its output streams closed:
+`POST /api/printer/control/jog` got no reply (curl status 000), and the same request
+answers normally after this change (`tests/test_no_window.py`). Also found: on Windows
+the server's "reuse address" option lets a second copy take the same port at the same
+time; it now holds the port exclusively. Not yet known: whether the owner's reload
+landed on the offline page because the server had stopped (the new logs and Copy a
+report for help will show it). Linux checks made here: a killed server was back in
+2 seconds, a frozen one restarted after 2 minutes 22 seconds, Stop was respected by
+the 5-minute check, `deja-vu1://start` started Deja Vu1 through the desktop's own link
+handler, and the offline page in Chromium went back to the dashboard by itself.
+Not tested on Windows or macOS: the Task Scheduler task, the Windows link
+registration, the macOS link app and LaunchAgent restart, Quick Edit switching off.
+Not tried on a physical U1: the camera changes and the port switching.
+
 ## 0.14.0 (1 November 2026): Your printer, its own page
 
 - Each printer has its own page (Printer, where Control was): the 3D twin with the camera and a Move pad beside it, temperatures with PLA, PETG and TPU warm-up buttons, extrude and retract, speed, flow, part fan and pressure advance, the printer's own macros and bed mesh, motors off, the G-code console and an emergency stop. Opening a printer goes there.

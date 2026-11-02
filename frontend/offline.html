@@ -1,11 +1,57 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f0f1f5"><title>Deja Vu1 · Offline</title><style>body{font:18px/1.6 system-ui,sans-serif;background:#f0f1f5;color:#232d3d;max-width:640px;margin:8vh auto;padding:0 16px 28px}h1{line-height:1.15;margin-bottom:.4em}h2{font-size:1.05em;margin:1.6em 0 .3em}a.btn{display:inline-block;padding:12px 20px;background:#164fc9;color:white;border-radius:12px;text-decoration:none;margin:0 8px 8px 0}a.alt{background:#fff;color:#164fc9;border:1px solid #c5d3f2}code{font-size:.92em;background:#e2e5ec;padding:1px 6px;border-radius:6px}ol{padding-left:1.2em}#check{color:#4b5568}.note{background:#fff;border:1px solid #c5d3f2;border-radius:14px;padding:12px 16px}.os{display:flex;gap:6px;margin:8px 0}.os button,.copy{font:inherit;font-size:15px;padding:6px 14px;border-radius:10px;border:1px solid #c5d3f2;background:#fff;color:#164fc9;cursor:pointer}.os button[aria-pressed=true]{background:#164fc9;color:#fff}.term{position:relative;background:#1f2533;color:#eef1f6;border-radius:14px;margin:6px 0 14px}.term pre{margin:0;padding:48px 16px 16px;overflow-x:auto;font:500 12.5px/1.6 ui-monospace,Menlo,Consolas,monospace;white-space:pre}.term .copy{position:absolute;top:8px;right:8px}.term code{background:none;padding:0;border-radius:0;font-size:1em;color:inherit}.term[hidden]{display:none}details{margin-top:8px}summary{cursor:pointer;color:#164fc9}small{color:#4b5568}</style>
-<h1 id="title">Your dashboard is out of reach.</h1>
-<p id="lead">No live printer readings are available. No controls have been sent or queued.</p>
-<p class="note" id="updating" hidden>Deja Vu1 is installing an update and restarting. This usually takes under a minute. This page goes back to your dashboard by itself.</p>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#eef0f4"><meta name="color-scheme" content="light dark"><title>Deja Vu1 · Reconnecting</title>
+<style>
+:root{--bg:#eef0f4;--card:rgba(255,255,255,.78);--ink:#1f2836;--soft:#4a5466;--line:rgba(31,40,54,.12);--accent:#1d4fc4;--accent-ink:#fff;--ok:#1f7a4d;--term:#1d2330}
+@media (prefers-color-scheme:dark){:root{--bg:#12161d;--card:rgba(30,36,46,.82);--ink:#e9edf3;--soft:#a9b2c1;--line:rgba(233,237,243,.14);--accent:#7aa2ff;--accent-ink:#0d1320;--ok:#5fd09a;--term:#0b0e13}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font:17px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);display:flex;justify-content:center;padding:7vh 16px 32px;
+background-image:radial-gradient(var(--line) 1px,transparent 1.2px);background-size:22px 22px}
+main{width:100%;max-width:640px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:26px 26px 22px;box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.08);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4)}
+h1{font-size:clamp(1.45rem,3vw + .8rem,1.9rem);line-height:1.15;margin:0 0 .35em;text-wrap:balance}
+h2{font-size:1.02em;margin:1.4em 0 .3em}
+p{margin:.5em 0}
+.lead{color:var(--soft)}
+.pulse{display:inline-flex;gap:6px;vertical-align:middle;margin-right:10px}
+.pulse i{width:9px;height:9px;border-radius:50%;background:var(--accent);opacity:.25;animation:p 1.2s infinite}
+.pulse i:nth-child(2){animation-delay:.2s}.pulse i:nth-child(3){animation-delay:.4s}
+@keyframes p{40%{opacity:1}}
+.btn{display:inline-flex;align-items:center;min-height:44px;padding:10px 20px;border-radius:999px;border:1px solid transparent;background:var(--accent);color:var(--accent-ink);font-family:inherit;font-size:16px;font-weight:600;line-height:1.2;text-decoration:none;cursor:pointer;margin:6px 8px 6px 0}
+.btn.alt{background:transparent;color:var(--accent);border-color:var(--line)}
+.btn:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{border-left:3px solid var(--accent);padding:4px 0 4px 12px;color:var(--soft)}
+.ok{color:var(--ok)}
+code{font-size:.9em;background:var(--line);padding:1px 6px;border-radius:6px}
+ol{padding-left:1.2em;margin:.4em 0}
+.os{display:flex;gap:6px;margin:8px 0}
+.os button,.copy{font:inherit;font-size:15px;min-height:32px;padding:4px 14px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--accent);cursor:pointer}
+.os button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.term{position:relative;background:var(--term);color:#eef1f6;border-radius:14px;margin:6px 0 14px}
+.term pre{margin:0;padding:48px 16px 16px;overflow-x:auto;font:500 12.5px/1.6 ui-monospace,Menlo,Consolas,monospace;white-space:pre}
+.term .copy{position:absolute;top:8px;right:8px;color:#cfe0ff;border-color:rgba(255,255,255,.25)}
+.term code{background:none;padding:0;border-radius:0;font-size:1em;color:inherit}
+.term[hidden],[hidden]{display:none!important}
+details{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;color:var(--accent);font-weight:600;min-height:32px}
+small,#check{color:var(--soft)}
+@media (prefers-reduced-motion:reduce){.pulse i{animation:none;opacity:.7}}
+@media (prefers-reduced-transparency:reduce){.card{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media (prefers-contrast:more){.card{border:2px solid var(--ink)}.btn.alt{border:2px solid var(--accent)}}
+</style>
+<main><div class="card">
+<h1 id="title"><span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>Reconnecting to Deja Vu1&hellip;</h1>
+<p class="lead" id="lead">This usually takes a few seconds, for example after an update or when the computer wakes. This page goes back to your dashboard by itself.</p>
+<p class="note" id="updating" hidden>Deja Vu1 is installing an update and restarting. This usually takes under a minute.</p>
+<p id="check" aria-live="polite"></p>
+
 <div id="here" hidden>
-<p>The Deja Vu1 program on this computer is stopped or still starting. The dashboard, demo data included, comes from that program, so it has to be running.</p>
-<h2>Start it again</h2>
-<ol><li>Open your Deja Vu1 folder.</li><li>Double-click <code>start-windows.bat</code> (Windows), <code>start-mac.command</code> (Mac) or <code>start-linux.sh</code> (Linux).</li><li>Leave the window that opens running. Closing it stops the dashboard.</li></ol>
+<div id="start" hidden>
+<p><button class="btn" id="start-btn" type="button">Start Deja Vu1</button> <a class="btn alt" href="./?dashboard">Try again</a></p>
+<p id="start-note"><small>Your browser asks whether to open Deja Vu1. Choose <strong>Open</strong>. Deja Vu1 starts in the background, and this page goes back to your dashboard by itself.</small></p>
+<p class="note" id="start-late" hidden>Nothing happened? The button works once Deja Vu1 0.15.0 or newer has run on this computer. Use one of the ways below once, and from then on Deja Vu1 starts by itself.</p>
+</div>
+<details id="more"><summary>Other ways to start it</summary>
+<h2>Double-click the launcher</h2>
+<ol><li>Open your Deja Vu1 folder (in Documents, if you used the paste block).</li><li>Double-click <code>start-windows.bat</code> (Windows), <code>start-mac.command</code> (Mac) or <code>start-linux.sh</code> (Linux).</li><li>The window that opens says when Deja Vu1 is ready. You can close it then: Deja Vu1 keeps running.</li></ol>
 <h2>Or paste one block</h2>
 <p>Copy this into a new PowerShell window (Windows) or Terminal window (Mac, Linux) and press Enter. It starts Deja Vu1 if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. You can close the window afterwards: Deja Vu1 keeps running, and starts by itself when you sign in.</p>
 <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
@@ -15,7 +61,7 @@ Set-Location $dest
 if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
 <div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
 cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre></div>
-<details><summary>Still not working? Repair the app files</summary>
+<h2>Still not working? Repair the app files</h2>
 <p>This block stops any stuck copy, downloads fresh app files from GitHub, puts them in your Deja Vu1 folder in Documents and starts it. Your settings, printers and files stay.</p>
 <div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
@@ -29,31 +75,47 @@ if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background 
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
 cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
+<p><small>These blocks use the Deja Vu1 folder in Documents. If yours is somewhere else, double-click the launcher in that folder instead. The address is <code>http://localhost:8000</code> unless you chose another port. What Deja Vu1 wrote while it ran is in its folder under <code>backend/data/logs</code>.</small></p>
 </details>
-<p><small>These blocks use the Deja Vu1 folder in Documents. If yours is somewhere else, double-click the launcher in that folder instead. The address is <code>http://localhost:8000</code> unless you chose another port.</small></p>
-<p>So this doesn&rsquo;t happen again: in Deja Vu1, open <strong>Settings &rarr; Desktop app</strong> and turn on <strong>Start Deja Vu1 when this computer starts</strong>.</p>
 </div>
-<div id="away"><p>Keep the computer running Deja Vu1 awake (Deja Vu1 runs in the background, no window needed), and reconnect to your home Wi-Fi or your private remote connection. On that computer, Settings &rarr; Version &amp; updates has a block that starts Deja Vu1 and checks it.</p></div>
-<p id="check" aria-live="polite"></p>
-<a class="btn" href="./?dashboard">Try again</a>
-<a class="btn alt" href="https://deja-vu1.jmath1110.workers.dev/?demo" target="_blank" rel="noopener">Explore with demo data meanwhile</a>
-<p><small>The demo runs online from the published copy, with the same screens and a simulated printer farm. It needs an internet connection.</small></p>
-<p><small>This page only explains the connection problem. It does not show saved printer readings.</small></p>
+<div id="away" hidden>
+<p>The computer that runs Deja Vu1 isn&rsquo;t answering. Check that it is switched on and awake, and that this phone or computer is on the same Wi-Fi or your private remote connection. Deja Vu1 on that computer runs without a window and starts by itself when you sign in there.</p>
+<p><a class="btn" href="./?dashboard">Try again</a></p>
+</div>
+<details><summary>While you wait</summary>
+<p><a class="btn alt" href="https://deja-vu1.jmath1110.workers.dev/?demo" target="_blank" rel="noopener">Explore with demo data</a></p>
+<p><small>The demo runs online from the published copy, with the same screens and a simulated printer farm. It needs an internet connection. This page shows no saved printer readings, and nothing was sent to a printer.</small></p>
+</details>
+</div></main>
 <script>
 (function () {
   var local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-  document.getElementById('here').hidden = !local;
-  document.getElementById('away').hidden = local;
-  if (local) {
-    document.getElementById('title').textContent = 'Deja Vu1 isn\u2019t running right now.';
-    document.getElementById('lead').textContent = 'Your settings and files are safe, and nothing was sent to a printer.';
-  }
+  var $ = function (id) { return document.getElementById(id); };
+  var began = Date.now(), asked = 0, shown = false;
   var updating = 0;
   try { updating = Number(sessionStorage.getItem('dv-updating')) || 0; } catch (e) { updating = 0; }
-  if (Date.now() - updating < 5 * 60 * 1000) {
-    document.getElementById('updating').hidden = false;
-    document.getElementById('title').textContent = 'Deja Vu1 is restarting.';
+  var isUpdating = Date.now() - updating < 5 * 60 * 1000;
+  if (isUpdating) $('updating').hidden = false;
+  // Calm first: most visits here are a restart that ends within seconds.
+  var patience = isUpdating ? 90000 : 12000;
+  function giveUpWaiting() {
+    if (shown) return;
+    shown = true;
+    document.title = 'Deja Vu1 \u00b7 Not running';
+    $('title').textContent = local ? 'Deja Vu1 isn\u2019t running on this computer.' : 'Your dashboard is out of reach.';
+    $('lead').textContent = local ? 'Your settings and files are safe, and nothing was sent to a printer. Press Start and it\u2019s back in a few seconds.'
+                                  : 'No live printer readings are available. No controls have been sent or queued.';
+    $('here').hidden = !local;
+    $('away').hidden = local;
+    $('start').hidden = !local;
   }
+  $('start-btn').onclick = function () {
+    asked = Date.now();
+    $('start-late').hidden = true;
+    $('check').textContent = 'Starting Deja Vu1\u2026';
+    // The computer runs Deja Vu1's own start link (registered by Deja Vu1 0.15.0 and newer).
+    location.href = 'deja-vu1://start';
+  };
   function pick(os) {
     Array.prototype.forEach.call(document.querySelectorAll('[data-os]'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-os') === os)); });
     Array.prototype.forEach.call(document.querySelectorAll('[data-block]'), function (b) { b.hidden = b.getAttribute('data-block') !== os; });
@@ -68,14 +130,18 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
       else select();
     };
   });
-  var check = document.getElementById('check'), tries = 0;
   function again() {
-    tries++;
-    check.textContent = 'Checking again every 3 seconds. This page goes back to your dashboard by itself when Deja Vu1 answers.';
+    var waited = Date.now() - began;
+    if (waited > patience) giveUpWaiting();
+    if (asked && Date.now() - asked > 25000) { $('start-late').hidden = false; $('more').open = true; $('check').textContent = ''; }
+    else if (shown && !asked) $('check').textContent = 'Checking every few seconds.';
     fetch('/api/modules', { cache: 'no-store' }).then(function (r) {
-      if (r.ok) { try { sessionStorage.removeItem('dv-updating'); } catch (e) {} location.replace('./?dashboard'); }
-      else setTimeout(again, 3000);
-    }).catch(function () { setTimeout(again, tries < 200 ? 3000 : 15000); });
+      if (r.ok) {
+        try { sessionStorage.removeItem('dv-updating'); } catch (e) {}
+        $('check').innerHTML = '<span class="ok">Deja Vu1 is back. Opening your dashboard\u2026</span>';
+        location.replace('./?dashboard');
+      } else setTimeout(again, 2000);
+    }).catch(function () { setTimeout(again, waited < 120000 ? 1500 : waited < 1800000 ? 4000 : 15000); });
   }
   again();
 })();

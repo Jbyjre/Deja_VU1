@@ -13,7 +13,8 @@ import unittest
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
-LAUNCHER_FILES = ('app_updates.py', 'storage.py', 'readiness.py', 'paste_blocks.py')
+LAUNCHER_FILES = ('app_updates.py', 'storage.py', 'readiness.py', 'paste_blocks.py', 'console.py', 'autostart.py',
+                  'launch_link.py')
 SERVER = '''
 import json, os
 from pathlib import Path
@@ -51,10 +52,10 @@ class LauncherProcesses(unittest.TestCase):
                 with socket.socket() as probe:
                     probe.bind(('127.0.0.1', 0))
                     port = probe.getsockname()[1]
-                env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1',
+                env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1', DEJAVU_NO_REGISTER='1',
                            DEJAVU_DATA_DIR=str(root / 'backend/data'))
                 with tempfile.TemporaryFile() as output:
-                    proc = subprocess.Popen([sys.executable, 'start.py'], cwd=root, env=env,
+                    proc = subprocess.Popen([sys.executable, 'start.py', '--foreground'], cwd=root, env=env,
                                             stdout=output, stderr=output, start_new_session=True)
                     try:
                         expected = '0.1.0' if broken else '0.2.0'
@@ -114,9 +115,9 @@ class LauncherRestartsAfterACrash(unittest.TestCase):
             with socket.socket() as probe:
                 probe.bind(('127.0.0.1', 0))
                 port = probe.getsockname()[1]
-            env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1', DEJAVU_DATA_DIR=str(root / 'backend/data'))
+            env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1', DEJAVU_NO_REGISTER='1', DEJAVU_DATA_DIR=str(root / 'backend/data'))
             with tempfile.TemporaryFile() as output:
-                proc = subprocess.Popen([sys.executable, 'start.py'], cwd=root, env=env,
+                proc = subprocess.Popen([sys.executable, 'start.py', '--foreground'], cwd=root, env=env,
                                         stdout=output, stderr=output, start_new_session=True)
                 try:
                     answered = None
@@ -146,9 +147,9 @@ LAUNCH_ID_SERVER = SERVER.replace('"server_pid": os.getpid()', '"server_pid": -1
 
 
 def _start(root, port):
-    env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1', DEJAVU_DATA_DIR=str(root / 'backend/data'))
+    env = dict(os.environ, PORT=str(port), DEJAVU_NO_BROWSER='1', DEJAVU_NO_REGISTER='1', DEJAVU_DATA_DIR=str(root / 'backend/data'))
     output = tempfile.TemporaryFile()
-    proc = subprocess.Popen([sys.executable, 'start.py'], cwd=root, env=env, stdout=output, stderr=output,
+    proc = subprocess.Popen([sys.executable, 'start.py', '--foreground'], cwd=root, env=env, stdout=output, stderr=output,
                             start_new_session=True)
     return proc, output
 
