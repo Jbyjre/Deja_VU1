@@ -91,6 +91,10 @@ PING_INTERVAL = 15.0
 # cannot leave a touchscreen change invisible indefinitely.
 FILAMENT_REQUERY = 30.0
 DEAD_AFTER = 60.0              # nothing heard (not even a pong) for this long: reconnect
+STATUS_CHECK = 2.0             # how often the link looks at whether readings still arrive
+# While a print runs, Klipper's position and file position change all the time, so a status stream
+# silent this long has stalled (the socket can stay open): the client then reads the printer directly.
+QUIET_PRINTING = 5.0
 KLIPPY_RETRY = 2.0             # Moonraker's docs: ask again in 2 s while Klipper starts
 # The longest wait between connection attempts. A try on a home network costs
 # one refused or unanswered connection, so a printer that has just been
@@ -1147,11 +1151,15 @@ class MoonrakerPrinter:
         self._status = {}              # the merged subscription
         self._objects = []             # what printer.objects.list said
         self._is_u1 = None             # print_task_config listed: Snapmaker's U1 Klipper
+        self._machine_type = None      # product_info.machine_type from Snapmaker's Moonraker
         self._config = {}              # kinematics and nozzle from a non-U1 printer's config
         self._extruders = {}           # {"T0": "extruder", ...}
         self._chamber = None
         self._extras = {}
         self._macro_info = None
+        self._last_status_at = None     # the printer's own last status report (monotonic)
+        self._last_data_at = None       # the last reading of any kind, pushed or asked for
+        self._reading_directly = False
         self._subscription = {}
         self._filament_asked = float("-inf")
         self._klippy_state = None
@@ -1295,6 +1303,7 @@ class MoonrakerPrinter:
                 # very next call is refused too, in words.
                 self._note("identify refused (carrying on)", error=str(exc))
             self._need_setup.set()
+            last_ping = time.monotonic()
             while not self._stop.is_set() and reader.is_alive():
                 if self._need_setup.is_set():
                     if self._setup():
@@ -1303,20 +1312,55 @@ class MoonrakerPrinter:
                         self._wake.wait(KLIPPY_RETRY)
                         self._wake.clear()
                         continue
-                self._wake.wait(PING_INTERVAL)
+                self._wake.wait(min(STATUS_CHECK, PING_INTERVAL))
                 self._wake.clear()
                 if conn.closed:
                     break
                 if time.monotonic() - conn.last_rx > DEAD_AFTER:
                     raise PrinterUnreachable(f"Nothing heard from {self.endpoint.label} for "
                                              f"{DEAD_AFTER:g} s - the connection is dead")
-                conn.ping()
-                self._requery_filament()
+                self._catch_up_if_quiet()
+                if time.monotonic() - last_ping >= PING_INTERVAL:
+                    last_ping = time.monotonic()
+                    conn.ping()
+                    self._requery_filament()
             if not self._stop.is_set():
                 raise PrinterUnreachable(self._last_error if not reader.is_alive() else "Connection ended")
         finally:
             conn.close()
             reader.join(timeout=2)
+
+    def _catch_up_if_quiet(self, now=None):
+        """
+        Mid-print, Klipper reports new positions several times a second. If none has come for
+        QUIET_PRINTING seconds while the socket stays open, ask the printer directly, every
+        STATUS_CHECK seconds, until its own reports start again. The page and the twin keep moving.
+        """
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            printing = (self._status.get("print_stats") or {}).get("state") == "printing"
+            quiet = now - (self._last_status_at or now)
+            subscription = dict(self._subscription or {})
+            if not printing or quiet < QUIET_PRINTING or not subscription:
+                self._reading_directly = False
+                return False
+            first = not self._reading_directly
+            self._reading_directly = True
+        if first:
+            self._note("status updates went quiet mid-print; reading the printer directly",
+                       error=f"no update for {quiet:.0f} s")
+        try:
+            result = self._call("printer.objects.query", {"objects": subscription})
+        except PrinterCommandError as exc:
+            self._note("direct reading failed", error=str(exc))
+            return False
+        status = result.get("status") if isinstance(result, dict) else None
+        if isinstance(status, dict):
+            with self.lock:
+                self._merge(status)
+                self._last_data_at = time.monotonic()
+            self.on_change(self.id)
+        return True
 
     def _requery_filament(self, now=None):
         """Ask for print_task_config outright, at most every FILAMENT_REQUERY seconds."""
@@ -1354,13 +1398,17 @@ class MoonrakerPrinter:
         except Exception:                 # noqa: BLE001 - a printer that won't say keeps the typed name
             return
         found = device_name_from(info)
+        product = _obj(_obj(info if isinstance(info, dict) else {}, "system_info"), "product_info")
         with self.lock:
             self.device_name = found
+            # Snapmaker's Moonraker names the model here (u1-moonraker machine.py MACHINE_TYPE): a second
+            # sign of a U1 besides Klipper's print_task_config object.
+            self._machine_type = _str(product.get("machine_type"))
 
     def _setup(self):
         """server.info, then (Klipper willing) list objects and subscribe. True when live."""
         info = self._call("server.info")
-        if self.device_name is None:
+        if self.device_name is None or self._machine_type is None:
             self._read_device_name()
         state = info.get("klippy_state") if isinstance(info, dict) else None
         with self.lock:
@@ -1381,7 +1429,9 @@ class MoonrakerPrinter:
         subscription = {k: v for k, v in _BASE_OBJECTS.items() if k in objects}
         # print_task_config exists only on Snapmaker's U1 Klipper. Any other
         # printer is described from its own config: kinematics and nozzle.
-        is_u1 = "print_task_config" in objects
+        with self.lock:
+            said = (self._machine_type or "").strip().lower()
+        is_u1 = "print_task_config" in objects or said == "snapmaker u1"
         config = {} if is_u1 else self._config_facts(objects)
         subscription.update({name: _EXTRUDER_FIELDS for name in extruders.values()})
         if chamber:
@@ -1406,6 +1456,8 @@ class MoonrakerPrinter:
                             "config_accel": _num(_obj(full, "toolhead").get("max_accel"))}
             self._subscription = subscription
             self._macro_info = None    # read again from the printer's config after each reconnect
+            self._last_status_at = self._last_data_at = time.monotonic()
+            self._reading_directly = False
             self._klippy_state = None if state == "ready" else state
             self._klippy_message = None
             # Merged into what was known before the link dropped, not
@@ -1506,6 +1558,7 @@ class MoonrakerPrinter:
             if isinstance(delta, dict):
                 with self.lock:
                     self._merge(delta)
+                    self._last_status_at = self._last_data_at = time.monotonic()
                 self.on_change(self.id)
         elif method == "notify_klippy_ready":
             with self.lock:
@@ -1620,6 +1673,11 @@ class MoonrakerPrinter:
             if not self._link_up:
                 state["link_lost"] = True
                 state["link_lost_at"] = self._link_lost_at or datetime.now().isoformat(timespec="seconds")
+            elif self._last_data_at is not None:
+                # How fresh the reading is, so the page can say when the printer has gone quiet.
+                state["reading_age_s"] = round(time.monotonic() - self._last_data_at, 1)
+                if self._reading_directly:
+                    state["reading_directly"] = True
             return state
 
     def is_connected(self):
@@ -1754,7 +1812,14 @@ class MoonrakerPrinter:
         """What the Printer page reads on request (printer_extras.py): straight from Moonraker each time."""
         self._require_link()
         if kind == "temperatures":
-            store = self.http.request("GET", "/server/temperature_store", query={"include_monitors": "false"})
+            try:
+                store = self.http.request("GET", "/server/temperature_store", query={"include_monitors": "false"},
+                                          expected=(404,))
+            except PrinterRefused as exc:
+                if getattr(exc, "status", None) != 404:
+                    raise
+                # A Moonraker without its data store keeps no history: the chart fills from live readings.
+                return {"interval_s": 1, "series": [], "note": "This printer keeps no temperature history"}
             return printer_extras.temperatures_from_store(store)
         if kind == "endstops":
             return {"endstops": printer_extras.endstops_from(

@@ -1550,8 +1550,13 @@ const Workshop = (() => {
     // A real printer that hasn't homed doesn't know where its head is, and a dropped link
     // means the drawing shows the last reading: both said in words, never drawn as live.
     const unhomed = typeof state.homed_axes === 'string' && state.homed_axes.length < 3;
+    // A real printer's reading can go quiet with the link still open: say it, never draw it as live.
+    const age = state.reading_age_s, quiet = typeof age === 'number' && age >= 5 && state.state === 'printing';
     setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}` +
-      (state.link_lost ? ' · no live link, last reading shown' : unhomed ? ' · not homed, position unknown' : ''));
+      (state.link_lost ? ' · no live link, last reading shown'
+        : quiet ? ` · no new reading from the printer for ${Math.round(age)} s`
+          : state.reading_directly ? ' · reading the printer directly (its own updates stopped)'
+            : unhomed ? ' · not homed, position unknown' : ''));
   }
 
   /* Where the twin draws the head. While an axis homes, Klipper reports a

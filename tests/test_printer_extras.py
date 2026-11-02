@@ -182,8 +182,7 @@ class TestReal(unittest.TestCase):
 
     def test_no_store_and_no_feeder_are_said_in_words(self):
         self.fake.temperature_store = None
-        with self.assertRaises(Exception):
-            mock_moonraker.printer_reading("temperatures")
+        self.assertEqual(mock_moonraker.printer_reading("temperatures")["series"], [])
         with self.printer.lock:
             self.printer._extras["feeder"] = False
         self.assertIn("doesn't list", mock_moonraker.printer_reading("feeding")["none"])
@@ -191,3 +190,65 @@ class TestReal(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestQuietStream(unittest.TestCase):
+    """A real printer's status stream that stops mid-print while the socket stays open."""
+
+    def setUp(self):
+        fast(self)
+        import moonraker_client as mc
+        saved = (mc.STATUS_CHECK, mc.QUIET_PRINTING)
+        mc.STATUS_CHECK, mc.QUIET_PRINTING = 0.2, 0.6
+        self.addCleanup(lambda: setattr(mc, "STATUS_CHECK", saved[0]) or setattr(mc, "QUIET_PRINTING", saved[1]))
+        self.fake = FakeMoonraker()
+        self.addCleanup(self.fake.close)
+        self.fake.files["part.gcode"] = b"G1 X10 Y10\n"
+        self.fake.begin_print("part.gcode")
+        self.printer = mock_moonraker.attach_real_printer("real-q", "Quiet U1", self.fake.url)
+        self.addCleanup(mock_moonraker.detach_real_printer, "real-q")
+        self.assertTrue(wait_for(self.printer.is_connected), self.printer.diagnostics()["last_error"])
+
+    def test_the_position_keeps_coming_when_the_stream_goes_quiet(self):
+        self.fake.set("motion_report", live_position=[20.0, 30.0, 1.0, 0.0])
+        self.assertTrue(wait_for(lambda: self.printer.snapshot()["toolhead_position"][:2] == [20.0, 30.0]))
+        self.fake.mute_pushes = True
+        self.fake.set("motion_report", live_position=[120.0, 130.0, 2.0, 0.0])
+        self.assertTrue(wait_for(lambda: self.printer.snapshot()["toolhead_position"][:2] == [120.0, 130.0], 4),
+                        "no direct reading after the stream went quiet")
+        self.assertTrue(self.printer.snapshot().get("reading_directly"))
+        self.fake.mute_pushes = False
+        self.fake.set("motion_report", live_position=[121.0, 130.0, 2.0, 0.0])
+        self.assertTrue(wait_for(lambda: not self.printer.snapshot().get("reading_directly"), 4))
+
+    def test_an_idle_printer_is_not_asked_over_and_over(self):
+        self.fake.set("print_stats", state="standby")
+        self.fake.mute_pushes = True
+        before = len(self.fake.requests)
+        import time
+        time.sleep(1.5)
+        self.assertFalse(self.printer.snapshot().get("reading_directly"))
+        self.assertLessEqual(len(self.fake.requests) - before, 2)
+
+
+class TestRecognisingAU1(unittest.TestCase):
+    """Snapmaker's Moonraker names the model in product_info; that alone is enough to know a U1."""
+
+    def test_machine_type_marks_a_u1_without_print_task_config(self):
+        fast(self)
+        fake = FakeMoonraker(u1=False)
+        self.addCleanup(fake.close)
+        fake.device_name = "Snapmaker U1"       # the factory name: answers machine.system_info
+        printer = mock_moonraker.attach_real_printer("real-m", "Shop U1", fake.url)
+        self.addCleanup(mock_moonraker.detach_real_printer, "real-m")
+        self.assertTrue(wait_for(printer.is_connected), printer.diagnostics()["last_error"])
+        self.assertTrue(printer.snapshot()["machine"]["reference"])
+
+    def test_without_either_sign_it_is_another_printer(self):
+        fast(self)
+        fake = FakeMoonraker(u1=False)
+        self.addCleanup(fake.close)
+        printer = mock_moonraker.attach_real_printer("real-n", "Voron", fake.url)
+        self.addCleanup(mock_moonraker.detach_real_printer, "real-n")
+        self.assertTrue(wait_for(printer.is_connected), printer.diagnostics()["last_error"])
+        self.assertFalse(printer.snapshot()["machine"]["reference"])

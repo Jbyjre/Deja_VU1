@@ -233,6 +233,8 @@ class FakeMoonraker:
         return out
 
     def _push(self):
+        if getattr(self, "mute_pushes", False):
+            return                       # a status stream gone quiet while the socket stays open
         for c in list(self._clients):
             sub = c.get("sub")
             if not sub:
