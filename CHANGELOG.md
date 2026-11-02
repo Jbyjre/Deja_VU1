@@ -28,6 +28,63 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.17.0 (2 November 2026): Wherever the printer is
+
+- Find printers now looks from every network connection this computer has. Look further also tries the address ranges a second router or mesh system often uses, and your Tailscale network, including home networks a device there shares.
+- If a saved U1 stops answering, Deja Vu1 looks for its serial number at a new address and switches to it by itself, then tells you.
+- Settings, Away from home explains how Snapmaker's app reaches a printer on another network (through Snapmaker's cloud) and the three ways Deja Vu1 does it without a cloud.
+- A printer's readings keep reaching the page even when one of Deja Vu1's own checks fails, so the twin no longer freezes while the printer prints.
+- If a printer's own updates stop mid-print while the connection stays open, Deja Vu1 reads it directly every 2 seconds, and the twin says so.
+- A U1 is also recognised by the model name its software reports, so the twin always draws it.
+- Print a file lists the files already on the printer. Copy to my files brings one over so Confirm Print checks it; the printer's own queue shows too.
+- Bed mesh has a 3D view you can turn.
+- With the community Extended Firmware, the printer's camera plays as WebRTC video. Elsewhere the picture stream works as before.
+- A printer without a temperature history shows the chart from live readings instead of an error.
+
+**How Snapmaker's app reaches a printer on another network, and what Deja Vu1 does.**
+The owner asked how Snapmaker's phone app and Snapmaker Orca reach a U1 that isn't on
+the same network. Snapmaker's quick start for Snapmaker Orca (wiki.snapmaker.com,
+checked 2 November 2026) describes two binding modes: in Cloud mode "the printer and
+computer are not required to be on the same local area network" and the ports include
+MQTTS 8883; LAN mode needs the same network. Snapmaker's printer software matches: its
+Moonraker talks to a local MQTT broker and a separate Snapmaker program carries the cloud
+link and the link mode "cloud" or "lan" (u1-moonraker a308cfa,
+`components/client_manager.py`, `lava/moonraker.conf`). So the printer connects out to
+Snapmaker's servers and the app meets it there. Deja Vu1 has no cloud and Snapmaker's
+cloud protocol is not published, so it does not use it. Instead, the side at home connects
+out through Tailscale (Away from home), and finding a printer now covers every network
+the computer is on, the ranges home routers often use, and the Tailscale network:
+online devices and the home networks they share (`tailscale status --json`, fields
+checked in Tailscale 57ca6e1 `ipn/ipnstate/ipnstate.go`; `tailscale set
+--advertise-routes` and `--accept-routes` in `cmd/tailscale/cli/set.go`). An earlier
+version found the owner's U1 on what looked like another network most likely because the
+two networks were one home network under two Wi-Fi names, where the printer's mDNS
+announcement still reaches the computer; this is not verified.
+
+**The twin that didn't move.** The owner's U1, joined mid-print, showed a twin that
+didn't move. A stand-in U1 replaying a real G-code file mid-print through the real
+connection code followed correctly ("In step with the printer, within 0.1 mm" in
+Chromium), so the cause is something a physical U1 does differently, not yet seen. Three
+ways a real printer could freeze the page are closed: the live feed published a reading
+only after its own checks ran, so one failing check stopped all updates for that printer
+(the reading now goes out first, `tests/test_live_feed_robust.py`); a status stream that
+goes quiet mid-print while the socket stays open is now noticed after 5 s and the printer
+is read directly (`tests/test_printer_extras.py` TestQuietStream); and a U1 is also
+recognised by `product_info.machine_type`. The next report from the owner's computer will
+show which, if any, it was: failing checks are written to the logs once a minute.
+
+**WebRTC camera.** The Extended Firmware lists its camera in Moonraker as
+`webrtc-camerastreamer` at `/webcam/webrtc` (SnapmakerU1-Extended-Firmware 36fbd40). Its
+signalling was read from the camera program it builds (paxx12/v4l2-mpp 87bda8e,
+`apps/stream-http`; GPL-3, protocol only, no code copied). Tested against the stand-in's
+signalling; video from a real camera has not been tried.
+
+**Checked here:** the new code against the simulated printer and the Moonraker stand-in
+(`tests/test_refind.py`, `tests/test_webrtc_relay.py`, `tests/test_printer_extras.py`,
+`tests/test_live_feed_robust.py`), the pages in Chromium at 1366 px and 390 px. **Not yet
+tried:** a physical U1, a real Tailscale subnet route, a real second router, and WebRTC
+video from a real Extended Firmware camera.
+
 ## 0.16.0 (2 November 2026): Everything your printer offers
 
 - Temperatures has a chart of every heater and sensor over the last 5, 10 or 20 minutes, from the printer's own record when it keeps one.

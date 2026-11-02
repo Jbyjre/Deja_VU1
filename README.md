@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.16.0** ([what's new](#whats-new-in-0160) · [every version](CHANGELOG.md)).
+**Latest named release: 0.17.0** ([what's new](#whats-new-in-0170) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -342,6 +342,22 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
   and idle".
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new in 0.17.0
+
+- **Your printer on another network.** Snapmaker's app reaches a U1 elsewhere through
+  Snapmaker's cloud. Deja Vu1 has no cloud, so it looks from every network the computer is
+  on, and **Look further** also tries the ranges a second router or mesh system often uses
+  and your Tailscale network. Settings → Away from home explains the three ways.
+- **A printer that got a new address** is found again by its serial number, and Deja Vu1
+  switches to the new address by itself.
+- **The twin keeps up with a real print.** A printer's readings reach the page even when one
+  of Deja Vu1's checks fails, and a printer whose updates stop mid-print is read directly.
+- **The printer's own files and queue** on the Printer page, a **3D bed mesh**, and
+  **WebRTC video** from the community Extended Firmware's camera.
+
+Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
+physical U1, a real Tailscale subnet route or a real Extended Firmware camera.
 
 ## What's new in 0.16.0
 
@@ -918,6 +934,7 @@ recorded static demo passed at both widths.
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
 | Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
+| Other networks and moved printers (0.17.0) | Every home network and the Tailscale network searched (stand-in `tailscale status --json`), a moved stand-in U1 followed by its serial number, readings kept coming when the status stream goes quiet | Not tried with a real second router, a real Tailscale subnet route or a physical U1 |
 | Printer page extras (0.16.0) | Temperature history, bed mesh, macro settings, endstops, command help, fans, lights, filament sensors and feeding against the simulated printer and the Moonraker stand-in; names checked against Snapmaker's published U1 config | Not tried on a physical U1; whether the shipped firmware's config matches the published one |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |

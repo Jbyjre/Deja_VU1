@@ -2,6 +2,51 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.17.0",
+      "date": "2026-11-02",
+      "name": "Wherever the printer is",
+      "published": true,
+      "summary": "Deja Vu1 finds a U1 on another network and follows a printer to a new address, keeps a real printer's readings coming so the twin follows a print joined midway, and adds the printer's own files, its queue, a 3D bed mesh and WebRTC camera video.",
+      "changes": [
+        "Find printers now looks from every network connection this computer has. Look further also tries the address ranges a second router or mesh system often uses, and your Tailscale network, including home networks a device there shares.",
+        "If a saved U1 stops answering, Deja Vu1 looks for its serial number at a new address and switches to it by itself, then tells you.",
+        "Settings, Away from home explains how Snapmaker's app reaches a printer on another network (through Snapmaker's cloud) and the three ways Deja Vu1 does it without a cloud.",
+        "A printer's readings keep reaching the page even when one of Deja Vu1's own checks fails, so the twin no longer freezes while the printer prints.",
+        "If a printer's own updates stop mid-print while the connection stays open, Deja Vu1 reads it directly every 2 seconds, and the twin says so.",
+        "A U1 is also recognised by the model name its software reports, so the twin always draws it.",
+        "Print a file lists the files already on the printer. Copy to my files brings one over so Confirm Print checks it; the printer's own queue shows too.",
+        "Bed mesh has a 3D view you can turn.",
+        "With the community Extended Firmware, the printer's camera plays as WebRTC video. Elsewhere the picture stream works as before.",
+        "A printer without a temperature history shows the chart from live readings instead of an error."
+      ],
+      "highlights": [
+        {
+          "title": "Look further",
+          "tab": "fleet",
+          "target": "#fleet-find-wider",
+          "text": "Finds a printer on a second router, a mesh system or your Tailscale network."
+        },
+        {
+          "title": "Printer on another network?",
+          "tab": "modules",
+          "target": "#printer-elsewhere",
+          "text": "How Snapmaker's app reaches it, and the three ways Deja Vu1 does, with no cloud."
+        },
+        {
+          "title": "Files on the printer",
+          "tab": "control",
+          "target": "#pp-print",
+          "text": "Copy a file the printer holds into your files, then print it through Confirm Print."
+        },
+        {
+          "title": "A 3D bed mesh",
+          "tab": "control",
+          "target": "#pp-mesh",
+          "text": "Switch the bed mesh map to 3D and turn it to see the shape of your bed."
+        }
+      ]
+    },
+    {
       "version": "0.16.0",
       "date": "2026-11-02",
       "name": "Everything your printer offers",

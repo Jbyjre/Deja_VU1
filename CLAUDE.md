@@ -267,6 +267,25 @@ root should hand over to `welcome.html`.
   AUTO_FEEDING + _FILAMENT_FEED_VARIABLE); feeding runs `AUTO_FEEDING EXTRUDER=n` and never names a module.
   `frontend/printer-extras.js` draws the chart (`#pp-chart`), `#pp-mesh`, `#pp-outputs`, `#pp-print` and the macro
   form; the online demo fakes the new POSTs in app.js `tourControl`.
+- Other networks (0.17.0): Snapmaker's app reaches a U1 elsewhere through Snapmaker's cloud (Cloud mode: the
+  printer connects out over MQTTS 8883; u1-moonraker `client_manager.py` link modes cloud/lan). Deja Vu1 has no
+  cloud and never uses Snapmaker's (unpublished) protocol. `discovery.discover(wider=True)` (Look further) adds
+  `COMMON_HOME_NETWORKS` and the tailnet from `remote.tailnet_places()` (online peers' TailscaleIPs and
+  PrimaryRoutes); mDNS and the /24 sweep run from every home address (`home_networks`). `probe` reads
+  `/machine/system_info` for the serial and `machine_type`. `refind.py` (thread started in `main`) keeps each U1's
+  serial in fleet.json (`fleet.remember_serial`) and, after 90 s silent, searches at most every 10 minutes and
+  moves the entry (`fleet.move`, `moved_from`) only on the same serial, publishing a `printer_moved` event.
+- Real-printer liveness (0.17.0): `live_feed._tick_one` publishes the reading before `_detect` and side effects
+  (each guarded, logged once a minute). `MoonrakerPrinter._catch_up_if_quiet`: printing and no
+  notify_status_update for `QUIET_PRINTING` (5 s) -> `printer.objects.query` every `STATUS_CHECK` (2 s);
+  state carries `reading_age_s` / `reading_directly`, shown under the twin. A U1 is `print_task_config` OR
+  product_info `machine_type` "Snapmaker U1".
+- `webrtc_relay.py` (`GET|POST /api/camera/webrtc`, module camera): the Extended Firmware's
+  `webrtc-camerastreamer` camera; only request/answer/remote_candidate, only to the printer's own host, 64 KB max;
+  printer-page.js `startRtc` (no STUN), falls back to the picture stream after 8 s. Protocol from paxx12/v4l2-mpp
+  (GPL-3): never paste its code.
+- Printer files: `printer_reading("files"|"job_queue")` (`GET /api/printer/files|job-queue`), `POST
+  /api/printer/files/fetch` copies a printer file into the library so Confirm Print still gates it.
 - `logbook.py`: per-printer problems/fixes/print hours (`/api/logbook`, module `maintenance`);
   `live_feed` logs failures and reasoned pauses; demo entries are flagged and never mix.
 - `print_gate.py` (Confirm Print, re-checked by the server at start),
@@ -480,7 +499,11 @@ prove a public deployment.
   run a demo server while the full suite runs: one run failed an
   automation test that passed on its own.
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line
-  contains that text, because it kills the shell. Kill by PID.
+  contains that text, because it kills the shell. Kill by PID, and stop and restart a server in two
+  separate commands (a restart line contains the name, so `pgrep -f` in it matches its own shell).
+- To check the twin against a "real" printer without one: run `tests/fake_moonraker.py`'s FakeMoonraker
+  mid-print, walking `virtual_sdcard.file_position` and `motion_report.live_position` through a real G-code
+  file, add it in Printers, and read `#twin-sync-text` in Chromium (swiftshader WebGL).
 - The selected printer is thread-local. Code on a worker thread answers for
   the default printer unless it wraps itself in
   `mock_moonraker.use_printer(pid)`.
