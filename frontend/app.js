@@ -1634,7 +1634,8 @@ function renderControlTab(state) {
   if (gcodeInput.disabled) gcodeInput.disabled = false;
   if (gcodeSend.disabled) gcodeSend.disabled = false;
   gcodeSend.onclick = () => sendGcode();
-  gcodeInput.onkeydown = (e) => { if (e.key === 'Enter') sendGcode(); };
+  gcodeInput.onkeydown = gcodeKeys;
+  gcodeSuggestions(state);
 
   // Build the temperature row once, then only update the numbers - four
   // live updates a second must never wipe out a target being typed.
@@ -1910,10 +1911,62 @@ async function controlAction(action, button) {
   return outcome;
 }
 
+/* Console helpers: Up and Down bring back earlier commands (kept in this browser,
+ * newest first, at most 50), and the box suggests the printer's own macros and the
+ * common commands with what each does. */
+const GCODE_HINTS = [
+  ['G28', 'Home all axes'], ['G28 X Y', 'Home X and Y'], ['G28 Z', 'Home Z'], ['M84', 'Motors off'],
+  ['G90', 'Absolute moves'], ['G91', 'Relative moves'], ['G1 Z10 F600', 'Move Z to 10 mm'],
+  ['M104 S210', 'Nozzle to 210 °C'], ['M140 S60', 'Bed to 60 °C'], ['M106 S255', 'Part fan full'], ['M107', 'Part fan off'],
+  ['M220 S100', 'Speed 100%'], ['M221 S100', 'Flow 100%'], ['BED_MESH_CALIBRATE', 'Measure the bed'],
+  ['SET_PRESSURE_ADVANCE ADVANCE=0.04', 'Pressure advance'], ['QUERY_ENDSTOPS', 'Endstop states'],
+  ['GET_POSITION', 'Where the head is'], ['STATUS', 'Klipper status'], ['HELP', 'Every command the printer knows']
+];
+let gcodeHistory = null, gcodeAt = -1;
+function gcodeHistoryList() {
+  if (!gcodeHistory) {
+    try { gcodeHistory = JSON.parse(localStorage.getItem('dejavu1.gcode.history') || '[]'); } catch (_) { gcodeHistory = []; }
+    if (!Array.isArray(gcodeHistory)) gcodeHistory = [];
+  }
+  return gcodeHistory;
+}
+function rememberGcode(command) {
+  const list = gcodeHistoryList().filter(c => c !== command);
+  list.unshift(command);
+  gcodeHistory = list.slice(0, 50);
+  gcodeAt = -1;
+  try { localStorage.setItem('dejavu1.gcode.history', JSON.stringify(gcodeHistory)); } catch (_) { /* a convenience only */ }
+}
+function gcodeKeys(e) {
+  if (e.key === 'Enter') { sendGcode(); return; }
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+  const list = gcodeHistoryList();
+  if (!list.length) return;
+  e.preventDefault();
+  gcodeAt = Math.max(-1, Math.min(list.length - 1, gcodeAt + (e.key === 'ArrowUp' ? 1 : -1)));
+  e.currentTarget.value = gcodeAt < 0 ? '' : list[gcodeAt];
+}
+function gcodeSuggestions(state) {
+  const input = $('gcode-input');
+  let list = $('gcode-hints');
+  if (!list) {
+    list = document.createElement('datalist');
+    list.id = 'gcode-hints';
+    input.after(list);
+    input.setAttribute('list', 'gcode-hints');
+  }
+  const macros = ((state && state.tuning && state.tuning.macros) || []).map(m => [typeof m === 'string' ? m : m.name, 'Printer macro']);
+  const html = [...macros, ...GCODE_HINTS, ...gcodeHistoryList().slice(0, 10).map(c => [c, 'Sent before'])]
+    .filter((h, i, all) => h[0] && all.findIndex(x => x[0] === h[0]) === i)
+    .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
+  if (list.dataset.html !== html) { list.innerHTML = html; list.dataset.html = html; }
+}
+
 async function sendGcode() {
   const input = $('gcode-input');
   const command = input.value.trim();
   if (!command) return;
+  rememberGcode(command);
   const outcome = await runCommand($('gcode-send'), '/api/printer/control/gcode', { command },
     { sending: 'Sending…', done: `Sent ${command}`, failed: `${command} failed` });
   if (outcome.ok) input.value = '';
