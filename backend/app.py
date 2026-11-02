@@ -52,7 +52,8 @@ API endpoints
   GET  /api/maintenance              what's due
   GET  /api/maintenance/history      completed maintenance log
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
-  POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125)
+  POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125); {"wider": true} also
+                                      nearby home ranges and the Tailscale network
   POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
   POST /api/printers/login            read a printer's API key with its web-page login {"moonraker_url", "username", "password"}
   POST /api/camera/find               find and save the selected printer's camera feed
@@ -264,6 +265,7 @@ import storage
 import converter_3mf
 import cost_calculator
 import discovery
+import refind
 import file_library
 import filament_inventory
 import spoolman_bridge
@@ -1488,12 +1490,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
         if route == "/api/printers/discover":
-            # Looks for Moonraker on this computer's own home network only.
+            # This computer's own home networks; with {"wider": true} also nearby home ranges and
+            # the Tailscale network (discovery.wider_places). Nothing outside networks you control.
             if self._module_blocked("fleet"):
                 return None
-            self._read_json_body()
+            body = self._read_json_body() or {}
             urls = [p["moonraker_url"] for p in fleet.registered()]
-            return self._send_json(discovery.discover(urls))
+            return self._send_json(discovery.discover(urls, wider=bool(body.get("wider"))))
 
         if route == "/api/printers/test":
             # Tries an address before it is added; nothing is saved.
@@ -2063,6 +2066,9 @@ def main():
     console.disable_quick_edit()
     server = _bind()
     live_feed.start()
+    # A saved printer that stops answering is looked for at a new address by its serial number.
+    threading.Thread(target=refind.watch, kwargs={"publish": live_feed.publish_event}, daemon=True,
+                     name="refind").start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
     threading.Thread(target=memory.watch, daemon=True).start()
     print("=" * 58)

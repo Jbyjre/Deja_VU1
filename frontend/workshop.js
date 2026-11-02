@@ -295,6 +295,10 @@ const Workshop = (() => {
       toast(`Rule "${event.rule_name}": ${event.ok ? event.detail : event.error}`, event.ok ? 'ok' : 'warn', 6500);
       loadRuleLog();
       loadRules();
+    } else if (event.type === 'printer_moved') {
+      // backend/refind.py: the same printer (same serial number) answered at another address.
+      toast(`${event.printer_name} answered at a new address, ${event.to.replace(/^https?:\/\//, '')}. Deja Vu1 uses it now.`, 'ok', 9000);
+      loadRegistry();
     } else if (event.type === 'queue') {
       if (event.started) toast(`Queue started ${event.started.filename}`, 'ok');
       if (event.held) toast(`Queue is holding ${event.held.filename}: ${event.held.note}`, 'warn', 8000);
@@ -603,20 +607,27 @@ const Workshop = (() => {
     return r.error || 'No answer';
   }
 
-  async function findPrinters(btn) {
-    btn.disabled = true; btn.textContent = 'Looking…';
-    $('fleet-find-note').textContent = 'Asking the network, then trying port 7125 on each address - a few seconds.';
-    const r = await postJSON('/api/printers/discover', {});
-    btn.disabled = false; btn.textContent = 'Find printers on my network';
+  async function findPrinters(btn, wider) {
+    const label = btn.textContent;
+    qsa('#fleet-find, #fleet-find-wider').forEach(b => { b.disabled = true; });
+    btn.textContent = 'Looking…';
+    $('fleet-find-note').textContent = wider
+      ? 'Looking on this computer\'s networks, the address ranges home routers often use and your Tailscale network: about 20 seconds.'
+      : 'Asking the network, then trying port 7125 on each address - a few seconds.';
+    const r = await postJSON('/api/printers/discover', { wider: !!wider });
+    qsa('#fleet-find, #fleet-find-wider').forEach(b => { b.disabled = false; });
+    btn.textContent = label;
     const list = $('fleet-found');
     if (!r.ok) { $('fleet-find-note').textContent = r.body.error || 'Couldn\'t look'; list.hidden = true; return; }
     const found = r.body.printers || [];
     $('fleet-find-note').textContent = `${found.length ? `Found ${found.length}` : 'Found nothing'} in ${r.body.seconds} s (${(r.body.how || []).join('; ')}).`
-      + (found.length ? '' : ' Check the printer is on and on the same network, or type its address below.');
+      + (found.length ? '' : r.body.wider
+        ? ' Check the printer is on. If it is on another network, type its address below, or see how to reach it from anywhere in Away from home.'
+        : ' Check the printer is on, press Look further, or type its address below.');
     list.hidden = !found.length;
     list.innerHTML = found.map((p, i) => `<li class="found">
       <span class="found-main"><b>${esc(p.name || p.ip)}</b>${p.u1 ? '<span class="found-tag">U1</span>' : ''}
-        <small>http://${esc(p.ip)}:${p.port} · ${esc(p.source)}</small>
+        <small>http://${esc(p.ip)}:${p.port} · ${esc(p.where && p.where !== 'this network' ? `found on ${p.where}` : p.source)}${p.serial ? ` · serial ${esc(p.serial)}` : ''}</small>
         <small class="${p.ok && !p.error ? 'is-ok' : 'is-warn'}">${esc(describeProbe(p))}</small></span>
       ${p.added ? '<span class="found-added">Added</span>' : `<button class="btn small" type="button" data-use="${i}">Use this</button>`}</li>`).join('');
     list.querySelectorAll('[data-use]').forEach(b => b.addEventListener('click', () => {
@@ -642,6 +653,7 @@ const Workshop = (() => {
   function initFleet() {
     $('printer-chip').addEventListener('click', (e) => openPrinterMenu(e.currentTarget, e.detail === 0));
     $('fleet-find').addEventListener('click', (e) => findPrinters(e.currentTarget));
+    $('fleet-find-wider').addEventListener('click', (e) => findPrinters(e.currentTarget, true));
     $('fleet-add-test').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true; btn.textContent = 'Testing…';

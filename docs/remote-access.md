@@ -70,6 +70,45 @@ the device's domain name in public certificate records; choose a neutral
 machine name if that matters to you.
 [Official HTTPS guidance](https://tailscale.com/docs/how-to/set-up-https-certificates).
 
+## Your printer on another network
+
+**How Snapmaker's own app does it.** Snapmaker's app and Snapmaker Orca bind a U1 in
+one of two modes ([Snapmaker Orca quick start](https://wiki.snapmaker.com/en/snapmaker_orca/qsg),
+checked 2 November 2026). In **Cloud mode** "the printer and computer are not required
+to be on the same local area network": the printer keeps a connection open to
+Snapmaker's servers (MQTTS, port 8883) and the app reaches it through them with your
+Snapmaker account. Snapmaker's printer software shows the same design: its Moonraker
+talks to a local MQTT broker, and a separate Snapmaker program handles the cloud link and
+the link mode (u1-moonraker `components/client_manager.py`, "cloud" or "lan"). In **LAN
+mode** the app and printer must share a network.
+
+**How Deja Vu1 does it.** Deja Vu1 has no cloud and no account, and Snapmaker's cloud
+protocol is not published, so Deja Vu1 does not use it. It reaches the printer through
+networks you control, in one of these ways:
+
+1. **Keep Deja Vu1 at home with the printer** (it starts with that computer) and open it
+   from anywhere with Tailscale, as above. This is the same idea as Snapmaker's cloud:
+   the side at home connects out, and nothing at home is opened to the internet.
+2. **A second router, a mesh system or an extender at home:** Printers → Add a printer →
+   **Look further** tries the address ranges home routers often use (as well as every
+   network this computer is on). Typing the printer's address also works wherever your
+   routers pass traffic between their networks.
+3. **Deja Vu1 somewhere else:** install Tailscale on any computer that stays at home and
+   share its home network with your tailnet (a subnet router):
+   `tailscale set --advertise-routes=192.168.1.0/24` with your own range, then approve
+   the route in Tailscale's admin console. **Look further** reads your tailnet
+   (`tailscale status --json`) and tries the shared ranges and every online Tailscale
+   device. Windows, phones and the Mac app use shared routes by themselves; on Linux run
+   `tailscale set --accept-routes` on the computer with Deja Vu1. A printer on Tailscale
+   itself (the Extended Firmware, below) is found the same way.
+
+**A printer that moved.** Home routers can give a device a new address. Deja Vu1 keeps
+the serial number a U1 reports (Moonraker's `machine.system_info`, also in its mDNS
+announcement). When a saved printer hasn't answered for 90 seconds, Deja Vu1 looks for
+that serial number (Look further's places), at most every 10 minutes, and when the same
+printer answers elsewhere it switches to the new address and says so. A printer with no
+serial number is never guessed at.
+
 ## The printer from anywhere (Extended Firmware)
 
 Usually the printer stays on your home Wi-Fi and the Deja Vu1 computer stays

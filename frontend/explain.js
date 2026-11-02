@@ -60,7 +60,7 @@ window.Explain = (() => {
     'farm history': ['Prints, successes, failures and filament used, per day or week, for each printer and all together.',
       'Deja Vu1 adds up each printer’s own history. It estimates nothing.'],
     'add a printer': ['Connect a real U1 so the dashboard can show and control it.',
-      'Press Find printers to look on your home network, or type the address from the printer’s screen, like http://192.168.1.50:7125. Test it, then add it.',
+      'Press Find printers to look on your home network, or Look further to also try the ranges a second router or mesh system often uses and your Tailscale network. Or type the address from the printer’s screen, like http://192.168.1.50:7125. Test it, then add it. If the printer later gets a new address, Deja Vu1 finds it again by its serial number.',
       'Adding a printer never starts a print. You install nothing on the printer: Deja Vu1 talks to [[Moonraker]].'],
     'farm sandbox': ['A practice farm: add up to 24 pretend printers and make things go wrong on purpose.',
       'Fire a jam or an error and watch how the dashboard warns you. Your real printers never notice.'],
@@ -161,7 +161,7 @@ window.Explain = (() => {
       'Turn it off with the button on the picture. It pauses by itself while you are on another screen.'],
     'time lapses': ['Short movies of your prints: one picture every two layers, played back here.', ''],
     'away from home': ['Open Deja Vu1 on your phone from any network, through Tailscale: a free app that links only your own devices.',
-      'Turn it on here on the computer, then scan the code with your phone. Nothing is opened to the internet.'],
+      'Turn it on here on the computer, then scan the code with your phone. Nothing is opened to the internet. Printer on another network? The part below this card explains how Snapmaker’s app reaches it (its cloud) and the ways Deja Vu1 does.'],
     'demo controls': ['Buttons for trying things out while demo data is on.', ''],
   };
 

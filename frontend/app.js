@@ -1043,7 +1043,7 @@ function unreachableWords(p) {
     return [`Connecting to ${p.name}…`, 'This takes a few seconds once it is switched on.'];
   }
   return [`${p.name} isn't answering`,
-    `${why}. Check it is switched on and on the same network. The dashboard keeps trying by itself.`];
+    `${why}. Check it is switched on and that this computer can reach its network. The dashboard keeps trying, and looks for it at a new address by itself.`];
 }
 
 /* "No printer" wording, unless there's no server to have a printer at all. */
@@ -1907,7 +1907,7 @@ function linkLostWords(state) {
   const name = state.printer_name || 'The printer';
   if (state.never_connected) {
     return `${name} hasn't answered yet${state.state_message ? ` (${state.state_message})` : ''}. ` +
-      'Check it is switched on and on the same network. The dashboard keeps trying by itself.';
+      'Check it is switched on and that this computer can reach its network. The dashboard keeps trying, and looks for it at a new address by itself.';
   }
   const at = state.link_lost_at && new Date(state.link_lost_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return `No live link to ${name}${at ? ` since ${at}` : ''}. Its last reading is shown. ` +

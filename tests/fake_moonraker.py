@@ -177,6 +177,12 @@ class FakeMoonraker:
             except OSError:
                 pass
 
+    def system_info(self):
+        """u1-moonraker components/machine.py: product_info names the model, the serial and the name set."""
+        return {"system_info": {"product_info": {"machine_type": "Snapmaker U1",
+                                                 "serial_number": getattr(self, "serial", ""),
+                                                 "nozzle_diameter": [0.4] * 4, "device_name": self.device_name}}}
+
     def set(self, obj, **fields):
         """Change Klipper's state and push the difference, as Klipper would."""
         with self.lock:
@@ -420,6 +426,10 @@ class FakeMoonraker:
                     if meta is None:
                         return self._error(404, f"Metadata not available for <{q.get('filename')}>")
                     return self._reply(200, {"result": meta})
+                if parsed.path == "/machine/system_info":
+                    if fake.device_name is None:
+                        return self._error(404, "Not Found")
+                    return self._reply(200, {"result": fake.system_info()})
                 if parsed.path == "/printer/objects/query":
                     # HTTP form of printer.objects.query: ?name=field1,field2 (an empty value: every field).
                     raw = parse_qs(parsed.query, keep_blank_values=True)
@@ -624,9 +634,7 @@ class FakeMoonraker:
             return ok(reply)
         if method == "machine.system_info" and self.device_name is not None:
             # u1-moonraker components/machine.py: product_info holds the name set on the printer.
-            return ok({"system_info": {"product_info": {"machine_type": "Snapmaker U1", "serial_number": "",
-                                                        "nozzle_diameter": [0.4] * 4,
-                                                        "device_name": self.device_name}}})
+            return ok(self.system_info())
         if method == "server.info":
             return ok({"klippy_connected": self.klippy_state != "disconnected", "klippy_state": self.klippy_state,
                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],

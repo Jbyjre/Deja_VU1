@@ -1152,6 +1152,7 @@ class MoonrakerPrinter:
         self._objects = []             # what printer.objects.list said
         self._is_u1 = None             # print_task_config listed: Snapmaker's U1 Klipper
         self._machine_type = None      # product_info.machine_type from Snapmaker's Moonraker
+        self.serial = None             # product_info.serial_number: the same printer at a new address
         self._config = {}              # kinematics and nozzle from a non-U1 printer's config
         self._extruders = {}           # {"T0": "extruder", ...}
         self._chamber = None
@@ -1404,6 +1405,8 @@ class MoonrakerPrinter:
             # Snapmaker's Moonraker names the model here (u1-moonraker machine.py MACHINE_TYPE): a second
             # sign of a U1 besides Klipper's print_task_config object.
             self._machine_type = _str(product.get("machine_type"))
+            serial = (_str(product.get("serial_number")) or "").strip().upper()[:40]
+            self.serial = serial or None
 
     def _setup(self):
         """server.info, then (Klipper willing) list objects and subscribe. True when live."""
@@ -1862,7 +1865,7 @@ class MoonrakerPrinter:
         """What a first real connection needs someone to see: state, and every exchange."""
         with self.lock:
             return {"id": self.id, "name": self.name, "url": self.url, "connected": self._link_up,
-                    "door": self.endpoint.label,
+                    "door": self.endpoint.label, "serial": self.serial,
                     "connected_at": self._connected_at, "link_lost_at": self._link_lost_at,
                     "last_error": self._last_error, "klippy_state": self._klippy_state or
                     ((self._status.get("webhooks") or {}).get("state")),
