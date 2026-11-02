@@ -431,7 +431,8 @@ const Workshop = (() => {
       if (!ring.firstElementChild) ring.innerHTML = `${ringSVG(progress, STATE_HEX[p.state])}<span class="fc-pct"></span>`;
       const arc = qs('.rs-fill', ring), circ = 2 * Math.PI * 15.5;
       setVar(arc, 'stroke', STATE_HEX[p.state] || '#8e8e93');
-      setVar(arc, 'stroke-dashoffset', String(circ * (1 - progress)));
+      // Ready draws a whole ring in ink: a printer waiting for work is up, never an empty grey circle.
+      setVar(arc, 'stroke-dashoffset', String(p.state === 'ready' ? 0 : circ * (1 - progress)));
       setText(qs('.fc-pct', ring), p.state === 'ready' ? 'Ready' : `${Math.round(progress * 100)}%`);
       setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'Ready for a print'));
       setText(f('meta'), p.remaining_hours != null

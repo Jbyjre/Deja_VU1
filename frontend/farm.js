@@ -416,7 +416,7 @@ const Farm = (() => {
     const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
-  const STATE_HEX = { printing: '#248a3d', paused: '#b58300', error: '#d70015', complete: '#4a8df8', ready: '#7c7c80' };
+  const STATE_HEX = { printing: '#248a3d', paused: '#b58300', error: '#d70015', complete: '#4a8df8', ready: '#1d1d1f' };
   const PARAMS = {
     jam: ['toolhead'], runout: ['toolhead'], heater_fault: ['toolhead'], bad_swap: ['toolhead'],
     wear: ['hours'], start_print: ['file', 'accept'], queue_file: ['file'],

@@ -1593,6 +1593,8 @@ function renderControlTab(state) {
     pauseResume.disabled = true;
     pauseResume.textContent = 'Pause';
     cancel.disabled = true;
+    pauseResume.hidden = cancel.hidden = true;
+    if ($('pp-go-print')) $('pp-go-print').hidden = true;
     homeButtons.forEach(b => b.disabled = true);
     gcodeInput.disabled = true;
     gcodeSend.disabled = true;
@@ -1607,7 +1609,7 @@ function renderControlTab(state) {
   const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--ink-ready)'));
   if (dot.style.background !== dotColor) dot.style.background = dotColor;
   setText(text, state.state === 'ready' ? 'Ready for a print' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
-  setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
+  setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'Waiting for your next print.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
   if (pauseResume.dataset.phase !== 'sending') {
@@ -1617,6 +1619,8 @@ function renderControlTab(state) {
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => confirmCancel(cancel);
+  // Idle offers what comes next instead of two greyed-out buttons (the owner: idle must never look down).
+  showIdleActions([pauseResume, cancel], $('pp-go-print'), running || lost || state.state === 'error');
 
   const busy = state.state === 'printing' || state.state === 'paused';
   const homeBlocked = busy || lost;
@@ -1819,6 +1823,18 @@ function renderPlate(state) {
   document.querySelectorAll('[data-plate-obj]').forEach(p => { p.onclick = () => pick(p.dataset.plateObj); });
 }
 
+/* Pause and Cancel only while there is a print to pause or cancel; otherwise the next step. */
+function showIdleActions(runButtons, idleButton, active) {
+  runButtons.forEach(b => { if (b && b.dataset.phase !== 'sending' && b.hidden !== !active) b.hidden = !active; });
+  if (idleButton && idleButton.hidden !== active) idleButton.hidden = active;
+}
+document.addEventListener('click', e => {
+  const go = e.target.closest && e.target.closest('[data-go-card]');
+  if (!go) return;
+  showTab('control');
+  setTimeout(() => { const card = $(go.dataset.goCard); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+});
+
 function renderOverviewControl(state) {
   const host = $('overview-control');
   if (!host) return;
@@ -1832,9 +1848,13 @@ function renderOverviewControl(state) {
     host.innerHTML = `
       <div class="card-sub" style="margin-bottom:8px;" id="ov-file"></div>
       <div class="bar" style="margin-bottom:14px;"><span id="ov-bar"></span></div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px;" id="ov-run">
         <button class="btn primary" id="ov-pause-resume" style="flex:1;">Pause</button>
         <button class="btn danger" id="ov-cancel" style="flex:1;">Cancel</button>
+      </div>
+      <div class="ov-idle" id="ov-idle" hidden>
+        <button class="btn primary" type="button" data-go-card="pp-print">Print a file…</button>
+        <button class="btn" type="button" data-go-card="pp-heaters">Warm up…</button>
       </div>
       <div class="ov-restart" id="ov-restart-row" hidden>
         <p class="field-hint" id="ov-error"></p>
@@ -1868,6 +1888,11 @@ function renderOverviewControl(state) {
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => confirmCancel(cancel);
+  const active = running || lost || state.state === 'error';
+  if ($('ov-run').hidden !== !active) $('ov-run').hidden = !active;
+  if ($('ov-idle').hidden !== active) $('ov-idle').hidden = active;
+  const bar = $('ov-bar').parentElement;
+  if (bar.hidden !== !active && state.state !== 'complete') bar.hidden = !active && state.state !== 'complete';
 }
 
 const CONTROL_LABELS = {

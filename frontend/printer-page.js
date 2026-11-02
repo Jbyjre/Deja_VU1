@@ -234,8 +234,8 @@ window.PrinterPage = (() => {
     const pct = target > 0 && now != null ? Math.max(0, Math.min(100, (now / target) * 100)) : 0;
     return `<li class="ot-row">
       <span class="ot-label">${colour ? `<i style="background:${esc(colour)}"></i>` : ''}${esc(label)}</span>
-      <span class="ot-bar" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></span>
-      <span class="ot-val"><b>${now != null ? formatTemp(now) : '—'}</b>${target > 0 ? ` <small>→ ${formatTemp(target)}</small>` : ' <small>off</small>'}</span>
+      ${target > 0 ? `<span class="ot-bar" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></span>` : `<span class="ot-rest">${target === 0 ? 'not heating' : ''}</span>`}
+      <span class="ot-val"><b>${now != null ? formatTemp(now) : '—'}</b>${target > 0 ? ` <small>→ ${formatTemp(target)}</small>` : ''}</span>
     </li>`;
   }
   function renderTemps(s) {
@@ -245,7 +245,7 @@ window.PrinterPage = (() => {
     const rows = Object.entries(s.toolheads).map(([th, t]) =>
       tempRow(`${th}${th === s.active_toolhead ? ' · on the toolhead' : ''}`, t.temperature, t.target_temperature, t.filament_color_hex));
     rows.push(tempRow('Bed', s.bed_temperature, s.bed_target));
-    if (s.chamber_temperature != null) rows.push(tempRow('Chamber', s.chamber_temperature, 0));
+    if (s.chamber_temperature != null) rows.push(tempRow('Chamber', s.chamber_temperature, null));
     paint(body, `<ul class="ot-list">${rows.join('')}</ul>`);
   }
   function renderPrinters() {

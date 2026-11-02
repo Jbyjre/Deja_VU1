@@ -385,7 +385,7 @@
         <div id="ov-temps-body"></div>
       </section>
       <section class="card liquid-glass ov-card ov-quick" id="ov-quick" aria-labelledby="ov-quick-title">
-        <div class="card-head"><div><h2 id="ov-quick-title">Quick control</h2><p class="card-sub">Pause, resume or stop the print</p></div></div>
+        <div class="card-head"><div><h2 id="ov-quick-title">Quick control</h2><p class="card-sub">Start, pause or stop a print</p></div></div>
         <div id="overview-control" data-module-body="printer_control"></div>
         <div data-module-off="printer_control" hidden></div>
       </section>
@@ -447,8 +447,9 @@
         </div>
       </div>
       <div class="pp-actions" data-module-body="printer_control">
-        <button class="btn primary" id="ctrl-pause-resume" disabled>Pause</button>
-        <button class="btn danger" id="ctrl-cancel" disabled>Cancel print</button>
+        <button class="btn primary" id="ctrl-pause-resume" disabled hidden>Pause</button>
+        <button class="btn danger" id="ctrl-cancel" disabled hidden>Cancel print</button>
+        <button class="btn primary" type="button" data-go-card="pp-print" id="pp-go-print" hidden>Print a file…</button>
         <button class="btn estop" id="pp-estop" type="button" disabled title="Stops every motor and heater at once (M112). The printer then needs a firmware restart.">Emergency stop</button>
       </div>
     </section>

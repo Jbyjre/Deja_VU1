@@ -291,7 +291,7 @@ window.Guide = (() => {
       { target: '#attention', title: 'Needs you', text: 'Jams, errors, finished prints and due maintenance, most urgent first, for every printer.' },
       { target: '#ov-now', title: 'Right now', text: 'What the selected printer is doing, how far along it is and when it finishes.' },
       { target: '#ov-camera', title: 'Camera', text: 'The selected printer’s camera, live, without opening its page.' },
-      { target: '#overview-control', title: 'Quick controls', text: 'Pause, resume and cancel. A refusal from the printer is shown in words.' },
+      { target: '#overview-control', title: 'Quick controls', text: 'Pause, resume and cancel while a print runs; print a file or warm up while the printer waits. A refusal from the printer is shown in words.' },
     ],
     fleet: [
       { target: '#fleet-grid', title: 'Printer cards', text: 'State, progress, the four heads’ colours, temperatures and health. Drag a file onto a card to queue it there.' },

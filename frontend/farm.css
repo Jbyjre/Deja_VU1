@@ -493,7 +493,7 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 .dk-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; display: grid; }
 .dk-strip em { display: block; }
 .dk-wait { position: absolute; top: 21px; height: 3px; background: repeating-linear-gradient(90deg, var(--warn-text) 0 5px, transparent 5px 10px); opacity: .7; border-radius: 2px; }
-.dk-idle { position: absolute; inset: 0; display: grid; place-items: center start; padding-left: 12px; font: 500 11px/1 var(--font-mono); color: var(--text-faint); }
+.dk-idle { position: absolute; inset: 0; display: grid; place-items: center start; padding-left: 12px; font: 500 11px/1 var(--font-mono); color: var(--text-dim); }
 .dk-key { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 10px 0 0; font-size: 11.5px; color: var(--text-faint); }
 .dk-k { display: inline-block; width: 18px; height: 10px; border-radius: 3px; margin-right: -4px; vertical-align: middle; border: 1px solid rgba(0, 0, 0, .15); }
 .dk-k.is-run { background: color-mix(in oklch, var(--ok) 24%, white); }
