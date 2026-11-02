@@ -46,9 +46,10 @@ const Workshop = (() => {
     if (s < 86400) return `${Math.round(s / 3600)} h ago`;
     return `${Math.round(s / 86400)} d ago`;
   };
-  const STATE_COLOR = { printing: 'var(--ok)', paused: 'var(--warn)', error: 'var(--bad)', complete: 'var(--accent)', ready: 'var(--text-faint)' };
-  const STATE_HEX = { printing: '#34c759', paused: '#ffcc00', error: '#ff3b30', complete: '#4a8df8', ready: '#8e8e93' };
-  const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Idle' };
+  // A ready printer is "on and waiting", drawn in the page's own ink, never a dim grey.
+  const STATE_COLOR = { printing: 'var(--ok)', paused: 'var(--warn)', error: 'var(--bad)', complete: 'var(--accent)', ready: 'var(--ink-ready)' };
+  const STATE_HEX = { printing: '#34c759', paused: '#ffcc00', error: '#ff3b30', complete: '#4a8df8', ready: '#1d1d1f' };
+  const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Ready' };
 
   /* Continuous visuals ease toward each new reading instead of jumping.
    * This is the easing Block World already uses for movement (initBeacon
@@ -61,12 +62,36 @@ const Workshop = (() => {
     const k = 1 - Math.pow(1 - EASE_RATE, dt * 60);
     return current + (target - current) * k;
   }
-  const smooth = new Map();          // key -> {value, target, apply}
+  /* The twin's nozzle gets a critically damped spring instead: readings
+   * come four times a second (Klipper's 250 ms status timer), and plain
+   * easing reaches each one in about 80 ms and waits, so a moving head
+   * stepped. The spring keeps position and speed continuous, trails the
+   * printer by about 2/SPRING_W seconds at a steady speed, and never runs
+   * past the reading (a critically damped follower doesn't overshoot when
+   * the head stops). Solved exactly per frame, so a long frame can't make it
+   * unstable. */
+  const SPRING_W = 7;
+  function springStep(e, dt) {
+    if (REDUCED.matches) { e.value = e.target.slice(); e.vel = e.target.map(() => 0); return false; }
+    const w = SPRING_W, decay = Math.exp(-w * dt);
+    let moving = false;
+    e.vel = e.vel || e.value.map(() => 0);
+    e.value = e.value.map((x, i) => {
+      const err = x - e.target[i], v = e.vel[i], c = v + w * err;
+      const nerr = (err + c * dt) * decay;
+      e.vel[i] = (v - w * c * dt) * decay;
+      if (Math.abs(nerr) > 0.02 || Math.abs(e.vel[i]) > 0.05) moving = true;
+      return e.target[i] + nerr;
+    });
+    if (!moving) { e.value = e.target.slice(); e.vel = e.target.map(() => 0); }
+    return moving;
+  }
+  const smooth = new Map();          // key -> {value, target, apply, spring, vel}
   let animating = false, lastFrame = 0;
-  function tween(key, target, apply) {
+  function tween(key, target, apply, spring) {
     const entry = smooth.get(key);
     if (entry) { entry.target = target; entry.apply = apply; }
-    else smooth.set(key, { value: target, target, apply });
+    else smooth.set(key, { value: target, target, apply, spring: !!spring });
     if (!entry) apply(target);
     if (!animating) { animating = true; lastFrame = performance.now(); requestAnimationFrame(frame); }
   }
@@ -75,7 +100,9 @@ const Workshop = (() => {
     lastFrame = now;
     let moving = false;
     for (const e of smooth.values()) {
-      if (Array.isArray(e.target)) {
+      if (e.spring && Array.isArray(e.target)) {
+        if (springStep(e, dt)) moving = true;
+      } else if (Array.isArray(e.target)) {
         e.value = e.value.map((v, i) => ease(v, e.target[i], dt));
         if (e.value.some((v, i) => Math.abs(v - e.target[i]) > 0.02)) moving = true;
         else e.value = e.target.slice();
@@ -137,7 +164,7 @@ const Workshop = (() => {
         live.lastAt = performance.now();
         applyState(msg.state);
       } else if (msg.type === 'fleet') {
-        renderFleet(msg.printers);
+        drawSafely('Your printers', () => renderFleet(msg.printers));
       } else if (msg.type === 'event') {
         live.lastEvent = Math.max(live.lastEvent, msg.event.id);
         onEvent(msg.event);
@@ -169,7 +196,7 @@ const Workshop = (() => {
       (ev && ev.events || []).forEach(e => { live.lastEvent = Math.max(live.lastEvent, e.id); onEvent(e); });
       if (tick++ % 2 === 0) {
         const fleet = await getJSON(api('/api/fleet')).catch(() => null);
-        if (fleet && fleet.printers) renderFleet(fleet.printers);
+        if (fleet && fleet.printers) drawSafely('Your printers', () => renderFleet(fleet.printers));
       }
       // Polling started because the WebSocket failed - often just a server
       // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
@@ -204,14 +231,14 @@ const Workshop = (() => {
     if (!state || !state.state) return;
     printerState = state;
     lastPrinterState = state;
-    renderStatusRibbon(state);
-    renderPill(state);
-    renderTwin(state);
-    renderQuickActions(state);
-    updateChamberNow(state);
-    renderChip();
-    tintRoom(state);
-    window.dispatchEvent(new CustomEvent('dv-state', { detail: state }));
+    drawSafely('The status bar', () => renderStatusRibbon(state));
+    drawSafely('The live pill', () => renderPill(state));
+    drawSafely('The 3D twin', () => renderTwin(state));
+    drawSafely('The quick Pause and Cancel bar', () => renderQuickActions(state));
+    drawSafely('The chamber reading', () => updateChamberNow(state));
+    drawSafely('The printer picker', () => renderChip());
+    drawSafely('The room tint', () => tintRoom(state));
+    drawSafely('The live readout', () => window.dispatchEvent(new CustomEvent('dv-state', { detail: state })));
     if (fromCommand) refreshSoon();
   }
 
@@ -290,7 +317,9 @@ const Workshop = (() => {
     chip.hidden = !liveData() && !registry.length;
     const id = currentPrinter || (live.fleet[0] && live.fleet[0].id);
     const row = live.fleet.find(p => p.id === id);
-    $('printer-chip-name').textContent = row ? row.name : (printerState && printerState.printer_name) || 'Printer';
+    const added = registry.find(p => p.id === id) || (registry.length === 1 && registry[0]);
+    $('printer-chip-name').textContent = row ? row.name
+      : (printerState && printerState.printer_name) || (added && added.name) || 'Printer';
     const state = row ? row.state : (printerState && printerState.state);
     chip.style.setProperty('--pc-color', STATE_HEX[state] || '#8e8e93');
   }
@@ -321,10 +350,10 @@ const Workshop = (() => {
     renderChip();
     qsa('.fleet-card').forEach(c => c.classList.toggle('is-selected', c.dataset.printer === id));
     // From the chip's menu you stay where you were; the tab reloads for the
-    // printer you picked. From a fleet card you go to its overview.
+    // printer you picked. From a fleet card you go to that printer's own page.
     if (stay) { refreshAll(); onTab(currentTab()); toast(`Now showing ${printerName(id)}`, 'info', 2200); return; }
-    const go = () => { showTab('overview'); refreshAll(); };
-    if (fromEl) morph(fromEl, () => qs('#tab-overview .live-row') || qs('#tab-overview'), go);
+    const go = () => { showTab('control'); refreshAll(); };
+    if (fromEl) morph(fromEl, () => qs('#tab-control .pp-stage') || qs('#tab-control'), go);
     else go();
     reportView();
   }
@@ -339,7 +368,7 @@ const Workshop = (() => {
 
   function renderFleet(printers) {
     live.fleet = printers || [];
-    renderAttention(live.fleet);
+    drawSafely('Needs you', () => renderAttention(live.fleet));
     // The remembered printer can be gone (removed, or a sandbox printer torn
     // down). Every request would then ask for an unknown printer and every
     // panel would say nothing is connected, so fall back to the default.
@@ -378,8 +407,8 @@ const Workshop = (() => {
           <div class="fc-temps" data-f="temps"></div>
           <ul class="fc-alerts" data-f="alerts"></ul>
           <div class="fc-queue" data-f="queue"></div>
-          <button class="btn block fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
-          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer">Printer's own page (Fluidd) ↗</a>` : ''}
+          <button class="btn block primary fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
+          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer" title="The web page built into the printer">Printer's built-in page ↗</a>` : ''}
         </article>`).join('');
       qsa('[data-open]', grid).forEach(btn => btn.addEventListener('click', () => selectPrinter(btn.dataset.open, btn.closest('.fleet-card'))));
     }
@@ -388,7 +417,7 @@ const Workshop = (() => {
       if (!card) return;
       const f = (k) => qs(`[data-f="${k}"]`, card);
       card.classList.toggle('is-selected', p.id === (currentPrinter || live.fleet[0].id));
-      setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : STATE_HEX[p.state] || '#ffffff');
+      setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : p.state === 'ready' ? '#ffffff' : STATE_HEX[p.state] || '#ffffff');
       // Any printer but a U1 says what it is, from its own report (machines.py).
       const kind = f('machine'), other = p.machine && !p.machine.reference;
       kind.hidden = !other;
@@ -403,8 +432,8 @@ const Workshop = (() => {
       const arc = qs('.rs-fill', ring), circ = 2 * Math.PI * 15.5;
       setVar(arc, 'stroke', STATE_HEX[p.state] || '#8e8e93');
       setVar(arc, 'stroke-dashoffset', String(circ * (1 - progress)));
-      setText(qs('.fc-pct', ring), `${Math.round(progress * 100)}%`);
-      setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'No job'));
+      setText(qs('.fc-pct', ring), p.state === 'ready' ? 'Ready' : `${Math.round(progress * 100)}%`);
+      setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'Ready for a print'));
       setText(f('meta'), p.remaining_hours != null
         ? `${fmtHours(p.remaining_hours)} left · done ${doneAt(p.remaining_hours)}` : (p.state_message || ''));
       setHTML(f('docks'), Object.entries(p.docks || {}).map(([th, d]) => `
@@ -435,7 +464,7 @@ const Workshop = (() => {
    * queue is files really waiting. */
 
   const attention = { queues: {}, queuesAt: 0, queueOff: false };
-  const TAB_LABEL = { control: 'Control', files: 'Files', maintenance: 'Care' };
+  const TAB_LABEL = { control: 'Printer', files: 'Files', maintenance: 'Care' };
   const SOON_HOURS = 0.25;   // "about to finish" means within 15 minutes
 
   async function refreshAttentionQueues() {
@@ -523,6 +552,11 @@ const Workshop = (() => {
     const data = await getJSON('/api/fleet/registry').catch(() => ({}));
     if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Printer fleet'); return; }
     registry = data.printers || [];
+    addedPrinters = registry;
+    // The add form stays folded once a printer is added; with none yet, it opens by itself.
+    const form = $('add-printer-form');
+    if (form && !registry.length && !form.dataset.touched) form.open = true;
+    if (form && !form.dataset.wired) { form.dataset.wired = '1'; form.addEventListener('toggle', () => { form.dataset.touched = '1'; }); }
     host.innerHTML = registry.length ? registry.map(p => `
       <div class="reg-row">
         <span class="reg-name">${esc(p.name)}</span>
@@ -610,6 +644,8 @@ const Workshop = (() => {
       btn.disabled = true; btn.textContent = 'Testing…';
       const r = await postJSON('/api/printers/test', { moonraker_url: $('fleet-add-url').value, api_key: $('fleet-add-key').value });
       btn.disabled = false; btn.textContent = 'Test';
+      // The address that answered (tidied, or on Moonraker's own port) is the one to add.
+      if (r.ok && r.body.url && (r.body.ok || r.body.needs_key)) $('fleet-add-url').value = r.body.url;
       showTest(r.ok ? r.body : { ok: false, error: r.body.error });
     });
     $('fleet-login').addEventListener('submit', async (e) => {
@@ -628,6 +664,15 @@ const Workshop = (() => {
     });
     $('fleet-add-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const submit = e.submitter || e.target.querySelector('button[type=submit]');
+      const label = submit ? submit.textContent : '';
+      if (submit) { submit.disabled = true; submit.textContent = 'Checking the address…'; }
+      // Add the address that really answers (a pasted web-page address becomes Moonraker's).
+      // A printer that is switched off is still added; it connects when it comes on.
+      const t = await postJSON('/api/printers/test',
+        { moonraker_url: $('fleet-add-url').value, api_key: $('fleet-add-key').value });
+      if (t.ok && t.body.url && (t.body.ok || t.body.needs_key)) $('fleet-add-url').value = t.body.url;
+      if (submit) { submit.disabled = false; submit.textContent = label; }
       const r = await postJSON('/api/fleet/registry', { name: $('fleet-add-name').value, moonraker_url: $('fleet-add-url').value,
                                                          api_key: $('fleet-add-key').value });
       if (r.ok) { toast(`${r.body.name} added, connecting to it now`, 'ok', 5000); e.target.reset(); $('fleet-login').hidden = true; }
@@ -706,6 +751,13 @@ const Workshop = (() => {
         <button type="button" class="btn small" data-twin="zoom-out" aria-label="Zoom out">−</button>
         <button type="button" class="btn small" data-twin="zoom-in" aria-label="Zoom in">+</button>
         <button type="button" class="btn small" data-twin="reset">Reset view</button>
+        <button type="button" class="btn small twin-spin" id="twin-spin" aria-pressed="false" data-model-only
+          title="Turns the model slowly so you can see it from every side. Drag to stop and look around.">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v2.8h-2.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Turn slowly</span></button>
+        <button type="button" class="btn small twin-move" id="twin-move" aria-pressed="false" data-model-only
+          title="Drag across the model to move the real head there. Home first.">Move head</button>
+        <button type="button" class="btn small" id="twin-home" data-model-only data-module-body="printer_control">Home all</button>
         <div class="pill-toggle twin-case" id="twin-case" role="group" aria-label="Case" data-model-only>
           <button type="button" data-case="closed" aria-pressed="true" class="active">Case on</button>
           <button type="button" data-case="glass" aria-pressed="false">See-through</button>
@@ -717,7 +769,6 @@ const Workshop = (() => {
             <label><input type="checkbox" data-opt="print"> The print, in its colours</label>
             <label><input type="checkbox" data-opt="rest"> What's left to print, faintly</label>
             <label><input type="checkbox" data-opt="tags"> Head labels</label>
-            <label><input type="checkbox" data-opt="spin"> Turn slowly</label>
           </div>
         </details>
         <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> <span>Outer size</span></label>
@@ -804,6 +855,21 @@ const Workshop = (() => {
     // The model's options, kept in this browser.
     document.querySelectorAll('#twin-case button').forEach(b => b.addEventListener('click', () => { twin.view3d.case = b.dataset.case; applyTwinOptions(); }));
     document.querySelectorAll('#twin-more input[data-opt]').forEach(i => i.addEventListener('change', () => { twin.view3d[i.dataset.opt] = i.checked; applyTwinOptions(); }));
+    $('twin-move').addEventListener('click', () => {
+      twin.moveOn = !twin.moveOn;
+      applyTwinOptions();
+      if (twin.moveOn) toast('Drag across the model and let go: the real head moves there. Press Move head again to turn the model instead.', 'info', 6000);
+    });
+    $('twin-home').addEventListener('click', e => {
+      const st = twin.state;
+      if (st && (st.state === 'printing' || st.state === 'paused')) { toast('Homing waits until the print finishes or is cancelled', 'warn'); return; }
+      runCommand(e.currentTarget, '/api/printer/control/home', { axes: ['X', 'Y', 'Z'] }, { sending: 'Homing…', done: 'Homed XYZ', failed: 'Homing failed' });
+    });
+    $('twin-spin').addEventListener('click', () => {
+      twin.view3d.spin = !twin.view3d.spin;
+      applyTwinOptions();
+      if (twin.view3d.spin && matchMedia('(prefers-reduced-motion: reduce)').matches) toast('Your system asks for reduced motion, so the model stays still', 'info');
+    });
     document.addEventListener('click', (e) => { const d = $('twin-more'); if (d && d.open && !d.contains(e.target)) d.open = false; });
     $('wf-outer').addEventListener('change', (e) => { twin.outer = e.target.checked; if (twin.model) twin.model.setCase(twin.outer); else drawTwin(true); });
     $('wf-picks').addEventListener('click', (e) => {
@@ -838,11 +904,27 @@ const Workshop = (() => {
     setTwinMode(twin.mode);
   }
 
+  /* A drag let go on the twin in move mode: the same checked move as the Move card. */
+  function twinMoveTo(pt) {
+    const st = twin.state;
+    if (!st || st.link_lost) { toast('The printer is not answering', 'warn'); return; }
+    if (st.state === 'printing' || st.state === 'paused') { toast('Moving waits until the print finishes or is cancelled: it would drive the head through the print', 'warn', 6000); return; }
+    const homed = st.homed_axes;
+    if (typeof homed === 'string' && !(homed.includes('x') && homed.includes('y'))) { toast('Home X and Y first (Home all, beside Move head)', 'warn', 6000); return; }
+    runCommand($('twin-move'), '/api/printer/control/move', { x: pt.x, y: pt.y },
+      { sending: 'Moving…', done: `Head moving to X ${pt.x} · Y ${pt.y}`, failed: 'Move refused' });
+  }
+
   function applyTwinOptions() {
     const o = twin.view3d;
     try { localStorage.setItem('dejavu1.twin-view', JSON.stringify(o)); } catch (e) { /* not remembered */ }
     document.querySelectorAll('#twin-case button').forEach(b => { const on = b.dataset.case === o.case; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
     document.querySelectorAll('#twin-more input[data-opt]').forEach(i => { i.checked = !!o[i.dataset.opt]; });
+    const mv = $('twin-move');
+    if (mv) { mv.setAttribute('aria-pressed', String(!!twin.moveOn)); setText(mv, twin.moveOn ? 'Moving head · done' : 'Move head'); }
+    if (twin.model && twin.model.setMoveMode) twin.model.setMoveMode(twin.moveOn ? twinMoveTo : null);
+    const spin = $('twin-spin');
+    if (spin) { spin.setAttribute('aria-pressed', String(!!o.spin)); spin.classList.toggle('active', !!o.spin); setText(spin.querySelector('span'), o.spin ? 'Turning · stop' : 'Turn slowly'); }
     if (twin.model) { twin.model.setCaseMode(o.case); twin.model.setOptions({ print: o.print, rest: o.rest, tags: o.tags, spin: o.spin }); }
   }
 
@@ -963,13 +1045,45 @@ const Workshop = (() => {
     // Whole display frames are skipped until 30 ms have passed since the last drawing: every
     // other frame on a 60 Hz screen. (A 32 ms timer before the frame usually overshot to the
     // third frame, so a print moved the heads about 20 times a second, unevenly.)
+    // Following a print's G-code the twin draws every frame where the model costs little to draw
+    // (a real graphics card). Where it costs more (software drawing) it leaves the page at least
+    // two thirds of the time: a 40 ms drawing waits 120 ms before the next, and a very slow one
+    // draws no more than about once a second.
     const draw = () => {
-      if (performance.now() - (twin.drawnAt || 0) < 30) { requestAnimationFrame(draw); return; }
+      const cost = twin.model ? twin.model.drawCost() : 0;
+      const gap = cost < 8 ? 0 : Math.min(Math.max(1000 - cost, 250), Math.max(30, cost * 3));
+      if (performance.now() - (twin.drawnAt || 0) < gap) { requestAnimationFrame(draw); return; }
       twin.queued = false;
-      if (twin.model) { twin.drawnAt = performance.now(); twin.model.update(twin.state, twin.pos); renderChips(); }
-      else drawTwin();
+      if (twin.model) {
+        // The drawing itself happens a frame later and takes `cost`: count the gap from its end.
+        twin.drawnAt = performance.now() + cost;
+        twin.model.update(twin.state, twin.pos);
+        renderChips();
+        const sync = twin.model.syncInfo();
+        renderSync(sync);
+        if (sync && !sync.paused && !matchMedia('(prefers-reduced-motion: reduce)').matches) queueTwin();
+      } else drawTwin();
     };
     requestAnimationFrame(draw);
+  }
+
+  /* One line under the twin: is it in step with the printer? Updated twice a second. */
+  function renderSync(sync) {
+    const el = $('twin-sync');
+    if (!el || (performance.now() - (twin.syncAt || 0) < 500 && !!sync === !el.hidden)) return;
+    twin.syncAt = performance.now();
+    el.hidden = !sync;
+    if (!sync) return;
+    const clock = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+    const where = `${clock(sync.play)} of ${clock(sync.total)} into the file`;
+    let kind = 'ok', text;
+    if (sync.offPath) { kind = 'warn'; text = 'A move outside the file (a tool change, a purge or a park): showing where the nozzle is now'; }
+    else if (sync.paused) { kind = 'warn'; text = `Paused ${where}`; }
+    else if (sync.live) text = `In step with the printer, ${where}${sync.error_mm != null ? ` (within ${sync.error_mm < 0.1 ? '0.1' : sync.error_mm.toFixed(1)} mm)` : ''}`;
+    else text = `Following the file from where the printer is reading, ${where}`;
+    el.dataset.kind = kind;
+    const t = $('twin-sync-text');
+    if (t.textContent !== text) t.textContent = text;
   }
 
   /* ---- solids, in printer millimetres (X right, Y back, Z up) ----------
@@ -1355,7 +1469,7 @@ const Workshop = (() => {
           ${row('Swaps', swaps)}
           ${row('This print', job)}
         </dl>
-        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open in Control</button></div>`;
+        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open printer</button></div>`;
     } else if (id.startsWith('obj:')) {
       const name = id.slice(4), plate = st.objects || {}, o = (plate.list || []).find(v => v.name === name);
       if (!o) { twin.pick = null; box.hidden = true; return; }
@@ -1375,7 +1489,7 @@ const Workshop = (() => {
           <button type="button" class="wf-x" data-act="close" aria-label="Close details">✕</button></div>
         <dl class="wf-facts">${row('Temperature', `${deg(st.bed_temperature)}${st.bed_target ? ` → ${deg(st.bed_target)}` : ''}`)}
           ${row('Below the nozzle', `${twin.pos[2].toFixed(2)} mm`)}${row('Chamber', deg(st.chamber_temperature))}</dl>
-        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open in Control</button></div>`;
+        <div class="wf-actions"><button type="button" class="btn small" data-act="control">Open printer</button></div>`;
     }
     if (box.hidden !== !html) box.hidden = !html;
     setHTML(box, html);
@@ -1386,7 +1500,8 @@ const Workshop = (() => {
     if (!host) return;
     const views = $('wf-views');
     if (!state) {
-      setText($('twin-sub'), 'Waiting for a printer connection');
+      const away = unreachablePrinter();
+      setText($('twin-sub'), away ? unreachableWords(away)[0] : 'Waiting for a printer connection');
       host.innerHTML = demoNeeded('the digital twin'); twin.built = false; twin.state = null; twin.pick = null; twin.model = null; twin.printKey = null;
       if (views) views.hidden = true;
       if ($('twin-modes')) $('twin-modes').hidden = true;
@@ -1395,14 +1510,15 @@ const Workshop = (() => {
     if (views && views.hidden) views.hidden = false;
     if ($('twin-modes') && $('twin-modes').hidden) $('twin-modes').hidden = false;
     if (!twin.built) buildTwin();
-    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; }
+    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; twin.held = null; }
     if (twin.state && twin.state.current_file !== state.current_file) { twin.job = null; twin.jobAt = 0; }
     twin.state = state;
     if (twin.model) syncTwinPrint(state);
     const [x, y, z] = state.toolhead_position || [135, 135, 0];
+    const [dx, dy, dz] = drawnPosition(state, [x, y, z]);
     // A new layer (or no print running) starts a fresh trail.
     if (twin.trailZ === null || Math.abs(z - twin.trailZ) > 0.05 || state.state !== 'printing') { twin.trail = []; twin.trailZ = z; }
-    tween('twin-head', [x, y, z], (pos) => {
+    tween('twin-head', [dx, dy, dz], (pos) => {
       twin.pos = pos;
       if (twin.state && twin.state.state === 'printing') {
         const last = twin.trail[twin.trail.length - 1];
@@ -1410,7 +1526,7 @@ const Workshop = (() => {
         if (twin.trail.length > 90) twin.trail.shift();
       }
       queueTwin();
-    });
+    }, true);
     queueTwin();
     // The twin is a U1. Any other printer gets what it said about itself instead of the wrong machine.
     const m = state.machine, other = !!(m && !m.reference);
@@ -1428,7 +1544,31 @@ const Workshop = (() => {
     const nb = ' ';
     setText($('twin-readout'), `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
       (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
-    setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}`);
+    // A real printer that hasn't homed doesn't know where its head is, and a dropped link
+    // means the drawing shows the last reading: both said in words, never drawn as live.
+    const unhomed = typeof state.homed_axes === 'string' && state.homed_axes.length < 3;
+    setText($('twin-sub'), `${state.printer_name || 'Printer'} · ${STATE_WORD[state.state] || state.state}` +
+      (state.link_lost ? ' · no live link, last reading shown' : unhomed ? ' · not homed, position unknown' : ''));
+  }
+
+  /* Where the twin draws the head. While an axis homes, Klipper reports a
+   * position it has made up for that axis (homing sets one before the move),
+   * so a homing head was drawn flying out of the machine. An axis that isn't
+   * homed holds where it was last drawn, and every axis stays inside the
+   * printer's reported limits; once homed, the spring glides it to the real
+   * place. The readout under the twin still shows the printer's own numbers. */
+  function drawnPosition(state, raw) {
+    const m = state.machine || {};
+    const lo = Array.isArray(m.min_mm) && m.min_mm.length === 3 ? m.min_mm : [0, 0, 0];
+    const hi = Array.isArray(m.max_mm) && m.max_mm.length === 3 ? m.max_mm : [270, 270, 270];
+    const homed = typeof state.homed_axes === 'string' ? state.homed_axes : 'xyz';
+    const held = twin.held || (twin.held = [null, null, null]);
+    return raw.map((v, i) => {
+      const ok = homed.includes('xyz'[i]) && Number.isFinite(v);
+      if (ok) held[i] = Math.min(hi[i], Math.max(lo[i], v));
+      else if (held[i] == null) held[i] = i === 2 ? hi[i] / 2 : (lo[i] + hi[i]) / 2;
+      return held[i];
+    });
   }
 
   /* Print health: one animated dial. */
@@ -1470,6 +1610,11 @@ const Workshop = (() => {
 
   /* Chamber climate: a read-only reading, where Klipper reports one. */
   let chamberHistory = [];
+  // The first 5 seconds of a recording are left out: right after the link to the
+  // printer opens, the first readings can be off and pulled the graph out of shape.
+  const SETTLE_S = 5;
+  const pageStart = Date.now() / 1000;
+  const settled = list => list.length ? list.filter(s => s.t >= list[0].t + SETTLE_S) : list;
   async function loadChamber() {
     const host = $('chamber-host');
     if (!host) return;
@@ -1481,7 +1626,8 @@ const Workshop = (() => {
       host.dataset.built = '';
       return;
     }
-    chamberHistory = data.history.map(s => ({ t: s.t, c: s.chamber, b: s.bed }));
+    chamberHistory = settled(data.history.map(s => ({ t: s.t, c: s.chamber, b: s.bed }))
+      .filter(s => s.c != null && isFinite(s.c)));
     if (!host.dataset.built) {
       host.dataset.built = '1';
       host.innerHTML = `<div class="ch-now"><span id="ch-val">—</span><small>chamber</small></div>
@@ -1497,6 +1643,7 @@ const Workshop = (() => {
     tween('chamber', state.chamber_temperature, (v) => setText(val, formatTemp(v)));
     const last = chamberHistory[chamberHistory.length - 1];
     const now = Date.now() / 1000;
+    if (now - pageStart < SETTLE_S && !last) return;
     if (!last || now - last.t >= 5) {
       chamberHistory.push({ t: now, c: state.chamber_temperature, b: state.bed_temperature });
       if (chamberHistory.length > 360) chamberHistory.shift();
@@ -1530,9 +1677,9 @@ const Workshop = (() => {
    * progress, so the floating pill only appears once the ribbon has been
    * scrolled out of view - otherwise the two say the same thing and the
    * pill sits on top of whatever is in the bottom-right corner. */
-  if ('IntersectionObserver' in window && $('status-ribbon')) {
+  if ('IntersectionObserver' in window && $('printer-chip')) {
     new IntersectionObserver(([entry]) => document.body.classList.toggle('ribbon-in-view', entry.isIntersecting))
-      .observe($('status-ribbon'));
+      .observe($('printer-chip'));
   }
 
   function renderPill(state) {
@@ -1543,7 +1690,8 @@ const Workshop = (() => {
     const pct = Math.round(state.progress * 100);
     const left = hoursLeft(state);
     const active = state.active_toolhead;
-    setVar(pill, '--glass-tint', active ? state.toolheads[active].filament_color_hex : STATE_HEX[state.state]);
+    const head = active && state.toolheads ? state.toolheads[active] : null;
+    setVar(pill, '--glass-tint', (head && head.filament_color_hex) || STATE_HEX[state.state]);
     if (pill.dataset.state !== state.state) pill.dataset.state = state.state;
     const title = `${state.printer_name ? state.printer_name + ' · ' : ''}${state.state === 'complete' ? 'Done' : pct + '%'}`;
     const sub = state.state === 'paused' ? `Paused: ${state.current_file || ''}` :
@@ -1590,7 +1738,7 @@ const Workshop = (() => {
         the pre-flight check, edits, converting and printing need the Deja Vu1 server.</p>` +
       (files.local.length ? files.local.map(f => `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
           <span class="fcd-thumb"><span class="fcd-kind">${esc(f.kind.toUpperCase())}</span></span>
-          <span class="fcd-name">${esc(f.name)}</span>
+          <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${f.local.size < 1048576 ? `${Math.max(1, Math.round(f.local.size / 1024))} KB` : `${(f.local.size / 1048576).toFixed(1)} MB`}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span><span class="origin-tag">on this device</span></span>
         </button>`).join('')
@@ -1630,9 +1778,9 @@ const Workshop = (() => {
         : (s.size_mm ? `${s.size_mm.map(v => v.toFixed(0)).join(' × ')} mm · ${(s.triangles || 0).toLocaleString()} triangles` : (s.error || ''));
       return `<button class="file-card" type="button" data-open-file="${esc(f.name)}">
           <span class="fcd-thumb">${s.has_thumbnail ? `<img loading="lazy" alt="" onload="this.classList.toggle('is-tiny', this.naturalWidth <= 64)" src="${tourOn() ? `demo/thumbs/${enc(f.name)}.png` : `/api/files/thumb?name=${enc(f.name)}&v=${enc(f.modified_at || '')}`}">` : `<span class="fcd-kind">${esc(f.kind.toUpperCase())}</span>`}</span>
-          <span class="fcd-name">${esc(f.name)}</span>
+          <span class="fcd-name">${escName(f.name)}</span>
           <span class="fcd-meta">${esc(meta)}</span>
-          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc(f.origin)}</span>` : ''}</span>
+          <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate' }[f.origin] || f.origin)}</span>` : ''}</span>
         </button>`;
     }).join('') : empty('No files yet', 'Add your own G-code, STL, OBJ or 3MF files, or the sample files to try things out.');
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b.classList.contains('file-card') ? b : null));
@@ -1983,6 +2131,7 @@ const Workshop = (() => {
           <button class="btn danger" id="fd-delete" type="button">Delete</button>
         </div>
         <p class="log-empty fd-ar-note" id="fd-ar-note" hidden></p>
+        <div id="fd-colours-host"></div>
         <div id="fd-compare-host"></div>
         <div id="fd-convert-report"></div>`}`;
       await modelTools(entry, mesh, viewer, side);
@@ -1993,6 +2142,7 @@ const Workshop = (() => {
       }
       $('fd-delete').addEventListener('click', () => deleteFile(entry.name));
       if ($('fd-convert')) $('fd-convert').addEventListener('click', (e) => convertFile(entry.name, e.currentTarget));
+      if (is3mf && !modGate.off.has('converter')) renderColours(entry);
       renderCompare(entry);
       setupAR(entry, mesh);
       window.dispatchEvent(new CustomEvent('dv-model-open', { detail: entry }));
@@ -2036,11 +2186,116 @@ const Workshop = (() => {
       re-placed on the U1's 270 mm bed, each object keeping its spot, height and turn${n > 1 ? ' - so every plate opens where it belongs in Snapmaker Orca' : ''}.</p>`;
   }
 
+  /* Colours on the heads: which of the project's filaments the model uses,
+   * and which of the U1's four heads prints each one. The server suggests
+   * a plan (alike colours share a head, unused ones are dropped, or each
+   * colour goes to the closest loaded head); the person can change any row.
+   * Convert and "Save a copy" both use the plan shown. */
+  const HEAD_COUNT = 4;
+  async function renderColours(entry) {
+    const host = $('fd-colours-host');
+    if (!host) return;
+    files.colourPlan = null;
+    const data = await getJSON(api(`/api/colours/plan?name=${enc(entry.name)}`)).catch(() => null);
+    if (files.open !== entry || !data || !Array.isArray(data.filaments)) return;
+    const fil = data.filaments, used = fil.filter(f => f.used);
+    // A single-colour project with nothing to decide gets no panel.
+    if (fil.length <= 1 && used.length <= 1) return;
+    let plan = (data.suggested || []).slice();
+    files.colourPlan = fil.length > HEAD_COUNT ? plan : null;
+    const swatch = (c, label) => `<span class="cm-swatch${c ? '' : ' is-empty'}" style="--sw:${esc(c || 'transparent')}" aria-hidden="true"></span><span class="sr-only">${esc(label || '')}</span>`;
+    const headsOf = () => {
+      const heads = [];
+      for (let h = 0; h < HEAD_COUNT; h++) {
+        const members = fil.filter((f, i) => plan[i] === h);
+        const lead = members.slice().sort((a, b) => (b.used - a.used) || (b.painted - a.painted) || (a.n - b.n))[0];
+        heads.push({ h, members, lead });
+      }
+      return heads;
+    };
+    const draw = () => {
+      const heads = headsOf();
+      const mixed = heads.filter(x => new Set(x.members.map(f => (f.type || 'PLA').split(/[\s+-]/)[0])).size > 1);
+      const missing = fil.filter((f, i) => f.used && plan[i] == null);
+      host.innerHTML = `
+        <section class="cm" aria-labelledby="cm-title">
+          <div class="cm-head">
+            <h3 class="fd-h" id="cm-title">Colours on the U1's heads</h3>
+            <p class="cm-sub">${esc(data.source_label)} · ${fil.length} filament${fil.length === 1 ? '' : 's'} listed, ${used.length} used by the model</p>
+          </div>
+          <ol class="cm-heads" aria-label="What each head prints">
+            ${heads.map(x => `<li class="cm-headcard${x.lead ? '' : ' is-idle'}">
+              <span class="cm-dot" style="--sw:${esc((x.lead && x.lead.colour) || 'transparent')}"></span>
+              <span class="cm-hname">Head ${x.h + 1}</span>
+              <span class="cm-hwhat">${x.lead ? `${esc(x.lead.name)}${x.lead.type ? ` · ${esc(x.lead.type)}` : ''}` : 'Not used'}</span>
+              ${x.members.length > 1 ? `<span class="cm-hfrom">filaments ${x.members.map(f => f.n).join(' + ')}</span>` : ''}
+              ${data.loaded && data.loaded[x.h] && data.loaded[x.h].colour ? `<span class="cm-loaded" title="Loaded in the printer now">${swatch(data.loaded[x.h].colour, 'Loaded now')} loaded</span>` : ''}
+            </li>`).join('')}
+          </ol>
+          <div class="cm-rows" role="list">
+            ${fil.map((f, i) => `<div class="cm-row${f.used ? '' : ' is-unused'}" role="listitem">
+              ${swatch(f.colour, f.name)}
+              <span class="cm-fname"><b>Filament ${f.n}</b> ${esc(f.name)}${f.type ? ` · ${esc(f.type)}` : ''}
+                <small>${f.used ? (f.painted ? `painted on ${f.painted.toLocaleString()} triangle${f.painted === 1 ? '' : 's'}` : 'used by an object') : 'not used by the model'}</small></span>
+              <label class="sr-only" for="cm-sel-${i}">Head for filament ${f.n}</label>
+              <select id="cm-sel-${i}" data-i="${i}">
+                <option value="">${f.used ? 'Choose a head' : 'Leave out'}</option>
+                ${Array.from({ length: HEAD_COUNT }, (_, h) => `<option value="${h}"${plan[i] === h ? ' selected' : ''}>Head ${h + 1}</option>`).join('')}
+              </select>
+            </div>`).join('')}
+          </div>
+          ${mixed.length ? `<p class="cm-warn" role="alert">Head ${mixed.map(x => x.h + 1).join(' and ')} would get different materials, which print at different temperatures. Choose another head for one of them.</p>` : ''}
+          ${missing.length ? `<p class="cm-warn" role="alert">Filament ${missing.map(f => f.n).join(', ')} is used by the model and needs a head.</p>` : ''}
+          ${data.format === 'prusa' ? '<p class="log-empty">Snapmaker Orca opens PrusaSlicer projects with its own filament colours: load the colours above in those heads, or slice it here in Deja Vu1.</p>' : ''}
+          ${data.unreadable_paint ? `<p class="log-empty">${data.unreadable_paint} painted triangles couldn't be read and stay as they are.</p>` : ''}
+          <div class="cm-actions">
+            <button class="btn small" type="button" data-cm="suggest">Group alike colours</button>
+            ${data.matched ? '<button class="btn small" type="button" data-cm="match">Match the printer\'s heads</button>' : ''}
+            <button class="btn small primary" type="button" data-cm="save"${missing.length ? ' disabled' : ''}>Save a copy with these heads</button>
+          </div>
+          <p class="cm-status" role="status" aria-live="polite"></p>
+        </section>`;
+      qsa('select[data-i]', host).forEach(sel => sel.addEventListener('change', () => {
+        plan[+sel.dataset.i] = sel.value === '' ? null : +sel.value;
+        files.colourPlan = plan.slice();
+        draw();
+        const again = $(sel.id);
+        if (again) again.focus();
+      }));
+      qsa('[data-cm]', host).forEach(b => b.addEventListener('click', () => onAction(b)));
+    };
+    const onAction = async b => {
+      if (b.dataset.cm === 'suggest' || b.dataset.cm === 'match') {
+        plan = ((b.dataset.cm === 'match' ? data.matched : data.suggested) || []).slice();
+        files.colourPlan = plan.slice();
+        draw();
+        toast(b.dataset.cm === 'match' ? 'Each colour now goes to the closest loaded head' : 'Alike colours now share a head', 'ok');
+        return;
+      }
+      if (typeof tourOn === 'function' && tourOn()) { toast('Saving a copy needs the local Deja Vu1 app. The public demo is a recording.', 'warn'); return; }
+      b.disabled = true;
+      const r = await postJSON('/api/colours/apply', { name: entry.name, plan });
+      b.disabled = false;
+      const status = qs('.cm-status', host);
+      if (!r.ok) {
+        if (status) status.textContent = (r.body && r.body.error) || 'The copy could not be saved';
+        toast('Colours not saved', 'warn');
+        return;
+      }
+      if (status) status.innerHTML = `Saved as <button class="chip-btn" type="button" data-open-file="${esc(r.body.file.name)}">${esc(r.body.file.name)}</button>. ${esc(r.body.report.summary)}.`;
+      toast(`Saved ${r.body.file.name}`, 'ok', 4200, { action: { label: 'Open', run: () => openFile(r.body.file.name) } });
+      await loadFiles();
+      qsa('[data-open-file]', host).forEach(x => x.onclick = () => openFile(x.dataset.openFile));
+    };
+    draw();
+  }
+
   async function convertFile(name, button, target) {
     const label = button.textContent;
     button.disabled = true;
     button.textContent = 'Converting…';
-    const r = await postJSON('/api/convert', { name });
+    const plan = files.open && files.open.name === name ? files.colourPlan : null;
+    const r = await postJSON('/api/convert', plan ? { name, plan } : { name });
     button.disabled = false;
     button.textContent = label;
     const host = target || $('fd-convert-report');
@@ -2340,22 +2595,38 @@ const Workshop = (() => {
   const TRIGGERS = {
     temperature: 'A temperature crosses a line',
     state: 'A print starts, pauses, finishes…',
+    progress: 'A print reaches a percentage',
+    time_left: 'A print has only so many minutes left',
+    layer: 'A print reaches a layer',
+    error: 'The printer reports an error',
+    link_lost: 'The printer stops answering',
     filament_mismatch: 'The loaded filament doesn\'t match the file',
     maintenance_overdue: 'Maintenance becomes overdue',
   };
-  const ACTIONS = { notify: 'Send a notification', light: 'Set the light colour (WLED)', home_assistant: 'Set a Home Assistant sensor', pause: 'Pause the print' };
+  const ACTIONS = { notify: 'Send a notification', pause: 'Pause the print', cool_down: 'Turn the heaters off',
+    macro: 'Run one of the printer\'s macros', light: 'Set the light colour (WLED)', home_assistant: 'Set a Home Assistant sensor' };
+  // Worked examples, grouped by what people ask for most. Each fills the form; nothing saves until Save rule.
   const PRESETS = [
-    { label: 'Pause if the nozzle passes 260°C', rule: { trigger: { type: 'temperature', sensor: 'active_nozzle', op: 'above', value: 260 }, action: { type: 'pause' } } },
-    { label: 'Tell me when a print finishes', rule: { trigger: { type: 'state', event: 'finished' }, action: { type: 'notify', message: 'Print finished', priority: 'normal' } } },
-    { label: 'Amber light when paused', rule: { trigger: { type: 'state', event: 'paused' }, action: { type: 'light', color: '#ffaa00' } } },
-    { label: 'Alert on wrong filament', rule: { trigger: { type: 'filament_mismatch' }, action: { type: 'notify', message: 'Wrong filament loaded', priority: 'high' } } },
+    { group: 'Know what is happening', label: 'Tell me when a print finishes', rule: { trigger: { type: 'state', event: 'finished' }, action: { type: 'notify', message: 'Print finished', priority: 'normal' } } },
+    { group: 'Know what is happening', label: '10 minutes left: get ready', rule: { trigger: { type: 'time_left', value: 10 }, action: { type: 'notify', message: 'About 10 minutes left', priority: 'normal' } } },
+    { group: 'Know what is happening', label: 'Halfway there', rule: { trigger: { type: 'progress', value: 50 }, action: { type: 'notify', message: 'Print is halfway', priority: 'normal' } } },
+    { group: 'Know what is happening', label: 'Check the first layers at layer 3', rule: { trigger: { type: 'layer', value: 3 }, action: { type: 'notify', message: 'Layer 3: check the first layers stuck', priority: 'normal' } } },
+    { group: 'Catch problems', label: 'Urgent message on a printer error', rule: { trigger: { type: 'error' }, action: { type: 'notify', message: 'The printer stopped with an error', priority: 'high' } } },
+    { group: 'Catch problems', label: 'Tell me if the printer stops answering', rule: { trigger: { type: 'link_lost' }, action: { type: 'notify', message: 'The printer stopped answering', priority: 'high' } } },
+    { group: 'Catch problems', label: 'Alert on wrong filament', rule: { trigger: { type: 'filament_mismatch' }, action: { type: 'notify', message: 'Wrong filament loaded', priority: 'high' } } },
+    { group: 'Look after the printer', label: 'Heaters off after a cancelled print', rule: { trigger: { type: 'state', event: 'cancelled' }, action: { type: 'cool_down' } } },
+    { group: 'Look after the printer', label: 'Tell me when maintenance is due', rule: { trigger: { type: 'maintenance_overdue', task: 'any' }, action: { type: 'notify', message: 'Maintenance is due', priority: 'normal' } } },
+    { group: 'Look after the printer', label: 'Pause if the nozzle passes 260°C', rule: { trigger: { type: 'temperature', sensor: 'active_nozzle', op: 'above', value: 260 }, action: { type: 'pause' } } },
+    { group: 'Lights', label: 'Amber light when paused', rule: { trigger: { type: 'state', event: 'paused' }, action: { type: 'light', color: '#ffaa00' } } },
   ];
 
   function ruleForm() {
     const form = $('rule-form');
     const printers = live.fleet.length ? live.fleet : [];
     form.innerHTML = `
-      <div class="rf-presets" role="group" aria-label="Start from an example">${PRESETS.map((p, i) => `<button class="chip-btn" type="button" data-preset="${i}">${esc(p.label)}</button>`).join('')}</div>
+      <div class="rf-presets" role="group" aria-label="Start from an example"><p class="rf-presets-lead">Start from an example, then change anything:</p>
+        ${[...new Set(PRESETS.map(p => p.group))].map(g => `<div class="rf-group"><span class="rf-group-name">${esc(g)}</span>${PRESETS.map((p, i) => p.group === g
+          ? `<button class="chip-btn" type="button" data-preset="${i}">${esc(p.label)}</button>` : '').join('')}</div>`).join('')}</div>
       <fieldset class="rf-step"><legend>When</legend>
         <label class="sr-only" for="rf-trigger">Trigger</label>
         <select id="rf-trigger">${Object.entries(TRIGGERS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select>
@@ -2385,6 +2656,11 @@ const Workshop = (() => {
           <select id="rf-sensor" aria-label="Which temperature"><option value="active_nozzle">Active nozzle</option><option>T0</option><option>T1</option><option>T2</option><option>T3</option><option value="bed">Bed</option><option value="chamber">Chamber</option></select>
           <select id="rf-op" aria-label="Above or below"><option value="above">goes above</option><option value="below">drops below</option></select>
           <input type="number" id="rf-value" value="240" aria-label="Temperature in °C" style="width:90px"> °C`
+        : t === 'progress' ? `<label class="rf-inline">at <input type="number" id="rf-value" value="50" min="1" max="100" style="width:80px" aria-label="Percentage"> % done</label>`
+        : t === 'time_left' ? `<label class="rf-inline">with <input type="number" id="rf-value" value="10" min="1" max="1440" style="width:80px" aria-label="Minutes left"> minutes or less left</label>`
+        : t === 'layer' ? `<label class="rf-inline">layer <input type="number" id="rf-value" value="3" min="1" step="1" style="width:90px" aria-label="Layer number"></label>`
+        : t === 'error' ? '<span class="log-empty">Fires once when the printer stops with an error (not when it just stops answering).</span>'
+        : t === 'link_lost' ? '<span class="log-empty">Fires once when Deja Vu1 loses its live link to the printer.</span>'
         : t === 'state' ? `<select id="rf-event" aria-label="Print event">${['started', 'paused', 'resumed', 'finished', 'failed', 'cancelled'].map(e => `<option>${e}</option>`).join('')}</select>`
           : t === 'maintenance_overdue' ? `<select id="rf-task" aria-label="Maintenance task"><option value="any">Any task</option><option value="nozzle_check">Nozzle check</option><option value="bed_level">Bed levelling</option><option value="belt_tension">Belt tension</option><option value="lubrication">Lubrication</option><option value="dock_alignment">Dock alignment</option><option value="fan_clean">Fan cleaning</option><option value="calibration">Recalibration</option></select>` : '';
     };
@@ -2393,7 +2669,9 @@ const Workshop = (() => {
       host.innerHTML = a === 'notify' ? `<input type="text" id="rf-message" placeholder="Message" value="Check the printer" aria-label="Notification message"><select id="rf-priority" aria-label="Priority"><option value="normal">Normal (respects quiet hours)</option><option value="high">Urgent (always sends)</option></select>`
         : a === 'light' ? `<input type="color" id="rf-color" value="#ffaa00" aria-label="Light colour"> <span class="log-empty">Sent to the WLED strip set up in Settings</span>`
           : a === 'home_assistant' ? `<input type="text" id="rf-entity" value="sensor.dejavu1_alert" aria-label="Entity"> <input type="text" id="rf-state" value="on" aria-label="State" style="width:90px">`
-            : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
+            : a === 'macro' ? `<input type="text" id="rf-macro" placeholder="LIGHT_OFF" aria-label="Macro name" style="text-transform:uppercase"> <span class="log-empty">As the printer lists it under Printer → Printer's own buttons</span>`
+              : a === 'cool_down' ? '<span class="log-empty">Sets every head and the bed to off on the printer that triggered the rule. Never while it prints.</span>'
+                : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
     };
     $('rf-trigger').addEventListener('change', tparams);
     $('rf-action').addEventListener('change', aparams);
@@ -2404,6 +2682,8 @@ const Workshop = (() => {
       $('rf-trigger').value = p.trigger.type; tparams();
       if (p.trigger.sensor) { $('rf-sensor').value = p.trigger.sensor; $('rf-op').value = p.trigger.op; $('rf-value').value = p.trigger.value; }
       if (p.trigger.event) $('rf-event').value = p.trigger.event;
+      if (p.trigger.value != null && !p.trigger.sensor) $('rf-value').value = p.trigger.value;
+      if (p.trigger.task) $('rf-task').value = p.trigger.task;
       $('rf-action').value = p.action.type; aparams();
       if (p.action.message) { $('rf-message').value = p.action.message; $('rf-priority').value = p.action.priority; }
       if (p.action.color) $('rf-color').value = p.action.color;
@@ -2416,10 +2696,12 @@ const Workshop = (() => {
       if (t === 'temperature') Object.assign(trigger, { sensor: $('rf-sensor').value, op: $('rf-op').value, value: +$('rf-value').value });
       if (t === 'state') trigger.event = $('rf-event').value;
       if (t === 'maintenance_overdue') trigger.task = $('rf-task').value;
+      if (['progress', 'time_left', 'layer'].includes(t)) trigger.value = +$('rf-value').value;
       const action = { type: a };
       if (a === 'notify') Object.assign(action, { message: $('rf-message').value, priority: $('rf-priority').value });
       if (a === 'light') action.color = $('rf-color').value;
       if (a === 'home_assistant') Object.assign(action, { entity_id: $('rf-entity').value, state: $('rf-state').value });
+      if (a === 'macro') action.name = $('rf-macro').value.trim().toUpperCase();
       const rule = { name: $('rf-name').value, trigger, action, condition: $('rf-condition').value, printer: $('rf-printer').value, cooldown_s: +$('rf-cooldown').value };
       const r = await runCommand($('rf-save'), demoOn ? '/api/automations?demo=1' : '/api/automations', { rule },
         { sending: 'Saving…', done: 'Rule saved', failed: 'Rule not saved' });
@@ -2430,8 +2712,12 @@ const Workshop = (() => {
   function sentence(rule) {
     const t = rule.trigger, a = rule.action;
     const when = t.type === 'temperature' ? `${t.sensor.replace('_', ' ')} ${t.op === 'above' ? 'goes above' : 'drops below'} ${formatTemp(t.value)}`
+      : t.type === 'progress' ? `a print reaches ${t.value}%` : t.type === 'time_left' ? `a print has ${t.value} minutes or less left`
+      : t.type === 'layer' ? `a print reaches layer ${t.value}` : t.type === 'error' ? 'the printer reports an error'
+      : t.type === 'link_lost' ? 'the printer stops answering'
       : t.type === 'state' ? `a print ${t.event}` : t.type === 'filament_mismatch' ? 'the loaded filament doesn\'t match' : `maintenance${t.task && t.task !== 'any' ? ` (${t.task.replace('_', ' ')})` : ''} is overdue`;
-    const then = a.type === 'notify' ? `send "${a.message}"` : a.type === 'light' ? `set the light to <span class="chip" style="background:${esc(a.color)}"></span>` : a.type === 'home_assistant' ? `set ${esc(a.entity_id)} to "${esc(a.state)}"` : 'pause the print';
+    const then = a.type === 'notify' ? `send "${a.message}"` : a.type === 'light' ? `set the light to <span class="chip" style="background:${esc(a.color)}"></span>` : a.type === 'home_assistant' ? `set ${esc(a.entity_id)} to "${esc(a.state)}"`
+      : a.type === 'cool_down' ? 'turn the heaters off' : a.type === 'macro' ? `run ${a.name}` : 'pause the print';
     const cond = { always: '', while_printing: ' while printing', outside_quiet_hours: ' outside quiet hours' }[rule.condition];
     return `When ${esc(when)}${cond}, ${a.type === 'light' ? then : esc(then)}${rule.printer !== 'any' ? ` on ${esc(printerName(rule.printer))}` : ''}.`;
   }
@@ -2456,7 +2742,7 @@ const Workshop = (() => {
           <button class="btn small" data-rule-test="${esc(r.id)}" type="button">Test</button>
           <button class="btn small danger" data-rule-delete="${esc(r.id)}" type="button">Delete</button>
         </div>
-      </div>`).join('') : '<p class="log-empty">No rules yet. Pick an example above to start.</p>';
+      </div>`).join('') : '<p class="log-empty">No rules yet. Pick an example under New rule to start.</p>';
     qsa('[data-rule-toggle]', host).forEach(c => c.addEventListener('change', async () => {
       const r = await postJSON(`/api/automations/${enc(c.dataset.ruleToggle)}/update`, { changes: { enabled: c.checked } });
       if (!r.ok) toast(`Couldn't change it: ${r.body.error}`, 'bad');
@@ -2500,10 +2786,16 @@ const Workshop = (() => {
   function initSwap() {
     $('swap-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!demoOn) { toast('No printer connected. Turn on demo data to try this on a simulated printer', 'warn'); return; }
-      const r = await runCommand(e.submitter || null, '/api/maintenance/swap', { kind: $('swap-kind').value, toolhead: $('swap-toolhead').value },
+      if (!demoOn && !realOn) { toast('No printer connected. Turn on demo data to try this on a simulated printer', 'warn'); return; }
+      const body = { kind: $('swap-kind').value, toolhead: $('swap-toolhead').value, nozzle: $('swap-nozzle').value, note: $('swap-note').value };
+      const r = await runCommand(e.submitter || null, '/api/maintenance/swap', body,
         { sending: 'Recording…', done: 'Swap recorded, recalibration is now due', failed: 'Not recorded' });
-      if (r.ok) { loadMaintenance(); loadHealth(); }
+      if (r.ok) {
+        if (r.result.body.tool_setup) toast(r.result.body.tool_setup, 'info', 7000);
+        $('swap-note').value = '';
+        loadMaintenance(); loadHealth();
+        if (window.PrintRoom && PrintRoom.load) PrintRoom.load();
+      }
     });
   }
 
@@ -2568,7 +2860,7 @@ const Workshop = (() => {
       $('camera-reload').addEventListener('click', () => { stopCamera(); startCamera(); });
       cam.built = true;
     }
-    if (document.querySelector('#tab-modules:not([hidden])')) { stopCamera(); startCamera(); }
+    if (document.querySelector('#tab-control:not([hidden]) #camera-card:not(.sec-off)')) { stopCamera(); startCamera(); }
   }
 
   function setCamMode(mode, why) {
@@ -2800,6 +3092,11 @@ const Workshop = (() => {
   let dismissedOffer = 0;
 
   function currentTab() { return store.get('dejavu1.tab') || 'overview'; }
+  // The full camera (Printer → Camera & time-lapses) runs only while its part is open.
+  window.addEventListener('dv-section', e => {
+    if (e.detail.tab !== 'control') return;
+    if (e.detail.key === 'camera' || e.detail.key === 'all') loadCamera(); else stopCamera();
+  });
 
   function reportView() {
     if (modGate.off.has('handoff')) return;      // switched off: nothing to report, and no refused request
@@ -2816,16 +3113,29 @@ const Workshop = (() => {
     // In words: "Your iPhone was on Files · U1 Workshop · benchy.gcode".
     const tabName = (typeof TAB_NAMES !== 'undefined' && TAB_NAMES[offer.tab]) || offer.tab;
     const where = [tabName, offer.printer ? printerName(offer.printer) : null, offer.file].filter(Boolean).join(' · ');
-    $('handoff-text').textContent = `Your ${offer.device_name} was on ${where}. Open the same here?`;
-    el.hidden = false;
-    $('handoff-go').onclick = async () => {
+    const text = `Your ${offer.device_name} was on ${where}. Open the same here?`;
+    $('handoff-text').textContent = text;
+    const go = async () => {
       el.hidden = true;
       dismissedOffer = offer.at;
       if (offer.printer && offer.printer !== currentPrinter) selectPrinter(offer.printer);
       if (offer.tab) showTab(offer.tab);
       if (offer.file) { await loadFiles(); openFile(offer.file); }
     };
+    $('handoff-go').onclick = go;
     $('handoff-dismiss').onclick = () => { el.hidden = true; dismissedOffer = offer.at; };
+    if (!el.hidden) return;
+    el.hidden = false;
+    // The offer waits a few seconds, then moves into the notification orb (button and all), so it
+    // doesn't sit over the page; pointing at it or tabbing into it keeps it where it is.
+    clearTimeout(checkHandoff.fold);
+    const fold = () => {
+      if (el.hidden || el.matches(':hover') || el.contains(document.activeElement)) { if (!el.hidden) checkHandoff.fold = setTimeout(fold, 3000); return; }
+      el.hidden = true;
+      dismissedOffer = offer.at;
+      toast(text, 'info', 3000, { action: { label: 'Open here', run: go } });
+    };
+    checkHandoff.fold = setTimeout(fold, 9000);
   }
 
   /* ================================================================
@@ -2836,10 +3146,14 @@ const Workshop = (() => {
     const bar = $('quick-actions');
     const running = state.state === 'printing' || state.state === 'paused';
     if (bar.hidden !== !running) bar.hidden = !running;
+    // With the link down a press can't reach the printer: the bar stays, its buttons wait.
+    const reachable = running && !state.link_lost;
+    const qaCancel = $('qa-cancel');
+    if (qaCancel && qaCancel.disabled !== !reachable) qaCancel.disabled = !reachable;
     const pause = $('qa-pause');
     if (pause.dataset.phase !== 'sending') {
       setText(pause, state.state === 'paused' ? 'Resume' : 'Pause');
-      if (pause.disabled !== !running) pause.disabled = !running;
+      if (pause.disabled !== !reachable) pause.disabled = !reachable;
     }
     pause.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pause);
   }
@@ -2909,8 +3223,8 @@ const Workshop = (() => {
       if (!b) return;
       setSheet(false);
       const act = b.dataset.more;
-      if (act === 'camera') $('camera-open').click();
-      else if (act === 'help') $('setup-open').click();
+      if (act === 'camera') { showTab('control'); window.Sections && Sections.reveal($('pp-camera-card')); $('pp-camera-card').scrollIntoView({ block: 'start' }); }
+      else if (act === 'help') $('setup-replay').click();
       else if (act === 'tips') { if (window.Guide && Guide.has(currentTab())) Guide.screen(currentTab()); else toast('This screen has no extra tips', 'info'); }
       else if (act === 'install' && window.Phone) Phone.install();
     });
@@ -3184,11 +3498,23 @@ const Workshop = (() => {
     });
   }
 
-  /* The celebration: the live pill's glass grows into the summary card. */
-  let lastCelebrated = null;
+  /* A finished print: the background dots celebrate and a message rises out of
+   * the orb, with See summary for the details. Nothing waits for a click, so a
+   * farm of printers finishing one after another never stacks up pop-ups, and
+   * the dots celebrate at most once every 10 seconds however many finish. */
+  let lastCelebrated = null, lastBurst = 0;
   function celebrate(event) {
     if (lastCelebrated === event.id) return;
     lastCelebrated = event.id;
+    const s = event.summary;
+    const dots = store.get('dejavu1.pref.celebrate') !== 'off';
+    if (dots && Date.now() - lastBurst > 10000 && typeof Backdrop !== 'undefined') { lastBurst = Date.now(); Backdrop.celebrate(); }
+    toast(`${event.printer_name} finished ${s.file} · ${fmtHours(s.hours)} · ${Number(s.grams).toFixed(1)} g`, 'ok', 9000,
+      { action: { label: 'See summary', run: () => showSummary(event) } });
+  }
+
+  /* The summary card: the live pill's glass grows into it. */
+  function showSummary(event) {
     const s = event.summary;
     $('celebrate-title').textContent = `${event.printer_name}: print finished`;
     $('celebrate-sub').textContent = s.file;
@@ -3196,8 +3522,6 @@ const Workshop = (() => {
       <div><span class="stat-key">Time</span><b>${fmtHours(s.hours)}</b></div>
       <div><span class="stat-key">Filament</span><b>${Number(s.grams).toFixed(1)} g ${esc(s.material)}</b></div>
       <div><span class="stat-key">Cost</span><b>${money(s.cost.total_cost)}</b></div>`;
-    // The background joins in: a burst in the print's filament colour.
-    if (typeof Backdrop !== 'undefined') Backdrop.celebrate();
     const dialog = $('celebrate-dialog');
     qs('.dialog-panel', dialog).style.setProperty('--glass-tint', s.color || '#4a8df8');
     qs('.dialog-panel', dialog).style.setProperty('--cel', s.color || '#4a8df8');
@@ -3229,7 +3553,7 @@ const Workshop = (() => {
     if (name === 'fleet') loadRegistry();
     if (name === 'files') { loadFiles(); loadQueue(); }
     if (name === 'automations') { ruleForm(); loadRules(); loadRuleLog(); }
-    if (name === 'modules') { loadCamera(); loadTimelapse(); } else stopCamera();
+    if (name === 'control') { loadCamera(); loadTimelapse(); } else stopCamera();
     if (name === 'maintenance') { loadForecast(); loadSideBySide(); }   // Filament & colour lives here
     window.dispatchEvent(new CustomEvent('dv-tab', { detail: name }));
     reportView();
@@ -3237,14 +3561,17 @@ const Workshop = (() => {
 
   async function refresh() {
     $('demo-tools-card').hidden = !demoOn;
+    // The empty cards name an added printer that isn't answering, so its list comes first.
+    const reg = liveData() ? null : loadRegistry();
     if (!liveData()) {
+      await reg;
       printerState = null;
       $('live-pill').hidden = true;
       $('quick-actions').hidden = true;
       renderTwin(null);
       renderFleet([]);
     }
-    await Promise.all([loadHealth(), loadChamber(), loadFiles(), loadQueue(), loadRegistry(),
+    await Promise.all([loadHealth(), loadChamber(), loadFiles(), loadQueue(), reg || loadRegistry(),
       loadRules(), loadRuleLog(), loadForecast(), loadSideBySide(), loadTimelapse()]);
     if (liveData()) refreshPrinter();
     renderChip();

@@ -136,7 +136,7 @@
       content.innerHTML=`<h2 id="setup-title">Open it on your phone.</h2><p class="setup-lead">Your phone opens the same dashboard as this computer. No app store, no account, and nothing to type: scan a code with the phone’s camera.</p>
         <div class="setup-choices setup-phone-go"><button class="btn primary" id="setup-phone">Show the code to scan</button></div>
         <div class="setup-ways"><div class="setup-way"><strong>No camera handy?</strong><span>${esc(phoneText())}</span></div>
-        <div class="setup-way"><strong>Keep it on your Home Screen</strong><span>${esc(installText)}</span></div></div><details><summary>Phone cannot connect?</summary><p>Keep the launcher window open. Check that the computer is awake and both devices use the same home Wi-Fi (not a guest network). Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>Typing it instead? Use a colon before the port number (<code>:8000</code>), not a dot; with a dot, phones search the web instead. A “Refused” message means the address is not allowed: ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
+        <div class="setup-way"><strong>Keep it on your Home Screen</strong><span>${esc(installText)}</span></div></div><details><summary>Phone cannot connect?</summary><p>Check that Deja Vu1 is running on the computer (open http://localhost:8000 there; if it doesn't load, paste the Start block from Settings) and that the computer is awake and both devices use the same home Wi-Fi (not a guest network). Allow Python through the computer’s firewall on your private network. Do not turn the firewall off.</p><p>Typing it instead? Use a colon before the port number (<code>:8000</code>), not a dot; with a dot, phones search the web instead. A “Refused” message means the address is not allowed: ordinary local IP addresses work; a custom tunnel name must be added to DEJAVU_ALLOWED_HOSTS on the computer. There is no app login: protect remote access with a private VPN or Cloudflare Access.</p></details>`;
       $('setup-phone').onclick=()=>window.Phone&&Phone.open();
     } else if (names[step] === 'Desktop app') {
       content.innerHTML=`<h2 id="setup-title">A window of its own.</h2>
@@ -145,11 +145,15 @@
           <div class="setup-way"><strong>Install it as an app</strong><span>An icon in the Start menu or Dock and its own window, from Chrome or Edge.</span><button class="btn primary" id="setup-install">Install Deja Vu1</button></div>
           <div class="setup-way"><strong>Open as a window at start</strong><span>The launcher opens a window with no tabs or address bar.</span><button class="btn" id="setup-window">Use an app window</button></div>
           <div class="setup-way"><strong>Keep the browser tab</strong><span>Nothing changes. It opens in your usual browser.</span></div>
+          <div class="setup-way"><strong>Start with this computer</strong><span>Deja Vu1 starts when you sign in, so the dashboard is always ready to open.</span><button class="btn" id="setup-autostart">Start it with this computer</button></div>
         </div>
         <p class="field-hint" id="setup-desktop-note">${esc(installHelp())}</p>`;
       $('setup-install').onclick=()=>install($('setup-desktop-note'));
       $('setup-window').onclick=()=>saveWindow('window',$('setup-desktop-note'));
-      if(tourOn()||serverMissing()){$('setup-install').disabled=true;$('setup-window').disabled=true;}
+      const auto=info&&info.autostart;
+      $('setup-autostart').onclick=async()=>{await saveAutostart(true);const on=!!(info&&info.autostart&&info.autostart.on);$('setup-autostart').textContent=on?'Starts with this computer':'Start it with this computer';$('setup-autostart').disabled=on;};
+      if(auto&&auto.on){$('setup-autostart').textContent='Starts with this computer';$('setup-autostart').disabled=true;}
+      if(tourOn()||serverMissing()||!auto||!auto.supported){$('setup-install').disabled=tourOn()||serverMissing();$('setup-window').disabled=tourOn()||serverMissing();$('setup-autostart').disabled=true;}
     } else {
       const kind=info&&info.install_kind==='git'?'Your copy came from git or GitHub Desktop, so updates come straight from GitHub.':'Updates arrive inside the app. In Settings you choose newest builds (each fix as it lands) or stable releases (fewer, bigger steps).';
       content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
@@ -166,14 +170,7 @@
     returnFocus=document.activeElement;step=0;mode=tourOn()?'demo':'real';
     dialog.showModal();render();refreshInfo();
   }
-  $('setup-open').onclick=open;$('setup-replay').onclick=open;
-  function openCamera() {
-    showTab('modules');
-    const camera=document.querySelector('.stock-camera');
-    camera.open=true;camera.scrollIntoView({block:'center',behavior:'instant'});
-    $('stock-camera-start').focus({preventScroll:true});
-  }
-  $('camera-open').onclick=openCamera;
+  $('setup-replay').onclick=open;
   $('setup-skip').onclick=finish;
   $('setup-next').onclick=()=>{if(step===names.length-1)finish();else{step++;render();}};
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
@@ -242,8 +239,23 @@
     $('da-window-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !d ? 'Loading…'
       : d.window_browser ? `The app window uses ${d.window_browser}, found on this computer. Applies the next time you start the launcher.`
       : 'Neither Edge nor Chrome was found on this computer, so an app window would open as a normal tab.';
+    const a = info && info.autostart, box = $('da-autostart');
+    box.disabled = offline || !a || !a.supported;
+    box.checked = !!(a && a.on);
+    $('da-autostart-note').textContent = offline ? 'Belongs to the copy on your own computer.' : !a ? 'Loading…'
+      : !a.supported ? 'This system has no sign-in start list Deja Vu1 knows how to use.'
+      : a.on ? 'On. Deja Vu1 starts when you sign in, without opening a browser; open the dashboard or the installed app when you want it.'
+      : 'Off. Until you start the launcher, the dashboard address shows an offline page.';
+  }
+  async function saveAutostart(on) {
+    const r = await postJSON('/api/app/autostart', { on });
+    if (!r.ok) { toast(r.body.error || 'Could not change that setting', 'bad'); renderDesktop(); return; }
+    if (info) info.autostart = r.body;
+    toast(on ? 'Deja Vu1 will start when this computer starts' : 'Deja Vu1 will no longer start with this computer', 'ok', 6000);
+    renderDesktop();
   }
   $('da-install').onclick = () => install();
+  $('da-autostart').onchange = e => saveAutostart(e.target.checked);
   $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
   $('guide-replay').onclick = () => Guide.everything();
   window.DesktopApp = { install, help: installHelp, canPrompt: () => !!installEvent, standalone };
@@ -264,7 +276,7 @@
     $('stock-camera-start').hidden=true;$('stock-camera-stop').hidden=false;
     async function frame(){
       if(run!==cameraRun)return;
-      if(printer!==currentPrinter||document.hidden||$('tab-modules').hidden){stopStock();return;}
+      if(printer!==currentPrinter||document.hidden||$('tab-control').hidden){stopStock();return;}
       try{
         $('stock-camera-status').textContent=demoOn?'Demo illustration · not a camera photo':'Requesting a new camera picture…';
         const response=await fetch(api('/api/camera/snapshot?t='+Date.now()));

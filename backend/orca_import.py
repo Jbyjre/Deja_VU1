@@ -2,9 +2,16 @@
 orca_import.py
 ==============
 
-Pick up where you are: find the work already in Snapmaker Orca or
-OrcaSlicer on this computer and bring it into Deja Vu1, so a U1 owner
-doesn't start from nothing.
+Pick up where you are: find the work already in the slicers on this
+computer and bring it into Deja Vu1, so a U1 owner doesn't start from
+nothing and can keep using the slicer they know alongside it.
+
+Recent projects come from Snapmaker Orca, OrcaSlicer, Bambu Studio,
+Creality Print, Elegoo Slicer, QIDI Studio, Flashforge's Orca and
+PrusaSlicer; the converter and the colour panel then set them up for the
+U1. Presets come from Snapmaker Orca and OrcaSlicer only: the U1 engine
+can load those, while another brand's presets build on that brand's own
+printer profiles.
 
 What is found, and where (checked against the slicers' own source:
 SoftFever/OrcaSlicer and Snapmaker/OrcaSlicer, src/slic3r/GUI/GUI_App.cpp,
@@ -17,6 +24,11 @@ src/libslic3r/AppConfig.cpp, Preset.hpp, PresetBundle.hpp, version.inc):
     machine/, process/ and filament/, one .json each;
   - your recent projects are listed in <data>/<key>.conf (JSON; Orca may
     add a checksum line after it), in its "recent_projects" section.
+The other slicers' keys, from each one's version.inc (SLIC3R_APP_KEY):
+"BambuStudio", "Creality" (Creality Print), "ElegooSlicer", "QIDIStudio",
+"Orca-Flashforge" and "PrusaSlicer". The Orca forks keep the same .conf
+(AppConfig.cpp config_path); PrusaSlicer keeps PrusaSlicer.ini, an INI file
+whose [recent_projects] section lists "1 = <path>" and so on.
 
 Nothing is changed in the slicer's folders. Projects are copied into the
 file library; presets are used where they are (a slicing profile points at
@@ -32,7 +44,11 @@ from pathlib import Path
 
 import file_library
 
-APPS = (("Snapmaker_Orca", "Snapmaker Orca"), ("OrcaSlicer", "OrcaSlicer"))
+APPS = (("Snapmaker_Orca", "Snapmaker Orca"), ("OrcaSlicer", "OrcaSlicer"), ("BambuStudio", "Bambu Studio"),
+        ("Creality", "Creality Print"), ("ElegooSlicer", "Elegoo Slicer"), ("QIDIStudio", "QIDI Studio"),
+        ("Orca-Flashforge", "Flashforge Orca"), ("PrusaSlicer", "PrusaSlicer"))
+# Whose user presets the U1 engine can load (see the module note).
+PRESET_APPS = ("Snapmaker_Orca", "OrcaSlicer")
 KINDS = ("machine", "process", "filament")
 MAX_PRESETS = 600
 MAX_PRESET_BYTES = 4 * 1024 * 1024
@@ -45,7 +61,7 @@ def data_folders():
     """[(app label, folder)] for every slicer data folder that exists here."""
     override = os.environ.get("DEJAVU_ORCA_DIR")
     if override:
-        return [("Orca", Path(override))] if Path(override).is_dir() else []
+        return [("Orca", Path(override), "OrcaSlicer")] if Path(override).is_dir() else []
     home = Path.home()
     bases = []
     if sys.platform.startswith("win"):
@@ -60,14 +76,14 @@ def data_folders():
         for base in bases:
             folder = base / key
             if folder.is_dir():
-                found.append((label, folder))
+                found.append((label, folder, key))
         # Flatpak installs keep their own config folder.
         flatpak = home / ".var" / "app"
         if flatpak.is_dir():
             for app in sorted(flatpak.iterdir())[:50]:
                 folder = app / "config" / key
                 if folder.is_dir():
-                    found.append((label, folder))
+                    found.append((label, folder, key))
     return found
 
 
@@ -108,7 +124,30 @@ def _presets(folder):
     return out
 
 
+def _ini_recent(path):
+    """PrusaSlicer.ini's [recent_projects] section, in its numbered order."""
+    try:
+        if path.stat().st_size > MAX_CONF_BYTES:
+            return []
+        lines = path.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+    except OSError:
+        return []
+    section, found = None, []
+    for line in lines:
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            section = line[1:-1].strip()
+        elif section == "recent_projects" and "=" in line:
+            k, v = line.split("=", 1)
+            if k.strip().isdigit():
+                found.append((int(k.strip()), v.strip()))
+    return [v for _, v in sorted(found)]
+
+
 def _conf(folder):
+    ini = folder / "PrusaSlicer.ini"
+    if ini.is_file():
+        return {"recent_projects": _ini_recent(ini)}
     for key, _ in APPS:
         path = folder / f"{key}.conf"
         if path.is_file():
@@ -150,8 +189,9 @@ def _projects(folder):
 def scan():
     """What can be brought in, per slicer found. Paths are kept back (see public)."""
     apps = []
-    for label, folder in data_folders():
-        apps.append({"app": label, "presets": _presets(folder), "projects": _projects(folder)})
+    for label, folder, key in data_folders():
+        presets = _presets(folder) if key in PRESET_APPS else {k: [] for k in KINDS}
+        apps.append({"app": label, "presets": presets, "projects": _projects(folder)})
     return apps
 
 
@@ -164,7 +204,8 @@ def public(apps=None):
                       "presets": {k: [{x: v for x, v in p.items() if x != "_path"} for p in a["presets"][k]] for k in KINDS},
                       "projects": [{x: v for x, v in p.items() if x != "_path"} for p in a["projects"]]})
     return {"apps": clean, "found": bool(clean),
-            "looked_in": "Snapmaker Orca and OrcaSlicer's own settings folders on this computer",
+            "looked_in": ("the settings folders of Snapmaker Orca, OrcaSlicer, Bambu Studio, Creality Print, Elegoo "
+                          "Slicer, QIDI Studio, Flashforge Orca and PrusaSlicer on this computer"),
             "note": "Nothing in the slicer's folders is changed. Projects are copied into Files; presets are used where they are."}
 
 

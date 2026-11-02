@@ -28,6 +28,121 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.14.0 (1 November 2026): Your printer, its own page
+
+- Each printer has its own page (Printer, where Control was): the 3D twin with the camera and a Move pad beside it, temperatures with PLA, PETG and TPU warm-up buttons, extrude and retract, speed, flow, part fan and pressure advance, the printer's own macros and bed mesh, motors off, the G-code console and an emergency stop. Opening a printer goes there.
+- Overview is a page of cards about now: Needs you, Right now, the camera, temperatures, quick control, your printers, maintenance and totals.
+- The camera and time-lapses moved from Settings to the printer page, and the camera picture refreshes as fast as the printer makes pictures.
+- The name you gave the printer on the printer itself is shown everywhere. Connected is green, a ready printer says Ready, and the printer button in the top bar shows its state, progress and finish time.
+- Deja Vu1 keeps running after the PowerShell or Terminal window is closed, and the Start block also starts it at sign-in.
+- The twin keeps the head inside the printer while it homes, no longer flickers while it turns, has a Turn slowly button, and lets you drag the real head with Move head.
+- Slicing shows Layer heights per head under the slice bar and loads your tools by itself; the slicing cards no longer run into each other.
+- A finished print sets off the background dots and a message, with no pop-up to close.
+- Automations: rules for a percentage, minutes left, a layer, an error or a lost printer; actions to turn the heaters off or run a printer macro; ten examples to start from.
+- Care: Not now snoozes a due task without hiding it; a recorded nozzle swap updates that head's nozzle for slicing.
+- Preferences has its own tab: units, the screen to open on, the Move step, cameras, the finish celebration and your warm-up temperatures.
+- Notifications and remote access explain how to set them up; Look on this computer is short and clear; phones get a tighter layout without the computer-only tools.
+- One phone that pairs twice is listed once, and the version history reads as app news.
+
+Not yet tried on a physical U1: the new movement, extrude, tuning, macro, bed mesh and emergency stop commands (tested against the simulated printer and the Moonraker stand-in), and the background start on Windows and macOS (tested on Linux).
+
+## 0.13.8 (1 November 2026): Give each printer its own page with full controls, and make Overview a page o...
+
+- Give each printer its own page with full controls, and make Overview a page of cards
+
+## 0.13.7 (31 October 2026): Make updates finish every time, and say plainly when Deja Vu1 is ready
+
+- Make updates finish every time, and say plainly when Deja Vu1 is ready
+
+## 0.13.6 (31 October 2026): Keep every part drawing with a real printer, and reload pages after any update
+
+- Keep every part drawing with a real printer, and reload pages after any update
+
+## 0.13.5 (31 October 2026): Keep the dashboard reachable: start with the computer, restart after a crash
+
+- Keep the dashboard reachable: start with the computer, restart after a crash
+
+## 0.13.4 (31 October 2026): Get ready for a real U1: connection, controls and the twin following the head
+
+- Get ready for a real U1: connection, controls and the twin following the head
+
+## 0.13.3 (31 October 2026): Make the 3D twin match the production U1 in Snapmaker's photos
+
+- Make the 3D twin match the production U1 in Snapmaker's photos
+
+## 0.13.2 (30 October 2026): Product page wording
+
+- Updated wording on the product page.
+
+## 0.13.1 (30 October 2026): Housekeeping
+
+- Behind-the-scenes housekeeping. Nothing in the app changed.
+
+## 0.13.0 (28 October 2026): in step with the print
+
+- **The 3D twin follows the print's own G-code.** The preview of the running
+  file (`backend/print_preview.py`) now carries a timeline: where the nozzle is
+  after each move, which byte of the file that move ends at, and when it happens
+  by the file's own feed rates. On a real printer Deja Vu1 now also reads
+  Klipper's `motion_report.live_position` (where the nozzle is now; `toolhead`'s
+  `position` is the last command and runs up to a second or two ahead) and
+  `virtual_sdcard.file_position` (the byte read up to), both named in Klipper's
+  `docs/Status_Reference.md`. Each reading looks for the nozzle along the path
+  just before that byte, which fixes the moment in the file; between readings
+  the nozzle runs along the G-code at the pace the printer has been keeping, and
+  each reading pulls it back into step over a third of a second. The walls
+  appear where and when they are laid (each bit of wall carries the time it is
+  printed), the plastic just laid glows for three seconds, and a move the file
+  doesn't hold (a tool change, a purge, a park) shows the live position instead.
+  A line under the twin says whether it is in step. Tested in Node against the
+  two-Benchy sample with a printer simulated from the same file: one reading
+  finds the moment exactly, and with readings four times a second and the
+  printer at 0.8 times the file's speeds the playhead stayed within 0.016 s.
+  The simulated printer, which reports no live position, is followed from its
+  progress. A U1 that prints a file's T1 on another head (`extruder_map`) now
+  colours the walls by the head that prints them. Not yet seen on a physical U1.
+- **Colours from any slicer, on four heads.** `backend/colour_map.py` reads which
+  filaments a project actually uses (each object's and part's filament, per-feature
+  settings, height ranges and the colour painted on each triangle) and suggests a
+  head for each: unused ones are dropped, four or fewer keep a head each, and more
+  than four are grouped by how alike they look (OKLab), never putting two
+  materials on one head while another grouping exists. With a printer connected,
+  **Match the printer's heads** sends each colour to the closest loaded head. A
+  new panel in Files, **Colours on the U1's heads**, shows the four heads and a
+  row per filament to change; **Save a copy with these heads** writes a project
+  that uses at most four (`GET /api/colours/plan`, `POST /api/colours/apply`).
+  The painted-triangle format, the per-feature setting names and how Orca opens
+  PrusaSlicer files were read from OrcaSlicer's source (commit `97e6c71`). The
+  converter applies the plan by itself to a project with more than four filaments,
+  so a five-colour MakerWorld project converts instead of only warning, and the
+  slicing workspace points to the panel instead of refusing with "more material
+  slots". A new sample, `sample_makerworld_five_colours.3mf`, is a Benchy painted
+  in five colours with a sixth, unused slot. Opening a saved copy in Snapmaker
+  Orca has not been tried.
+- **More slicers.** The converter now takes projects from Creality Print, QIDI
+  Studio, Flashforge's Orca and other OrcaSlicer forks (recognised by their
+  project settings) and from PrusaSlicer, whose own layout Orca opens with its
+  paint and per-object extruders (its colours are listed for you to load).
+  **Pick up where you left off** also finds recent projects from Bambu Studio,
+  Creality Print, Elegoo Slicer, QIDI Studio, Flashforge Orca and PrusaSlicer
+  (folder names from each project's `version.inc`; PrusaSlicer's
+  `PrusaSlicer.ini`), and a profile made from your Orca presets can now set a
+  filament for each of the four heads. Cura's `;TYPE:WALL-OUTER` and
+  `;TYPE:SKIN` (read in CuraEngine's `gcodeExport.cpp`) are drawn in the twin.
+- **Slicing, clearer.** In the slicing workspace, converting a project made for
+  another printer and fitting its colours now sit under the slice bar instead of
+  inside the folded "Source & import information".
+- **Notifications.** A repeated message counts up (×2, ×3) instead of stacking, a
+  long message stays longer (about a quarter of a second a word, nine seconds for a
+  problem), a hairline shows the time left and stops while you point at it, a
+  message that arrives while the tab is hidden waits for you, a bubble can be
+  flicked away on a touch screen, and the list survives a reload in the same tab.
+  "Open the same here?" moves into the orb after nine seconds, button and all.
+- **Faster, tidier.** Large JSON replies (a print's preview, the file list) are
+  sent compressed when the browser accepts it: the two-Benchy preview drops from
+  842 KB to 271 KB. File names wrap after `_`, `-` and `.` instead of mid-word,
+  and search fits its placeholder.
+
 ## 0.12.0 (27 October 2026): one thing at a time
 
 - **One part of a screen at a time.** Overview (Right now, Live readings,
@@ -67,10 +182,10 @@ run passed on 27 October 2026). Not a release.
   or macOS, real phones. With software graphics, the 3D twin in view costs about
   460 ms a frame on both 0.11.1 and this version; real GPUs unmeasured here.
 
-## 0.11.1 (27 October 2026): Clean up code layout and public wording before Phase 2
+## 0.11.1 (27 October 2026): Tidier code and clearer wording
 
-- Clean up code layout and public wording before Phase 2
-- A smoother launch film (version 17), tour, sheets and 3D twin [marketing video]
+- Tidier code and clearer wording across the app.
+- The quick tour, sheets and 3D twin run more smoothly.
 
 ## 0.11.0 (26 October 2026): your phone, from anywhere
 

@@ -311,9 +311,13 @@ const Backdrop = (() => {
     mask = { text, t: 0, dur: seconds, cells: null };
     wake();
   }
+  /* A print finished: the dots ripple out from the middle, a line sweeps across
+   * like a nozzle laying the last layer, and two bursts follow. About 2.5 s, in
+   * the set's one dot colour; nothing to dismiss. */
   function celebrate() {
     const pal = [litColour()];
     bloom(W / 2, H * 0.4);
+    sweep(1);
     setTimeout(() => sparksAt(W * 0.25, H * 0.3, 40, pal), 250);
     setTimeout(() => sparksAt(W * 0.75, H * 0.3, 40, pal), 450);
   }

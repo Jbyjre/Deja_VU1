@@ -36,6 +36,12 @@ function esc(text) {
   }[c]));
 }
 
+/* A file name, escaped, that may wrap after "_", "-", "." or a space and nowhere else:
+ * "benchy_gear_vase.gcode" breaks before "gcode", never inside a word. */
+function escName(text) {
+  return esc(text).replace(/([_.\-])(?=[^_.\-])/g, '$1<wbr>');
+}
+
 /* Which module owns each data route (the server lists them with the
  * modules), and which modules are off. A route of a switched-off module
  * would only answer 403, which every browser logs as an error, so it isn't
@@ -417,6 +423,21 @@ async function tourControl(action, pid, body) {
     tourLog(pid, `SET_HEATER_TEMPERATURE HEATER=${th} TARGET=${target}`);
     return tourDone(pid);
   }
+  const HANDS_ON = {
+    jog: b => `G91 · G1 ${b.axis}${b.distance} · G90`, move: b => `G90 · G1 ${['x', 'y', 'z'].filter(k => b[k] != null).map(k => k.toUpperCase() + b[k]).join(' ')}`,
+    'z-nudge': b => `SET_GCODE_OFFSET Z_ADJUST=${b.delta} MOVE=1`, extrude: b => `M83 · G1 E${b.length}`,
+    speed: b => `M220 S${b.percent}`, flow: b => `M221 S${b.percent}`, fan: b => `M106 S${Math.round((b.percent || 0) * 2.55)}`,
+    'pressure-advance': b => `SET_PRESSURE_ADVANCE ADVANCE=${b.value}`, limits: b => `SET_VELOCITY_LIMIT VELOCITY=${b.velocity} ACCEL=${b.accel}`,
+    'motors-off': () => 'M84', 'bed-mesh': () => 'BED_MESH_CALIBRATE', macro: b => String(b.name || ''), tool: b => String(b.toolhead || ''),
+    estop: () => 'M112', 'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
+  };
+  if (HANDS_ON[action]) {
+    const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool'];
+    if (moves.includes(action) && ['printing', 'paused'].includes(live.state)) return tourReply({ error: 'Not while a print is running or paused - it would move the head through the print' }, 400);
+    tourLog(pid, HANDS_ON[action](body || {}));
+    tourLog(pid, 'ok (online demo: nothing was sent to a printer)');
+    return tourDone(pid);
+  }
   if (action === 'home') { tourLog(pid, `G28 ${(body.axes || ['X', 'Y', 'Z']).join(' ')}`); tourLog(pid, '// Homed (online demo)'); return tourDone(pid); }
   if (action === 'gcode') {
     const cmd = String(body.command || '').trim().slice(0, 200);
@@ -462,7 +483,7 @@ async function tourPost(url, body) {
   let parsed = {};
   try { parsed = JSON.parse(body || '{}'); } catch (_) { parsed = {}; }
   const pid = url.searchParams.get('printer') || (typeof currentPrinter !== 'undefined' && currentPrinter) || tour.rec.default_printer;
-  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start)$/);
+  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start|restart|jog|move|z-nudge|extrude|speed|flow|fan|pressure-advance|limits|motors-off|bed-mesh|macro|tool|estop|bed-temperature)$/);
   if (control) {
     const answer = await tourControl(control[1], pid, parsed);
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
@@ -703,6 +724,8 @@ async function runCommand(button, path, body, labels) {
     return { ok: false, result };
   }
   const state = result.body.confirmed_state;
+  // Hands-on printer commands show up in the G-code console straight away.
+  if (/^\/api\/printer\/control\//.test(String(path).replace(/^https?:\/\/[^/]+/, '').split('?')[0]) && typeof loadPrinterConsole === 'function') setTimeout(loadPrinterConsole, 0);
   const confirmed = !labels.expect || (state && labels.expect(state));
   if (state && window.Workshop) Workshop.applyState(state, true);
   if (button) { button.textContent = original; button.disabled = false; button.dataset.phase = confirmed ? 'done' : 'failed'; setTimeout(() => delete button.dataset.phase, 1600); }
@@ -712,6 +735,25 @@ async function runCommand(button, path, body, labels) {
   else if (confirmed) toast(`${labels.done} (${ms} ms)`, 'ok');
   else toast(`${labels.done.split(' ')[0]} sent, but the printer now reports "${state ? state.state : 'unknown'}"`, 'warn', 7000);
   return { ok: true, result, confirmed };
+}
+
+/* One part of the screen that can't draw must never blank the others: the
+ * live update draws the ribbon, the cards, the twin and the controls in turn,
+ * and an error in one used to skip every part after it. The failure is said
+ * once per part, in words a person can pass on, and logged in full. */
+const drawFailed = new Set();
+function drawSafely(part, fn) {
+  try {
+    return fn();
+  } catch (err) {
+    console.error(`Deja Vu1: ${part} could not be drawn`, err);
+    if (!drawFailed.has(part)) {
+      drawFailed.add(part);
+      toast(`${part} couldn't be drawn (${err && err.message ? err.message : err}). The rest of the dashboard ` +
+        'keeps working. Please send this message to the developer.', 'bad', 15000);
+    }
+    return undefined;
+  }
 }
 
 function hasData(payload) {
@@ -777,12 +819,17 @@ function paint(host, html) {
   return first;
 }
 
-const EMPTY = (title, sub) => `
+const EMPTY = (title, sub) => {
+  // Every "No printer connected" card names an added printer that isn't answering instead.
+  const away = title === 'No printer connected' && unreachablePrinter();
+  if (away) [title, sub] = unreachableWords(away);
+  return `
   <div class="empty">
     <span class="empty-mark" aria-hidden="true"></span>
     <p class="empty-title">${esc(title)}</p>
     <p class="empty-sub">${esc(sub)}</p>
   </div>`;
+};
 
 /* ---- temperature units --------------------------------------------------
  * A real user-facing preference: stored per-viewer, used everywhere a
@@ -914,10 +961,13 @@ async function loadConnection() {
   const label = $('conn-label');
   const wasReal = realOn;
   realOn = !!data.connected || (data.printers || []).some(p => p.connected);
+  // With a real printer, demo data is a Settings choice, not a switch in the top bar.
+  document.body.classList.toggle('has-printer', realOn);
   // A printer connecting (or dropping) while the page is open: open or
   // close the live connection to match, without waiting for a reload.
   if (wasReal !== realOn && window.Workshop) setTimeout(() => Workshop.reconnect(), 0);
 
+  pill.classList.toggle('is-live', !!data.connected);
   if (data.connected) {
     pill.classList.remove('is-demo');
     label.textContent = 'Connected';
@@ -958,6 +1008,32 @@ function needsServerEmpty(what) {
     <p class="empty-sub">${esc(what ? `${what[0].toUpperCase()}${what.slice(1)} runs` : 'This runs')} on the server, which isn't running at this address.
       <a href="${RUN_IT_URL}" target="_blank" rel="noopener">How to run it</a></p>
   </div>`;
+}
+
+/* Printers added by address, from the dashboard's own list (/api/fleet/registry,
+ * loaded by workshop.js): names and link words, never printer figures. */
+let addedPrinters = [];
+
+/* The added printer this screen is waiting for, when none of them answers. With
+ * demo data off, "No printer connected" would read as if it had been removed. */
+function unreachablePrinter() {
+  if (demoOn || serverMissing() || !addedPrinters.length || addedPrinters.some(p => p.connected)) return null;
+  return addedPrinters.find(p => p.id === currentPrinter) || addedPrinters[0];
+}
+
+async function loadAddedPrinters() {
+  const data = await getJSON('/api/fleet/registry').catch(() => null);
+  if (data && Array.isArray(data.printers)) addedPrinters = data.printers;
+}
+
+/* [title, sub] for a printer that was added but isn't answering. */
+function unreachableWords(p) {
+  const why = String(p.link || '').replace(/^Not connected:\s*/i, '').replace(/[.\s]+$/, '');
+  if (!why || /^connecting/i.test(why)) {
+    return [`Connecting to ${p.name}…`, 'This takes a few seconds once it is switched on.'];
+  }
+  return [`${p.name} isn't answering`,
+    `${why}. Check it is switched on and on the same network. The dashboard keeps trying by itself.`];
 }
 
 /* "No printer" wording, unless there's no server to have a printer at all. */
@@ -1016,17 +1092,18 @@ function initServerBanner() {
 const TAB_KEY = 'dejavu1.tab';
 /* One plain sentence per tab, shown under the tab bar, so a first-time
    visitor knows what each section is for before reading it. */
-const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Control', files: 'Files', studio: 'Photo studio',
-  automations: 'Automations', maintenance: 'Care', modules: 'Settings', games: 'Games' };
+const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
+  automations: 'Automations', maintenance: 'Care', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
 const TAB_INTROS = {
-  overview: 'What needs you, then the printer you picked: its live 3D model, controls and health.',
+  overview: 'What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.',
   fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
-  control: 'Drive the printer you picked: pause, skip a failed object, temperatures and moving the head. If the printer says no, you see why.',
+  control: 'Everything about one printer: its live 3D twin and camera, moving and heating it, tuning, its readings and its history. If the printer says no, you see why.',
   files: 'Your print files. Look inside them, prepare and slice models, and queue prints. Every print gets checked before it starts.',
   studio: 'Turn a photo into a colour print, using the filaments you have loaded.',
   automations: '“When this happens, do that” rules, like a message when a print finishes. They run on this computer, not in the cloud.',
   maintenance: 'Keep the printer in shape: upkeep reminders from real print hours, a logbook, and your spools.',
-  modules: 'Updates, how the dashboard looks, which features are on, your phone and messages.',
+  prefs: 'How the dashboard looks and behaves on this device: units, warm-up buttons, cameras, the background and more.',
+  modules: 'Updates, which features are on, your phone, messages and your data.',
   games: 'Something to play while a print runs. Nothing here touches a printer.',
 };
 
@@ -1038,10 +1115,12 @@ const TAB_INTROS = {
    Anything that scrolls to a card in a hidden part (search, tours, "Slice…"
    buttons) opens that part first. */
 const SECTIONS = {
-  overview: [
-    ['now', 'Right now', ['#attention', '#twin-card', 'printer control', 'print health', 'use this dashboard']],
-    ['live', 'Live readings', ['#telemetry', 'chamber climate']],
-    ['history', 'History & upkeep', ['.stats', '#insights-card', 'maintenance', 'print cost']],
+  control: [
+    ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
+      '#pp-macros', '#pp-console', '#ctrl-plate']],
+    ['live', 'Live readings', ['#telemetry', '#chamber-card']],
+    ['history', 'History & upkeep', ['#insights-card', 'print health', 'print cost']],
+    ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
   ],
   fleet: [
     ['printers', 'Your printers', ['your printers', 'add a printer']],
@@ -1049,7 +1128,7 @@ const SECTIONS = {
     ['sandbox', 'Practice farm', ['#tab-sandbox']],
   ],
   files: [
-    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail']],
+    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail', '#studio-link']],
     ['slicing', 'Slicing', ['#tab-autoprint']],
     ['layers', 'Layer heights', ['#tab-layerplan']],
   ],
@@ -1058,17 +1137,15 @@ const SECTIONS = {
     ['filament', 'Filament & colour', ['#tab-filament']],
   ],
   modules: [
-    ['copy', 'This copy', ['your space', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
-    ['look', 'Look & feel', ['#appearance-card', 'preferences']],
+    ['copy', 'This copy', ['your space', '#demo-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
     ['features', 'Features', ['modules', 'print cost pricing']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
-    ['camera', 'Camera', ['camera', 'time-lapses']],
   ],
 };
 const SECTION_KEY = 'dejavu1.section.';
 // Fixed ids for each screen's row of parts, so tours can point at them.
-const SECTION_BAR_IDS = { overview: 'sec-overview', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules' };
+const SECTION_BAR_IDS = { control: 'sec-control', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules' };
 
 window.Sections = (() => {
   const chosen = {};
@@ -1106,6 +1183,7 @@ window.Sections = (() => {
     chosen[tab] = key;
     if (remember) store.set(SECTION_KEY + tab, key);
     apply(tab);
+    window.dispatchEvent(new CustomEvent('dv-section', { detail: { tab, key } }));
     // Only the cards that just appeared fade in; the 5-second refresh never replays it.
     unitsOf(panel).filter(u => was.has(u) && !u.classList.contains('sec-off')).forEach(u => {
       u.classList.remove('sec-enter'); void u.offsetWidth; u.classList.add('sec-enter');
@@ -1149,6 +1227,9 @@ window.Sections = (() => {
     // Every way of jumping to a card (search, tours, links) goes through scrollIntoView.
     const scrollTo = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = function (...args) {
+      // A folded section (<details>) opens when something points into it.
+      const fold = this.closest && this.closest('details:not([open])');
+      if (fold && fold !== this) fold.open = true;
       if (this.closest && this.closest('.sec-off')) reveal(this);
       return scrollTo.apply(this, args);
     };
@@ -1193,7 +1274,9 @@ function initTabs() {
   tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
   $('overview-pair-btn').addEventListener('click', () => window.Phone && Phone.open());
 
-  show(store.get(TAB_KEY) || 'overview');
+  // Preferences → Open on: a fixed screen, or the one used last.
+  const opening = store.get('dejavu1.pref.start');
+  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'overview'));
 }
 
 /* ---- status ribbon (always visible) --------------------------------------*/
@@ -1204,6 +1287,23 @@ async function loadStatusRibbon() {
   renderStatusRibbon(await getJSON(api('/api/printer')));
 }
 
+/* The printer button in the top bar carries the state the old strip under the
+ * tabs did: a word, the progress and the finish time, so it's never out of
+ * sight on any tab. */
+function renderChipStatus(data) {
+  const chip = $('printer-chip'), status = $('pc-status'), bar = $('pc-progress');
+  if (!chip || !status) return;
+  const st = data && data.state ? (data.link_lost ? 'lost' : data.state) : 'none';
+  if (chip.dataset.state !== st) chip.dataset.state = st;
+  const running = st === 'printing' || st === 'paused';
+  const finish = running ? doneAt(hoursLeft(data)) : '';
+  const words = { printing: 'Printing', paused: 'Paused', complete: 'Finished', error: 'Stopped', ready: 'Ready', lost: 'No live link', none: '' }[st] || st;
+  setText(status, running ? `${words} ${Math.round((data.progress || 0) * 100)}%` : words);
+  setText($('pc-finish'), finish ? `done ${finish}` : '');
+  const w = running || st === 'complete' ? `${((data.progress || 0) * 100).toFixed(1)}%` : '0%';
+  if (bar && bar.style.width !== w) bar.style.width = w;
+}
+
 function renderStatusRibbon(data) {
   const ribbon = $('status-ribbon');
   const text = $('rb-text');
@@ -1211,14 +1311,18 @@ function renderStatusRibbon(data) {
   const fill = $('rb-bar-fill');
   const pct = $('rb-pct');
 
+  drawSafely('The printer button', () => renderChipStatus(data));
   if (!hasData(data) || !data.state) {
     ribbon.classList.remove('is-live');
-    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.' : 'No printer connected.';
+    const away = unreachablePrinter();
+    text.textContent = serverMissing() ? 'Browser-only preview - no printer or demo farm without the server.'
+      : away ? `${unreachableWords(away)[0]}. Retrying by itself.` : 'No printer connected.';
     bar.hidden = true;
     pct.hidden = true;
     $('rb-done').hidden = true;
     lastPrinterState = null;
     mirrorInTab(null);
+    renderOverviewControl(null);
     return;
   }
 
@@ -1228,11 +1332,12 @@ function renderStatusRibbon(data) {
   ribbon.classList.toggle('is-live', isPrinting);
 
   if (data.state === 'ready' || data.state === 'error') {
-    setText(text, data.state === 'error' ? `Error: ${data.state_message || ''}` : 'Idle: no print running.');
+    setText(text, data.state === 'error' ? `Error: ${data.state_message || ''}` : 'Ready for a print.');
     bar.hidden = true; pct.hidden = true; $('rb-done').hidden = true;
   } else {
     const word = { paused: 'Paused', complete: 'Finished' }[data.state] || 'Printing';
-    setText(text, `${data.printer_name ? data.printer_name + ' · ' : ''}${word}: ${data.current_file || 'unknown file'}`);
+    const who = data.printer_name ? data.printer_name + ' · ' : '';
+    setText(text, `${who}${word}: ${data.current_file || 'unknown file'}` + (data.link_lost ? ' · no live link, last reading' : ''));
     bar.hidden = false; pct.hidden = false;
     // Eases like the other progress visuals (Workshop.tween: each frame
     // closes a fixed fraction of the gap), so switching printers glides.
@@ -1244,8 +1349,8 @@ function renderStatusRibbon(data) {
     $('rb-done').hidden = !finish;
   }
 
-  renderOverviewControl(data);
-  renderControlTab(data);
+  drawSafely('Printer control on Overview', () => renderOverviewControl(data));
+  drawSafely('The Control screen', () => renderControlTab(data));
 }
 
 /* ---- Module: Maintenance ---------------------------------------------- */
@@ -1272,9 +1377,13 @@ function renderTaskRow(task) {
         </div>
         <div class="task-desc">${esc(task.description)}</div>
         <div class="bar"><span style="width:${Math.min(task.percent, 100)}%"></span></div>
-        <div class="task-meta">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min</div>
+        <div class="task-meta">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min${task.snoozed_until ? ` · <b>snoozed until ${esc(new Date(task.snoozed_until).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))}</b>` : ''}</div>
       </div>
-      <button class="btn" data-task="${esc(task.id)}">Mark done</button>
+      <div class="task-actions">
+        <button class="btn" data-task="${esc(task.id)}">Mark done</button>
+        ${task.status !== 'ok' && !task.snoozed_until ? `<select class="task-snooze" data-snooze="${esc(task.id)}" aria-label="Remind me later about ${esc(task.name)}">
+          <option value="">Not now…</option><option value="1">Remind me tomorrow</option><option value="3">In 3 days</option><option value="7">In a week</option></select>` : ''}
+      </div>
     </div>`;
 }
 
@@ -1308,20 +1417,28 @@ async function loadMaintenance() {
   $('stat-filament').textContent = (totals.total_filament_grams / 1000).toFixed(1) + ' kg';
   $('stat-filament-foot').textContent = unit;
   $('stat-due').textContent = data.summary.overdue;
-  $('stat-due-foot').textContent = `${data.summary.due_soon} due soon`;
+  $('stat-due-foot').textContent = `${data.summary.due_soon} due soon` + (data.summary.snoozed ? ` · ${data.summary.snoozed} snoozed` : '');
 
   document.querySelectorAll('.stat').forEach(t => t.classList.remove('is-empty'));
   $('stat-due').closest('.stat').classList.toggle('is-alert', data.summary.overdue > 0);
 
   $('tasks').innerHTML = data.tasks.map(renderTaskRow).join('');
   stagger([...document.querySelectorAll('#tasks .task')]);
-  document.querySelectorAll('#tasks .btn').forEach(button => {
+  document.querySelectorAll('#tasks .btn[data-task]').forEach(button => {
     button.addEventListener('click', () => markDone(button));
   });
+  // Not now: the task stays listed here, but leaves Needs you and the alerts until then.
+  document.querySelectorAll('#tasks [data-snooze]').forEach(sel => sel.addEventListener('change', async () => {
+    if (!sel.value) return;
+    const r = await postJSON(api('/api/maintenance/snooze'), { task_id: sel.dataset.snooze, days: +sel.value });
+    if (r.ok) toast(`Snoozed: it comes back ${sel.value === '1' ? 'tomorrow' : `in ${sel.value} days`}, and stays listed here`, 'ok');
+    else toast(`Couldn't snooze it: ${r.body.error || r.status}`, 'bad');
+    loadMaintenance();
+  }));
 
   // Overview tab gets the top 3 most urgent, read-only.
   paint($('overview-maintenance'), data.tasks.length
-    ? data.tasks.slice(0, 3).map(t => `
+    ? data.tasks.filter(t => !t.snoozed_until).slice(0, 3).map(t => `
         <div class="task ${t.status}" style="margin-bottom:9px;">
           <div>
             <div class="task-name">${esc(t.name)} <span class="pill">${STATUS_TEXT[t.status]}</span></div>
@@ -1460,8 +1577,9 @@ function renderControlTab(state) {
   renderPlate(state);
   if (!state || !state.state) {
     dot.style.background = '';
-    text.textContent = 'No printer connected';
-    sub.textContent = '';
+    const away = unreachablePrinter();
+    text.textContent = away ? unreachableWords(away)[0] : 'No printer connected';
+    sub.textContent = away ? unreachableWords(away)[1] : '';
     pauseResume.disabled = true;
     pauseResume.textContent = 'Pause';
     cancel.disabled = true;
@@ -1474,11 +1592,12 @@ function renderControlTab(state) {
     return;
   }
 
-  const running = state.state === 'printing' || state.state === 'paused';
-  const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--text-faint)'));
+  const lost = !!state.link_lost;
+  const running = (state.state === 'printing' || state.state === 'paused') && !lost;
+  const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--ink-ready)'));
   if (dot.style.background !== dotColor) dot.style.background = dotColor;
-  setText(text, state.state === 'ready' ? 'Idle' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
-  setText(sub, running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
+  setText(text, state.state === 'ready' ? 'Ready for a print' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
+  setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
   if (pauseResume.dataset.phase !== 'sending') {
@@ -1487,16 +1606,19 @@ function renderControlTab(state) {
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
-  cancel.onclick = () => controlAction('cancel', cancel);
+  cancel.onclick = () => confirmCancel(cancel);
 
-  const homeTitle = running ? 'Not while a print is running or paused' : '';
+  const busy = state.state === 'printing' || state.state === 'paused';
+  const homeBlocked = busy || lost;
+  const homeTitle = lost ? 'The printer is not answering' : busy ? 'Not while a print is running or paused' : '';
   // Said on the card too: a tooltip never shows on a phone.
   const homeWhy = $('home-why');
-  if (homeWhy && homeWhy.hidden !== !running) homeWhy.hidden = !running;
+  const showWhy = busy && !lost;
+  if (homeWhy && homeWhy.hidden !== !showWhy) homeWhy.hidden = !showWhy;
   homeButtons.forEach(b => {
     // Homing mid-print would drive the toolhead through the print; the
     // server refuses it too, but the button shouldn't offer it.
-    if (b.dataset.phase !== 'sending' && b.disabled !== running) b.disabled = running;
+    if (b.dataset.phase !== 'sending' && b.disabled !== homeBlocked) b.disabled = homeBlocked;
     if (b.title !== homeTitle) b.title = homeTitle;
     b.onclick = () => {
       const axes = b.dataset.home === 'all' ? ['X', 'Y', 'Z'] : [b.dataset.home];
@@ -1710,14 +1832,20 @@ function renderOverviewControl(state) {
   }
   // A printer stopped with an error recovers with Klipper's firmware restart,
   // offered only then (a restart at any other time would end a print).
-  const errored = state.state === 'error';
-  $('ov-restart-row').hidden = !errored;
-  if (errored) {
+  // A printer the dashboard can't reach isn't "stopped with an error": a
+  // restart couldn't reach it either, so the card says what is wrong instead.
+  const lost = !!state.link_lost;
+  const errored = state.state === 'error' && !lost;
+  $('ov-restart-row').hidden = !errored && !lost;
+  $('ov-restart').hidden = !errored;
+  if (lost) {
+    setText($('ov-error'), linkLostWords(state));
+  } else if (errored) {
     setText($('ov-error'), state.state_message ? `Stopped: ${state.state_message}. Fix the cause first, then restart.` : 'The printer stopped with an error.');
     $('ov-restart').onclick = () => { if (confirm('Restart the printer\'s firmware (FIRMWARE_RESTART)? Do it once the cause of the error is fixed.')) controlAction('restart', $('ov-restart')); };
   }
-  const running = state.state === 'printing' || state.state === 'paused';
-  setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Idle');
+  const running = (state.state === 'printing' || state.state === 'paused') && !lost;
+  setText($('ov-file'), running || state.state === 'complete' ? (state.current_file || '') : 'Ready for a print');
   const barWidth = `${Math.round((state.progress || 0) * 100)}%`;
   if ($('ov-bar').style.width !== barWidth) $('ov-bar').style.width = barWidth;
   const pauseResume = $('ov-pause-resume');
@@ -1728,7 +1856,7 @@ function renderOverviewControl(state) {
   }
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
-  cancel.onclick = () => controlAction('cancel', cancel);
+  cancel.onclick = () => confirmCancel(cancel);
 }
 
 const CONTROL_LABELS = {
@@ -1737,6 +1865,40 @@ const CONTROL_LABELS = {
   cancel: { sending: 'Cancelling…', done: 'Print cancelled', failed: 'Cancel failed', expect: s => s.state === 'ready' },
   restart: { sending: 'Restarting…', done: 'Firmware restarted', failed: 'Restart failed', expect: s => s.state !== 'error' },
 };
+
+/* A real printer the dashboard has lost (or never reached), in words. */
+function linkLostWords(state) {
+  const name = state.printer_name || 'The printer';
+  if (state.never_connected) {
+    return `${name} hasn't answered yet${state.state_message ? ` (${state.state_message})` : ''}. ` +
+      'Check it is switched on and on the same network. The dashboard keeps trying by itself.';
+  }
+  const at = state.link_lost_at && new Date(state.link_lost_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return `No live link to ${name}${at ? ` since ${at}` : ''}. Its last reading is shown. ` +
+    'Controls come back when it answers; the dashboard keeps trying.';
+}
+
+/* Cancelling a print can't be undone, so one click (or a stray tap on a
+ * phone) only arms the button; a second press within 4 s cancels. The fleet
+ * bar and the quick-action bar already ask the same way. */
+function confirmCancel(button) {
+  if (button.dataset.armed) {
+    clearTimeout(Number(button.dataset.armed));
+    delete button.dataset.armed;
+    button.classList.remove('is-armed');
+    button.textContent = button.dataset.label;
+    controlAction('cancel', button);
+    return;
+  }
+  button.dataset.label = button.textContent;
+  button.textContent = 'Press again to cancel';
+  button.classList.add('is-armed');
+  button.dataset.armed = String(setTimeout(() => {
+    delete button.dataset.armed;
+    button.classList.remove('is-armed');
+    button.textContent = button.dataset.label;
+  }, 4000));
+}
 
 async function controlAction(action, button) {
   const outcome = await runCommand(button, `/api/printer/control/${action}`, {}, CONTROL_LABELS[action]);
@@ -1956,7 +2118,6 @@ async function loadDevices() {
   const data = await getJSON('/api/pairing/devices');
   const devices = data.devices || [];
   const host = $('device-list');
-  const count = $('device-count');
 
   host.innerHTML = devices.length ? devices.map(d => `
     <div class="log-row">
@@ -1972,13 +2133,6 @@ async function loadDevices() {
       postJSON(api(`/api/pairing/devices/${btn.dataset.unpair}/unpair`), {}).then(loadDevices);
     });
   });
-
-  if (devices.length) {
-    count.hidden = false;
-    count.textContent = `${devices.length} device${devices.length === 1 ? '' : 's'} paired`;
-  } else {
-    count.hidden = true;
-  }
 }
 
 /* While a code is on screen, the other device redeems it somewhere else, so
@@ -2076,6 +2230,13 @@ async function loadNotificationSettings() {
 }
 
 function initNotifications() {
+  // A long random ntfy name: anyone who knows a name can read its messages, so it must not be guessable.
+  $('notif-ntfy-make')?.addEventListener('click', () => {
+    const bytes = new Uint8Array(9);
+    crypto.getRandomValues(bytes);
+    $('notif-ntfy').value = 'dejavu1-' + [...bytes].map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 14);
+    toast('Subscribe to this exact name in the ntfy app, then press Save and Send test', 'info', 7000);
+  });
   $('notif-save').addEventListener('click', async () => {
     const { ok, body } = await postJSON('/api/notifications/settings', {
       ntfy_topic: $('notif-ntfy').value.trim(),
@@ -2285,7 +2446,7 @@ function loadGames() {
 }
 function startCurrentGame() {
   const host = $('game-host');
-  if (host && !host.childElementCount) host.innerHTML = '<p class="log-empty">Loading the arcade…</p>';
+  if (host && !host.childElementCount) host.innerHTML = '<p class="log-empty is-loading">Loading the arcade…</p>';
   loadGames().then(() => setTimeout(() => {
     // games.js has replaced this function and its own installers have run;
     // start a game unless one already started for the open tab.
@@ -2339,16 +2500,32 @@ if (!['dashboard', 'demo'].some(k => new URLSearchParams(location.search).has(k)
     .catch(() => {});
 }
 
+/* The time at the bottom of the page is when the dashboard last heard from the
+ * printer. It used to be written only on a full refresh, so it sat still (3:50:28
+ * at 4:02) while live readings kept arriving. Now every live reading moves it, at
+ * most once a second, and the 5-second refresh keeps it going without a printer. */
+let stampAt = 0;
+function stampNow() {
+  const now = Date.now();
+  if (now - stampAt < 1000) return;
+  stampAt = now;
+  const el = $('stamp');
+  if (el) { el.textContent = `Updated ${new Date(now).toLocaleTimeString()}`; el.dateTime = new Date(now).toISOString(); }
+}
+window.addEventListener('dv-state', stampNow);
+
 async function refreshAll() {
   try {
     await loadConnection();
+    // Before the cards draw: an added printer that isn't answering is named in them.
+    if (!liveData()) await loadAddedPrinters();
     await Promise.all([
       loadMaintenance(), loadRings(), loadColorCheck(), loadStatusRibbon(),
       loadFilament(), loadCompare(), loadModules(), loadDevices(),
       loadUpdates(), loadPrinterControl(), loadCost(),
     ]);
     if (window.Workshop) await Workshop.refresh();
-    $('stamp').textContent = new Date().toLocaleTimeString();
+    stampNow();
   } catch (err) {
     console.error('Dashboard failed to load:', err);
     $('foot-state').textContent = 'Could not reach the backend.';
@@ -2370,6 +2547,12 @@ function initPressedSync() {
 function initDemoToggle() {
   const toggle = $('demo-toggle');
   toggle.checked = demoOn;
+  const mirror = $('demo-setting');
+  if (mirror) {
+    mirror.checked = demoOn;
+    mirror.addEventListener('change', () => { toggle.checked = mirror.checked; toggle.dispatchEvent(new Event('change')); });
+    toggle.addEventListener('change', () => { mirror.checked = toggle.checked; });
+  }
   toggle.addEventListener('change', () => {
     demoOn = toggle.checked;
     store.set(STORE_KEY, demoOn ? '1' : '0');
@@ -2397,8 +2580,91 @@ loadNotificationSettings();
 
 // Printer state itself arrives live (workshop.js, every 250 ms over the
 // WebSocket). These slower panels only need a periodic refresh.
+/* An update can come from anywhere: Install on another page or the phone,
+ * automatic updates, or the one-paste command. A page left open would keep
+ * running the old dashboard against the new server, so each page notices the
+ * new version and reloads (or offers to, while something is being typed). */
+const updateWatch = { version: null, offered: false };
+async function watchForUpdate() {
+  if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
+  let info;
+  try { info = await (await fetch('/api/app/info', { cache: 'no-store' })).json(); } catch (_) { return; }
+  const v = info && info.version;
+  if (!v) return;
+  // The build changes too on the "newest builds" channel, where the number can stay the same.
+  const key = `${v}|${info.build || ''}`;
+  if (!updateWatch.version) { updateWatch.version = key; return; }
+  if (key === updateWatch.version || updateWatch.offered) return;
+  updateWatch.offered = true;
+  const el = document.activeElement;
+  const typing = el && (el.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value));
+  if (typing || document.querySelector('dialog[open]')) {
+    toast(`Deja Vu1 was updated to v${v}. Reload this page to use it.`, 'info', 60000,
+      { action: { label: 'Reload', run: () => location.reload() } });
+  } else {
+    toast(`Deja Vu1 was updated to v${v}. Reloading this page…`, 'ok', 3000);
+    setTimeout(() => location.reload(), 1500);
+  }
+}
+let updateTicks = 0;
+
+/* ---- the program stopped answering ----------------------------------------
+ * A page left open when Deja Vu1 stops (its window closed, an update
+ * restarting, the computer asleep) used to sit there with stale figures. Now
+ * it says so in a strip at the top, keeps trying every 4 seconds, and after
+ * 20 seconds offers the page with the paste-in fix. When the program answers
+ * again the strip goes, and a restarted program reloads the page. */
+const serverWatch = { fails: 0, since: 0, pid: null, el: null };
+function serverStrip(text, help) {
+  if (!serverWatch.el) {
+    const el = document.createElement('div');
+    el.className = 'server-lost';
+    el.setAttribute('role', 'status');
+    el.innerHTML = '<b></b> <span></span> <a href="offline.html">How to start it again</a>';
+    document.body.appendChild(el);
+    serverWatch.el = el;
+  }
+  serverWatch.el.querySelector('b').textContent = text;
+  serverWatch.el.querySelector('span').textContent = help;
+  serverWatch.el.querySelector('a').hidden = !help.includes('start');
+  serverWatch.el.hidden = false;
+}
+async function watchServer() {
+  if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
+  let d = null;
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), 3500);
+  try { d = await (await fetch('/api/app/info', { cache: 'no-store', signal: stop.signal })).json(); } catch (_) { d = null; }
+  clearTimeout(timer);
+  if (d && d.version) {
+    const restarted = serverWatch.pid && d.server_pid && d.server_pid !== serverWatch.pid;
+    serverWatch.pid = d.server_pid || serverWatch.pid;
+    if (serverWatch.fails >= 2 || restarted) {
+      if (serverWatch.el) serverWatch.el.hidden = true;
+      const el = document.activeElement;
+      const typing = el && (el.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value));
+      if (restarted && !typing && !document.querySelector('dialog[open]')) {
+        toast('Deja Vu1 is back. Reloading this page…', 'ok', 3000);
+        setTimeout(() => location.reload(), 1200);
+      } else if (serverWatch.fails >= 2) toast('Deja Vu1 is answering again.', 'ok');
+    }
+    serverWatch.fails = 0;
+    return;
+  }
+  if (++serverWatch.fails === 1) serverWatch.since = Date.now();
+  if (serverWatch.fails < 2) return;
+  let updating = 0;
+  try { updating = Number(sessionStorage.getItem('dv-updating')) || 0; } catch (_) { updating = 0; }
+  const secs = Math.round((Date.now() - serverWatch.since) / 1000);
+  if (Date.now() - updating < 5 * 60 * 1000 && secs < 90) serverStrip('Deja Vu1 is restarting after the update.', 'This page carries on by itself in a moment.');
+  else if (secs < 20) serverStrip('Deja Vu1 stopped answering.', 'Trying again every few seconds…');
+  else serverStrip('Deja Vu1 isn’t answering.', 'If its window was closed, start it again. This page reconnects by itself.');
+}
+setInterval(watchServer, 4000);
+
 setInterval(() => {
-  loadConnection().catch(() => {});
+  loadConnection().then(stampNow).catch(() => {});
+  if (updateTicks++ % 3 === 0) watchForUpdate();
   if (liveData()) {
     loadRings(); loadColorCheck(); loadCost();
     if (!window.Workshop || !Workshop.isLive()) loadStatusRibbon();

@@ -131,7 +131,8 @@ class TestPageWiring(unittest.TestCase):
         self.assertIn(".desk-only { display: none !important; }", read("theme.css"))
 
     def test_every_tab_has_an_introduction(self):
-        tabs = set(re.findall(r'class="navtab[^"]*" data-tab="([a-z]+)"', read("index.html")))
+        # Every screen, including Photo studio, which Files opens instead of a tab button.
+        tabs = set(re.findall(r'<section id="tab-([a-z]+)" class="tab-panel"', read("index.html")))
         intros = re.search(r"const TAB_INTROS = \{(.*?)\n\};", read("app.js"), re.S).group(1)
         self.assertEqual(tabs, set(re.findall(r"^\s+([a-z]+):", intros, re.M)))
 

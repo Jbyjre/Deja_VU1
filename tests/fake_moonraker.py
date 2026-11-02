@@ -85,6 +85,7 @@ class FakeMoonraker:
         self.users = {}                    # username -> password; /access/login hands out a token
         self._tokens = set()
         self.answer_pings = True
+        self.device_name = None            # product_info.device_name (u1-moonraker machine.py); None: no endpoint
         self.gcode_errors = {}             # script prefix -> Klipper error message
         self.scripts = []                  # every gcode script received
         self.requests = []                 # (method, path)
@@ -109,6 +110,10 @@ class FakeMoonraker:
             "toolhead": {"extruder": "extruder", "position": [135.0, 135.0, 10.0, 0.0], "homed_axes": "xyz",
                          "axis_minimum": list(axis_minimum) + [0.0], "axis_maximum": list(axis_maximum) + [0.0]},
             "gcode_move": {"gcode_position": [135.0, 135.0, 10.0, 0.0]},
+            # Always loaded (u1-klipper klippy/stepper.py); the nozzle's position now
+            # (extras/motion_report.py get_status)
+            "motion_report": {"live_position": [135.0, 135.0, 10.0, 0.0], "live_velocity": 0.0,
+                              "live_extruder_velocity": 0.0},
             "heater_bed": {"temperature": 24.0, "target": 0.0, "power": 0.0},
             # extras/exclude_object.py get_status (Snapmaker's u1-klipper fork)
             "exclude_object": {"objects": [], "excluded_objects": [], "current_object": None,
@@ -448,6 +453,10 @@ class FakeMoonraker:
                     return self._reply(200, {"result": {"eventtime": time.monotonic(),
                                                         "status": fake._query(args.get("objects"))}})
                 if path == "/printer/print/pause":
+                    # u1-klipper pause_resume.py cmd_PAUSE: over an excluded object it
+                    # answers ok and doesn't pause.
+                    if fake.status["exclude_object"].get("in_excluded_region"):
+                        return self._reply(200, {"result": "ok"})
                     if not fake.is_paused:
                         fake.is_paused = True
                         if state == "printing":
@@ -581,6 +590,11 @@ class FakeMoonraker:
             self.camera_monitoring = method == "camera.start_monitor"
             self.camera_client = client["id"]
             return ok({"monitoring": self.camera_monitoring})
+        if method == "machine.system_info" and self.device_name is not None:
+            # u1-moonraker components/machine.py: product_info holds the name set on the printer.
+            return ok({"system_info": {"product_info": {"machine_type": "Snapmaker U1", "serial_number": "",
+                                                        "nozzle_diameter": [0.4] * 4,
+                                                        "device_name": self.device_name}}})
         if method == "server.info":
             return ok({"klippy_connected": self.klippy_state != "disconnected", "klippy_state": self.klippy_state,
                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],

@@ -263,14 +263,67 @@ class _ReleaseRedirect(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def _read_url(url, limit):
+def _read_url(url, limit, progress=None):
     request = Request(_trusted_url(url), headers={'User-Agent': 'DejaVu1-updater',
                       'Accept': 'application/vnd.github+json'})
     with build_opener(_ReleaseRedirect()).open(request, timeout=30) as response:
-        data = response.read(limit + 1)
+        if progress is None:
+            data = response.read(limit + 1)
+        else:
+            # Read in pieces so the page can show how far the download has got.
+            try:
+                total = int(response.headers.get('Content-Length') or 0) or None
+            except ValueError:
+                total = None
+            parts, got = [], 0
+            progress(0, total)
+            while got <= limit:
+                chunk = response.read(256 * 1024)
+                if not chunk:
+                    break
+                parts.append(chunk)
+                got += len(chunk)
+                progress(got, total)
+            data = b''.join(parts)
     if len(data) > limit:
         raise ValueError('The release is too large for the built-in updater')
     return data
+
+
+# ---- the install job ------------------------------------------------------
+# Installing runs on its own thread, not inside the Install request: a 58 MB
+# download on a slow line took minutes with nothing on screen, and a reload
+# lost even that. The page asks for this record (in /api/app/info) and shows
+# each step; a reload finds the same record.
+
+STEPS = {
+    'checking': 'Checking that every printer is idle',
+    'safety': 'Making a safety copy of your settings',
+    'download': 'Downloading the update',
+    'verify': 'Checking the download',
+    'unpack': 'Unpacking the new files',
+    'restarting': 'Restarting into the new version',
+    'failed': 'The update could not be installed',
+}
+_job = {'state': 'idle'}
+
+
+def job():
+    """The install job as the page shows it: state, step, words, and download progress."""
+    with _lock:
+        return dict(_job)
+
+
+def set_job(state, step=None, message=None, **extra):
+    with _lock:
+        _job.clear()
+        _job.update({'state': state, 'step': step, 'words': STEPS.get(step or state, ''),
+                     'message': message, 'at': int(time.time())}, **extra)
+
+
+def job_running():
+    with _lock:
+        return _job.get('state') in ('working', 'restarting')
 
 
 def release_info(data, repair=False):
@@ -381,7 +434,7 @@ def latest_info(root=ROOT):
                         f'({max(1, round(size / 1024))} KB).' if changed else 'You have the newest build.')}
 
 
-def _stage_latest(root, base, before_commit):
+def _stage_latest(root, base, before_commit, step=None):
     sha, commit, wanted, changed = _newest(root)
     if not changed:
         raise ValueError('Every file already matches the newest build. Nothing needed changing')
@@ -389,8 +442,12 @@ def _stage_latest(root, base, before_commit):
     if total > MAX_BYTES:
         raise ValueError('The newest build is too large for the built-in updater')
     stage = base / 'stage'
+    done = 0
     for path in changed:
         entry = wanted[path]
+        if step:
+            step('download', done=done, total=total, files=len(changed))
+        done += int(entry.get('size') or 0)
         data = _read_url(RAW.format(repo=REPO, sha=sha, path=quote(path)), int(entry.get('size') or 0) + 1)
         if git_blob_sha(data) != entry['sha']:
             raise ValueError(f'{path} did not match GitHub\'s record of it. Nothing was installed')
@@ -486,7 +543,7 @@ def unpack(data, target, expected_version):
     return [e.filename for e in entries]
 
 
-def prepare(root=ROOT, before_commit=None, channel=None, repair=False):
+def prepare(root=ROOT, before_commit=None, channel=None, repair=False, step=None):
     """
     Stage an update for the launcher to apply. With repair=True the newest
     published files go back over this copy even when the version is the same,
@@ -495,6 +552,7 @@ def prepare(root=ROOT, before_commit=None, channel=None, repair=False):
     global _busy
     root = Path(root)
     channel = channel or settings()['channel']
+    step = step or (lambda name, **extra: None)
     if os.environ.get('DEJAVU_LAUNCHER') != '1':
         raise ValueError('Close this server and open the app with its double-click launcher to install updates')
     if install_kind(root) == 'git':
@@ -511,20 +569,23 @@ def prepare(root=ROOT, before_commit=None, channel=None, repair=False):
             if base.exists():
                 raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
             try:
-                return _stage_latest(root, base, before_commit)
+                return _stage_latest(root, base, before_commit, step)
             except Exception:
                 shutil.rmtree(base, ignore_errors=True)
                 raise
         info = release_info(json.loads(_read_url(API, 2 * 1024 * 1024)), repair)
         if not info['installable']:
             raise ValueError(info['message'])
-        data = _read_url(info['url'], MAX_BYTES)
+        data = _read_url(info['url'], MAX_BYTES,
+                         progress=lambda got, total: step('download', done=got, total=total, version=info['version']))
+        step('verify', version=info['version'])
         if hashlib.sha256(data).hexdigest() != info['digest'][7:].lower():
             raise ValueError('The download checksum did not match. Nothing was installed')
         base = root / '.dejavu-update'
         if base.exists():
             raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
         stage = base / 'stage'
+        step('unpack', version=info['version'])
         try:
             files = unpack(data, stage, info['version'])
             _protect_data(root, files)
@@ -539,14 +600,46 @@ def prepare(root=ROOT, before_commit=None, channel=None, repair=False):
         _busy = False
 
 
+def _words(exc):
+    return str(exc) if isinstance(exc, ValueError) else f'{type(exc).__name__}: {exc}'
+
+
+def _discard(base):
+    """
+    Remove a finished update folder. The plan files go first, so whatever
+    Windows keeps locked (an antivirus scan, an open folder window) can never be
+    applied or rolled back a second time; a folder that won't go is moved aside.
+    """
+    for name in ('pending.json', 'git-pending.json', 'journal.json'):
+        try:
+            (base / name).unlink()
+        except OSError:
+            pass
+    shutil.rmtree(base, ignore_errors=True)
+    if base.exists():
+        try:
+            base.rename(base.with_name(f'{base.name}-old-{int(time.time())}'))
+        except OSError:
+            pass
+
+
+last_error = ''
+
+
 def apply_pending(root, health_check):
     """Launcher only, with server stopped. Journal first; roll back on startup failure.
 
     health_check starts the new server, checks its version, and stops it before
-    returning False. Data lives outside these paths and is never moved.
+    returning False. Data lives outside these paths and is never moved. When it
+    returns False, last_error says why in words. It raises only when the previous
+    files could not be put back; the journal is then kept for the next start.
     """
+    global last_error
+    last_error = ''
     root = Path(root)
     base = root / '.dejavu-update'
+    for old in root.glob('.dejavu-update-old-*'):
+        shutil.rmtree(old, ignore_errors=True)
     pending = base / 'pending.json'
     git_pending = base / 'git-pending.json'
     if git_pending.exists():
@@ -561,7 +654,8 @@ def apply_pending(root, health_check):
             except Exception:
                 raise ValueError('The new version did not start and git could not return to the previous one. '
                                  'Open GitHub Desktop to check the folder; the recovery note was kept')
-        shutil.rmtree(base)
+            last_error = 'The new version did not start, so git returned this copy to the previous one'
+        _discard(base)
         return started
     if not pending.exists():
         return None
@@ -584,7 +678,8 @@ def apply_pending(root, health_check):
         if any(name not in files or not isinstance(existed, bool) for name, existed in recovery):
             raise ValueError('Invalid update recovery journal; the recovery copy was kept')
         restore(recovery)
-        shutil.rmtree(base)
+        _discard(base)
+        last_error = 'The last update stopped part-way (the computer or the window closed), so the previous files were put back'
         return False
     changed = []
     try:
@@ -605,12 +700,17 @@ def apply_pending(root, health_check):
             shutil.copy2(base / 'stage' / name, temp)
             os.replace(temp, dest)
         if not health_check(plan['version']):
-            raise ValueError('The new version did not start')
-    except Exception:
-        restore(changed)
-        shutil.rmtree(base)
+            raise ValueError(f"Version {plan['version']} did not start")
+    except Exception as exc:
+        last_error = _words(exc)
+        try:
+            restore(changed)
+        except Exception as again:
+            last_error += f'. Putting the previous files back also failed ({_words(again)}); the next start tries again'
+            raise ValueError(last_error) from None
+        _discard(base)
         return False
-    shutil.rmtree(base)
+    _discard(base)
     return True
 
 

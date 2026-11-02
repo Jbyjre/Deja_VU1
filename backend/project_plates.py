@@ -224,7 +224,9 @@ def engine_input(data, filaments):
             return data, []
         if len(source) > len(filaments):
             raise ValueError(
-                'The source project has more material slots than the selected physical-head profile. Review its mapping in the engine'
+                f'This project names {len(source)} filaments and the profile has {len(filaments)} heads. Open it in '
+                "Files and use Colours on the U1's heads to fit them (alike colours share a head, unused ones are "
+                'left out), then slice the copy it saves'
             )
         source_count = len(source)
         for key in ('inherits_group', 'different_settings_to_system'):

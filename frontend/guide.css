@@ -127,7 +127,27 @@
 .orb-bubble-wrap.is-warn { --t: #d9a400; }
 .orb-bubble-wrap.is-bad { --t: var(--bad); }
 .ob-kind { font: 600 10.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); flex: 1 0 100%; }
-.ob-text { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.ob-text { flex: 1 1 200px; min-width: 0; overflow-wrap: break-word; text-wrap: pretty; }
+.ob-count {
+  display: inline-block; margin-left: 8px; padding: 2px 6px; border-radius: 999px; letter-spacing: 0;
+  font: 700 10.5px/1 var(--font-mono); color: var(--text); background: oklch(30% 0.02 265 / .08);
+}
+.ob-count[hidden] { display: none; }
+/* Time left, as a hairline along the bottom; it stops while the bubble is held. */
+.ob-life {
+  position: absolute; left: 16px; right: 16px; bottom: 5px; height: 2px; border-radius: 2px;
+  background: color-mix(in oklch, var(--t, var(--accent)) 55%, transparent); transform-origin: left;
+  animation: ob-life var(--life, 4s) linear forwards;
+}
+.orb-bubble-wrap.is-held .ob-life { animation-play-state: paused; }
+.orb-bubble-wrap.is-bump .orb-bubble { animation: ob-bump .36s cubic-bezier(.3, 1.4, .5, 1); }
+.orb-bubble.is-drag { transition: none; }
+@keyframes ob-life { from { transform: scaleX(var(--from, 1)); } to { transform: scaleX(0); } }
+@keyframes ob-bump { 40% { transform: scale(1.035); } }
+@media (prefers-reduced-motion: reduce) {
+  .ob-life { animation: none; opacity: 0; }
+  .orb-bubble-wrap.is-bump .orb-bubble { animation: none; }
+}
 .ob-action { flex: 0 0 auto; }
 .ob-close {
   position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%;
@@ -192,6 +212,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   border-radius: 999px; border: 1px solid var(--hair); background: rgba(255, 255, 255, .55);
   font: 600 11px/1 var(--font-mono); color: var(--text-dim); cursor: pointer; vertical-align: middle;
 }
+.ver-chip::after { content: "›"; font-size: 13px; line-height: 1; opacity: .7; }
 .ver-chip:hover { color: var(--accent-text); border-color: color-mix(in oklch, var(--accent) 40%, transparent); }
 .ver-chip:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
 .ver-chip.has-update::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px #fff; }
@@ -250,7 +271,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .vh-more summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
 .vh-more ul { margin: 4px 0 4px; padding-left: 18px; font-size: 13.5px; color: var(--text-dim); }
 .vh-more li + li { margin-top: 4px; }
-.version-card.is-flash { animation: vc-flash 1.2s ease; }
+.version-card.is-flash, .vc-history.is-flash { animation: vc-flash 1.2s ease; }
 @keyframes vc-flash { 0%, 60% { box-shadow: 0 0 0 3px var(--accent), var(--shadow-card); } }
 
 /* Look after this copy: one shared glass strip (tier 1, inline in its card)
@@ -258,7 +279,7 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
    brighter on the light-facing top edge; the pointer moves a soft glint. */
 .vc-manage {
   --gx: 30%; position: relative; isolation: isolate;
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   border-radius: 20px; overflow: hidden;
   background:
     radial-gradient(240px 120px at var(--gx) 0%, oklch(100% 0 0 / .55), transparent 70%),
@@ -281,12 +302,44 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .vc-tool:disabled { cursor: default; opacity: .55; }
 .vc-tool:disabled:hover { background: transparent; }
 .vc-tool.is-stop b { color: var(--bad-text); }
+@media (max-width: 1100px) and (min-width: 761px) {
+  .vc-manage { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vc-tool:nth-child(4) { border-left: 0; }
+  .vc-tool:nth-child(n+4) { border-top: 1px solid oklch(30% 0.02 265 / .12); }
+}
 @media (max-width: 760px) {
   .vc-manage { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .vc-tool:nth-child(3) { border-left: 0; }
+  .vc-tool:nth-child(odd) { border-left: 0; }
   .vc-tool:nth-child(n+3) { border-top: 1px solid oklch(30% 0.02 265 / .12); }
+  .vc-tool:last-child:nth-child(odd) { grid-column: span 2; }
 }
 #vc-manage-note:empty { display: none; }
+
+/* Installing an update: each step in words, and how far the download has got. */
+.vc-progress { margin: 4px 0 12px; }
+.vc-progress[hidden] { display: none; }
+.vc-bar { height: 10px; border-radius: 999px; overflow: hidden; background: oklch(30% 0.02 265 / .1); }
+.vc-bar span { display: block; height: 100%; width: var(--done, 8%); border-radius: inherit; background: var(--accent); transition: width .4s ease; }
+.vc-bar.is-unknown span { width: 30%; animation: vc-slide 1.4s ease-in-out infinite; }
+@keyframes vc-slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.vc-step { margin: 8px 0 0; font-size: 14px; color: var(--text-dim); }
+@media (prefers-reduced-motion: reduce) { .vc-bar.is-unknown span { animation: none; width: 100%; opacity: .5; } }
+
+/* "Check it all works": the same answer the launcher window shows. */
+.vc-ready { margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: var(--paper-solid); border: 1px solid var(--hair); }
+.vc-ready[hidden] { display: none; }
+.vc-ready h4 { margin: 0 0 8px; font: 650 16px/1.3 var(--font-display); }
+.vc-ready.is-ok h4 { color: var(--ok-text, inherit); }
+.vc-ready.is-bad h4 { color: var(--bad-text); }
+.vc-ready ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.vc-ready li { display: grid; grid-template-columns: 22px minmax(90px, 140px) 1fr; gap: 2px 8px; font-size: 14px; align-items: baseline; }
+.vc-ready li b { font-weight: 600; }
+.vc-ready li .vr-fix { grid-column: 3; color: var(--text-dim); font-size: 13px; }
+.vc-ready .vr-mark { font-weight: 700; }
+.vc-ready li.is-ok .vr-mark { color: var(--ok-text, #1c7a43); }
+.vc-ready li.is-note .vr-mark { color: var(--warn-text, #9a5b00); }
+.vc-ready li.is-bad .vr-mark { color: var(--bad-text); }
+@media (max-width: 720px) { .vc-ready li { grid-template-columns: 22px 1fr; } .vc-ready li > span:last-of-type, .vc-ready li .vr-fix { grid-column: 2; } }
 
 /* Update with a command: the other way in, folded away until wanted. */
 .vc-cmd { margin-top: 14px; padding: 4px 16px; border-radius: 18px; background: var(--paper-solid); border: 1px solid var(--hair); }
@@ -312,6 +365,8 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .da-modes { border: 0; margin: 0 0 8px; padding: 0; display: grid; gap: 2px; }
 .da-modes label { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 500; cursor: pointer; }
 .da-modes input { width: 18px; height: 18px; accent-color: var(--accent-text); }
+.da-autostart { display: flex; align-items: center; gap: 10px; min-height: 40px; font-weight: 500; cursor: pointer; }
+.da-autostart input { width: 18px; height: 18px; flex: none; accent-color: var(--accent-text); }
 
 /* ---- setup additions ------------------------------------------------------- */
 
@@ -649,3 +704,14 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
   .vc-number, .guide-hero { background: none; -webkit-text-fill-color: currentColor; color: var(--text); }
 }
 @media print { .orb-dock, .guide { display: none; } }
+
+/* The program stopped answering: a calm strip at the top, gone when it answers again. */
+.server-lost {
+  position: fixed; z-index: 9000; top: 10px; left: 50%; transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px)); padding: 10px 16px; border-radius: 14px;
+  background: oklch(98% 0.01 80 / .96); color: var(--text); border: 1px solid oklch(75% 0.12 70);
+  box-shadow: 0 6px 24px oklch(25% 0.02 265 / .18); font-size: 14.5px; line-height: 1.45;
+}
+.server-lost[hidden] { display: none; }
+.server-lost a { margin-left: 4px; font-weight: 600; white-space: nowrap; }
+.server-lost a[hidden] { display: none; }

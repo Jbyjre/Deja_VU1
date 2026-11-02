@@ -60,7 +60,9 @@ def _save_devices(devices):
     storage.save_json(_DEVICES_PATH, devices)
 
 
-def redeem_code(code, device_name):
+def redeem_code(code, device_name, replaces=None):
+    """Use the waiting code. `replaces` is the id of the device this browser is already paired as:
+    pairing it again swaps its key instead of listing the same phone twice."""
     global _current_code, _code_expires_at, _failed_attempts
     with _lock:
         if _current_code is None or _code_expires_at is None:
@@ -75,6 +77,8 @@ def redeem_code(code, device_name):
                 raise ValueError("Too many wrong codes - show a new pairing code and try again")
             raise ValueError("Incorrect pairing code")
         devices = _load_devices()
+        if replaces:
+            devices = [d for d in devices if d.get("id") != replaces]
         if len(devices) >= MAX_DEVICES:
             # Checked before the code is used up, so after unpairing one
             # device the same code still works.

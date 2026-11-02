@@ -32,6 +32,17 @@ class TestRegistry(unittest.TestCase):
             definition = next(m for m in modules.REGISTRY if m["id"] == module["id"])
             self.assertEqual(module["enabled"], definition["default_enabled"])
 
+    def test_an_older_copy_gets_the_new_defaults_once(self):
+        # A copy saved before November 2026 holds the old "off" default for these four.
+        old = {m["id"]: m["default_enabled"] for m in modules.REGISTRY}
+        old.update({mid: False for mid in modules.DEFAULTS_ON})
+        modules._save_state(old)
+        for mid in modules.DEFAULTS_ON:
+            self.assertTrue(modules.is_enabled(mid), mid)
+        # Turned off afterwards, it stays off.
+        modules.set_enabled("compare", False)
+        self.assertFalse(modules.is_enabled("compare"))
+
     def test_toggle_off_and_on(self):
         modules.set_enabled("filament_inventory", True)
         self.assertTrue(modules.is_enabled("filament_inventory"))

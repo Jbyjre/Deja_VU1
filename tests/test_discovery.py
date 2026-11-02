@@ -107,6 +107,21 @@ class TestProbe(unittest.TestCase):
         self.assertEqual(fleet.normalise_url("https://p.example/"), "https://p.example")
         fleet.check_url(fleet.normalise_url("10.0.0.7"))
 
+    def test_addresses_copied_from_the_browser_bar_are_tidied(self):
+        # A person copies what their browser shows: a path, "#/" or a query
+        # never belongs in a Moonraker address, and the scheme is any case.
+        cases = {"http://192.168.1.50/#/": "http://192.168.1.50",
+                 "192.168.1.50/fluidd": "http://192.168.1.50:7125",
+                 "HTTP://192.168.1.50": "http://192.168.1.50",
+                 "http://u1.local:7125/server/info?x=1": "http://u1.local:7125",
+                 "": ""}
+        for typed, want in cases.items():
+            self.assertEqual(fleet.normalise_url(typed), want, typed)
+            if want:
+                fleet.check_url(want)
+        self.assertEqual(fleet.moonraker_port_variant("http://192.168.1.50"), "http://192.168.1.50:7125")
+        self.assertIsNone(fleet.moonraker_port_variant("http://192.168.1.50:80"))
+
     def test_nothing_listening_is_said_in_words(self):
         s = socket.socket()
         s.bind(("127.0.0.1", 0))

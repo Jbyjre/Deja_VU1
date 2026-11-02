@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.12.0** ([what's new](#whats-new-in-0120) · [every version](CHANGELOG.md)).
+**Latest named release: 0.14.0** ([what's new](#whats-new-in-0140) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -19,10 +19,13 @@ in **Settings → Version & updates**.
 **Install in one paste** on [Windows](#windows-paste-into-powershell) or
 [Mac](#mac-paste-into-terminal), or use a [no-code option](#no-code-two-other-ways).
 
-> **Looking for U1 owners.** Deja Vu1 has never talked to a real U1. If you own
-> one and can spare 30 to 45 minutes, help run its first real connection. It's
-> watch-only: you watch a print you're already running, and nothing is started
-> or paused from Deja Vu1. **[How it works, and how to sign up](docs/first-connection.md)**
+> **A real U1 is on its way.** Snapmaker is sending Deja Vu1 a U1 through the
+> Innovation Fund's hardware sponsorship (shipped 29 October 2026). Until it
+> arrives, Deja Vu1 has never talked to a real U1; the [roadmap](#roadmap) lists
+> the tests it will run first. If you own a U1 and can spare 30 to 45 minutes, you
+> can still help with a second printer. It's watch-only: you watch a print you're
+> already running, and nothing is started or paused from Deja Vu1.
+> **[How it works, and how to sign up](docs/first-connection.md)**
 
 ## Ways to use it
 
@@ -104,12 +107,15 @@ the app; your settings and files stay put.
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-   Start-Process "$dest\start-windows.bat"
+   Set-Location $dest
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
    ```
 
-A black window opens (that's the launcher) and your browser opens the dashboard.
-Keep the black window open. Next time, double-click `start-windows.bat` in
-**Documents → Deja_VU1**.
+Deja Vu1 starts in the background and your browser opens the dashboard. You can
+close the PowerShell window: Deja Vu1 keeps running, and it starts by itself
+whenever you sign in (turn that off in **Settings → Desktop app**). Double-clicking
+`start-windows.bat` in **Documents → Deja_VU1** also works, but that window must
+stay open.
 
 ### Mac: paste into Terminal
 
@@ -119,13 +125,14 @@ Keep the black window open. Next time, double-click `start-windows.bat` in
    ```bash
    curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
    python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-   cd ~/Documents/Deja_VU1 && python3 start.py
+   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
    ```
 
 If your Mac says the `python3` command needs the command line developer tools,
 click **Install**, wait for it to finish, then paste the block again. That is
 how macOS adds Python. Keep the Terminal window open while you use Deja Vu1.
-Next time, double-click `start-mac.command` in **Documents → Deja_VU1**.
+Next time, double-click `start-mac.command` in **Documents → Deja_VU1**. To have it start by itself whenever you sign in, turn on
+**Settings → Desktop app → Start Deja Vu1 when this computer starts**.
 
 The same block works on **Linux and a Raspberry Pi**.
 
@@ -181,7 +188,7 @@ small and frequent. Three ways to get one:
 2. **One paste:** paste the block below into a new PowerShell or Terminal window.
    It stops Deja Vu1 in `Documents`, installs the newest release over it and
    starts it again. The same block is in **Settings → Version & updates →
-   Update with a command**.
+   Update or repair with a command**.
 3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
    the launcher again.
 
@@ -197,10 +204,11 @@ comes first, and the old version comes back if the new one fails to start.
 $ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
-Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-Start-Process "$dest\start-windows.bat"
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
 ```
 
 #### Mac, Linux: update in one paste
@@ -211,7 +219,7 @@ Open a **new** Terminal window (the one running Deja Vu1 is busy), then paste:
 curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 && python3 start.py
+cd ~/Documents/Deja_VU1 && python3 start.py --background
 ```
 
 The Windows block was written from Microsoft's documentation and has not been
@@ -219,6 +227,38 @@ run on a Windows computer yet; the Mac and Linux block was tested on Linux.
 If you installed Deja Vu1 somewhere other than `Documents`, change
 `Deja_VU1`'s folder in the block, or download the release ZIP and extract it
 over your folder.
+
+### If Deja Vu1 won't open
+
+If the browser shows "Deja Vu1 isn't running right now" or the dashboard stops
+answering, paste one block into a new PowerShell (Windows) or Terminal (Mac,
+Linux) window. It starts Deja Vu1 in `Documents` if it isn't running. Then that
+window shows **Deja Vu1 is ready and fully working**, with one line each for the
+address, the page, the program, its files, demo data, every printer you added,
+saved data and updates. If something is wrong it names it and prints the next
+block to paste. Leave the window open: closing it stops Deja Vu1. The same
+blocks are on the offline page and in **Settings → Version & updates**.
+
+#### Windows: start and check in one paste
+
+```powershell
+$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
+if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+```
+
+#### Mac, Linux: start and check in one paste
+
+```bash
+[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
+cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+```
+
+Still not working? The update block above also repairs: it stops a stuck copy,
+puts fresh app files in place and starts Deja Vu1 again. The double-click
+launcher shows the same check every time it starts, and
+`python3 start.py --check` checks a running copy without starting anything.
 
 ### Coming from a copy older than 0.8.0
 
@@ -269,6 +309,85 @@ it would overwrite a file you edited by hand. Then start the launcher again.
 
 The terminal steps were tested on Linux against a rehearsal of the rewrite.
 The GitHub Desktop steps have not been tried on Windows or macOS.
+
+## Updates that finish, and a check that says it works (0.13.7)
+
+- **Install shows each step.** The download runs in the background with a
+  progress bar (for example "Downloading version 0.13.7: 23.4 of 55.3 MB"),
+  then "Checking the download", then "Restarting". A reload, or another page,
+  picks the same progress up. Before this, the 58 MB download ran inside the
+  button press with one line of text, so on a slow connection Install looked as
+  if it did nothing.
+- **An update can no longer leave Deja Vu1 stopped.** If anything goes wrong
+  while the launcher puts the new files in place (for example Windows keeping a
+  folder locked during an antivirus scan), it puts the old files back, notes
+  why, and starts the dashboard anyway. Before this, such an error closed the
+  launcher and with it the dashboard, and leftover update files could stop
+  every later start. The dashboard says when an update was undone, and why.
+- **"Deja Vu1 is ready and fully working."** The launcher window shows this
+  check every time it starts: the address answers, the page loads, every file
+  it needs is there, demo data comes back, each printer you added says its link
+  state in words, settings can be saved, and how the last update went. If
+  something is wrong it names it and prints the block to paste next.
+  **Settings → Version & updates → Check it all works** shows the same list.
+- **One paste to start and check.** The offline page, Settings and this README
+  carry a Start and check block for PowerShell and Terminal
+  ([If Deja Vu1 won't open](#if-deja-vu1-wont-open)).
+- **A page notices when the program stops answering** and says so in a strip at
+  the top, reconnects by itself and reloads once the program is back.
+- **Refusals name the printer.** "My U1 is printing. The update waits until it
+  has finished" replaces "Updates wait until all real printers are connected
+  and idle".
+- The launcher window no longer lists every page request, so the check stays on
+  screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new in 0.14.0
+
+- **Each printer has its own page.** Printer (where Control was) puts the 3D twin,
+  the camera and a Move pad side by side, then temperatures with warm-up buttons,
+  extrude and retract, speed, flow, part fan and pressure advance, the printer's own
+  macros and bed mesh, motors off, the console and an emergency stop. Every command
+  is checked before it is sent and says what the printer answered. Moving waits for
+  an idle printer; tuning works during a print. Tested against the simulated printer
+  and the Moonraker stand-in; not yet tried on a physical U1.
+- **Overview is a page of cards** about what is happening now: Needs you, Right
+  now, the camera, temperatures, quick control, your printers and maintenance.
+- **No window has to stay open.** The Start block starts Deja Vu1 in the background
+  and at every sign-in, so closing PowerShell or Terminal no longer stops it.
+  Tested on Linux; Windows and macOS are not tested yet.
+- **The twin behaves.** The head stays inside the printer while it homes, the bed no
+  longer flickers while it turns, Turn slowly is a button, and Move head lets you
+  drag the real head.
+- **Less nagging, more control.** A finished print celebrates without a pop-up, due
+  maintenance can wait with Not now, automations have five new triggers, two new
+  actions and ten examples, and Preferences has its own tab.
+
+## What's new in 0.13.0
+
+- **The 3D twin keeps in step with the print.** While a file prints, the nozzle
+  in the twin runs along that file's own G-code, and about four times a second
+  Deja Vu1 checks it against where the printer says its nozzle is now and how far
+  into the file it has read. Walls appear where and when they are laid, the
+  plastic just laid glows briefly, and a tool change or park shows the real
+  position until the nozzle is back on the path. This works for G-code from any
+  slicer, because it reads the file being printed. A line under the twin says
+  whether it is in step. Tested against a printer simulated from the sample file
+  (within 0.016 s between readings); not yet seen on a physical U1.
+- **Colours from any slicer, on four heads.** Open a multi-colour project in Files
+  and **Colours on the U1's heads** shows which filaments the model really uses
+  and which head prints each. Five or more colours are grouped by how alike they
+  look, unused AMS slots are left out, and with a printer connected each colour
+  can go to the closest loaded head. Change any row, then **Save a copy with
+  these heads**. The converter now takes projects from MakerWorld, Printables
+  (PrusaSlicer), NexPrint, Bambu Studio, OrcaSlicer, Creality Print, QIDI Studio,
+  Flashforge Orca and other Orca forks, and fits their colours by itself.
+- **Keep your slicer.** **Pick up where you left off** finds recent projects in
+  eight slicers on this computer, and a profile made from your Orca presets can
+  set a filament for each head. In the slicing workspace, converting and fitting
+  colours now sit under the slice bar.
+- **Calmer notifications.** Repeats count up instead of stacking, long messages
+  stay longer, a hairline shows the time left, and a message that arrives while
+  the tab is hidden waits for you.
 
 ## What's new in 0.12.0
 
@@ -464,7 +583,7 @@ published as downloads. Full detail: [CHANGELOG.md](CHANGELOG.md).
 
 <img src="docs/img/telemetry.jpg" width="49%" alt="The Telemetry panel: state, file, layer, Z, progress, elapsed, remaining and finish time, bed and chamber against target, and a row per toolhead with temperature against target, a trace, filament, nozzle and swap counters"> <img src="docs/img/process-settings.jpg" width="49%" alt="The process settings editor in OrcaSlicer's layout: Quality, Strength, Speed, Support and Others tabs, a setting finder, Simple and Advanced, and the Speed tab's first-layer, per-feature, overhang and acceleration settings">
 
-<img src="docs/img/twin-detail.jpg" width="49%" alt="The 3D twin of the U1: a white rounded body with a black rim, the smoked-glass door and touchscreen, an orange and a black spool on the side drums, four black toolheads with yellow accents and tall tube loops, T0 picked and glowing blue, and its details panel below"> <img src="docs/img/twin-drawing.jpg" width="49%" alt="The twin's Drawing mode: an engineering drawing of the gantry, docked heads, bed and Z column, with the build volume as a dash-dot line, a Z dimension, balloons T0 to T3 and a title block">
+<img src="docs/img/twin-detail.jpg" width="49%" alt="The 3D twin of the U1: a white rounded body with a grey top frame, the black-framed glass door and touchscreen, an orange and a black spool on white hubs in the side's recessed oval, four black toolheads with yellow edges and tall tube loops, the white carriage with its orange fan, T0 picked and glowing blue, and its details panel below"> <img src="docs/img/twin-drawing.jpg" width="49%" alt="The twin's Drawing mode: an engineering drawing of the gantry, docked heads, bed and Z column, with the build volume as a dash-dot line, a Z dimension, balloons T0 to T3 and a title block">
 
 <img src="docs/img/setup.jpg" width="49%" alt="Full-screen setup on step 2, Make it yours: a progress bar of seven steps, the five background styles and six colour sets"> <img src="docs/img/appearance.jpg" width="49%" alt="Settings, Appearance: background styles, colour sets, Reaction (Gentle, Lively, Wild), Little surprises, and the accent colour">
 
@@ -501,9 +620,11 @@ your phone.
 
 **File fit.** The pre-flight check flags extrusion outside the 270 × 270 × 270 mm
 build volume, unknown toolheads and unsafe temperatures, with line numbers.
-MakerWorld, NexPrint and OrcaSlicer projects can be converted where their
-settings and geometry are supported. Select one plate for slicing; complete
-vendor paint and texture fidelity is still limited.
+Projects from MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer and its
+forks (Creality, Elegoo, QIDI, Flashforge) and PrusaSlicer can be converted where
+their settings and geometry are supported, with five or more colours fitted to
+the four heads. Select one plate for slicing; complete vendor texture fidelity
+is still limited.
 
 **Filament.** Four toolheads mean four chances to load the wrong spool. Deja Vu1
 compares the colour each toolhead was sliced for with what the printer reports,
@@ -533,11 +654,11 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 | **Start a print from your phone** | Pick a file, read one Confirm Print summary (pre-flight check, filament match, spool weight, maintenance, time, grams and cost) and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
 | **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more, with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
 | **Mixed-nozzle planner** | Calculates a common grid and checks preferred heights against U1 nozzle limits. It does not slice. The workspace separately sends validated preferences to a capable engine; Confirm Print checks fitted nozzles. |
-| **MakerWorld / NexPrint / OrcaSlicer → U1** | Converts supported projects for the U1 while retaining source settings and colours. Multi-plate layouts use the U1 grid; select and separate one plate for local slicing. Failures include a reason and copyable report. Complete vendor extension/texture fidelity is not guaranteed. |
+| **Projects from other slicers → U1** | Converts MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer, Creality Print, QIDI Studio, Flashforge Orca and PrusaSlicer projects for the U1 while retaining source settings and painted colours; **Colours on the U1's heads** fits any number of colours onto the four heads (alike colours share, unused slots are left out, or the closest loaded head) and saves a copy. Multi-plate layouts use the U1 grid; select and separate one plate for local slicing. Failures include a reason and copyable report. Complete vendor extension/texture fidelity is not guaranteed. |
 | **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
 | **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
 | **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
-| **Digital twin** | Two ways to see each printer, live, both from one detailed model of the U1 (from Snapmaker's official product picture and published figures; the body's own size and inside layout estimated). **3D model:** studio-lit and realistic, with the head on the gantry, the bed dropping as Z rises, idle heads in the rear docks, the spools in their loaded colours, the touchscreen showing the printer's state and the print growing on the bed; drag to turn, right-drag to move, scroll or +/− to zoom. **Engineering drawing:** made from the same geometry and drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. Angled, front and top views in both modes; the drawing can show the case with its estimated size and downloads as a PNG picture (an SVG line drawing is used where WebGL 2 isn't available). |
+| **Digital twin** | Two ways to see each printer, live, both from one detailed model of the U1 (from Snapmaker's product photos of the U1, front, sides, back and top, and its published figures; the body's own size is measured from the photos and the inside layout is estimated). **3D model:** studio-lit and realistic, with the head on the gantry, the bed dropping as Z rises, idle heads in the rear docks, the spools in their loaded colours, the touchscreen showing the printer's state and the print growing on the bed; drag to turn, right-drag to move, scroll or +/− to zoom. **Engineering drawing:** made from the same geometry and drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. Angled, front and top views in both modes; the drawing can show the case with its estimated size and downloads as a PNG picture (an SVG line drawing is used where WebGL 2 isn't available). |
 | **File library** | G-code, 3MF, STL and triangular OBJ files, with available thumbnails, estimates, pre-flight results and recent files. Missing time or filament metadata stays unknown. |
 | **Prepare and preview** | Edit multi-object STL/OBJ/3MF plates, save a new source-preserving 3MF, slice through an installed engine and inspect its G-code by layer. Plain WebGL; no 3D library. Complex paint/textures remain limited. |
 | **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command, each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
@@ -590,7 +711,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 
 <sub>**Skip one object:** pick the failed part on the plate map, confirm, and the rest keep printing.</sub>
 
-<img align="right" width="300" src="docs/img/converter.jpg" alt="The converter card at the top of Files: Bambu Studio or MakerWorld project to Snapmaker U1, with the report for the three-plate MakerWorld sample: saved as a U1 copy, all three plates re-placed on the 270 mm bed and the creator's own changes kept">
+<img align="right" width="300" src="docs/img/converter.jpg" alt="The converter card at the top of Files: a project from any slicer to Snapmaker U1, with the report for the three-plate MakerWorld sample: saved as a U1 copy, all three plates re-placed on the 270 mm bed and the creator's own changes kept">
 
 **Converting a supported project:** keep the original, review the conversion
 report, then select a plate for slicing. All three plates of the recorded test
@@ -731,16 +852,19 @@ printer figures, so they work the same with or without a printer connected.
 
 ## Current status
 
-**No physical U1 or real phone has been verified.** Printer controls, filament
+**No physical U1 or real phone has been verified.** Snapmaker shipped a U1 for
+testing on 29 October 2026 (Innovation Fund hardware sponsorship); the
+[roadmap](#roadmap) lists the order of the first tests. Printer controls, filament
 readback, camera/time-lapse and queue handling have simulator and authenticated
 stand-in coverage. Start with the [watch-only first connection](docs/first-connection.md).
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **920 tests in 569.3 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (27 October 2026, version 0.12.0 before its
-merge). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13.
-Earlier full runs passed 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+The latest full run passed **948 tests in 761.9 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (28 October 2026, version 0.13.0 before its
+merge, in a cloud sandbox slower than the earlier machine). GitHub Actions runs the
+suite on Python 3.8, 3.10, 3.12 and 3.13.
+Earlier full runs passed 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -756,7 +880,7 @@ recorded static demo passed at both widths.
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests | Physical cameras and simultaneous real printers |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
-| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested; the Windows paste block, GitHub Desktop's own git and macOS have not been run yet |
+| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested. 0.13.7: Install as a background job with progress, the launcher surviving a failed apply, the launch id and the ready check are tested on Linux, including a real install of the published 0.13.6 release with a stand-in printer connected and a reload mid-download. The Windows paste blocks, GitHub Desktop's own git and macOS have not been run yet |
 | Desktop app, version history, tours, notification orb | Unit tests (desktop window choice, version history kept in step with VERSION, the changelog and the release notes); Chromium at 1366/390 px, including the online demo | Installing as an app was not tried in a real Chrome or Edge window; the launcher's app window was not opened on Windows or macOS |
 | Layer stack, Orca-style process settings | Unit tests for the thick-layer options and all 106 settings (names and choices checked against OrcaSlicer's option table); Chromium at 1366/390 px | No real slice with the new options in this round; whether an engine lists the thick-layer options is read from its own schema |
 | Farm desk, telemetry, logbook, finder, converter card | Unit tests (logbook, printer page link) and Chromium at 1366/390 px on the simulated farm | Real farms, real spools and real printers' web pages unverified |
@@ -765,6 +889,7 @@ recorded static demo passed at both widths.
 | Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
 | Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
 | Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
+| G-code sync of the 3D twin, colours on four heads, slicer import (0.13.0) | Klipper's `live_position` and `file_position` read from its `docs/Status_Reference.md`; the twin's sync run in Node against the two-Benchy sample and a printer simulated from it (exact on each reading, within 0.016 s between readings at 0.8× speed, pauses and tool changes handled); paint codes, per-feature filament settings and Orca's PrusaSlicer import read from OrcaSlicer `97e6c71`; Cura tags from CuraEngine; slicer folder names from each slicer's `version.inc`; unit tests for the paint codec, the plan and the rewritten projects; Chromium at 1366/390 px | No physical U1, so the sync has not met real readings; a mapped project not yet opened in Snapmaker Orca; the slicer search for recent projects not run on a real Windows or macOS install |
 | Parts of a screen, Get ready to slice, other Klipper printers, search (0.12.0) | Chromium at 1366/390 px on the local server and the static online demo: every part of every sectioned screen, all 60 search places reach a visible card, the 0.12.0 and quick tours find their stops; the slicer search walked end to end with a stand-in program (found, used, checked); a stand-in one-head 235 × 235 × 250 mm Klipper printer added through the app, its card and twin card shown; unit tests for the search, the profiles and Confirm Print against a smaller printer | The slicer search not run on a real Windows or macOS install; no physical non-U1 printer; the slicing workspace and converter still target U1 presets |
 | Away from home, glass orb (0.11.0) | Unit tests against a stand-in `tailscale` program answering in the formats of Tailscale's source (`eba00ab`); the server refuses a phone or tailnet request to switch sharing (403); the code's link checked; Chromium at 1366/412 px | No real Tailscale account, HTTPS approval, phone on mobile data or Extended Firmware VPN tried |
 | Printer sign-in, typed addresses, camera sources, firmware 2.0.0 file names (0.10.0) | Read against Snapmaker's u1-moonraker `a308cfa` and u1-klipper `93cb12f`, the Extended Firmware `417e639` and its camera service `9279584`; stand-in Moonraker tests for the login, the key, the camera list, the snapshot, the MJPEG feed, `req_id` and a failed reply, through the real server | No physical U1, real Extended Firmware camera or Web Authentication tried |
@@ -813,7 +938,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 920 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 948 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -823,7 +948,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 920 cases
+- **Tests:** `unittest` from the standard library, 948 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -961,11 +1086,15 @@ shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
 
 ## Roadmap
 
-**With access to a U1:**
+**With the sponsored U1 (shipped 29 October 2026):**
 
 1. Connect to a real U1 and work through [the list of things only a real
    machine can confirm](docs/real-printer.md#what-cannot-be-checked-without-the-printer)
-   (the Details panel shows every exchange).
+   (the Details panel shows every exchange). In order: watch only (live readings
+   against the U1's own screen, reconnects); read back the fitted nozzles and
+   loaded filaments; one small known-safe print through pre-flight and Confirm
+   Print; then pause, resume, cancel, error recovery and queue handoff. Each stage
+   goes into [Current status](#current-status) with what was seen.
 2. Confirm maintenance thresholds against how the machine actually wears.
 3. Build the LED rings, print the dock brackets, wire the WS2812 chain,
    implement the driver (or wire up WLED instead).

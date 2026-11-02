@@ -19,18 +19,26 @@ window.Finder = (() => {
      heading; the finder opens its tab and scrolls to it. */
   const PLACES = [
     ['Needs you', 'Overview', 'attention alerts problems errors jam warnings to do', 'Needs you'],
-    ['Digital twin', 'Overview', '3d model printer view drawing engineering realistic twin case off see-through print benchy colours', 'Digital twin'],
-    ['What your history says', 'Overview › History & upkeep', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
-    ['Printer control', 'Overview', 'pause resume cancel stop print buttons', 'Printer control'],
-    ['Print health', 'Overview', 'first layer quality health score', 'Print health'],
-    ['Telemetry · live readings', 'Overview › Live readings', 'telemetry live readings numbers temperatures nozzle bed position layer progress swaps sensors', 'Telemetry'],
-    ['Chamber climate', 'Overview › Live readings', 'chamber temperature humidity enclosure air', 'Chamber climate'],
-    ['Print cost', 'Overview › History & upkeep', 'price money electricity cost per print spend', 'Print cost'],
+    ['Right now', 'Overview', 'current print status progress time left selected printer', 'Right now'],
+    ['Temperatures', 'Overview', 'temperatures nozzle bed chamber heat targets', 'Temperatures'],
+    ['Camera', 'Printer', 'camera live view webcam watch picture', '#pp-camera-card'],
+    ['Move the head · jog', 'Printer', 'move jog arrows x y z axis position 10 mm step head toolhead motors off', 'Move'],
+    ['Extrude or retract', 'Printer', 'extrude retract push pull filament purge length speed', 'Extrude'],
+    ['Tune speed, flow, fan, pressure advance', 'Printer', 'speed factor flow rate fan part cooling pressure advance velocity acceleration z offset babystep nudge', 'Tune'],
+    ['Printer\'s own buttons · macros, bed mesh', 'Printer', 'macros macro bed mesh level calibrate auto feeding motors off buttons', 'Printer\'s own buttons'],
+    ['Emergency stop', 'Printer', 'emergency stop e-stop m112 halt kill', '#pp-head'],
+    ['Digital twin', 'Printer', '3d model printer view drawing engineering realistic twin case off see-through print benchy colours', 'Digital twin'],
+    ['What your history says', 'Printer › History & upkeep', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
+    ['Quick control', 'Overview', 'pause resume cancel stop print buttons', 'Quick control'],
+    ['Print health', 'Printer › History & upkeep', 'first layer quality health score', 'Print health'],
+    ['Telemetry · live readings', 'Printer › Live readings', 'telemetry live readings numbers temperatures nozzle bed position layer progress swaps sensors', 'Telemetry'],
+    ['Chamber climate', 'Printer › Live readings', 'chamber temperature humidity enclosure air', 'Chamber climate'],
+    ['Print cost', 'Printer › History & upkeep', 'price money electricity cost per print spend', 'Print cost'],
     ['Use it on your phone', 'Overview', 'phone mobile qr code scan camera pair handoff', 'Use this dashboard on your phone'],
     ['What the words mean', 'Settings', 'glossary words meaning help explain jargon g-code slicer stl 3mf moonraker nozzle head', 'Your space'],
-    ['Objects on the plate', 'Control', 'skip object exclude cancel one part plate objects', 'Objects on the plate'],
-    ['Home axes', 'Control', 'home g28 xyz axes', 'Home axes'],
-    ['G-code console', 'Control', 'terminal command macro gcode console klipper', 'G-code console'],
+    ['Objects on the plate', 'Printer', 'skip object exclude cancel one part plate objects', 'Objects on the plate'],
+    ['Home axes', 'Printer', 'home g28 xyz axes', 'Move'],
+    ['G-code console', 'Printer', 'terminal command macro gcode console klipper', 'G-code console'],
     ['Your printers', 'Printers', 'fleet farm printers cards all printers', 'Your printers'],
     ['Farm history', 'Printers › Farm desk', 'stats history chart success rate hours prints', 'Farm history'],
     ['Add a printer', 'Printers', 'connect ip address moonraker discover find printer network new printer', 'Add a printer'],
@@ -60,12 +68,12 @@ window.Finder = (() => {
     ['Dock status rings', 'Care › Filament & colour', 'led ring lights dock status', 'Dock status rings'],
     ['Right colour loaded?', 'Care › Filament & colour', 'colour check color match wrong filament', 'Right colour loaded?'],
     ['Filament inventory', 'Care › Filament & colour', 'spools spoolman inventory grams stock filament left', 'Filament inventory'],
-    ['Appearance', 'Settings', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
+    ['Appearance', 'Preferences', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
     ['Modules · turn features on or off', 'Settings', 'modules features enable disable switch on off', 'Modules'],
     ['Paired devices', 'Settings', 'pair phone devices tablets lock only paired access password login security', 'Paired devices'],
     ['Your data is safe · safety copies', 'Settings', 'safety copy snapshot restore undo lost settings memory data recover', 'Your data is safe'],
     ['About Deja Vu1 · check it yourself', 'Settings', 'about version credits licence check it yourself self test verify proof', 'About Deja Vu1'],
-    ['Preferences', 'Settings', 'units accent preferences sounds', 'Preferences'],
+    ['Preferences', 'Preferences', 'units celsius fahrenheit accent preferences warm up preheat presets pla petg tpu start screen camera celebrate step', 'Preferences'],
     ['Notifications', 'Settings', 'ntfy discord telegram push email notify alerts', 'Notifications'],
     ['Backup, firmware & recovery', 'Settings', 'backup restore recovery firmware update snapshot', 'Printer firmware & app recovery'],
     ['App updates', 'Settings', 'update upgrade new version newest build latest automatic install github command paste powershell terminal', '#version-card'],
@@ -73,21 +81,21 @@ window.Finder = (() => {
     ['Print cost pricing', 'Settings', 'electricity price filament price kwh cost settings', 'Print cost pricing'],
     ['WLED bridge', 'Settings', 'wled leds lights strip', 'WLED bridge'],
     ['Home Assistant bridge', 'Settings', 'home assistant hass sensors mqtt smart home', 'Home Assistant bridge'],
-    ['Camera settings', 'Settings', 'camera webcam stream mjpeg webrtc go2rtc', 'Camera'],
-    ['Time-lapses', 'Settings', 'timelapse time-lapse video recording', 'Time-lapses'],
+    ['Camera settings', 'Printer › Camera & time-lapses', 'camera webcam stream mjpeg webrtc go2rtc', 'Camera settings'],
+    ['Time-lapses', 'Printer › Camera & time-lapses', 'timelapse time-lapse video recording', 'Time-lapses'],
     ['Away from home', 'Settings', 'remote access tunnel tailscale anywhere mobile data outside internet different wifi network phone', 'Away from home'],
     ['Demo controls', 'Settings', 'demo data simulated sample', 'Demo controls'],
     ['Games', 'Games', 'games tetris pacman pac-man snake sky dash play bored', 'tab:games'],
   ];
   const ACTIONS = [
-    ['Open the camera', 'Do', 'camera live view webcam watch', () => document.getElementById('camera-open')?.click()],
+    ['Open the camera', 'Do', 'camera live view webcam watch', () => go('#pp-camera-card')],
     ['Turn demo data on or off', 'Do', 'demo simulated toggle sample data', () => document.querySelector('label[for=demo-toggle]')?.click()],
     ['Add the sample files', 'Do', 'samples benchy gear vase example test models', async () => { go('File library'); document.getElementById('file-samples')?.click(); }],
     ['Convert the 3-plate MakerWorld sample', 'Do', 'converter try sample bambu makerworld', async () => { go('#convert-card'); document.getElementById('cv-sample')?.click(); }],
     ['Open 3DBenchy', 'Do', 'benchy boat test model calibration', async () => { showTab('files'); if (window.Workshop) Workshop.openFile('3dbenchy.stl'); }],
-    ['Set up and help', 'Do', 'setup help guide getting started tour', () => document.getElementById('setup-open')?.click()],
+    ['Set up and help', 'Do', 'setup help guide getting started tour', () => document.getElementById('setup-replay')?.click()],
     ['Install the app on this phone', 'Do', 'install app phone home screen android chrome iphone pwa shortcut', () => window.Phone && Phone.install()],
-    ['Find my printer\'s camera', 'Do', 'camera find webcam stream mjpeg extended firmware', async () => { showTab('modules'); document.getElementById('camera-find')?.scrollIntoView({ block: 'center' }); }],
+    ['Find my printer\'s camera', 'Do', 'camera find webcam stream mjpeg extended firmware', async () => { go('#camera-card'); document.getElementById('camera-find')?.scrollIntoView({ block: 'center' }); }],
   ];
   const SUGGESTED = ['Needs you', 'Bambu / MakerWorld to U1 converter', 'Layer stack · mixed layer heights', 'Add a printer', 'Open the camera'];
 
@@ -140,7 +148,7 @@ window.Finder = (() => {
     const places = PLACES.map(([title, path, keys, target]) => ({ group: 'Go to', title, path, keys, run: () => go(target) }));
     const actions = ACTIONS.map(([title, path, keys, run]) => ({ group: 'Do', title, path, keys, run }));
     const printers = dynamic.printers.map(p => ({ group: 'Printers', title: p.name, path: `${p.state || 'printer'}${p.current_file ? ' · ' + p.current_file : ''}`, keys: 'printer select switch ' + p.id,
-      run: () => { showTab('overview'); if (window.Workshop && Workshop.selectPrinter) Workshop.selectPrinter(p.id); } }));
+      run: () => { showTab('control'); if (window.Workshop && Workshop.selectPrinter) Workshop.selectPrinter(p.id); } }));
     const files = dynamic.files.map(f => ({ group: 'Files', title: f.name, path: `${(f.kind || '').toUpperCase()} file${f.origin ? ' · ' + f.origin : ''}`, keys: 'file open ' + (f.kind || ''),
       run: () => { showTab('files'); if (window.Workshop) Workshop.openFile(f.name); } }));
     return [...places, ...actions, ...printers, ...files];
@@ -254,7 +262,7 @@ window.Finder = (() => {
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-controls', 'feature-results');
   input.setAttribute('aria-expanded', 'false');
-  input.placeholder = 'Search screens, printers, files…';
+  input.placeholder = 'Search everything…';
   const hint = document.createElement('kbd');
   hint.className = 'fx-hint'; hint.setAttribute('aria-hidden', 'true'); hint.textContent = mac ? '⌘K' : 'Ctrl K';
   input.after(hint);

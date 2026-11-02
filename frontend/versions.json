@@ -2,6 +2,244 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.14.0",
+      "date": "2026-11-01",
+      "name": "Your printer, its own page",
+      "published": true,
+      "summary": "Every printer gets its own page with full controls and its camera, Overview becomes a page of cards, and Deja Vu1 keeps running with no window open.",
+      "changes": [
+        "Each printer has its own page (Printer, where Control was): the 3D twin with the camera and a Move pad beside it, temperatures with PLA, PETG and TPU warm-up buttons, extrude and retract, speed, flow, part fan and pressure advance, the printer's own macros and bed mesh, motors off, the G-code console and an emergency stop. Opening a printer goes there.",
+        "Overview is a page of cards about now: Needs you, Right now, the camera, temperatures, quick control, your printers, maintenance and totals.",
+        "The camera and time-lapses moved from Settings to the printer page, and the camera picture refreshes as fast as the printer makes pictures.",
+        "The name you gave the printer on the printer itself is shown everywhere. Connected is green, a ready printer says Ready, and the printer button in the top bar shows its state, progress and finish time.",
+        "Deja Vu1 keeps running after the PowerShell or Terminal window is closed, and the Start block also starts it at sign-in.",
+        "The twin keeps the head inside the printer while it homes, no longer flickers while it turns, has a Turn slowly button, and lets you drag the real head with Move head.",
+        "Slicing shows Layer heights per head under the slice bar and loads your tools by itself; the slicing cards no longer run into each other.",
+        "A finished print sets off the background dots and a message, with no pop-up to close.",
+        "Automations: rules for a percentage, minutes left, a layer, an error or a lost printer; actions to turn the heaters off or run a printer macro; ten examples to start from.",
+        "Care: Not now snoozes a due task without hiding it; a recorded nozzle swap updates that head's nozzle for slicing.",
+        "Preferences has its own tab: units, the screen to open on, the Move step, cameras, the finish celebration and your warm-up temperatures.",
+        "Notifications and remote access explain how to set them up; Look on this computer is short and clear; phones get a tighter layout without the computer-only tools.",
+        "One phone that pairs twice is listed once, and the version history reads as app news."
+      ],
+      "highlights": [
+        {
+          "title": "Your printer, its own page",
+          "tab": "control",
+          "target": "#pp-move",
+          "text": "Move the head by 0.1 to 100 mm, heat, extrude, tune speed, flow and the fan, and run your printer's own buttons. Each button says what the printer answered."
+        },
+        {
+          "title": "Watch what you do",
+          "tab": "control",
+          "target": "#pp-camera-card",
+          "text": "The camera sits beside the twin and the controls, so you see each move happen."
+        },
+        {
+          "title": "Overview at a glance",
+          "tab": "overview",
+          "target": "#ov-now",
+          "text": "What the printer is doing now, how far along it is and when it finishes, with the camera and temperatures beside it."
+        },
+        {
+          "title": "Rules that know the print",
+          "tab": "automations",
+          "target": "#rule-form",
+          "text": "Start from an example: 10 minutes left, halfway, an error, the printer going quiet, or heaters off after a cancel."
+        },
+        {
+          "title": "Make it yours",
+          "tab": "prefs",
+          "target": "#prefs-card",
+          "text": "Your warm-up temperatures, the screen to open on, the Move step and whether cameras start by themselves."
+        }
+      ]
+    },
+    {
+      "version": "0.13.8",
+      "date": "2026-11-01",
+      "name": "Give each printer its own page with full controls, and make Overview a page o...",
+      "published": true,
+      "summary": "Give each printer its own page with full controls, and make Overview a page of cards.",
+      "changes": [
+        "Give each printer its own page with full controls, and make Overview a page of cards"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.7",
+      "date": "2026-10-31",
+      "name": "Make updates finish every time, and say plainly when Deja Vu1 is ready",
+      "published": true,
+      "summary": "Make updates finish every time, and say plainly when Deja Vu1 is ready.",
+      "changes": [
+        "Make updates finish every time, and say plainly when Deja Vu1 is ready"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.6",
+      "date": "2026-10-31",
+      "name": "Keep every part drawing with a real printer, and reload pages after any update",
+      "published": true,
+      "summary": "Keep every part drawing with a real printer, and reload pages after any update.",
+      "changes": [
+        "Keep every part drawing with a real printer, and reload pages after any update"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.5",
+      "date": "2026-10-31",
+      "name": "Keep the dashboard reachable: start with the computer, restart after a crash",
+      "published": true,
+      "summary": "Keep the dashboard reachable: start with the computer, restart after a crash.",
+      "changes": [
+        "Keep the dashboard reachable: start with the computer, restart after a crash"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.4",
+      "date": "2026-10-31",
+      "name": "Get ready for a real U1: connection, controls and the twin following the head",
+      "published": true,
+      "summary": "Get ready for a real U1: connection, controls and the twin following the head.",
+      "changes": [
+        "Get ready for a real U1: connection, controls and the twin following the head"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.3",
+      "date": "2026-10-31",
+      "name": "Make the 3D twin match the production U1 in Snapmaker's photos",
+      "published": true,
+      "summary": "Make the 3D twin match the production U1 in Snapmaker's photos.",
+      "changes": [
+        "Make the 3D twin match the production U1 in Snapmaker's photos"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.2",
+      "date": "2026-10-30",
+      "name": "Product page wording",
+      "published": true,
+      "summary": "Updated wording on the product page.",
+      "changes": [
+        "Updated wording on the product page."
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.1",
+      "date": "2026-10-30",
+      "name": "Housekeeping",
+      "published": true,
+      "summary": "Behind-the-scenes housekeeping. Nothing in the app changed.",
+      "changes": [
+        "Behind-the-scenes housekeeping. Nothing in the app changed."
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
+      "version": "0.13.0",
+      "date": "2026-10-28",
+      "name": "In step with the print",
+      "published": true,
+      "summary": "The 3D twin runs along the print's own G-code and keeps in step with the printer, projects from any slicer bring their colours onto the four heads, and notifications count repeats and wait for you.",
+      "highlights": [
+        {
+          "title": "In step with the print",
+          "tab": "control",
+          "target": "#twin-card",
+          "text": "While a print runs, the nozzle follows the file's own G-code and is checked against the printer about four times a second. Walls appear where and when they are laid. The line under the twin says whether it is in step."
+        },
+        {
+          "title": "Colours on four heads",
+          "tab": "files",
+          "target": "#convert-card",
+          "text": "Bring a project from MakerWorld, Printables, Bambu Studio, Creality Print, PrusaSlicer or another slicer. Open it to see which head prints each colour; five or more colours are grouped by likeness, and you can change any of them."
+        },
+        {
+          "title": "From your slicer",
+          "tab": "files",
+          "target": "#orca-import",
+          "text": "Look on this computer finds recent projects in eight slicers, so you can keep your slicer and use Deja Vu1 beside it."
+        },
+        {
+          "title": "Calmer notifications",
+          "target": "#orb",
+          "text": "A repeated message counts up instead of stacking, a long one stays longer, and the line along the bottom shows the time left. Point at a message to hold it."
+        }
+      ],
+      "changes": [
+        "The 3D twin follows the running print's own G-code: each reading of the printer's live position and the byte it has read fixes the moment in the file, and between readings the nozzle runs along the path at the printer's own pace. Walls appear where and when they are laid; a tool change or park shows the live position. Tested against a printer simulated from the sample file: within 0.016 s between readings.",
+        "Files shows Colours on the U1's heads for a multi-colour project: which filaments the model uses, a suggested head for each (alike colours share, unused ones are left out, or the closest loaded head), and Save a copy with these heads. The converter fits five or more colours by itself.",
+        "The converter takes projects from Creality Print, QIDI Studio, Flashforge Orca, other Orca forks and PrusaSlicer, besides MakerWorld, NexPrint and OrcaSlicer. Pick up where you left off finds recent projects in eight slicers, and an Orca preset profile can set a filament per head.",
+        "Converting and fitting colours sit under the slice bar in the slicing workspace.",
+        "Notifications count repeats, stay longer for long messages, show the time left, wait while the tab is hidden and can be flicked away on a phone. Open the same here? moves into the orb after nine seconds.",
+        "Large replies are sent compressed (a print preview from 842 KB to 271 KB), file names wrap at underscores and dots, and Cura's outer walls and skins are drawn in the twin."
+      ]
+    },
+    {
       "version": "0.12.0",
       "date": "2026-10-27",
       "name": "One thing at a time",
@@ -10,8 +248,8 @@
       "highlights": [
         {
           "title": "One part at a time",
-          "tab": "overview",
-          "target": "#sec-overview",
+          "tab": "control",
+          "target": "#sec-control",
           "text": "Each busy screen opens on one part. These buttons show the others, and Everything shows the whole page. Your choice is remembered."
         },
         {
@@ -38,19 +276,19 @@
         "When Slice is greyed out on a plate, it says why and links the set-up. \"Auto-print\" now reads \"Slicing\" everywhere.",
         "Printers that run Klipper with Moonraker connect as an untested type. Their size, heads, kinematics and nozzle come from the printer's own report, and the pre-flight and Confirm Print check files against them. A printer that doesn't report its size gets a warning, never a guess.",
         "The search box's Go to results open their card again: a title's help button had stopped most of them matching.",
-        "On Overview, the phone card sits under Print health, and a row left with one card uses the full width.",
-        "Two unused launch-film copies are gone: each update download is 56 MB instead of 74 MB."
+        "A row left with one card uses the full width.",
+        "Each update download is 56 MB instead of 74 MB."
       ]
     },
     {
       "version": "0.11.1",
       "date": "2026-10-27",
-      "name": "Clean up code layout and public wording before Phase 2",
+      "name": "Tidier code and clearer wording",
       "published": true,
-      "summary": "2 changes merged on GitHub since the last release.",
+      "summary": "2 improvements, listed below.",
       "changes": [
-        "Clean up code layout and public wording before Phase 2",
-        "A smoother launch film (version 17), tour, sheets and 3D twin [marketing video]"
+        "Tidier code and clearer wording across the app.",
+        "The quick tour, sheets and 3D twin run more smoothly."
       ],
       "highlights": [
         {
@@ -229,13 +467,13 @@
         },
         {
           "title": "The real print in the twin",
-          "tab": "overview",
+          "tab": "control",
           "target": "#twin-card",
           "text": "The twin reads the file being printed and grows each layer's outside walls in the colour loaded in the head printing it. Take the case off to see the frame, motors and belts."
         },
         {
           "title": "Insights from your history",
-          "tab": "overview",
+          "tab": "control",
           "target": "#insights-card",
           "text": "Patterns from the printer's own history: what tends to fail, which files print well, and where time goes."
         },
@@ -316,7 +554,7 @@
       "highlights": [
         {
           "title": "The 3D twin",
-          "tab": "overview",
+          "tab": "control",
           "target": "#twin-card",
           "text": "A detailed model of the U1 with live heads, bed, docks and spools. Drag to turn it; click a part for its details."
         },
@@ -335,8 +573,7 @@
       ],
       "changes": [
         "Digital twin rebuilt in WebGL 2 with studio lighting, reflections and soft shadows; the drawing mode uses the same geometry.",
-        "Background: Dots by default, stronger reactions, Constellation style, Time of day colours and little surprises.",
-        "Launch videos version 14 and 15."
+        "Background: Dots by default, stronger reactions, Constellation style, Time of day colours and little surprises."
       ]
     },
     {
@@ -401,8 +638,9 @@
       "highlights": [
         {
           "title": "Setup and help",
-          "target": "#setup-open",
-          "text": "A skippable setup you can replay any time. Your name, if you give one, stays in this browser."
+          "target": "#setup-replay",
+          "text": "A skippable setup you can replay any time. Your name, if you give one, stays in this browser.",
+          "tab": "modules"
         },
         {
           "title": "Photo studio",
@@ -412,8 +650,9 @@
         },
         {
           "title": "Camera snapshots",
-          "target": "#camera-open",
-          "text": "Pictures from the selected printer's own camera."
+          "target": "#pp-camera-card",
+          "text": "Pictures from the selected printer's own camera.",
+          "tab": "control"
         }
       ],
       "changes": [
@@ -468,7 +707,7 @@
         {
           "title": "Honest controls",
           "tab": "control",
-          "target": "#ctrl-pause-resume",
+          "target": "#pp-head",
           "text": "Pause, resume and cancel. A button shows what the printer reports back, never what it hoped for."
         },
         {

@@ -183,6 +183,25 @@ class TestStateTranslation(unittest.TestCase):
         self.assertEqual((t2["nozzle_diameter"], t2["swaps"], t2["swap_retries"], t2["swap_errors"]), (None, None, None, None))
         self.assertIn("switch_count", mc._EXTRUDER_FIELDS)
 
+    def test_the_head_is_drawn_where_it_is_not_where_it_is_going(self):
+        # A slow move: toolhead "position" is already the destination, the
+        # live position is where the nozzle is now. The twin follows the live one.
+        status = self.fake_status()
+        status["toolhead"]["position"] = [250.0, 20.0, 5.0, 0.0]
+        status["motion_report"]["live_position"] = [180.5, 90.25, 7.5, 0.0]
+        state = mc.translate_state(status, self.ctx())
+        self.assertEqual((state["toolhead_position"], state["position_source"]), ([180.5, 90.25, 7.5], "live"))
+        self.assertEqual(state["homed_axes"], "xyz")
+        # No motion_report (or nonsense in it): the commanded position, labelled as such.
+        status["motion_report"]["live_position"] = [None, "x", 1e9]
+        state = mc.translate_state(status, self.ctx())
+        self.assertEqual((state["toolhead_position"], state["position_source"]), ([250.0, 20.0, 5.0], "commanded"))
+        del status["motion_report"]
+        self.assertEqual(mc.translate_state(status, self.ctx())["position_source"], "commanded")
+        # After a Klipper restart nothing is homed: said, so the twin doesn't pretend to know.
+        status["toolhead"]["homed_axes"] = ""
+        self.assertEqual(mc.translate_state(status, self.ctx())["homed_axes"], "")
+
     def test_the_u1_reports_what_each_head_has_loaded(self):
         state = mc.translate_state(self.fake_status(), self.ctx())
         t0, t2 = state["toolheads"]["T0"], state["toolheads"]["T2"]
@@ -233,6 +252,9 @@ class TestSmallPieces(unittest.TestCase):
         self.assertEqual(mc.clean_error('{"coded":"0001-0523-0000-0006", "msg":"extruder1 not configured"}'),
                          "extruder1 not configured (code 0001-0523-0000-0006)")
         self.assertEqual(mc.clean_error("!! Must home axis first: 0.000 0.000"), "Must home axis first: 0.000 0.000")
+        # The console form of a U1 coded error (virtual_sdcard.py "SD busy").
+        self.assertEqual(mc.clean_error('!! {"coded": "0001-0531-0000-0001", "msg":"SD busy", "action": "none"}'),
+                         "SD busy (code 0001-0531-0000-0001)")
 
     def test_update_status(self):
         packages = mc.packages_from_update_status(DOC_UPDATE_STATUS)["packages"]
@@ -288,6 +310,23 @@ class TestConnecting(WireTest):
         diag = self.printer.diagnostics()
         self.assertIn("print_task_config", diag["objects_subscribed"])
         self.assertTrue(any(e["method"] == "printer.objects.subscribe" for e in diag["log"]))
+
+    def test_the_name_set_on_the_printer_is_shown(self):
+        # The owner renamed the U1 on the printer and the dashboard kept showing the typed name.
+        self.wait_connected()
+        self.assertEqual(self.printer.snapshot()["printer_name"], "Test U1")    # no system_info: typed name
+        self.fake.device_name = "Workbench U1"
+        named = self.connect()
+        self.wait_connected(named)
+        self.assertEqual(named.snapshot()["printer_name"], "Workbench U1")
+        self.assertEqual(named.diagnostics()["name"], "Workbench U1")
+
+    def test_the_factory_name_keeps_the_typed_name(self):
+        self.assertIsNone(mc.device_name_from({"system_info": {"product_info": {"device_name": "Snapmaker U1"}}}))
+        self.assertIsNone(mc.device_name_from({"system_info": {"product_info": {"device_name": 7}}}))
+        self.assertIsNone(mc.device_name_from(None))
+        self.assertEqual(mc.device_name_from({"system_info": {"product_info": {"device_name": "  Shop\n U1 "}}}),
+                         "Shop U1")
 
     def test_a_status_update_changes_only_what_it_names(self):
         self.wait_connected()
@@ -410,6 +449,15 @@ class TestCommands(WireTest):
         with self.assertRaisesRegex(ValueError, "^Print already paused$"):
             self.printer.pause_print()
         self.assertEqual(self.fake.requests.count(("POST", "/printer/print/pause")), sent)
+
+    def test_a_pause_the_u1_skips_over_an_excluded_object_says_why(self):
+        # u1-klipper pause_resume.py: over a skipped object PAUSE answers ok and carries on.
+        self.printing()
+        self.fake.set("exclude_object", in_excluded_region=True)
+        with self.assertRaisesRegex(mc.PrinterRefused, "passing over a skipped object"):
+            self.printer.pause_print()
+        self.fake.set("exclude_object", in_excluded_region=False)
+        self.assertEqual(self.printer.pause_print()["state"], "paused")
 
     def test_start_uploads_with_a_checksum_then_waits_for_printing(self):
         data = b"G28\nG1 X10 E1\n"

@@ -12,22 +12,34 @@
  * the parts growing on the plate, the touchscreen showing the printer's state.
  *
  * Where the shapes come from:
- * - Snapmaker's official product picture of the U1 (shipped with Snapmaker's
- *   Orca slicer profile): the white rounded body with a black rim around the
- *   open top, the framed smoked-glass door with its handle and hinge screws,
- *   the touchscreen above the door right of centre, the wordmark, the side panel's tilted oval
- *   with two spool drums and perforated vents, the side feeder marked 1 and 2,
- *   four black toolheads with yellow accents parked at the back inside the
- *   chamber (level with the carriage; only their loops rise above), each with a
- *   tall loop of filament tube, and the bed's "BUILD VOLUME" strip.
+ * - Snapmaker's product photos of the production U1 (front, both sides, back
+ *   and three-quarter views on Snapmaker's own shop and product pages,
+ *   October 2026) and the picture shipped with Snapmaker's Orca slicer
+ *   profile: the white body with rounded corners and a grey top frame held
+ *   by four screws; the black-framed glass door with its handle; the
+ *   touchscreen above the door, its right edge in line with the door's; the
+ *   wordmark above the door's left edge; on each side a tilted, recessed oval
+ *   with two spools on white hubs (upper spool towards the back, lower towards
+ *   the front) and perforated vents between them; a feeder on each side near
+ *   the back (white front, black back, marked 1 and 2); a shelf across the top
+ *   of the back with a curved underside, where the filament tubes come out and
+ *   hang down to the feeders; a large see-through opening low in the back
+ *   (whether it is glazed could not be confirmed) and the power socket, switch,
+ *   USB and network ports beside it; four black toolheads with yellow edges and
+ *   a hazard label, docked at the back with their tops level with the frame;
+ *   from each a tall loop of tube that leaves the head, rises and drops back
+ *   into the shelf; the white carriage with an orange fan, in front of the head
+ *   it carries; the textured plate's "BUILD VOLUME" strip.
  * - Snapmaker's slicer profile: a 276 x 293 mm textured PEI plate and a
  *   270 mm print height. Snapmaker's spec: 584 x 499 x 730 mm overall.
  * - Reviews: CoreXY, carbon-fibre rods on the X axis, docks at the rear,
  *   two spools a side.
- * - Estimated from the picture (labelled so in the card): the body is about
- *   390 x 460 x 480 mm, so the spool drums make up the 584 mm width and the
- *   tube loops the 730 mm height. Dock spacing, which side feeds which head,
- *   and the inside layout are drawn by eye.
+ * - Measured from the photos, scaled by the published 499 mm depth (so
+ *   estimates, labelled so in the card): a body about 456 mm wide and 458 mm
+ *   tall (the front is square), 450 mm deep plus a 49 mm shelf; the spool
+ *   pockets 24 mm deep, which is how two 1 kg spools a side fit in the 584 mm
+ *   width; spool, feeder, screen, wordmark and door positions. Dock spacing,
+ *   the gantry heights and the inside layout are drawn by eye.
  *
  * Coordinates are the printer's own millimetres (X right, Y back, Z up); the
  * bed's printable corner is 0, 0. WebGL's axes are used only in the shaders.
@@ -36,17 +48,21 @@
 
 const Twin3D = (() => {
   /* ---- the machine, in millimetres ---------------------------------- */
-  const BODY = { x0: -60, x1: 330, y0: -95, y1: 365, z0: 8, z1: 488, r: 46 };   // about 390 x 460 x 480
+  // The body: x0..x1 by y0..y1 below the shelf, out to yb above it (shelf
+  // from zs up, with a curved underside of radius rs). About 456 x 499 x 458.
+  const BODY = { x0: -93, x1: 363, y0: -95, y1: 355, yb: 404, z0: 8, z1: 466, zs: 352, rs: 49, r: 35 };
   const ENVELOPE = { x0: -157, x1: 427, y0: -95, y1: 404, z0: 0, z1: 730 };      // 584 x 499 x 730 published
   const BED = 270, PLATE = { w: 276, d: 293 };
-  const TIP = 375;                    // nozzle tip height when Z is 0
-  const RAIL_Z = 452;                 // the gantry
+  const TIP = 368;                    // nozzle tip height when Z is 0: parked heads' tops sit level with the frame
+  const RAIL_Z = 420;                 // the gantry: two X rods, 16 mm above and below this
+  const GANTRY_DY = -34;              // the carriage and rods run in front of the head they carry
   // Docks sit level with the carriage, as a tool changer's must, so parked
   // heads stay inside the chamber below the rim (as in Snapmaker's picture,
   // where only their tube loops rise above the body).
-  const DOCK = { y: 316, tip: TIP, xs: [18, 76, 134, 192] };
+  const DOCK = { y: 304, tip: TIP, xs: [30, 100, 170, 240] };
   const HEAD = { w: 54, d: 52, h: 96 };
-  const HUB = { upper: [245, 341], lower: [115, 142] };   // side-panel spool positions: [y, z]
+  // Spool centres [y, z] on the side; how far a spool's centre sits out from the wall; the pocket's depth and radius.
+  const HUB = { upper: [196, 316], lower: [69, 133], out: 14.5, pocket: 24, R: 110 };
   const VIEWS = { iso: [-32, 20], front: [0, 3], top: [0, 89], print: [-22, 40] };
 
   const srgb = (hex) => {
@@ -58,7 +74,11 @@ const Twin3D = (() => {
   /* Materials: linear base colour, roughness, metalness, plus how it's drawn. */
   const MAT = {
     body:     { c: lin(.89, .895, .9), r: .38, m: 0 },
-    bodyIn:   { c: lin(.46, .47, .49), r: .8, m: 0 },   // the chamber reads lit in the picture
+    bodyIn:   { c: lin(.1, .1, .105), r: .7, m: 0 },   // the chamber is black in Snapmaker's photos
+    pocket:   { c: lin(.84, .845, .85), r: .45, m: 0 },
+    lid:      { c: lin(.66, .67, .69), r: .48, m: .05 },   // the grey top frame
+    led:      { c: [1, 1, 1], r: .3, m: 0, glow: 1 },
+    kraft:    { c: lin(.74, .58, .42), r: .86, m: 0 },   // Snapmaker's cardboard spools
     rim:      { c: lin(.05, .05, .055), r: .45, m: 0 },
     frame:    { c: lin(.07, .07, .075), r: .35, m: 0 },
     glass:    { c: lin(.2, .21, .22), r: .04, m: 0, a: .12, kind: 'glass' },   // clear enough to see the chamber, as in the picture
@@ -72,11 +92,11 @@ const Twin3D = (() => {
     alu:      { c: lin(.72, .74, .77), r: .32, m: 1 },
     rail:     { c: lin(.2, .21, .23), r: .38, m: .7 },
     carbon:   { c: lin(.07, .07, .08), r: .25, m: .2, kind: 'carbon' },
-    pei:      { c: lin(.2, .2, .21), r: .75, m: 0, kind: 'pei' },
-    hub:      { c: lin(.93, .935, .94), r: .3, m: 0, a: .88, kind: 'clear' },
-    tube:     { c: lin(.86, .87, .95), r: .2, m: 0, a: .7, kind: 'clear' },
+    pei:      { c: lin(.38, .35, .33), r: .75, m: 0, kind: 'pei' },   // warm grey, sampled from the photos
+    hub:      { c: lin(.93, .935, .94), r: .34, m: 0 },
+    tube:     { c: lin(.88, .78, .66), r: .22, m: 0, a: .72, kind: 'clear' },   // beige in the photos
     cable:    { c: lin(.04, .04, .045), r: .45, m: 0 },
-    flange:   { c: lin(.06, .06, .07), r: .3, m: 0, a: .82, kind: 'clear' },
+    rearGlass: { c: lin(.2, .21, .22), r: .04, m: 0, a: .06, kind: 'glass' },
     rubber:   { c: lin(.03, .03, .03), r: .9, m: 0 },
     extrusion:{ c: lin(.62, .64, .67), r: .42, m: 1, kind: 'brushed' },   // anodised aluminium frame
     motor:    { c: lin(.06, .06, .065), r: .55, m: .2 },
@@ -230,22 +250,23 @@ const Twin3D = (() => {
     x.fillText('BUILD VOLUME   |   270 × 270 × 270 mm', w / 2, h / 2 + 2);
     x.fillStyle = '#f2b51b'; [w - 120, w - 80].forEach(cx => { x.beginPath(); x.arc(cx, h / 2, 13, 0, 7); x.fill(); });
   });
-  /* The side panel: a tilted oval groove with two triangles of vent holes. */
-  const sideArt = () => canvasOf(1024, 1068, (x, w, h) => {
+  /* The floor of the side pocket: vent holes in a fine grid where the two
+   * spools leave it bare, as in the photos. Mapped over the side's y and z. */
+  const sideArt = () => canvasOf(1024, Math.round(1024 * (BODY.z1 - BODY.z0) / (BODY.y1 - BODY.y0)), (x, w, h) => {
     x.clearRect(0, 0, w, h);
     const k = w / (BODY.y1 - BODY.y0), kz = h / (BODY.z1 - BODY.z0), toPx = (y, z) => [(y - BODY.y0) * k, (BODY.z1 - z) * kz];
-    const [ax, ay] = toPx(...HUB.upper), [bx, by] = toPx(...HUB.lower), R = 112 * k;
+    const [ax, ay] = toPx(...HUB.upper), [bx, by] = toPx(...HUB.lower), R = (HUB.R - 4) * k;
     const ang = Math.atan2(by - ay, bx - ax);
-    const stadium = (r) => { x.beginPath(); x.arc(ax, ay, r, ang + Math.PI / 2, ang + Math.PI * 1.5); x.arc(bx, by, r, ang - Math.PI / 2, ang + Math.PI / 2); x.closePath(); };
-    x.lineWidth = 5; x.strokeStyle = 'rgba(0,0,0,.16)'; stadium(R); x.stroke();
-    x.lineWidth = 3; x.strokeStyle = 'rgba(255,255,255,.75)'; stadium(R - 4); x.stroke();
-    const mx = (ax + bx) / 2, my = (ay + by) / 2;
-    x.fillStyle = 'rgba(0,0,0,.28)';
-    for (const side of [-1, 1]) for (let r = 0; r < 9; r++) for (let c = 0; c <= r; c++) {
-      const u = (c - r / 2) * 11, v = r * 11, px = mx + side * 38 * Math.cos(ang) + u * Math.cos(ang + Math.PI / 2) * 1 + (side > 0 ? v : -v) * Math.cos(ang) * .2;
-      const py = my + (side > 0 ? -1 : 1) * (60 + v) + u * .2;
-      x.beginPath(); x.arc(px, py, 2.6, 0, 7); x.fill();
+    x.save();
+    x.beginPath(); x.arc(ax, ay, R, ang + Math.PI / 2, ang + Math.PI * 1.5); x.arc(bx, by, R, ang - Math.PI / 2, ang + Math.PI / 2); x.closePath(); x.clip();
+    // A soft shade where the wall meets the floor.
+    x.lineWidth = 10 * k; x.strokeStyle = 'rgba(0,0,0,.08)'; x.stroke();
+    const step = 5.5 * k, r = 1.25 * k, keep = (px, py) => Math.hypot(px - ax, py - ay) > 103 * k && Math.hypot(px - bx, py - by) > 103 * k;
+    x.fillStyle = 'rgba(28,30,34,.62)';
+    for (let py = 0; py < h; py += step) for (let px = (Math.round(py / step) % 2) * step / 2; px < w; px += step) {
+      if (keep(px, py)) { x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
     }
+    x.restore();
   });
   const feederArt = () => canvasOf(256, 320, (x, w, h) => {
     x.fillStyle = '#eceef0'; x.fillRect(0, 0, w, h);
@@ -253,12 +274,40 @@ const Twin3D = (() => {
     [[1, 95], [2, 225]].forEach(([n, y]) => { x.fillText(`${n}·`, 46, y); x.beginPath(); x.arc(170, y, 22, 0, 7); x.fill(); });
     x.beginPath(); x.arc(120, 160, 16, 0, 7); x.lineWidth = 6; x.strokeStyle = '#2a2c30'; x.stroke();
   });
+  /* A docked head's front: yellow edges, a status window with three lights,
+   * a round button and the yellow hot-surface label low down. */
   const headArt = () => canvasOf(128, 256, (x, w, h) => {
     x.fillStyle = '#121214'; x.fillRect(0, 0, w, h);
-    x.fillStyle = '#b9bbc0'; x.fillRect(30, 30, 68, 34);
-    x.fillStyle = '#4b4d52'; x.fillRect(46, 40, 36, 14);
-    x.strokeStyle = '#8c8f95'; x.lineWidth = 5; x.beginPath(); x.arc(64, 112, 15, 0, 7); x.stroke();
-    x.fillStyle = '#f4b417'; x.fillRect(0, 0, 9, h);
+    x.fillStyle = '#f4b417'; x.fillRect(0, 0, 8, h); x.fillRect(w - 8, 0, 8, h);
+    x.fillStyle = '#2a2c31'; x.fillRect(34, 26, 60, 26);
+    x.fillStyle = '#7ee08a'; [50, 64, 78].forEach(cx => { x.beginPath(); x.arc(cx, 39, 3.4, 0, 7); x.fill(); });
+    x.strokeStyle = '#8c8f95'; x.lineWidth = 4; x.beginPath(); x.arc(64, 92, 12, 0, 7); x.stroke();
+    x.fillStyle = '#a8abb1'; x.fillRect(44, 126, 40, 8);
+    x.fillStyle = '#f4b417'; x.beginPath(); x.moveTo(64, 168); x.lineTo(92, 214); x.lineTo(36, 214); x.closePath(); x.fill();
+    x.strokeStyle = '#121214'; x.lineWidth = 3; x.beginPath(); x.moveTo(64, 180); x.lineTo(84, 209); x.lineTo(44, 209); x.closePath(); x.stroke();
+    x.beginPath(); x.moveTo(56, 204); x.quadraticCurveTo(60, 196, 56, 190); x.moveTo(64, 204); x.quadraticCurveTo(68, 196, 64, 190); x.moveTo(72, 204); x.quadraticCurveTo(76, 196, 72, 190); x.lineWidth = 2.5; x.stroke();
+  });
+  /* The carriage's front: white, the wordmark, and the orange fan. */
+  const carriageArt = () => canvasOf(256, 384, (x, w, h) => {
+    x.fillStyle = '#eef0f2'; x.fillRect(0, 0, w, h);
+    x.fillStyle = 'rgba(70,72,78,.85)'; x.font = `500 34px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('snapmaker', w / 2, 92);
+    const cx = w / 2, cy = 236;
+    x.fillStyle = '#d9dcdf'; x.beginPath(); x.arc(cx, cy, 82, 0, 7); x.fill();
+    x.fillStyle = '#f39a12'; x.beginPath(); x.arc(cx, cy, 72, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(150,70,0,.55)'; x.lineWidth = 4;
+    for (let i = 0; i < 24; i++) { const t = i / 24 * Math.PI * 2; x.beginPath(); x.moveTo(cx + Math.cos(t) * 40, cy + Math.sin(t) * 40); x.lineTo(cx + Math.cos(t + .35) * 70, cy + Math.sin(t + .35) * 70); x.stroke(); }
+    x.fillStyle = '#ffb53a'; x.beginPath(); x.arc(cx, cy, 36, 0, 7); x.fill();
+  });
+  /* The back's lower corner: USB, network, the red switch and the socket. */
+  const portsArt = () => canvasOf(128, 384, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    x.fillStyle = '#1b1c1f'; x.fillRect(16, 20, 40, 26); x.fillRect(72, 18, 40, 32);
+    x.fillStyle = '#e8b21a'; x.fillRect(24, 28, 24, 8);
+    x.fillStyle = '#1b1c1f'; x.fillRect(30, 150, 68, 84);
+    x.fillStyle = '#d0262b'; x.fillRect(40, 162, 48, 60);
+    x.fillStyle = '#1b1c1f'; x.beginPath(); x.roundRect ? x.roundRect(18, 258, 92, 106, 8) : x.rect(18, 258, 92, 106); x.fill();
+    x.fillStyle = '#3a3c41'; x.fillRect(38, 284, 52, 56);
+    x.fillStyle = '#111'; [[50, 312], [64, 302], [78, 312]].forEach(([px, py]) => x.fillRect(px - 3, py - 8, 6, 16));
   });
   /* The touchscreen, redrawn from the printer's state. */
   function screenArt(c, st) {
@@ -328,7 +377,7 @@ const Twin3D = (() => {
   uniform vec3 uBase; uniform float uRough; uniform float uMetal; uniform float uAlpha; uniform float uGlow;
   uniform int uKind; uniform sampler2D uTex; uniform sampler2D uShadow; uniform vec3 uEye; uniform float uSel; uniform vec3 uBg;
   uniform vec3 uKey; uniform vec3 uFill; uniform vec4 uFoot;
-  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes;
+  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; uniform float uPlay;
   out vec4 outColor;
   const float PI = 3.14159265;
   /* The studio backdrop: lighter above, a soft vignette. The floor uses
@@ -366,8 +415,11 @@ const Twin3D = (() => {
   vec3 aces(vec3 x) { return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0); }
   void main() {
     // The print grows to the nozzle's height (mode 1); its rest is drawn above (mode 2).
-    if (uClip.x > 0.5 && uClip.x < 1.5 && vW.z > uClip.y) discard;
-    if (uClip.x > 1.5 && vW.z <= uClip.y) discard;
+    // Following the G-code (uPlay >= 0), each bit of wall appears the moment
+    // the file lays it: vUV.x is when, in seconds, and vUV.y marks it timed.
+    bool timed = uPlay >= 0.0 && vUV.y > 0.5;
+    if (uClip.x > 0.5 && uClip.x < 1.5 && (timed ? vUV.x > uPlay : vW.z > uClip.y)) discard;
+    if (uClip.x > 1.5 && (timed ? vUV.x <= uPlay : vW.z <= uClip.y)) discard;
     vec3 N = normalize(vN), V = normalize(uEye - vP);
     if (uKind == 6) {
       // The floor: only the shadow and a soft contact darkening show.
@@ -380,10 +432,14 @@ const Twin3D = (() => {
     if (dot(N, V) < 0.0) N = -N;
     vec3 base = uBase; float rough = uRough, alpha = uAlpha;
     if (uKind == 1) { vec4 t = texture(uTex, vUV); base = pow(t.rgb, vec3(2.2)); alpha = t.a * uAlpha; if (alpha < 0.02) discard; }
-    if (uKind == 2) { float n = hash(floor(vW.xy * 1.6)); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
+    // Fine surface patterns fade to their average where a cell is smaller than a
+    // pixel; without it the bed's speckle crawled and flickered as the view turned.
+    if (uKind == 2) { vec2 q = vW.xy * 1.6; float aa = clamp(max(fwidth(q.x), fwidth(q.y)) * 1.5 - 0.5, 0.0, 1.0);
+      float n = mix(hash(floor(q)), 0.5, aa); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
     if (uKind == 3) { float r = length(vW.yz - vec2(0.0)); }
     if (uKind == 4) { float l = fract(vW.z / 1.4); base *= 0.9 + 0.1 * smoothstep(0.1, 0.5, l) * smoothstep(0.9, 0.5, l); }
-    if (uKind == 5) { float w = abs(sin((vW.x + vW.y + vW.z) * 1.7)); base *= 0.85 + 0.3 * w; }
+    if (uKind == 5) { float k = (vW.x + vW.y + vW.z) * 1.7, aa = clamp(fwidth(k) * 0.6 - 0.3, 0.0, 1.0);
+      float w = mix(abs(sin(k)), 0.637, aa); base *= 0.85 + 0.3 * w; }
     if (uKind == 7) { float rr = length(vW.yz - uFoot.xy); base *= 0.86 + 0.14 * smoothstep(0.3, 0.7, fract(rr / 1.75)); }
     if (uKind == 9) {
       // Printed plastic: a faint ridge per layer, fading out where layers
@@ -392,7 +448,8 @@ const Twin3D = (() => {
       float ridge = smoothstep(0.0, 0.3, f) * smoothstep(1.0, 0.7, f);
       base *= mix(0.8 + 0.2 * ridge, 0.92, aa); rough = 0.48;
     }
-    if (uKind == 11) { float n = hash(vec2(floor(vW.z * 3.0 + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))); base *= 0.93 + 0.1 * n; }
+    if (uKind == 11) { float k = vW.z * 3.0, aa = clamp(fwidth(k) * 1.5 - 0.5, 0.0, 1.0);
+      float n = mix(hash(vec2(floor(k + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))), 0.5, aa); base *= 0.93 + 0.1 * n; }
     if (uKind == 12) { base *= 0.72 + 0.28 * smoothstep(0.15, 0.85, abs(fract(vW.z / 2.0) * 2.0 - 1.0)); }
     vec3 F0 = mix(vec3(0.04), base, uMetal);
     vec3 col = vec3(0.0);
@@ -418,8 +475,12 @@ const Twin3D = (() => {
     if (uGlow > 0.0) col = mix(col, base * 1.25, uGlow);
     // Picked: a blue glow round its edges, so its own colour stays true.
     if (uSel > 0.0) { float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0); col = col * (1.0 + 0.1 * uSel) + vec3(0.1, 0.32, 1.0) * (0.12 + 0.75 * fr) * uSel; }
-    // The layer being laid now reads a touch brighter: fresh, still warm plastic.
-    if (uKind == 9 && uClip.x > 0.5 && uClip.x < 1.5 && vW.z > uClip.y - uLayerH * 1.01) col += base * 0.35 + vec3(0.03);
+    // The plastic just laid reads a touch brighter: fresh, still warm. Following
+    // the G-code it fades over the last few seconds behind the nozzle.
+    if (uKind == 9 && uClip.x > 0.5 && uClip.x < 1.5) {
+      if (timed) { float age = uPlay - vUV.x; if (age < 3.0) col += (base * 0.35 + vec3(0.03)) * (1.0 - age / 3.0); }
+      else if (vW.z > uClip.y - uLayerH * 1.01) col += base * 0.35 + vec3(0.03);
+    }
     if (uKind == 10) { // the case, see-through: an outline of light, no body
       float f = pow(1.0 - max(dot(N, V), 0.0), 3.0);
       col = mix(col, env(R, 0.25), 0.55);
@@ -433,20 +494,20 @@ const Twin3D = (() => {
     outColor = vec4(pow(aces(col * 0.95), vec3(1.0 / 2.2)), alpha);
   }`;
   const SHADOW_VS = `#version 300 es
-  in vec3 aPos; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; out float vZ;
-  void main() { vec3 p = aPos * uS + uT; vZ = p.z; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
+  in vec3 aPos; in vec2 aUV; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; out float vZ; out vec2 vT;
+  void main() { vec3 p = aPos * uS + uT; vZ = p.z; vT = aUV; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
   const SHADOW_FS = `#version 300 es
-  precision highp float; in float vZ; uniform vec2 uClip; out vec4 o;
-  void main() { if (uClip.x > 0.5 && vZ > uClip.y) discard; o = vec4(1.0); }`;
+  precision highp float; in float vZ; in vec2 vT; uniform vec2 uClip; uniform float uPlay; out vec4 o;
+  void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vT.y > 0.5) ? vT.x > uPlay : vZ > uClip.y)) discard; o = vec4(1.0); }`;
   /* The drawing's first pass: surface direction and part id, per pixel. */
   const GB_FS = `#version 300 es
   precision highp float;
-  in vec3 vN; in vec3 vW; uniform float uId; uniform vec2 uClip; out vec4 o;
-  void main() { if (uClip.x > 0.5 && vW.z > uClip.y) discard; o = vec4(normalize(vN) * 0.5 + 0.5, uId / 255.0); }`;
+  in vec3 vN; in vec3 vW; in vec2 vUV; uniform float uId; uniform vec2 uClip; uniform float uPlay; out vec4 o;
+  void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vUV.y > 0.5) ? vUV.x > uPlay : vW.z > uClip.y)) discard; o = vec4(normalize(vN) * 0.5 + 0.5, uId / 255.0); }`;
   /* Picking: each pickable part paints its id. */
   const ID_FS = `#version 300 es
-  precision highp float; in vec3 vW; uniform float uId; uniform vec2 uClip; out vec4 o;
-  void main() { if (uClip.x > 0.5 && vW.z > uClip.y) discard; o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`;
+  precision highp float; in vec3 vW; in vec2 vUV; uniform float uId; uniform vec2 uClip; uniform float uPlay; out vec4 o;
+  void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vUV.y > 0.5) ? vUV.x > uPlay : vW.z > uClip.y)) discard; o = vec4(uId / 255.0, 0.0, 0.0, 1.0); }`;
   const BG_FS = `#version 300 es
   precision highp float; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; out vec4 o;
   void main() {
@@ -491,6 +552,128 @@ const Twin3D = (() => {
   }`;
 
   /* ---- the viewer --------------------------------------------------- */
+  /* ---- following the print's own G-code ------------------------------
+   * The timeline (backend/print_preview.py) says, for points through the
+   * file, which byte they end at, when they happen (seconds of nominal
+   * print time) and where the nozzle is. Each reading from the printer
+   * gives the byte it has read up to (Klipper's file_position) and, on a
+   * real printer, where the nozzle is right now (motion_report
+   * live_position). The nozzle is looked for along the path just before
+   * the byte read, which pins down the exact moment in the file; between
+   * readings the playhead runs along the G-code at the speed the printer
+   * has been keeping, and each reading pulls it back into step over a
+   * third of a second (a jump only when it is more than a few seconds
+   * out). Moves the file doesn't hold (a tool change, homing, a pause
+   * park) don't match the path: then the nozzle simply follows the
+   * printer's live position until it rejoins the path. */
+  const newFollow = () => ({ track: null, on: false, play: 0, rate: 1, pending: 0, last: 0, prevM: null, prevW: 0, tRead: 0, off: false,
+                             live: null, pos: [135, 135, 0], started: false, err: null, paused: false, matched: 0, readings: 0 });
+  function buildTrack(tl, along, k) {
+    if (!tl || !Array.isArray(tl.track) || tl.track.length < 10 || !(tl.bytes > 0)) return null;
+    const n = Math.floor(tl.track.length / 5), B = new Float64Array(n), T = new Float64Array(n);
+    const pts = new Float64Array(n * 4 + along.length);
+    let b = 0, t = 0, x = 0, y = 0, z = 0;
+    for (let i = 0; i < n; i++) {
+      b += tl.track[i * 5]; t += tl.track[i * 5 + 1]; x += tl.track[i * 5 + 2]; y += tl.track[i * 5 + 3]; z += tl.track[i * 5 + 4];
+      B[i] = b; T[i] = t / 1000;
+      pts[i * 4] = t / 1000; pts[i * 4 + 1] = x * k; pts[i * 4 + 2] = y * k; pts[i * 4 + 3] = z * k;
+    }
+    pts.set(along, n * 4);
+    // Every point in time order, keyframes and path points together.
+    const m = pts.length / 4, order = new Uint32Array(m);
+    for (let i = 0; i < m; i++) order[i] = i;
+    order.sort((a, c) => pts[a * 4] - pts[c * 4]);
+    const P = { T: new Float64Array(m), X: new Float32Array(m), Y: new Float32Array(m), Z: new Float32Array(m) };
+    for (let i = 0; i < m; i++) { const o = order[i] * 4; P.T[i] = pts[o]; P.X[i] = pts[o + 1]; P.Y[i] = pts[o + 2]; P.Z[i] = pts[o + 3]; }
+    return { B, T, P, bytes: tl.bytes, seconds: tl.seconds || T[n - 1] };
+  }
+  // The last index whose value is <= v.
+  const below = (arr, v) => { let lo = 0, hi = arr.length - 1; if (hi < 0 || v < arr[0]) return -1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (arr[mid] <= v) lo = mid; else hi = mid - 1; } return lo; };
+  function timeAtByte(tr, byte) {
+    const i = below(tr.B, byte);
+    if (i < 0) return 0;
+    if (i >= tr.B.length - 1) return tr.T[tr.T.length - 1];
+    const f = (byte - tr.B[i]) / Math.max(1, tr.B[i + 1] - tr.B[i]);
+    return tr.T[i] + (tr.T[i + 1] - tr.T[i]) * Math.max(0, Math.min(1, f));
+  }
+  function posAt(tr, t) {
+    const P = tr.P, i = below(P.T, t);
+    if (i < 0) return [P.X[0], P.Y[0], P.Z[0]];
+    if (i >= P.T.length - 1) return [P.X[i], P.Y[i], P.Z[i]];
+    const span = P.T[i + 1] - P.T[i], f = span > 1e-6 ? Math.max(0, Math.min(1, (t - P.T[i]) / span)) : 1;
+    return [P.X[i] + (P.X[i + 1] - P.X[i]) * f, P.Y[i] + (P.Y[i + 1] - P.Y[i]) * f, P.Z[i] + (P.Z[i + 1] - P.Z[i]) * f];
+  }
+  // Where along the path, between two times, the nozzle at p is: {t, d (mm)}. Height counts four times over.
+  function nearest(tr, p, t0, t1) {
+    const P = tr.P;
+    let i = Math.max(0, below(P.T, t0)), best = null;
+    const last = Math.min(P.T.length - 1, Math.max(i + 1, below(P.T, t1) + 1));
+    for (; i < last; i++) {
+      const ax = P.X[i], ay = P.Y[i], az = P.Z[i], bx = P.X[i + 1] - ax, by = P.Y[i + 1] - ay, bz = (P.Z[i + 1] - az) * 4;
+      const px = p[0] - ax, py = p[1] - ay, pz = (p[2] - az) * 4, ll = bx * bx + by * by + bz * bz;
+      const f = ll > 1e-9 ? Math.max(0, Math.min(1, (px * bx + py * by + pz * bz) / ll)) : 0;
+      const d = Math.hypot(px - bx * f, py - by * f, pz - bz * f);
+      // Ties go to the later point: the printer is as far on as it can be.
+      if (!best || d <= best.d + 1e-6) best = { d, t: P.T[i] + (P.T[i + 1] - P.T[i]) * f };
+    }
+    return best;
+  }
+  const LEAD_S = 0.8;   // without a live position: how far motion trails the byte read (Klipper buffers ~1 s)
+  function syncFrom(follow, st, file, now) {
+    const tr = follow.track;
+    const printing = st && ['printing', 'paused'].includes(st.state);
+    if (!tr || !st || file !== st.current_file || !printing) { follow.on = false; return; }
+    const sync = st.sync || {};
+    const byte = typeof sync.file_position === 'number' && sync.file_size === tr.bytes ? sync.file_position
+      : (typeof st.progress === 'number' ? st.progress * tr.bytes : null);
+    if (byte == null) { follow.on = false; return; }
+    const tRead = timeAtByte(tr, byte);
+    let m = null;
+    follow.readings++;
+    follow.hasLive = Array.isArray(sync.live);
+    if (follow.hasLive) {
+      const hit = nearest(tr, sync.live, tRead - 12, tRead + 0.5);
+      if (hit && hit.d < 2.5) { m = hit.t; follow.off = false; follow.matched++; follow.err = hit.d; }
+      else { follow.off = true; follow.live = sync.live.slice(0, 3); follow.err = hit ? hit.d : null; }
+    } else {
+      m = Math.max(0, tRead - (st.real ? LEAD_S : 0)); follow.off = false; follow.err = null;
+    }
+    follow.tRead = tRead;
+    follow.paused = st.state === 'paused';
+    follow.on = true;
+    if (m == null) return;
+    if (!follow.started || Math.abs(m - follow.play) > 5) {
+      follow.play = m; follow.pending = 0; follow.started = true; follow.prevM = null;
+      follow.pos = posAt(tr, m);
+    } else {
+      follow.pending = m - follow.play;
+    }
+    // The pace the printer keeps against the file's own (acceleration, speed factor, limits).
+    if (follow.prevM != null && !follow.paused) {
+      const dw = (now - follow.prevW) / 1000;
+      if (dw > 0.15 && dw < 5) {
+        const r = Math.max(0, Math.min(3, (m - follow.prevM) / dw));
+        follow.rate += 0.3 * (r - follow.rate);
+      }
+    }
+    follow.prevM = m; follow.prevW = now;
+  }
+  function advance(follow, now) {
+    const tr = follow.track, dt = Math.min(0.25, Math.max(0, (now - (follow.last || now)) / 1000));
+    follow.last = now;
+    if (!tr || !follow.on) return;
+    if (follow.off && follow.live) {
+      const a = 1 - Math.exp(-dt / 0.12);
+      follow.pos = follow.pos.map((v, i) => v + (follow.live[i] - v) * a);
+      return;
+    }
+    if (!follow.paused) follow.play += follow.rate * dt;
+    const c = follow.pending * (1 - Math.exp(-dt / 0.3));
+    follow.play += c; follow.pending -= c;
+    follow.play = Math.max(0, Math.min(follow.play, follow.tRead + 0.05));
+    follow.pos = posAt(tr, follow.play);
+  }
+
   function create(host, { onPick } = {}) {
     const wrap = document.createElement('div');
     wrap.className = 'twin3d';
@@ -549,11 +732,11 @@ const Twin3D = (() => {
 
     /* ---- build the machine once ---- */
     if (typeof Twin3DScene === 'undefined') { wrap.remove(); return null; }
-    const S = Twin3DScene.build({ geo, slab, annulus, lathe, tube, panel, box, rrect, circle, BODY, BED, PLATE, TIP, RAIL_Z, DOCK, HEAD, HUB });
+    const S = Twin3DScene.build({ geo, slab, annulus, lathe, tube, panel, box, rrect, circle, quadV, tri, norm, BODY, BED, PLATE, TIP, RAIL_Z, DOCK, HEAD, HUB });
     const parts = S.statics.map(p => ({ ...p, mesh: upload(p.g) }));
     const dyn = Object.fromEntries(Object.entries(S.dynamic).map(([k, p]) => [k, { ...p, mesh: upload(p.g) }]));
     const tex = {
-      logo: texture(logoArt()), label: texture(labelArt()), side: texture(sideArt()), feeder: texture(feederArt()), head: texture(headArt()),
+      logo: texture(logoArt()), label: texture(labelArt()), side: texture(sideArt()), feeder: texture(feederArt()), head: texture(headArt()), carriage: texture(carriageArt()), ports: texture(portsArt()),
     };
     const screenCanvas = canvasOf(512, 320, () => {});
     tex.screen = texture(screenCanvas);
@@ -667,62 +850,81 @@ const Twin3D = (() => {
      * One mesh per toolhead and object, so each takes its head's colour
      * and a skipped object can be greyed out. */
     function setPrint(data) {
-      printMeshes.forEach(m => free(m.mesh)); printMeshes = []; print = null;
+      printMeshes.forEach(m => free(m.mesh)); printMeshes = []; print = null; follow.track = null; follow.on = false;
       if (!data || !data.tools || !Array.isArray(data.layers) || !data.layers.length) { queue(); return; }
       const L = data.layers, k = data.unit_mm || 0.01, groups = new Map();
       const group = (tool, obj) => { const key = `${tool}|${obj}`; if (!groups.has(key)) groups.set(key, { tool, obj, g: geo() }); return groups.get(key).g; };
       let hMin = Infinity, x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       const grow = (x, y) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; };
+      // The nozzle's way along the drawn paths, finer than the timeline's keyframes:
+      // [seconds, x, y, z] per point, merged with the track below.
+      const along = [];
+      const timesOf = (list, i) => (Array.isArray(list) && Array.isArray(list[i]) ? list[i] : null);
       for (const [tool, sets] of Object.entries(data.tools)) {
-        for (const path of sets.walls || []) {
-          const layer = L[path[0]]; if (!layer) continue;
-          const z1 = layer.z, z0 = z1 - (layer.h || 0.2), g = group(tool, path[1]);
+        (sets.walls || []).forEach((path, pi) => {
+          const layer = L[path[0]]; if (!layer) return;
+          const z1 = layer.z, z0 = z1 - (layer.h || 0.2), g = group(tool, path[1]), tt = timesOf(sets.walls_t, pi);
           hMin = Math.min(hMin, layer.h || 0.2);
-          let x = path[2] * k, y = path[3] * k;
+          let x = path[2] * k, y = path[3] * k, t = tt ? tt[0] / 1000 : 0, on = tt ? 1 : 0;
           grow(x, y);
-          for (let i = 4; i + 1 < path.length; i += 2) {
+          if (tt) along.push(t, x, y, z1);
+          for (let i = 4, j = 1; i + 1 < path.length; i += 2, j++) {
             const nx = x + path[i] * k, ny = y + path[i + 1] * k, dx = nx - x, dy = ny - y, l = Math.hypot(dx, dy);
+            const nt = tt ? t + (tt[j] || 0) / 1000 : 0;
             grow(nx, ny);
-            if (l > 1e-4) { const n = [dy / l, -dx / l, 0]; quadV(g, [[x, y, z0], n], [[nx, ny, z0], n], [[nx, ny, z1], n], [[x, y, z1], n]); }
-            x = nx; y = ny;
+            if (l > 1e-4) { const n = [dy / l, -dx / l, 0], a = [t, on], b = [nt, on]; quadV(g, [[x, y, z0], n, a], [[nx, ny, z0], n, b], [[nx, ny, z1], n, b], [[x, y, z1], n, a]); }
+            if (tt) along.push(nt, nx, ny, z1);
+            x = nx; y = ny; t = nt;
           }
-        }
-        for (const path of sets.fill || []) {
-          const layer = L[path[0]]; if (!layer) continue;
-          const z = layer.z, g = group(tool, path[1]), up = [0, 0, 1], w = 0.24;
-          let x = path[2] * k, y = path[3] * k;
-          for (let i = 4; i + 1 < path.length; i += 2) {
+        });
+        (sets.fill || []).forEach((path, pi) => {
+          const layer = L[path[0]]; if (!layer) return;
+          const z = layer.z, g = group(tool, path[1]), up = [0, 0, 1], w = 0.24, tt = timesOf(sets.fill_t, pi);
+          let x = path[2] * k, y = path[3] * k, t = tt ? tt[0] / 1000 : 0, on = tt ? 1 : 0;
+          if (tt) along.push(t, x, y, z);
+          for (let i = 4, j = 1; i + 1 < path.length; i += 2, j++) {
             const nx = x + path[i] * k, ny = y + path[i + 1] * k, dx = nx - x, dy = ny - y, l = Math.hypot(dx, dy);
-            if (l > 1e-4) { const ox = -dy / l * w, oy = dx / l * w; quadV(g, [[x - ox, y - oy, z], up], [[nx - ox, ny - oy, z], up], [[nx + ox, ny + oy, z], up], [[x + ox, y + oy, z], up]); }
-            x = nx; y = ny;
+            const nt = tt ? t + (tt[j] || 0) / 1000 : 0;
+            if (l > 1e-4) { const ox = -dy / l * w, oy = dx / l * w, a = [t, on], b = [nt, on]; quadV(g, [[x - ox, y - oy, z], up, a], [[nx - ox, ny - oy, z], up, b], [[nx + ox, ny + oy, z], up, b], [[x + ox, y + oy, z], up, a]); }
+            if (tt) along.push(nt, nx, ny, z);
+            x = nx; y = ny; t = nt;
           }
-        }
+        });
       }
       groups.forEach(({ tool, obj, g }) => { if (g.v.length) printMeshes.push({ tool, obj, mesh: upload(g) }); });
       print = { file: data.file, layers: L, objects: data.objects || [], colours: data.file_colours || [], layerH: isFinite(hMin) ? hMin : 0.2, top: L[L.length - 1].z,
         centre: isFinite(x0) ? [(x0 + x1) / 2, (y0 + y1) / 2] : [135, 135], size: isFinite(x0) ? Math.max(x1 - x0, y1 - y0, L[L.length - 1].z) : 60 };
+      follow.track = buildTrack(data.timeline, along, k);
+      follow.started = false;
       queue();
     }
 
+    const follow = newFollow();
+    const following = () => follow.on && !!follow.track && !!print;
+
     /* ---- what moves: everything that depends on the printer's state ---- */
     function liveScene() {
-      const st = state || {}, [x, y, z] = pos, bedTop = TIP - Math.max(0, Math.min(BED, z));
+      const st = state || {}, synced = following(), [x, y, z] = synced ? follow.pos : pos, bedTop = TIP - Math.max(0, Math.min(BED, z));
       const heads = Object.entries(st.toolheads || {});
       const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
       const printing = ['printing', 'paused'].includes(st.state);
       const items = [];
-      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool });
+      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, play: o.play, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool });
       // Bed: plate, its label strip, heater, carrier.
       const bedId = 2, bedSel = selected === 'bed' ? 1 : 0, heat = st.bed && st.bed.target > 0 ? Math.min(1, (st.bed.temp || 0) / 110) : 0;
       add(dyn.carrier.mesh, MAT.rail, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
       add(dyn.heater.mesh, MAT.alu, { t: [0, 0, bedTop], id: bedId, sel: bedSel, colour: heat > 0.3 ? lin(.85, .6, .45) : null });
       add(dyn.plate.mesh, MAT.pei, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
       add(dyn.label.mesh, MAT.decal, { t: [0, 0, bedTop], id: bedId, tex: tex.label, sel: bedSel });
-      // Gantry: the X rods at the head's Y, its two Y carriages, the carriage.
-      add(dyn.xbeam.mesh, MAT.carbon, { t: [0, y, 0] });
-      add(dyn.ycar.mesh, MAT.rail, { t: [0, y, 0] });
-      add(dyn.xbelt.mesh, MAT.belt, { t: [0, y, 0] });
-      add(dyn.carriage.mesh, MAT.body, { t: [x, y, 0] });
+      // Gantry: the X rods, its two Y carriages, the carriage, all just in
+      // front of the head they carry (the nozzle itself is at x, y). In the
+      // Print view the rods and carriage turn to glass, like the head's body.
+      const gy = y + GANTRY_DY;
+      add(dyn.xbeam.mesh, MAT.carbon, { t: [0, gy, 0], body: true });
+      add(dyn.ycar.mesh, MAT.rail, { t: [0, gy, 0] });
+      add(dyn.xbelt.mesh, MAT.belt, { t: [0, gy, 0], body: true });
+      add(dyn.carriage.mesh, MAT.body, { t: [x, gy, 0], body: true });
+      add(dyn.carriageFace.mesh, MAT.decal, { t: [x, gy, 0], tex: tex.carriage, body: true });
       // The parts, grown to the current height.
       const plate = st.objects && Array.isArray(st.objects.list) ? st.objects : null;
       const finished = st.state === 'complete';
@@ -739,16 +941,19 @@ const Twin3D = (() => {
         // file's own colour if the head reports none), up to the layer being
         // printed; the rest of the print faintly above, if asked for.
         const L = print.layers, cur = st.layer && st.layer.current ? Math.min(L.length, st.layer.current) : 0;
-        const clipZ = finished ? print.top + 1 : cur ? L[cur - 1].z + 0.001 : Math.max(0.2, z) + 0.001;
+        const clipZ = finished ? print.top + 1 : synced ? Math.max(0.2, z) + 0.001 : cur ? L[cur - 1].z + 0.001 : Math.max(0.2, z) + 0.001;
+        const play = synced && !finished ? follow.play : null;
+        // A U1 can print a file's T1 on another head (extruder_map); colour by the head that prints it.
+        const physical = tool => (st.extruder_map && st.extruder_map[tool]) || tool;
         const excluded = new Set((plate && plate.excluded) || []);
         pickNames = print.objects.slice();
         if (showPrint) printMeshes.forEach(m => {
-          const head = st.toolheads && st.toolheads[m.tool], name = print.objects[m.obj];
+          const head = st.toolheads && st.toolheads[physical(m.tool)], name = print.objects[m.obj];
           const colour = (head && srgb(head.filament_color_hex)) || srgb(print.colours[+String(m.tool).slice(1)]) || lin(.6, .6, .62);
           const skip = name && excluded.has(name);
           const id = m.obj >= 0 ? 40 + m.obj : 0, sel = name && selected === `obj:${name}` ? 1 : 0;
-          add(m.mesh, { c: skip ? lin(.55, .55, .57) : colour, r: .5, m: 0, kind: 'print' }, { t: [0, 0, bedTop], id, sel, clip: [1, bedTop + clipZ], layerH: print.layerH, printed: true, tool: +String(m.tool).slice(1) || 0 });
-          if (showRest && !finished && !skip) add(m.mesh, { ...MAT.ghost, c: colour, a: .1 }, { t: [0, 0, bedTop], clip: [2, bedTop + clipZ], rest: true });
+          add(m.mesh, { c: skip ? lin(.55, .55, .57) : colour, r: .5, m: 0, kind: 'print' }, { t: [0, 0, bedTop], id, sel, clip: [1, bedTop + clipZ], play, layerH: print.layerH, printed: true, tool: +String(physical(m.tool)).slice(1) || 0 });
+          if (showRest && !finished && !skip) add(m.mesh, { ...MAT.ghost, c: colour, a: .1 }, { t: [0, 0, bedTop], clip: [2, bedTop + clipZ], play, rest: true });
         });
       } else if (partsMeshes.length) {
         pickNames = partsMeshes.map(p => p.name);
@@ -764,7 +969,7 @@ const Twin3D = (() => {
       labels = [];
       heads.forEach(([name, d], i) => {
         const on = name === active, id = 10 + i, sel = selected === `head:${name}` ? 1 : 0;
-        const hx = on ? x : DOCK.xs[i % 4], hy = on ? y - 30 : DOCK.y, tipZ = on ? TIP : DOCK.tip;
+        const hx = on ? x : DOCK.xs[i % 4], hy = on ? y : DOCK.y, tipZ = on ? TIP : DOCK.tip;
         const fault = d.status === 'error', colour = srgb(d.filament_color_hex) || lin(.6, .6, .62);
         const hot = (d.temperature || 0) > 60;
         const t = [hx, hy, tipZ], body = on;   // the working head's body turns to glass in the Print view
@@ -774,29 +979,24 @@ const Twin3D = (() => {
         add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: 0.9, body });
         add(dyn.nozzle.mesh, MAT.steel, { t, id });
         add(dyn.block.mesh, { c: hot ? lin(.95, .45, .18) : lin(.16, .16, .17), r: .5, m: 0 }, { t, id, glow: hot ? Math.min(0.55, ((d.temperature || 0) - 60) / 300) : 0 });
-        // Filament loop: from the top of the head up and back down to the rear wall.
+        // Tube loop: from the top of the head up and back down into the shelf at the back.
         const lk = `${name}|${Math.round(hx)}|${Math.round(hy)}|${tipZ}|${d.filament_color_hex}`;
         if (!loopMeshes[name] || loopMeshes[name].key !== lk) {
-          if (loopMeshes[name]) ['ptfe', 'cable', 'fil', 'clips'].forEach(k => free(loopMeshes[name][k]));
-          // As in Snapmaker's picture: a tall upside-down U that leaves the
-          // top of the head on one side and returns on the other, a white
-          // filament tube and a black cable side by side, held by clips.
-          const z0 = tipZ + HEAD.h + 2, top = 724, half = 17;
-          const route = (dy, lean) => {
-            const pts = [];
-            for (let k = 0; k <= 16; k++) {
-              const a = Math.PI * k / 16, sx = -Math.cos(a), up = Math.sin(a);
-              const zz = z0 + (top - z0) * Math.pow(up, 0.55);
-              pts.push([hx + sx * (half + lean * up), hy + dy + 6 * up, zz]);
-            }
-            return pts;
-          };
+          if (loopMeshes[name]) ['ptfe', 'cable', 'fil', 'clips', 'stems'].forEach(k => free(loopMeshes[name][k]));
+          // As in Snapmaker's photos: a black sleeve straight up from the head,
+          // then a beige filament tube and a black cable side by side, held by
+          // clips, in a tall loop (wider at the top) that turns back over the
+          // body and drops through a sleeve into the shelf above its dock.
+          const z0 = tipZ + HEAD.h + 2, top = 724, ex = DOCK.xs[i % 4], ey = (BODY.y1 + BODY.yb) / 2 + 4, ez = BODY.z1, h = top - z0;
+          const path = [[hx, hy, z0], [hx, hy, z0 + 72], [hx * 0.85 + ex * 0.15, hy - 24, z0 + h * 0.7], [(hx + ex) / 2, (hy + ey) / 2 - 8, top],
+            [hx * 0.15 + ex * 0.85, ey + 34, ez + (top - ez) * 0.62], [ex, ey, ez + 86], [ex, ey, ez - 6]];
+          const route = dx => path.map(p => [p[0] + dx, p[1], p[2]]);
           const clips = geo();
-          for (const k of [3, 13]) {
-            const a = Math.PI * k / 16, up = Math.sin(a), zz = z0 + (top - z0) * Math.pow(up, 0.55), x = hx - Math.cos(a) * (half + 3 * up);
-            box(clips, x - 4, hy - 9 + 6 * up, zz - 5, x + 4, hy + 9 + 6 * up, zz + 5, 1.5);
-          }
-          loopMeshes[name] = { key: lk, ptfe: upload(tube(geo(), route(-4, 3), 3.1, 12, 8)), fil: upload(tube(geo(), route(-4, 3), 0.9, 6, 8)), cable: upload(tube(geo(), route(4, 3), 2.7, 10, 8)), clips: upload(clips) };
+          for (const p of [path[1], path[2], path[4], path[5]]) box(clips, p[0] - 7.5, p[1] - 4.5, p[2] - 4, p[0] + 7.5, p[1] + 4.5, p[2] + 4, 1.5);
+          const stems = geo();
+          tube(stems, [path[0], [hx, hy, z0 + 36], path[1]], 4.8, 12, 4);
+          tube(stems, [[ex, ey, ez + 86], [ex, ey, ez + 40], [ex, ey, ez - 6]], 4.8, 12, 4);
+          loopMeshes[name] = { key: lk, ptfe: upload(tube(geo(), route(-3.6), 3.1, 12, 8)), fil: upload(tube(geo(), route(-3.6), 0.9, 6, 8)), cable: upload(tube(geo(), route(3.6), 2.7, 10, 8)), clips: upload(clips), stems: upload(stems) };
         }
         const lm = loopMeshes[name];
         // The loops count as part of the case in the drawing: they would
@@ -805,15 +1005,18 @@ const Twin3D = (() => {
         add(lm.fil, { c: colour, r: .4, m: 0 }, { id, lining: true, loop: true });
         add(lm.ptfe, MAT.tube, { id, lining: true, loop: true });
         add(lm.clips, MAT.cable, { id, lining: true, loop: true });
+        add(lm.stems, MAT.cable, { id, lining: true, loop: true });
         const at = style === 'drawing' ? [hx, hy, tipZ + HEAD.h + 14] : [hx, hy, tipZ + HEAD.h + 24];
         labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature });
       });
-      // Spools on the side drums, in the loaded colours (T0, T1 left; T2, T3 right: by eye).
+      // Spools on the side hubs, in the loaded colours: T0, T1 left (spools 1 and 2), T2, T3 right (3 and 4),
+      // the first of each pair on the upper hub, as Snapmaker numbers them. The filament runs to the feeder.
       heads.slice(0, 4).forEach(([name, d], i) => {
-        const left = i < 2, hub = i % 2 ? HUB.lower : HUB.upper, sx = left ? BODY.x0 - 58 : BODY.x1 + 58;
+        const left = i < 2, hub = i % 2 ? HUB.lower : HUB.upper, sx = left ? BODY.x0 - HUB.out : BODY.x1 + HUB.out;
         const colour = srgb(d.filament_color_hex) || lin(.6, .6, .62), sel = selected === `head:${name}` ? 1 : 0;
         add(dyn.spoolCore.mesh, { c: colour, r: .5, m: 0, kind: 'spool' }, { t: [sx, hub[0], hub[1]], id: 20 + i, sel, colour: null, footOverride: [hub[0], hub[1]] });
-        add(dyn.spoolFlange.mesh, MAT.flange, { t: [sx, hub[0], hub[1]], id: 20 + i, sel });
+        add(dyn.spoolFlange.mesh, MAT.kraft, { t: [sx, hub[0], hub[1]], id: 20 + i, sel });
+        add(dyn[`strand${i}`].mesh, { c: colour, r: .4, m: 0 }, { id: 20 + i, shell: true });
       });
       return { items, bedTop, active };
     }
@@ -841,6 +1044,7 @@ const Twin3D = (() => {
     function drawItem(prog, it) {
       gl.uniform3fv(prog.u.uT, it.t); gl.uniform3fv(prog.u.uS, it.s);
       if (prog.u.uClip) gl.uniform2f(prog.u.uClip, it.clip ? it.clip[0] : 0, it.clip ? it.clip[1] : 0);
+      if (prog.u.uPlay) gl.uniform1f(prog.u.uPlay, it.play != null ? it.play : -1);
       gl.bindVertexArray(it.mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, it.mesh.count);
     }
     function allItems(live) {
@@ -871,9 +1075,18 @@ const Twin3D = (() => {
       return out;
     }
 
+    // What a drawing really costs: until the next frame can start, less one frame's time. Software
+    // graphics does its work in the browser's GPU process, which the script's own clock never sees.
+    let drawMs = 0;
     function render() {
+      const began = performance.now();
+      draw();
+      requestAnimationFrame(() => { drawMs = drawMs * 0.7 + Math.max(0, performance.now() - began - 17) * 0.3; });
+    }
+    function draw() {
       queued = false;
       if (!state || !resize()) return;
+      if (following()) advance(follow, performance.now());
       screenUpdate();
       const live = liveScene(), all = allItems(live);
       const M = matrices();
@@ -883,7 +1096,9 @@ const Twin3D = (() => {
       const clear = items.filter(it => it.mat.a != null && it.mat.a < 1);
       inkSvg.innerHTML = '';
       // Shadows: only when something that casts one has moved.
-      const sk = JSON.stringify([pos.map(v => Math.round(v)), state.state, partsKey.length, Object.keys(loopMeshes).map(k => loopMeshes[k].key),
+      // Following the G-code the head moves every frame; the shadow only needs redoing as it moves on.
+      const shadowPos = following() ? follow.pos.map(v => Math.round(v / 4)).concat(Math.round(follow.play / 2)) : pos.map(v => Math.round(v));
+      const sk = JSON.stringify([shadowPos, state.state, partsKey.length, Object.keys(loopMeshes).map(k => loopMeshes[k].key),
         caseMode, cam.focus > 0.5, showPrint, print && print.file, state.layer && state.layer.current]);
       if (sk !== shadowKey) {
         shadowKey = sk;
@@ -910,7 +1125,7 @@ const Twin3D = (() => {
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, shadowTex); gl.uniform1i(u.uShadow, 1);
       // The floor first, then everything solid.
       gl.uniform1i(u.uKind, 6); gl.uniform4f(u.uFoot, 135, 135, 330, 300);
-      gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]); gl.uniform2f(u.uClip, 0, 0);
+      gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]); gl.uniform2f(u.uClip, 0, 0); gl.uniform1f(u.uPlay, -1);
       gl.bindVertexArray(floor.vao); gl.drawArrays(gl.TRIANGLES, 0, floor.count);
       opaque.forEach(it => { setMat(u, it.mat, it); drawItem(P.main, it); });
       // See-through things last, farthest first, without hiding what's behind.
@@ -1018,8 +1233,8 @@ const Twin3D = (() => {
         dim([px0, pr.centre[1], T], [px0, pr.centre[1], T + done], [-30, 0, 0], `${done.toFixed(1)}/${pr.top.toFixed(1)}`);
       }
       // The case's size: estimated from Snapmaker's picture, hence the ≈.
-      if (showCase && v === 'front') { dim([BODY.x0, BODY.y0, 0], [BODY.x1, BODY.y0, 0], [0, 0, -46], `≈390${nb}mm`); dim([BODY.x0, BODY.y0, 0], [BODY.x0, BODY.y0, BODY.z1], [-150, 0, 0], `≈488${nb}mm`); }
-      if (showCase && v === 'top') { dim([BODY.x0, BODY.y0, BODY.z1], [BODY.x1, BODY.y0, BODY.z1], [0, -40, 0], `≈390${nb}mm`); dim([BODY.x1, BODY.y0, BODY.z1], [BODY.x1, BODY.y1, BODY.z1], [110, 0, 0], `≈460${nb}mm`); }
+      if (showCase && v === 'front') { dim([BODY.x0, BODY.y0, 0], [BODY.x1, BODY.y0, 0], [0, 0, -46], `≈${BODY.x1 - BODY.x0}${nb}mm`); dim([BODY.x0, BODY.y0, 0], [BODY.x0, BODY.y0, BODY.z1], [-150, 0, 0], `≈${BODY.z1}${nb}mm`); }
+      if (showCase && v === 'top') { dim([BODY.x0, BODY.y0, BODY.z1], [BODY.x1, BODY.y0, BODY.z1], [0, -40, 0], `≈${BODY.x1 - BODY.x0}${nb}mm`); dim([BODY.x1, BODY.y0, BODY.z1], [BODY.x1, BODY.yb, BODY.z1], [110, 0, 0], `≈${BODY.yb - BODY.y0}${nb}mm`); }
       // The heads' balloons: the drafting way of naming parts.
       labels.forEach(l => {
         const p = P2(...l.at), sw = /^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999';
@@ -1148,14 +1363,76 @@ const Twin3D = (() => {
      *      reset, click to pick ---- */
     const touches = new Map();
     let drag = null, spin = 0;
+
+    /* Moving the real head from the twin. With move mode on, a drag across the
+     * model carries a target over the nozzle's plane (the head moves in X and Y
+     * at the nozzle tip's height; the bed moves in Z), labelled with its X and Y
+     * and kept inside the printer. Letting go hands the point to the page, which
+     * sends it through the same checked move command as the Move card. */
+    let moveFn = null, moveDrag = null;
+    const marker = document.createElement('div');
+    marker.className = 'twin-move-marker'; marker.hidden = true; marker.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(marker);
+    function invert(m) {
+      const o = new Array(16);
+      o[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
+      o[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
+      o[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
+      o[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
+      o[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
+      o[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
+      o[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
+      o[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
+      o[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
+      o[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
+      o[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
+      o[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
+      o[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
+      o[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
+      o[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
+      o[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
+      const det = m[0] * o[0] + m[1] * o[4] + m[2] * o[8] + m[3] * o[12];
+      return Math.abs(det) < 1e-12 ? null : o.map(v => v / det);
+    }
+    const apply4 = (m, v) => [0, 1, 2, 3].map(i => m[i] * v[0] + m[4 + i] * v[1] + m[8 + i] * v[2] + m[12 + i] * v[3]);
+    // Model millimetres (x, y, z up) are drawn as GL (x, z, -y).
+    function nozzlePlanePoint(clientX, clientY) {
+      const r = canvas.getBoundingClientRect(), inv = invert(matrices().VP);
+      if (!inv || !r.width) return null;
+      const nx = (clientX - r.left) / r.width * 2 - 1, ny = 1 - (clientY - r.top) / r.height * 2;
+      const at = z => { const o = apply4(inv, [nx, ny, z, 1]); return o.map(c => c / o[3]); };
+      const a = at(-1), b = at(1), t = (TIP - a[1]) / (b[1] - a[1]);
+      if (!Number.isFinite(t) || t < 0) return null;
+      const m = (state && state.machine) || {}, lo = m.min_mm || [0, 0, 0], hi = m.max_mm || [270, 270, 270];
+      const x = Math.min(hi[0], Math.max(lo[0], a[0] + t * (b[0] - a[0])));
+      const y = Math.min(hi[1], Math.max(lo[1], -(a[2] + t * (b[2] - a[2]))));
+      return [Math.round(x * 10) / 10, Math.round(y * 10) / 10];
+    }
+    function showMarker(pt) {
+      const c = apply4(matrices().VP, [pt[0], TIP, -pt[1], 1]);
+      marker.style.left = `${((c[0] / c[3]) * 0.5 + 0.5) * W}px`;
+      marker.style.top = `${(1 - ((c[1] / c[3]) * 0.5 + 0.5)) * H}px`;
+      marker.dataset.label = `X ${pt[0].toFixed(1)} · Y ${pt[1].toFixed(1)}`;
+      marker.hidden = false;
+    }
+
     canvas.addEventListener('pointerdown', e => {
       canvas.setPointerCapture?.(e.pointerId);
+      if (moveFn && e.button === 0 && !e.shiftKey && !touches.size && style === 'model') {
+        const pt = nozzlePlanePoint(e.clientX, e.clientY);
+        if (pt) { moveDrag = { id: e.pointerId, pt }; cancelAnimationFrame(spin); showMarker(pt); return; }
+      }
       cancelAnimationFrame(spin); cam.vyaw = cam.vpitch = 0;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), yaw: cam.yaw, pitch: cam.pitch, tx: cam.tx, ty: cam.ty, pan: e.button === 2 || e.shiftKey, moved: false, zoom: cam.zoom, spread: 0 };
       if (touches.size === 2) { const [a, b] = [...touches.values()]; drag.spread = Math.hypot(a.x - b.x, a.y - b.y); }
     });
     canvas.addEventListener('pointermove', e => {
+      if (moveDrag && e.pointerId === moveDrag.id) {
+        const pt = nozzlePlanePoint(e.clientX, e.clientY);
+        if (pt) { moveDrag.pt = pt; showMarker(pt); }
+        return;
+      }
       if (!drag || !touches.has(e.pointerId)) return;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2 && drag.spread) {
@@ -1177,6 +1454,13 @@ const Twin3D = (() => {
       queue();
     });
     const end = e => {
+      if (moveDrag && e.pointerId === moveDrag.id) {
+        const pt = moveDrag.pt;
+        moveDrag = null;
+        setTimeout(() => { marker.hidden = true; }, 900);
+        if (e.type === 'pointerup' && moveFn) moveFn({ x: pt[0], y: pt[1] });
+        return;
+      }
       touches.delete(e.pointerId);
       if (drag && !drag.moved && e.type === 'pointerup' && onPick) {
         const t = e.target.closest && e.target.closest('[data-id]');
@@ -1254,7 +1538,18 @@ const Twin3D = (() => {
 
     return {
       el: wrap,
-      update(s, p) { state = s; if (p) pos = p; queue(); },
+      update(s, p) {
+        if (s !== state) syncFrom(follow, s, print && print.file, performance.now());
+        state = s; if (p) pos = p; queue();
+      },
+      /* Following the G-code: whether it is, and how well (for the card's
+       * sync note). drift: seconds between the playhead and the last reading. */
+      drawCost() { return drawMs; },
+      syncInfo() {
+        if (!following()) return null;
+        return { play: follow.play, total: follow.track.seconds, rate: follow.rate, offPath: follow.off, paused: follow.paused,
+                 live: !!follow.hasLive, error_mm: follow.err, drift: follow.pending, matched: follow.matched, readings: follow.readings };
+      },
       select(id) { selected = id || ''; queue(); },
       setView,
       setStyle(s) { style = s === 'drawing' ? 'drawing' : 'model'; wrap.dataset.style = style; canvas.setAttribute('aria-label', style === 'drawing' ? 'Engineering drawing of the printer. Drag to turn, scroll to zoom.' : '3D model of the printer. Drag to turn, scroll or pinch to zoom.'); queue(); },
@@ -1272,6 +1567,8 @@ const Twin3D = (() => {
       },
       printInfo() { return print ? { file: print.file, layers: print.layers.length, top: print.top, objects: print.objects.slice() } : null; },
       onViewChange(fn) { viewChanged = fn; },
+      /* fn({x, y}) is called when a drag in move mode is let go; null turns move mode off. */
+      setMoveMode(fn) { moveFn = typeof fn === 'function' ? fn : null; wrap.classList.toggle('is-moving-head', !!moveFn); if (!moveFn) marker.hidden = true; },
       zoomBy(f) { cam.zoom = Math.max(0.6, Math.min(8, cam.zoom * f)); queue(); },
       /* A picture of what's on screen, with the drawing's labels baked in. */
       async download(filename) {
@@ -1301,5 +1598,5 @@ const Twin3D = (() => {
     };
   }
 
-  return { create, ENVELOPE, BODY };
+  return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance } };
 })();

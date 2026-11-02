@@ -585,7 +585,7 @@ def unsafe_gear_gcode():
                          gear, (200, 16, 46))
 
 
-def _model_xml(triangles, application):
+def _model_xml(triangles, application, paint=None):
     verts, index, faces = [], {}, []
     for t in triangles:
         ids = []
@@ -597,7 +597,9 @@ def _model_xml(triangles, application):
             ids.append(index[key])
         faces.append(ids)
     v = "".join(f'<vertex x="{x}" y="{y}" z="{z}"/>' for x, y, z in verts)
-    f = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in faces)
+    paint = paint or [""] * len(faces)
+    f = "".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"{f" paint_color={chr(34)}{p}{chr(34)}" if p else ""}/>'
+                for (a, b, c), p in zip(faces, paint))
     return ('<?xml version="1.0" encoding="UTF-8"?>\n'
             '<model unit="millimeter" xml:lang="en-US" '
             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">\n'
@@ -613,7 +615,7 @@ def _plate_png(tris):
     return mesh_tools.png_thumbnail(list(tris), 128) or b""
 
 
-def _project_3mf(application, config, tris=None):
+def _project_3mf(application, config, tris=None, paint=None, settings=None):
     tris = tris or benchy_triangles()
     out = io.BytesIO()
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
@@ -625,8 +627,10 @@ def _project_3mf(application, config, tris=None):
         z.writestr("_rels/.rels",
                    '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
                    '<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
-        z.writestr("3D/3dmodel.model", _model_xml(list(tris), application))
+        z.writestr("3D/3dmodel.model", _model_xml(list(tris), application, paint))
         z.writestr("Metadata/project_settings.config", json.dumps(config, indent=4))
+        if settings:
+            z.writestr("Metadata/model_settings.config", settings)
         z.writestr("Metadata/plate_1.png", _plate_png(tris))
         z.writestr("Metadata/plate_1.gcode", "; sliced for the original printer\nG28\n")
     return out.getvalue()
@@ -653,6 +657,46 @@ def bambu_style_project():
         "machine_start_gcode": ";===== Bambu X1 start sequence (sample placeholder) =====\nM620 M\nG28",
         "machine_end_gcode": "; Bambu end sequence (sample placeholder)\nM400",
     })
+
+
+def painted_benchy_project():
+    """
+    A MakerWorld-style 3DBenchy painted in five colours, with a sixth AMS
+    slot it doesn't use: white hull, then red, blue, navy and green bands
+    up to the funnel. Painted the way Bambu Studio and Orca store it, one
+    paint_color code per triangle ("8" = filament 2, "0C" = 3, "1C" = 4,
+    "2C" = 5; colour_map.py). Five colours for the U1's four heads, so the
+    colour panel has something to fit.
+    """
+    tris = benchy_triangles()
+    top = max(max(p[2] for p in t) for t in tris) or 1.0
+    bands = ((0.30, ""), (0.48, "8"), (0.62, "0C"), (0.78, "1C"), (2.0, "2C"))
+    paint = []
+    for t in tris:
+        h = sum(p[2] for p in t) / 3 / top
+        paint.append(next(code for limit, code in bands if h < limit))
+    colours = ["#F4F4F2", "#D7263D", "#1E5BD8", "#14246B", "#2A9D55", "#F6C90E"]
+    names = ["Bambu PLA Basic @BBL X1C"] * len(colours)
+    settings = ('<?xml version="1.0" encoding="UTF-8"?>\n<config>\n <object id="1">\n'
+                '  <metadata key="name" value="3DBenchy, five colours"/>\n  <metadata key="extruder" value="1"/>\n'
+                '  <part id="1" subtype="normal_part"><metadata key="extruder" value="1"/></part>\n </object>\n'
+                ' <plate>\n  <metadata key="plater_id" value="1"/>\n'
+                f'  <metadata key="filament_maps" value="{" ".join(["1"] * len(colours))}"/>\n </plate>\n</config>\n')
+    return _project_3mf("BambuStudio-02.03.00.70", {
+        "printer_model": "Bambu Lab X1 Carbon",
+        "printer_settings_id": "Bambu Lab X1 Carbon 0.4 nozzle",
+        "print_settings_id": "0.20mm Standard @BBL X1C",
+        "filament_settings_id": names,
+        "inherits_group": ["0.20mm Standard @BBL X1C"] + names + ["Bambu Lab X1 Carbon 0.4 nozzle"],
+        "different_settings_to_system": [""] * (len(colours) + 2),
+        "filament_colour": colours,
+        "filament_type": ["PLA"] * len(colours),
+        "layer_height": "0.2",
+        "nozzle_diameter": ["0.4"],
+        "printable_area": ["0x0", "256x0", "256x256", "0x256"],
+        "printable_height": "250",
+        "machine_start_gcode": ";===== Bambu X1 start sequence (sample placeholder) =====\nM620 M\nG28",
+    }, tris, paint, settings)
 
 
 def elegoo_style_project():
@@ -744,6 +788,7 @@ SAMPLES = {
     "sample_bambu_studio_layout.3mf": bambu_style_project,
     "sample_elegoo_slicer_layout.3mf": elegoo_style_project,
     "sample_makerworld_three_plates.3mf": bambu_multiplate_project,
+    "sample_makerworld_five_colours.3mf": painted_benchy_project,
 }
 
 # The earlier, simpler shapes. No longer offered by "Add sample files", but

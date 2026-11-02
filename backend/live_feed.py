@@ -153,7 +153,10 @@ def refresh(printer_id):
 def _refresh_fleet():
     try:
         printers = fleet.overview()["printers"]
-    except Exception:                 # noqa: BLE001 - never let the overview kill the feed
+    except Exception as exc:          # noqa: BLE001 - never let the overview kill the feed
+        # Said, not swallowed: a list that silently stops updating looks like a missing printer.
+        import sys
+        sys.stderr.write(f"  live feed: the printer list couldn't be refreshed: {exc!r}\n")
         return
     with _cond:
         _fleet.update(seq=_fleet["seq"] + 1, t=time.time(), printers=printers)

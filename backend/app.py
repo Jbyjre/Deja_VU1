@@ -60,7 +60,8 @@ API endpoints
   POST /api/remote/share|stop         share the dashboard privately with Tailscale Serve, or stop (this computer only)
   POST /api/remote/link               a pairing QR code for the shared address
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
-  POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead"}
+  POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
+  POST /api/maintenance/snooze       hide a due task from alerts for a while {"task_id", "days": 1|3|7}
 
   GET  /api/leds                     simulated LED ring states
   GET  /api/colorcheck               simulated filament color check
@@ -106,7 +107,9 @@ API endpoints
   POST /api/files/edit               {"name", "edits": [...]}
   POST /api/files/restore            {"name"}
   POST /api/files/opened             {"name"}
-  POST /api/convert                  {"name"} MakerWorld/NexPrint -> U1
+  POST /api/convert                  {"name", "plan"?} MakerWorld/NexPrint/Orca forks/PrusaSlicer -> U1
+  GET  /api/colours/plan?name=       a project's filaments and the suggested head for each
+  POST /api/colours/apply            {"name", "plan"} a copy using at most the U1's four heads
   GET  /api/logbook?q=               this printer's logbook: problems, fixes, print hours (search with q)
   POST /api/logbook/add              {"problem", "fix", "tags"}
   POST /api/logbook/<id>/fix | delete
@@ -222,6 +225,8 @@ the same whether or not a printer is connected, because they aren't printer
 figures.
 """
 
+import errno
+import gzip
 import ipaddress
 import http.cookies
 import json
@@ -240,6 +245,7 @@ _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _BACKEND_DIR)
 
 import app_updates
+import autostart
 import desktop
 import automations
 import backup
@@ -249,6 +255,7 @@ import process_settings
 import camera
 import color_check
 import comparison
+import colour_map
 import converter_3mf
 import cost_calculator
 import discovery
@@ -273,6 +280,7 @@ import print_preview
 import insights
 import memory
 import orca_import
+import readiness
 import selfcheck
 import print_queue
 import qr
@@ -454,7 +462,9 @@ _APP_ROUTES = {
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
     "/api/remote": (None, lambda q: remote.status(PORT)),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings()}),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
+                                       "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
+                                       "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
     "/api/import/orca": ("file_library", lambda q: orca_import.public()),
     # The camera's frozen-stream watchdog is about the camera relay, not
@@ -477,6 +487,7 @@ _APP_ROUTES = {
         _q(q, "q", "") or None)),
     "/api/files/analysis": ("file_library", lambda q: file_library.analysis(_q(q, "name"))),
     "/api/files/plates": ("file_library", lambda q: project_plates.describe(_q(q, 'name'))),
+    "/api/colours/plan": ("converter", lambda q: _colour_plan(_q(q, "name"), _q(q, "demo", "") == "1")),
     "/api/profiles/diff": ("file_library", lambda q: comparison.diff_profiles(_q(q, "a"), _q(q, "b"))),
     "/api/fleet/registry": ("fleet", lambda q: fleet.registry()),
     "/api/printers/diagnostics": ("fleet", lambda q: fleet.diagnostics(_q(q, "printer"))),
@@ -489,6 +500,31 @@ _APP_ROUTES = {
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
 }
+
+def _loaded_heads(demo=False):
+    """What each head of the selected printer holds now, for matching a project's colours; None if unknown."""
+    if not (mock_moonraker.is_connected() or demo):
+        return None
+    heads = (mock_moonraker.get_printer_state() or {}).get("toolheads") or {}
+    out = []
+    for i in range(colour_map.HEADS):
+        h = heads.get(f"T{i}") or {}
+        known = h.get("filament_known", True) and h.get("filament_loaded") is not False
+        out.append({"toolhead": f"T{i}", "colour": colour_map.clean_hex(h.get("filament_color_hex")) if known else None,
+                    "type": (h.get("filament_material") or "") if known else ""})
+    return out if any(h["colour"] for h in out) else None
+
+
+def _colour_plan(name, demo=False):
+    """A project's filaments, which the model uses, and the suggested heads (GET /api/colours/plan)."""
+    info = colour_map.read(file_library.read_bytes(name))
+    loaded = _loaded_heads(demo)
+    info["suggested"] = colour_map.suggest(info["filaments"])
+    info["matched"] = colour_map.suggest(info["filaments"], loaded) if loaded else None
+    info["loaded"] = loaded
+    info["heads"] = colour_map.HEADS
+    return info
+
 
 def module_routes():
     """
@@ -520,8 +556,25 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/temperature": lambda body: printer_control.set_temperature(
         body.get("toolhead"), body.get("target")),
     "/api/printer/control/home": lambda body: printer_control.home(body.get("axes")),
+    "/api/printer/control/bed-temperature": lambda b: printer_control.set_bed_temperature(b.get("target")),
     "/api/printer/control/gcode": lambda body: printer_control.send_gcode(body.get("command")),
     "/api/printer/control/restart": lambda body: printer_control.clear_error(),
+    # Hands-on controls (printer_control.jog and the rest): every value checked before any G-code.
+    "/api/printer/control/jog": lambda b: printer_control.jog(b.get("axis"), b.get("distance"), b.get("speed")),
+    "/api/printer/control/move": lambda b: printer_control.move_to(b.get("x"), b.get("y"), b.get("z"), b.get("speed")),
+    "/api/printer/control/z-nudge": lambda b: printer_control.z_nudge(b.get("delta")),
+    "/api/printer/control/extrude": lambda b: printer_control.extrude(b.get("length"), b.get("speed", 5)),
+    "/api/printer/control/speed": lambda b: printer_control.set_factor("speed", b.get("percent")),
+    "/api/printer/control/flow": lambda b: printer_control.set_factor("flow", b.get("percent")),
+    "/api/printer/control/fan": lambda b: printer_control.set_fan(b.get("percent")),
+    "/api/printer/control/pressure-advance": lambda b: printer_control.set_pressure_advance(
+        b.get("toolhead"), b.get("value"), b.get("smooth_time")),
+    "/api/printer/control/limits": lambda b: printer_control.set_limits(b.get("velocity"), b.get("accel")),
+    "/api/printer/control/motors-off": lambda b: printer_control.motors_off(),
+    "/api/printer/control/bed-mesh": lambda b: printer_control.bed_mesh(),
+    "/api/printer/control/macro": lambda b: printer_control.run_macro(b.get("name")),
+    "/api/printer/control/tool": lambda b: printer_control.pick_up(b.get("toolhead")),
+    "/api/printer/control/estop": lambda b: printer_control.emergency_stop(),
 }
 
 # POST routes that act on a printer's queue - gated like the data routes.
@@ -599,10 +652,17 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     def _send_json(self, payload, status=200, cookie=None):
         """Send a Python dictionary back to the browser as JSON."""
-        body = json.dumps(payload).encode("utf-8")
+        body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        gzipped = len(body) > 32 * 1024 and "gzip" in (self.headers.get("Accept-Encoding") or "")
+        if gzipped:
+            # Large replies (a print's preview, the file list) load several times faster compressed.
+            body = gzip.compress(body, 5)
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        if gzipped:
+            self.send_header("Content-Encoding", "gzip")
+            self.send_header("Vary", "Accept-Encoding")
         if cookie:
             self.send_header("Set-Cookie", cookie)
         # Stop the browser caching API responses, so the dashboard always
@@ -671,14 +731,23 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         return b"".join(data)
 
     def log_message(self, fmt, *args):
-        """Keep the terminal quiet - one tidy line per request."""
+        """
+        Keep the launcher window readable: one tidy line per action (POST) or
+        refused request. Pages and readings that loaded fine (every GET, several
+        a second) are not listed, so "ready and fully working" stays on screen.
+        """
         # A garbled request line (https:// sent to this plain-HTTP port, a
         # port scanner) is logged before self.path exists.
         path = getattr(self, "path", "").split("?")[0]
-        if path in ("/api/live/snapshot", "/api/live/events", "/api/fleet", "/api/handoff",
-                    "/api/fleet/queues", "/api/sandbox", "/api/slicer/jobs"):
+        command = getattr(self, "command", None) or "?"
+        if fmt != '"%s" %s %s' or len(args) < 2:
+            sys.stderr.write(f"  {command} {path}: {fmt % args}\n")
             return
-        sys.stderr.write(f"  {self.command} {path}\n")
+        status = str(args[1])
+        quiet = ("/api/live/snapshot", "/api/live/events", "/api/app/ready")
+        if status[:1] not in ("4", "5") and (command in ("GET", "HEAD") or path in quiet):
+            return
+        sys.stderr.write(f"  {command} {path}" + (f" (answered {status})" if status[:1] in ("4", "5") else "") + "\n")
 
     def _module_blocked(self, module_id):
         if module_id and not modules.is_enabled(module_id):
@@ -1054,6 +1123,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/app/desktop":
             return self._send_json(desktop.save_settings(self._read_json_body()))
+        if route == "/api/app/autostart":
+            # It writes into this computer's sign-in items, so only a browser on this computer may.
+            body = self._read_json_body()
+            if not self._this_computer():
+                return self._send_json({"error": "Change this on the computer that runs Deja Vu1"}, status=403)
+            return self._send_json(autostart.set_on(bool(body.get("on"))))
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
         if route == "/api/app/updates/check":
@@ -1061,12 +1136,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._send_json(app_updates.check())
         if route == "/api/app/updates/install":
             self._read_json_body()
-            result = _install_update(self.server)
-            return self._send_json(result)
+            return self._send_json(_install_update(self.server, background=True))
         if route == "/api/app/repair":
             # The newest published files over this copy, even at the same version.
             self._read_json_body()
-            return self._send_json(_install_update(self.server, repair=True))
+            return self._send_json(_install_update(self.server, repair=True, background=True))
+        if route == "/api/app/ready":
+            # "Is it really working?" in words: the launcher window, Settings and start.py --check show it.
+            self._read_json_body()
+            return self._send_json(readiness.report(PORT))
         if route == "/api/app/restart":
             self._read_json_body()
             if os.environ.get("DEJAVU_LAUNCHER") != "1":
@@ -1150,7 +1228,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/maintenance/swap":
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.record_swap(
-                body.get("kind"), body.get("toolhead"), note=body.get("note", "")))
+                body.get("kind"), body.get("toolhead"), note=body.get("note", ""), nozzle=body.get("nozzle")))
+
+        if route == "/api/maintenance/snooze":
+            return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.snooze(
+                body.get("task_id") or "", body.get("days")), require="task_id")
 
         if route.startswith("/api/modules/") and route.endswith("/toggle"):
             module_id = route[len("/api/modules/"):-len("/toggle")]
@@ -1313,12 +1395,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             name = body.get("name")
             try:
-                data, report = converter_3mf.convert(file_library.read_bytes(name))
+                data, report = converter_3mf.convert(file_library.read_bytes(name), body.get("plan"))
             except converter_3mf.ConversionError as exc:
                 return self._send_json(exc.as_dict(), status=400)
             new_name = converter_3mf.converted_name(file_library.clean_name(name))
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
+            return self._send_json({"file": entry, "report": report})
+
+        if route == "/api/colours/apply":
+            if self._module_blocked("converter") or self._module_blocked("file_library"):
+                return None
+            body = self._read_json_body()
+            name = body.get("name")
+            data, report = colour_map.apply(file_library.read_bytes(name), body.get("plan"))
+            entry = file_library.save(colour_map.mapped_name(file_library.clean_name(name)), data, origin="colours",
+                                      note=f"{name} with its colours on the U1's heads ({report['summary']})")
             return self._send_json({"file": entry, "report": report})
 
         if route.startswith("/api/logbook"):
@@ -1372,8 +1464,16 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             url = fleet.normalise_url(body.get("moonraker_url"))
             fleet.check_url(url)
-            return self._send_json({**discovery.probe(url, str(body.get("api_key") or "").strip() or None),
-                                    "url": url})
+            key = str(body.get("api_key") or "").strip() or None
+            result = discovery.probe(url, key)
+            # "http://192.168.1.50" is the printer's web page; when nothing
+            # there speaks Moonraker, try Moonraker's own port before saying no.
+            other = fleet.moonraker_port_variant(url)
+            if other and not result["ok"] and not result["needs_key"]:
+                second = discovery.probe(other, key)
+                if second["ok"] or second["needs_key"]:
+                    result, url = second, other
+            return self._send_json({**result, "url": url})
 
         if route == "/api/printers/login":
             # Signs in once with the printer's own username and password and
@@ -1498,7 +1598,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/pairing/redeem":
             body = self._read_json_body()
-            device = pairing.redeem_code(body.get("code"), body.get("device_name"))
+            known = self._device()
+            device = pairing.redeem_code(body.get("code"), body.get("device_name"),
+                                         replaces=known.get("id") if known else None)
             # The device's key goes into a cookie the page's scripts can't read.
             cookie = (f"{pairing.COOKIE}={device.pop('token')}; Path=/; Max-Age={pairing.COOKIE_DAYS * 86400}; "
                       "HttpOnly; SameSite=Strict")
@@ -1734,13 +1836,20 @@ class DejaVuServer(ThreadingHTTPServer):
 
 
 def _require_idle_for_update():
-    """Updates wait while a real printer is busy, out of reach, or a slice is running."""
+    """Updates wait while a real printer is busy, out of reach, or a slice is running. Said with the printer's name."""
+    names = {p.get("id"): p.get("name") for p in fleet.registered()}
     for pid in mock_moonraker.printer_ids():
         if mock_moonraker.is_real(pid):
             with mock_moonraker.use_printer(pid):
                 state = mock_moonraker.get_printer_state()
-            if not mock_moonraker.is_connected(pid) or state.get("state") in ("printing", "paused"):
-                raise ValueError("Updates wait until all real printers are connected and idle")
+            name = names.get(pid) or "A printer you added"
+            if not mock_moonraker.is_connected(pid):
+                raise ValueError(f"{name} isn't answering right now, so the update waits: Deja Vu1 can't see whether it "
+                                 "is printing. Check the printer is switched on and on the same network, or remove it "
+                                 "under Printers, then press Install again")
+            if state.get("state") in ("printing", "paused"):
+                raise ValueError(f"{name} is {state.get('state')}. The update waits until it has finished, so a print "
+                                 "is never interrupted. Press Install again afterwards, or turn on automatic updates")
     try:
         slicing = slicer_bridge.any_active()
     except Exception:
@@ -1752,21 +1861,59 @@ def _require_idle_for_update():
         raise ValueError("Wait for slicing to finish before updating")
 
 
-def _restart_soon(server):
+def _restart_soon(server, wait=0.5):
     """Stop serving; the launcher sees exit code 75 and starts the server again."""
     server.update_restart = True
-    threading.Timer(0.5, server.shutdown).start()
+    threading.Timer(wait, server.shutdown).start()
 
 
-def _install_update(server, repair=False):
-    """Stage an update (checked again just before it is committed), then restart into it."""
-    _require_idle_for_update()
+def _install_update(server, repair=False, background=False):
+    """
+    Stage an update (checked again just before it is committed), then restart into it.
+    Every refusal that can be known at once comes back at once, in words. With
+    background=True (the Install and Repair buttons) the download runs on its own
+    thread and app_updates.job() reports each step, so a reload finds it.
+    """
+    if os.environ.get("DEJAVU_LAUNCHER") != "1":
+        raise ValueError("This copy was started without the double-click launcher, so it can't restart into an "
+                         "update. Close its window and start Deja Vu1 with the launcher, or paste the update block")
+    if app_updates.job_running():
+        raise ValueError("An update is already being installed. This page shows its progress")
+    app_updates.set_job("working", "checking", repair=repair)
     try:
-        memory.snapshot("before-update")
-    except Exception:
-        pass                       # a safety copy that can't be written never blocks the update itself
-    result = app_updates.prepare(before_commit=_require_idle_for_update, repair=repair)
-    _restart_soon(server)
+        _require_idle_for_update()
+    except Exception as exc:
+        app_updates.set_job("idle")
+        raise
+    if not background:
+        return _run_install(server, repair, raise_errors=True)
+    threading.Thread(target=_run_install, args=(server, repair), name="update-install", daemon=True).start()
+    return {"started": True, "job": app_updates.job()}
+
+
+def _run_install(server, repair, raise_errors=False):
+    def step(name, **extra):
+        app_updates.set_job("working", name, repair=repair, **extra)
+    try:
+        step("safety")
+        try:
+            memory.snapshot("before-update")
+        except Exception:
+            pass                   # a safety copy that can't be written never blocks the update itself
+        result = app_updates.prepare(before_commit=_require_idle_for_update, repair=repair, step=step)
+    except Exception as exc:
+        words = app_updates._words(exc)
+        print(f"  The update could not be installed: {words}", flush=True)
+        if not isinstance(exc, ValueError):
+            traceback.print_exc()
+        app_updates.set_job("failed", "failed", words, repair=repair)
+        if raise_errors:
+            raise
+        return None
+    app_updates.set_job("restarting", "restarting", repair=repair, version=result.get("version"))
+    print(f"  Update {result.get('version', '')} is ready. Restarting into it now.", flush=True)
+    # A moment longer than before, so the page that pressed Install hears "restarting" first.
+    _restart_soon(server, wait=1.5)
     return result
 
 
@@ -1783,8 +1930,37 @@ def _print_phone_qr(url):
         print("  " + line)
 
 
+PORT_IN_USE = 3                # exit code: another program holds the port (start.py reads it)
+
+
+def _bind(attempts=10, wait=0.5):
+    """
+    The server on PORT. A port still held by a copy that is closing frees
+    itself within a few seconds, so it is asked again; a port another program
+    keeps is said in words with what to do, never as a traceback.
+    """
+    for attempt in range(attempts):
+        try:
+            return DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
+        except OSError as exc:
+            in_use = exc.errno in (errno.EADDRINUSE, 10048) or getattr(exc, "winerror", None) == 10048
+            if not in_use:
+                raise
+            if attempt + 1 < attempts:
+                time.sleep(wait)
+    print("=" * 58)
+    print(f"  Deja Vu1 couldn't start: port {PORT} is already in use by another program.")
+    print("  Close that program (or another Deja Vu1 window) and start Deja Vu1 again,")
+    print("  or start it on a different port, for example 8001:")
+    print("    Windows (PowerShell):  $env:PORT=8001; py -3 start.py")
+    print("    Mac or Linux:          PORT=8001 python3 start.py")
+    print("  Then open http://localhost:8001")
+    print("=" * 58, flush=True)
+    sys.exit(PORT_IN_USE)
+
+
 def main():
-    server = DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
+    server = _bind()
     live_feed.start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
     threading.Thread(target=memory.watch, daemon=True).start()
@@ -1810,12 +1986,20 @@ def main():
     except KeyboardInterrupt:
         print("\nStopped.")
     finally:
-        live_feed.stop()
-        import stock_camera
-        stock_camera.stop_all()
+        # Let go of the port first. Left open while the rest closes, it accepted
+        # browsers' connections without answering them, so a reload hung.
         server.server_close()
+        cleanup = threading.Thread(target=_close_down, name="close-down", daemon=True)
+        cleanup.start()
+        cleanup.join(timeout=4)    # a camera or printer that won't let go never holds up a restart
     if getattr(server, "update_restart", False):
         sys.exit(75)
+
+
+def _close_down():
+    live_feed.stop()
+    import stock_camera
+    stock_camera.stop_all()
 
 
 if __name__ == "__main__":

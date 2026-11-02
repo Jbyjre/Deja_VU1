@@ -69,7 +69,7 @@ on the same network (some routers block multicast; step 2 covers that).
 | A file name with `#`, `*` or `;` | "The U1 can't start a file whose name contains #, * or ;". Klipper ends a command's arguments at those characters (`klippy/gcode.py`), and firmware 2.0.0 refuses the empty name that results. Rename the file |
 | Moonraker up, Klipper not | "Moonraker is running, but Klipper isn't connected to it" (retried every 2 s, as Moonraker's docs say) |
 | Klipper restarting | The printer shows an error ("Moonraker is running, but Klipper isn't connected to it", or "Klipper is starting up"), then recovers by itself |
-| Wi-Fi drops | Its last reading stays on screen, labelled "No answer since 14:02"; commands are refused (the dashboard says no printer is connected); it reconnects by itself (1 s, 2 s, 4 s … up to 30 s apart) |
+| Wi-Fi drops | On a page that is already open, its last reading stays, labelled "No live link to <name> since 14:02", with Pause, Cancel and Home greyed out until it answers; a page opened while it is away shows no figures and says "<name> isn't answering" with the reason; it reconnects by itself (1 s, 2 s, 4 s, 8 s, then every 10 s) |
 | The address is some other web page | "…answered "HTTP/1.1 200 OK" instead of opening a live connection - is that address Moonraker?" (or "… has no /websocket" when it answers 404) |
 
 A printer that isn't connected never shows numbers, and demo data never

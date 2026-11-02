@@ -51,8 +51,8 @@
         : `<p class="log-empty">Not enough prints yet to say anything with confidence (at least ${data.minimum || 5}).</p>`}`);
   }
   if (card) {
-    window.addEventListener('dv-tab', e => { if (e.detail === 'overview') loadInsights(); });
-    window.addEventListener('dv-refresh', () => { if (!$('tab-overview').hidden) loadInsights(); });
+    window.addEventListener('dv-tab', e => { if (e.detail === 'control') loadInsights(); });
+    window.addEventListener('dv-refresh', () => { if (!$('tab-control').hidden) loadInsights(); });
     window.addEventListener('dv-live-event', e => { if (e.detail && e.detail.type === 'print_event' && ['finished', 'failed', 'cancelled'].includes(e.detail.event)) loadInsights(); });
     setTimeout(loadInsights, 600);
   }
@@ -142,7 +142,7 @@
     box.id = 'orca-import';
     box.setAttribute('aria-labelledby', 'oi-title');
     box.innerHTML = `<div class="card-head"><div><h2 id="oi-title">Pick up where you left off</h2>
-        <p class="card-sub">Already using Snapmaker Orca or OrcaSlicer? Bring your recent projects into Files and turn your own printer, process and filament presets into a slicing profile here. Nothing in the slicer is changed.</p></div>
+        <p class="card-sub">Keep your slicer and use Deja Vu1 beside it. Bring recent projects from Snapmaker Orca, OrcaSlicer, Bambu Studio, Creality Print, Elegoo Slicer, QIDI Studio, Flashforge Orca or PrusaSlicer into Files, where their colours are fitted to the U1's four heads. Turn your own Orca presets into a slicing profile. Nothing in the slicer is changed.</p></div>
         <button class="btn" type="button" id="oi-look">Look on this computer</button></div>
       <div id="oi-body" hidden></div>`;
     const anchor = $('convert-card');
@@ -151,34 +151,51 @@
     const opts = (list, keep) => list.filter(keep || (() => true)).map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.account ? ` (${esc(p.account)})` : ''}${p.usable ? '' : ' · not usable'}</option>`).join('');
     async function look() {
       const out = $('oi-body'); out.hidden = false;
-      paint(out, '<p class="log-empty">Looking for Snapmaker Orca and OrcaSlicer…</p>');
+      paint(out, '<p class="log-empty">Looking for your slicers…</p>');
       const data = await getJSON('/api/import/orca').catch(() => null);
       if (!data || data.error || !Array.isArray(data.apps)) {
         paint(out, `<p class="log-empty">${esc((data && data.error) || 'This works in the copy of Deja Vu1 on the computer where your slicer is installed.')}</p>`); return;
       }
       found = data;
-      if (!data.found) { paint(out, '<p class="log-empty">Neither Snapmaker Orca nor OrcaSlicer has a settings folder on this computer. If your slicer is on another computer, run Deja Vu1 there, or add projects with Files → Upload.</p>'); return; }
-      paint(out, data.apps.map((a, ai) => {
-        const p = a.presets, u1 = x => x.u1;
-        return `<div class="oi-app"><h3>${esc(a.app)}</h3>
+      if (!data.found) { paint(out, `<p class="log-empty">No slicer settings folder found. Looked in ${esc(data.looked_in || 'the usual places')}. If your slicer is on another computer, run Deja Vu1 there, or add projects with Files → Upload.</p>`); return; }
+      // One line first, then a folded row per slicer (the first one open), so a computer
+      // with several slicers and dozens of projects doesn't pour everything out at once.
+      const count = (a) => a.presets.machine.length + a.presets.process.length + a.presets.filament.length;
+      const summary = `<p class="oi-summary">Found <b>${data.apps.length}</b> slicer${data.apps.length === 1 ? '' : 's'}: ${data.apps.map(a =>
+        `${esc(a.app)} (${a.projects.length} project${a.projects.length === 1 ? '' : 's'}${count(a) ? `, ${count(a)} presets` : ''})`).join(' · ')}.
+        <span class="oi-safe">Deja Vu1 only reads these slicers' own folders and copies the projects you tick. It never changes them.</span></p>`;
+      paint(out, summary + data.apps.map((a, ai) => {
+        const p = a.presets, u1 = x => x.u1, own = ['Snapmaker Orca', 'OrcaSlicer', 'Orca'].includes(a.app);
+        return `<details class="oi-app"${ai === 0 ? ' open' : ''}><summary><b>${esc(a.app)}</b><span>${a.projects.length} recent project${a.projects.length === 1 ? '' : 's'} · ${count(a)} presets</span></summary>
           <div class="oi-cols">
-            <div><h4>Recent projects <small>${a.projects.length}</small></h4>
-              ${a.projects.length ? `<ul class="oi-projects">${a.projects.map(j => `<li><label><input type="checkbox" value="${esc(j.id)}" data-app="${ai}"${j.in_library ? '' : ' checked'}> <span>${esc(j.name)}</span> <small>${Math.max(1, Math.round(j.bytes / 1024))} KB${j.in_library ? ' · already in Files' : ''}</small></label></li>`).join('')}</ul>
-                <button class="btn small primary" type="button" data-bring="${ai}">Copy into Files</button>` : '<p class="log-empty">No recent projects listed.</p>'}</div>
-            <div><h4>Your presets <small>${p.machine.length + p.process.length + p.filament.length}</small></h4>
-              ${p.machine.length && p.process.length && p.filament.length ? `<form class="oi-profile" data-app="${ai}">
+            <div><h4>1 · Copy projects into Files <small>${a.projects.length}</small></h4>
+              ${a.projects.length ? `<ul class="oi-projects${a.projects.length > 6 ? ' is-long' : ''}">${a.projects.map(j => `<li><label><input type="checkbox" value="${esc(j.id)}" data-app="${ai}"${j.in_library ? '' : ' checked'}> <span>${esc(j.name)}</span> <small>${Math.max(1, Math.round(j.bytes / 1024))} KB${j.in_library ? ' · already in Files' : ''}</small></label></li>`).join('')}</ul>
+                ${a.projects.length > 6 ? `<button class="btn small oi-more" type="button" data-more>Show all ${a.projects.length}</button>` : ''}
+                <button class="btn small primary" type="button" data-bring="${ai}">Copy ticked into Files</button>` : '<p class="log-empty">No recent projects listed.</p>'}</div>
+            <div><h4>2 · Make a slicing profile <small>${p.machine.length + p.process.length + p.filament.length}</small></h4>
+              ${!own ? `<p class="log-empty">${esc(a.app)}'s presets build on its own printers' profiles, which the U1 engine doesn't have. Its projects come in with their colours; Profiles & tools sets up the U1.</p>`
+              : p.machine.length && p.process.length && p.filament.length ? `<form class="oi-profile" data-app="${ai}">
                 <label>Printer<select name="machine">${opts(p.machine.filter(u1).concat(p.machine.filter(x => !x.u1)))}</select></label>
                 <label>Process<select name="process">${opts(p.process)}</select></label>
-                <label>Filament<select name="filament">${opts(p.filament)}</select></label>
+                <fieldset class="oi-heads"><legend>Filament in each head</legend>
+                  ${[1, 2, 3, 4].map(h => `<label>Head ${h}<select name="filament${h}">${h > 1 ? '<option value="">Not used</option>' : ''}${opts(p.filament)}</select></label>`).join('')}
+                </fieldset>
                 <label>Profile name<input name="name" maxlength="60" placeholder="My Orca settings"></label>
                 <button class="btn small primary" type="submit">Make a slicing profile</button>
                 <p class="field-hint">Uses your preset files where they are, so later edits in the slicer carry over. Slicing needs to be on (Files › Slicing).</p></form>`
               : `<p class="log-empty">${p.machine.length + p.process.length + p.filament.length ? 'A profile needs one printer, one process and one filament preset of your own.' : 'No presets of your own yet: the slicer’s built-in Snapmaker presets are used through Profiles & tools.'}</p>`}</div>
-          </div></div>`;
+          </div></details>`;
       }).join('') + `<p class="field-hint">${esc(data.note)}</p>`);
     }
     $('oi-look').onclick = look;
     box.addEventListener('click', async e => {
+      const more = e.target.closest('[data-more]');
+      if (more) {
+        const list = more.parentElement.querySelector('.oi-projects');
+        more.dataset.all = more.dataset.all || more.textContent;
+        more.textContent = list.classList.toggle('is-long') ? more.dataset.all : 'Show fewer';
+        return;
+      }
       const b = e.target.closest('[data-bring]');
       if (!b) return;
       const ids = [...box.querySelectorAll(`input[type=checkbox][data-app="${b.dataset.bring}"]:checked`)].map(i => i.value);
@@ -194,7 +211,8 @@
       if (!f) return;
       e.preventDefault();
       const fd = new FormData(f);
-      const r = await postJSON('/api/import/orca/profile', { name: fd.get('name'), machine: fd.get('machine'), process: fd.get('process'), filaments: [fd.get('filament')] }).catch(() => null);
+      const filaments = [1, 2, 3, 4].map(h => fd.get(`filament${h}`)).filter(Boolean);
+      const r = await postJSON('/api/import/orca/profile', { name: fd.get('name'), machine: fd.get('machine'), process: fd.get('process'), filaments }).catch(() => null);
       if (r && r.ok) { toast('Slicing profile made from your presets', 'ok'); window.dispatchEvent(new CustomEvent('dv-refresh')); }
       else toast((r && r.body && r.body.error) || 'The profile was not made', 'bad');
     });

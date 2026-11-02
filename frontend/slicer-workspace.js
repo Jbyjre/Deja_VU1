@@ -37,6 +37,16 @@ window.DVWorkspace = (() => {
     const source = left.querySelector('details');
     for (const n of [...side.children]) if (n !== controls) relocate(n, source);
     relocate(controls, inspector); side.append(inspector);
+    // What needs deciding before slicing a project made elsewhere (its colours on the four heads,
+    // converting it for the U1) sits in plain sight under the slice bar, not in the folded details.
+    const intake = document.createElement('div'); intake.className = 'sw-import'; head.append(intake);
+    if ($('fd-convert')) {
+      const note = document.createElement('div'); note.className = 'sw-import-row';
+      note.innerHTML = '<p class="sw-import-note"><b>Made for another printer.</b> Convert it to open in Snapmaker Orca with the U1\'s own settings, or slice it here with a U1 profile.</p>';
+      intake.append(note); relocate($('fd-convert'), note);
+    }
+    relocate($('fd-convert-report'), intake);
+    relocate($('fd-colours-host'), intake);
     const setup = document.createElement('div'); setup.className = 'sw-setup-host'; setup.hidden = true;
     setup.innerHTML = '<h3>Printer, materials & process</h3><p class="field-hint">Save changes as a new profile. Installed presets stay intact.</p><div id="sw-engine-host"></div><div id="sw-tools-host"></div><div id="sw-process-host"></div>';
     side.append(setup);
@@ -65,6 +75,27 @@ window.DVWorkspace = (() => {
     $('sw-setup').onclick = () => mode('setup');
     $('sw-preview').onclick = () => preview();
     const valid = () => !state.disposed && active === state && state.printer === currentPrinter;
+    /* Layer heights per head, in plain sight under the slice bar: what the chosen
+       profile does, and one button to the per-head settings. */
+    function layerStrip() {
+      let strip = $('sw-layers');
+      if (!strip) {
+        strip = document.createElement('div'); strip.id = 'sw-layers'; strip.className = 'sw-layers';
+        $('sw-header').querySelector('.sw-actionbar')?.after(strip);
+        strip.addEventListener('click', e => {
+          if (!e.target.closest('#sw-layers-edit')) return;
+          $('sw-setup').click();
+          setTimeout(() => { window.PrintRoom && PrintRoom.load && PrintRoom.load(); $('ts-stack-title')?.scrollIntoView({ block: 'start' }); }, 50);
+        });
+      }
+      const p = (state.settings?.profiles || []).find(x => x.id === $('sw-profile').value);
+      const mixed = p && p.layer_mode === 'per_tool';
+      strip.innerHTML = `<span class="sw-layers-title">Layer heights per head</span>
+        <span class="sw-layers-what">${!p ? 'Pick a profile to see its layer heights.' : mixed
+          ? 'This profile gives each head its own layer height: fine detail from a small nozzle, speed from a big one.'
+          : 'This profile prints every head at one height. Give each head its own height under Profiles &amp; tools.'}</span>
+        <button class="btn small${mixed ? '' : ' primary'}" type="button" id="sw-layers-edit">${mixed ? 'See per-head heights' : 'Set per-head heights'}</button>`;
+    }
     async function profiles() {
       try {
         const data = await getJSON(api('/api/slicer/settings'));
@@ -73,6 +104,7 @@ window.DVWorkspace = (() => {
         const select = $('sw-profile'), keep = select.value;
         paint(select, (data?.profiles || []).map(p => `<option value="${esc(p.id)}">${esc(p.name)}${p.layer_mode==='per_tool'?' · per-tool heights':''}</option>`).join('') || '<option value="">No saved profiles</option>');
         select.value = (data?.profiles||[]).some(p=>p.id===keep)?keep:data?.default_profile||select.value;
+        layerStrip();
         const setup = data?.module_disabled ? 'Slicing is off.' : data?.problem || (!(data?.profiles?.length) ? 'No slice profile saved yet.' : '');
         $('sw-slice').disabled = !!setup || !DVPlate.active?.canSlice();
         if (setup) {
@@ -145,7 +177,7 @@ window.DVWorkspace = (() => {
       state.revision++;
       if(state.output) { $('sw-preview').disabled=true; state.output=null; $('sw-job').textContent='Plate changed. Slice again to preview these edits.'; }
     };
-    $('sw-profile').onchange=state.changed;
+    $('sw-profile').onchange=()=>{state.changed();layerStrip();};
     state.refresh=profiles;
     profiles();
     return {changed:state.changed, refreshProfiles:profiles};

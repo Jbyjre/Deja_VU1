@@ -60,9 +60,15 @@ trust the code and fix this file.
   the account's usage limit mid-run.)
 - Never change model, effort, fast mode or permission mode unless asked.
 - Confirm before delete, overwrite, force-push or reset --hard.
-- Default: commit finished work on a branch, open a PR, and merge it with one
-  merge commit (the repo's convention) when there are no conflicts and checks
-  are green or absent. Don't wait on pending CI. Never force-push.
+- Merging (the owner, 31 October 2026): every Claude Code session that edits this repository
+  merges its own finished work without being told to. Commit on the session's branch, push, open
+  the pull request, check the work (tests, screenshots or measurements the task calls for), then
+  merge it with one merge commit (the repo's convention). Don't ask first, also when the change
+  goes public. The one exception: don't merge when the owner says not to. A merge conflict or a
+  failing required check is yours to fix before merging; if you can't, say what blocks it. Don't
+  wait on pending CI, never force-push, and say what was merged and how to undo it
+  (`git revert -m 1 <merge commit>`). This is merging only: no PR/CI watching or GitHub
+  auto-merge toggle unless asked. The private repository's CLAUDE.md says the same.
 - Install (the owner, 24 October 2026): the copy-and-paste blocks (PowerShell for
   Windows, Terminal for Mac/Linux) are the main install method in README, getting
   started and welcome.html; ZIP and GitHub Desktop are the no-code options. The
@@ -80,7 +86,7 @@ trust the code and fix this file.
   A new version's `highlights` become its in-app tour; point each at a real element.
 - Updates (the owner, 25 October 2026): installing must work every time. 0.8.0's Install
   button crashed in `_require_idle_for_update` (now guarded), so 0.8.0 copies need the
-  one-paste update once. The update blocks live in `tools/update_blocks.py`; README,
+  one-paste update once. The update and Start and check blocks live in `backend/paste_blocks.py` (re-exported by `tools/update_blocks.py`); README,
   getting started, welcome.html and Settings show them identically
   (`tests/test_install_blocks.py`). Settings can also Restart, Repair files, make a
   Safety copy and Stop (`/api/app/restart|repair|stop`). Never change the first lines of
@@ -209,11 +215,22 @@ root should hand over to `welcome.html`.
 - `print_preview.py` (`GET /api/print/preview`): the running print's outer walls and top
   surfaces per head and object from its own G-code (real printer: Moonraker file download;
   else library or samples), delta-encoded, cached per file version. Drawn by twin3d.js.
+  Each path point has its nominal time (`walls_t`/`fill_t`) and `timeline` maps file bytes to
+  time and nozzle position. Real printers add `state.sync` (Klipper `file_position`, and
+  `motion_report.live_position` less `homing_origin`); `Twin3D.sync` in twin3d.js follows the
+  G-code between readings and re-syncs on each (tested in Node: `tests/test_twin_sync.py`).
+  Byte offsets must count bytes: decode files with `surrogateescape`, never `replace`.
+- `colour_map.py` (`GET /api/colours/plan`, `POST /api/colours/apply`, module `converter`):
+  which filaments a 3MF really uses (objects, parts, per-feature keys, height ranges, painted
+  triangles) and a head for each; writes a copy using at most four. Orca family and PrusaSlicer
+  layouts; paint codec per OrcaSlicer TriangleSelector. The converter runs it for more than four
+  filaments. Panel: workshop.js `renderColours`, moved under the slice bar by slicer-workspace.js.
 - `memory.py` (safety copies in `<data>/snapshots/`, every 6 h / start-up / before updates,
   restore with undo) and `storage.py` (`.<name>.prev` last-good copy on every save; damaged
   files repaired from it or a safety copy). `insights.py` (`/api/insights`, evidence
-  thresholds), `orca_import.py` (Snapmaker_Orca / OrcaSlicer data folders, recent projects,
-  user presets; paths never sent to the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
+  thresholds), `orca_import.py` (recent projects from eight slicers' data folders, keys from each
+  one's `version.inc`; user presets from Snapmaker_Orca / OrcaSlicer only; paths never sent to
+  the browser), `selfcheck.py` (`POST /api/app/selfcheck`).
 - `app_updates.py`: channels `stable` (releases, the default; checked hourly) and `latest` (main
   branch: per-file git blob hashes against GitHub's tree, only changed files staged), `watch()`
   thread, `git_update()`, `prepare(repair=True)` (same-version reinstall).
@@ -225,7 +242,15 @@ root should hand over to `welcome.html`.
   `Phone.install()` (More → Install app, Settings → Install on this phone) picks the install steps:
   Chrome installs only from https, localhost or an address in chrome://flags "Insecure origins
   treated as secure" (Chromium `installable_evaluator.cc`), so a plain LAN address gets those steps.
-- `pairing.py`: device keys (hash stored, HttpOnly cookie) and the optional device lock
+- `modules.DEFAULTS_ON` (filament_inventory, sanity_check, compare, auto_print) start on; a copy
+  saved before November 2026 switches them on once (`_defaults` version in modules.json).
+- `maintenance.snooze()` (1, 3 or 7 days): a snoozed task keeps its status in Care but leaves
+  the overdue/due-soon counts, Needs you and maintenance rules until then. `record_swap(...,
+  nozzle=)` also writes that head's nozzle into `tool_setup`.
+- Automations triggers also include progress, time_left, layer, error, link_lost; actions
+  cool_down (never mid-print) and macro (must be one the printer lists).
+- `pairing.py`: device keys (hash stored, HttpOnly cookie); redeeming again from an already
+  paired browser replaces its entry (`replaces=`), so one phone never counts twice; and the optional device lock
   (`app.py` `_locked_out`; localhost via loopback is always allowed).
 - `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
   `PrintConfig.cpp`), served by `GET /api/slicer/schema` and used by `slicer_profiles.validate_options`.
@@ -239,15 +264,33 @@ root should hand over to `welcome.html`.
   (29 module ids), `storage.py` (atomic JSON).
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
-- Sections (`app.js` `SECTIONS`, `window.Sections`): Overview, Printers, Files, Care and
-  Settings show one part at a time (plus "Everything"). Cards are sorted by `#id`, `.class`
+- Tabs (the owner's review, 1 November 2026): Overview is a page of cards about now (Needs you,
+  Right now, camera, temperatures, quick control, your printers, maintenance, totals; no twin).
+  Printer (data-tab `control`, kept for saved tabs and tours) is one printer's own page: the twin
+  with the camera and Move pad beside it, Temperatures (warm-up presets from Preferences),
+  Extrude, Tune, the printer's own buttons (bed mesh, motors off, its macros) and the console;
+  parts Control, Live readings, History & upkeep, Camera & time-lapses. Opening a printer goes
+  there. Preferences (`prefs`) is its own tab; Photo studio has no tab button (Files' Photo to
+  print card, search and the More sheet open it). The printer button in the top bar carries the
+  state the old strip under the tabs did (`renderChipStatus`); `#status-ribbon` stays hidden.
+- `printer-page.js` + `printer.css`: the Printer page controls, the Overview cards, the camera
+  view (`.pcam`: the saved stream, else one snapshot after another, at most five a second,
+  only while visible) and the Preferences tab. Server side: `printer_control.jog` and the
+  rest (`/api/printer/control/jog|move|z-nudge|extrude|speed|flow|fan|pressure-advance|limits|
+  motors-off|bed-mesh|macro|tool|estop|bed-temperature`) build standard Klipper G-code after
+  checking every value; motion is refused mid-print, tuning is not. Both paths go through
+  `mock_moonraker.tune()`. Real printers report `state.tuning` (fan, overrides, limits,
+  idle_timeout, bed_mesh, macros without a leading _, other fans/sensors) and per-head
+  pressure advance; the U1's own name comes from `machine.system_info` product_info.device_name.
+- Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and
+  Settings show one part at a time (plus "Everything"). `dv-section` fires on each change. Cards are sorted by `#id`, `.class`
   or the start of their h2 title; a card no rule names joins the first part. Anything that
   scrolls to a hidden card opens its part (`Sections.reveal`, via a `scrollIntoView` wrapper;
   `guide.js` resolve calls it too). A new card on those screens needs a rule, or it lands
   in the first part.
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `logbook.js` → `insights.js` →
+  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `printer-page.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -271,20 +314,29 @@ root should hand over to `welcome.html`.
   an engineering drawing made from the same geometry (edge-detection ink plus
   SVG dimensions, balloons and title block). Driven by workshop.js
   (`setTwinMode`, `queueTwin`); the old SVG `drawTwin` is the fallback without
-  WebGL 2. The look comes from Snapmaker's official product picture (shipped in
-  Snapmaker's Orca profile, `resources/profiles/Snapmaker/Snapmaker U1_cover.png`)
-  and the plate size from that profile (276 × 293 mm); only facts were used,
-  not files (that repo is AGPL). The body's own size (~390 × 460 × 480 mm),
-  dock spacing and inside layout are estimates; the card says so.
+  WebGL 2. The look comes from Snapmaker's product photos of the production U1
+  (front, both sides, back, three-quarter views; Snapmaker's shop and product
+  pages, checked 30 October 2026) and the plate size from Snapmaker's Orca
+  profile (276 × 293 mm); only facts were used, not files (that repo is AGPL).
+  Body ≈ 456 × 499 × 458 mm (`BODY`: square front, 450 mm deep plus a 49 mm shelf
+  across the top of the back with a curved underside), measured from the photos
+  scaled by the published 499 mm depth; recessed side pockets (`HUB`) hold the
+  spools so 584 mm overall fits. The gantry runs `GANTRY_DY` in front of the head
+  it carries, so the nozzle is drawn at the G-code position. Dock spacing, gantry
+  heights and inside layout are estimates; the card says so. Whether the back
+  opening is glazed is unconfirmed (drawn as faint glass).
 - Games (`games.js`, moved out of app.js; fetched by app.js `loadGames()` the first time the
   Games tab opens, so it is not in index.html's script list): every game timer goes through `frameEvery()` (rAF-driven fixed
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
   October 2026; the older game code below them in games.js is legacy.
-- CSS order: `style.css` → `workshop.css` → `farm.css` → `guide.css` → `theme.css`.
+- CSS order: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css`.
 - `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
   message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
   and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.
+  A repeat of a showing message counts up (×2); time on screen grows with the words;
+  timers pause while held or while the tab is hidden; history survives a reload
+  (sessionStorage, without actions). The handoff offer folds into the orb after 9 s.
 - `guide.js`: the tour engine (`Guide.start(steps)`: a glass callout with a tail and a beacon that
   springs from stop to stop, across screens, below the sticky top bar; full-screen chapters for
   version tours; "Try it" actions limited to buttons a person could press). The quick tour
@@ -565,6 +617,61 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   Actual mixed-height output and three separated plates passed Linux pre-flight.
   Software-rendered heavy model frame pacing remains poor; disclose regressions.
 
+
+## Real-printer audit (31 October 2026)
+
+- `toolhead_position` is motion_report `live_position` (where the nozzle is) with
+  `position_source: "live"`, else toolhead `position` (the end of the last queued move)
+  labelled `"commanded"`; `homed_axes` is reported. The U1's Klipper always loads
+  motion_report (`klippy/stepper.py`) and keeps the latest move (`chelper/trapq.c`).
+  workshop.js moves the twin's nozzle with a critically damped spring (`SPRING_W`),
+  not the shared easing, so 4 Hz readings don't make it step.
+- A `link_lost` state (pushed to a page that is already open) disables Pause/Cancel/Home and
+  never offers the firmware restart; `linkLostWords()` in app.js says why. A fresh page gets
+  `{"connected": false}` instead, so `EMPTY('No printer connected', ...)` names an added printer
+  that isn't answering (`unreachablePrinter()`, from `/api/fleet/registry` via `addedPrinters`,
+  loaded before the cards draw). Every Cancel button asks twice (`confirmCancel`).
+- The U1 ignores PAUSE over a skipped object (`pause_resume.py`); `pause_print` says so.
+- `fleet.normalise_url` keeps only scheme, host and port; `/api/printers/test` retries
+  `:7125` when no port was typed. Reconnects wait at most `RECONNECT_MAX` (10 s).
+- `app._bind()` retries a busy port, then prints what to do and exits `PORT_IN_USE` (3);
+  `start.py` returns 0 for it (the Windows batch file would blame Python) and opens the
+  browser only when `/api/app/info` answers. `offline.html` (served by `sw.js`) explains
+  a stopped program on localhost and returns to the dashboard when the server answers.
+- `start.py --background` (the owner, 1 November 2026: closing PowerShell must not stop Deja Vu1)
+  starts the launcher detached (Windows: pythonw/DETACHED_PROCESS; macOS/Linux: its own session),
+  waits for it, shows the ready check and exits; output in `<data>/logs/background.log`. The Start
+  blocks add `--autostart`; Update and Install blocks also start it with `--background`. The
+  Windows sign-in entry runs `start.py --background`, never a console window.
+- `autostart.py` (Settings → Desktop app → Start with this computer, `POST /api/app/autostart`,
+  this computer only; status in `/api/app/info`): one sign-in file, the Windows Startup folder
+  `.cmd`, a macOS LaunchAgent or an XDG autostart entry, each with `DEJAVU_NO_BROWSER=1`.
+  Only Linux is exercised here. `start.py` restarts a crashed server (not exit 0, 75, 3 or a
+  signal), at most `CRASH_LIMIT` times in `CRASH_WINDOW`. `offline.html` links the online demo.
+- Updates never leave the dashboard down (the owner, 31 October 2026: Install "did nothing", then the offline
+  page). `_install_update(background=True)` checks the launcher and idle printers at once (refusals name the
+  printer), then `_run_install` runs on a thread; `app_updates.job()` (in `/api/app/info` as `update_job`) carries
+  the step and download bytes, and versions.js `followJob()` shows it and resumes after a reload. start.py never
+  dies on an update error: `apply_update()` catches anything from `apply_pending`, writes
+  `<data>/update-result.json` (`readiness.last_update()`, shown as a toast) and `<data>/logs/launcher.log`, and
+  starts the server anyway. `apply_pending` removes `pending.json` first (`_discard`), so a folder Windows keeps
+  locked is never applied or rolled back twice, and sets `last_error`. The health check matches
+  `DEJAVU_LAUNCH_ID` or the PID, never through a proxy, for up to `START_WAIT` (90 s). The server closes its port
+  before its slow clean-up, so reloads fail fast to the offline page instead of hanging.
+- `readiness.py` (`POST /api/app/ready`, Settings → Check it all works, `start.py --check`, and the launcher window
+  after every start): ok / note / bad per check, `next` names the block ("start" or "repair"). The launcher adds
+  the address, page and demo data over HTTP. Older servers (404) get a note, not a failure.
+- `paste_blocks.py` is the one source of the Start and check and update blocks (it travels with updates;
+  `tools/update_blocks.py` re-exports it). Copies: README, getting started, index.html (`data-start-block`,
+  `data-os-block`), offline.html (`data-block`) and welcome.html (update blocks only); `tests/test_install_blocks.py`.
+  The Windows update block also stops the parent launcher (only a parent running start.py). offline.html is cached
+  by sw.js: bump `OFFLINE_CACHE` when it changes. app.js `watchServer()` shows the "stopped answering" strip.
+  The server logs only POSTs and refused requests, so the ready display stays readable.
+- `drawSafely(part, fn)` in app.js: workshop `applyState`, the fleet message and the ribbon's card
+  renderers each draw inside it, so one failing part no longer skips the rest; the first failure per
+  part is a toast naming it. `watchForUpdate()` (every 15 s) reloads open pages when `/api/app/info`
+  reports a new version or build. `fleet.summary_for` tolerates missing heads; a row that still fails
+  keeps the printer's name and is printed in the terminal, as is a failed fleet refresh.
 
 ## Public marketing material
 

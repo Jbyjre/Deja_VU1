@@ -107,6 +107,15 @@ class TestPairing(unittest.TestCase):
         self.assertIn(device, pairing.list_devices())
         self.assertNotIn(key, str(pairing.list_devices()))
 
+    def test_pairing_the_same_browser_again_replaces_it(self):
+        # The owner's phone paired twice and the header said "2 devices paired" for one phone.
+        first = pairing.redeem_code(pairing.generate_code()["code"], "Phone")
+        again = pairing.redeem_code(pairing.generate_code()["code"], "Phone", replaces=first["id"])
+        ids = [d["id"] for d in pairing.list_devices()]
+        self.assertEqual(ids, [again["id"]])
+        self.assertIsNone(pairing.device_for(first["token"]))
+        self.assertIsNotNone(pairing.device_for(again["token"]))
+
     def test_wrong_code_is_rejected(self):
         pairing.generate_code()
         with self.assertRaises(ValueError):

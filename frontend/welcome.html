@@ -523,8 +523,8 @@ footer p { max-width: 70ch; }
       <p class="caption">The Overview with the built-in demo printers (Demo data). The figures in these pictures are demo data.</p>
 
       <div class="twin-pair" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:24px;margin-top:36px">
-        <figure class="shot glass"><img src="img/twin.jpg" width="706" height="821" loading="lazy" alt="The current 3D twin with the head, bed, rear docks and spools. Software model with simulated readings."></figure>
-        <figure class="shot glass"><img src="img/twin-drawing.jpg" width="706" height="1039" loading="lazy" alt="Drawing mode of the same printer geometry, with dimensions and selected head details. Simulated readings."></figure>
+        <figure class="shot glass"><img src="img/twin.jpg" width="706" height="973" loading="lazy" alt="The current 3D twin with the head, bed, rear docks and spools. Software model with simulated readings."></figure>
+        <figure class="shot glass"><img src="img/twin-drawing.jpg" width="706" height="1159" loading="lazy" alt="Drawing mode of the same printer geometry, with dimensions and selected head details. Simulated readings."></figure>
       </div>
       <p class="caption">Two views of one software model. Body size and internal geometry are estimates; these are simulated readings, not camera images.</p>
       <div class="screens">
@@ -571,43 +571,45 @@ footer p { max-width: 70ch; }
         <div class="installs" id="install">
           <p class="install-lead"><b>Install in one paste.</b> Copy the block for your computer, paste it and press Enter. It downloads the newest release into Documents and starts it.</p>
           <div class="terminal">
-            <div class="term-bar"><span>Windows · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Start-Process &quot;$dest\start-windows.bat&quot;">Copy</button></div>
+            <div class="term-bar"><span>Windows · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Set-Location $dest&#10;if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }">Copy</button></div>
             <pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-Start-Process "$dest\start-windows.bat"</code></pre>
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }</code></pre>
           </div>
           <p class="install-note">No Python yet? Paste <code>winget install -e --id Python.Python.3.12</code> into PowerShell first, then close and reopen it.</p>
           <div class="terminal">
-            <div class="term-bar"><span>Mac, Linux, Raspberry Pi · paste into Terminal</span><button class="copy" type="button" data-copy="curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py">Copy</button></div>
+            <div class="term-bar"><span>Mac, Linux, Raspberry Pi · paste into Terminal</span><button class="copy" type="button" data-copy="curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart">Copy</button></div>
             <pre><code>curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre>
           </div>
           <p class="install-note">If a Mac asks to install the command line developer tools, click Install, then paste the block again: that is how macOS adds Python.</p>
           <p class="install-note"><b>No code?</b> Install <a href="https://www.python.org/downloads/">Python 3.8+</a>, download the <a href="https://github.com/Jbyjre/Deja_VU1/releases/latest">newest release ZIP</a> (or clone it with GitHub Desktop), and double-click the launcher. This website plays a demo recording; real readings need your own running copy.</p>
           <p class="install-lead"><b>Already installed? Update in one paste.</b> It stops Deja Vu1 in Documents, installs the newest release over it and starts it again. Your data stays. The app has the same block under Settings → Version &amp; updates.</p>
           <div class="terminal">
-            <div class="term-bar"><span>Windows · update · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;try { Invoke-RestMethod -Method Post &#x27;http://localhost:8000/api/app/stop&#x27; -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}&#10;Get-CimInstance Win32_Process -Filter &quot;Name LIKE &#x27;python%&#x27;&quot; | Where-Object { $_.CommandLine -like &#x27;*Deja_VU1*app.py*&#x27; } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Start-Process &quot;$dest\start-windows.bat&quot;">Copy</button></div>
+            <div class="term-bar"><span>Windows · update · paste into PowerShell</span><button class="copy" type="button" data-copy="$ProgressPreference = &#x27;SilentlyContinue&#x27;&#10;$dest = Join-Path ([Environment]::GetFolderPath(&#x27;MyDocuments&#x27;)) &#x27;Deja_VU1&#x27;&#10;try { Invoke-RestMethod -Method Post &#x27;http://localhost:8000/api/app/stop&#x27; -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}&#10;Get-CimInstance Win32_Process -Filter &quot;Name LIKE &#x27;python%&#x27;&quot; | Where-Object { $_.CommandLine -like &#x27;*Deja_VU1*app.py*&#x27; } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter &quot;ProcessId=$($_.ParentProcessId)&quot;; if ($p.CommandLine -like &#x27;*start.py*&#x27;) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }&#10;Invoke-WebRequest &#x27;https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#x27; -OutFile &quot;$env:TEMP\dejavu1.zip&quot;&#10;Expand-Archive &quot;$env:TEMP\dejavu1.zip&quot; -DestinationPath $dest -Force&#10;Set-Location $dest&#10;if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }">Copy</button></div>
             <pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
-Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
-Start-Process "$dest\start-windows.bat"</code></pre>
+Set-Location $dest
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }</code></pre>
           </div>
           <div class="terminal">
-            <div class="term-bar"><span>Mac, Linux · update · paste into a new Terminal window</span><button class="copy" type="button" data-copy="curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f &#x27;Deja_VU1/backend/app.py&#x27;&#10;curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py">Copy</button></div>
+            <div class="term-bar"><span>Mac, Linux · update · paste into a new Terminal window</span><button class="copy" type="button" data-copy="curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f &#x27;Deja_VU1/backend/app.py&#x27;&#10;curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip&#10;python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh&#10;cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background">Copy</button></div>
             <pre><code>curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py</code></pre>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre>
           </div>
         </div>
         <ol class="steps">
-          <li><b>On your computer.</b> Paste the block for your computer, or use a no-code option: Python 3.8+, then the release ZIP or GitHub Desktop, then double-click the launcher. Keep its window open and the computer awake.</li>
+          <li><b>On your computer.</b> Paste the block for your computer, or use a no-code option: Python 3.8+, then the release ZIP or GitHub Desktop, then double-click the launcher. The paste blocks start it in the background, so no window has to stay open; keep the computer awake.</li>
           <li><b>Connect your printer.</b> Open Set up &amp; help, choose Connect my printer, then Find printers or enter its address. Test and connect. Keep Demo data off for real readings.</li>
           <li><b>On your phone at home.</b> Same Wi-Fi, then press <b>Connect your phone</b> on the Overview and scan the code with the phone’s camera. It opens and pairs by itself; nothing to type. Or type the “From a phone” address from the launcher, such as <code>192.168.1.20:8000</code> (a colon before the port, not a dot). Pairing is optional, not a login.</li>
           <li><b>Keep it on your home screen.</b> Safari → Share → Add to Home Screen, or Chrome’s menu → Add to Home screen. HTTP may offer only a shortcut; secure HTTPS enables full installation and the offline explanation. Offline never means live readings.</li>
