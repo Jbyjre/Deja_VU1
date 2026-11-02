@@ -296,8 +296,8 @@ def render(rep, stream=None, windows=None, width=62):
         if os.environ.get('DEJAVU_BACKGROUND_PARENT') or os.environ.get('DEJAVU_BACKGROUND'):
             lines.append('  It keeps running after you close this window.')
         else:
-            lines.append('  Leave this window open: closing it stops Deja Vu1. (The Start block in')
-            lines.append('  Settings starts it in the background instead, so no window is needed.)')
+            lines.append('  This copy runs inside this window: closing it stops Deja Vu1. Start it')
+            lines.append('  with its double-click launcher instead and no window is needed.')
     elif rep.get('next'):
         windows = os.name == 'nt' if windows is None else windows
         shell = 'PowerShell' if windows else 'Terminal'

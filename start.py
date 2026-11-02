@@ -148,7 +148,7 @@ def open_when_ready():
     opened = desktop.open_dashboard(f"http://localhost:{PORT}")
     if opened == "window":
         print("Deja Vu1 opened in its own app window." + ("" if os.environ.get("DEJAVU_BACKGROUND_PARENT") else
-              " Keep this window open; closing it stops the dashboard."), flush=True)
+              " This copy runs in this window (--foreground); closing it stops the dashboard."), flush=True)
 
 
 def already_running():
@@ -378,7 +378,7 @@ def supervise(ensure=False):
         before = app_updates.version()
         pending = os.path.isdir(os.path.join(HERE, ".dejavu-update"))
         if pending:
-            say("Installing the update. The dashboard is back in a moment" + ("." if os.environ.get("DEJAVU_BACKGROUND") else "; keep this window open."))
+            say("Installing the update. The dashboard is back in a moment" + ("." if os.environ.get("DEJAVU_BACKGROUND") else "; keep this window open (--foreground)."))
         try:
             result = app_updates.apply_pending(HERE, healthy)
         except Exception as exc:

@@ -59,11 +59,12 @@ You need your own running copy for real readings.
    or **start-linux.sh**. On Mac/Linux, if the file opens as text or cannot run,
    open Terminal in the folder and run `python3 start.py`. Downloaded files may
    need your operating system's permission to open; do not disable its security.
-4. Your browser opens [the local dashboard](http://localhost:8000). A double-clicked
-   launcher's window must stay open: closing it stops the dashboard (if it stops by itself
-   after a crash, the launcher starts it again). The paste blocks above start Deja Vu1 in
-   the background instead, so no window has to stay open, and it starts by itself whenever
-   you sign in (**Settings → Desktop app → Start Deja Vu1 when this computer starts**). The launcher also
+4. Your browser opens [the local dashboard](http://localhost:8000). Since 0.15.0 every
+   way of starting Deja Vu1, the double-click launchers included, runs it without a window:
+   the window that opens says when it is ready and can then be closed. Deja Vu1 starts by
+   itself whenever you sign in (on Windows also after the computer wakes, checked every
+   5 minutes), and starts again if it stops or stops answering (**Settings → Desktop app →
+   Start Deja Vu1 when this computer starts** turns that off). The launcher also
    prints **From a phone**, followed by your computer's home-network address,
    and, where the console can draw it, a QR code of it for the phone's camera.
 5. Follow **Set up & help**, or skip and replay it from **Settings**. Your

@@ -545,7 +545,14 @@ prove a public deployment.
   Tries the camera Moonraker lists first (`/server/webcams/list`; the Extended
   Firmware's `/webcam/snapshot.jpg`, printer host only), then Snapmaker's
   `camera.start_monitor` (WebSocket only, integer `req_id`, `{"state":"failed"}` is
-  a failure). Real camera unverified; time-lapse uses each printer's camera. Manual
+  a failure). The start reply is not waited for; its `url` is used when it names the
+  printer; `monitor.jpg` is tried on Moonraker's port then port 80 over a kept-open
+  connection. `GET /api/camera/live` streams a real printer's pictures as MJPEG (15 a
+  second at most); printer-page.js uses it and falls back to single pictures.
+- The U1 answers on 7125 and on port 80 (its web server forwards to Moonraker).
+  `Endpoint.other_door()` and `MoonrakerPrinter._switch_door` try the other after two
+  misses; `/api/printers/test` tries `fleet.web_port_variant` too. The saved URL never changes.
+  Real camera unverified; time-lapse uses each printer's camera. Manual
   MJPEG remains a separate global viewing feed; `camera.find_printer_stream()`
   (`POST /api/camera/find`) fills it from the printer's own list.
 - Printer sign-in: `discovery.key_from_login()` (`POST /api/printers/login`) uses the
@@ -642,11 +649,32 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   starts the launcher detached (Windows: pythonw/DETACHED_PROCESS; macOS/Linux: its own session),
   waits for it, shows the ready check and exits; output in `<data>/logs/background.log`. The Start
   blocks add `--autostart`; Update and Install blocks also start it with `--background`. The
-  Windows sign-in entry runs `start.py --background`, never a console window.
+  sign-in entries run `start.py --ensure` (pythonw on Windows), never a console window.
 - `autostart.py` (Settings → Desktop app → Start with this computer, `POST /api/app/autostart`,
-  this computer only; status in `/api/app/info`): one sign-in file, the Windows Startup folder
-  `.cmd`, a macOS LaunchAgent or an XDG autostart entry, each with `DEJAVU_NO_BROWSER=1`.
-  Only Linux is exercised here. `start.py` restarts a crashed server (not exit 0, 75, 3 or a
+  this computer only; status in `/api/app/info`, cached 60 s): Windows uses a Task Scheduler task
+  "Deja Vu1" for this user (`schtasks /Create /XML`: sign-in, wake event Power-Troubleshooter 1,
+  every 5 minutes; no admin) running `pythonw start.py --ensure`, else the Startup folder `.cmd`;
+  macOS a LaunchAgent with KeepAlive SuccessfulExit false; Linux an XDG autostart entry. Every start
+  by hand switches it on unless Settings switched it off (`autostart-choice.json`); Settings → Stop
+  and Ctrl+C write `stopped-on-purpose.json`, which `--ensure` respects until a start by hand or a
+  reboot. Only Linux is exercised here.
+- No window (the owner, 2 November 2026: every command "didn't go through"): `pythonw.exe` gives
+  Python no output streams, and the server's per-request log line to `sys.stderr` broke every
+  POST reply. `console.py` gives such a process a log file (`<data>/logs/server.log`,
+  `launcher-output.log`), writes through a thread so a paused console (Quick Edit) never blocks a
+  reply, and switches Quick Edit off. Never write to `sys.stdout`/`sys.stderr` directly in request
+  code; use `console.write`. On Windows the server holds its port with SO_EXCLUSIVEADDRUSE.
+- `start.py`: no flag, `--background` and `--from-link` all start apart from the window
+  (`start_in_background`); the supervisor itself is `--foreground`; `--ensure` is the quiet
+  start-up check. The supervisor restarts a server that is running but silent for about 2 minutes
+  (`HEALTH_EVERY`, `HEALTH_MISSES`). `launch_link.py` registers `deja-vu1://` per user (Windows
+  HKCU\Software\Classes, XDG desktop entry + mimeapps.list, a macOS link app); the command never
+  receives the opened address. Tests that start the launcher set `DEJAVU_NO_REGISTER=1`.
+- `offline.html` reconnects quietly for 12 s (90 s during an update) before showing the Start
+  button and, last, the paste blocks; `sw.js` retries a failed navigation for about 4 s and stores
+  the page with `cache: 'reload'`. `POST /api/app/report` (this computer only) is Settings' Copy a
+  report for help: logs, checks and printer links with keys blanked.
+- `start.py` restarts a crashed server (not exit 0, 75, 3 or a
   signal), at most `CRASH_LIMIT` times in `CRASH_WINDOW`. `offline.html` links the online demo.
 - Updates never leave the dashboard down (the owner, 31 October 2026: Install "did nothing", then the offline
   page). `_install_update(background=True)` checks the launcher and idle printers at once (refusals name the
