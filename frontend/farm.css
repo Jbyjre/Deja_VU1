@@ -596,3 +596,26 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 }
 /* A printer that isn't a U1: what it reported about itself, under its name. */
 .fc-kind { margin: -4px 0 8px; font: 600 11.5px/1.35 var(--font-mono); color: var(--text-faint); letter-spacing: .02em; }
+
+/* ---- Your printers, redesigned (the owner's 1 November review): calm cards, no state tint,
+   the state as a dot and the ring; the figures in one row; Open as a quiet button. ---- */
+.fleet-grid .fleet-card { gap: 14px; }
+.fleet-card .fc-head { gap: 10px; }
+.fleet-card .fc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-card .fc-temps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 10px 0;
+  border-top: 1px solid rgba(0, 0, 0, .06); border-bottom: 1px solid rgba(0, 0, 0, .06); }
+.fleet-card .fc-temps span { display: grid; gap: 4px; }
+.fleet-card .fc-temps small { font: 600 10px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .4px; color: var(--text-faint); }
+.fleet-card .fc-temps b { font-size: 13px; }
+.fleet-card .fc-alerts:has(> .fc-alert.ok:only-child) { color: var(--text-dim); }
+.fc-foot { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.fc-foot .fc-open { flex: 1; }
+.fc-foot .fc-web { margin: 0; flex: 0 0 auto; }
+.fleet-card .fc-queue:not(:has(.fcq-head, .fcq-here)) { border: 0; padding: 0; }
+.fleet-grid:not(.is-routing) .fleet-card .fc-queue:not(:has(.fcq-head, .fcq-here)) { display: none; }
+.fleet-card[data-state="lost"] .fc-state { color: var(--bad-text); }
+/* The group commands fold away until a printer is ticked. */
+.fc-bar:not(.is-open) { position: static; padding: 6px 4px; box-shadow: none; background: none; }
+.fc-bar:not(.is-open)::before, .fc-bar:not(.is-open)::after { display: none; }
+.fc-bar:not(.is-open) .fc-count { font-size: 13px; color: var(--text-dim); }
+.fc-bar-actions[hidden] { display: none; }
