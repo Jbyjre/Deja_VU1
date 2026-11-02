@@ -1161,6 +1161,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             # "Is it really working?" in words: the launcher window, Settings and start.py --check show it.
             self._read_json_body()
             return self._send_json(readiness.report(PORT))
+        if route == "/api/app/report":
+            # A text report to paste when asking for help. It names folders on this computer, so only here.
+            self._read_json_body()
+            if not self._this_computer():
+                return self._send_json({"error": "Copy the report on the computer that runs Deja Vu1"}, status=403)
+            return self._send_json({"text": readiness.help_report(PORT)})
         if route == "/api/app/restart":
             self._read_json_body()
             if os.environ.get("DEJAVU_LAUNCHER") != "1":

@@ -196,6 +196,28 @@ class FakeWinreg:
         self.values[(key, name)] = value
 
 
+class HelpReport(unittest.TestCase):
+    def test_keys_tokens_and_passwords_never_leave_in_the_report(self):
+        import readiness
+        text = readiness._SECRET.sub(lambda m: m.group(1) + '[hidden]',
+                                     '{"api_key": "abc123SECRET"} X-Api-Key: zzz9 token=t0k3n password: hunter2')
+        for secret in ('abc123SECRET', 'zzz9', 't0k3n', 'hunter2'):
+            self.assertNotIn(secret, text)
+        self.assertEqual(text.count('[hidden]'), 4)
+
+    def test_the_report_names_the_version_start_up_and_logs(self):
+        import readiness
+        import storage
+        logs = Path(storage.DATA_DIR, "logs")
+        logs.mkdir(parents=True, exist_ok=True)
+        (logs / "server.log").write_text("  POST /api/printer/control/home (answered 502)\n", encoding="utf-8")
+        text = readiness.help_report(8000)
+        self.assertIn("Deja Vu1 help report", text)
+        self.assertIn("Starts by itself:", text)
+        self.assertIn("--- server.log (last lines) ---", text)
+        self.assertIn("POST /api/printer/control/home (answered 502)", text)
+
+
 class OfflinePage(unittest.TestCase):
     page = (ROOT / "frontend" / "offline.html").read_text(encoding="utf-8")
     worker = (ROOT / "frontend" / "sw.js").read_text(encoding="utf-8")
