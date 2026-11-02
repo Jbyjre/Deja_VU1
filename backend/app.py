@@ -158,6 +158,7 @@ API endpoints
   GET  /api/camera                   camera feed + freeze watchdog
   GET  /api/camera/settings | POST   the MJPEG stream address
   GET  /api/camera/stream            the camera, relayed (MJPEG)
+  GET  /api/camera/live              the printer's built-in camera as a live MJPEG stream
   GET  /api/camera/webrtc/settings | POST   optional go2rtc address (low latency)
   POST /api/camera/webrtc/offer      pass a WebRTC offer to go2rtc, return its answer
 
@@ -232,6 +233,8 @@ import http.cookies
 import json
 import os
 import re
+import socket
+import socketserver
 import sys
 import threading
 import time
@@ -256,6 +259,8 @@ import camera
 import color_check
 import comparison
 import colour_map
+import console
+import storage
 import converter_3mf
 import cost_calculator
 import discovery
@@ -540,6 +545,7 @@ def module_routes():
     routes["/api/timelapse/frame"] = "timelapse"
     routes["/api/camera/snapshot"] = "camera"
     routes["/api/camera/stream"] = "camera"
+    routes["/api/camera/live"] = "camera"
     return routes
 
 
@@ -741,13 +747,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         path = getattr(self, "path", "").split("?")[0]
         command = getattr(self, "command", None) or "?"
         if fmt != '"%s" %s %s' or len(args) < 2:
-            sys.stderr.write(f"  {command} {path}: {fmt % args}\n")
+            console.write(f"  {command} {path}: {fmt % args}\n")
             return
         status = str(args[1])
         quiet = ("/api/live/snapshot", "/api/live/events", "/api/app/ready")
         if status[:1] not in ("4", "5") and (command in ("GET", "HEAD") or path in quiet):
             return
-        sys.stderr.write(f"  {command} {path}" + (f" (answered {status})" if status[:1] in ("4", "5") else "") + "\n")
+        # console.write never raises: with no window (sys.stderr missing) a log line
+        # once broke every command's reply.
+        console.write(f"  {command} {path}" + (f" (answered {status})" if status[:1] in ("4", "5") else "") + "\n")
 
     def _module_blocked(self, module_id):
         if module_id and not modules.is_enabled(module_id):
@@ -1056,6 +1064,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             return self._relay_camera()
 
+        if route == "/api/camera/live":
+            if self._module_blocked("camera"):
+                return None
+            if force_disconnected or not connected:
+                return self._send_json({"connected": False, "demo": False})
+            return self._camera_live()
+
         if route in _APP_ROUTES:
             module_id, producer = _APP_ROUTES[route]
             if self._module_blocked(module_id):
@@ -1128,6 +1143,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             if not self._this_computer():
                 return self._send_json({"error": "Change this on the computer that runs Deja Vu1"}, status=403)
+            autostart.remember_choice(storage.DATA_DIR, bool(body.get("on")))
             return self._send_json(autostart.set_on(bool(body.get("on"))))
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
@@ -1158,6 +1174,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if not self._this_computer():
                 return self._send_json({"error": "Stop Deja Vu1 from the computer it runs on. "
                                                  "A phone can't start it again"}, status=403)
+            # Stopped on purpose: the 5-minute check (Task Scheduler) leaves it stopped until it is
+            # started again by hand or the computer restarts.
+            autostart.mark_stopped(storage.DATA_DIR)
             threading.Timer(0.5, self.server.shutdown).start()
             return self._send_json({"stopping": True})
         if route == "/api/app/selfcheck":
@@ -1473,6 +1492,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 second = discovery.probe(other, key)
                 if second["ok"] or second["needs_key"]:
                     result, url = second, other
+            # And the other way round: the U1's web server on port 80 forwards to the same
+            # Moonraker (the door the printer's own web page uses), for when 7125 doesn't answer.
+            web = fleet.web_port_variant(url)
+            if web and not result["ok"] and not result["needs_key"]:
+                third = discovery.probe(web, key)
+                if third["ok"] or third["needs_key"]:
+                    result, url = third, web
             return self._send_json({**result, "url": url})
 
         if route == "/api/printers/login":
@@ -1669,6 +1695,40 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
     # -- the camera relay -------------------------------------------------
 
+    def _camera_live(self):
+        """
+        The printer's built-in camera as one continuous picture stream (MJPEG, which
+        an <img> shows by itself): Deja Vu1 asks the printer for each new picture as
+        soon as the last one arrived, at most LIVE_FPS a second, and sends only
+        pictures that changed. Saves the browser a request per picture.
+        """
+        if not mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+            return self._send_json({"error": "Live pictures come from a real printer. The demo shows single pictures"},
+                                   status=409)
+        frame, mime = mock_moonraker.camera_snapshot()      # a camera that can't start says why, before any picture
+        self.send_response(200)
+        self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=dvframe")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.close_connection = True
+        last, ends = None, time.monotonic() + LIVE_SECONDS
+        while time.monotonic() < ends:
+            asked = time.monotonic()
+            if frame != last:
+                try:
+                    self.wfile.write(b"--dvframe\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                                     + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n")
+                    self.wfile.flush()
+                except OSError:
+                    return None              # the page closed or turned the camera off
+                last = frame
+            time.sleep(max(0.0, 1 / LIVE_FPS - (time.monotonic() - asked)))
+            try:
+                frame, _ = mock_moonraker.camera_snapshot()
+            except (ValueError, OSError):
+                return None                  # the page falls back to single pictures and shows the reason
+        return None
+
     def _relay_camera(self):
         upstream = camera.open_stream()
         ctype = upstream.headers.get("Content-Type", "")
@@ -1832,7 +1892,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
 class DejaVuServer(ThreadingHTTPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    # On Windows the usual "reuse address" option lets a second program take the same
+    # port while Deja Vu1 still holds it, and Windows then hands each browser connection
+    # to either one. There the port is held exclusively instead, so a second copy is
+    # refused and says so (exit code PORT_IN_USE).
+    allow_reuse_address = os.name != "nt"
+
+    def server_bind(self):
+        exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
+        if os.name == "nt" and exclusive is not None:
+            self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
+        socketserver.TCPServer.server_bind(self)
+        # HTTPServer would look up the computer's full network name here, which can take
+        # seconds on Windows networks where that lookup times out. Nothing uses it.
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
 
 
 def _require_idle_for_update():
@@ -1930,6 +2005,8 @@ def _print_phone_qr(url):
         print("  " + line)
 
 
+LIVE_FPS = 15                  # most pictures a second the live camera stream sends
+LIVE_SECONDS = 30 * 60         # a live stream ends after this; the page starts a new one
 PORT_IN_USE = 3                # exit code: another program holds the port (start.py reads it)
 
 
@@ -1960,6 +2037,11 @@ def _bind(attempts=10, wait=0.5):
 
 
 def main():
+    # Before anything prints: a start without a window gets a log file for its
+    # messages, and no message ever waits on a paused window.
+    console.ensure_streams(storage.DATA_DIR, "server")
+    console.buffered()
+    console.disable_quick_edit()
     server = _bind()
     live_feed.start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()

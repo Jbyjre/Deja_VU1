@@ -178,6 +178,35 @@ def _program(port):
     return _check('program', 'Program', 'ok', f'Version {version}, running with its launcher on port {port}')
 
 
+def _keeps_running():
+    """Whether Deja Vu1 runs without a window and comes back by itself (sign-in, wake, a stop)."""
+    import autostart
+    import storage
+    out = []
+    if os.environ.get('DEJAVU_LAUNCHER') == '1' and os.environ.get('DEJAVU_BACKGROUND') != '1':
+        out.append(_check('window', 'Window', 'note', 'Deja Vu1 runs inside a window here, so closing that window '
+                          'stops it', 'Start it once with the double-click launcher or the Start block: from 0.15.0 '
+                          'it then runs without a window'))
+    try:
+        a = autostart.status()
+    except Exception as exc:
+        return out + [_check('autostart', 'Starts itself', 'note', f"Couldn't read it: {exc}")]
+    if not a.get('supported'):
+        return out
+    if a.get('on') and a.get('how') == 'task':
+        out.append(_check('autostart', 'Starts itself', 'ok', 'At sign-in and after waking, and checked every '
+                          '5 minutes (Windows Task Scheduler)'))
+    elif a.get('on'):
+        out.append(_check('autostart', 'Starts itself', 'ok', 'At sign-in' + (
+            ', and again if it stops with an error' if a.get('keeps_running') else '')))
+    elif autostart.chosen_off(storage.DATA_DIR):
+        out.append(_check('autostart', 'Starts itself', 'note', 'Off, as you chose', 'Settings > Desktop app'))
+    else:
+        out.append(_check('autostart', 'Starts itself', 'note', 'Off: after a restart Deja Vu1 waits to be '
+                          'started', 'Settings > Desktop app > Start Deja Vu1 when this computer starts'))
+    return out
+
+
 def _updates():
     import app_updates
     job = app_updates.job()
@@ -204,7 +233,7 @@ def _updates():
 def report(port):
     """Every check, the overall answer and which block helps next."""
     checks = []
-    for fn in (lambda: [_program(port)], lambda: [_pages()], lambda: [_demo()], _printers,
+    for fn in (lambda: [_program(port)], _keeps_running, lambda: [_pages()], lambda: [_demo()], _printers,
                lambda: [_saved_data()], lambda: [_updates()]):
         try:
             checks.extend(fn())

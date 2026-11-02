@@ -614,7 +614,11 @@ async function postJSON(url, payload) {
   } catch (_) {
     // The server stopped, or Wi-Fi dropped. Report it like any refusal so
     // no button is left saying "Sending…" forever.
-    return { ok: false, status: 0, body: { error: "Couldn't reach the dashboard server - is it still running?" } };
+    // A command may have reached the printer before the reply was lost, so say what isn't known.
+    const control = /\/api\/printer\/(control|command|pause|resume|cancel|home)/.test(String(url));
+    return { ok: false, status: 0, lost: true, body: { error: control
+      ? 'Deja Vu1 didn\u2019t answer, so it isn\u2019t known whether the printer got this. Check the printer before sending it again'
+      : 'Deja Vu1 didn\u2019t answer. It may be restarting; try again in a moment' } };
   }
   const body = await response.json().catch(() => ({}));
   if (response.status === 401 && body.pairing_required) showPairGate();
@@ -2620,13 +2624,16 @@ function serverStrip(text, help) {
     const el = document.createElement('div');
     el.className = 'server-lost';
     el.setAttribute('role', 'status');
-    el.innerHTML = '<b></b> <span></span> <a href="offline.html">How to start it again</a>';
+    el.innerHTML = '<b></b> <span></span> <a class="sl-start" href="deja-vu1://start" hidden>Start Deja Vu1</a> <a href="offline.html">How to start it again</a>';
     document.body.appendChild(el);
     serverWatch.el = el;
   }
   serverWatch.el.querySelector('b').textContent = text;
   serverWatch.el.querySelector('span').textContent = help;
-  serverWatch.el.querySelector('a').hidden = !help.includes('start');
+  const longGone = help.includes('start');
+  serverWatch.el.querySelector('a[href="offline.html"]').hidden = !longGone;
+  // The start link only works on the computer Deja Vu1 runs on (it registers it there).
+  serverWatch.el.querySelector('.sl-start').hidden = !longGone || !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   serverWatch.el.hidden = false;
 }
 async function watchServer() {
