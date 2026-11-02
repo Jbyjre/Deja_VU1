@@ -21,6 +21,13 @@ The same change brought the colour checker design in
 [`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
 release; both ride along with the next one.
 
+**27 October 2026, launch film version 18.** The product page and the README now
+show a 75-second film (version 18) in place of the 60-second version 17. It tells
+the same story with no new information, at a calmer pace: the music slower, each
+caption on screen longer, fewer things moving at once, and the scenes filmed again
+from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
+run passed on 27 October 2026). Not a release.
+
 ## 0.14.0 (1 November 2026): Your printer, its own page
 
 - Each printer has its own page (Printer, where Control was): the 3D twin with the camera and a Move pad beside it, temperatures with PLA, PETG and TPU warm-up buttons, extrude and retract, speed, flow, part fan and pressure advance, the printer's own macros and bed mesh, motors off, the G-code console and an emergency stop. Opening a printer goes there.
