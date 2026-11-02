@@ -1859,6 +1859,18 @@ class MoonrakerPrinter:
                                       query={name: "module_sequence,channel_sequence"})
             return {"heads": printer_extras.feeding_from(_obj(_obj(reply, "status"), name), heads),
                     "macro": "AUTO_FEEDING"}
+        if kind == "files":
+            # Moonraker's own list, newest first (file_manager.py get_file_list, list_format).
+            listed = self.http.request("GET", "/server/files/list", query={"root": "gcodes"})
+            return {"files": printer_extras.files_from(listed)}
+        if kind == "job_queue":
+            try:
+                reply = self.http.request("GET", "/server/job_queue/status", expected=(404,))
+            except PrinterRefused as exc:
+                if getattr(exc, "status", None) != 404:
+                    raise
+                return {"queued_jobs": [], "queue_state": None, "none": "This printer's Moonraker has no job queue"}
+            return printer_extras.job_queue_from(reply)
         raise ValueError(f"Unknown reading: {kind}")
 
     def diagnostics(self):

@@ -75,7 +75,60 @@ window.PrinterPage = (() => {
     return cam;
   }
   const visible = el => el && el.offsetParent !== null && !document.hidden;
+  /* WebRTC, where the printer's camera offers it (the Extended Firmware's does: backend/webrtc_relay.py).
+   * The three signalling messages pass through Deja Vu1; the video comes straight from the printer.
+   * No outside server is asked for help connecting (no STUN), so it works where the browser can
+   * reach the printer directly; elsewhere the picture stream below takes over after 8 seconds. */
+  const rtcSend = body => postJSON(api('/api/camera/webrtc'), body).then(r => {
+    if (!r.ok) throw new Error(r.body.error || `HTTP ${r.status}`);
+    return r.body;
+  });
+  function closeRtc(cam) {
+    if (cam.pc) { try { cam.pc.close(); } catch (_) { /* already closed */ } cam.pc = null; }
+    if (cam.video) { cam.video.srcObject = null; cam.video.remove(); cam.video = null; }
+  }
+  async function startRtc(cam, run) {
+    try {
+      const offer = await rtcSend({ type: 'request', iceServers: [], keepAlive: true });
+      if (run !== cam.run || !offer || !offer.sdp) return false;
+      const pc = cam.pc = new RTCPeerConnection({ iceServers: Array.isArray(offer.iceServers) ? offer.iceServers : [] });
+      const video = cam.video = document.createElement('video');
+      video.className = 'pcam-img pcam-video';
+      video.muted = true; video.autoplay = true; video.playsInline = true; video.hidden = true;
+      video.setAttribute('aria-label', 'Live video from the selected printer\'s camera');
+      cam.frame.prepend(video);
+      pc.addTransceiver('video', { direction: 'recvonly' });
+      // The printer checks the link with a "keepalive" data channel and expects "pong".
+      pc.ondatachannel = e => { if (e.channel.label === 'keepalive') e.channel.onmessage = () => { try { e.channel.send('pong'); } catch (_) { /* closing */ } }; };
+      pc.ontrack = e => { video.srcObject = e.streams[0] || new MediaStream([e.track]); };
+      pc.onicecandidate = e => {
+        if (e.candidate && run === cam.run) rtcSend({ type: 'remote_candidate', id: offer.id, candidates: [e.candidate.toJSON()] }).catch(() => {});
+      };
+      await pc.setRemoteDescription({ type: offer.type || 'offer', sdp: offer.sdp });
+      await pc.setLocalDescription(await pc.createAnswer());
+      await rtcSend({ type: pc.localDescription.type, id: offer.id, sdp: pc.localDescription.sdp });
+      const playing = await new Promise(done => {
+        const t = setTimeout(() => done(false), 8000);
+        video.onplaying = () => { clearTimeout(t); done(true); };
+        pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed') { clearTimeout(t); done(false); } };
+      });
+      if (!playing || run !== cam.run) { closeRtc(cam); return false; }
+      video.hidden = false;
+      cam.frame.dataset.mode = 'stream';
+      setText(cam.mode, 'Live video (WebRTC)');
+      pc.onconnectionstatechange = () => {
+        if (run === cam.run && ['failed', 'disconnected', 'closed'].includes(pc.connectionState)) {
+          closeRtc(cam); cam.frame.dataset.mode = 'off'; startCam(cam);
+        }
+      };
+      return true;
+    } catch (_) {
+      closeRtc(cam);
+      return false;
+    }
+  }
   function stopCam(cam, why) {
+    closeRtc(cam);
     cam.run++;
     clearTimeout(cam.timer);
     cam.img.onload = cam.img.onerror = null;
@@ -110,6 +163,17 @@ window.PrinterPage = (() => {
       cam.img.onerror = () => { if (run === cam.run) { stopCam(cam, 'The camera stream stopped'); note(cam, 'Check the address under Camera & time-lapses, then turn it on again.'); } };
       cam.img.src = `/api/camera/stream?t=${Date.now()}`;
       return;
+    }
+    if (!demoOn && window.RTCPeerConnection && cam.noRtc !== currentPrinter) {
+      const rtc = await getJSON(api('/api/camera/webrtc')).catch(() => null);
+      if (run !== cam.run) return;
+      if (rtc && rtc.available) {
+        setText(cam.mode, 'Connecting (WebRTC)…');
+        if (await startRtc(cam, run)) return;
+        if (run !== cam.run) return;
+        note(cam, 'WebRTC video didn\'t connect from here, so the camera shows pictures instead.');
+      }
+      cam.noRtc = currentPrinter;           // this printer: no WebRTC until the page is reloaded
     }
     cam.frame.dataset.mode = 'pictures';
     // A real printer's built-in camera comes as one live stream (Deja Vu1 fetches each new

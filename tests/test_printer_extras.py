@@ -252,3 +252,41 @@ class TestRecognisingAU1(unittest.TestCase):
         self.addCleanup(mock_moonraker.detach_real_printer, "real-n")
         self.assertTrue(wait_for(printer.is_connected), printer.diagnostics()["last_error"])
         self.assertFalse(printer.snapshot()["machine"]["reference"])
+
+
+class TestThePrintersOwnFiles(unittest.TestCase):
+    def setUp(self):
+        fast(self)
+        import file_library
+        self.lib = file_library
+        self.fake = FakeMoonraker()
+        self.addCleanup(self.fake.close)
+        self.fake.files["sliced/benchy.gcode"] = b"G1 X1 Y1\n" * 10
+        self.fake.files["notes.txt"] = b"not a print"
+        self.fake.job_queue = [{"filename": "next.gcode", "job_id": "0001", "time_added": 1.0, "time_in_queue": 5.0}]
+        self.printer = mock_moonraker.attach_real_printer("real-f", "File U1", self.fake.url)
+        self.addCleanup(mock_moonraker.detach_real_printer, "real-f")
+        self.assertTrue(wait_for(self.printer.is_connected), self.printer.diagnostics()["last_error"])
+        selection = mock_moonraker.selection_only("real-f")
+        selection.__enter__()
+        self.addCleanup(selection.__exit__, None, None, None)
+
+    def test_files_and_queue_are_read_from_moonraker(self):
+        files = mock_moonraker.printer_reading("files")["files"]
+        self.assertEqual([f["path"] for f in files], ["sliced/benchy.gcode"])        # G-code only
+        queue = mock_moonraker.printer_reading("job_queue")
+        self.assertEqual(queue["queued_jobs"][0]["filename"], "next.gcode")
+
+    def test_a_file_is_copied_into_the_library_for_confirm_print(self):
+        entry = mock_moonraker.fetch_printer_file("sliced/benchy.gcode")
+        self.addCleanup(lambda: self.lib.delete("benchy.gcode") if self.lib.exists("benchy.gcode") else None)
+        self.assertEqual(entry["name"], "benchy.gcode")
+        self.assertEqual(self.lib.read_bytes("benchy.gcode"), b"G1 X1 Y1\n" * 10)
+        with self.assertRaises(ValueError):
+            mock_moonraker.fetch_printer_file("../etc/passwd")
+
+    def test_demo_printers_hold_no_files(self):
+        with mock_moonraker.selection_only("u1-workshop"):
+            self.assertEqual(mock_moonraker.printer_reading("files"), {"files": [], "demo": True})
+            with self.assertRaisesRegex(ValueError, "Demo printers"):
+                mock_moonraker.fetch_printer_file("x.gcode")

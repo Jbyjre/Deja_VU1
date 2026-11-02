@@ -80,6 +80,7 @@ class FakeMoonraker:
         self.http_faults = {}              # path -> {"status", "body", "delay", "truncate", "html"}
         self.webcams = []                  # what /server/webcams/list answers (Moonraker's webcam.py)
         self.webcam_picture = None         # bytes served at /webcam/snapshot.jpg and as /webcam/stream.mjpg
+        self.webrtc_messages = []          # every POST to /webcam/webrtc
         self.camera_params = []            # every camera.* params received (u1-moonraker wants req_id)
         self.camera_failed = None          # repeater.py's {"state": "failed", "message": ...} reply
         self.users = {}                    # username -> password; /access/login hands out a token
@@ -426,6 +427,15 @@ class FakeMoonraker:
                     if meta is None:
                         return self._error(404, f"Metadata not available for <{q.get('filename')}>")
                     return self._reply(200, {"result": meta})
+                if parsed.path == "/server/files/list":
+                    # file_manager.py get_file_list(list_format=True): newest first, path/modified/size.
+                    items = [{"path": n, "modified": 1_700_000_000.0 + i, "size": len(d), "permissions": "rw"}
+                             for i, (n, d) in enumerate(fake.files.items())]
+                    return self._reply(200, {"result": sorted(items, key=lambda f: -f["modified"])})
+                if parsed.path == "/server/job_queue/status":
+                    # job_queue.py _handle_queue_status
+                    return self._reply(200, {"result": {"queued_jobs": list(getattr(fake, "job_queue", [])),
+                                                        "queue_state": "ready"}})
                 if parsed.path == "/machine/system_info":
                     if fake.device_name is None:
                         return self._error(404, "Not Found")
@@ -457,6 +467,15 @@ class FakeMoonraker:
                 raw = self.rfile.read(length) if length else b""
                 if self._fault(parsed.path):
                     return None
+                if parsed.path == "/webcam/webrtc":
+                    # The Extended Firmware's camera signalling (paxx12/v4l2-mpp stream-http):
+                    # "request" -> an offer with an id; "answer" and "remote_candidate" -> {}.
+                    msg = json.loads(raw or b"{}")
+                    fake.webrtc_messages.append(msg)
+                    if msg.get("type") == "request":
+                        return self._reply(200, {}, raw=json.dumps({"type": "offer", "id": "pc-1",
+                                                                     "sdp": "v=0\r\n", "iceServers": []}).encode())
+                    return self._reply(200, {}, raw=b"{}")
                 if parsed.path == "/access/login":
                     # authorization.py: no sign-in needed to sign in; a wrong
                     # password is "Invalid Password", an unknown user "Unregistered User".

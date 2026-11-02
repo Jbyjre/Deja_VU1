@@ -266,6 +266,7 @@ import converter_3mf
 import cost_calculator
 import discovery
 import refind
+import webrtc_relay
 import file_library
 import filament_inventory
 import spoolman_bridge
@@ -437,6 +438,8 @@ _DATA_ROUTES = {
     "/api/printer/gcode-help": ("printer_control", lambda q: mock_moonraker.printer_reading("help")),
     "/api/printer/temperatures": ("printer_control", lambda q: mock_moonraker.printer_reading("temperatures")),
     "/api/printer/feeding": ("printer_control", lambda q: mock_moonraker.printer_reading("feeding")),
+    "/api/printer/files": ("printer_control", lambda q: mock_moonraker.printer_reading("files")),
+    "/api/printer/job-queue": ("printer_control", lambda q: mock_moonraker.printer_reading("job_queue")),
     "/api/filament/check": ("filament_inventory", lambda q: filament_inventory.check_job_requirements()),
     "/api/filament/forecast": ("filament_inventory", lambda q: {
         "spools": filament_inventory.forecast(mock_moonraker.get_print_history())}),
@@ -555,6 +558,7 @@ def module_routes():
     routes["/api/camera/snapshot"] = "camera"
     routes["/api/camera/stream"] = "camera"
     routes["/api/camera/live"] = "camera"
+    routes["/api/camera/webrtc"] = "camera"
     return routes
 
 
@@ -1079,6 +1083,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             return self._relay_camera()
 
+        if route == "/api/camera/webrtc":
+            # Whether the selected printer's camera offers WebRTC (the Extended Firmware's does).
+            if self._module_blocked("camera"):
+                return None
+            printer = mock_moonraker.real_printer(mock_moonraker.selected_printer_id())
+            if printer is None or not printer.is_connected():
+                return self._send_json({"available": False, "service": webrtc_relay.SERVICE})
+            return self._send_json(webrtc_relay.info(printer))
+
         if route == "/api/camera/live":
             if self._module_blocked("camera"):
                 return None
@@ -1549,6 +1562,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("camera"):
                 return None
             return self._send_json(camera.save_settings(self._read_json_body()))
+
+        if route == "/api/printer/files/fetch":
+            # A file on the printer itself, copied into the library so Confirm Print can check it.
+            if self._module_blocked("printer_control") or self._module_blocked("file_library"):
+                return None
+            body = self._read_json_body()
+            return self._send_json(mock_moonraker.fetch_printer_file(body.get("path")))
+
+        if route == "/api/camera/webrtc":
+            # One WebRTC signalling message to the printer's own camera (webrtc_relay.py).
+            if self._module_blocked("camera"):
+                return None
+            printer = mock_moonraker.real_printer(mock_moonraker.selected_printer_id())
+            if printer is None or not printer.is_connected():
+                raise ValueError("Choose a connected printer first. Demo printers have no camera")
+            return self._send_json(webrtc_relay.signal(printer, self._read_json_body()))
 
         if route == "/api/camera/find":
             # Reads the selected printer's camera list and saves the first

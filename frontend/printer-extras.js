@@ -129,6 +129,33 @@ window.PrinterExtras = (() => {
     const m = Math.max(Math.abs(lo), Math.abs(hi)) || 1, k = Math.max(-1, Math.min(1, v / m));
     return k < 0 ? `oklch(${(92 + 30 * k).toFixed(0)}% ${(0.13 * -k).toFixed(3)} 250)` : `oklch(${(92 - 26 * k).toFixed(0)}% ${(0.15 * k).toFixed(3)} 45)`;
   }
+  /* The mesh as a surface seen from above at an angle, heights exaggerated so a tenth of a
+   * millimetre shows. Quads are painted far to near (no WebGL needed), each in its map colour. */
+  let meshView = 'map', meshAngle = 45;
+  function mesh3d(m) {
+    const P = m.probed, rows = P.length, cols = P[0].length, W = 320, H = 260;
+    const span = Math.max(1e-6, m.highest - m.lowest), lift = 0.9 / span;   // the full range rises 0.9 of the plate's half-width
+    const a = meshAngle * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a);
+    const pt = (r, c) => {
+      const x = cols > 1 ? c / (cols - 1) * 2 - 1 : 0, y = rows > 1 ? r / (rows - 1) * 2 - 1 : 0;
+      const rx = x * ca - y * sa, ry = x * sa + y * ca, z = (P[r][c] - (m.lowest + m.highest) / 2) * lift;
+      return { sx: W / 2 + (rx - ry) * 0.82 * 92, sy: H / 2 + (rx + ry) * 0.47 * 92 - z * 92, d: rx + ry };
+    };
+    const quads = [];
+    for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
+      const q = [pt(r, c), pt(r, c + 1), pt(r + 1, c + 1), pt(r + 1, c)];
+      const avg = (P[r][c] + P[r][c + 1] + P[r + 1][c + 1] + P[r + 1][c]) / 4;
+      quads.push({ q, d: q.reduce((t, p) => t + p.d, 0) / 4, fill: meshColour(avg, m.lowest, m.highest) });
+    }
+    quads.sort((u, v) => u.d - v.d);
+    const front = pt(0, (cols - 1) / 2 | 0);
+    // Fit the picture to the surface (and the Front label) so a turn never leaves empty space.
+    const xs = quads.flatMap(({ q }) => q.map(p => p.sx)), ys = quads.flatMap(({ q }) => q.map(p => p.sy)).concat(front.sy + 18);
+    const x0 = Math.min(...xs) - 8, y0 = Math.min(...ys) - 8, vw = Math.max(...xs) + 8 - x0, vh = Math.max(...ys) + 4 - y0;
+    return `<svg viewBox="${x0.toFixed(0)} ${y0.toFixed(0)} ${vw.toFixed(0)} ${vh.toFixed(0)}" class="mesh-3d" role="img" aria-label="Bed mesh as a surface, heights exaggerated, turned ${meshAngle} degrees">
+      ${quads.map(({ q, fill }) => `<path d="M${q.map(p => `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`).join('L')}Z" fill="${fill}"/>`).join('')}
+      <text x="${front.sx.toFixed(0)}" y="${(front.sy + 16).toFixed(0)}" class="mesh-3d-front" text-anchor="middle">Front</text></svg>`;
+  }
   function drawMesh() {
     const host = $('pp-mesh-body');
     if (!host) return;
@@ -143,8 +170,13 @@ window.PrinterExtras = (() => {
       // Row 0 is the front of the bed (Y at mesh_min): drawn at the bottom, as you see the bed from the front.
       const cells = m.probed.map((row, r) => row.map((v, c) => `<rect x="${c}" y="${rows - 1 - r}" width="1" height="1" fill="${meshColour(v, m.lowest, m.highest)}"><title>${v.toFixed(3)} mm</title></rect>`).join('')).join('');
       const lo = m.mesh_min || [0, 0], hi = m.mesh_max || [0, 0];
-      map = `<div class="mesh-map"><svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" role="img" aria-label="Bed mesh, ${rows} by ${cols} points, ${m.range.toFixed(3)} mm from lowest to highest">${cells}</svg>
-        <span class="mesh-axis mesh-front">Front</span></div>
+      map = `<div class="mesh-views"><div class="seg tc-range" role="radiogroup" aria-label="Show the mesh as">
+          <button type="button" role="radio" class="pchip" data-mview="map" aria-checked="${meshView === 'map'}">Map</button>
+          <button type="button" role="radio" class="pchip" data-mview="3d" aria-checked="${meshView === '3d'}">3D</button></div>
+          ${meshView === '3d' ? `<div class="mesh-turn"><button type="button" class="pchip" data-mturn="-45" aria-label="Turn left">⟲</button><button type="button" class="pchip" data-mturn="45" aria-label="Turn right">⟳</button></div>` : ''}</div>
+        ${meshView === '3d' ? `<div class="mesh-surface">${mesh3d(m)}</div><p class="field-hint mesh-note">Heights are exaggerated so the shape shows; the figures below are the real ones.</p>`
+          : `<div class="mesh-map"><svg viewBox="0 0 ${cols} ${rows}" preserveAspectRatio="none" role="img" aria-label="Bed mesh, ${rows} by ${cols} points, ${m.range.toFixed(3)} mm from lowest to highest">${cells}</svg>
+        <span class="mesh-axis mesh-front">Front</span></div>`}
         <div class="mesh-scale"><span>${m.lowest.toFixed(3)} mm</span><i style="background:linear-gradient(90deg, ${meshColour(m.lowest, m.lowest, m.highest)}, ${meshColour(0, m.lowest, m.highest)}, ${meshColour(m.highest, m.lowest, m.highest)})"></i><span>+${m.highest.toFixed(3)} mm</span></div>
         <p class="mesh-facts"><b>${m.range.toFixed(3)} mm</b> from the lowest to the highest point · ${rows} × ${cols} points · X ${lo[0]} to ${hi[0]}, Y ${lo[1]} to ${hi[1]} mm</p>`;
     }
@@ -157,6 +189,8 @@ window.PrinterExtras = (() => {
         ${m.profile ? `<button type="button" class="btn small" data-mesh="clear" ${off}>Stop using it</button>` : ''}
       </div>
       <p class="field-hint">${m.profile ? `In use: <b>${esc(m.profile)}</b>.` : 'No mesh in use.'}${busy(s) ? ' Changing the mesh waits until the print ends.' : ''}</p>`;
+    host.querySelectorAll('[data-mview]').forEach(b => b.addEventListener('click', () => { meshView = b.dataset.mview; drawMesh(); }));
+    host.querySelectorAll('[data-mturn]').forEach(b => b.addEventListener('click', () => { meshAngle = (meshAngle + Number(b.dataset.mturn) + 360) % 360; drawMesh(); }));
     host.querySelectorAll('[data-mesh]').forEach(b => b.addEventListener('click', async () => {
       const act = b.dataset.mesh;
       let out;
@@ -294,9 +328,14 @@ window.PrinterExtras = (() => {
   async function drawPrint() {
     const host = $('pp-print-body');
     if (!host) return;
-    const data = await read('/api/files');
+    const [data, onPrinter, queue] = await Promise.all([read('/api/files'),
+      canDrive(state) ? read('/api/printer/files') : null, canDrive(state) ? read('/api/printer/job-queue') : null]);
     const list = ((data && data.files) || []).filter(f => /\.gcode$/i.test(f.name)).slice(0, 6);
+    const theirs = live(onPrinter) && !onPrinter.demo ? (onPrinter.files || []).slice(0, 8) : [];
+    const queued = live(queue) && !queue.demo ? queue.queued_jobs || [] : [];
     const off = !canDrive(state) || busy(state) ? 'disabled' : '';
+    const mb = b => b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+    const when = t => t ? new Date(t * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
     host.innerHTML = `
       <div class="pf-upload"><label class="btn" for="pp-print-file">Choose a G-code file…</label>
         <input type="file" id="pp-print-file" accept=".gcode,.gco,.g" hidden>
@@ -305,8 +344,19 @@ window.PrinterExtras = (() => {
         <button type="button" class="btn small" data-preview="${esc(f.name)}">Preview</button>
         <button type="button" class="btn small primary" data-print="${esc(f.name)}" ${off}>Print…</button></li>`).join('')}</ul>`
         : '<p class="field-hint">No G-code files in your library yet.</p>'}
+      ${theirs.length ? `<p class="mc-label">On the printer</p><ul class="pf-list">${theirs.map(f => `<li><span class="pf-name" title="${esc(f.path)}">${esc(f.path)}</span>
+        <small class="pf-meta">${esc(mb(f.size))} · ${esc(when(f.modified))}</small>
+        <button type="button" class="btn small" data-fetch="${esc(f.path)}" title="Copies it into your files, where Confirm Print checks it before it starts">Copy to my files</button></li>`).join('')}</ul>
+        <p class="field-hint">Files the printer holds (sent from a slicer or a USB stick). Copy one to your files to preview it and start it through Confirm Print.</p>` : ''}
+      ${queued.length ? `<p class="mc-label">The printer's own queue${queue.queue_state ? ` (${esc(queue.queue_state)})` : ''}</p>
+        <ul class="pf-list">${queued.map(j => `<li><span class="pf-name">${esc(j.filename)}</span></li>`).join('')}</ul>` : ''}
       ${busy(state) ? '<p class="field-hint">Printing waits until this print ends.</p>' : ''}`;
     host.querySelectorAll('[data-preview]').forEach(b => b.addEventListener('click', () => Workshop.openFile(b.dataset.preview, b)));
+    host.querySelectorAll('[data-fetch]').forEach(b => b.addEventListener('click', async () => {
+      const r = await runCommand(b, '/api/printer/files/fetch', { path: b.dataset.fetch },
+        { sending: 'Copying…', done: `${b.dataset.fetch.split('/').pop()} copied to your files`, failed: 'Couldn\'t copy it' });
+      if (r.ok) { Workshop.loadFiles(); drawPrint(); }
+    }));
     host.querySelectorAll('[data-print]').forEach(b => b.addEventListener('click', () => Workshop.openConfirm(b.dataset.print, b)));
     $('pp-print-file').addEventListener('change', async e => {
       const file = e.target.files[0];
