@@ -1127,7 +1127,8 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
   /* Without Stop, four tools make a tidy two-by-two grid: Check it all works takes Stop's place. */
   #vc-manage #app-ready { grid-column: auto; border-left: 1px solid oklch(30% 0.02 265 / .12); }
   .vc-history > li:nth-child(n+3) { display: none; }
-  #module-list:not(.is-open) > .modrow:nth-child(n+7) { display: none; }
+  #module-list:not(.is-open):not(.is-finding) .mod-group:not(:first-of-type),
+  #module-list:not(.is-open):not(.is-finding) .mod-group .modrow:nth-of-type(n+7) { display: none; }
   .mod-more { display: flex; justify-content: center; margin-top: 4px; }
 
   :root { --orb: 44px; }

@@ -2162,44 +2162,90 @@ function initRepeatSettings() {
 async function loadModules() {
   const data = await getJSON('/api/modules');
   const host = $('module-list');
-  const statusBadge = { ready: 'badge-live', hardware_pending: 'badge-sim', optional: 'badge-optional' };
+  const list = data.modules || [];
+  if (!host || !list.length) return;
+  // The group heading says how ready each module is, so the rows don't repeat it.
   const statusLabel = { ready: 'Ready today', hardware_pending: 'Hardware pending', optional: 'Optional' };
-
-  host.innerHTML = (data.modules || []).map(m => `
-    <div class="modrow well" style="margin-bottom:8px; border-radius:14px;">
-      <div style="flex:1;">
-        <div class="mod-name">${esc(m.name)} <span class="badge ${statusBadge[m.status] || 'badge-sim'}">${statusLabel[m.status] || m.status}</span></div>
+  const ids = list.map(m => m.id).join(',');
+  // Built once; after that a reload only moves the switches that changed, so turning a
+  // module on or off never makes the list jump, flash or fold back up.
+  if (host.dataset.ids === ids) {
+    list.forEach(m => {
+      const input = host.querySelector(`[data-module="${CSS.escape(m.id)}"]`);
+      if (input && !input.disabled && input.checked !== m.enabled) input.checked = m.enabled;
+      const row = input && input.closest('.modrow');
+      if (row) row.classList.toggle('is-on', m.enabled);
+    });
+    modCounts(host);
+    return;
+  }
+  host.dataset.ids = ids;
+  const groups = [['ready', 'Ready today'], ['optional', 'Optional extras'], ['hardware_pending', 'Need extra hardware']];
+  const row = m => `
+    <div class="modrow well ${m.enabled ? 'is-on' : ''}" data-mod-row="${esc(m.id)}" data-find="${esc((m.name + ' ' + m.description).toLowerCase())}">
+      <div class="mod-text">
+        <div class="mod-name">${esc(m.name)}</div>
         <div class="mod-desc">${esc(m.description)}</div>
       </div>
+      <span class="mod-saving" aria-live="polite"></span>
       <label class="switch" style="gap:0;">
         <input type="checkbox" ${m.enabled ? 'checked' : ''} data-module="${esc(m.id)}" aria-label="${esc(m.name)}">
-        <span class="switch-track ${m.enabled ? 'is-on' : ''}" aria-hidden="true"><span class="switch-knob"></span></span>
+        <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
       </label>
-    </div>`).join('')
+    </div>`;
+  host.innerHTML = `
+    <div class="mod-tools"><label class="sr-only" for="mod-find">Find a module</label>
+      <input type="search" id="mod-find" placeholder="Find a module…" autocomplete="off" spellcheck="false">
+      <span class="mod-count" id="mod-count"></span></div>
+    ${groups.map(([status, title]) => {
+      const ms = list.filter(m => (statusLabel[m.status] ? m.status : 'optional') === status);
+      return ms.length ? `<section class="mod-group" data-group="${status}"><h3 class="mod-group-title">${title}</h3>${ms.map(row).join('')}</section>` : '';
+    }).join('')}
+    <p class="log-empty mod-none" hidden>No module matches that.</p>`
     // A phone shows the first few; the rest are one tap away (theme.css).
-    + `<button type="button" class="btn block mod-more" aria-expanded="false">Show all ${(data.modules || []).length} modules</button>`;
+    + `<button type="button" class="btn block mod-more" aria-expanded="false">Show all ${list.length} modules</button>`;
+  modCounts(host);
   host.querySelector('.mod-more').addEventListener('click', e => {
     const open = host.classList.toggle('is-open');
     e.currentTarget.setAttribute('aria-expanded', String(open));
-    e.currentTarget.textContent = open ? 'Show fewer' : `Show all ${(data.modules || []).length} modules`;
+    e.currentTarget.textContent = open ? 'Show fewer' : `Show all ${list.length} modules`;
+  });
+  $('mod-find').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    host.classList.toggle('is-finding', Boolean(q));
+    let shown = 0;
+    host.querySelectorAll('.modrow').forEach(r => { const hit = !q || r.dataset.find.includes(q); r.hidden = !hit; if (hit) shown++; });
+    host.querySelectorAll('.mod-group').forEach(g => { g.hidden = !g.querySelector('.modrow:not([hidden])'); });
+    host.querySelector('.mod-none').hidden = shown > 0;
   });
 
-  // The switch stays where you put it but dims while the server saves it;
+  // The switch moves at once and says "Saving…" while the server saves it;
   // if the server says no, it goes back and says why.
   host.querySelectorAll('[data-module]').forEach(input => {
     input.addEventListener('change', async () => {
-      const want = input.checked;
+      const want = input.checked, rowEl = input.closest('.modrow'), note = rowEl.querySelector('.mod-saving');
       input.disabled = true;
+      rowEl.classList.toggle('is-on', want);
+      note.textContent = 'Saving…';
       const { ok, body } = await postJSON(api(`/api/modules/${input.dataset.module}/toggle`), { enabled: want });
+      input.disabled = false;
       if (!ok) {
         input.checked = !want;
-        input.disabled = false;
+        rowEl.classList.toggle('is-on', !want);
+        note.textContent = '';
         toast(`Couldn't turn ${input.getAttribute('aria-label')} ${want ? 'on' : 'off'}: ${body.error || 'the server refused'}`, 'bad', 6000);
         return;
       }
+      note.textContent = want ? 'On' : 'Off';
+      setTimeout(() => { if (note.textContent === (want ? 'On' : 'Off')) note.textContent = ''; }, 1600);
+      modCounts(host);
       refreshAll();
     });
   });
+}
+function modCounts(host) {
+  const all = host.querySelectorAll('[data-module]'), on = [...all].filter(i => i.checked).length;
+  setText($('mod-count'), `${on} of ${all.length} on`);
 }
 
 /* ---- Pairing ------------------------------------------------------------*/
