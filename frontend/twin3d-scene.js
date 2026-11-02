@@ -256,8 +256,10 @@ const Twin3DScene = (() => {
           frame(box(geo(), 316, -56, z, 336, 304, z + 20, 1.5));
         }
       }
-      // A base plate the frame stands on.
-      add(box(geo(), -80, -82, 22, 350, 340, 40, 2), 'alu', { frame: true });
+      // A base plate the frame stands on. Its top stays 1.5 mm under the case's inside floor
+      // (34 to 40 mm): at the same height the two fought over every pixel, which showed as a
+      // jagged flicker under the bed, through the door, whenever the model turned.
+      add(box(geo(), -80, -82, 22, 350, 340, 38.5, 2), 'alu', { frame: true });
       // CoreXY motors at the back corners, shafts up into the belt pulleys.
       for (const x of [-56, 326]) {
         add(box(geo(), x - 21, 278, RAIL_Z - 54, x + 21, 320, RAIL_Z - 8, 2.5), 'motor', { frame: true });
@@ -282,6 +284,8 @@ const Twin3DScene = (() => {
     dyn('plate', slab(geo(), rrect(PLATE.w, PLATE.d, 6, 4), bc, -5, 0, { bevel: 0.8, steps: 2 }));
     dyn('heater', slab(geo(), rrect(PLATE.w + 4, PLATE.d + 4, 8, 4), bc, -14, -5, { bevel: 1, steps: 2 }));
     dyn('label', panel(geo(), [135, bc[1] - PLATE.d / 2 - 0.6, -2.6], [118, 0, 0], [0, 0, 2.4], [0, -1, 0]));
+    // The plate's own markings, laid 0.2 mm above its top (Snapmaker's photo of the U1 textured plate).
+    dyn('plateArt', panel(geo(), [bc[0], bc[1], 0.2], [PLATE.w / 2, 0, 0], [0, PLATE.d / 2, 0], [0, 0, 1]));
     {
       const g = geo();
       box(g, -6, 270, -32, 276, 322, -14, 2);
