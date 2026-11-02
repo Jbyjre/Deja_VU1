@@ -24,15 +24,15 @@ names and the nine-stop tour) and adds `phone-connect` and `help-note`.
 | File | What to open |
 |---|---|
 | `overview.jpg` | Overview: the top 640 px of a 1100 px-wide window at 1.45x (header, tabs, ribbon, tab sentence, Needs you) |
-| `fleet.jpg` | Fleet: the "Your printers" card |
-| `control.jpg` | Control: the whole tab |
+| `fleet.jpg` | Printers: the "Your printers" card (`capture-round-six.js`; `frontend/img/fleet.jpg` is its 1128 × 640 crop) |
+| `control.jpg` | The Printer page from Temperatures (with its chart) to Bed mesh (`capture-round-six.js`) |
 | `files.jpg` | Files → Add sample files: library and queue |
 | `file-detail.jpg` | Current workspace → Preview, using a verified local-engine result |
 | `confirm-print-refused.jpg` | Files → `unsafe_example_purge_past_bed.gcode` → Print… |
 | `automations.jpg` | Automations → "Tell me when a print finishes" |
 | `care.jpg` | Care: the Maintenance card |
 | `dock-rings.jpg` | The "Dock status rings" card (`#rings`) |
-| `modules.jpg` | Settings: the Modules card |
+| `modules.jpg` | Settings: the Modules card, grouped (`capture-round-six.js`) |
 | `photo-studio.jpg` | Photo studio → Try a test pattern |
 | `twin-health-chamber.jpg` | Overview: the twin row (`.now-row`: 3D model, Printer control, Print health), printer Demo printer 1; hide `.topbar` and `.live-pill` first so they don't overlap |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |

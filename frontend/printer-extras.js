@@ -34,7 +34,7 @@ window.PrinterExtras = (() => {
   /* ---------- temperature chart ---------- */
   function heaters(s) {
     const out = [];
-    Object.entries((s && s.toolheads) || {}).forEach(([th, h]) => out.push([th, h.temperature, h.target]));
+    Object.entries((s && s.toolheads) || {}).forEach(([th, h]) => out.push([th, h.temperature, h.target_temperature ?? h.target]));
     if (s && s.bed_temperature != null) out.push(['Bed', s.bed_temperature, s.bed_target]);
     if (s && s.chamber_temperature != null) out.push(['Chamber', s.chamber_temperature, null]);
     ((s && s.tuning && s.tuning.sensors) || []).forEach(x => out.push([x.name, x.temperature, null]));

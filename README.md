@@ -711,7 +711,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 
 <sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
 
-![Three simulated printer cards: Demo printer 1 printing, Demo printer 2 paused and Demo printer 3 reporting a dock fault, with progress, temperatures and fleet controls](docs/img/fleet.jpg)
+![Three simulated printer cards without coloured tints: Demo printer 1 printing, Demo printer 2 paused and Demo printer 3 ready with a dock fault, each with its progress ring, heads, readings in one row and an Open printer button](docs/img/fleet.jpg)
 
 <sub>**Printers** (the Fleet view): every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
 
@@ -775,7 +775,7 @@ per-part settings remain limited. Conversion is not proof of printability.
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/img/care.jpg" alt="The Care tab: maintenance tasks with progress bars, two marked overdue in red and one due soon"><br><sub><b>Care:</b> each maintenance task with how far it has run, overdue ones in red.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Control tab: the running print with Pause and Cancel, four toolhead temperatures, Home buttons and a G-code console"><br><sub><b>Control:</b> the running print, all four toolheads' temperatures, homing and a G-code console.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Printer page: four head temperatures with a chart of T0 and the bed warming to their targets, Extrude and Tune, then Fans, lights and sensors with four filament sensors and automatic feeding, and the bed mesh as a coloured map"><br><sub><b>Printer page:</b> temperatures with their chart, extruding and tuning, the printer's fans, lights and sensors, and the bed mesh map.</sub></td>
 </tr>
 </table>
 
@@ -839,7 +839,7 @@ browser's bars where the phone allows.
 
 <sub>**Why dock status matters:** a parked toolhead looks the same whether it's ready, out of filament or faulted. Deja Vu1 shows each dock's state on screen today, and on the rings once they exist.</sub>
 
-<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: switches for Maintenance reminders, Printer control, Dock status rings, Right colour loaded, Push notifications, Filament inventory and Pre-print sanity check, each tagged READY TODAY, HARDWARE PENDING or OPTIONAL">
+<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: a search box and a count of modules on, then the switches grouped under Ready today, Optional extras and Need extra hardware">
 
 Every module can be switched on or off from **Settings → Modules**, and the
 server enforces each switch. Disabled module routes refuse requests; background automation actions,
