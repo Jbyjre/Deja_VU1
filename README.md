@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.15.0** ([what's new](#whats-new-in-0150) · [every version](CHANGELOG.md)).
+**Latest named release: 0.16.0** ([what's new](#whats-new-in-0160) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -342,6 +342,26 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
   and idle".
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new in 0.16.0
+
+- **Everything a printer's own page offers, on the Printer page.** A temperature
+  chart, the bed mesh as a coloured map with saved meshes to load, settings for the
+  printer's macros, its other fans and lights, its filament sensors, an endstop check,
+  the printer's own command list in the console, and printing a file without leaving
+  the page. Each reading is the printer's own answer from Moonraker.
+- **Automatic feeding on a U1.** Feed runs the printer's own `AUTO_FEEDING` macro for a
+  head; the printer picks the feeder and channel itself, so Deja Vu1 never guesses them.
+- **An idle printer looks ready.** Pause and Cancel appear only during a print;
+  otherwise the page offers Print a file and Warm up.
+- **Your printers, calmer.** No coloured tints, the readings in one row, group commands
+  that appear once you tick a printer, and Add a printer folded to one button.
+- **The twin's bed** no longer flickers while the model turns (two surfaces at the same
+  height, found by measuring frame by frame) and looks like the real U1 plate.
+- **Modules** switch at once, stay put and can be searched.
+
+Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
+physical U1.
 
 ## What's new in 0.15.0
 
@@ -691,7 +711,7 @@ the current workspace; see [paired captures](docs/slicer-workspace-validation.md
 
 <sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
 
-![Three simulated printer cards: Demo printer 1 printing, Demo printer 2 paused and Demo printer 3 reporting a dock fault, with progress, temperatures and fleet controls](docs/img/fleet.jpg)
+![Three simulated printer cards without coloured tints: Demo printer 1 printing, Demo printer 2 paused and Demo printer 3 ready with a dock fault, each with its progress ring, heads, readings in one row and an Open printer button](docs/img/fleet.jpg)
 
 <sub>**Printers** (the Fleet view): every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
 
@@ -744,7 +764,7 @@ per-part settings remain limited. Conversion is not proof of printability.
 | Module | What it does |
 |---|---|
 | **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
-| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
+| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. The Printer page adds moving, extruding, tuning, a temperature chart, the bed mesh map, macro settings, the printer's other fans and lights, filament sensors, endstops, automatic feeding on a U1 and printing a file. |
 | **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram using HTTP requests, with no app SDK. Configure the chosen service's topic, webhook or bot credentials. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
 | **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
 | **App-data backup & recovery** | Versioned full app-data ZIP with checksums, omitted connection secrets and restore preview. Recovery creates a separate folder and launchers; it keeps existing data and disables automatic actions. Includes library, per-printer logs, fleet, queues, presets and time-lapse. Limits: 512 MB unpacked / 256 MB ZIP; files over 64 MB and external installations require an offline copy. |
@@ -755,7 +775,7 @@ per-part settings remain limited. Conversion is not proof of printability.
 <table>
 <tr>
 <td width="50%" valign="top"><img src="docs/img/care.jpg" alt="The Care tab: maintenance tasks with progress bars, two marked overdue in red and one due soon"><br><sub><b>Care:</b> each maintenance task with how far it has run, overdue ones in red.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Control tab: the running print with Pause and Cancel, four toolhead temperatures, Home buttons and a G-code console"><br><sub><b>Control:</b> the running print, all four toolheads' temperatures, homing and a G-code console.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Printer page: four head temperatures with a chart of T0 and the bed warming to their targets, Extrude and Tune, then Fans, lights and sensors with four filament sensors and automatic feeding, and the bed mesh as a coloured map"><br><sub><b>Printer page:</b> temperatures with their chart, extruding and tuning, the printer's fans, lights and sensors, and the bed mesh map.</sub></td>
 </tr>
 </table>
 
@@ -819,7 +839,7 @@ browser's bars where the phone allows.
 
 <sub>**Why dock status matters:** a parked toolhead looks the same whether it's ready, out of filament or faulted. Deja Vu1 shows each dock's state on screen today, and on the rings once they exist.</sub>
 
-<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: switches for Maintenance reminders, Printer control, Dock status rings, Right colour loaded, Push notifications, Filament inventory and Pre-print sanity check, each tagged READY TODAY, HARDWARE PENDING or OPTIONAL">
+<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: a search box and a count of modules on, then the switches grouped under Ready today, Optional extras and Need extra hardware">
 
 Every module can be switched on or off from **Settings → Modules**, and the
 server enforces each switch. Disabled module routes refuse requests; background automation actions,
@@ -879,11 +899,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **948 tests in 761.9 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (28 October 2026, version 0.13.0 before its
-merge, in a cloud sandbox slower than the earlier machine). GitHub Actions runs the
-suite on Python 3.8, 3.10, 3.12 and 3.13.
-Earlier full runs passed 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+The latest full run passed **1040 tests in 648.3 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (2 November 2026, version 0.16.0 before its
+merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
+and 3.13.
+Earlier full runs passed 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -898,6 +918,7 @@ recorded static demo passed at both widths.
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
 | Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
+| Printer page extras (0.16.0) | Temperature history, bed mesh, macro settings, endstops, command help, fans, lights, filament sensors and feeding against the simulated printer and the Moonraker stand-in; names checked against Snapmaker's published U1 config | Not tried on a physical U1; whether the shipped firmware's config matches the published one |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
 | App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested. 0.13.7: Install as a background job with progress, the launcher surviving a failed apply, the launch id and the ready check are tested on Linux, including a real install of the published 0.13.6 release with a stand-in printer connected and a reload mid-download. The Windows paste blocks, GitHub Desktop's own git and macOS have not been run yet |
@@ -958,7 +979,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 948 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1040 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -968,7 +989,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 948 cases
+- **Tests:** `unittest` from the standard library, 1040 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 

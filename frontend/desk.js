@@ -181,7 +181,7 @@ window.FarmDesk = (() => {
       });
       const status = p.state === 'printing' ? `${Math.round((p.progress || 0) * 100)}% · ${fmtH(p.remaining_hours)} left` : p.state_message || p.state;
       return `<div class="dk-lane"><div class="dk-name"><b>${esc(p.name)}</b><small class="is-${esc(p.state)}">${esc(status)}</small></div>
-        <div class="dk-track">${shade}${bars.join('') || '<span class="dk-idle">Idle · queue empty</span>'}</div></div>`;
+        <div class="dk-track">${shade}${bars.join('') || '<span class="dk-idle">Ready · nothing queued</span>'}</div></div>`;
     }).join('');
     const ruler = ticks.filter(t => t.i % 3 === 0).map(t => `<span style="left:${t.i * hourW}%">${String(t.h).padStart(2, '0')}:00</span>`).join('');
     $('dk-timeline').innerHTML = data.printers.length ? `<div class="dk-scroll"><div class="dk-grid">

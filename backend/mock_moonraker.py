@@ -65,6 +65,7 @@ from datetime import datetime, timedelta
 
 import machines
 import moonraker_client
+import printer_extras
 
 # Filament colors we pretend the user owns. Used by the color checker module.
 FILAMENT_COLORS = [
@@ -246,9 +247,17 @@ _FLEET_SPEC = [
 # only by kind: demo data, never a claim about which macros a real U1 has.
 DEMO_MACROS = ["PREHEAT_PLA", "CLEAN_NOZZLE", "LIGHT_ON", "LIGHT_OFF"]
 def _demo_tuning():
+    # The chamber fan and light and the four runout sensors use the names in Snapmaker's
+    # published U1 config (u1-klipper lava/printer.cfg); their values here are demo data.
     return {"speed_factor": 1.0, "extrude_factor": 1.0, "part_fan": 0.0, "max_velocity": 500, "max_accel": 20000,
             "config_velocity": 500, "config_accel": 20000, "z_offset": 0.0, "macros": list(DEMO_MACROS),
-            "bed_mesh": True, "mesh_profile": None, "idle_state": "Ready", "fans": [], "sensors": []}
+            "bed_mesh": True, "mesh_profile": None, "idle_state": "Ready", "sensors": [],
+            "fans": [{"id": "cavity_fan", "name": "cavity fan", "speed": 0.0, "temperature": None, "settable": True}],
+            "leds": [{"id": "cavity_led", "name": "cavity led", "color": [0.0, 0.0, 0.0, 1.0]}],
+            "pins": [],
+            "runout": [{"id": f"e{i}_filament", "name": f"e{i} filament", "detected": True, "enabled": True}
+                       for i in range(4)],
+            "feeder": True}
 
 
 class SimulatedPrinter:
@@ -999,7 +1008,8 @@ def run_gcode(command):
     return {"command": command, "response": "ok"}
 
 
-_TUNE_TIMEOUTS = {"bed_mesh": 600, "move": 120, "jog": 60, "tool": 180, "macro": 600}
+# Feeding heats the head and pulls filament from the feeder, so it gets the macro allowance.
+_TUNE_TIMEOUTS = {"bed_mesh": 600, "move": 120, "jog": 60, "tool": 180, "macro": 600, "feed": 600}
 
 
 def tune(action, script, effect):
@@ -1051,6 +1061,20 @@ def tune(action, script, effect):
             tuning["mesh_profile"] = "default"
         elif action == "z_nudge":
             tuning["z_offset"] = round((tuning.get("z_offset") or 0.0) + effect["delta"], 3)
+        elif action == "fan_generic":
+            for fan in tuning.get("fans") or []:
+                if fan.get("id") == effect["name"]:
+                    fan["speed"] = round(effect["percent"] / 100, 3)
+        elif action == "led":
+            for led in tuning.get("leds") or []:
+                if led.get("id") == effect["name"]:
+                    led["color"] = list(effect["color"])
+        elif action == "runout":
+            for sensor in tuning.get("runout") or []:
+                if sensor.get("id") == effect["name"]:
+                    sensor["enabled"] = effect["enabled"]
+        elif action == "mesh_profile":
+            tuning["mesh_profile"] = effect.get("profile")
         elif action == "tool":
             for th, data in live["toolheads"].items():
                 if data["status"] != "error":
@@ -1067,6 +1091,37 @@ def get_console_log(limit=30):
         return printer.get_console_log(limit)
     with printer.lock:
         return list(reversed(printer.console))[:limit]
+
+
+def printer_reading(kind):
+    """
+    What the Printer page reads on request (printer_extras.py): a real printer's
+    Moonraker answers; a simulated printer gives demo answers, labelled.
+    """
+    printer = _current()
+    if printer.real:
+        return printer.extra(kind)
+    with printer.lock:
+        if printer.link_lost_at:
+            raise PrinterCommandError("No answer from Moonraker - the network link to this printer is down "
+                                      "(simulated drop)")
+        live = printer.live
+        tuning = live.get("tuning") or _demo_tuning()
+        heads = sorted(live.get("toolheads") or {})
+        if kind == "macros":
+            return printer_extras.demo_macros(tuning.get("macros") or [])
+        if kind == "mesh":
+            return printer_extras.demo_mesh(tuning.get("mesh_profile"))
+        if kind == "endstops":
+            return printer_extras.demo_endstops()
+        if kind == "help":
+            return printer_extras.demo_help(tuning.get("macros") or [])
+        if kind == "feeding":
+            return printer_extras.demo_feeding(heads)
+        if kind == "temperatures":
+            # A simulated printer keeps no history: the page's chart fills from the live readings it sees.
+            return {"interval_s": 1, "series": [], "demo": True}
+    raise ValueError(f"Unknown reading: {kind}")
 
 
 def get_update_status():

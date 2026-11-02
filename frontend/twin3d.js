@@ -31,7 +31,10 @@
  *   into the shelf; the white carriage with an orange fan, in front of the head
  *   it carries; the textured plate's "BUILD VOLUME" strip.
  * - Snapmaker's slicer profile: a 276 x 293 mm textured PEI plate and a
- *   270 mm print height. Snapmaker's spec: 584 x 499 x 730 mm overall.
+ *   270 mm print height. Snapmaker's shop photo of that plate (checked
+ *   2 November 2026): bronze-brown fine grain, a white line on each of the four
+ *   tabs at the back, the wordmark faintly in the middle and "PEI Coated PLATE"
+ *   with its materials at the front. Snapmaker's spec: 584 x 499 x 730 mm overall.
  * - Reviews: CoreXY, carbon-fibre rods on the X axis, docks at the rear,
  *   two spools a side.
  * - Measured from the photos, scaled by the published 499 mm depth (so
@@ -92,7 +95,8 @@ const Twin3D = (() => {
     alu:      { c: lin(.72, .74, .77), r: .32, m: 1 },
     rail:     { c: lin(.2, .21, .23), r: .38, m: .7 },
     carbon:   { c: lin(.07, .07, .08), r: .25, m: .2, kind: 'carbon' },
-    pei:      { c: lin(.38, .35, .33), r: .75, m: 0, kind: 'pei' },   // warm grey, sampled from the photos
+    // Bronze-brown, sampled from Snapmaker's own photo of the U1 textured PEI plate (sRGB 109, 90, 76).
+    pei:      { c: lin(.2, .115, .06), r: .78, m: 0, kind: 'pei' },
     hub:      { c: lin(.93, .935, .94), r: .34, m: 0 },
     tube:     { c: lin(.88, .78, .66), r: .22, m: 0, a: .72, kind: 'clear' },   // beige in the photos
     cable:    { c: lin(.04, .04, .045), r: .45, m: 0 },
@@ -249,6 +253,20 @@ const Twin3D = (() => {
     x.fillStyle = '#3b3e44'; x.font = `600 30px ${FONT}`; x.textBaseline = 'middle'; x.textAlign = 'center';
     x.fillText('BUILD VOLUME   |   270 × 270 × 270 mm', w / 2, h / 2 + 2);
     x.fillStyle = '#f2b51b'; [w - 120, w - 80].forEach(cx => { x.beginPath(); x.arc(cx, h / 2, 13, 0, 7); x.fill(); });
+  });
+  /* The build plate's markings, as on Snapmaker's photo of the U1 textured PEI plate: a white
+   * line on each of the four tabs along the back, the wordmark faintly in the middle, and the
+   * plate's name with its materials and a hot-surface sign at the front. Back edge at the top. */
+  const plateArt = () => canvasOf(552, 586, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    x.strokeStyle = 'rgba(255,255,255,.92)'; x.lineWidth = 5; x.lineCap = 'round';
+    [[0.06, 0.2], [0.305, 0.45], [0.55, 0.695], [0.795, 0.94]].forEach(([a, b]) => { x.beginPath(); x.moveTo(a * w, 0.022 * h); x.lineTo(b * w, 0.022 * h); x.stroke(); });
+    x.fillStyle = 'rgba(255,240,228,.1)'; x.font = `500 58px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('snapmaker', w / 2, h / 2);
+    x.fillStyle = 'rgba(255,255,255,.9)'; x.font = `600 15px ${FONT}`; x.textAlign = 'left';
+    const y = 0.965 * h; x.fillText('PEI Coated PLATE', 0.29 * w, y);
+    x.strokeStyle = 'rgba(255,255,255,.9)'; x.lineWidth = 1.5; x.strokeRect(0.53 * w, y - 9, 0.21 * w, 18);
+    x.font = `500 12px ${FONT}`; x.fillText('PLA/ABS/PETG/TPU', 0.54 * w, y + 1);
+    x.beginPath(); x.moveTo(0.25 * w, y - 9); x.lineTo(0.25 * w - 10, y + 8); x.lineTo(0.25 * w + 10, y + 8); x.closePath(); x.stroke();
   });
   /* The floor of the side pocket: vent holes in a fine grid where the two
    * spools leave it bare, as in the photos. Mapped over the side's y and z. */
@@ -434,8 +452,9 @@ const Twin3D = (() => {
     if (uKind == 1) { vec4 t = texture(uTex, vUV); base = pow(t.rgb, vec3(2.2)); alpha = t.a * uAlpha; if (alpha < 0.02) discard; }
     // Fine surface patterns fade to their average where a cell is smaller than a
     // pixel; without it the bed's speckle crawled and flickered as the view turned.
-    if (uKind == 2) { vec2 q = vW.xy * 1.6; float aa = clamp(max(fwidth(q.x), fwidth(q.y)) * 1.5 - 0.5, 0.0, 1.0);
-      float n = mix(hash(floor(q)), 0.5, aa); base *= 0.82 + 0.36 * n; rough = 0.62 + 0.25 * n; }
+    // The plate's fine grain: gentle, and already faded to its average before a grain shrinks to a pixel.
+    if (uKind == 2) { vec2 q = vW.xy * 1.6; float aa = clamp(max(fwidth(q.x), fwidth(q.y)) * 2.0 - 0.25, 0.0, 1.0);
+      float n = mix(hash(floor(q)), 0.5, aa); base *= 0.92 + 0.16 * n; rough = 0.72 + 0.12 * n; }
     if (uKind == 3) { float r = length(vW.yz - vec2(0.0)); }
     if (uKind == 4) { float l = fract(vW.z / 1.4); base *= 0.9 + 0.1 * smoothstep(0.1, 0.5, l) * smoothstep(0.9, 0.5, l); }
     if (uKind == 5) { float k = (vW.x + vW.y + vW.z) * 1.7, aa = clamp(fwidth(k) * 0.6 - 0.3, 0.0, 1.0);
@@ -736,7 +755,7 @@ const Twin3D = (() => {
     const parts = S.statics.map(p => ({ ...p, mesh: upload(p.g) }));
     const dyn = Object.fromEntries(Object.entries(S.dynamic).map(([k, p]) => [k, { ...p, mesh: upload(p.g) }]));
     const tex = {
-      logo: texture(logoArt()), label: texture(labelArt()), side: texture(sideArt()), feeder: texture(feederArt()), head: texture(headArt()), carriage: texture(carriageArt()), ports: texture(portsArt()),
+      logo: texture(logoArt()), label: texture(labelArt()), plate: texture(plateArt()), side: texture(sideArt()), feeder: texture(feederArt()), head: texture(headArt()), carriage: texture(carriageArt()), ports: texture(portsArt()),
     };
     const screenCanvas = canvasOf(512, 320, () => {});
     tex.screen = texture(screenCanvas);
@@ -916,6 +935,7 @@ const Twin3D = (() => {
       add(dyn.heater.mesh, MAT.alu, { t: [0, 0, bedTop], id: bedId, sel: bedSel, colour: heat > 0.3 ? lin(.85, .6, .45) : null });
       add(dyn.plate.mesh, MAT.pei, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
       add(dyn.label.mesh, MAT.decal, { t: [0, 0, bedTop], id: bedId, tex: tex.label, sel: bedSel });
+      add(dyn.plateArt.mesh, MAT.decal, { t: [0, 0, bedTop], id: bedId, tex: tex.plate, sel: bedSel });
       // Gantry: the X rods, its two Y carriages, the carriage, all just in
       // front of the head they carry (the nozzle itself is at x, y). In the
       // Print view the rods and carriage turn to glass, like the head's body.

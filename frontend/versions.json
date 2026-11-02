@@ -2,6 +2,52 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.16.0",
+      "date": "2026-11-02",
+      "name": "Everything your printer offers",
+      "published": true,
+      "summary": "The Printer page gains everything a printer's own web page offers: a temperature chart, the bed mesh as a map, macro settings, other fans and lights, filament sensors, endstops, automatic feeding and printing a file. An idle printer looks ready, the printer list is calmer and the twin's bed no longer flickers.",
+      "changes": [
+        "Temperatures has a chart of every heater and sensor over the last 5, 10 or 20 minutes, from the printer's own record when it keeps one.",
+        "Bed mesh shows how flat your bed measured as a coloured map, with the spread from lowest to highest point. Probe again, load a mesh the printer saved, or stop using it.",
+        "Macros that take settings, such as a temperature, are marked with … and open a small form with the macro's own defaults.",
+        "Fans, lights and sensors: set the printer's other fans and its lights, switch each filament sensor on or off, see whether filament is in, and check the endstops.",
+        "On a U1, Feed runs the printer's own automatic feeding for a head. The printer picks the right feeder and channel itself.",
+        "The G-code console suggests every command the printer knows, with the printer's own description.",
+        "Print a file on the Printer page: add a G-code file, preview it and start it through Confirm Print without leaving the page.",
+        "A printer waiting for work looks ready: Pause and Cancel appear only during a print; otherwise you see Print a file and Warm up. Heaters at rest say not heating instead of showing an empty bar.",
+        "Your printers: calm cards without coloured tints, the readings in one row, a quiet Open printer button, group commands that appear once you tick a printer, and Add a printer folded to one button.",
+        "The twin's bed no longer flickers while the model turns, and it looks like the real U1 plate: bronze-brown, with its markings.",
+        "Settings, Modules: switches move at once and the list stays put. Modules are grouped and can be searched."
+      ],
+      "highlights": [
+        {
+          "title": "Bed mesh",
+          "tab": "control",
+          "target": "#pp-mesh",
+          "text": "How flat your bed measured, as a coloured map. Probe again or load a mesh the printer saved."
+        },
+        {
+          "title": "Fans, lights and sensors",
+          "tab": "control",
+          "target": "#pp-outputs",
+          "text": "The printer's other fans and lights, its filament sensors, endstops and automatic feeding."
+        },
+        {
+          "title": "A temperature chart",
+          "tab": "control",
+          "target": "#pp-chart",
+          "text": "Every heater over the last minutes: solid lines the temperature, dashed lines the target."
+        },
+        {
+          "title": "Calmer printer cards",
+          "tab": "fleet",
+          "target": "#fleet-grid",
+          "text": "Each printer at a glance, without coloured tints. Tick printers to command them together."
+        }
+      ]
+    },
+    {
       "version": "0.15.0",
       "date": "2026-11-02",
       "name": "Always there",

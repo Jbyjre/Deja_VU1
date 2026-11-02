@@ -428,11 +428,17 @@ async function tourControl(action, pid, body) {
     'z-nudge': b => `SET_GCODE_OFFSET Z_ADJUST=${b.delta} MOVE=1`, extrude: b => `M83 · G1 E${b.length}`,
     speed: b => `M220 S${b.percent}`, flow: b => `M221 S${b.percent}`, fan: b => `M106 S${Math.round((b.percent || 0) * 2.55)}`,
     'pressure-advance': b => `SET_PRESSURE_ADVANCE ADVANCE=${b.value}`, limits: b => `SET_VELOCITY_LIMIT VELOCITY=${b.velocity} ACCEL=${b.accel}`,
-    'motors-off': () => 'M84', 'bed-mesh': () => 'BED_MESH_CALIBRATE', macro: b => String(b.name || ''), tool: b => String(b.toolhead || ''),
+    'motors-off': () => 'M84', 'bed-mesh': () => 'BED_MESH_CALIBRATE', tool: b => String(b.toolhead || ''),
+    macro: b => [String(b.name || ''), ...Object.entries(b.params || {}).map(([k, v]) => `${k}=${v}`)].join(' '),
+    'fan-generic': b => `SET_FAN_SPEED FAN=${b.name} SPEED=${((b.percent || 0) / 100).toFixed(2)}`,
+    led: b => `SET_LED LED=${b.name} WHITE=${Number(b.white || 0).toFixed(2)}`,
+    runout: b => `SET_FILAMENT_SENSOR SENSOR=${b.name} ENABLE=${b.enabled ? 1 : 0}`,
+    'mesh-profile': b => b.action === 'load' ? `BED_MESH_PROFILE LOAD=${b.profile}` : 'BED_MESH_CLEAR',
+    feed: b => `AUTO_FEEDING EXTRUDER=${String(b.toolhead || 'T0').slice(1)}`,
     estop: () => 'M112', 'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
   };
   if (HANDS_ON[action]) {
-    const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool'];
+    const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool', 'mesh-profile', 'feed'];
     if (moves.includes(action) && ['printing', 'paused'].includes(live.state)) return tourReply({ error: 'Not while a print is running or paused - it would move the head through the print' }, 400);
     tourLog(pid, HANDS_ON[action](body || {}));
     tourLog(pid, 'ok (online demo: nothing was sent to a printer)');
@@ -1121,7 +1127,7 @@ const TAB_INTROS = {
 const SECTIONS = {
   control: [
     ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
-      '#pp-macros', '#pp-console', '#ctrl-plate']],
+      '#pp-outputs', '#pp-mesh', '#pp-macros', '#pp-console', '#pp-print', '#ctrl-plate']],
     ['live', 'Live readings', ['#telemetry', '#chamber-card']],
     ['history', 'History & upkeep', ['#insights-card', 'print health', 'print cost']],
     ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
@@ -1587,6 +1593,8 @@ function renderControlTab(state) {
     pauseResume.disabled = true;
     pauseResume.textContent = 'Pause';
     cancel.disabled = true;
+    pauseResume.hidden = cancel.hidden = true;
+    if ($('pp-go-print')) $('pp-go-print').hidden = true;
     homeButtons.forEach(b => b.disabled = true);
     gcodeInput.disabled = true;
     gcodeSend.disabled = true;
@@ -1601,7 +1609,7 @@ function renderControlTab(state) {
   const dotColor = state.state === 'printing' ? 'var(--ok)' : (state.state === 'paused' ? 'var(--warn)' : (state.state === 'error' ? 'var(--bad)' : 'var(--ink-ready)'));
   if (dot.style.background !== dotColor) dot.style.background = dotColor;
   setText(text, state.state === 'ready' ? 'Ready for a print' : `${state.state[0].toUpperCase()}${state.state.slice(1)}: ${state.current_file || state.state_message || ''}`);
-  setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'No job running.'));
+  setText(sub, lost ? linkLostWords(state) : running ? `${Math.round(state.progress * 100)}% · ${(state.print_duration_hours || 0).toFixed(1)}h elapsed` : (state.state === 'complete' ? 'Finished.' : 'Waiting for your next print.'));
 
   // A button that is mid-send keeps its "Pausing…" until the printer answers.
   if (pauseResume.dataset.phase !== 'sending') {
@@ -1611,6 +1619,8 @@ function renderControlTab(state) {
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => confirmCancel(cancel);
+  // Idle offers what comes next instead of two greyed-out buttons (the owner: idle must never look down).
+  showIdleActions([pauseResume, cancel], $('pp-go-print'), running || lost || state.state === 'error');
 
   const busy = state.state === 'printing' || state.state === 'paused';
   const homeBlocked = busy || lost;
@@ -1813,6 +1823,18 @@ function renderPlate(state) {
   document.querySelectorAll('[data-plate-obj]').forEach(p => { p.onclick = () => pick(p.dataset.plateObj); });
 }
 
+/* Pause and Cancel only while there is a print to pause or cancel; otherwise the next step. */
+function showIdleActions(runButtons, idleButton, active) {
+  runButtons.forEach(b => { if (b && b.dataset.phase !== 'sending' && b.hidden !== !active) b.hidden = !active; });
+  if (idleButton && idleButton.hidden !== active) idleButton.hidden = active;
+}
+document.addEventListener('click', e => {
+  const go = e.target.closest && e.target.closest('[data-go-card]');
+  if (!go) return;
+  showTab('control');
+  setTimeout(() => { const card = $(go.dataset.goCard); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+});
+
 function renderOverviewControl(state) {
   const host = $('overview-control');
   if (!host) return;
@@ -1826,9 +1848,13 @@ function renderOverviewControl(state) {
     host.innerHTML = `
       <div class="card-sub" style="margin-bottom:8px;" id="ov-file"></div>
       <div class="bar" style="margin-bottom:14px;"><span id="ov-bar"></span></div>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px;" id="ov-run">
         <button class="btn primary" id="ov-pause-resume" style="flex:1;">Pause</button>
         <button class="btn danger" id="ov-cancel" style="flex:1;">Cancel</button>
+      </div>
+      <div class="ov-idle" id="ov-idle" hidden>
+        <button class="btn primary" type="button" data-go-card="pp-print">Print a file…</button>
+        <button class="btn" type="button" data-go-card="pp-heaters">Warm up…</button>
       </div>
       <div class="ov-restart" id="ov-restart-row" hidden>
         <p class="field-hint" id="ov-error"></p>
@@ -1862,6 +1888,11 @@ function renderOverviewControl(state) {
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => confirmCancel(cancel);
+  const active = running || lost || state.state === 'error';
+  if ($('ov-run').hidden !== !active) $('ov-run').hidden = !active;
+  if ($('ov-idle').hidden !== active) $('ov-idle').hidden = active;
+  const bar = $('ov-bar').parentElement;
+  if (bar.hidden !== !active && state.state !== 'complete') bar.hidden = !active && state.state !== 'complete';
 }
 
 const CONTROL_LABELS = {
@@ -1956,7 +1987,9 @@ function gcodeSuggestions(state) {
     input.setAttribute('list', 'gcode-hints');
   }
   const macros = ((state && state.tuning && state.tuning.macros) || []).map(m => [typeof m === 'string' ? m : m.name, 'Printer macro']);
-  const html = [...macros, ...GCODE_HINTS, ...gcodeHistoryList().slice(0, 10).map(c => [c, 'Sent before'])]
+  // The printer's own HELP list (printer-extras.js) comes after the common commands.
+  const own = window.PrinterExtras ? PrinterExtras.helpHints() : [];
+  const html = [...macros, ...GCODE_HINTS, ...gcodeHistoryList().slice(0, 10).map(c => [c, 'Sent before']), ...own]
     .filter((h, i, all) => h[0] && all.findIndex(x => x[0] === h[0]) === i)
     .map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('');
   if (list.dataset.html !== html) { list.innerHTML = html; list.dataset.html = html; }
@@ -2129,44 +2162,90 @@ function initRepeatSettings() {
 async function loadModules() {
   const data = await getJSON('/api/modules');
   const host = $('module-list');
-  const statusBadge = { ready: 'badge-live', hardware_pending: 'badge-sim', optional: 'badge-optional' };
+  const list = data.modules || [];
+  if (!host || !list.length) return;
+  // The group heading says how ready each module is, so the rows don't repeat it.
   const statusLabel = { ready: 'Ready today', hardware_pending: 'Hardware pending', optional: 'Optional' };
-
-  host.innerHTML = (data.modules || []).map(m => `
-    <div class="modrow well" style="margin-bottom:8px; border-radius:14px;">
-      <div style="flex:1;">
-        <div class="mod-name">${esc(m.name)} <span class="badge ${statusBadge[m.status] || 'badge-sim'}">${statusLabel[m.status] || m.status}</span></div>
+  const ids = list.map(m => m.id).join(',');
+  // Built once; after that a reload only moves the switches that changed, so turning a
+  // module on or off never makes the list jump, flash or fold back up.
+  if (host.dataset.ids === ids) {
+    list.forEach(m => {
+      const input = host.querySelector(`[data-module="${CSS.escape(m.id)}"]`);
+      if (input && !input.disabled && input.checked !== m.enabled) input.checked = m.enabled;
+      const row = input && input.closest('.modrow');
+      if (row) row.classList.toggle('is-on', m.enabled);
+    });
+    modCounts(host);
+    return;
+  }
+  host.dataset.ids = ids;
+  const groups = [['ready', 'Ready today'], ['optional', 'Optional extras'], ['hardware_pending', 'Need extra hardware']];
+  const row = m => `
+    <div class="modrow well ${m.enabled ? 'is-on' : ''}" data-mod-row="${esc(m.id)}" data-find="${esc((m.name + ' ' + m.description).toLowerCase())}">
+      <div class="mod-text">
+        <div class="mod-name">${esc(m.name)}</div>
         <div class="mod-desc">${esc(m.description)}</div>
       </div>
+      <span class="mod-saving" aria-live="polite"></span>
       <label class="switch" style="gap:0;">
         <input type="checkbox" ${m.enabled ? 'checked' : ''} data-module="${esc(m.id)}" aria-label="${esc(m.name)}">
-        <span class="switch-track ${m.enabled ? 'is-on' : ''}" aria-hidden="true"><span class="switch-knob"></span></span>
+        <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
       </label>
-    </div>`).join('')
+    </div>`;
+  host.innerHTML = `
+    <div class="mod-tools"><label class="sr-only" for="mod-find">Find a module</label>
+      <input type="search" id="mod-find" placeholder="Find a module…" autocomplete="off" spellcheck="false">
+      <span class="mod-count" id="mod-count"></span></div>
+    ${groups.map(([status, title]) => {
+      const ms = list.filter(m => (statusLabel[m.status] ? m.status : 'optional') === status);
+      return ms.length ? `<section class="mod-group" data-group="${status}"><h3 class="mod-group-title">${title}</h3>${ms.map(row).join('')}</section>` : '';
+    }).join('')}
+    <p class="log-empty mod-none" hidden>No module matches that.</p>`
     // A phone shows the first few; the rest are one tap away (theme.css).
-    + `<button type="button" class="btn block mod-more" aria-expanded="false">Show all ${(data.modules || []).length} modules</button>`;
+    + `<button type="button" class="btn block mod-more" aria-expanded="false">Show all ${list.length} modules</button>`;
+  modCounts(host);
   host.querySelector('.mod-more').addEventListener('click', e => {
     const open = host.classList.toggle('is-open');
     e.currentTarget.setAttribute('aria-expanded', String(open));
-    e.currentTarget.textContent = open ? 'Show fewer' : `Show all ${(data.modules || []).length} modules`;
+    e.currentTarget.textContent = open ? 'Show fewer' : `Show all ${list.length} modules`;
+  });
+  $('mod-find').addEventListener('input', e => {
+    const q = e.target.value.trim().toLowerCase();
+    host.classList.toggle('is-finding', Boolean(q));
+    let shown = 0;
+    host.querySelectorAll('.modrow').forEach(r => { const hit = !q || r.dataset.find.includes(q); r.hidden = !hit; if (hit) shown++; });
+    host.querySelectorAll('.mod-group').forEach(g => { g.hidden = !g.querySelector('.modrow:not([hidden])'); });
+    host.querySelector('.mod-none').hidden = shown > 0;
   });
 
-  // The switch stays where you put it but dims while the server saves it;
+  // The switch moves at once and says "Saving…" while the server saves it;
   // if the server says no, it goes back and says why.
   host.querySelectorAll('[data-module]').forEach(input => {
     input.addEventListener('change', async () => {
-      const want = input.checked;
+      const want = input.checked, rowEl = input.closest('.modrow'), note = rowEl.querySelector('.mod-saving');
       input.disabled = true;
+      rowEl.classList.toggle('is-on', want);
+      note.textContent = 'Saving…';
       const { ok, body } = await postJSON(api(`/api/modules/${input.dataset.module}/toggle`), { enabled: want });
+      input.disabled = false;
       if (!ok) {
         input.checked = !want;
-        input.disabled = false;
+        rowEl.classList.toggle('is-on', !want);
+        note.textContent = '';
         toast(`Couldn't turn ${input.getAttribute('aria-label')} ${want ? 'on' : 'off'}: ${body.error || 'the server refused'}`, 'bad', 6000);
         return;
       }
+      note.textContent = want ? 'On' : 'Off';
+      setTimeout(() => { if (note.textContent === (want ? 'On' : 'Off')) note.textContent = ''; }, 1600);
+      modCounts(host);
       refreshAll();
     });
   });
+}
+function modCounts(host) {
+  const all = host.querySelectorAll('[data-module]'), on = [...all].filter(i => i.checked).length;
+  setText($('mod-count'), `${on} of ${all.length} on`);
 }
 
 /* ---- Pairing ------------------------------------------------------------*/

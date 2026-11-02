@@ -803,6 +803,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 /* ---- modules & devices ---------------------------------------------------*/
 
 .modrow { display: flex; align-items: center; gap: 16px; padding: 15px 17px; }
+/* Modules (app.js loadModules): grouped, searchable, and each switch updated in place. */
+.modrow { margin-bottom: 8px; border-radius: 14px; transition: background-color .2s ease, box-shadow .2s ease; }
+.modrow[hidden] { display: none; }
+.modrow .mod-text { flex: 1; min-width: 0; }
+.modrow:not(.is-on) .mod-desc { color: var(--text-faint); }
+.mod-saving { font: 600 11px/1 var(--font-mono); color: var(--text-faint); min-width: 3.5em; text-align: right; }
+.mod-tools { display: flex; align-items: center; gap: 6px 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.mod-tools input { flex: 1 1 180px; min-width: 0; }
+.mod-count { font: 600 12px/1 var(--font-mono); color: var(--text-dim); white-space: nowrap; }
+.mod-group { margin-bottom: 14px; }
+.mod-group[hidden] { display: none; }
+.mod-group-title { font: 600 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); margin: 4px 2px 8px; }
 .modrow .mod-name { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; flex-wrap: wrap; }
 .modrow .mod-desc { font-size: 12px; color: var(--text-faint); margin-top: 5px; }
 

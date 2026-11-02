@@ -28,6 +28,51 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.16.0 (2 November 2026): Everything your printer offers
+
+- Temperatures has a chart of every heater and sensor over the last 5, 10 or 20 minutes, from the printer's own record when it keeps one.
+- Bed mesh shows how flat your bed measured as a coloured map, with the spread from lowest to highest point. Probe again, load a mesh the printer saved, or stop using it.
+- Macros that take settings, such as a temperature, are marked with … and open a small form with the macro's own defaults.
+- Fans, lights and sensors: set the printer's other fans and its lights, switch each filament sensor on or off, see whether filament is in, and check the endstops.
+- On a U1, Feed runs the printer's own automatic feeding for a head. The printer picks the right feeder and channel itself.
+- The G-code console suggests every command the printer knows, with the printer's own description.
+- Print a file on the Printer page: add a G-code file, preview it and start it through Confirm Print without leaving the page.
+- A printer waiting for work looks ready: Pause and Cancel appear only during a print; otherwise you see Print a file and Warm up. Heaters at rest say not heating instead of showing an empty bar.
+- Your printers: calm cards without coloured tints, the readings in one row, a quiet Open printer button, group commands that appear once you tick a printer, and Add a printer folded to one button.
+- The twin's bed no longer flickers while the model turns, and it looks like the real U1 plate: bronze-brown, with its markings.
+- Settings, Modules: switches move at once and the list stays put. Modules are grouped and can be searched.
+
+**Where the new readings come from.** Every reading is the printer's own answer,
+read from Moonraker's endpoints: `server/temperature_store` (one reading a second,
+20 minutes), `printer/objects/query` for the bed mesh, the macros' own text and the
+feeder variable, `printer/query_endstops/status` and `printer/gcode/help`
+(`backend/printer_extras.py`). Every new button is checked in `printer_control.py`
+before any G-code: fan speeds `SET_FAN_SPEED` only for the printer's `fan_generic`
+fans, lights `SET_LED`, sensors `SET_FILAMENT_SENSOR`, saved meshes
+`BED_MESH_PROFILE LOAD=` or `BED_MESH_CLEAR` (not during a print), macro settings
+only those the macro's text reads and only as one word each, so a value can't add a
+second command. The fan, light, sensor and feeding names follow Snapmaker's
+published U1 configuration (u1-klipper `lava/printer.cfg`: `cavity_fan`,
+`cavity_led`, `e0_filament` to `e3_filament`, the `AUTO_FEEDING` macro and its
+`_FILAMENT_FEED_VARIABLE` table). Deja Vu1 never names a feeder module or channel
+itself; it shows the ones the printer reports and runs the printer's own macro. The
+printer's output pins are shown and never switched: on the U1 they are the heads'
+heater switches.
+
+**The twin's bed.** Measured frame by frame while turning the model 2 px at a time
+(software rendering): the jagged flicker seen through the door came from the case's
+inside floor and the hidden frame's base plate, both topped at 40 mm, drawn at the
+same height. The base plate now stops 1.5 mm lower. In the door area the
+back-and-forth change between frames fell from 15.5 to 3.9; what is left is the
+ordinary shimmer of moving edges. The plate's colour and markings follow Snapmaker's
+shop photo of the U1 textured PEI plate (checked 2 November 2026).
+
+**Checked here:** the new readings and commands against the simulated printer and the
+Moonraker stand-in (`tests/test_printer_extras.py`), the Printer page, Your printers
+and Modules in Chromium at 1366 px and 390 px. **Not yet tried:** any of this on a
+physical U1, and whether the shipped U1 firmware's configuration still matches
+Snapmaker's published one.
+
 ## 0.15.0 (2 November 2026): Always there
 
 - Started without a window, Deja Vu1 0.14.0 lost the answer to every button you pressed, so buttons said the dashboard server might not be running. Every button gets its answer again, and what Deja Vu1 writes goes to files in its logs folder.

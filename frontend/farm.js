@@ -68,8 +68,12 @@ const Farm = (() => {
     // Every action on the bar is a printer command, so it needs printer control too.
     bar.hidden = !liveData() || !cmd.fleet.length || cmd.moduleOff || modGate.off.has('printer_control');
     const n = cmd.selected.size;
-    $('fc-count').textContent = n ? `${n} of ${cmd.fleet.length} selected` : 'Select printers to command them together';
+    $('fc-count').textContent = n ? `${n} of ${cmd.fleet.length} selected` : 'Tick printers to command them together';
     qsa('#fc-bar [data-act]').forEach(b => { b.disabled = !n; });
+    // The commands appear once a printer is ticked, instead of a row of greyed-out buttons.
+    const acts = qs('#fc-bar .fc-bar-actions');
+    if (acts && acts.hidden !== !n) acts.hidden = !n;
+    bar.classList.toggle('is-open', n > 0);
     $('fc-all').textContent = n === cmd.fleet.length ? 'Clear' : 'Select all';
     if (!n) disarmCancel();
   }
@@ -127,6 +131,8 @@ const Farm = (() => {
       const q = cmd.queues[id];
       const waiting = q ? q.items.filter(i => i.status === 'queued' || i.status === 'held') : [];
       const others = cmd.fleet.filter(p => p.id !== id);
+      // An empty queue takes no room; the drop hint still shows while a file is dragged.
+      if (!waiting.length && !cmd.picked) { setHTML(slot, '<p class="fcq-drop">Drop a file here to queue it</p>'); return; }
       setHTML(slot, `
         <div class="fcq-head"><span>Queue</span><b>${waiting.length ? `${waiting.length} waiting` : 'empty'}</b></div>
         ${waiting.slice(0, 4).map(i => `
@@ -169,8 +175,8 @@ const Farm = (() => {
       <span class="fr-label">Queue a print</span>
       ${cmd.files.slice(0, 14).map(f => `<button class="chip-btn fc-file ${cmd.picked === f.name ? 'is-picked' : ''}" type="button"
           draggable="true" data-file="${esc(f.name)}" aria-pressed="${cmd.picked === f.name}">${esc(f.name)}</button>`).join('')}
-      <span class="fc-files-hint">These are print files (G-code) from your library. Drag one onto a printer card, or tap it and press "Queue here" on a printer. It waits in that printer's queue and starts only after its Confirm Print check.</span>`
-      : '<p class="log-empty">No G-code in the library yet. Add some in Files to send it to a printer from here.</p>';
+      <span class="fc-files-hint">Pick a print file, then press "Queue here" on a printer, or drag the file onto one. It waits in that printer's queue and starts only after Confirm Print has checked it.</span>`
+      : '<p class="field-hint">To queue a print on a printer from here, add a G-code file in Files first.</p>';
   }
 
   function initCommand() {
@@ -416,7 +422,7 @@ const Farm = (() => {
     const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
-  const STATE_HEX = { printing: '#248a3d', paused: '#b58300', error: '#d70015', complete: '#4a8df8', ready: '#7c7c80' };
+  const STATE_HEX = { printing: '#248a3d', paused: '#b58300', error: '#d70015', complete: '#4a8df8', ready: '#1d1d1f' };
   const PARAMS = {
     jam: ['toolhead'], runout: ['toolhead'], heater_fault: ['toolhead'], bad_swap: ['toolhead'],
     wear: ['hours'], start_print: ['file', 'accept'], queue_file: ['file'],

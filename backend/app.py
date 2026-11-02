@@ -428,6 +428,13 @@ _DATA_ROUTES = {
     "/api/printer/job": (None, lambda q: dict(mock_moonraker.get_current_job() or {})),
     "/api/printer/control/capabilities": ("printer_control", lambda q: printer_control.get_capabilities()),
     "/api/printer/control/console": ("printer_control", lambda q: {"log": printer_control.get_console_log()}),
+    # Read on request from the printer itself (printer_extras.py); a simulated printer's answers say "demo".
+    "/api/printer/macros": ("printer_control", lambda q: mock_moonraker.printer_reading("macros")),
+    "/api/printer/mesh": ("printer_control", lambda q: mock_moonraker.printer_reading("mesh")),
+    "/api/printer/endstops": ("printer_control", lambda q: mock_moonraker.printer_reading("endstops")),
+    "/api/printer/gcode-help": ("printer_control", lambda q: mock_moonraker.printer_reading("help")),
+    "/api/printer/temperatures": ("printer_control", lambda q: mock_moonraker.printer_reading("temperatures")),
+    "/api/printer/feeding": ("printer_control", lambda q: mock_moonraker.printer_reading("feeding")),
     "/api/filament/check": ("filament_inventory", lambda q: filament_inventory.check_job_requirements()),
     "/api/filament/forecast": ("filament_inventory", lambda q: {
         "spools": filament_inventory.forecast(mock_moonraker.get_print_history())}),
@@ -578,7 +585,13 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/limits": lambda b: printer_control.set_limits(b.get("velocity"), b.get("accel")),
     "/api/printer/control/motors-off": lambda b: printer_control.motors_off(),
     "/api/printer/control/bed-mesh": lambda b: printer_control.bed_mesh(),
-    "/api/printer/control/macro": lambda b: printer_control.run_macro(b.get("name")),
+    "/api/printer/control/macro": lambda b: printer_control.run_macro(b.get("name"), b.get("params")),
+    "/api/printer/control/fan-generic": lambda b: printer_control.set_fan_generic(b.get("name"), b.get("percent")),
+    "/api/printer/control/led": lambda b: printer_control.set_led(b.get("name"), b.get("red"), b.get("green"),
+                                                                  b.get("blue"), b.get("white")),
+    "/api/printer/control/runout": lambda b: printer_control.set_runout(b.get("name"), b.get("enabled")),
+    "/api/printer/control/mesh-profile": lambda b: printer_control.mesh_profile(b.get("action"), b.get("profile")),
+    "/api/printer/control/feed": lambda b: printer_control.feed(b.get("toolhead")),
     "/api/printer/control/tool": lambda b: printer_control.pick_up(b.get("toolhead")),
     "/api/printer/control/estop": lambda b: printer_control.emergency_stop(),
 }

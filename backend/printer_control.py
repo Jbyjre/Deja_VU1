@@ -16,6 +16,7 @@ import threading
 import file_library
 import mock_moonraker
 import print_gate
+import printer_extras
 
 _start_locks = {}
 _start_locks_guard = threading.Lock()
@@ -349,8 +350,12 @@ def bed_mesh():
     return mock_moonraker.tune("bed_mesh", script, {})
 
 
-def run_macro(name):
-    """One of the printer's own macro buttons, by the exact name it lists."""
+def run_macro(name, params=None):
+    """
+    One of the printer's own macro buttons, by the exact name it lists, with the
+    settings the macro's own text reads (printer_extras.macro_params). Each value
+    is one word, so it can't carry a second command.
+    """
     name = str(name or "").strip()
     if not _MACRO_NAME.match(name):
         raise ValueError("That isn't a macro name")
@@ -358,7 +363,94 @@ def run_macro(name):
     macros = (state.get("tuning") or {}).get("macros") or []
     if name.upper() not in {m.upper() for m in macros}:
         raise ValueError(f"The printer doesn't list a macro called {name}")
-    return mock_moonraker.tune("macro", name.upper(), {"name": name.upper()})
+    name = name.upper()
+    params = params if isinstance(params, dict) else {}
+    parts = []
+    if params:
+        info = mock_moonraker.printer_reading("macros").get("macros") or []
+        known = {p["name"] for m in info if m.get("name") == name for p in m.get("params") or []}
+        for key, value in params.items():
+            key, value = str(key).strip().upper(), str(value if value is not None else "").strip()
+            if value == "":
+                continue
+            if not printer_extras.PARAM_NAME.match(key) or key not in known:
+                raise ValueError(f"{name} doesn't read a setting called {key}")
+            if not printer_extras.PARAM_VALUE.match(value):
+                raise ValueError(f"{key}: use one word of letters, numbers and . _ - : # + (no spaces)")
+            parts.append(f"{key}={value}")
+    script = " ".join([name, *parts])
+    return mock_moonraker.tune("macro", script, {"name": name, "params": parts})
+
+
+def _listed(kind, name, what):
+    """A fan, light or sensor the printer itself lists, by its config name."""
+    name = str(name or "").strip()
+    state = mock_moonraker.get_printer_state() or {}
+    for item in (state.get("tuning") or {}).get(kind) or []:
+        if item.get("id") == name:
+            return item, state
+    raise ValueError(f"The printer doesn't list a {what} called {name or 'that'}")
+
+
+def set_fan_generic(name, percent):
+    """SET_FAN_SPEED for one of the printer's own fans (fan_generic only: the others follow a heater)."""
+    fan, _ = _listed("fans", name, "fan")
+    if not fan.get("settable"):
+        raise ValueError(f"{fan['name']} runs by itself (it follows its heater or board), so it can't be set by hand")
+    percent = _number(percent, "Fan speed", 0, 100)
+    return mock_moonraker.tune("fan_generic", f"SET_FAN_SPEED FAN={fan['id']} SPEED={percent / 100:.2f}",
+                               {"name": fan["id"], "percent": percent})
+
+
+def set_led(name, red=0, green=0, blue=0, white=0):
+    """SET_LED with each channel 0 to 1. A white-only light ignores the colour channels, as Klipper does."""
+    led, _ = _listed("leds", name, "light")
+    color = [_number(v if v not in (None, "") else 0, label, 0, 1)
+             for v, label in ((red, "Red"), (green, "Green"), (blue, "Blue"), (white, "White"))]
+    script = (f"SET_LED LED={led['id']} RED={color[0]:.2f} GREEN={color[1]:.2f} BLUE={color[2]:.2f} "
+              f"WHITE={color[3]:.2f}")
+    return mock_moonraker.tune("led", script, {"name": led["id"], "color": color})
+
+
+def set_runout(name, enabled):
+    """SET_FILAMENT_SENSOR: switch one runout sensor's check on or off."""
+    sensor, _ = _listed("runout", name, "filament sensor")
+    if not isinstance(enabled, bool):
+        raise ValueError("Say whether the sensor should be on or off")
+    return mock_moonraker.tune("runout", f"SET_FILAMENT_SENSOR SENSOR={sensor['id']} ENABLE={int(enabled)}",
+                               {"name": sensor["id"], "enabled": enabled})
+
+
+def mesh_profile(action, profile=None):
+    """Load a saved bed mesh (BED_MESH_PROFILE LOAD=) or stop using one (BED_MESH_CLEAR). Not mid-print."""
+    _idle_for("Changing the bed mesh")
+    if action == "clear":
+        return mock_moonraker.tune("mesh_profile", "BED_MESH_CLEAR", {"profile": None})
+    if action != "load":
+        raise ValueError("Load a saved mesh or clear the one in use")
+    profile = str(profile or "").strip()
+    saved = mock_moonraker.printer_reading("mesh").get("profiles") or []
+    if profile not in saved:
+        raise ValueError(f"The printer has no saved bed mesh called {profile or 'that'}")
+    if not _MACRO_NAME.match(profile):
+        raise ValueError("That mesh name has characters Deja Vu1 won't put in a command; load it from the console")
+    return mock_moonraker.tune("mesh_profile", f"BED_MESH_PROFILE LOAD={profile}", {"profile": profile})
+
+
+def feed(toolhead):
+    """
+    Snapmaker's automatic feeding for one head: the printer's own AUTO_FEEDING macro, which looks up
+    that head's feeder module and channel itself (_FILAMENT_FEED_VARIABLE). Deja Vu1 names neither.
+    """
+    if toolhead not in mock_moonraker.TOOLHEADS:
+        raise ValueError(f"Unknown toolhead: {toolhead}")
+    _idle_for("Feeding filament")
+    info = mock_moonraker.printer_reading("feeding")
+    head = next((h for h in info.get("heads") or [] if h.get("head") == toolhead), None)
+    if not head:
+        raise ValueError(info.get("none") or f"The printer doesn't say which feeder serves {toolhead}")
+    return mock_moonraker.tune("feed", f"AUTO_FEEDING EXTRUDER={head['index']}",
+                               {"head": toolhead, "module": head["module"], "channel": head["channel"]})
 
 
 def pick_up(toolhead):

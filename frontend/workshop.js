@@ -387,7 +387,7 @@ const Workshop = (() => {
     if (grid.dataset.ids !== ids) {
       grid.dataset.ids = ids;
       grid.innerHTML = live.fleet.map(p => `
-        <article class="fleet-card liquid-glass" data-tint data-printer="${esc(p.id)}">
+        <article class="fleet-card liquid-glass" data-printer="${esc(p.id)}">
           <div class="fc-head">
             <label class="fc-pick" title="Select for fleet commands">
               <input type="checkbox" data-pick="${esc(p.id)}" aria-label="Select ${esc(p.name)} for fleet commands">
@@ -407,8 +407,10 @@ const Workshop = (() => {
           <div class="fc-temps" data-f="temps"></div>
           <ul class="fc-alerts" data-f="alerts"></ul>
           <div class="fc-queue" data-f="queue"></div>
-          <button class="btn block primary fc-open" type="button" data-open="${esc(p.id)}">Open ${esc(p.name)}</button>
-          ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer" title="The web page built into the printer">Printer's built-in page ↗</a>` : ''}
+          <div class="fc-foot">
+            <button class="btn fc-open" type="button" data-open="${esc(p.id)}" aria-label="Open ${esc(p.name)}">Open printer</button>
+            ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer" title="The web page built into the printer">Its own page ↗</a>` : ''}
+          </div>
         </article>`).join('');
       qsa('[data-open]', grid).forEach(btn => btn.addEventListener('click', () => selectPrinter(btn.dataset.open, btn.closest('.fleet-card'))));
     }
@@ -417,7 +419,8 @@ const Workshop = (() => {
       if (!card) return;
       const f = (k) => qs(`[data-f="${k}"]`, card);
       card.classList.toggle('is-selected', p.id === (currentPrinter || live.fleet[0].id));
-      setVar(card, '--glass-tint', p.state === 'printing' && p.active_color ? p.active_color : p.state === 'ready' ? '#ffffff' : STATE_HEX[p.state] || '#ffffff');
+      // Calm cards (the owner, 1 November 2026: no gradients, not colourful): the state is the dot and the ring.
+      card.dataset.state = p.link_lost ? 'lost' : p.state || '';
       // Any printer but a U1 says what it is, from its own report (machines.py).
       const kind = f('machine'), other = p.machine && !p.machine.reference;
       kind.hidden = !other;
@@ -431,7 +434,8 @@ const Workshop = (() => {
       if (!ring.firstElementChild) ring.innerHTML = `${ringSVG(progress, STATE_HEX[p.state])}<span class="fc-pct"></span>`;
       const arc = qs('.rs-fill', ring), circ = 2 * Math.PI * 15.5;
       setVar(arc, 'stroke', STATE_HEX[p.state] || '#8e8e93');
-      setVar(arc, 'stroke-dashoffset', String(circ * (1 - progress)));
+      // Ready draws a whole ring in ink: a printer waiting for work is up, never an empty grey circle.
+      setVar(arc, 'stroke-dashoffset', String(p.state === 'ready' ? 0 : circ * (1 - progress)));
       setText(qs('.fc-pct', ring), p.state === 'ready' ? 'Ready' : `${Math.round(progress * 100)}%`);
       setText(f('file'), p.current_file || (p.state === 'error' ? p.state_message : 'Ready for a print'));
       setText(f('meta'), p.remaining_hours != null
@@ -441,10 +445,10 @@ const Workshop = (() => {
           <span class="fc-dock-chip" style="background:${esc(d.color)}"></span>${esc(th)}
         </span>`).join(''));
       setHTML(f('temps'), `
-        <span>Nozzle <b>${p.nozzle_temperature != null ? formatTemp(p.nozzle_temperature) : '—'}</b></span>
-        <span>Bed <b>${formatTemp(p.bed_temperature)}</b></span>
-        <span>Chamber <b>${p.chamber_temperature != null ? formatTemp(p.chamber_temperature) : '—'}</b></span>
-        <span>Health <b>${p.health ?? '—'}</b></span>`);
+        <span><small>Nozzle</small><b>${p.nozzle_temperature != null ? formatTemp(p.nozzle_temperature) : '—'}</b></span>
+        <span><small>Bed</small><b>${formatTemp(p.bed_temperature)}</b></span>
+        <span><small>Chamber</small><b>${p.chamber_temperature != null ? formatTemp(p.chamber_temperature) : '—'}</b></span>
+        <span><small>Health</small><b>${p.health ?? '—'}</b></span>`);
       const alerts = p.alerts || [];
       setHTML(f('alerts'), alerts.length
         ? alerts.map(a => `<li class="fc-alert ${esc(a.level)}">${esc(a.text)}</li>`).join('')
@@ -510,7 +514,7 @@ const Workshop = (() => {
     const parts = [];
     if (printing.length) parts.push(`${printing.length} printing`);
     const idle = printers.filter(p => p.state === 'ready').length;
-    if (idle) parts.push(`${idle} idle`);
+    if (idle) parts.push(`${idle} ready`);
     const head = parts.length ? parts.join(', ') : `${printers.length} printer${printers.length === 1 ? '' : 's'}`;
     return next ? `${head} · next one done ${doneAt(next.remaining_hours)} (${next.name})` : head;
   }
@@ -553,10 +557,9 @@ const Workshop = (() => {
     if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Printer fleet'); return; }
     registry = data.printers || [];
     addedPrinters = registry;
-    // The add form stays folded once a printer is added; with none yet, it opens by itself.
+    // The add form stays folded until asked for (the owner: Add a printer smaller and expandable).
     const form = $('add-printer-form');
-    if (form && !registry.length && !form.dataset.touched) form.open = true;
-    if (form && !form.dataset.wired) { form.dataset.wired = '1'; form.addEventListener('toggle', () => { form.dataset.touched = '1'; }); }
+    if (form) setText(qs('summary', form), registry.length ? 'Add another printer' : 'Add your printer');
     host.innerHTML = registry.length ? registry.map(p => `
       <div class="reg-row">
         <span class="reg-name">${esc(p.name)}</span>
@@ -565,7 +568,7 @@ const Workshop = (() => {
         <button class="btn small" data-reg-details="${esc(p.id)}" type="button" aria-expanded="false">Details</button>
         <button class="btn small" data-reg-remove="${esc(p.id)}" type="button">Remove</button>
         <div class="reg-details" id="reg-details-${esc(p.id)}" hidden></div>
-      </div>`).join('') : '<p class="log-empty">No printers added yet.</p>';
+      </div>`).join('') : '<p class="field-hint">None added yet. Until you add one, the demo printers show what Deja Vu1 does.</p>';
     qsa('[data-reg-details]', host).forEach(b => b.addEventListener('click', async () => {
       const box = $(`reg-details-${b.dataset.regDetails}`);
       const open = box.hidden;
@@ -3604,7 +3607,7 @@ const Workshop = (() => {
   }
 
   return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph,
-           openFile, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
+           openFile, openConfirm, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
 })();
 
 window.Workshop = Workshop;

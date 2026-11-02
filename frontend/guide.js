@@ -291,7 +291,7 @@ window.Guide = (() => {
       { target: '#attention', title: 'Needs you', text: 'Jams, errors, finished prints and due maintenance, most urgent first, for every printer.' },
       { target: '#ov-now', title: 'Right now', text: 'What the selected printer is doing, how far along it is and when it finishes.' },
       { target: '#ov-camera', title: 'Camera', text: 'The selected printer’s camera, live, without opening its page.' },
-      { target: '#overview-control', title: 'Quick controls', text: 'Pause, resume and cancel. A refusal from the printer is shown in words.' },
+      { target: '#overview-control', title: 'Quick controls', text: 'Pause, resume and cancel while a print runs; print a file or warm up while the printer waits. A refusal from the printer is shown in words.' },
     ],
     fleet: [
       { target: '#fleet-grid', title: 'Printer cards', text: 'State, progress, the four heads’ colours, temperatures and health. Drag a file onto a card to queue it there.' },
@@ -303,7 +303,7 @@ window.Guide = (() => {
       { target: '#pp-head', title: 'Pause, resume, cancel', text: 'The current print and its controls. Cancel asks first; the emergency stop cuts every motor and heater.' },
       { target: '#twin-modes', title: 'The twin', text: 'A 3D copy of the printer that moves with it. Drag the head to move the real one.', try: 'Show the drawing', action: 'twin-drawing' },
       { target: '#pp-move', title: 'Move', text: 'Home, then move any axis by 0.1 to 100 mm. Watch the camera beside it.' },
-      { target: '#pp-tune', title: 'Tune', text: 'Speed, flow, part fan and pressure advance, during a print too.' },
+      { target: '#pp-tune', title: 'Tune', text: 'Speed, flow, part fan and pressure advance, during a print too. Further down: the bed mesh, other fans and lights, and printing a file.' },
     ],
     files: [
       { target: '#convert-card', title: 'Convert a project', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
