@@ -11,7 +11,7 @@ separately installed compatible engine.
 
 <sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
 
-**Latest named release: 0.15.0** ([what's new](#whats-new-in-0150) · [every version](CHANGELOG.md)).
+**Latest named release: 0.16.0** ([what's new](#whats-new-in-0160) · [every version](CHANGELOG.md)).
 Most merged changes publish a small numbered release of their own, so the newest
 release can be later than this one. The app shows its version in the header and
 in **Settings → Version & updates**.
@@ -342,6 +342,26 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
   and idle".
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new in 0.16.0
+
+- **Everything a printer's own page offers, on the Printer page.** A temperature
+  chart, the bed mesh as a coloured map with saved meshes to load, settings for the
+  printer's macros, its other fans and lights, its filament sensors, an endstop check,
+  the printer's own command list in the console, and printing a file without leaving
+  the page. Each reading is the printer's own answer from Moonraker.
+- **Automatic feeding on a U1.** Feed runs the printer's own `AUTO_FEEDING` macro for a
+  head; the printer picks the feeder and channel itself, so Deja Vu1 never guesses them.
+- **An idle printer looks ready.** Pause and Cancel appear only during a print;
+  otherwise the page offers Print a file and Warm up.
+- **Your printers, calmer.** No coloured tints, the readings in one row, group commands
+  that appear once you tick a printer, and Add a printer folded to one button.
+- **The twin's bed** no longer flickers while the model turns (two surfaces at the same
+  height, found by measuring frame by frame) and looks like the real U1 plate.
+- **Modules** switch at once, stay put and can be searched.
+
+Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
+physical U1.
 
 ## What's new in 0.15.0
 
@@ -744,7 +764,7 @@ per-part settings remain limited. Conversion is not proof of printability.
 | Module | What it does |
 |---|---|
 | **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
-| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. |
+| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. The Printer page adds moving, extruding, tuning, a temperature chart, the bed mesh map, macro settings, the printer's other fans and lights, filament sensors, endstops, automatic feeding on a U1 and printing a file. |
 | **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram using HTTP requests, with no app SDK. Configure the chosen service's topic, webhook or bot credentials. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
 | **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
 | **App-data backup & recovery** | Versioned full app-data ZIP with checksums, omitted connection secrets and restore preview. Recovery creates a separate folder and launchers; it keeps existing data and disables automatic actions. Includes library, per-printer logs, fleet, queues, presets and time-lapse. Limits: 512 MB unpacked / 256 MB ZIP; files over 64 MB and external installations require an offline copy. |
@@ -898,6 +918,7 @@ recorded static demo passed at both widths.
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
 | Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
+| Printer page extras (0.16.0) | Temperature history, bed mesh, macro settings, endstops, command help, fans, lights, filament sensors and feeding against the simulated printer and the Moonraker stand-in; names checked against Snapmaker's published U1 config | Not tried on a physical U1; whether the shipped firmware's config matches the published one |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
 | Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
 | App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested. 0.13.7: Install as a background job with progress, the launcher surviving a failed apply, the launch id and the ready check are tested on Linux, including a real install of the published 0.13.6 release with a stand-in printer connected and a reload mid-download. The Windows paste blocks, GitHub Desktop's own git and macOS have not been run yet |

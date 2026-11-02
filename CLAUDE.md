@@ -254,6 +254,19 @@ root should hand over to `welcome.html`.
   (`app.py` `_locked_out`; localhost via loopback is always allowed).
 - `process_settings.py`: the 106 Orca process settings (names/choices checked against Orca's
   `PrintConfig.cpp`), served by `GET /api/slicer/schema` and used by `slicer_profiles.validate_options`.
+- `printer_extras.py` (0.16.0): what the Printer page reads on request, `GET /api/printer/macros|mesh|endstops|
+  gcode-help|temperatures|feeding` (module `printer_control`), through `mock_moonraker.printer_reading(kind)`:
+  a real printer's `MoonrakerPrinter.extra()` asks Moonraker each time (`server/temperature_store`,
+  `printer/objects/query` for bed_mesh, configfile `config` (macro text, cached per connection) and
+  `gcode_macro _FILAMENT_FEED_VARIABLE`, `printer/query_endstops/status`, `printer/gcode/help`); a simulated one
+  answers with `"demo": True`. Macro settings are parsed from `params.X|default(Y)`; a value is one word
+  (`PARAM_VALUE`). Live `tuning` also carries `leds`, `pins` (shown, never switched: on the U1 they are heater
+  switches), `runout` and `feeder`; fans carry `id` and `settable` (fan_generic only). Commands:
+  `/api/printer/control/fan-generic|led|runout|mesh-profile|feed` and `macro` with `params`. Names follow
+  Snapmaker's published U1 config (u1-klipper `lava/printer.cfg`: cavity_fan, cavity_led, e0..e3_filament,
+  AUTO_FEEDING + _FILAMENT_FEED_VARIABLE); feeding runs `AUTO_FEEDING EXTRUDER=n` and never names a module.
+  `frontend/printer-extras.js` draws the chart (`#pp-chart`), `#pp-mesh`, `#pp-outputs`, `#pp-print` and the macro
+  form; the online demo fakes the new POSTs in app.js `tourControl`.
 - `logbook.py`: per-printer problems/fixes/print hours (`/api/logbook`, module `maintenance`);
   `live_feed` logs failures and reasoned pauses; demo entries are flagged and never mix.
 - `print_gate.py` (Confirm Print, re-checked by the server at start),
@@ -268,11 +281,16 @@ root should hand over to `welcome.html`.
   Right now, camera, temperatures, quick control, your printers, maintenance, totals; no twin).
   Printer (data-tab `control`, kept for saved tabs and tours) is one printer's own page: the twin
   with the camera and Move pad beside it, Temperatures (warm-up presets from Preferences),
-  Extrude, Tune, the printer's own buttons (bed mesh, motors off, its macros) and the console;
+  Extrude, Tune, Fans lights and sensors, Bed mesh, the printer's own buttons (motors off, its macros),
+  the console and Print a file;
   parts Control, Live readings, History & upkeep, Camera & time-lapses. Opening a printer goes
   there. Preferences (`prefs`) is its own tab; Photo studio has no tab button (Files' Photo to
   print card, search and the More sheet open it). The printer button in the top bar carries the
   state the old strip under the tabs did (`renderChipStatus`); `#status-ribbon` stays hidden.
+  Idle (the owner: never grey or "down"): Pause/Cancel are hidden unless a print runs (`showIdleActions`);
+  idle offers Print a file and Warm up (`[data-go-card]`). Printer cards carry no state tint (`data-state`
+  only), group commands appear once a printer is ticked, Add a printer stays folded. Modules (`loadModules`)
+  build once and then only sync switches; never rebuild the list on a toggle.
 - `printer-page.js` + `printer.css`: the Printer page controls, the Overview cards, the camera
   view (`.pcam`: the saved stream, else one snapshot after another, at most five a second,
   only while visible) and the Preferences tab. Server side: `printer_control.jog` and the
@@ -290,7 +308,7 @@ root should hand over to `welcome.html`.
   in the first part.
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `printer-page.js` → `logbook.js` → `insights.js` →
+  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `insights.js` →
   `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
@@ -323,7 +341,10 @@ root should hand over to `welcome.html`.
   scaled by the published 499 mm depth; recessed side pockets (`HUB`) hold the
   spools so 584 mm overall fits. The gantry runs `GANTRY_DY` in front of the head
   it carries, so the nozzle is drawn at the G-code position. Dock spacing, gantry
-  heights and inside layout are estimates; the card says so. Whether the back
+  heights and inside layout are estimates; the card says so. The plate follows Snapmaker's shop photo of the
+  U1 textured PEI plate (bronze-brown, a white line per back tab, faint wordmark, "PEI Coated PLATE" at the
+  front; `plateArt`). Two surfaces at one height z-fight while the model turns: the frame's base plate stops
+  1.5 mm under the case's inside floor (40 mm). Measure flicker by turning 2 px at a time and comparing frames. Whether the back
   opening is glazed is unconfirmed (drawn as faint glass).
 - Games (`games.js`, moved out of app.js; fetched by app.js `loadGames()` the first time the
   Games tab opens, so it is not in index.html's script list): every game timer goes through `frameEvery()` (rAF-driven fixed
