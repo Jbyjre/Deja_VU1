@@ -145,8 +145,11 @@ def refresh(printer_id):
     """Re-read one printer right now - used straight after a control action."""
     with mock_moonraker.use_printer(printer_id):
         state = mock_moonraker.get_printer_state()
-    _detect(printer_id, state)
     _publish(printer_id, state)
+    try:
+        _detect(printer_id, state)
+    except Exception as exc:          # noqa: BLE001 - the reading is already out
+        _side_failure(printer_id, "noticing print events", exc)
     return state
 
 
@@ -288,13 +291,39 @@ def tick(seconds=TICK_SECONDS, count=0, scaled=True):
             sys.stderr.write(f"  tick listener failed: {exc}\n")
 
 
+_side_failed = {}
+
+
+def _side_failure(printer_id, what, exc):
+    """Said once a minute per printer: a failing rule or recording never freezes the live picture."""
+    now = time.time()
+    if now - _side_failed.get((printer_id, what), 0) >= 60:
+        _side_failed[(printer_id, what)] = now
+        import console
+        console.write(f"  live feed: {printer_id}: {what} failed, the live readings carry on: {exc!r}\n")
+
+
 def _tick_one(printer_id, seconds, count, scaled, now):
     finish = mock_moonraker.advance(seconds, printer_id, scaled=scaled)
     with mock_moonraker.use_printer(printer_id):
         state = mock_moonraker.get_printer_state()
-    events, side_effects, simulated = _detect(printer_id, state, finish)
+    # The reading goes out first. Before, an error in the checks below (an automation rule, the
+    # time-lapse, a printer's unusual report) stopped every update for that printer, so its page
+    # and its twin froze while the printer kept printing.
     _publish(printer_id, state)
+    try:
+        events, side_effects, simulated = _detect(printer_id, state, finish)
+    except Exception as exc:          # noqa: BLE001 - the readings above are already out
+        _side_failure(printer_id, "noticing print events", exc)
+        return
 
+    try:
+        _side_effects(printer_id, state, count, simulated, side_effects, now)
+    except Exception as exc:          # noqa: BLE001 - see above
+        _side_failure(printer_id, "rules, time-lapse or chamber history", exc)
+
+
+def _side_effects(printer_id, state, count, simulated, side_effects, now):
     if side_effects:
         # Continuous triggers (temperatures, mismatch, maintenance);
         # print events were already handled in _detect.

@@ -251,7 +251,8 @@
       <p class="field-hint other-printers" id="other-printers">Another printer that runs Klipper with Moonraker adds the same way. Deja Vu1 reads its size and heads from the printer, checks files against them, and marks it as an untested type. If its Moonraker answers on the printer's own web page instead of port 7125, type the full address, such as <code>http://192.168.1.50</code>.</p>
       <div class="find-row">
         <button class="btn" type="button" id="fleet-find">Find printers on my network</button>
-        <span class="find-note" id="fleet-find-note">Asks the network who runs Moonraker, then tries port 7125 on your home network. Nothing leaves your network.</span>
+        <button class="btn" type="button" id="fleet-find-wider" title="Also tries the address ranges home routers often use and your Tailscale network">Look further</button>
+        <span class="find-note" id="fleet-find-note">Asks the network who runs Moonraker, then tries port 7125 on your home network. Look further also tries the ranges a second router or mesh system often uses, and your Tailscale network. Nothing leaves networks you control.</span>
       </div>
       <ul class="found-list" id="fleet-found" hidden></ul>
       <form id="fleet-add-form" class="inline-form">
@@ -1353,6 +1354,16 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
             <li><b>Cloudflare Tunnel with Access.</b> A web address of your own (needs your own domain and a Cloudflare account). More set-up, and you must add Cloudflare Access as the login, because Deja Vu1 has none. The guide below has the steps.</li>
             <li><b>Not this: opening a port on your router.</b> Deja Vu1 has no login, so anyone on the internet who found it could use your printer.</li>
           </ul>
+        </details>
+        <details class="remote-ways" id="printer-elsewhere">
+          <summary>Your printer on another network? How Snapmaker's app does it, and how Deja Vu1 does</summary>
+          <p>Snapmaker's app and Snapmaker Orca reach a U1 on another network through Snapmaker's cloud: in Cloud mode the printer keeps a connection open to Snapmaker's servers (MQTT over TLS, port 8883), and the app talks to those servers with your Snapmaker account. In LAN mode they need the same network. Deja Vu1 has no cloud and no account, so it goes through networks you control instead. Three ways, simplest first:</p>
+          <ol>
+            <li><b>Keep Deja Vu1 on a computer at home, next to the printer,</b> and open it from anywhere with the sharing above. Deja Vu1 starts with that computer, so it is always there. This is the same idea as Snapmaker's cloud: the side at home connects out, so nothing at home is opened up.</li>
+            <li><b>The printer on a second router, a mesh system or an extender at home:</b> Printers → Add a printer → <b>Look further</b> tries the address ranges home routers often use. Typing the printer's address works too, wherever your routers pass traffic between them.</li>
+            <li><b>Deja Vu1 away from the printer:</b> install Tailscale on any computer that stays at home and share its home network with your Tailscale network (a "subnet router": <code>tailscale set --advertise-routes=192.168.1.0/24</code> with your own range, then approve it in Tailscale's admin page). <b>Look further</b> then finds the U1 through it. Windows and the Mac app use shared routes by themselves; on Linux, run <code>tailscale set --accept-routes</code> on the computer with Deja Vu1.</li>
+          </ol>
+          <p>If a saved printer stops answering, Deja Vu1 looks for the same serial number at a new address by itself and switches to it, then says so.</p>
         </details>
         <p class="field-hint remote-why">Private: it uses Tailscale, a free app on this computer and your phone, signed in to your own account. Only your own devices can open the address, and nothing is opened to the internet. The printer stays on your home Wi-Fi with this computer. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md" target="_blank" rel="noopener">The full guide</a></p>
       </section>

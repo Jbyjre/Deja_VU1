@@ -138,8 +138,8 @@ def _printers():
         else:
             words = str(row.get('link') or 'Not connected').strip()
             out.append(_check('printer', name, 'note', words,
-                              'Check the printer is switched on and on the same network as this computer. '
-                              'Printers > Test connection says what it hears'))
+                              'Check the printer is switched on and that this computer can reach its network. '
+                              'Printers > Test connection says what it hears; Look further searches other networks'))
     return out
 
 

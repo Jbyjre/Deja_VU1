@@ -121,6 +121,36 @@ def status(port):
     return out
 
 
+def tailnet_places():
+    """
+    Where printers can be on your Tailscale network, from `tailscale status --json`
+    (ipn/ipnstate/ipnstate.go, tailscale 57ca6e1): each online device's own addresses
+    (TailscaleIPs: a printer host running Tailscale itself) and the home networks a device
+    shares with the rest of your tailnet (PrimaryRoutes: a "subnet router" at home, which is
+    how a computer away from home reaches a printer that can't run Tailscale).
+    Returns {"running", "peers": [{"name", "ips"}], "routes": ["192.168.1.0/24", ...]}.
+    """
+    out = {"running": False, "peers": [], "routes": []}
+    st = _json(["status", "--json"]) if cli() else None
+    if not isinstance(st, dict) or st.get("BackendState") != "Running":
+        return out
+    out["running"] = True
+    peers = st.get("Peer") or {}
+    for peer in (peers.values() if isinstance(peers, dict) else []):
+        if not isinstance(peer, dict) or not peer.get("Online"):
+            continue
+        ips = [str(ip) for ip in (peer.get("TailscaleIPs") or []) if ":" not in str(ip)]
+        if ips:
+            out["peers"].append({"name": str(peer.get("HostName") or "")[:60], "ips": ips[:2]})
+        for route in peer.get("PrimaryRoutes") or []:
+            route = str(route)
+            if ":" not in route and route not in out["routes"] and route not in ("0.0.0.0/0",):
+                out["routes"].append(route)
+    out["peers"] = out["peers"][:40]
+    out["routes"] = out["routes"][:16]
+    return out
+
+
 def _reap(proc):
     """Collect the command's words; stop it if HTTPS is never switched on."""
     for line in proc.stdout:

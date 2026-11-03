@@ -1093,6 +1093,17 @@ def get_console_log(limit=30):
         return list(reversed(printer.console))[:limit]
 
 
+def fetch_printer_file(path):
+    """Copy a G-code file from a real printer's own storage into the file library."""
+    printer = _current()
+    if not printer.real:
+        raise ValueError("Demo printers print from your file library; they keep no files of their own")
+    import file_library
+    data = printer.fetch_gcode(path, file_library.MAX_BYTES)
+    name = str(path).replace("\\", "/").split("/")[-1]
+    return file_library.save(name, data, origin="printer", note=f"Copied from {printer.name}")
+
+
 def printer_reading(kind):
     """
     What the Printer page reads on request (printer_extras.py): a real printer's
@@ -1121,6 +1132,11 @@ def printer_reading(kind):
         if kind == "temperatures":
             # A simulated printer keeps no history: the page's chart fills from the live readings it sees.
             return {"interval_s": 1, "series": [], "demo": True}
+        if kind == "files":
+            # A simulated printer prints from your library; it holds no files of its own.
+            return {"files": [], "demo": True}
+        if kind == "job_queue":
+            return {"queue_state": "ready", "queued_jobs": [], "demo": True}
     raise ValueError(f"Unknown reading: {kind}")
 
 

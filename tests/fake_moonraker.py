@@ -80,6 +80,7 @@ class FakeMoonraker:
         self.http_faults = {}              # path -> {"status", "body", "delay", "truncate", "html"}
         self.webcams = []                  # what /server/webcams/list answers (Moonraker's webcam.py)
         self.webcam_picture = None         # bytes served at /webcam/snapshot.jpg and as /webcam/stream.mjpg
+        self.webrtc_messages = []          # every POST to /webcam/webrtc
         self.camera_params = []            # every camera.* params received (u1-moonraker wants req_id)
         self.camera_failed = None          # repeater.py's {"state": "failed", "message": ...} reply
         self.users = {}                    # username -> password; /access/login hands out a token
@@ -177,6 +178,12 @@ class FakeMoonraker:
             except OSError:
                 pass
 
+    def system_info(self):
+        """u1-moonraker components/machine.py: product_info names the model, the serial and the name set."""
+        return {"system_info": {"product_info": {"machine_type": "Snapmaker U1",
+                                                 "serial_number": getattr(self, "serial", ""),
+                                                 "nozzle_diameter": [0.4] * 4, "device_name": self.device_name}}}
+
     def set(self, obj, **fields):
         """Change Klipper's state and push the difference, as Klipper would."""
         with self.lock:
@@ -233,6 +240,8 @@ class FakeMoonraker:
         return out
 
     def _push(self):
+        if getattr(self, "mute_pushes", False):
+            return                       # a status stream gone quiet while the socket stays open
         for c in list(self._clients):
             sub = c.get("sub")
             if not sub:
@@ -418,6 +427,19 @@ class FakeMoonraker:
                     if meta is None:
                         return self._error(404, f"Metadata not available for <{q.get('filename')}>")
                     return self._reply(200, {"result": meta})
+                if parsed.path == "/server/files/list":
+                    # file_manager.py get_file_list(list_format=True): newest first, path/modified/size.
+                    items = [{"path": n, "modified": 1_700_000_000.0 + i, "size": len(d), "permissions": "rw"}
+                             for i, (n, d) in enumerate(fake.files.items())]
+                    return self._reply(200, {"result": sorted(items, key=lambda f: -f["modified"])})
+                if parsed.path == "/server/job_queue/status":
+                    # job_queue.py _handle_queue_status
+                    return self._reply(200, {"result": {"queued_jobs": list(getattr(fake, "job_queue", [])),
+                                                        "queue_state": "ready"}})
+                if parsed.path == "/machine/system_info":
+                    if fake.device_name is None:
+                        return self._error(404, "Not Found")
+                    return self._reply(200, {"result": fake.system_info()})
                 if parsed.path == "/printer/objects/query":
                     # HTTP form of printer.objects.query: ?name=field1,field2 (an empty value: every field).
                     raw = parse_qs(parsed.query, keep_blank_values=True)
@@ -445,6 +467,15 @@ class FakeMoonraker:
                 raw = self.rfile.read(length) if length else b""
                 if self._fault(parsed.path):
                     return None
+                if parsed.path == "/webcam/webrtc":
+                    # The Extended Firmware's camera signalling (paxx12/v4l2-mpp stream-http):
+                    # "request" -> an offer with an id; "answer" and "remote_candidate" -> {}.
+                    msg = json.loads(raw or b"{}")
+                    fake.webrtc_messages.append(msg)
+                    if msg.get("type") == "request":
+                        return self._reply(200, {}, raw=json.dumps({"type": "offer", "id": "pc-1",
+                                                                     "sdp": "v=0\r\n", "iceServers": []}).encode())
+                    return self._reply(200, {}, raw=b"{}")
                 if parsed.path == "/access/login":
                     # authorization.py: no sign-in needed to sign in; a wrong
                     # password is "Invalid Password", an unknown user "Unregistered User".
@@ -622,9 +653,7 @@ class FakeMoonraker:
             return ok(reply)
         if method == "machine.system_info" and self.device_name is not None:
             # u1-moonraker components/machine.py: product_info holds the name set on the printer.
-            return ok({"system_info": {"product_info": {"machine_type": "Snapmaker U1", "serial_number": "",
-                                                        "nozzle_diameter": [0.4] * 4,
-                                                        "device_name": self.device_name}}})
+            return ok(self.system_info())
         if method == "server.info":
             return ok({"klippy_connected": self.klippy_state != "disconnected", "klippy_state": self.klippy_state,
                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],

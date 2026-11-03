@@ -34,7 +34,7 @@ def snapmaker_answer():
     inst_ptr = struct.pack(">H", 0xC000 | inst_off)
     target = _name("U1-ABC123456.local")
     srv = inst_ptr + struct.pack(">HHIH", 33, 0x8001, 120, 6 + len(target)) + struct.pack(">HHH", 0, 0, 1884) + target
-    txt_items = [b"device_name=Bench U1", b"machine_type=U1", b"ip=192.168.1.50"]
+    txt_items = [b"device_name=Bench U1", b"machine_type=U1", b"ip=192.168.1.50", b"sn=abc123456"]
     txt_data = b"".join(bytes([len(t)]) + t for t in txt_items)
     txt = inst_ptr + struct.pack(">HHIH", 16, 0x8001, 120, len(txt_data)) + txt_data
     return head + ptr + srv + txt
@@ -52,7 +52,9 @@ class TestMulticastDNS(unittest.TestCase):
         records = discovery.parse_response(snapmaker_answer())
         self.assertEqual(records["ptr"], ["U1-ABC123456._snapmaker._tcp.local"])
         found = discovery._from_records(records)
-        self.assertEqual(found, [{"ip": "192.168.1.50", "port": 7125, "name": "Bench U1", "u1": True}])
+        # "sn" is the serial number the U1 announces (u1-moonraker zeroconf.py zc_service_props).
+        self.assertEqual(found, [{"ip": "192.168.1.50", "port": 7125, "name": "Bench U1", "u1": True,
+                                  "serial": "ABC123456"}])
 
     def test_a_cut_short_answer_is_refused_not_misread(self):
         with self.assertRaises((ValueError, struct.error, IndexError)):

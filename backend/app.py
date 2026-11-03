@@ -52,7 +52,8 @@ API endpoints
   GET  /api/maintenance              what's due
   GET  /api/maintenance/history      completed maintenance log
   POST /api/maintenance/done         mark a task done  {"task_id": "..."}
-  POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125)
+  POST /api/printers/discover         find Moonraker on the home network (mDNS, then port 7125); {"wider": true} also
+                                      nearby home ranges and the Tailscale network
   POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
   POST /api/printers/login            read a printer's API key with its web-page login {"moonraker_url", "username", "password"}
   POST /api/camera/find               find and save the selected printer's camera feed
@@ -264,6 +265,8 @@ import storage
 import converter_3mf
 import cost_calculator
 import discovery
+import refind
+import webrtc_relay
 import file_library
 import filament_inventory
 import spoolman_bridge
@@ -435,6 +438,8 @@ _DATA_ROUTES = {
     "/api/printer/gcode-help": ("printer_control", lambda q: mock_moonraker.printer_reading("help")),
     "/api/printer/temperatures": ("printer_control", lambda q: mock_moonraker.printer_reading("temperatures")),
     "/api/printer/feeding": ("printer_control", lambda q: mock_moonraker.printer_reading("feeding")),
+    "/api/printer/files": ("printer_control", lambda q: mock_moonraker.printer_reading("files")),
+    "/api/printer/job-queue": ("printer_control", lambda q: mock_moonraker.printer_reading("job_queue")),
     "/api/filament/check": ("filament_inventory", lambda q: filament_inventory.check_job_requirements()),
     "/api/filament/forecast": ("filament_inventory", lambda q: {
         "spools": filament_inventory.forecast(mock_moonraker.get_print_history())}),
@@ -553,6 +558,7 @@ def module_routes():
     routes["/api/camera/snapshot"] = "camera"
     routes["/api/camera/stream"] = "camera"
     routes["/api/camera/live"] = "camera"
+    routes["/api/camera/webrtc"] = "camera"
     return routes
 
 
@@ -1077,6 +1083,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             return self._relay_camera()
 
+        if route == "/api/camera/webrtc":
+            # Whether the selected printer's camera offers WebRTC (the Extended Firmware's does).
+            if self._module_blocked("camera"):
+                return None
+            printer = mock_moonraker.real_printer(mock_moonraker.selected_printer_id())
+            if printer is None or not printer.is_connected():
+                return self._send_json({"available": False, "service": webrtc_relay.SERVICE})
+            return self._send_json(webrtc_relay.info(printer))
+
         if route == "/api/camera/live":
             if self._module_blocked("camera"):
                 return None
@@ -1488,12 +1503,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._send_json({"error": "Unknown endpoint"}, status=404)
 
         if route == "/api/printers/discover":
-            # Looks for Moonraker on this computer's own home network only.
+            # This computer's own home networks; with {"wider": true} also nearby home ranges and
+            # the Tailscale network (discovery.wider_places). Nothing outside networks you control.
             if self._module_blocked("fleet"):
                 return None
-            self._read_json_body()
+            body = self._read_json_body() or {}
             urls = [p["moonraker_url"] for p in fleet.registered()]
-            return self._send_json(discovery.discover(urls))
+            return self._send_json(discovery.discover(urls, wider=bool(body.get("wider"))))
 
         if route == "/api/printers/test":
             # Tries an address before it is added; nothing is saved.
@@ -1546,6 +1562,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if self._module_blocked("camera"):
                 return None
             return self._send_json(camera.save_settings(self._read_json_body()))
+
+        if route == "/api/printer/files/fetch":
+            # A file on the printer itself, copied into the library so Confirm Print can check it.
+            if self._module_blocked("printer_control") or self._module_blocked("file_library"):
+                return None
+            body = self._read_json_body()
+            return self._send_json(mock_moonraker.fetch_printer_file(body.get("path")))
+
+        if route == "/api/camera/webrtc":
+            # One WebRTC signalling message to the printer's own camera (webrtc_relay.py).
+            if self._module_blocked("camera"):
+                return None
+            printer = mock_moonraker.real_printer(mock_moonraker.selected_printer_id())
+            if printer is None or not printer.is_connected():
+                raise ValueError("Choose a connected printer first. Demo printers have no camera")
+            return self._send_json(webrtc_relay.signal(printer, self._read_json_body()))
 
         if route == "/api/camera/find":
             # Reads the selected printer's camera list and saves the first
@@ -2063,6 +2095,9 @@ def main():
     console.disable_quick_edit()
     server = _bind()
     live_feed.start()
+    # A saved printer that stops answering is looked for at a new address by its serial number.
+    threading.Thread(target=refind.watch, kwargs={"publish": live_feed.publish_event}, daemon=True,
+                     name="refind").start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
     threading.Thread(target=memory.watch, daemon=True).start()
     print("=" * 58)

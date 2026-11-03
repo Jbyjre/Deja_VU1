@@ -11,9 +11,18 @@ Two ways to find them, both with the standard library only:
    zeroconf.py; lava/moonraker.conf turns it on); stock Moonraker announces
    `_moonraker._tcp.local.`. The question is sent from an ordinary port, so
    responders answer this computer directly (RFC 6762's "legacy unicast").
-2. Looking. Where a router drops multicast, every address on this
-   computer's own home network (a private /24 only) is tried on port 7125,
+2. Looking. Where a router drops multicast, every address on each of this
+   computer's own home networks (private /24s only) is tried on port 7125,
    Moonraker's port in the U1's shipped config.
+3. Looking further, when asked (wider=True): the address ranges home routers
+   commonly hand out, so a printer on a second router, a mesh system or an
+   extender with its own range is found where the routers pass traffic between
+   them; and your Tailscale network: each online device's own address and the
+   home networks a device there shares (subnet routes), which is how a
+   computer away from home reaches a U1 at home. Snapmaker's own app reaches a
+   U1 from another network through Snapmaker's cloud (the printer keeps a
+   connection out to it); Deja Vu1 has no cloud of its own, so it goes through
+   networks you control.
 
 Whatever is found is then asked what it is (GET /server/info and
 /printer/objects/list), so the list only shows real Moonrakers, says which
@@ -23,6 +32,7 @@ are U1s, and says in words which need an API key.
 import ipaddress
 import random
 import re
+import select
 import socket
 import struct
 import threading
@@ -30,6 +40,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 import outbound
+import remote
 
 MOONRAKER_PORT = 7125
 SERVICES = ("_snapmaker._tcp.local.", "_moonraker._tcp.local.")
@@ -118,39 +129,51 @@ def _from_records(records):
         # The U1's record advertises its LAN MQTT port; Moonraker is on 7125.
         port = MOONRAKER_PORT if snapmaker else srv.get("port") or MOONRAKER_PORT
         found.append({"ip": ip, "port": port, "name": txt.get("device_name") or instance.split(".")[0],
-                      "u1": snapmaker or txt.get("machine_type", "").upper().startswith("U1")})
+                      "u1": snapmaker or txt.get("machine_type", "").upper().startswith("U1"),
+                      # The U1 announces its serial number (u1-moonraker zeroconf.py "sn").
+                      "serial": (txt.get("sn") or "").strip().upper()[:40] or None})
     return found
 
 
 def ask_network(wait=1.5):
-    """Ask the network who runs Moonraker. Returns what answered."""
+    """
+    Ask the network who runs Moonraker, from every home-network connection this computer has
+    (Wi-Fi and a cable can be on different networks). Returns what answered.
+    """
     records = {"ptr": [], "srv": {}, "txt": {}, "a": {}}
+    socks = []
+    for addr in home_addresses() or [""]:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        except OSError:
+            continue
+        try:
+            sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+            if addr:
+                # Out of this connection, and the answers back to it (RFC 6762 legacy unicast).
+                sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(addr))
+            sock.bind((addr, 0))
+            sock.setblocking(False)
+            sock.sendto(build_query(), MDNS_ADDR)
+            socks.append(sock)
+        except OSError:
+            sock.close()
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    except OSError:
-        return []
-    try:
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-        sock.bind(("", 0))
-        sock.settimeout(0.25)
-        sock.sendto(build_query(), MDNS_ADDR)
         end = time.monotonic() + wait
-        while time.monotonic() < end:
-            try:
-                data, _ = sock.recvfrom(9000)
-            except socket.timeout:
-                continue
-            try:
-                got = parse_response(data)
-            except (ValueError, struct.error, IndexError):
-                continue
-            records["ptr"] += [p for p in got["ptr"] if p not in records["ptr"]]
-            for k in ("srv", "txt", "a"):
-                records[k].update(got[k])
-    except OSError:
-        pass
+        while socks and time.monotonic() < end:
+            ready, _, _ = select.select(socks, [], [], 0.25)
+            for sock in ready:
+                try:
+                    data, _ = sock.recvfrom(9000)
+                    got = parse_response(data)
+                except (OSError, ValueError, struct.error, IndexError):
+                    continue
+                records["ptr"] += [p for p in got["ptr"] if p not in records["ptr"]]
+                for k in ("srv", "txt", "a"):
+                    records[k].update(got[k])
     finally:
-        sock.close()
+        for sock in socks:
+            sock.close()
     return _from_records(records)
 
 
@@ -205,6 +228,51 @@ def home_network():
     return ipaddress.ip_network(f"{ip}/24", strict=False)
 
 
+def home_networks():
+    """Every home-network /24 this computer is on (its main connection first), at most four."""
+    nets = []
+    for ip in home_addresses():
+        net = ipaddress.ip_network(f"{ip}/24", strict=False)
+        if net not in nets:
+            nets.append(net)
+    return nets[:4]
+
+
+# Address ranges home routers commonly hand out. Tried only when someone asks to look further,
+# and only where this computer's own routers pass the traffic on: nothing leaves the home.
+COMMON_HOME_NETWORKS = (
+    "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.4.0/24", "192.168.8.0/24",
+    "192.168.10.0/24", "192.168.31.0/24", "192.168.50.0/24", "192.168.68.0/24", "192.168.86.0/24",
+    "192.168.100.0/24", "192.168.178.0/24", "10.0.0.0/24", "10.0.1.0/24", "10.1.1.0/24", "172.16.0.0/24",
+)
+
+
+def wider_places(tailnet=None):
+    """
+    Where to look further: [(network, why)] and single Tailscale addresses [(ip, why)].
+    A tailnet route larger than a /22 is skipped (too many addresses to try).
+    """
+    own = home_networks()
+    nets = [(ipaddress.ip_network(n), "a range home routers often use") for n in COMMON_HOME_NETWORKS]
+    nets = [(n, why) for n, why in nets if n not in own]
+    hosts = []
+    tailnet = remote.tailnet_places() if tailnet is None else tailnet
+    for route in tailnet.get("routes") or []:
+        try:
+            net = ipaddress.ip_network(route, strict=False)
+        except ValueError:
+            continue
+        if net.prefixlen < 22 or not any(net.subnet_of(ipaddress.ip_network(r)) for r in HOME_RANGES):
+            continue
+        for sub in (net.subnets(new_prefix=24) if net.prefixlen < 24 else [net]):
+            if sub not in own and sub not in [n for n, _ in nets]:
+                nets.insert(0, (sub, "shared on your Tailscale network"))
+    for peer in tailnet.get("peers") or []:
+        for ip in peer.get("ips") or []:
+            hosts.append((ip, f"{peer.get('name') or 'a device'} on your Tailscale network"))
+    return nets[:24], hosts[:40]
+
+
 def _open(ip, port, timeout):
     try:
         with socket.create_connection((str(ip), port), timeout=timeout):
@@ -215,8 +283,13 @@ def _open(ip, port, timeout):
 
 def sweep(network, port=MOONRAKER_PORT, timeout=0.4):
     """Every address on `network` with something listening on `port`."""
-    hosts = list(network.hosts())[:254]
-    with ThreadPoolExecutor(max_workers=64) as pool:
+    return sweep_many([network], port, timeout)
+
+
+def sweep_many(networks, port=MOONRAKER_PORT, timeout=0.4, singles=()):
+    """Every address on these networks (and these single addresses) with something listening on `port`."""
+    hosts = [h for net in networks for h in list(net.hosts())[:254]] + [ipaddress.ip_address(h) for h in singles]
+    with ThreadPoolExecutor(max_workers=128) as pool:
         hits = pool.map(lambda h: (h, _open(h, port, timeout)), hosts)
         return [str(h) for h, ok in hits if ok]
 
@@ -253,6 +326,17 @@ def probe(url, api_key=None, timeout=3.0):
         out["toolheads"] = sum(1 for n in names if n == "extruder" or (n.startswith("extruder") and n[8:].isdigit()))
         # print_task_config is Snapmaker's own object (u1-klipper).
         out["u1"] = "print_task_config" in names
+    # Snapmaker's Moonraker names the model and its serial number (u1-moonraker machine.py product_info):
+    # the serial lets Deja Vu1 recognise the same printer at a new address.
+    out["serial"] = None
+    system = outbound.send(f"{url}/machine/system_info", "the printer", method="GET", headers=headers, timeout=timeout)
+    if system["ok"] and isinstance(system["body"], dict):
+        product = ((system["body"].get("result") or {}).get("system_info") or {}).get("product_info") or {}
+        if isinstance(product, dict):
+            serial = str(product.get("serial_number") or "").strip().upper()[:40]
+            out["serial"] = serial or None
+            if str(product.get("machine_type") or "").strip().lower() == "snapmaker u1":
+                out["u1"] = True
     if out["klippy_state"] != "ready":
         out["error"] = f"Moonraker is running, but Klipper is {out['klippy_state']} - the printer may still be starting"
     return out
@@ -293,10 +377,11 @@ def key_from_login(url, username, password, timeout=6.0):
     return result
 
 
-def discover(registered_urls=(), wait=1.5, sweep_network=True, hosts=None):
+def discover(registered_urls=(), wait=1.5, sweep_network=True, hosts=None, wider=False, tailnet=None):
     """
-    Everything that answers as Moonraker on the home network, checked.
-    `hosts` (["127.0.0.1:7125", ...]) replaces asking and sweeping, for tests.
+    Everything that answers as Moonraker, checked. wider=True also looks on nearby home ranges and
+    your Tailscale network (wider_places). `hosts` (["127.0.0.1:7125", ...]) replaces asking and
+    sweeping, for tests.
     """
     if not _lock.acquire(blocking=False):
         raise ValueError("Already looking - give it a few seconds")
@@ -307,28 +392,47 @@ def discover(registered_urls=(), wait=1.5, sweep_network=True, hosts=None):
         if hosts is not None:
             for h in hosts:
                 ip, _, port = h.partition(":")
-                candidates[(ip, int(port or MOONRAKER_PORT))] = {"name": None, "u1": None, "source": "given"}
+                candidates[(ip, int(port or MOONRAKER_PORT))] = {"name": None, "u1": None, "serial": None,
+                                                                 "source": "given", "where": None}
         else:
             for f in ask_network(wait):
-                candidates[(f["ip"], f["port"])] = {"name": f["name"], "u1": f["u1"], "source": "announced itself"}
+                candidates[(f["ip"], f["port"])] = {"name": f["name"], "u1": f["u1"], "serial": f.get("serial"),
+                                                    "source": "announced itself", "where": None}
             how.append("asked the network (mDNS)")
-            net = home_network() if sweep_network else None
-            if net:
-                for ip in sweep(net):
-                    candidates.setdefault((ip, MOONRAKER_PORT), {"name": None, "u1": None, "source": "port 7125 open"})
-                how.append(f"tried port {MOONRAKER_PORT} on {net}")
+            nets = home_networks() if sweep_network else []
+            for ip in sweep_many(nets):
+                candidates.setdefault((ip, MOONRAKER_PORT), {"name": None, "u1": None, "serial": None,
+                                                            "source": "port 7125 open", "where": "this network"})
+            if nets:
+                how.append(f"tried port {MOONRAKER_PORT} on " + ", ".join(str(n) for n in nets))
             elif sweep_network:
                 how.append("couldn't tell which home network this computer is on, so didn't try addresses")
+            if wider:
+                far, singles = wider_places(tailnet)
+                why = {}
+                for net, reason in far:
+                    why[str(net)] = reason
+                for ip in sweep_many([n for n, _ in far], timeout=0.35, singles=[h for h, _ in singles]):
+                    reason = next((r for h, r in singles if h == ip), None) or next(
+                        (why[str(n)] for n, _ in far if ipaddress.ip_address(ip) in n), "further away")
+                    candidates.setdefault((ip, MOONRAKER_PORT), {"name": None, "u1": None, "serial": None,
+                                                                "source": "port 7125 open", "where": reason})
+                tail = sum(1 for _, r in far if "Tailscale" in r)
+                how.append(f"looked further: {len(far)} more address ranges"
+                           + (f" ({tail} shared on your Tailscale network)" if tail else "")
+                           + (f" and {len(singles)} Tailscale devices" if singles else ""))
         known = {u.rstrip("/") for u in registered_urls}
+
         def check(item):
             (ip, port), seen = item
             url = f"http://{ip}:{port}"
             r = probe(url, timeout=2.5)
             return {**r, "ip": ip, "port": port, "name": seen["name"], "source": seen["source"],
+                    "where": seen.get("where"), "serial": r.get("serial") or seen.get("serial"),
                     "u1": r["u1"] if r["u1"] is not None else seen["u1"], "added": url in known}
         with ThreadPoolExecutor(max_workers=16) as pool:
             found = [r for r in pool.map(check, candidates.items()) if r["ok"] or r["needs_key"]]
         found.sort(key=lambda r: (not r["u1"], r["ip"]))
-        return {"printers": found, "how": how, "seconds": round(time.monotonic() - started, 1)}
+        return {"printers": found, "how": how, "seconds": round(time.monotonic() - started, 1), "wider": bool(wider)}
     finally:
         _lock.release()

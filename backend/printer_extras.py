@@ -166,6 +166,37 @@ def feeding_from(variables, heads):
     return out
 
 
+def files_from(listed, limit=40):
+    """GET /server/files/list?root=gcodes -> [{path, size, modified}], newest first, G-code only."""
+    out = []
+    for item in listed if isinstance(listed, list) else []:
+        if not isinstance(item, dict):
+            continue
+        path = str(item.get("path") or "")
+        if not path or not path.lower().endswith((".gcode", ".gco", ".g")) or ".." in path.split("/"):
+            continue
+        try:
+            size, modified = int(item.get("size") or 0), float(item.get("modified") or 0)
+        except (TypeError, ValueError):
+            continue
+        out.append({"path": path[:200], "size": size, "modified": modified})
+    out.sort(key=lambda f: -f["modified"])
+    return out[:limit]
+
+
+def job_queue_from(reply):
+    """GET /server/job_queue/status (Moonraker job_queue.py) -> {queue_state, queued_jobs}."""
+    reply = reply if isinstance(reply, dict) else {}
+    jobs = []
+    for job in reply.get("queued_jobs") or []:
+        if isinstance(job, dict) and job.get("filename"):
+            jobs.append({"filename": str(job["filename"])[:200], "job_id": str(job.get("job_id") or "")[:40],
+                         "time_in_queue": job.get("time_in_queue") if isinstance(job.get("time_in_queue"), (int, float))
+                         else None})
+    state = reply.get("queue_state")
+    return {"queue_state": str(state)[:20] if state else None, "queued_jobs": jobs[:50]}
+
+
 # ---------------------------------------------------------------------------
 # Simulated printers: demo answers in the same shapes, always labelled
 # ---------------------------------------------------------------------------

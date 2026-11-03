@@ -177,6 +177,40 @@ def add(name, moonraker_url, api_key=None):
     return _public(entry)
 
 
+def remember_serial(printer_id, serial):
+    """Keep the serial number a printer reported, so it can be recognised at a new address."""
+    serial = str(serial or "").strip().upper()[:40]
+    if not serial:
+        return False
+    with _lock:
+        items = registered()
+        entry = next((p for p in items if p["id"] == printer_id), None)
+        if entry is None or entry.get("serial") == serial:
+            return False
+        entry["serial"] = serial
+        _save(items)
+    return True
+
+
+def move(printer_id, new_url):
+    """The same printer (same serial number) answered at another address: use that one from now on."""
+    url = normalise_url(new_url)
+    check_url(url)
+    with _lock:
+        items = registered()
+        entry = next((p for p in items if p["id"] == printer_id), None)
+        if entry is None:
+            raise ValueError("Unknown printer")
+        if any(p["moonraker_url"] == url.rstrip("/") and p["id"] != printer_id for p in items):
+            raise ValueError("Another printer in the list already uses that address")
+        old = entry["moonraker_url"]
+        entry.update(moonraker_url=url.rstrip("/"), moved_from=old,
+                     moved_at=datetime.now().isoformat(timespec="seconds"))
+        _save(items)
+    sync_real_printers()
+    return _public(entry)
+
+
 def remove(printer_id):
     with _lock:
         items = registered()
