@@ -2,6 +2,46 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.18.0",
+      "date": "2026-11-05",
+      "name": "Checks you can trust",
+      "published": true,
+      "summary": "Watch-only mode lets you try Deja Vu1 on your U1 knowing nothing will move or heat. The health score never says good beside a print Confirm Print refuses, unknown spool weights stay unknown, a print is charged to the roll it started with, and the next queued print waits until you say the bed is clear.",
+      "changes": [
+        "Watch-only mode (Settings): the server refuses every command to your real printers, so nothing moves, heats, prints or changes. You still see everything, the camera works, and emergency stop always goes through.",
+        "The print health score is held below fair, and reads Can't start, whenever Confirm Print would refuse the start. A wrong material now costs points like a wrong colour.",
+        "A spool with no known weight shows Weight unknown instead of 0 g. Weights say whether they were weighed or estimated, Spoolman imports keep unknown weights unknown, and every spool has a Weigh button.",
+        "A finished print is charged to the roll its head had when the print started, even if another roll was picked during the print. Recent charges can be moved to another roll.",
+        "After a print ends, the next queued print waits until you press Part removed, bed clear for that printer and that print. Confirm Print and Needs you remind you too."
+      ],
+      "highlights": [
+        {
+          "title": "Watch-only mode",
+          "tab": "modules",
+          "target": "#watch-only-card",
+          "text": "Try Deja Vu1 on your printer knowing nothing will move, heat or print."
+        },
+        {
+          "title": "Health you can trust",
+          "tab": "control",
+          "target": "#health-host",
+          "text": "While Confirm Print would refuse a start, the dial says Can't start and stays under fair."
+        },
+        {
+          "title": "Weights, honestly",
+          "tab": "maintenance",
+          "target": "#spool-list",
+          "text": "Weight unknown is never 0 g. Weigh a spool here, and see whether each figure was weighed or estimated."
+        },
+        {
+          "title": "Part removed, bed clear",
+          "tab": "files",
+          "target": "#queue-host",
+          "text": "The next queued print waits here until you say the bed is clear."
+        }
+      ]
+    },
+    {
       "version": "0.17.0",
       "date": "2026-11-02",
       "name": "Wherever the printer is",

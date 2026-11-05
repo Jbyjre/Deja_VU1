@@ -17,9 +17,11 @@ and with other filaments, catches things one printer can't.
 
 - **About 30 to 45 minutes**, on a video call with the maintainer or on your
   own, sending what you saw afterwards.
-- **Watch-only.** Watch a print you're already running. Don't press any of
-  Deja Vu1's controls (pause, resume, cancel, temperatures, home, G-code,
-  start) in this first session.
+- **Watch-only.** Watch a print you're already running, with Deja Vu1 in
+  **watch-only mode**: its server then refuses every command to the printer
+  (pause, resume, cancel, temperatures, home, G-code, start, uploads), so
+  nothing moves or heats even if a button is pressed. Emergency stop still
+  works. Step 2 starts it that way.
 - **Nothing installed on the printer.** Deja Vu1 runs on a computer on the
   same network and talks to Moonraker, the web API built into the U1.
 
@@ -47,8 +49,12 @@ its controls. Keep it on your home network for the session (see
    `cd Deja_VU1`. Or use GitHub's **Code → Download ZIP**, unzip it, and open a
    terminal in the unzipped folder (GitHub names it `Deja_VU1-main`).
 2. Start it with every exchange recorded, saved to a file:
-   - macOS or Linux: `DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py 2> dejavu-log.txt`
-   - Windows PowerShell: `$env:DEJAVU_MOONRAKER_LOG = "1"; python backend\app.py 2> dejavu-log.txt`
+   - macOS or Linux: `DEJAVU_WATCH_ONLY=1 DEJAVU_MOONRAKER_LOG=1 python3 backend/app.py 2> dejavu-log.txt`
+   - Windows PowerShell: `$env:DEJAVU_WATCH_ONLY = "1"; $env:DEJAVU_MOONRAKER_LOG = "1"; python backend\app.py 2> dejavu-log.txt`
+
+   `DEJAVU_WATCH_ONLY=1` keeps watch-only mode on until Deja Vu1 is started
+   without it, whatever the Settings switch says. A **Watch-only** label shows
+   in the top bar while it is on.
 
    While a print runs, Klipper reports several times a second, so the detailed
    log is long. The `2> dejavu-log.txt` part puts it in a file in that folder
@@ -66,8 +72,10 @@ its controls. Keep it on your home network for the session (see
    explains each message.
 6. Watch your print for a few minutes. Compare the dock states, temperatures,
    progress and finish time with the printer's own screen.
-7. While nothing is printing, press **Control → Home all** and watch the 3D twin
-   on Overview. Its head should travel with the printer's head, at about the
+7. Optional, and only if you're happy for the printer to move: stop Deja Vu1,
+   start it again without `DEJAVU_WATCH_ONLY=1` (and check Settings → Watch-only
+   mode is off), then, while nothing is printing, press **Printer → Home all**
+   and watch the 3D twin. Its head should travel with the printer's head, at about the
    same pace (it trails by about a third of a second), and stop where the
    printer stops. Until the printer has homed, the twin card says "not homed,
    position unknown".

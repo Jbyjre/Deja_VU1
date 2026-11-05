@@ -96,6 +96,7 @@ def _filament_match(required, state):
             actual_material = dock.get("filament_material")
             if req.get("expected_material") and actual_material and req["expected_material"].upper() != actual_material.upper():
                 row["material_mismatch"] = True
+                row["loaded_material"] = actual_material
                 blocking.append(f"{where} has {actual_material} loaded, but the file needs {req['expected_material']}")
         rows.append(row)
     return rows, blocking, warnings

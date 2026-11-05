@@ -512,7 +512,8 @@ const Workshop = (() => {
         add(1, 'done', `${p.name} finished ${p.current_file || 'its print'}`, 'Ready for the next print once the bed is clear', 'control');
       }
       const waiting = q ? q.items.filter(i => i.status === 'queued' || i.status === 'held').length : 0;
-      if (p.state === 'ready' && waiting && !p.link_lost) {
+      // While the bed waits to be cleared, that item above is the one to act on.
+      if (p.state === 'ready' && waiting && !p.link_lost && !(bed && bed.state === 'awaiting_clear')) {
         add(2, 'warning', `${p.name} is idle with ${waiting} file${waiting === 1 ? '' : 's'} waiting`, 'Start the next one from Files', 'files');
       }
       (p.alerts || []).filter(a => a.level === 'warning' && a.text !== 'Paused').forEach(a =>
@@ -2535,7 +2536,7 @@ const Workshop = (() => {
         <span class="chip" style="background:${esc(f.expected_hex || '#ccc')}" title="File expects"></span>
         <span class="arrow" aria-hidden="true">→</span>
         <span class="chip" style="background:${esc(f.loaded_hex || 'transparent')}" title="Loaded"></span>
-        <span class="gf-text">${esc(f.loaded_name || 'nothing loaded')} ${f.expected_material ? `· ${esc(f.expected_material)}` : ''}</span>
+        <span class="gf-text">${esc(f.loaded_name || 'nothing loaded')} ${f.material_mismatch ? `· ${esc(f.loaded_material || '')} loaded, the file needs ${esc(f.expected_material)}` : f.expected_material ? `· ${esc(f.expected_material)}` : ''}</span>
         <span class="gf-status">${f.material_mismatch ? 'Wrong material' : ({ match: 'Match', close: 'Close', mismatch: 'Wrong colour', not_loaded: 'Not loaded', missing_toolhead: 'No such toolhead', no_colour_in_file: 'No colour in file', unknown: 'Not reported', unknown_colour: 'Colour not reported' }[f.status] || esc(f.status))}</span>
       </div>`).join('');
     $('confirm-body').innerHTML = `

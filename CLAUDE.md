@@ -92,6 +92,12 @@ trust the code and fix this file.
   Safety copy and Stop (`/api/app/restart|repair|stop`). Never change the first lines of
   `start-windows.bat`: a running batch file is re-read from its old position after an update.
 
+- Public text is for U1 owners (4 November 2026): pull request titles (they become release
+  notes through `tools/next-release.py`), merge messages, commits, CHANGELOG and docs say what
+  an owner can now do. No personal information in them: no names, school, location, emails,
+  chat history or "the owner said". Owner preferences and history live in the private
+  repository.
+
 ## How to work here (the method that has worked)
 
 1. Turn the request into a checklist, item by item, and re-read the
@@ -164,7 +170,8 @@ Tunnel domain), `DEJAVU_MOONRAKER_LOG=1` (print every Moonraker exchange),
 `DEJAVU_SLICER_PATH` (OrcaSlicer binary for auto-print), `DEJAVU_DATA_DIR`
 (where settings and files live; default `backend/data/`),
 `DEJAVU_NO_BROWSER=1` (read by `start.py`: don't open the browser),
-`DEJAVU_WINDOW=browser|window|none` (overrides Settings → Desktop app for one start).
+`DEJAVU_WINDOW=browser|window|none` (overrides Settings → Desktop app for one start),
+`DEJAVU_WATCH_ONLY=1` (watch-only mode on for this start; the Settings switch can't turn it off).
 
 Browser checks in the cloud sandbox: Playwright is installed for Node
 (`node script.js`, then `require('playwright').chromium.launch({executablePath:
@@ -288,6 +295,28 @@ root should hand over to `welcome.html`.
   /api/printer/files/fetch` copies a printer file into the library so Confirm Print still gates it.
 - `logbook.py`: per-printer problems/fixes/print hours (`/api/logbook`, module `maintenance`);
   `live_feed` logs failures and reasoned pauses; demo entries are flagged and never mix.
+- `watch_only.py` (0.18.0, Settings → Watch-only mode, `GET|POST /api/app/watch-only`, also in
+  `/api/app/info`): while on, `moonraker_client` `HttpTransport.request` allows only GET and
+  `READ_POSTS` (objects query, emergency stop, login) and `MoonrakerPrinter._call` only `READ_CALLS`;
+  anything else raises `WatchOnly` (a `PrinterRefused`, answered 409 `watch_only: true`, never 502).
+  `_CONTROL_ACTIONS` refuse first for real printers so the words are the same. E-stop and the camera
+  (stock_camera's own socket, WebRTC signalling) always pass; simulated printers are unaffected.
+- Health (0.18.0): `print_gate.health(..., blocking)` adds a material mismatch deduction and, while
+  anything blocks, band `"blocked"` with the score held at `BLOCKED_CEILING` (54) as a listed
+  deduction. `printer_health` passes the loaded job's filament blockers and printer errors; fleet rows
+  carry `health_band`. Never let a score read good beside a refused start.
+- Spool weights (0.18.0): `grams_remaining` may be None (unknown, never 0); `weight_source`
+  weighed|estimated|unknown and `weight_from` you|spoolman. Older records are labelled on read
+  (`weight_legacy`), and a Spoolman re-import turns a legacy unweighed 0 g back to unknown.
+  `app.js` `spoolWeight()` draws it everywhere. Start-time rolls: `live_feed` calls
+  `filament_inventory.record_print_start` on a real printer's "started" (head → spool map and
+  `extruder_map` in `<data>/print_spools.json`), `tool_setup.save` notes mid-print changes, and
+  `deduct_after_print` charges the start-time roll (no record + an assigned roll = not charged).
+  `move_charge` is the explicit correction (`/api/filament/charges`, `.../<id>/move`).
+- Bed clearance (0.18.0): `print_queue` keeps `bed` per printer (clear | awaiting_clear | in_use, with
+  `job_key`). `live_feed` marks it on started/finished/failed/cancelled; `start_next` (by hand or auto)
+  holds while awaiting; `confirm_bed_clear(job_key)` (`POST /api/queue/bed-clear`) must name the print
+  that ended last. Confirm Print warns while a bed waits. Tests that finish prints must reset the queue.
 - `print_gate.py` (Confirm Print, re-checked by the server at start),
   `printer_control.py`, `maintenance.py` (7 tasks), `automations.py`,
   `notifications.py` (sent only by automation rules), `gcode_tools.py`
