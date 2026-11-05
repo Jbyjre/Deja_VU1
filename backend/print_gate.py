@@ -142,6 +142,9 @@ def summary(filename, printer_state=None):
             if s["status"] == "short":
                 warnings.append(f"{s['toolhead']}: the matching spool has about {s['grams_remaining']:.0f} g "
                                 f"left; this print needs {s['grams_needed']:.0f} g")
+            elif s["status"] == "unknown_weight":
+                info.append(f"{s['toolhead']}: the weight of {s['spool']} isn't known, so there's no check that "
+                            "enough is left. Weigh it in Care, Filament inventory")
             elif s["status"] == "no_spool":
                 info.append(f"{s['toolhead']}: no matching spool in your filament inventory to check weight against")
 

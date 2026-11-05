@@ -2034,6 +2034,16 @@ async function loadPrinterControl() {
 
 /* ---- Filament inventory --------------------------------------------------*/
 
+/* A spool's weight in words, with how far to trust it: "Weight unknown" is
+   never shown as 0 g, and an estimate carries a ≈. Used by workshop.js too. */
+function spoolWeight(s) {
+  if (!s || s.grams_remaining == null) return '<span class="spool-grams is-unknown" title="Nobody has weighed this spool yet, so nothing treats it as empty or full">Weight unknown</span>';
+  const g = Math.round(s.grams_remaining);
+  const from = s.weight_from === 'spoolman' ? 'Spoolman\'s count' : 'an estimate';
+  if (s.weight_source === 'weighed') return `<span class="spool-grams ${g < 80 ? 'is-low' : ''}" title="Weighed on a scale">${g} g <small>weighed</small></span>`;
+  return `<span class="spool-grams ${g < 80 ? 'is-low' : ''}" title="From ${from}${s.used_since_weighed ? `, ${s.used_since_weighed} g printed since` : ''}">≈ ${g} g</span>`;
+}
+
 async function loadFilament() {
   const data = await getJSON('/api/filament');
   const host = $('spool-list');
@@ -2051,9 +2061,36 @@ async function loadFilament() {
     <div class="spool-row">
       <span class="spool-swatch" style="background:${esc(s.color_hex || '#888')}"></span>
       <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}${s.spoolman_id ? ` <small class="spool-src" title="Imported from Spoolman (spool ${esc(s.spoolman_id)})">Spoolman</small>` : ''}</span>
-      <span class="spool-grams ${s.grams_remaining < 80 ? 'is-low' : ''}">${s.grams_remaining.toFixed(0)} g</span>
+      ${spoolWeight(s)}
+      <button class="btn small" type="button" data-weigh-spool="${esc(s.id)}" aria-expanded="false">Weigh</button>
       <button class="btn small" data-remove-spool="${esc(s.id)}">Remove</button>
-    </div>`).join('') : EMPTY('No spools tracked', 'Add one below.');
+    </div>
+    <form class="spool-weigh" data-weigh-form="${esc(s.id)}" hidden>
+      <label for="weigh-${esc(s.id)}">Filament left on ${esc(s.color_name)} ${esc(s.material)}, without the empty spool</label>
+      <input type="number" id="weigh-${esc(s.id)}" min="0" max="100000" step="1" inputmode="decimal" placeholder="Grams" required>
+      <button class="btn small primary" type="submit">Save weight</button>
+      <button class="btn small" type="button" data-weigh-unknown>I don't know</button>
+    </form>`).join('') : EMPTY('No spools tracked', 'Add one below.');
+
+  host.querySelectorAll('[data-weigh-spool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = host.querySelector(`[data-weigh-form="${CSS.escape(btn.dataset.weighSpool)}"]`);
+      form.hidden = !form.hidden;
+      btn.setAttribute('aria-expanded', String(!form.hidden));
+      if (!form.hidden) form.querySelector('input').focus();
+    });
+  });
+  host.querySelectorAll('[data-weigh-form]').forEach(form => {
+    const save = async grams => {
+      const r = await postJSON(api(`/api/filament/spools/${encodeURIComponent(form.dataset.weighForm)}/grams`),
+        { grams_remaining: grams, weight_source: 'weighed' });
+      if (!r.ok) { toast(`Weight not saved: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); return; }
+      toast(grams == null ? 'Weight set back to unknown' : `Saved ${Math.round(grams)} g, weighed`, 'ok');
+      loadFilament();
+    };
+    form.addEventListener('submit', e => { e.preventDefault(); save(parseFloat(form.querySelector('input').value)); });
+    form.querySelector('[data-weigh-unknown]').addEventListener('click', () => save(null));
+  });
 
   host.querySelectorAll('[data-remove-spool]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2076,9 +2113,12 @@ function initSpoolForm() {
     const material = $('spool-material').value.trim() || 'PLA';
     const colorName = $('spool-color-name').value.trim() || 'Unnamed';
     const colorHex = $('spool-color-hex').value;
-    const grams = parseFloat($('spool-grams').value) || 0;
+    // An empty field is "not known", never 0 g (which would mean an empty roll).
+    const typed = $('spool-grams').value.trim();
+    const grams = typed === '' ? null : parseFloat(typed);
     const r = await postJSON(api('/api/filament/spools'), {
       material, color_name: colorName, color_hex: colorHex, grams_remaining: grams,
+      weight_source: grams == null ? null : ($('spool-weighed').checked ? 'weighed' : 'estimated'),
     });
     // A refused spool keeps what was typed, and says why.
     if (!r.ok) { toast(`Spool not added: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); return; }
@@ -2098,7 +2138,8 @@ function initSpoolForm() {
     const b = r.body;
     out.classList.remove('is-bad');
     out.textContent = `${b.found} spool${b.found === 1 ? '' : 's'} in Spoolman: ${b.added} added, ${b.updated} updated.`
-      + (b.unknown_weight ? ` ${b.unknown_weight} had no weight in Spoolman - set it there or weigh them here.` : '')
+      + (b.unknown_weight ? ` ${b.unknown_weight} had no weight in Spoolman, so ${b.unknown_weight === 1 ? 'it shows' : 'they show'} Weight unknown: set it there or weigh ${b.unknown_weight === 1 ? 'it' : 'them'} here.` : '')
+      + (b.repaired_unknown ? ` ${b.repaired_unknown} saved as 0 g by an older import ${b.repaired_unknown === 1 ? 'is' : 'are'} back to Weight unknown.` : '')
       + (b.not_added_full ? ` ${b.not_added_full} didn't fit - the inventory is full.` : '')
       + (b.skipped.length ? ` Skipped: ${b.skipped.join('; ')}.` : '');
     toast(`Spoolman: ${b.added} added, ${b.updated} updated`, 'ok');

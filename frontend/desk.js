@@ -253,11 +253,15 @@ window.FarmDesk = (() => {
     const spools = data.spools;
     $('dk-fil').innerHTML = `<table class="dk-table"><thead><tr><th scope="col">Filament</th><th scope="col" class="dk-num">Queued needs</th><th scope="col" class="dk-num">On spools</th><th scope="col">Outlook</th></tr></thead><tbody>
       ${rows.map(r => {
-        const have = spools && spools.length ? spools.filter(s => s.material === r.material && (dE(s.color_hex, r.color) ?? 99) < 12).reduce((t, s) => t + (s.grams_remaining || 0), 0) : null;
+        const match = spools && spools.length ? spools.filter(s => s.material === r.material && (dE(s.color_hex, r.color) ?? 99) < 12) : null;
+        // A spool with no known weight is left out of the sum and named, never counted as 0 g.
+        const unknownW = match ? match.filter(s => s.grams_remaining == null).length : 0;
+        const have = match ? match.reduce((t, s) => t + (s.grams_remaining == null ? 0 : s.grams_remaining), 0) : null;
         const short = have != null ? r.grams - have : null;
+        const plus = unknownW ? ` <small>+ ${unknownW} unknown</small>` : '';
         return `<tr><th scope="row"><i class="dk-dot" style="background:${esc(r.color || 'transparent')}"></i>${esc(r.material)}<small>${esc(r.color || '')}</small></th>
-          <td class="dk-num">${Math.round(r.grams)} g</td><td class="dk-num">${have == null ? '—' : Math.round(have) + ' g'}</td>
-          <td>${have == null ? '<span class="dk-tag">no spools tracked</span>' : short > 0 ? `<span class="dk-tag is-bad">short ${Math.round(short)} g</span>` : `<span class="dk-tag is-ok">covered</span>`}</td></tr>`;
+          <td class="dk-num">${Math.round(r.grams)} g</td><td class="dk-num">${have == null ? '—' : Math.round(have) + ' g' + plus}</td>
+          <td>${have == null ? '<span class="dk-tag">no spools tracked</span>' : short > 0 && unknownW ? `<span class="dk-tag">weigh ${unknownW === 1 ? 'a spool' : 'spools'} to know</span>` : short > 0 ? `<span class="dk-tag is-bad">short ${Math.round(short)} g</span>` : `<span class="dk-tag is-ok">covered</span>`}</td></tr>`;
       }).join('')}</tbody></table>
       <p class="dk-note">From the slicer's per-head figures for each queued file${unknown ? `; ${unknown} file${unknown > 1 ? 's' : ''} had none and ${unknown > 1 ? 'are' : 'is'} left out` : ''}. Spools are matched by material and a close colour. Track spools in Care → Filament inventory.</p>`;
   }

@@ -126,5 +126,88 @@ class TestIdleSpools(unittest.TestCase):
         self.assertEqual(filament_inventory.idle_spools(threshold_days=10), [])
 
 
+
+class TestUnknownWeights(unittest.TestCase):
+    """An unknown weight is never an empty roll (research reproduction "unknown-weight")."""
+
+    def setUp(self):
+        filament_inventory.reset()
+        self.addCleanup(filament_inventory.reset)
+
+    def test_a_spool_added_without_grams_is_unknown(self):
+        spool = filament_inventory.add_spool("PLA", "Red", "#ff0000", None)
+        self.assertIsNone(spool["grams_remaining"])
+        self.assertEqual(spool["weight_source"], "unknown")
+        blank = filament_inventory.add_spool("PLA", "Blue", "#0000ff", "  ")
+        self.assertIsNone(blank["grams_remaining"])
+
+    def test_typed_figures_are_estimates_unless_weighed(self):
+        typed = filament_inventory.add_spool("PLA", "Red", "#ff0000", 1000)
+        weighed = filament_inventory.add_spool("PLA", "Green", "#00ff00", 812, "weighed")
+        self.assertEqual(typed["weight_source"], "estimated")
+        self.assertEqual(weighed["weight_source"], "weighed")
+        self.assertEqual(weighed["used_since_weighed"], 0.0)
+        with self.assertRaises(ValueError):
+            filament_inventory.add_spool("PLA", "Odd", "#123456", 10, "guessed")
+
+    def test_weighing_and_clearing(self):
+        spool = filament_inventory.add_spool("PLA", "Red", "#ff0000", None)
+        weighed = filament_inventory.update_grams(spool["id"], 640)
+        self.assertEqual((weighed["grams_remaining"], weighed["weight_source"]), (640.0, "weighed"))
+        cleared = filament_inventory.update_grams(spool["id"], None)
+        self.assertEqual((cleared["grams_remaining"], cleared["weight_source"]), (None, "unknown"))
+
+    def test_unknown_still_covers_a_colour(self):
+        filament_inventory.add_spool("PLA", "Red", "#ff0000", None)
+        result = filament_inventory.check_job_requirements(
+            [{"toolhead": "T0", "expected_color_name": "Red", "expected_material": "PLA"}])
+        self.assertTrue(result["all_covered"])
+
+    def test_estimate_for_job_says_unknown_instead_of_short(self):
+        filament_inventory.add_spool("PLA", "Red", "#ff0000", None)
+        rows = filament_inventory.estimate_for_job(
+            [{"toolhead": "T0", "expected_material": "PLA", "expected_color_hex": "#ff0000", "grams": 20}])
+        self.assertEqual(rows[0]["status"], "unknown_weight")
+        self.assertIsNone(rows[0]["grams_remaining"])
+        self.assertIsNone(rows[0]["grams_after"])
+
+    def test_a_print_on_an_unknown_spool_keeps_it_unknown_but_counts_the_use(self):
+        filament_inventory.add_spool("PLA", "Red", "#ff0000", None)
+        result = filament_inventory.deduct_after_print(
+            {"toolheads_used": ["T0"], "filament_type": "PLA", "filament_color_hex": "#ff0000",
+             "filament_used_grams": 20.0})
+        self.assertIsNone(result["grams_remaining"])
+        spool = filament_inventory.get_inventory()[0]
+        self.assertIsNone(spool["grams_remaining"])
+        self.assertEqual(spool["used_since_weighed"], 20.0)
+
+    def test_a_print_turns_a_weighed_figure_into_an_estimate(self):
+        filament_inventory.add_spool("PLA", "Red", "#ff0000", 500, "weighed")
+        filament_inventory.deduct_after_print(
+            {"toolheads_used": ["T0"], "filament_type": "PLA", "filament_color_hex": "#ff0000",
+             "filament_used_grams": 20.0})
+        spool = filament_inventory.get_inventory()[0]
+        self.assertEqual((spool["grams_remaining"], spool["weight_source"]), (480.0, "estimated"))
+
+    def test_forecast_has_no_prints_left_for_an_unknown_weight(self):
+        filament_inventory.add_spool("PLA", "Red", "#ff0000", None)
+        history = [{"status": "completed", "filament_type": "PLA", "filament_color_name": "Red",
+                    "filament_used_grams": 20.0}]
+        row = filament_inventory.forecast(history)[0]
+        self.assertIsNone(row["prints_left"])
+        self.assertEqual(row["avg_grams_per_print"], 20.0)
+
+    def test_records_saved_before_sources_are_labelled_from_what_they_say(self):
+        filament_inventory._save([
+            {"id": "spool-1", "material": "PLA", "color_name": "A", "color_hex": "#ff0000",
+             "grams_remaining": 300.0, "loaded_since": "2026-10-01T10:00:00"},
+            {"id": "spool-2", "material": "PLA", "color_name": "B", "color_hex": "#00ff00",
+             "grams_remaining": 250.0, "loaded_since": "2026-10-01T10:00:00",
+             "last_weighed_at": "2026-10-02T10:00:00", "used_since_weighed": 0.0},
+        ])
+        a, b = filament_inventory.get_inventory()
+        self.assertEqual((a["grams_remaining"], a["weight_source"]), (300.0, "estimated"))
+        self.assertEqual(b["weight_source"], "weighed")
+
 if __name__ == "__main__":
     unittest.main()

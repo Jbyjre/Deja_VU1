@@ -978,7 +978,8 @@
             <input type="text" id="spool-material" placeholder="Material (PLA)" aria-label="Material" style="flex:1; min-width:130px;">
             <input type="text" id="spool-color-name" placeholder="Colour name" aria-label="Colour name" style="flex:1; min-width:120px;">
             <input type="color" id="spool-color-hex" value="#ff7a2f" aria-label="Colour" style="width:44px; padding:2px;">
-            <input type="number" id="spool-grams" placeholder="Grams" aria-label="Grams on the spool" style="width:90px;">
+            <input type="number" id="spool-grams" min="0" step="1" placeholder="Grams" aria-label="Grams on the spool, leave empty if you don't know" title="Leave empty if you don't know: the spool shows Weight unknown" style="width:90px;">
+            <label class="spool-weighed"><input type="checkbox" id="spool-weighed"> Weighed</label>
             <button class="btn primary" type="submit">Add spool</button>
           </form>
           <details class="log" id="spoolman-wrap" data-module-body="filament_inventory">

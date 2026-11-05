@@ -799,6 +799,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 .spool-name { flex: 1; }
 .spool-grams { color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; }
 .spool-grams.is-low { color: var(--warn-text); }
+.spool-grams.is-unknown { font-style: italic; }
+.spool-grams small { font-size: 10px; letter-spacing: .03em; }
+.spool-weigh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 0 10px 32px; font-size: 12px; }
+.spool-weigh[hidden] { display: none; }
+.spool-weigh label { flex: 1 1 100%; color: var(--text-dim); }
+.spool-weigh input { width: 110px; }
+.spool-weighed { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
 
 /* ---- modules & devices ---------------------------------------------------*/
 

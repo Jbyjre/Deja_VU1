@@ -2541,7 +2541,7 @@ const Workshop = (() => {
         ? `<p class="field-hint">Checked against this printer's own report: ${esc(gate.preflight.checked_against)}.</p>` : ''}
       <h3 class="fd-h">Filament, as the printer reports it loaded</h3>
       ${fil || '<p class="log-empty">The file doesn\'t say which toolheads it uses.</p>'}
-      ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : `${esc(s.spool)}: ${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
+      ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : s.status === 'unknown_weight' ? `${esc(s.spool)}: weight unknown, so there's no check that ${Math.round(s.grams_needed)} g is left` : `${esc(s.spool)}: ${s.weight_source === 'weighed' ? '' : '≈ '}${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
   }
 
   function initConfirm() {
@@ -2831,8 +2831,8 @@ const Workshop = (() => {
       <div class="spool-row">
         <span class="spool-swatch" style="background:${esc(s.color_hex)}"></span>
         <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}</span>
-        <span class="spool-grams">${s.grams_remaining.toFixed(0)} g</span>
-        <span class="spool-grams">${s.prints_left != null ? `≈ ${s.prints_left} prints` : 'no history yet'}</span>
+        ${spoolWeight(s)}
+        <span class="spool-grams">${s.prints_left != null ? `≈ ${s.prints_left} prints` : s.grams_remaining == null ? 'weigh it to count prints' : 'no history yet'}</span>
       </div>
       <p class="log-empty fc-note">${s.avg_grams_per_print ? `Your ${s.similar_prints} finished ${esc(s.color_name)} ${esc(s.material)} prints averaged ${s.avg_grams_per_print} g.` : 'No finished prints in this colour and material yet.'}${s.used_since_weighed ? ` ${s.used_since_weighed} g used since it was last weighed.` : ''}</p>`).join('');
   }

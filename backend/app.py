@@ -145,9 +145,9 @@ API endpoints
   GET  /api/filament/check           does inventory cover the current job?
   POST /api/filament/spoolman        {"url"} import spools from Spoolman (updates ones imported before)
   GET  /api/filament/forecast        grams left and prints left per spool
-  POST /api/filament/spools          add a spool
+  POST /api/filament/spools          add a spool (grams_remaining null = unknown; weight_source weighed|estimated)
   POST /api/filament/spools/<id>/remove
-  POST /api/filament/spools/<id>/grams   {"grams_remaining": 500}
+  POST /api/filament/spools/<id>/grams   {"grams_remaining": 500, "weight_source": "weighed"} (null = unknown)
 
   GET  /api/compare                  "what changed?" + likely cause
   GET  /api/compare/repeat           settings from the last clean print
@@ -1615,7 +1615,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             spool = filament_inventory.add_spool(
                 body.get("material"), body.get("color_name"),
-                body.get("color_hex"), body.get("grams_remaining", 0))
+                body.get("color_hex"), body.get("grams_remaining"), body.get("weight_source"))
             return self._send_json(spool)
 
         if route == "/api/filament/spoolman":
@@ -1636,7 +1636,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             spool_id = route[len("/api/filament/spools/"):-len("/grams")]
             body = self._read_json_body()
-            spool = filament_inventory.update_grams(spool_id, body.get("grams_remaining"))
+            spool = filament_inventory.update_grams(spool_id, body.get("grams_remaining"),
+                                                    body.get("weight_source") or "weighed")
             return self._send_json(spool)
 
         if route == "/api/notifications/settings":
