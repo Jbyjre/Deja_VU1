@@ -1145,13 +1145,14 @@ const SECTIONS = {
     ['sandbox', 'Practice farm', ['#tab-sandbox']],
   ],
   files: [
-    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail', '#studio-link']],
-    ['slicing', 'Slicing', ['#tab-autoprint']],
+    ['library', 'Library', ['#orca-import', '#convert-card', 'file library', '#file-detail', '#studio-link']],
+    ['slicing', 'Prepare', ['#tab-autoprint']],
+    ['jobs', 'Jobs', ['print queue']],
     ['layers', 'Layer heights', ['#tab-layerplan']],
   ],
   maintenance: [
     ['upkeep', 'Upkeep', ['maintenance', '#logbook', 'swapped a nozzle']],
-    ['filament', 'Filament & colour', ['#tab-filament']],
+    ['filament', 'Materials', ['#tab-filament']],
   ],
   modules: [
     ['copy', 'This copy', ['your space', '#demo-card', '#watch-only-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
@@ -1279,6 +1280,7 @@ function initTabs() {
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);
+    window.dispatchEvent(new CustomEvent('dv-tab', { detail: { tab: name } }));
     // A folded section's old name opens its part; after a short wait (the
     // cards above it fill in first) it scrolls there, so it doesn't slide away.
     if (FOLDED[requested]) {

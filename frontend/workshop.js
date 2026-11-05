@@ -357,6 +357,7 @@ const Workshop = (() => {
   function selectPrinter(id, fromEl, stay) {
     currentPrinter = id;
     store.set(PRINTER_KEY, id);
+    window.dispatchEvent(new CustomEvent('dv-printer', { detail: { printer: id } }));
     if (live.ws && live.ws.readyState === 1) live.ws.send(JSON.stringify({ type: 'subscribe', printer: id, fleet: true }));
     else reconnect();
     renderChip();
