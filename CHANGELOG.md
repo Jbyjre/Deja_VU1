@@ -28,6 +28,33 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.19.0 (6 November 2026): Find your way
+
+- A sidebar on the left lists every place: Overview, Printers, Printer, Library, Prepare, Jobs, Materials, Care, Settings and Preferences, with Automations, the farm desk, layer heights, Photo studio, the practice farm and games under Tools & learn. It folds to icons, and phones keep the bottom bar.
+- Every page has its own link. Back and Forward move between pages, a refresh stays where you were, and a copied link opens the same page on another browser.
+- The print queue has its own place, Jobs, and search uses the new names.
+- Preferences, Appearance, Theme: Light, Dark, or System to follow your computer. The choice is applied before the page is drawn, so a reload never flashes the other theme.
+- In the dark theme, filament swatches, camera pictures and the 3D print keep their real colours, and a black filament keeps a thin outline so you can see it.
+- Confirm Print says when a file is no longer in your files, instead of showing a server error.
+
+**How the sidebar is built.** Each sidebar place opens an existing screen and, where the
+screen is in parts, one part of it (`frontend/rail.js`), so no card moved: remembered
+screens, tours, search places and another device's handoff still resolve. Links are
+`#/<place>` (for the Printer page `#/printer/<printer id>`); old screen names such as
+`#/files` or `#/maintenance` open the matching place. Checked in Chromium at 1366, 1024
+and 390 px: all 16 places, Back, Forward, a refresh, a copied link and an old link, with no
+page errors (`tests/test_rail.py` keeps every place pointing at a real screen and part).
+
+**How the dark theme was checked.** `frontend/theme-boot.js` runs in the page head, before
+the page is drawn, and sets `data-theme` on the page; `frontend/dark.css` (loaded last)
+holds the dark colours. A Chromium pass on all 16 places, at 1366 and 390 px, measured every
+piece of text against the flat background behind it: the first dark version had 95 places
+below WCAG AA (4.5:1, or 3:1 for large text), the released one has none. Text on gradients
+and inside canvases was checked by eye in screenshots, not measured. The colour tokens and
+each accent's dark text shade are measured in `tests/test_dark_theme.py` (4.5:1 or better
+on every dark panel). Light stays the default. Not yet seen on a real phone or on Windows
+or macOS.
+
 ## 0.18.0 (5 November 2026): Checks you can trust
 
 - Watch-only mode (Settings): the server refuses every command to your real printers, so nothing moves, heats, prints or changes. You still see everything, the camera works, and emergency stop always goes through.

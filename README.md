@@ -343,6 +343,21 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
 
+## What's new in 0.19.0
+
+- **One sidebar for everything.** Overview, Printers, Printer, Library, Prepare, Jobs,
+  Materials, Care, Settings and Preferences sit in a sidebar on the left, with Automations,
+  the farm desk, layer heights, Photo studio, the practice farm and games under Tools &
+  learn. It folds to icons; phones keep the bottom bar.
+- **A link for every page.** Back and Forward move between pages, a refresh stays where
+  you were, and a copied link opens the same page.
+- **Light, Dark or System.** Preferences → Appearance → Theme. The choice is applied
+  before the page is drawn, and filament colours, camera pictures and the 3D print keep
+  their real colours.
+
+Checked in Chromium at 1366, 1024 and 390 px; the dark theme's text was measured on every
+page. Not yet seen on a real phone, Windows or macOS.
+
 ## What's new in 0.18.0
 
 - **Watch-only mode.** Settings → Watch-only mode makes the server refuse every command
@@ -954,6 +969,7 @@ recorded static demo passed at both widths.
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
 | Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
+| Sidebar, page links and the dark theme (0.19.0) | Chromium at 1366, 1024 and 390 px: all 16 sidebar places, Back, Forward, a refresh, copied and old links; the theme set before any other script runs; every text measured against its flat background on all 16 places in dark (none below WCAG AA); token and accent contrast in `tests/test_dark_theme.py` | Text on gradients and in canvases checked by eye, not measured; not seen on a real phone, Windows or macOS |
 | Watch-only mode, health, spool weights and bed clearance (0.18.0) | Watch-only against the Moonraker stand-in through the real server: pause, cancel, home, the console and a start refused with no write reaching it, emergency stop allowed; the research's three reproductions (wrong material at health 100, an unknown Spoolman weight saved as 0 g, a mid-print roll change) as regression tests; the bed-clear hold, its tie to the print that ended last and its file on disk; Chromium at 1366/390 px | Not tried on a physical U1 or a real Spoolman install |
 | Other networks and moved printers (0.17.0) | Every home network and the Tailscale network searched (stand-in `tailscale status --json`), a moved stand-in U1 followed by its serial number, readings kept coming when the status stream goes quiet | Not tried with a real second router, a real Tailscale subnet route or a physical U1 |
 | Printer page extras (0.16.0) | Temperature history, bed mesh, macro settings, endstops, command help, fans, lights, filament sensors and feeding against the simulated printer and the Moonraker stand-in; names checked against Snapmaker's published U1 config | Not tried on a physical U1; whether the shipped firmware's config matches the published one |

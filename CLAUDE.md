@@ -348,6 +348,23 @@ root should hand over to `welcome.html`.
   `mock_moonraker.tune()`. Real printers report `state.tuning` (fan, overrides, limits,
   idle_timeout, bed_mesh, macros without a leading _, other fans/sensors) and per-head
   pressure advance; the U1's own name comes from `machine.system_info` product_info.device_name.
+- Sidebar (0.19.0, `rail.js`, loaded last): each place is a screen plus, where the screen has parts, one part
+  (`DEST`: Library = files/library, Prepare = files/slicing, Jobs = files/jobs (the print queue), Materials =
+  maintenance/filament, Care = maintenance/upkeep, Tools & learn = automations, desk, layers, studio, sandbox,
+  games). Nothing moved, so tabs, tours, search and handoff still resolve. Links are `#/<place>` (`#/printer/<id>`);
+  `OLD` maps old screen names. It listens for `dv-tab` (app.js `show()`), `dv-section` and `dv-printer`
+  (workshop `selectPrinter`) and pushes a history step per change (replace on load, popstate and printer
+  change). 224 px or 64 px (`dejavu1.rail.collapsed`), folded by default below 1180 px; hidden at 720 px and
+  less (bottom bar and More sheet). `#tabbar` is hidden on desktop. A new place needs a `DEST` row and an icon;
+  `tests/test_rail.py` checks both.
+- Theme (0.19.0): `theme-boot.js` in `<head>` sets `data-theme` (light|dark) and `data-theme-pref`
+  (light|dark|system, `dejavu1.pref.theme`, default light) before the page is drawn and fires `dv-theme`.
+  `dark.css` loads after theme.css: tokens on `html[data-theme="dark"]:not(#dv)` (the `:not` only raises
+  priority over theme.css's `html[data-backdrop]` rules), then surfaces. A new card, chip or pop-up written
+  with a white background needs a dark rule there. Accents carry `darkText`; backdrop.js and twin3d.js redraw on
+  `dv-theme`. Never invert pictures, swatches or the print; drawings (twin drawing mode, the plate sheet) stay
+  white paper. Measure dark contrast with a Chromium pass over every place (`tests/test_dark_theme.py` covers
+  the tokens).
 - Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and
   Settings show one part at a time (plus "Everything"). `dv-section` fires on each change. Cards are sorted by `#id`, `.class`
   or the start of their h2 title; a card no rule names joins the first part. Anything that
@@ -357,7 +374,8 @@ root should hand over to `welcome.html`.
 - Script order: `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` → `ar.js` →
   `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js` → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `insights.js` →
-  `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js`. `app.js` defines the shared globals the others
+  `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` → `backup.js` → `maker.js` → `rail.js`
+  (and `theme-boot.js` in `<head>`). `app.js` defines the shared globals the others
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
@@ -399,7 +417,7 @@ root should hand over to `welcome.html`.
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
   October 2026; the older game code below them in games.js is legacy.
-- CSS order: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css`.
+- CSS order: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css` → `dark.css`.
 - `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
   message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
   and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.

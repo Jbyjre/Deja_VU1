@@ -2,6 +2,41 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.19.0",
+      "date": "2026-11-06",
+      "name": "Find your way",
+      "published": true,
+      "summary": "Every screen now sits in one sidebar on the left, with Library, Prepare, Jobs and Materials as their own places and a link for every page. Preferences adds a Light, Dark or System theme.",
+      "changes": [
+        "A sidebar on the left lists every place: Overview, Printers, Printer, Library, Prepare, Jobs, Materials, Care, Settings and Preferences, with Automations, the farm desk, layer heights, Photo studio, the practice farm and games under Tools & learn. It folds to icons, and phones keep the bottom bar.",
+        "Every page has its own link. Back and Forward move between pages, a refresh stays where you were, and a copied link opens the same page on another browser.",
+        "The print queue has its own place, Jobs, and search uses the new names.",
+        "Preferences, Appearance, Theme: Light, Dark, or System to follow your computer. The choice is applied before the page is drawn, so a reload never flashes the other theme.",
+        "In the dark theme, filament swatches, camera pictures and the 3D print keep their real colours, and a black filament keeps a thin outline so you can see it.",
+        "Confirm Print says when a file is no longer in your files, instead of showing a server error."
+      ],
+      "highlights": [
+        {
+          "title": "Everything in one sidebar",
+          "tab": "overview",
+          "target": "#rail",
+          "text": "Every place in Deja Vu1, on the left. Fold it to icons with the button at the bottom."
+        },
+        {
+          "title": "Jobs",
+          "tab": "files",
+          "target": "#queue-host",
+          "text": "The print queue has its own place now, with the bed-clear hold on top."
+        },
+        {
+          "title": "A dark theme",
+          "tab": "prefs",
+          "target": "#theme-choice",
+          "text": "Light, Dark, or System to follow your computer."
+        }
+      ]
+    },
+    {
       "version": "0.18.0",
       "date": "2026-11-05",
       "name": "Checks you can trust",
