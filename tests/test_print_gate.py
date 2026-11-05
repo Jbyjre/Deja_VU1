@@ -12,6 +12,7 @@ import file_library     # noqa: E402
 import maintenance      # noqa: E402
 import mock_moonraker   # noqa: E402
 import print_gate       # noqa: E402
+import print_queue      # noqa: E402
 import printer_control  # noqa: E402
 
 
@@ -21,6 +22,8 @@ class GateCase(unittest.TestCase):
         file_library.reset()
         file_library.add_samples()
         maintenance.reset_log()
+        print_queue.reset()                 # no bed left waiting to be cleared by another test
+        self.addCleanup(print_queue.reset)
 
     def tearDown(self):
         mock_moonraker.reset_all()
@@ -114,6 +117,15 @@ class TestGate(GateCase):
         busy = print_gate.summary("3dbenchy_pla.gcode")
         self.assertEqual(busy["verdict"], "blocked")
         self.assertEqual(busy["health"]["band"], "blocked")
+
+    def test_a_bed_waiting_to_be_cleared_needs_a_confirm(self):
+        mock_moonraker.cancel_print()
+        for task in maintenance.TASKS:
+            maintenance.mark_done(task["id"])
+        print_queue.print_ended(mock_moonraker.selected_printer_id(), "earlier.gcode")
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertEqual(gate["verdict"], "confirm")
+        self.assertTrue(any("earlier.gcode" in w and "bed" in w for w in gate["warnings"]))
 
     def test_models_cannot_be_printed(self):
         with self.assertRaises(ValueError):

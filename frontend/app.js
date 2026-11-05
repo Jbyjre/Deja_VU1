@@ -132,7 +132,7 @@ async function checkServer() {
  * shows its figures as real. */
 const realFetch = window.fetch.bind(window);
 const tour = { on: false, rec: null, started: 0, misses: new Set(),
-  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {}, maint: {} } };
+  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {}, maint: {}, bedClear: {} } };
 const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
 const TOUR_REFUSED = "This is the online demo: a recording of the demo printers, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
@@ -212,8 +212,10 @@ async function tourGet(url) {
     if (rec !== undefined) {
       const body = JSON.parse(JSON.stringify(tour.rec.bodies[rec].body));
       const extra = pid => (tour.sim.queued[pid] || []);
-      if (path === '/api/queue' && Array.isArray(body.items)) body.items = body.items.concat(extra(printer));
-      if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); });
+      // "Part removed, bed clear" in the online demo: the recorded hold clears here.
+      const cleared = (q, pid) => { if (q.bed && q.bed.state === 'awaiting_clear' && tour.sim.bedClear[pid] === q.bed.job_key) q.bed = { state: 'clear', file: q.bed.file }; };
+      if (path === '/api/queue' && Array.isArray(body.items)) { body.items = body.items.concat(extra(printer)); cleared(body, printer); }
+      if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); cleared(q, pid); });
       return tourReply(body, tour.rec.bodies[rec].status);
     }
   }
@@ -495,6 +497,11 @@ async function tourPost(url, body) {
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname === '/api/queue/bed-clear') {
+    tour.sim.bedClear[pid] = parsed.job_key;
+    return tourReply({ bed: { state: 'clear' }, printer: pid, items: [], auto_advance: false, connected: true, demo: true });
+  }
+  if (url.pathname === '/api/app/watch-only') return tourReply({ error: 'The online demo has no real printers to protect. Watch-only mode works in the copy you install.' }, 400);
   if (url.pathname === '/api/maintenance/done') {
     const rec = tour.rec.get[tourKey('/api/maintenance', new URLSearchParams({ printer: pid }))];
     const task = rec !== undefined && (tour.rec.bodies[rec].body.tasks || []).find(t => t.id === parsed.task_id);

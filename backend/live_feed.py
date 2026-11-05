@@ -237,8 +237,16 @@ def _detect_locked(printer_id, state, finish_event):
                 timelapse.finish(printer_id)
             if name in ("paused", "failed") and modules.is_enabled("maintenance"):
                 logbook.record_event(printer_id, name, state, simulated)
-            if name == "finished" and modules.is_enabled("print_queue"):
-                threading.Thread(target=_advance_queue, args=(printer_id,), daemon=True).start()
+            if modules.is_enabled("print_queue"):
+                # The bed: in use once a print starts, waiting to be cleared once one ends.
+                ended_file = (finish_event or {}).get("job", {}).get("filename") or state.get("current_file")
+                if name == "started":
+                    print_queue.print_started(printer_id, state.get("current_file"))
+                elif name in ("failed", "cancelled"):
+                    print_queue.print_ended(printer_id, ended_file, name)
+                    publish_event({"type": "queue", "printer": printer_id, "bed": print_queue.bed_state(printer_id)})
+                elif name == "finished":
+                    threading.Thread(target=_advance_queue, args=(printer_id, ended_file), daemon=True).start()
     if events and side_effects and modules.is_enabled("automations"):
         # Print events are checked against the rules here, where they are
         # detected - whether that is the 250 ms loop or straight after a
@@ -247,13 +255,13 @@ def _detect_locked(printer_id, state, finish_event):
     return events, side_effects, simulated
 
 
-def _advance_queue(printer_id):
+def _advance_queue(printer_id, filename=None):
     if not modules.is_enabled("print_queue"):
         return
-    result = print_queue.on_print_finished(printer_id)
+    result = print_queue.on_print_finished(printer_id, filename)
+    publish_event({"type": "queue", "printer": printer_id, "bed": print_queue.bed_state(printer_id),
+                   "started": (result or {}).get("started"), "held": (result or {}).get("held")})
     if result and (result.get("started") or result.get("held")):
-        publish_event({"type": "queue", "printer": printer_id,
-                       "started": result.get("started"), "held": result.get("held")})
         refresh(printer_id)
 
 

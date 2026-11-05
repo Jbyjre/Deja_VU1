@@ -154,6 +154,14 @@ def summary(filename, printer_state=None):
     blocking += noz_block
     info += noz_info
 
+    # -- the bed: a print that ended here may still be on it ----------------------
+    if modules.is_enabled("print_queue"):
+        import print_queue                       # here: print_queue imports this module
+        bed = print_queue.bed_state(state.get("printer_id"))
+        if bed["state"] == "awaiting_clear":
+            warnings.append(f"{bed.get('file') or 'The last print'} ended on this printer and may still be on "
+                            "the bed. Take it off and check the bed is clear before starting")
+
     # -- maintenance ----------------------------------------------------------
     maint = maintenance.get_status()
     overdue = [t["name"] for t in maint["tasks"] if t["status"] == "overdue"]

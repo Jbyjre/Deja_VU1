@@ -307,6 +307,9 @@ const Workshop = (() => {
     } else if (event.type === 'queue') {
       if (event.started) toast(`Queue started ${event.started.filename}`, 'ok');
       if (event.held) toast(`Queue is holding ${event.held.filename}: ${event.held.note}`, 'warn', 8000);
+      else if (event.bed && event.bed.state === 'awaiting_clear')
+        toast(`${printerName(event.printer)}: take ${event.bed.file || 'the print'} off the bed, then press Part removed, bed clear in Files`, 'info', 8000);
+      attention.queuesAt = 0;
       loadQueue();
     }
   }
@@ -500,10 +503,14 @@ const Workshop = (() => {
       });
       if (p.state === 'paused') {
         add(1, 'warning', `${p.name} is paused`, `${p.current_file || 'Current print'} · ${Math.round(p.progress * 100)}% done`, 'control');
+      }
+      const q = attention.queues[p.id];
+      const bed = q && q.bed;
+      if (bed && bed.state === 'awaiting_clear' && p.state !== 'printing') {
+        add(1, 'warning', `${p.name}: take ${bed.file || 'the last print'} off the bed`, 'Nothing queued starts there until you press Part removed, bed clear', 'files');
       } else if (p.state === 'complete') {
         add(1, 'done', `${p.name} finished ${p.current_file || 'its print'}`, 'Ready for the next print once the bed is clear', 'control');
       }
-      const q = attention.queues[p.id];
       const waiting = q ? q.items.filter(i => i.status === 'queued' || i.status === 'held').length : 0;
       if (p.state === 'ready' && waiting && !p.link_lost) {
         add(2, 'warning', `${p.name} is idle with ${waiting} file${waiting === 1 ? '' : 's'} waiting`, 'Start the next one from Files', 'files');
@@ -2571,9 +2578,20 @@ const Workshop = (() => {
     if (!q || !hasData(q)) { host.innerHTML = demoNeeded('the print queue'); return; }
     const waiting = q.items.filter(i => i.status === 'queued' || i.status === 'held');
     $('qa-next').hidden = !waiting.length;
+    const bed = q.bed || { state: 'clear' };
+    const who = printerName(q.printer);
+    const ended = bed.ended_at ? bed.ended_at.slice(11, 16) : '';
+    const how = { finished: 'finished', failed: 'failed', cancelled: 'was cancelled' }[bed.outcome] || 'ended';
     host.innerHTML = `
+      ${bed.state === 'awaiting_clear' ? `<div class="bed-hold" role="status">
+        <p><b>Take ${esc(bed.file || 'the last print')} off the bed</b>
+          <small>It ${how} on ${esc(who)}${ended ? ` at ${esc(ended)}` : ''}. Nothing in this queue starts on ${esc(who)} until you confirm.</small></p>
+        <button class="btn primary" id="bed-clear" type="button" data-job="${esc(bed.job_key || '')}"
+                aria-label="Part removed, bed clear: ${esc(who)}, ${esc(bed.file || 'the last print')}">Part removed, bed clear
+          <small>${esc(who)} · ${esc(bed.file || 'the last print')}</small></button>
+      </div>` : ''}
       <label class="switch queue-auto" for="queue-auto">
-        <span class="switch-label">Start the next file when a print finishes</span>
+        <span class="switch-label">Start the next file when a print finishes and you say the bed is clear</span>
         <input type="checkbox" id="queue-auto" ${q.auto_advance ? 'checked' : ''}>
         <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
       </label>
@@ -2602,6 +2620,14 @@ const Workshop = (() => {
       loadQueue();
     }));
     $('queue-start').addEventListener('click', (e) => startNext(e.currentTarget));
+    const clear = $('bed-clear');
+    if (clear) clear.addEventListener('click', async (e) => {
+      const r = await runCommand(e.currentTarget, '/api/queue/bed-clear', { job_key: clear.dataset.job },
+        { sending: 'Saving…', done: `Bed clear on ${who}`, failed: 'Not saved' });
+      if (r.ok && r.result.body.next && r.result.body.next.started) toast(`Queue started ${r.result.body.next.started.filename}`, 'ok');
+      else if (r.ok && r.result.body.next && r.result.body.next.held) toast(`Queue is holding ${r.result.body.next.held.filename}: ${r.result.body.next.held.note}`, 'warn', 8000);
+      loadQueue();
+    });
     $('queue-clear').addEventListener('click', async () => { await postJSON(api('/api/queue/clear-done'), {}); loadQueue(); });
   }
 

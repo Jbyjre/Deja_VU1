@@ -133,6 +133,7 @@ API endpoints
 
   GET  /api/queue                    this printer's print queue
   POST /api/queue/add | remove | move | auto | start-next | clear-done
+  POST /api/queue/bed-clear          {"job_key"} "Part removed, bed clear" for the print that ended last
 
   GET  /api/automations              rules
   GET  /api/automations/log          what fired, and what really happened
@@ -618,6 +619,7 @@ _QUEUE_ACTIONS = {
     "/api/queue/auto": lambda b: print_queue.set_auto_advance(b.get("enabled")),
     "/api/queue/start-next": lambda b: print_queue.start_next(confirmed=bool(b.get("confirmed"))),
     "/api/queue/clear-done": lambda b: print_queue.clear_done(),
+    "/api/queue/bed-clear": lambda b: print_queue.confirm_bed_clear(job_key=b.get("job_key")),
 }
 
 
