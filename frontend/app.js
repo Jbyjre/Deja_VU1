@@ -1147,7 +1147,7 @@ const SECTIONS = {
     ['filament', 'Filament & colour', ['#tab-filament']],
   ],
   modules: [
-    ['copy', 'This copy', ['your space', '#demo-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
+    ['copy', 'This copy', ['your space', '#demo-card', '#watch-only-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
     ['features', 'Features', ['modules', 'print cost pricing']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
@@ -2032,6 +2032,40 @@ async function loadPrinterControl() {
   loadPrinterConsole();
 }
 
+/* ---- Watch-only mode -----------------------------------------------------*/
+
+/* The server refuses every command to a real printer while it is on; this only
+   shows it (top bar label, Settings switch). Checked with the update watcher. */
+function showWatchOnly(w) {
+  const on = !!(w && w.on);
+  const pill = $('watch-only-pill'), box = $('watch-only-setting'), note = $('watch-only-note');
+  if (pill) pill.hidden = !on;
+  if (box) { box.checked = on; box.disabled = !!(w && w.forced); }
+  if (note && w) note.textContent = w.forced
+    ? 'Switched on when Deja Vu1 started (DEJAVU_WATCH_ONLY), so it stays on until Deja Vu1 starts without it.'
+    : on ? 'On. Pause, Cancel, Move, Heat, Start and the console are refused by the server. Emergency stop still works. Demo printers stay playable.'
+      : 'The server refuses the commands itself, so no screen, rule or queue can send one. Demo printers stay playable.';
+  document.documentElement.classList.toggle('is-watch-only', on);
+}
+
+function initWatchOnly() {
+  const box = $('watch-only-setting');
+  if (!box) return;
+  box.addEventListener('change', async () => {
+    const want = box.checked;
+    const r = await postJSON('/api/app/watch-only', { on: want });
+    if (!r.ok) { box.checked = !want; toast(`Not changed: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 7000); return; }
+    showWatchOnly(r.body);
+    toast(want ? 'Watch-only mode on: nothing that moves, heats or prints reaches your printers' : 'Watch-only mode off', want ? 'ok' : 'info', 6000);
+  });
+  const pill = $('watch-only-pill');
+  if (pill) pill.addEventListener('click', () => {
+    showTab('modules');
+    $('watch-only-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  getJSON('/api/app/watch-only').then(showWatchOnly).catch(() => {});
+}
+
 /* ---- Filament inventory --------------------------------------------------*/
 
 /* A spool's weight in words, with how far to trust it: "Weight unknown" is
@@ -2776,6 +2810,7 @@ initPressedSync();
 initTabs();
 initPreferences();
 initSpoolForm();
+initWatchOnly();
 initRepeatSettings();
 initPairing();
 initNotifications();
@@ -2797,6 +2832,7 @@ async function watchForUpdate() {
   if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
   let info;
   try { info = await (await fetch('/api/app/info', { cache: 'no-store' })).json(); } catch (_) { return; }
+  showWatchOnly(info && info.watch_only);
   const v = info && info.version;
   if (!v) return;
   // The build changes too on the "newest builds" channel, where the number can stay the same.

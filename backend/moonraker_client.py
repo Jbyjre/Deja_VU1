@@ -818,6 +818,8 @@ class HttpTransport:
         wrapped=False). Raises PrinterUnreachable when there was no whole
         answer, PrinterRefused when Moonraker or Klipper said no.
         """
+        import watch_only                  # here, not at the top: watch_only imports this module
+        watch_only.check_request(method, path)
         url = path + ("?" + urlencode(query) if query else "")
         headers = {"Accept": "application/json", "User-Agent": f"DejaVu1/{CLIENT_VERSION}"}
         payload = None
@@ -1510,6 +1512,8 @@ class MoonrakerPrinter:
 
     def _call(self, method, params=None, timeout=READ_TIMEOUT):
         """One JSON-RPC request over the WebSocket, answered or refused in words."""
+        import watch_only
+        watch_only.check_call(method)
         conn = self._ws
         if conn is None or conn.closed:
             raise PrinterUnreachable(f"No live connection to {self.name}")

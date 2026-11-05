@@ -117,6 +117,8 @@
         <span class="pc-caret" aria-hidden="true">▾</span>
         <span class="pc-progress" aria-hidden="true"><i id="pc-progress"></i></span>
       </button>
+      <button class="wo-pill" id="watch-only-pill" type="button" hidden
+              title="Watch-only mode is on: nothing that moves, heats or prints is sent to your printers">Watch-only</button>
       <div class="conn" id="conn">
         <span class="conn-dot" aria-hidden="true"></span>
         <span id="conn-label">Checking…</span>
@@ -1095,6 +1097,12 @@
       <div class="card-head"><div><h2>Demo data</h2><p class="card-sub">Pretend printers for a look around. Nothing they show is real, and nothing is sent to your printer.</p></div>
         <label class="switch" for="demo-setting"><span class="switch-label">Show demo printers</span>
           <input type="checkbox" id="demo-setting"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
+    </section>
+    <section class="card liquid-glass watch-only-card" id="watch-only-card">
+      <div class="card-head"><div><h2>Watch-only mode</h2><p class="card-sub">Deja Vu1 reads your printers and sends them nothing that moves, heats, prints, uploads or changes a setting. Emergency stop still works.</p></div>
+        <label class="switch" for="watch-only-setting"><span class="switch-label">Watch only</span>
+          <input type="checkbox" id="watch-only-setting"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
+      <p class="field-hint" id="watch-only-note">The server refuses the commands itself, so no screen, rule or queue can send one. Demo printers stay playable.</p>
     </section>
     <section class="card liquid-glass phone-install-card phone-only" id="phone-install-card" data-browser-only>
       <div class="card-head"><div><h2>Install on this phone</h2><p class="card-sub">Open Deja Vu1 from your home screen, full screen, like any other app.</p></div></div>

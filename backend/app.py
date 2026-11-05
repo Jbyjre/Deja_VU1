@@ -57,6 +57,8 @@ API endpoints
   POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
   POST /api/printers/login            read a printer's API key with its web-page login {"moonraker_url", "username", "password"}
   POST /api/camera/find               find and save the selected printer's camera feed
+  GET  /api/app/watch-only            is watch-only mode on (no command reaches a real printer)?
+  POST /api/app/watch-only            {"on": true|false}
   GET  /api/remote                    Tailscale on this computer: connected? shared address?
   POST /api/remote/share|stop         share the dashboard privately with Tailscale Serve, or stop (this computer only)
   POST /api/remote/link               a pairing QR code for the shared address
@@ -304,6 +306,7 @@ import plate_project
 import model_maker
 import updates
 import remote
+import watch_only
 import websocket
 import wled_bridge
 
@@ -483,7 +486,8 @@ _APP_ROUTES = {
     "/api/filament/charges": ("filament_inventory", lambda q: {"charges": filament_inventory.recent_charges(
         q.get("printer", [None])[0])}),
     "/api/remote": (None, lambda q: remote.status(PORT)),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
+    "/api/app/watch-only": (None, lambda q: watch_only.status()),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
@@ -990,6 +994,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return None
         except printer_control.PrintBlocked as exc:
             return self._send_json({"error": str(exc), "blocked": True, "gate": exc.gate}, status=409)
+        except watch_only.WatchOnly as exc:
+            # Refused here on purpose, not by the printer: said as such.
+            return self._send_json({"error": str(exc), "watch_only": True}, status=409)
         except mock_moonraker.PrinterCommandError as exc:
             # The printer side failed. Say so plainly - never a success.
             return self._send_json({"error": f"The printer reported a failure: {exc}",
@@ -1170,6 +1177,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/app/desktop":
             return self._send_json(desktop.save_settings(self._read_json_body()))
+        if route == "/api/app/watch-only":
+            return self._send_json(watch_only.set_on(self._read_json_body().get("on")))
         if route == "/api/app/autostart":
             # It writes into this computer's sign-in items, so only a browser on this computer may.
             body = self._read_json_body()
@@ -1306,6 +1315,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if force_disconnected or (not connected and not self._wants_demo()):
                 return self._send_json({"connected": False, "demo": False}, status=409)
             body = self._read_json_body()
+            if (is_control and route != "/api/printer/control/estop" and watch_only.is_on()
+                    and mock_moonraker.is_real(printer_id)):
+                # Said first, whatever else the command would be refused for. moonraker_client
+                # refuses it again underneath, for anything that reaches a printer another way.
+                raise watch_only.WatchOnly(watch_only.MESSAGE)
             started = time.perf_counter()
             action = _CONTROL_ACTIONS[route] if is_control else _QUEUE_ACTIONS[route]
             result = action(body)
