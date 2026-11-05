@@ -39,7 +39,7 @@ window.Explain = (() => {
       'Press Find my printer’s camera and the app asks the printer for its camera and checks the picture. Without an address, the camera beside the twin asks the printer for one picture after another.'],
     'demo data': ['Pretend printers to look around with. Nothing they show is real, and nothing is sent to your printer.', ''],
     'print health': ['A score out of 100 for how ready this printer is to print.',
-      'Overdue maintenance and failed checks cost points. The lines under the dial say what each one costs.'],
+      'Overdue maintenance and failed checks cost points. The lines under the dial say what each one costs. When Confirm Print would refuse the start, the dial says Can’t start and stays under 55.'],
     'what your history says': ['Patterns in this printer’s past prints: which materials fail more, your busiest day, how much [[filament]] you get through.',
       'A pattern only shows up once enough prints back it up.'],
     'maintenance': ['Upkeep jobs such as cleaning the [[nozzle]] or checking the belts, counted from real print hours.',

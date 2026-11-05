@@ -452,7 +452,7 @@ const Workshop = (() => {
         <span><small>Nozzle</small><b>${p.nozzle_temperature != null ? formatTemp(p.nozzle_temperature) : '—'}</b></span>
         <span><small>Bed</small><b>${formatTemp(p.bed_temperature)}</b></span>
         <span><small>Chamber</small><b>${p.chamber_temperature != null ? formatTemp(p.chamber_temperature) : '—'}</b></span>
-        <span><small>Health</small><b>${p.health ?? '—'}</b></span>`);
+        <span${p.health_band === 'blocked' ? ' class="is-blocked" title="Confirm Print would refuse the loaded job"' : ''}><small>Health</small><b>${p.health ?? '—'}${p.health_band === 'blocked' ? ' · can\'t start' : ''}</b></span>`);
       const alerts = p.alerts || [];
       setHTML(f('alerts'), alerts.length
         ? alerts.map(a => `<li class="fc-alert ${esc(a.level)}">${esc(a.text)}</li>`).join('')
@@ -1614,6 +1614,7 @@ const Workshop = (() => {
     const arcLen = Math.PI * 80;
     const fill = $('g-fill');
     fill.style.strokeDasharray = `${arcLen}`;
+    // "blocked" is red whatever the number: the score never overrules Confirm Print.
     const color = data.band === 'good' ? 'var(--ok)' : (data.band === 'fair' ? 'var(--warn)' : 'var(--bad)');
     fill.style.stroke = color;
     tween('gauge', data.score, (v) => {
@@ -1621,8 +1622,8 @@ const Workshop = (() => {
       $('g-needle').setAttribute('transform', `rotate(${-90 + v * 1.8} 100 100)`);
       setText($('g-score'), Math.round(v));
     });
-    host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band}`);
-    $('g-band').textContent = { good: 'Good', fair: 'Fair', poor: 'Needs attention' }[data.band];
+    host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band === 'blocked' ? 'can\'t start' : data.band}`);
+    $('g-band').textContent = { good: 'Good', fair: 'Fair', poor: 'Needs attention', blocked: 'Can\'t start' }[data.band];
     $('g-deductions').innerHTML = (data.deductions || []).length
       ? data.deductions.map(d => `<li><b>${d.points}</b> ${esc(d.reason)}</li>`).join('')
       : '<li class="ok">Nothing is pulling the score down.</li>';
@@ -2514,15 +2515,16 @@ const Workshop = (() => {
     go.disabled = gate.verdict === 'blocked';
     go.textContent = gate.verdict === 'confirm' ? 'I\'ve read these, start print' : 'Start print';
     $('confirm-health').innerHTML = `<span class="gm-num">${gate.health.score}</span><span class="gm-lbl">health</span>`;
-    $('confirm-health').style.setProperty('--gm', { good: 'var(--ok)', fair: 'var(--warn)', poor: 'var(--bad)' }[gate.health.band]);
+    $('confirm-health').style.setProperty('--gm', { good: 'var(--ok)', fair: 'var(--warn)', poor: 'var(--bad)', blocked: 'var(--bad)' }[gate.health.band]);
+    $('confirm-health').title = gate.health.band === 'blocked' ? 'Health is held below fair while this print can\'t start' : '';
     const fil = gate.filament.map(f => `
-      <div class="gate-fil ${f.status}">
+      <div class="gate-fil ${f.status}${f.material_mismatch ? ' mismatch' : ''}">
         <span class="gf-th">${esc(f.toolhead)}</span>
         <span class="chip" style="background:${esc(f.expected_hex || '#ccc')}" title="File expects"></span>
         <span class="arrow" aria-hidden="true">→</span>
         <span class="chip" style="background:${esc(f.loaded_hex || 'transparent')}" title="Loaded"></span>
         <span class="gf-text">${esc(f.loaded_name || 'nothing loaded')} ${f.expected_material ? `· ${esc(f.expected_material)}` : ''}</span>
-        <span class="gf-status">${{ match: 'Match', close: 'Close', mismatch: 'Wrong colour', not_loaded: 'Not loaded', missing_toolhead: 'No such toolhead', no_colour_in_file: 'No colour in file' }[f.status] || esc(f.status)}</span>
+        <span class="gf-status">${f.material_mismatch ? 'Wrong material' : ({ match: 'Match', close: 'Close', mismatch: 'Wrong colour', not_loaded: 'Not loaded', missing_toolhead: 'No such toolhead', no_colour_in_file: 'No colour in file', unknown: 'Not reported', unknown_colour: 'Colour not reported' }[f.status] || esc(f.status))}</span>
       </div>`).join('');
     $('confirm-body').innerHTML = `
       <div class="gate-banner ${gate.verdict}">${banner}</div>

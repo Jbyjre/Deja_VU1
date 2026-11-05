@@ -28,7 +28,10 @@ greyed out), "confirm" (warnings the person must read and accept) and
 "clear".
 
 The "print health" number is the same inputs folded into one 0-100 score
-for the gauge, with every deduction listed so it is never a mystery.
+for the gauge, with every deduction listed so it is never a mystery. The
+score never overrules the gate: while anything blocks the start, health says
+"blocked" and stays below the "fair" line, so no screen can show a good
+score beside a refused print.
 """
 
 import color_check
@@ -179,7 +182,7 @@ def summary(filename, printer_state=None):
         "maintenance": {"overdue": overdue, "due_soon": [t["name"] for t in maint["tasks"]
                                                          if t["status"] == "due_soon"]},
         "cost": cost,
-        "health": health(pre, rows, maint),
+        "health": health(pre, rows, maint, blocking),
         "job": {
             "estimated_hours": analysis["estimated_hours"],
             "layers": analysis["layers"],
@@ -195,9 +198,18 @@ def summary(filename, printer_state=None):
     }
 
 
-def health(preflight, filament_rows, maint):
+# While a start is refused, the score stays under the "fair" line (55).
+BLOCKED_CEILING = 54
+_BAD_FILAMENT = ("mismatch", "not_loaded", "missing_toolhead")
+
+
+def health(preflight, filament_rows, maint, blocking=None):
     """
     One 0-100 number for the gauge. Starts at 100; every deduction is listed.
+
+    `blocking` is the gate's list of reasons it refuses the start. When there
+    are any, the band is "blocked" whatever the score, and the score is held
+    at BLOCKED_CEILING or below with that cap listed as its own deduction.
     """
     score, parts = 100, []
 
@@ -213,10 +225,13 @@ def health(preflight, filament_rows, maint):
     if soon:
         take(min(15, soon * 5), f"{soon} maintenance {'task' if soon == 1 else 'tasks'} due soon")
     if filament_rows is not None:
-        bad = [r for r in filament_rows if r["status"] in ("mismatch", "not_loaded", "missing_toolhead")]
+        bad = [r for r in filament_rows if r["status"] in _BAD_FILAMENT]
         close = [r for r in filament_rows if r["status"] == "close"]
+        material = [r for r in filament_rows if r.get("material_mismatch")]
         if bad:
             take(35, "Filament doesn't match the file on " + ", ".join(r["toolhead"] for r in bad))
+        if material:
+            take(35, "Wrong material loaded on " + ", ".join(r["toolhead"] for r in material))
         if close:
             take(10, "Filament colour is a close call on " + ", ".join(r["toolhead"] for r in close))
         unknown = [r for r in filament_rows if r["status"] in ("unknown", "unknown_colour")]
@@ -229,19 +244,30 @@ def health(preflight, filament_rows, maint):
         if preflight["warnings"]:
             take(min(20, 8 * len(preflight["warnings"])), f"{len(preflight['warnings'])} pre-flight warning(s)")
     score = max(0, score)
-    band = "good" if score >= 80 else ("fair" if score >= 55 else "poor")
-    return {"score": score, "band": band, "deductions": parts}
+    blocking = list(blocking or [])
+    if blocking and score > BLOCKED_CEILING:
+        more = f" (and {len(blocking) - 1} more)" if len(blocking) > 1 else ""
+        take(score - BLOCKED_CEILING, f"Held below fair while Confirm Print would refuse: {blocking[0]}{more}")
+    if blocking:
+        band = "blocked"
+    else:
+        band = "good" if score >= 80 else ("fair" if score >= 55 else "poor")
+    return {"score": score, "band": band, "deductions": parts, "blocked": bool(blocking), "blocking": blocking}
 
 
 def printer_health():
     """The gauge when no file is selected: maintenance and the loaded job."""
     state = mock_moonraker.get_printer_state()
     req = mock_moonraker.get_current_job_requirements()["required_filament"]
-    rows = None
+    rows, blocking = None, []
     if req:
-        rows, _, _ = _filament_match(
+        rows, blocking, _ = _filament_match(
             [{"toolhead": r["toolhead"], "expected_color_hex": r["expected_color_hex"],
               "expected_material": r["expected_material"]} for r in req], state)
-    result = health(None, rows, maintenance.get_status())
+    if state.get("link_lost"):
+        blocking.insert(0, "The printer isn't answering")
+    elif state.get("state") == "error":
+        blocking.insert(0, f"The printer is reporting an error: {state.get('state_message') or 'no details'}")
+    result = health(None, rows, maintenance.get_status(), blocking)
     result["scope"] = "printer"
     return result

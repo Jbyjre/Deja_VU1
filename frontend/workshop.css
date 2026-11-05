@@ -687,6 +687,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
   border: 4px solid var(--gm, var(--text-faint)); background: rgba(255, 255, 255, .6);
 }
 .gm-num { font: 700 17px/1 var(--font-mono); }
+.fc-temps .is-blocked b { color: var(--bad); }
 .gm-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); }
 
 /* ---- automations ---------------------------------------------------------------- */
