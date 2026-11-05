@@ -223,6 +223,12 @@ def _detect_locked(printer_id, state, finish_event):
                                   "color": job["filament_color_hex"], "cost": cost}
             if not simulated and modules.is_enabled("filament_inventory"):
                 payload["filament"] = filament_inventory.deduct_after_print(job,printer_id=printer_id)
+        if not simulated and modules.is_enabled("filament_inventory"):
+            # Fix which roll each head has now, so the end of the print charges these rolls.
+            if name == "started":
+                filament_inventory.record_print_start(printer_id, state)
+            elif name in ("failed", "cancelled"):
+                filament_inventory.forget_print_start(printer_id)
         publish_event(payload)
         if side_effects:
             if name == "started" and modules.is_enabled("timelapse"):

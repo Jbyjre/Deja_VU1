@@ -2098,6 +2098,8 @@ async function loadFilament() {
     });
   });
 
+  loadCharges(spools);
+
   const idle = data.idle_spools || [];
   if (idle.length) {
     idleNote.hidden = false;
@@ -2105,6 +2107,35 @@ async function loadFilament() {
   } else {
     idleNote.hidden = true;
   }
+}
+
+/* Finished prints and the roll each was charged to, with the one correction:
+   move a charge to the roll that really printed it. */
+async function loadCharges(spools) {
+  const wrap = $('spool-charges-wrap');
+  if (!wrap) return;
+  const data = await getJSON(api('/api/filament/charges')).catch(() => null);
+  const charges = (data && data.charges) || [];
+  wrap.hidden = !charges.length;
+  if (!charges.length) return;
+  const others = id => spools.filter(s => s.id !== id)
+    .map(s => `<option value="${esc(s.id)}">${esc(s.color_name)} ${esc(s.material)}</option>`).join('');
+  $('spool-charges').innerHTML = charges.slice(0, 8).map(c => `
+    <div class="charge-row${c.assignment_changed && c.assignment_changed.length ? ' is-changed' : ''}">
+      <span class="charge-what"><b>${esc(c.file || 'A print')}</b> · ${esc(c.toolhead || '')} · ${c.grams} g from ${esc(c.spool)}
+        <small>${c.moved_to ? `moved to ${esc(c.moved_to_name || c.moved_to)}` : c.basis === 'assigned at start' ? 'the roll assigned when it started' : 'the nearest matching spool'}${c.assignment_changed && c.assignment_changed.length ? ', changed during the print' : ''}</small></span>
+      ${c.moved_to || spools.length < 2 ? '' : `<label class="sr-only" for="mv-${esc(c.id)}">Move this charge to</label>
+        <select id="mv-${esc(c.id)}" data-move-charge="${esc(c.id)}"><option value="">Move to another roll…</option>${others(c.spool_id)}</select>`}
+    </div>`).join('');
+  $('spool-charges').querySelectorAll('[data-move-charge]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      if (!sel.value) return;
+      const r = await postJSON(api(`/api/filament/charges/${encodeURIComponent(sel.dataset.moveCharge)}/move`), { spool_id: sel.value });
+      if (!r.ok) { toast(`Charge not moved: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); sel.value = ''; return; }
+      toast(`Moved ${r.body.grams} g to ${r.body.moved_to_name}`, 'ok');
+      loadFilament();
+    });
+  });
 }
 
 function initSpoolForm() {

@@ -147,6 +147,8 @@ API endpoints
   GET  /api/filament/forecast        grams left and prints left per spool
   POST /api/filament/spools          add a spool (grams_remaining null = unknown; weight_source weighed|estimated)
   POST /api/filament/spools/<id>/remove
+  GET  /api/filament/charges         the last finished prints charged to a roll (the roll fixed at print start)
+  POST /api/filament/charges/<id>/move  {"spool_id"} the explicit correction: charge another roll instead
   POST /api/filament/spools/<id>/grams   {"grams_remaining": 500, "weight_source": "weighed"} (null = unknown)
 
   GET  /api/compare                  "what changed?" + likely cause
@@ -478,6 +480,8 @@ _APP_ROUTES = {
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
+    "/api/filament/charges": ("filament_inventory", lambda q: {"charges": filament_inventory.recent_charges(
+        q.get("printer", [None])[0])}),
     "/api/remote": (None, lambda q: remote.status(PORT)),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
@@ -1623,6 +1627,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             body = self._read_json_body()
             return self._send_json(spoolman_bridge.import_spools(body.get("url")))
+
+        if route.startswith("/api/filament/charges/") and route.endswith("/move"):
+            if self._module_blocked("filament_inventory"):
+                return None
+            charge_id = route[len("/api/filament/charges/"):-len("/move")]
+            body = self._read_json_body()
+            return self._send_json(filament_inventory.move_charge(charge_id, str(body.get("spool_id") or "")))
 
         if route.startswith("/api/filament/spools/") and route.endswith("/remove"):
             if self._module_blocked("filament_inventory"):

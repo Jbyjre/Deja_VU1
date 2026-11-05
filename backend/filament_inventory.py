@@ -39,6 +39,9 @@ import storage
 
 _DATA_DIR = storage.DATA_DIR
 _INVENTORY_PATH = os.path.join(_DATA_DIR, "filament_inventory.json")
+# Which roll each head had when a print started, per printer, and the charges made.
+_STARTS_PATH = os.path.join(_DATA_DIR, "print_spools.json")
+MAX_CHARGES = 50
 
 IDLE_DAYS_THRESHOLD = 21
 MAX_SPOOLS = 200
@@ -334,21 +337,129 @@ def estimate_for_job(required, state=None):
     return out
 
 
+# ---------------------------------------------------------------------------
+# Which roll a print used: fixed when it starts, not read again when it ends
+# ---------------------------------------------------------------------------
+
+def _starts():
+    data = storage.load_json(_STARTS_PATH, None)
+    if not isinstance(data, dict):
+        data = {}
+    data.setdefault("printing", {})
+    data.setdefault("charges", [])
+    return data
+
+
+def _now():
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def record_print_start(printer_id, state):
+    """
+    Keep the head-to-roll map as it is when a print starts, so the print is
+    later charged to the rolls that were really loaded, even if someone
+    assigns another roll to a head before it ends.
+    """
+    import tool_setup
+    heads = {h["toolhead"]: (h.get("spool_id") or None) for h in tool_setup.get(printer_id)["heads"]}
+    record = {"file": state.get("current_file"), "started_at": _now(), "heads": heads,
+              "extruder_map": dict(state.get("extruder_map") or {}), "changes": []}
+    with _lock:
+        data = _starts()
+        data["printing"][printer_id] = record
+        storage.save_json(_STARTS_PATH, data)
+    return record
+
+
+def print_start_record(printer_id):
+    with _lock:
+        return _starts()["printing"].get(printer_id)
+
+
+def note_assignment_change(printer_id, before, after):
+    """
+    A head's roll changed in Preparation. While a print runs on that printer
+    the change is written down beside its start record; the charge at the end
+    still goes to the roll it started with.
+    """
+    with _lock:
+        data = _starts()
+        record = data["printing"].get(printer_id)
+        if not record:
+            return []
+        changed = [{"at": _now(), "toolhead": th, "from": before.get(th), "to": after.get(th)}
+                   for th in sorted(set(before) | set(after)) if before.get(th) != after.get(th)]
+        if changed:
+            record["changes"] = (record.get("changes") or []) + changed
+            storage.save_json(_STARTS_PATH, data)
+        return changed
+
+
+def forget_print_start(printer_id):
+    """A print that failed or was cancelled charges nothing; its record goes."""
+    with _lock:
+        data = _starts()
+        if data["printing"].pop(printer_id, None) is not None:
+            storage.save_json(_STARTS_PATH, data)
+
+
+def recent_charges(printer_id=None):
+    """The last charges, newest first, each with what it says about the roll it hit."""
+    with _lock:
+        charges = list(_starts()["charges"])
+    if printer_id:
+        charges = [c for c in charges if c.get("printer") == printer_id]
+    return list(reversed(charges))
+
+
 def deduct_after_print(job, printer_id=None):
     """
-    Take a finished print's filament off the spool it most likely used, so
-    the remaining weight follows what was actually printed rather than
-    waiting for someone to weigh the spool again.
+    Take a finished print's filament off the roll it used, so the remaining
+    weight follows what was printed rather than waiting for someone to weigh
+    the spool again.
+
+    The roll is the one assigned to the head when the print started (its
+    start record). A roll assigned later is never charged instead; the result
+    names the change so it can be corrected by hand (move_charge). Without a
+    start record (the print was already running when Deja Vu1 started), a
+    roll assigned now is not charged either, because nothing shows it was
+    the one loaded; only an unassigned head falls back to the nearest
+    matching spool, as before.
     """
     with _lock:                           # runs on the live feed's thread
+        data = _starts()
+        start = data["printing"].pop(printer_id, None) if printer_id else None
+        if start is not None:
+            storage.save_json(_STARTS_PATH, data)
         inventory = _load()
-        used=job.get('toolheads_used') or []
-        if len(used)>1:
+        used = job.get('toolheads_used') or []
+        if len(used) > 1:
             return None                  # no measured per-tool consumption: do not charge it all to one spool
-        import tool_setup
-        assignments=tool_setup.get(printer_id)['heads']
-        assigned=next((h.get('spool_id') for h in assignments if used and h['toolhead']==used[0]),None)
-        spool = next((s for s in inventory if s['id']==assigned),None) if assigned else _match_spool(inventory, job.get("filament_type"), job.get("filament_color_hex"))
+        logical = used[0] if used else None
+        changes = []
+        if start is not None:
+            head = (start.get("extruder_map") or {}).get(logical, logical)
+            assigned = (start.get("heads") or {}).get(head)
+            changes = [c for c in start.get("changes") or [] if c["toolhead"] == head]
+            basis = "assigned at start" if assigned else "nearest matching spool"
+        else:
+            import tool_setup
+            head = logical
+            now_assigned = next((h.get('spool_id') for h in tool_setup.get(printer_id)['heads']
+                                 if logical and h['toolhead'] == logical), None)
+            if now_assigned:
+                return {"spool_id": None, "deducted": 0.0, "charged": False,
+                        "reason": f"Not charged: Deja Vu1 didn't see this print start, so it can't tell which roll "
+                                  f"{logical} had then. Weigh the spool to bring its weight up to date"}
+            assigned = None
+            basis = "nearest matching spool"
+        if assigned:
+            spool = next((s for s in inventory if s['id'] == assigned), None)
+            if spool is None:
+                return {"spool_id": assigned, "deducted": 0.0, "charged": False,
+                        "reason": "Not charged: the roll assigned when this print started has been removed"}
+        else:
+            spool = _match_spool(inventory, job.get("filament_type"), job.get("filament_color_hex"))
         if spool is None:
             return None
         grams = float(job.get("filament_used_grams") or 0.0)
@@ -359,8 +470,58 @@ def deduct_after_print(job, printer_id=None):
         # An unknown weight stays unknown; the use is still counted for the next weighing.
         spool["used_since_weighed"] = round(spool.get("used_since_weighed", 0.0) + grams, 1)
         _save(inventory)
-    return {"spool_id": spool["id"], "deducted": grams, "grams_remaining": spool["grams_remaining"],
-            "weight_source": spool.get("weight_source")}
+        data = _starts()
+        charge = {"id": f"c{int(datetime.now().timestamp() * 1000)}-{len(data['charges'])}", "at": _now(), "printer": printer_id,
+                  "file": job.get("filename"), "toolhead": head, "spool_id": spool["id"],
+                  "spool": f"{spool['material']} {spool['color_name']}", "grams": round(grams, 1),
+                  "basis": basis, "assignment_changed": changes}
+        data["charges"] = (data["charges"] + [charge])[-MAX_CHARGES:]
+        storage.save_json(_STARTS_PATH, data)
+    result = {"spool_id": spool["id"], "deducted": grams, "grams_remaining": spool["grams_remaining"],
+              "weight_source": spool.get("weight_source"), "charged": True, "basis": basis,
+              "charge_id": charge["id"]}
+    if changes:
+        result["assignment_changed"] = changes
+        result["reason"] = (f"Charged to {charge['spool']}, the roll {head} had when the print started. "
+                            f"{head}'s roll was changed during the print: if that was a real swap, move the charge")
+    return result
+
+
+def move_charge(charge_id, to_spool_id):
+    """
+    The explicit correction: give a charge's grams back to the roll it was
+    made against and take them from another one. Moving it twice is refused.
+    """
+    with _lock:
+        data = _starts()
+        charge = next((c for c in data["charges"] if c["id"] == charge_id), None)
+        if charge is None:
+            raise ValueError("That charge isn't in the recent list any more")
+        if charge.get("moved_to"):
+            raise ValueError("That charge was already moved")
+        if to_spool_id == charge["spool_id"]:
+            raise ValueError("Choose a different roll")
+        inventory = _load()
+        by_id = {s["id"]: s for s in inventory}
+        target = by_id.get(to_spool_id)
+        if target is None:
+            raise ValueError(f"Unknown spool: {to_spool_id}")
+        grams = float(charge["grams"])
+        source = by_id.get(charge["spool_id"])
+        if source is not None:
+            if source.get("grams_remaining") is not None:
+                source["grams_remaining"] = round(min(MAX_GRAMS, source["grams_remaining"] + grams), 1)
+            source["used_since_weighed"] = round(max(0.0, source.get("used_since_weighed", 0.0) - grams), 1)
+        if target.get("grams_remaining") is not None:
+            target["grams_remaining"] = round(max(0.0, target["grams_remaining"] - grams), 1)
+            if grams > 0:
+                target["weight_source"] = "estimated"
+        target["used_since_weighed"] = round(target.get("used_since_weighed", 0.0) + grams, 1)
+        _save(inventory)
+        charge.update(moved_to=to_spool_id, moved_to_name=f"{target['material']} {target['color_name']}",
+                      moved_at=_now())
+        storage.save_json(_STARTS_PATH, data)
+        return dict(charge)
 
 
 def forecast(history):
@@ -391,7 +552,8 @@ def forecast(history):
 
 
 def reset():
-    """Wipe and reseed the default inventory. Useful for tests."""
+    """Wipe and reseed the default inventory, with no start records or charges. Useful for tests."""
     inventory = _default_inventory()
     _save(inventory)
+    storage.save_json(_STARTS_PATH, {"printing": {}, "charges": []})
     return inventory

@@ -974,6 +974,11 @@
             <span class="badge badge-optional">Optional module</span>
           </div>
           <div id="spool-list"></div>
+          <details class="log" id="spool-charges-wrap" data-module-body="filament_inventory" hidden>
+            <summary>Recent prints charged to a roll</summary>
+            <p class="log-empty">Each print is charged to the roll its head had when the print started. If you really swapped a roll during a print, move its charge.</p>
+            <div id="spool-charges"></div>
+          </details>
           <form id="spool-form" data-module-body="filament_inventory" style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;">
             <input type="text" id="spool-material" placeholder="Material (PLA)" aria-label="Material" style="flex:1; min-width:130px;">
             <input type="text" id="spool-color-name" placeholder="Colour name" aria-label="Colour name" style="flex:1; min-width:120px;">

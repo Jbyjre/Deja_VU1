@@ -805,6 +805,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 .spool-weigh[hidden] { display: none; }
 .spool-weigh label { flex: 1 1 100%; color: var(--text-dim); }
 .spool-weigh input { width: 110px; }
+.charge-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; padding: 6px 0; }
+.charge-what { flex: 1 1 220px; }
+.charge-what small { display: block; color: var(--text-faint); }
+.charge-row.is-changed .charge-what small { color: var(--warn-text); }
 .spool-weighed { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
 
 /* ---- modules & devices ---------------------------------------------------*/

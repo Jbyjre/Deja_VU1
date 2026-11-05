@@ -290,6 +290,11 @@ const Workshop = (() => {
       if (event.event === 'finished' && event.summary) celebrate(event);
       else toast(`${event.printer_name}: print ${word}${event.file ? `: ${event.file}` : ''}`,
                  event.event === 'failed' ? 'bad' : 'info');
+      // The roll a finished print was charged to, when there is something to check about it.
+      if (event.event === 'finished' && event.filament && event.filament.reason) {
+        toast(`${event.printer_name}: ${event.filament.reason}`, 'warn', 9000);
+        if (typeof loadFilament === 'function') loadFilament();
+      }
       if (mine) { loadHealth(); loadQueue(); loadTimelapse(); }
     } else if (event.type === 'automation') {
       toast(`Rule "${event.rule_name}": ${event.ok ? event.detail : event.error}`, event.ok ? 'ok' : 'warn', 6500);
