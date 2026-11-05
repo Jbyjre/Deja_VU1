@@ -32,6 +32,8 @@
 <link rel="stylesheet" href="printer.css">
 <link rel="stylesheet" href="guide.css">
 <link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="dark.css">
+<script src="theme-boot.js"></script>
 <link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
 </head>
@@ -1078,6 +1080,12 @@
     <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
       <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
       <div data-backdrop-picker></div>
+      <fieldset class="bp-group" id="theme-choice-group"><legend>Theme</legend><p class="field-hint">Light, dark, or the same as this computer.</p>
+        <div class="pill-toggle theme-choice" id="theme-choice" role="radiogroup" aria-label="Theme">
+          <button type="button" role="radio" data-theme-choice="light">Light</button>
+          <button type="button" role="radio" data-theme-choice="dark">Dark</button>
+          <button type="button" role="radio" data-theme-choice="system">System</button>
+        </div></fieldset>
       <fieldset class="bp-group"><legend>Accent colour</legend><p class="field-hint">Used for buttons, the selected tab and highlights.</p><div id="accent-swatches" style="display:flex; gap:9px; flex-wrap:wrap;"></div></fieldset>
       <p class="field-hint">Saved only in this browser. Nothing here is sent to the printer or the server.</p>
     </section>
