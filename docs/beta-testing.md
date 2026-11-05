@@ -11,6 +11,11 @@ says what to do, what to look at, and what to send back.
   converter and the Photo Studio change nothing on the printer. Pause,
   resume, cancel, temperatures, homing, skip-object and start-print do -
   each one says what it sent and shows only what the printer reports back.
+- **Watch-only mode first, if you like.** Start with `DEJAVU_WATCH_ONLY=1` in
+  front of the command below (or switch on Settings → Watch-only mode) and the
+  server refuses every command to the printer; only reads, the camera and
+  emergency stop go through. Checks 1 to 4 work with it on. Start again without
+  it, and check the switch is off, before check 5.
 - **Start-print has a safety check.** It refuses a file that extrudes off the
   bed, wants a toolhead the U1 doesn't have, or doesn't match the filament
   the printer reports. Still: for a first test, print something small you

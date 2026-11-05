@@ -98,7 +98,10 @@ class TestSpoolmanImport(unittest.TestCase):
         self.assertEqual(got["1"]["color_name"], "Polymaker PolyTerra Charcoal")
         self.assertEqual(got["2"]["color_hex"], "#ff0000")              # first of a multi-colour
         self.assertEqual(got["5"]["color_hex"], "#3b82f6")              # alpha dropped
-        self.assertEqual(got["5"]["grams_remaining"], 0)
+        # No weight in Spoolman stays unknown: never 0 g, which would mean an empty roll.
+        self.assertIsNone(got["5"]["grams_remaining"])
+        self.assertEqual(got["5"]["weight_source"], "unknown")
+        self.assertEqual((got["1"]["weight_source"], got["1"]["weight_from"]), ("estimated", "spoolman"))
         self.assertEqual(result["unknown_weight"], 1)
         self.assertNotIn("4", got)                                      # archived stays out
         self.assertTrue(any("no colour" in s for s in result["skipped"]))
@@ -112,6 +115,37 @@ class TestSpoolmanImport(unittest.TestCase):
         self.assertEqual(self.imported()["1"]["grams_remaining"], 400.0)
         self.assertIn(hand_added, filament_inventory.get_inventory())
         self.assertEqual(len(self.imported()), 3)
+
+    def test_importing_again_never_turns_unknown_into_empty(self):
+        spoolman_bridge.import_spools(self.fake.url)
+        again = spoolman_bridge.import_spools(None)
+        self.assertIsNone(self.imported()["5"]["grams_remaining"])
+        self.assertEqual(again["repaired_unknown"], 0)
+
+    def test_an_older_import_that_saved_unknown_as_zero_is_repaired(self):
+        # Before this fix, spool 5 was stored as 0 g. Write that record as it was saved then.
+        spoolman_bridge.import_spools(self.fake.url)
+        rows = filament_inventory.get_inventory()
+        for row in rows:
+            for key in ("weight_source", "weight_from", "weight_legacy"):
+                row.pop(key, None)
+            if row["spoolman_id"] == "5":
+                row["grams_remaining"] = 0.0
+        filament_inventory._save(rows)
+        self.assertEqual(self.imported()["5"]["weight_source"], "estimated")   # labelled, not changed, on read
+        result = spoolman_bridge.import_spools(None)
+        self.assertEqual(result["repaired_unknown"], 1)
+        self.assertIsNone(self.imported()["5"]["grams_remaining"])
+        self.assertEqual(self.imported()["5"]["weight_source"], "unknown")
+        self.assertEqual(self.imported()["1"]["grams_remaining"], 640.5)
+
+    def test_a_weighed_zero_is_kept_as_empty(self):
+        spoolman_bridge.import_spools(self.fake.url)
+        five = self.imported()["5"]["id"]
+        filament_inventory.update_grams(five, 0)                       # really empty: weighed here
+        spoolman_bridge.import_spools(None)
+        self.assertEqual(self.imported()["5"]["grams_remaining"], 0.0)
+        self.assertEqual(self.imported()["5"]["weight_source"], "weighed")
 
     def test_the_api_address_is_accepted_too(self):
         self.assertEqual(spoolman_bridge.import_spools(self.fake.url + "/api/v1")["added"], 3)

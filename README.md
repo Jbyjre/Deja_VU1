@@ -343,6 +343,26 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
 
+## What's new in 0.18.0
+
+- **Watch-only mode.** Settings → Watch-only mode makes the server refuse every command
+  to your real printers: nothing moves, heats, prints or changes. You still see everything,
+  the camera works and emergency stop always goes through. Use it for a first connection.
+- **The health score agrees with Confirm Print.** While Confirm Print would refuse a start,
+  the dial says Can't start and stays under fair. A wrong material costs points like a
+  wrong colour.
+- **Weight unknown, never 0 g.** Each spool says whether its weight was weighed or
+  estimated, Spoolman spools with no weight stay unknown, and every spool has a Weigh
+  button.
+- **The roll a print started with.** A finished print is charged to the roll its head had
+  at the start, even if another roll was picked during the print, and a charge can be
+  moved to another roll.
+- **Part removed, bed clear.** After a print ends, the next queued print on that printer
+  waits until you confirm the bed is clear.
+
+Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
+physical U1.
+
 ## What's new in 0.17.0
 
 - **Your printer on another network.** Snapmaker's app reaches a U1 elsewhere through
@@ -915,11 +935,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **1059 tests in 678.4 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (3 November 2026, version 0.17.0 before its
+The latest full run passed **1100 tests in 596.7 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (5 November 2026, version 0.18.0 before its
 merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
 and 3.13.
-Earlier full runs passed 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+Earlier full runs passed 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -934,6 +954,7 @@ recorded static demo passed at both widths.
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
 | Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
+| Watch-only mode, health, spool weights and bed clearance (0.18.0) | Watch-only against the Moonraker stand-in through the real server: pause, cancel, home, the console and a start refused with no write reaching it, emergency stop allowed; the research's three reproductions (wrong material at health 100, an unknown Spoolman weight saved as 0 g, a mid-print roll change) as regression tests; the bed-clear hold, its tie to the print that ended last and its file on disk; Chromium at 1366/390 px | Not tried on a physical U1 or a real Spoolman install |
 | Other networks and moved printers (0.17.0) | Every home network and the Tailscale network searched (stand-in `tailscale status --json`), a moved stand-in U1 followed by its serial number, readings kept coming when the status stream goes quiet | Not tried with a real second router, a real Tailscale subnet route or a physical U1 |
 | Printer page extras (0.16.0) | Temperature history, bed mesh, macro settings, endstops, command help, fans, lights, filament sensors and feeding against the simulated printer and the Moonraker stand-in; names checked against Snapmaker's published U1 config | Not tried on a physical U1; whether the shipped firmware's config matches the published one |
 | Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
@@ -996,7 +1017,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 1059 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1100 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -1006,7 +1027,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 1059 cases
+- **Tests:** `unittest` from the standard library, 1100 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
@@ -1094,6 +1115,7 @@ The server listens on every network interface of the computer, on port
 | `PORT` | Listen on another port, e.g. `PORT=8080 python3 start.py` |
 | `DEJAVU_ALLOWED_HOSTS` | Extra names it answers to, comma-separated, such as your tunnel's domain, say |
 | `DEJAVU_MOONRAKER_LOG` | `1` prints every exchange with a real printer, for debugging a first connection |
+| `DEJAVU_WATCH_ONLY` | `1` keeps watch-only mode on for this start: no command reaches a real printer, only reads, the camera and emergency stop |
 | `DEJAVU_SLICER_PATH` | Where OrcaSlicer is, for the optional auto-print pipeline |
 | `DEJAVU_DATA_DIR` | Keep settings and files in another folder instead of `backend/data/` |
 | `DEJAVU_WINDOW` | `browser`, `window` or `none`: how the launcher opens the dashboard this time, overriding Settings → Desktop app |

@@ -290,6 +290,11 @@ const Workshop = (() => {
       if (event.event === 'finished' && event.summary) celebrate(event);
       else toast(`${event.printer_name}: print ${word}${event.file ? `: ${event.file}` : ''}`,
                  event.event === 'failed' ? 'bad' : 'info');
+      // The roll a finished print was charged to, when there is something to check about it.
+      if (event.event === 'finished' && event.filament && event.filament.reason) {
+        toast(`${event.printer_name}: ${event.filament.reason}`, 'warn', 9000);
+        if (typeof loadFilament === 'function') loadFilament();
+      }
       if (mine) { loadHealth(); loadQueue(); loadTimelapse(); }
     } else if (event.type === 'automation') {
       toast(`Rule "${event.rule_name}": ${event.ok ? event.detail : event.error}`, event.ok ? 'ok' : 'warn', 6500);
@@ -302,6 +307,9 @@ const Workshop = (() => {
     } else if (event.type === 'queue') {
       if (event.started) toast(`Queue started ${event.started.filename}`, 'ok');
       if (event.held) toast(`Queue is holding ${event.held.filename}: ${event.held.note}`, 'warn', 8000);
+      else if (event.bed && event.bed.state === 'awaiting_clear')
+        toast(`${printerName(event.printer)}: take ${event.bed.file || 'the print'} off the bed, then press Part removed, bed clear in Files`, 'info', 8000);
+      attention.queuesAt = 0;
       loadQueue();
     }
   }
@@ -452,7 +460,7 @@ const Workshop = (() => {
         <span><small>Nozzle</small><b>${p.nozzle_temperature != null ? formatTemp(p.nozzle_temperature) : '—'}</b></span>
         <span><small>Bed</small><b>${formatTemp(p.bed_temperature)}</b></span>
         <span><small>Chamber</small><b>${p.chamber_temperature != null ? formatTemp(p.chamber_temperature) : '—'}</b></span>
-        <span><small>Health</small><b>${p.health ?? '—'}</b></span>`);
+        <span${p.health_band === 'blocked' ? ' class="is-blocked" title="Confirm Print would refuse the loaded job"' : ''}><small>Health</small><b>${p.health ?? '—'}${p.health_band === 'blocked' ? ' · can\'t start' : ''}</b></span>`);
       const alerts = p.alerts || [];
       setHTML(f('alerts'), alerts.length
         ? alerts.map(a => `<li class="fc-alert ${esc(a.level)}">${esc(a.text)}</li>`).join('')
@@ -495,12 +503,17 @@ const Workshop = (() => {
       });
       if (p.state === 'paused') {
         add(1, 'warning', `${p.name} is paused`, `${p.current_file || 'Current print'} · ${Math.round(p.progress * 100)}% done`, 'control');
+      }
+      const q = attention.queues[p.id];
+      const bed = q && q.bed;
+      if (bed && bed.state === 'awaiting_clear' && p.state !== 'printing') {
+        add(1, 'warning', `${p.name}: take ${bed.file || 'the last print'} off the bed`, 'Nothing queued starts there until you press Part removed, bed clear', 'files');
       } else if (p.state === 'complete') {
         add(1, 'done', `${p.name} finished ${p.current_file || 'its print'}`, 'Ready for the next print once the bed is clear', 'control');
       }
-      const q = attention.queues[p.id];
       const waiting = q ? q.items.filter(i => i.status === 'queued' || i.status === 'held').length : 0;
-      if (p.state === 'ready' && waiting && !p.link_lost) {
+      // While the bed waits to be cleared, that item above is the one to act on.
+      if (p.state === 'ready' && waiting && !p.link_lost && !(bed && bed.state === 'awaiting_clear')) {
         add(2, 'warning', `${p.name} is idle with ${waiting} file${waiting === 1 ? '' : 's'} waiting`, 'Start the next one from Files', 'files');
       }
       (p.alerts || []).filter(a => a.level === 'warning' && a.text !== 'Paused').forEach(a =>
@@ -1614,6 +1627,7 @@ const Workshop = (() => {
     const arcLen = Math.PI * 80;
     const fill = $('g-fill');
     fill.style.strokeDasharray = `${arcLen}`;
+    // "blocked" is red whatever the number: the score never overrules Confirm Print.
     const color = data.band === 'good' ? 'var(--ok)' : (data.band === 'fair' ? 'var(--warn)' : 'var(--bad)');
     fill.style.stroke = color;
     tween('gauge', data.score, (v) => {
@@ -1621,8 +1635,8 @@ const Workshop = (() => {
       $('g-needle').setAttribute('transform', `rotate(${-90 + v * 1.8} 100 100)`);
       setText($('g-score'), Math.round(v));
     });
-    host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band}`);
-    $('g-band').textContent = { good: 'Good', fair: 'Fair', poor: 'Needs attention' }[data.band];
+    host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band === 'blocked' ? 'can\'t start' : data.band}`);
+    $('g-band').textContent = { good: 'Good', fair: 'Fair', poor: 'Needs attention', blocked: 'Can\'t start' }[data.band];
     $('g-deductions').innerHTML = (data.deductions || []).length
       ? data.deductions.map(d => `<li><b>${d.points}</b> ${esc(d.reason)}</li>`).join('')
       : '<li class="ok">Nothing is pulling the score down.</li>';
@@ -2514,15 +2528,16 @@ const Workshop = (() => {
     go.disabled = gate.verdict === 'blocked';
     go.textContent = gate.verdict === 'confirm' ? 'I\'ve read these, start print' : 'Start print';
     $('confirm-health').innerHTML = `<span class="gm-num">${gate.health.score}</span><span class="gm-lbl">health</span>`;
-    $('confirm-health').style.setProperty('--gm', { good: 'var(--ok)', fair: 'var(--warn)', poor: 'var(--bad)' }[gate.health.band]);
+    $('confirm-health').style.setProperty('--gm', { good: 'var(--ok)', fair: 'var(--warn)', poor: 'var(--bad)', blocked: 'var(--bad)' }[gate.health.band]);
+    $('confirm-health').title = gate.health.band === 'blocked' ? 'Health is held below fair while this print can\'t start' : '';
     const fil = gate.filament.map(f => `
-      <div class="gate-fil ${f.status}">
+      <div class="gate-fil ${f.status}${f.material_mismatch ? ' mismatch' : ''}">
         <span class="gf-th">${esc(f.toolhead)}</span>
         <span class="chip" style="background:${esc(f.expected_hex || '#ccc')}" title="File expects"></span>
         <span class="arrow" aria-hidden="true">→</span>
         <span class="chip" style="background:${esc(f.loaded_hex || 'transparent')}" title="Loaded"></span>
-        <span class="gf-text">${esc(f.loaded_name || 'nothing loaded')} ${f.expected_material ? `· ${esc(f.expected_material)}` : ''}</span>
-        <span class="gf-status">${{ match: 'Match', close: 'Close', mismatch: 'Wrong colour', not_loaded: 'Not loaded', missing_toolhead: 'No such toolhead', no_colour_in_file: 'No colour in file' }[f.status] || esc(f.status)}</span>
+        <span class="gf-text">${esc(f.loaded_name || 'nothing loaded')} ${f.material_mismatch ? `· ${esc(f.loaded_material || '')} loaded, the file needs ${esc(f.expected_material)}` : f.expected_material ? `· ${esc(f.expected_material)}` : ''}</span>
+        <span class="gf-status">${f.material_mismatch ? 'Wrong material' : ({ match: 'Match', close: 'Close', mismatch: 'Wrong colour', not_loaded: 'Not loaded', missing_toolhead: 'No such toolhead', no_colour_in_file: 'No colour in file', unknown: 'Not reported', unknown_colour: 'Colour not reported' }[f.status] || esc(f.status))}</span>
       </div>`).join('');
     $('confirm-body').innerHTML = `
       <div class="gate-banner ${gate.verdict}">${banner}</div>
@@ -2539,7 +2554,7 @@ const Workshop = (() => {
         ? `<p class="field-hint">Checked against this printer's own report: ${esc(gate.preflight.checked_against)}.</p>` : ''}
       <h3 class="fd-h">Filament, as the printer reports it loaded</h3>
       ${fil || '<p class="log-empty">The file doesn\'t say which toolheads it uses.</p>'}
-      ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : `${esc(s.spool)}: ${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
+      ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : s.status === 'unknown_weight' ? `${esc(s.spool)}: weight unknown, so there's no check that ${Math.round(s.grams_needed)} g is left` : `${esc(s.spool)}: ${s.weight_source === 'weighed' ? '' : '≈ '}${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
   }
 
   function initConfirm() {
@@ -2564,9 +2579,20 @@ const Workshop = (() => {
     if (!q || !hasData(q)) { host.innerHTML = demoNeeded('the print queue'); return; }
     const waiting = q.items.filter(i => i.status === 'queued' || i.status === 'held');
     $('qa-next').hidden = !waiting.length;
+    const bed = q.bed || { state: 'clear' };
+    const who = printerName(q.printer);
+    const ended = bed.ended_at ? bed.ended_at.slice(11, 16) : '';
+    const how = { finished: 'finished', failed: 'failed', cancelled: 'was cancelled' }[bed.outcome] || 'ended';
     host.innerHTML = `
+      ${bed.state === 'awaiting_clear' ? `<div class="bed-hold" role="status">
+        <p><b>Take ${esc(bed.file || 'the last print')} off the bed</b>
+          <small>It ${how} on ${esc(who)}${ended ? ` at ${esc(ended)}` : ''}. Nothing in this queue starts on ${esc(who)} until you confirm.</small></p>
+        <button class="btn primary" id="bed-clear" type="button" data-job="${esc(bed.job_key || '')}"
+                aria-label="Part removed, bed clear: ${esc(who)}, ${esc(bed.file || 'the last print')}">Part removed, bed clear
+          <small>${esc(who)} · ${esc(bed.file || 'the last print')}</small></button>
+      </div>` : ''}
       <label class="switch queue-auto" for="queue-auto">
-        <span class="switch-label">Start the next file when a print finishes</span>
+        <span class="switch-label">Start the next file when a print finishes and you say the bed is clear</span>
         <input type="checkbox" id="queue-auto" ${q.auto_advance ? 'checked' : ''}>
         <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
       </label>
@@ -2595,6 +2621,14 @@ const Workshop = (() => {
       loadQueue();
     }));
     $('queue-start').addEventListener('click', (e) => startNext(e.currentTarget));
+    const clear = $('bed-clear');
+    if (clear) clear.addEventListener('click', async (e) => {
+      const r = await runCommand(e.currentTarget, '/api/queue/bed-clear', { job_key: clear.dataset.job },
+        { sending: 'Saving…', done: `Bed clear on ${who}`, failed: 'Not saved' });
+      if (r.ok && r.result.body.next && r.result.body.next.started) toast(`Queue started ${r.result.body.next.started.filename}`, 'ok');
+      else if (r.ok && r.result.body.next && r.result.body.next.held) toast(`Queue is holding ${r.result.body.next.held.filename}: ${r.result.body.next.held.note}`, 'warn', 8000);
+      loadQueue();
+    });
     $('queue-clear').addEventListener('click', async () => { await postJSON(api('/api/queue/clear-done'), {}); loadQueue(); });
   }
 
@@ -2829,8 +2863,8 @@ const Workshop = (() => {
       <div class="spool-row">
         <span class="spool-swatch" style="background:${esc(s.color_hex)}"></span>
         <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}</span>
-        <span class="spool-grams">${s.grams_remaining.toFixed(0)} g</span>
-        <span class="spool-grams">${s.prints_left != null ? `≈ ${s.prints_left} prints` : 'no history yet'}</span>
+        ${spoolWeight(s)}
+        <span class="spool-grams">${s.prints_left != null ? `≈ ${s.prints_left} prints` : s.grams_remaining == null ? 'weigh it to count prints' : 'no history yet'}</span>
       </div>
       <p class="log-empty fc-note">${s.avg_grams_per_print ? `Your ${s.similar_prints} finished ${esc(s.color_name)} ${esc(s.material)} prints averaged ${s.avg_grams_per_print} g.` : 'No finished prints in this colour and material yet.'}${s.used_since_weighed ? ` ${s.used_since_weighed} g used since it was last weighed.` : ''}</p>`).join('');
   }

@@ -266,6 +266,61 @@ class TestDemoAndRealStayApart(RealPrinterAPI):
         self.assertEqual(state["printer"], self.pid)
 
 
+class TestWatchOnly(RealPrinterAPI):
+    """Watch-only mode: the server sends a real printer nothing but reads, the camera and E-stop."""
+
+    def setUp(self):
+        super().setUp()
+        import watch_only
+        watch_only.reset()
+        self.addCleanup(watch_only.reset)
+
+    def writes(self):
+        return [r for r in self.fake.requests if r[0] != "GET" and r[1] != "/printer/objects/query"]
+
+    def test_every_command_is_refused_and_nothing_reaches_the_printer(self):
+        file_library.add_samples()
+        self.printing()
+        status, body = self.request("/api/app/watch-only", {"on": True})
+        self.assertEqual((status, body["on"]), (200, True))
+        before = len(self.writes())
+        for path, sent in (("/api/printer/control/pause", {}), ("/api/printer/control/cancel", {}),
+                           ("/api/printer/control/gcode", {"command": "G28"}),
+                           ("/api/printer/control/home", {"axes": "XYZ"})):
+            status, body = self.request(path + f"?printer={self.pid}", sent)
+            self.assertEqual(status, 409, (path, body))
+            self.assertTrue(body.get("watch_only"), (path, body))
+            self.assertIn("Watch-only mode is on", body["error"])
+        self.assertEqual(self.writes()[before:], [])
+        self.assertEqual(mock_moonraker.real_printer(self.pid).snapshot()["state"], "printing")
+        # Reading still works.
+        status, state = self.request(f"/api/printer?printer={self.pid}")
+        self.assertEqual((status, state["state"]), (200, "printing"))
+        self.assertTrue(self.request("/api/app/info")[1]["watch_only"]["on"])
+
+    def test_a_start_is_refused_before_any_upload(self):
+        file_library.add_samples()
+        self.request("/api/app/watch-only", {"on": True})
+        status, body = self.request(f"/api/printer/control/start?printer={self.pid}",
+                                    {"filename": CUBE, "confirmed": True})
+        self.assertEqual(status, 409, body)
+        self.assertNotIn(CUBE, self.fake.files)
+        self.assertFalse(any(r[1].startswith("/server/files/upload") for r in self.fake.requests))
+
+    def test_emergency_stop_is_never_refused(self):
+        self.printing()
+        self.request("/api/app/watch-only", {"on": True})
+        status, body = self.request(f"/api/printer/control/estop?printer={self.pid}", {})
+        self.assertEqual(status, 200, body)
+
+    def test_turning_it_off_lets_commands_through_again(self):
+        self.printing()
+        self.request("/api/app/watch-only", {"on": True})
+        self.request("/api/app/watch-only", {"on": False})
+        status, body = self.request(f"/api/printer/control/pause?printer={self.pid}", {})
+        self.assertEqual((status, body["confirmed_state"]["state"]), (200, "paused"))
+
+
 class TestPrinting(RealPrinterAPI):
     def test_pause_resume_cancel_through_the_api(self):
         self.printing()

@@ -13,6 +13,16 @@ its own, the next file is checked first -
 so the queue can never start a print a person couldn't have started from
 the confirm screen. Held items say exactly why they are waiting.
 
+Bed clearance. When a print ends (finished, failed or cancelled), the
+printer's bed is "awaiting_clear": something may still be on it. Nothing in
+the queue starts on that printer, by hand or by itself, until someone
+presses "Part removed, bed clear" for that printer and that print
+(confirm_bed_clear). The confirmation names the print it is for, so one
+given for an earlier print never clears a later one, and it is kept on disk,
+so a restart neither loses the hold nor forgets the confirmation. A print
+that starts any other way (Confirm Print, the printer's own screen) means
+the bed is in use again.
+
 Stored per printer in backend/data/print_queue.json.
 """
 
@@ -47,11 +57,84 @@ def _queue(data, printer_id):
     return data.setdefault(printer_id, {"items": [], "auto_advance": False})
 
 
+def _bed(q):
+    """The printer's bed: {"state": "clear" | "awaiting_clear" | "in_use", ...}."""
+    return q.get("bed") or {"state": "clear"}
+
+
+def bed_state(printer_id=None):
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    with _lock:
+        return dict(_bed(_queue(_load(), printer_id)))
+
+
+def _awaiting_note(bed):
+    when = (bed.get("ended_at") or "")[11:16]
+    return (f"Waiting for the bed to be cleared after {bed.get('file') or 'the last print'}"
+            f"{f' ({when})' if when else ''}. Press Part removed, bed clear when it is")
+
+
+def print_ended(printer_id, filename, outcome="finished"):
+    """
+    A print ended on this printer (finished, failed or cancelled): its bed now
+    waits to be cleared. A newer end replaces an older one, which is what
+    makes a confirmation for the older print no longer count.
+    """
+    now = datetime.now().isoformat(timespec="seconds")
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        q["bed"] = {"state": "awaiting_clear", "file": filename, "outcome": outcome, "ended_at": now,
+                    "job_key": f"{filename or ''}|{now}"}
+        _save(data)
+        return dict(q["bed"])
+
+
+def print_started(printer_id, filename):
+    """A print started: whatever was on the bed has been dealt with, and the bed is in use."""
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        q["bed"] = {"state": "in_use", "file": filename,
+                    "started_at": datetime.now().isoformat(timespec="seconds")}
+        _save(data)
+
+
+def confirm_bed_clear(printer_id=None, job_key=None):
+    """
+    Someone says the part is off and the bed is clear, for this printer and
+    this print. Refused when it names another print than the one that ended
+    last (a stale page, or another print has ended since). Then, when the
+    queue advances by itself, the next file goes through Confirm Print.
+    """
+    printer_id = printer_id or mock_moonraker.selected_printer_id()
+    with _lock:
+        data = _load()
+        q = _queue(data, printer_id)
+        bed = _bed(q)
+        if bed["state"] != "awaiting_clear":
+            raise ValueError("This printer isn't waiting for its bed to be cleared")
+        if job_key != bed.get("job_key"):
+            raise ValueError(f"That was for an earlier print. The last one to end here was "
+                             f"{bed.get('file') or 'another print'}: check the bed again")
+        q["bed"] = {"state": "clear", "file": bed.get("file"), "ended_at": bed.get("ended_at"),
+                    "cleared_at": datetime.now().isoformat(timespec="seconds"), "cleared_for": job_key}
+        for item in q["items"]:
+            if item["status"] == "held" and (item.get("note") or "").startswith("Waiting for the bed"):
+                item.update(status="queued", note=None)
+        _save(data)
+        auto = q["auto_advance"]
+    result = {"bed": bed_state(printer_id)}
+    if auto:
+        result["next"] = start_next(printer_id, automatic=True)
+    return {**result, **get(printer_id)}
+
+
 def get(printer_id=None):
     printer_id = printer_id or mock_moonraker.selected_printer_id()
     with _lock:
         q = _queue(_load(), printer_id)
-    return {"printer": printer_id, **q}
+    return {"printer": printer_id, **q, "bed": dict(_bed(q))}
 
 
 def add(filename, printer_id=None):
@@ -200,6 +283,12 @@ def start_next(printer_id=None, confirmed=False, automatic=False):
         if item is None:
             _save(data)
             return {"empty": True, **get(printer_id)}
+        bed = _bed(q)
+        if bed["state"] == "awaiting_clear":
+            # Never started over a part still on the bed: by hand or automatically.
+            item.update(status="held", note=_awaiting_note(bed))
+            _save(data)
+            return {"held": dict(item), "bed_clear_needed": True, **get(printer_id)}
         previous = {"status": item["status"], "note": item.get("note")}
         item.update(status="starting", claimed_at=now.isoformat(timespec="seconds"))
         _save(data)
@@ -232,8 +321,13 @@ def start_next(printer_id=None, confirmed=False, automatic=False):
     return {"started": started, **get(printer_id)}
 
 
-def on_print_finished(printer_id):
-    """Called by the live feed when a print completes."""
+def on_print_finished(printer_id, filename=None):
+    """
+    Called by the live feed when a print completes. The bed now waits to be
+    cleared, so an automatic advance holds the next file until someone
+    confirms it (see confirm_bed_clear).
+    """
+    print_ended(printer_id, filename, "finished")
     with _lock:
         data = _load()
         q = _queue(data, printer_id)

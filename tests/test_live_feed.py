@@ -95,6 +95,7 @@ class TestLiveFeed(unittest.TestCase):
         for t in maintenance.TASKS:
             maintenance.mark_done(t["id"])
         print_queue.reset()
+        self.addCleanup(print_queue.reset)
         import printer_control
         with mock_moonraker.use_printer("u1-workshop"):
             mock_moonraker.cancel_print()
@@ -118,6 +119,18 @@ class TestLiveFeed(unittest.TestCase):
         self.assertGreater(sessions[0]["frames"], 5)
         file_library.reset()
         maintenance.reset_log()
+
+    def test_a_print_ending_leaves_the_bed_waiting_to_be_cleared(self):
+        live_feed.mark_demo_seen()
+        print_queue.reset()
+        self.addCleanup(print_queue.reset)
+        live_feed._prev_state["u1-garage"] = "ready"
+        live_feed._detect("u1-garage", {"state": "printing", "current_file": "a.gcode"})
+        self.assertEqual(print_queue.bed_state("u1-garage")["state"], "in_use")
+        live_feed._detect("u1-garage", {"state": "ready", "current_file": "a.gcode"})      # cancelled
+        bed = print_queue.bed_state("u1-garage")
+        self.assertEqual((bed["state"], bed["file"], bed["outcome"]), ("awaiting_clear", "a.gcode", "cancelled"))
+        self.assertTrue(any(e.get("type") == "queue" and e.get("bed") for e in live_feed.events_since(0)))
 
     def test_climate_history_is_sampled(self):
         live_feed.tick(0.25)

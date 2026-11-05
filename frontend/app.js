@@ -132,7 +132,7 @@ async function checkServer() {
  * shows its figures as real. */
 const realFetch = window.fetch.bind(window);
 const tour = { on: false, rec: null, started: 0, misses: new Set(),
-  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {}, maint: {} } };
+  sim: { printers: {}, added: [], deleted: new Set(), console: {}, queued: {}, logbook: {}, maint: {}, bedClear: {} } };
 const TOUR_SPEED = 12;          // simulated prints run at 12x so a demo visitor sees them move
 const TOUR_REFUSED = "This is the online demo: a recording of the demo printers, so nothing here reaches a printer. "
   + "Run Deja Vu1 on your own computer to use this.";
@@ -212,8 +212,10 @@ async function tourGet(url) {
     if (rec !== undefined) {
       const body = JSON.parse(JSON.stringify(tour.rec.bodies[rec].body));
       const extra = pid => (tour.sim.queued[pid] || []);
-      if (path === '/api/queue' && Array.isArray(body.items)) body.items = body.items.concat(extra(printer));
-      if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); });
+      // "Part removed, bed clear" in the online demo: the recorded hold clears here.
+      const cleared = (q, pid) => { if (q.bed && q.bed.state === 'awaiting_clear' && tour.sim.bedClear[pid] === q.bed.job_key) q.bed = { state: 'clear', file: q.bed.file }; };
+      if (path === '/api/queue' && Array.isArray(body.items)) { body.items = body.items.concat(extra(printer)); cleared(body, printer); }
+      if (path === '/api/fleet/queues' && body.queues) Object.entries(body.queues).forEach(([pid, q]) => { q.items = (q.items || []).concat(extra(pid)); cleared(q, pid); });
       return tourReply(body, tour.rec.bodies[rec].status);
     }
   }
@@ -495,6 +497,11 @@ async function tourPost(url, body) {
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname === '/api/queue/bed-clear') {
+    tour.sim.bedClear[pid] = parsed.job_key;
+    return tourReply({ bed: { state: 'clear' }, printer: pid, items: [], auto_advance: false, connected: true, demo: true });
+  }
+  if (url.pathname === '/api/app/watch-only') return tourReply({ error: 'The online demo has no real printers to protect. Watch-only mode works in the copy you install.' }, 400);
   if (url.pathname === '/api/maintenance/done') {
     const rec = tour.rec.get[tourKey('/api/maintenance', new URLSearchParams({ printer: pid }))];
     const task = rec !== undefined && (tour.rec.bodies[rec].body.tasks || []).find(t => t.id === parsed.task_id);
@@ -1147,7 +1154,7 @@ const SECTIONS = {
     ['filament', 'Filament & colour', ['#tab-filament']],
   ],
   modules: [
-    ['copy', 'This copy', ['your space', '#demo-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
+    ['copy', 'This copy', ['your space', '#demo-card', '#watch-only-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
     ['features', 'Features', ['modules', 'print cost pricing']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
@@ -2032,7 +2039,51 @@ async function loadPrinterControl() {
   loadPrinterConsole();
 }
 
+/* ---- Watch-only mode -----------------------------------------------------*/
+
+/* The server refuses every command to a real printer while it is on; this only
+   shows it (top bar label, Settings switch). Checked with the update watcher. */
+function showWatchOnly(w) {
+  const on = !!(w && w.on);
+  const pill = $('watch-only-pill'), box = $('watch-only-setting'), note = $('watch-only-note');
+  if (pill) pill.hidden = !on;
+  if (box) { box.checked = on; box.disabled = !!(w && w.forced); }
+  if (note && w) note.textContent = w.forced
+    ? 'Switched on when Deja Vu1 started (DEJAVU_WATCH_ONLY), so it stays on until Deja Vu1 starts without it.'
+    : on ? 'On. Pause, Cancel, Move, Heat, Start and the console are refused by the server. Emergency stop still works. Demo printers stay playable.'
+      : 'The server refuses the commands itself, so no screen, rule or queue can send one. Demo printers stay playable.';
+  document.documentElement.classList.toggle('is-watch-only', on);
+}
+
+function initWatchOnly() {
+  const box = $('watch-only-setting');
+  if (!box) return;
+  box.addEventListener('change', async () => {
+    const want = box.checked;
+    const r = await postJSON('/api/app/watch-only', { on: want });
+    if (!r.ok) { box.checked = !want; toast(`Not changed: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 7000); return; }
+    showWatchOnly(r.body);
+    toast(want ? 'Watch-only mode on: nothing that moves, heats or prints reaches your printers' : 'Watch-only mode off', want ? 'ok' : 'info', 6000);
+  });
+  const pill = $('watch-only-pill');
+  if (pill) pill.addEventListener('click', () => {
+    showTab('modules');
+    $('watch-only-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  getJSON('/api/app/watch-only').then(showWatchOnly).catch(() => {});
+}
+
 /* ---- Filament inventory --------------------------------------------------*/
+
+/* A spool's weight in words, with how far to trust it: "Weight unknown" is
+   never shown as 0 g, and an estimate carries a ≈. Used by workshop.js too. */
+function spoolWeight(s) {
+  if (!s || s.grams_remaining == null) return '<span class="spool-grams is-unknown" title="Nobody has weighed this spool yet, so nothing treats it as empty or full">Weight unknown</span>';
+  const g = Math.round(s.grams_remaining);
+  const from = s.weight_from === 'spoolman' ? 'Spoolman\'s count' : 'an estimate';
+  if (s.weight_source === 'weighed') return `<span class="spool-grams ${g < 80 ? 'is-low' : ''}" title="Weighed on a scale">${g} g <small>weighed</small></span>`;
+  return `<span class="spool-grams ${g < 80 ? 'is-low' : ''}" title="From ${from}${s.used_since_weighed ? `, ${s.used_since_weighed} g printed since` : ''}">≈ ${g} g</span>`;
+}
 
 async function loadFilament() {
   const data = await getJSON('/api/filament');
@@ -2051,15 +2102,44 @@ async function loadFilament() {
     <div class="spool-row">
       <span class="spool-swatch" style="background:${esc(s.color_hex || '#888')}"></span>
       <span class="spool-name">${esc(s.color_name)} ${esc(s.material)}${s.spoolman_id ? ` <small class="spool-src" title="Imported from Spoolman (spool ${esc(s.spoolman_id)})">Spoolman</small>` : ''}</span>
-      <span class="spool-grams ${s.grams_remaining < 80 ? 'is-low' : ''}">${s.grams_remaining.toFixed(0)} g</span>
+      ${spoolWeight(s)}
+      <button class="btn small" type="button" data-weigh-spool="${esc(s.id)}" aria-expanded="false">Weigh</button>
       <button class="btn small" data-remove-spool="${esc(s.id)}">Remove</button>
-    </div>`).join('') : EMPTY('No spools tracked', 'Add one below.');
+    </div>
+    <form class="spool-weigh" data-weigh-form="${esc(s.id)}" hidden>
+      <label for="weigh-${esc(s.id)}">Filament left on ${esc(s.color_name)} ${esc(s.material)}, without the empty spool</label>
+      <input type="number" id="weigh-${esc(s.id)}" min="0" max="100000" step="1" inputmode="decimal" placeholder="Grams" required>
+      <button class="btn small primary" type="submit">Save weight</button>
+      <button class="btn small" type="button" data-weigh-unknown>I don't know</button>
+    </form>`).join('') : EMPTY('No spools tracked', 'Add one below.');
+
+  host.querySelectorAll('[data-weigh-spool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = host.querySelector(`[data-weigh-form="${CSS.escape(btn.dataset.weighSpool)}"]`);
+      form.hidden = !form.hidden;
+      btn.setAttribute('aria-expanded', String(!form.hidden));
+      if (!form.hidden) form.querySelector('input').focus();
+    });
+  });
+  host.querySelectorAll('[data-weigh-form]').forEach(form => {
+    const save = async grams => {
+      const r = await postJSON(api(`/api/filament/spools/${encodeURIComponent(form.dataset.weighForm)}/grams`),
+        { grams_remaining: grams, weight_source: 'weighed' });
+      if (!r.ok) { toast(`Weight not saved: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); return; }
+      toast(grams == null ? 'Weight set back to unknown' : `Saved ${Math.round(grams)} g, weighed`, 'ok');
+      loadFilament();
+    };
+    form.addEventListener('submit', e => { e.preventDefault(); save(parseFloat(form.querySelector('input').value)); });
+    form.querySelector('[data-weigh-unknown]').addEventListener('click', () => save(null));
+  });
 
   host.querySelectorAll('[data-remove-spool]').forEach(btn => {
     btn.addEventListener('click', () => {
       postJSON(api(`/api/filament/spools/${btn.dataset.removeSpool}/remove`), {}).then(loadFilament);
     });
   });
+
+  loadCharges(spools);
 
   const idle = data.idle_spools || [];
   if (idle.length) {
@@ -2070,15 +2150,47 @@ async function loadFilament() {
   }
 }
 
+/* Finished prints and the roll each was charged to, with the one correction:
+   move a charge to the roll that really printed it. */
+async function loadCharges(spools) {
+  const wrap = $('spool-charges-wrap');
+  if (!wrap) return;
+  const data = await getJSON(api('/api/filament/charges')).catch(() => null);
+  const charges = (data && data.charges) || [];
+  wrap.hidden = !charges.length;
+  if (!charges.length) return;
+  const others = id => spools.filter(s => s.id !== id)
+    .map(s => `<option value="${esc(s.id)}">${esc(s.color_name)} ${esc(s.material)}</option>`).join('');
+  $('spool-charges').innerHTML = charges.slice(0, 8).map(c => `
+    <div class="charge-row${c.assignment_changed && c.assignment_changed.length ? ' is-changed' : ''}">
+      <span class="charge-what"><b>${esc(c.file || 'A print')}</b> · ${esc(c.toolhead || '')} · ${c.grams} g from ${esc(c.spool)}
+        <small>${c.moved_to ? `moved to ${esc(c.moved_to_name || c.moved_to)}` : c.basis === 'assigned at start' ? 'the roll assigned when it started' : 'the nearest matching spool'}${c.assignment_changed && c.assignment_changed.length ? ', changed during the print' : ''}</small></span>
+      ${c.moved_to || spools.length < 2 ? '' : `<label class="sr-only" for="mv-${esc(c.id)}">Move this charge to</label>
+        <select id="mv-${esc(c.id)}" data-move-charge="${esc(c.id)}"><option value="">Move to another roll…</option>${others(c.spool_id)}</select>`}
+    </div>`).join('');
+  $('spool-charges').querySelectorAll('[data-move-charge]').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      if (!sel.value) return;
+      const r = await postJSON(api(`/api/filament/charges/${encodeURIComponent(sel.dataset.moveCharge)}/move`), { spool_id: sel.value });
+      if (!r.ok) { toast(`Charge not moved: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); sel.value = ''; return; }
+      toast(`Moved ${r.body.grams} g to ${r.body.moved_to_name}`, 'ok');
+      loadFilament();
+    });
+  });
+}
+
 function initSpoolForm() {
   $('spool-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const material = $('spool-material').value.trim() || 'PLA';
     const colorName = $('spool-color-name').value.trim() || 'Unnamed';
     const colorHex = $('spool-color-hex').value;
-    const grams = parseFloat($('spool-grams').value) || 0;
+    // An empty field is "not known", never 0 g (which would mean an empty roll).
+    const typed = $('spool-grams').value.trim();
+    const grams = typed === '' ? null : parseFloat(typed);
     const r = await postJSON(api('/api/filament/spools'), {
       material, color_name: colorName, color_hex: colorHex, grams_remaining: grams,
+      weight_source: grams == null ? null : ($('spool-weighed').checked ? 'weighed' : 'estimated'),
     });
     // A refused spool keeps what was typed, and says why.
     if (!r.ok) { toast(`Spool not added: ${r.body.error || `HTTP ${r.status}`}`, 'warn', 6000); return; }
@@ -2098,7 +2210,8 @@ function initSpoolForm() {
     const b = r.body;
     out.classList.remove('is-bad');
     out.textContent = `${b.found} spool${b.found === 1 ? '' : 's'} in Spoolman: ${b.added} added, ${b.updated} updated.`
-      + (b.unknown_weight ? ` ${b.unknown_weight} had no weight in Spoolman - set it there or weigh them here.` : '')
+      + (b.unknown_weight ? ` ${b.unknown_weight} had no weight in Spoolman, so ${b.unknown_weight === 1 ? 'it shows' : 'they show'} Weight unknown: set it there or weigh ${b.unknown_weight === 1 ? 'it' : 'them'} here.` : '')
+      + (b.repaired_unknown ? ` ${b.repaired_unknown} saved as 0 g by an older import ${b.repaired_unknown === 1 ? 'is' : 'are'} back to Weight unknown.` : '')
       + (b.not_added_full ? ` ${b.not_added_full} didn't fit - the inventory is full.` : '')
       + (b.skipped.length ? ` Skipped: ${b.skipped.join('; ')}.` : '');
     toast(`Spoolman: ${b.added} added, ${b.updated} updated`, 'ok');
@@ -2704,6 +2817,7 @@ initPressedSync();
 initTabs();
 initPreferences();
 initSpoolForm();
+initWatchOnly();
 initRepeatSettings();
 initPairing();
 initNotifications();
@@ -2725,6 +2839,7 @@ async function watchForUpdate() {
   if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
   let info;
   try { info = await (await fetch('/api/app/info', { cache: 'no-store' })).json(); } catch (_) { return; }
+  showWatchOnly(info && info.watch_only);
   const v = info && info.version;
   if (!v) return;
   // The build changes too on the "newest builds" channel, where the number can stay the same.

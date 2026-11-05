@@ -57,6 +57,8 @@ API endpoints
   POST /api/printers/test             try a Moonraker address before adding it {"moonraker_url", "api_key"}
   POST /api/printers/login            read a printer's API key with its web-page login {"moonraker_url", "username", "password"}
   POST /api/camera/find               find and save the selected printer's camera feed
+  GET  /api/app/watch-only            is watch-only mode on (no command reaches a real printer)?
+  POST /api/app/watch-only            {"on": true|false}
   GET  /api/remote                    Tailscale on this computer: connected? shared address?
   POST /api/remote/share|stop         share the dashboard privately with Tailscale Serve, or stop (this computer only)
   POST /api/remote/link               a pairing QR code for the shared address
@@ -131,6 +133,7 @@ API endpoints
 
   GET  /api/queue                    this printer's print queue
   POST /api/queue/add | remove | move | auto | start-next | clear-done
+  POST /api/queue/bed-clear          {"job_key"} "Part removed, bed clear" for the print that ended last
 
   GET  /api/automations              rules
   GET  /api/automations/log          what fired, and what really happened
@@ -145,9 +148,11 @@ API endpoints
   GET  /api/filament/check           does inventory cover the current job?
   POST /api/filament/spoolman        {"url"} import spools from Spoolman (updates ones imported before)
   GET  /api/filament/forecast        grams left and prints left per spool
-  POST /api/filament/spools          add a spool
+  POST /api/filament/spools          add a spool (grams_remaining null = unknown; weight_source weighed|estimated)
   POST /api/filament/spools/<id>/remove
-  POST /api/filament/spools/<id>/grams   {"grams_remaining": 500}
+  GET  /api/filament/charges         the last finished prints charged to a roll (the roll fixed at print start)
+  POST /api/filament/charges/<id>/move  {"spool_id"} the explicit correction: charge another roll instead
+  POST /api/filament/spools/<id>/grams   {"grams_remaining": 500, "weight_source": "weighed"} (null = unknown)
 
   GET  /api/compare                  "what changed?" + likely cause
   GET  /api/compare/repeat           settings from the last clean print
@@ -302,6 +307,7 @@ import plate_project
 import model_maker
 import updates
 import remote
+import watch_only
 import websocket
 import wled_bridge
 
@@ -478,8 +484,11 @@ _APP_ROUTES = {
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
     "/api/logbook": ("maintenance", lambda q: logbook.entries(None, demo=not mock_moonraker.is_connected(), query=q.get("q", [None])[0])),
     "/api/tools/assignments": ("filament_inventory", lambda q: tool_setup.get()),
+    "/api/filament/charges": ("filament_inventory", lambda q: {"charges": filament_inventory.recent_charges(
+        q.get("printer", [None])[0])}),
     "/api/remote": (None, lambda q: remote.status(PORT)),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
+    "/api/app/watch-only": (None, lambda q: watch_only.status()),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
@@ -610,6 +619,7 @@ _QUEUE_ACTIONS = {
     "/api/queue/auto": lambda b: print_queue.set_auto_advance(b.get("enabled")),
     "/api/queue/start-next": lambda b: print_queue.start_next(confirmed=bool(b.get("confirmed"))),
     "/api/queue/clear-done": lambda b: print_queue.clear_done(),
+    "/api/queue/bed-clear": lambda b: print_queue.confirm_bed_clear(job_key=b.get("job_key")),
 }
 
 
@@ -986,6 +996,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return None
         except printer_control.PrintBlocked as exc:
             return self._send_json({"error": str(exc), "blocked": True, "gate": exc.gate}, status=409)
+        except watch_only.WatchOnly as exc:
+            # Refused here on purpose, not by the printer: said as such.
+            return self._send_json({"error": str(exc), "watch_only": True}, status=409)
         except mock_moonraker.PrinterCommandError as exc:
             # The printer side failed. Say so plainly - never a success.
             return self._send_json({"error": f"The printer reported a failure: {exc}",
@@ -1166,6 +1179,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
 
         if route == "/api/app/desktop":
             return self._send_json(desktop.save_settings(self._read_json_body()))
+        if route == "/api/app/watch-only":
+            return self._send_json(watch_only.set_on(self._read_json_body().get("on")))
         if route == "/api/app/autostart":
             # It writes into this computer's sign-in items, so only a browser on this computer may.
             body = self._read_json_body()
@@ -1302,6 +1317,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if force_disconnected or (not connected and not self._wants_demo()):
                 return self._send_json({"connected": False, "demo": False}, status=409)
             body = self._read_json_body()
+            if (is_control and route != "/api/printer/control/estop" and watch_only.is_on()
+                    and mock_moonraker.is_real(printer_id)):
+                # Said first, whatever else the command would be refused for. moonraker_client
+                # refuses it again underneath, for anything that reaches a printer another way.
+                raise watch_only.WatchOnly(watch_only.MESSAGE)
             started = time.perf_counter()
             action = _CONTROL_ACTIONS[route] if is_control else _QUEUE_ACTIONS[route]
             result = action(body)
@@ -1615,7 +1635,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             spool = filament_inventory.add_spool(
                 body.get("material"), body.get("color_name"),
-                body.get("color_hex"), body.get("grams_remaining", 0))
+                body.get("color_hex"), body.get("grams_remaining"), body.get("weight_source"))
             return self._send_json(spool)
 
         if route == "/api/filament/spoolman":
@@ -1623,6 +1643,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             body = self._read_json_body()
             return self._send_json(spoolman_bridge.import_spools(body.get("url")))
+
+        if route.startswith("/api/filament/charges/") and route.endswith("/move"):
+            if self._module_blocked("filament_inventory"):
+                return None
+            charge_id = route[len("/api/filament/charges/"):-len("/move")]
+            body = self._read_json_body()
+            return self._send_json(filament_inventory.move_charge(charge_id, str(body.get("spool_id") or "")))
 
         if route.startswith("/api/filament/spools/") and route.endswith("/remove"):
             if self._module_blocked("filament_inventory"):
@@ -1636,7 +1663,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             spool_id = route[len("/api/filament/spools/"):-len("/grams")]
             body = self._read_json_body()
-            spool = filament_inventory.update_grams(spool_id, body.get("grams_remaining"))
+            spool = filament_inventory.update_grams(spool_id, body.get("grams_remaining"),
+                                                    body.get("weight_source") or "weighed")
             return self._send_json(spool)
 
         if route == "/api/notifications/settings":

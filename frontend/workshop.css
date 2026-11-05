@@ -687,6 +687,7 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
   border: 4px solid var(--gm, var(--text-faint)); background: rgba(255, 255, 255, .6);
 }
 .gm-num { font: 700 17px/1 var(--font-mono); }
+.fc-temps .is-blocked b { color: var(--bad); }
 .gm-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-faint); }
 
 /* ---- automations ---------------------------------------------------------------- */
@@ -1221,3 +1222,19 @@ body.is-scrolled .topbar {
 .log-empty.is-loading { animation: is-loading 1.6s ease-in-out infinite; }
 @keyframes is-loading { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .log-empty.is-loading { animation: none; } }
+
+/* Watch-only mode: a label in the top bar while the server refuses printer commands. */
+.wo-pill { font: 600 11px/1 var(--font-mono); letter-spacing: .04em; padding: 6px 10px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 10%, rgba(255, 255, 255, .6)); cursor: pointer; white-space: nowrap; }
+.wo-pill[hidden] { display: none; }
+.wo-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The bed-clear hold at the top of the print queue. */
+.bed-hold { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 12px 14px; margin-bottom: 12px;
+  border-radius: 14px; border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent);
+  background: color-mix(in srgb, var(--warn) 12%, rgba(255, 255, 255, .55)); }
+.bed-hold p { flex: 1 1 240px; margin: 0; font-size: 13px; }
+.bed-hold p small { display: block; color: var(--text-dim); margin-top: 2px; }
+.bed-hold .btn { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.bed-hold .btn small { font-weight: 500; font-size: 11px; opacity: .85; }

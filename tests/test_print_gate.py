@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
@@ -11,6 +12,7 @@ import file_library     # noqa: E402
 import maintenance      # noqa: E402
 import mock_moonraker   # noqa: E402
 import print_gate       # noqa: E402
+import print_queue      # noqa: E402
 import printer_control  # noqa: E402
 
 
@@ -20,6 +22,8 @@ class GateCase(unittest.TestCase):
         file_library.reset()
         file_library.add_samples()
         maintenance.reset_log()
+        print_queue.reset()                 # no bed left waiting to be cleared by another test
+        self.addCleanup(print_queue.reset)
 
     def tearDown(self):
         mock_moonraker.reset_all()
@@ -77,6 +81,52 @@ class TestGate(GateCase):
         self.assertEqual(gate["verdict"], "clear")
         self.assertEqual(gate["health"]["score"], 100)
 
+    def test_wrong_material_blocks_and_health_agrees(self):
+        # The research reproduction: PLA needed, PETG loaded, the same colour.
+        # The gate refused it while health said 100 / good.
+        with mock_moonraker.use_printer("u1-garage"):
+            for task in maintenance.TASKS:
+                maintenance.mark_done(task["id"])
+            wanted = print_gate.summary("3dbenchy_pla.gcode")["filament"][0]["expected_hex"]
+            mock_moonraker.set_filament({"toolhead": "T0", "color_hex": wanted, "material": "PETG"})
+            gate = print_gate.summary("3dbenchy_pla.gcode")
+            # The printer's own gauge checks the job it has loaded: give it this one.
+            loaded = {"filename": "3dbenchy_pla.gcode", "required_filament": [
+                {"toolhead": "T0", "expected_color_hex": wanted, "expected_material": "PLA"}]}
+            with mock.patch.object(mock_moonraker, "get_current_job_requirements", return_value=loaded):
+                gauge = print_gate.printer_health()
+        self.assertEqual(gate["verdict"], "blocked")
+        self.assertTrue(gate["filament"][0]["material_mismatch"])
+        self.assertTrue(any("PETG" in r for r in gate["blocking"]))
+        self.assertEqual(gate["health"]["band"], "blocked")
+        self.assertTrue(gate["health"]["blocked"])
+        self.assertLessEqual(gate["health"]["score"], print_gate.BLOCKED_CEILING)
+        self.assertTrue(any("Wrong material" in d["reason"] for d in gate["health"]["deductions"]))
+        self.assertEqual(sum(d["points"] for d in gate["health"]["deductions"]), gate["health"]["score"] - 100)
+        self.assertEqual(gauge["band"], "blocked")
+        self.assertLessEqual(gauge["score"], print_gate.BLOCKED_CEILING)
+        self.assertEqual(gauge["scope"], "printer")
+
+    def test_every_blocked_gate_has_a_blocked_health(self):
+        mock_moonraker.cancel_print()
+        gate = print_gate.summary("unsafe_example_purge_past_bed.gcode")
+        self.assertEqual(gate["verdict"], "blocked")
+        self.assertEqual(gate["health"]["band"], "blocked")
+        self.assertEqual(gate["health"]["blocking"], gate["blocking"])
+        mock_moonraker.reset_all()                            # the default demo printer prints again
+        busy = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertEqual(busy["verdict"], "blocked")
+        self.assertEqual(busy["health"]["band"], "blocked")
+
+    def test_a_bed_waiting_to_be_cleared_needs_a_confirm(self):
+        mock_moonraker.cancel_print()
+        for task in maintenance.TASKS:
+            maintenance.mark_done(task["id"])
+        print_queue.print_ended(mock_moonraker.selected_printer_id(), "earlier.gcode")
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertEqual(gate["verdict"], "confirm")
+        self.assertTrue(any("earlier.gcode" in w and "bed" in w for w in gate["warnings"]))
+
     def test_models_cannot_be_printed(self):
         with self.assertRaises(ValueError):
             print_gate.summary("spur_gear_24t.stl")
@@ -91,6 +141,26 @@ class TestHealth(unittest.TestCase):
         self.assertEqual(h["score"], 100 - 15 - 5 - 35 - 40 - 16 if 100 - 111 > 0 else 0)
         self.assertEqual(h["band"], "poor")
         self.assertEqual(len(h["deductions"]), 5)
+        self.assertFalse(h["blocked"])
+
+    def test_a_blocked_start_caps_the_score_and_names_the_band(self):
+        rows = [{"toolhead": "T0", "status": "match", "material_mismatch": True}]
+        h = print_gate.health(None, rows, {"tasks": []}, ["T0 has PETG loaded, but the file needs PLA"])
+        self.assertEqual(h["band"], "blocked")
+        self.assertEqual(h["score"], print_gate.BLOCKED_CEILING)
+        self.assertEqual([d["points"] for d in h["deductions"]], [-35, -11])
+        self.assertIn("Confirm Print would refuse", h["deductions"][1]["reason"])
+
+    def test_no_blocker_never_reads_blocked(self):
+        h = print_gate.health(None, [{"toolhead": "T0", "status": "match"}], {"tasks": []}, [])
+        self.assertEqual((h["score"], h["band"], h["blocked"]), (100, "good", False))
+
+    def test_a_low_blocked_score_is_not_raised(self):
+        h = print_gate.health({"errors": [1], "warnings": []}, [{"toolhead": "T0", "status": "mismatch"}],
+                              {"tasks": [{"status": "overdue"}]}, ["Pre-flight: out of bounds"])
+        self.assertEqual(h["score"], 100 - 15 - 35 - 40)
+        self.assertEqual(h["band"], "blocked")
+        self.assertEqual(len(h["deductions"]), 3)
 
 
 class TestInterlock(GateCase):

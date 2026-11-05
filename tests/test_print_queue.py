@@ -76,10 +76,61 @@ class TestQueue(unittest.TestCase):
             if finished:
                 break
         self.assertIsNotNone(finished)
-        result = print_queue.on_print_finished(mock_moonraker.selected_printer_id())
-        self.assertEqual(result["started"]["filename"], "benchy_gear_vase_skip_one.gcode")
+        pid = mock_moonraker.selected_printer_id()
+        result = print_queue.on_print_finished(pid, "3dbenchy_pla.gcode")
+        # The finished part may still be on the bed: the next file waits for a person.
+        self.assertTrue(result["bed_clear_needed"])
+        self.assertTrue(result["held"]["note"].startswith("Waiting for the bed to be cleared after 3dbenchy_pla"))
+        self.assertEqual(mock_moonraker.get_printer_state()["state"], "complete")
+        bed = print_queue.bed_state(pid)
+        self.assertEqual((bed["state"], bed["file"]), ("awaiting_clear", "3dbenchy_pla.gcode"))
+        cleared = print_queue.confirm_bed_clear(pid, bed["job_key"])
+        self.assertEqual(cleared["next"]["started"]["filename"], "benchy_gear_vase_skip_one.gcode")
         statuses = [i["status"] for i in print_queue.get()["items"]]
         self.assertEqual(statuses, ["done", "started"])
+
+    def test_nothing_starts_over_a_part_on_the_bed_not_even_by_hand(self):
+        pid = mock_moonraker.selected_printer_id()
+        print_queue.add("3dbenchy_pla.gcode")
+        print_queue.print_ended(pid, "earlier.gcode", "failed")
+        result = print_queue.start_next(confirmed=True)
+        self.assertTrue(result["bed_clear_needed"])
+        self.assertEqual(mock_moonraker.get_printer_state()["state"], "ready")
+
+    def test_a_confirmation_counts_only_for_the_print_it_names(self):
+        pid = mock_moonraker.selected_printer_id()
+        first = print_queue.print_ended(pid, "a.gcode")
+        second = print_queue.print_ended(pid, "b.gcode")       # another print ended since
+        with self.assertRaises(ValueError) as ctx:
+            print_queue.confirm_bed_clear(pid, first["job_key"])
+        self.assertIn("b.gcode", str(ctx.exception))
+        self.assertEqual(print_queue.bed_state(pid)["state"], "awaiting_clear")
+        print_queue.confirm_bed_clear(pid, second["job_key"])
+        self.assertEqual(print_queue.bed_state(pid)["state"], "clear")
+        with self.assertRaises(ValueError):
+            print_queue.confirm_bed_clear(pid, second["job_key"])          # nothing to confirm now
+        third = print_queue.print_ended(pid, "c.gcode")                    # and a new end needs a new one
+        self.assertEqual(print_queue.bed_state(pid)["job_key"], third["job_key"])
+        self.assertEqual(print_queue.bed_state(pid)["state"], "awaiting_clear")
+
+    def test_the_hold_and_the_confirmation_are_kept_on_disk(self):
+        import json
+        pid = mock_moonraker.selected_printer_id()
+        ended = print_queue.print_ended(pid, "a.gcode")
+        on_disk = json.load(open(print_queue._PATH))[pid]["bed"]
+        self.assertEqual((on_disk["state"], on_disk["job_key"]), ("awaiting_clear", ended["job_key"]))
+        print_queue.confirm_bed_clear(pid, ended["job_key"])
+        self.assertEqual(json.load(open(print_queue._PATH))[pid]["bed"]["cleared_for"], ended["job_key"])
+
+    def test_a_print_started_another_way_means_the_bed_is_in_use(self):
+        pid = mock_moonraker.selected_printer_id()
+        print_queue.print_ended(pid, "a.gcode")
+        print_queue.print_started(pid, "b.gcode")
+        self.assertEqual(print_queue.bed_state(pid)["state"], "in_use")
+
+    def test_beds_are_per_printer(self):
+        print_queue.print_ended("u1-studio", "a.gcode")
+        self.assertEqual(print_queue.bed_state("u1-garage")["state"], "clear")
 
     def test_queues_are_per_printer(self):
         print_queue.add("3dbenchy_pla.gcode")

@@ -28,6 +28,42 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.18.0 (5 November 2026): Checks you can trust
+
+- Watch-only mode (Settings): the server refuses every command to your real printers, so nothing moves, heats, prints or changes. You still see everything, the camera works, and emergency stop always goes through.
+- The print health score is held below fair, and reads Can't start, whenever Confirm Print would refuse the start. A wrong material now costs points like a wrong colour.
+- A spool with no known weight shows Weight unknown instead of 0 g. Weights say whether they were weighed or estimated, Spoolman imports keep unknown weights unknown, and every spool has a Weigh button.
+- A finished print is charged to the roll its head had when the print started, even if another roll was picked during the print. Recent charges can be moved to another roll.
+- After a print ends, the next queued print waits until you press Part removed, bed clear for that printer and that print. Confirm Print and Needs you remind you too.
+
+**Watch-only mode, and where it is enforced.** The refusal happens where Deja Vu1 talks
+to a printer (`backend/moonraker_client.py`): while the mode is on, its HTTP requests may
+only read (GET, plus the status query and emergency stop Moonraker takes as POSTs) and its
+WebSocket calls may only be the read methods it uses. So a screen, an automation rule or
+the queue cannot send a command another way. Printer commands sent from the page are
+refused first with the same words (409, `watch_only: true`). `DEJAVU_WATCH_ONLY=1` keeps it
+on for one start. Tested against the stand-in Moonraker in `tests/fake_moonraker.py`:
+pause, cancel, home, the console and a start were refused and no write reached it, while
+emergency stop went through (`tests/test_real_printer.py` `TestWatchOnly`). Not yet run on
+a physical U1.
+
+**Three trust problems reproduced by research, now fixed.** A file needing PLA, with PETG
+loaded in the same red, was refused by Confirm Print while the health dial read 100 / good
+(`tests/test_print_gate.py`). A Spoolman spool with no starting weight was stored as 0 g, the
+same as an empty roll; Spoolman's own `remaining_weight` is the starting weight minus the
+used weight, or none when the starting weight is unknown (Spoolman `eccb05e`,
+`spoolman/api/v1/models.py`, checked 5 November 2026). Spools an older import saved as 0 g
+go back to Weight unknown on the next import, unless they were weighed here. A finished
+print was charged to the roll assigned at the end, not the one loaded at the start; the
+start-time map is now saved when a real printer starts a print and kept through a restart.
+A print Deja Vu1 did not see start is not charged to an assigned roll.
+
+**Bed clearance.** A print that finishes, fails or is cancelled leaves that printer's bed
+waiting to be cleared. The confirmation is tied to the printer and to the print that ended
+last there, and is saved in `print_queue.json`. Nothing in that printer's queue starts,
+by hand or by itself, until it is given. Prints started outside the queue are not stopped;
+Confirm Print warns instead.
+
 ## 0.17.0 (2 November 2026): Wherever the printer is
 
 - Find printers now looks from every network connection this computer has. Look further also tries the address ranges a second router or mesh system often uses, and your Tailscale network, including home networks a device there shares.

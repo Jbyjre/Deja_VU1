@@ -322,6 +322,7 @@ def summary_for(printer_id, state=None):
                   for th, d in (state.get("toolheads") or {}).items()},
         "alerts": _alerts(state, maint),
         "health": health["score"],
+        "health_band": health["band"],    # "blocked" while Confirm Print would refuse the loaded job
         "link_lost": bool(state.get("link_lost")),
         "sandbox": mock_moonraker.is_sandbox_printer(printer_id),
         "machine": state.get("machine"),          # machines.public(); None while never connected

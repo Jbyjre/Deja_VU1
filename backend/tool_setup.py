@@ -70,9 +70,20 @@ def save(body):
     pid = mock_moonraker.selected_printer_id()
     with _lock:
         data = storage.load_json(_PATH, {})
+        before = {h["toolhead"]: h.get("spool_id") or None for h in data.get(pid, {}).get("heads", [])}
         data[pid] = {"heads": sorted(checked, key=lambda h: h["toolhead"])}
         storage.save_json(_PATH, data)
-    return get(pid)
+    after = {h["toolhead"]: h["spool_id"] or None for h in checked}
+    import filament_inventory
+    # Mid-print, the change is written beside the print's start record; the print still
+    # charges the roll it started with.
+    changed = filament_inventory.note_assignment_change(pid, before, after)
+    result = get(pid)
+    if changed:
+        result["mid_print_changes"] = changed
+        result["note"] = ("A print is running on this printer: it will still be charged to the rolls it started "
+                          "with. If you really swapped a roll, move the charge when it finishes.")
+    return result
 
 
 def check_saved(state):
