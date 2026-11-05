@@ -106,6 +106,9 @@ def summary(filename, printer_state=None):
     """The whole Confirm Print screen for one file on the selected printer."""
     if file_library.kind_of(filename) != "gcode":
         raise ValueError("Only G-code files can be printed - slice models first")
+    if not file_library.exists(filename):
+        # Said in words: a deleted or never-added file was a server error before.
+        raise ValueError(f"No file called {filename} in your files. Add it again, or pick another one")
     state = printer_state or mock_moonraker.get_printer_state()
     # Checked against the printer it is for: its own size and heads.
     analysis = file_library.checked(filename, state.get("machine"))
