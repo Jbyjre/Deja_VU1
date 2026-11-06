@@ -250,7 +250,14 @@ root should hand over to `welcome.html`.
   Chrome installs only from https, localhost or an address in chrome://flags "Insecure origins
   treated as secure" (Chromium `installable_evaluator.cc`), so a plain LAN address gets those steps.
 - `modules.DEFAULTS_ON` (filament_inventory, sanity_check, compare, auto_print) start on; a copy
-  saved before November 2026 switches them on once (`_defaults` version in modules.json).
+  saved before November 2026 switches them on once (`_defaults` version in modules.json). Each module has a
+  `kind` (November 2026): `extra` (Settings > Optional extras lists only these six: auto_print, webrtc_camera,
+  led_status, wled_bridge, home_assistant_bridge, color_check: they need a program, a device or a service),
+  `setting` (camera, timelapse, handoff: an `<input data-setting-module>` in their own card, app.js
+  `syncSettingSwitches`) and `core` (everything else: always on, no screen offers a switch). `_defaults`
+  version 3 switches every `core` module back on once, because a copy that had one off would have no way back.
+  The server still enforces any switch (tests switch core ones off); a new feature that needs something
+  outside Deja Vu1 is an `extra`, anything else is `core`.
 - `maintenance.snooze()` (1, 3 or 7 days): a snoozed task keeps its status in Care but leaves
   the overdue/due-soon counts, Needs you and maintenance rules until then. `record_swap(...,
   nozzle=)` also writes that head's nozzle into `tool_setup`.
@@ -359,8 +366,8 @@ root should hand over to `welcome.html`.
   state the old strip under the tabs did (`renderChipStatus`); `#status-ribbon` stays hidden.
   Idle (the owner: never grey or "down"): Pause/Cancel are hidden unless a print runs (`showIdleActions`);
   idle offers Print a file and Warm up (`[data-go-card]`). Printer cards carry no state tint (`data-state`
-  only), group commands appear once a printer is ticked, Add a printer stays folded. Modules (`loadModules`)
-  build once and then only sync switches; never rebuild the list on a toggle.
+  only), group commands appear once a printer is ticked, Add a printer stays folded. Optional extras (`loadModules`,
+  extras only) build once and then only sync switches; never rebuild the list on a toggle.
 - `printer-page.js` + `printer.css`: the Printer page controls, the Overview cards, the camera
   view (`.pcam`: the saved stream, else one snapshot after another, at most five a second,
   only while visible) and the Preferences tab. Server side: `printer_control.jog` and the
@@ -410,7 +417,8 @@ root should hand over to `welcome.html`.
   use: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`, `doneAt()`,
   `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`.
 - `workshop.js`: live WebSocket (polling fallback that retries the WebSocket
-  every 30 s), fleet cards, the "Needs you" list, room tint, live pill,
+  every 10 s; `nudgeLive` reconnects at once on visibilitychange, online and a bfcache pageshow, because a
+  locked phone or a slept laptop leaves the socket dead without telling the page), fleet cards, the "Needs you" list, room tint, live pill,
   digital twin (an SVG engineering drawing projected from millimetres,
   `drawTwin`), files, dialogs, morph animations.
 - `backdrop.js`: the cursor-reactive background (Dots by default, plus
@@ -800,8 +808,8 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
 - `start.py` restarts a crashed server (not exit 0, 75, 3 or a
   signal), at most `CRASH_LIMIT` times in `CRASH_WINDOW`. `offline.html` links the online demo.
 - Updates never leave the dashboard down (the owner, 31 October 2026: Install "did nothing", then the offline
-  page). `_install_update(background=True)` checks the launcher and idle printers at once (refusals name the
-  printer), then `_run_install` runs on a thread; `app_updates.job()` (in `/api/app/info` as `update_job`) carries
+  page). `_install_update(background=True)` checks only that a launcher exists and no install is running, then
+  `_run_install` runs on a thread; `app_updates.job()` (in `/api/app/info` as `update_job`) carries
   the step and download bytes, and versions.js `followJob()` shows it and resumes after a reload. start.py never
   dies on an update error: `apply_update()` catches anything from `apply_pending`, writes
   `<data>/update-result.json` (`readiness.last_update()`, shown as a toast) and `<data>/logs/launcher.log`, and
@@ -809,6 +817,37 @@ unknowns preserved. Tool forms reject stale printer selection before any write.
   locked is never applied or rolled back twice, and sets `last_error`. The health check matches
   `DEJAVU_LAUNCH_ID` or the PID, never through a proxy, for up to `START_WAIT` (90 s). The server closes its port
   before its slow clean-up, so reloads fail fast to the offline page instead of hanging.
+- Updating during a print (6 November 2026, tests in `tests/test_update_during_print.py` and
+  `tests/test_real_printer.py::TestUpdatingDuringAPrint`): a print, a pause or a silent printer never decides
+  whether an update installs (the printer holds the file and runs it by itself; 0.8.0 to 0.20.2 refused). Never add
+  such a check back. `update_hold.py` starts in `_restart_soon` (updates, Restart, restore): `moonraker_client`'s
+  `HttpTransport.request` and `MoonrakerPrinter._call` count every write (`writing_request`/`writing_call`) and
+  raise `UpdateHold` (a `PrinterRefused`, answered 409 `updating: true`) while it is on; reads and the emergency stop
+  pass. The stop waits up to `WRITE_GRACE` (20 s) for writes already on the wire. `stock_camera` sends no
+  `camera.stop_monitor`/start while it is on. It lapses after 90 s so a restart that never comes can't leave commands
+  refused. `_let_slices_finish`: a running slice gets `SLICE_GRACE` (90 s), then `slicer_bridge.cancel_all`.
+  What survives a restart: `live_feed` keeps each real printer's print state in `<data>/live_state.json`
+  (`_state_before_this_start`, 6 h) so a finish or cancel during the restart is still detected and the time-lapse
+  resumes (`timelapse.resume`, newest session only); `automations` keeps which rules were already true in
+  `automation_edges.json` (real printers only), so "50% done" doesn't fire again. A finish seen this way has no
+  print summary, so no filament is deducted for it.
+- The "is it alive?" path (6 November 2026): `app_updates.check()` used to hold `_lock` across GitHub requests and
+  `/api/app/info` (via `job()`) needed it, so the launcher's 2 s health check failed during a slow check and could
+  roll a good update back. `_lock` is now held for an instant (`_check_lock` serialises checks); never do network
+  or subprocess work under it. `GET /api/app/alive` (answered in `do_GET` before dispatch, no slow work) is what
+  start.py `info()`, `watchServer()` and offline.html ask first; each falls back to `/api/app/info` on a 404 (an
+  older server: the real repair test republishes 0.20.2 files, which have no alive route). `autostart.status(wait=False)`
+  never waits for `schtasks`. `start.py` writes `<data>/supervisor.json` every 5 s; a launcher that finds a fresh
+  note from another one waits (`wait_for_other_launcher`) instead of applying the same staged update.
+  `autostart.stopped_on_purpose` also expires after `STOP_HOURS` (4): the boot-time clock alone doesn't change across
+  a Windows Fast Startup shut down (read from the code, not observed on Windows). `app_updates._clear_stale_stage`
+  removes a staging folder with no journal; a journal or git rollback note is kept.
+- Connection hints (6 November 2026): `moonraker_client.ComputerWoke` (wall clock ran, monotonic didn't) drops a
+  link at once after sleep. `discovery.network_hint(url)` compares the printer's address with this computer's home
+  /24s and gives `words`/`short` for printers that don't answer (`fleet._public` adds `network_hint`; app.js
+  `unreachableWords`, workshop.js `.reg-hint`, `readiness._printers`); `readiness._phone` names the phone address.
+  There is no relay and none is planned (decision in the private repository), so the hint says what the addresses
+  show and points to Look further and Away from home.
 - `readiness.py` (`POST /api/app/ready`, Settings → Check it all works, `start.py --check`, and the launcher window
   after every start): ok / note / bad per check, `next` names the block ("start" or "repair"). The launcher adds
   the address, page and demo data over HTTP. Older servers (404) get a note, not a failure.

@@ -237,7 +237,8 @@ to start.
 1. **In the app:** **Settings → Version & updates → Check for updates**, then
    **Install**. Tick **Look for updates by itself** to have it check every hour;
    the glass orb in the bottom-right corner tells you. Start Deja Vu1 with its
-   launcher, and wait until every real printer is idle.
+   launcher. A print that is running does not matter: the printer runs its file
+   by itself, and Deja Vu1 sends it nothing while it restarts.
 2. **One paste**, when the button can't help (0.8.0's Install button has a bug,
    so 0.8.0 copies need this once). It stops Deja Vu1 in Documents, installs the
    newest release over it and starts it again.
@@ -247,7 +248,7 @@ to start.
    ```powershell
    $ProgressPreference = 'SilentlyContinue'
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
-   try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+   try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Body '{"for_update":true}' -ContentType 'application/json' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
    Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
@@ -258,7 +259,7 @@ to start.
    **Mac, Linux or Raspberry Pi:** open a **new** Terminal window and paste:
 
    ```bash
-   curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+   curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{"for_update":true}' http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
    curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
    python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
    cd ~/Documents/Deja_VU1 && python3 start.py --background

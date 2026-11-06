@@ -10,6 +10,28 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**6 November 2026, updates, connections and Settings.** An update no longer waits for a print, a paused
+print or a printer that isn't answering: the printer holds the file it prints and runs it by itself, so Deja Vu1
+restarting never touches a print. From the moment an install is ready to restart, Deja Vu1 sends no printer
+anything new (moves, heating, uploads, G-code and the camera's stop message are held back, the emergency stop
+still goes through) and lets a command already on its way finish. A running slice gets up to 90 seconds to
+finish, then is stopped cleanly. A print that finishes or is cancelled during the restart is still noticed, an
+unfinished time-lapse carries on, and an automation rule that was already true does not fire again. The update
+check no longer holds the lock that the launcher's "is it alive?" question needs, so a slow GitHub answer can't
+make a healthy dashboard look stopped or a fresh update look dead; the first check waits 45 seconds after a
+start; the launcher, the page and the offline page ask a new light route, `/api/app/alive`; a left-over staging
+folder no longer blocks the next update; a second launcher waits instead of applying the same update twice;
+and Stop keeps Deja Vu1 stopped for at most four hours (found by reading the code: the old rule could outlive a
+Windows "Shut down" with Fast Startup, so the 5-minute check never started it). A printer link that was open
+when the computer slept reopens at once, the live page reconnects when a phone is unlocked or the network
+returns, and a printer on another network is explained in words. Settings > Modules became **Optional extras**
+with six rows (Slicing, the low-latency camera, Dock status rings, the WLED bridge, the Home Assistant bridge, the
+colour check); the camera, time-lapses and Continue on another device switch in their own cards, the print cost
+prices moved into the Print cost card, and every other part of Deja Vu1 is always on (a copy that had switched one
+off gets it back once). Checked with unit tests, a stand-in printer and the real launcher on Linux (a real
+download, restart and health check took 7 seconds); not tried on Windows, macOS or a real U1. These ride along
+with the next release.
+
 **27 October 2026, internal folders moved.** `marketing-library/`, `promo-video/`
 and `build-prompts/` moved to the owner's private repository. Removing them from
 this repository's history is still to do. When it happens, every commit ID
