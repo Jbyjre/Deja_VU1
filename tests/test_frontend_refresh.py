@@ -106,8 +106,8 @@ class TestPageWiring(unittest.TestCase):
     def test_background_defaults_to_dots_with_surprises_on(self):
         src = read("backdrop.js")
         self.assertIn("const DEFAULT = { style: 'dots', palette: 'glacier', energy: 'lively', surprises: true, dot: '' };", src)
-        # Reduced motion switches the background to Still and the surprises off.
-        self.assertIn("const effectiveStyle = () => (reducedMotion() ? 'still' : prefs.style);", src)
+        # Reduced motion, and every look but Glass, switch the background to Still and the surprises off.
+        self.assertIn("const effectiveStyle = () => (reducedMotion() || !glassLook() ? 'still' : prefs.style);", src)
         self.assertIn("prefs.surprises && !reducedMotion()", src)
 
     def test_every_dot_is_one_colour_the_owner_can_choose(self):
