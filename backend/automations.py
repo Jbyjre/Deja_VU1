@@ -51,6 +51,7 @@ import storage
 _DATA_DIR = storage.DATA_DIR
 _RULES_PATH = os.path.join(_DATA_DIR, "automations.json")
 _LOG_PATH = os.path.join(_DATA_DIR, "automation_log.json")
+_EDGE_PATH = os.path.join(_DATA_DIR, "automation_edges.json")
 
 TRIGGERS = {"temperature", "state", "filament_mismatch", "maintenance_overdue", "progress", "time_left", "layer",
             "error", "link_lost"}
@@ -62,6 +63,7 @@ MAX_RULES = 50
 
 _lock = threading.RLock()
 _edge = {}              # (rule_id, printer_id) -> was the trigger true last tick?
+_edge_loaded = False    # the true ones are kept on disk, so a restart doesn't make a rule fire again
 _listeners = []         # callables told about every firing (the live feed)
 _work = queue.Queue()
 _worker = None
@@ -84,6 +86,28 @@ def _save(path, data):
 def list_rules():
     with _lock:
         return _load(_RULES_PATH, [])
+
+
+def _load_edges():
+    """
+    Which rules were already true before this start. Without it an update or a restart in the middle
+    of a print made every rule whose trigger was already true fire a second time (a "50% done" message
+    again, a macro again), because "was it true a moment ago?" lived only in memory.
+    """
+    global _edge_loaded
+    if _edge_loaded:
+        return
+    _edge_loaded = True
+    saved = _load(_EDGE_PATH, {})
+    for pair in saved.get("true", []) if isinstance(saved, dict) else []:
+        if isinstance(pair, list) and len(pair) == 2 and all(isinstance(x, str) for x in pair):
+            _edge.setdefault((pair[0], pair[1]), True)
+
+
+def _save_edges(rules):
+    """The rules of real printers that are true right now (a demo rule starts fresh with its simulation)."""
+    demo = {r["id"] for r in rules if r.get("demo")}
+    _save(_EDGE_PATH, {"true": sorted([k[0], k[1]] for k, v in _edge.items() if v and k[0] not in demo)})
 
 
 def get_log(limit=40):
@@ -372,8 +396,10 @@ def evaluate(printer_id, state, events, demo_printer, slow_checks=True):
     cache = {}
     now = datetime.now()
     with _lock:
+        _load_edges()
         rules = list_rules()
         changed = False
+        edges_changed = False
         for rule in rules:
             if not rule.get("enabled", True):
                 continue
@@ -387,6 +413,8 @@ def evaluate(printer_id, state, events, demo_printer, slow_checks=True):
             key = (rule["id"], printer_id)
             was = _edge.get(key, False)
             _edge[key] = hit
+            if bool(hit) != bool(was) and not rule.get("demo"):
+                edges_changed = True
             if not hit or (was and rule["trigger"]["type"] != "state"):
                 continue
             if not _condition_ok(rule, state):
@@ -401,6 +429,8 @@ def evaluate(printer_id, state, events, demo_printer, slow_checks=True):
             _enqueue(rule, printer_id, detail)
         if changed:
             _save(_RULES_PATH, rules)
+        if edges_changed:
+            _save_edges(rules)
     return fired
 
 
@@ -548,4 +578,5 @@ def reset():
     with _lock:
         _save(_RULES_PATH, [])
         _save(_LOG_PATH, [])
+        _save(_EDGE_PATH, {"true": []})
         _edge.clear()

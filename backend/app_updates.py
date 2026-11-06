@@ -40,9 +40,12 @@ RAW = 'https://raw.githubusercontent.com/{repo}/{sha}/{path}'
 CHANNELS = ('stable', 'latest')
 LATEST_EVERY = 15 * 60          # how often automatic checks look for a newer build
 RELEASE_EVERY = 60 * 60         # and for a new release: every merge to main publishes one
+CHECK_READ = 15                 # seconds one GitHub answer about versions may take
 MAX_BYTES = 128 * 1024 * 1024
 MAX_UNPACKED = 512 * 1024 * 1024
-_lock = threading.Lock()
+_lock = threading.Lock()         # held only for an instant: the page's status reads must never wait behind GitHub
+_check_lock = threading.Lock()   # one GitHub check at a time; a second caller waits for the first one's answer
+CHECK_WAIT = 45                  # seconds a second caller waits for the check already running
 _last = None
 _busy = False
 ROOT_FILES = {'VERSION', 'start.py', 'start-windows.bat', 'start-mac.command',
@@ -205,16 +208,17 @@ def git_release_info(info):
 
 def _git_check():
     global _last
+    try:
+        found = git_release_info(git_info())
+    except ValueError as exc:
+        found = {'kind': 'git', 'error': str(exc), 'checked_at': int(time.time())}
+    except Exception:
+        # No git output in the reply: remote addresses can contain credentials.
+        found = {'kind': 'git', 'error': 'Could not reach GitHub with git. Check your internet connection, '
+                 'or update in GitHub Desktop (Fetch origin, then Pull origin).', 'checked_at': int(time.time())}
     with _lock:
-        try:
-            _last = git_release_info(git_info())
-        except ValueError as exc:
-            _last = {'kind': 'git', 'error': str(exc), 'checked_at': int(time.time())}
-        except Exception:
-            # No git output in the reply: remote addresses can contain credentials.
-            _last = {'kind': 'git', 'error': 'Could not reach GitHub with git. Check your internet connection, '
-                     'or update in GitHub Desktop (Fetch origin, then Pull origin).', 'checked_at': int(time.time())}
-        return status()
+        _last = found
+    return status()
 
 
 def _git_prepare(root, before_commit):
@@ -263,10 +267,10 @@ class _ReleaseRedirect(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def _read_url(url, limit, progress=None):
+def _read_url(url, limit, progress=None, timeout=30):
     request = Request(_trusted_url(url), headers={'User-Agent': 'DejaVu1-updater',
                       'Accept': 'application/vnd.github+json'})
-    with build_opener(_ReleaseRedirect()).open(request, timeout=30) as response:
+    with build_opener(_ReleaseRedirect()).open(request, timeout=timeout) as response:
         if progress is None:
             data = response.read(limit + 1)
         else:
@@ -297,12 +301,13 @@ def _read_url(url, limit, progress=None):
 # each step; a reload finds the same record.
 
 STEPS = {
-    'checking': 'Checking that every printer is idle',
+    'checking': 'Getting ready. Your printers are not touched and a print keeps going',
     'safety': 'Making a safety copy of your settings',
     'download': 'Downloading the update',
     'verify': 'Checking the download',
     'unpack': 'Unpacking the new files',
-    'restarting': 'Restarting into the new version',
+    'slices': 'Letting the slice that is running finish first (up to a minute and a half)',
+    'restarting': 'Restarting into the new version. A print keeps going on the printer',
     'failed': 'The update could not be installed',
 }
 _job = {'state': 'idle'}
@@ -348,26 +353,42 @@ def release_info(data, repair=False):
 
 
 def check():
+    """
+    Ask GitHub whether a newer version exists. The slow part (the network) runs outside _lock, so
+    /api/app/info, which the launcher and every open page ask all the time, answers at once even
+    while GitHub is slow; before, a hung check made the dashboard look stopped and a freshly
+    updated copy look dead.
+    """
     global _last
-    if install_kind() == 'git':
-        return _git_check()
-    channel = settings()['channel']
-    with _lock:
+    if not _check_lock.acquire(timeout=CHECK_WAIT):
+        return status()
+    try:
+        # Someone else's check finished while this one waited: its answer is the answer.
+        if _last is not None and time.time() - (_last.get('checked_at') or 0) < 5:
+            return status()
+        if install_kind() == 'git':
+            return _git_check()
+        channel = settings()['channel']
         try:
-            _last = latest_info() if channel == 'latest' else release_info(json.loads(_read_url(API, 2 * 1024 * 1024)))
+            found = latest_info() if channel == 'latest' else release_info(
+                json.loads(_read_url(API, 2 * 1024 * 1024, timeout=CHECK_READ)))
         except HTTPError as exc:
-            _last = {'error': ('No stable release has been published yet. Choose "Newest builds" to get each '
+            found = {'error': ('No stable release has been published yet. Choose "Newest builds" to get each '
                                'improvement as soon as it is published.') if exc.code == 404 and channel == 'stable' else
                      'GitHub could not answer the update check. Try again later.', 'checked_at': int(time.time())}
         except ValueError as exc:
-            _last = {'error': str(exc), 'checked_at': int(time.time())}
+            found = {'error': str(exc), 'checked_at': int(time.time())}
         except Exception:
-            _last = {'error': 'Could not check GitHub. Check your internet connection or try again later.',
-                     'checked_at': int(time.time())}
             # No exception text: proxy URLs and credentials must never enter a public response.
-        if _last is not None:
-            _last['channel'] = channel
+            found = {'error': 'Could not check GitHub. Check your internet connection or try again later.',
+                     'checked_at': int(time.time())}
+        found['channel'] = channel
+        with _lock:
+            if settings()['channel'] == channel:       # not if the channel was changed while GitHub answered
+                _last = found
         return status()
+    finally:
+        _check_lock.release()
 
 
 # -- the newest build on main ---------------------------------------------------
@@ -399,12 +420,12 @@ def _local_sha(path):
 
 def _newest(root):
     """(commit sha, commit, {path: tree entry}, [paths that differ here])."""
-    commit = json.loads(_read_url(COMMIT_API, 2 * 1024 * 1024))
+    commit = json.loads(_read_url(COMMIT_API, 2 * 1024 * 1024, timeout=CHECK_READ))
     sha = str(commit.get('sha', ''))
     tree_sha = str(((commit.get('commit') or {}).get('tree') or {}).get('sha', ''))
     if not _HEX40.fullmatch(sha) or not _HEX40.fullmatch(tree_sha):
         raise ValueError('GitHub gave an unexpected answer about the newest build')
-    tree = json.loads(_read_url(TREE_API.format(repo=REPO, tree=tree_sha), 32 * 1024 * 1024))
+    tree = json.loads(_read_url(TREE_API.format(repo=REPO, tree=tree_sha), 32 * 1024 * 1024, timeout=CHECK_READ))
     if tree.get('truncated'):
         raise ValueError('The newest build lists too many files for the built-in updater')
     wanted = {}
@@ -543,6 +564,20 @@ def unpack(data, target, expected_version):
     return [e.filename for e in entries]
 
 
+def _clear_stale_stage(base):
+    """
+    A staging folder left by an update that never restarted (the page closed, the restart didn't
+    happen) is only a half-done download: the launcher swaps the files in while this server is
+    stopped, so while it runs nothing is applying that folder, and it is removed so the update can
+    start over. A folder that holds a recovery journal (a swap that was interrupted) or a git
+    rollback note is kept: the launcher needs it at the next start.
+    """
+    if base.exists() and not (base / 'journal.json').exists() and not (base / 'git-pending.json').exists():
+        _discard(base)
+    if base.exists():
+        raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
+
+
 def prepare(root=ROOT, before_commit=None, channel=None, repair=False, step=None):
     """
     Stage an update for the launcher to apply. With repair=True the newest
@@ -566,8 +601,7 @@ def prepare(root=ROOT, before_commit=None, channel=None, repair=False, step=None
     try:
         if channel == 'latest':
             base = root / '.dejavu-update'
-            if base.exists():
-                raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
+            _clear_stale_stage(base)
             try:
                 return _stage_latest(root, base, before_commit, step)
             except Exception:
@@ -582,8 +616,7 @@ def prepare(root=ROOT, before_commit=None, channel=None, repair=False, step=None
         if hashlib.sha256(data).hexdigest() != info['digest'][7:].lower():
             raise ValueError('The download checksum did not match. Nothing was installed')
         base = root / '.dejavu-update'
-        if base.exists():
-            raise ValueError('An update or recovery copy already exists. Restart with the launcher first')
+        _clear_stale_stage(base)
         stage = base / 'stage'
         step('unpack', version=info['version'])
         try:
@@ -734,13 +767,17 @@ def automatic_check():
     return result
 
 
-def watch(install, stop=None, tick=60):
+def watch(install, stop=None, tick=60, first_wait=45):
     """
     For the server's lifetime: run automatic checks as they fall due and, if
-    the owner chose it, install a ready update through `install` (which
-    refuses while any real printer is busy; the next round tries again).
+    the owner chose it, install a ready update through `install` (a print
+    never stops it: the printer runs its file by itself; a refusal is tried again next round).
     """
     stop = stop or threading.Event()
+    # Not at once: right after a start (above all after an update) the launcher is checking that this
+    # copy answers, and the network may still be coming up. The first check waits a little.
+    if first_wait and stop.wait(first_wait):
+        return
     while not stop.is_set():
         try:
             result = automatic_check()

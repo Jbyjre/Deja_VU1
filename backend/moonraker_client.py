@@ -92,6 +92,7 @@ PING_INTERVAL = 15.0
 FILAMENT_REQUERY = 30.0
 DEAD_AFTER = 60.0              # nothing heard (not even a pong) for this long: reconnect
 STATUS_CHECK = 2.0             # how often the link looks at whether readings still arrive
+SLEEP_JUMP = 8.0               # more wall-clock time than running time passed between two looks: the computer slept
 # While a print runs, Klipper's position and file position change all the time, so a status stream
 # silent this long has stalled (the socket can stay open): the client then reads the printer directly.
 QUIET_PRINTING = 5.0
@@ -133,6 +134,14 @@ class PrinterUnreachable(PrinterCommandError):
 
 class PrinterRefused(PrinterCommandError):
     """The printer answered, and the answer was no."""
+
+
+class ComputerWoke(PrinterUnreachable):
+    """
+    This computer slept (or its clock jumped) while the connection was open. Whatever the connection
+    was before, it can no longer be trusted: after sleep it is often half-open (the printer closed it, this
+    computer never heard), and waiting for the dead-connection timeout would leave the readings stale for a minute.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -818,8 +827,16 @@ class HttpTransport:
         wrapped=False). Raises PrinterUnreachable when there was no whole
         answer, PrinterRefused when Moonraker or Klipper said no.
         """
-        import watch_only                  # here, not at the top: watch_only imports this module
+        # Here, not at the top: both modules import this one.
+        import watch_only
+        import update_hold
         watch_only.check_request(method, path)
+        # A write is counted while it is on the wire, and refused while Deja Vu1 restarts.
+        with update_hold.writing_request(method, path):
+            return self._request(method, path, query, body, raw_body, content_type, timeout, wrapped, max_bytes,
+                                 expected, raw)
+
+    def _request(self, method, path, query, body, raw_body, content_type, timeout, wrapped, max_bytes, expected, raw):
         url = path + ("?" + urlencode(query) if query else "")
         headers = {"Accept": "application/json", "User-Agent": f"DejaVu1/{CLIENT_VERSION}"}
         payload = None
@@ -1128,6 +1145,17 @@ def _short(obj_name):
     return obj_name.split(" ", 1)[-1]
 
 
+def _slept_between(before, wall=time.time, mono=time.monotonic):
+    """
+    ((wall, mono) now, seconds slept or 0). The wall clock runs while the computer sleeps; on Linux and macOS
+    the monotonic clock stops, so the gap between the two is the sleep. (Where the monotonic clock counts sleep,
+    as on Windows, the dead-connection timeout notices the wake instead.)
+    """
+    now = (wall(), mono())
+    gap = (now[0] - before[0]) - (now[1] - before[1])
+    return now, (gap if gap > SLEEP_JUMP else 0)
+
+
 class MoonrakerPrinter:
     """
     Everything the dashboard knows about one real printer, kept current by
@@ -1249,7 +1277,9 @@ class MoonrakerPrinter:
                 self._down(str(exc) or exc.__class__.__name__)
                 # Nothing answered on this door (refused, timed out, unreachable): after two tries
                 # in a row, try the printer's other door (port 80 is the one its own web page uses).
-                if isinstance(exc, (OSError, PrinterUnreachable)) and not self._link_up:
+                if isinstance(exc, ComputerWoke):
+                    misses, backoff = 0, 1.0           # waking up says nothing about the printer's doors
+                elif isinstance(exc, (OSError, PrinterUnreachable)) and not self._link_up:
                     misses += 1
                     if misses >= 2:
                         misses = 0
@@ -1307,7 +1337,12 @@ class MoonrakerPrinter:
                 self._note("identify refused (carrying on)", error=str(exc))
             self._need_setup.set()
             last_ping = time.monotonic()
+            clocks = (time.time(), time.monotonic())
             while not self._stop.is_set() and reader.is_alive():
+                clocks, slept = _slept_between(clocks)
+                if slept:
+                    raise ComputerWoke(f"This computer was asleep for about {slept:.0f} s, so the connection to "
+                                       f"{self.endpoint.label} is opened again")
                 if self._need_setup.is_set():
                     if self._setup():
                         self._need_setup.clear()
@@ -1513,7 +1548,12 @@ class MoonrakerPrinter:
     def _call(self, method, params=None, timeout=READ_TIMEOUT):
         """One JSON-RPC request over the WebSocket, answered or refused in words."""
         import watch_only
+        import update_hold
         watch_only.check_call(method)
+        with update_hold.writing_call(method):
+            return self._call_now(method, params, timeout)
+
+    def _call_now(self, method, params, timeout):
         conn = self._ws
         if conn is None or conn.closed:
             raise PrinterUnreachable(f"No live connection to {self.name}")

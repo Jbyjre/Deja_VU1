@@ -26,6 +26,7 @@ time-lapse, queue) only run while someone is actually using demo data, and
 simulated prints never touch the real filament inventory.
 """
 
+import os
 import threading
 import time
 from collections import deque
@@ -33,6 +34,7 @@ from datetime import datetime
 
 import automations
 import modules
+import storage
 import cost_calculator
 import filament_inventory
 import fleet
@@ -56,6 +58,11 @@ _climate = {}                  # printer_id -> deque of samples
 _prev_state = {}
 _detect_lock = threading.RLock()   # the feed thread and request threads both detect changes
 _demo_seen_at = 0.0
+_DATA_DIR = storage.DATA_DIR
+_STATE_PATH = os.path.join(_DATA_DIR, "live_state.json")
+REMEMBER_HOURS = 6             # a print state older than this is not carried over a restart
+_remembered = {}               # printer_id -> {"state", "file", "at"}: real printers, kept on disk
+_checked_restart = set()       # printers whose state from before this start has been looked at
 _thread = None
 _running = False
 _tick_listeners = []           # told about every tick (the sandbox's scenario clock)
@@ -197,15 +204,58 @@ def _detect(printer_id, state, finish_event=None):
         return _detect_locked(printer_id, state, finish_event)
 
 
+def _load_remembered():
+    saved = storage.load_json(_STATE_PATH, {})
+    if isinstance(saved, dict):
+        _remembered.update({k: v for k, v in saved.items() if isinstance(v, dict)})
+
+
+def _remember(printer_id, state):
+    """Keep a real printer's print state on disk when it changes, so a restart can tell what happened meanwhile."""
+    mine = {"state": state["state"], "file": state.get("current_file"), "at": time.time()}
+    old = _remembered.get(printer_id) or {}
+    if old.get("state") == mine["state"] and old.get("file") == mine["file"]:
+        return
+    _remembered[printer_id] = mine
+    try:
+        storage.save_json(_STATE_PATH, _remembered)
+    except OSError:
+        pass                           # a note that can't be written never stops the live readings
+
+
+def _state_before_this_start(printer_id):
+    """
+    What this printer was doing when Deja Vu1 last saw it, if it was printing or paused a little while
+    ago. An update or restart takes a few seconds to a minute; a print that finished or was cancelled in
+    that time is then still noticed (its notification, time-lapse and queue step), and the time-lapse of
+    a print that carried on is picked up again. Nothing is sent to the printer for any of this.
+    """
+    if not _remembered:
+        _load_remembered()
+    old = _remembered.get(printer_id) or {}
+    fresh = time.time() - float(old.get("at") or 0) < REMEMBER_HOURS * 3600
+    return old["state"] if fresh and old.get("state") in ("printing", "paused") else None
+
+
 def _detect_locked(printer_id, state, finish_event):
     before = _prev_state.get(printer_id)
+    simulated = not mock_moonraker.is_connected(printer_id)
+    resumed = False
     # Until a real printer has answered, its state is a placeholder ("error",
     # never_connected) with nothing behind it. Its first real report becomes
     # the baseline, so a print already running when the dashboard connects
     # (or restarts) isn't announced as "started".
+    if before is None and not state.get("never_connected") and not simulated and printer_id not in _checked_restart:
+        _checked_restart.add(printer_id)
+        # ...unless the last run saw it printing: then that is where this run carries on from.
+        before = _state_before_this_start(printer_id)
+        resumed = before in ("printing", "paused") and state["state"] in ("printing", "paused")
     _prev_state[printer_id] = None if state.get("never_connected") else state["state"]
+    if not simulated and not state.get("never_connected"):
+        _remember(printer_id, state)
     events = _print_events(before, state["state"])
-    simulated = not mock_moonraker.is_connected(printer_id)
+    if resumed and modules.is_enabled("timelapse"):
+        timelapse.resume(printer_id, state.get("current_file"))
     side_effects = (not simulated) or demo_active()
 
     for name in events:
@@ -443,6 +493,12 @@ def stop():
 def reset():
     """Forget cached state and events. Useful for tests."""
     global _seq, _event_seq, _demo_seen_at
+    _remembered.clear()
+    _checked_restart.clear()
+    try:
+        storage.save_json(_STATE_PATH, {})
+    except OSError:
+        pass
     with _cond:
         _cache.clear()
         _events.clear()

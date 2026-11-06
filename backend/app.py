@@ -306,6 +306,7 @@ import tool_setup
 import plate_project
 import model_maker
 import updates
+import update_hold
 import remote
 import watch_only
 import websocket
@@ -488,7 +489,7 @@ _APP_ROUTES = {
         q.get("printer", [None])[0])}),
     "/api/remote": (None, lambda q: remote.status(PORT)),
     "/api/app/watch-only": (None, lambda q: watch_only.status()),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(wait=False),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
@@ -897,6 +898,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return None
         if self.path.startswith("/api/") and self._locked_out():
             return None
+        if self.path.split("?")[0] == "/api/app/alive":
+            # The cheapest possible "is it here?": the launcher, every open page and the offline page ask
+            # this all the time, so it does no work that could be slow (no disk scan, no Task Scheduler,
+            # nothing that waits for GitHub or a printer).
+            return self._send_json({"alive": True, "version": app_updates.version(), "server_pid": os.getpid(),
+                                    "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""),
+                                    "restarting": update_hold.active()})
         if self.path.startswith("/api/live") and websocket.is_upgrade_request(self.headers):
             return self._handle_websocket()
         if self.path.startswith("/api/"):
@@ -999,6 +1007,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         except watch_only.WatchOnly as exc:
             # Refused here on purpose, not by the printer: said as such.
             return self._send_json({"error": str(exc), "watch_only": True}, status=409)
+        except update_hold.UpdateHold as exc:
+            # Deja Vu1 is restarting: it sends the printer nothing for a few seconds. Not a printer failure.
+            return self._send_json({"error": str(exc), "updating": True}, status=409)
         except mock_moonraker.PrinterCommandError as exc:
             # The printer side failed. Say so plainly - never a success.
             return self._send_json({"error": f"The printer reported a failure: {exc}",
@@ -1215,17 +1226,20 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             if os.environ.get("DEJAVU_LAUNCHER") != "1":
                 raise ValueError("This copy was started without the double-click launcher, so it can't restart itself. "
                                  "Close its window and start it again")
-            _restart_soon(self.server)
+            _restart_soon(self.server, reason="restart")
             return self._send_json({"restarting": True, "version": app_updates.version()})
         if route == "/api/app/stop":
             # Only from the computer it runs on: a phone could stop it but never start it again.
-            self._read_json_body()
+            body = self._read_json_body()
             if not self._this_computer():
                 return self._send_json({"error": "Stop Deja Vu1 from the computer it runs on. "
                                                  "A phone can't start it again"}, status=403)
             # Stopped on purpose: the 5-minute check (Task Scheduler) leaves it stopped until it is
-            # started again by hand or the computer restarts.
-            autostart.mark_stopped(storage.DATA_DIR)
+            # started again by hand, the computer restarts or a few hours pass. Not when the update
+            # blocks ask (for_update): they stop it only to start it again, and one that failed half way
+            # (no internet, a locked file) must not leave a note that keeps Deja Vu1 off.
+            if not (isinstance(body, dict) and body.get("for_update") is True):
+                autostart.mark_stopped(storage.DATA_DIR)
             threading.Timer(0.5, self.server.shutdown).start()
             return self._send_json({"stopping": True})
         if route == "/api/app/selfcheck":
@@ -1240,7 +1254,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             # Every module re-reads the restored records after a restart.
             if os.environ.get("DEJAVU_LAUNCHER") == "1":
                 result["restarting"] = True
-                _restart_soon(self.server)
+                _restart_soon(self.server, reason="restore")
             else:
                 result["restart_needed"] = True
             return self._send_json(result)
@@ -1256,11 +1270,10 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             # A development copy: git pull --ff-only, then a restart through
             # the launcher if there is one (otherwise the person restarts it).
             self._read_json_body()
-            _require_idle_for_update()
             result = app_updates.git_update()
             if result["updated"] and os.environ.get("DEJAVU_LAUNCHER") == "1":
                 result["restarting"] = True
-                _restart_soon(self.server)
+                _restart_soon(self.server, reason="update")
             return self._send_json(result)
 
         if route == "/api/tools/layer-plan":
@@ -1322,6 +1335,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 # Said first, whatever else the command would be refused for. moonraker_client
                 # refuses it again underneath, for anything that reaches a printer another way.
                 raise watch_only.WatchOnly(watch_only.MESSAGE)
+            if route != "/api/printer/control/estop" and mock_moonraker.is_real(printer_id) and update_hold.active():
+                raise update_hold.UpdateHold(update_hold.MESSAGE)
             started = time.perf_counter()
             action = _CONTROL_ACTIONS[route] if is_control else _QUEUE_ACTIONS[route]
             result = action(body)
@@ -1992,41 +2007,56 @@ class DejaVuServer(ThreadingHTTPServer):
         self.server_port = port
 
 
-def _require_idle_for_update():
-    """Updates wait while a real printer is busy, out of reach, or a slice is running. Said with the printer's name."""
-    names = {p.get("id"): p.get("name") for p in fleet.registered()}
-    for pid in mock_moonraker.printer_ids():
-        if mock_moonraker.is_real(pid):
-            with mock_moonraker.use_printer(pid):
-                state = mock_moonraker.get_printer_state()
-            name = names.get(pid) or "A printer you added"
-            if not mock_moonraker.is_connected(pid):
-                raise ValueError(f"{name} isn't answering right now, so the update waits: Deja Vu1 can't see whether it "
-                                 "is printing. Check the printer is switched on and on the same network, or remove it "
-                                 "under Printers, then press Install again")
-            if state.get("state") in ("printing", "paused"):
-                raise ValueError(f"{name} is {state.get('state')}. The update waits until it has finished, so a print "
-                                 "is never interrupted. Press Install again afterwards, or turn on automatic updates")
-    try:
-        slicing = slicer_bridge.any_active()
-    except Exception:
-        # 0.8.0 crashed right here, so its Install button never worked. A broken
-        # slicing check must never lock a copy out of the update that fixes it.
-        traceback.print_exc()
-        slicing = False
-    if slicing:
-        raise ValueError("Wait for slicing to finish before updating")
+SLICE_GRACE = 90               # seconds a running slice may finish before an update restarts anyway
+WRITE_GRACE = 20               # seconds a command already on its way to a printer may finish
 
 
-def _restart_soon(server, wait=0.5):
-    """Stop serving; the launcher sees exit code 75 and starts the server again."""
+def _restart_soon(server, wait=0.5, reason="restart"):
+    """
+    Stop serving; the launcher sees exit code 75 and starts the server again.
+    From here Deja Vu1 sends no printer anything new (update_hold), and the stop waits for a
+    command already on its way to finish, so an upload or a G-code line is never cut in half.
+    A print that is running carries on: the printer holds the file and runs it by itself.
+    """
     server.update_restart = True
-    threading.Timer(wait, server.shutdown).start()
+    update_hold.begin(reason)
+
+    def stop():
+        update_hold.wait_quiet(WRITE_GRACE)
+        server.shutdown()
+    threading.Timer(wait, stop).start()
+
+
+def _let_slices_finish(step):
+    """
+    A slice running when an update installs is Deja Vu1's own work, not the printer's, and a restart
+    would end it. It gets SLICE_GRACE seconds to finish; after that it is stopped cleanly (the engine
+    is ended, nothing half-written is queued) and the update goes ahead. Returns how many were stopped.
+    """
+    try:
+        if not slicer_bridge.any_active():
+            return 0
+        step("slices")
+        deadline = time.monotonic() + SLICE_GRACE
+        while slicer_bridge.any_active() and time.monotonic() < deadline:
+            time.sleep(0.5)
+        stopped = slicer_bridge.cancel_all("Stopped for an update. Slice it again")
+        deadline = time.monotonic() + 10
+        while stopped and slicer_bridge.any_active() and time.monotonic() < deadline:
+            time.sleep(0.25)
+        return stopped
+    except Exception:
+        # 0.8.0 crashed here, so its Install button never worked. A broken slicing check must
+        # never lock a copy out of the update that fixes it.
+        traceback.print_exc()
+        return 0
 
 
 def _install_update(server, repair=False, background=False):
     """
-    Stage an update (checked again just before it is committed), then restart into it.
+    Stage an update, then restart into it. Nothing about the printers decides whether it may
+    install: a print runs on the printer by itself, so an update never waits for one, and a
+    printer that isn't answering has nothing to do with the files on this computer.
     Every refusal that can be known at once comes back at once, in words. With
     background=True (the Install and Repair buttons) the download runs on its own
     thread and app_updates.job() reports each step, so a reload finds it.
@@ -2037,11 +2067,6 @@ def _install_update(server, repair=False, background=False):
     if app_updates.job_running():
         raise ValueError("An update is already being installed. This page shows its progress")
     app_updates.set_job("working", "checking", repair=repair)
-    try:
-        _require_idle_for_update()
-    except Exception as exc:
-        app_updates.set_job("idle")
-        raise
     if not background:
         return _run_install(server, repair, raise_errors=True)
     threading.Thread(target=_run_install, args=(server, repair), name="update-install", daemon=True).start()
@@ -2057,7 +2082,7 @@ def _run_install(server, repair, raise_errors=False):
             memory.snapshot("before-update")
         except Exception:
             pass                   # a safety copy that can't be written never blocks the update itself
-        result = app_updates.prepare(before_commit=_require_idle_for_update, repair=repair, step=step)
+        result = app_updates.prepare(repair=repair, step=step)
     except Exception as exc:
         words = app_updates._words(exc)
         print(f"  The update could not be installed: {words}", flush=True)
@@ -2067,10 +2092,12 @@ def _run_install(server, repair, raise_errors=False):
         if raise_errors:
             raise
         return None
-    app_updates.set_job("restarting", "restarting", repair=repair, version=result.get("version"))
+    stopped = _let_slices_finish(step)
+    app_updates.set_job("restarting", "restarting", repair=repair, version=result.get("version"),
+                        slices_stopped=stopped)
     print(f"  Update {result.get('version', '')} is ready. Restarting into it now.", flush=True)
     # A moment longer than before, so the page that pressed Install hears "restarting" first.
-    _restart_soon(server, wait=1.5)
+    _restart_soon(server, wait=1.5, reason="update")
     return result
 
 
@@ -2131,6 +2158,8 @@ def main():
                      name="refind").start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
     threading.Thread(target=memory.watch, daemon=True).start()
+    # Windows' Task Scheduler answers in a second or more; ask it now, so no page ever waits for it.
+    threading.Thread(target=autostart.status, name="autostart-warm", daemon=True).start()
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")

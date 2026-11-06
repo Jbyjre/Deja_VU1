@@ -38,6 +38,7 @@ import time
 from urllib.parse import urlparse
 
 import moonraker_client as mc
+import update_hold
 
 IDLE_SECONDS = 40
 RENEW_SECONDS = 180
@@ -95,6 +96,8 @@ class Monitor:
 
     def _send(self, method, params):
         """Send a call and return its slot without waiting (the reply lands in slot['reply'])."""
+        if update_hold.active():
+            raise ValueError('Deja Vu1 is restarting, so the camera starts again in a moment')
         self.seq += 1
         slot = {'event': threading.Event()}
         self.pending[self.seq] = slot
@@ -104,6 +107,8 @@ class Monitor:
         return slot
 
     def _call(self, method, params):
+        if update_hold.active():
+            raise ValueError('Deja Vu1 is restarting, so the camera starts again in a moment')
         self.seq += 1
         slot = {'event': threading.Event()}
         self.pending[self.seq] = slot
@@ -130,10 +135,13 @@ class Monitor:
             self.timer = None
         if self.ws:
             try:
-                # The repeater needs an integer req_id to match the camera service's answer.
-                self.seq += 1
-                self.ws.send_text(json.dumps({'jsonrpc': '2.0', 'id': self.seq, 'method': 'camera.stop_monitor',
-                                              'params': {'domain': 'lan', 'req_id': self.seq}}))
+                # The repeater needs an integer req_id to match the camera service's answer. Not while
+                # Deja Vu1 restarts: an update sends the printer nothing, and the next
+                # camera.start_monitor after the restart starts the camera again.
+                if not update_hold.active():
+                    self.seq += 1
+                    self.ws.send_text(json.dumps({'jsonrpc': '2.0', 'id': self.seq, 'method': 'camera.stop_monitor',
+                                                  'params': {'domain': 'lan', 'req_id': self.seq}}))
             except Exception:
                 pass
             self.ws.close()

@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -172,7 +173,7 @@ class NewestBuilds(unittest.TestCase):
         self.addCleanup(self.settings.stop)
         self.downloads = []
 
-    def github(self, url, limit, tamper=None):
+    def github(self, url, limit, tamper=None, **_):
         sha, tree = 'a' * 40, 'b' * 40
         if url == updates.COMMIT_API:
             return json.dumps({'sha': sha, 'commit': {'tree': {'sha': tree}, 'message': 'Better twin\n\nlong text',
@@ -208,7 +209,7 @@ class NewestBuilds(unittest.TestCase):
 
     def test_a_file_that_does_not_match_installs_nothing(self):
         updates.save_settings({'channel': 'latest'})
-        bad = lambda url, limit: self.github(url, limit, tamper={'frontend/new.js': b'// swapped'})
+        bad = lambda url, limit, **kw: self.github(url, limit, tamper={'frontend/new.js': b'// swapped'})
         with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(updates, '_read_url', side_effect=bad):
             with self.assertRaisesRegex(ValueError, 'did not match'):
                 updates.prepare(self.root)
@@ -238,13 +239,22 @@ class NewestBuilds(unittest.TestCase):
                     stop.set()
                     return True
                 with patch.object(stop, 'wait', side_effect=once):
-                    updates.watch(lambda: installed.append(1), stop=stop)
+                    updates.watch(lambda: installed.append(1), stop=stop, first_wait=0)
         self.assertEqual(installed, [])                 # auto_install is off
         updates.save_settings({'auto_install': True})
         stop = __import__('threading').Event()
         with patch.object(updates, 'automatic_check', return_value=ready), patch.object(stop, 'wait', side_effect=lambda *a: stop.set() or True):
-            updates.watch(lambda: installed.append(1), stop=stop)
+            updates.watch(lambda: installed.append(1), stop=stop, first_wait=0)
         self.assertEqual(installed, [1])
+
+    def test_the_first_automatic_check_waits_so_a_fresh_start_answers_first(self):
+        stop = __import__('threading').Event()
+        waited = []
+        with patch.object(updates, 'automatic_check') as check, \
+                patch.object(stop, 'wait', side_effect=lambda t=None: waited.append(t) or True):
+            updates.watch(lambda: None, stop=stop)
+        self.assertEqual(waited, [45])                 # asked to wait first, and stopped while waiting
+        check.assert_not_called()
 
 
 @unittest.skipUnless(shutil.which('git'), 'git is not installed')
@@ -330,32 +340,64 @@ class GitCopyUpdates(unittest.TestCase):
             self.assertIn('app-3.10.1', updates.find_git(windows=True))  # newest, compared as numbers
 
 
-class UpdatesWaitForSlicing(unittest.TestCase):
-    """The update gate read the slice-job list wrongly and crashed (a 500 on every install)."""
+class UpdatesAndSlicing(unittest.TestCase):
+    """A running slice gets a little time to finish; it never decides whether an update may install."""
 
     def setUp(self):
         import app as dv_app
         import slicer_bridge
         self.app, self.bridge = dv_app, slicer_bridge
-        self.saved = dict(slicer_bridge._jobs)
+        self.saved = (dict(slicer_bridge._jobs), dict(slicer_bridge._cancellations))
         slicer_bridge._jobs.clear()
+        slicer_bridge._cancellations.clear()
 
     def tearDown(self):
         self.bridge._jobs.clear()
-        self.bridge._jobs.update(self.saved)
+        self.bridge._cancellations.clear()
+        self.bridge._jobs.update(self.saved[0])
+        self.bridge._cancellations.update(self.saved[1])
 
-    def test_no_slicing_lets_an_update_through(self):
-        self.app._require_idle_for_update()          # the demo printers are simulated, so nothing else waits
+    def start_slice(self, job_id='j1'):
+        self.bridge._jobs[job_id] = {'id': job_id, 'status': 'running', 'printer_id': 'some-other-printer'}
+        self.bridge._cancellations[job_id] = threading.Event()
+
+    def test_no_slicing_means_nothing_to_wait_for(self):
+        steps = []
+        self.assertEqual(self.app._let_slices_finish(lambda name, **kw: steps.append(name)), 0)
+        self.assertEqual(steps, [])
+
+    def test_a_slice_that_finishes_in_time_is_left_alone(self):
+        self.start_slice()
+        steps = []
+        threading.Timer(0.3, lambda: self.bridge._jobs['j1'].update(status='done')).start()
+        with patch.object(self.app, 'SLICE_GRACE', 5):
+            stopped = self.app._let_slices_finish(lambda name, **kw: steps.append(name))
+        self.assertEqual((stopped, steps), (0, ['slices']))
+        self.assertFalse(self.bridge._cancellations['j1'].is_set())
+
+    def test_a_slice_still_running_after_the_grace_time_is_stopped_and_the_update_goes_ahead(self):
+        self.start_slice()
+        event = self.bridge._cancellations['j1']
+        threading.Thread(target=lambda: (event.wait(5), self.bridge._jobs['j1'].update(status='cancelled')),
+                         daemon=True).start()
+        with patch.object(self.app, 'SLICE_GRACE', 0.3):
+            stopped = self.app._let_slices_finish(lambda name, **kw: None)
+        self.assertEqual(stopped, 1)
+        self.assertTrue(event.is_set())
+        self.assertIn('Slice it again', self.bridge._jobs['j1']['step'])
 
     def test_a_broken_slicing_check_never_locks_out_the_fix(self):
         # 0.8.0's Install button crashed in this check every time; a crash here now lets the update through.
         with patch.object(self.bridge, 'any_active', side_effect=AttributeError('boom')), \
                 patch('traceback.print_exc'):
-            self.app._require_idle_for_update()
+            self.assertEqual(self.app._let_slices_finish(lambda name, **kw: None), 0)
 
-    def test_a_slice_for_any_printer_holds_the_update(self):
-        self.bridge._jobs['j1'] = {'id': 'j1', 'status': 'running', 'printer_id': 'some-other-printer'}
-        with self.assertRaisesRegex(ValueError, 'slicing'):
-            self.app._require_idle_for_update()
-        self.bridge._jobs['j1']['status'] = 'done'
-        self.app._require_idle_for_update()
+    def test_cancel_all_asks_every_waiting_or_running_slice_once(self):
+        self.start_slice('a')
+        self.start_slice('b')
+        self.bridge._jobs['b']['status'] = 'waiting'
+        self.start_slice('c')
+        self.bridge._jobs['c']['status'] = 'done'
+        self.assertEqual(self.bridge.cancel_all('Stopped'), 2)
+        self.assertEqual(self.bridge.cancel_all('Stopped'), 0)
+        self.assertFalse(self.bridge._cancellations['c'].is_set())

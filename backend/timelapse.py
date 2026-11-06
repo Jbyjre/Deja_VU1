@@ -64,6 +64,33 @@ def begin(printer_id, filename, source):
     return session
 
 
+RESUME_HOURS = 24
+
+
+def resume(printer_id, filename):
+    """
+    Deja Vu1 restarted (an update, a crash) while this printer was printing: carry on with the
+    time-lapse that print already has, instead of leaving it without one. True when one was taken up.
+    """
+    with _lock:
+        if printer_id in _active or not filename or not os.path.isdir(_dir(printer_id)):
+            return False
+        # Only the newest session can be this print's: an older one that never finished is from a print
+        # that ended some other way, and picking it up would put this print's frames in the wrong place.
+        for session in sorted(os.listdir(_dir(printer_id)), reverse=True)[:1]:
+            try:
+                meta = storage.load_json(_meta_path(printer_id, session), None)
+                age = (datetime.now() - datetime.fromisoformat(meta["started_at"])).total_seconds()
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            if (isinstance(meta, dict) and not meta.get("finished") and meta.get("filename") == filename
+                    and 0 <= age < RESUME_HOURS * 3600):
+                last = meta.get("last_layer")
+                _active[printer_id] = {"session": session, "last_layer": last if isinstance(last, int) else -99}
+                return True
+        return False
+
+
 def _prune(printer_id):
     sessions = sorted(os.listdir(_dir(printer_id))) if os.path.isdir(_dir(printer_id)) else []
     for old in sessions[:-KEEP_SESSIONS]:
@@ -86,6 +113,7 @@ def maybe_capture(printer_id, layer, frame_bytes, extension):
         name = f"{meta['frames']:05d}.{extension}"
         with open(os.path.join(_dir(printer_id, info["session"]), name), "wb") as fh:
             fh.write(frame_bytes)
+        meta["last_layer"] = layer              # kept, so a restart in the middle of a print can carry on
         storage.save_json(meta_path, meta, indent=None)
         info["last_layer"] = layer
         return True

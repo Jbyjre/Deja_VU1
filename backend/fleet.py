@@ -235,6 +235,13 @@ def _public(entry):
                                      if diag["klippy_state"] not in (None, "ready") else "")
     else:
         out["link"] = f"Not connected: {diag['last_error'] or 'connecting...'}"
+        try:
+            import discovery
+            hint = discovery.network_hint(entry.get("moonraker_url"))
+        except Exception:                 # a hint that can't be worked out is simply left out
+            hint = None
+        if hint:
+            out["network_hint"] = hint
     return out
 
 
