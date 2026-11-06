@@ -212,7 +212,7 @@ window.Versions = (() => {
     else { undo(); toast(r.body.error || 'Could not save that preference', 'bad'); }
   };
   $('app-update-autoinstall').onchange = e => savePref({ auto_install: e.target.checked }, () => { e.target.checked = !e.target.checked; },
-    e.target.checked ? 'Updates will install by themselves while every printer is idle.' : 'Updates wait for you to press Install.');
+    e.target.checked ? 'Updates will install by themselves. A print keeps going: the printer runs its file on its own.' : 'Updates wait for you to press Install.');
   document.querySelectorAll('input[name=app-update-channel]').forEach(r => {
     r.onchange = () => savePref({ channel: r.value }, renderCard, r.value === 'latest' ? 'You’ll get the newest builds.' : 'You’ll get stable releases only.');
   });
@@ -236,7 +236,7 @@ window.Versions = (() => {
   let following = false;
   async function startJob(route, btn) {
     btn.disabled = true;
-    showJob({ state: 'working', words: 'Checking that every printer is idle' });
+    showJob({ state: 'working', step: 'checking', words: 'Getting ready. Your printers are not touched and a print keeps going' });
     try {
       const r = await postJSON(route, {});
       if (!r.ok) throw new Error(r.body.error);
@@ -254,7 +254,8 @@ window.Versions = (() => {
       const mb = n => (n / 1048576).toFixed(1);
       words = `Downloading version ${job.version || ''}: ${mb(job.done || 0)} of ${mb(job.total)} MB (${pct}%)`.replace('version :', 'the update:');
     } else if (job.state === 'restarting') {
-      pct = 100; words = `Restarting into version ${job.version || 'the new version'}. This page reloads by itself.`;
+      pct = 100; words = `Restarting into version ${job.version || 'the new version'}. This page reloads by itself. A print keeps going on the printer.`
+        + (job.slices_stopped ? ` ${job.slices_stopped === 1 ? 'A slice' : `${job.slices_stopped} slices`} still running was stopped: slice again after the restart.` : '');
     }
     bar.classList.toggle('is-unknown', pct === null);
     bar.style.setProperty('--done', `${pct === null ? 30 : Math.max(4, pct)}%`);
@@ -367,7 +368,7 @@ window.Versions = (() => {
     btn.disabled = false;
   };
   $('app-stop').onclick = async e => {
-    if (!confirm('Stop Deja Vu1?\n\nThe dashboard closes on this computer and on your phone. Prints already running carry on. Start it again with the double-click launcher.')) return;
+    if (!confirm('Stop Deja Vu1?\n\nThe dashboard closes on this computer and on your phone. Prints already running carry on. Start it again with the double-click launcher. If it starts with the computer, it also comes back by itself when the computer restarts or after four hours.')) return;
     const btn = e.currentTarget; btn.disabled = true;
     try {
       const r = await postJSON('/api/app/stop', {});
@@ -412,8 +413,7 @@ window.Versions = (() => {
     setTimeout(async () => {
       const secs = Math.round((Date.now() - started) / 1000);
       try {
-        const r = await fetch('/api/app/info', { cache: 'no-store' });
-        const d = await r.json();
+        const d = await aliveInfo();
         // A new server: the version asked for, or (Restart, Repair) a new process that answers.
         const back = version ? d.version === version : (d.version && (d.version !== before || tries > 2));
         if (back || secs > 180) return location.reload();
@@ -423,7 +423,7 @@ window.Versions = (() => {
       $('app-update-bar').classList.add('is-unknown');
       $('app-update-step').textContent = secs < 60
         ? `Restarting${version ? ` into version ${version}` : ''}: ${secs} s. This page reloads by itself.`
-        : `This is taking longer than usual (${secs} s). Look at the Deja Vu1 window: it says what is happening. If it shows an error or has closed, paste the Start and check command below.`;
+        : `This is taking longer than usual (${secs} s). Deja Vu1 starts again by itself if it stopped. If nothing changes, paste the Start and check command below: it says what is wrong.`;
       if (secs >= 60) { $('vc-fix').open = true; }
       waitForRestart(version, tries + 1, started, before);
     }, tries ? 1500 : 2500);

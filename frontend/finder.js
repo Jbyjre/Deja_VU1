@@ -73,7 +73,7 @@ window.Finder = (() => {
     ['Right colour loaded?', 'Materials', 'colour check color match wrong filament', 'Right colour loaded?'],
     ['Filament inventory', 'Materials', 'spools spoolman inventory grams stock filament left', 'Filament inventory'],
     ['Appearance', 'Preferences', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
-    ['Modules · turn features on or off', 'Settings', 'modules features enable disable switch on off', 'Modules'],
+    ['Optional extras · slicing, lights, Home Assistant', 'Settings', 'optional extras modules add-ons slicing slicer wled home assistant led lights low latency camera colour checker switch on off enable disable', 'Optional extras'],
     ['Paired devices', 'Settings', 'pair phone devices tablets lock only paired access password login security', 'Paired devices'],
     ['Your data is safe · safety copies', 'Settings', 'safety copy snapshot restore undo lost settings memory data recover', 'Your data is safe'],
     ['About Deja Vu1 · check it yourself', 'Settings', 'about version credits licence check it yourself self test verify proof', 'About Deja Vu1'],
@@ -82,7 +82,7 @@ window.Finder = (() => {
     ['Backup, firmware & recovery', 'Settings', 'backup restore recovery firmware update snapshot', 'Printer firmware & app recovery'],
     ['App updates', 'Settings', 'update upgrade new version newest build latest automatic install github command paste powershell terminal', '#version-card'],
     ['Restart, repair or stop the app', 'Settings', 'restart repair reinstall fix broken files stop quit close shut down manage app', '#vc-manage'],
-    ['Print cost pricing', 'Settings', 'electricity price filament price kwh cost settings', 'Print cost pricing'],
+    ['Print cost prices', 'Printer › History & upkeep', 'electricity price filament price kwh cost settings pricing prices', '#cost-pricing'],
     ['WLED bridge', 'Settings', 'wled leds lights strip', 'WLED bridge'],
     ['Home Assistant bridge', 'Settings', 'home assistant hass sensors mqtt smart home', 'Home Assistant bridge'],
     ['Camera settings', 'Printer › Camera & time-lapses', 'camera webcam stream mjpeg webrtc go2rtc', 'Camera settings'],
@@ -183,6 +183,7 @@ window.Finder = (() => {
     if (!el) el = [...document.querySelectorAll('main h2, main h3')].find(h => words(h) === target) || null;
     const tab = el && el.closest('.tab-panel');
     if (tab) showTab(tab.id.replace(/^tab-/, ''));
+    if (el && el.tagName === 'DETAILS') el.open = true;       // a folded block that was searched for opens
     if (!el) return;
     const card = el.closest('.card, .tab-sub') || el;
     requestAnimationFrame(() => {

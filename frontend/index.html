@@ -602,12 +602,30 @@
           <div><h2>Print cost</h2><p class="card-sub">Filament plus electricity, estimated as you go</p></div>
         </div>
         <div id="cost-body"></div>
+        <details class="log cost-prices-set" id="cost-pricing">
+          <summary>Prices used for the estimate</summary>
+          <div class="field-stack">
+            <div class="field-row">
+              <label class="field">Electricity ($ per kWh)<input type="number" id="cost-electricity" step="0.01" min="0" placeholder="0.15"></label>
+              <label class="field">Printer power (watts)<input type="number" id="cost-watts" step="1" min="0" placeholder="250"></label>
+            </div>
+            <div class="field-row">
+              <label class="field">Material<input type="text" id="cost-material" placeholder="PLA"></label>
+              <label class="field">Its price ($ per kg)<input type="number" id="cost-price" step="0.01" min="0" placeholder="20"></label>
+            </div>
+            <span class="field-hint">Leave Material empty to save only the electricity figures.</span>
+            <span class="field-hint" id="cost-prices" aria-live="polite"></span>
+            <button class="btn block" id="cost-save-btn">Save pricing</button>
+          </div>
+        </details>
       </section>
     </div>
 
     <div class="grid-2">
       <section class="card liquid-glass" id="camera-card">
-        <div class="card-head"><div><h2>Camera settings</h2><p class="card-sub">Which camera feed to use. The picture itself shows on the Control part, beside the twin.</p></div></div>
+        <div class="card-head"><div><h2>Camera settings</h2><p class="card-sub">Which camera feed to use. The picture itself shows on the Control part, beside the twin.</p></div>
+          <label class="switch" for="camera-setting"><span class="switch-label">Use the camera</span>
+            <input type="checkbox" id="camera-setting" data-setting-module="camera" data-setting-name="The camera" checked><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
         <form id="camera-form" class="inline-form">
           <label class="sr-only" for="camera-url">Camera stream address</label>
           <input type="url" id="camera-url" placeholder="http://printer/webcam/…" aria-describedby="camera-url-hint">
@@ -634,7 +652,9 @@
         </details><div id="camera-host" class="camera-host"></div>
       </section>
       <section class="card liquid-glass" id="timelapse-card">
-        <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div></div>
+        <div class="card-head"><div><h2>Time-lapses</h2><p class="card-sub">A frame every two layers, played back here as a flipbook</p></div>
+          <label class="switch" for="timelapse-setting"><span class="switch-label">Record time-lapses</span>
+            <input type="checkbox" id="timelapse-setting" data-setting-module="timelapse" data-setting-name="Time-lapses" checked><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
         <div id="timelapse-host"></div>
       </section>
     </div>
@@ -909,7 +929,6 @@
     <section class="card liquid-glass">
       <div class="card-head">
         <div><h2>Maintenance</h2><p class="card-sub">Reminders from cumulative print history</p></div>
-        <span class="badge badge-live">Working module</span>
       </div>
       <div id="tasks" class="tasks">
         <div class="empty">
@@ -976,7 +995,6 @@
         <section class="card liquid-glass">
           <div class="card-head">
             <div><h2>Filament inventory</h2><p class="card-sub">Spools on hand</p></div>
-            <span class="badge badge-optional">Optional module</span>
           </div>
           <div id="spool-list"></div>
           <details class="log" id="spool-charges-wrap" data-module-body="filament_inventory" hidden>
@@ -1011,7 +1029,6 @@
         <section class="card liquid-glass">
           <div class="card-head">
             <div><h2>What changed?</h2><p class="card-sub">Compared against your print history</p></div>
-            <span class="badge badge-optional">Optional module</span>
           </div>
           <div id="compare-body">
             <div class="empty">
@@ -1142,7 +1159,7 @@
       <div class="vc-update">
         <p class="vc-kind" id="vc-kind"></p>
         <p id="app-update-status" role="status">Loading app information&hellip;</p>
-        <div class="vc-progress" id="app-update-progress" hidden><div class="vc-bar" id="app-update-bar" role="progressbar" aria-label="Update progress" aria-valuemin="0" aria-valuemax="100"><span></span></div><p class="vc-step" id="app-update-step"></p></div>
+        <div class="vc-progress liquid-glass" id="app-update-progress" hidden><div class="vc-bar" id="app-update-bar" role="progressbar" aria-label="Update progress" aria-valuemin="0" aria-valuemax="100"><span></span></div><p class="vc-step" id="app-update-step"></p><p class="vc-safe"><span class="vc-safe-mark" aria-hidden="true">✓</span> Your printers are not touched. A print that is running keeps going on the printer.</p></div>
         <ul class="vc-coming" id="vc-coming" hidden></ul>
         <fieldset class="update-channel" id="app-update-channels">
           <legend class="sr-only">Which updates to get</legend>
@@ -1151,8 +1168,8 @@
         </fieldset>
         <div class="setup-choices"><button class="btn" id="app-update-check">Check for updates</button><button class="btn primary" id="app-update-install" hidden>Install update &amp; restart</button><button class="btn primary" id="app-update-git" hidden>Update with git</button></div>
         <label class="setup-check"><input type="checkbox" id="app-update-auto"> Look for updates by itself <span class="field-hint" id="app-update-auto-when">(releases once a day)</span></label>
-        <label class="setup-check"><input type="checkbox" id="app-update-autoinstall"> Install by itself when every printer is idle</label>
-        <p class="field-hint">Your data is never part of an update, and a safety copy comes first. GitHub sees only your network address.</p>
+        <label class="setup-check"><input type="checkbox" id="app-update-autoinstall"> Install by itself when an update is ready</label>
+        <p class="field-hint">Your data is never part of an update, and a safety copy comes first. GitHub sees only your network address. Updating while a print runs is fine: the printer holds the file and runs it by itself, and Deja Vu1 sends it nothing while it restarts.</p>
         <p class="field-hint" id="app-update-note"></p>
       </div>
       <h3 class="vc-h">Look after this copy</h3>
@@ -1160,7 +1177,7 @@
         <button type="button" class="vc-tool" id="app-restart"><b>Restart</b><span>Start the dashboard fresh. Takes a few seconds.</span></button>
         <button type="button" class="vc-tool" id="app-repair"><b>Repair files</b><span>Put the published app files back. Your data stays.</span></button>
         <button type="button" class="vc-tool" id="app-safety"><b>Safety copy now</b><span>Save your settings and records before a change.</span></button>
-        <button type="button" class="vc-tool is-stop" id="app-stop"><b>Stop Deja Vu1</b><span>Close it on this computer. The launcher starts it again.</span></button>
+        <button type="button" class="vc-tool is-stop" id="app-stop"><b>Stop Deja Vu1</b><span>Close it on this computer. It stays closed until you start it, the computer restarts or four hours pass.</span></button>
         <button type="button" class="vc-tool" id="app-ready"><b>Check it all works</b><span>Pages, demo data, printers, saved data and updates, checked now.</span></button>
         <button type="button" class="vc-tool desk-only" id="app-report"><b>Copy a report for help</b><span>Version, start-up, checks, printer link and recent notes, ready to paste.</span></button>
       </div>
@@ -1183,13 +1200,13 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</co
         <div class="pill-toggle vc-os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
         <div class="vc-term" data-os-block="win"><button class="btn small vc-copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
-try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Body '{"for_update":true}' -ContentType 'application/json' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
 Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
 Set-Location $dest
 if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }</code></pre></div>
-        <div class="vc-term" data-os-block="unix" hidden><button class="btn small vc-copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+        <div class="vc-term" data-os-block="unix" hidden><button class="btn small vc-copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{"for_update":true}' http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
 cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
@@ -1251,13 +1268,14 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
     </section>
     <div class="grid-2" style="align-items:start;">
       <section class="card liquid-glass">
-        <div class="card-head"><div><h2>Modules</h2><p class="card-sub">Turn features on or off</p></div></div>
+        <div class="card-head"><div><h2>Optional extras</h2><p class="card-sub">Add-ons that need something outside Deja Vu1: a program you install, a device, or another service. Switch on only what you use. Everything else is part of Deja Vu1 and always on.</p></div></div>
         <div id="module-list"></div>
       </section>
 
       <div style="display:flex; flex-direction:column; gap:20px;">
         <section class="card liquid-glass">
           <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Phones and other computers you use with this dashboard.</p></div></div>
+          <label class="setup-check handoff-setting"><input type="checkbox" id="handoff-setting" data-setting-module="handoff" data-setting-name="Continue on another device" checked> <span><b>Continue on another device</b> Offers to pick up on your phone exactly where another device left off.</span></label>
           <label class="setup-check device-lock"><input type="checkbox" id="device-lock"> <span><b>Only paired devices can use this dashboard</b> Off by default. When on, any other device must enter a pairing code before it can see or control anything. This computer always works, so you can't lock yourself out. Pair your phone first.</span></label>
           <p class="field-hint" id="device-lock-note" role="status"></p>
           <div id="pairing-code-display" style="display:none; text-align:center; margin-bottom:14px;">
@@ -1320,27 +1338,9 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
         </section>
 
         <section class="card liquid-glass">
-          <div class="card-head"><div><h2>Print cost pricing</h2></div></div>
-          <div class="field-stack" data-module-body="cost_calculator">
-            <div class="field-row">
-              <label class="field">Electricity ($ per kWh)<input type="number" id="cost-electricity" step="0.01" min="0" placeholder="0.15"></label>
-              <label class="field">Printer power (watts)<input type="number" id="cost-watts" step="1" min="0" placeholder="250"></label>
-            </div>
-            <div class="field-row">
-              <label class="field">Material<input type="text" id="cost-material" placeholder="PLA"></label>
-              <label class="field">Its price ($ per kg)<input type="number" id="cost-price" step="0.01" min="0" placeholder="20"></label>
-            </div>
-            <span class="field-hint">Leave Material empty to save only the electricity figures.</span>
-            <span class="field-hint" id="cost-prices" aria-live="polite"></span>
-            <button class="btn block" id="cost-save-btn">Save pricing</button>
-          </div>
-          <div data-module-off="cost_calculator" hidden></div>
-        </section>
-
-        <section class="card liquid-glass">
           <div class="card-head">
             <div><h2>WLED bridge</h2><p class="card-sub">Push dock ring colours to a WLED strip</p></div>
-            <span class="badge badge-optional">Optional module</span>
+            <span class="badge badge-optional">Optional extra</span>
           </div>
           <div class="field-stack" data-module-body="wled_bridge">
             <label class="field">WLED address<input type="text" id="wled-host" placeholder="wled.local or 192.168.1.60"></label>
@@ -1357,7 +1357,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
         <section class="card liquid-glass">
           <div class="card-head">
             <div><h2>Home Assistant bridge</h2><p class="card-sub">Publish printer state as REST sensors</p></div>
-            <span class="badge badge-optional">Optional module</span>
+            <span class="badge badge-optional">Optional extra</span>
           </div>
           <div class="field-stack" data-module-body="home_assistant_bridge">
             <label class="field">Home Assistant address<input type="text" id="ha-url" placeholder="http://homeassistant.local:8123"></label>

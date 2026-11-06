@@ -73,7 +73,7 @@ window.PrintRoom = (() => {
         getJSON('/api/printer'),
         getJSON('/api/filament')
       ]);
-      if (!saved?.heads) throw new Error('Enable Filament inventory in Settings → Modules to save tool choices.');
+      if (!saved?.heads) throw new Error('The saved tool choices aren’t available right now. Reload the page and try again.');
       if (forPrinter !== currentPrinter) throw new Error('Printer changed while loading. Load its saved setup again.');
       loadedFor = currentPrinter;
       const spools = inventory?.spools || [];

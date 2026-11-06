@@ -15,6 +15,16 @@ status meanings:
   "ready"            - works today against a live printer, no extra parts
   "hardware_pending"  - logic is done, waiting on a physical add-on
   "optional"          - works today, off by default, not essential
+
+kind says where a feature's switch lives (November 2026: the Modules list had grown to 29 rows,
+most of them parts of Deja Vu1 itself, and nobody could tell what a switch was for):
+  "extra"    - an optional extra that needs something outside Deja Vu1 (a program you install,
+               a device, another service). The only kind in Settings > Optional extras.
+  "setting"  - a normal setting that sits in its own card (the camera, time-lapses, continue on
+               another device), with its switch there.
+  "core"     - part of Deja Vu1 and always on. The server can still refuse its routes when told to
+               (tests do), but no screen offers a switch, and a copy saved with one off is switched
+               back on once (see DEFAULTS_VERSION).
 """
 
 import os
@@ -47,7 +57,7 @@ REGISTRY = [
     {
         "id": "led_status",
         "name": "Dock status rings",
-        "description": "WS2812 rings, or push the same state to a WLED "
+        "description": "WS2812 rings on the dock, or the same state on a WLED "
                         "strip you already own.",
         "status": "hardware_pending",
         "default_enabled": True,
@@ -55,7 +65,8 @@ REGISTRY = [
     {
         "id": "color_check",
         "name": "Right colour loaded?",
-        "description": "Optical filament colour check before a print starts.",
+        "description": "Checks each loaded filament's colour with a sensor "
+                        "before a print starts. Needs extra hardware.",
         "status": "hardware_pending",
         "default_enabled": True,
     },
@@ -117,10 +128,10 @@ REGISTRY = [
     },
     {
         "id": "webrtc_camera",
-        "name": "Low-latency camera (WebRTC)",
-        "description": "Plays the camera with almost no delay through go2rtc, "
-                        "a separate program you install. Falls back to the "
-                        "normal camera feed if it can't connect.",
+        "name": "Low-latency camera",
+        "description": "Plays the camera with almost no delay. Needs go2rtc, a "
+                        "separate program you install. Falls back to the "
+                        "normal camera if it can't connect.",
         "status": "optional",
         "default_enabled": False,
     },
@@ -135,16 +146,16 @@ REGISTRY = [
     {
         "id": "wled_bridge",
         "name": "WLED bridge",
-        "description": "Pushes dock ring colors to a WLED-flashed LED "
-                        "strip you already own, over WLED's JSON API.",
+        "description": "Sends the dock ring colours to a WLED light strip "
+                        "you already own.",
         "status": "optional",
         "default_enabled": False,
     },
     {
         "id": "home_assistant_bridge",
         "name": "Home Assistant bridge",
-        "description": "Publishes printer state to Home Assistant as REST "
-                        "sensors - no MQTT broker, no custom component.",
+        "description": "Shows printer state in Home Assistant as sensors. "
+                        "No MQTT broker or custom component needed.",
         "status": "optional",
         "default_enabled": False,
     },
@@ -241,9 +252,9 @@ REGISTRY = [
     },
     {
         "id": "auto_print",
-        "name": "Slicing (auto-print)",
+        "name": "Slicing",
         "description": "Slices STL and 3MF models with Snapmaker Orca or OrcaSlicer, a separate "
-                        "program you install, and puts the G-code in the library or queue.",
+                        "program you install, and puts the G-code in your library or queue.",
         "status": "optional",
         "default_enabled": True,
     },
@@ -265,10 +276,15 @@ REGISTRY = [
     },
 ]
 
+EXTRAS = ("auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check")
+SETTINGS = ("camera", "timelapse", "handoff")
+for _module in REGISTRY:
+    _module["kind"] = "extra" if _module["id"] in EXTRAS else "setting" if _module["id"] in SETTINGS else "core"
+
 _BY_ID = {m["id"]: m for m in REGISTRY}
 
 
-DEFAULTS_VERSION = 2
+DEFAULTS_VERSION = 3
 DEFAULTS_ON = ("filament_inventory", "sanity_check", "compare", "auto_print")
 
 
@@ -296,6 +312,11 @@ def _load_state():
     if state.get("_defaults", 1) < DEFAULTS_VERSION:
         for module_id in DEFAULTS_ON:
             state[module_id] = True
+        # Version 3: the parts of Deja Vu1 itself lost their switches. One that an earlier copy had
+        # switched off would stay off with no way back on screen, so they are all on again, once.
+        for module in REGISTRY:
+            if module["kind"] == "core":
+                state[module["id"]] = True
         state["_defaults"] = DEFAULTS_VERSION
         _save_state(state)
     return state

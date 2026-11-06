@@ -40,7 +40,7 @@ small,#check{color:var(--soft)}
 <main><div class="card">
 <h1 id="title"><span class="pulse" aria-hidden="true"><i></i><i></i><i></i></span>Reconnecting to Deja Vu1&hellip;</h1>
 <p class="lead" id="lead">This usually takes a few seconds, for example after an update or when the computer wakes. This page goes back to your dashboard by itself.</p>
-<p class="note" id="updating" hidden>Deja Vu1 is installing an update and restarting. This usually takes under a minute.</p>
+<p class="note" id="updating" hidden>Deja Vu1 is installing an update and restarting. This usually takes under a minute. A print on your printer keeps going: the printer runs its file by itself.</p>
 <p id="check" aria-live="polite"></p>
 
 <div id="here" hidden>
@@ -65,13 +65,13 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</co
 <p>This block stops any stuck copy, downloads fresh app files from GitHub, puts them in your Deja Vu1 folder in Documents and starts it. Your settings, printers and files stay.</p>
 <div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
-try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Body '{"for_update":true}' -ContentType 'application/json' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
 Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
 Set-Location $dest
 if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }</code></pre></div>
-<div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+<div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{"for_update":true}' http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
 cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
@@ -135,7 +135,10 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
     if (waited > patience) giveUpWaiting();
     if (asked && Date.now() - asked > 25000) { $('start-late').hidden = false; $('more').open = true; $('check').textContent = ''; }
     else if (shown && !asked) $('check').textContent = 'Checking every few seconds.';
-    fetch('/api/modules', { cache: 'no-store' }).then(function (r) {
+    // The light "is it here?" route first; a server from before it existed answers the older one.
+    fetch('/api/app/alive', { cache: 'no-store' }).then(function (r) {
+      return r.status === 404 ? fetch('/api/modules', { cache: 'no-store' }) : r;
+    }).then(function (r) {
       if (r.ok) {
         try { sessionStorage.removeItem('dv-updating'); } catch (e) {}
         $('check').innerHTML = '<span class="ok">Deja Vu1 is back. Opening your dashboard\u2026</span>';

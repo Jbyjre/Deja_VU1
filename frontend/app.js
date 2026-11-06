@@ -49,16 +49,42 @@ function escName(text) {
  * The picture refreshes whenever the module list is read, when a module is
  * toggled here, and at least every 20 s, so a module switched on from
  * another device is noticed. */
-const modGate = { routes: {}, off: new Set(), at: 0, pending: null, idOf: {}, nameOf: {} };
+const modGate = { routes: {}, off: new Set(), at: 0, pending: null, idOf: {}, nameOf: {}, kindOf: {} };
 
 function noteModules(body) {
   if (!body || !Array.isArray(body.modules)) return;
   modGate.off = new Set(body.modules.filter(m => !m.enabled).map(m => m.id));
-  body.modules.forEach(m => { modGate.idOf[m.name] = m.id; modGate.nameOf[m.id] = m.name; });
+  body.modules.forEach(m => { modGate.idOf[m.name] = m.id; modGate.nameOf[m.id] = m.name; modGate.kindOf[m.id] = m.kind; });
   if (body.routes) modGate.routes = body.routes;
   modGate.at = Date.now();
   syncModuleBodies();
+  syncSettingSwitches();
 }
+
+/* The few features that are ordinary settings (the camera, time-lapses, continue on another
+ * device) have their switch in their own card: <input data-setting-module="camera">. */
+function syncSettingSwitches() {
+  document.querySelectorAll('[data-setting-module]').forEach(input => {
+    if (!input.disabled) input.checked = !modGate.off.has(input.dataset.settingModule);
+  });
+}
+document.addEventListener('change', async e => {
+  const input = e.target.closest && e.target.closest('[data-setting-module]');
+  if (!input) return;
+  const id = input.dataset.settingModule, want = input.checked, name = input.dataset.settingName || 'This setting';
+  input.disabled = true;
+  const { ok, body } = await postJSON(api(`/api/modules/${id}/toggle`), { enabled: want });
+  input.disabled = false;
+  if (!ok) {
+    input.checked = !want;
+    toast(`Couldn't change ${name.toLowerCase()}: ${body.error || 'the server refused'}`, 'bad', 6000);
+    return;
+  }
+  if (want) modGate.off.delete(id); else modGate.off.add(id);
+  syncModuleBodies();
+  toast(`${name} is ${want ? 'on' : 'off'}`, 'ok', 2200);
+  refreshAll();
+});
 
 /* Controls that belong to a module ([data-module-body]) hide while it is
  * off, and its [data-module-off] slot says so, with the switch right there:
@@ -792,7 +818,7 @@ function moduleDisabledEmpty(name) {
   <div class="empty is-off">
     <span class="empty-mark" aria-hidden="true"></span>
     <p class="empty-title">${esc(name)}</p>
-    <p class="empty-sub">Switched off in Settings → Modules.</p>
+    <p class="empty-sub">${modGate.kindOf[id] === 'extra' ? 'Switched off in Settings → Optional extras.' : 'Switched off.'}</p>
     ${id ? `<button class="btn small" type="button" data-turn-on="${esc(id)}">Turn on</button>` : ''}
   </div>`;
 }
@@ -1079,8 +1105,10 @@ function unreachableWords(p) {
   if (!why || /^connecting/i.test(why)) {
     return [`Connecting to ${p.name}…`, 'This takes a few seconds once it is switched on.'];
   }
+  // When the two addresses show they are on different networks, that is the likely reason, so it is said first.
+  const hint = p.network_hint && (p.network_hint.short || p.network_hint.words);
   return [`${p.name} isn't answering`,
-    `${why}. Check it is switched on and that this computer can reach its network. The dashboard keeps trying, and looks for it at a new address by itself.`];
+    `${why}. ${hint || 'Check it is switched on and that this computer can reach its network.'} The dashboard keeps trying, and looks for it at a new address by itself.`];
 }
 
 /* "No printer" wording, unless there's no server to have a printer at all. */
@@ -1186,7 +1214,7 @@ const SECTIONS = {
   ],
   modules: [
     ['copy', 'This copy', ['your space', '#demo-card', '#watch-only-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
-    ['features', 'Features', ['modules', 'print cost pricing']],
+    ['extras', 'Optional extras', ['optional extras']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
   ],
@@ -2302,18 +2330,19 @@ function initRepeatSettings() {
   });
 }
 
-/* ---- Modules ---------------------------------------------------------- */
+/* ---- Optional extras ---------------------------------------------------- *
+ * Settings > Optional extras lists only what needs something outside Deja Vu1: a program you
+ * install, a device, another service. The parts of Deja Vu1 itself have no switch, and the few
+ * ordinary settings (camera, time-lapses, continue on another device) switch in their own card. */
 
 async function loadModules() {
   const data = await getJSON('/api/modules');
   const host = $('module-list');
-  const list = data.modules || [];
+  const list = (data.modules || []).filter(m => m.kind === 'extra');
   if (!host || !list.length) return;
-  // The group heading says how ready each module is, so the rows don't repeat it.
-  const statusLabel = { ready: 'Ready today', hardware_pending: 'Hardware pending', optional: 'Optional' };
   const ids = list.map(m => m.id).join(',');
-  // Built once; after that a reload only moves the switches that changed, so turning a
-  // module on or off never makes the list jump, flash or fold back up.
+  // Built once; after that a reload only moves the switches that changed, so turning an extra
+  // on or off never makes the list jump, flash or fold back up.
   if (host.dataset.ids === ids) {
     list.forEach(m => {
       const input = host.querySelector(`[data-module="${CSS.escape(m.id)}"]`);
@@ -2325,9 +2354,9 @@ async function loadModules() {
     return;
   }
   host.dataset.ids = ids;
-  const groups = [['ready', 'Ready today'], ['optional', 'Optional extras'], ['hardware_pending', 'Need extra hardware']];
+  const groups = [['optional', 'Needs a program or service'], ['hardware_pending', 'Needs extra hardware']];
   const row = m => `
-    <div class="modrow well ${m.enabled ? 'is-on' : ''}" data-mod-row="${esc(m.id)}" data-find="${esc((m.name + ' ' + m.description).toLowerCase())}">
+    <div class="modrow well ${m.enabled ? 'is-on' : ''}" data-mod-row="${esc(m.id)}">
       <div class="mod-text">
         <div class="mod-name">${esc(m.name)}</div>
         <div class="mod-desc">${esc(m.description)}</div>
@@ -2339,30 +2368,12 @@ async function loadModules() {
       </label>
     </div>`;
   host.innerHTML = `
-    <div class="mod-tools"><label class="sr-only" for="mod-find">Find a module</label>
-      <input type="search" id="mod-find" placeholder="Find a module…" autocomplete="off" spellcheck="false">
-      <span class="mod-count" id="mod-count"></span></div>
+    <div class="mod-tools"><span class="mod-count" id="mod-count"></span></div>
     ${groups.map(([status, title]) => {
-      const ms = list.filter(m => (statusLabel[m.status] ? m.status : 'optional') === status);
+      const ms = list.filter(m => (m.status === 'hardware_pending' ? 'hardware_pending' : 'optional') === status);
       return ms.length ? `<section class="mod-group" data-group="${status}"><h3 class="mod-group-title">${title}</h3>${ms.map(row).join('')}</section>` : '';
-    }).join('')}
-    <p class="log-empty mod-none" hidden>No module matches that.</p>`
-    // A phone shows the first few; the rest are one tap away (theme.css).
-    + `<button type="button" class="btn block mod-more" aria-expanded="false">Show all ${list.length} modules</button>`;
+    }).join('')}`;
   modCounts(host);
-  host.querySelector('.mod-more').addEventListener('click', e => {
-    const open = host.classList.toggle('is-open');
-    e.currentTarget.setAttribute('aria-expanded', String(open));
-    e.currentTarget.textContent = open ? 'Show fewer' : `Show all ${list.length} modules`;
-  });
-  $('mod-find').addEventListener('input', e => {
-    const q = e.target.value.trim().toLowerCase();
-    host.classList.toggle('is-finding', Boolean(q));
-    let shown = 0;
-    host.querySelectorAll('.modrow').forEach(r => { const hit = !q || r.dataset.find.includes(q); r.hidden = !hit; if (hit) shown++; });
-    host.querySelectorAll('.mod-group').forEach(g => { g.hidden = !g.querySelector('.modrow:not([hidden])'); });
-    host.querySelector('.mod-none').hidden = shown > 0;
-  });
 
   // The switch moves at once and says "Saving…" while the server saves it;
   // if the server says no, it goes back and says why.
@@ -2901,9 +2912,9 @@ const serverWatch = { fails: 0, since: 0, pid: null, el: null };
 function serverStrip(text, help) {
   if (!serverWatch.el) {
     const el = document.createElement('div');
-    el.className = 'server-lost';
+    el.className = 'server-lost liquid-glass';
     el.setAttribute('role', 'status');
-    el.innerHTML = '<b></b> <span></span> <a class="sl-start" href="deja-vu1://start" hidden>Start Deja Vu1</a> <a href="offline.html">How to start it again</a>';
+    el.innerHTML = '<i class="sl-dot" aria-hidden="true"></i><div class="sl-text"><b></b> <span></span> <a class="sl-start" href="deja-vu1://start" hidden>Start Deja Vu1</a> <a href="offline.html">How to start it again</a></div>';
     document.body.appendChild(el);
     serverWatch.el = el;
   }
@@ -2915,12 +2926,23 @@ function serverStrip(text, help) {
   serverWatch.el.querySelector('.sl-start').hidden = !longGone || !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   serverWatch.el.hidden = false;
 }
+/* Who answers on this address. /api/app/alive does no slow work, so a busy moment on the server
+ * (a GitHub check, the Windows Task Scheduler) can't make a healthy Deja Vu1 look stopped; an older
+ * server without it is asked the long way. */
+async function aliveInfo(signal) {
+  for (const route of ['/api/app/alive', '/api/app/info']) {
+    const r = await fetch(route, { cache: 'no-store', signal });
+    if (r.status === 404) continue;
+    return r.json();
+  }
+  return null;
+}
 async function watchServer() {
   if (serverMissing() || (typeof tourOn === 'function' && tourOn())) return;
   let d = null;
   const stop = new AbortController();
-  const timer = setTimeout(() => stop.abort(), 3500);
-  try { d = await (await fetch('/api/app/info', { cache: 'no-store', signal: stop.signal })).json(); } catch (_) { d = null; }
+  const timer = setTimeout(() => stop.abort(), 6000);
+  try { d = await aliveInfo(stop.signal); } catch (_) { d = null; }
   clearTimeout(timer);
   if (d && d.version) {
     const restarted = serverWatch.pid && d.server_pid && d.server_pid !== serverWatch.pid;
@@ -2942,9 +2964,9 @@ async function watchServer() {
   let updating = 0;
   try { updating = Number(sessionStorage.getItem('dv-updating')) || 0; } catch (_) { updating = 0; }
   const secs = Math.round((Date.now() - serverWatch.since) / 1000);
-  if (Date.now() - updating < 5 * 60 * 1000 && secs < 90) serverStrip('Deja Vu1 is restarting after the update.', 'This page carries on by itself in a moment.');
+  if (Date.now() - updating < 5 * 60 * 1000 && secs < 90) serverStrip('Deja Vu1 is restarting after the update.', 'This page carries on by itself in a moment. A print on your printer keeps going.');
   else if (secs < 20) serverStrip('Deja Vu1 stopped answering.', 'Trying again every few seconds…');
-  else serverStrip('Deja Vu1 isn’t answering.', 'If its window was closed, start it again. This page reconnects by itself.');
+  else serverStrip('Deja Vu1 isn’t answering.', 'It starts again by itself within a few minutes if it is set to start with the computer. You can also press Start. This page reconnects by itself.');
 }
 setInterval(watchServer, 4000);
 
