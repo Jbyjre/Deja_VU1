@@ -22,7 +22,8 @@
   function clearHighlight() { if (activeTarget) activeTarget.classList.remove('setup-highlight'); activeTarget = null; }
   function jump(tab, target) {
     clearHighlight(); showTab(tab);
-    const nav = matchMedia('(max-width:600px)').matches ? `#thumb-dock [data-tab="${tab}"]` : `.navtab[data-tab="${tab}"]`;
+    const rail = window.Rail && Rail.shown() ? `#rail [data-dest="${Rail.destFor(tab)}"]` : null;
+    const nav = matchMedia('(max-width:600px)').matches ? `#thumb-dock [data-tab="${tab}"]` : rail || `.navtab[data-tab="${tab}"]`;
     activeTarget = document.querySelector(target || nav);
     if (activeTarget) { activeTarget.classList.add('setup-highlight'); activeTarget.scrollIntoView({block:'center', behavior:'instant'}); }
   }

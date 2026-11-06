@@ -127,6 +127,11 @@ class TestGate(GateCase):
         self.assertEqual(gate["verdict"], "confirm")
         self.assertTrue(any("earlier.gcode" in w and "bed" in w for w in gate["warnings"]))
 
+    def test_a_file_that_is_not_there_is_refused_in_words(self):
+        with self.assertRaises(ValueError) as ctx:
+            print_gate.summary("never_added.gcode")
+        self.assertIn("No file called never_added.gcode", str(ctx.exception))
+
     def test_models_cannot_be_printed(self):
         with self.assertRaises(ValueError):
             print_gate.summary("spur_gear_24t.stl")

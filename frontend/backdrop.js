@@ -128,6 +128,13 @@ const Backdrop = (() => {
   function resolveColours() {
     const c = paletteColours();
     c.dot = hexToRgb(prefs.dot) || c.glow;
+    if (document.documentElement.getAttribute('data-theme') === 'dark') {
+      // The dark theme: the same set, sunk into the dark page; lines and dots go pale.
+      const night = [16, 21, 29];
+      c.bg = night;
+      if (c.blobs) c.blobs = c.blobs.map(x => mix(x, night, 0.8));
+      c.ink = [190, 205, 225];
+    }
     return c;
   }
   function paletteColours() {
@@ -174,6 +181,7 @@ const Backdrop = (() => {
     addEventListener('blur', () => { pointer.inside = false; charge = null; wake(); });
     addEventListener('resize', () => { resize(); drawFrame(0); });
     addEventListener('keydown', onKey);
+    window.addEventListener('dv-theme', () => { colours = resolveColours(); if (ctx) drawFrame(0); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else { colours = resolveColours(); drawFrame(0); } });
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', apply);
     // The filament set follows the printer: tintRoom() edits <html>'s style.

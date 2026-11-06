@@ -1238,3 +1238,40 @@ body.is-scrolled .topbar {
 .bed-hold p small { display: block; color: var(--text-dim); margin-top: 2px; }
 .bed-hold .btn { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
 .bed-hold .btn small { font-weight: 500; font-size: 11px; opacity: .85; }
+
+/* ---- The left sidebar (rail.js): about 224 px with labels, 64 px with icons only.
+   At phone width the bottom bar and the More sheet take over. ---- */
+html.has-rail { --rail-w: 224px; }
+html.has-rail.rail-collapsed { --rail-w: 64px; }
+.rail { position: fixed; z-index: 45; top: 14px; bottom: 14px; left: 14px; width: var(--rail-w);
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; border-radius: 22px;
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; transition: width .2s ease; }
+@media (min-width: 721px) {
+  html.has-rail body { padding-left: calc(var(--rail-w) + 14px); transition: padding-left .2s ease; }
+  html.has-rail #tabbar { display: none; }
+}
+.rail-list { display: flex; flex-direction: column; gap: 2px; }
+.rail-item { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 8px 12px; border-radius: 12px;
+  color: var(--text-dim, #4a5563); text-decoration: none; font: 500 14px/1.2 var(--font-sans, inherit); }
+.rail-item svg, .rail-collapse svg { flex: 0 0 20px; width: 20px; height: 20px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rail-item:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--text, #1c1c1e); }
+.rail-item.active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-text); font-weight: 650; }
+.rail-item:focus-visible, .rail-collapse:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rail-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-label small { display: block; font-size: 11px; font-weight: 500; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; }
+.rail-item.active .rail-label small { color: inherit; opacity: .8; }
+.rail-group { margin: 14px 12px 4px; font: 600 10.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-faint); }
+.rail-collapse { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--text-faint); font: 500 13px/1.2 var(--font-sans, inherit); cursor: pointer; }
+.rail-collapse:hover { color: var(--text, #1c1c1e); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+html.rail-collapsed .rail-label { display: none; }
+html.rail-collapsed .rail-item, html.rail-collapsed .rail-collapse { justify-content: center; padding: 8px 0; }
+html.rail-collapsed .rail-group { margin: 10px 14px 6px; height: 1px; overflow: hidden; color: transparent;
+  background: color-mix(in srgb, var(--text-faint) 35%, transparent); }
+html.rail-collapsed .rail-collapse svg { transform: rotate(180deg); }
+@media (max-width: 720px) {
+  .rail { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .rail, html.has-rail body { transition: none; } }

@@ -1133,7 +1133,9 @@ const Twin3D = (() => {
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // The studio backdrop, then the scene over it.
-      const bgTop = lin(.968, .972, .98), bgBot = lin(.885, .892, .905);
+      // The dark theme gets a dark studio; the printer and the print keep their own colours.
+      const night = document.documentElement.getAttribute('data-theme') === 'dark';
+      const bgTop = night ? lin(.2, .23, .28) : lin(.968, .972, .98), bgBot = night ? lin(.085, .105, .135) : lin(.885, .892, .905);
       gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.useProgram(P.bg.p);
       gl.uniform3fv(P.bg.u.uBgTop, bgTop); gl.uniform3fv(P.bg.u.uBgBot, bgBot); gl.uniform2f(P.bg.u.uRes, canvas.width, canvas.height);
       gl.bindVertexArray(null); gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -1377,6 +1379,7 @@ const Twin3D = (() => {
     }
 
     const queue = () => { if (!queued) { queued = true; requestAnimationFrame(render); } };
+    window.addEventListener('dv-theme', () => queue());
 
     /* ---- interaction: drag to turn (with a little glide after), right-drag
      *      or Shift-drag to move, wheel or pinch to zoom, double-click to

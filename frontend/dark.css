@@ -1,0 +1,187 @@
+/* ==========================================================================
+   Deja Vu1 - dark theme (Preferences → Appearance → Theme)
+
+   Loaded after theme.css and active only on html[data-theme="dark"], which
+   theme-boot.js sets before the page is drawn. It redefines the shared
+   colour tokens, then the surfaces that were written with light values
+   (glass, paper cards, buttons, inputs, pills, dialogs, menus). Filament
+   swatches, camera pictures, thumbnails and the 3D models keep their real
+   colours: nothing here inverts or filters them.
+
+   Starting values from the research plan (section 6.4); every text colour
+   was measured against the panel it sits on (tests/test_dark_theme.py and
+   the contrast pass in the 0.19.0 changelog).
+   ========================================================================== */
+
+/* :not(#dv) only raises the priority, so these tokens win over theme.css's
+   html[data-backdrop] rules (which re-set --paper while the background moves). */
+html[data-theme="dark"]:not(#dv) {
+  color-scheme: dark;
+
+  --bg:           #10151d;
+  --text:         #e8eef6;
+  --text-dim:     #c5d0dc;
+  --text-faint:   #b1bdcc;
+  --hair:         rgba(200, 215, 235, .12);
+  --layer-ink:    rgba(200, 215, 235, .05);
+
+  --accent-text:  #8fbcff;
+  --ok-text:      #7ed9a4;
+  --warn-text:    #ffcc66;
+  --bad-text:     #ff8a80;
+
+  --paper:        rgba(24, 33, 45, .9);
+  --paper-solid:  #18212d;
+  --raised:       #202c3a;
+  --edge:         #3b4a5c;
+  --shadow-card:  0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
+  --lg-shadow:    0 1px 0 rgba(255, 255, 255, .06) inset, 0 20px 44px rgba(0, 0, 0, .4), 0 4px 12px rgba(0, 0, 0, .3);
+  --lg-tint-alpha: .62;
+  --lg-border-alpha: .1;
+  --scrim:        rgba(4, 8, 14, .66);
+}
+
+/* ---- the room and the glass ---- */
+html[data-theme="dark"] body { background: var(--bg); color: var(--text); }
+html[data-theme="dark"] .liquid-glass {
+  background: rgba(24, 33, 45, var(--lg-tint-alpha));
+  border-color: rgba(200, 215, 235, .1);
+}
+html[data-theme="dark"] .liquid-glass::before { opacity: .12; }
+html[data-theme="dark"] .liquid-glass::after { opacity: .25; }
+html[data-theme="dark"] .card.liquid-glass, html[data-theme="dark"] .stats.liquid-glass,
+html[data-theme="dark"] .divider-row.liquid-glass, html[data-theme="dark"] .notice.liquid-glass,
+html[data-theme="dark"] .fleet-card.liquid-glass, html[data-theme="dark"] .game-picker.liquid-glass {
+  background-color: rgba(24, 33, 45, .92);
+}
+html[data-theme="dark"] .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target) {
+  background: var(--paper);
+}
+html[data-theme="dark"] .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice)::after {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 40%);
+}
+html[data-theme="dark"] .topbar.liquid-glass, html[data-theme="dark"] .tabbar.liquid-glass,
+html[data-theme="dark"] .status-ribbon.liquid-glass, html[data-theme="dark"] .rail {
+  background: rgba(20, 28, 38, .8);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 10px 26px rgba(0, 0, 0, .35);
+}
+
+/* ---- controls ---- */
+html[data-theme="dark"] .btn:not(.primary):not(.danger):not(.estop) {
+  color: var(--text-dim);
+  background: rgba(200, 215, 235, .07);
+  border-color: rgba(200, 215, 235, .16);
+}
+html[data-theme="dark"] .btn:not(.primary):not(.danger):not(.estop):hover:not(:disabled) { background: rgba(200, 215, 235, .13); color: var(--text); }
+html[data-theme="dark"] .btn.primary { color: var(--on-accent); border-color: color-mix(in srgb, var(--accent) 70%, black); }
+html[data-theme="dark"] .btn.primary:hover { color: var(--on-accent); }
+html[data-theme="dark"] input, html[data-theme="dark"] textarea, html[data-theme="dark"] select {
+  color: var(--text);
+  background: var(--raised);
+  border-color: var(--edge);
+}
+html[data-theme="dark"] option { background: var(--raised); color: var(--text); }
+html[data-theme="dark"] .pill-toggle { background: rgba(200, 215, 235, .06); border-color: rgba(200, 215, 235, .12); }
+html[data-theme="dark"] .switch-track { background: #3a4757; }
+html[data-theme="dark"] .pill {
+  color: color-mix(in srgb, var(--task-color) 45%, white);
+  background: color-mix(in srgb, var(--task-color) 18%, #18212d);
+  border-color: color-mix(in srgb, var(--task-color) 40%, #18212d);
+}
+
+/* ---- dialogs, menus and sheets ---- */
+html[data-theme="dark"] dialog.glass-dialog::backdrop { background: var(--scrim); }
+html[data-theme="dark"] .dialog-panel { color: var(--text); }
+
+/* ---- the sidebar ---- */
+html[data-theme="dark"] .rail-item:hover, html[data-theme="dark"] .rail-collapse:hover {
+  background: rgba(200, 215, 235, .08); color: var(--text);
+}
+html[data-theme="dark"] .rail-item.active { background: color-mix(in srgb, var(--accent) 24%, transparent); color: #d4e5ff; }
+
+/* ---- the theme choice itself ---- */
+.theme-choice { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- raised parts written with white: chips, tiles, rows and small buttons ---- */
+html[data-theme="dark"] :is(#ver-chip, .ver-chip, #printer-chip, .printer-chip, #conn, .conn, kbd, .fx-hint, .ov-prow,
+  .sec-track, .t3-tag, #twin-sync, .jog, .jog-steps button, .pchip, #ctrl-temps, .px-sensor, #plate-list, .orb-bubble,
+  .ls-gc, .ls-row, .ls-chip, .ls-kb, .ls-seg button, .ls-mode, .crow, #orb-count, .chip-btn, .rf-step, .dk-track,
+  .fh-tiles, #st-drop, #st-stack, .st-chip, .sb-tile, .sb-preset, .ov-cancel, .hold, .task, .fc-dock, .tips-btn,
+  .xp-btn, .ls-chips, .ls-custom, .qa-btn, .ms-grid button, .more-sheet button, .gate-fil, .queue-item, .spool-weigh,
+  .charge-row, .bed-hold, .file-card, .file-tile, .tl-session, .ob-item, .fx-row, .ms-search, .drop, .dropzone) {
+  background-color: var(--raised);
+  border-color: var(--edge);
+  color: var(--text);
+}
+html[data-theme="dark"] :is(.ov-prow, .chip-btn, .sec-track button, .ls-chip, .pchip, .jog, .jog-steps button,
+  .st-chip, .sb-tile, .xp-btn, .tips-btn):hover:not([disabled]):not([aria-checked="true"]):not(.is-on) {
+  background: #2a394a; color: var(--text);
+}
+html[data-theme="dark"] .sec-track { background: rgba(200, 215, 235, .06); }
+html[data-theme="dark"] .sec-track button { background: transparent; color: var(--text-dim); }
+html[data-theme="dark"] .sec-track button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
+/* Chosen states: the accent, with its own readable text. */
+html[data-theme="dark"] :is(.jog-steps button[aria-checked="true"], .pchip.is-on, .ls-chip[aria-checked="true"],
+  .ls-seg button[aria-checked="true"], .st-chip[aria-checked="true"], .st-chip.is-on, .pill-toggle button.active,
+  .theme-choice button.active) {
+  background: var(--accent); color: var(--on-accent); border-color: var(--accent);
+}
+/* Status rows keep their colour as a tint on the dark panel. */
+html[data-theme="dark"] .task.overdue, html[data-theme="dark"] .fc-dock.error, html[data-theme="dark"] .gate-fil.mismatch {
+  background: color-mix(in srgb, var(--bad) 16%, #18212d); border-color: color-mix(in srgb, var(--bad) 45%, #18212d);
+}
+html[data-theme="dark"] .task.due_soon, html[data-theme="dark"] .bed-hold, html[data-theme="dark"] .queue-item.held {
+  background: color-mix(in srgb, var(--warn) 12%, #18212d); border-color: color-mix(in srgb, var(--warn) 40%, #18212d);
+}
+html[data-theme="dark"] .fc-dock.active { background: color-mix(in srgb, var(--ok) 16%, #18212d); border-color: color-mix(in srgb, var(--ok) 45%, #18212d); }
+html[data-theme="dark"] .wo-pill { background: color-mix(in srgb, var(--accent) 16%, #18212d); }
+html[data-theme="dark"] .conn.is-live { background: color-mix(in srgb, var(--ok) 14%, #18212d); color: var(--ok-text); }
+html[data-theme="dark"] .notice { color: var(--text); }
+html[data-theme="dark"] .ver-chip.has-update::after { box-shadow: 0 0 0 2px #18212d; }
+html[data-theme="dark"] .btn.danger {
+  background: color-mix(in srgb, var(--bad) 16%, #18212d); color: var(--bad-text); border-color: color-mix(in srgb, var(--bad) 50%, #18212d);
+}
+html[data-theme="dark"] :is(.ls-fine, #mem-list li, .mem-list li) { background: var(--raised); border-color: var(--edge); color: var(--text); }
+/* A deeper red, so the white words on it reach 5.9:1 (the bright red gives 3.5:1). */
+html[data-theme="dark"] .btn.estop { background: #c8102e; border-color: #e0455c; color: #fff; }
+
+/* ---- pop-ups, sheets and panels drawn with white: help notes, tours, the orb, setup,
+   version and phone panels, search, the slicer workspace ---- */
+html[data-theme="dark"] :is(.xp-pop, .xp-x, .guide .guide-card, .guide-tail, .orb-dock .orb-panel, .orb-bubble,
+  .phone-sheet, .phone-help, .phone-type, .pair-gate, .more-sheet, .setup-dialog .dialog-panel, .setup-note, .setup-way,
+  .setup-points li, .setup-dialog .setup-check-big, .guide-trio li, .gm-node, .da-option, .vc-cmd, .vc-ready,
+  .vc-update, .vc-manage, .update-channel label, .selfcheck .sc, #feature-results, .fx-foot kbd, .dialog-panel,
+  .file-detail.slicer-workspace, .file-detail.slicer-workspace .card, .slicer-workspace .sw-import .cm,
+  .twin-other, .liquid-glass.deep, .live-pill, .morph-ghost) {
+  background: var(--paper-solid);
+  border-color: var(--edge);
+  color: var(--text);
+}
+html[data-theme="dark"] :is(.slicer-workspace .btn:not(.primary):not(.danger), .slicer-workspace input,
+  .slicer-workspace select, .sw-actionbar select) {
+  background: var(--raised); border-color: var(--edge); color: var(--text);
+}
+html[data-theme="dark"] .guide .guide-card.is-chapter { background: #1b2533; }
+/* The help button and "Show me this screen": light gradients in the light theme. */
+html[data-theme="dark"] .xp-btn { background: var(--raised); color: var(--accent-text); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+html[data-theme="dark"] .tips-btn { background: var(--raised); color: var(--accent-text); border-color: var(--edge); }
+html[data-theme="dark"] .xp-more { background: var(--raised); color: var(--accent-text); border-color: var(--edge); }
+
+/* Colour swatches keep their real colour; a thin outline keeps a black or dark-grey
+   filament visible on the dark page. */
+html[data-theme="dark"] :is(.accent-swatch, .bp-dot, .bp-swatch, .chip, .cm-dot, .fc-dock-chip, .spool-swatch,
+  .wf-detail-swatch, .wf-swatch, .dk-dot, .t3-tag i):not(.active) {
+  box-shadow: 0 0 0 1px rgba(200, 215, 235, .45);
+}
+
+/* ---- charts and gauges on the dark cards: light grid lines and labels ---- */
+html[data-theme="dark"] :is(.fh-grid, .tc-grid, .rs-track, .g-track, .lp-track) { stroke: rgba(200, 215, 235, .14); }
+html[data-theme="dark"] .fh-hit.is-on { fill: rgba(200, 215, 235, .06); }
+html[data-theme="dark"] :is(.ls-t, .ls-title, .ls-dt) { fill: var(--text-dim); }
+html[data-theme="dark"] .ls-dim { stroke: var(--text-faint); }
+html[data-theme="dark"] .ls-block { stroke: rgba(0, 0, 0, .6); }
+/* Drawings stay drawings: the plate sheet and the twin's drawing mode are white paper with dark ink. */
+html[data-theme="dark"] .plate-sheet { fill: #f4f6f8; }
+/* Lists and tiles written with white. */
+html[data-theme="dark"] :is(.pf-list li, .dk-facts div) { background: var(--raised); border-color: var(--edge); color: var(--text); }
+html[data-theme="dark"] .bottom-nav .tab-blob, html[data-theme="dark"] .tab-blob { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--edge); }

@@ -922,10 +922,11 @@ function mirrorInTab(data) {
 // Blue is the default. Each accent carries its own text-on-fill colour
 // ("on") and text colour, measured for WCAG AA against it.
 const ACCENTS = [
-  { id: 'blue', label: 'Sky Blue', hex: '#4a8df8', light: '#7db2ff', on: '#04122b', text: '#1d5fc8' },
-  { id: 'orange', label: 'Snapmaker Orange', hex: '#ff7a2f', light: '#ff9c66', on: '#2a1200', text: '#a8430a' },
-  { id: 'red', label: 'Signal Red', hex: '#c8102e', light: '#d42640', on: '#ffffff', text: '#a50d26' },
-  { id: 'green', label: 'Grass Green', hex: '#2f9e44', light: '#5cc16f', on: '#04200c', text: '#1d6d31' },
+  // darkText: the accent as text on the dark theme's panels (#18212d), 7:1 or better.
+  { id: 'blue', label: 'Sky Blue', hex: '#4a8df8', light: '#7db2ff', on: '#04122b', text: '#1d5fc8', darkText: '#9cc4ff' },
+  { id: 'orange', label: 'Snapmaker Orange', hex: '#ff7a2f', light: '#ff9c66', on: '#2a1200', text: '#a8430a', darkText: '#ffb48a' },
+  { id: 'red', label: 'Signal Red', hex: '#c8102e', light: '#d42640', on: '#ffffff', text: '#a50d26', darkText: '#ff9aa6' },
+  { id: 'green', label: 'Grass Green', hex: '#2f9e44', light: '#5cc16f', on: '#04200c', text: '#1d6d31', darkText: '#8fdc9f' },
 ];
 // Only a colour you picked is remembered. (The old key was written on every
 // load, so every browser had "orange" stored whether or not it was chosen;
@@ -938,7 +939,9 @@ function applyAccent(id) {
   document.documentElement.style.setProperty('--accent', accent.hex);
   document.documentElement.style.setProperty('--accent-light', accent.light);
   document.documentElement.style.setProperty('--on-accent', accent.on);
-  document.documentElement.style.setProperty('--accent-text', accent.text);
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.style.setProperty('--accent-text', dark ? accent.darkText : accent.text);
+  document.documentElement.dataset.accent = accent.id;
   document.querySelectorAll('.accent-swatch').forEach(el => {
     el.classList.toggle('is-active', el.dataset.accent === accent.id);
   });
@@ -955,6 +958,21 @@ function initPreferences() {
   });
   const old = store.get(OLD_ACCENT_KEY);
   applyAccent(store.get(ACCENT_KEY) || (old === 'red' || old === 'green' ? old : 'blue'));
+
+  // Light / Dark / System (theme-boot.js applies it before the page is drawn).
+  const showTheme = () => {
+    const pref = window.DVTheme ? DVTheme.get() : 'light';
+    document.querySelectorAll('[data-theme-choice]').forEach(b => {
+      const on = b.dataset.themeChoice === pref;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-checked', String(on));
+    });
+  };
+  document.querySelectorAll('[data-theme-choice]').forEach(b => b.addEventListener('click', () => {
+    if (window.DVTheme) DVTheme.set(b.dataset.themeChoice);
+  }));
+  window.addEventListener('dv-theme', () => { showTheme(); applyAccent(document.documentElement.dataset.accent); });
+  showTheme();
 
   const setUnits = (unit) => {
     tempUnit = unit;
@@ -1145,13 +1163,14 @@ const SECTIONS = {
     ['sandbox', 'Practice farm', ['#tab-sandbox']],
   ],
   files: [
-    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', 'print queue', '#file-detail', '#studio-link']],
-    ['slicing', 'Slicing', ['#tab-autoprint']],
+    ['library', 'Library', ['#orca-import', '#convert-card', 'file library', '#file-detail', '#studio-link']],
+    ['slicing', 'Prepare', ['#tab-autoprint']],
+    ['jobs', 'Jobs', ['print queue']],
     ['layers', 'Layer heights', ['#tab-layerplan']],
   ],
   maintenance: [
     ['upkeep', 'Upkeep', ['maintenance', '#logbook', 'swapped a nozzle']],
-    ['filament', 'Filament & colour', ['#tab-filament']],
+    ['filament', 'Materials', ['#tab-filament']],
   ],
   modules: [
     ['copy', 'This copy', ['your space', '#demo-card', '#watch-only-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
@@ -1279,6 +1298,7 @@ function initTabs() {
     if (name === 'games') startCurrentGame();
     else stopCurrentGame();
     if (window.Workshop) Workshop.onTab(name);
+    window.dispatchEvent(new CustomEvent('dv-tab', { detail: { tab: name } }));
     // A folded section's old name opens its part; after a short wait (the
     // cards above it fill in first) it scrolls there, so it doesn't slide away.
     if (FOLDED[requested]) {
