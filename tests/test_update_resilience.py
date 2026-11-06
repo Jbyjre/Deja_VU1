@@ -1,8 +1,10 @@
 """
 An update never leaves the dashboard out of reach (the owner, 31 October 2026):
 Install runs in the background with its progress readable after a reload,
-refusals say which printer and why, applying an update survives files Windows
-keeps locked, and the ready check says in words whether everything works.
+applying an update survives files Windows keeps locked, and the ready check says
+in words whether everything works. A print running on a printer, or a printer
+that isn't answering, never holds an update back (the printer runs its file by
+itself), and from the restart on nothing new is sent to a printer.
 """
 import contextlib
 import hashlib
@@ -23,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'backend'))
 import app_updates as updates  # noqa: E402
 import paste_blocks  # noqa: E402
 import readiness  # noqa: E402
+import update_hold  # noqa: E402
 
 
 def package():
@@ -53,7 +56,7 @@ class Staged(unittest.TestCase):
                    'browser_download_url': 'https://github.com/Jbyjre/Deja_VU1/releases/download/v0.2.0/x.zip',
                    'digest': 'sha256:' + hashlib.sha256(data).hexdigest()}]}
 
-        def fake_read(url, limit, progress=None):
+        def fake_read(url, limit, progress=None, **_):
             if url == updates.API:
                 return json.dumps(release).encode()
             if progress:
@@ -111,6 +114,25 @@ class ApplyingSurvivesWindows(Staged):
         self.assertEqual((self.root / 'backend/app.py').read_text(), '# old')
 
 
+class LeftOverStagingFolders(Staged):
+    """A half-done download from an update that never restarted must not block the next one."""
+
+    def test_a_staging_folder_left_behind_does_not_block_the_next_update(self):
+        base = self.root / '.dejavu-update'
+        (base / 'stage').mkdir(parents=True)
+        (base / 'pending.json').write_text('{}')
+        self.stage()                                   # would have said "restart with the launcher first"
+        self.assertTrue((base / 'pending.json').exists())
+
+    def test_a_recovery_journal_is_never_cleared_by_a_new_install(self):
+        base = self.root / '.dejavu-update'
+        base.mkdir()
+        (base / 'journal.json').write_text('[]')
+        with self.assertRaisesRegex(ValueError, 'recovery copy already exists'):
+            self.stage()
+        self.assertTrue((base / 'journal.json').exists())
+
+
 class InstallJob(unittest.TestCase):
     """The Install button starts a job and comes straight back; the job carries the steps."""
 
@@ -119,6 +141,7 @@ class InstallJob(unittest.TestCase):
         self.app = app
         updates.set_job('idle')
         self.addCleanup(updates.set_job, 'idle')
+        self.addCleanup(update_hold.end)          # a restart starts the hold; it must not leak into other tests
         self.stopped = threading.Event()
         self.server = type('S', (), {'shutdown': lambda s: self.stopped.set()})()
 
@@ -129,7 +152,7 @@ class InstallJob(unittest.TestCase):
             kw['step']('download', done=1, total=4, version='0.2.0')
             gate.wait(5)
             return {'ready': True, 'version': '0.2.0'}
-        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(self.app, '_require_idle_for_update'), \
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), \
                 patch.object(self.app.memory, 'snapshot'), patch.object(updates, 'prepare', side_effect=slow_prepare):
             started = time.monotonic()
             reply = self.app._install_update(self.server, background=True)
@@ -146,7 +169,7 @@ class InstallJob(unittest.TestCase):
         self.assertEqual(updates.job()['state'], 'restarting')
 
     def test_a_failed_download_is_said_in_words_and_nothing_restarts(self):
-        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(self.app, '_require_idle_for_update'), \
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), \
                 patch.object(self.app.memory, 'snapshot'), \
                 patch.object(updates, 'prepare', side_effect=ValueError('The download checksum did not match')):
             self.app._install_update(self.server, background=True)
@@ -163,20 +186,37 @@ class InstallJob(unittest.TestCase):
             prepare.assert_not_called()
         self.assertEqual(updates.job()['state'], 'idle')
 
-    def test_refusals_name_the_printer_and_the_reason(self):
+    def test_a_print_or_a_silent_printer_never_holds_an_update_back(self):
+        """The printer runs its file by itself, so neither a running print nor a printer that is off decides this."""
         mm = self.app.mock_moonraker
-        cases = [(False, {'state': 'standby'}, "isn't answering"), (True, {'state': 'printing'}, 'is printing')]
-        for connected, state, words in cases:
-            with self.subTest(words=words), \
+        cases = [(False, {'state': 'standby'}), (True, {'state': 'printing'}), (True, {'state': 'paused'})]
+        for connected, state in cases:
+            with self.subTest(connected=connected, state=state["state"]), \
+                    patch.dict(os.environ, DEJAVU_LAUNCHER='1'), \
                     patch.object(self.app.fleet, 'registered', return_value=[{'id': 'p1', 'name': 'Workshop U1'}]), \
                     patch.object(mm, 'printer_ids', return_value=['p1']), patch.object(mm, 'is_real', return_value=True), \
-                    patch.object(mm, 'use_printer', return_value=contextlib.nullcontext()), \
                     patch.object(mm, 'is_connected', return_value=connected), \
-                    patch.object(mm, 'get_printer_state', return_value=state):
-                with self.assertRaises(ValueError) as caught:
-                    self.app._require_idle_for_update()
-                self.assertIn('Workshop U1', str(caught.exception))
-                self.assertIn(words, str(caught.exception))
+                    patch.object(mm, 'get_printer_state', return_value=state), \
+                    patch.object(self.app.memory, 'snapshot'), \
+                    patch.object(updates, 'prepare', return_value={'ready': True, 'version': '0.2.0'}):
+                self.stopped.clear()
+                updates.set_job('idle')
+                update_hold.end()
+                reply = self.app._install_update(self.server, background=True)
+                self.assertTrue(reply['started'])
+                self.assertTrue(self.stopped.wait(5), 'the server should restart into the update')
+                self.assertEqual(updates.job()['state'], 'restarting')
+
+    def test_from_the_restart_on_nothing_new_is_sent_to_a_printer(self):
+        self.assertFalse(update_hold.active())
+        with patch.dict(os.environ, DEJAVU_LAUNCHER='1'), patch.object(self.app.memory, 'snapshot'), \
+                patch.object(updates, 'prepare', return_value={'ready': True, 'version': '0.2.0'}):
+            self.app._install_update(self.server, background=True)
+            self.assertTrue(self.stopped.wait(5))
+        self.assertTrue(update_hold.active())
+        with self.assertRaises(update_hold.UpdateHold):
+            with update_hold.writing_call('printer.gcode.script'):
+                self.fail('a G-code line must not be started while Deja Vu1 restarts')
 
 
 class ReadyCheck(unittest.TestCase):

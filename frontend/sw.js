@@ -1,6 +1,6 @@
 /* Never cache printer readings, API replies, control requests or the app shell.
    Only a clearly offline explanation survives loss of the server. */
-const OFFLINE_CACHE = 'dejavu-offline-v6';
+const OFFLINE_CACHE = 'dejavu-offline-v7';
 self.addEventListener('install', event => {
   // cache: 'reload' skips the browser's own cache, so an update always stores the new page.
   event.waitUntil(

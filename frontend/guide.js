@@ -325,7 +325,7 @@ window.Guide = (() => {
     modules: [
       { target: '#version-card', title: 'Version and updates', text: 'Which version you run, how it updates, and every version’s changes with a tour of each.' },
       { target: '#appearance-card', title: 'Appearance', text: 'The background and its colours. Try clicking the page background, or triple-clicking it.' },
-      { target: '#module-list', closest: '.card', title: 'Modules', text: 'Switch whole features on or off. A switched-off feature stops completely, background work included.' },
+      { target: '#module-list', closest: '.card', title: 'Optional extras', text: 'Add-ons that need a program, a device or another service: slicing, the low-latency camera, status lights and Home Assistant. Switch on only what you use.' },
       { target: '#memory-card', title: 'Your data is safe', text: 'Safety copies every six hours, at start-up and before each update; restore one with a click. Below: backups, phones and the device lock.' },
     ],
     games: [

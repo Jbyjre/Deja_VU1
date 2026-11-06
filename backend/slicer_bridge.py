@@ -1169,9 +1169,25 @@ def jobs():
 
 
 def any_active():
-    """Is a slice waiting or running for any printer? (Updates wait for it.)"""
+    """Is a slice waiting or running for any printer? (An update gives it a little time to finish.)"""
     with _lock:
         return any(job.get('status') in ('waiting', 'running') for job in _jobs.values())
+
+
+def cancel_all(why='Stopped'):
+    """
+    Ask every waiting or running slice to stop, for every printer: the engine is ended and nothing
+    half-written is queued. Used when the program is about to restart. Returns how many were asked.
+    """
+    asked = 0
+    with _lock:
+        for job_id, job in _jobs.items():
+            event = _cancellations.get(job_id)
+            if job.get('status') in ('waiting', 'running') and event is not None and not event.is_set():
+                event.set()
+                job['step'] = why
+                asked += 1
+    return asked
 
 
 def cancel_job(job_id):

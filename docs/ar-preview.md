@@ -31,7 +31,7 @@ for finding flat surfaces. That means:
 The button only appears when the browser says it can do AR. Everywhere
 else, the file page says in one line why it isn't available.
 
-It can be switched off in **Settings → Modules → View on your desk (AR)**.
+There is nothing to switch on: the button appears by itself when the browser supports AR.
 
 ## How it works
 

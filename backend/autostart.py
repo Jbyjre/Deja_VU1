@@ -38,6 +38,7 @@ import getpass
 import os
 import subprocess
 import sys
+import threading
 import time
 from xml.sax.saxutils import escape
 
@@ -228,10 +229,28 @@ def _schtasks(args, timeout=20):
     return done.returncode, words.decode("utf-8", "replace").strip()
 
 
-def _task_on(run, fresh=False):
+_asking = threading.Lock()
+
+
+def _task_on(run, fresh=False, wait=True):
+    """
+    Whether the Task Scheduler task exists. Asking Windows takes a second or more (longer with a
+    virus scanner), and /api/app/info, which the launcher uses to see whether the dashboard is alive,
+    asked on every cache miss. With wait=False the answer is whatever was last known (None before
+    the first) and a fresh one is fetched in the background.
+    """
     hit = _cache.get("task")
     if hit and not fresh and time.monotonic() - hit[0] < 60:
         return hit[1]
+    if not wait:
+        if _asking.acquire(blocking=False):
+            def ask():
+                try:
+                    _cache["task"] = (time.monotonic(), run(["/Query", "/TN", TASK])[0] == 0)
+                finally:
+                    _asking.release()
+            threading.Thread(target=ask, name="autostart-ask", daemon=True).start()
+        return hit[1] if hit else None
     on = run(["/Query", "/TN", TASK])[0] == 0
     _cache["task"] = (time.monotonic(), on)
     return on
@@ -259,12 +278,12 @@ def _set_task(on, here, python, run, env):
 
 # ---- on / off -------------------------------------------------------------
 
-def status(platform=None, env=None, run=None):
+def status(platform=None, env=None, run=None, wait=True):
     where = path(platform, env)
     file_on = bool(where and os.path.exists(where))
     out = {"supported": where is not None, "on": file_on, "where": where, "how": "file" if file_on else None}
     if _platform(platform) == "windows" and where is not None:
-        if _task_on(run or _schtasks):
+        if _task_on(run or _schtasks, wait=wait):
             out.update(on=True, how="task", where="Task Scheduler: " + TASK, keeps_running=True)
         elif file_on:
             out["how"] = "startup-folder"
@@ -350,7 +369,7 @@ def chosen_off(data_dir):
 # ---- "stopped on purpose" ---------------------------------------------------
 # Settings > Stop (and Ctrl+C in Deja Vu1's window) leave this note, so the
 # 5-minute check doesn't start Deja Vu1 straight back up. Starting it any other
-# way removes the note, and so does restarting the computer.
+# way removes the note, and so does restarting the computer or waiting STOP_HOURS.
 
 STOPPED = "stopped-on-purpose.json"
 
@@ -358,6 +377,9 @@ STOPPED = "stopped-on-purpose.json"
 def _boot_time():
     """When this computer last started, from the clock that counts since start-up (Windows counts sleep too)."""
     return time.time() - time.monotonic()
+
+
+STOP_HOURS = 4          # a stop on purpose keeps the 5-minute check away this long, then Deja Vu1 may start again
 
 
 def mark_stopped(data_dir):
@@ -381,4 +403,7 @@ def stopped_on_purpose(data_dir):
             at = float(json.load(f).get("at", 0))
     except (OSError, ValueError, AttributeError):
         return False
-    return at > _boot_time()
+    # Ends with a restart of the computer, and in any case after STOP_HOURS. The restart alone was not
+    # enough: where Windows "Shut down" keeps its running-time clock (Fast Startup), the clock above
+    # reads the same after a morning start-up, so a stop from the evening before kept Deja Vu1 off.
+    return at > _boot_time() and time.time() - at < STOP_HOURS * 3600

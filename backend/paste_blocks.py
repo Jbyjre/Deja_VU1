@@ -23,7 +23,7 @@ ASSET = 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-up
 UPDATE_POWERSHELL = '\n'.join([
     "$ProgressPreference = 'SilentlyContinue'",
     "$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'",
-    "try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}",
+    "try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Body '{\"for_update\":true}' -ContentType 'application/json' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}",
     "Get-CimInstance Win32_Process -Filter \"Name LIKE 'python%'\" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' }"
     " | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter \"ProcessId=$($_.ParentProcessId)\";"
     " if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue };"
@@ -36,7 +36,7 @@ UPDATE_POWERSHELL = '\n'.join([
 ])
 
 UPDATE_BASH = '\n'.join([
-    "curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'",
+    "curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{\"for_update\":true}' http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'",
     f"curl -fL -o /tmp/dejavu1.zip {ASSET}",
     "python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh",
     "cd ~/Documents/Deja_VU1 && python3 start.py --background",

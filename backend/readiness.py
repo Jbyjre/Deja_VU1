@@ -137,10 +137,26 @@ def _printers():
             out.append(_check('printer', name, 'ok', 'Connected'))
         else:
             words = str(row.get('link') or 'Not connected').strip()
+            hint = (row.get('network_hint') or {}).get('words')
             out.append(_check('printer', name, 'note', words,
-                              'Check the printer is switched on and that this computer can reach its network. '
+                              hint or 'Check the printer is switched on and that this computer can reach its network. '
                               'Printers > Test connection says what it hears; Look further searches other networks'))
     return out
+
+
+def _phone(port):
+    """The address a phone on the same Wi-Fi opens, and a warning when this computer has none."""
+    import discovery
+    addresses = discovery.home_addresses()
+    if not addresses:
+        return _check('phone', 'Phone', 'note', 'This computer has no home-network address right now, so a phone '
+                      "can't reach it",
+                      'Connect this computer to the Wi-Fi (or cable network) your phone uses, then check again')
+    text = f'A phone on the same Wi-Fi opens http://{addresses[0]}:{port}'
+    if len(addresses) > 1:
+        text += (f". This computer has other addresses too ({', '.join(addresses[1:])}); if the phone can't open the "
+                 'first, try one of those')
+    return _check('phone', 'Phone', 'ok', text)
 
 
 def _saved_data():
@@ -234,7 +250,7 @@ def report(port):
     """Every check, the overall answer and which block helps next."""
     checks = []
     for fn in (lambda: [_program(port)], _keeps_running, lambda: [_pages()], lambda: [_demo()], _printers,
-               lambda: [_saved_data()], lambda: [_updates()]):
+               lambda: [_phone(port)], lambda: [_saved_data()], lambda: [_updates()]):
         try:
             checks.extend(fn())
         except Exception as exc:          # a check that crashes is a failure in words, never a 500

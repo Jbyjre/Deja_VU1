@@ -218,6 +218,44 @@ def home_addresses():
     return found[:6]
 
 
+def _three_numbers(ip):
+    return ".".join(str(ip).split(".")[:3]) + ".x"
+
+
+def network_hint(url, own=None):
+    """
+    A printer that doesn't answer may simply be on another network: a second Wi-Fi name, a guest network,
+    another router. Says so from the two addresses alone, in words, or None when it can't tell (the printer
+    is typed as a name, or has a public address) or when both share their first three numbers.
+    {"same": False|None, "printer": "10.0.0.5", "computer": ["192.168.1.20"], "words": "..."}.
+    This looks at the addresses only; a router that passes traffic between two networks makes them reachable
+    anyway, and the words say so.
+    """
+    match = re.match(r"(?:[a-z]+://)?(\[[^\]]+\]|[^/:\s]+)", str(url or "").strip(), re.I)
+    host = match.group(1).strip("[]") if match else ""
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return None
+    if not any(ip in ipaddress.ip_network(n) for n in HOME_RANGES):
+        return None
+    mine = list(home_addresses() if own is None else own)
+    if not mine:
+        said = "This computer has no home-network address right now. Check that it is on Wi-Fi or a cable, then try again."
+        return {"same": None, "printer": str(ip), "computer": [], "words": said, "short": said}
+    if any(ipaddress.ip_network(f"{m}/24", strict=False) == ipaddress.ip_network(f"{ip}/24", strict=False)
+           for m in mine):
+        return None
+    where = " and ".join(sorted({_three_numbers(m) for m in mine}))
+    return {"same": False, "printer": str(ip), "computer": mine,
+            "short": f"It looks like a different network from this computer's ({where}). Printers says what to try.",
+            "words": f"The printer is at {ip}, and this computer is on {where}. These look like two different networks "
+                     "(two Wi-Fi names, a guest network or a second router), and many routers keep such networks "
+                     "apart. Easiest fix: put this computer and the printer on the same Wi-Fi. If your router does "
+                     "pass traffic between them, check that the printer is switched on. Printers > Look further and "
+                     "Settings > Away from home cover other setups."}
+
+
 def home_network():
     """This computer's own home-network /24, or None (no route, or not a home range)."""
     ip = home_address()

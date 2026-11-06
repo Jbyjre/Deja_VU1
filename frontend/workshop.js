@@ -181,6 +181,17 @@ const Workshop = (() => {
     };
   }
 
+  /* A phone that was locked, a laptop that slept, Wi-Fi that came back: the socket is often dead
+   * without the page having been told. Come back to the front, or get the network back, and the live
+   * connection is opened again at once instead of at the next slow retry. */
+  function nudgeLive() {
+    if (!liveData() || tourOn() || document.hidden) return;
+    if (live.mode !== 'ws' || (performance.now() - live.lastAt) > 5000) reconnect();
+  }
+  document.addEventListener('visibilitychange', nudgeLive);
+  window.addEventListener('online', nudgeLive);
+  window.addEventListener('pageshow', e => { if (e.persisted) nudgeLive(); });
+
   /* Fallback when a WebSocket can't be opened (an old proxy, a strict
    * network): ask the same live cache once a second instead. Slower to
    * notice changes, but the numbers are the same. */
@@ -199,9 +210,9 @@ const Workshop = (() => {
         if (fleet && fleet.printers) drawSafely('Your printers', () => renderFleet(fleet.printers));
       }
       // Polling started because the WebSocket failed - often just a server
-      // restart or a Wi-Fi blip. Try it again every 30 s; if it opens, it
+      // restart or a Wi-Fi blip. Try it again every 10 s; if it opens, it
       // stops this polling (ws.onopen).
-      if (tick % 30 === 0 && 'WebSocket' in window && !live.ws && !tourOn()) connect();
+      if (tick % 10 === 0 && 'WebSocket' in window && !live.ws && !tourOn()) connect();
     };
     once();
     live.poll = setInterval(once, 1000);
@@ -585,6 +596,7 @@ const Workshop = (() => {
         <span class="pill reg-pill ${p.connected ? 'is-ok' : 'is-bad'}" role="status">${esc(p.link || (p.connected ? 'Connected' : 'Not connected'))}</span>
         <button class="btn small" data-reg-details="${esc(p.id)}" type="button" aria-expanded="false">Details</button>
         <button class="btn small" data-reg-remove="${esc(p.id)}" type="button">Remove</button>
+        ${!p.connected && p.network_hint ? `<p class="reg-hint" role="note">${esc(p.network_hint.words)}</p>` : ''}
         <div class="reg-details" id="reg-details-${esc(p.id)}" hidden></div>
       </div>`).join('') : '<p class="field-hint">None added yet. Until you add one, the demo printers show what Deja Vu1 does.</p>';
     qsa('[data-reg-details]', host).forEach(b => b.addEventListener('click', async () => {

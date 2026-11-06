@@ -321,6 +321,94 @@ class TestWatchOnly(RealPrinterAPI):
         self.assertEqual((status, body["confirmed_state"]["state"]), (200, "paused"))
 
 
+class TestUpdatingDuringAPrint(RealPrinterAPI):
+    """An update never waits for a print, never touches it, and sends the printer nothing while it restarts."""
+
+    def setUp(self):
+        super().setUp()
+        import update_hold
+        self.hold = update_hold
+        update_hold.end()
+        self.addCleanup(update_hold.end)
+
+    def writes(self):
+        return [r for r in self.fake.requests if r[0] != "GET" and r[1] != "/printer/objects/query"]
+
+    def test_a_full_install_runs_while_the_printer_prints_and_the_print_is_untouched(self):
+        import app_updates
+        file_library.add_samples()
+        self.printing()
+        stopped = threading.Event()
+        server = type("S", (), {"shutdown": lambda s: stopped.set()})()
+        app_updates.set_job("idle")
+        self.addCleanup(app_updates.set_job, "idle")
+        before = len(self.fake.requests)
+        with patch.dict(os.environ, DEJAVU_LAUNCHER="1"), patch.object(dv_app.memory, "snapshot"), \
+                patch.object(app_updates, "prepare", return_value={"ready": True, "version": "9.9.9"}):
+            reply = dv_app._install_update(server, background=True)
+            self.assertTrue(reply["started"])
+            self.assertTrue(stopped.wait(10), "the server should stop to restart into the update")
+        self.assertEqual(app_updates.job()["state"], "restarting")
+        self.assertEqual(mock_moonraker.real_printer(self.pid).snapshot()["state"], "printing")
+        self.assertEqual([r for r in self.fake.requests[before:] if r[0] != "GET" and r[1] != "/printer/objects/query"],
+                         [], "the printer must be sent nothing by an update")
+
+    def test_commands_during_the_restart_are_refused_in_words_and_never_reach_the_printer(self):
+        file_library.add_samples()
+        self.printing()
+        self.hold.begin("update")
+        before = len(self.writes())
+        for path, sent in (("/api/printer/control/pause", {}), ("/api/printer/control/cancel", {}),
+                           ("/api/printer/control/gcode", {"command": "G28"}),
+                           ("/api/printer/control/start", {"filename": CUBE, "confirmed": True})):
+            status, body = self.request(path + f"?printer={self.pid}", sent)
+            self.assertEqual(status, 409, (path, body))
+            self.assertTrue(body.get("updating"), (path, body))
+            self.assertIn("restarting", body["error"])
+        self.assertEqual(self.writes()[before:], [])
+        self.assertEqual(mock_moonraker.real_printer(self.pid).snapshot()["state"], "printing")
+        status, state = self.request(f"/api/printer?printer={self.pid}")
+        self.assertEqual((status, state["state"]), (200, "printing"))        # reading carries on
+
+    def test_the_emergency_stop_is_never_held_back(self):
+        self.printing()
+        self.hold.begin("update")
+        status, body = self.request(f"/api/printer/control/estop?printer={self.pid}", {})
+        self.assertEqual(status, 200, body)
+
+    def test_commands_work_again_once_the_hold_ends(self):
+        self.printing()
+        self.hold.begin("update")
+        self.hold.end()
+        status, body = self.request(f"/api/printer/control/pause?printer={self.pid}", {})
+        self.assertEqual((status, body["confirmed_state"]["state"]), (200, "paused"))
+
+    def test_the_alive_route_answers_without_the_slow_parts(self):
+        with patch.object(dv_app.autostart, "status", side_effect=AssertionError("slow")), \
+                patch.object(dv_app.readiness, "last_update", side_effect=AssertionError("slow")):
+            status, body = self.request("/api/app/alive")
+        self.assertEqual(status, 200, body)
+        self.assertTrue(body["alive"])
+        self.assertEqual(body["server_pid"], os.getpid())
+        self.assertFalse(body["restarting"])
+        self.hold.begin("update")
+        self.assertTrue(self.request("/api/app/alive")[1]["restarting"])
+
+    def test_a_print_that_finishes_during_the_restart_is_noticed_afterwards(self):
+        self.printing()
+        live_feed.refresh(self.pid)                    # the live feed sees it printing, and writes that down
+        self.assertEqual(live_feed._remembered[self.pid]["state"], "printing")
+        # What a new process starts with: no memory of its own, only the note on disk.
+        live_feed._prev_state.clear()
+        live_feed._remembered.clear()
+        live_feed._checked_restart.clear()
+        self.fake.set("print_stats", state="complete")      # the print ends while Deja Vu1 knows nothing
+        self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot()["state"] == "complete"))
+        live_feed.refresh(self.pid)
+        self.assertTrue(any(e.get("event") == "finished" and e.get("printer") == self.pid
+                            for e in live_feed.events_since(0)), live_feed.events_since(0))
+
+
 class TestPrinting(RealPrinterAPI):
     def test_pause_resume_cancel_through_the_api(self):
         self.printing()

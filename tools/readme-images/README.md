@@ -32,7 +32,7 @@ names and the nine-stop tour) and adds `phone-connect` and `help-note`.
 | `automations.jpg` | Automations → "Tell me when a print finishes" |
 | `care.jpg` | Care: the Maintenance card |
 | `dock-rings.jpg` | The "Dock status rings" card (`#rings`) |
-| `modules.jpg` | Settings: the Modules card, grouped (`capture-round-six.js`) |
+| `modules.jpg` | Settings: the Optional extras card, grouped (`capture-round-six.js`) |
 | `photo-studio.jpg` | Photo studio → Try a test pattern |
 | `twin-health-chamber.jpg` | Overview: the twin row (`.now-row`: 3D model, Printer control, Print health), printer Demo printer 1; hide `.topbar` and `.live-pill` first so they don't overlap |
 | `skip-object.jpg` | Control: the "Objects on the plate" card, with one object picked |

@@ -47,6 +47,8 @@ CRASH_WINDOW = 600
 START_WAIT = 90                # seconds a new version gets to answer before the old one is put back
 HEALTH_EVERY = 20              # seconds between the launcher's checks that the server still answers
 HEALTH_MISSES = 5              # unanswered checks in a row (about 2 minutes) before a stuck server is restarted
+HEARTBEAT_EVERY = 5            # seconds between the launcher's "I am here" notes
+HEARTBEAT_STALE = 30           # a note older than this means that launcher is gone
 LOG_LIMIT = 256 * 1024
 # Checks of this computer's own address never go through a proxy set for the internet.
 _LOCAL = build_opener(ProxyHandler({}))
@@ -123,10 +125,68 @@ def local(path, body=None, timeout=2.0):
 
 
 def info(timeout=1.0):
+    """
+    Who answers on this port: version, launch id, process number. Asked of /api/app/alive, which does
+    no work that can be slow; /api/app/info (older servers have no alive route) can wait for the
+    Windows Task Scheduler or a busy lock, which made a healthy server look stuck.
+    """
+    for route in ("/api/app/alive", "/api/app/info"):
+        try:
+            return json.loads(local(route, timeout=timeout)[1])
+        except HTTPError:
+            continue                     # no such route here: an older server, ask the other one
+        except (OSError, ValueError, AttributeError):
+            return None
+    return None
+
+
+# ---- one launcher at a time ---------------------------------------------------
+# Between two servers (an update restart takes a few seconds) nothing answers on the port. The
+# 5-minute check, the wake check or a double-click arriving just then used to start a second launcher,
+# which found the staged update and applied it too. A launcher now writes a note every few seconds;
+# another one that sees a fresh note waits for the first one's server instead.
+
+def heartbeat_path():
+    return os.path.join(DATA_DIR, "supervisor.json")
+
+
+def write_heartbeat():
     try:
-        return json.loads(local("/api/app/info", timeout=timeout)[1])
-    except (OSError, ValueError, AttributeError):
-        return None
+        os.makedirs(DATA_DIR, exist_ok=True)
+        temp = heartbeat_path() + ".tmp"
+        with open(temp, "w", encoding="utf-8") as f:
+            json.dump({"pid": os.getpid(), "port": PORT, "at": time.time()}, f)
+        os.replace(temp, heartbeat_path())
+    except OSError:
+        pass                         # a note that can't be written never stops the dashboard
+
+
+def other_launcher_alive():
+    """Another launcher for this port wrote its note in the last HEARTBEAT_STALE seconds."""
+    try:
+        with open(heartbeat_path(), encoding="utf-8") as f:
+            note = json.load(f)
+        return (note.get("pid") != os.getpid() and note.get("port") == PORT
+                and 0 <= time.time() - float(note.get("at", 0)) < HEARTBEAT_STALE)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return False
+
+
+def wait_for_other_launcher():
+    """The version answering once the other launcher's server is up, or None if it never comes."""
+    deadline = time.monotonic() + START_WAIT
+    while time.monotonic() < deadline and other_launcher_alive():
+        found = already_running()
+        if found:
+            return found
+        time.sleep(0.5)
+    return already_running()
+
+
+def keep_heartbeat(stop):
+    write_heartbeat()
+    while not stop.wait(HEARTBEAT_EVERY):
+        write_heartbeat()
 
 
 def open_when_ready():
@@ -151,9 +211,9 @@ def open_when_ready():
               " This copy runs in this window (--foreground); closing it stops the dashboard."), flush=True)
 
 
-def already_running():
+def already_running(timeout=3.0):
     """The version of a Deja Vu1 that already answers on this port, or None."""
-    found = info()
+    found = info(timeout=timeout)
     return (found.get("version") or "unknown") if isinstance(found, dict) else None
 
 
@@ -263,6 +323,10 @@ def supervise(ensure=False):
     except Exception as exc:
         log(f"Couldn't read whether Deja Vu1 was stopped on purpose: {exc!r}")
     running = already_running()
+    if not running and other_launcher_alive():
+        running = wait_for_other_launcher()
+        if not running and ensure:
+            return 0
     if running and ensure:
         return 0
     if running:
@@ -285,6 +349,8 @@ def supervise(ensure=False):
     crashes = []
     log(f"Launcher {version_now} started (Python {sys.version.split()[0]}, port {PORT}"
         + (", by the start-up check" if ensure else "") + ")")
+    beating = threading.Event()
+    threading.Thread(target=keep_heartbeat, args=(beating,), daemon=True).start()
     threading.Thread(target=register_starters, daemon=True).start()
     health = {"restart": False}
 
@@ -444,6 +510,11 @@ def supervise(ensure=False):
             say(f"Deja Vu1 stopped unexpectedly (exit code {code}). Starting it again...")
             time.sleep(2)
     finally:
+        beating.set()
+        try:
+            os.remove(heartbeat_path())
+        except OSError:
+            pass
         if child and child.poll() is None:
             stop(child)
 

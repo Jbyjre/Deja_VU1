@@ -184,7 +184,9 @@ small and frequent. Three ways to get one:
 
 1. **In the app:** **Settings → Version & updates → Check for updates**, then
    **Install**. Or tick **Look for updates by itself** (every hour) and the glass
-   orb tells you when one is ready.
+   orb tells you when one is ready. Installing while a print runs is fine: the
+   printer holds the file and runs it by itself, and Deja Vu1 sends the printer
+   nothing while it restarts.
 2. **One paste:** paste the block below into a new PowerShell or Terminal window.
    It stops Deja Vu1 in `Documents`, installs the newest release over it and
    starts it again. The same block is in **Settings → Version & updates →
@@ -203,7 +205,7 @@ comes first, and the old version comes back if the new one fails to start.
 ```powershell
 $ProgressPreference = 'SilentlyContinue'
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
-try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
+try { Invoke-RestMethod -Method Post 'http://localhost:8000/api/app/stop' -Body '{"for_update":true}' -ContentType 'application/json' -TimeoutSec 5 | Out-Null; Start-Sleep 2 } catch {}
 Get-CimInstance Win32_Process -Filter "Name LIKE 'python%'" | Where-Object { $_.CommandLine -like '*Deja_VU1*app.py*' } | ForEach-Object { $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.ParentProcessId)"; if ($p.CommandLine -like '*start.py*') { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
 Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
@@ -216,7 +218,7 @@ if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background 
 Open a **new** Terminal window (the one running Deja Vu1 is busy), then paste:
 
 ```bash
-curl -s -o /dev/null -X POST http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
+curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{"for_update":true}' http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
 cd ~/Documents/Deja_VU1 && python3 start.py --background
@@ -337,11 +339,55 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
   ([If Deja Vu1 won't open](#if-deja-vu1-wont-open)).
 - **A page notices when the program stops answering** and says so in a strip at
   the top, reconnects by itself and reloads once the program is back.
-- **Refusals name the printer.** "My U1 is printing. The update waits until it
-  has finished" replaces "Updates wait until all real printers are connected
-  and idle".
+- **Refusals name the printer.** (From 0.13.7 until the release after 0.20.2 an update
+  waited while a printer was printing or not answering. It no longer does: see
+  [What's new after 0.20.2](#whats-new-after-0202).)
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
+
+## What's new after 0.20.2
+
+Updates, connections and Settings, from one round of work on how Deja Vu1 starts, stays reachable and
+updates. Tested with a stand-in printer and the real launcher on Linux; not yet tried on Windows or a real U1.
+
+- **Updating while a print runs works.** An update no longer waits for a print, a paused print or a
+  printer that isn't answering. A print runs on the printer from a file the printer already holds, so
+  Deja Vu1 restarting never touches it. From the moment an install is ready to restart, Deja Vu1 sends no
+  printer anything new (the same place that enforces Watch-only mode refuses moves, heating,
+  uploads and G-code, and the camera's stop message is not sent), waits for a command already on its way to
+  finish, then restarts. The emergency stop always goes through. A running slice gets up to 90 seconds to finish, then
+  is stopped cleanly, and the page says so.
+- **Nothing is lost or repeated across the restart.** A print that finishes or is cancelled while Deja Vu1
+  restarts is still noticed afterwards (its message, its queue step and its time-lapse end). A time-lapse
+  of a print that carried on is picked up again. An automation rule that was already true
+  ("50% done", "layer 5", a temperature) does not fire a second time because of the restart. Spool
+  deduction needs the print's own summary, so a print that finishes during the restart is not deducted.
+- **The update check can't make the dashboard look stopped.** The check held a lock while it waited for
+  GitHub, and the launcher's "is it alive?" question needed that lock, so a slow answer from GitHub made
+  a healthy dashboard look stuck and a freshly updated copy look dead (and be rolled back). The check
+  now never holds it, the first check waits 45 seconds after a start, the launcher, the page and the
+  offline page ask a new light route (`/api/app/alive`) that does no slow work, and a staging folder left by
+  an update that never restarted no longer blocks the next one ("Restart with the launcher first").
+- **Starting by itself is steadier.** "Stop" keeps Deja Vu1 stopped until the computer restarts or four
+  hours pass. Before, the note could outlive a night where Windows "Shut down" keeps its running-time
+  clock (Fast Startup), so the 5-minute check never started it again. This was found by reading the code,
+  not seen on a Windows computer. A launcher writes a note every five seconds so a second launcher
+  arriving between two servers (the 5-minute check, a double-click) waits instead of applying the same
+  update twice. Settings no longer waits for Windows' Task Scheduler.
+- **Connections recover faster.** A printer link that was open when the computer slept is opened again at
+  once; the live page reconnects the moment a phone is unlocked or the network returns, and tries its
+  live connection again every 10 seconds instead of 30.
+- **It says when the printer is on another network.** A printer that doesn't answer shows, in words, when its
+  address is on a different network from this computer (two Wi-Fi names, a guest network, a second router).
+  **Check it all works** also names the address a phone opens, and warns when this computer has none.
+- **Settings has only what needs something outside Deja Vu1.** **Optional extras** lists six rows: Slicing,
+  the low-latency camera, Dock status rings, the WLED bridge, the Home Assistant bridge and the colour
+  check. The camera, time-lapses and Continue on another device are ordinary settings with their switch in
+  their own card, and the print cost prices moved into the Print cost card. The rest (Config backup, the Print cost
+  calculator, Push notifications and the other parts of Deja Vu1) are always on; a copy that had switched one
+  of them off gets it back, once.
+- **The update progress box and the "stopped answering" strip use the app's glass.** Lensed blur in the Glass
+  look, a solid panel in Workbench and Control room, dark theme, reduced transparency and increased contrast.
 
 ## What's new in 0.20.0
 
@@ -645,7 +691,8 @@ physical U1.
 - **Updates from inside the app:** choose Newest builds and Deja Vu1 compares every file with
   GitHub, downloads only what changed, checks each file against GitHub's own record of it,
   and restarts into the new version (rolling back if it fails to start). Automatic checks
-  every 15 minutes, and optional automatic install while every printer is idle.
+  every 15 minutes, and optional automatic install (the 0.8.0 version waited for idle
+  printers; later versions no longer do).
 - **It never forgets:** every record keeps its last good copy, a damaged file repairs itself,
   and safety copies of everything the dashboard remembers are made every 6 hours, at start-up
   and before every update, restorable from Settings (a restore can itself be undone).
@@ -879,7 +926,11 @@ browser's bars where the phone allows.
 
 <br clear="right">
 
-### Optional: on by request
+### Also built in, and the optional extras
+
+Filament inventory, What changed? and the Pre-print sanity check are parts of Deja Vu1 and always on.
+The WLED bridge, Home Assistant bridge, Auto-print pipeline (Slicing) and Low-latency camera are
+the optional extras you switch on under **Settings → Optional extras**.
 
 | Module | What it does |
 |---|---|
@@ -906,12 +957,14 @@ browser's bars where the phone allows.
 
 <sub>**Why dock status matters:** a parked toolhead looks the same whether it's ready, out of filament or faulted. Deja Vu1 shows each dock's state on screen today, and on the rings once they exist.</sub>
 
-<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Modules: a search box and a count of modules on, then the switches grouped under Ready today, Optional extras and Need extra hardware">
+<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Optional extras: the six add-ons that need a program, a device or a service, each with a switch, grouped under Needs a program or service and Needs extra hardware">
 
-Every module can be switched on or off from **Settings → Modules**, and the
-server enforces each switch. Disabled module routes refuse requests; background automation actions,
-queue advancement, time-lapse capture and filament deduction also check their
-module switches. "View on your desk" is browser-only; phone pairing is always on.
+**Settings → Optional extras** switches the six add-ons that need something outside Deja Vu1 (Slicing, the
+low-latency camera, Dock status rings, the WLED bridge, the Home Assistant bridge and the colour check). The
+camera, time-lapses and Continue on another device are ordinary settings with their switch in their own card.
+Everything else is part of Deja Vu1 and always on. The server enforces each switch: a switched-off feature's
+routes refuse requests, and background automation actions, queue advancement, time-lapse capture and
+filament deduction also check them. "View on your desk" is browser-only; phone pairing is always on.
 
 <br clear="right">
 
@@ -966,11 +1019,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **1182 tests in 801.1 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (6 November 2026, version 0.20.1 plus the engine
-support matrix, before its merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
+The latest full run passed **1243 tests in 638.8 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (6 November 2026, version 0.20.2 plus updating during a print, the
+connection fixes and Optional extras, before their merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
 and 3.13.
-Earlier full runs passed 1161, 1117, 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+Earlier full runs passed 1182, 1161, 1117, 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -1050,7 +1103,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 1182 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1243 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -1060,7 +1113,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 1182 cases
+- **Tests:** `unittest` from the standard library, 1243 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 

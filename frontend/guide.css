@@ -315,15 +315,24 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 }
 #vc-manage-note:empty { display: none; }
 
-/* Installing an update: each step in words, and how far the download has got. */
-.vc-progress { margin: 4px 0 12px; }
+/* Installing an update: each step in words, and how far the download has got. It is a control
+   surface (glass, tier 1: inline, barely lifted); the bar is a groove with a lit fill. */
+.vc-progress { margin: 4px 0 14px; padding: 14px 16px 12px; --lg-radius: 18px; --lg-tint-alpha: .5; box-shadow: 0 1px 2px oklch(25% 0.02 265 / .05), 0 4px 14px oklch(25% 0.02 265 / .07); }
 .vc-progress[hidden] { display: none; }
-.vc-bar { height: 10px; border-radius: 999px; overflow: hidden; background: oklch(30% 0.02 265 / .1); }
-.vc-bar span { display: block; height: 100%; width: var(--done, 8%); border-radius: inherit; background: var(--accent); transition: width .4s ease; }
+.vc-bar { height: 12px; border-radius: 999px; overflow: hidden; background: oklch(30% 0.02 265 / .12); box-shadow: inset 0 1px 2px oklch(25% 0.02 265 / .22); }
+.vc-bar span {
+  display: block; height: 100%; width: var(--done, 8%); border-radius: inherit; transition: width .4s ease;
+  background: linear-gradient(180deg, color-mix(in srgb, #fff 38%, var(--accent)) 0%, var(--accent) 46%, color-mix(in srgb, #000 12%, var(--accent)) 100%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
+}
 .vc-bar.is-unknown span { width: 30%; animation: vc-slide 1.4s ease-in-out infinite; }
 @keyframes vc-slide { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
-.vc-step { margin: 8px 0 0; font-size: 14px; color: var(--text-dim); }
-@media (prefers-reduced-motion: reduce) { .vc-bar.is-unknown span { animation: none; width: 100%; opacity: .5; } }
+.vc-step { margin: 10px 0 0; font-size: 14px; color: var(--text); }
+.vc-safe { display: flex; align-items: center; gap: 8px; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--hair); font-size: 13px; color: var(--text-dim); }
+.vc-safe-mark { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 12px; font-weight: 700; color: var(--ok-text); background: color-mix(in srgb, var(--ok) 16%, transparent); }
+@media (prefers-reduced-motion: reduce) { .vc-bar.is-unknown span { animation: none; width: 100%; opacity: .5; } .vc-bar span { transition: none; } }
+@media (prefers-reduced-transparency: reduce) { .vc-progress.liquid-glass { background: var(--paper-solid); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+@media (prefers-contrast: more) { .vc-progress.liquid-glass { border: 2px solid var(--text); } .vc-bar { box-shadow: inset 0 0 0 1px var(--text); } }
 
 /* "Check it all works": the same answer the launcher window shows. */
 .vc-ready { margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: var(--paper-solid); border: 1px solid var(--hair); }
@@ -706,13 +715,25 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 }
 @media print { .orb-dock, .guide { display: none; } }
 
-/* The program stopped answering: a calm strip at the top, gone when it answers again. */
+/* The program stopped answering: a calm strip at the top, gone when it answers again.
+   It is chrome that floats over the page (glass, tier 4: wide, soft and anchored, not dramatic),
+   so it takes the app's own .liquid-glass material: lensed blur in the Glass look, a solid panel
+   with one hairline in Workbench and Control room. Inner radius = outer radius - padding. */
 .server-lost {
   position: fixed; z-index: 9000; top: 10px; left: 50%; transform: translateX(-50%);
-  width: min(720px, calc(100vw - 32px)); padding: 10px 16px; border-radius: 14px;
-  background: oklch(98% 0.01 80 / .96); color: var(--text); border: 1px solid oklch(75% 0.12 70);
-  box-shadow: 0 6px 24px oklch(25% 0.02 265 / .18); font-size: 14.5px; line-height: 1.45;
+  width: min(720px, calc(100vw - 32px)); padding: 10px 14px; --lg-radius: 18px; --lg-tint-alpha: .74;
+  display: flex; align-items: flex-start; gap: 12px; color: var(--text); font-size: 14.5px; line-height: 1.45;
+  box-shadow: 0 1px 2px oklch(25% 0.02 265 / .06), 0 10px 28px oklch(25% 0.02 265 / .14);
 }
+.server-lost .sl-text { flex: 1; min-width: 0; }
+.server-lost .sl-dot {
+  flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--warn);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 22%, transparent); animation: sl-pulse 1.8s ease-in-out infinite;
+}
+@keyframes sl-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--warn) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .server-lost .sl-dot { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .server-lost.liquid-glass { background: var(--paper-solid); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+@media (prefers-contrast: more) { .server-lost.liquid-glass { border: 2px solid var(--text); } }
 .server-lost[hidden] { display: none; }
 .server-lost a { margin-left: 4px; font-weight: 600; white-space: nowrap; }
 .server-lost a[hidden] { display: none; }
