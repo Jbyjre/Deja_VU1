@@ -103,12 +103,16 @@ html[data-theme="dark"] .rail-item.active { background: color-mix(in srgb, var(-
 .theme-choice { display: inline-flex; flex-wrap: wrap; gap: 8px; }
 
 /* ---- raised parts written with white: chips, tiles, rows and small buttons ---- */
-html[data-theme="dark"] :is(#ver-chip, .ver-chip, #printer-chip, .printer-chip, #conn, .conn, kbd, .fx-hint, .ov-prow,
-  .sec-track, .t3-tag, #twin-sync, .jog, .jog-steps button, .pchip, #ctrl-temps, .px-sensor, #plate-list, .orb-bubble,
-  .ls-gc, .ls-row, .ls-chip, .ls-kb, .ls-seg button, .ls-mode, .crow, #orb-count, .chip-btn, .rf-step, .dk-track,
-  .fh-tiles, #st-drop, #st-stack, .st-chip, .sb-tile, .sb-preset, .ov-cancel, .hold, .task, .fc-dock, .tips-btn,
-  .xp-btn, .ls-chips, .ls-custom, .qa-btn, .ms-grid button, .more-sheet button, .gate-fil, .queue-item, .spool-weigh,
-  .charge-row, .bed-hold, .file-card, .file-tile, .tl-session, .ob-item, .fx-row, .ms-search, .drop, .dropzone) {
+html[data-theme="dark"] :is(.ver-chip, .printer-chip, .conn, kbd, .fx-hint, .ov-prow, .sec-track, .t3-tag, .jog, .jog-steps button, .pchip, .px-sensor, .orb-bubble, .ls-gc, .ls-row, .ls-chip, .ls-kb, .ls-seg button, .ls-mode, .crow, .chip-btn, .rf-step, .dk-track, .fh-tiles, .st-chip, .sb-tile, .sb-preset, .ov-cancel, .hold, .task, .fc-dock, .tips-btn, .xp-btn, .ls-chips, .ls-custom, .qa-btn, .ms-grid button, .more-sheet button, .gate-fil, .queue-item, .spool-weigh, .charge-row, .bed-hold, .file-card, .file-tile, .tl-session, .ob-item, .fx-row, .ms-search, .drop, .dropzone),
+html[data-theme="dark"] #ver-chip,
+html[data-theme="dark"] #printer-chip,
+html[data-theme="dark"] #conn,
+html[data-theme="dark"] #twin-sync,
+html[data-theme="dark"] #ctrl-temps,
+html[data-theme="dark"] #plate-list,
+html[data-theme="dark"] #orb-count,
+html[data-theme="dark"] #st-drop,
+html[data-theme="dark"] #st-stack {
   background-color: var(--raised);
   border-color: var(--edge);
   color: var(--text);
@@ -121,7 +125,7 @@ html[data-theme="dark"] .sec-track { background: rgba(200, 215, 235, .06); }
 html[data-theme="dark"] .sec-track button { background: transparent; color: var(--text-dim); }
 html[data-theme="dark"] .sec-track button[aria-pressed="true"] { background: var(--raised); color: var(--text); }
 /* Chosen states: the accent, with its own readable text. */
-html[data-theme="dark"] :is(.jog-steps button[aria-checked="true"], .pchip.is-on, .ls-chip[aria-checked="true"],
+html[data-theme="dark"] :is(.jog-steps button[aria-checked="true"], .pchip.is-on, .pchip[aria-checked="true"], .ls-chip[aria-checked="true"],
   .ls-seg button[aria-checked="true"], .st-chip[aria-checked="true"], .st-chip.is-on, .pill-toggle button.active,
   .theme-choice button.active) {
   background: var(--accent); color: var(--on-accent); border-color: var(--accent);
@@ -141,18 +145,15 @@ html[data-theme="dark"] .ver-chip.has-update::after { box-shadow: 0 0 0 2px #182
 html[data-theme="dark"] .btn.danger {
   background: color-mix(in srgb, var(--bad) 16%, #18212d); color: var(--bad-text); border-color: color-mix(in srgb, var(--bad) 50%, #18212d);
 }
-html[data-theme="dark"] :is(.ls-fine, #mem-list li, .mem-list li) { background: var(--raised); border-color: var(--edge); color: var(--text); }
+html[data-theme="dark"] :is(.ls-fine, .mem-list li),
+html[data-theme="dark"] #mem-list li { background: var(--raised); border-color: var(--edge); color: var(--text); }
 /* A deeper red, so the white words on it reach 5.9:1 (the bright red gives 3.5:1). */
 html[data-theme="dark"] .btn.estop { background: #c8102e; border-color: #e0455c; color: #fff; }
 
 /* ---- pop-ups, sheets and panels drawn with white: help notes, tours, the orb, setup,
    version and phone panels, search, the slicer workspace ---- */
-html[data-theme="dark"] :is(.xp-pop, .xp-x, .guide .guide-card, .guide-tail, .orb-dock .orb-panel, .orb-bubble,
-  .phone-sheet, .phone-help, .phone-type, .pair-gate, .more-sheet, .setup-dialog .dialog-panel, .setup-note, .setup-way,
-  .setup-points li, .setup-dialog .setup-check-big, .guide-trio li, .gm-node, .da-option, .vc-cmd, .vc-ready,
-  .vc-update, .vc-manage, .update-channel label, .selfcheck .sc, #feature-results, .fx-foot kbd, .dialog-panel,
-  .file-detail.slicer-workspace, .file-detail.slicer-workspace .card, .slicer-workspace .sw-import .cm,
-  .twin-other, .liquid-glass.deep, .live-pill, .morph-ghost) {
+html[data-theme="dark"] :is(.xp-pop, .xp-x, .guide .guide-card, .guide-tail, .orb-dock .orb-panel, .orb-bubble, .phone-sheet, .phone-help, .phone-type, .pair-gate, .more-sheet, .setup-dialog .dialog-panel, .setup-note, .setup-way, .setup-points li, .setup-dialog .setup-check-big, .guide-trio li, .gm-node, .da-option, .vc-cmd, .vc-ready, .vc-update, .vc-manage, .update-channel label, .selfcheck .sc, .fx-foot kbd, .dialog-panel, .file-detail.slicer-workspace, .file-detail.slicer-workspace .card, .slicer-workspace .sw-import .cm, .twin-other, .liquid-glass.deep, .live-pill, .morph-ghost),
+html[data-theme="dark"] #feature-results {
   background: var(--paper-solid);
   border-color: var(--edge);
   color: var(--text);
@@ -185,3 +186,23 @@ html[data-theme="dark"] .plate-sheet { fill: #f4f6f8; }
 /* Lists and tiles written with white. */
 html[data-theme="dark"] :is(.pf-list li, .dk-facts div) { background: var(--raised); border-color: var(--edge); color: var(--text); }
 html[data-theme="dark"] .bottom-nav .tab-blob, html[data-theme="dark"] .tab-blob { background: var(--raised); box-shadow: inset 0 0 0 1.5px var(--edge); }
+html[data-theme="dark"] .t3-tag.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* ---- tints written as "a colour mixed with white": mixed with the dark panel instead ---- */
+html[data-theme="dark"] .badge-live { background: color-mix(in srgb, var(--ok) 16%, #18212d); border-color: color-mix(in srgb, var(--ok) 40%, #18212d); color: var(--ok-text); }
+html[data-theme="dark"] .badge-optional { background: color-mix(in srgb, var(--warn) 14%, #18212d); border-color: color-mix(in srgb, var(--warn) 38%, #18212d); color: var(--warn-text); }
+html[data-theme="dark"] .badge-sim { background: rgba(200, 215, 235, .06); border-color: rgba(200, 215, 235, .14); color: var(--text-faint); }
+html[data-theme="dark"] :is(.ls-tip, .vh-tag.is-here) { background: color-mix(in srgb, var(--accent) 14%, #18212d); color: var(--text); }
+html[data-theme="dark"] .vh-tag.is-here { color: var(--accent-text); }
+html[data-theme="dark"] .ap-state { background: rgba(200, 215, 235, .06); color: var(--text); }
+html[data-theme="dark"] .ap-state.is-ok { background: color-mix(in srgb, var(--ok) 14%, #18212d); }
+html[data-theme="dark"] .ap-state.is-bad { background: color-mix(in srgb, var(--bad) 14%, #18212d); color: var(--bad-text); }
+html[data-theme="dark"] .ap-fragile { background: rgba(200, 215, 235, .06); color: var(--text-dim); border-color: var(--edge); }
+html[data-theme="dark"] .sr-step.is-now { background: color-mix(in srgb, var(--accent) 12%, #18212d); }
+html[data-theme="dark"] .dk-head { background: rgba(200, 215, 235, .08); color: var(--text); }
+html[data-theme="dark"] .dk-head.is-match { background: color-mix(in srgb, var(--ok) 16%, #18212d); color: var(--ok-text); }
+html[data-theme="dark"] :is(.dk-head.is-colour, .dk-head.is-material, .dk-head.is-missing) { background: color-mix(in srgb, var(--bad) 16%, #18212d); color: var(--bad-text); }
+html[data-theme="dark"] .dk-bar { background: color-mix(in srgb, var(--accent) 24%, #18212d); border-color: color-mix(in srgb, var(--accent) 50%, #18212d); }
+html[data-theme="dark"] .dk-bar.is-run { background: color-mix(in srgb, var(--ok) 22%, #18212d); border-color: color-mix(in srgb, var(--ok) 50%, #18212d); }
+html[data-theme="dark"] .dk-bar.is-paused { background: color-mix(in srgb, var(--warn) 22%, #18212d); border-color: color-mix(in srgb, var(--warn) 50%, #18212d); }
+html[data-theme="dark"] .dk-bar.is-unknown { background: repeating-linear-gradient(90deg, #222c38 0 8px, #1b2430 8px 16px); border-color: var(--edge); }
