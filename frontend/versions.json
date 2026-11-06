@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.1",
+      "date": "2026-11-06",
+      "name": "Slicing says why it failed, and one report holds the details",
+      "published": true,
+      "summary": "Slicing says why it failed, and one report holds the details.",
+      "changes": [
+        "Slicing says why it failed, and one report holds the details"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.0",
       "date": "2026-11-06",
       "name": "Workbench",

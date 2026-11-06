@@ -28,6 +28,10 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.20.1 (6 November 2026): Slicing says why it failed, and one report holds the details
+
+- Slicing says why it failed, and one report holds the details
+
 ## 0.20.0 (6 November 2026): Workbench
 
 - Preferences, Appearance, Look: Workbench (the new default: flat panels with thin borders, small corners, numbers that line up, colour only for status, nothing moving behind the page), Control room (denser, squarer and grey, with colour only when something needs you) or Glass (the frosted look with the moving background).
