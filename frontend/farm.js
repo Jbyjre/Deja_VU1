@@ -724,7 +724,7 @@ const Farm = (() => {
         now: check && !check.ok
           ? `The last check failed: ${check.error}${check.cause && check.cause.fixes && check.cause.fixes[0] ? ' What to try: ' + check.cause.fixes[0] : ''}`
           : 'Runs the slicer once, with no window, to read its version.',
-        ok: check && check.ok ? check.detail : '', act: 'Check it' },
+        ok: check && check.ok ? `${check.detail}. ${check.support ? check.support.title : ''}` : '', act: 'Check it' },
       { key: 'profile', done: !!(s && s.profiles.length), title: 'Pick your print settings',
         now: 'Choose the printer, process and filaments from the presets your slicer already has.',
         ok: s ? plural(s.profiles.length, 'saved profile') : '', act: 'Choose presets' },
@@ -809,7 +809,7 @@ const Farm = (() => {
     const s = ap.settings, check = s.last_check;
     const status = $('ap-status');
     if (s.problem) status.innerHTML = `<p class="ap-state is-bad"><b>Not ready.</b> ${esc(s.problem)}</p>`;
-    else if (check && check.ok) status.innerHTML = `<p class="ap-state is-ok"><b>Ready.</b> ${esc(check.detail)} <small>checked ${esc(check.checked_at.replace('T', ' '))}</small></p>`;
+    else if (check && check.ok) status.innerHTML = `<p class="ap-state is-ok"><b>Ready.</b> ${esc(check.detail)} <small>checked ${esc(check.checked_at.replace('T', ' '))}</small>${check.support ? `<small>${esc(check.support.title)} ${esc(check.support.detail)}</small>` : ''}</p>`;
     else if (check) status.innerHTML = `<div class="ap-state is-bad"><b>The last check failed.</b> ${esc(check.error)}${causeHtml(check.cause)}</div>`;
     else status.innerHTML = '<p class="ap-state"><b>Not checked yet.</b> Save the path, then press "Check slicer".</p>';
     bindCause(status);

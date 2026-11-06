@@ -668,3 +668,81 @@ class TestWhyItFailed(SlicerBridgeTest):
             slicer_bridge.wait(job["id"], timeout=20)
         self.assertEqual(len(slicer_bridge._traces), slicer_bridge.MAX_JOBS_KEPT)
         self.assertEqual(set(slicer_bridge._traces), set(slicer_bridge._jobs))
+
+
+class TestEngineSupportAndChanges(SlicerBridgeTest):
+    """B26: what is known about the engine, and an engine is never swapped without being read again."""
+
+    def replace_engine(self):
+        with open(self.orca, "a") as fh:
+            fh.write("\n# updated\n")
+        stat_info = os.stat(self.orca)
+        os.utime(self.orca, ns=(stat_info.st_atime_ns, stat_info.st_mtime_ns + 5_000_000_000))
+
+    def test_a_check_says_how_much_is_known_about_this_build(self):
+        self.configure()
+        result = slicer_bridge.check()
+        self.assertEqual(result["support"]["level"], "untested")
+        self.assertIn("Not tested at this version (2.3.2)", result["support"]["title"])
+        self.assertEqual(slicer_bridge.public_settings()["last_check"]["support"]["level"], "untested")
+
+    def test_a_failed_check_carries_no_support_claim(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "not_orca"
+        self.assertNotIn("support", slicer_bridge.check())
+
+    def test_the_report_names_what_is_known_about_the_engine(self):
+        self.configure()
+        slicer_bridge.check()
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"], timeout=20)
+        report = slicer_bridge.export(job["id"])
+        self.assertEqual(report["engine"]["support"]["level"], "untested")
+        self.assertIn("Tested so far", report["engine"]["support"]["detail"])
+
+    def test_an_engine_updated_since_the_check_waits_for_a_new_check(self):
+        self.configure()
+        self.assertTrue(slicer_bridge.check()["ok"])
+        os.remove(self.args_file)         # the check itself runs the program for its option list
+        self.replace_engine()
+        with self.assertRaisesRegex(ValueError, "changed since it was last checked"):
+            slicer_bridge.start_job("spur_gear_24t.stl")
+        with self.assertRaisesRegex(ValueError, "changed since it was last checked"):
+            slicer_bridge.slice_model("spur_gear_24t.stl")
+        self.assertFalse(os.path.exists(self.args_file), "the engine was never run")
+        self.assertIsNotNone(slicer_bridge.engine_changed(slicer_bridge.get_settings(), self.orca))
+        self.assertTrue(slicer_bridge.check()["ok"])
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"], timeout=20)
+        self.assertEqual(job["status"], "done")
+
+    def test_another_program_switched_in_without_a_check_waits_for_one(self):
+        # Settings clears the last check when the path is edited; the start-up variable and auto-detection can
+        # change the program without that, which is the gap this closes.
+        self.configure()
+        self.assertTrue(slicer_bridge.check()["ok"])
+        other = os.path.join(self.tmp, "orca-slicer-other")
+        with open(other, "w") as fh:
+            fh.write(FAKE_ORCA.format(python=sys.executable))
+        os.chmod(other, os.stat(other).st_mode | stat.S_IEXEC)
+        os.environ[slicer_bridge.ENV_PATH] = other
+        with self.assertRaisesRegex(ValueError, "changed since it was last checked"):
+            slicer_bridge.start_job("spur_gear_24t.stl")
+        self.assertTrue(slicer_bridge.check()["ok"])
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"], timeout=20)
+        self.assertEqual(job["status"], "done")
+
+    def test_choosing_another_path_in_settings_clears_the_old_check(self):
+        self.configure()
+        self.assertTrue(slicer_bridge.check()["ok"])
+        other = os.path.join(self.tmp, "orca-slicer-other")
+        with open(other, "w") as fh:
+            fh.write(FAKE_ORCA.format(python=sys.executable))
+        os.chmod(other, os.stat(other).st_mode | stat.S_IEXEC)
+        slicer_bridge.save_settings({"slicer_path": other})
+        self.assertIsNone(slicer_bridge.get_settings()["last_check"])
+        self.assertIsNone(slicer_bridge.public_settings()["last_check"])
+
+    def test_an_engine_that_was_never_checked_still_slices(self):
+        self.configure()
+        self.assertIsNone(slicer_bridge.engine_changed(slicer_bridge.get_settings(), self.orca))
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"], timeout=20)
+        self.assertEqual(job["status"], "done")

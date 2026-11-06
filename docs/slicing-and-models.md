@@ -33,7 +33,8 @@ app. Use an independently installed Orca-compatible program with U1 presets.
 The current verified specialised Linux build identifies itself as
 **Snapmaker_Orca 02.08.01.55**. The owner's delivery report identifies the exact
 release and source. Stock OrcaSlicer 2.4.2 remains a shared-height route; its
-historical successful slices do not prove per-head support.
+historical successful slices do not prove per-head support. The builds and systems that
+have been run for real are listed in [engine support](engine-support.md).
 
 1. Install and open your engine normally. First verify its own U1 setup.
 2. Enable **Auto-print pipeline** and **Filament inventory** in Settings.

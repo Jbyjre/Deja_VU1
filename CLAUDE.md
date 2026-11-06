@@ -337,6 +337,14 @@ root should hand over to `welcome.html`.
   prints nothing on stdout, which once read as "no output"). `farm.js` `causeHtml`/`bindCause` draw it in Files,
   Slicing and Prepare (`#sw-cause`); `readiness.help_report` adds the slicing lines. The online demo answers the POST
   in `app.js`. Windows and macOS rules are matched by documented values, never seen from a real engine.
+- `engine_support.py` (pure): `VERIFIED` lists the engine builds run for real (Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2,
+  both Linux); `assess(app, version, system)` gives `tested` or `untested` with words, shown by `check()` as `support`, in
+  the report's engine section and by `farm.js` under "Ready". Untested never blocks a slice. `docs/engine-support.md` holds
+  the same table (a test fails when they differ); add a row only with a recorded run. `slicer_bridge.engine_changed` makes
+  `start_job`/`slice_model` wait for a new check when the program's identity (path, size, mtime) differs from the last
+  successful check; Settings clears the check when the path is edited, so the gap it closes is the start-up variable and
+  auto-detection. An engine never checked still slices. `tools/engine-fixtures.py` slices the three standard fixtures with
+  one engine in a throw-away data folder and prints a row (tested with a stand-in engine only).
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Tabs (the owner's review, 1 November 2026): Overview is a page of cards about now (Needs you,
