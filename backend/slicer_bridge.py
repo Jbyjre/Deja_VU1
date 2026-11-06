@@ -46,6 +46,7 @@ printing and other operating systems remain unverified.
 
 import json
 import os
+import platform
 import re
 import shutil
 import signal
@@ -57,6 +58,7 @@ import time
 import uuid
 from datetime import datetime
 
+import engine_support
 import file_library
 import gcode_tools
 import slice_diagnosis
@@ -136,6 +138,21 @@ def engine_capabilities(settings=None):
     if checked.get('ok') and checked.get('program_identity') == _program_identity(path):
         return checked.get('capabilities') or {}
     return {}
+
+
+def engine_changed(settings, path):
+    """
+    Words when the program is no longer the one that was last checked (updated,
+    replaced, or another engine chosen), otherwise None. A slice then waits for
+    a new check, so an engine is never swapped for another without being read.
+    """
+    checked = settings.get('last_check') or {}
+    if not (checked.get('ok') and checked.get('program_identity')):
+        return None
+    if checked['program_identity'] == _program_identity(path):
+        return None
+    return ("The slicer program changed since it was last checked (it was updated, replaced or another one was "
+            "chosen), so Deja Vu1 doesn't know which version it is now. Press Check slicer, then slice again")
 
 
 # ---------------------------------------------------------------------------
@@ -576,7 +593,8 @@ def check():
         elif match:
             result = {"ok": True, "app": match.group(1), "version": match.group(2),
                       "detail": f"{match.group(1)} {match.group(2)} answered in "
-                                f"{(time.monotonic() - started):.1f} s"}
+                                f"{(time.monotonic() - started):.1f} s",
+                      "support": engine_support.assess(match.group(1), match.group(2), platform.system())}
             with tempfile.TemporaryDirectory(prefix='dejavu-capabilities-') as work:
                 _, options, _ = _run([path, '--help-fff'], CHECK_TIMEOUT, cwd=work)
                 schema_path = os.path.join(work, 'defaults.json')
@@ -723,6 +741,9 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
     problem = _check_program(path, source)
     if problem:
         raise ValueError(problem)
+    changed = engine_changed(s, path)
+    if changed:
+        raise ValueError(changed)
     trace["stage"] = "profile"
     profile = _profile(profile_id, s)
     trace["profile"] = _profile_facts(profile)
@@ -895,9 +916,12 @@ def _engine_facts(settings, path, source):
     modified = None
     if identity:
         modified = datetime.fromtimestamp(identity[2] / 1e9).isoformat(timespec="seconds")
+    support = None
+    if check.get("ok") and check.get("app") and check.get("version"):
+        support = engine_support.assess(check["app"], check["version"], platform.system())
     return {"path": slice_diagnosis.redact(path), "source": source, "app": check.get("app"),
             "version": check.get("version"), "size_bytes": identity[1] if identity else None, "modified": modified,
-            "capabilities": engine_capabilities(settings),
+            "capabilities": engine_capabilities(settings), "support": support,
             "last_check": {"ok": check.get("ok"), "at": check.get("checked_at"),
                            "error": slice_diagnosis.redact(check.get("error")) or None,
                            "exit_code": check.get("exit_code")} if check else None}
@@ -1025,6 +1049,9 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
     problem = _check_program(path, source)
     if problem:
         raise ValueError(problem)
+    changed = engine_changed(s, path)
+    if changed:
+        raise ValueError(changed)
     profile = _profile(profile_id, s)
     job = {"id": uuid.uuid4().hex[:8], "model": name, "profile": profile["name"], "profile_id": profile["id"],
            "printer_id": mock_moonraker.selected_printer_id(),
