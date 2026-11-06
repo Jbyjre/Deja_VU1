@@ -96,7 +96,7 @@ window.Explain = (() => {
     'get ready to slice': ['The whole set-up for [[slicer|slicing]], as five steps you do once. The next step is lit and has one button; done steps turn green.',
       'Find it for me looks in your Applications, Downloads and program folders for Snapmaker Orca or OrcaSlicer. Nothing runs until you press Use this.'],
     'slicer': ['Where Deja Vu1 finds the OrcaSlicer you installed.',
-      'Deja Vu1 runs it for you. It never downloads or installs a slicer itself.'],
+      'Deja Vu1 runs it for you. It never downloads or installs a slicer itself. When a check or a slice fails, the message names the cause and what to try, and Copy report for help makes one report to share.'],
     'profiles': ['Which OrcaSlicer settings to slice with: printer, print quality and [[filament]].',
       'These are the same profile files OrcaSlicer keeps. Deja Vu1 works on copies.'],
     'slice a model': ['Turn a model into [[G-code]] with your installed slicer.',
