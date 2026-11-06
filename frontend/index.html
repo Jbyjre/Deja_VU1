@@ -33,6 +33,7 @@
 <link rel="stylesheet" href="guide.css">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="dark.css">
+<link rel="stylesheet" href="looks.css">
 <script src="theme-boot.js"></script>
 <link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/BricolageGrotesque-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -1080,6 +1081,13 @@
     <section class="card liquid-glass appearance-card" id="appearance-card" data-browser-only>
       <div class="card-head"><div><h2>Appearance</h2><p class="card-sub">How the dashboard looks on this device. Move your mouse over the page to see the background react.</p></div></div>
       <div data-backdrop-picker></div>
+      <fieldset class="bp-group" id="look-choice-group"><legend>Look</legend><p class="field-hint">How the whole dashboard is drawn. Your printers, files and settings stay the same.</p>
+        <div class="look-choice" id="look-choice" role="radiogroup" aria-label="Look">
+          <button type="button" role="radio" data-look-choice="workbench"><b>Workbench</b><small>Flat panels, thin lines, numbers in columns</small></button>
+          <button type="button" role="radio" data-look-choice="control"><b>Control room</b><small>Denser and squarer, grey, colour only for status</small></button>
+          <button type="button" role="radio" data-look-choice="glass"><b>Glass</b><small>Frosted glass and the moving background</small></button>
+        </div>
+        <p class="field-hint look-not-glass">The moving background and its colour sets come with the Glass look.</p></fieldset>
       <fieldset class="bp-group" id="theme-choice-group"><legend>Theme</legend><p class="field-hint">Light, dark, or the same as this computer.</p>
         <div class="pill-toggle theme-choice" id="theme-choice" role="radiogroup" aria-label="Theme">
           <button type="button" role="radio" data-theme-choice="light">Light</button>
