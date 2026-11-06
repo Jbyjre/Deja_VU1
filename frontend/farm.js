@@ -32,6 +32,48 @@ const Farm = (() => {
     finally { if (btn) { btn.disabled = false; delete btn.dataset.phase; btn.textContent = original; } }
   }
 
+  /* A failed slice or engine check, shown with its real cause: what the engine said, what to try, and the
+   * report a helper can read. The server decides the words (backend/slice_diagnosis.py); this only lays
+   * them out. Every value goes through esc(). */
+  function causeHtml(cause, jobId) {
+    if (!cause) return '';
+    const fixes = (cause.fixes || []).map(f => `<li>${esc(f)}</li>`).join('');
+    return `<div class="ap-cause">
+      ${cause.detail ? `<p>${esc(cause.detail)}</p>` : ''}
+      ${fixes ? `<p class="ap-cause-label">What to try</p><ul>${fixes}</ul>` : ''}
+      ${cause.command ? `<p class="ap-cause-cmd"><code>${esc(cause.command)}</code>
+        <button class="btn small" type="button" data-copy-cmd="${esc(cause.command)}">Copy command</button></p>` : ''}
+      ${cause.evidence ? `<p class="ap-cause-said">The slicer said: <code>${esc(cause.evidence)}</code></p>` : ''}
+      <p><button class="btn small" type="button" data-slice-report="${esc(jobId || '')}">Copy report for help</button></p>
+    </div>`;
+  }
+
+  function failureHtml(job) {
+    const stage = job.stage_label ? `<span class="ap-stage">Stopped at: ${esc(job.stage_label)}</span>` : '';
+    return `${esc(job.error || job.step)} ${stage}${causeHtml(job.cause, job.id)}`;
+  }
+
+  async function copyReport(jobId, btn) {
+    const r = await busy(btn, 'Preparing…', () => postJSON(api('/api/slicer/report'), jobId ? { job: jobId } : {}));
+    if (!r.ok) return toast(`Couldn't make the report: ${r.body.error || r.status}`, 'bad', 8000);
+    const text = JSON.stringify(r.body, null, 2);
+    if (await copyText(text)) return toast('Report copied. It names your files, so read it before you share it.', 'ok', 8000);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    link.download = 'dejavu1-slicing-report.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    toast("This browser wouldn't copy it, so the report was saved as a file instead.", 'info', 8000);
+  }
+
+  function bindCause(root) {
+    qsa('[data-copy-cmd]', root).forEach(b => b.onclick = async () => {
+      const ok = await copyText(b.dataset.copyCmd);
+      toast(ok ? 'Command copied. Paste it into a terminal window.' : "This browser wouldn't copy it. Select the command and copy it by hand.", ok ? 'ok' : 'info', 6000);
+    });
+    qsa('[data-slice-report]', root).forEach(b => b.onclick = () => copyReport(b.dataset.sliceReport, b));
+  }
+
   /* ================================================================
    * 1. fleet command center
    * ================================================================ */
@@ -679,7 +721,9 @@ const Farm = (() => {
         now: s && s.slicer_path ? s.problem : 'Snapmaker Orca or OrcaSlicer, installed on this computer.',
         ok: s ? `${how}: ${fileName(s.slicer_path)}` : '', act: 'Find it for me' },
       { key: 'check', done: answered, title: 'Check that it answers',
-        now: check && !check.ok ? `The last check failed: ${check.error}` : 'Runs the slicer once, with no window, to read its version.',
+        now: check && !check.ok
+          ? `The last check failed: ${check.error}${check.cause && check.cause.fixes && check.cause.fixes[0] ? ' What to try: ' + check.cause.fixes[0] : ''}`
+          : 'Runs the slicer once, with no window, to read its version.',
         ok: check && check.ok ? check.detail : '', act: 'Check it' },
       { key: 'profile', done: !!(s && s.profiles.length), title: 'Pick your print settings',
         now: 'Choose the printer, process and filaments from the presets your slicer already has.',
@@ -766,8 +810,9 @@ const Farm = (() => {
     const status = $('ap-status');
     if (s.problem) status.innerHTML = `<p class="ap-state is-bad"><b>Not ready.</b> ${esc(s.problem)}</p>`;
     else if (check && check.ok) status.innerHTML = `<p class="ap-state is-ok"><b>Ready.</b> ${esc(check.detail)} <small>checked ${esc(check.checked_at.replace('T', ' '))}</small></p>`;
-    else if (check) status.innerHTML = `<p class="ap-state is-bad"><b>The last check failed.</b> ${esc(check.error)}</p>`;
+    else if (check) status.innerHTML = `<div class="ap-state is-bad"><b>The last check failed.</b> ${esc(check.error)}${causeHtml(check.cause)}</div>`;
     else status.innerHTML = '<p class="ap-state"><b>Not checked yet.</b> Save the path, then press "Check slicer".</p>';
+    bindCause(status);
     if (document.activeElement !== $('ap-path')) $('ap-path').value = s.slicer_path || '';
     if(document.activeElement!==$('ap-preset-folder'))$('ap-preset-folder').value=s.preset_folder||'';
     $('ap-path').disabled = s.path_source === 'environment';
@@ -843,11 +888,12 @@ const Farm = (() => {
       const rep = j.report || {}, files = rep.files || [];
       return `<li class="ap-job ${j.status}">
         <div class="ap-job-head"><b>${esc(j.model)}</b><span class="pill">${WORD[j.status]}</span></div>
-        <p class="ap-job-step">${esc(j.error || j.step)}</p>
+        <div class="ap-job-step">${j.status === 'failed' ? failureHtml(j) : esc(j.error || j.step)}</div>
         ${files.map(f => `<p class="ap-job-file">→ <button class="chip-btn" type="button" data-open-file="${esc(f.name)}">${esc(f.name)}</button>
           ${f.layers} layers · ${f.estimated_hours==null?'time unknown':Workshop.fmtHours(f.estimated_hours)} · ${f.filament_grams==null?'filament unknown':f.filament_grams.toFixed(1)+' g'} · pre-flight ${esc(f.preflight)}</p>`).join('')}
         <div class="fd-actions">
           ${['waiting','running'].includes(j.status)?`<button class="btn small" data-cancel-slice="${esc(j.id)}">Cancel slice</button>`:''}
+          ${['done','queued','cancelled'].includes(j.status)?`<button class="btn small" type="button" data-slice-report="${esc(j.id)}">Copy report</button>`:''}
           ${files.length && j.previous ? `<button class="btn small" type="button" data-diff="${esc(j.previous)}|${esc(files[0].name)}">What changed since ${esc(j.previous)}?</button>` : ''}
           ${rep.command ? `<details class="ap-details"><summary>What ran${rep.seconds != null ? ` (${rep.seconds} s)` : ''}</summary>
             <code>${esc(rep.command.join(' '))}</code>
@@ -856,6 +902,7 @@ const Farm = (() => {
       </li>`;
     }).join('') : '<li class="log-empty">Nothing sliced yet.</li>');
     qsa('#ap-jobs [data-cancel-slice]').forEach(b => b.onclick = () => apPost('/api/slicer/jobs/'+enc(b.dataset.cancelSlice)+'/cancel', {}, b, 'Stopping…'));
+    bindCause($('ap-jobs'));
     window.dispatchEvent(new CustomEvent('dv-slice-jobs', {detail:ap.jobs}));
     qsa('#ap-jobs [data-open-file]').forEach(b => b.onclick = () => { showTab('files'); Workshop.openFile(b.dataset.openFile); });
     qsa('#ap-jobs [data-diff]').forEach(b => b.onclick = () => { const [a, c] = b.dataset.diff.split('|'); Workshop.openDiff(a, c); });
@@ -953,7 +1000,7 @@ const Farm = (() => {
   }
 
   init();
-  return { loadHistory, loadSandbox, loadAutoPrint, broadcast, state: { cmd, hist, sb, ap } };
+  return { loadHistory, loadSandbox, loadAutoPrint, broadcast, causeHtml, bindCause, state: { cmd, hist, sb, ap } };
 })();
 
 window.Farm = Farm;

@@ -63,6 +63,49 @@ come from the resolved presets. Smooth-plate temperature fields apply only to
 that bed type. Edit-as-new keeps the previous profile for recovery. External
 exported preset paths remain external resources and must be backed up separately.
 
+## When the engine check or a slice fails
+
+The message names the cause and what to try, under Files, Slicing and in the
+Prepare workspace. Each failed slice also says where it stopped: reading the
+model, checking the engine, checking the presets, checking layer heights,
+preparing the plate, slicing, checking the G-code or saving it.
+
+Causes Deja Vu1 recognises by the text the engine or the system prints, or by
+how the program ended:
+
+| Cause | What it looks like | What the message offers |
+|---|---|---|
+| Missing library (Linux) | `error while loading shared libraries: X: cannot open shared object file` | The library name. For `libwebkit2gtk-4.1.so.0` and `libjavascriptcoregtk-4.1.so.0`, the Debian or Ubuntu package and a command to copy. For any other library, a hint to search the package manager. |
+| AppImage without FUSE 2 | `libfuse.so.2` in the output | Install FUSE 2, or use a build that is not an AppImage. |
+| System too old | ``version `GLIBC_2.38' not found`` | Use an engine build made for this system, or update the system. |
+| Missing library (macOS) | `Library not loaded: X` | Reinstall the engine. |
+| No screen | `cannot open display` | Start Deja Vu1 from a desktop session, or run the engine under `xvfb-run`. |
+| Out of memory | `std::bad_alloc`, or the system killing the process | Close other programs, try a smaller model. |
+| Crash | A POSIX signal (segmentation fault, abort, killed) | Slice again, then copy the report. |
+| Windows load errors | Exit codes 0xC0000135, 0xC000007B, 0xC0000005 | Reinstall the engine; repair the Visual C++ Redistributable for 0xC0000135. |
+| Not a runnable program | The system refuses to start the file | Download the build for this computer's system and processor. |
+| Orca's own errors | Its `result.json` return codes | The code's meaning and one fix (a model outside the plate, an incompatible preset, and so on). |
+
+Anything else keeps the old wording ("Orca exited with code N") and its last
+line, and the report still holds the engine's output.
+
+**Copy report for help** (and **Copy report** on a finished slice) makes one JSON
+report: the Deja Vu1 version, how it was running (local server, printer, watch-only),
+the computer's operating system, the engine's version and last check, the profile
+and preset file names, the model's name, size and a short fingerprint, the stage
+reached, the command that ran, the exit code, the start and end of the engine's
+output, which G-code files came out, and the cause. Home folders are shown as `~`.
+It names your files and engine output, so read it before you share it. Settings,
+**Copy a report for help**, also carries the slicing lines. Reports live in memory
+with the last 20 slices and are lost when Deja Vu1 restarts.
+
+What is verified: the cause rules run against the text real failing programs print
+(the Linux loader, the AppImage runtime, GTK) and against stand-in engines that fail
+each way, on Linux. The Windows exit codes and the macOS loader text are matched by
+their documented values and have not been seen from a real Windows or macOS engine.
+The package names are checked against Debian's and Ubuntu's package lists;
+`libmspack.so.0` has no single name because Ubuntu 24.04 calls it `libmspack0t64`.
+
 ## Different heights per head
 
 Choose **Different preferred heights per head** in a native profile. It uses the

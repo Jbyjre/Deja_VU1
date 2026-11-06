@@ -23,7 +23,7 @@ window.DVWorkspace = (() => {
     const panel = $('file-detail'); panel.classList.add('slicer-workspace');
     const head = $('sw-header'); head.hidden = false;
     head.innerHTML = `<div class="sw-flow" role="group" aria-label="Slicing workflow"><button id="sw-prepare" class="sw-step" aria-pressed="true">01 <b>Prepare</b></button><button id="sw-preview" class="sw-step" aria-pressed="false" disabled>02 <b>Preview</b></button><button id="sw-setup" class="sw-step" aria-pressed="false">Profiles & tools</button><button class="sw-mobile sw-step" id="sw-edit-objects">Objects & edit ↓</button><span class="sw-bed">U1 · 270 × 270 × 270 mm</span></div>
-      <div class="sw-actionbar"><label>Slice profile<select id="sw-profile"><option value="">Loading profiles…</option></select></label><button class="btn" id="sw-edit-profile">Edit as new</button><button class="btn primary" id="sw-slice">Slice plate</button><button class="btn danger" id="sw-cancel" hidden>Cancel slice</button><p id="sw-job" role="status" aria-live="polite">Choose a profile, then slice your prepared plate.</p></div>`;
+      <div class="sw-actionbar"><label>Slice profile<select id="sw-profile"><option value="">Loading profiles…</option></select></label><button class="btn" id="sw-edit-profile">Edit as new</button><button class="btn primary" id="sw-slice">Slice plate</button><button class="btn danger" id="sw-cancel" hidden>Cancel slice</button><p id="sw-job" role="status" aria-live="polite">Choose a profile, then slice your prepared plate.</p><div id="sw-cause"></div></div>`;
     const left = $('sw-objects'); left.hidden = false;
     left.innerHTML = '<div class="sw-panel-title"><h3>Objects</h3><span>Plate 01</span></div><div id="sw-object-actions"></div><div id="sw-object-list"></div><details class="sw-source-info"><summary>Source & import information</summary></details>';
     relocate(controls.querySelector('.plate-heading'), left.querySelector('details'));
@@ -127,7 +127,7 @@ window.DVWorkspace = (() => {
         if (!valid()) return;
         if (!r.ok) throw new Error(r.body.error || 'Could not start slicing');
         state.job = r.body.id; state.sliceRevision = revision;
-        $('sw-job').textContent = r.body.step; $('sw-cancel').hidden = false;
+        $('sw-job').textContent = r.body.step; $('sw-cause').innerHTML = ''; $('sw-cancel').hidden = false;
         await Farm.loadAutoPrint();
       } catch (e) { if(valid()) { $('sw-job').textContent=e.message; await profiles(); } }
     };
@@ -137,9 +137,13 @@ window.DVWorkspace = (() => {
       if(valid()) $('sw-job').textContent=r.ok?'Stopping the engine…':r.body.error;
     };
     state.jobs = event => {
-      if(!valid()) { $('sw-slice').disabled=true; $('sw-job').textContent='Printer changed. Reopen the plate to slice for this printer.'; return; }
+      if(!valid()) { $('sw-slice').disabled=true; $('sw-job').textContent='Printer changed. Reopen the plate to slice for this printer.'; $('sw-cause').innerHTML=''; return; }
       const job=(event.detail||[]).find(j=>j.id===state.job); if(!job) return;
-      $('sw-job').textContent=job.error||job.step;
+      // A failure says where it stopped and shows its real cause, what to try and the report; anything else is one line.
+      const failed = job.status === 'failed' && job.cause;
+      $('sw-job').textContent = failed && job.stage_label ? `${job.error} Stopped at: ${job.stage_label}.` : job.error||job.step;
+      $('sw-cause').innerHTML = failed ? Farm.causeHtml(job.cause, job.id) : '';
+      if (failed) Farm.bindCause($('sw-cause'));
       const running=['waiting','running'].includes(job.status); $('sw-cancel').hidden=!running; $('sw-slice').disabled=running;
       if(!running && job.report?.files?.length) {
         state.output=job.report.files[0]; state.report=job.report;

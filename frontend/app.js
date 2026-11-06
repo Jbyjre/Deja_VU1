@@ -537,6 +537,7 @@ async function tourPost(url, body) {
     return tourReply({ routed: name, to: target, online_demo: true });
   }
   if (url.pathname === '/api/slicer/find') return tourReply({ error: 'The online demo runs in your browser, so there is no computer here to search. In Deja Vu1 on your computer, this looks in your Applications, Downloads and program folders.', online_demo: true }, 409);
+  if (url.pathname === '/api/slicer/report') return tourReply({ error: 'The online demo runs in your browser and has no slicer, so there is no slicing report to make. In Deja Vu1 on your computer, this report says what ran, where it stopped and why.', online_demo: true }, 409);
   if (url.pathname === '/api/files/opened') return tourReply({ ok: true, online_demo: true });
   if (url.pathname === '/api/files/delete') {
     const name = String(parsed.name || '');

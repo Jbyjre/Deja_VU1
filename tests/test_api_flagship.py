@@ -7,6 +7,7 @@ and each route doing what its docstring says.
 
 import json
 import os
+import platform
 import sys
 import threading
 import unittest
@@ -92,7 +93,8 @@ class TestGating(FlagshipAPI):
         cases = {
             "fleet_command": [("/api/fleet/history?demo=1", None), ("/api/fleet/broadcast?demo=1", {"action": "home"})],
             "photo_studio": [("/api/studio/palette", None)],
-            "auto_print": [("/api/slicer/settings", None), ("/api/slicer/check", {}), ("/api/slicer/find", {})],
+            "auto_print": [("/api/slicer/settings", None), ("/api/slicer/check", {}), ("/api/slicer/find", {}),
+                           ("/api/slicer/report", {})],
             "sandbox": [("/api/sandbox?demo=1", None), ("/api/sandbox/step?demo=1", {"seconds": 5})],
         }
         modules.set_enabled("auto_print", True)
@@ -178,6 +180,15 @@ class TestSlicerRoutes(FlagshipAPI):
         status, body = self.request("/api/slicer/slice", {"name": "part.stl"})
         self.assertEqual(status, 400)
         self.assertIn("No slicer set up", body["error"])
+
+    def test_the_slicing_report_answers_with_no_slicer_set_and_refuses_an_unknown_slice(self):
+        status, body = self.request("/api/slicer/report", {})
+        self.assertEqual((status, body["kind"], body["schema"]), (200, "engine", "dejavu1.slice-report/1"))
+        self.assertIn("No slicer set up", body["problem"])
+        self.assertEqual(body["host"]["os"], platform.system())
+        status, body = self.request("/api/slicer/report", {"job": "nope"})
+        self.assertEqual(status, 400)
+        self.assertIn("not available", body["error"])
 
     def test_find_lists_what_it_searched_and_changes_nothing(self):
         before = self.request("/api/slicer/settings")[1]

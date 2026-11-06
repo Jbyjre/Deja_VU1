@@ -323,6 +323,20 @@ root should hand over to `welcome.html`.
   (pre-flight, 270 × 270 × 270 mm), `converter_3mf.py`, `slicer_bridge.py`,
   `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py`
   (29 module ids), `storage.py` (atomic JSON).
+- `slice_diagnosis.py` (pure functions, no I/O): why an engine check or slice failed. `from_text` (Linux loader,
+  AppImage FUSE 2, macOS dyld, GTK display, bad_alloc), `from_exit` (POSIX signals, three Windows NTSTATUS codes),
+  `from_start` (the system refused to run the file), `from_orca` (result.json codes plus `ORCA_FIXES`, which must cover
+  every code in `slicer_bridge.ORCA_ERRORS`: tested). A cause is `{code, title, detail, fixes, command, evidence,
+  repairable}`. Install package names are given only when checked against Debian and Ubuntu (`DEBIAN_PACKAGES`);
+  libmspack.so.0 is deliberately absent (Debian `libmspack0`, Ubuntu 24.04 `libmspack0t64`). `slicer_bridge.slice_model`
+  fills a `trace` through stages input, engine, profile, heights, prepare, slice, output, save, done; `_work` stores it
+  in `_traces` (dropped with the job) and each job carries `cause`, `stage`, `stage_label`. `POST /api/slicer/report`
+  (`{job}` or none) returns `slicer_bridge.export()`: one report with mode, host, engine, profile preset names, input
+  fingerprint, stage, run (command with preset names, exit code, head and tail of each log), output status and cause;
+  home folders become `~`. `check()` reads stdout and stderr and the exit code (a program that cannot load a library
+  prints nothing on stdout, which once read as "no output"). `farm.js` `causeHtml`/`bindCause` draw it in Files,
+  Slicing and Prepare (`#sw-cause`); `readiness.help_report` adds the slicing lines. The online demo answers the POST
+  in `app.js`. Windows and macOS rules are matched by documented values, never seen from a real engine.
 
 `frontend/` (no framework, no build; served as-is, everything here is public)
 - Tabs (the owner's review, 1 November 2026): Overview is a page of cards about now (Needs you,
