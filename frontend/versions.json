@@ -2,6 +2,28 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.0",
+      "date": "2026-11-06",
+      "name": "Workbench",
+      "published": true,
+      "summary": "Deja Vu1 has a plainer, more technical look by default, and Preferences lets you pick how it looks: Workbench, Control room or Glass, each in light or dark.",
+      "changes": [
+        "Preferences, Appearance, Look: Workbench (the new default: flat panels with thin borders, small corners, numbers that line up, colour only for status, nothing moving behind the page), Control room (denser, squarer and grey, with colour only when something needs you) or Glass (the frosted look with the moving background).",
+        "Every look works with the Light, Dark and System themes.",
+        "Emergency stop has a deep red fill with white words in every look, so it always stands out.",
+        "In the dark theme, overdue and due-soon tasks show their red and yellow again, and twelve tinted labels are easier to read.",
+        "The Copy buttons on the command boxes and the twin's printing tag are easier to read."
+      ],
+      "highlights": [
+        {
+          "title": "Pick a look",
+          "tab": "prefs",
+          "target": "#look-choice",
+          "text": "Workbench, Control room or Glass. Each one works in light and dark."
+        }
+      ]
+    },
+    {
       "version": "0.19.0",
       "date": "2026-11-06",
       "name": "Find your way",
