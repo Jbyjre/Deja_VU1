@@ -1,0 +1,196 @@
+/* ==========================================================================
+   Deja Vu1 - the looks (Preferences → Appearance → Look)
+
+   theme-boot.js sets data-ui on <html> before the page is drawn:
+     workbench  the default. Flat panels with hairline borders, small radii,
+                one typeface for words and one for numbers, numbers that line
+                up in columns, colour kept for status, nothing moving behind
+                the content.
+     control    the workbench made denser and squarer on a grey ground, in the
+                spirit of ISA-101 operator screens: grey surfaces, colour only
+                when something needs a person.
+     glass      the frosted-glass look with the moving background (theme.css).
+   Loaded last. The :not(#ui) in each selector only raises its priority over
+   theme.css and dark.css; no element has that id. Filament swatches, camera
+   pictures and the 3D print keep their real colours in every look.
+   ========================================================================== */
+
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) {
+  --wb-bg: #eceef1;
+  --wb-panel: #ffffff;
+  --wb-raised: #f4f5f7;
+  --wb-line: #d3d8de;
+  --wb-line-strong: #aeb6c0;
+  --wb-r: 8px;
+  --wb-r-sm: 6px;
+  --wb-r-xs: 4px;
+  --bg: var(--wb-bg);
+  --text: #15191e;
+  --text-dim: #39414b;
+  --text-faint: #56606b;
+  --hair: var(--wb-line);
+  --paper: var(--wb-panel);
+  --paper-solid: var(--wb-panel);
+  --shadow-card: none;
+  --lg-shadow: none;
+  --lg-radius: var(--wb-r);
+  --font-display: var(--font-sans);
+}
+:root:is([data-ui="workbench"], [data-ui="control"])[data-theme="dark"]:not(#ui) {
+  --wb-bg: #0e1217;
+  --wb-panel: #151a21;
+  --wb-raised: #1c222b;
+  --wb-line: #2a323d;
+  --wb-line-strong: #46515f;
+  --bg: var(--wb-bg);
+  --text: #e5ebf1;
+  --text-dim: #c2cbd5;
+  --text-faint: #b0bac6;
+  --raised: var(--wb-raised);
+  --edge: var(--wb-line);
+  --paper: var(--wb-panel);
+  --paper-solid: var(--wb-panel);
+}
+
+/* ---- the ground: no glow, no lines, no moving dots ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) body { background: var(--wb-bg); font-variant-numeric: tabular-nums; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .bg { display: none; }
+
+/* ---- every panel: solid, one hairline, no blur, no drifting highlight ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass,
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.topbar, .tabbar, .status-ribbon, .rail, .live-pill, .orb-panel, .more-sheet, .bottom-nav).liquid-glass,
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail {
+  background: var(--wb-panel);
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-r);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  animation: none;
+}
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass::before, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass::after { display: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass:is(.card, .fleet-card)[data-tint] { background: var(--wb-panel); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .card { animation: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .topbar { top: 0; margin-top: 10px; border-radius: var(--wb-r); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .topbar.liquid-glass { box-shadow: 0 1px 0 var(--wb-line); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) dialog.glass-dialog .dialog-panel, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .dialog-panel { border-radius: var(--wb-r); box-shadow: 0 18px 48px rgba(10, 14, 20, .22); }
+
+/* ---- type: one sans for words, the mono for readings ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .card h2, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .dialog-panel h2 { font: 600 15.5px/1.25 var(--font-sans); letter-spacing: 0; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .tab-sub-title { font: 600 18px/1.2 var(--font-sans); letter-spacing: 0; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.fc-name, .empty-title) { font-family: var(--font-sans); font-weight: 600; letter-spacing: 0; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) #private-greeting, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .launch-strip h1, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .launch-strip h2 { font: 600 20px/1.2 var(--font-sans); letter-spacing: 0; }
+
+/* ---- controls: rectangles with a hairline, flat fills ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn { border-radius: var(--wb-r-sm); font: 600 13px/1 var(--font-sans); letter-spacing: 0;
+  background: var(--wb-panel); border: 1px solid var(--wb-line-strong); color: var(--text); box-shadow: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn:hover:not(:disabled) { background: var(--wb-raised); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 88%, black); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.danger { background: var(--wb-panel); border-color: color-mix(in srgb, var(--bad) 60%, var(--wb-line)); color: var(--bad-text); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.small { border-radius: var(--wb-r-xs); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(input, textarea, select) { border-radius: var(--wb-r-xs); background: var(--wb-panel); border: 1px solid var(--wb-line-strong); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.pill-toggle, .sec-track, .ls-chips) { border-radius: var(--wb-r-sm); background: var(--wb-raised); border: 1px solid var(--wb-line); padding: 2px; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.pill-toggle button, .sec-track button, .ls-chip) { border-radius: var(--wb-r-xs); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.pill-toggle button.active, .sec-track button[aria-pressed="true"]) { background: var(--wb-panel); color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--wb-line-strong); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .sec-track button[aria-pressed="true"]::before { background: var(--accent); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .tab-blob { border-radius: var(--wb-r-xs); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.badge, .pill, .spool-src, .chip-btn, .pchip, .t3-tag, .fc-dock, .wo-pill, .conn, .printer-chip, .ver-chip,
+  .tips-btn, .xp-more, .qa-btn) { border-radius: var(--wb-r-xs); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.task, .gate-fil, .queue-item, .bed-hold, .pf-list li, .dk-facts div, .spool-weigh, .charge-row, .ov-prow,
+  .orb-bubble, .crow, .sb-tile, .file-card, .file-tile) { border-radius: var(--wb-r-sm); box-shadow: none; }
+/* No sparkle: the screen tour button says what it does. */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .tips-btn > span[aria-hidden="true"] { display: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .xp-btn { background: transparent; border: 1px solid var(--wb-line-strong); color: var(--text-faint); box-shadow: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .xp-btn:hover { transform: none; color: var(--accent-text); border-color: var(--accent); box-shadow: none; }
+
+/* ---- the sidebar ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail { top: 10px; bottom: 10px; left: 10px; padding: 8px 6px; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail-item { border-radius: var(--wb-r-sm); min-height: 36px; padding: 7px 10px; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ---- notifications: a plain round button, no glass sphere ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb { background: var(--wb-panel); border: 1px solid var(--wb-line-strong); box-shadow: 0 2px 8px rgba(10, 14, 20, .14);
+  backdrop-filter: none; -webkit-backdrop-filter: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb-glass::after { display: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb.has-unread { animation: none; }
+
+/* ---- the twin and camera boxes: framed, not floating ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.pcam, .twin-host, .gauge-wrap) { border-radius: var(--wb-r-sm); }
+
+/* ---- the moving background picker only applies to the Glass look ---- */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) [data-backdrop-picker] { display: none; }
+.look-not-glass { display: none; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .look-not-glass { display: block; }
+
+/* ==========================================================================
+   Control room: denser, squarer, a grey ground, colour only for status
+   ========================================================================== */
+:root[data-ui="control"]:not(#ui) {
+  --wb-bg: #d9dde2;
+  --wb-panel: #eef0f2;
+  --wb-raised: #e3e6ea;
+  --wb-line: #b9c0c8;
+  --wb-line-strong: #8f98a3;
+  --wb-r: 3px;
+  --wb-r-sm: 2px;
+  --wb-r-xs: 2px;
+  --text-faint: #4b5560;
+}
+:root[data-ui="control"][data-theme="dark"]:not(#ui) {
+  --wb-bg: #0b0d10;
+  --wb-panel: #121519;
+  --wb-raised: #181c21;
+  --wb-line: #262c33;
+  --wb-line-strong: #3c444e;
+  --text-faint: #a5afba;
+}
+:root[data-ui="control"]:not(#ui) body { font-size: 14px; }
+:root[data-ui="control"]:not(#ui) .card { padding: 14px 16px; margin-bottom: 12px; }
+:root[data-ui="control"]:not(#ui) :is(.grid-2, .grid-3) { gap: 12px; }
+:root[data-ui="control"]:not(#ui) .card-head { margin-bottom: 10px; }
+:root[data-ui="control"]:not(#ui) .card h2, :root[data-ui="control"]:not(#ui) .dialog-panel h2 { font: 600 12px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+:root[data-ui="control"]:not(#ui) .card-sub { font-size: 12.5px; }
+:root[data-ui="control"]:not(#ui) .btn { padding: 8px 13px; font-size: 12.5px; }
+:root[data-ui="control"]:not(#ui) .rail-item { min-height: 32px; padding: 6px 10px; font-size: 13px; }
+:root[data-ui="control"]:not(#ui) .rail-group { margin-top: 10px; }
+/* Status keeps its colour; chosen states and the accent go quiet. */
+:root[data-ui="control"]:not(#ui) :is(.pill-toggle button.active, .sec-track button[aria-pressed="true"]) { box-shadow: inset 0 -2px 0 var(--text); }
+:root[data-ui="control"]:not(#ui) .rail-item.active { background: var(--wb-raised); color: var(--text); box-shadow: inset 3px 0 0 var(--text); }
+
+/* ---- the Look choice in Preferences (every look) ---- */
+.look-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.look-choice button { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 11px 13px; text-align: left;
+  border-radius: 8px; border: 1px solid var(--hair, rgba(0, 0, 0, .12)); background: transparent; color: var(--text); cursor: pointer;
+  font: 600 14px/1.2 var(--font-sans); }
+.look-choice button small { font-weight: 500; font-size: 12px; color: var(--text-faint); }
+.look-choice button:hover { border-color: var(--accent); }
+.look-choice button[aria-checked="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.look-choice button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Emergency stop is the one button that always stands out: a deep red fill, white words (5.9:1). */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.estop { background: #c8102e; border-color: #a50d26; color: #fff; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.estop:hover:not(:disabled) { background: #a50d26; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .btn.estop:disabled { background: color-mix(in srgb, #c8102e 30%, var(--wb-panel)); color: var(--text-faint); }
+/* The notification button: a plain circle with a bell (drawn here, our own path). */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb-glass { position: absolute; inset: 0; margin: auto; width: 22px; height: 22px; background: var(--text-dim);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3a6 6 0 0 0-6 6v3.6L4.3 16h15.4L18 12.6V9a6 6 0 0 0-6-6zM9.8 18.5a2.3 2.3 0 0 0 4.4 0z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3a6 6 0 0 0-6 6v3.6L4.3 16h15.4L18 12.6V9a6 6 0 0 0-6-6zM9.8 18.5a2.3 2.3 0 0 0 4.4 0z'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: none; box-shadow: none; opacity: 1; }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb[data-kind="bad"] .orb-glass { background: var(--bad-text); }
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb[data-kind="warn"] .orb-glass { background: var(--warn-text); }
+/* The twin's "printing" tag: the accent with its own dark text (white on it was 3.3:1). */
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .t3-tag.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* ---- in every look, Glass included ---- */
+/* Copy, on the dark command boxes: solid, so its word reads (it was 2.8:1 in Glass). */
+.vc-term .vc-copy:not(#ui) { background: #f4f6f8; border-color: #f4f6f8; color: #15191e; }
+.vc-term .vc-copy:not(#ui):hover { background: #ffffff; }
+/* The twin's "printing" tag: the accent's own dark text (white on it was 3.3:1). */
+.t3-tag.on:not(#ui) { color: var(--on-accent); }
+/* Emergency stop: deep red with white words, 5.9:1 (the bright red gave 3.5:1). */
+.btn.estop:not(#ui):not(:disabled) { background: #c8102e; border-color: #a50d26; color: #fff; }
+.btn.estop:not(#ui):not(:disabled):hover { background: #a50d26; }

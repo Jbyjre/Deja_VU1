@@ -28,6 +28,38 @@ caption on screen longer, fewer things moving at once, and the scenes filmed aga
 from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
 run passed on 27 October 2026). Not a release.
 
+## 0.20.0 (6 November 2026): Workbench
+
+- Preferences, Appearance, Look: Workbench (the new default: flat panels with thin borders, small corners, numbers that line up, colour only for status, nothing moving behind the page), Control room (denser, squarer and grey, with colour only when something needs you) or Glass (the frosted look with the moving background).
+- Every look works with the Light, Dark and System themes.
+- Emergency stop has a deep red fill with white words in every look, so it always stands out.
+- In the dark theme, overdue and due-soon tasks show their red and yellow again, and twelve tinted labels are easier to read.
+- The Copy buttons on the command boxes and the twin's printing tag are easier to read.
+
+**Why a new default look.** Design writing from 2026 lists the same signs of interfaces
+made with AI tools: frosted glass with glows, purple or blue gradients, the same default
+typefaces, pill-shaped controls, sparkle icons, cards inside cards and decoration that moves
+for no reason (for example [925 Studios](https://www.925studios.co/blog/ai-slop-design-tells)
+and [Superdesign](https://superdesign.dev/blog/why-ai-design-looks-generic); these are blog
+posts, not studies). Deja Vu1's Glass look had most of them. Guidance for operator screens
+points the other way: neutral surfaces, colour kept for status, density where the readings
+are, precise readouts over decoration (the ISA-101 approach described by
+[Control.com](https://control.com/technical-articles/going-gray/) and the
+[ISA blog](https://blog.isa.org/the-high-performance-hmi)). Workbench and Control room follow
+that guidance in `frontend/looks.css`; nothing was copied from another product.
+
+**How it was checked, and a correction to 0.19.0.** `theme-boot.js` sets `data-ui` before the
+page is drawn. A Chromium pass measured every piece of text against the flat background
+behind it on all 16 places at 1366 px, for each look in light and dark: none below WCAG AA in
+Workbench or Control room, and in Glass only a disabled button (WCAG sets no contrast
+requirement for disabled controls). The 0.19.0 check of the dark theme read some colours
+wrongly (the `oklch()` and `color(srgb ...)` formats), so it reported no failures where twelve
+tinted labels were still mixed with white; the check now converts every colour through the
+browser, and those labels are fixed here. Grouped dark rules that carried an id had hidden the
+overdue and due-soon tints; `tests/test_looks.py` now fails on an id inside a group. The
+README's older screenshots still show the Glass look; the new picture of the three looks is
+`docs/img/looks.jpg`. Not seen on a real phone, Windows or macOS.
+
 ## 0.19.0 (6 November 2026): Find your way
 
 - A sidebar on the left lists every place: Overview, Printers, Printer, Library, Prepare, Jobs, Materials, Care, Settings and Preferences, with Automations, the farm desk, layer heights, Photo studio, the practice farm and games under Tools & learn. It folds to icons, and phones keep the bottom bar.

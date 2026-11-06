@@ -90,7 +90,9 @@ const Backdrop = (() => {
   function save() { try { localStorage.setItem(KEY, JSON.stringify({ ...prefs, v: 2 })); } catch (e) { /* see load() */ } }
 
   const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const effectiveStyle = () => (reducedMotion() ? 'still' : prefs.style);
+  // Only the Glass look has a moving background (Preferences → Appearance → Look).
+  const glassLook = () => (document.documentElement.getAttribute('data-ui') || 'glass') === 'glass';
+  const effectiveStyle = () => (reducedMotion() || !glassLook() ? 'still' : prefs.style);
   const surprisesOn = () => prefs.surprises && !reducedMotion() && effectiveStyle() !== 'still';
   const E = () => ENERGY[prefs.energy] || ENERGY.lively;
 
@@ -182,6 +184,7 @@ const Backdrop = (() => {
     addEventListener('resize', () => { resize(); drawFrame(0); });
     addEventListener('keydown', onKey);
     window.addEventListener('dv-theme', () => { colours = resolveColours(); if (ctx) drawFrame(0); });
+    window.addEventListener('dv-ui', () => { stop(); apply(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else { colours = resolveColours(); drawFrame(0); } });
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', apply);
     // The filament set follows the printer: tintRoom() edits <html>'s style.

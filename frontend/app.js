@@ -974,6 +974,17 @@ function initPreferences() {
   window.addEventListener('dv-theme', () => { showTheme(); applyAccent(document.documentElement.dataset.accent); });
   showTheme();
 
+  // Workbench / Control room / Glass (theme-boot.js applies it before the page is drawn).
+  const showLook = () => {
+    const look = window.DVTheme ? DVTheme.look() : 'workbench';
+    document.querySelectorAll('[data-look-choice]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.lookChoice === look)));
+  };
+  document.querySelectorAll('[data-look-choice]').forEach(b => b.addEventListener('click', () => {
+    if (window.DVTheme) DVTheme.setLook(b.dataset.lookChoice);
+  }));
+  window.addEventListener('dv-ui', showLook);
+  showLook();
+
   const setUnits = (unit) => {
     tempUnit = unit;
     store.set(UNIT_KEY, unit);

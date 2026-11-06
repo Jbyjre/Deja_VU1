@@ -343,6 +343,22 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
 - The launcher window no longer lists every page request, so the check stays on
   screen. It keeps a dated log in `backend/data/logs/launcher.log`.
 
+## What's new in 0.20.0
+
+![The Printer page in the three looks: Workbench, Control room and Glass](docs/img/looks.jpg)
+
+- **A plainer, technical look by default.** Workbench draws the dashboard with flat panels,
+  thin borders, small corners and numbers that line up, keeps colour for status, and has
+  nothing moving behind the page.
+- **Pick your look.** Preferences → Appearance → Look: Workbench, Control room (denser,
+  squarer and grey, colour only when something needs you) or Glass (the frosted look with
+  the moving background). Each works in light and dark.
+- **Emergency stop** has a deep red fill in every look, and the dark theme's task tints and
+  labels read clearly.
+
+Checked in Chromium on every page in each look, light and dark. The screenshots further
+down still show the Glass look.
+
 ## What's new in 0.19.0
 
 - **One sidebar for everything.** Overview, Printers, Printer, Library, Prepare, Jobs,
@@ -950,11 +966,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **1111 tests in 587.4 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (6 November 2026, version 0.19.0 before its
+The latest full run passed **1117 tests in 702.8 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (6 November 2026, version 0.20.0 before its
 merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
 and 3.13.
-Earlier full runs passed 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+Earlier full runs passed 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -969,6 +985,7 @@ recorded static demo passed at both widths.
 | Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
 | Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
 | Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
+| Looks: Workbench, Control room, Glass (0.20.0) | Chromium on all 16 places at 1366 px for each look in light and dark, every text measured against its flat background with colours converted by the browser (none below WCAG AA in Workbench or Control room); look tokens and the emergency stop colour in `tests/test_looks.py`; phone width photographed | Text on gradients and in canvases checked by eye; README screenshots below still show Glass; not seen on a real phone, Windows or macOS |
 | Sidebar, page links and the dark theme (0.19.0) | Chromium at 1366, 1024 and 390 px: all 16 sidebar places, Back, Forward, a refresh, copied and old links; the theme set before any other script runs; every text measured against its flat background on all 16 places in dark (none below WCAG AA); token and accent contrast in `tests/test_dark_theme.py` | Text on gradients and in canvases checked by eye, not measured; not seen on a real phone, Windows or macOS |
 | Watch-only mode, health, spool weights and bed clearance (0.18.0) | Watch-only against the Moonraker stand-in through the real server: pause, cancel, home, the console and a start refused with no write reaching it, emergency stop allowed; the research's three reproductions (wrong material at health 100, an unknown Spoolman weight saved as 0 g, a mid-print roll change) as regression tests; the bed-clear hold, its tie to the print that ended last and its file on disk; Chromium at 1366/390 px | Not tried on a physical U1 or a real Spoolman install |
 | Other networks and moved printers (0.17.0) | Every home network and the Tailscale network searched (stand-in `tailscale status --json`), a moved stand-in U1 followed by its serial number, readings kept coming when the status stream goes quiet | Not tried with a real second router, a real Tailscale subnet route or a physical U1 |
@@ -1033,7 +1050,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 1111 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1117 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -1043,7 +1060,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 1111 cases
+- **Tests:** `unittest` from the standard library, 1117 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 

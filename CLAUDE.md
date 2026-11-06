@@ -365,6 +365,15 @@ root should hand over to `welcome.html`.
   `dv-theme`. Never invert pictures, swatches or the print; drawings (twin drawing mode, the plate sheet) stay
   white paper. Measure dark contrast with a Chromium pass over every place (`tests/test_dark_theme.py` covers
   the tokens).
+- Looks (0.20.0, `looks.css`, loaded last): `theme-boot.js` sets `data-ui` workbench (default) | control | glass
+  (`dejavu1.pref.ui`, Preferences → Appearance → Look, `[data-look-choice]`) before paint and fires `dv-ui`.
+  Workbench and Control room share rules under `:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui)`
+  (the `:not(#ui)` only raises priority over theme.css and dark.css); Control room adds its own token blocks.
+  Glass is theme.css as before. backdrop.js treats any look but Glass as Still. Never put an id inside `:is()`:
+  the group takes the id's priority and overrides later class rules (`tests/test_looks.py`). The emergency stop
+  stays deep red (#c8102e) in every look. A new component written for Glass needs a Workbench check: solid panel,
+  one hairline, `--wb-r` radii. Measure contrast with colours converted by the browser (a 1x1 canvas), not by
+  parsing `rgb()`; oklch and color(srgb) values read wrongly otherwise.
 - Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and
   Settings show one part at a time (plus "Everything"). `dv-section` fires on each change. Cards are sorted by `#id`, `.class`
   or the start of their h2 title; a card no rule names joins the first part. Anything that
@@ -417,7 +426,8 @@ root should hand over to `welcome.html`.
   steps; ms 0 = once per frame for drawing). `fitGameCanvas()` sizes the largest
   canvas to the window. Pac-Man, Tetris, Snake and Sky Dash were rewritten in
   October 2026; the older game code below them in games.js is legacy.
-- CSS order: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css` → `dark.css`.
+- CSS order: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css` → `dark.css` →
+  `looks.css`.
 - `orb.js`: the notification orb (bottom right). `toast()` in app.js hands every
   message to `Orb.notify(message, kind, ms, {action})`; the orb keeps the last 30
   and shows version/update news (`Orb.setApp`). `#toasts` is now its bubble stack.
