@@ -888,7 +888,7 @@ browser's bars where the phone allows.
 | **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
 | **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API, no extra hardware to build. |
 | **Home Assistant bridge** | Publishes printer state as a handful of REST sensors, so it shows up on an existing HA dashboard, no MQTT broker, no custom component. |
-| **Auto-print pipeline** | Slices STL and 3MF models with [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer), **a separate program you install yourself**, using Orca presets you choose; the G-code lands in the file library, or straight on a printer's queue, where it still passes Confirm Print before it starts. Off by default. Driving another program from outside is fragile, an Orca update can change its command line, so every slice has a time limit, is checked for real printable layers before it's kept, fails in words with Orca's own message, and records the Orca version that made it. |
+| **Auto-print pipeline** | Slices STL and 3MF models with [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer), **a separate program you install yourself**, using Orca presets you choose; the G-code lands in the file library, or straight on a printer's queue, where it still passes Confirm Print before it starts. Off by default. Driving another program from outside is fragile, an Orca update can change its command line, so every slice has a time limit, is checked for real printable layers before it's kept, fails in words with Orca's own message, and records the Orca version that made it. A failed check or slice names its cause (a missing system library, a crash, no screen, Orca's own error code), says where it stopped and what to try, and Copy report for help exports one report for a helper. |
 | **Low-latency camera (WebRTC)** | Plays the camera with almost no delay through [go2rtc](https://github.com/AlexxIT/go2rtc), **a separate program you install yourself**. It's one step beyond "nothing to install", so it's off by default. MJPEG stays the default, and the dashboard falls back to it automatically, saying which feed is on. See [docs/low-latency-camera.md](docs/low-latency-camera.md). |
 
 ### Interface + simulation, hardware pending
@@ -966,11 +966,11 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **1117 tests in 702.8 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (6 November 2026, version 0.20.0 before its
-merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
+The latest full run passed **1161 tests in 730.0 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (6 November 2026, version 0.20.0 plus the slicing
+failure report, before its merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
 and 3.13.
-Earlier full runs passed 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
+Earlier full runs passed 1117, 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
 ([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
 and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
@@ -1050,7 +1050,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 1117 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1161 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -1060,7 +1060,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 1117 cases
+- **Tests:** `unittest` from the standard library, 1161 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 
