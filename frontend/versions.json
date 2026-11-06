@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.3",
+      "date": "2026-11-06",
+      "name": "Updates install while a print runs, connections recover faster, and Settings...",
+      "published": true,
+      "summary": "Updates install while a print runs, connections recover faster, and Settings lists only the optional extras.",
+      "changes": [
+        "Updates install while a print runs, connections recover faster, and Settings lists only the optional extras"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.2",
       "date": "2026-11-06",
       "name": "Check slicer says which engine builds have been run, and a changed engine wai...",
