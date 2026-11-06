@@ -374,6 +374,11 @@ def help_report(port):
                    f"key_set={diag.get('api_key_set')}")
         for entry in (diag.get('log') or [])[:25]:
             out.append("  " + json.dumps(entry, default=str)[:300])
+    try:
+        import slicer_bridge
+        out += ["", "Slicing"] + slicer_bridge.help_lines()
+    except Exception as exc:
+        out += ["", f"Slicing: couldn't read ({exc!r})"]
     for name in ('launcher.log', 'background.log', 'launcher-output.log', 'server.log', 'background-start.log'):
         text = _tail(os.path.join(data, 'logs', name))
         if text:

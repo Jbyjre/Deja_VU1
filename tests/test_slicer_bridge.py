@@ -12,6 +12,7 @@ and never in a file added to the library.
 
 import json
 import os
+import platform
 import stat
 import sys
 import tempfile
@@ -35,6 +36,12 @@ FAKE_ORCA = textwrap.dedent('''\
     mode = os.environ.get("FAKE_ORCA_MODE", "ok")
     args = sys.argv[1:]
     if "--help" in args:
+        if mode == "missing_library":
+            # What Linux's loader prints for a program whose library isn't installed; it exits 127 and
+            # prints nothing on stdout, which is what once hid the cause behind "no output".
+            sys.stderr.write("orca-slicer: error while loading shared libraries: libwebkit2gtk-4.1.so.0: "
+                             "cannot open shared object file: No such file or directory\\n")
+            sys.exit(127)
         if mode == "not_orca":
             print("usage: something else entirely")
         else:
@@ -47,6 +54,16 @@ FAKE_ORCA = textwrap.dedent('''\
     def result(code, text):
         with open(os.path.join(out, "result.json"), "w") as fh:
             json.dump({{"plate_index": 0, "return_code": code, "error_string": text}}, fh)
+    if mode == "missing_library":
+        sys.stderr.write("orca-slicer: error while loading shared libraries: libwebkit2gtk-4.1.so.0: "
+                         "cannot open shared object file: No such file or directory\\n")
+        sys.exit(127)
+    if mode == "segfault":
+        import signal
+        os.kill(os.getpid(), signal.SIGSEGV)
+    if mode == "no_display":
+        sys.stderr.write("Gtk-WARNING **: cannot open display: \\n")
+        sys.exit(1)
     if mode == "hang":
         time.sleep(60)
     if mode == "hang_with_helper":
@@ -450,3 +467,204 @@ class TestExportedHeightContracts(SlicerBridgeTest):
         with self.assertRaisesRegex(ValueError,'shared-height fallback is refused'):
             slicer_bridge.slice_model('spur_gear_24t.stl')
         self.assertFalse(os.path.exists(self.args_file))
+
+
+class TestWhyItFailed(SlicerBridgeTest):
+    """B02: a failure names its real cause, and one report says what ran and where it stopped."""
+
+    def fail_a_job(self, mode):
+        self.configure()
+        self.assertTrue(slicer_bridge.check()["ok"])
+        os.environ["FAKE_ORCA_MODE"] = mode
+        job = slicer_bridge.start_job("spur_gear_24t.stl")
+        return slicer_bridge.wait(job["id"], timeout=20)
+
+    def test_an_engine_check_names_the_missing_library_not_no_output(self):
+        # The research session's real engine check: the engine printed one loader line on stderr and exited 127.
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "missing_library"
+        result = slicer_bridge.check()
+        self.assertFalse(result["ok"])
+        self.assertIn("libwebkit2gtk-4.1.so.0", result["error"])
+        self.assertNotIn("no output", result["error"])
+        self.assertEqual((result["exit_code"], result["cause"]["code"]), (127, "missing_library"))
+        self.assertEqual(result["cause"]["command"], "sudo apt-get install libwebkit2gtk-4.1-0")
+        self.assertEqual(slicer_bridge.public_settings()["last_check"]["cause"]["code"], "missing_library")
+
+    def test_a_check_of_a_program_that_is_not_orca_still_says_so_and_gives_a_way_on(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "not_orca"
+        result = slicer_bridge.check()
+        self.assertIn("didn't answer like OrcaSlicer", result["error"])
+        self.assertEqual(result["cause"]["code"], "not_orca")
+        self.assertTrue(result["cause"]["fixes"])
+
+    def test_a_check_with_no_slicer_set_has_a_cause_with_a_way_on(self):
+        result = slicer_bridge.check()
+        self.assertEqual(result["cause"]["code"], "engine_problem")
+        self.assertIn("Find it for me", result["cause"]["fixes"][0])
+
+    def test_a_slice_that_cannot_load_a_library_says_which(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "missing_library"
+        with self.assertRaises(slicer_bridge.SliceFailed) as ctx:
+            slicer_bridge.slice_model("spur_gear_24t.stl")
+        self.assertIn("missing the library libwebkit2gtk-4.1.so.0", str(ctx.exception))
+        self.assertEqual(ctx.exception.cause["code"], "missing_library")
+        self.assertEqual(ctx.exception.report["exit_code"], 127)
+
+    @unittest.skipIf(os.name == "nt", "signals are POSIX")
+    def test_a_crash_by_signal_is_named(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "segfault"
+        with self.assertRaises(slicer_bridge.SliceFailed) as ctx:
+            slicer_bridge.slice_model("spur_gear_24t.stl")
+        self.assertIn("segmentation fault, signal 11", str(ctx.exception))
+        self.assertEqual(ctx.exception.cause["code"], "crashed")
+
+    def test_no_screen_is_named(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "no_display"
+        with self.assertRaises(slicer_bridge.SliceFailed) as ctx:
+            slicer_bridge.slice_model("spur_gear_24t.stl")
+        self.assertEqual(ctx.exception.cause["code"], "no_display")
+
+    def test_orcas_own_answer_still_wins_when_it_gave_one(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "model_outside_bed"
+        with self.assertRaises(slicer_bridge.SliceFailed) as ctx:
+            slicer_bridge.slice_model("spur_gear_24t.stl")
+        self.assertEqual(ctx.exception.cause["code"], "orca_-52")
+        self.assertIn("inside the build plate", ctx.exception.cause["fixes"][0])
+
+    def test_a_file_the_system_cannot_run_is_named_at_the_check(self):
+        if os.name == "nt":
+            self.skipTest("a bad executable fails differently on Windows")
+        broken = os.path.join(self.tmp, "orca-broken")
+        with open(broken, "wb") as fh:
+            fh.write(b"\x00\x01 not a program")
+        os.chmod(broken, 0o755)
+        slicer_bridge.save_settings({"slicer_path": broken})
+        result = slicer_bridge.check()
+        self.assertEqual(result["cause"]["code"], "wrong_program")
+        self.assertIn("isn't a program this computer can run", result["error"])
+
+    def test_a_script_whose_interpreter_is_missing_is_named_at_the_check(self):
+        if os.name == "nt":
+            self.skipTest("shebang lines are POSIX")
+        script = os.path.join(self.tmp, "orca-nointerpreter")
+        with open(script, "w") as fh:
+            fh.write("#!/nonexistent/interpreter\n")
+        os.chmod(script, 0o755)
+        slicer_bridge.save_settings({"slicer_path": script})
+        result = slicer_bridge.check()
+        self.assertEqual(result["cause"]["code"], "loader_missing")
+
+    def test_a_failed_job_carries_its_cause_and_the_stage_it_stopped_at(self):
+        job = self.fail_a_job("missing_library")
+        self.assertEqual(job["status"], "failed")
+        self.assertEqual((job["cause"]["code"], job["stage"], job["stage_label"]),
+                         ("missing_library", "slice", "Slicing"))
+        self.assertIn("libwebkit2gtk-4.1.so.0", job["error"])
+
+    def test_the_report_of_a_failed_slice_holds_everything_a_helper_needs(self):
+        job = self.fail_a_job("missing_library")
+        report = slicer_bridge.export(job["id"])
+        blob = json.dumps(report)
+        self.assertEqual((report["schema"], report["kind"]), ("dejavu1.slice-report/1", "slice"))
+        self.assertEqual(report["host"]["os"], platform.system())
+        self.assertEqual(report["mode"]["where"], "local Deja Vu1 server")
+        self.assertFalse(report["mode"]["printer_is_real"])
+        self.assertEqual((report["engine"]["app"], report["engine"]["version"]), ("OrcaSlicer", "2.3.2"))
+        self.assertTrue(report["engine"]["last_check"]["ok"])
+        self.assertEqual(report["profile"]["name"], "U1 standard")
+        self.assertEqual(report["profile"]["machine_preset"], "Snapmaker U1 (0.4 nozzle).json")
+        self.assertEqual(report["profile"]["filament_presets"], ["Generic PLA.json"])
+        self.assertEqual((report["input"]["name"], report["input"]["kind"]), ("spur_gear_24t.stl", "stl"))
+        self.assertGreater(report["input"]["bytes"], 0)
+        self.assertEqual(len(report["input"]["sha256"]), 16)
+        self.assertEqual(report["stage"], {"reached": "slice", "label": "Slicing", "failed_here": True})
+        self.assertEqual(report["run"]["exit_code"], 127)
+        self.assertIn("cannot open shared object file", report["run"]["stderr"]["text"])
+        self.assertEqual(report["run"]["command"][0], "orca-slicer")
+        self.assertEqual(report["output"]["status"], "none")
+        self.assertEqual(report["outcome"]["status"], "failed")
+        self.assertEqual(report["outcome"]["cause"]["code"], "missing_library")
+        self.assertNotIn(self.process, blob, "preset paths stay out; only their names are listed")
+        self.assertNotIn(self.filament, blob)
+
+    def test_the_report_of_a_slice_refused_before_the_engine_ran_says_where(self):
+        self.configure()
+        self.assertTrue(slicer_bridge.check()["ok"])
+        os.remove(self.process)
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"], timeout=20)
+        report = slicer_bridge.export(job["id"])
+        self.assertEqual(job["status"], "failed")
+        self.assertEqual((job["stage"], job["cause"]["code"]), ("profile", "profile_problem"))
+        self.assertIsNone(report["run"])
+        self.assertEqual(report["stage"]["label"], "Checking the presets")
+        self.assertEqual(report["output"]["status"], "none")
+        self.assertIn("Profiles", job["cause"]["fixes"][0])
+
+    def test_the_report_names_what_came_out_when_the_engine_wrote_nothing_useful(self):
+        for mode, status in (("no_output", "no_plate_files"), ("empty", "empty"), ("nothing_printable", "no_layers")):
+            with self.subTest(mode=mode):
+                slicer_bridge.reset()
+                job = self.fail_a_job(mode)
+                report = slicer_bridge.export(job["id"])
+                self.assertEqual((report["output"]["status"], report["stage"]["reached"]), (status, "output"))
+                self.assertEqual(report["run"]["exit_code"], 0)
+                self.assertTrue(report["outcome"]["cause"]["fixes"])
+
+    def test_the_report_of_a_good_slice_lists_the_files_it_saved(self):
+        job = self.fail_a_job("ok")
+        report = slicer_bridge.export(job["id"])
+        self.assertEqual(job["status"], "done")
+        self.assertEqual((report["stage"]["reached"], report["stage"]["failed_here"]), ("done", False))
+        self.assertEqual(report["output"]["status"], "ok")
+        self.assertEqual(report["output"]["saved"], [f["name"] for f in job["report"]["files"]])
+        self.assertEqual(report["output"]["plates"][0]["file"], "plate_1.gcode")
+        self.assertIsNone(report["outcome"]["cause"])
+
+    def test_a_cancelled_slice_keeps_the_stage_it_reached(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "hang"
+        job = slicer_bridge.start_job("spur_gear_24t.stl")
+        end = time.time() + 10
+        while time.time() < end and not os.path.exists(self.args_file):
+            time.sleep(0.05)
+        slicer_bridge.cancel_job(job["id"])
+        job = slicer_bridge.wait(job["id"], timeout=20)
+        self.assertEqual((job["status"], job["stage"]), ("cancelled", "slice"))
+        self.assertEqual(slicer_bridge.export(job["id"])["outcome"]["status"], "cancelled")
+
+    def test_a_job_that_is_not_there_has_no_report(self):
+        with self.assertRaisesRegex(ValueError, "not available"):
+            slicer_bridge.export("nope")
+
+    def test_the_engine_report_works_with_no_job_and_lists_recent_slices(self):
+        job = self.fail_a_job("missing_library")
+        report = slicer_bridge.export()
+        self.assertEqual(report["kind"], "engine")
+        self.assertIsNone(report["problem"])
+        self.assertEqual(report["recent"][0]["id"], job["id"])
+        self.assertEqual(report["recent"][0]["cause"], "missing_library")
+
+    def test_the_help_report_carries_the_slicing_lines(self):
+        self.fail_a_job("missing_library")
+        text = "\n".join(slicer_bridge.help_lines())
+        self.assertIn("stage slice", text)
+        self.assertIn("cause missing_library", text)
+
+    def test_the_job_list_stays_small_because_logs_live_in_the_report(self):
+        job = self.fail_a_job("missing_library")
+        self.assertNotIn("stderr", job)
+        self.assertNotIn("run", job)
+
+    def test_old_jobs_and_their_traces_are_dropped_together(self):
+        self.configure()
+        for _ in range(slicer_bridge.MAX_JOBS_KEPT + 3):
+            job = slicer_bridge.start_job("spur_gear_24t.stl")
+            slicer_bridge.wait(job["id"], timeout=20)
+        self.assertEqual(len(slicer_bridge._traces), slicer_bridge.MAX_JOBS_KEPT)
+        self.assertEqual(set(slicer_bridge._traces), set(slicer_bridge._jobs))

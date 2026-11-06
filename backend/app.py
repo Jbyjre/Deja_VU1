@@ -1433,6 +1433,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return self._send_json(slicer_bridge.save_settings(body))
             if verb == "check":
                 return self._send_json(slicer_bridge.check())
+            if verb == "report":
+                # The slicing report (one slice, or the engine alone): what ran, where it stopped, why.
+                return self._send_json(slicer_bridge.export(body.get("job")))
             if verb == "find":
                 return self._send_json(slicer_bridge.find_slicers())
             if verb == "profiles":

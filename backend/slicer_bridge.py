@@ -59,6 +59,7 @@ from datetime import datetime
 
 import file_library
 import gcode_tools
+import slice_diagnosis
 import storage
 import slicer_profiles
 import slicing_contract
@@ -102,12 +103,22 @@ _lock = threading.RLock()
 _run_lock = threading.Lock()     # one slice at a time: it's heavy, and Orca isn't built to share
 _jobs = {}
 _order = []
+_traces = {}        # job id -> what the slice learned on its way (the report's source); kept apart so the
+                    # job list the browser polls every second stays small
 _cancellations = {}
 _operation = threading.local()
 
 
 class SliceCancelled(ValueError):
     pass
+
+
+class EngineStartFailed(ValueError):
+    """The system refused to start the engine at all; `cause` says why."""
+
+    def __init__(self, message, cause):
+        super().__init__(message)
+        self.cause = cause
 
 
 def _program_identity(path):
@@ -483,10 +494,15 @@ def _run(cmd, timeout, cwd=None):
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     try:
         proc = subprocess.Popen(cmd, **kwargs)
-    except PermissionError:
-        raise ValueError(f"{cmd[0]} isn't allowed to run (on Linux: chmod +x it)")
+    except PermissionError as exc:
+        cause = slice_diagnosis.from_start(13, exc.strerror, name=os.path.basename(cmd[0]))
+        raise EngineStartFailed(f"{cmd[0]} isn't allowed to run (on Linux: chmod +x it)", cause)
     except OSError as exc:
-        raise ValueError(f"Couldn't start {os.path.basename(cmd[0])}: {exc.strerror or exc}")
+        cause = slice_diagnosis.from_start(exc.errno, exc.strerror or str(exc), getattr(exc, "winerror", None),
+                                           name=os.path.basename(cmd[0]))
+        known = cause["code"] != "cannot_start"
+        raise EngineStartFailed(cause["title"] if known else
+                                f"Couldn't start {os.path.basename(cmd[0])}: {exc.strerror or exc}", cause)
     end = time.monotonic() + timeout
     cancelled = False
     while True:
@@ -537,19 +553,26 @@ def check():
         result = {"ok": False, "error": problem}
     else:
         started = time.monotonic()
+        started_cause = None
         try:
             with tempfile.TemporaryDirectory(prefix='dejavu-engine-check-') as work:
                 code, out, err = _run([path, "--help"], CHECK_TIMEOUT, cwd=work)
         except ValueError as exc:
             code, out, err = "failed", b"", str(exc).encode()
+            started_cause = getattr(exc, "cause", None)
         text = _tail(out) or _tail(err)
         first = next((ln.strip() for ln in (out or b"").decode("utf-8", "replace").splitlines() if ln.strip()), "")
         match = next((m for line in (out or b"").decode("utf-8", "replace").splitlines() if (m := re.match(r"^([A-Za-z_][\w ]*?)-(\d[\w.\-+]*):?$", line.strip()))), None)
+        cause = None
         if code == "failed":
             result = {"ok": False, "error": _tail(err)}
+            cause = started_cause
         elif code is None:
             result = {"ok": False, "error": f"{os.path.basename(path)} didn't answer within {CHECK_TIMEOUT} s "
                                             "(it may be waiting for a screen, or it isn't a command-line build)"}
+            cause = slice_diagnosis.make(
+                "no_answer", result["error"], "The engine was stopped because it never finished printing its help.",
+                ["Use the engine's command-line program, not a launcher that opens a window."])
         elif match:
             result = {"ok": True, "app": match.group(1), "version": match.group(2),
                       "detail": f"{match.group(1)} {match.group(2)} answered in "
@@ -573,9 +596,25 @@ def check():
             result['capability_evidence'] = 'Exported option schema and command-line help; actual output still requires inspection'
             result['program_identity'] = _program_identity(path)
         else:
-            result = {"ok": False, "error": "It ran, but didn't answer like OrcaSlicer's command line"
-                                            + (f" (it said: {first[:120]!r})" if first else " (no output)"),
-                      "output": text}
+            # A program that can't load what it needs prints nothing on stdout, so the old "no output" headline
+            # hid the one line that says what to fix. Read both streams and the way it ended first.
+            both = (out or b"").decode("utf-8", "replace") + "\n" + (err or b"").decode("utf-8", "replace")
+            cause = slice_diagnosis.from_text(both) or slice_diagnosis.from_exit(code)
+            if cause:
+                result = {"ok": False, "error": cause["title"], "output": text}
+            else:
+                result = {"ok": False, "error": "It ran, but didn't answer like OrcaSlicer's command line"
+                                                + (f" (it said: {first[:120]!r})" if first else " (no output)")
+                                                + (f"; it exited with code {code}" if code else ""),
+                          "output": text}
+                cause = slice_diagnosis.make("not_orca", result["error"], "", [
+                    "Point Deja Vu1 at the slicer's own program (Snapmaker Orca or OrcaSlicer).",
+                    "Press Find it for me to list the ones installed on this computer."], evidence=text[-240:] or None)
+        if code not in ("failed", None):
+            result["exit_code"] = code
+    if not result["ok"]:
+        found = None if problem else cause
+        result["cause"] = found or slice_diagnosis.for_stage("engine", result["error"])
     result["checked_at"] = datetime.now().isoformat(timespec="seconds")
     s = get_settings()
     s["last_check"] = result
@@ -623,30 +662,70 @@ def _explain(code, result_json, err_tail, out_tail):
     return f"Orca exited with code {code}" + (f": {last[0][:200]}" if last[0] else "")
 
 
+def diagnose(code, result_json, out, err):
+    """
+    (headline, cause) for an engine run that failed. A message the system
+    printed (a missing library, no screen) is more exact than Orca's own
+    "couldn't start" code, so it wins there; otherwise Orca's own code and
+    words do, then the way the process ended, then its last line.
+    """
+    def as_text(data):
+        return data.decode("utf-8", "replace") if isinstance(data, bytes) else (data or "")
+
+    rc = result_json.get("return_code") if isinstance(result_json, dict) else None
+    from_system = slice_diagnosis.from_text(as_text(out) + "\n" + as_text(err))
+    if from_system and rc in (None, -1):
+        return from_system["title"], from_system
+    words = ORCA_ERRORS.get(rc) if rc is not None else None
+    says = result_json.get("error_string") if isinstance(result_json, dict) else None
+    if words or says:
+        return _explain(code, result_json, "", ""), slice_diagnosis.from_orca(rc, words, says)
+    ended = slice_diagnosis.from_exit(code)
+    if ended:
+        return ended["title"], ended
+    headline = _explain(code, result_json, _tail(err), _tail(out))
+    last = (_tail(err) or _tail(out)).splitlines()[-1:] or [""]
+    return headline, slice_diagnosis.make(
+        "engine_exit", headline, "", ["Open the report: the last lines of the engine's output say what failed."],
+        evidence=last[0][:240] or None)
+
+
 class SliceFailed(ValueError):
-    def __init__(self, message, report):
+    def __init__(self, message, report, cause=None):
         super().__init__(message)
         self.report = report
+        self.cause = cause
 
 
-def slice_model(name, profile_id=None, on_step=None):
+def slice_model(name, profile_id=None, on_step=None, trace=None):
     """
     Slice one library model and add the G-code to the library. Returns a
     report; raises ValueError (in words) for anything that went wrong.
+    `trace`, when given, is filled in as the slice goes (stage reached,
+    input, engine, profile, run, output) so a failure at any stage can be
+    reported in full by `_receipt`.
     """
     step = on_step or (lambda text: None)
+    trace = trace if trace is not None else {}
+    trace["stage"] = "input"
     kind = file_library.kind_of(name or "")
     if kind not in ("stl", "3mf"):
         raise ValueError("Only STL and 3MF models can be sliced - G-code is already sliced")
     data = file_library.read_bytes(name)
-    if kind == '3mf' and project_plates.describe_data(data)['count'] > 1:
+    plate_count = project_plates.describe_data(data)['count'] if kind == '3mf' else None
+    trace["input"] = slice_diagnosis.file_facts(name, kind, data, plate_count)
+    if kind == '3mf' and plate_count > 1:
         raise ValueError('Choose and save one plate in the workspace before slicing this multi-plate project')
+    trace["stage"] = "engine"
     s = get_settings()
     path, source = slicer_path(s)
+    trace["engine"] = _engine_facts(s, path, source)
     problem = _check_program(path, source)
     if problem:
         raise ValueError(problem)
+    trace["stage"] = "profile"
     profile = _profile(profile_id, s)
+    trace["profile"] = _profile_facts(profile)
     if profile.get('layer_mode') == 'per_tool' and not engine_capabilities(s).get('per_tool_heights'):
         raise ValueError('The selected engine changed or lacks per-tool heights. Check the engine again before slicing this profile')
     if profile.get('tool_setup'):
@@ -658,6 +737,7 @@ def slice_model(name, profile_id=None, on_step=None):
     for f, t in [(profile["machine"], "machine"), (profile["process"], "process")] + \
             [(f, "filament") for f in profile["filaments"]]:
         read_preset(f, t)           # they may have moved or changed since the profile was saved
+    trace["stage"] = "heights"
     with open(profile['process'],encoding='utf-8') as fh:
         materials=[]
         for material in profile['filaments']:
@@ -690,6 +770,7 @@ def slice_model(name, profile_id=None, on_step=None):
             raise ValueError(f"Set the exported process layer height to the exact {plan['grid']:g} mm coordination grid, or make a native profile")
         preferred_heights=[h['height'] for h in heads]
     model_maker.check_slice_contract(data,process_data,materials,preferred_heights=preferred_heights)
+    trace["stage"] = "prepare"
     input_notes=[]
     if kind == '3mf':
         data, input_notes = project_plates.engine_input(data, materials)
@@ -704,6 +785,7 @@ def slice_model(name, profile_id=None, on_step=None):
         cmd = command_for(path, profile, model_path, outdir)
         timeout = int(s.get("timeout_s") or DEFAULT_TIMEOUT)
         step(f"Slicing with {os.path.basename(path)} (time limit {timeout} s)")
+        trace["stage"] = "slice"
         started = time.monotonic()
         code, out, err = _run(cmd, timeout, cwd=work)
         seconds = round(time.monotonic() - started, 1)
@@ -717,18 +799,30 @@ def slice_model(name, profile_id=None, on_step=None):
                   "output_tail": out_tail[-800:], "error_tail": err_tail[-800:],
                   "orca_version": (s.get("last_check") or {}).get("version")}
         report['input_notes']=input_notes
+        trace["run"] = {"command": _shown_command(report["command"]), "seconds": seconds, "exit_code": code,
+                        "timeout_s": timeout, "orca_result": result_json,
+                        "stdout": slice_diagnosis.log_window(out), "stderr": slice_diagnosis.log_window(err)}
         if code is None:
-            raise SliceFailed(f"Slicing didn't finish within {timeout} s, so it was stopped. A big model can "
-                              "need longer (raise the time limit), or Orca may be stuck waiting for a screen",
-                              report)
+            message = (f"Slicing didn't finish within {timeout} s, so it was stopped. A big model can "
+                       "need longer (raise the time limit), or Orca may be stuck waiting for a screen")
+            raise SliceFailed(message, report, slice_diagnosis.make(
+                "timeout", message, "", ["Raise the time limit in Files, Slicing, or try a smaller model."]))
         rc = result_json.get("return_code") if isinstance(result_json, dict) else None
         plates = sorted((f for f in os.listdir(outdir) if re.match(r"^plate_\d+\.gcode$", f)),
                         key=lambda f: int(re.findall(r"\d+", f)[0]))
+        trace["output"] = {"result_json": result_json is not None, "status": "none",
+                           "plates": [{"file": f, "bytes": os.path.getsize(os.path.join(outdir, f))} for f in plates]}
         if code != 0 or (rc not in (None, 0)):
-            raise SliceFailed(_explain(code, result_json, err_tail, out_tail), report)
+            headline, cause = diagnose(code, result_json, out, err)
+            raise SliceFailed(headline, report, cause)
+        trace["stage"] = "output"
         if not plates:
-            raise SliceFailed("Orca finished without an error but wrote no G-code (no plate_*.gcode in its "
-                              "output folder). Its output layout may have changed in this version", report)
+            trace["output"]["status"] = "no_plate_files"
+            message = ("Orca finished without an error but wrote no G-code (no plate_*.gcode in its "
+                       "output folder). Its output layout may have changed in this version")
+            raise SliceFailed(message, report, slice_diagnosis.make(
+                "no_gcode", message, "", ["Press Check slicer to see which engine version this is.",
+                                          "If you updated the engine recently, go back to the version that worked."]))
 
         step("Checking the G-code that came out")
         stem = os.path.splitext(file_library.clean_name(name))[0]
@@ -737,11 +831,19 @@ def slice_model(name, profile_id=None, on_step=None):
             with open(os.path.join(outdir, plate_file), "rb") as fh:
                 gcode = fh.read()
             if not gcode.strip():
-                raise SliceFailed(f"Orca wrote {plate_file}, but it's empty", report)
+                trace["output"]["status"] = "empty"
+                message = f"Orca wrote {plate_file}, but it's empty"
+                raise SliceFailed(message, report, slice_diagnosis.make(
+                    "empty_gcode", message, "", ["Slice again. If it stays empty, copy the report to ask for help."]))
             analysis = gcode_tools.analyze(gcode.decode("utf-8", errors="replace"), want_toolpath=False)
             if not analysis["layers"] or not analysis["filament_mm"]:
-                raise SliceFailed(f"Orca wrote {plate_file}, but it has no printable layers in it - "
-                                  "refusing to add a file that would print nothing", report)
+                trace["output"]["status"] = "no_layers"
+                message = (f"Orca wrote {plate_file}, but it has no printable layers in it - "
+                           "refusing to add a file that would print nothing")
+                raise SliceFailed(message, report, slice_diagnosis.make(
+                    "no_layers", message, "", ["Check that the model is large enough to print and has a filament "
+                                               "assigned to every part."]))
+            trace["stage"] = "save"
             plate_no = int(re.findall(r"\d+", plate_file)[0])
             out_name = _free_name(stem, plate_no, len(plates))
             entry = file_library.save(out_name, gcode, origin="sliced",
@@ -754,9 +856,146 @@ def slice_model(name, profile_id=None, on_step=None):
                           "preflight": analysis["preflight"]["verdict"]})
         report["files"] = saved
         report["profile"] = {"id": profile["id"], "name": profile["name"]}
+        trace["output"]["status"] = "ok"
+        trace["output"]["saved"] = [f["name"] for f in saved]
+        trace["stage"] = "done"
         return report
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Reports: one export that says what ran, where it stopped and why
+# ---------------------------------------------------------------------------
+
+def _now():
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _app_facts():
+    try:
+        import app_updates
+        return {"name": "Deja Vu1", "version": app_updates.version()}
+    except Exception:                   # noqa: BLE001 - a report must still be made without a version
+        return {"name": "Deja Vu1", "version": None}
+
+
+def _mode_facts(printer_id=None):
+    """How Deja Vu1 was running: always the local server (the hosted demo has no engine), and which printer."""
+    import watch_only
+    pid = printer_id or mock_moonraker.selected_printer_id()
+    return {"where": "local Deja Vu1 server", "launcher": os.environ.get("DEJAVU_LAUNCHER") == "1",
+            "printer": pid, "printer_is_real": bool(mock_moonraker.is_real(pid)),
+            "watch_only": bool(watch_only.is_on())}
+
+
+def _engine_facts(settings, path, source):
+    check = settings.get("last_check") or {}
+    identity = _program_identity(path) if path else None
+    modified = None
+    if identity:
+        modified = datetime.fromtimestamp(identity[2] / 1e9).isoformat(timespec="seconds")
+    return {"path": slice_diagnosis.redact(path), "source": source, "app": check.get("app"),
+            "version": check.get("version"), "size_bytes": identity[1] if identity else None, "modified": modified,
+            "capabilities": engine_capabilities(settings),
+            "last_check": {"ok": check.get("ok"), "at": check.get("checked_at"),
+                           "error": slice_diagnosis.redact(check.get("error")) or None,
+                           "exit_code": check.get("exit_code")} if check else None}
+
+
+def _shown_command(command):
+    """The command as a report shows it: preset files by name, not by the folders they sit in."""
+    shown = []
+    for arg in command:
+        shown.append(";".join(os.path.basename(p) if os.path.isabs(p) else p for p in arg.split(";")))
+    return shown
+
+
+def _profile_facts(profile):
+    return {"id": profile.get("id"), "name": profile.get("name"),
+            "machine_preset": os.path.basename(profile.get("machine") or ""),
+            "process_preset": os.path.basename(profile.get("process") or ""),
+            "filament_presets": [os.path.basename(f) for f in profile.get("filaments") or []],
+            "layer_mode": profile.get("layer_mode"), "tool_setup": bool(profile.get("tool_setup")),
+            "printer_id": profile.get("printer_id")}
+
+
+def _receipt(job, trace):
+    """Everything about one slice: a report a helper can read without asking the owner a single question."""
+    stage = trace.get("stage")
+    settings = get_settings()
+    path, source = slicer_path(settings)
+    status = job.get("status")
+    message = job.get("error") or job.get("step")
+    return {
+        "schema": slice_diagnosis.SCHEMA, "kind": "slice", "created_at": _now(),
+        "app": _app_facts(), "mode": _mode_facts(job.get("printer_id")), "host": slice_diagnosis.host_facts(),
+        "engine": trace.get("engine") or _engine_facts(settings, path, source),
+        "profile": trace.get("profile"),
+        "input": trace.get("input") or {"name": job.get("model")},
+        "stage": {"reached": stage, "label": slice_diagnosis.stage_label(stage),
+                  "failed_here": status == "failed"},
+        "run": trace.get("run"),
+        "output": trace.get("output") or {"status": "none", "plates": []},
+        "outcome": {"status": status, "message": slice_diagnosis.redact(message), "cause": job.get("cause")},
+        "job": {"id": job.get("id"), "created_at": job.get("created_at"), "started_at": job.get("started_at"),
+                "finished_at": job.get("finished_at"), "queued": job.get("queued")},
+    }
+
+
+def export(job_id=None):
+    """
+    The slicing report. With a job id, that slice in full (also while it is
+    still running: the stage it has reached so far). Without one, the engine's
+    state and the last few slices in one line each. Home folders are hidden;
+    the file names and engine output are the user's to read before sharing.
+    """
+    if job_id:
+        with _lock:
+            job = _jobs.get(job_id)
+            if not job or job.get("printer_id") != mock_moonraker.selected_printer_id():
+                raise ValueError("This slice job is not available for this printer")
+            job, trace = dict(job), dict(_traces.get(job_id) or {})
+        return _receipt(job, trace)
+    settings = get_settings()
+    path, source = slicer_path(settings)
+    check = settings.get("last_check") or {}
+    return {
+        "schema": slice_diagnosis.SCHEMA, "kind": "engine", "created_at": _now(),
+        "app": _app_facts(), "mode": _mode_facts(), "host": slice_diagnosis.host_facts(),
+        "engine": _engine_facts(settings, path, source),
+        "problem": slice_diagnosis.redact(_check_program(path, source)) or None,
+        "cause": check.get("cause"),
+        "recent": [{"id": j["id"], "model": j["model"], "status": j["status"], "stage": j.get("stage"),
+                    "cause": (j.get("cause") or {}).get("code"), "finished_at": j.get("finished_at")}
+                   for j in jobs()["jobs"][:5]],
+    }
+
+
+def help_lines():
+    """The slicing part of Settings' "Copy a report for help", as plain lines."""
+    settings = get_settings()
+    path, source = slicer_path(settings)
+    check = settings.get("last_check")
+    lines = [f"Slicer: {slice_diagnosis.redact(path) or 'none set'} ({source})"]
+    if check:
+        if check.get("ok"):
+            lines.append(f"  Last check {check.get('checked_at')}: ok, {check.get('app')} {check.get('version')}")
+        else:
+            failed = slice_diagnosis.redact(check.get("error"))
+            lines.append(f"  Last check {check.get('checked_at')}: failed, {failed}")
+            cause = check.get("cause") or {}
+            if cause.get("evidence"):
+                lines.append(f"  Engine said: {cause['evidence']}")
+    with _lock:
+        last = [dict(_jobs[j]) for j in _order[-3:]]
+    for job in last:
+        cause = (job.get("cause") or {}).get("code")
+        stage = job.get("stage") or "not started"
+        lines.append(f"  Slice {job['id']} of {job['model']}: {job['status']}, stage {stage}"
+                     + (f", cause {cause}" if cause else "")
+                     + (f", {slice_diagnosis.redact(job['error'])[:200]}" if job.get("error") else ""))
+    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -791,15 +1030,19 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
            "printer_id": mock_moonraker.selected_printer_id(),
            "queue_to": queue_to, "status": "waiting", "step": "Waiting for the slicer",
            "created_at": datetime.now().isoformat(timespec="seconds"), "error": None, "report": None,
-           "queued": None, "previous": _previous_output(name, profile["id"])}
+           "queued": None, "previous": _previous_output(name, profile["id"]),
+           "stage": None, "stage_label": None, "cause": None}
     with _lock:
         if sum(j['status'] in ('waiting','running') for j in _jobs.values()) >= 8:
             raise ValueError('Eight slices are already waiting or running. Cancel one or let the engine finish before adding another')
         _jobs[job["id"]] = job
+        _traces[job["id"]] = {"stage": None}
         _cancellations[job['id']] = threading.Event()
         _order.append(job["id"])
         while len(_order) > MAX_JOBS_KEPT:
-            _jobs.pop(_order.pop(0), None)
+            old = _order.pop(0)
+            _jobs.pop(old, None)
+            _traces.pop(old, None)
     threading.Thread(target=_work_selected, args=(mock_moonraker.selected_printer_id(), job["id"], name, profile["id"], queue_to, on_done),
                      name="slicer", daemon=True).start()
     return dict(job)
@@ -826,15 +1069,21 @@ def _work(job_id, name, profile_id, queue_to, on_done):
     with _run_lock:
         with _lock:
             _operation.cancel = _cancellations.get(job_id)
+            trace = _traces.setdefault(job_id, {"stage": None})
         _job_update(job_id, status="running", started_at=datetime.now().isoformat(timespec="seconds"))
         try:
             if _operation.cancel and _operation.cancel.is_set():
                 raise SliceCancelled('Slicing cancelled before it started')
-            report = slice_model(name, profile_id, on_step=lambda text: _job_update(job_id, step=text))
+            report = slice_model(name, profile_id, on_step=lambda text: _job_update(job_id, step=text), trace=trace)
             if _operation.cancel and _operation.cancel.is_set():
                 raise SliceCancelled('Slicing cancelled. No output was queued')
             if any(f.get('preflight')=='blocked' for f in report.get('files',[])):
-                raise SliceFailed('Pre-flight blocked the sliced output. It is saved for inspection and was not queued. Open its file report and correct the printer preset before slicing again',report)
+                message = ('Pre-flight blocked the sliced output. It is saved for inspection and was not queued. '
+                           'Open its file report and correct the printer preset before slicing again')
+                trace["output"]["status"] = "preflight_blocked"
+                raise SliceFailed(message, report, slice_diagnosis.make(
+                    "preflight_blocked", message, "", ["Open the sliced file's report in Library and read what "
+                                                       "pre-flight blocked."]))
             if not queue_to:
                 _job_update(job_id, status="done", step="Sliced", report=report)
             else:
@@ -858,13 +1107,18 @@ def _work(job_id, name, profile_id, queue_to, on_done):
         except SliceCancelled as exc:
             _job_update(job_id, status='cancelled', step=str(exc), error=None)
         except SliceFailed as exc:
-            _job_update(job_id, status="failed", step="Failed", error=str(exc), report=exc.report)
+            _job_update(job_id, status="failed", step="Failed", error=str(exc), report=exc.report, cause=exc.cause)
         except ValueError as exc:
-            _job_update(job_id, status="failed", step="Failed", error=str(exc))
+            cause = getattr(exc, "cause", None) or slice_diagnosis.for_stage(trace.get("stage"), str(exc))
+            _job_update(job_id, status="failed", step="Failed", error=str(exc), cause=cause)
         except Exception as exc:          # noqa: BLE001 - a job must always end in a worded state
-            _job_update(job_id, status="failed", step="Failed", error=f"Unexpected error: {exc}")
+            message = f"Unexpected error: {exc}"
+            _job_update(job_id, status="failed", step="Failed", error=message, cause=slice_diagnosis.make(
+                "unexpected", message, "", ["Copy the report and ask for help."], repairable=False))
         finally:
-            _job_update(job_id, finished_at=datetime.now().isoformat(timespec="seconds"))
+            stage = trace.get("stage")
+            _job_update(job_id, finished_at=datetime.now().isoformat(timespec="seconds"), stage=stage,
+                        stage_label=slice_diagnosis.stage_label(stage))
             _operation.cancel = None
             with _lock:
                 _cancellations.pop(job_id, None)
@@ -921,4 +1175,5 @@ def reset():
     with _lock:
         _jobs.clear()
         _order.clear()
+        _traces.clear()
         _save(_defaults())
