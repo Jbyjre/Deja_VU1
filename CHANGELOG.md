@@ -10,6 +10,26 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**7 November 2026, the Glass look, a sidebar that shows what is happening, and Check slicer on Windows.**
+Glass (frosted panels and the moving background) is the look a new copy opens in; a look you chose yourself
+stays as you chose it, and Preferences → Appearance → Look still offers Workbench and Control room. The
+sidebar now shows the live state of the printer you are looking at (a coloured dot, its name and a progress
+line while it prints), a count on Overview of the printers that need you and on Care of the printers with
+upkeep due, and, from two printers on, a small menu beside Printer to choose which one the Printer page shows.
+Arrow keys, Home and End move through the items, `[` hides or shows the labels, "Tools & learn" folds, and with
+icons only a label appears beside the item you point at or focus. Preferences → Appearance has a new Spacing
+choice, Comfortable (as before) or Compact (less room around cards and sidebar items, same text size; the
+Overview page is about 5 % shorter). In the plate editor, click the model view and use Shift + arrow keys to move the selected object (Alt for 0.1 mm, Ctrl or Cmd for 10 mm), Shift + Page Up/Down to lift it, R to turn it, comma and full stop to pick another object, L, D and F to lay flat, drop and fit, Delete to remove, and Ctrl or Cmd with Z, Y, D and S to undo, redo, duplicate and save; typing in a field never triggers them, and the arrow keys alone still turn the camera. Check slicer now works with the Windows builds of Snapmaker Orca and
+OrcaSlicer: read from Snapmaker's source, `--help` on Windows prints to a console window of its own, so a
+program that reads the engine's output (Deja Vu1) got only start-up log lines and the check said "didn't answer
+like OrcaSlicer's command line". When `--help` prints nothing readable and the engine exits cleanly, Deja Vu1
+now asks it to write its settings file (`--export-settings`), accepts it only if the file has Orca's shape (a
+version, `layer_height`, `nozzle_diameter`) and reads the version from it, with the line "this build prints its
+help to a console window" in the result. Engine runs on Windows also no longer open a console window, and Snapmaker's U1 presets are also read from the slicer's own data folder (`system/Snapmaker`, which Snapmaker's source says holds a copy) when the program folder has none. The last 20 slices and their reports are now kept across a restart (`slice-receipts.json` in the data folder); a slice that was waiting or running when Deja Vu1 stopped comes back as failed with the cause "interrupted" instead of vanishing. Checked:
+the new check against a stand-in engine that behaves as the Windows report showed (4 new tests), the restart receipts (6 new tests), the preset-folder fallback (3 new tests), the plate keyboard commands (5 source tests, and in Chromium on the library's sample model), and the
+sidebar in Chromium in all three looks, light and dark, at 1366 px, 1000 px and 390 px (18 combinations: no page errors, no sideways scroll, every item named, hidden on the phone), with Spacing measured at 1366 px. Not checked:
+the engine check on a real Windows computer (no Windows build could be run here) and a slice after it.
+
 **6 November 2026, updates, connections and Settings.** An update no longer waits for a print, a paused
 print or a printer that isn't answering: the printer holds the file it prints and runs it by itself, so Deja Vu1
 restarting never touches a print. From the moment an install is ready to restart, Deja Vu1 sends no printer

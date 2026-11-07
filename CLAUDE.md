@@ -341,7 +341,12 @@ root should hand over to `welcome.html`.
   (`{job}` or none) returns `slicer_bridge.export()`: one report with mode, host, engine, profile preset names, input
   fingerprint, stage, run (command with preset names, exit code, head and tail of each log), output status and cause;
   home folders become `~`. `check()` reads stdout and stderr and the exit code (a program that cannot load a library
-  prints nothing on stdout, which once read as "no output"). `farm.js` `causeHtml`/`bindCause` draw it in Files,
+  prints nothing on stdout, which once read as "no output"). Windows builds print `--help` to their own console window
+  (`attach_console_on_demand` in Snapmaker_Orca.cpp), so a clean exit with no help line falls back to
+  `_check_by_settings_file`: `--export-settings` must write Orca's shape (version, layer_height, nozzle_diameter);
+  `checked_by: "settings file"`. Only a stand-in engine has run it; `_run` adds CREATE_NO_WINDOW on Windows.
+  Slice jobs and their traces persist to `<data>/slice-receipts.json` on each state change (`_persist_locked`); `_load_receipts()`
+  runs at import and turns waiting/running jobs into failed + `interrupted` (cause code `interrupted`). `farm.js` `causeHtml`/`bindCause` draw it in Files,
   Slicing and Prepare (`#sw-cause`); `readiness.help_report` adds the slicing lines. The online demo answers the POST
   in `app.js`. Windows and macOS rules are matched by documented values, never seen from a real engine.
 - `engine_support.py` (pure): `VERIFIED` lists the engine builds run for real (Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2,
@@ -384,7 +389,11 @@ root should hand over to `welcome.html`.
   `OLD` maps old screen names. It listens for `dv-tab` (app.js `show()`), `dv-section` and `dv-printer`
   (workshop `selectPrinter`) and pushes a history step per change (replace on load, popstate and printer
   change). 224 px or 64 px (`dejavu1.rail.collapsed`), folded by default below 1180 px; hidden at 720 px and
-  less (bottom bar and More sheet). `#tabbar` is hidden on desktop. A new place needs a `DEST` row and an icon;
+  less (bottom bar and More sheet). It also reads `dv-fleet` (7 November 2026): the selected printer's dot and
+  progress line on Printer, counts on Overview (printers that need you) and Care (printers with upkeep due), a menu
+  beside Printer from two printers on (`#rail-menu`, a child of `body` because the rail's backdrop-filter would trap a
+  fixed child), roving tabindex with arrows/Home/End, `[` to collapse, `dejavu1.rail.tools` for the fold, and `#rail-tip`
+  for the label beside an icon. Items carry `aria-label`, never `title`, so the icon-only rail keeps names. `#tabbar` is hidden on desktop. A new place needs a `DEST` row and an icon;
   `tests/test_rail.py` checks both.
 - Theme (0.19.0): `theme-boot.js` in `<head>` sets `data-theme` (light|dark) and `data-theme-pref`
   (light|dark|system, `dejavu1.pref.theme`, default light) before the page is drawn and fires `dv-theme`.
@@ -394,8 +403,11 @@ root should hand over to `welcome.html`.
   `dv-theme`. Never invert pictures, swatches or the print; drawings (twin drawing mode, the plate sheet) stay
   white paper. Measure dark contrast with a Chromium pass over every place (`tests/test_dark_theme.py` covers
   the tokens).
-- Looks (0.20.0, `looks.css`, loaded last): `theme-boot.js` sets `data-ui` workbench (default) | control | glass
-  (`dejavu1.pref.ui`, Preferences → Appearance → Look, `[data-look-choice]`) before paint and fires `dv-ui`.
+- Looks (0.20.0, `looks.css`, loaded last): `theme-boot.js` sets `data-ui` glass (default again from the release after 0.20.3, at the owner's
+  request on 7 November 2026; a saved choice stays) | workbench | control
+  (`dejavu1.pref.ui`, Preferences → Appearance → Look, `[data-look-choice]`) before paint and fires `dv-ui`. Spacing
+  (`data-density` comfortable | compact, `dejavu1.pref.density`, `[data-density-choice]`, fires `dv-density`) is the last
+  block of looks.css: card padding, gaps and sidebar items only, never text sizes.
   Workbench and Control room share rules under `:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui)`
   (the `:not(#ui)` only raises priority over theme.css and dark.css); Control room adds its own token blocks.
   Glass is theme.css as before. backdrop.js treats any look but Glass as Still. Never put an id inside `:is()`:
@@ -638,12 +650,16 @@ prove a public deployment.
   Preserve XML prefixes when relocating paths (`requiredextensions` refers to
   those prefixes). List ALL model parts in `3D/_rels/3dmodel.model.rels` or Orca
   can import empty geometry. Original source files live inside `DejaVu/Sources/`.
+  Keyboard (7 November 2026): `onKey` in plate.js. Single keys (R, F, L, D, comma, full stop, Delete) and Shift + arrows
+  act only while the model view has focus; Ctrl/Cmd + Z, Y, D, S act while the plate is on screen and no field has focus.
+  Arrows alone still orbit the camera (viewer3d.js ignores modified arrows). Quick arrow moves share one undo step (`nudgedAt`).
+  `tests/test_plate_keyboard.py` reads the source, so keep those guards when editing.
 - `gcode-view.js`: layer index, tool/speed/feature filters and event list.
   Backend toolpath segments now append requested mm/s, feature index and line
   number after the original eight values. Extrusion accounting tracks per-tool
   retraction debt. Nominal time excludes acceleration, heating and macros.
 
-- `slicer_profiles.py`: discover installed Snapmaker presets, resolve parents
+- `slicer_profiles.py` (`roots()` also falls back to the slicer's data folder `system/Snapmaker` when the program folder has none): discover installed Snapmaker presets, resolve parents
   with cycle/size bounds, check compatibility and write private flattened
   working copies under `slicer-presets/`. Preserve system identity for CLI
   compatibility; inherited `printer_settings_id` can be stale. Native profiles
