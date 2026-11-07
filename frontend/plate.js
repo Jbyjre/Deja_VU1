@@ -181,6 +181,7 @@ window.DVPlate = (() => {
       undo = [],
       redo = [];
     const mountedPrinter = currentPrinter;
+    let nudgedAt = 0;   // when the last arrow-key move happened: moves in quick succession share one undo step
     let toolColours = ['#808080', '#808080', '#808080', '#808080'];
     try {
       const saved = await getJSON(api('/api/tools/assignments'));
@@ -243,6 +244,7 @@ window.DVPlate = (() => {
       <div class="plate-toolbar"><button class="btn" id="plate-flat">Lay largest face flat</button><button class="btn" id="plate-drop">Drop to plate</button>${['x', 'y', 'z'].map(a => `<button class="btn" data-mirror="${a}">Mirror ${a.toUpperCase()}</button>`).join('')}<button class="btn" id="plate-duplicate">Duplicate</button><button class="btn danger" id="plate-remove">Remove from plate</button></div>
       <details open><summary>Material & object settings</summary><label>Base toolhead<select id="plate-tool">${[0, 1, 2, 3].map(i => `<option value="${i}">T${i}</option>`).join('')}</select></label><label><input type="checkbox" id="plate-colour" checked> Show original source colours</label><p class="field-hint">Source paint is retained in 3MF exports. This base assignment applies where the source has no face painting.</p><div class="profile-options"><label>Wall count<input id="plate-walls" type="number" min="1" max="20" placeholder="Use profile"></label><label>Infill, %<input id="plate-infill" type="number" min="0" max="100" placeholder="Use profile"></label></div><button class="btn" id="plate-settings">Apply object settings</button></details>
       <div class="plate-toolbar"><button class="btn" id="plate-collision">Check mesh contact</button><button class="btn" id="plate-measure" aria-pressed="false">Measure two surface points</button></div><p id="plate-measurement" role="status">Select measurement mode, then click or tap two points on the model.</p><p id="plate-report" role="status" aria-live="polite"></p><p class="field-hint">Live fit checks use bounding boxes. Mesh contact checks run separately; neither check models toolhead clearance or supports.</p>
+      <details id="plate-keys"><summary>Keyboard commands</summary><p class="field-hint">Click the model view first. <b>Shift + arrow keys</b> move the selected object 1 mm along X and Y (add Alt for 0.1 mm, Ctrl or Cmd for 10 mm); <b>Shift + Page Up or Page Down</b> lifts or lowers it; <b>R</b> turns it 90° (Shift + R the other way); <b>, and .</b> pick the previous or next object; <b>L</b> lays the largest face flat; <b>D</b> drops it to the plate; <b>F</b> fits the view; <b>Delete</b> removes it. The arrow keys alone turn the camera. Anywhere on the plate screen outside a field: <b>Ctrl or Cmd + Z</b> undoes (add Shift, or use Y, to redo), <b>+ D</b> duplicates, <b>+ S</b> saves a new 3MF plate. The number fields above do the same with exact values.</p></details>
       <div class="plate-toolbar"><button class="btn primary" id="plate-save">Save new 3MF plate</button><button class="btn" id="plate-slice">Save & open slicing</button><button class="btn" id="plate-stl">Download geometry STL</button></div><p class="field-hint">3MF keeps source model parts, colour payloads and recovery copies. STL carries shape only.</p>`;
     side.append(controls);
     const elements = new Map([...controls.querySelectorAll('[id]')].map(el => [el.id, el]));
@@ -281,6 +283,7 @@ window.DVPlate = (() => {
         sourceName: o.sourceName
       }));
     function checkpoint() {
+      nudgedAt = 0;
       undo.push(snapshot());
       if (undo.length > 30) undo.shift();
       redo.length = 0;
@@ -368,9 +371,10 @@ window.DVPlate = (() => {
       $p('plate-save').disabled = !!outside.length;
       $p('plate-slice').disabled = !!outside.length;
     }
-    function change(fn) {
+    function change(fn, merge = false) {
       try {
-        checkpoint();
+        if (merge) redo.length = 0;
+        else checkpoint();
         fn(objects[selected]);
         draw();
         workspace?.changed();
@@ -636,6 +640,59 @@ window.DVPlate = (() => {
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
+    // Keyboard. Single keys act only while the model view has focus (click it first), so typing in a field, reading
+    // the page or scrolling never moves an object; the arrow keys alone still turn the camera. Every command is also a
+    // button or a number field above. Ctrl or Cmd with Z, Y, D or S acts while the plate is on screen and no field has focus.
+    const field = t => !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    function nudge(axis, amount) {
+      const now = performance.now();
+      change(o => {
+        o.transform[9 + axis] += amount;
+        const low = bounds(o).min[2];
+        if (axis === 2 && low < 0) o.transform[11] -= low;
+      }, now - nudgedAt < 900 && undo.length > 0);
+      nudgedAt = now;
+    }
+    function onKey(e) {
+      if (disposed || e.defaultPrevented || e.isComposing || field(e.target)) return;
+      if (!controls.isConnected || controls.offsetParent === null) return;
+      const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const mod = e.ctrlKey || e.metaKey;
+      const act = fn => { e.preventDefault(); fn(); };
+      if (mod && !e.altKey && 'zyds'.includes(key) && key.length === 1) {
+        if (key === 'z') act(() => (e.shiftKey ? $p('plate-redo') : $p('plate-undo')).click());
+        else if (key === 'y') act(() => $p('plate-redo').click());
+        else if (key === 'd') act(() => $p('plate-duplicate').click());
+        else if (!e.shiftKey) act(() => $p('plate-save').click());
+        return;
+      }
+      if (document.activeElement !== viewer.canvas) return;
+      const step = (e.shiftKey ? (mod ? 10 : e.altKey ? 0.1 : 1) : 0);
+      const arrows = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [1, 1], ArrowDown: [1, -1], PageUp: [2, 1], PageDown: [2, -1] };
+      if (step && arrows[key]) return act(() => nudge(arrows[key][0], arrows[key][1] * step));
+      if (e.altKey || mod || e.shiftKey && key !== 'r') return;
+      if (key === 'r') act(() => change(o => around(o, rotated(2, e.shiftKey ? -90 : 90))));
+      else if (key === 'f') act(fitView);
+      else if (key === 'l') act(() => $p('plate-flat').click());
+      else if (key === 'd') act(() => $p('plate-drop').click());
+      else if (key === ',' || key === '.') {
+        act(() => {
+          selected = (selected + (key === '.' ? 1 : -1) + objects.length) % objects.length;
+          draw(false);
+        });
+      } else if (key === 'Delete' || key === 'Backspace') act(() => $p('plate-remove').click());
+    }
+    document.addEventListener('keydown', onKey);
+    viewer.canvas.tabIndex = 0;
+    viewer.canvas.setAttribute('aria-label', 'Plate view. Press ? for the keyboard commands.');
+    viewer.canvas.addEventListener('pointerdown', () => viewer.canvas.focus({ preventScroll: true }));
+    viewer.canvas.addEventListener('keydown', e => {
+      if (e.key === '?' && !field(e.target)) {
+        e.preventDefault();
+        $p('plate-keys').open = true;
+        $p('plate-keys').scrollIntoView({ block: 'nearest' });
+      }
+    });
     draw();
     window.DVPlate.active = {
       objects,
@@ -658,6 +715,7 @@ window.DVPlate = (() => {
         window.DVWorkspace?.close();
         disposed = true;
         worker.terminate();
+        document.removeEventListener('keydown', onKey);
         viewer.canvas.removeEventListener('pointerdown', pointerDown);
         viewer.canvas.removeEventListener('click', pick);
         for (const s of waiting.values()) s.reject(new Error('The plate was closed'));
