@@ -17,7 +17,9 @@ The processor type of the Linux runs was not written down.
 
 ## Not tested
 
-- Windows and macOS, with any engine. No slice has been run there.
+- Windows and macOS, with any engine. No slice has been run there. On Windows, Check slicer reads the version
+  from the engine's settings file because the engine prints `--help` to a console window; that route is tested with
+  a stand-in engine, not yet with a real Windows build.
 - Other versions of Snapmaker Orca and OrcaSlicer, including newer releases.
 - Other slicers.
 

@@ -35,6 +35,17 @@ FAKE_ORCA = textwrap.dedent('''\
     import json, os, sys, time
     mode = os.environ.get("FAKE_ORCA_MODE", "ok")
     args = sys.argv[1:]
+    if mode in ("windows_console", "windows_console_no_file"):
+        # The Windows build, as one owner's engine report showed it: the help goes to a console window, so the
+        # pipe holds only start-up log lines and the program exits 0. The settings file is still written.
+        sys.stdout.write("sentry_init returned: 0\\r\\nsentry_init succeeded, init_success set to true\\r\\n"
+                         "Starting Sentry session and setting flags...\\r\\n"
+                         "[trace]   Initializing StaticPrintConfigs\\r\\n")
+        if "--export-settings" in args and mode == "windows_console":
+            with open(args[args.index("--export-settings") + 1], "w") as fh:
+                json.dump({{"version": "2.4.2", "name": "project_settings", "from": "project",
+                           "layer_height": "0.2", "nozzle_diameter": ["0.4"]}}, fh)
+        sys.exit(0)
     if "--help" in args:
         if mode == "missing_library":
             # What Linux's loader prints for a program whose library isn't installed; it exits 127 and
@@ -180,6 +191,134 @@ class TestSettings(SlicerBridgeTest):
         result = slicer_bridge.check()
         self.assertFalse(result["ok"])
         self.assertIn("didn't answer like OrcaSlicer", result["error"])
+
+
+class TestWindowsConsoleBuild(SlicerBridgeTest):
+    """
+    Snapmaker Orca on Windows prints `--help` to a console window of its own (Snapmaker_Orca.cpp,
+    attach_console_on_demand), so the check once failed with "didn't answer like OrcaSlicer's command line (it said:
+    'sentry_init returned: 0')". The settings file it writes still names the version.
+    """
+
+    def test_a_build_that_prints_its_help_elsewhere_is_read_from_its_settings_file(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "windows_console"
+        with unittest.mock.patch.object(slicer_bridge.platform, "system", return_value="Windows"):
+            result = slicer_bridge.check()
+        self.assertTrue(result["ok"], result)
+        self.assertEqual((result["app"], result["version"], result["checked_by"]), ("OrcaSlicer", "2.4.2", "settings file"))
+        self.assertIn("console window", result["detail"])
+        self.assertEqual(result["support"]["level"], "untested")
+        self.assertFalse(result["capabilities"]["per_tool_heights"])
+        self.assertEqual(slicer_bridge.get_settings()["last_check"]["version"], "2.4.2")
+
+    def test_snapmaker_orca_is_named_from_the_program_file(self):
+        named = os.path.join(self.tmp, "snapmaker-orca")
+        os.rename(self.orca, named)
+        slicer_bridge.save_settings({"slicer_path": named})
+        os.environ["FAKE_ORCA_MODE"] = "windows_console"
+        result = slicer_bridge.check()
+        self.assertEqual((result["ok"], result["app"], result["version"]), (True, "Snapmaker_Orca", "2.4.2"))
+        self.assertIn("Snapmaker_Orca", result["support"]["title"])
+
+    def test_the_engine_is_then_used_to_slice_like_any_other(self):
+        profile = self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "windows_console"
+        self.assertTrue(slicer_bridge.check()["ok"])
+        self.assertFalse(slicer_bridge.engine_changed(slicer_bridge.get_settings(), self.orca))
+        self.assertTrue(profile["id"])
+
+    def test_a_program_that_prints_log_lines_but_writes_no_settings_file_is_still_refused(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "windows_console_no_file"
+        result = slicer_bridge.check()
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["cause"]["code"], "not_orca")
+        self.assertIn("sentry_init returned: 0", result["error"])
+
+
+class TestReceiptsSurviveARestart(SlicerBridgeTest):
+    """A restart (an update, Restart, a crash) used to lose the report that explains a failed slice."""
+
+    def restart(self):
+        with slicer_bridge._lock:
+            slicer_bridge._jobs.clear()
+            slicer_bridge._order.clear()
+            slicer_bridge._traces.clear()
+        slicer_bridge._load_receipts()
+
+    def slice_and_wait(self, mode):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = mode
+        job = slicer_bridge.start_job("spur_gear_24t.stl")
+        return slicer_bridge.wait(job["id"], timeout=30)
+
+    def test_a_failed_slice_and_its_report_come_back_after_a_restart(self):
+        failed = self.slice_and_wait("config_error")
+        self.assertEqual(failed["status"], "failed")
+        before = slicer_bridge.export(failed["id"])
+        self.restart()
+        again = slicer_bridge.get_job(failed["id"])
+        self.assertEqual((again["status"], again["cause"]["code"]), ("failed", failed["cause"]["code"]))
+        after = slicer_bridge.export(failed["id"])
+        self.assertEqual(after["outcome"]["cause"], before["outcome"]["cause"])
+        self.assertEqual(after["run"], before["run"])
+        self.assertEqual([j["id"] for j in slicer_bridge.jobs()["jobs"]], [failed["id"]])
+
+    def test_a_finished_slice_keeps_its_files_after_a_restart(self):
+        done = self.slice_and_wait("ok")
+        self.assertEqual(done["status"], "done")
+        self.restart()
+        again = slicer_bridge.get_job(done["id"])
+        self.assertEqual(again["status"], "done")
+        self.assertEqual([f["name"] for f in again["report"]["files"]], [f["name"] for f in done["report"]["files"]])
+
+    def test_a_slice_that_was_running_when_the_program_stopped_is_marked_interrupted(self):
+        self.configure()
+        job = {"id": "interrupt", "model": "spur_gear_24t.stl", "profile": "U1 standard", "profile_id": "p1",
+               "printer_id": mock_moonraker.selected_printer_id(), "status": "running", "step": "Slicing",
+               "created_at": "2026-11-07T10:00:00", "error": None, "report": None, "queued": None, "stage": None}
+        with slicer_bridge._lock:
+            slicer_bridge._jobs[job["id"]] = job
+            slicer_bridge._traces[job["id"]] = {"stage": "slice"}
+            slicer_bridge._order.append(job["id"])
+            slicer_bridge._persist_locked()
+        self.restart()
+        again = slicer_bridge.get_job("interrupt")
+        self.assertEqual((again["status"], again["interrupted"], again["cause"]["code"]), ("failed", True, "interrupted"))
+        self.assertIn("did not finish", again["error"])
+        self.assertEqual(again["stage"], "slice")
+        self.assertFalse(slicer_bridge.any_active())
+        # The next start finds it already settled and does not mark it twice.
+        self.restart()
+        self.assertEqual(slicer_bridge.get_job("interrupt")["error"], again["error"])
+
+    def test_a_damaged_receipts_file_is_ignored(self):
+        with open(slicer_bridge._RECEIPTS, "w") as fh:
+            fh.write("{not json")
+        self.restart()
+        self.assertEqual(slicer_bridge.jobs()["jobs"], [])
+        with open(slicer_bridge._RECEIPTS, "w") as fh:
+            json.dump({"jobs": [{"job": "text"}, {"job": {"id": 7}}, 5]}, fh)
+        self.restart()
+        self.assertEqual(slicer_bridge.jobs()["jobs"], [])
+
+    def test_resetting_forgets_the_receipts(self):
+        self.slice_and_wait("config_error")
+        slicer_bridge.reset()
+        self.restart()
+        self.assertEqual(slicer_bridge.jobs()["jobs"], [])
+
+    def test_no_more_than_the_last_twenty_are_kept(self):
+        with slicer_bridge._lock:
+            for n in range(25):
+                jid = f"job{n:02d}"
+                slicer_bridge._jobs[jid] = {"id": jid, "model": "m.stl", "status": "done", "printer_id": "p"}
+                slicer_bridge._order.append(jid)
+            slicer_bridge._persist_locked()
+        self.restart()
+        self.assertEqual(len(slicer_bridge._order), slicer_bridge.MAX_JOBS_KEPT)
+        self.assertEqual(slicer_bridge._order[-1], "job24")
 
 
 class TestFindSlicers(SlicerBridgeTest):

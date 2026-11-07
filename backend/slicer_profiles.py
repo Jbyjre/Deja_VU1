@@ -64,7 +64,21 @@ def roots(program, preset_folder=None):
         p.parent.parent / 'resources' / 'profiles',
         p.parent.parent / 'Resources' / 'profiles',
     ]
-    return next((r for r in candidates if (r / 'Snapmaker').is_dir()), None)
+    found = next((r for r in candidates if (r / 'Snapmaker').is_dir()), None)
+    return found or next((r for r in _data_folder_roots() if (r / 'Snapmaker').is_dir()), None)
+
+
+def _data_folder_roots():
+    """
+    The slicer's own data folder keeps a copy of each vendor's system presets in system/<vendor>/ (PresetBundle.cpp,
+    data_dir() / PRESET_SYSTEM_DIR / vendor_name), so a program folder with an unexpected layout (a different
+    installer, a portable copy) still has presets to read. Used only when the program folder has none.
+    """
+    try:
+        import orca_import
+        return [folder / 'system' for _label, folder, _key in orca_import.data_folders()]
+    except Exception:  # noqa: BLE001 - a missing or unreadable data folder just means no fallback
+        return []
 
 
 def _read(path):
