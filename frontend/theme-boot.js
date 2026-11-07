@@ -7,21 +7,23 @@
  * CSS can't reach (canvas and 3D labels).
  *
  * The look (Preferences → Appearance → Look) is set here too, as data-ui:
- * "workbench" (the default: flat panels, hairlines, aligned numbers),
- * "control" (denser and squarer, grey, colour only for status) or "glass"
- * (frosted glass and the moving background). looks.css holds the first two;
- * "dv-ui" tells scripts it changed.
+ * "glass" (the default: frosted glass and the moving background),
+ * "workbench" (flat panels, hairlines, aligned numbers) or "control"
+ * (denser and squarer, grey, colour only for status). looks.css holds the
+ * last two; "dv-ui" tells scripts it changed. A look chosen before the
+ * default changed stays as it was chosen.
  */
 (function () {
   var KEY = 'dejavu1.pref.theme';
   var UI_KEY = 'dejavu1.pref.ui';
-  var LOOKS = ['workbench', 'control', 'glass'];
+  var LOOKS = ['glass', 'workbench', 'control'];
+  var DEFAULT_LOOK = 'glass';
   function look() {
     try {
       var v = localStorage.getItem(UI_KEY);
-      return LOOKS.indexOf(v) >= 0 ? v : 'workbench';
+      return LOOKS.indexOf(v) >= 0 ? v : DEFAULT_LOOK;
     } catch (e) {
-      return 'workbench';
+      return DEFAULT_LOOK;
     }
   }
   function applyLook(choice) {
@@ -29,6 +31,23 @@
     try { window.dispatchEvent(new CustomEvent('dv-ui', { detail: { ui: choice } })); } catch (e) { /* old browser */ }
   }
   applyLook(look());
+  // Spacing (Preferences → Appearance → Spacing): "comfortable" (the default) or "compact", which
+  // tightens cards and the sidebar so more of a screen is useful on a laptop.
+  var DENSITY_KEY = 'dejavu1.pref.density';
+  var DENSITIES = ['comfortable', 'compact'];
+  function density() {
+    try {
+      var v = localStorage.getItem(DENSITY_KEY);
+      return DENSITIES.indexOf(v) >= 0 ? v : 'comfortable';
+    } catch (e) {
+      return 'comfortable';
+    }
+  }
+  function applyDensity(choice) {
+    document.documentElement.setAttribute('data-density', choice);
+    try { window.dispatchEvent(new CustomEvent('dv-density', { detail: { density: choice } })); } catch (e) { /* old browser */ }
+  }
+  applyDensity(density());
   var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function pref() {
     try {
@@ -55,9 +74,16 @@
     looks: LOOKS.slice(),
     look: look,
     setLook: function (choice) {
-      choice = LOOKS.indexOf(choice) >= 0 ? choice : 'workbench';
+      choice = LOOKS.indexOf(choice) >= 0 ? choice : DEFAULT_LOOK;
       try { localStorage.setItem(UI_KEY, choice); } catch (e) { /* private window: this visit only */ }
       applyLook(choice);
+    },
+    densities: DENSITIES.slice(),
+    density: density,
+    setDensity: function (choice) {
+      choice = DENSITIES.indexOf(choice) >= 0 ? choice : 'comfortable';
+      try { localStorage.setItem(DENSITY_KEY, choice); } catch (e) { /* private window: this visit only */ }
+      applyDensity(choice);
     },
     get: pref,
     current: function () { return document.documentElement.getAttribute('data-theme') || 'light'; },

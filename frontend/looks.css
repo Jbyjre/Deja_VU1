@@ -59,7 +59,7 @@
 /* ---- every panel: solid, one hairline, no blur, no drifting highlight ---- */
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass,
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.topbar, .tabbar, .status-ribbon, .rail, .live-pill, .orb-panel, .more-sheet, .bottom-nav).liquid-glass,
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.topbar, .tabbar, .status-ribbon, .rail, .rail-menu, .live-pill, .orb-panel, .more-sheet, .bottom-nav).liquid-glass,
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail {
   background: var(--wb-panel);
   border: 1px solid var(--wb-line);
@@ -194,3 +194,13 @@
 /* Emergency stop: deep red with white words, 5.9:1 (the bright red gave 3.5:1). */
 .btn.estop:not(#ui):not(:disabled) { background: #c8102e; border-color: #a50d26; color: #fff; }
 .btn.estop:not(#ui):not(:disabled):hover { background: #a50d26; }
+
+/* ---- Spacing: Compact (Preferences → Appearance → Spacing). Cards, the gaps between them and the sidebar items
+   take less room in every look; text sizes do not change, and no control drops below 32 px tall. ---- */
+html[data-density="compact"]:not(#dv) .card { padding: 14px 16px; margin-bottom: 12px; }
+html[data-density="compact"]:not(#dv) .card-head { margin-bottom: 10px; gap: 8px 12px; }
+html[data-density="compact"]:not(#dv) .grid-2 { gap: 12px; }
+html[data-density="compact"]:not(#dv) .rail { padding: 6px; gap: 0; }
+html[data-density="compact"]:not(#dv) .rail-item { min-height: 32px; padding-top: 4px; padding-bottom: 4px; }
+html[data-density="compact"]:not(#dv) .rail-group { margin-top: 8px; }
+html[data-density="compact"]:not(#dv) .rail-switch { min-height: 32px; }
