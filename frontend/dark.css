@@ -61,7 +61,8 @@ html[data-theme="dark"] .liquid-glass:is(.card, .stats, .fleet-card, .divider-ro
   background: linear-gradient(160deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 40%);
 }
 html[data-theme="dark"] .topbar.liquid-glass, html[data-theme="dark"] .tabbar.liquid-glass,
-html[data-theme="dark"] .status-ribbon.liquid-glass, html[data-theme="dark"] .rail {
+html[data-theme="dark"] .status-ribbon.liquid-glass, html[data-theme="dark"] .rail, html[data-theme="dark"] .rail-menu.liquid-glass {
+  --rail-ring: var(--wb-panel, rgba(20, 28, 38, .9));
   background: rgba(20, 28, 38, .8);
   box-shadow: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 10px 26px rgba(0, 0, 0, .35);
 }
@@ -98,6 +99,8 @@ html[data-theme="dark"] .rail-item:hover, html[data-theme="dark"] .rail-collapse
   background: rgba(200, 215, 235, .08); color: var(--text);
 }
 html[data-theme="dark"] .rail-item.active { background: color-mix(in srgb, var(--accent) 24%, transparent); color: #d4e5ff; }
+html[data-theme="dark"] .rail-switch:hover, html[data-theme="dark"] .rail-menu button:hover { background: rgba(200, 215, 235, .08); color: var(--text); }
+html[data-theme="dark"] .rail-tip { background: #e8edf5; color: #10151d; }
 
 /* ---- the theme choice itself ---- */
 .theme-choice { display: inline-flex; flex-wrap: wrap; gap: 8px; }

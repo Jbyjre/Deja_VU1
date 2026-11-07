@@ -72,6 +72,7 @@ import model_maker
 
 _DATA_DIR = storage.DATA_DIR
 _PATH = os.path.join(_DATA_DIR, "slicer.json")
+_RECEIPTS = os.path.join(_DATA_DIR, "slice-receipts.json")   # the last slices, kept across a restart
 ENV_PATH = "DEJAVU_SLICER_PATH"
 
 DEFAULT_TIMEOUT = 600
@@ -508,7 +509,9 @@ def _run(cmd, timeout, cwd=None):
     if os.name == "posix":
         kwargs["start_new_session"] = True
     else:
-        kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        # No console window: the Windows build opens one of its own for `--help` when it finds none to attach to.
+        kwargs["creationflags"] = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                                   | getattr(subprocess, "CREATE_NO_WINDOW", 0))
     try:
         proc = subprocess.Popen(cmd, **kwargs)
     except PermissionError as exc:
@@ -557,11 +560,71 @@ def _run(cmd, timeout, cwd=None):
         return None, out, err
 
 
+def _export_schema(path, work):
+    """
+    Ask the engine to write its settings to a file (`--export-settings`) and read them back. This works on
+    every system: the file is written to disk, whatever happens to the program's printed output.
+    """
+    target = os.path.join(work, 'defaults.json')
+    _run([path, '--export-settings', target], CHECK_TIMEOUT, cwd=work)
+    if os.path.isfile(target) and os.path.getsize(target) <= MAX_PRESET_BYTES:
+        schema = storage.load_json(target, {})
+        if isinstance(schema, dict):
+            return schema
+    return {}
+
+
+def _settings_file_is_orca(schema):
+    """The file OrcaSlicer's `--export-settings` writes: a version, then every print option by name."""
+    return (isinstance(schema.get("version"), str) and bool(schema["version"].strip())
+            and "layer_height" in schema and "nozzle_diameter" in schema)
+
+
+def _app_from_name(path):
+    return "Snapmaker_Orca" if "snapmaker" in os.path.basename(path).lower() else "OrcaSlicer"
+
+
+def _capabilities(schema, options):
+    # Read actual CLI options; names/versions alone do not prove support.
+    return {
+        'per_tool_heights': 'extruder_layer_height' in schema or bool(re.search(rb'--extruder-layer-height(?:\s|=)', options)),
+        'exact_tool_heights': 'extruder_layer_height_exact' in schema or b'--extruder-layer-height-exact' in options,
+        'thick_layer_modes': 'extruder_layer_height_mode' in schema or b'--extruder-layer-height-mode' in options,
+    }
+
+
+def _check_by_settings_file(path, started):
+    """
+    The way on when `--help` prints nothing we can read. Snapmaker Orca and OrcaSlicer on Windows send the help
+    text to a console window of their own, so a program that reads their output (this one) gets only log lines
+    (Snapmaker_Orca.cpp, `attach_console_on_demand`, called from `print_help`). The settings file still arrives,
+    and it carries the version (`save_to_json(... Snapmaker_VERSION)`). Returns an ok result, or None.
+    """
+    try:
+        with tempfile.TemporaryDirectory(prefix='dejavu-engine-check-') as work:
+            schema = _export_schema(path, work)
+    except ValueError:
+        return None
+    if not _settings_file_is_orca(schema):
+        return None
+    app, version = _app_from_name(path), schema["version"].strip()
+    return {"ok": True, "app": app, "version": version,
+            "detail": f"{app} {version} wrote its settings file in {(time.monotonic() - started):.1f} s. "
+                      "This build prints its help to a console window instead of to Deja Vu1, "
+                      "so the version came from that file",
+            "support": engine_support.assess(app, version, platform.system()),
+            "capabilities": _capabilities(schema, b""),
+            "capability_evidence": "Exported option schema; actual output still requires inspection",
+            "checked_by": "settings file",
+            "program_identity": _program_identity(path)}
+
+
 def check():
     """
     Is the slicer there and does it answer like OrcaSlicer's command line?
     Runs `<slicer> --help`, whose first line is "<AppKey>-<version>:"
-    (CLI::print_help in src/OrcaSlicer.cpp).
+    (CLI::print_help in src/OrcaSlicer.cpp). A build that exits cleanly but prints no such line
+    (the Windows ones: see _check_by_settings_file) is asked for its settings file instead.
     """
     s = get_settings()
     path, source = slicer_path(s)
@@ -581,7 +644,10 @@ def check():
         first = next((ln.strip() for ln in (out or b"").decode("utf-8", "replace").splitlines() if ln.strip()), "")
         match = next((m for line in (out or b"").decode("utf-8", "replace").splitlines() if (m := re.match(r"^([A-Za-z_][\w ]*?)-(\d[\w.\-+]*):?$", line.strip()))), None)
         cause = None
-        if code == "failed":
+        by_file = _check_by_settings_file(path, started) if code == 0 and not match else None
+        if by_file:
+            result = by_file
+        elif code == "failed":
             result = {"ok": False, "error": _tail(err)}
             cause = started_cause
         elif code is None:
@@ -597,20 +663,8 @@ def check():
                       "support": engine_support.assess(match.group(1), match.group(2), platform.system())}
             with tempfile.TemporaryDirectory(prefix='dejavu-capabilities-') as work:
                 _, options, _ = _run([path, '--help-fff'], CHECK_TIMEOUT, cwd=work)
-                schema_path = os.path.join(work, 'defaults.json')
-                schema = {}
-                if b'--export-settings' in out:
-                    _run([path, '--export-settings', schema_path], CHECK_TIMEOUT, cwd=work)
-                    if os.path.isfile(schema_path) and os.path.getsize(schema_path) <= MAX_PRESET_BYTES:
-                        schema = storage.load_json(schema_path, {})
-                        if not isinstance(schema, dict):
-                            schema = {}
-            # Read actual CLI options; names/versions alone do not prove support.
-            result['capabilities'] = {
-                'per_tool_heights': 'extruder_layer_height' in schema or bool(re.search(rb'--extruder-layer-height(?:\s|=)', options)),
-                'exact_tool_heights': 'extruder_layer_height_exact' in schema or b'--extruder-layer-height-exact' in options,
-                'thick_layer_modes': 'extruder_layer_height_mode' in schema or b'--extruder-layer-height-mode' in options,
-            }
+                schema = _export_schema(path, work) if b'--export-settings' in out else {}
+            result['capabilities'] = _capabilities(schema, options)
             result['capability_evidence'] = 'Exported option schema and command-line help; actual output still requires inspection'
             result['program_identity'] = _program_identity(path)
         else:
@@ -1026,11 +1080,68 @@ def help_lines():
 # Jobs: slicing runs in the background, the browser watches its progress
 # ---------------------------------------------------------------------------
 
+def _persist_locked():
+    """
+    Keep the last slices' receipts on disk so a restart (an update, Restart, a crash) does not lose the report
+    that explains a failure. The caller holds _lock. A receipt that cannot be written never stops a slice.
+    """
+    try:
+        rows = [{"job": _jobs[j], "trace": _traces.get(j) or {}} for j in _order if j in _jobs]
+        # Round-trip through JSON text so anything odd in a trace becomes text instead of an error.
+        rows = json.loads(json.dumps(rows, default=str))
+        storage.save_json(_RECEIPTS, {"version": 1, "saved_at": _now(), "jobs": rows})
+    except (OSError, TypeError, ValueError):
+        pass
+
+
+def _mark_interrupted(job, trace):
+    """A slice that was waiting or running when the program stopped did not finish; say so instead of leaving it running."""
+    was = "running" if job.get("status") == "running" else "waiting"
+    stage = (trace or {}).get("stage")
+    message = f"Deja Vu1 stopped while this slice was {was}. It did not finish and nothing was queued"
+    job.update(status="failed", step="Failed", error=message, interrupted=True, stage=stage,
+               stage_label=slice_diagnosis.stage_label(stage), finished_at=job.get("finished_at") or _now(),
+               cause=slice_diagnosis.make(
+                   "interrupted", message,
+                   "The engine was stopped together with Deja Vu1, so its output is incomplete and was not added to the library.",
+                   ["Slice it again."]))
+
+
+def _load_receipts():
+    """Bring back the receipts saved by an earlier run; jobs that never finished are marked interrupted."""
+    data = storage.load_json(_RECEIPTS, {})
+    rows = data.get("jobs") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        return
+    with _lock:
+        interrupted = False
+        for row in rows[-MAX_JOBS_KEPT:]:
+            job = row.get("job") if isinstance(row, dict) else None
+            if not isinstance(job, dict) or not isinstance(job.get("id"), str) or job["id"] in _jobs:
+                continue
+            trace = row.get("trace") if isinstance(row.get("trace"), dict) else {"stage": None}
+            if job.get("status") in ("waiting", "running"):
+                _mark_interrupted(job, trace)
+                interrupted = True
+            _jobs[job["id"]] = job
+            _traces[job["id"]] = trace
+            _order.append(job["id"])
+        while len(_order) > MAX_JOBS_KEPT:
+            old = _order.pop(0)
+            _jobs.pop(old, None)
+            _traces.pop(old, None)
+        if interrupted:
+            _persist_locked()
+
+
 def _job_update(job_id, **fields):
     with _lock:
         job = _jobs.get(job_id)
         if job:
             job.update(fields)
+            # Saved when a job changes state, not at every step line, so a long slice writes a handful of times.
+            if "status" in fields or "finished_at" in fields:
+                _persist_locked()
 
 
 def start_job(name, profile_id=None, queue_to=None, on_done=None):
@@ -1070,6 +1181,7 @@ def start_job(name, profile_id=None, queue_to=None, on_done=None):
             old = _order.pop(0)
             _jobs.pop(old, None)
             _traces.pop(old, None)
+        _persist_locked()
     threading.Thread(target=_work_selected, args=(mock_moonraker.selected_printer_id(), job["id"], name, profile["id"], queue_to, on_done),
                      name="slicer", daemon=True).start()
     return dict(job)
@@ -1219,4 +1331,8 @@ def reset():
         _jobs.clear()
         _order.clear()
         _traces.clear()
+        _persist_locked()
         _save(_defaults())
+
+
+_load_receipts()

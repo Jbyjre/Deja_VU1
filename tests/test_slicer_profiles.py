@@ -9,6 +9,40 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'backend'))
 import slicer_profiles as profiles
 
 
+class SystemPresetFolders(unittest.TestCase):
+    """The slicer's data folder holds a copy of the system presets, used when the program folder has none."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.program = self.root / 'Program Files/Snapmaker_Orca/snapmaker-orca.exe'
+        self.program.parent.mkdir(parents=True)
+        self.program.touch()
+        self.data = self.root / 'AppData/Snapmaker_Orca'
+
+    def fake_folders(self):
+        return patch('orca_import.data_folders', return_value=[('Snapmaker Orca', self.data, 'Snapmaker_Orca')])
+
+    def test_the_program_folder_wins_when_it_has_presets(self):
+        (self.program.parent / 'resources/profiles/Snapmaker').mkdir(parents=True)
+        (self.data / 'system/Snapmaker').mkdir(parents=True)
+        with self.fake_folders():
+            self.assertEqual(profiles.roots(self.program), self.program.parent / 'resources/profiles')
+
+    def test_the_data_folder_is_used_when_the_program_folder_has_none(self):
+        (self.data / 'system/Snapmaker').mkdir(parents=True)
+        with self.fake_folders():
+            self.assertEqual(profiles.roots(self.program), self.data / 'system')
+
+    def test_no_presets_anywhere_is_still_none(self):
+        self.data.mkdir(parents=True)
+        with self.fake_folders():
+            self.assertIsNone(profiles.roots(self.program))
+        with patch('orca_import.data_folders', side_effect=OSError('unreadable')):
+            self.assertIsNone(profiles.roots(self.program))
+
+
 class InstalledProfiles(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

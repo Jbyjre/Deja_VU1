@@ -85,7 +85,14 @@ how the program ended:
 | Crash | A POSIX signal (segmentation fault, abort, killed) | Slice again, then copy the report. |
 | Windows load errors | Exit codes 0xC0000135, 0xC000007B, 0xC0000005 | Reinstall the engine; repair the Visual C++ Redistributable for 0xC0000135. |
 | Not a runnable program | The system refuses to start the file | Download the build for this computer's system and processor. |
+| Help printed to a console window (Windows) | `--help` exits cleanly with only start-up log lines such as `sentry_init returned: 0` | None needed: Deja Vu1 asks for the settings file instead and reads the version from it. If that file is not Orca's, the check says it didn't answer like OrcaSlicer's command line. |
 | Orca's own errors | Its `result.json` return codes | The code's meaning and one fix (a model outside the plate, an incompatible preset, and so on). |
+
+On Windows, Snapmaker Orca's `--help` writes to a console window of its own (its source calls
+`attach_console_on_demand` before it prints), so a program that reads the engine's output never sees the help
+text. The check then runs `--export-settings` into a throw-away folder; a file with a version, `layer_height` and
+`nozzle_diameter` counts as Orca's answer and its `version` is the one shown. The program's name decides whether
+the app is shown as Snapmaker_Orca or OrcaSlicer. This route has run only against a stand-in engine so far.
 
 Anything else keeps the old wording ("Orca exited with code N") and its last
 line, and the report still holds the engine's output.
@@ -97,8 +104,10 @@ and preset file names, the model's name, size and a short fingerprint, the stage
 reached, the command that ran, the exit code, the start and end of the engine's
 output, which G-code files came out, and the cause. Home folders are shown as `~`.
 It names your files and engine output, so read it before you share it. Settings,
-**Copy a report for help**, also carries the slicing lines. Reports live in memory
-with the last 20 slices and are lost when Deja Vu1 restarts.
+**Copy a report for help**, also carries the slicing lines. The last 20 slices are kept in
+`slice-receipts.json` in the data folder, so a report is still there after an update or a restart. A slice that was
+waiting or running when Deja Vu1 stopped comes back as failed with the cause "interrupted": it did not finish and
+nothing from it was queued.
 
 What is verified: the cause rules run against the text real failing programs print
 (the Linux loader, the AppImage runtime, GTK) and against stand-in engines that fail

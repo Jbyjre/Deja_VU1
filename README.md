@@ -389,11 +389,33 @@ updates. Tested with a stand-in printer and the real launcher on Linux; not yet 
 - **The update progress box and the "stopped answering" strip use the app's glass.** Lensed blur in the Glass
   look, a solid panel in Workbench and Control room, dark theme, reduced transparency and increased contrast.
 
+## What's new since 0.20.3
+
+- **Glass is the look a new copy opens in.** Frosted panels and the moving background; Preferences →
+  Appearance → Look still offers Workbench and Control room, and a look you chose before stays.
+- **A sidebar that shows what is happening.** The Printer item carries the selected printer's state
+  (a coloured dot, its name, a progress line while it prints); Overview counts the printers that need you and
+  Care the printers with upkeep due; from two printers on, a menu beside Printer picks which one the Printer
+  page shows. Arrow keys, Home and End move through it, `[` hides or shows the labels, "Tools & learn" folds,
+  and with icons only a label appears beside the item you point at.
+- **Spacing: Comfortable or Compact.** Preferences → Appearance. Compact takes less room around cards and
+  sidebar items; text sizes stay the same.
+- **Check slicer reads the Windows builds of Snapmaker Orca.** They print `--help` to a console window of their
+  own, so the old check said "didn't answer like OrcaSlicer's command line". It now asks the engine for its
+  settings file and reads the version from that. Verified with a stand-in engine; not yet on a real Windows
+  computer.
+- **Keyboard commands on the plate.** Click the model view, then Shift + arrow keys move the selected object
+  (Alt for 0.1 mm, Ctrl or Cmd for 10 mm), Shift + Page Up/Down lifts it, R turns it 90°, comma and full stop pick
+  another object, L lays a face flat, D drops it, F fits the view, Delete removes it; Ctrl or Cmd with Z, Y, D, S
+  undoes, redoes, duplicates and saves. Press ? on the view for the list. Typing in a field never triggers them.
+- **Slice reports survive a restart.** The last 20 slices are kept on disk, so Copy report still works after an
+  update; a slice that was running when Deja Vu1 stopped comes back as failed ("interrupted") instead of vanishing.
+
 ## What's new in 0.20.0
 
 ![The Printer page in the three looks: Workbench, Control room and Glass](docs/img/looks.jpg)
 
-- **A plainer, technical look by default.** Workbench draws the dashboard with flat panels,
+- **A plainer, technical look.** (The default from 0.20.0 until the release after 0.20.3, when Glass became the default again.) Workbench draws the dashboard with flat panels,
   thin borders, small corners and numbers that line up, keeps colour for status, and has
   nothing moving behind the page.
 - **Pick your look.** Preferences → Appearance → Look: Workbench, Control room (denser,
@@ -1019,9 +1041,9 @@ stand-in coverage. Start with the [watch-only first connection](docs/first-conne
 LED rings and the optical colour sensor have tested decision logic, without
 completed hardware drivers.
 
-The latest full run passed **1243 tests in 638.8 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (6 November 2026, version 0.20.2 plus updating during a print, the
-connection fixes and Optional extras, before their merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
+The latest full run passed **1267 tests in 891.6 seconds** on Python 3.13/Linux,
+with the app and demo servers stopped (7 November 2026, version 0.20.3 plus the Glass default, the live sidebar, Spacing,
+the Windows engine check, restart receipts and plate keyboard commands, before their merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
 and 3.13.
 Earlier full runs passed 1182, 1161, 1117, 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
 The slicing-workspace round
@@ -1103,7 +1125,7 @@ with it.
 
 ## Tech stack
 
-![By the numbers: 1243 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1267 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 - **Backend:** Python, standard library only, written for 3.8 or newer;
   the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
@@ -1113,7 +1135,7 @@ with it.
   raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
   unzip 3MF files
 - **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 1243 cases
+- **Tests:** `unittest` from the standard library, 1267 cases
 - **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
   farm for demo data)
 

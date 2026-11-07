@@ -68,5 +68,43 @@ class TestRail(unittest.TestCase):
         self.assertIn("window.dispatchEvent(new CustomEvent('dv-tab'", APP)
 
 
+class TestRailLiveParts(unittest.TestCase):
+    """What the sidebar draws from the live fleet and how it is used from the keyboard (looked at in Chromium, 7 November 2026)."""
+
+    def test_it_follows_the_fleet_the_page_already_receives(self):
+        self.assertIn("window.addEventListener('dv-fleet'", RAIL)
+        for part in ("rail-dot", "rail-progress", "rail-badge", "rail-switch", "rail-menu"):
+            self.assertIn(part, RAIL, part)
+        # Every item keeps an accessible name when only the icon shows, and says what the badge counts.
+        self.assertIn("a.setAttribute('aria-label', label[d.id])", RAIL)
+        self.assertNotIn('title="${esc(d.label)}"', RAIL)
+        self.assertIn("printers need you", RAIL)
+        self.assertIn("printers have upkeep due", RAIL)
+
+    def test_the_keyboard_moves_through_the_items_and_never_while_typing(self):
+        for key in ("ArrowDown", "ArrowUp", "Home", "End"):
+            self.assertIn(key, RAIL)
+        self.assertIn("e.key === '['", RAIL)
+        self.assertIn("!typing(e.target)", RAIL)
+        self.assertIn("setAttribute('tabindex'", RAIL)
+
+    def test_tools_and_learn_folds_but_never_hides_the_place_you_are_in(self):
+        self.assertIn("dejavu1.rail.tools", RAIL)
+        self.assertIn("if (d.group === 'tools') setTools(true, false)", RAIL)
+        css = read("workshop.css")
+        self.assertIn(".rail-list.is-folded { display: none; }", css)
+        # With icons only there is no heading to unfold from, so nothing may stay folded.
+        self.assertIn("html.rail-collapsed .rail-list.is-folded { display: flex; }", css)
+
+    def test_the_menu_and_the_label_beside_an_icon_are_hidden_on_phones_and_in_dark(self):
+        css = read("workshop.css")
+        self.assertIn(".rail-menu, .rail-tip { display: none; }", css)
+        dark = read("dark.css")
+        self.assertIn('.rail-menu.liquid-glass', dark)
+        self.assertIn('.rail-tip', dark)
+        looks = read("looks.css")
+        self.assertIn(".rail, .rail-menu, .live-pill", looks)
+
+
 if __name__ == "__main__":
     unittest.main()

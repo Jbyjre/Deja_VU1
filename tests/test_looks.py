@@ -41,9 +41,11 @@ def tok(text, name, fallback=None):
 
 
 class TestLooks(unittest.TestCase):
-    def test_three_looks_and_workbench_by_default(self):
-        self.assertIn("var LOOKS = ['workbench', 'control', 'glass'];", BOOT)
-        self.assertIn("return LOOKS.indexOf(v) >= 0 ? v : 'workbench';", BOOT)
+    def test_three_looks_and_glass_by_default(self):
+        self.assertIn("var LOOKS = ['glass', 'workbench', 'control'];", BOOT)
+        self.assertIn("var DEFAULT_LOOK = 'glass';", BOOT)
+        self.assertIn("return LOOKS.indexOf(v) >= 0 ? v : DEFAULT_LOOK;", BOOT)
+        self.assertNotIn("? v : 'workbench'", BOOT)
         for look in ("workbench", "control", "glass"):
             self.assertIn(f'data-look-choice="{look}"', INDEX)
         # Set in the head, before anything is drawn, by the same script as the theme.
@@ -92,6 +94,21 @@ class TestLooks(unittest.TestCase):
         for name, css in (("dark.css", DARK), ("looks.css", LOOKS)):
             for group in re.findall(r":is\(([^)]*)\)", css):
                 self.assertNotIn("#", group, f"{name}: an id inside :is({group[:60]}...)")
+
+
+class TestSpacing(unittest.TestCase):
+    def test_comfortable_by_default_and_compact_on_request(self):
+        self.assertIn("var DENSITIES = ['comfortable', 'compact'];", BOOT)
+        self.assertIn("return DENSITIES.indexOf(v) >= 0 ? v : 'comfortable';", BOOT)
+        self.assertIn("applyDensity(density());", BOOT)
+        for choice in ("comfortable", "compact"):
+            self.assertIn(f'data-density-choice="{choice}"', INDEX)
+        self.assertIn("compact", LOOKS)
+        self.assertIn('html[data-density="compact"]:not(#dv) .card {', LOOKS)
+
+    def test_compact_leaves_text_sizes_alone(self):
+        block = LOOKS[LOOKS.index("Spacing: Compact"):]
+        self.assertNotIn("font-size", block)
 
 
 if __name__ == "__main__":

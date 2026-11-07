@@ -735,6 +735,7 @@ const DV3D = (() => {
         this.draw();
       }, { passive: false });
       c.addEventListener('keydown', (e) => {
+        if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;   // Shift + arrows move a plate object (plate.js)
         const step = { ArrowLeft: [-.12, 0], ArrowRight: [.12, 0], ArrowUp: [0, .08], ArrowDown: [0, -.08] }[e.key];
         if (step) { e.preventDefault(); this.yaw += step[0]; this.pitch = Math.max(-0.2, Math.min(1.5, this.pitch + step[1])); this.draw(); }
         if (e.key === '+' || e.key === '=') { this.dist *= 0.9; this.draw(); }

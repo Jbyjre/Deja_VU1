@@ -293,7 +293,9 @@ class TheTimelapseCarriesOn(unittest.TestCase):
         timelapse.begin("p1", "a.gcode", "camera")
         timelapse._active.clear()
         self.assertFalse(timelapse.resume("p1", "b.gcode"))
-        timelapse.finish("p1")
+        # Start the next part clean: two sessions begun in the same second are ordered by a random suffix, so the
+        # unfinished one above could otherwise count as the newest and be resumed (the test failed about 3 runs in 8).
+        timelapse.reset()
         timelapse.begin("p1", "a.gcode", "camera")
         timelapse.finish("p1")
         self.assertFalse(timelapse.resume("p1", "a.gcode"))
