@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.4 (8 November 2026): A shorter README with fresh pictures, and a dated record of what was tested o...
+
+- A shorter README with fresh pictures, and a dated record of what was tested on a real U1
+
 ## 0.20.3 (6 November 2026): Updates install while a print runs, connections recover faster, and Settings...
 
 - Updates install while a print runs, connections recover faster, and Settings lists only the optional extras
