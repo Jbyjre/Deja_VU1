@@ -110,8 +110,8 @@ class TestPageWiring(unittest.TestCase):
         self.assertIn("const effectiveStyle = () => (reducedMotion() || !glassLook() ? 'still' : prefs.style);", src)
         self.assertIn("prefs.surprises && !reducedMotion()", src)
 
-    def test_every_dot_is_one_colour_the_owner_can_choose(self):
-        # The owner (October 2026): no print-progress band in filament colours;
+    def test_every_dot_is_one_colour_you_can_choose(self):
+        # No print-progress band in filament colours;
         # one dot colour, set in Settings -> Appearance.
         src = read("backdrop.js")
         self.assertNotIn("progress", re.search(r"return \{ STYLES.*?\};", src).group(0))

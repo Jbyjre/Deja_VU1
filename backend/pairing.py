@@ -10,7 +10,7 @@ Pairing also gives each device a secret key, kept in that browser as a
 cookie (only a hash of it is stored here). With the device lock switched on
 (off by default), every device except this computer itself must be paired
 before it can read or change anything: the dashboard asks for a pairing code
-instead. This computer, reached as localhost, always works, so the owner can
+instead. This computer, reached as localhost, always works, so the person at that computer can
 never be locked out; a request that arrives through a tunnel's domain or a
 network address counts as another device, even when it comes from this
 machine. Unpairing a device withdraws its key at once.

@@ -1,7 +1,7 @@
 """
 start.py --background (the Start and Update blocks use it): Deja Vu1 starts
 apart from the PowerShell or Terminal window, so closing that window doesn't
-stop it (the owner, 1 November 2026: "make it so that isn't necessary").
+stop it.
 
     python3 -m unittest tests.test_background_start
 """

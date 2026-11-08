@@ -2,7 +2,7 @@
 
 Run capture.js, render.js, then this script from any directory. Historical
 engine captures are retained. Copies for the marketing library are made by the
-owner's private repository (tools/campaign/sync-library.py). Python standard library.
+maintainer's private repository (tools/campaign/sync-library.py). Python standard library.
 """
 import json
 import shutil

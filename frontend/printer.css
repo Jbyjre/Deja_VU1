@@ -396,7 +396,7 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
 .notif-how > summary, .remote-ways > summary { cursor: pointer; font-weight: 600; font-size: 13.5px; min-height: 32px; display: flex; align-items: center; }
 .notif-steps, .remote-ways ul { margin: 8px 0 4px 18px; display: grid; gap: 8px; font-size: 13px; line-height: 1.5; }
 
-/* ---- Phones: most things, not everything (the owner, 1 November 2026) ----------
+/* ---- Phones: most things, not everything ----------
    Tighter cards so more fits on a screen, and the computer-only tools left out:
    typing G-code and changing speed limits are jobs for the computer. */
 @media (max-width: 720px) {

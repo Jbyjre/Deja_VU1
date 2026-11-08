@@ -73,7 +73,7 @@ class EveryMergeIsARelease(unittest.TestCase):
         self.assertIn('git push origin HEAD:main', workflow)
 
     def test_a_marketing_video_merge_publishes_no_release(self):
-        # The owner (26 October 2026): the one merge that is not a release. The message reaches the
+        # The one merge that is not a release. The message reaches the
         # shell through env, never pasted into the script, so a merge title cannot run as code.
         workflow = (ROOT / '.github/workflows/release.yml').read_text(encoding='utf-8')
         self.assertIn("MESSAGE: ${{ github.event.head_commit.message }}", workflow)

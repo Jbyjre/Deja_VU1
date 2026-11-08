@@ -1697,7 +1697,7 @@ function renderControlTab(state) {
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => confirmCancel(cancel);
-  // Idle offers what comes next instead of two greyed-out buttons (the owner: idle must never look down).
+  // Idle offers what comes next instead of two greyed-out buttons (idle must never look down).
   showIdleActions([pauseResume, cancel], $('pp-go-print'), running || lost || state.state === 'error');
 
   const busy = state.state === 'printing' || state.state === 'paused';

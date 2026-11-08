@@ -1,5 +1,5 @@
 """
-An update never leaves the dashboard out of reach (the owner, 31 October 2026):
+An update never leaves the dashboard out of reach (31 October 2026):
 Install runs in the background with its progress readable after a reload,
 applying an update survives files Windows keeps locked, and the ready check says
 in words whether everything works. A print running on a printer, or a printer

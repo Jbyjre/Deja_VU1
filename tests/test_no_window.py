@@ -1,5 +1,5 @@
 """
-Deja Vu1 with no window (the owner, 2 November 2026: a move or home command
+Deja Vu1 with no window (reported 2 November 2026: a move or home command
 "didn't go through", then a reload showed the page with the PowerShell code).
 
 Started in the background on Windows (pythonw.exe, detached), Python has no

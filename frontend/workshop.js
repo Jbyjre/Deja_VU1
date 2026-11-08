@@ -443,7 +443,7 @@ const Workshop = (() => {
       if (!card) return;
       const f = (k) => qs(`[data-f="${k}"]`, card);
       card.classList.toggle('is-selected', p.id === (currentPrinter || live.fleet[0].id));
-      // Calm cards (the owner, 1 November 2026: no gradients, not colourful): the state is the dot and the ring.
+      // Calm cards (no gradients, not colourful): the state is the dot and the ring.
       card.dataset.state = p.link_lost ? 'lost' : p.state || '';
       // Any printer but a U1 says what it is, from its own report (machines.py).
       const kind = f('machine'), other = p.machine && !p.machine.reference;
@@ -586,7 +586,7 @@ const Workshop = (() => {
     if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Printer fleet'); return; }
     registry = data.printers || [];
     addedPrinters = registry;
-    // The add form stays folded until asked for (the owner: Add a printer smaller and expandable).
+    // The add form stays folded until asked for (Add a printer stays small and expandable).
     const form = $('add-printer-form');
     if (form) setText(qs('summary', form), registry.length ? 'Add another printer' : 'Add your printer');
     host.innerHTML = registry.length ? registry.map(p => `
@@ -671,7 +671,7 @@ const Workshop = (() => {
     out.className = `test-result ${r.ok && !r.error ? 'is-ok' : 'is-warn'}`;
     out.textContent = describeProbe(r);
     // A printer behind a web-page sign-in: offer that sign-in instead of
-    // asking for an API key the owner has never seen.
+    // asking for an API key the user has never seen.
     $('fleet-login').hidden = !r.needs_key;
     if (r.url) $('fleet-add-url').value = r.url;
   }
