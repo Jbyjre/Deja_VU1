@@ -39,7 +39,7 @@ here with what Deja Vu1 does with each.
 
 `frontend/media/` holds the launch film the product page plays. The app does
 not need it. The film's working files and the tools that made it are kept in
-the owner's private repository.
+the maintainer's private repository.
 
 - **Film music** is played from recorded instruments: the Salamander Grand Piano
   V3 by Alexander Holm (CC BY 3.0, so every post of a film must credit it), the
@@ -49,16 +49,16 @@ the owner's private repository.
 ## Names
 
 Snapmaker and U1 are Snapmaker's names. Deja Vu1 is an independent project,
-not made or endorsed by Snapmaker. Snapmaker is sending the project a U1
-through its Innovation Fund's hardware sponsorship (October 2026), for
-testing on a real printer. The digital twin is drawn from
+not made or endorsed by Snapmaker. Snapmaker sponsored a U1 for the project
+through its Innovation Fund (delivered 31 October 2026), and Deja Vu1 is
+tested on it. The digital twin is drawn from
 Snapmaker's published product photos and specifications; where a size is
 measured from a photo or estimated, the app says so.
 
 ## How it was made
 
 Deja Vu1 is written with the help of an AI coding assistant (Claude), working
-from the owner's direction; `CLAUDE.md` holds the working notes those
-sessions follow. Every claim in the app and README is meant to be checkable:
+from the maintainer's direction; `CLAUDE.md` and `.claude/rules/` hold the
+working notes those sessions follow. Every claim in the app and README is meant to be checkable:
 Settings → About → "Check it yourself" runs a set of real checks in your own
 copy, and the full test suite runs with `python3 -m unittest discover tests`.

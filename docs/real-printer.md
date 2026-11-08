@@ -54,8 +54,8 @@ included.
 **Test** (`POST /api/printers/test`) runs step 3 on a typed address before
 it's added. A port outside 1-65535 is refused in words.
 
-Not yet confirmed on a real U1: that its announcement reaches a computer
-on the same network (some routers block multicast; step 2 covers that).
+Some routers block the printer's network announcement (multicast); step 2
+covers that.
 
 ## What happens if something is wrong
 
@@ -77,11 +77,12 @@ fills it in: demo data only ever means the simulation.
 
 ## What was checked, and against what
 
-There is no physical printer in this project's build environment, so the
-connection (`backend/moonraker_client.py`) was written against the real
-thing's **source code and documentation**, and tested against a stand-in
-server built from the same source (`tests/fake_moonraker.py`), over real
-sockets - real HTTP, a real WebSocket handshake, masked frames, JSON-RPC.
+The connection (`backend/moonraker_client.py`) was written against the
+**source code and documentation** of Moonraker, Klipper and Snapmaker's U1
+firmware and has been tested on a real U1 with stock firmware
+([what was tested](testing.md)). Every release is also tested against a
+stand-in server built from the same source (`tests/fake_moonraker.py`), over
+real sockets: real HTTP, a real WebSocket handshake, masked frames, JSON-RPC.
 
 Sources, at the commits read:
 
@@ -174,19 +175,17 @@ The slicing workspace, mixed layer heights and the converter still target the
 U1's presets. Tested only against the Moonraker stand-in playing a one-head
 235 × 235 × 250 mm cartesian printer; no physical non-U1 printer yet.
 
-## What cannot be checked without the printer
+## Where printers can differ
 
-A good test suite is not a real machine:
+Deja Vu1 has been tested on a real U1 with stock firmware. Another firmware
+version, the community Extended Firmware or another Klipper printer can still
+differ from the published source. These are the places a difference would
+show, and what Deja Vu1 does about each. The Details panel and the terminal
+log (`DEJAVU_MOONRAKER_LOG=1`) show every exchange.
 
-- **None of this has talked to a physical U1.** The stand-in follows the
-  source; if Snapmaker's firmware on a real machine differs from the
-  published source, or the U1 needs something the source doesn't show,
-  the first connection is where it appears. The Details panel and the
-  terminal log are there for exactly that.
 - **The U1's filament and dock objects** (`print_task_config`, the park
-  sensors) are read from Snapmaker's source, not seen live. How a
-  hand-loaded spool appears there is inferred from the defaults in
-  `print_task_config.py`.
+  sensors) follow Snapmaker's source. How a hand-loaded spool appears there
+  is inferred from the defaults in `print_task_config.py`.
 - **Whether Snapmaker's U1 profile sends layer numbers to Klipper** isn't
   in the published profiles; if not, layers are estimated.
 - **The chamber sensor's name** on a U1 isn't in the published source; any
@@ -200,13 +199,12 @@ A good test suite is not a real machine:
 - **Timing.** Commands wait up to 90 s (macros), homing 180 s, a start is
   read back for 12 s; these are generous guesses, not measurements.
 - **Authorization.** API-key and trusted-client handling follows
-  Moonraker's docs; the U1's defaults haven't been seen.
+  Moonraker's docs.
 - **Skipping one object.** The `exclude_object` status and command follow
   Snapmaker's u1-klipper source, and Snapmaker's U1 process profile turns
-  object labels on, but whether the stock U1's `printer.cfg` loads
-  `[exclude_object]` hasn't been seen. The client only subscribes to it when
-  the printer lists it; if it doesn't, the Control tab says the print's
-  objects aren't labelled.
+  object labels on. The client subscribes to it only when the printer lists
+  it; if it doesn't, the Control tab says the print's objects aren't
+  labelled.
 - **Filament after a touchscreen change.** Asked for every 30 s as well as
   pushed. This interval is a design choice, not measured device latency.
 - **The U1's own chamber camera.** Camera → Show built-in camera first asks
@@ -218,9 +216,9 @@ A good test suite is not a real machine:
   `camera.start_monitor` (WebSocket only, with the integer `req_id` that
   `repeater.py` expects; a `{"state": "failed"}` reply counts as a failure),
   reads `/server/files/camera/monitor.jpg` and closes it after idle time. A
-  listed address on any other machine is ignored. Automated tests use a
-  stand-in. Camera quality, refresh cadence and compatibility on physical U1
-  firmware remain unverified.
+  listed address on any other machine is ignored. The camera and time-lapses
+  have been used on a real U1 with stock firmware; the Extended Firmware's
+  camera path is checked against its source and a stand-in.
 - **Find my printer's camera** (Settings → Camera) tries the listed camera's
   MJPEG feed next to its player (`/webcam/stream.mjpg` from the Extended
   Firmware's `stream-http.py`), then `/webcam/?action=stream`, keeps the first

@@ -1,9 +1,10 @@
 # Trying Deja Vu1 on your own U1
 
-Everything in this dashboard has been built and tested against the source
-code of Moonraker, Klipper and Snapmaker's U1 firmware - but not yet against
-a real U1. If you have one, an hour of your time closes that gap. This page
-says what to do, what to look at, and what to send back.
+Deja Vu1 is built against the source code of Moonraker, Klipper and
+Snapmaker's U1 firmware and has been tested on a real U1 with stock firmware
+([what was tested](testing.md)). Your U1, on your network and with your
+filaments, can show what ours didn't. An hour of your time helps. This page
+says what to do, what to look at and what to send back.
 
 ## Before you start
 

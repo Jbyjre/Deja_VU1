@@ -266,8 +266,7 @@ to start.
    ```
 
    The same blocks are in **Settings → Version & updates → Update or repair with a
-   command**. The Windows block has not been run on a Windows computer yet; the
-   Mac and Linux block was tested on Linux.
+   command**.
 3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
    the launcher again. If it says you changed files, read the list; **Discard
    changes** is usually right. Your settings live in `backend/data/`, which git
@@ -313,11 +312,10 @@ If that window still shows a problem, paste the update block above: it also
 repairs a copy, putting fresh app files in place. Your settings, printers and
 files stay.
 
-## What has not been proved yet
+## What has been tested
 
-The Linux launcher, disposable update/rollback processes and git-copy updates
-(against real git repositories on Linux) have automated checks. Installing the
-desktop app in a real Chrome or Edge window, the launcher's app window on Windows
-or macOS, the Windows update block and an update between two published releases have not been tried yet. Windows/macOS double-click launching, a real U1, real iPhone/Android
-installation, home firewalls and remote access still need device testing. An
-emulated phone-sized browser is useful for layout, but does not prove those.
+Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware, from a
+Windows computer. Every release also runs the automated suite on Linux, with
+the launcher, updates, rollback and git-copy updates exercised against real
+processes and real git repositories. Not tried yet: macOS. The dated record of
+what ran where is [testing.md](testing.md).
