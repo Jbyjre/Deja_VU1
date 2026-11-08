@@ -135,7 +135,23 @@ Playwright and Chromium; these are not app runtime dependencies.
 
 ## Recapturing the pictures
 
-Use the actual app on an isolated simulated farm:
+**The README's five pictures** (`docs/img/readme-*.jpg`) and the product page's Overview and phone
+pictures come from one script, in the default look (Glass, light) with demo data, at 1366 px and
+390 px and deviceScaleFactor 2:
+
+```bash
+node tools/readme-images/capture-readme.js /tmp/readme-shots
+cp /tmp/readme-shots/readme-*.jpg docs/img/
+cp /tmp/readme-shots/page-overview.jpg frontend/img/overview.jpg
+cp /tmp/readme-shots/page-phone.jpg frontend/img/phone.jpg
+```
+
+Look at every picture before committing. It starts its own server in a temporary data folder and
+adds no printer, like `capture.js`.
+
+**The older feature pictures** use `capture.js`. It still waits for `.now-row`, which a redesign
+removed, so it needs its selectors brought up to date (the sidebar arrived in 0.19.0) before those
+pictures can be taken again. Then:
 
 ```bash
 node tools/readme-images/capture.js
@@ -147,8 +163,8 @@ node tools/check-static-demo.js /tmp/dejavu-static-review
 ```
 
 `capture.js` creates a temporary data folder, starts its own app server, and
-closes the browser/server on completion. It adds no real printer, never uses the
-owner’s app-data folder, and writes `out/captures/`. The sample conversion,
+closes the browser/server on completion. It adds no real printer, never uses your
+app-data folder, and writes `out/captures/`. The sample conversion,
 refusal, test-pattern preview and sandbox scenario are actual UI interactions.
 Element captures hide the unrelated sticky header; viewport captures retain the
 normal layout. Phone images are browser viewports, not physical-phone evidence.

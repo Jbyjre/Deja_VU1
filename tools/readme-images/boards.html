@@ -187,14 +187,14 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
       <li>Maintenance overdue: Nozzle check &amp; clean, Bed leveling check</li>
     </ul>
   </div>
-  <p class="foot">Blocking errors refuse the start; warnings need acknowledgement; estimates are information. Checks do not guarantee a successful print. Physical U1 testing pending.</p>
+  <p class="foot">Blocking errors refuse the start; warnings need acknowledgement; estimates are information. Checks do not guarantee a successful print. Tested on a real U1 with stock firmware.</p>
 </section>
 
 <!-- ============ 3. Architecture ============ -->
 <section class="board" id="b-arch">
   <span class="eyebrow"><i></i>How it connects</span>
   <h2>Your computer runs it. Your browsers open it.</h2>
-  <p class="lede">Each printer shares its state with every module through one connection. Physical U1 testing is pending.</p>
+  <p class="lede">Each printer shares its state with every module through one connection. Tested on a real U1.</p>
   <div class="diagram">
     <svg viewBox="0 0 1104 560" role="img" aria-label="Each U1's Moonraker talks to the Deja Vu1 server on your computer over one WebSocket for live state and plain HTTP for commands. The server pushes a live view to your browsers and sends state outward to Home Assistant, WLED and notification services.">
       <defs>
@@ -275,13 +275,13 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
 <section class="board" id="b-features">
   <span class="eyebrow"><i></i>What's in it</span>
   <h2>Start with the workflow. Add what you need.</h2>
-  <p class="lede">Core app: Python and a browser. Printer operations still need physical U1 validation.</p>
+  <p class="lede">Core app: Python and a browser. Tested on a real U1 with stock firmware.</p>
   <div class="groups">
     <div class="group" style="--c:var(--g-live)"><header><h3>Watch the fleet</h3></header><span class="needs">Reported printer state</span><ul><li>Needs you: faults and paused jobs</li><li>Progress and finish estimates</li><li>3D twin and drawing</li><li>Up to 12 registered printers</li></ul></div>
     <div class="group" style="--c:var(--g-ready)"><header><h3>Prepare a plate</h3></header><span class="needs">Separate compatible engine</span><ul><li>STL, OBJ and supported 3MF</li><li>Object edits and T0–T3 assignments</li><li>Profiles and per-object settings</li><li>Select one source-project plate</li></ul></div>
     <div class="group" style="--c:var(--g-farm)"><header><h3>Inspect before starting</h3></header><span class="needs">File and printer checks</span><ul><li>Layers, tools and requested speeds</li><li>Pre-flight with line references</li><li>Confirm Print rechecks at start</li><li>Blocked output stays inspectable</li></ul></div>
     <div class="group" style="--c:var(--g-opt)"><header><h3>Add your own services</h3></header><span class="needs">Configure when needed</span><ul><li>Notifications and automations</li><li>Spoolman import and inventory</li><li>WLED and Home Assistant</li><li>Camera bridges and remote access</li></ul></div>
-    <div class="group" style="--c:var(--g-pend)"><header><h3>Know the limits</h3></header><span class="needs">Physical U1 testing pending</span><ul><li>No real U1 print verified</li><li>Dock-ring drivers unfinished</li><li>Colour accuracy unmeasured</li><li>Vendor paint and textures limited</li></ul></div>
+    <div class="group" style="--c:var(--g-pend)"><header><h3>Know the limits</h3></header><span class="needs">Tested on a real U1; still open</span><ul><li>Colour checker not built yet</li><li>Dock-ring drivers unfinished</li><li>Colour accuracy unmeasured</li><li>Vendor paint and textures limited</li></ul></div>
     <div class="group" style="--c:var(--g-games)"><header><h3>Keep a recoverable copy</h3></header><span class="needs">Local app-data backup</span><ul><li>Versioned archive with checksums</li><li>Restore preview and validation</li><li>Separate recovered data folder</li><li>External engines backed up separately</li></ul></div>
   </div>
   <p class="foot">Actual feature scope, not a hardware certification. Explore the labelled simulated farm before connecting a printer. Optional services and slicing have separate requirements.</p>
@@ -292,7 +292,7 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
   <span class="eyebrow"><i></i>By the numbers</span>
   <h2>Small, checked, and free.</h2>
   <div class="tiles">
-    <div class="tile"><b>1267</b><span>automated tests in the current suite</span><em>Software checks, not physical-print proof</em></div>
+    <div class="tile"><b>1267</b><span>automated tests in the current suite</span><em>Run before every release is published</em></div>
     <div class="tile"><b>250<small>ms</small></b><span>server loop target; freshness depends on printer and network</span><em>backend/live_feed.py</em></div>
     <div class="tile"><b>12</b><span>printers on one dashboard, each with its own connection</span><em>backend/fleet.py</em></div>
     <div class="tile"><b>0</b><span>packages to install beyond Python</span><em>Dashboard only; slicing needs separate OrcaSlicer</em></div>
@@ -301,6 +301,6 @@ h2{font:700 40px/1.06 "Bricolage Grotesque";letter-spacing:-.03em;margin-top:18p
     <div class="tile"><b>27</b><span>printers in the farm sandbox: 3 built in, up to 24 added</span><em>backend/sandbox.py</em></div>
     <div class="tile"><b>270<small>mm</small></b><span>on each axis: the U1 build volume its files are checked against; other printers report their own</span><em>backend/machines.py</em></div>
   </div>
-  <p class="foot">Code limits and software checks, not performance guarantees. Up to 27 simulated sandbox printers is separate from the 12-printer registry. No physical U1 connection verified.</p>
+  <p class="foot">Code limits and software checks, not performance guarantees. Up to 27 simulated sandbox printers is separate from the 12-printer registry. Tested on a real U1 with stock firmware.</p>
 </section>
 </body></html>
