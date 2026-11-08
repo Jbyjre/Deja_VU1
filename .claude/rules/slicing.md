@@ -82,7 +82,7 @@ id stays `auto_print`.
 - `plate_project.py`: keep XML prefixes when moving paths (`requiredextensions` refers to them).
   List every model part in `3D/_rels/3dmodel.model.rels` or Orca imports empty geometry. Sources live
   inside `DejaVu/Sources/`.
-- `colour_map.py`: which filaments a 3MF really uses and a head for each; writes a copy using at most
+- `colour_map.py`: which filaments a 3MF uses (objects, parts, paint, height ranges) and a head for each; writes a copy using at most
   four. Paint codec per OrcaSlicer's TriangleSelector.
 - `plate.js` keyboard (`onKey`): single keys and Shift + arrows act only while the model view has
   focus; Ctrl/Cmd + Z, Y, D, S act while the plate is on screen and no field has focus; arrows alone

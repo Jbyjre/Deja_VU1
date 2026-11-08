@@ -25,7 +25,7 @@ the like) until someone presses a control.
 
 Deja Vu1 has no login: anyone who can reach port 8000 on that computer can use
 its controls. Keep it on your home network for the session (see
-[security](../README.md#security-and-your-network)).
+[security](../SECURITY.md)).
 
 ## Before you start
 

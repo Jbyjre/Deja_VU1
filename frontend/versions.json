@@ -8,7 +8,8 @@
       "published": true,
       "summary": "Updates install while a print runs, connections recover faster, and Settings lists only the optional extras.",
       "changes": [
-        "Updates install while a print runs, connections recover faster, and Settings lists only the optional extras"
+        "Updates install while a print runs, connections recover faster, and Settings lists only the optional extras",
+        "Glass is the default look again, the sidebar shows what is happening, Check slicer reads Windows builds of Snapmaker Orca, and the plate has keyboard commands"
       ],
       "highlights": [
         {

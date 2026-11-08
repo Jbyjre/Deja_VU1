@@ -1,100 +1,87 @@
 # Deja Vu1
 
-**One screen for every U1 you run.** See which printer needs attention,
-prepare a plate, inspect its layers, and review the checks before you start.
-Deja Vu1 is a free, open-source workspace for Snapmaker U1 printers. It runs on
-your own computer, and you open it in a browser tab, in its own app window or on
-your phone. You need no app account. The core needs Python; slicing needs a
-separately installed compatible engine.
+A free dashboard for Snapmaker U1 3D printers. See every U1 on one screen, check a print before
+it starts, slice and inspect plates, and keep each printer maintained. It runs on your own
+computer, and you open it in a browser tab, in its own window or on your phone. No account, no
+cloud.
 
-![Deja Vu1: Your U1s. One workspace. Actual simulated-farm cards over conceptual blue loop artwork; physical U1 testing pending](frontend/img/social-card.png)
+**[Try the online demo](https://deja-vu1.jmath1110.workers.dev/?demo)** ·
+[Install](#install) · [What has been tested](docs/testing.md) ·
+[Getting started](docs/getting-started.md) · [Changelog](CHANGELOG.md)
 
-<sub>Actual app cards, simulated farm. The blue loop is AI-generated conceptual brand art, not hardware or a print result. Independent project; not affiliated with or endorsed by Snapmaker.</sub>
+![Deja Vu1: Your U1s. One workspace. Printer cards from the actual app with the built-in demo printers, over conceptual blue loop artwork. Free, tested on a real U1](frontend/img/social-card.png)
 
-**Latest named release: 0.17.0** ([what's new](#whats-new-in-0170) · [every version](CHANGELOG.md)).
-Most merged changes publish a small numbered release of their own, so the newest
-release can be later than this one. The app shows its version in the header and
-in **Settings → Version & updates**.
+<sub>App cards from the built-in demo printers. The blue loop is AI-generated brand art, not
+hardware or a print. Deja Vu1 is an independent project, not made or endorsed by Snapmaker.</sub>
 
-**Install in one paste** on [Windows](#windows-paste-into-powershell) or
-[Mac](#mac-paste-into-terminal), or use a [no-code option](#no-code-two-other-ways).
+**Tested on a real Snapmaker U1** with stock firmware: live readings and the 3D twin, prints
+started through Confirm Print, pause and cancel, the camera and time-lapses, and the Printer page
+controls. Snapmaker sponsored the printer through its Innovation Fund. Every merge publishes a
+new version on the [releases page](https://github.com/Jbyjre/Deja_VU1/releases/latest), and the
+app updates itself from there.
 
-> **A real U1 is on its way.** Snapmaker is sending Deja Vu1 a U1 through the
-> Innovation Fund's hardware sponsorship (shipped 29 October 2026). Until it
-> arrives, Deja Vu1 has never talked to a real U1; the [roadmap](#roadmap) lists
-> the tests it will run first. If you own a U1 and can spare 30 to 45 minutes, you
-> can still help with a second printer. It's watch-only: you watch a print you're
-> already running, and nothing is started or paused from Deja Vu1.
-> **[How it works, and how to sign up](docs/first-connection.md)**
+![The Deja Vu1 Overview with the sidebar: a Needs you list ranking a dock error, a paused print and overdue maintenance across three demo printers](docs/img/readme-overview.jpg)
 
-## Ways to use it
+<sub>The Overview with the built-in demo printers. **Needs you** puts a dock error, a paused print
+and overdue maintenance at the top.</sub>
 
-| You want to | Use | You need |
-|---|---|---|
-| Look around before installing | The [online demo](https://deja-vu1.jmath1110.workers.dev/?demo), in any browser | Nothing. It plays a recording of three simulated printers |
-| Run your printers from your computer | A browser tab at `http://localhost:8000` | Windows, Mac, Linux or a Raspberry Pi, with Python 3.8 or newer |
-| Keep it out of the browser | The **desktop app**: its own window, with an icon in the Start menu or Dock | Chrome or Edge on that computer ([how](#the-desktop-app)) |
-| Check prints from the sofa | Your **phone**, on the same home Wi-Fi | Nothing to type: **Connect your phone** on the Overview shows a code to scan with the phone's camera. On the phone, **More → Install app** puts it on the home screen |
-| Check prints away from home | Your phone through **Tailscale** (Settings → **Away from home** sets it up with one button) or a **Cloudflare tunnel** | Tailscale on the computer and phone, or a tunnel you set up ([guide](docs/remote-access.md)) |
+## What you can do
 
-Every way except the online demo opens the same dashboard, served by the same
-computer. Pause a print on your phone and the computer's screen shows it paused.
+- **See every printer at once.** State, progress and finish time, the filament in each of the four
+  heads, temperatures and a health score, for up to 12 printers. **Needs you** ranks what wants a
+  person: a fault, a paused or finished print, maintenance that's due.
+- **Check a print before it starts.** Confirm Print reads the file and the printer together: the
+  build volume, toolheads and temperatures (with line numbers), the colour loaded in each head,
+  nozzles, spool weight, maintenance, time, grams and cost. The server checks again when you press
+  Start, even from your phone, and refuses in words if something changed.
+- **Watch a live 3D twin.** A model of the U1 follows the print: the head on the gantry, the bed
+  dropping as layers build, the spools in their colours, and the print itself, drawn from the
+  file's own G-code. One click turns it into an engineering drawing with dimensions.
+- **Prepare and slice.** Arrange STL, OBJ and 3MF models, assign heads T0 to T3, slice with
+  Snapmaker Orca or OrcaSlicer (you install the engine) and inspect the G-code layer by layer.
+  Projects from Bambu Studio, PrusaSlicer, OrcaSlicer and its forks, MakerWorld and Printables
+  convert to the U1, with any number of colours fitted to its four heads.
+- **Run the printer from your desk.** Move, heat, extrude and tune; fans, lights, the bed mesh,
+  macros and the console, on one page per printer. Skip one failed object and let the rest finish.
+- **Keep up with care.** Seven maintenance tasks counted by print hours, print counts and the
+  calendar, a logbook of problems and fixes, a filament inventory with Spoolman import, and a print
+  queue that waits until you confirm the bed is clear.
+- **Check from your phone.** Scan the code on the Overview to open Deja Vu1 on your phone. Away
+  from home, Settings → Away from home shares it on your private Tailscale network.
+- **Automate the rest.** Rules send ntfy, Discord or Telegram notifications, set a WLED strip or
+  Home Assistant (28 sensors), or pause a print.
 
-## How it all connects
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/readme-printer.jpg" alt="The Printer page: the 3D twin of a U1 with its four heads labelled and T1 printing, the demo camera picture and the Move pad"><br><sub><b>The Printer page:</b> the live 3D twin, the camera and the controls.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/readme-confirm.jpg" alt="Confirm print refusing the built-in unsafe example file: the printer is busy, it extrudes outside the 270 mm build volume on line 35, and T0 has orange loaded where the file wants red"><br><sub><b>Confirm Print, refusing:</b> every reason in words, and Start stays off.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/img/readme-gcode.jpg" alt="The G-code preview of the two-colour Benchy sample: 240 layers, coloured by toolhead, with time, filament and a clear pre-flight"><br><sub><b>Inspect the G-code:</b> layers, heads and the pre-flight result before you print.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/readme-phone.jpg" alt="Deja Vu1 on a phone: Needs you at the top, and the running print with Pause and Hold to cancel above the bottom bar" width="260"><br><sub><b>On a phone:</b> what needs you first, with Pause in reach of your thumb.</sub></td>
+</tr>
+</table>
 
-```text
-  Browser tab       Desktop app       Phone at home      Phone away from home
-  on the computer   window            (home Wi-Fi)       (Tailscale or tunnel)
-        │                │                  │                     │
-        └────────────────┴────────┬─────────┴─────────────────────┘
-                                  │
-                ┌─────────────────┴─────────────────┐
-                │  Your computer, running Deja Vu1  │
-                │  the launcher window keeps it on; │
-                │  settings and files live here     │
-                └─────────────────┬─────────────────┘
-                                  │  home network
-                ┌─────────────────┼─────────────────┐
-           U1 printer        U1 printer        … up to 12
+<sub>Pictures from the built-in demo printers, in the default look.</sub>
 
-  The online demo is separate: a recording that runs inside your browser.
-  It never connects to a printer or to your computer.
-```
+## Try it without installing
 
-- **The launcher** is the file you double-click: `start-windows.bat`,
-  `start-mac.command` or `start-linux.sh`. It starts Deja Vu1 and keeps it
-  running. Close its window and the dashboard stops.
-- **The dashboard** is what you see. Any screen on your home network can open it.
-- **Your data** stays in one folder on that computer, `backend/data/`. Updates never touch it.
-- **Your printers** need nothing installed. Deja Vu1 talks to Moonraker, the web
-  service already running on every U1.
-
-### Watch the 75-second launch film
-
-[![Deja Vu1 launch film (version 18, 75 seconds, 16:9): "Run your 3D printers from one screen." Click to watch.](docs/img/launch-video-v18.jpg)](https://deja-vu1.jmath1110.workers.dev/#film)
-
-<sub>Click the picture to watch it on the product page, or
-[download the MP4](frontend/media/deja-vu1-launch-v18-16x9.mp4)
-(23 MB). It shows the 3DBenchy, the quick tour, scanning onto a phone, your phone
-from anywhere, updates that install every time and help on every card. Version 18
-tells the same story as version 17 at a calmer pace: 75 seconds instead of 60, the
-music slower, each caption and label on screen longer, and the scenes filmed again
-with slower cursor moves. It plays at 60 frames a second and was measured frame by
-frame for smoothness. Filmed on the simulated farm; the phone's address in it is an
-example.</sub>
+The [online demo](https://deja-vu1.jmath1110.workers.dev/?demo) runs in your browser and plays a
+recording of three simulated printers; halfway through, a filament jam reaches Needs you. It
+never connects to a printer. The [product page](https://deja-vu1.jmath1110.workers.dev) has the
+75-second film.
 
 ## Install
 
-**The fastest way: paste a few lines.** Copy the block for your computer, paste
-it, and press Enter. It downloads the newest release into your Documents folder
-and starts it, in under a minute. Run the same block again any time to repair
-the app; your settings and files stay put.
+Deja Vu1 needs Python 3.8 or newer. Copy the block for your computer, paste it and press Enter. It
+downloads the newest release into your Documents folder and starts it in under a minute. Run the
+same block again any time to repair the app; your settings and files stay put.
 
 ### Windows: paste into PowerShell
 
 1. Open **PowerShell**: press the Windows key, type `PowerShell`, press Enter.
-2. **No Python yet?** Paste this line first, wait for it to finish, then close
-   PowerShell and open it again:
+2. **No Python yet?** Paste this line first, wait for it to finish, then close PowerShell and open
+   it again:
 
    ```powershell
    winget install -e --id Python.Python.3.12
@@ -111,96 +98,55 @@ the app; your settings and files stay put.
    if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
    ```
 
-Deja Vu1 starts in the background and your browser opens the dashboard. You can
-close the PowerShell window: Deja Vu1 keeps running, and it starts by itself
-whenever you sign in (turn that off in **Settings → Desktop app**). Double-clicking
-`start-windows.bat` in **Documents → Deja_VU1** also works, but that window must
-stay open.
+You can close PowerShell afterwards: Deja Vu1 keeps running and starts by itself when you sign in
+(**Settings → Desktop app** turns that off).
 
-### Mac: paste into Terminal
+### Mac or Linux: paste into Terminal
 
-1. Open **Terminal**: press Cmd + Space, type `Terminal`, press Enter.
-2. Paste this block and press Enter:
+Open **Terminal** (Cmd + Space, type `Terminal`, press Enter), paste this block and press Enter:
 
-   ```bash
-   curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
-   python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
-   ```
+```bash
+curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
+python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
+cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 
-If your Mac says the `python3` command needs the command line developer tools,
-click **Install**, wait for it to finish, then paste the block again. That is
-how macOS adds Python. You can close the Terminal window afterwards: Deja Vu1 keeps
-running without it and starts by itself whenever you sign in (**Settings → Desktop app**
-turns that off). To start it by hand, double-click `start-mac.command` in **Documents → Deja_VU1**.
+```
 
-The same block works on **Linux and a Raspberry Pi**.
+If your Mac asks to install the command line developer tools, click **Install**, wait, then paste
+the block again. The same block works on Linux and a Raspberry Pi.
 
-### No code? Two other ways
+### No code
 
-Both need Python 3.8 or newer first: get it from
-[python.org](https://www.python.org/downloads/). On Windows, tick **Add python.exe
-to PATH** in the installer.
+Download **deja-vu1-update.zip** from the
+[newest release](https://github.com/Jbyjre/Deja_VU1/releases/latest), extract it into Documents
+and double-click `start-windows.bat` or `start-mac.command`. Or clone
+`https://github.com/Jbyjre/Deja_VU1` with GitHub Desktop. Either way you need Python from
+[python.org](https://www.python.org/downloads/) first (on Windows, tick **Add python.exe to
+PATH**). [Getting started](docs/getting-started.md) walks through every step.
 
-- **Download a ZIP.** On the [newest release](https://github.com/Jbyjre/Deja_VU1/releases/latest),
-  click **deja-vu1-update.zip** (or **Source code (zip)**). Right-click the
-  download, choose **Extract All** (Windows) or double-click it (Mac), and move
-  the folder into Documents. Then double-click `start-windows.bat` or
-  `start-mac.command`. If macOS says it can't check the file, open **System
-  Settings → Privacy & Security** and choose **Open Anyway**.
-- **GitHub Desktop.** Choose **File → Clone repository → URL**, paste
-  `https://github.com/Jbyjre/Deja_VU1` and press **Clone**. Then **Repository →
-  Show in Explorer** (Finder on a Mac) and double-click the launcher.
+### Connect your printer
 
-Developers can `git clone https://github.com/Jbyjre/Deja_VU1.git` and run
-`python3 start.py`.
+**Printers → Add a printer → Find printers on my network**, or type the printer's IP address and
+press **Test**. Nothing gets installed on the printer: Deja Vu1 talks to Moonraker, the service
+every U1 already runs. Turn on **Settings → Watch-only mode** first if you want to look around
+before Deja Vu1 can send the printer anything. [Connecting a real printer](docs/real-printer.md)
 
-| How you installed | Updates follow | Best for |
-|---|---|---|
-| Pasted block or ZIP | Each published release (or, if you choose it in Settings, the newest build) | Most people |
-| GitHub Desktop or git | Every change merged into `main` | Getting fixes the day they land |
+<a id="update"></a>
 
-All of them update from inside the app, in **Settings → Version & updates**.
-When the dashboard opens, setup begins: pick a look, connect your printer, take
-a tour of every screen, set up your phone and the desktop app, and turn on
-automatic update checks. Firewall and phone details: [getting started](docs/getting-started.md).
+<details>
+<summary><b>Update in one paste</b></summary>
 
-### The desktop app
+Updates install from **Settings → Version & updates**, and it's safe while a print runs: the
+printer keeps the file and prints it by itself, and Deja Vu1 sends it nothing until it's back. Your
+data stays where it is, a safety copy comes first, and the old version returns if the new one
+fails to start.
 
-You don't have to use a browser tab. **Settings → Desktop app** offers two ways out:
+To update from a terminal instead, open a **new** PowerShell or Terminal window and paste the block
+for your computer. If you installed Deja Vu1 somewhere other than Documents, change the
+`Deja_VU1` folder in the block. On version 0.8.0, use this block once: that version's Install
+button can't install.
 
-- **Install Deja Vu1 as an app.** Chrome and Edge install it with its own window
-  and an icon in the Start menu or Dock. Press **Install Deja Vu1**, or use the
-  install icon at the right of the address bar.
-- **Open as a window when the launcher starts.** The launcher opens Deja Vu1 in a
-  window with no tabs or address bar, using Edge (included with Windows) or Chrome.
-
-Both show the same dashboard. The launcher window still runs it, so keep that open.
-
-## Update
-
-Every change merged on GitHub becomes a new numbered release, so updates are
-small and frequent. Three ways to get one:
-
-1. **In the app:** **Settings → Version & updates → Check for updates**, then
-   **Install**. Or tick **Look for updates by itself** (every hour) and the glass
-   orb tells you when one is ready. Installing while a print runs is fine: the
-   printer holds the file and runs it by itself, and Deja Vu1 sends the printer
-   nothing while it restarts.
-2. **One paste:** paste the block below into a new PowerShell or Terminal window.
-   It stops Deja Vu1 in `Documents`, installs the newest release over it and
-   starts it again. The same block is in **Settings → Version & updates →
-   Update or repair with a command**.
-3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
-   the launcher again.
-
-Your settings, printers and files are never part of an update, a safety copy
-comes first, and the old version comes back if the new one fails to start.
-
-> **On 0.8.0?** Its Install button has a bug and can't install anything. Use the
-> one-paste update below once; from 0.9.0 on, the button works.
-
-#### Windows: update in one paste
+Windows:
 
 ```powershell
 $ProgressPreference = 'SilentlyContinue'
@@ -213,9 +159,7 @@ Set-Location $dest
 if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
 ```
 
-#### Mac, Linux: update in one paste
-
-Open a **new** Terminal window (the one running Deja Vu1 is busy), then paste:
+Mac and Linux:
 
 ```bash
 curl -s -o /dev/null -X POST -H 'Content-Type: application/json' -d '{"for_update":true}' http://localhost:8000/api/app/stop; sleep 2; pkill -f 'Deja_VU1/backend/app.py'
@@ -224,26 +168,17 @@ python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Docume
 cd ~/Documents/Deja_VU1 && python3 start.py --background
 ```
 
-The Windows block was written from Microsoft's documentation and has not been
-run on a Windows computer yet; the Mac and Linux block was tested on Linux.
-If you installed Deja Vu1 somewhere other than `Documents`, change
-`Deja_VU1`'s folder in the block, or download the release ZIP and extract it
-over your folder.
+</details>
 
-### If Deja Vu1 won't open
+<details>
+<summary><b>If Deja Vu1 won't open</b></summary>
 
-If the browser shows "Deja Vu1 isn't running right now" or the dashboard stops
-answering, paste one block into a new PowerShell (Windows) or Terminal (Mac,
-Linux) window. It starts Deja Vu1 in `Documents` if it isn't running. Then that
-window shows **Deja Vu1 is ready and fully working**, with one line each for the
-address, the page, the program, its files, demo data, every printer you added,
-saved data and updates. If something is wrong it names it and prints the next
-block to paste. You can close the window afterwards: Deja Vu1 keeps running.
-The same blocks are on the offline page and in **Settings → Version & updates**.
-Since 0.15.0 the offline page first reconnects by itself, then offers a
-**Start Deja Vu1** button, so the blocks are rarely needed.
+Paste one block into a new PowerShell or Terminal window. It starts Deja Vu1 if it isn't running,
+then checks the address, the page, the program, its files, demo data, every printer you added,
+saved data and updates, and names anything that's wrong with the next block to paste. The offline
+page tries to reconnect by itself first and offers a **Start Deja Vu1** button.
 
-#### Windows: start and check in one paste
+Windows:
 
 ```powershell
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
@@ -252,1072 +187,85 @@ Set-Location $dest
 if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
 ```
 
-#### Mac, Linux: start and check in one paste
+Mac and Linux:
 
 ```bash
 [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
 cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 ```
 
-Still not working? The update block above also repairs: it stops a stuck copy,
-puts fresh app files in place and starts Deja Vu1 again. The double-click
-launcher shows the same check every time it starts, and
-`python3 start.py --check` checks a running copy without starting anything.
-
-### Coming from a copy older than 0.8.0
-
-If Settings has no **Version & updates** card: GitHub Desktop copies use **Fetch
-origin** then **Pull origin**; git copies run `git pull`; ZIP copies use the
-one-paste update above (or extract the newest release ZIP over the old folder).
-
-### Installed with git or GitHub Desktop before the history rewrite?
-
-The internal marketing and planning folders moved to a private repository on
-27 October 2026. The project's history on GitHub is still to be rewritten so
-the old saved versions don't carry them either; the CHANGELOG will give the
-date. Until then, git and GitHub Desktop copies update as usual.
-
-After the rewrite, every saved version (commit) has a new ID, so a copy made
-with git or GitHub Desktop before it can't update the usual way. **Settings →
-Version & updates** says "This copy has its own commits", and GitHub Desktop
-offers to pull and push at the same time. Don't pull or push there: that would
-merge the old history back into your copy.
-
-Copies installed from the ZIP or with the one-paste blocks are not affected.
-
-Do this once. Your settings, printers and files in `backend/data/` stay put.
-
-**If git works in a terminal** (Mac, Linux, or Windows with Git installed),
-close Deja Vu1, open PowerShell or Terminal in your `Deja_VU1` folder and run:
-
-```text
-git fetch origin
-git reset --keep origin/main
-```
-
-`git reset --keep` moves your copy onto the new history. It removes the moved
-folders, leaves `backend/data/` alone, and stops without changing anything if
-it would overwrite a file you edited by hand. Then start the launcher again.
-
-**With GitHub Desktop only:**
-
-1. Close Deja Vu1.
-2. Copy the `data` folder from `backend/` in your `Deja_VU1` folder to a safe
-   place, such as your desktop.
-3. In GitHub Desktop choose **Repository → Remove** and tick the box that also
-   moves the folder to the Recycle Bin (Trash on a Mac).
-4. Choose **File → Clone repository**, pick `Jbyjre/Deja_VU1` and clone it to
-   the same place.
-5. Copy your saved `data` folder back into `backend/` in the new folder.
-6. Start the launcher.
-
-The terminal steps were tested on Linux against a rehearsal of the rewrite.
-The GitHub Desktop steps have not been tried on Windows or macOS.
-
-## Updates that finish, and a check that says it works (0.13.7)
-
-- **Install shows each step.** The download runs in the background with a
-  progress bar (for example "Downloading version 0.13.7: 23.4 of 55.3 MB"),
-  then "Checking the download", then "Restarting". A reload, or another page,
-  picks the same progress up. Before this, the 58 MB download ran inside the
-  button press with one line of text, so on a slow connection Install looked as
-  if it did nothing.
-- **An update can no longer leave Deja Vu1 stopped.** If anything goes wrong
-  while the launcher puts the new files in place (for example Windows keeping a
-  folder locked during an antivirus scan), it puts the old files back, notes
-  why, and starts the dashboard anyway. Before this, such an error closed the
-  launcher and with it the dashboard, and leftover update files could stop
-  every later start. The dashboard says when an update was undone, and why.
-- **"Deja Vu1 is ready and fully working."** The launcher window shows this
-  check every time it starts: the address answers, the page loads, every file
-  it needs is there, demo data comes back, each printer you added says its link
-  state in words, settings can be saved, and how the last update went. If
-  something is wrong it names it and prints the block to paste next.
-  **Settings → Version & updates → Check it all works** shows the same list.
-- **One paste to start and check.** The offline page, Settings and this README
-  carry a Start and check block for PowerShell and Terminal
-  ([If Deja Vu1 won't open](#if-deja-vu1-wont-open)).
-- **A page notices when the program stops answering** and says so in a strip at
-  the top, reconnects by itself and reloads once the program is back.
-- **Refusals name the printer.** (From 0.13.7 until the release after 0.20.2 an update
-  waited while a printer was printing or not answering. It no longer does: see
-  [What's new after 0.20.2](#whats-new-after-0202).)
-- The launcher window no longer lists every page request, so the check stays on
-  screen. It keeps a dated log in `backend/data/logs/launcher.log`.
-
-## What's new after 0.20.2
-
-Updates, connections and Settings, from one round of work on how Deja Vu1 starts, stays reachable and
-updates. Tested with a stand-in printer and the real launcher on Linux; not yet tried on Windows or a real U1.
-
-- **Updating while a print runs works.** An update no longer waits for a print, a paused print or a
-  printer that isn't answering. A print runs on the printer from a file the printer already holds, so
-  Deja Vu1 restarting never touches it. From the moment an install is ready to restart, Deja Vu1 sends no
-  printer anything new (the same place that enforces Watch-only mode refuses moves, heating,
-  uploads and G-code, and the camera's stop message is not sent), waits for a command already on its way to
-  finish, then restarts. The emergency stop always goes through. A running slice gets up to 90 seconds to finish, then
-  is stopped cleanly, and the page says so.
-- **Nothing is lost or repeated across the restart.** A print that finishes or is cancelled while Deja Vu1
-  restarts is still noticed afterwards (its message, its queue step and its time-lapse end). A time-lapse
-  of a print that carried on is picked up again. An automation rule that was already true
-  ("50% done", "layer 5", a temperature) does not fire a second time because of the restart. Spool
-  deduction needs the print's own summary, so a print that finishes during the restart is not deducted.
-- **The update check can't make the dashboard look stopped.** The check held a lock while it waited for
-  GitHub, and the launcher's "is it alive?" question needed that lock, so a slow answer from GitHub made
-  a healthy dashboard look stuck and a freshly updated copy look dead (and be rolled back). The check
-  now never holds it, the first check waits 45 seconds after a start, the launcher, the page and the
-  offline page ask a new light route (`/api/app/alive`) that does no slow work, and a staging folder left by
-  an update that never restarted no longer blocks the next one ("Restart with the launcher first").
-- **Starting by itself is steadier.** "Stop" keeps Deja Vu1 stopped until the computer restarts or four
-  hours pass. Before, the note could outlive a night where Windows "Shut down" keeps its running-time
-  clock (Fast Startup), so the 5-minute check never started it again. This was found by reading the code,
-  not seen on a Windows computer. A launcher writes a note every five seconds so a second launcher
-  arriving between two servers (the 5-minute check, a double-click) waits instead of applying the same
-  update twice. Settings no longer waits for Windows' Task Scheduler.
-- **Connections recover faster.** A printer link that was open when the computer slept is opened again at
-  once; the live page reconnects the moment a phone is unlocked or the network returns, and tries its
-  live connection again every 10 seconds instead of 30.
-- **It says when the printer is on another network.** A printer that doesn't answer shows, in words, when its
-  address is on a different network from this computer (two Wi-Fi names, a guest network, a second router).
-  **Check it all works** also names the address a phone opens, and warns when this computer has none.
-- **Settings has only what needs something outside Deja Vu1.** **Optional extras** lists six rows: Slicing,
-  the low-latency camera, Dock status rings, the WLED bridge, the Home Assistant bridge and the colour
-  check. The camera, time-lapses and Continue on another device are ordinary settings with their switch in
-  their own card, and the print cost prices moved into the Print cost card. The rest (Config backup, the Print cost
-  calculator, Push notifications and the other parts of Deja Vu1) are always on; a copy that had switched one
-  of them off gets it back, once.
-- **The update progress box and the "stopped answering" strip use the app's glass.** Lensed blur in the Glass
-  look, a solid panel in Workbench and Control room, dark theme, reduced transparency and increased contrast.
-
-## What's new since 0.20.3
-
-- **Glass is the look a new copy opens in.** Frosted panels and the moving background; Preferences →
-  Appearance → Look still offers Workbench and Control room, and a look you chose before stays.
-- **A sidebar that shows what is happening.** The Printer item carries the selected printer's state
-  (a coloured dot, its name, a progress line while it prints); Overview counts the printers that need you and
-  Care the printers with upkeep due; from two printers on, a menu beside Printer picks which one the Printer
-  page shows. Arrow keys, Home and End move through it, `[` hides or shows the labels, "Tools & learn" folds,
-  and with icons only a label appears beside the item you point at.
-- **Spacing: Comfortable or Compact.** Preferences → Appearance. Compact takes less room around cards and
-  sidebar items; text sizes stay the same.
-- **Check slicer reads the Windows builds of Snapmaker Orca.** They print `--help` to a console window of their
-  own, so the old check said "didn't answer like OrcaSlicer's command line". It now asks the engine for its
-  settings file and reads the version from that. Verified with a stand-in engine; not yet on a real Windows
-  computer.
-- **Keyboard commands on the plate.** Click the model view, then Shift + arrow keys move the selected object
-  (Alt for 0.1 mm, Ctrl or Cmd for 10 mm), Shift + Page Up/Down lifts it, R turns it 90°, comma and full stop pick
-  another object, L lays a face flat, D drops it, F fits the view, Delete removes it; Ctrl or Cmd with Z, Y, D, S
-  undoes, redoes, duplicates and saves. Press ? on the view for the list. Typing in a field never triggers them.
-- **Slice reports survive a restart.** The last 20 slices are kept on disk, so Copy report still works after an
-  update; a slice that was running when Deja Vu1 stopped comes back as failed ("interrupted") instead of vanishing.
-
-## What's new in 0.20.0
-
-![The Printer page in the three looks: Workbench, Control room and Glass](docs/img/looks.jpg)
-
-- **A plainer, technical look.** (The default from 0.20.0 until the release after 0.20.3, when Glass became the default again.) Workbench draws the dashboard with flat panels,
-  thin borders, small corners and numbers that line up, keeps colour for status, and has
-  nothing moving behind the page.
-- **Pick your look.** Preferences → Appearance → Look: Workbench, Control room (denser,
-  squarer and grey, colour only when something needs you) or Glass (the frosted look with
-  the moving background). Each works in light and dark.
-- **Emergency stop** has a deep red fill in every look, and the dark theme's task tints and
-  labels read clearly.
-
-Checked in Chromium on every page in each look, light and dark. The screenshots further
-down still show the Glass look.
-
-## What's new in 0.19.0
-
-- **One sidebar for everything.** Overview, Printers, Printer, Library, Prepare, Jobs,
-  Materials, Care, Settings and Preferences sit in a sidebar on the left, with Automations,
-  the farm desk, layer heights, Photo studio, the practice farm and games under Tools &
-  learn. It folds to icons; phones keep the bottom bar.
-- **A link for every page.** Back and Forward move between pages, a refresh stays where
-  you were, and a copied link opens the same page.
-- **Light, Dark or System.** Preferences → Appearance → Theme. The choice is applied
-  before the page is drawn, and filament colours, camera pictures and the 3D print keep
-  their real colours.
-
-Checked in Chromium at 1366, 1024 and 390 px; the dark theme's text was measured on every
-page. Not yet seen on a real phone, Windows or macOS.
-
-## What's new in 0.18.0
-
-- **Watch-only mode.** Settings → Watch-only mode makes the server refuse every command
-  to your real printers: nothing moves, heats, prints or changes. You still see everything,
-  the camera works and emergency stop always goes through. Use it for a first connection.
-- **The health score agrees with Confirm Print.** While Confirm Print would refuse a start,
-  the dial says Can't start and stays under fair. A wrong material costs points like a
-  wrong colour.
-- **Weight unknown, never 0 g.** Each spool says whether its weight was weighed or
-  estimated, Spoolman spools with no weight stay unknown, and every spool has a Weigh
-  button.
-- **The roll a print started with.** A finished print is charged to the roll its head had
-  at the start, even if another roll was picked during the print, and a charge can be
-  moved to another roll.
-- **Part removed, bed clear.** After a print ends, the next queued print on that printer
-  waits until you confirm the bed is clear.
-
-Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
-physical U1.
-
-## What's new in 0.17.0
-
-- **Your printer on another network.** Snapmaker's app reaches a U1 elsewhere through
-  Snapmaker's cloud. Deja Vu1 has no cloud, so it looks from every network the computer is
-  on, and **Look further** also tries the ranges a second router or mesh system often uses
-  and your Tailscale network. Settings → Away from home explains the three ways.
-- **A printer that got a new address** is found again by its serial number, and Deja Vu1
-  switches to the new address by itself.
-- **The twin keeps up with a real print.** A printer's readings reach the page even when one
-  of Deja Vu1's checks fails, and a printer whose updates stop mid-print is read directly.
-- **The printer's own files and queue** on the Printer page, a **3D bed mesh**, and
-  **WebRTC video** from the community Extended Firmware's camera.
-
-Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
-physical U1, a real Tailscale subnet route or a real Extended Firmware camera.
-
-## What's new in 0.16.0
-
-- **Everything a printer's own page offers, on the Printer page.** A temperature
-  chart, the bed mesh as a coloured map with saved meshes to load, settings for the
-  printer's macros, its other fans and lights, its filament sensors, an endstop check,
-  the printer's own command list in the console, and printing a file without leaving
-  the page. Each reading is the printer's own answer from Moonraker.
-- **Automatic feeding on a U1.** Feed runs the printer's own `AUTO_FEEDING` macro for a
-  head; the printer picks the feeder and channel itself, so Deja Vu1 never guesses them.
-- **An idle printer looks ready.** Pause and Cancel appear only during a print;
-  otherwise the page offers Print a file and Warm up.
-- **Your printers, calmer.** No coloured tints, the readings in one row, group commands
-  that appear once you tick a printer, and Add a printer folded to one button.
-- **The twin's bed** no longer flickers while the model turns (two surfaces at the same
-  height, found by measuring frame by frame) and looks like the real U1 plate.
-- **Modules** switch at once, stay put and can be searched.
-
-Tested against the simulated printer and the Moonraker stand-in; not yet tried on a
-physical U1.
-
-## What's new in 0.15.0
-
-- **Every button gets its answer again.** Started without a window, 0.14.0 lost the
-  answer to every button (moving, homing, adding a printer), so buttons asked
-  whether the dashboard server was running. Fixed, and reproduced and checked on
-  Linux; what Deja Vu1 writes now goes to files in `backend/data/logs`.
-- **Always there.** Every way of starting it runs Deja Vu1 without a window. On
-  Windows, Task Scheduler starts it at sign-in and after waking and checks every
-  5 minutes; a stuck Deja Vu1 restarts after about 2 minutes. Tested on Linux;
-  Windows and macOS are not tested yet.
-- **The offline page is a last resort.** It reconnects by itself first, then offers
-  a **Start Deja Vu1** button; the paste-in commands come last.
-- **A live camera.** A printer's own camera shows as a live picture, up to 15 a
-  second, and Deja Vu1 reaches the printer on port 7125 or its web port 80.
-  Not yet tried on a physical U1.
-- **Copy a report for help** in Settings → Version & updates.
-
-## What's new in 0.14.0
-
-- **Each printer has its own page.** Printer (where Control was) puts the 3D twin,
-  the camera and a Move pad side by side, then temperatures with warm-up buttons,
-  extrude and retract, speed, flow, part fan and pressure advance, the printer's own
-  macros and bed mesh, motors off, the console and an emergency stop. Every command
-  is checked before it is sent and says what the printer answered. Moving waits for
-  an idle printer; tuning works during a print. Tested against the simulated printer
-  and the Moonraker stand-in; not yet tried on a physical U1.
-- **Overview is a page of cards** about what is happening now: Needs you, Right
-  now, the camera, temperatures, quick control, your printers and maintenance.
-- **No window has to stay open.** The Start block starts Deja Vu1 in the background
-  and at every sign-in, so closing PowerShell or Terminal no longer stops it.
-  Tested on Linux; Windows and macOS are not tested yet.
-- **The twin behaves.** The head stays inside the printer while it homes, the bed no
-  longer flickers while it turns, Turn slowly is a button, and Move head lets you
-  drag the real head.
-- **Less nagging, more control.** A finished print celebrates without a pop-up, due
-  maintenance can wait with Not now, automations have five new triggers, two new
-  actions and ten examples, and Preferences has its own tab.
-
-## What's new in 0.13.0
-
-- **The 3D twin keeps in step with the print.** While a file prints, the nozzle
-  in the twin runs along that file's own G-code, and about four times a second
-  Deja Vu1 checks it against where the printer says its nozzle is now and how far
-  into the file it has read. Walls appear where and when they are laid, the
-  plastic just laid glows briefly, and a tool change or park shows the real
-  position until the nozzle is back on the path. This works for G-code from any
-  slicer, because it reads the file being printed. A line under the twin says
-  whether it is in step. Tested against a printer simulated from the sample file
-  (within 0.016 s between readings); not yet seen on a physical U1.
-- **Colours from any slicer, on four heads.** Open a multi-colour project in Files
-  and **Colours on the U1's heads** shows which filaments the model really uses
-  and which head prints each. Five or more colours are grouped by how alike they
-  look, unused AMS slots are left out, and with a printer connected each colour
-  can go to the closest loaded head. Change any row, then **Save a copy with
-  these heads**. The converter now takes projects from MakerWorld, Printables
-  (PrusaSlicer), NexPrint, Bambu Studio, OrcaSlicer, Creality Print, QIDI Studio,
-  Flashforge Orca and other Orca forks, and fits their colours by itself.
-- **Keep your slicer.** **Pick up where you left off** finds recent projects in
-  eight slicers on this computer, and a profile made from your Orca presets can
-  set a filament for each head. In the slicing workspace, converting and fitting
-  colours now sit under the slice bar.
-- **Calmer notifications.** Repeats count up instead of stacking, long messages
-  stay longer, a hairline shows the time left, and a message that arrives while
-  the tab is hidden waits for you.
-
-## What's new in 0.12.0
-
-- **One thing at a time.** Overview, Printers, Files, Care and Settings open on
-  one part of the screen, with a row of buttons for the others (Overview: Right
-  now, Live readings, History & upkeep) and **Everything** for the full page.
-  Settings is no longer one 8,800-pixel scroll. Your choice is remembered, and
-  search, tours and links open the part that holds what they point at.
-- **Get ready to slice.** Files → Slicing opens with five steps: turn slicing on,
-  find your slicer, check it answers, pick your print settings, add a model. The
-  next step is lit and has the only button. **Find it for me** looks for Snapmaker
-  Orca and OrcaSlicer in your Applications, Downloads and program folders, so you
-  don't type a path; nothing runs until you press **Use this**. If it finds none,
-  it links both free slicers. When Slice is greyed out, the plate says why and
-  links the set-up.
-- **Other Klipper printers.** Any printer that runs Klipper with Moonraker can be
-  added. Deja Vu1 reads its size and heads from the printer itself and checks
-  files against them, so a file too big for a 235 mm bed is refused there.
-  Its card says it is an untested type. ([How it works](docs/real-printer.md#other-klipper-printers))
-- **Search lands again.** The search box's "Go to" results opened nothing for
-  most places (a title's ⓘ button got in the way of matching it). Fixed, with a
-  test for every place.
-- **Smaller.** Two unused copies of older launch films are gone: each update
-  download drops from 74 MB to 56 MB.
-
-## What's new in 0.11.0
-
-- **Your phone, from anywhere.** Settings → **Away from home**: with
-  [Tailscale](https://tailscale.com/download) on your computer and phone (free,
-  your own account), one button gives Deja Vu1 a private `https://…ts.net`
-  address. Scan the code with your phone and it opens on mobile data or any
-  Wi-Fi, and Chrome can install it straight away. Only your own devices can
-  open it; nothing is opened to the internet. ([Guide](docs/remote-access.md))
-- **The printer itself, too.** On the Extended Firmware, its own Tailscale
-  option lets a computer elsewhere add the printer by its Tailscale address.
-- **A glass orb.** The notification orb has no dot in the middle any more: the
-  whole see-through sphere turns green, amber or red with a message, and back
-  to blue once you've read it.
-
-## What's new in 0.10.0
-
-- **Connections checked against the printers' own code.** Every connection path
-  was read against Snapmaker's Moonraker and Klipper (now firmware 2.0.0) and
-  the community Extended Firmware, and matched to what that code does.
-- **Printers with a login.** If a printer's web page asks for a username and
-  password (the Extended Firmware's Web Authentication), **Add a printer** asks
-  for them once, reads the printer's key with them, and keeps only the key.
-- **Type just the numbers.** `192.168.1.50` is enough; the app adds the rest.
-- **The printer's camera, found for you.** Settings → Camera → **Find my
-  printer's camera** asks the printer which camera it has, checks a picture
-  really arrives and saves it. Camera pictures try the Extended Firmware's
-  camera first, then Snapmaker's own, and say why if neither answers.
-- **A simpler phone.** One short line for demo data, a one-row print bar, and
-  a **More** sheet with search, every other screen, Camera, help and Install
-  app. Cards that belong to the computer stay on the computer. Every screen is
-  shorter; Settings is 41% shorter.
-- **Install on Android.** **More → Install app** shows a one-tap Install button
-  when Chrome allows it, and otherwise the one Chrome setting a home-network
-  address needs, with copy buttons. ([Why Chrome asks](docs/getting-started.md#install-it-on-your-phone))
-- **One dot colour.** The background no longer fills with the filament's
-  colours while printing (it read as a stray orange line over black). Pick the
-  dots' colour under Settings → Appearance → **Dot colour**.
-- **Firmware 2.0.0.** A file whose name contains `#`, `*` or `;` is refused
-  before sending, with the reason, because the U1 can't start it.
-
-<img src="docs/img/phone-simpler.jpg" width="100%" alt="Three phone screens. Left: the Overview with a one-line demo notice, the Needs you list with its buttons beside each item, a one-row print bar with Pause and Hold to cancel, and the tab bar. Middle: the More sheet open above the tab bar, with a search box, tiles for Care, Automations, Photo studio, Games and Settings, and buttons for Camera, Show me this screen, Help and setup and Install app. Right: Install Deja Vu1, with four steps to trust this one home-network address in Chrome, each with a Copy button">
-
-<sub>Demo printers, Demo data on. The addresses are examples.</sub>
-
-## What's new in 0.9.0
-
-- **Updates that install every time.** 0.8.0's **Install** button crashed
-  before it downloaded anything. Fixed, and a broken check can no longer lock
-  a copy out of the update that fixes it.
-- **A release with every merge.** Each change merged on GitHub publishes a new
-  numbered release by itself, so updates arrive small and often.
-- **Update with a command.** One paste for Windows or Mac and Linux, in
-  Settings and below, for when the button can't help.
-- **Look after this copy.** Settings → Version & updates can now **Restart**,
-  **Repair files** (put the published app files back, data untouched), make a
-  **Safety copy now** and **Stop** Deja Vu1. Starting a second launcher opens
-  the one already running instead of failing.
-- **Shorter words.** Settings → About and the update card say less and use
-  plainer words.
-- **Install in one paste:** copy one block into PowerShell (Windows) or Terminal
-  (Mac, Linux) and Deja Vu1 downloads and starts. See [Install](#install).
-- **A clearer first look:** current screenshots, art-directed share cards and shorter
-  descriptions show the fleet, preparation workspace and print checks.
-
-- **Your phone, by scanning a code.** **Overview → Connect your phone** shows a
-  QR code. Point the phone's camera at it, tap the link, and the dashboard
-  opens on the phone and pairs itself. Typing still works, and the address
-  now picks out its colon: `10.0.0.10:8000`, not `10.0.0.10.8000` (with a
-  dot, phones search the web instead and show unrelated pages).
-- **Help on every card.** Press the small ⓘ after a card's title (or the title
-  itself) for a short note: what it is, how to use it, and a tip. Underlined
-  words such as G-code or slicer open their meaning in place. **Settings → Your
-  space → What the words mean** lists them all.
-- **A quick tour of nine stops**, about a minute, instead of 53. A glass
-  callout points at each part and glides to the next, across screens. Each
-  screen also has a **Show me this screen** button with a few more tips.
-- **Demo printer 1, 2 and 3.** The pretend printers had room names (Workshop,
-  Studio, Garage) that read like parts of the app.
-- **Fixes:** the 3D twin stops drawing while it is out of sight (it was using about a
-  processor core); and a few smaller ones, listed in the [changelog](CHANGELOG.md).
-
-<img src="docs/img/phone-connect.jpg" width="49%" alt="Connect your phone: a glass sheet titled Point your phone's camera here, with a large QR code, three steps (join the same Wi-Fi, open the Camera, that's it), Waiting for your phone, and the address 192.168.1.23:8000 with its colon highlighted for typing instead"> <img src="docs/img/tour.jpg" width="49%" alt="The quick tour at its third stop: the page dimmed except the 3D twin card, with a glass callout titled Your printer, live in 3D whose pointer and pulsing beacon touch the card's edge, a Show it as a drawing button, Back and Next, and dots for the nine stops">
-
-<img src="docs/img/help-note.jpg" width="49%" alt="A help note opened from the ⓘ on the Digital twin card: what the twin is, the word heads opened to explain T0 to T3, how to turn it and see the drawing, a tip that some inside sizes are estimates, and a Show me around this screen button">
-
-<sub>Simulated farm, Demo data on. The phone address is an example.</sub>
-
-## What's new in 0.8.0
-
-- **Updates that find you.** Releases now publish on GitHub by themselves, and
-  copies made with git or GitHub Desktop update from inside the app too.
-- **A version you can see.** The header shows the version. **Settings → Version
-  & updates** lists every version's changes, each with a full-screen tour.
-- **A notification orb.** Messages rise out of a glass orb in the bottom-right
-  corner and sink back in. Click it for the last 30.
-- **A window of its own.** Install Deja Vu1 as an app, or let the launcher open
-  it in an app window.
-- **A tour of every screen.** Setup's tour covered every screen in 54 stops,
-  with things to try. (Since then it is a nine-stop quick tour, and the demo
-  printers are called Demo printer 1, 2 and 3.)
-
-**Also in 0.8.0:**
-
-- **The print itself, in its real colours, inside the 3D twin:** the twin now reads the
-  file being printed (downloaded from the printer, or from your file library) and grows the
-  outside walls of every layer up to the one being printed, each in the colour loaded in the
-  head that prints it; the rest of the print shows faintly above. A new **Print** view closes
-  in on the plate. The demo's first printer (now Demo printer 1) prints two 3DBenchy boats in two colours,
-  orange hull and black cabin and the reverse, swapping heads on every layer.
-- **Take the case off:** the 3D model has a Case on / See-through / Case off switch. With the
-  case off you see the frame, the CoreXY motors, belts and idlers and the Z lead screw (drawn
-  where they must be, sizes estimated and labelled so), plus options for the print, what's
-  left of it, head labels and a slow turntable.
-- **A real engineering drawing sheet:** a zoned border, numbered balloons with leader lines
-  and a parts list, notes, the plate's centre lines, the print's height so far against its
-  full height, the print washed in its filament colours, and a full title block (drawing
-  number, sheet, units, date, third-angle projection symbol).
-- **A 3D viewer that looks like a slicer, not a grid:** a real 276 × 293 mm textured plate
-  with a fine grid on it only, a soft studio backdrop, a contact shadow and proper lighting.
-- **Mixed layer heights, rebuilt around what you want:** one question first (finest detail,
-  balanced, fastest or one height), each answer previewing what it sets on every head; then
-  each head in a plain sentence with Thinner and Thicker buttons. The expert controls wait
-  under Fine-tune.
-- **Updates from inside the app:** choose Newest builds and Deja Vu1 compares every file with
-  GitHub, downloads only what changed, checks each file against GitHub's own record of it,
-  and restarts into the new version (rolling back if it fails to start). Automatic checks
-  every 15 minutes, and optional automatic install (the 0.8.0 version waited for idle
-  printers; later versions no longer do).
-- **It never forgets:** every record keeps its last good copy, a damaged file repairs itself,
-  and safety copies of everything the dashboard remembers are made every 6 hours, at start-up
-  and before every update, restorable from Settings (a restore can itself be undone).
-- **Pick up where you left off:** Files finds Snapmaker Orca or OrcaSlicer on this computer,
-  copies your recent projects in and turns your own presets into a slicing profile.
-- **What your history says:** Overview reads the printer's own print history (a real U1 brings
-  everything it has printed) into findings that only appear with enough prints behind them.
-- **An optional device lock:** only paired devices can use the dashboard; this computer
-  always can.
-- **Check it yourself:** Settings → About runs nine real checks inside your own copy in a few
-  seconds, and lists what Deja Vu1 builds on (see also [CREDITS.md](CREDITS.md)).
-- **Smaller and fixed:** the games load only when you open them (they were two thirds of the
-  dashboard script); Snapmaker Orca is found by itself for slicing; a printer that needs an API
-  key says how to fix it; a heater fault shows on its own dock ring; and a printer stopped with
-  an error can be recovered with Restart firmware.
-
-<img src="docs/img/version-history.jpg" width="49%" alt="Settings, Version and updates: the installed version v0.9.0 in large print-line lettering, named Updates that install every time, a Tour what's new button, Check for updates and the automatic-check switches, a glass strip of four buttons (Restart, Repair files, Safety copy now, Stop Deja Vu1) and the start of Update with a command"> <img src="docs/img/whats-new.jpg" width="49%" alt="The full-screen What's new tour for v0.8.0: the version number, its name, a one-paragraph summary and the five stops of the tour">
-
-<img src="docs/img/orb.jpg" width="49%" alt="The notification orb in the bottom-right corner with three messages risen out of it: Pause confirmed by the printer, a filament jam on T2 marked as a problem, and You have the latest version on GitHub with a Version history button">
-
-<img src="docs/img/desktop-app.jpg" alt="Settings, Desktop app: Install it as an app with an Install Deja Vu1 button and browser-specific help, and Open as a window when the launcher starts, with the choices In its own app window, In a browser tab and Don't open anything">
-
-<sub>Captured from the simulated farm with Demo data on. The messages in the orb picture are examples sent for the picture.</sub>
-
-### Earlier versions
-
-Versions before 0.8.0 were rounds of work, numbered afterwards and never
-published as downloads. Full detail: [CHANGELOG.md](CHANGELOG.md).
-
-| Version | Date | What it added |
-|---|---|---|
-| 0.7.0 | 23 Oct 2026 | The real 3DBenchy samples, the Layer stack for mixed layer heights, 106 slicer settings, the Farm desk, telemetry, a logbook, search, and a clickable online demo |
-| 0.6.0 | 23 Oct 2026 | A realistic 3D twin of the U1, a drawing made from it, and a livelier background with surprises |
-| 0.5.0 | 22 Oct 2026 | The cursor-reactive background, rewritten games and a full-screen setup |
-| 0.4.0 | 21 Oct 2026 | One slicing workspace, separate layer heights per head, and full backup and recovery |
-| 0.3.0 | 20 Oct 2026 | The plate editor, a real OrcaSlicer slice, photo-to-print tiles, camera snapshots and the first updater |
-| 0.2.0 | 14 Oct 2026 | The online demo, the mixed-nozzle planner, Find printers and skip one object |
-| 0.1.0 | 4 Aug 2026 | The first dashboard: printer connection, fleet, controls, Photo-to-Print Studio and maintenance |
-
-<img src="docs/img/farm-desk.jpg" alt="The Farm desk: a 24-hour dispatch timeline for three simulated printers with queued jobs, your hours shaded and overnight finishes marked as waiting, and below it Best printer for a file, Print right now, Filament outlook and Worth printing">
-
-<img src="docs/img/telemetry.jpg" width="49%" alt="The Telemetry panel: state, file, layer, Z, progress, elapsed, remaining and finish time, bed and chamber against target, and a row per toolhead with temperature against target, a trace, filament, nozzle and swap counters"> <img src="docs/img/process-settings.jpg" width="49%" alt="The process settings editor in OrcaSlicer's layout: Quality, Strength, Speed, Support and Others tabs, a setting finder, Simple and Advanced, and the Speed tab's first-layer, per-feature, overhang and acceleration settings">
-
-<img src="docs/img/twin-detail.jpg" width="49%" alt="The 3D twin of the U1: a white rounded body with a grey top frame, the black-framed glass door and touchscreen, an orange and a black spool on white hubs in the side's recessed oval, four black toolheads with yellow edges and tall tube loops, the white carriage with its orange fan, T0 picked and glowing blue, and its details panel below"> <img src="docs/img/twin-drawing.jpg" width="49%" alt="The twin's Drawing mode: an engineering drawing of the gantry, docked heads, bed and Z column, with the build volume as a dash-dot line, a Z dimension, balloons T0 to T3 and a title block">
-
-<img src="docs/img/setup.jpg" width="49%" alt="Full-screen setup on step 2, Make it yours: a progress bar of seven steps, the five background styles and six colour sets"> <img src="docs/img/appearance.jpg" width="49%" alt="Settings, Appearance: background styles, colour sets, Reaction (Gentle, Lively, Wild), Little surprises, and the accent colour">
-
-![The preparation workspace with two physical-tool assignments](docs/img/slicer-after-workspace-1366.png)
-
-[Engine setup and format limits](docs/slicing-and-models.md) ·
-[Validation, performance and screenshots](docs/slicer-workspace-validation.md) ·
-[Change history](CHANGELOG.md)
-
-**Quick links:** [ways to use it](#ways-to-use-it) · [install](#install) · [update](#update) ·
-[getting started](docs/getting-started.md) · [what's in it](#whats-in-it) ·
-[current status](#current-status) · [security](#security-and-your-network) ·
-[first connection](docs/first-connection.md) · [for developers](#for-developers-and-ai-coding-sessions)
-
-The dashboard supports up to 12 printers through Moonraker, the printer's web
-API. Shared live state feeds controls, alerts, maintenance, filament tracking,
-queues and the 3D twin. Optional integrations connect to ntfy, Discord,
-Telegram, Home Assistant, WLED and Spoolman. A labelled simulated farm lets you
-explore without a printer. [Current status](#current-status) says what was
-tested and what still needs physical hardware.
-
-Much of the code is written with [Claude Code](https://claude.com/claude-code),
-and every change is in the public history.
-
-## Why it exists
-
-You walk over to the printer to check the same four things. Deja Vu1 shows what
-each printer reports in one view and leaves unknown information unknown.
-
-**Printing status.** Shared live state updates the dashboard, and **Needs you**
-ranks what wants a person across the whole farm: a jam, a paused print, a
-finished plate, an idle printer with work waiting. Automations can send these to
-your phone.
-
-**File fit.** The pre-flight check flags extrusion outside the 270 × 270 × 270 mm
-build volume, unknown toolheads and unsafe temperatures, with line numbers.
-Projects from MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer and its
-forks (Creality, Elegoo, QIDI, Flashforge) and PrusaSlicer can be converted where
-their settings and geometry are supported, with five or more colours fitted to
-the four heads. Select one plate for slicing; complete vendor texture fidelity
-is still limited.
-
-**Filament.** Four toolheads mean four chances to load the wrong spool. Deja Vu1
-compares the colour each toolhead was sliced for with what the printer reports,
-and stops the start on a known mismatch. Missing filament information stays
-unknown and asks you to check by eye.
-
-**Start checks.** Confirm Print gathers pre-flight, filament match, nozzles,
-spool weight, maintenance, time, grams and cost. The server checks again when you
-start, even from your phone, and refuses in words if something changed. The
-checks help you review a job. They do not guarantee a successful print.
-
-## What's in it
-
-![Workflow overview: watch the fleet, prepare a plate, inspect before starting, configure services and keep a recoverable copy, with physical-testing limits](docs/img/explainer-whats-in-it.jpg)
-
-Farm screenshots use **Demo data**. The current slice-preview capture contains
-actual engine estimates, not physical measurements. Older feature crops predate
-the current workspace; see [paired captures](docs/slicer-workspace-validation.md).
-
-### Run the farm and check prints: no add-on hardware needed
-
-| Feature | What it does |
-|---|---|
-| **Printer fleet** | **Find printers on my network** adds a U1 without typing an address (it asks the network, then tries Moonraker's port on your home network, and checks each one); **Test** checks a typed address first. Every printer at a glance: state, progress, the filament in each dock, temperatures, alerts, a health score. One tap points the whole dashboard (maintenance, control, cost, queue, everything) at any of them. |
-| **Live updates** | The live loop targets 250 ms updates, subject to printer and network response, pushed to the browser over a WebSocket written from scratch in standard-library Python. If the WebSocket fails three times (a network that blocks it, or a server restart), the dashboard asks once a second instead, says so, and tries the WebSocket again every 30 seconds. |
-| **Needs you** | The top of the Overview ranks every printer by what wants a person: a fault the printer reported, a paused or finished print, an idle printer with files waiting, overdue maintenance, a print finishing within 15 minutes, each with a button straight to the right tab. When nothing does, it says so, with how many are printing and when the next one finishes. |
-| **Start a print from your phone** | Pick a file, read one Confirm Print summary (pre-flight check, filament match, spool weight, maintenance, time, grams and cost) and start it. The server re-checks at the moment of starting and **refuses** if something is wrong. |
-| **Pre-flight risk check** | Flags extrusion outside the U1's 270 × 270 × 270 mm volume, the nozzle below the bed, unknown toolheads, unsafe temperatures, travel moves below plastic already printed, and more, with line numbers. A file still numbering a filament add-on's extra slots (multiACE's T4–T15) is told to run that add-on's post-processor first; its rewritten file passes. |
-| **Mixed-nozzle planner** | Calculates a common grid and checks preferred heights against U1 nozzle limits. It does not slice. The workspace separately sends validated preferences to a capable engine; Confirm Print checks fitted nozzles. |
-| **Projects from other slicers → U1** | Converts MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer, Creality Print, QIDI Studio, Flashforge Orca and PrusaSlicer projects for the U1 while retaining source settings and painted colours; **Colours on the U1's heads** fits any number of colours onto the four heads (alike colours share, unused slots are left out, or the closest loaded head) and saves a copy. Multi-plate layouts use the U1 grid; select and separate one plate for local slicing. Failures include a reason and copyable report. Complete vendor extension/texture fidelity is not guaranteed. |
-| **Skip one object** | When one part on a full plate fails, skip just that one and let the rest finish (Klipper's `exclude_object`, which Snapmaker's U1 profiles switch on). The Control tab draws the plate from above like a drawing sheet: each part outlined with a numbered balloon that matches the list, the one printing now in blue, skipped ones section-hatched, the bed dimensioned. Pick one, confirm, and only that one stops. |
-| **Print queue** | Files to print one after another. Each one passes the same Confirm Print check before it starts; anything that doesn't pass waits, with the reason. |
-| **Automations** | Local rules: a temperature crosses a line, a print starts / pauses / finishes / fails, the wrong filament is loaded, maintenance is overdue → send a notification, set a WLED light, set a Home Assistant sensor, or pause the print. Every firing is logged with what really happened. |
-| **Digital twin** | Two ways to see each printer, live, both from one detailed model of the U1 (from Snapmaker's product photos of the U1, front, sides, back and top, and its published figures; the body's own size is measured from the photos and the inside layout is estimated). **3D model:** studio-lit and realistic, with the head on the gantry, the bed dropping as Z rises, idle heads in the rear docks, the spools in their loaded colours, the touchscreen showing the printer's state and the print growing on the bed; drag to turn, right-drag to move, scroll or +/− to zoom. **Engineering drawing:** made from the same geometry and drawn the drafting way: one ink, hidden edges dashed, the build volume as a phantom line, real dimensions and a title block with its scale. The bed drops as each layer is added, the toolhead and gantry move, the parts on the plate come from the file's own object outlines (a skipped one is crossed out), and the four rear docks carry balloons with each head's filament. **Click a toolhead** for its temperature, filament, nozzle size, lifetime swaps, retries and failures (from the U1's firmware) and what the running print needs from it; click a part for its size and a shortcut to skip it; click the bed for its temperature and height. Angled, front and top views in both modes; the drawing can show the case with its estimated size and downloads as a PNG picture (an SVG line drawing is used where WebGL 2 isn't available). |
-| **File library** | G-code, 3MF, STL and triangular OBJ files, with available thumbnails, estimates, pre-flight results and recent files. Missing time or filament metadata stays unknown. |
-| **Prepare and preview** | Edit multi-object STL/OBJ/3MF plates, save a new source-preserving 3MF, slice through an installed engine and inspect its G-code by layer. Plain WebGL; no 3D library. Complex paint/textures remain limited. |
-| **G-code viewer + small edits** | Read the file line by line, search it, change one number, comment a line out or insert one command, each edit validated first (no emergency-stop lines, no toolheads the U1 doesn't have), the original kept, the pre-flight re-run. |
-| **Honest controls** | Every button says what it's sending straight away ("Pausing…"), then shows only what the printer reports back. A command the printer refuses is shown as refused, in words, never as done. |
-| **Finish time on the clock** | Alongside "2 h 17 min left", every running print says when it will finish ("done 2:42 PM", "tomorrow 1:05 AM") on the status ribbon, the fleet cards and the live pill, from the same estimate. |
-| **The browser tab follows the print** | The page title mirrors the selected printer, "53% · Demo printer 1 · Deja Vu1" (or Paused, Finished, Needs attention), and the tab's icon draws the progress ring, so a background tab still tells you how it's going. |
-| **View on your desk (AR)** | Places an STL or 3MF model on your real desk at its real printed size, through the phone's camera. Works on Android/WebXR browsers; iOS Safari has no equivalent. The button only appears where AR is supported, and it needs an `https://` address, such as the Cloudflare Tunnel. See [docs/ar-preview.md](docs/ar-preview.md). |
-| **Print health gauge, chamber climate, time-lapse flipbook, celebration card, "continue on another device", calibration reminder after a nozzle swap, weight-based filament forecast, side-by-side settings diff, 28 Home Assistant sensors, MJPEG camera relay** | The supporting cast, see [docs/architecture.md](docs/architecture.md). |
-
-![Current Overview with the simulated-data banner, printer picker, progress ribbon and Needs you list; the 3D twin and controls begin below](docs/img/overview.jpg)
-
-<sub>**Overview:** the status ribbon with progress and finish time, then **Needs you**, ranking everything that wants a person across all three printers.</sub>
-
-![Three simulated printer cards without coloured tints: Demo printer 1 printing, Demo printer 2 paused and Demo printer 3 ready with a dock fault, each with its progress ring, heads, readings in one row and an Open printer button](docs/img/fleet.jpg)
-
-<sub>**Printers** (the Fleet view): every printer's state, progress, filament per dock, temperatures and health, with controls to command several at once.</sub>
-
-![Confirm Print explained: seven checks (printer ready, pre-flight, filament match, nozzles, spool weight, maintenance, cost), what each one does when it fails, the path from your file to a start or a refusal, and a real refusal from the built-in unsafe example file](docs/img/explainer-confirm-print.jpg)
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/img/confirm-print-refused.jpg" alt="The Confirm print dialog refusing the unsafe example file: printer busy, extrusion outside the 270 mm build volume on line 19, T0 has Snapmaker Orange loaded but the file was sliced for a red, and two maintenance tasks overdue"><br><sub><b>Confirm Print, refusing:</b> the built-in unsafe example file, with every reason in words and the start button disabled.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/file-detail.jpg" alt="The unified sliced-plate preview, file-order layers, requested-speed colours, tool filters, event markers and real-engine estimates"><br><sub><b>A sliced plate:</b> inspect layers and toolpaths beside real-engine estimates, then open pre-flight and Confirm Print.</sub></td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/img/files.jpg" alt="The file library with thumbnails of six sample files, the G-code ones marked PRE-FLIGHT CLEAR or BLOCKED, next to the print queue"><br><sub><b>Files:</b> thumbnails and estimates, a pre-flight badge on every G-code file, and the print queue beside them.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/automations.jpg" alt="The Automations form using the print-finished notification example, with a log of what fired. Simulated farm"><br><sub><b>Automations:</b> choose an event and action from a ready-made example; every firing is logged.</sub></td>
-</tr>
-</table>
-
-![Current 3D twin beside Printer control and the print-health gauge. Simulated readings; software model with estimated body and internal geometry](docs/img/twin-health-chamber.jpg)
-
-<sub>**Digital twin, quick controls and print health:** a live 3D model of the printer (the bed dropping as layers build, the head moving, the parts on the plate, the four docks, the spools in their colours), Pause and Cancel, and one health score with every deduction listed. The engineering drawing is one click away.</sub>
-
-<table>
-<tr>
-<td width="42%" valign="top"><img src="docs/img/twin-detail.jpg" alt="The 3D twin with T0 picked: its tag outlined, and a details panel with its filament, temperature, 0.4 mm nozzle, 215 swaps with 3 retried and 0 failed, and what the running print needs from it"><br><sub><b>Click a toolhead:</b> its nozzle, swaps and what this print needs from it.</sub></td>
-<td width="58%" valign="top"><img src="docs/img/layer-planner.jpg" alt="The Layer stack: a 0.12 mm base layer, T0 and T1 with 0.4 mm nozzles printing every layer, T2 and T3 with 0.6 mm nozzles printing three base layers per pass at 0.36 mm, multiples a nozzle cannot print crossed out, a section of the passes and the Consistent, Adaptive and Fixed thick-layer modes"><br><sub><b>Layer stack:</b> one base layer, each head a whole multiple of it, with smart set-ups.</sub></td>
-</tr>
-</table>
-
-![Add a printer: the current Test result from a source-based stand-in Moonraker on loopback. No physical U1 connected](docs/img/add-printer.jpg)
-
-<sub>**Add a printer:** test an address before adding it. This capture uses a local stand-in Moonraker, not a physical U1.</sub>
-
-![Objects on the plate: a map of the bed from above with three objects, the one printing now in blue and one selected in red, and the question "Skip Toolhead cover #3 for the rest of this print? It can't be brought back."](docs/img/skip-object.jpg)
-
-<sub>**Skip one object:** pick the failed part on the plate map, confirm, and the rest keep printing.</sub>
-
-<img align="right" width="300" src="docs/img/converter.jpg" alt="The converter card at the top of Files: a project from any slicer to Snapmaker U1, with the report for the three-plate MakerWorld sample: saved as a U1 copy, all three plates re-placed on the 270 mm bed and the creator's own changes kept">
-
-**Converting a supported project:** keep the original, review the conversion
-report, then select a plate for slicing. All three plates of the recorded test
-fixture passed the Linux engine separately. Complex vendor paint, textures and
-per-part settings remain limited. Conversion is not proof of printability.
-
-<br clear="right">
-
-### Care, control and the basics: no add-on hardware needed
-
-| Module | What it does |
-|---|---|
-| **Maintenance reminders** | Seven tasks. Six track cumulative hours, print counts or calendar time since they were last done (nozzle, bed, belts, rails, dock alignment, fans); the seventh, recalibration, comes due when you record a nozzle or hotend swap. Each resets when you mark it complete. For a real printer, counting starts from its totals on first connection. |
-| **Printer control** | Pause, resume, cancel, set a toolhead's target temperature, home an axis, or send a raw G-code line, with a live console log. The Printer page adds moving, extruding, tuning, a temperature chart, the bed mesh map, macro settings, the printer's other fans and lights, filament sensors, endstops, automatic feeding on a U1 and printing a file. |
-| **Push notifications** | Alerts via ntfy.sh, Discord, or Telegram using HTTP requests, with no app SDK. Configure the chosen service's topic, webhook or bot credentials. They're sent by the rules you set in **Automations** (it offers ready-made ones such as "Tell me when a print finishes"). A rule marked urgent always sends; a normal one waits out your quiet hours instead of buzzing your phone at 3am. |
-| **Update checker** | Reads Moonraker's own update-status API and flags when Klipper or Moonraker have an update waiting. |
-| **App-data backup & recovery** | Versioned full app-data ZIP with checksums, omitted connection secrets and restore preview. Recovery creates a separate folder and launchers; it keeps existing data and disables automatic actions. Includes library, per-printer logs, fleet, queues, presets and time-lapse. Limits: 512 MB unpacked / 256 MB ZIP; files over 64 MB and external installations require an offline copy. |
-| **Camera bridge** | Brings the printer's camera feed in, with a watchdog that flags a frozen stream instead of silently showing a stale image. |
-| **Phone pairing** | A short one-time code, entered on a second browser, adds it to a paired-devices list, no account, no password, nothing that leaves your network. It's a convenience list, not a lock: see [security](#security-and-your-network). Always on. |
-| **Print cost calculator** | Prices filament by material and adds electricity, for a print in progress and for recent history. $/kg per material, $/kWh and printer wattage are editable. |
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/img/care.jpg" alt="The Care tab: maintenance tasks with progress bars, two marked overdue in red and one due soon"><br><sub><b>Care:</b> each maintenance task with how far it has run, overdue ones in red.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/control.jpg" alt="The Printer page: four head temperatures with a chart of T0 and the bed warming to their targets, Extrude and Tune, then Fans, lights and sensors with four filament sensors and automatic feeding, and the bed mesh as a coloured map"><br><sub><b>Printer page:</b> temperatures with their chart, extruding and tuning, the printer's fans, lights and sensors, and the bed mesh map.</sub></td>
-</tr>
-</table>
-
-### Running a farm, and making new things: no hardware needed
-
-| Feature | What it does |
-|---|---|
-| **Fleet command center** | Tick several printers in the Printers tab and preheat, pause, resume, home or cancel them together. The commands go out in parallel through the same per-printer controls as everywhere else, and every printer's result is read back and listed separately ("Pause: 2 of 3 confirmed; failed on Demo printer 3", with each printer's reason, such as "Nothing is printing right now", in its own row), never a blanket "done". Drag a G-code file (or a waiting queue item) onto any printer to put it on that printer's queue. A farm history panel shows prints, completed vs. failed, and material per day or week, per printer and for the whole farm, summed from each printer's own history. |
-| **Photo-to-Print Studio** | Make four-tool dithered tiles, measured-swatch layered models, calibration sheets and closed image-heightmap reliefs. The older absorption-based relief editor remains available. New generation sends a reduced pixel grid to the local app server; legacy relief calculation stays in the browser. Generated files enter the normal preparation/slicing workflow. Physical colour accuracy is unverified. |
-| **Farm sandbox** | A simulated farm of up to 27 printers, with scripted scenarios (a jam mid-print, a runout, a heater fault, a network drop, the wrong filament loaded, maintenance going overdue) and a clock you can play, speed up, or step forward. Everything else in the dashboard (fleet, automations, queue, notifications, history) reacts, because the sandbox drives the same simulated printers they all read. Demo data only. |
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/img/sandbox-farm.jpg" alt="The Fleet tab with nine printers: the three built-in U1s and six added simulated printers, some printing, some idle"><br><sub><b>A bigger farm:</b> the three built-in printers plus six added in the sandbox. All readings are simulated.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/sandbox.jpg" alt="The simulated farm sandbox after stepping the Jam mid-print scenario to eleven minutes, with its event log and presets"><br><sub><b>Farm sandbox:</b> the "Jam mid-print" scenario on its clock, one-off events, and a log of what happened.</sub></td>
-</tr>
-</table>
-
-![Photo-to-Print Studio preview using its built-in test pattern: original, modelled colours and 3D relief. Software preview, not a photograph of a print](docs/img/photo-studio.jpg)
-
-<sub>**Photo-to-Print Studio:** the built-in test pattern turned into a layered relief. The right-hand preview is modelled, not photographed.</sub>
-
-<img align="right" width="230" src="docs/img/phone.jpg" alt="Deja Vu1 on a phone: the printer picker, the demo banner, the progress line, the Needs you list, and Pause and Hold to cancel above the bottom tab bar">
-
-On a phone the layout is rebuilt thumb-first: the main sections and the
-Pause / Hold-to-cancel / Start-next controls sit at the bottom of the
-screen, with the print's progress on a line just above them on every tab.
-To open it on your phone, press **Connect your phone** on the Overview and
-scan the code with the phone's camera (same home Wi-Fi). Pairing happens by
-itself; it is optional bookkeeping, not a login.
-
-**Add to Home Screen** gives it a proper icon and name, opening without the
-browser's bars where the phone allows.
-
-<br clear="right">
-
-### Also built in, and the optional extras
-
-Filament inventory, What changed? and the Pre-print sanity check are parts of Deja Vu1 and always on.
-The WLED bridge, Home Assistant bridge, Auto-print pipeline (Slicing) and Low-latency camera are
-the optional extras you switch on under **Settings → Optional extras**.
-
-| Module | What it does |
-|---|---|
-| **Filament inventory** | Tracks spools on hand, flags print files needing a colour you don't have, and nudges you if a spool has sat loaded for weeks. **Import from Spoolman** brings in the spools you already track in [Spoolman](https://github.com/Donkie/Spoolman), with their colour and grams left; importing again updates them instead of duplicating. |
-| **What changed?** | Compares the job about to print against your last few runs of that file, and flags a likely cause when the file has failed before and shares a pattern (a filament type in common, say). |
-| **Pre-print sanity check** | Combines maintenance, dock status, and colour-check into one "safe to print?" verdict. |
-| **WLED bridge** | Pushes dock ring colours to a WLED-flashed LED strip you already own, over WLED's own JSON HTTP API, no extra hardware to build. |
-| **Home Assistant bridge** | Publishes printer state as a handful of REST sensors, so it shows up on an existing HA dashboard, no MQTT broker, no custom component. |
-| **Auto-print pipeline** | Slices STL and 3MF models with [OrcaSlicer](https://github.com/SoftFever/OrcaSlicer), **a separate program you install yourself**, using Orca presets you choose; the G-code lands in the file library, or straight on a printer's queue, where it still passes Confirm Print before it starts. Off by default. Driving another program from outside is fragile, an Orca update can change its command line, so every slice has a time limit, is checked for real printable layers before it's kept, fails in words with Orca's own message, and records the Orca version that made it. A failed check or slice names its cause (a missing system library, a crash, no screen, Orca's own error code), says where it stopped and what to try, and Copy report for help exports one report for a helper. Check slicer says whether that exact engine build has been run for real, and on which system ([engine support](docs/engine-support.md)); a slice waits for a new check when the engine program changed. |
-| **Low-latency camera (WebRTC)** | Plays the camera with almost no delay through [go2rtc](https://github.com/AlexxIT/go2rtc), **a separate program you install yourself**. It's one step beyond "nothing to install", so it's off by default. MJPEG stays the default, and the dashboard falls back to it automatically, saying which feed is on. See [docs/low-latency-camera.md](docs/low-latency-camera.md). |
-
-### Interface + simulation, hardware pending
-
-| Module | What it does |
-|---|---|
-| **Dock status rings** | Proposed rings beside the toolhead docks: soft white for ready, pulsing green with a progress arc for printing, pulsing amber for heating, blue for paused, blinking red for a fault. The on-screen logic is implemented; physical ring drivers and validation are unfinished. The separate WLED bridge can send the same state to a configured strip. |
-| **"Right colour loaded?"** | Proposed optical check for spools the printer can't identify. A sensor with its own white LED reads the filament inside a dark housing at a rear filament inlet, and Deja Vu1 compares that with the colour the file expects. Two sensors (TCS34725 and AS7341) are to be tested side by side on real spools. Comparison logic and simulation exist; no parts are bought yet, and the sensor driver, calibration and housing are unfinished. [Design](docs/hardware-modules.md#module-3---right-colour-loaded-checker) |
-
-![The Dock status rings panel: four rings for T0 to T3, three soft white for docked and ready and one red for needs attention, marked HARDWARE PENDING, with the note that it shows what the LEDs would display](docs/img/dock-rings.jpg)
-
-<sub>**Dock status rings, on screen today:** what each LED ring would show. The physical rings are waiting on hardware.</sub>
-
-![Four identical grey docked toolheads beside Deja Vu1's view of the same docks: T0 docked and ready, T1 printing, T2 heating up, T3 needs attention with a filament runout, plus the five dock states and their colours](docs/img/explainer-silent-docks.jpg)
-
-<sub>**Why dock status matters:** a parked toolhead looks the same whether it's ready, out of filament or faulted. Deja Vu1 shows each dock's state on screen today, and on the rings once they exist.</sub>
-
-<img align="right" width="270" src="docs/img/modules.jpg" alt="Settings, Optional extras: the six add-ons that need a program, a device or a service, each with a switch, grouped under Needs a program or service and Needs extra hardware">
-
-**Settings → Optional extras** switches the six add-ons that need something outside Deja Vu1 (Slicing, the
-low-latency camera, Dock status rings, the WLED bridge, the Home Assistant bridge and the colour check). The
-camera, time-lapses and Continue on another device are ordinary settings with their switch in their own card.
-Everything else is part of Deja Vu1 and always on. The server enforces each switch: a switched-off feature's
-routes refuse requests, and background automation actions, queue advancement, time-lapse capture and
-filament deduction also check them. "View on your desk" is browser-only; phone pairing is always on.
-
-<br clear="right">
-
-### While you wait (the Games tab)
-
-Ten games, playable from the dashboard while a long print runs: **Sky
-Dash**, **Pong**, **Minesweeper**, **Tetris**, **Pac-Man**, **Brick Break**,
-**Blackjack**, **Asteroids**, **Snake** and **2048**. None of them read the
-printer; the status strip and the live print pill stay visible on every
-tab, including mid-game, so a finished or failed print is never missed.
-Best scores are remembered per browser. Every game runs at the same speed on
-any screen (60 Hz or 144 Hz), waits for you to start, pauses when you switch
-tab or window, and sizes its playing field to fit the window. On a phone,
-Pac-Man, Snake and Tetris show touch buttons and also take swipes.
-
-<img src="docs/img/games.jpg" width="720" alt="The Games tab with Pac-Man ready to start: a blue maze with the ghosts in their house, a Start card explaining the power pellets, the list of ten games above, and the note that none of them read the printer">
-
-## Why one dashboard, not several tools
-
-![How it connects: each Snapmaker U1 runs Moonraker in front of Klipper; the Deja Vu1 server on your computer holds one WebSocket per printer for reported state and uses plain HTTP for commands, history and uploads; it shares a live view with your browsers and connects to configured services such as Home Assistant, a WLED strip and ntfy, Discord or Telegram](docs/img/explainer-how-it-connects.jpg)
-
-Every module reads the same Moonraker connection and the same print history.
-Separate tools would each need their own connection, their own setup and their
-own tab. In one application, the modules that need extra hardware never block
-the ones that don't. Maintenance and printer control work now, on any
-Moonraker-connected printer. The LED and colour modules switch on when their
-parts arrive.
-
-## No printer, no numbers
-
-The dashboard does not invent figures. With no printer connected it shows
-empty states instead of zeroes or placeholder readings.
-
-To preview it, turn on the **Demo data** switch in the header. It loads
-simulated print history and labels every panel as demo data, with a banner
-saying that nothing is connected.
-
-The server enforces this, so the interface is not the only safeguard. Without a
-printer and without an explicit demo request, the data endpoints return
-`{"connected": false, "demo": false}` and nothing else. `curl` gets the same
-answer the browser does. Settings that belong to the dashboard itself
-(modules, pairing, notification preferences, the filament list) aren't
-printer figures, so they work the same with or without a printer connected.
-
-## Current status
-
-**No physical U1 or real phone has been verified.** Snapmaker shipped a U1 for
-testing on 29 October 2026 (Innovation Fund hardware sponsorship); the
-[roadmap](#roadmap) lists the order of the first tests. Printer controls, filament
-readback, camera/time-lapse and queue handling have simulator and authenticated
-stand-in coverage. Start with the [watch-only first connection](docs/first-connection.md).
-LED rings and the optical colour sensor have tested decision logic, without
-completed hardware drivers.
-
-The latest full run passed **1267 tests in 891.6 seconds** on Python 3.13/Linux,
-with the app and demo servers stopped (7 November 2026, version 0.20.3 plus the Glass default, the live sidebar, Spacing,
-the Windows engine check, restart receipts and plate keyboard commands, before their merge, in a cloud sandbox). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12
-and 3.13.
-Earlier full runs passed 1182, 1161, 1117, 1111, 1100, 1059, 1040, 948, 920, 904, 903, 893, 879, 871, 855, 852, 783, 771 and 759 tests.
-The slicing-workspace round
-([PR #45](https://github.com/Jbyjre/Deja_VU1/pull/45)) also passed GitHub Actions
-and was merged. Its Chromium checks at 1366/390 px covered editing, stable focus,
-actual slicing, preview, plate selection and Confirm Print entry, and the
-recorded static demo passed at both widths.
-
-| Capability | Verified evidence | Remaining limit |
-|---|---|---|
-| Printer connection and controls | Source-based, authenticated fake-Moonraker tests | Physical U1, firmware differences and real-network behaviour |
-| Different per-head heights | External Linux engine; actual model extrusion and clear pre-flight | No physical mixed-nozzle print; Windows/macOS setup unverified |
-| Plate editing and conversion | Transforms, source-preserving saves, per-object wall paths; all three selected fixture plates slice | Complete vendor textures, subdivided paint and per-part semantics |
-| Image generation | Four-tool colour tiles, synthetic layered-colour fixtures and closed reliefs real-sliced | Measured colour accuracy; geographic terrain/full CAD absent |
-| Camera/time-lapse | Per-printer lifecycle, reconnect and stale-reply tests; the live picture stream and the printer-named picture address against the Moonraker stand-in | Physical cameras and simultaneous real printers |
-| Running without a window (0.15.0) | Linux: the real server with no output streams answers commands; a killed server back in 2 s, a frozen one restarted after about 2 minutes, Stop respected by the start-up check, `deja-vu1://start` opened through the desktop's link handler, the offline page in Chromium | The Windows Task Scheduler task, Windows link registration, Quick Edit switching off and the macOS LaunchAgent and link app have not been run on Windows or macOS |
-| Looks: Workbench, Control room, Glass (0.20.0) | Chromium on all 16 places at 1366 px for each look in light and dark, every text measured against its flat background with colours converted by the browser (none below WCAG AA in Workbench or Control room); look tokens and the emergency stop colour in `tests/test_looks.py`; phone width photographed | Text on gradients and in canvases checked by eye; README screenshots below still show Glass; not seen on a real phone, Windows or macOS |
-| Sidebar, page links and the dark theme (0.19.0) | Chromium at 1366, 1024 and 390 px: all 16 sidebar places, Back, Forward, a refresh, copied and old links; the theme set before any other script runs; every text measured against its flat background on all 16 places in dark (none below WCAG AA); token and accent contrast in `tests/test_dark_theme.py` | Text on gradients and in canvases checked by eye, not measured; not seen on a real phone, Windows or macOS |
-| Watch-only mode, health, spool weights and bed clearance (0.18.0) | Watch-only against the Moonraker stand-in through the real server: pause, cancel, home, the console and a start refused with no write reaching it, emergency stop allowed; the research's three reproductions (wrong material at health 100, an unknown Spoolman weight saved as 0 g, a mid-print roll change) as regression tests; the bed-clear hold, its tie to the print that ended last and its file on disk; Chromium at 1366/390 px | Not tried on a physical U1 or a real Spoolman install |
-| Other networks and moved printers (0.17.0) | Every home network and the Tailscale network searched (stand-in `tailscale status --json`), a moved stand-in U1 followed by its serial number, readings kept coming when the status stream goes quiet | Not tried with a real second router, a real Tailscale subnet route or a physical U1 |
-| Printer page extras (0.16.0) | Temperature history, bed mesh, macro settings, endstops, command help, fans, lights, filament sensors and feeding against the simulated printer and the Moonraker stand-in; names checked against Snapmaker's published U1 config | Not tried on a physical U1; whether the shipped firmware's config matches the published one |
-| Backup/recovery | Checksum/path validation, isolated restore and generated Linux launcher | Windows/macOS launchers unexecuted; external resources excluded |
-| Optional integrations | Protocol/stand-in tests | Physical WLED, sensors and live third-party installations unverified |
-| App updates | Release staging, restart and rollback tests; git-copy updates tested against real git repositories (fast-forward, refusal on hand-edited files, rollback); the release workflow builds the package and notes from the version history | Every merge to `main` now publishes a release by itself (0.9.0 onwards). 0.8.0's own Install button crashed in its idle check; 0.8.0 copies update once with the one-paste command, tested on Linux from the real 0.8.0 release. Repair, restart and stop are tested. 0.13.7: Install as a background job with progress, the launcher surviving a failed apply, the launch id and the ready check are tested on Linux, including a real install of the published 0.13.6 release with a stand-in printer connected and a reload mid-download. The Windows paste blocks, GitHub Desktop's own git and macOS have not been run yet |
-| Desktop app, version history, tours, notification orb | Unit tests (desktop window choice, version history kept in step with VERSION, the changelog and the release notes); Chromium at 1366/390 px, including the online demo | Installing as an app was not tried in a real Chrome or Edge window; the launcher's app window was not opened on Windows or macOS |
-| Layer stack, Orca-style process settings | Unit tests for the thick-layer options and all 106 settings (names and choices checked against OrcaSlicer's option table); Chromium at 1366/390 px | No real slice with the new options in this round; whether an engine lists the thick-layer options is read from its own schema |
-| Farm desk, telemetry, logbook, finder, converter card | Unit tests (logbook, printer page link) and Chromium at 1366/390 px on the simulated farm | Real farms, real spools and real printers' web pages unverified |
-| Sample models | The 3DBenchy (CC0) reduced to 60,000 triangles with its edge structure unchanged; sample G-code checked by drawing its layers | The sample slicer is deliberately simple (no seams, supports or bridges) and says so in every file; not for printing |
-| The print inside the twin, case off, drawing sheet | Preview built from the file's own G-code, tested on the two-colour sample and hand-written files; the real-printer download tested against the Moonraker stand-in; Chromium screenshots at 1366/390 px; frame time measured in software rendering (the print adds about a fifth; case off costs about 2.7× there) | Not seen with a physical U1's own files; frame, motors and lead screw sizes are typical, not measured |
-| Updates (newest builds), safety copies, device lock | Each file checked against GitHub's record (stand-in GitHub in tests, and a live check against this repository); repair, restore and undo tests; the lock tested end to end against the real server | Automatic install exercised only in tests; Windows/macOS launchers still unexecuted |
-| Insights, Orca import, Check it yourself | Unit tests with minimum-evidence rules; Orca folder names and formats checked against both slicers' source; all nine self-checks pass in a running copy | Orca import not yet run on a real Windows/macOS install; insights from a physical U1's history unseen |
-| Phone by QR code, help notes, quick tour | QR codes identical to python-qrcode in 872 cases and read by zxing-cpp and OpenCV; the phone flow end to end in Chromium (computer page plus iPhone-sized page under a network address); every visible button pressed on every screen at 1366/390 px and on the online demo; a test keeps every help note matched to a card | No real phone camera, real home network or Windows firewall prompt tried |
-| G-code sync of the 3D twin, colours on four heads, slicer import (0.13.0) | Klipper's `live_position` and `file_position` read from its `docs/Status_Reference.md`; the twin's sync run in Node against the two-Benchy sample and a printer simulated from it (exact on each reading, within 0.016 s between readings at 0.8× speed, pauses and tool changes handled); paint codes, per-feature filament settings and Orca's PrusaSlicer import read from OrcaSlicer `97e6c71`; Cura tags from CuraEngine; slicer folder names from each slicer's `version.inc`; unit tests for the paint codec, the plan and the rewritten projects; Chromium at 1366/390 px | No physical U1, so the sync has not met real readings; a mapped project not yet opened in Snapmaker Orca; the slicer search for recent projects not run on a real Windows or macOS install |
-| Parts of a screen, Get ready to slice, other Klipper printers, search (0.12.0) | Chromium at 1366/390 px on the local server and the static online demo: every part of every sectioned screen, all 60 search places reach a visible card, the 0.12.0 and quick tours find their stops; the slicer search walked end to end with a stand-in program (found, used, checked); a stand-in one-head 235 × 235 × 250 mm Klipper printer added through the app, its card and twin card shown; unit tests for the search, the profiles and Confirm Print against a smaller printer | The slicer search not run on a real Windows or macOS install; no physical non-U1 printer; the slicing workspace and converter still target U1 presets |
-| Away from home, glass orb (0.11.0) | Unit tests against a stand-in `tailscale` program answering in the formats of Tailscale's source (`eba00ab`); the server refuses a phone or tailnet request to switch sharing (403); the code's link checked; Chromium at 1366/412 px | No real Tailscale account, HTTPS approval, phone on mobile data or Extended Firmware VPN tried |
-| Printer sign-in, typed addresses, camera sources, firmware 2.0.0 file names (0.10.0) | Read against Snapmaker's u1-moonraker `a308cfa` and u1-klipper `93cb12f`, the Extended Firmware `417e639` and its camera service `9279584`; stand-in Moonraker tests for the login, the key, the camera list, the snapshot, the MJPEG feed, `req_id` and a failed reply, through the real server | No physical U1, real Extended Firmware camera or Web Authentication tried |
-| Simpler phone, Install app, one dot colour (0.10.0) | Chromium at 1366, 412 and 390 px on the local server, a network address and the static online demo; page heights measured against 0.9.0; Chrome's install rule and its setting read from Chromium's source | Not installed on a real Pixel or iPhone yet |
-| Interface refresh (3D twin, live background, games, setup) | Headless Chromium at 1366/390 px with software WebGL 2; frame times measured there (the 3D twin about 250 ms a frame on the CPU, background 16.7 ms); static demo checked; WebGL-less fallback checked | Real GPUs, real phones and 120/144 Hz screens unmeasured; the body's own size, dock spacing and inside layout are estimated from Snapmaker's picture |
-
-Actual slicing used separately installed **Snapmaker_Orca 02.08.01.55**. Verified
-nozzle/height pairs were 0.4/0.6 mm at 0.14/0.28 mm, 0.4/0.8 mm at 0.2/0.4 mm,
-and two 0.4 mm nozzles at 0.1/0.2 mm. Stock OrcaSlicer 2.4.2 was previously
-verified for shared-height slicing. The app checks capability and nozzle limits;
-it does not bundle an engine or rewrite G-code to fake different heights.
-
-The historical X290/X300 startup failure came from a generic inherited sequence.
-Tested native U1 macros passed unchanged. The 270 mm bounds remain enforced;
-physical purge behaviour is unverified. All three formerly failing project
-plates now slice separately. Preserving original parts/paint does not establish
-complete vendor-format fidelity.
-
-Selection work improved from about 57–62 ms to below 0.5 ms for 400,000 triangles.
-Full-frame model rendering regressed under SwiftShader software graphics and
-remains slow. These measurements do not establish real-phone or GPU performance.
-Contact/measurement checks are bounded at 250,000 triangles per object; the viewer
-accepts two million triangles per plate. They do not guarantee support adequacy,
-watertightness or toolhead clearance. AR still uses original source geometry.
-
-Open work includes physical testing, feeder control, full format fidelity,
-heavy-model rendering and older launch media. The heater-fault ring and the
-unreachable firmware restart were fixed in this round. The share card, product-page
-images and main editorial screenshots were captured again in October 2026; older
-editorial crops are not refreshed.
-See [full validation](docs/slicer-workspace-validation.md)
-and [release requirements](docs/releasing.md).
-
-## What this project wrote, and what it builds on
-
-Deja Vu1 is its own code, under the MIT licence: the Moonraker client, the
-Confirm Print gate, the G-code pre-flight, the mixed-nozzle layer planner, the
-plate editor and the dashboard. It talks to Moonraker and Klipper through their
-public web API, and it slices with OrcaSlicer or Snapmaker Orca, which you
-install yourself and which it does not bundle. Facts such as message formats,
-plate sizes and file formats came from reading those projects' source and
-documentation. Deja Vu1 copies none of their code or files. The sample 3DBenchy
-is public domain, and the three typefaces use the SIL Open Font License.
-[CREDITS.md](CREDITS.md) lists each project, its licence and what Deja Vu1 does
-with it.
-
-## Tech stack
+</details>
+
+## Safe by design
+
+- **No invented numbers.** With no printer connected and demo data off, the server answers
+  `{"connected": false, "demo": false}` and every panel shows an empty state. Demo data is
+  labelled on every panel, and it never reaches a real printer.
+- **Honest controls.** A command the printer refuses shows as refused, in words.
+- **Watch-only mode** makes the server refuse every command to a real printer. Reads, the camera
+  and the emergency stop still go through.
+- **Your network only.** There's no login, so keep Deja Vu1 on a network you trust. It answers
+  only to local addresses (which stops DNS rebinding), refuses commands sent by other websites and
+  can't be framed. An optional device lock lets in only paired devices. Away from home, use
+  Tailscale or a Cloudflare Tunnel behind Cloudflare Access. [Security](SECURITY.md) ·
+  [Remote access](docs/remote-access.md)
+- **Your data stays on your computer**, in `backend/data/`, as plain JSON and files. Updates never
+  touch it.
+
+## What has been tested
+
+- **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
+  Confirm Print, pause and cancel, the camera and time-lapses, and the Printer page controls.
+- **Automated:** 1267 tests passed in 666 seconds on Python 3.13 (8 November 2026). GitHub Actions
+  runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
+- **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
+  Other builds show "Not tested" in the app and still slice.
+- **Not tried yet:** macOS, a second printer, the Extended Firmware, and outside services such as
+  Spoolman, WLED and Home Assistant.
+
+The dated record, with what isn't built yet: [docs/testing.md](docs/testing.md).
+
+## Coming next: Deja Vu1 Sense
+
+Four heads mean four chances to load the wrong spool. Confirm Print already compares the colour
+each head was sliced for with the colour the printer reports, and refuses a known mismatch. The
+next step is a colour sensor for spools the printer can't identify: a sensor in a dark housing
+reads the filament, and a Raspberry Pi Pico W sends the reading to Deja Vu1. Two candidate sensors,
+the AS7341 and the TCS34725, get a bench test on real spools before anything goes near the printer.
+A sensor mismatch starts as a warning you can accept. Spool scales come after it.
+[The design](docs/hardware-modules.md)
+
+## How it's built
+
+- Python's standard library and nothing else: no packages to install. A hand-written WebSocket
+  carries live state to every open page.
+- Plain HTML, CSS and JavaScript: no framework, no build step. The 3D views use WebGL directly.
+  The fonts ship with the app; nothing loads from a CDN, and there are no analytics.
+- Deja Vu1 is its own code under the MIT licence. It talks to Moonraker and Klipper through their
+  public API and slices with an engine you install. Facts about file formats and the U1 come from
+  reading those projects' source; no code is copied. [CREDITS.md](CREDITS.md) lists each project
+  and its licence.
+- Deja Vu1 is written with the help of an AI coding assistant,
+  [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
 ![By the numbers: 1267 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
-- **Backend:** Python, standard library only, written for 3.8 or newer;
-  the test suite passes on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions
-- **Web server:** `http.server` from the standard library (the threading
-  version), plus a hand-written RFC 6455 WebSocket for live updates
-- **Frontend:** HTML, CSS, and JavaScript, no framework, no build step;
-  raw WebGL for the 3D viewer, the browser's own `DecompressionStream` to
-  unzip 3MF files
-- **Storage:** JSON settings and local model, G-code and media files
-- **Tests:** `unittest` from the standard library, 1267 cases
-- **Printer API:** Moonraker, over HTTP and its WebSocket (and a simulated
-  farm for demo data)
+## Documentation
 
-The core app requires no Python packages. Optional slicing needs an external
-engine; integrations and opt-in update checks contact their configured services.
-No frontend library is fetched at runtime; the three typefaces ship inside
-`frontend/fonts` (SIL Open Font License, licences alongside), no CDN, no
-analytics.
-(Reaching it from outside your home uses Cloudflare's own `cloudflared`
-program, which you install separately if you want that; see
-[docs/remote-access.md](docs/remote-access.md). The optional low-latency
-camera works the same way: it uses go2rtc, which you'd install yourself;
-see [docs/low-latency-camera.md](docs/low-latency-camera.md). The optional
-auto-print pipeline is the same again: it runs an OrcaSlicer you install.)
-The core works without internet access; printers and phones still need the local
-server. Pairing stays on your network. External notifications and update checks
-need their configured services.
-
-The interface uses an Apple Liquid Glass treatment: translucent panels with
-real edge refraction (an SVG displacement filter rather than a plain blur), a
-specular highlight that tracks the pointer, a bright rim and an elevation
-shadow. The refracting glass sits on the navigation and floating layer, top
-bar, tab bar, live print pill, menus, sheets and dialogs, the things content
-scrolls under. Content cards keep the same tint, highlight, rim and shadow
-but don't blur what's behind them: behind them is the live background
-(Settings → Appearance), which moves with your cursor, and blurring a moving
-background costs real work every frame. The background itself only animates
-while the pointer moves, then stops drawing. Repeated
-small panels share one surface with plain dividers for the same reason. It
-respects the system settings for reduced transparency, reduced motion, and
-increased contrast, and the layout collapses cleanly to a phone-width screen.
-
-Liquid Glass 2.0 adds four things on top: panels **morph**: a sheet of
-glass deforms on a spring from one element into another (a printer card
-into the overview, a file into its detail view, a button into its dialog,
-the active tab sliding along the tab bar); on the live print pill and the
-digital twin the highlight **drifts gently even at rest**; glass laid over glass (dialogs) uses a
-**deeper refraction**, so what's underneath visibly bends more than the
-background; and panels **take a tint** from what they're about: the active
-filament's colour, a printer's state, a verdict.
-
-The current look, "Layer lines" (`frontend/theme.css`, loaded last so it
-changes appearance, never layout): behind everything runs a field of fine
-horizontal lines, like the side wall of a print, lit by soft light in the
-colours of the filament actually loaded on the printer you're looking at.
-Glass is kept for the controls: header, tab bar, status ribbon, phone
-dock, live pill, menus and dialogs. The tab bar and ribbon are clear
-enough that the lines visibly shift where the glass bends them. Cards are
-content, so they sit on a quieter frosted "paper" with no lensing (Apple's
-own rule, and far fewer live filters on a big sandbox farm). Type is
-Bricolage Grotesque for headings and big numbers, Instrument Sans for
-reading and buttons, IBM Plex Mono for readings and labels.
-
-## Security and your network
-
-**Deja Vu1 has no login.** Anyone who can reach its port can pause or
-cancel a print and send G-code, so keep it on a network you trust. Phone
-pairing is a list of remembered devices, not a lock. What it does defend
-against:
-
-- **Other names pointed at it.** It only answers requests addressed to a
-  name that belongs to your own network: an IP address, `localhost`, a
-  plain machine name, or one ending in `.local`, `.lan`, `.home`,
-  `.internal`, `.home.arpa`, `.localdomain` or `.ts.net`, plus any name you
-  list in `DEJAVU_ALLOWED_HOSTS`. Anything else gets "Refused" (HTTP 421).
-  This blocks *DNS rebinding*, where a web page you visit points its own
-  domain at your dashboard to control it from your browser.
-- **Other sites sending commands.** Every command and the live connection
-  are refused (HTTP 403) when the browser says they come from another site.
-- **Being framed.** No other site can load the dashboard invisibly inside
-  its own page.
-
-To reach it away from home, prefer private Tailscale Serve. Alternatively,
-protect a Cloudflare Tunnel with Access first and list the hostname in
-`DEJAVU_ALLOWED_HOSTS`; see
-[docs/remote-access.md](docs/remote-access.md).
-
-## Settings and your data
-
-The server listens on every network interface of the computer, on port
-8000. It has no command-line options; these environment variables change it:
-
-| Variable | What it does |
+| For | Read |
 |---|---|
-| `PORT` | Listen on another port, e.g. `PORT=8080 python3 start.py` |
-| `DEJAVU_ALLOWED_HOSTS` | Extra names it answers to, comma-separated, such as your tunnel's domain, say |
-| `DEJAVU_MOONRAKER_LOG` | `1` prints every exchange with a real printer, for debugging a first connection |
-| `DEJAVU_WATCH_ONLY` | `1` keeps watch-only mode on for this start: no command reaches a real printer, only reads, the camera and emergency stop |
-| `DEJAVU_SLICER_PATH` | Where OrcaSlicer is, for the optional auto-print pipeline |
-| `DEJAVU_DATA_DIR` | Keep settings and files in another folder instead of `backend/data/` |
-| `DEJAVU_WINDOW` | `browser`, `window` or `none`: how the launcher opens the dashboard this time, overriding Settings → Desktop app |
-| `DEJAVU_NO_BROWSER` | `1` makes the launcher open nothing |
+| Installing and first steps | [Getting started](docs/getting-started.md) |
+| Adding a real printer, and what each message means | [Connecting a real printer](docs/real-printer.md) |
+| Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [what to check](docs/beta-testing.md) |
+| What ran where, with dates | [What has been tested](docs/testing.md) |
+| Slicing, plates and engines | [Slicing and models](docs/slicing-and-models.md), [engine support](docs/engine-support.md) |
+| Reaching it away from home | [Remote access](docs/remote-access.md), [low-latency camera](docs/low-latency-camera.md), [AR preview](docs/ar-preview.md) |
+| Keeping a copy of your data | [Backup and recovery](docs/backup-and-recovery.md) |
+| The hardware modules | [Hardware modules](docs/hardware-modules.md) |
+| How the code fits together | [Architecture](docs/architecture.md), [releasing](docs/releasing.md) |
+| Every version | [CHANGELOG.md](CHANGELOG.md) |
 
-Everything the dashboard saves lives in `backend/data/` as plain JSON and
-files: module switches, the printer list (up to 12 printers added by
-address, in `fleet.json`), maintenance logs, the file library, settings and
-paired devices. It's created on first use and never committed. To change a
-printer's address or API key, remove it and add it again. **The test suite
-writes to that folder**, so copy it somewhere safe before running the tests
-on a computer that manages real printers.
-
-## The public page
-
-`wrangler.jsonc` publishes the `frontend` folder to Cloudflare as a plain
-website, with no Python server behind it. Its front page is `welcome.html`,
-the product page: real screenshots from the simulated farm, what's in the
-dashboard, what is and isn't verified yet, and how to run it. (The page
-asks for its own API, gets the "404 Not Found" a static host gives, and
-hands over.)
-
-**The online demo** is the dashboard itself on that same site, at
-[`/?demo`](https://deja-vu1.jmath1110.workers.dev/?demo) (the product
-page's **Try the demo** buttons go there). With no server to ask, the
-dashboard plays a recording instead:
-
-- `tools/online-demo/record.py` runs the real server with the simulated
-  farm in a throwaway folder, turns every module on, adds the sample files,
-  asks every GET route for each of the three printers, then records the
-  live feed once a second for 150 seconds, firing a filament jam halfway.
-  It saves `frontend/demo/recording.json` (about 1.3 MB, about 60 KB
-  compressed) plus the sample files.
-- In the browser, `app.js` notices there's no server, loads the recording
-  and answers the page's own `/api` requests from it, looping the live
-  feed. The digital twin moves, the jam reaches **Needs you**, files open
-  in 2D and 3D, and the mixed-nozzle planner and Photo Studio calculate
-  in the browser (the planner's maths has a browser copy that a test keeps
-  identical to the server's). Anything that would change a printer or a
-  setting answers, in words, that this is a recording.
-- It never runs where a Deja Vu1 server answers, so a real install never
-  shows recorded figures. `tests/test_online_demo.py` fails when a new
-  route isn't in the recording: re-run the recorder (about 3 minutes) and
-  commit `frontend/demo/`.
-
-Running locally nothing changes, and a local server that is down still
-shows "Could not reach the backend". `/?dashboard` also skips the hand-over.
-
-## Roadmap
-
-**With the sponsored U1 (shipped 29 October 2026):**
-
-1. Connect to a real U1 and work through [the list of things only a real
-   machine can confirm](docs/real-printer.md#what-cannot-be-checked-without-the-printer)
-   (the Details panel shows every exchange). In order: watch only (live readings
-   against the U1's own screen, reconnects); read back the fitted nozzles and
-   loaded filaments; one small known-safe print through pre-flight and Confirm
-   Print; then pause, resume, cancel, error recovery and queue handoff. Each stage
-   goes into [Current status](#current-status) with what was seen.
-2. Confirm maintenance thresholds against how the machine actually wears.
-3. Build the LED rings, print the dock brackets, wire the WS2812 chain,
-   implement the driver (or wire up WLED instead).
-4. Build the colour checker: test the TCS34725 and AS7341 side by side on
-   real spools, print the sensor blocks for the rear filament inlets,
-   implement the sensor read and calibration, and check the readings
-   against Snapmaker RFID spools, whose colours the printer reports.
-5. Feed the sensor into Confirm Print. It already refuses a print whose
-   file doesn't match the colour the printer reports; a sensor mismatch
-   starts as a warning with a one-click accept until tests show the sensor
-   is accurate.
-6. Open the converter's output in Snapmaker Orca to confirm it, and test
-   the Cloudflare Tunnel setup end to end.
-7. Run the auto-print pipeline against a real OrcaSlicer install, open a
-   Photo-to-Print Studio 3MF in Orca to confirm its tool changes, and
-   measure real filaments' transmission distances for the studio.
-
-**Beyond that:**
-
-- Chamber climate control (monitoring is built, read-only).
-- A full macro builder, deliberately waiting for real hardware to test
-  macros against.
-- Try the AR preview on a real Android phone, and the low-latency camera
-  with a real go2rtc install.
-- Package as a proper Moonraker component so it installs alongside Fluidd or
-  Mainsail.
-
-## How to run it
-
-The core dashboard needs Python 3.8 or newer. Slicing and optional camera or
-remote-access tools have separate requirements. For the double-click way, see
-[Install](#install) above, or [getting started](docs/getting-started.md) for
-every step with pictures of what to expect.
-
-From a terminal:
+## For developers
 
 ```bash
 git clone https://github.com/Jbyjre/Deja_VU1.git
@@ -1325,139 +273,17 @@ cd Deja_VU1
 python3 start.py          # opens http://localhost:8000
 ```
 
-The window prints the address to open from a phone on the same Wi-Fi.
+Run the tests with `python3 -m unittest discover tests` (about 11 to 15 minutes; they use simulated
+printers and a temporary data folder). Every change also shows in the online demo, which is the
+same `frontend/` folder playing back a recording: a new or changed route needs
+`python3 tools/online-demo/record.py`. Every merge to `main` publishes a release, and the pull
+request title becomes its note. [CONTRIBUTING.md](CONTRIBUTING.md) has the house rules;
+[CLAUDE.md](CLAUDE.md) and `.claude/rules/` are the working notes for AI coding sessions.
 
-**Staying up to date:** you only download once. In **Settings → App updates**
-choose **Newest builds**, then **Check for updates** and **Install update &
-restart** (or switch on automatic checks and installs). Only changed files are
-fetched, each is checked against GitHub's record of it, your data is never
-touched, and a safety copy is made first. Start the app with its double-click
-launcher (or `python3 start.py`) for in-app installs; a `git clone` copy gets an
-**Update with git** button instead.
-
-**Slicing:** the slicing settings (106 of Orca's process settings, the profile
-editor, the plate editor) are part of Deja Vu1. Turning a model into G-code
-uses a slicing engine you install yourself, Snapmaker Orca or OrcaSlicer; Deja
-Vu1 finds either in its usual place, or you enter its path once in
-**Files → Auto-print**. Without one, everything else (G-code files from your
-slicer, checks, printing, the twin) still works.
-
-The dashboard will report that no printer is connected and show empty panels.
-To connect one: **Printers → Add a printer → Find printers on my network**
-(it asks the network, then tries Moonraker's port 7125 on your home
-network, and checks each one), or type its Moonraker address (usually
-`http://<printer-ip>:7125`) and press **Test** first. See
-[docs/real-printer.md](docs/real-printer.md).
-Or flip the **Demo data** switch in the header to fill it with the simulated
-print history. On a phone, press **Connect your phone** on the Overview and
-scan the code, or type the **From a phone** address printed in the launcher.
-
-With demo data on, a quick tour of the newer parts: **Printers** to switch
-between the three simulated printers; **Files → Add sample files**, open
-one, then **Print…** to see the Confirm Print check (the "unsafe example"
-file is refused on purpose); **Automations** to build a rule and watch it
-fire; and **Settings → Demo controls** to fast-forward a print to
-its finish, or to make the next Pause fail and see how that is reported.
-
-(GitHub Actions runs every test on Python 3.8, 3.10, 3.12 and 3.13.)
-
-**Opened the pages without the server?** The public site serves `frontend/`
-without Python. Its home page explains the download; **Try demo** plays a
-recording of simulated printers. Browser-only tools such as local model preview
-and Photo Studio can still run, but this public site cannot control a printer,
-install an app update or save files into your computer's dashboard library.
-The first-run tour explains that distinction. If the recording cannot load,
-server-dependent panels show a connection message.
-
-To see the maintenance module on its own, printed to the terminal:
-
-```bash
-python3 backend/maintenance.py
-```
-
-The two hardware modules have console simulations too:
-
-```bash
-python3 backend/led_status.py
-python3 backend/color_check.py
-```
-
-Stop app/demo servers before the full suite:
-
-```bash
-python3 -m unittest discover tests          # all 904; allow 8 to 13 minutes
-python3 -m unittest tests.test_api          # one file
-```
-
-Tests use simulated printers, temporary fixtures and local fake-Moonraker servers;
-they do not contact a physical printer. The dashboard keeps its data in `backend/data/` unless `DEJAVU_DATA_DIR` names another folder. With no printer added, the dashboard contacts none either, and
-shows simulated figures only while **Demo data** is on. Add one by address
-and the dashboard connects to it; `DEJAVU_MOONRAKER_LOG=1 python3
-backend/app.py` prints every exchange with it.
-
-## For developers and AI coding sessions
-
-> **Rule for every AI (and person) editing this project: every change must
-> also be reflected in the online demo.** The demo at
-> [`/?demo`](https://deja-vu1.jmath1110.workers.dev/?demo) is the same
-> `frontend/` folder playing back a recording of the server's answers
-> (`frontend/demo/recording.json`). A change to screens, wording or behaviour
-> in `frontend/` reaches the demo by itself, but check it there: serve
-> `frontend/` with any static server and open `/?demo`. A new or changed
-> server route, or a change to what a route returns, is not in the recording
-> until you re-run `python3 tools/online-demo/record.py` and commit
-> `frontend/demo/`; `tests/test_online_demo.py` catches a missing route. If a
-> feature cannot work in a recording (for example it changes a printer), the
-> demo must say so in words rather than fail silently.
-
-**Publishing a version:** raise `VERSION`, add the version's entry at the top
-of `frontend/versions.json` (name, summary, highlights for its tour, changes)
-and a `## <version> (<date>): <name>` heading in `CHANGELOG.md`, then merge to
-`main`. `.github/workflows/release.yml` runs the tests, builds
-`deja-vu1-update.zip` and publishes the GitHub release with notes made from that
-same entry. `tests/test_versions.py` fails if the four disagree. Details:
-[docs/releasing.md](docs/releasing.md).
-
-[CLAUDE.md](CLAUDE.md) is the working context: the commands, a map of
-every file and what it owns, the rules the code depends on (no invented
-figures, demo data never reaching a real printer, server-enforced module
-switches, escaping, the host check), the pitfalls that have cost time
-before, and the known open issues. Claude Code reads it automatically at the
-start of a session in this repository; it's written to be useful to a
-person too. [docs/architecture.md](docs/architecture.md) is the long
-version.
-
-## Documentation
-
-- [Model preparation and engine setup](docs/slicing-and-models.md)
-- [Current engine, browser and performance evidence](docs/slicer-workspace-validation.md)
-- [App-data backup and isolated recovery](docs/backup-and-recovery.md)
-- [Current forty-point audit](docs/launch-round-three-checklist.md)
-- [CLAUDE.md](CLAUDE.md): working context for developers and AI coding
-  sessions (commands, file map, rules, pitfalls, known open issues)
-- [docs/beta-testing.md](docs/beta-testing.md): trying it on your own U1, with what to
-  check first and what to send back
-- [CHANGELOG.md](CHANGELOG.md): what changed in every version, newest first
-- [CREDITS.md](CREDITS.md): what Deja Vu1 talks to, ships and builds on, with each licence
-- [docs/releasing.md](docs/releasing.md): how a version is published and what the updater checks
-- [docs/getting-started.md](docs/getting-started.md): from download to your U1 on screen,
-  without typing commands
-- [docs/real-printer.md](docs/real-printer.md): connecting a real printer, with what was
-  checked against Moonraker's and Snapmaker's source, what can't be without
-  the machine, and what the first run will tell you
-- [docs/first-connection.md](docs/first-connection.md): for U1 owners, how to
-  help run Deja Vu1's first real connection (watch-only) and how to sign up
-- [docs/architecture.md](docs/architecture.md): how the pieces fit together
-- [docs/hardware-modules.md](docs/hardware-modules.md): parts lists, wiring,
-  and the non-invasive design constraint
-- [docs/remote-access.md](docs/remote-access.md): reaching the dashboard
-  away from home with a Cloudflare Tunnel, safely
-- [docs/ar-preview.md](docs/ar-preview.md): "View on your desk", where AR
-  works and what was and wasn't tested
-- [docs/low-latency-camera.md](docs/low-latency-camera.md): the optional
-  WebRTC camera through go2rtc (an extra program you install)
-- [tools/readme-images/README.md](tools/readme-images/README.md): where every
-  picture in this README comes from, and how to make it again
+Settings for one start, as environment variables: `PORT` (default 8000), `DEJAVU_DATA_DIR`
+(default `backend/data/`), `DEJAVU_ALLOWED_HOSTS` (extra host names, such as a tunnel's domain),
+`DEJAVU_WATCH_ONLY=1`, `DEJAVU_MOONRAKER_LOG=1` (print every exchange with a printer),
+`DEJAVU_SLICER_PATH`, `DEJAVU_WINDOW=browser|window|none` and `DEJAVU_NO_BROWSER=1`.
 
 ## License
 

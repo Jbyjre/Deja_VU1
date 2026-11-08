@@ -1076,7 +1076,7 @@ async function loadConnection() {
  * does) and says so in one line, instead of an empty box or an offer of
  * demo data that can't run. Demo data is switched off, not hidden: the
  * simulated printers live on the server too. */
-const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#how-to-run-it';
+const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#install';
 const BROWSER_ONLY = '[data-browser-only], [data-module-off], #sb-off, #ap-off, #demo-tools-card, #file-detail';
 
 function needsServerNote(what) {
