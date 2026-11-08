@@ -312,7 +312,7 @@ class TestConnecting(WireTest):
         self.assertTrue(any(e["method"] == "printer.objects.subscribe" for e in diag["log"]))
 
     def test_the_name_set_on_the_printer_is_shown(self):
-        # The owner renamed the U1 on the printer and the dashboard kept showing the typed name.
+        # A U1 renamed on the printer and the dashboard kept showing the typed name.
         self.wait_connected()
         self.assertEqual(self.printer.snapshot()["printer_name"], "Test U1")    # no system_info: typed name
         self.fake.device_name = "Workbench U1"

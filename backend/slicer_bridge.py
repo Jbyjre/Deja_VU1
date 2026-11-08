@@ -999,7 +999,7 @@ def _profile_facts(profile):
 
 
 def _receipt(job, trace):
-    """Everything about one slice: a report a helper can read without asking the owner a single question."""
+    """Everything about one slice: a report a helper can read without asking the user a single question."""
     stage = trace.get("stage")
     settings = get_settings()
     path, source = slicer_path(settings)

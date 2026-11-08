@@ -1,5 +1,5 @@
 // Renders the README explainer boards and the link-preview card from the HTML
-// in this folder. The 24 campaign cards moved to the owner's private repository. Needs Playwright with a Chromium (not a dependency of
+// in this folder. The 24 campaign cards moved to the maintainer's private repository. Needs Playwright with a Chromium (not a dependency of
 // Deja Vu1 itself). Run from the repository root:
 //   node tools/readme-images/render.js
 // Writes PNGs into tools/readme-images/out/; resize and copy them as

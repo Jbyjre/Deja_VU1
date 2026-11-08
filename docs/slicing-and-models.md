@@ -31,7 +31,7 @@ never enters the automatic queue handoff.
 No engine, engine presets or Linux libraries are bundled or downloaded by the
 app. Use an independently installed Orca-compatible program with U1 presets.
 The current verified specialised Linux build identifies itself as
-**Snapmaker_Orca 02.08.01.55**. The owner's delivery report identifies the exact
+**Snapmaker_Orca 02.08.01.55**. A private delivery report identifies the exact
 release and source. Stock OrcaSlicer 2.4.2 remains a shared-height route; its
 historical successful slices do not prove per-head support. The builds and systems that
 have been run for real are listed in [engine support](engine-support.md).

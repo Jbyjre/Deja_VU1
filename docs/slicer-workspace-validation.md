@@ -2,13 +2,15 @@
 
 Baseline: clean current main `9efb807` (merged PR #44). This record separates real
 engine output, file calculations, browser checks, simulated/fake printers and
-physical measurements. No physical U1 or real phone was available.
+physical measurements. The workspace rounds ran in a cloud sandbox with no
+printer or phone attached. Testing on a real U1 since then is recorded in
+[testing.md](testing.md).
 
 ## Engine output
 
 A separately installed Linux build identifies itself as **Snapmaker_Orca
 02.08.01.55**. Its downloaded release and exact studied commits/licences are in
-the owner's private chat report. Preset JSON data matched the release's preset
+a private research report. Preset JSON data matched the release's preset
 tree; only its README differed. No engine code, assets or presets are distributed
 in this MIT application. Linux test libraries were isolated under `/tmp`.
 
@@ -134,8 +136,9 @@ need a final pass; no public deployment or stable update package is claimed.
 
 Remaining software limits: complete texture/subdivided-paint semantics, arbitrary
 vendor per-part fidelity, edited AR geometry, simultaneous multi-plate editing,
-feeder control and geographic terrain/full CAD. Physical U1, real phone,
-Windows/macOS engine/recovery and measured colour accuracy remain unverified.
+feeder control and geographic terrain/full CAD. Real-phone frame timing,
+Windows/macOS engine runs and recovery launchers, and measured colour accuracy
+remain unverified.
 
 Evidence: [engine output](evidence/round-three-engine-output.json),
 [renderer](evidence/round-three-performance-final.json),

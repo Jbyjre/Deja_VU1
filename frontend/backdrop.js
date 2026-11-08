@@ -20,7 +20,7 @@
  * on the hour, a burst when a print finishes, and two secrets typed on the
  * keyboard. New surprises go in SURPRISES below.
  *
- * Every dot is one colour (the owner, October 2026: a print-progress fill
+ * Every dot is one colour (a print-progress fill
  * in the filament's colours read as a stray orange line over black). It is
  * the colour set's own colour unless "Dot colour" in the picker sets another.
  *

@@ -1,13 +1,14 @@
 # Contributing
 
-Thanks for looking. Bug reports from real U1s are the most valuable thing
-anyone can send - see [docs/beta-testing.md](docs/beta-testing.md).
+Thanks for looking. Reports from your own U1 help most: Deja Vu1 has been
+tested on one real U1, and yours is on another network with other filaments
+([docs/beta-testing.md](docs/beta-testing.md)).
 
 ## Running it
 
 ```bash
 python3 backend/app.py                 # http://localhost:8000
-python3 -m unittest discover tests     # the whole suite: 8 to 13 minutes, depending on the computer
+python3 -m unittest discover tests     # the whole suite: about 11 to 15 minutes
 ```
 
 Python 3.8 or newer, nothing else. Flip **Demo data** in the header to try
@@ -29,9 +30,10 @@ very good reason.
   firmware, Orca or another service is read from its source or docs, with
   the commit noted, and tested against a stand-in built from that source.
   If something couldn't be checked, the docs say so.
-- **Ideas, not code, from GPL projects.** This project is MIT. Borrowing an
-  idea from a GPL or non-commercial project is fine - credit it - but write
-  the code fresh.
+- **Ideas, not code, from GPL projects.** This project is MIT. Studying how
+  a GPL or non-commercial project works is fine; write the code fresh and
+  never paste theirs. [CREDITS.md](CREDITS.md) lists what Deja Vu1 talks to
+  and ships.
 - **Plain words.** Errors say what happened and what to do, in the
   dashboard's own voice.
 - **Accessible.** Real buttons and form controls, visible focus, 24 px or
@@ -44,14 +46,17 @@ very good reason.
 2. Run the suite; it should pass.
 3. For anything on screen, try it at desktop width and at phone width
    (390 px), with demo data on and off.
-4. Add a line to [CHANGELOG.md](CHANGELOG.md) under *Unreleased*.
+4. Title the pull request with what a U1 owner can now do. Every merge to
+   `main` publishes a release, and the title becomes its release note
+   ([docs/releasing.md](docs/releasing.md)).
 5. GitHub runs the whole suite on Python 3.8, 3.10, 3.12 and 3.13 for every
    pull request (`.github/workflows/tests.yml`).
 
 ## Good places to help
 
-- Reports from a real Snapmaker U1: what Moonraker sends, what the
+- Reports from your Snapmaker U1: what Moonraker sends, what the
   dashboard got right and wrong ([docs/first-connection.md](docs/first-connection.md)).
+  Other firmware versions and the Extended Firmware are the most useful.
 - Drivers for the LED dock rings and the colour sensor, once the hardware
   exists ([docs/hardware-modules.md](docs/hardware-modules.md)).
 - Maintenance intervals backed by Snapmaker's documentation or measured

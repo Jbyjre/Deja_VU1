@@ -36,7 +36,7 @@ FAKE_ORCA = textwrap.dedent('''\
     mode = os.environ.get("FAKE_ORCA_MODE", "ok")
     args = sys.argv[1:]
     if mode in ("windows_console", "windows_console_no_file"):
-        # The Windows build, as one owner's engine report showed it: the help goes to a console window, so the
+        # The Windows build, as a user's engine report showed it: the help goes to a console window, so the
         # pipe holds only start-up log lines and the program exits 0. The settings file is still written.
         sys.stdout.write("sentry_init returned: 0\\r\\nsentry_init succeeded, init_success set to true\\r\\n"
                          "Starting Sentry session and setting flags...\\r\\n"

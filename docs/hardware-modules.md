@@ -1,8 +1,9 @@
 # Hardware modules - LED dock rings and colour checker
 
-This document covers the two modules that need physical parts. Both are
-unbuilt, and no parts have been bought yet. This is the design they will be
-built to.
+This document covers the two modules that need parts of their own. Neither
+is built yet. The colour checker comes first: its sensor and board are chosen
+and get a bench test before anything goes near the printer. This is the design
+both will be built to.
 
 ## The constraint that shapes both designs
 
@@ -205,9 +206,8 @@ Two reasons for this spot. White PTFE tube between the sensor and the
 filament would change every reading. And the rear inlets stay still while
 the toolheads move, so the sensor and its wire don't travel.
 
-This is reasoning still to be tested on a real U1. The rear-inlet layout
-comes from community designs only; it needs checking against the machine
-before any housing is printed.
+The rear-inlet layout comes from community designs. It gets measured on the
+real U1 before any housing is printed.
 
 ### How it behaves
 
@@ -227,8 +227,7 @@ with the file. This is the planned behaviour:
   printer with one tap, so you stop typing colours on the printer's screen.
   This uses the existing set-filament command
   (`MoonrakerPrinter.set_filament()` in `backend/moonraker_client.py`, which
-  sends `SET_PRINT_FILAMENT_CONFIG` and reads the result back). That command
-  has never run on a real U1.
+  sends `SET_PRINT_FILAMENT_CONFIG` and reads the result back).
 
 ### How the comparison works
 
@@ -312,11 +311,12 @@ read", the one-tap colour offer) is planned and not written yet.
 
 ## What is needed to finish both
 
-Access to a physical Snapmaker U1. Every design decision above is made
-against the published spec, photos of the machine and community designs:
-dock geometry, the rear filament inlets, mounting points and filament path
-clearances all need confirming against the real thing before anything gets
-built.
+Deja Vu1 now has a real Snapmaker U1 to build against (sponsored by
+Snapmaker). The design decisions above were made from the published spec,
+photos of the machine and community designs. The dock geometry, the rear
+filament inlets, the mounting points and the filament path clearances get
+measured on that U1 before anything is printed or wired, and nothing is wired
+into the printer itself.
 
 For the sensor read and the LED write, the arrival of the hardware changes
 four functions and nothing else. The colour checker's planned behaviour

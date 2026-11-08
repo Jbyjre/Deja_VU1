@@ -1,12 +1,12 @@
 # Round-two delivery checklist
 
 This records implementation and evidence, not a claim of physical-printer readiness.
-Private per-project research records belong only in the owner's chat report.
+Private per-project research records are kept privately, outside this repository.
 
 1. Read working rules, prior follow-through, model guide and current status: done.
 2. Locate the three requested skills: unavailable; their stated intent applied.
 3. Keep standard-library Python/plain JS and existing security model: done.
-4. Study all twenty official winners: seventeen studied; three website links skipped at the owner's instruction. Exact private records supplied in chat.
+4. Study all twenty official winners: seventeen studied; three website links skipped by choice. Exact records are kept privately.
 5. Independently implement; copy no winner source/assets/wording: done.
 6. Review engine alternatives/licence from primary sources: separate local Orca chosen; no working browser slicing build verified; no custom basic slicer shipped.
 7. Persist four physical tools, colours, materials, nozzles and spool identities: done; hardware unverified.

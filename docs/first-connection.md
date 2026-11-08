@@ -1,22 +1,16 @@
-# First connection: help Deja Vu1 meet a real U1
+# Try Deja Vu1 on your own U1
 
-Deja Vu1 has never talked to a physical Snapmaker U1. Its printer connection
-was written against Snapmaker's published `u1-klipper` and `u1-moonraker`
-source and tested against a stand-in built from that source, over real network
-connections ([real-printer.md](real-printer.md) has the details). Reading the
-source already turned up about a dozen things that would each have been a bug
-on a first real connection. The first real connection is where anything the source
-doesn't show will turn up, and this page is how to help find it.
+Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware: adding the printer, live
+readings and the 3D twin, starting prints through Confirm Print, pausing and cancelling, the camera
+and time-lapses, and the Printer page controls ([what was tested](testing.md)). Snapmaker sponsored
+that printer through the Innovation Fund.
 
-Snapmaker shipped a U1 to the maintainer on 29 October 2026 through the
-Innovation Fund's hardware sponsorship, so the first connection will run on that
-printer. A session on your U1 still helps: a second printer, on another network
-and with other filaments, catches things one printer can't.
+One printer can't show everything. A session on your U1, on another network and with other
+filaments, finds what ours can't. This page is how to run one.
 
 ## What it involves
 
-- **About 30 to 45 minutes**, on a video call with the maintainer or on your
-  own, sending what you saw afterwards.
+- **About 30 to 45 minutes** on your own, then you send what you saw.
 - **Watch-only.** Watch a print you're already running, with Deja Vu1 in
   **watch-only mode**: its server then refuses every command to the printer
   (pause, resume, cancel, temperatures, home, G-code, start, uploads), so
@@ -31,13 +25,11 @@ the like) until someone presses a control.
 
 Deja Vu1 has no login: anyone who can reach port 8000 on that computer can use
 its controls. Keep it on your home network for the session (see
-[security](../README.md#security-and-your-network)).
+[security](../SECURITY.md)).
 
 ## Before you start
 
-- A computer on the same network as the U1, with Python 3.8 or newer (the
-  tests pass on 3.8, 3.10, 3.12 and 3.13 in GitHub Actions). It hasn't been confirmed on Windows yet; if that's
-  what you have, say so when you sign up.
+- A computer on the same network as the U1 (Windows, macOS or Linux) with Python 3.8 or newer.
 - The printer's address: the same one Fluidd or Mainsail uses, usually
   `http://<printer-ip>:7125`.
 - Which firmware the U1 runs (stock or the community Extended Firmware), and
@@ -101,11 +93,9 @@ its controls. Keep it on your home network for the session (see
 
 ## Sign up
 
-[Open a "First connection" issue](https://github.com/Jbyjre/Deja_VU1/issues/new?title=First+connection%3A+I+have+a+U1&body=%2A%2AFirmware+on+my+U1%3A%2A%2A+stock+%2F+Extended+Firmware+%28version%2C+if+known%3A+%29%0A%2A%2AComputer+that+will+run+Deja+Vu1%3A%2A%2A+macOS+%2F+Linux+%2F+Windows%0A%2A%2ASession%3A%2A%2A+on+a+video+call+with+the+maintainer+%2F+on+my+own%2C+sending+the+log+afterwards%0A%2A%2AOK+to+record+the+screen+%28network+addresses+blurred%29%3F%2A%2A+yes+%2F+no%0A%2A%2AThank+me+by+name+in+the+release+notes%3F%2A%2A+yes%2C+as%3A+%2F+no%0A)
-on GitHub. The questions are filled in already; you need a free GitHub
-account. Screen recordings happen only with your permission, with network
-addresses blurred.
+[Open a "First connection" issue](https://github.com/Jbyjre/Deja_VU1/issues/new?title=First+connection%3A+I+have+a+U1&body=%2A%2AFirmware+on+my+U1%3A%2A%2A+stock+%2F+Extended+Firmware+%28version%2C+if+known%3A+%29%0A%2A%2AComputer+that+will+run+Deja+Vu1%3A%2A%2A+macOS+%2F+Linux+%2F+Windows%0A%2A%2AThank+me+by+name+in+the+release+notes%3F%2A%2A+yes%2C+as%3A+%2F+no%0A)
+on GitHub. The questions are filled in already; you need a free GitHub account. Keep personal
+details out of the issue; send logs only after reading them (see above).
 
-Whatever breaks gets fixed in the open, and the README's
-[Current status](../README.md#current-status) is updated to say exactly what
+Whatever breaks gets fixed in the open, and [testing.md](testing.md) is updated to say exactly what
 was tested, and on which firmware.

@@ -10,6 +10,11 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.3 (6 November 2026): Updates install while a print runs, connections recover faster, and Settings...
+
+- Updates install while a print runs, connections recover faster, and Settings lists only the optional extras
+- Glass is the default look again, the sidebar shows what is happening, Check slicer reads Windows builds of Snapmaker Orca, and the plate has keyboard commands
+
 **7 November 2026, the Glass look, a sidebar that shows what is happening, and Check slicer on Windows.**
 Glass (frosted panels and the moving background) is the look a new copy opens in; a look you chose yourself
 stays as you chose it, and Preferences → Appearance → Look still offers Workbench and Control room. The
@@ -49,30 +54,7 @@ with six rows (Slicing, the low-latency camera, Dock status rings, the WLED brid
 colour check); the camera, time-lapses and Continue on another device switch in their own cards, the print cost
 prices moved into the Print cost card, and every other part of Deja Vu1 is always on (a copy that had switched one
 off gets it back once). Checked with unit tests, a stand-in printer and the real launcher on Linux (a real
-download, restart and health check took 7 seconds); not tried on Windows, macOS or a real U1. These ride along
-with the next release.
-
-**27 October 2026, internal folders moved.** `marketing-library/`, `promo-video/`
-and `build-prompts/` moved to the owner's private repository. Removing them from
-this repository's history is still to do. When it happens, every commit ID
-changes, the six release tags move to the matching new commits with every file
-outside those folders unchanged, and the release downloads stay as they are.
-Copies installed with git or GitHub Desktop before then will need a one-time
-step: see [the README](README.md#installed-with-git-or-github-desktop-before-the-history-rewrite).
-The same change brought the colour checker design in
-[`docs/hardware-modules.md`](docs/hardware-modules.md) up to date. Neither is a
-release; both ride along with the next one.
-
-**27 October 2026, launch film version 18.** The product page and the README now
-show a 75-second film (version 18) in place of the 60-second version 17. It tells
-the same story with no new information, at a calmer pace: the music slower, each
-caption on screen longer, fewer things moving at once, and the scenes filmed again
-from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
-run passed on 27 October 2026). Not a release.
-
-## 0.20.3 (6 November 2026): Updates install while a print runs, connections recover faster, and Settings...
-
-- Updates install while a print runs, connections recover faster, and Settings lists only the optional extras
+download, restart and health check took 7 seconds); not tried on Windows, macOS or a real U1.
 
 ## 0.20.2 (6 November 2026): Check slicer says which engine builds have been run, and a changed engine wai...
 
@@ -427,6 +409,23 @@ Not yet tried on a physical U1: the new movement, extrude, tuning, macro, bed me
   sent compressed when the browser accepts it: the two-Benchy preview drops from
   842 KB to 271 KB. File names wrap after `_`, `-` and `.` instead of mid-word,
   and search fits its placeholder.
+
+**27 October 2026, internal folders moved.** `marketing-library/`, `promo-video/`
+and `build-prompts/` moved to the owner's private repository. Removing them from
+this repository's history is still to do. When it happens, every commit ID
+changes, the six release tags move to the matching new commits with every file
+outside those folders unchanged, and the release downloads stay as they are.
+Copies installed with git or GitHub Desktop before then will need a one-time
+step: see [getting started](docs/getting-started.md#installed-with-git-or-github-desktop-before-the-history-rewrite).
+The same change brought the colour checker design in
+[`docs/hardware-modules.md`](docs/hardware-modules.md) up to date.
+
+**27 October 2026, launch film version 18.** The product page and the README now
+show a 75-second film (version 18) in place of the 60-second version 17. It tells
+the same story with no new information, at a calmer pace: the music slower, each
+caption on screen longer, fewer things moving at once, and the scenes filmed again
+from the 0.12.0 app with slower cursor moves. It shows 920 automated tests (a full
+run passed on 27 October 2026).
 
 ## 0.12.0 (27 October 2026): one thing at a time
 

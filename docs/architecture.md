@@ -541,7 +541,8 @@ program path set from the dashboard must be named like Orca (this
 dashboard has no login); `DEJAVU_SLICER_PATH` set by whoever starts the
 server overrides it. Portable tests use a stand-in program. Real OrcaSlicer 2.4.2 on Linux now
 slices bracket, multi-object, four-tool image, swatch and heightmap projects.
-Physical U1 printing and Windows/macOS remain unverified.
+Printing on a real U1 is tested ([testing.md](testing.md)); engine runs on Windows and macOS are not
+recorded yet.
 
 `backend/slicer_profiles.py` discovers installed U1 presets and resolves parent
 settings with cycle/size bounds. Native profiles retain printer/tool identity,
@@ -893,7 +894,8 @@ stock JPEG endpoint, bounds response size and closes idle sessions. The gateway
 returns a labelled SVG for demo mode, and the normal no-data response without
 a connected printer or demo. Time-lapse requests that printer’s camera in a
 bounded worker, rejects stale-session replies and records failures. The optional
-manual MJPEG relay remains a separate configured source. Physical cameras are unverified.
+manual MJPEG relay remains a separate configured source. The camera and time-lapses have been used on a
+real U1 with stock firmware.
 
 `frontend/launchpad.js` provides setup, browser-only names, feature navigation
 and app update UI. The name never enters an API payload. `frontend/sw.js` caches

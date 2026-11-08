@@ -1,5 +1,5 @@
 """
-The U1's two doors (the owner, 2 November 2026: the printer's own web page,
+The U1's two doors (reported 2 November 2026: the printer's own web page,
 opened from Deja Vu1, "worked smoothly"). Moonraker answers on its own port,
 7125, and through the printer's web server on port 80, the door that web page
 uses. Deja Vu1 tries the other door by itself when one doesn't

@@ -419,7 +419,7 @@ footer p { max-width: 70ch; }
       <ul class="ways">
         <li class="way"><b>Try it here</b><span>The online demo runs in this browser, playing a recording of three simulated printers. Nothing to install.</span><a href="./?demo">Open the demo</a></li>
         <li class="way"><b>A browser tab</b><span>Run Deja Vu1 on your Windows, Mac or Linux computer, or a Raspberry Pi, and open <code>localhost:8000</code>.</span><a href="#run">How to run it</a></li>
-        <li class="way is-new"><b>Its own window</b><span>Install it as an app from Chrome or Edge, or let the launcher open an app window with no tabs or address bar.</span><a href="https://github.com/Jbyjre/Deja_VU1#the-desktop-app">The desktop app</a></li>
+        <li class="way is-new"><b>Its own window</b><span>Install it as an app from Chrome or Edge, or let the launcher open an app window with no tabs or address bar.</span><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md#in-its-own-window-the-desktop-app">The desktop app</a></li>
         <li class="way"><b>Your phone at home</b><span>On the same Wi-Fi, open the address the launcher prints. Add it to your home screen.</span><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/getting-started.md#on-my-phone-at-home">Phone steps</a></li>
         <li class="way"><b>Your phone away</b><span>Through a private Tailscale connection, or a Cloudflare tunnel protected by Access.</span><a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/remote-access.md">Remote access</a></li>
       </ul>
@@ -519,7 +519,7 @@ footer p { max-width: 70ch; }
 
       <figure class="shot glass overview-shot">
         <img src="img/overview.jpg" width="1440" height="900" loading="lazy"
-             alt="The Deja Vu1 Overview: a 'Needs you' list ranking a dock error, a paused print and overdue maintenance across three printers, print totals, and a status bar showing the running print's progress and the time it will finish.">
+             alt="The Deja Vu1 Overview with the sidebar: a 'Needs you' list ranking a dock error, a paused print and overdue maintenance across three printers, then the selected printer's progress, finish time and camera.">
       </figure>
       <p class="caption">The Overview with the built-in demo printers (Demo data). The figures in these pictures are demo data.</p>
 
@@ -545,13 +545,14 @@ footer p { max-width: 70ch; }
   <section class="band" id="honest" aria-labelledby="honest-title">
     <div class="wrap">
       <p class="eyebrow">How it's checked</p>
-      <h2 id="honest-title">Built from the source, checked by machine.</h2>
-      <p class="intro">You should know exactly what you're running. The repository has the details.</p>
+      <h2 id="honest-title">Tested on a real U1, checked by machine.</h2>
+      <p class="intro">You should know exactly what you're running. The repository lists what was tested, where and when.</p>
       <div class="truth truth-one">
         <div class="yes">
           <h3><i aria-hidden="true"></i>Checked</h3>
           <ul>
-            <li>The printer connection was written from the Moonraker, Klipper and U1 source code Snapmaker publishes, and tested against a stand-in Moonraker built from that source, over real network connections.</li>
+            <li>Tested on a real Snapmaker U1 with its stock firmware: adding the printer, live readings and the 3D twin, starting prints through Confirm Print, pausing and cancelling, the camera and time-lapses, and the Printer page controls.</li>
+            <li>The printer connection follows the Moonraker, Klipper and U1 source code Snapmaker publishes. A stand-in Moonraker built from that source tests it on every release, over real network connections.</li>
             <li>Automated tests run with nothing but Python; see the repository for current results.</li>
             <li>Workspace checks passed in Chromium at 1366 and 390 pixels: editing, profiles, actual slicing, preview and Confirm Print entry.</li>
             <li>Different physical-head heights were verified in actual Linux engine output. Backup recovery and its generated Linux launcher were exercised.</li>

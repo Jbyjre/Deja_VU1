@@ -67,7 +67,7 @@ class InstallBlocks(unittest.TestCase):
 
     def test_blocks_start_the_app_and_never_touch_saved_data(self):
         blocks = markdown_blocks('README.md')
-        # Started apart from the window, so closing PowerShell doesn't stop it (the owner, 1 November 2026).
+        # Started apart from the window, so closing PowerShell doesn't stop it.
         self.assertIn('start.py --background', blocks['powershell'])
         self.assertIn('python3 start.py', blocks['bash'])
         self.assertIn('chmod +x', blocks['bash'])          # the double-click launchers stay runnable

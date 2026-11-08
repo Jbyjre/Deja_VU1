@@ -1076,7 +1076,7 @@ async function loadConnection() {
  * does) and says so in one line, instead of an empty box or an offer of
  * demo data that can't run. Demo data is switched off, not hidden: the
  * simulated printers live on the server too. */
-const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#how-to-run-it';
+const RUN_IT_URL = 'https://github.com/Jbyjre/Deja_VU1#install';
 const BROWSER_ONLY = '[data-browser-only], [data-module-off], #sb-off, #ap-off, #demo-tools-card, #file-detail';
 
 function needsServerNote(what) {
@@ -1697,7 +1697,7 @@ function renderControlTab(state) {
   pauseResume.onclick = () => controlAction(state.state === 'paused' ? 'resume' : 'pause', pauseResume);
   if (cancel.dataset.phase !== 'sending' && cancel.disabled !== !running) cancel.disabled = !running;
   cancel.onclick = () => confirmCancel(cancel);
-  // Idle offers what comes next instead of two greyed-out buttons (the owner: idle must never look down).
+  // Idle offers what comes next instead of two greyed-out buttons (idle must never look down).
   showIdleActions([pauseResume, cancel], $('pp-go-print'), running || lost || state.state === 'error');
 
   const busy = state.state === 'printing' || state.state === 'paused';

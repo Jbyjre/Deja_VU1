@@ -266,14 +266,13 @@ to start.
    ```
 
    The same blocks are in **Settings → Version & updates → Update or repair with a
-   command**. The Windows block has not been run on a Windows computer yet; the
-   Mac and Linux block was tested on Linux.
+   command**.
 3. **GitHub Desktop copies:** **Fetch origin**, then **Pull origin**, then start
    the launcher again. If it says you changed files, read the list; **Discard
    changes** is usually right. Your settings live in `backend/data/`, which git
    never lists. Once the project's history has been rewritten (the CHANGELOG
-   gives the date), a copy cloned before then follows the one-time steps in the
-   README ([installed with git or GitHub Desktop before the history rewrite](../README.md#installed-with-git-or-github-desktop-before-the-history-rewrite))
+   gives the date), a copy cloned before then follows the one-time steps
+   [below](#installed-with-git-or-github-desktop-before-the-history-rewrite)
    instead of pulling.
 
 **Look after this copy** in the same card can also **Restart** the dashboard,
@@ -313,11 +312,54 @@ If that window still shows a problem, paste the update block above: it also
 repairs a copy, putting fresh app files in place. Your settings, printers and
 files stay.
 
-## What has not been proved yet
+## Installed with git or GitHub Desktop before the history rewrite?
 
-The Linux launcher, disposable update/rollback processes and git-copy updates
-(against real git repositories on Linux) have automated checks. Installing the
-desktop app in a real Chrome or Edge window, the launcher's app window on Windows
-or macOS, the Windows update block and an update between two published releases have not been tried yet. Windows/macOS double-click launching, a real U1, real iPhone/Android
-installation, home firewalls and remote access still need device testing. An
-emulated phone-sized browser is useful for layout, but does not prove those.
+The internal marketing and planning folders moved to a private repository on
+27 October 2026. The project's history on GitHub is still to be rewritten so
+the old saved versions don't carry them either; the CHANGELOG will give the
+date. Until then, git and GitHub Desktop copies update as usual.
+
+After the rewrite, every saved version (commit) has a new ID, so a copy made
+with git or GitHub Desktop before it can't update the usual way. **Settings →
+Version & updates** says "This copy has its own commits", and GitHub Desktop
+offers to pull and push at the same time. Don't pull or push there: that would
+merge the old history back into your copy.
+
+Copies installed from the ZIP or with the one-paste blocks are not affected.
+
+Do this once. Your settings, printers and files in `backend/data/` stay put.
+
+**If git works in a terminal** (Mac, Linux, or Windows with Git installed),
+close Deja Vu1, open PowerShell or Terminal in your `Deja_VU1` folder and run:
+
+```text
+git fetch origin
+git reset --keep origin/main
+```
+
+`git reset --keep` moves your copy onto the new history. It removes the moved
+folders, leaves `backend/data/` alone, and stops without changing anything if
+it would overwrite a file you edited by hand. Then start the launcher again.
+
+**With GitHub Desktop only:**
+
+1. Close Deja Vu1.
+2. Copy the `data` folder from `backend/` in your `Deja_VU1` folder to a safe
+   place, such as your desktop.
+3. In GitHub Desktop choose **Repository → Remove** and tick the box that also
+   moves the folder to the Recycle Bin (Trash on a Mac).
+4. Choose **File → Clone repository**, pick `Jbyjre/Deja_VU1` and clone it to
+   the same place.
+5. Copy your saved `data` folder back into `backend/` in the new folder.
+6. Start the launcher.
+
+The terminal steps were tested on Linux against a rehearsal of the rewrite.
+The GitHub Desktop steps have not been tried on Windows or macOS.
+
+## What has been tested
+
+Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware, from a
+Windows computer. Every release also runs the automated suite on Linux, with
+the launcher, updates, rollback and git-copy updates exercised against real
+processes and real git repositories. Not tried yet: macOS. The dated record of
+what ran where is [testing.md](testing.md).

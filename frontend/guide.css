@@ -25,7 +25,7 @@
 .orb-dock > * { pointer-events: auto; }
 
 /* The orb is one translucent glass sphere, tinted all over by --orb-tint
-   (the owner, October 2026: no dot in the middle). A message changes the
+   (no dot in the middle). A message changes the
    whole sphere's colour; it stays see-through. Registered so the colour
    glides instead of jumping; browsers without @property simply switch. */
 @property --orb-tint { syntax: '<color>'; inherits: true; initial-value: #4a8df8; }

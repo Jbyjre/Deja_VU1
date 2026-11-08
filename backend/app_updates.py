@@ -751,7 +751,7 @@ def automatic_check():
     """
     One automatic check, if one is due: the newest builds (and git copies, which
     follow main) every 15 minutes, releases every hour. Off until
-    the owner opts in. Returns the result when a check ran.
+    the user opts in. Returns the result when a check ran.
     """
     s = settings()
     if not s['automatic']:
@@ -770,7 +770,7 @@ def automatic_check():
 def watch(install, stop=None, tick=60, first_wait=45):
     """
     For the server's lifetime: run automatic checks as they fall due and, if
-    the owner chose it, install a ready update through `install` (a print
+    the user chose it, install a ready update through `install` (a print
     never stops it: the printer runs its file by itself; a refusal is tried again next round).
     """
     stop = stop or threading.Event()
