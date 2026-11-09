@@ -35,6 +35,7 @@ import maintenance              # noqa: E402
 import mock_moonraker           # noqa: E402
 import moonraker_client as mc   # noqa: E402
 import modules                  # noqa: E402
+import print_preview            # noqa: E402
 import print_queue              # noqa: E402
 import sample_files             # noqa: E402
 import stock_camera             # noqa: E402
@@ -524,6 +525,57 @@ class TestPrinting(RealPrinterAPI):
         self.assertFalse(finished[0]["demo"])
         left = next(s for s in filament_inventory.get_inventory() if s["id"] == spool["id"])
         self.assertEqual(left["grams_remaining"], 490.0)
+
+
+class TestPrintPreviewFromThePrinter(RealPrinterAPI):
+    """The twin draws a real print from the printer's own copy of the file, with or without its index card."""
+
+    WALL = "G90\nM83\nT0\nG1 Z0.2 F600\n;TYPE:Outer wall\nG1 X50 Y50 F3600\nG1 X60 Y50 E1\nG1 X60 Y60 E1\n"
+
+    def preview(self):
+        status, body = self.request(f"/api/print/preview?printer={self.pid}")
+        self.assertEqual(status, 200, body)
+        return body
+
+    def test_the_layers_load_while_the_printer_has_no_metadata_for_the_file(self):
+        # Moonraker reads a big file's metadata after it arrives; the print can start before that is done.
+        self.fake.files["shoe.gcode"] = self.WALL.encode()
+        self.assertNotIn("shoe.gcode", self.fake.metadata)
+        self.fake.begin_print("shoe.gcode")
+        self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot()["state"] == "printing"))
+        body = self.preview()
+        self.assertEqual(body["file"], "shoe.gcode")
+        self.assertEqual(len(body["layers"]), 1)
+        self.assertTrue(body["timeline"]["extrusion"])
+        self.assertNotIn("reason", body)
+
+    def test_the_layers_load_with_the_metadata_too(self):
+        self.fake.files["shoe.gcode"] = self.WALL.encode()
+        self.fake.metadata["shoe.gcode"] = {"size": len(self.WALL), "modified": 1_700_000_000.0}
+        self.fake.begin_print("shoe.gcode")
+        self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot()["state"] == "printing"))
+        self.assertEqual(self.preview()["source"], f"printer:{self.pid}")
+
+    def test_a_file_the_printer_cannot_hand_over_says_why_and_when_to_ask_again(self):
+        self.fake.begin_print("missing.gcode")          # on the printer's screen, but not downloadable
+        self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot()["state"] == "printing"))
+        body = self.preview()
+        self.assertEqual(body["file"], "missing.gcode")
+        self.assertIn("could not be read", body["reason"])
+        self.assertEqual(body["retry_s"], print_preview.RETRY_SECONDS)
+
+    def test_the_printers_own_word_on_extruding_reaches_the_twin(self):
+        self.printing()
+        for velocity, expect in ((4.2, True), (0.0, False), (-3.0, False)):
+            self.fake.set("motion_report", live_extruder_velocity=velocity)
+            self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot()["sync"]["extruding"] is expect),
+                            (velocity, mock_moonraker.real_printer(self.pid).snapshot().get("sync")))
+
+    def test_without_that_field_the_twin_is_told_nothing(self):
+        self.printing()
+        self.fake.status["motion_report"].pop("live_extruder_velocity", None)
+        self.fake.set("motion_report", live_velocity=0.0)
+        self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot().get("sync") is not None))
 
 
 if __name__ == "__main__":

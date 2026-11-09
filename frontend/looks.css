@@ -199,7 +199,7 @@
    take less room in every look; text sizes do not change, and no control drops below 32 px tall. ---- */
 html[data-density="compact"]:not(#dv) .card { padding: 14px 16px; margin-bottom: 12px; }
 html[data-density="compact"]:not(#dv) .card-head { margin-bottom: 10px; gap: 8px 12px; }
-html[data-density="compact"]:not(#dv) .grid-2 { gap: 12px; }
+html[data-density="compact"]:not(#dv) :is(.grid-2, .flow-run) { gap: 12px; }
 html[data-density="compact"]:not(#dv) .rail { padding: 6px; gap: 0; }
 html[data-density="compact"]:not(#dv) .rail-item { min-height: 32px; padding-top: 4px; padding-bottom: 4px; }
 html[data-density="compact"]:not(#dv) .rail-group { margin-top: 8px; }

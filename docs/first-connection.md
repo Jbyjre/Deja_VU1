@@ -69,8 +69,10 @@ its controls. Keep it on your home network for the session (see
    mode is off), then, while nothing is printing, press **Printer → Home all**
    and watch the 3D twin. Its head should travel with the printer's head, at about the
    same pace (it trails by about a third of a second), and stop where the
-   printer stops. Until the printer has homed, the twin card says "not homed,
-   position unknown".
+   printer stops. Until the printer has homed, the twin card says "Not homed"
+   and shows the head where Deja Vu1 last saw it, or "position unknown" if this
+   browser has never seen it homed. The card shows no position Klipper made up.
+   The tag on the working head says "printing", "paused" or "on carriage".
 8. Open **Details** on the printer's row. It shows whether the link is open,
    Klipper's state, which toolheads and chamber sensor were found, how much
    print history was read, and the newest 14 exchanges with Moonraker.

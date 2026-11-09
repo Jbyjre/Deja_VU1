@@ -780,7 +780,9 @@ const Workshop = (() => {
       const d = { case: 'closed', print: true, rest: true, tags: true, spin: false };
       try { const o = JSON.parse(localStorage.getItem('dejavu1.twin-view') || '{}'); return { ...d, ...(o && typeof o === 'object' ? o : {}) }; } catch (e) { return d; }
     })(),
-    printKey: null, printNote: '',
+    printKey: null, printNote: null, printTries: 0, printRetry: 0,
+    // How well the head's place is known: exact (homed), last (drawn where it was last seen), unknown.
+    posKind: 'exact', seen: null,
   };
   const BUCKETS = ['grid', 'env', 'frame', 'trail', 'hid', 'part-hid', 'vis', 'part', 'head', 'fault',
     'skip', 'sel-hid', 'sel', 'dim', 'axis'];
@@ -977,14 +979,31 @@ const Workshop = (() => {
     const key = on ? `${state.printer_id}|${state.current_file}` : '';
     if (key === twin.printKey) return;
     twin.printKey = key;
-    if (!key) { if (twin.model) twin.model.setPrint(null); return; }
+    clearTimeout(twin.printRetry);
+    if (!key) { twin.printNote = null; twin.printTries = 0; if (twin.model) twin.model.setPrint(null); return; }
+    twin.printNote = { text: 'Reading the file’s layers from the printer…', kind: 'ok' };
+    // A read that failed may work in a moment (the printer was busy, or still reading a big file):
+    // ask again after 5 s, then a little longer each time, never more than a minute apart.
+    const retry = secs => {
+      const wait = Math.min(60, Math.max(3, secs || 5) * Math.pow(1.6, Math.min(twin.printTries++, 6)));
+      clearTimeout(twin.printRetry);
+      twin.printRetry = setTimeout(() => { if (twin.printKey === key) { twin.printKey = null; syncTwinPrint(twin.state); } }, wait * 1000);
+    };
     try {
       const data = await getJSON(api('/api/print/preview'));
       if (twin.printKey !== key || !twin.model) return;
-      twin.model.setPrint(data && data.file === state.current_file && data.layers ? data : null);
-      twin.printNote = data && (data.reason || data.note) || '';
+      const ok = data && data.file === state.current_file && data.layers;
+      twin.model.setPrint(ok ? data : null);
+      if (ok) { twin.printNote = data.note ? { text: data.note, kind: 'warn' } : null; twin.printTries = 0; }
+      else {
+        const why = String((data && (data.reason || data.error)) || 'the printer has not sent it yet').replace(/[.\s]+$/, '');
+        twin.printNote = { text: `Showing the objects’ outlines, not the print itself: ${why}.${data && data.retry_s ? ' Trying again.' : ''}`, kind: 'warn' };
+        if (data && data.retry_s) retry(data.retry_s);
+      }
     } catch (e) {
-      if (twin.printKey === key) { twin.printKey = ''; twin.printNote = ''; }
+      if (twin.printKey !== key) return;
+      twin.printNote = { text: 'Showing the objects’ outlines, not the print itself: the file’s layers could not be loaded. Trying again.', kind: 'warn' };
+      retry(5);
     }
   }
 
@@ -1098,7 +1117,7 @@ const Workshop = (() => {
       if (twin.model) {
         // The drawing itself happens a frame later and takes `cost`: count the gap from its end.
         twin.drawnAt = performance.now() + cost;
-        twin.model.update(twin.state, twin.pos);
+        twin.model.update(twin.state, twin.pos, { pos: twin.posKind });
         renderChips();
         const sync = twin.model.syncInfo();
         renderSync(sync);
@@ -1110,11 +1129,19 @@ const Workshop = (() => {
 
   /* One line under the twin: is it in step with the printer? Updated twice a second. */
   function renderSync(sync) {
-    const el = $('twin-sync');
-    if (!el || (performance.now() - (twin.syncAt || 0) < 500 && !!sync === !el.hidden)) return;
+    const el = $('twin-sync'), note = twin.printNote;
+    if (!el || (performance.now() - (twin.syncAt || 0) < 500 && !!(sync || note) === !el.hidden)) return;
     twin.syncAt = performance.now();
-    el.hidden = !sync;
-    if (!sync) return;
+    el.hidden = !(sync || note);
+    if (!sync) {
+      // Not following a file: say why the print isn't drawn from its layers (loading, or the reason it can't be).
+      if (note) {
+        el.dataset.kind = note.kind;
+        const t = $('twin-sync-text');
+        if (t.textContent !== note.text) t.textContent = note.text;
+      }
+      return;
+    }
     const clock = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
     const where = `${clock(sync.play)} of ${clock(sync.total)} into the file`;
     let kind = 'ok', text;
@@ -1583,8 +1610,12 @@ const Workshop = (() => {
     // Non-breaking spaces inside each reading, so a narrow card wraps
     // between readings ("Z 33.20 mm") and never inside one.
     const nb = ' ';
-    setText($('twin-readout'), `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${z.toFixed(2)}${nb}mm` +
-      (active ? ` · ${active}${nb}active` : '') + (layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
+    // The printer's own numbers only once it has homed: before that Klipper reports a position it made up.
+    const where = twin.posKind === 'exact' ? `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${twin.zKnown ? z.toFixed(2) + nb + 'mm' : 'not homed'}`
+      : twin.posKind === 'last' ? 'Not homed · drawn where it was last seen' : 'Not homed · position unknown';
+    const running = state.state === 'printing' || state.state === 'paused';
+    setText($('twin-readout'), where + (active ? ` · ${active}${nb}active` : '') +
+      (running && layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
     // A real printer that hasn't homed doesn't know where its head is, and a dropped link
     // means the drawing shows the last reading: both said in words, never drawn as live.
     const unhomed = typeof state.homed_axes === 'string' && state.homed_axes.length < 3;
@@ -1608,13 +1639,50 @@ const Workshop = (() => {
     const lo = Array.isArray(m.min_mm) && m.min_mm.length === 3 ? m.min_mm : [0, 0, 0];
     const hi = Array.isArray(m.max_mm) && m.max_mm.length === 3 ? m.max_mm : [270, 270, 270];
     const homed = typeof state.homed_axes === 'string' ? state.homed_axes : 'xyz';
-    const held = twin.held || (twin.held = [null, null, null]);
-    return raw.map((v, i) => {
+    const pid = state.printer_id || '';
+    // Not homed, the printer doesn't know where its head is, and nor does Klipper. The head is drawn where it
+    // was last really seen (kept in this browser per printer, so a reload doesn't throw it to the middle of
+    // the bed); only a printer never seen homed gets a placeholder, and the tag says so.
+    if (!twin.held) {
+      const last = lastSeenHead(pid);
+      twin.held = last ? last.slice() : [null, null, null];
+      twin.seen = last ? [true, true, true] : [false, false, false];
+    }
+    const held = twin.held, seen = twin.seen;
+    let exact = true;
+    const out = raw.map((v, i) => {
       const ok = homed.includes('xyz'[i]) && Number.isFinite(v);
-      if (ok) held[i] = Math.min(hi[i], Math.max(lo[i], v));
-      else if (held[i] == null) held[i] = i === 2 ? hi[i] / 2 : (lo[i] + hi[i]) / 2;
+      if (ok) { held[i] = Math.min(hi[i], Math.max(lo[i], v)); seen[i] = true; }
+      else {
+        exact = false;
+        if (held[i] == null) held[i] = i === 2 ? hi[i] / 2 : (lo[i] + hi[i]) / 2;
+      }
       return held[i];
     });
+    // The head's place on the bed needs X and Y; Z (the bed's height) homes last and is only a number.
+    const flat = homed.includes('x') && homed.includes('y') && Number.isFinite(raw[0]) && Number.isFinite(raw[1]);
+    twin.posKind = flat ? 'exact' : seen[0] && seen[1] ? 'last' : 'unknown';
+    twin.zKnown = exact;
+    if (flat) rememberHead(pid, out);
+    return out;
+  }
+  const HEAD_KEY = 'dejavu1.twin-last-head';
+  function lastSeenHead(pid) {
+    try {
+      const v = (JSON.parse(localStorage.getItem(HEAD_KEY) || '{}') || {})[pid];
+      return Array.isArray(v) && v.length === 3 && v.every(Number.isFinite) ? v : null;
+    } catch (e) { return null; }
+  }
+  function rememberHead(pid, pos) {
+    if (!pid || performance.now() - (twin.headSavedAt || 0) < 3000) return;
+    twin.headSavedAt = performance.now();
+    try {
+      const all = JSON.parse(localStorage.getItem(HEAD_KEY) || '{}') || {};
+      all[pid] = pos.map(v => Math.round(v * 10) / 10);
+      const ids = Object.keys(all);
+      if (ids.length > 24) delete all[ids[0]];
+      localStorage.setItem(HEAD_KEY, JSON.stringify(all));
+    } catch (e) { /* not remembered */ }
   }
 
   /* Print health: one animated dial. */

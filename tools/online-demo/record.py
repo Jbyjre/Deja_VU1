@@ -49,7 +49,7 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 "/api/camera/snapshot", "/api/app/info", "/api/remote"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
-            "/api/colours/plan": "name"}
+            "/api/colours/plan": "name", "/api/print/preview": "file"}
 # Parameters that don't change the answer, so they aren't part of the key.
 IGNORED = {"demo", "since", "v", "t", "_", "device"}
 # Routes the dashboard asks with set parameters, and each set it uses.

@@ -282,6 +282,16 @@ async function tourGet(url) {
       return tourReply(body, tour.rec.bodies[base].status);
     }
   }
+  if (path === '/api/print/preview') {
+    // The layers of whatever file is on the plate here: a print started in the demo is drawn from its own
+    // G-code, like the recorded one, not from the recording's.
+    const file = tourState(printer).current_file;
+    if (!file) return tourReply({ file: null, reason: 'Nothing is printing' });
+    const hit = tour.rec.get[tourKey(path, new URLSearchParams({ printer, file }))];
+    if (hit === undefined) return tourReply({ file, reason: `the online demo holds no copy of ${file}` });
+    const { status, body } = await tourBody(hit);
+    return tourReply(body, status);
+  }
   if (path === '/api/live/events') return tourReply({ events: tourEvents(+(q.get('since') || 0)) });
   if (path === '/api/files/raw') return realFetch(`demo/files/${encodeURIComponent(q.get('name') || '')}`);
   if (path === '/api/files/thumb') return realFetch(`demo/thumbs/${encodeURIComponent(q.get('name') || '')}.png`);
@@ -367,6 +377,7 @@ function tourState(pid) {
     const th = st.toolheads && st.toolheads[st.active_toolhead];
     if (th) { th.status = 'active'; th.target_temperature = th.target_temperature || 220; }
     st.bed_target = 60;
+    if (sim.bedTarget != null) st.bed_target = sim.bedTarget;
     if (progress >= 1 && !sim.finishedLogged) { sim.finishedLogged = true; tourLog(pid, `// Print finished: ${sim.file} (online demo)`); }
   } else if (sim.mode === 'paused') {
     Object.assign(st, { state: 'paused', state_message: 'Paused from the online demo' });
@@ -375,6 +386,7 @@ function tourState(pid) {
     Object.assign(st, { state: 'ready', state_message: sim.message || 'Ready', current_file: null, progress: 0, active_toolhead: null,
       layer: { current: 0, total: 0 }, print_duration_hours: 0 });
     delete st.objects;
+    if (sim.parked) st.toolhead_position = sim.parked.slice();
     Object.entries(st.toolheads || {}).forEach(([name, h]) => { if (h.status === 'active') h.status = 'docked'; if (!sim.targets || !(name in sim.targets)) h.target_temperature = 0; });
   } else if (sim.excluded && st.objects) {
     st.objects.excluded = [...new Set([...(st.objects.excluded || []), ...sim.excluded])];
@@ -421,7 +433,11 @@ async function tourControl(action, pid, body) {
   }
   if (action === 'cancel') {
     if (!['printing', 'paused'].includes(live.state)) return tourReply({ error: `Nothing to cancel: the printer is ${live.state}` }, 409);
-    Object.assign(sim, { mode: 'ready', frozen: null, file: null, message: 'Print cancelled from the online demo' });
+    // Cancel parks the head just above where it was, as the printer's own cancel does, instead of letting it
+    // carry on along the recorded print.
+    const at = live.toolhead_position || [135, 135, 0];
+    Object.assign(sim, { mode: 'ready', frozen: null, file: null, message: 'Print cancelled from the online demo',
+      parked: [at[0], at[1], Math.min(270, (at[2] || 0) + 10)] });
     tourLog(pid, 'CANCEL_PRINT'); tourLog(pid, '// Print cancelled (online demo)');
     return tourDone(pid);
   }
@@ -443,7 +459,7 @@ async function tourControl(action, pid, body) {
   if (action === 'temperature') {
     const th = String(body.toolhead || ''), target = Number(body.target);
     if (!(target >= 0 && target <= (th === 'bed' ? 110 : 300))) return tourReply({ error: 'Target must be between 0 and 300 °C (bed 110 °C)' }, 400);
-    if (th === 'bed') { tourLog(pid, `M140 S${target}`); return tourDone(pid); }
+    if (th === 'bed') { sim.bedTarget = target; tourLog(pid, `M140 S${target}`); return tourDone(pid); }
     if (!live.toolheads || !live.toolheads[th]) return tourReply({ error: `No toolhead ${th}` }, 400);
     sim.targets = { ...(sim.targets || {}) };
     Object.keys(sim.targets).forEach(k => { sim.tempFrom[k] = live.toolheads[k].temperature; });
@@ -472,7 +488,10 @@ async function tourControl(action, pid, body) {
     tourLog(pid, 'ok (online demo: nothing was sent to a printer)');
     return tourDone(pid);
   }
-  if (action === 'home') { tourLog(pid, `G28 ${(body.axes || ['X', 'Y', 'Z']).join(' ')}`); tourLog(pid, '// Homed (online demo)'); return tourDone(pid); }
+  if (action === 'home') {
+    if (['printing', 'paused'].includes(live.state)) return tourReply({ error: 'Not while a print is running or paused - it would drive the head through the print' }, 400);
+    tourLog(pid, `G28 ${(body.axes || ['X', 'Y', 'Z']).join(' ')}`); tourLog(pid, '// Homed (online demo)'); return tourDone(pid);
+  }
   if (action === 'gcode') {
     const cmd = String(body.command || '').trim().slice(0, 200);
     if (!cmd) return tourReply({ error: 'Type a command first' }, 400);
@@ -495,6 +514,44 @@ async function tourControl(action, pid, body) {
     return tourDone(pid);
   }
   return null;
+}
+/* The fleet bar (Printers): Pause, Resume, Home, Preheat and Cancel on every ticked printer, each one the
+ * same simulated command as on its own Printer page, with the same words the real answer uses. */
+async function tourBroadcast(body) {
+  const action = String(body.action || ''), ids = Array.isArray(body.printers) ? body.printers.map(String) : [];
+  const params = body.params || {};
+  if (!['preheat', 'pause', 'resume', 'cancel', 'home'].includes(action)) return tourReply({ error: `Unknown action: ${action}` }, 400);
+  if (!ids.length) return tourReply({ error: 'No printers to send it to' }, 400);
+  const started = performance.now(), results = [];
+  for (const pid of ids) {
+    const name = (tourState(pid) || {}).printer_name || pid;
+    let calls = [[action, action === 'home' ? { axes: ['X', 'Y', 'Z'] } : {}]];
+    if (action === 'preheat') {
+      const heads = Object.keys((tourState(pid) || {}).toolheads || {});
+      const want = params.toolheads === 'all' ? heads : (Array.isArray(params.toolheads) ? params.toolheads : ['T0']);
+      calls = want.map(th => ['temperature', { toolhead: th, target: Number(params.nozzle) }]).concat([['temperature', { toolhead: 'bed', target: Number(params.bed) }]]);
+    }
+    const row = { id: pid, name, ok: true, kind: 'done' };
+    for (const [a, b] of calls) {
+      const res = await tourControl(a, pid, b);
+      const out = res ? await res.clone().json().catch(() => ({})) : {};
+      if (!res || res.status >= 400) { Object.assign(row, { ok: false, kind: 'refused', error: out.error || TOUR_REFUSED }); break; }
+    }
+    if (row.ok) {
+      row.confirmed_state = tourState(pid);
+      if (action === 'preheat') {
+        const st = row.confirmed_state, shown = calls.filter(c => c[1].toolhead !== 'bed').map(c => `${c[1].toolhead} ${Number(c[1].target).toFixed(0)}°C`);
+        row.detail = 'Targets now ' + shown.concat([`bed ${Number(st.bed_target || params.bed || 0).toFixed(0)}°C`]).join(', ');
+      }
+    }
+    results.push(row);
+  }
+  const ok = results.filter(r => r.ok), failed = results.filter(r => !r.ok), word = action[0].toUpperCase() + action.slice(1);
+  const headline = !failed.length ? `${word}: all ${ok.length} printer(s) confirmed`
+    : !ok.length ? `${word}: none of the ${failed.length} printer(s) did it`
+      : `${word}: ${ok.length} of ${results.length} confirmed; failed on ${failed.map(r => r.name).join(', ')}`;
+  return tourReply({ action, results, ok_count: ok.length, failed_count: failed.length, all_ok: !failed.length, headline,
+    ms: Math.round((performance.now() - started) * 10) / 10, online_demo: true });
 }
 function tourConvert(body) {
   const name = String(body.name || '');
@@ -523,6 +580,11 @@ async function tourPost(url, body) {
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
   }
   if (url.pathname === '/api/convert') return tourConvert(parsed);
+  if (url.pathname === '/api/fleet/broadcast') {
+    const answer = await tourBroadcast(parsed);
+    if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50);
+    return answer;
+  }
   if (url.pathname === '/api/queue/bed-clear') {
     tour.sim.bedClear[pid] = parsed.job_key;
     return tourReply({ bed: { state: 'clear' }, printer: pid, items: [], auto_advance: false, connected: true, demo: true });

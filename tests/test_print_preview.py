@@ -44,6 +44,37 @@ class TestBuild(unittest.TestCase):
             self.assertEqual(objs_high, {above}, tool)
         self.assertLess(p["points"], print_preview.MAX_WALL_POINTS + print_preview.MAX_FILL_POINTS)
 
+    def test_the_timeline_says_when_the_nozzle_lays_plastic(self):
+        # A wall (10 mm at 60 mm/s: 1/6 s), a travel of 10 mm, then a second wall: two stretches of extrusion.
+        text = "\n".join(["G90", "M83", "T0", "G1 Z0.2 F600", ";TYPE:Outer wall", "G1 X10 Y10 F3600",
+                          "G1 X20 Y10 E1", "G1 X30 Y10", "G1 X40 Y10 E1", ""])
+        runs = print_preview.build(text)["timeline"]["extrusion"]
+        self.assertEqual(len(runs), 4)
+        gap1, run1, gap2, run2 = runs
+        self.assertAlmostEqual(run1, 167, delta=2)
+        self.assertAlmostEqual(gap2, 167, delta=2)       # the travel in between
+        self.assertAlmostEqual(run2, 167, delta=2)
+        self.assertGreaterEqual(gap1, 0)
+
+    def test_extrusion_of_every_feature_counts_not_only_the_drawn_walls(self):
+        text = "\n".join(["G90", "M83", "G1 Z0.2", ";TYPE:Outer wall", "G1 X10 Y10 F3600", "G1 X20 Y10 E1",
+                          ";TYPE:Sparse infill", "G1 X30 Y10 E1", ""])
+        walls = print_preview.build(text)
+        self.assertEqual(len(walls["tools"]["T0"]["walls"]), 1)        # the infill isn't drawn...
+        self.assertEqual(walls["tools"]["T0"]["fill"], [])
+        self.assertAlmostEqual(walls["timeline"]["extrusion"][1], 333, delta=3)   # ...but it is extruding: joined
+
+    def test_a_very_long_print_keeps_the_extrusion_list_small(self):
+        lines = ["G90", "M83", "G1 Z0.2", ";TYPE:Outer wall", "G1 X0 Y0 F6000"]
+        for i in range(print_preview.MAX_EXTRUSION_RUNS + 500):
+            lines += [f"G1 X{(i % 2) * 10 + 5} Y0 E1", f"G1 X{(i % 2) * 10 + 5} Y{(i + 1) * 0.001:.3f}"]
+        runs = print_preview.build("\n".join(lines))["timeline"]["extrusion"]
+        self.assertLessEqual(len(runs) // 2, print_preview.MAX_EXTRUSION_RUNS)
+
+    def test_lines_are_read_one_at_a_time_exactly_as_split_gives_them(self):
+        for text in ("", "a", "a\n", "a\n\nb", "\n\n", "é\nb\n"):
+            self.assertEqual(list(print_preview._iter_lines(text)), text.split("\n"), repr(text))
+
     def test_walls_stay_on_the_boats(self):
         p = print_preview.build(sample_files.two_colour_benchy_pair_gcode())
         for tool in p["tools"].values():

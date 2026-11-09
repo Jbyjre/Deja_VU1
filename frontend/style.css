@@ -506,6 +506,11 @@ body {
 .grid-2 .card { margin-bottom: 0; }
 .col-stack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .grid-2 .col-stack > .card { margin-bottom: 0; }
+/* layout.js joins grids that follow each other into one run, so the cards of the next grid fill the space
+   under a short card instead of starting below its tall neighbour. */
+.flow-run { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.flow-run > .grid-2 { display: contents; }
+.flow-run .card { margin-bottom: 0; }
 .pair-card { display: flex; align-items: center; justify-content: space-between; gap: 16px 24px; flex-wrap: wrap; }
 
 /* ---- empty states ----------------------------------------------------- */
@@ -1271,6 +1276,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 
 @media (max-width: 880px) {
   .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .flow-run { grid-template-columns: minmax(0, 1fr); }
   .grid-2 .card { margin-bottom: 20px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .divider-row { grid-template-columns: 1fr 1fr !important; }

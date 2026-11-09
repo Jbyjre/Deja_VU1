@@ -85,7 +85,7 @@ API endpoints
   POST /api/printer/control/gcode        {"command": "G28"}
 
   GET  /api/print/confirm?file=...   the Confirm Print summary (gate)
-  GET  /api/print/preview            the running print's visible walls per toolhead (3D twin)
+  GET  /api/print/preview            the running print's visible walls per toolhead (3D twin); ?file= names a sample on a simulated printer
   GET  /api/insights                 findings from the printer's own print history
   GET  /api/app/memory               safety copies of the dashboard's records; repairs made
   POST /api/app/memory/snapshot      make a safety copy now
@@ -467,7 +467,7 @@ _DATA_ROUTES = {
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
     "/api/print/confirm": (None, lambda q: print_gate.summary(_q(q, "file"))),
-    "/api/print/preview": (None, lambda q: print_preview.for_current()),
+    "/api/print/preview": (None, lambda q: print_preview.for_current(_q(q, "file", ""))),
     "/api/insights": (None, lambda q: insights.current()),
     "/api/queue": ("print_queue", lambda q: print_queue.get()),
     "/api/timelapse": ("timelapse", lambda q: {
