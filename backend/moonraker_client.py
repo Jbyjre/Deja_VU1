@@ -656,7 +656,7 @@ def print_sync(vsd, gm, mr):
     live_position), in the file's coordinates (less the G-code offset, so
     the per-head offsets of a tool changer don't move it off the path).
     """
-    out = {"file_position": None, "file_size": None, "live": None, "speed_factor": None}
+    out = {"file_position": None, "file_size": None, "live": None, "speed_factor": None, "extruding": None}
     pos, size = _num(vsd.get("file_position")), _num(vsd.get("file_size"))
     if pos is not None and size and 0 <= pos <= size:
         out["file_position"], out["file_size"] = int(pos), int(size)
@@ -670,6 +670,10 @@ def print_sync(vsd, gm, mr):
             out["live"] = [round(vals[i] - (offs[i] or 0.0), 3) for i in range(3)]
     sf = _num(gm.get("speed_factor"))
     out["speed_factor"] = sf if sf and 0 < sf < 20 else None
+    # Filament moving forward right now (motion_report live_extruder_velocity, mm/s); a retraction is negative.
+    ev = _num(mr.get("live_extruder_velocity"))
+    if ev is not None and abs(ev) < 1e4:
+        out["extruding"] = ev > 0.01
     return out
 
 
@@ -1102,7 +1106,7 @@ _BASE_OBJECTS = {
     # Where the nozzle is now (toolhead "position" is the last command,
     # which runs up to a second or two ahead of the motion; Klipper
     # docs/Status_Reference.md). Feeds the 3D twin's G-code sync.
-    "motion_report": ["live_position", "live_velocity"],
+    "motion_report": ["live_position", "live_velocity", "live_extruder_velocity"],
     "heater_bed": ["temperature", "target"],
     "print_task_config": ["filament_exist", "filament_type", "filament_color_rgba", "filament_vendor",
                           "extruder_map_table"],

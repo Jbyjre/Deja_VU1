@@ -33,8 +33,10 @@ import gcode_tools
 WALL_TOLERANCE_MM = 0.04         # a point closer than this to its neighbours' line is dropped
 MAX_WALL_POINTS = 160000
 MAX_FILL_POINTS = 60000
-MAX_FILE_BYTES = 64 * 1024 * 1024
+MAX_FILE_BYTES = 160 * 1024 * 1024
 MAX_TRACK_POINTS = 30000          # nozzle keyframes kept for the twin's G-code sync (up to twice this)
+MAX_EXTRUSION_RUNS = 40000        # stretches of extrusion kept for the twin's nozzle glow
+RETRY_SECONDS = 5                 # how soon the browser should ask again after a read that may work later
 _UNIT = 100                      # coordinates are sent as hundredths of a millimetre
 
 # Orca/Bambu/Snapmaker ("Outer wall"), PrusaSlicer ("External perimeter")
@@ -55,6 +57,42 @@ def _feature_kind(name):
     if any(n.startswith(f) for f in _FILL_FEATURES):
         return "fill"
     return None
+
+
+def _iter_lines(text):
+    """The lines of text one at a time, as split("\\n") gives them, without building the whole list."""
+    start = 0
+    while True:
+        end = text.find("\n", start)
+        if end < 0:
+            yield text[start:]
+            return
+        yield text[start:end]
+        start = end + 1
+
+
+def _extrusion_runs(runs):
+    """
+    Stretches of extrusion as [gap, length, gap, length, ...] in milliseconds, the first gap counted from
+    the start of the file. A very long print merges the short pauses between stretches until the list is
+    small enough to send; the twin only uses it to know when the nozzle is laying plastic.
+    """
+    pause = 0.03
+    while len(runs) > MAX_EXTRUSION_RUNS and pause < 60:
+        pause *= 2
+        merged = []
+        for start, end in runs:
+            if merged and start - merged[-1][1] < pause:
+                merged[-1][1] = end
+            else:
+                merged.append([start, end])
+        runs = merged
+    out, last = [], 0
+    for start, end in runs:
+        s, e = int(round(start * 1000)), int(round(end * 1000))
+        out += [max(0, s - last), max(0, e - s)]
+        last = e
+    return out
 
 
 def _thin(points, tol):
@@ -139,6 +177,7 @@ def build(text):
     track = _Track(MAX_TRACK_POINTS)
     tool_marks = []               # [byte, seconds, tool] at each tool change
     first_extrusion = None
+    runs = []                     # [start s, end s] of each stretch of extruding moves, any feature
     offset = 0                    # bytes of the file before this line
 
     def layer_index(z):
@@ -149,7 +188,7 @@ def build(text):
             layer_z.append(key)
         return idx
 
-    for raw in text.split("\n"):
+    for raw in _iter_lines(text):
         offset += (len(raw) if raw.isascii() else len(raw.encode("utf-8", "surrogateescape"))) + 1
         stripped = raw.strip()
         if not stripped:
@@ -207,6 +246,10 @@ def build(text):
             if extruding and moved:
                 if first_extrusion is None:
                     first_extrusion = t0
+                if runs and t0 - runs[-1][1] < 0.03:
+                    runs[-1][1] = t
+                else:
+                    runs.append([t0, t])
                 kind = _feature_kind(feature)
                 keep = kind if any_tags else "wall"
                 if keep:
@@ -308,7 +351,7 @@ def build(text):
     result["timeline"] = {"bytes": max(0, offset - 1), "seconds": round(t, 2), "track": flat,
                           "keyframes": len(track.rows), "step_s": track.step, "tools": tool_marks,
                           "first_extrusion_s": round(first_extrusion, 2) if first_extrusion is not None else None,
-                          "nominal": True}
+                          "extrusion": _extrusion_runs(runs), "nominal": True}
     return result
 
 
@@ -353,27 +396,44 @@ def _library_text(name):
     return file_library.read_bytes(name).decode("utf-8", "surrogateescape")
 
 
-def for_current():
-    """The preview of whatever the selected printer is printing now."""
+def for_current(file=None):
+    """
+    The preview of whatever the selected printer is printing now.
+
+    A simulated printer may be asked about one of the built-in sample files by name (file=): that is how the
+    online demo's recorder keeps the layers of every sample, so a print a visitor starts there is drawn from
+    its own G-code. A real printer ignores the name: its own file is always the one on its plate.
+    """
     import file_library
     import mock_moonraker
     import sample_files
 
+    printer_id = mock_moonraker.selected_printer_id()
+    if file and not mock_moonraker.is_real(printer_id) and str(file).lower().endswith(".gcode") \
+            and (file in sample_files.SAMPLES or file in sample_files.LEGACY):
+        text = sample_files.build(file).decode("utf-8")
+        return for_file(file, text, "sample", len(text))
     state = mock_moonraker.get_printer_state()
     name = state.get("current_file")
     if not name or state.get("state") not in ("printing", "paused", "complete"):
         return {"file": None, "reason": "Nothing is printing"}
-    printer_id = mock_moonraker.selected_printer_id()
 
     if mock_moonraker.is_real(printer_id):
         try:
-            version = mock_moonraker.gcode_version(name)
             source = f"printer:{printer_id}"
+            try:
+                version = mock_moonraker.gcode_version(name)
+            except (mock_moonraker.PrinterCommandError, ValueError):
+                # The printer hasn't indexed the file (yet): a big file takes a while to read after it
+                # arrives. Its bytes can still be downloaded, so the layers don't wait for the index.
+                version = (None, None)
             with _cache_lock:
                 hit = _cache.get((source, name, version))
             if hit is not None and version != (None, None):
                 return {**hit, "file": name, "source": source}
             data = mock_moonraker.fetch_gcode(name, MAX_FILE_BYTES)
+            if version == (None, None):
+                version = (len(data), None)
             return for_file(name, data.decode("utf-8", "surrogateescape"), source, version)
         except (mock_moonraker.PrinterCommandError, OSError, ValueError) as exc:
             reason = str(exc)
@@ -385,7 +445,9 @@ def for_current():
                            f"not be read ({reason})")
             return out
         except (ValueError, OSError, LookupError):
-            return {"file": name, "reason": f"The printer's copy of {name} could not be read: {reason}"}
+            # The printer may answer in a moment (it was busy, or still reading the file): say when to ask again.
+            return {"file": name, "reason": f"The printer's copy of {name} could not be read: {reason}",
+                    "retry_s": RETRY_SECONDS}
 
     try:
         path = file_library._path(name)

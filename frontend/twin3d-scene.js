@@ -337,6 +337,11 @@ const Twin3DScene = (() => {
       const to = up ? [sx, uy + 34, uz - 77] : [sx, ly + 82, lz + 16];
       dyn(`strand${i}`, tube(geo(), [[fx, 255, up ? 162 : 138], [(fx + sx) / 2, (255 + to[1]) / 2, ((up ? 162 : 138) + to[2]) / 2], to], 0.9, 6, 6));
     });
+    // The molten tip while the nozzle extrudes: a small bright bead and a soft halo round it, in the head's
+    // filament colour. Origin at the nozzle tip, like the head.
+    const ball = (r, z) => Array.from({ length: 11 }, (_, i) => [r * Math.sin(Math.PI * i / 10), z - r * Math.cos(Math.PI * i / 10)]);
+    dyn('bead', lathe(geo(), ball(2.2, 0.8), [0, 0, 0], 'z', 14));
+    dyn('halo', lathe(geo(), ball(10, 1.5), [0, 0, 0], 'z', 20));
     dyn('blob', box(geo(), 80, 80, 0, 190, 190, 1, 0.3));
     return { statics, dynamic, DOOR };
   }

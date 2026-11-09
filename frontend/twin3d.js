@@ -604,7 +604,22 @@ const Twin3D = (() => {
     order.sort((a, c) => pts[a * 4] - pts[c * 4]);
     const P = { T: new Float64Array(m), X: new Float32Array(m), Y: new Float32Array(m), Z: new Float32Array(m) };
     for (let i = 0; i < m; i++) { const o = order[i] * 4; P.T[i] = pts[o]; P.X[i] = pts[o + 1]; P.Y[i] = pts[o + 2]; P.Z[i] = pts[o + 3]; }
-    return { B, T, P, bytes: tl.bytes, seconds: tl.seconds || T[n - 1] };
+    // Stretches of extrusion, sent as [gap, length, gap, length, ...] in milliseconds: when the file has
+    // the nozzle laying plastic (the glow at its tip), as opposed to travelling.
+    let ex = null;
+    if (Array.isArray(tl.extrusion) && tl.extrusion.length >= 2) {
+      const runs = Math.floor(tl.extrusion.length / 2), S = new Float64Array(runs), E = new Float64Array(runs);
+      let at = 0;
+      for (let i = 0; i < runs; i++) { at += tl.extrusion[i * 2]; S[i] = at / 1000; at += tl.extrusion[i * 2 + 1]; E[i] = at / 1000; }
+      ex = { S, E };
+    }
+    return { B, T, P, ex, bytes: tl.bytes, seconds: tl.seconds || T[n - 1] };
+  }
+  // Is the file extruding at time t (seconds)? null when the file's extrusion isn't known.
+  function extrudingAt(tr, t) {
+    if (!tr || !tr.ex) return null;
+    const i = below(tr.ex.S, t);
+    return i >= 0 && t <= tr.ex.E[i];
   }
   // The last index whose value is <= v.
   const below = (arr, v) => { let lo = 0, hi = arr.length - 1; if (hi < 0 || v < arr[0]) return -1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (arr[mid] <= v) lo = mid; else hi = mid - 1; } return lo; };
@@ -671,7 +686,9 @@ const Twin3D = (() => {
     if (follow.prevM != null && !follow.paused) {
       const dw = (now - follow.prevW) / 1000;
       if (dw > 0.15 && dw < 5) {
-        const r = Math.max(0, Math.min(3, (m - follow.prevM) / dw));
+        // A real printer keeps within a few times the file's own pace; a simulated one (the online demo runs
+        // prints at 12x so a visitor sees them move) may go much faster.
+        const r = Math.max(0, Math.min(st.real ? 3 : 20, (m - follow.prevM) / dw));
         follow.rate += 0.3 * (r - follow.rate);
       }
     }
@@ -797,6 +814,9 @@ const Twin3D = (() => {
     // focus: 0 frames the whole machine, 1 the print on the plate (the Print view).
     const cam = { yaw: VIEWS.iso[0], pitch: VIEWS.iso[1], zoom: 1, tx: 0, ty: 0, vyaw: 0, vpitch: 0, focus: 0 };
     let state = null, pos = [135, 135, 0], selected = '', W = 0, H = 0, queued = false, style = 'model', showCase = false;
+    // How well the dashboard knows where the head is: "exact" (homed), "last" (not homed, drawn where it was
+    // last seen) or "unknown" (not homed and never seen). The head's tag says so.
+    let posKind = 'exact';
     // The model's own options: the case closed, see-through or off; the
     // print on the plate (and, faintly, what is still to come); name tags.
     let caseMode = 'closed', showPrint = true, showRest = true, showTags = true;
@@ -976,15 +996,26 @@ const Twin3D = (() => {
           if (showRest && !finished && !skip) add(m.mesh, { ...MAT.ghost, c: colour, a: .1 }, { t: [0, 0, bedTop], clip: [2, bedTop + clipZ], play, rest: true });
         });
       } else if (partsMeshes.length) {
+        // The file's layers aren't known (yet): the objects' outlines stand in, see-through so nobody mistakes
+        // them for the print itself.
         pickNames = partsMeshes.map(p => p.name);
         const excluded = new Set((plate && plate.excluded) || []), h = Math.max(0.6, Math.min(BED, z));
         partsMeshes.forEach((p, i) => {
           const skip = excluded.has(p.name);
-          if (showPrint) add(p.mesh, { c: skip ? lin(.6, .6, .62) : activeColour, r: .55, m: 0, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, skip ? Math.min(h, 2) : h], id: 40 + i, sel: selected === `obj:${p.name}` ? 1 : 0 });
+          if (showPrint) add(p.mesh, { c: skip ? lin(.6, .6, .62) : activeColour, r: .55, m: 0, a: .42, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, skip ? Math.min(h, 2) : h], id: 40 + i, sel: selected === `obj:${p.name}` ? 1 : 0 });
         });
       } else if (printing && showPrint) {
-        add(dyn.blob.mesh, { c: activeColour, r: .55, m: 0, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, Math.max(0.6, Math.min(BED, z))] });
+        add(dyn.blob.mesh, { c: activeColour, r: .55, m: 0, a: .42, kind: 'layers' }, { t: [0, 0, bedTop], s: [1, 1, Math.max(0.6, Math.min(BED, z))] });
       }
+      // Is plastic coming out? The printer's own word when the file isn't being followed (or has left its path),
+      // otherwise the file's: that is the path being drawn. A running print with no word either way counts as laying.
+      let extruding = false;
+      if (st.state === 'printing' && active) {
+        const fileSays = synced && !follow.off ? extrudingAt(follow.track, follow.play) : null;
+        const printerSays = st.sync && typeof st.sync.extruding === 'boolean' ? st.sync.extruding : null;
+        extruding = fileSays !== null ? fileSays : printerSays !== null ? printerSays : true;
+      }
+      const note = st.state === 'printing' ? 'printing' : st.state === 'paused' ? 'paused' : 'on carriage';
       // Heads: parked in their docks, the active one on the carriage.
       labels = [];
       heads.forEach(([name, d], i) => {
@@ -999,6 +1030,12 @@ const Twin3D = (() => {
         add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: 0.9, body });
         add(dyn.nozzle.mesh, MAT.steel, { t, id });
         add(dyn.block.mesh, { c: hot ? lin(.95, .45, .18) : lin(.16, .16, .17), r: .5, m: 0 }, { t, id, glow: hot ? Math.min(0.55, ((d.temperature || 0) - 60) / 300) : 0 });
+        if (on && extruding && !fault) {
+          // Plastic coming out of the nozzle: a bright bead at the tip, warmed from the filament's own colour.
+          const warm = colour.map((v, k) => Math.min(1, v * 0.85 + [0.25, 0.12, 0.03][k]));
+          add(dyn.bead.mesh, { c: warm, r: .3, m: 0 }, { t, glow: 1, rest: true });   // rest: left out of the engineering drawing
+          add(dyn.halo.mesh, { c: warm, r: .5, m: 0, a: .26 }, { t, glow: 0.9, rest: true });
+        }
         // Tube loop: from the top of the head up and back down into the shelf at the back.
         const lk = `${name}|${Math.round(hx)}|${Math.round(hy)}|${tipZ}|${d.filament_color_hex}`;
         if (!loopMeshes[name] || loopMeshes[name].key !== lk) {
@@ -1027,7 +1064,9 @@ const Twin3D = (() => {
         add(lm.clips, MAT.cable, { id, lining: true, loop: true });
         add(lm.stems, MAT.cable, { id, lining: true, loop: true });
         const at = style === 'drawing' ? [hx, hy, tipZ + HEAD.h + 14] : [hx, hy, tipZ + HEAD.h + 24];
-        labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature });
+        // The working head's tag says what it is doing, or how sure the dashboard is of where it is.
+        const say = !on ? '' : posKind === 'unknown' ? 'position unknown' : posKind === 'last' ? 'last known position' : note;
+        labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature, say });
       });
       // Spools on the side hubs, in the loaded colours: T0, T1 left (spools 1 and 2), T2, T3 right (3 and 4),
       // the first of each pair on the upper hub, as Snapmaker numbers them. The filament runs to the feeder.
@@ -1163,7 +1202,7 @@ const Twin3D = (() => {
       const placed = [];
       const list = labels.map(l => ({ ...l, p: project(M.VP, ...l.at) })).sort((a, b) => b.p[1] - a.p[1]);
       list.forEach(l => {
-        const w = l.on ? 104 : 46, h = 22;
+        const w = l.on ? 30 + 7.2 * (l.text.length + (l.say ? 3 + l.say.length : 0)) : 46, h = 22;
         let y = l.p[1];
         for (let tries = 0; tries < 6; tries++) {
           const hit = placed.find(p => Math.abs(p.x - l.p[0]) < (p.w + w) / 2 && Math.abs(p.y - y) < h);
@@ -1172,7 +1211,7 @@ const Twin3D = (() => {
         }
         l.p = [l.p[0], y]; placed.push({ x: l.p[0], y, w });
       });
-      const html = !showTags ? '' : list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px"><i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>${esc(l.text)}${l.on ? ' · printing' : ''}</span>`).join('');
+      const html = !showTags ? '' : list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px"><i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>${esc(l.text)}${l.say ? ' · ' + esc(l.say) : ''}</span>`).join('');
       if (tags.innerHTML !== html) tags.innerHTML = html;
     }
 
@@ -1561,9 +1600,11 @@ const Twin3D = (() => {
 
     return {
       el: wrap,
-      update(s, p) {
+      update(s, p, how) {
         if (s !== state) syncFrom(follow, s, print && print.file, performance.now());
-        state = s; if (p) pos = p; queue();
+        state = s; if (p) pos = p;
+        if (how && how.pos) posKind = how.pos;
+        queue();
       },
       /* Following the G-code: whether it is, and how well (for the card's
        * sync note). drift: seconds between the playhead and the last reading. */
@@ -1621,5 +1662,5 @@ const Twin3D = (() => {
     };
   }
 
-  return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance } };
+  return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance, extrudingAt } };
 })();

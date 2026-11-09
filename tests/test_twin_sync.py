@@ -70,6 +70,15 @@ out.fromProgress = f.play; out.atHalf = S.timeAtByte(tr, tr.bytes / 2);
 f = S.newFollow(); f.track = tr;
 S.syncFrom(f, { ...reading(t1, 1), current_file: 'other.gcode' }, file, 0);
 out.otherFile = f.on;
+// 7. The glow at the nozzle follows the file's own extrusion: on inside a run, off in the pause between two.
+const ex = data.timeline.extrusion, runs = []; let at = 0;
+for (let i = 0; i + 1 < ex.length; i += 2) { at += ex[i]; runs.push([at / 1000, (at + ex[i + 1]) / 1000]); at += ex[i + 1]; }
+let gapAt = -1;
+for (let i = 1; i < runs.length; i++) if (runs[i][0] - runs[i - 1][1] > 0.05) { gapAt = i; break; }
+out.exRuns = runs.length;
+out.exInside = S.extrudingAt(tr, (runs[10][0] + runs[10][1]) / 2);
+out.exGap = gapAt > 0 ? S.extrudingAt(tr, (runs[gapAt][0] + runs[gapAt - 1][1]) / 2) : null;
+out.exUnknown = S.extrudingAt(S.buildTrack({ ...data.timeline, extrusion: undefined }, [], k), 5);
 process.stdout.write(JSON.stringify(out));
 """
 
@@ -112,6 +121,12 @@ class TwinFollowsTheGcode(unittest.TestCase):
 
     def test_another_file_is_not_followed(self):
         self.assertFalse(self.out["otherFile"])
+
+    def test_the_nozzle_glow_follows_the_files_extrusion(self):
+        self.assertGreater(self.out["exRuns"], 100)
+        self.assertIs(self.out["exInside"], True)
+        self.assertIs(self.out["exGap"], False)          # a travel between two walls
+        self.assertIsNone(self.out["exUnknown"])         # a timeline without the list says nothing
 
 
 class TimelineFromOtherSlicers(unittest.TestCase):
