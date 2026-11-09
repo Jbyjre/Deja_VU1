@@ -391,7 +391,15 @@ function tourState(pid) {
   } else if (sim.excluded && st.objects) {
     st.objects.excluded = [...new Set([...(st.objects.excluded || []), ...sim.excluded])];
   }
+  tourTuning(st, sim.tuning);
   return st;
+}
+function tourTuning(st, tune) {
+  if (!tune || !st.tuning) return;
+  (st.tuning.leds || []).forEach(l => { if (l.id in tune.led && Array.isArray(l.color)) l.color = [l.color[0], l.color[1], l.color[2], tune.led[l.id]]; });
+  (st.tuning.fans || []).forEach(f => { if (f.id in tune.fan) f.speed = tune.fan[f.id]; });
+  if (typeof tune.part === 'number') st.tuning.part_fan = tune.part;
+  (st.tuning.runout || []).forEach(r => { if (r.id in tune.runout) r.enabled = tune.runout[r.id]; });
 }
 function tourFleetCard(card) {
   if (!tour.sim.printers[card.id]) return card;
@@ -482,6 +490,13 @@ async function tourControl(action, pid, body) {
     estop: () => 'M112', 'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
   };
   if (HANDS_ON[action]) {
+    // What a visitor sets on the lights, fans and sensors shows in the state (and so in the 3D twin) like a real printer's.
+    const tune = sim.tuning || (sim.tuning = { led: {}, fan: {}, runout: {} });
+    const name = String((body || {}).name || '');
+    if (action === 'led') tune.led[name] = Math.max(0, Math.min(1, Number(body.white) || 0));
+    if (action === 'fan-generic') tune.fan[name] = Math.max(0, Math.min(1, (Number(body.percent) || 0) / 100));
+    if (action === 'fan') tune.part = Math.max(0, Math.min(1, (Number(body.percent) || 0) / 100));
+    if (action === 'runout') tune.runout[name] = !!body.enabled;
     const moves = ['jog', 'move', 'motors-off', 'bed-mesh', 'tool', 'mesh-profile', 'feed'];
     if (moves.includes(action) && ['printing', 'paused'].includes(live.state)) return tourReply({ error: 'Not while a print is running or paused - it would move the head through the print' }, 400);
     tourLog(pid, HANDS_ON[action](body || {}));
@@ -574,7 +589,7 @@ async function tourPost(url, body) {
   let parsed = {};
   try { parsed = JSON.parse(body || '{}'); } catch (_) { parsed = {}; }
   const pid = url.searchParams.get('printer') || (typeof currentPrinter !== 'undefined' && currentPrinter) || tour.rec.default_printer;
-  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start|restart|jog|move|z-nudge|extrude|speed|flow|fan|pressure-advance|limits|motors-off|bed-mesh|macro|tool|estop|bed-temperature)$/);
+  const control = url.pathname.match(/^\/api\/printer\/control\/(pause|resume|cancel|exclude|temperature|home|gcode|start|restart|jog|move|z-nudge|extrude|speed|flow|fan|pressure-advance|limits|motors-off|bed-mesh|macro|tool|estop|bed-temperature|fan-generic|led|runout|mesh-profile|feed)$/);
   if (control) {
     const answer = await tourControl(control[1], pid, parsed);
     if (answer) { if (window.Workshop && Workshop.refreshPrinter) setTimeout(() => Workshop.refreshPrinter(), 50); return answer; }
