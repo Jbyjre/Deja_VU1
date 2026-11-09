@@ -28,6 +28,10 @@
 .ov-camera { grid-column: span 5; }
 .ov-temps { grid-column: span 5; }
 .ov-quick { grid-column: span 3; }
+/* Its buttons sit at the foot of the card, so a taller neighbour doesn't leave them floating mid-card. */
+.ov-quick { display: flex; flex-direction: column; }
+.ov-quick > #overview-control { flex: 1 1 auto; display: flex; flex-direction: column; }
+.ov-quick #ov-run, .ov-quick #ov-idle { margin-top: auto; }
 .ov-printers { grid-column: span 4; }
 .ov-upkeep { grid-column: span 12; }
 @media (max-width: 1100px) {
