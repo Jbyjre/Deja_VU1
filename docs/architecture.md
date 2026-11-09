@@ -270,7 +270,9 @@ evenly in time, layer and tool changes always kept). Byte offsets count bytes
 also subscribes to `motion_report.live_position` (the nozzle now; `toolhead`
 `position` is the last command and runs ahead) and `gcode_move.homing_origin`,
 and each state carries `sync` = {file_position, file_size, live (less the
-G-code offset), speed_factor}. In the browser `Twin3D.sync` (`twin3d.js`)
+G-code offset), speed_factor, extruding}, where `extruding` is
+`motion_report.live_extruder_velocity` above zero (null when the printer
+doesn't report it). In the browser `Twin3D.sync` (`twin3d.js`)
 turns a reading into a moment of the file: the byte read gives the latest
 moment possible, and the live position is matched along the path in the 12
 seconds before it (height counted four times over). Between readings the
@@ -280,8 +282,18 @@ difference is taken up over 0.3 s (a jump only past 5 s). No match within
 shows the live position. Without a live position (the simulated printer) the
 progress fraction places it, as Klipper defines progress from the file
 position. Each wall vertex carries its time in the shader, so walls are
-clipped by time and appear as they are laid. `tests/test_twin_sync.py` runs
-this code in Node against the sample file.
+clipped by time and appear as they are laid. The timeline also holds the
+stretches of extrusion (`timeline.extrusion`, gaps and lengths in
+milliseconds, any feature), which the twin uses to show a bead at the nozzle
+tip while plastic comes out. `tests/test_twin_sync.py` runs this code in Node
+against the sample file.
+
+A real printer's file is downloaded from the printer (up to 160 MB) whether or
+not Moonraker has its metadata yet; a read that fails answers with `reason` and
+`retry_s`, and the browser asks again after 5 s, then a little longer each time.
+Until the layers load, the twin draws the objects' outlines see-through and
+says so under the model. A simulated printer may be asked for a sample file by
+name (`?file=`); the online demo's recording holds each sample's layers that way.
 
 ### Starting prints safely
 `print_gate.py` is the Confirm Print summary and the interlock:

@@ -61,7 +61,8 @@ its behaviour, never paste it.
   2 s; state carries `reading_age_s` and `reading_directly`.
 - `toolhead_position` is motion_report `live_position` (`position_source: "live"`), else toolhead
   `position` labelled `"commanded"`; `homed_axes` is reported. `state.sync` carries Klipper's
-  `file_position` and `live_position` less `homing_origin` for the twin.
+  `file_position` and `live_position` less `homing_origin` for the twin, and `extruding` from
+  motion_report `live_extruder_velocity`.
 - A `link_lost` state disables Pause, Cancel and Home and never offers the firmware restart. A fresh
   page gets `{"connected": false}` instead, and the empty state names the added printer.
 

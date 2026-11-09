@@ -29,3 +29,17 @@ paths:
   (`tests/test_twin_sync.py`, run in Node). workshop.js moves the nozzle with a critically damped
   spring (`SPRING_W`) so 4 Hz readings don't make it step.
 - Measure frame time before and after any change to drawing (headless Chromium uses software WebGL).
+- Layers and file reads: `print_preview.for_current` downloads a real printer's file even when Moonraker
+  has no metadata for it yet (the metadata only decides the cache key); a failed read answers `reason` and
+  `retry_s`, and `syncTwinPrint` retries with a back-off and shows the reason in `#twin-sync`. The outline
+  fallback is see-through. Without the layers the head only eases toward 4 Hz readings, so check the
+  card's sync line before judging how the twin moves.
+- Where the head is drawn (`drawnPosition`): exact once X and Y are homed; before that the place it was last
+  seen (`dejavu1.twin-last-head`, per printer), else the middle marked "position unknown". The head's tag
+  (`l.say`) says printing, paused, on carriage, last known position or position unknown. Never print
+  Klipper's made-up numbers while unhomed.
+- Extrusion: the bead and halo at the nozzle (`dyn.bead`, `dyn.halo`, marked `rest: true` so the drawing
+  skips them) show while `extruding`: the file's own stretches (`timeline.extrusion`) when it is followed,
+  else the printer's `sync.extruding`.
+- To test the twin without a printer, run `tests/fake_moonraker.py` through a real G-code file and watch the
+  card in Chromium (see printer-link.md). Frame time with the bead is the same as without it.

@@ -12,7 +12,7 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
 
 ## Load order and shared names
 
-- Scripts: `theme-boot.js` in `<head>`, then `app.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
+- Scripts: `theme-boot.js` in `<head>`, then `app.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
   `ar.js` → `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
@@ -74,7 +74,10 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
 - `orb.js`: the notification orb; `toast()` hands every message to `Orb.notify`. One translucent
   sphere tinted by `--orb-tint`, no centre dot.
 - `versions.js` + `versions.json`: Version & updates, the header chip and each version's tour.
-- Phone layout (≤ 720 px, end of `theme.css`): `.desk-only` cards hide on phones, `.phone-only` the
+- `layout.js`: two-column card grids (`.grid-2`, `.desk-grid`) fill without holes. Each card gets rows as
+  tall as itself (1 px rows) and the next card goes in the shorter column; grids that follow each other
+  are wrapped in one `.flow-run`. A card in a grid needs no rule; a new full-width card goes outside one.
+- - Phone layout (≤ 720 px, end of `theme.css`): `.desk-only` cards hide on phones, `.phone-only` the
   reverse; give new computer-only cards `desk-only`. Keep the first phone screen short.
 - `sw.js` caches only `offline.html`, never API replies or commands.
 - `welcome.html` is the product page; on a static host `/api/modules` returns 404 and `app.js` hands
@@ -117,3 +120,6 @@ Where no server answers `/api/health`, `app.js` `startTour()` answers `/api/` fr
 `demo/recording.json`; POSTs are simulated in `tourSim` and `tourControl`. A new or changed GET
 route needs `python3 tools/online-demo/record.py` (about 3 minutes) and a commit of `frontend/demo/`
 (`tests/test_online_demo.py`). A feature that can't work in a recording says so in words.
+The demo simulates single-printer commands (`tourControl`) and the fleet bar (`tourBroadcast`, with the
+real answer's words); a cancel parks the head. `/api/print/preview?file=` is recorded per sample file, and
+`tourGet` asks for the file on the plate, so a print started in the demo is drawn from its own layers.
