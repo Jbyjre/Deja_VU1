@@ -120,6 +120,8 @@ Where no server answers `/api/health`, `app.js` `startTour()` answers `/api/` fr
 `demo/recording.json`; POSTs are simulated in `tourSim` and `tourControl`. A new or changed GET
 route needs `python3 tools/online-demo/record.py` (about 3 minutes) and a commit of `frontend/demo/`
 (`tests/test_online_demo.py`). A feature that can't work in a recording says so in words.
-The demo simulates single-printer commands (`tourControl`) and the fleet bar (`tourBroadcast`, with the
-real answer's words); a cancel parks the head. `/api/print/preview?file=` is recorded per sample file, and
+The demo simulates single-printer commands (`tourControl`, including Feed, chamber light, fans and sensor
+toggles, remembered in `sim.tuning` and shown in the twin) and the fleet bar (`tourBroadcast`, with the
+real answer's words); a cancel parks the head. A command in `HANDS_ON` also needs its name in the route
+pattern in `tourPost`, or the demo refuses it. `/api/print/preview?file=` is recorded per sample file, and
 `tourGet` asks for the file on the plate, so a print started in the demo is drawn from its own layers.

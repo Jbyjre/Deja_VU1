@@ -571,6 +571,14 @@ class TestPrintPreviewFromThePrinter(RealPrinterAPI):
             self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot()["sync"]["extruding"] is expect),
                             (velocity, mock_moonraker.real_printer(self.pid).snapshot().get("sync")))
 
+    def test_the_extruders_speed_is_in_every_reading_even_when_nothing_prints(self):
+        # A purge or a feed moves filament with no print running: the twin turns the spool and moves the filament.
+        for velocity in (3.2, -1.5, 0.0):
+            self.fake.set("motion_report", live_extruder_velocity=velocity)
+            self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot().get("extruder_velocity") == velocity),
+                            (velocity, mock_moonraker.real_printer(self.pid).snapshot().get("extruder_velocity")))
+        self.assertNotEqual(mock_moonraker.real_printer(self.pid).snapshot()["state"], "printing")
+
     def test_without_that_field_the_twin_is_told_nothing(self):
         self.printing()
         self.fake.status["motion_report"].pop("live_extruder_velocity", None)

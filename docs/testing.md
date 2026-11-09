@@ -23,8 +23,8 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1280 tests passed in 778.6 seconds on Python 3.13 (Linux, 9 November 2026,
-  version 0.20.4 plus the changes in this release). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
+- **The test suite:** 1288 tests passed in 796.5 seconds on Python 3.13 (Linux, 9 November 2026,
+  version 0.20.5 plus the changes in this release). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
   release job runs it again before publishing.
 - **The printer connection** in the suite, against a Moonraker stand-in (`tests/fake_moonraker.py`)
   over real sockets: commands, refusals, watch-only mode (no write gets through), sign-in, the
