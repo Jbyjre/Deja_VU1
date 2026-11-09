@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.5 (9 November 2026): The 3D twin draws prints from their own layers and shows where the head reall...
+
+- The 3D twin draws prints from their own layers and shows where the head really is, the online demo's fleet bar works, and cards fill their screens without gaps
+
 ## 0.20.4 (8 November 2026): A shorter README with fresh pictures, and a dated record of what was tested o...
 
 - A shorter README with fresh pictures, and a dated record of what was tested on a real U1

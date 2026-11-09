@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.5",
+      "date": "2026-11-09",
+      "name": "The 3D twin draws prints from their own layers and shows where the head reall...",
+      "published": true,
+      "summary": "The 3D twin draws prints from their own layers and shows where the head really is, the online demo's fleet bar works, and cards fill their screens without gaps.",
+      "changes": [
+        "The 3D twin draws prints from their own layers and shows where the head really is, the online demo's fleet bar works, and cards fill their screens without gaps"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.4",
       "date": "2026-11-08",
       "name": "A shorter README with fresh pictures, and a dated record of what was tested o...",
