@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.6 (9 November 2026): The 3D twin shows filament moving in its tubes, spools turning, belts running...
+
+- The 3D twin shows filament moving in its tubes, spools turning, belts running, the chamber light and heads docking, and the online demo accepts Feed and the lights
+
 ## 0.20.5 (9 November 2026): The 3D twin draws prints from their own layers and shows where the head reall...
 
 - The 3D twin draws prints from their own layers and shows where the head really is, the online demo's fleet bar works, and cards fill their screens without gaps
