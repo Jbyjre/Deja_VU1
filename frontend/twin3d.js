@@ -68,6 +68,7 @@ const Twin3D = (() => {
   const HUB = { upper: [196, 316], lower: [69, 133], out: 14.5, pocket: 24, R: 110 };
   const VIEWS = { iso: [-32, 20], front: [0, 3], top: [0, 89], print: [-22, 40] };
 
+  const NO_LAMP = [0, 0, 0];
   const srgb = (hex) => {
     const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
     if (!m) return null;
@@ -189,7 +190,7 @@ const Twin3D = (() => {
     return g;
   }
   /* A tube along a smooth curve through `pts` (Catmull-Rom), radius r. */
-  function tube(g, pts, r, sides = 10, per = 8) {
+  function tube(g, pts, r, sides = 10, per = 8, along = false) {
     const path = [];
     for (let i = 0; i < pts.length - 1; i++) {
       const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
@@ -199,6 +200,9 @@ const Twin3D = (() => {
       }
     }
     path.push(pts[pts.length - 1]);
+    // With `along`, UV.x is the distance from the start in mm: the filament overlay scrolls its dashes by it.
+    const acc = [0];
+    for (let i = 1; i < path.length; i++) acc.push(acc[i - 1] + Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1], path[i][2] - path[i - 1][2]));
     let prevN = null;
     const rings = path.map((p, i) => {
       const a = path[Math.max(0, i - 1)], b = path[Math.min(path.length - 1, i + 1)];
@@ -210,7 +214,9 @@ const Twin3D = (() => {
       return Array.from({ length: sides }, (_, s) => {
         const a2 = s / sides * Math.PI * 2, c = Math.cos(a2), sn = Math.sin(a2);
         const n = [Nn[0] * c + B[0] * sn, Nn[1] * c + B[1] * sn, Nn[2] * c + B[2] * sn];
-        return [[p[0] + n[0] * r, p[1] + n[1] * r, p[2] + n[2] * r], n];
+        const vertex = [[p[0] + n[0] * r, p[1] + n[1] * r, p[2] + n[2] * r], n];
+        if (along) vertex.push([acc[i], 0]);
+        return vertex;
       });
     });
     for (let i = 0; i < rings.length - 1; i++) for (let s = 0; s < sides; s++) {
@@ -380,12 +386,15 @@ const Twin3D = (() => {
   /* ---- shaders ------------------------------------------------------ */
   const VS = `#version 300 es
   in vec3 aPos; in vec3 aNor; in vec2 aUV;
-  uniform mat4 uVP; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS;
+  uniform mat4 uVP; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; uniform float uRot;
   out vec3 vP; out vec3 vN; out vec2 vUV; out vec4 vL; out vec3 vW;
   void main() {
-    vec3 p = aPos * uS + uT; vW = p;
+    float cr = cos(uRot), sr = sin(uRot);
+    vec3 q = vec3(aPos.x, aPos.y * cr - aPos.z * sr, aPos.y * sr + aPos.z * cr);
+    vec3 qn = vec3(aNor.x, aNor.y * cr - aNor.z * sr, aNor.y * sr + aNor.z * cr);
+    vec3 p = q * uS + uT; vW = p;
     vP = vec3(p.x, p.z, -p.y);
-    vec3 n = aNor / uS; vN = normalize(vec3(n.x, n.z, -n.y));
+    vec3 n = qn / uS; vN = normalize(vec3(n.x, n.z, -n.y));
     vUV = aUV; vL = uLVP * vec4(vP, 1.0);
     gl_Position = uVP * vec4(vP, 1.0);
   }`;
@@ -395,7 +404,7 @@ const Twin3D = (() => {
   uniform vec3 uBase; uniform float uRough; uniform float uMetal; uniform float uAlpha; uniform float uGlow;
   uniform int uKind; uniform sampler2D uTex; uniform sampler2D uShadow; uniform vec3 uEye; uniform float uSel; uniform vec3 uBg;
   uniform vec3 uKey; uniform vec3 uFill; uniform vec4 uFoot;
-  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; uniform float uPlay;
+  uniform vec2 uClip; uniform float uLayerH; uniform vec3 uBgTop; uniform vec3 uBgBot; uniform vec2 uRes; uniform float uPlay; uniform float uFlow; uniform vec3 uLamp;
   out vec4 outColor;
   const float PI = 3.14159265;
   /* The studio backdrop: lighter above, a soft vignette. The floor uses
@@ -470,6 +479,19 @@ const Twin3D = (() => {
     if (uKind == 11) { float k = vW.z * 3.0, aa = clamp(fwidth(k) * 1.5 - 0.5, 0.0, 1.0);
       float n = mix(hash(vec2(floor(k + vW.x * 0.02), floor((vW.x + vW.y) * 0.5))), 0.5, aa); base *= 0.93 + 0.1 * n; }
     if (uKind == 12) { base *= 0.72 + 0.28 * smoothstep(0.15, 0.85, abs(fract(vW.z / 2.0) * 2.0 - 1.0)); }
+    if (uKind == 13) {
+      // Filament moving in its tube: short bright dashes, scrolled along the tube by uFlow (mm run so far).
+      float d = fract((vUV.x - uFlow) / 9.0);
+      alpha = smoothstep(0.0, 0.1, d) * smoothstep(0.62, 0.4, d) * uAlpha;
+      if (alpha < 0.03) discard;
+      base += vec3(0.05);
+    }
+    if (uKind == 14) {
+      // A belt: a tooth pattern (stylised, 5 mm apart) that has run uFlow mm along the strand.
+      float t = ((uFoot.x > 0.5 ? vW.y : vW.x) - uFlow) / 5.0, f = fract(t), aa = clamp(fwidth(t) * 1.5, 0.0, 1.0);
+      float tooth = smoothstep(0.0, 0.12, f) * smoothstep(0.62, 0.5, f);
+      base += vec3(0.075) * tooth * (1.0 - aa);
+    }
     vec3 F0 = mix(vec3(0.04), base, uMetal);
     vec3 col = vec3(0.0);
     float sh = shadowAt(vL, 0.0025);
@@ -491,6 +513,8 @@ const Twin3D = (() => {
     vec3 Fv = F0 + (max(vec3(1.0 - rough), F0) - F0) * pow(1.0 - max(dot(N, V), 0.0), 5.0);
     col += (1.0 - uMetal) * base * env(N, 1.0) * 0.36 * (0.55 + 0.45 * sh);
     col += Fv * env(R, rough) * mix(0.55, 1.0, sh) * (uKind == 0 && uMetal < 0.5 ? 0.55 : 0.9);
+    // The chamber light (the printer's cavity LED), on what sits inside the case.
+    col += (base + vec3(0.03)) * uLamp * 2.6;
     if (uGlow > 0.0) col = mix(col, base * 1.25, uGlow);
     // Picked: a blue glow round its edges, so its own colour stays true.
     if (uSel > 0.0) { float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0); col = col * (1.0 + 0.1 * uSel) + vec3(0.1, 0.32, 1.0) * (0.12 + 0.75 * fr) * uSel; }
@@ -513,8 +537,8 @@ const Twin3D = (() => {
     outColor = vec4(pow(aces(col * 0.95), vec3(1.0 / 2.2)), alpha);
   }`;
   const SHADOW_VS = `#version 300 es
-  in vec3 aPos; in vec2 aUV; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; out float vZ; out vec2 vT;
-  void main() { vec3 p = aPos * uS + uT; vZ = p.z; vT = aUV; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
+  in vec3 aPos; in vec2 aUV; uniform mat4 uLVP; uniform vec3 uT; uniform vec3 uS; uniform float uRot; out float vZ; out vec2 vT;
+  void main() { float cr = cos(uRot), sr = sin(uRot); vec3 q = vec3(aPos.x, aPos.y * cr - aPos.z * sr, aPos.y * sr + aPos.z * cr); vec3 p = q * uS + uT; vZ = p.z; vT = aUV; gl_Position = uLVP * vec4(p.x, p.z, -p.y, 1.0); }`;
   const SHADOW_FS = `#version 300 es
   precision highp float; in float vZ; in vec2 vT; uniform vec2 uClip; uniform float uPlay; out vec4 o;
   void main() { if (uClip.x > 0.5 && ((uPlay >= 0.0 && vT.y > 0.5) ? vT.x > uPlay : vZ > uClip.y)) discard; o = vec4(1.0); }`;
@@ -710,6 +734,46 @@ const Twin3D = (() => {
     follow.pos = posAt(tr, follow.play);
   }
 
+  /* ---- what the filament, spools, belts and lights do, from the printer's own readings ----
+   * Pure functions (tests/test_twin_fx.py runs them in Node). The printer reports the extruder's speed, each
+   * head's filament sensor, the chamber LED and where the head is; it reports no feeder speed, so a load or
+   * an unload is drawn as a smooth push or pull of a typical size, begun by the sensor changing (or by the
+   * Feed button) and never longer than a few seconds. */
+  const FEED_MM_S = 25, FEED_LOAD_S = 7, FEED_UNLOAD_S = 6, SPOOL_R_MM = 65, NOMINAL_PRINT_MM_S = 2;
+  // A head's filament sensor changed: filament arrived (a load) or left (an unload).
+  function feedEvent(was, now) {
+    if (was === false && now === true) return 'load';
+    if (was === true && now === false) return 'unload';
+    return null;
+  }
+  const feedLength = mode => (mode === 'load' ? FEED_LOAD_S : FEED_UNLOAD_S);
+  // Filament speed (mm/s, positive toward the nozzle) t seconds into a feed: eases in, runs, eases out.
+  function feedSpeed(mode, t) {
+    const len = feedLength(mode);
+    if (!(t >= 0) || t > len) return 0;
+    return (mode === 'load' ? 1 : -1) * FEED_MM_S * Math.min(1, Math.sin(Math.PI * t / len) * 1.6);
+  }
+  // The working head's filament speed: the printer's own reading when it gives one; else a typical 2 mm/s
+  // while a print is laying plastic (the simulated printers give no reading).
+  function activeSpeed(st, extruding) {
+    if (typeof st.extruder_velocity === 'number') return st.extruder_velocity;
+    return extruding ? NOMINAL_PRINT_MM_S : 0;
+  }
+  const flowAlpha = v => (Math.abs(v) > 0.05 ? Math.min(0.92, 0.35 + Math.abs(v) / 8) : 0);
+  const spoolTurn = (v, dt) => v * dt / SPOOL_R_MM;           // radians: filament length over the spool's radius
+  // How far each CoreXY belt has run: the two motors' displacements, A = x + y and B = x - y (mm).
+  const beltRun = (x, y) => ({ a: x + y, b: x - y });
+  // The chamber light from the LED the printer reports (RGBW, 0 to 1): a tint scaled by its strength, or null.
+  function lampOf(st) {
+    const leds = (st && st.tuning && st.tuning.leds) || [];
+    const led = leds.find(l => /cavity|chamber/i.test(l.id || '')) || leds[0];
+    if (!led || !Array.isArray(led.color)) return null;
+    const [r, g, b, w] = led.color.map(v => (typeof v === 'number' && isFinite(v) ? Math.max(0, Math.min(1, v)) : 0));
+    const k = Math.max(r, g, b, w);
+    if (k < 0.02) return null;
+    return { k, rgb: [Math.min(1, r + w) * 0.45 * k, Math.min(1, g + w) * 0.42 * k, Math.min(1, b + w) * 0.36 * k] };
+  }
+
   function create(host, { onPick } = {}) {
     const wrap = document.createElement('div');
     wrap.className = 'twin3d';
@@ -817,6 +881,12 @@ const Twin3D = (() => {
     // How well the dashboard knows where the head is: "exact" (homed), "last" (not homed, drawn where it was
     // last seen) or "unknown" (not homed and never seen). The head's tag says so.
     let posKind = 'exact';
+    // Filament, spools and heads in motion, per head name: how far the filament has run (mm), the spool's turn
+    // (radians), its speed now, a feed in progress, the last filament-sensor reading, and how far a head is
+    // from its dock (0) to the carriage (1).
+    const fx = { t: 0, dt: 0, phase: {}, spin: {}, v: {}, feed: {}, det: {}, place: {}, busy: false, pulse: 1 };
+    let soundOn = false, audio = null;
+    const reducedMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     // The model's own options: the case closed, see-through or off; the
     // print on the plate (and, faintly, what is still to come); name tags.
     let caseMode = 'closed', showPrint = true, showRest = true, showTags = true;
@@ -942,13 +1012,90 @@ const Twin3D = (() => {
     const following = () => follow.on && !!follow.track && !!print;
 
     /* ---- what moves: everything that depends on the printer's state ---- */
+    // A short click for a head docking or leaving its dock (synthesised; off until switched on in Show).
+    function click(kind) {
+      if (!soundOn) return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audio = audio || new AC();
+        if (audio.state === 'suspended') audio.resume();
+        const t0 = audio.currentTime, attach = kind === 'attach', len = Math.floor(audio.sampleRate * 0.012);
+        const tick = audio.createBufferSource(), buf = audio.createBuffer(1, len, audio.sampleRate), data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+        tick.buffer = buf;
+        const hp = audio.createBiquadFilter(), gain = audio.createGain();
+        hp.type = 'highpass'; hp.frequency.value = attach ? 2200 : 1500; gain.gain.value = attach ? 0.5 : 0.3;
+        tick.connect(hp); hp.connect(gain); gain.connect(audio.destination); tick.start(t0);
+        const osc = audio.createOscillator(), og = audio.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(attach ? 170 : 130, t0); osc.frequency.exponentialRampToValueAtTime(60, t0 + 0.09);
+        og.gain.setValueAtTime(attach ? 0.45 : 0.25, t0); og.gain.exponentialRampToValueAtTime(0.001, t0 + 0.11);
+        osc.connect(og); og.connect(audio.destination); osc.start(t0); osc.stop(t0 + 0.12);
+        if (attach) {   // the gate closing on the coupling: a second, lighter tick
+          const t2 = audio.createBufferSource(); t2.buffer = buf;
+          const g2 = audio.createGain(); g2.gain.value = 0.25; t2.connect(hp); hp.connect(g2); g2.connect(audio.destination); t2.start(t0 + 0.07);
+        }
+      } catch (e) { soundOn = false; }
+    }
+
+    /* Moves the filament, the spools and the docking heads on by the time since the last frame. */
+    function stepFx(st, active, extruding, now) {
+      const dt = fx.t ? Math.min(0.1, Math.max(0, (now - fx.t) / 1000)) : 0;
+      fx.t = now; fx.dt = dt;
+      const still = reducedMotion();
+      const names = Object.keys(st.toolheads || {});
+      let busy = false;
+      names.forEach((name, i) => {
+        const head = st.toolheads[name];
+        const sensor = ((st.tuning && st.tuning.runout) || []).find(r => r.id === `e${i}_filament`);
+        const det = sensor && typeof sensor.detected === 'boolean' ? sensor.detected : (typeof head.filament_loaded === 'boolean' ? head.filament_loaded : null);
+        const event = feedEvent(fx.det[name], det);
+        if (det !== null) fx.det[name] = det;
+        if (event) fx.feed[name] = { mode: event, t0: now };
+        let v = 0;
+        const feed = fx.feed[name];
+        if (feed) {
+          const age = (now - feed.t0) / 1000;
+          if (age > feedLength(feed.mode)) delete fx.feed[name]; else v = feedSpeed(feed.mode, age);
+        }
+        if (!v && name === active) v = activeSpeed(st, extruding);
+        fx.v[name] = v;
+        if (!still) {
+          fx.phase[name] = (fx.phase[name] || 0) + v * dt;
+          fx.spin[name] = (fx.spin[name] || 0) + spoolTurn(v, dt);
+        }
+        if (Math.abs(v) > 0.01 && !still) busy = true;
+      });
+      // A feed starts at speed zero and builds up, so it keeps the picture moving from its first moment.
+      // A head that reports a fault pulses its LED, so the picture keeps moving while one does.
+      fx.pulse = !still && names.some(n => st.toolheads[n].status === 'error') ? 0.5 + 0.5 * Math.sin(now / 230) : 1;
+      fx.busy = busy || (!still && (Object.keys(fx.feed).length > 0 || fx.pulse !== 1));
+    }
+    // Where a head is drawn: in its dock, on the carriage, or sliding between them while the carriage is at the dock.
+    function placeOf(name, i, on, x, y) {
+      const dock = [DOCK.xs[i % 4], DOCK.y];
+      let p = fx.place[name];
+      if (!p) p = fx.place[name] = { t: on ? 1 : 0, moving: false };
+      const target = on ? 1 : 0;
+      if (p.t !== target) {
+        // The carriage is at the dock when a head is picked up or put down: only then does it slide. Anywhere else
+        // (the reading came late, a page just opened) it changes place at once rather than fly across the bed.
+        const near = Math.hypot(x - dock[0], y - dock[1]) < 70;
+        if (!near || !fx.dt || reducedMotion()) { p.t = target; p.moving = false; }
+        else { p.t += Math.sign(target - p.t) * Math.min(Math.abs(target - p.t), fx.dt / 0.35); p.moving = true; fx.busy = true; }
+        if (p.t === target && p.moving) { p.moving = false; click(on ? 'attach' : 'detach'); }
+      }
+      const e = p.t * p.t * (3 - 2 * p.t);
+      return { x: dock[0] + (x - dock[0]) * e, y: dock[1] + (y - dock[1]) * e, z: DOCK.tip + (TIP - DOCK.tip) * e + Math.sin(Math.PI * p.t) * 10 };
+    }
+
     function liveScene() {
       const st = state || {}, synced = following(), [x, y, z] = synced ? follow.pos : pos, bedTop = TIP - Math.max(0, Math.min(BED, z));
       const heads = Object.entries(st.toolheads || {});
       const active = st.toolheads && st.toolheads[st.active_toolhead] ? st.active_toolhead : null;
       const printing = ['printing', 'paused'].includes(st.state);
       const items = [];
-      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, play: o.play, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool });
+      const add = (mesh, mat, o = {}) => items.push({ mesh, mat, t: o.t || [0, 0, 0], s: o.s || [1, 1, 1], id: o.id || 0, tex: o.tex, sel: o.sel || 0, glow: o.glow, colour: o.colour, kind: o.kind, shell: o.shell, lining: o.lining, loop: o.loop, alpha: o.alpha, clip: o.clip, play: o.play, layerH: o.layerH, printed: o.printed, rest: o.rest, body: o.body, tool: o.tool, rot: o.rot, flow: o.flow, lamp: o.lamp, axisY: o.axisY });
       // Bed: plate, its label strip, heater, carrier.
       const bedId = 2, bedSel = selected === 'bed' ? 1 : 0, heat = st.bed && st.bed.target > 0 ? Math.min(1, (st.bed.temp || 0) / 110) : 0;
       add(dyn.carrier.mesh, MAT.rail, { t: [0, 0, bedTop], id: bedId, sel: bedSel });
@@ -962,7 +1109,12 @@ const Twin3D = (() => {
       const gy = y + GANTRY_DY;
       add(dyn.xbeam.mesh, MAT.carbon, { t: [0, gy, 0], body: true });
       add(dyn.ycar.mesh, MAT.rail, { t: [0, gy, 0] });
-      add(dyn.xbelt.mesh, MAT.belt, { t: [0, gy, 0], body: true });
+      // The belts run as the head moves: A is x + y and B is x - y (CoreXY). Stylised teeth, exact displacement.
+      const run = beltRun(x, y);
+      add(dyn.xbeltLo.mesh, MAT.belt, { t: [0, gy, 0], body: true, kind: 'belt', flow: run.a });
+      add(dyn.xbeltHi.mesh, MAT.belt, { t: [0, gy, 0], body: true, kind: 'belt', flow: run.b });
+      [[-56, run.a], [326, run.b]].forEach(([bx, r]) => [[-8.6, RAIL_Z + 3, r], [8.6, RAIL_Z + 9, -r]].forEach(([dx, bz, phase]) =>
+        add(dyn.sbelt.mesh, MAT.belt, { t: [bx + dx, 0, bz], kind: 'belt', flow: phase, axisY: true })));
       add(dyn.carriage.mesh, MAT.body, { t: [x, gy, 0], body: true });
       add(dyn.carriageFace.mesh, MAT.decal, { t: [x, gy, 0], tex: tex.carriage, body: true });
       // The parts, grown to the current height.
@@ -1016,18 +1168,22 @@ const Twin3D = (() => {
         extruding = fileSays !== null ? fileSays : printerSays !== null ? printerSays : true;
       }
       const note = st.state === 'printing' ? 'printing' : st.state === 'paused' ? 'paused' : 'on carriage';
+      // Filament, spools and docking heads move on; the chamber light is the printer's own LED.
+      stepFx(st, active, extruding, performance.now());
+      const lamp = lampOf(st);
+      const printerSpeed = typeof st.extruder_velocity === 'number' ? st.extruder_velocity : 0;
       // Heads: parked in their docks, the active one on the carriage.
       labels = [];
       heads.forEach(([name, d], i) => {
         const on = name === active, id = 10 + i, sel = selected === `head:${name}` ? 1 : 0;
-        const hx = on ? x : DOCK.xs[i % 4], hy = on ? y : DOCK.y, tipZ = on ? TIP : DOCK.tip;
+        const pl = placeOf(name, i, on, x, y), hx = pl.x, hy = pl.y, tipZ = pl.z;
         const fault = d.status === 'error', colour = srgb(d.filament_color_hex) || lin(.6, .6, .62);
         const hot = (d.temperature || 0) > 60;
         const t = [hx, hy, tipZ], body = on;   // the working head's body turns to glass in the Print view
         add(dyn.head.mesh, fault ? { ...MAT.head, c: lin(.42, .06, .05) } : MAT.head, { t, id, sel, body });
         add(dyn.headFace.mesh, MAT.decal, { t, id, sel, tex: tex.head, body });
         add(dyn.headYellow.mesh, MAT.yellow, { t, id, sel, body });
-        add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: 0.9, body });
+        add(dyn.headLed.mesh, { c: fault ? lin(1, .2, .15) : on ? lin(.35, .7, 1) : lin(.4, .95, .5), r: .3, m: 0 }, { t, id, glow: fault ? 0.3 + 0.7 * fx.pulse : 0.9, body });
         add(dyn.nozzle.mesh, MAT.steel, { t, id });
         add(dyn.block.mesh, { c: hot ? lin(.95, .45, .18) : lin(.16, .16, .17), r: .5, m: 0 }, { t, id, glow: hot ? Math.min(0.55, ((d.temperature || 0) - 60) / 300) : 0 });
         if (on && extruding && !fault) {
@@ -1039,7 +1195,7 @@ const Twin3D = (() => {
         // Tube loop: from the top of the head up and back down into the shelf at the back.
         const lk = `${name}|${Math.round(hx)}|${Math.round(hy)}|${tipZ}|${d.filament_color_hex}`;
         if (!loopMeshes[name] || loopMeshes[name].key !== lk) {
-          if (loopMeshes[name]) ['ptfe', 'cable', 'fil', 'clips', 'stems'].forEach(k => free(loopMeshes[name][k]));
+          if (loopMeshes[name]) ['ptfe', 'cable', 'fil', 'flow', 'clips', 'stems'].forEach(k => free(loopMeshes[name][k]));
           // As in Snapmaker's photos: a black sleeve straight up from the head,
           // then a beige filament tube and a black cable side by side, held by
           // clips, in a tall loop (wider at the top) that turns back over the
@@ -1053,13 +1209,25 @@ const Twin3D = (() => {
           const stems = geo();
           tube(stems, [path[0], [hx, hy, z0 + 36], path[1]], 4.8, 12, 4);
           tube(stems, [[ex, ey, ez + 86], [ex, ey, ez + 40], [ex, ey, ez - 6]], 4.8, 12, 4);
-          loopMeshes[name] = { key: lk, ptfe: upload(tube(geo(), route(-3.6), 3.1, 12, 8)), fil: upload(tube(geo(), route(-3.6), 0.9, 6, 8)), cable: upload(tube(geo(), route(3.6), 2.7, 10, 8)), clips: upload(clips), stems: upload(stems) };
+          loopMeshes[name] = { key: lk, ptfe: upload(tube(geo(), route(-3.6), 3.1, 12, 8)), fil: upload(tube(geo(), route(-3.6), 0.9, 6, 8)), flow: upload(tube(geo(), route(-3.6), 2.3, 8, 6, true)), cable: upload(tube(geo(), route(3.6), 2.7, 10, 8)), clips: upload(clips), stems: upload(stems) };
         }
         const lm = loopMeshes[name];
         // The loops count as part of the case in the drawing: they would
         // otherwise run off the top of a sheet sized for the mechanism.
         add(lm.cable, MAT.cable, { id, lining: true, loop: true });
         add(lm.fil, { c: colour, r: .4, m: 0 }, { id, lining: true, loop: true });
+        // Filament on the move: bright dashes in this head's colour that run toward the nozzle while it feeds or
+        // prints, and back while it retracts or unloads, at the speed the printer reports.
+        const fk = flowAlpha(fx.v[name] || 0);
+        if (fk > 0) {
+          const run = -(fx.phase[name] || 0), flowMat = { c: colour, r: .3, m: 0, a: .96, kind: 'flow' };
+          add(lm.flow, flowMat, { id, lining: true, loop: true, rest: true, flow: run, alpha: fk, glow: .7 });
+          if (dyn[`sflow${i}`]) add(dyn[`sflow${i}`].mesh, flowMat, { id: 20 + i, shell: true, rest: true, flow: run, alpha: fk, glow: .7 });
+        }
+        // Plastic coming out of a nozzle that isn't printing is a purge: the printer's own extruder speed says so.
+        if (on && !fault && printerSpeed > 0.3 && st.state !== 'printing' && st.state !== 'paused') {
+          add(dyn.purge.mesh, { c: colour, r: .35, m: 0 }, { t, glow: .25, rest: true });
+        }
         add(lm.ptfe, MAT.tube, { id, lining: true, loop: true });
         add(lm.clips, MAT.cable, { id, lining: true, loop: true });
         add(lm.stems, MAT.cable, { id, lining: true, loop: true });
@@ -1068,13 +1236,16 @@ const Twin3D = (() => {
         const say = !on ? '' : posKind === 'unknown' ? 'position unknown' : posKind === 'last' ? 'last known position' : note;
         labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature, say });
       });
+      if (lamp) items.forEach(it => { if (!it.lining && !it.shell && !it.rest) it.lamp = lamp.rgb; });
       // Spools on the side hubs, in the loaded colours: T0, T1 left (spools 1 and 2), T2, T3 right (3 and 4),
       // the first of each pair on the upper hub, as Snapmaker numbers them. The filament runs to the feeder.
       heads.slice(0, 4).forEach(([name, d], i) => {
         const left = i < 2, hub = i % 2 ? HUB.lower : HUB.upper, sx = left ? BODY.x0 - HUB.out : BODY.x1 + HUB.out;
         const colour = srgb(d.filament_color_hex) || lin(.6, .6, .62), sel = selected === `head:${name}` ? 1 : 0;
-        add(dyn.spoolCore.mesh, { c: colour, r: .5, m: 0, kind: 'spool' }, { t: [sx, hub[0], hub[1]], id: 20 + i, sel, colour: null, footOverride: [hub[0], hub[1]] });
-        add(dyn.spoolFlange.mesh, MAT.kraft, { t: [sx, hub[0], hub[1]], id: 20 + i, sel });
+        const turn = fx.spin[name] || 0;   // the spool turns as filament leaves it (or goes back on)
+        add(dyn.spoolCore.mesh, { c: colour, r: .5, m: 0, kind: 'spool' }, { t: [sx, hub[0], hub[1]], id: 20 + i, sel, colour: null, footOverride: [hub[0], hub[1]], rot: turn });
+        add(dyn.spoolFlange.mesh, MAT.kraft, { t: [sx, hub[0], hub[1]], id: 20 + i, sel, rot: turn });
+        add(dyn.spoolMarks.mesh, MAT.rim, { t: [sx, hub[0], hub[1]], id: 20 + i, sel, rot: turn });
         add(dyn[`strand${i}`].mesh, { c: colour, r: .4, m: 0 }, { id: 20 + i, shell: true });
       });
       return { items, bedTop, active };
@@ -1093,15 +1264,19 @@ const Twin3D = (() => {
       gl.uniform3fv(u.uBase, c); gl.uniform1f(u.uRough, mat.r); gl.uniform1f(u.uMetal, mat.m);
       gl.uniform1f(u.uAlpha, it.alpha != null ? it.alpha : mat.a != null ? mat.a : 1);
       gl.uniform1f(u.uGlow, it.glow != null ? it.glow : mat.glow || 0);
-      const kind = { tex: 1, pei: 2, spool: 7, layers: 4, carbon: 5, glass: 8, clear: 0, print: 9, ghost: 10, brushed: 11, thread: 12 }[it.kind || mat.kind] || 0;
+      const kind = { tex: 1, pei: 2, spool: 7, layers: 4, carbon: 5, glass: 8, clear: 0, print: 9, ghost: 10, brushed: 11, thread: 12, flow: 13, belt: 14 }[it.kind || mat.kind] || 0;
       gl.uniform1i(u.uKind, it.tex ? 1 : kind);
       if (it.tex) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, it.tex); gl.uniform1i(u.uTex, 0); }
       gl.uniform1f(u.uSel, it.sel || 0);
       if (kind === 7) gl.uniform4f(u.uFoot, it.t[1], it.t[2], 0, 0);
       gl.uniform1f(u.uLayerH, it.layerH || 0.2);
+      gl.uniform1f(u.uFlow, it.flow || 0);
+      gl.uniform3fv(u.uLamp, it.lamp || NO_LAMP);
+      if (kind === 14) gl.uniform4f(u.uFoot, it.axisY ? 1 : 0, 0, 0, 0);
     }
     function drawItem(prog, it) {
       gl.uniform3fv(prog.u.uT, it.t); gl.uniform3fv(prog.u.uS, it.s);
+      if (prog.u.uRot) gl.uniform1f(prog.u.uRot, it.rot || 0);
       if (prog.u.uClip) gl.uniform2f(prog.u.uClip, it.clip ? it.clip[0] : 0, it.clip ? it.clip[1] : 0);
       if (prog.u.uPlay) gl.uniform1f(prog.u.uPlay, it.play != null ? it.play : -1);
       gl.bindVertexArray(it.mesh.vao); gl.drawArrays(gl.TRIANGLES, 0, it.mesh.count);
@@ -1187,11 +1362,12 @@ const Twin3D = (() => {
       // The floor first, then everything solid.
       gl.uniform1i(u.uKind, 6); gl.uniform4f(u.uFoot, 135, 135, 330, 300);
       gl.uniform3fv(u.uT, [0, 0, 0]); gl.uniform3fv(u.uS, [1, 1, 1]); gl.uniform2f(u.uClip, 0, 0); gl.uniform1f(u.uPlay, -1);
+      gl.uniform1f(u.uRot, 0); gl.uniform1f(u.uFlow, 0); gl.uniform3fv(u.uLamp, NO_LAMP);
       gl.bindVertexArray(floor.vao); gl.drawArrays(gl.TRIANGLES, 0, floor.count);
       opaque.forEach(it => { setMat(u, it.mat, it); drawItem(P.main, it); });
       // See-through things last, farthest first, without hiding what's behind.
       gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
-      const eye = M.eye, dist = it => { const c = it.mesh.centre || [0, 0, 0]; return Math.hypot(c[0] + it.t[0] - eye[0], c[2] + it.t[2] - eye[1], -(c[1] + it.t[1]) - eye[2]); };
+      const eye = M.eye, dist = it => { const c = it.mesh.centre || [0, 0, 0]; return Math.hypot(c[0] + it.t[0] - eye[0], c[2] + it.t[2] - eye[1], -(c[1] + it.t[1]) - eye[2]) - (it.kind === 'flow' ? 8 : 0); };   // filament dashes draw after the tube round them
       clear.sort((a, b) => dist(b) - dist(a)).forEach(it => { setMat(u, it.mat, it); drawItem(P.main, it); });
       gl.depthMask(true); gl.disable(gl.BLEND);
       gl.bindVertexArray(null);
@@ -1601,6 +1777,7 @@ const Twin3D = (() => {
     return {
       el: wrap,
       update(s, p, how) {
+        if (state && s && s.printer_id !== state.printer_id) { fx.phase = {}; fx.spin = {}; fx.v = {}; fx.feed = {}; fx.det = {}; fx.place = {}; }
         if (s !== state) syncFrom(follow, s, print && print.file, performance.now());
         state = s; if (p) pos = p;
         if (how && how.pos) posKind = how.pos;
@@ -1609,12 +1786,18 @@ const Twin3D = (() => {
       /* Following the G-code: whether it is, and how well (for the card's
        * sync note). drift: seconds between the playhead and the last reading. */
       drawCost() { return drawMs; },
+      /* True while filament, a spool or a head is moving: the card keeps redrawing (at the pace it can afford). */
+      moving() { return fx.busy; },
       syncInfo() {
         if (!following()) return null;
         return { play: follow.play, total: follow.track.seconds, rate: follow.rate, offPath: follow.off, paused: follow.paused,
                  live: !!follow.hasLive, error_mm: follow.err, drift: follow.pending, matched: follow.matched, readings: follow.readings };
       },
       select(id) { selected = id || ''; queue(); },
+      /* A feed begun from outside (the Feed button): 'load' pushes filament toward the nozzle, 'unload' draws it back. */
+      feed(head, mode) { if (head) { fx.feed[head] = { mode: mode === 'unload' ? 'unload' : 'load', t0: performance.now() }; fx.busy = true; queue(); } },
+      /* What is moving now, for the card's note and for tests. */
+      fxInfo() { return { speeds: { ...fx.v }, feeding: Object.keys(fx.feed), busy: fx.busy, sound: soundOn, places: Object.fromEntries(Object.entries(fx.place).map(([k, p]) => [k, +p.t.toFixed(2)])) }; },
       setView,
       setStyle(s) { style = s === 'drawing' ? 'drawing' : 'model'; wrap.dataset.style = style; canvas.setAttribute('aria-label', style === 'drawing' ? 'Engineering drawing of the printer. Drag to turn, scroll to zoom.' : '3D model of the printer. Drag to turn, scroll or pinch to zoom.'); queue(); },
       setCase(on) { showCase = !!on; queue(); },
@@ -1626,6 +1809,7 @@ const Twin3D = (() => {
         if ('print' in o) showPrint = !!o.print;
         if ('rest' in o) showRest = !!o.rest;
         if ('tags' in o) showTags = !!o.tags;
+        if ('sound' in o) { soundOn = !!o.sound; if (soundOn) click('detach'); }
         if ('spin' in o) setSpin(o.spin);
         shadowKey = ''; queue();
       },
@@ -1662,5 +1846,6 @@ const Twin3D = (() => {
     };
   }
 
-  return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance, extrudingAt } };
+  return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance, extrudingAt },
+           fx: { feedEvent, feedSpeed, feedLength, activeSpeed, flowAlpha, spoolTurn, beltRun, lampOf } };
 })();

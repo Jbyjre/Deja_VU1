@@ -288,6 +288,13 @@ milliseconds, any feature), which the twin uses to show a bead at the nozzle
 tip while plastic comes out. `tests/test_twin_sync.py` runs this code in Node
 against the sample file.
 
+What moves in the model comes from the printer's readings: `extruder_velocity`
+(`motion_report.live_extruder_velocity`, signed, in every state) moves the dashes of the working head's filament
+along its tube and turns its spool; each head's filament sensor (`tuning.runout`) and the Feed button begin a
+load or an unload, drawn at a typical 25 mm/s because the printer reports no feeder speed; the belts run as the
+CoreXY motors do (A = x + y, B = x - y of the drawn head); the chamber light is the cavity LED's colour; a head
+slides to or from its dock only when the carriage is at that dock. `tests/test_twin_fx.py` runs these rules in Node.
+
 A real printer's file is downloaded from the printer (up to 160 MB) whether or
 not Moonraker has its metadata yet; a read that fails answers with `reason` and
 `retry_s`, and the browser asks again after 5 s, then a little longer each time.

@@ -1199,7 +1199,9 @@ body.is-scrolled .topbar {
 
 /* A printer that isn't a U1 (machines.py): the twin card says what it is
    instead of drawing the wrong machine. */
-.twin-card.is-other-printer :is(#twin-host, .twin-switches, .twin-note, .twin-tools, .twin-chips, .twin-readout) { display: none !important; }
+.twin-extras { margin-top: 2px; font-weight: 500; }
+.twin-extras:empty { display: none; }
+.twin-card.is-other-printer :is(#twin-host, .twin-switches, .twin-note, .twin-tools, .twin-chips, .twin-readout, .twin-extras) { display: none !important; }
 .twin-other { margin-top: 12px; padding: 18px; border-radius: 16px; background: var(--paper-solid, #fff); border: 1px solid var(--hair, rgba(0, 0, 0, .08)); }
 .twin-other-kind { margin: 0 0 10px; font: 650 17px/1.3 var(--font-display); }
 .twin-other dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0 0 10px; font-size: 13.5px; }

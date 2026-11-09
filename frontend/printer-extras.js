@@ -252,7 +252,8 @@ window.PrinterExtras = (() => {
     }));
     host.querySelectorAll('[data-feed]').forEach(b => b.addEventListener('click', () => {
       if (!confirm(`Feed filament into ${b.dataset.feed}? The printer heats that head and pulls filament from its feeder.`)) return;
-      runCommand(b, '/api/printer/control/feed', { toolhead: b.dataset.feed }, { sending: 'Feeding…', done: `${b.dataset.feed} fed`, failed: 'Feeding refused' });
+      runCommand(b, '/api/printer/control/feed', { toolhead: b.dataset.feed }, { sending: 'Feeding…', done: `${b.dataset.feed} fed`, failed: 'Feeding refused' })
+        .then(out => { if (out && out.ok && window.Workshop && Workshop.twinFeed) Workshop.twinFeed(b.dataset.feed); });
     }));
     $('px-endstops').addEventListener('click', async e => {
       const b = e.currentTarget;

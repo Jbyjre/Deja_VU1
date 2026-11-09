@@ -41,5 +41,20 @@ paths:
 - Extrusion: the bead and halo at the nozzle (`dyn.bead`, `dyn.halo`, marked `rest: true` so the drawing
   skips them) show while `extruding`: the file's own stretches (`timeline.extrusion`) when it is followed,
   else the printer's `sync.extruding`.
+- Motion from readings (`Twin3D.fx`, pure and tested in `tests/test_twin_fx.py`): filament dashes (`kind: 'flow'`
+  over each tube and each spool-to-feeder strand, `tube(..., along)` gives UV.x in mm) run at the working head's
+  `state.extruder_velocity` (motion_report `live_extruder_velocity`, signed; 2 mm/s while a simulated print lays
+  plastic); the spool turns by length over a 65 mm radius (`rot` uniform, six windows on the flanges); the four
+  belt strands (`kind: 'belt'`) run A = x + y and B = x - y of the drawn head; the chamber light is
+  `tuning.leds` (cavity LED RGBW) added to what sits inside the case (`uLamp`); a faulted head's LED pulses.
+  The printer reports no feeder speed: a load or an unload (a `tuning.runout` sensor change, else
+  `filament_loaded`, or the Feed button through `Workshop.twinFeed`) is a 6 to 7 s push or pull at about
+  25 mm/s, labelled as typical on the card. A purge strand hangs from the nozzle only while the printer's own
+  extruder speed is above zero and nothing prints.
+- A head slides between its dock and the carriage (0.35 s) only when the carriage is within 70 mm of that
+  dock, else it changes place at once; the optional click (Show menu, off by default) is synthesised in
+  Web Audio. `prefers-reduced-motion` freezes dashes, spools and slides. Animation redraws go through
+  `queueTwin` (`twin.model.moving()`), never a bare `requestAnimationFrame`: that starved the page (0.5 fps
+  in software graphics) before it was routed there.
 - To test the twin without a printer, run `tests/fake_moonraker.py` through a real G-code file and watch the
   card in Chromium (see printer-link.md). Frame time with the bead is the same as without it.

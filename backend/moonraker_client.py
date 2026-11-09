@@ -551,6 +551,10 @@ def translate_state(status, ctx):
         out["objects"] = plate
     if state in ("printing", "paused"):
         out["sync"] = print_sync(vsd, gm, _obj(status, "motion_report"))
+    # Filament speed at the nozzle now (mm/s, negative while retracting): the twin turns the spool and moves
+    # the filament in its tube with it, in a print and outside one (a purge or a feed).
+    speed = _num(_obj(status, "motion_report").get("live_extruder_velocity"))
+    out["extruder_velocity"] = round(speed, 3) if speed is not None and abs(speed) < 1e4 else None
     table = ptc.get("extruder_map_table")
     if isinstance(table, list) and extruders:
         # Only the physical heads' slots: the U1 pads the table to 32 logical

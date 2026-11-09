@@ -777,7 +777,7 @@ const Workshop = (() => {
     // The 3D model's options (kept in this browser): case on, see-through or
     // off; the print; what's left of it; head labels; a slow turntable.
     view3d: (() => {
-      const d = { case: 'closed', print: true, rest: true, tags: true, spin: false };
+      const d = { case: 'closed', print: true, rest: true, tags: true, spin: false, sound: false };
       try { const o = JSON.parse(localStorage.getItem('dejavu1.twin-view') || '{}'); return { ...d, ...(o && typeof o === 'object' ? o : {}) }; } catch (e) { return d; }
     })(),
     printKey: null, printNote: null, printTries: 0, printRetry: 0,
@@ -812,6 +812,7 @@ const Workshop = (() => {
             <label><input type="checkbox" data-opt="print"> The print, in its colours</label>
             <label><input type="checkbox" data-opt="rest"> What's left to print, faintly</label>
             <label><input type="checkbox" data-opt="tags"> Head labels</label>
+            <label><input type="checkbox" data-opt="sound"> Click when a head docks</label>
           </div>
         </details>
         <label class="twin-outer" data-drawing-only><input type="checkbox" id="wf-outer"> <span>Outer size</span></label>
@@ -840,7 +841,8 @@ const Workshop = (() => {
       </div>
       <div class="wf-picks" id="wf-picks" role="group" aria-label="Show details for"></div>
       <div class="wf-detail" id="wf-detail" hidden></div>
-      <div class="twin-readout" id="twin-readout"></div>`;
+      <div class="twin-readout" id="twin-readout"></div>
+      <div class="twin-readout twin-extras" id="twin-extras" aria-live="off"></div>`;
     const svg = $('wf-svg');
     twin.model = null;
     twin.paths = {};
@@ -968,7 +970,13 @@ const Workshop = (() => {
     if (twin.model && twin.model.setMoveMode) twin.model.setMoveMode(twin.moveOn ? twinMoveTo : null);
     const spin = $('twin-spin');
     if (spin) { spin.setAttribute('aria-pressed', String(!!o.spin)); spin.classList.toggle('active', !!o.spin); setText(spin.querySelector('span'), o.spin ? 'Turning · stop' : 'Turn slowly'); }
-    if (twin.model) { twin.model.setCaseMode(o.case); twin.model.setOptions({ print: o.print, rest: o.rest, tags: o.tags, spin: o.spin }); }
+    if (twin.model) { twin.model.setCaseMode(o.case); twin.model.setOptions({ print: o.print, rest: o.rest, tags: o.tags, spin: o.spin, sound: o.sound }); }
+  }
+
+  /* Feed pressed and accepted on a head: its filament starts moving in the tube and its spool turns. */
+  function twinFx() { return twin.model && twin.model.fxInfo ? twin.model.fxInfo() : null; }
+  function twinFeed(head) {
+    if (twin.model && twin.model.feed) twin.model.feed(head, 'load');
   }
 
   /* The print on the plate, from its own G-code (backend/print_preview.py),
@@ -1121,7 +1129,7 @@ const Workshop = (() => {
         renderChips();
         const sync = twin.model.syncInfo();
         renderSync(sync);
-        if (sync && !sync.paused && !matchMedia('(prefers-reduced-motion: reduce)').matches) queueTwin();
+        if (((sync && !sync.paused) || twin.model.moving()) && !matchMedia('(prefers-reduced-motion: reduce)').matches) queueTwin();
       } else drawTwin();
     };
     requestAnimationFrame(draw);
@@ -1616,6 +1624,18 @@ const Workshop = (() => {
     const running = state.state === 'printing' || state.state === 'paused';
     setText($('twin-readout'), where + (active ? ` · ${active}${nb}active` : '') +
       (running && layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
+    // What else the printer reports that the model shows: the chamber light, the fans and the homed axes.
+    const tune = state.tuning || {}, pct = v => `${Math.round(v * 100)}%`;
+    const led = (tune.leds || []).find(l => /cavity|chamber/i.test(l.id || '')) || (tune.leds || [])[0];
+    const light = led && Array.isArray(led.color) ? Math.max(...led.color.map(v => +v || 0)) : null;
+    const cavity = (tune.fans || []).find(f => /cavity|chamber/i.test(f.id || ''));
+    const homedNow = typeof state.homed_axes === 'string' ? state.homed_axes : null;
+    const parts = [];
+    if (light !== null) parts.push(`Chamber light ${light > 0.02 ? pct(light) : 'off'}`);
+    if (typeof tune.part_fan === 'number') parts.push(`Part fan ${pct(tune.part_fan)}`);
+    if (cavity && typeof cavity.speed === 'number') parts.push(`Chamber fan ${pct(cavity.speed)}`);
+    if (homedNow !== null && homedNow.length < 3) parts.push('Homed: ' + ['x', 'y', 'z'].map(a => `${a.toUpperCase()} ${homedNow.includes(a) ? '✓' : '–'}`).join(' '));
+    setText($('twin-extras'), parts.join(' · '));
     // A real printer that hasn't homed doesn't know where its head is, and a dropped link
     // means the drawing shows the last reading: both said in words, never drawn as live.
     const unhomed = typeof state.homed_axes === 'string' && state.homed_axes.length < 3;
@@ -3738,7 +3758,7 @@ const Workshop = (() => {
     window.addEventListener('resize', () => moveTabBlob(currentTab()));
   }
 
-  return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph,
+  return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph, twinFeed, twinFx,
            openFile, openConfirm, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
 })();
 

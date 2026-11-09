@@ -267,8 +267,7 @@ const Twin3DScene = (() => {
         add(lathe(geo(), [[2.5, RAIL_Z - 8], [2.5, RAIL_Z], [8, RAIL_Z], [8, RAIL_Z + 14], [2.5, RAIL_Z + 14], [2.5, RAIL_Z + 18]], [x, 299, 0], 'z', 24), 'steel', { frame: true });
         // Idler at the front of the same side.
         add(lathe(geo(), [[2.5, RAIL_Z], [8, RAIL_Z], [8, RAIL_Z + 14], [2.5, RAIL_Z + 14]], [x, -50, 0], 'z', 24), 'alu', { frame: true });
-        // Two belt strands along the side, at their two heights.
-        for (const [dx, z] of [[-8.6, RAIL_Z + 3], [8.6, RAIL_Z + 9]]) add(box(geo(), x + dx - 0.8, -50, z - 3, x + dx + 0.8, 299, z + 3, 0.4), 'belt', { frame: true });
+        // The two belt strands along each side move with the head (`sbelt`, placed by twin3d.js).
       }
       // The lead screw behind the bed and its motor underneath.
       add(lathe(geo(), [[4, 60], [4, 372]], [135, 305, 0], 'z', 20), 'screw', { frame: true });
@@ -299,7 +298,7 @@ const Twin3DScene = (() => {
       dyn('xbeam', g);
     }
     // The belt between the two rods: two strands into the carriage.
-    dyn('xbelt', (() => { const g = geo(); for (const z of [RAIL_Z - 4.5, RAIL_Z + 4.5]) box(g, -54, 5, z - 2.5, 324, 6.6, z + 2.5, 0.4); return g; })());
+    for (const [name, z] of [['xbeltLo', RAIL_Z - 4.5], ['xbeltHi', RAIL_Z + 4.5]]) dyn(name, box(geo(), -54, 5, z - 2.5, 324, 6.6, z + 2.5, 0.4));
     dyn('ycar', (() => { const g = geo(); box(g, -68, -22, RAIL_Z - 26, -44, 22, RAIL_Z + 26, 3); box(g, 314, -22, RAIL_Z - 26, 338, 22, RAIL_Z + 26, 3); return g; })());
     // The carriage: a white block, taller than wide, the head clipped on behind.
     dyn('carriage', slab(geo(), rrect(58, 36, 9, 6), [0, 0], RAIL_Z - 44, RAIL_Z + 40, { bevel: 6, steps: 3 }));
@@ -342,6 +341,36 @@ const Twin3DScene = (() => {
     const ball = (r, z) => Array.from({ length: 11 }, (_, i) => [r * Math.sin(Math.PI * i / 10), z - r * Math.cos(Math.PI * i / 10)]);
     dyn('bead', lathe(geo(), ball(2.2, 0.8), [0, 0, 0], 'z', 14));
     dyn('halo', lathe(geo(), ball(10, 1.5), [0, 0, 0], 'z', 20));
+    // One belt strand along a side of the machine (front to back), at the origin; twin3d.js places four of them.
+    dyn('sbelt', box(geo(), -0.8, -50, -3, 0.8, 299, 3, 0.4));
+    // Six dark windows on each flange of a spool, so its turning shows. Axis along X, origin at the hub.
+    {
+      const g = geo();
+      for (const side of [-1, 1]) {
+        const xf = side * 36.2, n = [side, 0, 0];
+        for (let w = 0; w < 6; w++) {
+          const a0 = w / 6 * Math.PI * 2 + 0.12, a1 = a0 + 0.62;
+          for (let i = 0; i < 6; i++) {
+            const t0 = a0 + (a1 - a0) * i / 6, t1 = a0 + (a1 - a0) * (i + 1) / 6;
+            const P = (r, a) => [xf, Math.cos(a) * r, Math.sin(a) * r];
+            quadV(g, [P(44, t0), n], [P(88, t0), n], [P(88, t1), n], [P(44, t1), n]);
+          }
+        }
+      }
+      dyn('spoolMarks', g);
+    }
+    // The filament where it runs from each spool to its feeder, for the moving dashes over it.
+    [0, 1, 2, 3].forEach(i => {
+      const s = i < 2 ? -1 : 1, wx = s < 0 ? x0 : x1, up = i % 2 === 0, fx = wx + s * 18, sx = wx + s * HUB.out;
+      const to = up ? [sx, uy + 34, uz - 77] : [sx, ly + 82, lz + 16];
+      dyn(`sflow${i}`, tube(geo(), [[fx, 255, up ? 162 : 138], [(fx + sx) / 2, (255 + to[1]) / 2, ((up ? 162 : 138) + to[2]) / 2], to], 2.0, 8, 6, true));
+    });
+    // Filament coming out of a nozzle that isn't printing (a purge): a strand hanging from the tip, a bead at its end.
+    {
+      const g = tube(geo(), [[0, 0, 0.6], [0.6, 0.3, -9], [-0.9, 0.2, -22], [1.1, 0.5, -36]], 1.5, 8, 6);
+      lathe(g, ball(3.6, -40), [1.1, 0.5, 0], 'z', 12);
+      dyn('purge', g);
+    }
     dyn('blob', box(geo(), 80, 80, 0, 190, 190, 1, 0.3));
     return { statics, dynamic, DOOR };
   }
