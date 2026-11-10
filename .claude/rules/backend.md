@@ -108,6 +108,9 @@ slicing and launcher files have their own notes in this folder.
 - `fleet.summary_for` tolerates missing heads; a row that still fails keeps the printer's name.
 - `websocket.py` is also the client framing for `moonraker_client.py` and shadows PyPI's
   `websocket-client`, so `backend/` must stay first on `sys.path`.
-- `led_status.py` and `color_check.py`: decision logic and simulation; `read_sensor()` is simulated
-  and `calibrate()` raises NotImplementedError. Keep the README's hardware line, `color_check.py`'s
+- `led_status.py`: decision logic and simulation. `color_check.py` uses `companion_sensor.py` for
+  physical observations and simulation only for demo printers; `calibrate()` raises NotImplementedError.
+  The companion API saves explicit per-printer channel/sensor bindings, retains readings only in memory,
+  expires captures at 30 seconds and never gives optical print approval. Drivers and firmware remain to build.
+  Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.

@@ -1,6 +1,6 @@
 # What has been tested
 
-Updated 8 November 2026. Three kinds of evidence, kept apart so you can see which is which:
+Updated 10 November 2026. Three kinds of evidence, kept apart so you can see which is which:
 
 - **Real U1:** run on a real Snapmaker U1.
 - **Automated and stand-in:** the test suite (it runs before every release is published), a
@@ -23,8 +23,8 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1288 tests passed in 796.5 seconds on Python 3.13 (Linux, 9 November 2026,
-  version 0.20.5 plus the changes in this release). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
+- **The test suite:** 1316 tests passed in 780.3 seconds on Python 3.12.14 (Linux, 10 November 2026,
+  version 0.20.6 plus the companion-sensor changes). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
   release job runs it again before publishing.
 - **The printer connection** in the suite, against a Moonraker stand-in (`tests/fake_moonraker.py`)
   over real sockets: commands, refusals, watch-only mode (no write gets through), sign-in, the
@@ -37,6 +37,12 @@ The rest of the dashboard was used with the same printer. The firmware version w
 - **Screens** in Chromium at 1366 px and 390 px wide, checked by the session that changed them: each
   look in light and dark, text contrast measured against WCAG AA, and the online demo at both
   widths.
+- **Colour-checker ingestion:** synthetic version 1 messages through the actual local HTTP API and
+  a Moonraker stand-in, including identity mismatch, replay, clock changes, expiry, low quality,
+  raw-only samples, reassignment and restart. The colour card was checked at both widths in all
+  three looks, light and dark, with details and keyboard focus retained on refresh. There were no
+  page errors or sideways scrolling; the static demo also passed its browser check.
+  [Browser evidence](evidence/colour-sensor-browser.json) and [API contract](colour-sensor-api.md).
 
 ## Slicing engines
 
@@ -57,8 +63,9 @@ sliced, each on its own. Details:
 ## Not built yet
 
 - **The colour checker** ("Right colour loaded?"). The comparison logic and a simulation exist; the
-  sensor read and calibration are not written. The sensor and board are chosen and get a bench test
-  first. [Design](hardware-modules.md)
+  companion API receives identified observations, but firmware, sensor drivers and guided calibration
+  are not written. No physical colour sensor or colour accuracy was tested in the API work.
+  The sensor and board get a bench test first. [Design](hardware-modules.md)
 - **LED dock rings.** The on-screen states exist; the ring driver doesn't. A WLED strip you already
   own can show the same states today.
 - **Spool scales.** Planned after the colour checker.

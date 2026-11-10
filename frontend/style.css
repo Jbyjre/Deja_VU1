@@ -1402,3 +1402,15 @@ body.no-server [data-module-off] { display: none !important; }
 .tour-bar .notice-mark { background: color-mix(in oklch, var(--accent) 20%, transparent); }
 .is-tour #notice { display: none !important; }   /* the demo note already says it's simulated */
 @media (max-width: 640px) { .tour-bar .notice-mark { display: none; } }
+.sensor-details {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.sensor-details summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+.sensor-details p {
+  margin: 6px 0;
+}

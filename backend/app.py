@@ -67,7 +67,10 @@ API endpoints
   POST /api/maintenance/snooze       hide a due task from alerts for a while {"task_id", "days": 1|3|7}
 
   GET  /api/leds                     simulated LED ring states
-  GET  /api/colorcheck               simulated filament color check
+  GET  /api/colorcheck               demo comparison or physical sensor observations
+  GET  /api/colorcheck/sensors       assigned companion sensors and reading status
+  POST /api/colorcheck/sensors       version 1 physical sensor assignments, per printer
+  POST /api/colorcheck/readings      one version 1 companion observation
   GET  /api/printer                  raw mock printer state
   GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints
   GET  /api/chamber                  chamber temperature now + last 30 minutes
@@ -263,6 +266,7 @@ import logbook
 import process_settings
 import camera
 import color_check
+import companion_sensor
 import comparison
 import colour_map
 import console
@@ -480,6 +484,7 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    "/api/colorcheck/sensors": ("color_check", lambda q: companion_sensor.status()),
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),
@@ -780,7 +785,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             console.write(f"  {command} {path}: {fmt % args}\n")
             return
         status = str(args[1])
-        quiet = ("/api/live/snapshot", "/api/live/events", "/api/app/ready")
+        quiet = ("/api/live/snapshot", "/api/live/events", "/api/app/ready", "/api/colorcheck/readings")
         if status[:1] not in ("4", "5") and (command in ("GET", "HEAD") or path in quiet):
             return
         # console.write never raises: with no window (sys.stderr missing) a log line
@@ -1178,6 +1183,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         route = self.path.split("?")[0].rstrip("/")
         query = self._query()
         connected = mock_moonraker.is_connected(printer_id)
+
+        if route in ("/api/colorcheck/sensors", "/api/colorcheck/readings"):
+            if self._module_blocked("color_check"):
+                return None
+            body = self._read_json_body()
+            action = companion_sensor.configure if route.endswith("/sensors") else companion_sensor.ingest
+            return self._send_json(action(body))
 
         if route in ('/api/backup/preview','/api/backup/restore','/api/backup/discard'):
             if self._module_blocked('backup'):

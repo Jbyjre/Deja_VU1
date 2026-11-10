@@ -6,6 +6,10 @@ Deja Vu1.
 
 ## Screenshots (`docs/img/*.jpg`, except `explainer-*`)
 
+`docs/img/colour-sensor-status.jpg` shows the colour card with four synthetic companion messages
+and a Moonraker stand-in, captured in Chromium at 1366 px on 10 November 2026. It demonstrates
+current, uncalibrated, stale and low-quality states; no physical sensor supplied these values.
+
 Older farm screenshots use demo data. Current slicing captures use local-engine
 output estimates; none are physical-printer measurements. The validation record
 below identifies their source. For farm captures:

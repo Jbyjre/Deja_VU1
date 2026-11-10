@@ -291,10 +291,13 @@ opened from the build environment, so check current prices before buying.
 
 ### Software status
 
-`backend/color_check.py` contains the working comparison logic and a
-simulation. With a real printer and no sensor fitted, it reports "no sensor
-fitted" and never passes off a simulated reading. The unwritten functions
-are `connect_sensor()`, `calibrate()` and the real body of `read_sensor()`.
+`backend/color_check.py` contains comparison logic for the demo. Real printers read explicitly
+assigned companion sensors through `backend/companion_sensor.py` and the
+[version 1 companion API](colour-sensor-api.md). It retains raw channels, device and sensor identity,
+calibration provenance, quality flags and capture/receipt times. Old, uncalibrated or low-quality
+samples never show a current colour. With no assigned sensor it reports "no sensor fitted";
+demo readings never stand in for physical readings. Pico firmware, sensor drivers and
+`calibrate()` are still to build and test with hardware.
 The behaviour above (checking on load, the one-click accept, "couldn't
 read", the one-tap colour offer) is planned and not written yet.
 
@@ -318,7 +321,6 @@ filament inlets, the mounting points and the filament path clearances get
 measured on that U1 before anything is printed or wired, and nothing is wired
 into the printer itself.
 
-For the sensor read and the LED write, the arrival of the hardware changes
-four functions and nothing else. The colour checker's planned behaviour
+The sensor drivers and LED write still need the hardware. The colour checker's planned behaviour
 (checking on load, the one-click accept, the one-tap colour offer) is new
 code on top of those.

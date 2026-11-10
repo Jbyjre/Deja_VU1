@@ -1684,12 +1684,67 @@ async function loadRings() {
 /* ---- Module: colour check ------------------------------------------------*/
 
 async function loadColorCheck() {
-  const data = await getJSON(api('/api/colorcheck'));
+  const printer = currentPrinter;
+  const data = await getJSON(api('/api/colorcheck')).catch(() => null);
+  if (printer !== currentPrinter) return;
+  if (!data) {
+    $('colour-sensor-state').textContent = 'No reading';
+    $('colorfile').hidden = true;
+    paint($('colors'), EMPTY('Colour readings unavailable', 'Check the dashboard connection. Previous readings are not current.'));
+    $('colors-note').hidden = true;
+    return;
+  }
+  $('colour-sensor-state').textContent = data.simulated ? 'Demo readings' : 'No sensor';
 
   if (isModuleDisabled(data)) {
+    $('colour-sensor-state').textContent = 'Off';
     $('colorfile').hidden = true;
     paint($('colors'), moduleDisabledEmpty('Right colour loaded?'));
     $('colors-note').hidden = true;
+    return;
+  }
+  if (data.overall === 'sensor_readings' && data.sensors?.length) {
+    const expanded = new Set([...document.querySelectorAll('#colors .sensor-details[open]')].map(d => d.dataset.head));
+    const focusedHead = document.activeElement?.closest('#colors .sensor-details')?.dataset.head;
+    const labels = {
+      no_reading: 'No reading',
+      stale: 'Old reading',
+      unreadable: "Couldn't read",
+      uncalibrated: 'Needs calibration',
+      low_confidence: 'Low confidence',
+      reading: 'Colour received'
+    };
+    $('colour-sensor-state').textContent = data.hardware_connected ? 'Sensor reporting' : 'Waiting for sensor';
+    $('colorfile').hidden = true;
+    paint($('colors'), data.sensors.map(sensor => {
+      const colour = sensor.status === 'reading' && /^#[0-9a-f]{6}$/i.test(sensor.detected_hex || '')
+        ? `<div class="sw"><span class="chip" style="background:${esc(sensor.detected_hex)}"></span> ${esc(sensor.detected_hex)} reported by sensor</div>`
+        : '';
+      const reading = sensor.reading;
+      const age = sensor.age_s == null ? '' : ` · ${Math.floor(sensor.age_s)} s ago`;
+      return `<div class="crow">
+        <div class="crow-top"><span class="crow-head">Head ${esc(sensor.toolhead)}</span>
+          <span class="badge">${esc(labels[sensor.status] || 'No reading')}</span></div>
+        ${colour}
+        <p class="crow-msg">${esc(sensor.message)}</p>
+        <details class="sensor-details" data-head="${esc(sensor.toolhead)}"${expanded.has(sensor.toolhead) ? ' open' : ''}><summary>Reading details${esc(age)}</summary>
+          <p>${esc(sensor.sensor_model)} · Hub ${esc(sensor.device_id)} · Channel ${esc(sensor.channel_id)} · Sensor ${esc(sensor.sensor_id)}</p>
+          ${reading ? `<p>Captured ${esc(new Date(reading.captured_at * 1000).toLocaleString())}.
+            ${sensor.status === 'stale' ? 'Previous sample, no longer current.' : ''}</p>
+            <p>Received ${esc(new Date(reading.received_at * 1000).toLocaleString())}.</p>
+            <p>Raw values: ${esc(JSON.stringify(reading.raw))}</p>
+            <p>Quality flags: ${esc(reading.quality_flags.join(', ') || 'None reported')}</p>
+            ${reading.calibrated ? `<p>Calibration reported by sensor: ${esc(reading.calibrated.calibration_id)}.
+              Confidence: ${esc(reading.calibrated.confidence)}.</p>` : ''}` : ''}
+        </details>
+      </div>`;
+    }).join(''));
+    if (focusedHead) {
+      [...document.querySelectorAll('#colors .sensor-details')]
+        .find(d => d.dataset.head === focusedHead)?.querySelector('summary').focus({ preventScroll: true });
+    }
+    $('colors-note').textContent = data.note;
+    $('colors-note').hidden = false;
     return;
   }
   if (data.overall === 'no_sensor') {
@@ -1723,6 +1778,7 @@ async function loadColorCheck() {
     </div>`).join(''));
 
   if (firstPaint) stagger([...document.querySelectorAll('#colors .crow')], 70);
+  $('colors-note').textContent = 'Detected values are demo data.';
   $('colors-note').hidden = false;
 }
 
@@ -2379,8 +2435,8 @@ async function loadCompare() {
 
   if (hasData(sanityData) && !isModuleDisabled(sanityData) && sanityData.reasons) {
     if (sanityData.safe_to_print) {
-      rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">${sanityData.colour_measured === false
-        ? 'Safe to print: maintenance and docks check out. Colour wasn’t measured (no sensor fitted); Confirm Print still compares the file with what the printer reports loaded.'
+      rows.push(`<div class="crow" style="border-left:3px solid var(--ok);">${(sanityData.colour_compared ?? sanityData.colour_measured) === false
+        ? 'Safe to print: maintenance and docks check out. No optical colour comparison; Confirm Print still compares the file with what the printer reports loaded.'
         : 'Safe to print: maintenance, dock, and colour all check out.'}</div>`);
     } else {
       sanityData.reasons.forEach(msg => rows.push(`<div class="crow" style="border-left:3px solid var(--bad);">${esc(msg)}</div>`));

@@ -57,7 +57,7 @@ measured from a photo or estimated, the app says so.
 
 ## How it was made
 
-Deja Vu1 is written with the help of an AI coding assistant (Claude), working
+Deja Vu1 is written with the help of AI coding assistants (Claude and OpenAI Codex), working
 from the maintainer's direction; `CLAUDE.md` and `.claude/rules/` hold the
 working notes those sessions follow. Every claim in the app and README is meant to be checkable:
 Settings → About → "Check it yourself" runs a set of real checks in your own
