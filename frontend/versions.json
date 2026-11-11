@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.8",
+      "date": "2026-11-11",
+      "name": "Ask an AI assistant to explain, plan and work the printer, using your own AI...",
+      "published": true,
+      "summary": "Ask an AI assistant to explain, plan and work the printer, using your own AI (#92).",
+      "changes": [
+        "Ask an AI assistant to explain, plan and work the printer, using your own AI (#92)"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.7",
       "date": "2026-11-11",
       "name": "Receive colour-checker readings with their sensor identity and age",

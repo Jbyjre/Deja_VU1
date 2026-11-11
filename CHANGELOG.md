@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.8 (11 November 2026): Ask an AI assistant to explain, plan and work the printer, using your own AI...
+
+- Ask an AI assistant to explain, plan and work the printer, using your own AI (#92)
+
 ## 0.20.7 (11 November 2026): Receive colour-checker readings with their sensor identity and age
 
 - Receive colour-checker readings with their sensor identity and age
