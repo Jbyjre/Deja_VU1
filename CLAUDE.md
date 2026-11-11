@@ -133,7 +133,8 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
 - `backend/`: `app.py` (the whole web server and its route tables), `mock_moonraker.py` (one
   interface for simulated and real printers), `moonraker_client.py` (real printers), `live_feed.py`
   (250 ms tick), `fleet.py`, `print_gate.py` (Confirm Print), `gcode_tools.py`, `slicer_bridge.py`,
-  `app_updates.py`, `storage.py`, `modules.py`, and one module per feature.
+  `app_updates.py`, `storage.py`, `modules.py`, `ai_assistant.py` + `ai_providers.py` (the assistant and
+  its safety limits), and one module per feature.
 - `frontend/`: published as the product page and online demo. `index.html` + `app.js` (shared
   globals) + one script per feature, `rail.js` (sidebar) last; `welcome.html` (product page);
   `demo/` (the recording); `media/` (the launch film).

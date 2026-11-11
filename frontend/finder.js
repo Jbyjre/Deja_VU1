@@ -93,6 +93,7 @@ window.Finder = (() => {
   ];
   const ACTIONS = [
     ['Open the camera', 'Do', 'camera live view webcam watch', () => go('#pp-camera-card')],
+    ['Ask the assistant', 'Do', 'ai assistant chat ask help claude chatgpt codex gemini grok api key explain', () => window.Assistant && Assistant.open()],
     ['Turn demo data on or off', 'Do', 'demo simulated toggle sample data', () => document.querySelector('label[for=demo-toggle]')?.click()],
     ['Add the sample files', 'Do', 'samples benchy gear vase example test models', async () => { go('File library'); document.getElementById('file-samples')?.click(); }],
     ['Convert the 3-plate MakerWorld sample', 'Do', 'converter try sample bambu makerworld', async () => { go('#convert-card'); document.getElementById('cv-sample')?.click(); }],

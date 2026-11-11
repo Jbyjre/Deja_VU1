@@ -42,8 +42,8 @@ slicing and launcher files have their own notes in this folder.
 
 ## Modules and switches (`modules.py`)
 
-- Each module has a `kind`: `extra` (Settings → Optional extras lists only these six: auto_print,
-  webrtc_camera, led_status, wled_bridge, home_assistant_bridge, color_check), `setting` (camera,
+- Each module has a `kind`: `extra` (Settings → Optional extras lists only these seven: auto_print,
+  webrtc_camera, led_status, wled_bridge, home_assistant_bridge, color_check, ai_assistant), `setting` (camera,
   timelapse, handoff: a switch in their own card) and `core` (always on, no switch on screen).
   A new feature that needs something outside Deja Vu1 is an `extra`; anything else is `core`.
 - The server enforces every switch (a disabled module's routes answer 403; tests switch core ones
@@ -88,7 +88,7 @@ slicing and launcher files have their own notes in this folder.
 - `automations.py`: triggers include progress, time_left, layer, error, link_lost; actions include
   cool_down (never mid-print) and macro (must be one the printer lists). `notifications.py` sends
   only from rules.
-- `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py` (29 module ids).
+- `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py` (30 module ids).
 - `pairing.py`: device keys (hash stored, HttpOnly cookie); redeeming again from a paired browser
   replaces its entry. The optional device lock (`_locked_out`) always allows loopback.
 - `qr.py`: standard-library QR codes, checked against python-qrcode. `phone_link()` in app.py.
@@ -114,3 +114,20 @@ slicing and launcher files have their own notes in this folder.
   expires captures at 30 seconds and never gives optical print approval. Drivers and firmware remain to build.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
+
+## The AI assistant
+
+- `ai_providers.py`: every way to reach a model (`PROVIDERS`: two subscription programs, 30 key
+  services, two local, one custom). Two wire formats only (Anthropic Messages, chat completions).
+  Keys live in `<data>/ai_keys.json` under the field `api_key` (backup.py blanks it), mode 600, and
+  `describe()` is the only thing the browser sees. Error text passes through `_scrub`. Never
+  hard-code a model name except `DEFAULT_MODELS`; the starting model comes from the service's list.
+- `ai_assistant.py`: the model never calls the printer. It writes ```` ```action ```` JSON blocks naming a
+  tool in `TOOLS`; each tool calls `printer_control` (the same checks as the Printer page) plus
+  `LIMITS` (Z floor, read-only G-code allowlist `_SAFE_GCODE`, 12 steps a request). A new tool needs
+  a level (read | safe | ask | handoff), a `_label`, and a test in `tests/test_ai_assistant.py`.
+  `start_print` only returns a handoff; never let a tool start a print or send free G-code.
+  `_check_allowed` applies module switches, watch-only and the restart hold. Conversations are in
+  memory only; a turn runs on its own thread inside `selection_only(printer)`.
+- Routes: `/api/assistant` and `/api/assistant/thread` (GET, in `_APP_ROUTES`), POST verbs under
+  `/api/assistant/`; provider failures answer 502 with words.

@@ -23,8 +23,8 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1316 tests passed in 780.3 seconds on Python 3.12.14 (Linux, 10 November 2026,
-  version 0.20.6 plus the companion-sensor changes). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
+- **The test suite:** 1359 tests passed in 809.5 seconds on Python 3.13.18 (Linux, 11 November 2026,
+  version 0.20.7 plus the AI assistant). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
   release job runs it again before publishing.
 - **The printer connection** in the suite, against a Moonraker stand-in (`tests/fake_moonraker.py`)
   over real sockets: commands, refusals, watch-only mode (no write gets through), sign-in, the
@@ -37,6 +37,13 @@ The rest of the dashboard was used with the same printer. The firmware version w
 - **Screens** in Chromium at 1366 px and 390 px wide, checked by the session that changed them: each
   look in light and dark, text contrast measured against WCAG AA, and the online demo at both
   widths.
+- **The AI assistant:** a full conversation through a Claude plan (Claude Code 2.1.322) on a demo
+  printer on Linux, 11 November 2026: reading the printer, a fan change, an Approve step for heat and
+  a refused 500 °C request. The 30 key services' addresses answered a request without a key the same
+  day. In the suite, stand-in services and stand-in `claude` and `codex` programs cover both wire
+  formats, error messages, key handling and every safety limit. No paid key, real ChatGPT plan or
+  real U1 has been tried with it. Panel checked at 1366 px and 390 px, light and dark, and in the
+  static online demo, with no page errors. [AI assistant](ai-assistant.md).
 - **Colour-checker ingestion:** synthetic version 1 messages through the actual local HTTP API and
   a Moonraker stand-in, including identity mismatch, replay, clock changes, expiry, low quality,
   raw-only samples, reassignment and restart. The colour card was checked at both widths in all

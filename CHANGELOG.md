@@ -16,6 +16,16 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
 
 ## Unreleased
 
+- An AI assistant, using your own AI: a Claude plan through Claude Code, a ChatGPT plan through Codex,
+  an API key from any of 30 services, or a model on your computer (Ollama, LM Studio or another
+  address). It reads the printer, files, queue, care list, spools, history and camera, homes, moves,
+  cools and adjusts by itself, and waits for Approve before it heats, pushes filament, runs a macro
+  or cancels a print. It makes simple shapes and scaled, turned or mirrored copies of models. Heater
+  limits, the printer's size, homing, a 2 mm gap above the bed and read-only typed G-code hold in
+  every setting, and it cannot start a print: it opens Confirm Print. Keys stay on your computer and
+  out of backups. Verified with a real Claude plan on a demo printer; the 30 service addresses
+  answered without a key, and no paid key or real U1 has been tried with it yet.
+
 - Colour-checker companions can send identified raw and calibrated observations through a versioned
   API. Each channel is assigned to one head on one printer; old, repeated, wrong-sensor and low-quality
   readings cannot appear as a current colour. The colour card shows each sensor's status and reading

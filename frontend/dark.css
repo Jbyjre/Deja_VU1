@@ -209,3 +209,14 @@ html[data-theme="dark"] .dk-bar { background: color-mix(in srgb, var(--accent) 2
 html[data-theme="dark"] .dk-bar.is-run { background: color-mix(in srgb, var(--ok) 22%, #18212d); border-color: color-mix(in srgb, var(--ok) 50%, #18212d); }
 html[data-theme="dark"] .dk-bar.is-paused { background: color-mix(in srgb, var(--warn) 22%, #18212d); border-color: color-mix(in srgb, var(--warn) 50%, #18212d); }
 html[data-theme="dark"] .dk-bar.is-unknown { background: repeating-linear-gradient(90deg, #222c38 0 8px, #1b2430 8px 16px); border-color: var(--edge); }
+
+/* The assistant's panel: its inner cards, bubbles and fields on the dark glass. */
+html[data-theme="dark"]:not(#dv) .ai-panel { background: rgba(28, 29, 34, .88); }
+html[data-theme="dark"]:not(#dv) .ai-head { border-bottom-color: rgba(255, 255, 255, .1); }
+html[data-theme="dark"]:not(#dv) :is(.ai-prov, .ai-form, .ai-mode, .ai-idea, .ai-msg.is-assistant) { background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .13); }
+html[data-theme="dark"]:not(#dv) :is(.ai-prov.is-picked, .ai-mode:has(input:checked), .ai-step.is-waiting .ai-step-main) { background: color-mix(in oklch, var(--accent) 24%, transparent); border-color: var(--accent-light); }
+html[data-theme="dark"]:not(#dv) .ai-msg.is-error { background: color-mix(in srgb, var(--bad) 18%, transparent); }
+html[data-theme="dark"]:not(#dv) .ai-msg.is-note, html[data-theme="dark"]:not(#dv) .ai-msg code { background: rgba(255, 255, 255, .09); }
+html[data-theme="dark"]:not(#dv) .ai-step::before { background: rgba(255, 255, 255, .22); }
+html[data-theme="dark"]:not(#dv) .ai-node { background: #1c1d22; }
+html[data-theme="dark"]:not(#dv) .ai-step.is-done .ai-node { background: var(--ok-text); }
