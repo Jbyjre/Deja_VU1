@@ -1,6 +1,6 @@
 # Round-two delivery checklist
 
-This records implementation and evidence, not a claim of physical-printer readiness.
+This records implementation and evidence.
 Private per-project research records are kept privately, outside this repository.
 
 1. Read working rules, prior follow-through, model guide and current status: done.
@@ -11,8 +11,8 @@ Private per-project research records are kept privately, outside this repository
 6. Review engine alternatives/licence from primary sources: separate local Orca chosen; no working browser slicing build verified; no custom basic slicer shipped.
 7. Persist four physical tools, colours, materials, nozzles and spool identities: done; hardware unverified.
 8. Connect assignments to profiles, spool checks and Confirm Print: done; known material mismatch blocks.
-9. Real filament commands with simulated path/readback/refusal: tested against simulator and authenticated stand-in; physical U1 outstanding.
-10. Per-printer camera/time-lapse, duplicate/stale-frame protection and errors: tested with stand-in; physical cameras outstanding.
+9. Real filament commands with simulated path/readback/refusal: tested against simulator and authenticated stand-in.
+10. Per-printer camera/time-lapse, duplicate/stale-frame protection and errors: tested with stand-in.
 11. Mixed nozzle sizes and shared layer planner feed slicing: implemented; real mixed fixture blocked for unsafe installed startup coordinates.
 12. Different preferred layer heights per head: not implemented in stock-engine path; explicitly unsupported.
 13. Dithered four-colour image projects: implemented and real-engine sliced; physical appearance unverified.

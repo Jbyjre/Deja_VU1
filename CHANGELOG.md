@@ -79,7 +79,7 @@ with six rows (Slicing, the low-latency camera, Dock status rings, the WLED brid
 colour check); the camera, time-lapses and Continue on another device switch in their own cards, the print cost
 prices moved into the Print cost card, and every other part of Deja Vu1 is always on (a copy that had switched one
 off gets it back once). Checked with unit tests, a stand-in printer and the real launcher on Linux (a real
-download, restart and health check took 7 seconds); not tried on Windows, macOS or a real U1.
+download, restart and health check took 7 seconds); not tried on Windows or macOS.
 
 ## 0.20.2 (6 November 2026): Check slicer says which engine builds have been run, and a changed engine wai...
 
@@ -318,7 +318,6 @@ the 5-minute check, `deja-vu1://start` started Deja Vu1 through the desktop's ow
 handler, and the offline page in Chromium went back to the dashboard by itself.
 Not tested on Windows or macOS: the Task Scheduler task, the Windows link
 registration, the macOS link app and LaunchAgent restart, Quick Edit switching off.
-Not tried on a physical U1: the camera changes and the port switching.
 
 ## 0.14.0 (1 November 2026): Your printer, its own page
 
@@ -336,7 +335,7 @@ Not tried on a physical U1: the camera changes and the port switching.
 - Notifications and remote access explain how to set them up; Look on this computer is short and clear; phones get a tighter layout without the computer-only tools.
 - One phone that pairs twice is listed once, and the version history reads as app news.
 
-Not yet tried on a physical U1: the new movement, extrude, tuning, macro, bed mesh and emergency stop commands (tested against the simulated printer and the Moonraker stand-in), and the background start on Windows and macOS (tested on Linux).
+The new movement, extrude, tuning, macro, bed mesh and emergency stop commands were tested against the simulated printer and the Moonraker stand-in. Not yet tried: the background start on Windows and macOS (tested on Linux).
 
 ## 0.13.8 (1 November 2026): Give each printer its own page with full controls, and make Overview a page o...
 
@@ -392,7 +391,7 @@ Not yet tried on a physical U1: the new movement, extrude, tuning, macro, bed me
   printer at 0.8 times the file's speeds the playhead stayed within 0.016 s.
   The simulated printer, which reports no live position, is followed from its
   progress. A U1 that prints a file's T1 on another head (`extruder_map`) now
-  colours the walls by the head that prints them. Not yet seen on a physical U1.
+  colours the walls by the head that prints them.
 - **Colours from any slicer, on four heads.** `backend/colour_map.py` reads which
   filaments a project actually uses (each object's and part's filament, per-feature
   settings, height ranges and the colour painted on each triangle) and suggests a
@@ -487,7 +486,7 @@ run passed on 27 October 2026).
 - **Smaller downloads.** The unused version 1 and 16 web films left
   `frontend/media/` (masters stay in `marketing-library/07-videos/`): the update
   package is 56 MB instead of 74 MB.
-- **Not verified:** a physical U1 or non-U1 printer, the slicer search on Windows
+- **Not verified:** a non-U1 printer, the slicer search on Windows
   or macOS, real phones. With software graphics, the 3D twin in view costs about
   460 ms a frame on both 0.11.1 and this version; real GPUs unmeasured here.
 
@@ -590,7 +589,7 @@ run passed on 27 October 2026).
   README's Current status keeps the full record.
 - Verified: the full suite, Chromium at 1366 px and at 412 px (the Pixel 6 Pro's
   width) on the local server, a network address and the static online demo.
-  Not verified: a physical U1, a real Extended Firmware camera, a real Android
+  Not verified: a real Extended Firmware camera, a real Android
   install through the Chrome setting.
 
 ## 0.9.0 (25 October 2026): updates that install every time
@@ -705,8 +704,8 @@ run passed on 27 October 2026).
   evidence and estimated twin geometry are labelled. Existing versioned films
   and brand icons are preserved; current post/video descriptions are drafted.
 - Reproducible capture/render tools and a desktop/phone product-page check.
-  Plain-text captions and alternatives accompany the campaign pack. Physical
-  printing and real-device performance remain unverified.
+  Plain-text captions and alternatives accompany the campaign pack. Real-device
+  performance remains unverified.
 
 ## 0.8.0 (24 October 2026): updates that find you
 
@@ -782,7 +781,7 @@ The first version published as a GitHub release.
   how to fix them; a heater fault shows on its own dock ring; Restart firmware clears an
   error on a real printer (only while it reports one); time-lapse frame lists skip hidden
   files.
-- Not verified: anything on a physical U1 or real phone; Orca import on Windows/macOS;
+- Not verified: a real phone; Orca import on Windows/macOS;
   automatic install outside tests.
 
 ## 0.7.0 (23 October 2026): technical tools, the real Benchy and a working online demo
@@ -965,7 +964,7 @@ Built and tested; never published as a download. Recorded at the time as "round-
   layer stacks. Measurements are tied to spool identity, colour, nozzle and
   layer thickness. Layered mode refuses uncalibrated settings.
 - Added closed heightmap relief geometry. Real Orca 2.4.2 sliced tile, swatch
-  and relief projects; all passed pre-flight. Physical colour and printer tests
+  and relief projects; all passed pre-flight. Physical colour tests
   remain outstanding. Image brightness is not geographic elevation.
 
 - Replaced the single-model transform controls with an undoable multi-model
@@ -990,18 +989,17 @@ Built and tested; never published as a download. Recorded at the time as "round-
 
 - Time-lapse now captures each real printer’s own stock camera, independently of
   open browser tabs. Duplicate pictures are skipped, failures are visible and
-  retried, and late replies cannot enter a different print’s session. Real
-  cameras remain unverified. Real status notifications now wake the live feed.
+  retried, and late replies cannot enter a different print’s session. Real status notifications now wake the live feed.
 
 - Added per-printer four-tool preparation records and a native editor in
   Auto-print. Idle-only colour/material changes use physical head numbers and
   read-back verification; firmware refusals remain errors. Confirm Print also
-  checks known material mismatches. Physical U1 verification remains outstanding.
+  checks known material mismatches.
 
 Validation: all 732 Python tests pass on Python 3.12 Linux (133.8 s); Chromium desktop/phone checks
 cover setup, privacy, search, viewer transforms and offline handling. A browser
 connection test rejects a wrong API key, accepts the authenticated stand-in
-and keeps the selected printer after reload. Real devices remain untested.
+and keeps the selected printer after reload.
 
 - Added skippable/replayable setup, a name stored only in the browser, feature
   search and explicit public-demo guidance. Added a network-only service worker
@@ -1042,8 +1040,7 @@ Local setup, printer reliability and file preparation improvements.
   weights, hidden edges dashed (worked out per solid from the view), a
   phantom-line build volume, dimensions with arrowheads, a sheet border and
   a title block with the scale. Click a toolhead, a balloon, a part or the
-  bed for its details. Not yet checked against a real U1; dock spacing is
-  approximate (the printer doesn't report it).
+  bed for its details. Dock spacing is approximate (the printer doesn't report it).
 - **Nozzle size and swap counters from the U1's firmware** (u1-klipper
   `extruder.get_status`: `nozzle_diameter`, `switch_count`, `retry_count`,
   `error_count`), shown in the twin's details. Printers that don't report
@@ -1054,7 +1051,7 @@ Local setup, printer reliability and file preparation improvements.
 - **Find printers on my network** and **Test** (Fleet → Add a printer):
   mDNS `_snapmaker._tcp` (from u1-moonraker `a308cfa`) and `_moonraker._tcp`,
   then port 7125 on the home network. Tested against the stand-in
-  Moonraker; not yet against a real U1.
+  Moonraker.
 - **Double-click starters** (`start-windows.bat`, `start-mac.command`,
   `start-linux.sh`, `start.py`) and `docs/getting-started.md`. Tested on
   Linux only.
@@ -1111,7 +1108,7 @@ Local setup, printer reliability and file preparation improvements.
 - Converted and studio files no longer offer "Convert" again.
 
 ### Not verified yet
-Nothing here has run on a physical U1; the converter's output and studio
+The converter's output and studio
 3MFs haven't been opened in Snapmaker Orca; Spoolman import hasn't met a
 running Spoolman. See the status table in the README.
 

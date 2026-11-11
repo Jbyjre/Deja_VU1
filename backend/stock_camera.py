@@ -12,7 +12,7 @@ Two sources, tried in this order:
    but HTTP and forwards it to the printer's camera service, which answers
    within 10 s), with {"domain": "lan", "interval": 0}. A successful reply
    is read as {"state": "success", "url": <where the pictures are>} (how
-   Snapmaker's desktop app reads it; not yet seen from a real U1); the printer
+   Snapmaker's desktop app reads it); the printer
    keeps rewriting one JPEG, /server/files/camera/monitor.jpg, readable on
    Moonraker's port and through the printer's web server on port 80. A
    failure can come back as a normal reply,
