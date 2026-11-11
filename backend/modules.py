@@ -267,6 +267,14 @@ REGISTRY = [
         "default_enabled": True,
     },
     {
+        "id": "ai_assistant",
+        "name": "AI assistant",
+        "description": "A chat that explains, plans and works the printer inside fixed safety limits, "
+                        "using your own Claude or ChatGPT plan, an API key or a model on this computer.",
+        "status": "optional",
+        "default_enabled": True,
+    },
+    {
         "id": "handoff",
         "name": "Continue on another device",
         "description": "Offers to pick up on your phone exactly where another "
@@ -276,7 +284,8 @@ REGISTRY = [
     },
 ]
 
-EXTRAS = ("auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check")
+EXTRAS = ("auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check",
+          "ai_assistant")
 SETTINGS = ("camera", "timelapse", "handoff")
 for _module in REGISTRY:
     _module["kind"] = "extra" if _module["id"] in EXTRAS else "setting" if _module["id"] in SETTINGS else "core"

@@ -30,6 +30,11 @@ and overdue maintenance at the top.</sub>
 - **See every printer at once.** State, progress and finish time, the filament in each of the four
   heads, temperatures and a health score, for up to 12 printers. **Needs you** ranks what wants a
   person: a fault, a paused or finished print, maintenance that's due.
+- **Ask an assistant, with your own AI.** Connect a Claude or ChatGPT plan, an API key from any of 30
+  services, or a model on your computer. Ask in your own words and watch the twin: it reads the
+  printer, files and history, homes, moves and cools by itself, and asks before it heats or cancels.
+  Fixed limits hold whatever it is told, and only your tap starts a print.
+  [AI assistant](docs/ai-assistant.md)
 - **Check a print before it starts.** Confirm Print reads the file and the printer together: the
   build volume, toolheads and temperatures (with line numbers), the colour loaded in each head,
   nozzles, spool weight, maintenance, time, grams and cost. The server checks again when you press
@@ -202,6 +207,9 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
   `{"connected": false, "demo": false}` and every panel shows an empty state. Demo data is
   labelled on every panel, and it never reaches a real printer.
 - **Honest controls.** A command the printer refuses shows as refused, in words.
+- **An assistant on a short lead.** The AI asks for named steps and Deja Vu1 checks each one: heater
+  limits, the printer's own size, no moves before homing, the nozzle kept 2 mm off the bed. It can
+  open Confirm Print and cannot press Start.
 - **Watch-only mode** makes the server refuse every command to a real printer. Reads, the camera
   and the emergency stop still go through.
 - **Your network only.** There's no login, so keep Deja Vu1 on a network you trust. It answers
@@ -216,7 +224,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, and the Printer page controls.
-- **Automated:** 1316 tests passed in 780 seconds on Python 3.12 (10 November 2026). GitHub Actions
+- **Automated:** 1359 tests passed in 810 seconds on Python 3.13 (11 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
   Other builds show "Not tested" in the app and still slice.
@@ -250,7 +258,7 @@ old samples. Firmware, guided calibration and optical advice in Confirm Print ar
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1316 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1359 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 
@@ -262,6 +270,7 @@ old samples. Firmware, guided calibration and optical advice in Confirm Print ar
 | What ran where, with dates | [What has been tested](docs/testing.md) |
 | Slicing, plates and engines | [Slicing and models](docs/slicing-and-models.md), [engine support](docs/engine-support.md) |
 | Reaching it away from home | [Remote access](docs/remote-access.md), [low-latency camera](docs/low-latency-camera.md), [AR preview](docs/ar-preview.md) |
+| The AI assistant: connecting, limits, what was tested | [AI assistant](docs/ai-assistant.md) |
 | Keeping a copy of your data | [Backup and recovery](docs/backup-and-recovery.md) |
 | The hardware modules | [Hardware modules](docs/hardware-modules.md) |
 | How the code fits together | [Architecture](docs/architecture.md), [releasing](docs/releasing.md) |

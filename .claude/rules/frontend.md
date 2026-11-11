@@ -17,8 +17,8 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `rail.js`. `games.js` loads on demand (`loadGames()`).
-- CSS: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `theme.css` →
+  `backup.js` → `maker.js` → `assistant.js` → `rail.js`. `games.js` loads on demand (`loadGames()`).
+- CSS: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `assistant.css` → `theme.css` →
   `dark.css` → `looks.css`.
 - `app.js` defines the shared globals: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`,
   `doneAt()`, `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`. A top-level `const` in
@@ -88,6 +88,12 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   `*.workers.dev` preview.
 - `desk.js` (Farm desk in Printers), `telemetry.js` (Overview readout, fed by workshop's `dv-state`
   event), `logbook.js` (Care), `insights.js`, `printroom.js` (four-head editor), `backup.js`.
+
+- `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
+  right-edge strip, a sheet on phones): connect, a short "settle" screen, chat with the steps drawn as
+  a toolpath. It wraps `window.toast` to offer "Explain the last warning". In the online demo
+  (`tour.on`) it never calls the server: a scripted helper sends the demo's own simulated commands and
+  says what it is. Model text goes through `rich()`, which escapes first.
 
 ## Looks and theme
 

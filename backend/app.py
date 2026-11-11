@@ -62,6 +62,11 @@ API endpoints
   GET  /api/remote                    Tailscale on this computer: connected? shared address?
   POST /api/remote/share|stop         share the dashboard privately with Tailscale Serve, or stop (this computer only)
   POST /api/remote/link               a pairing QR code for the shared address
+  GET  /api/assistant                 the AI assistant: providers, which is connected, mode, limits (never a key)
+  GET  /api/assistant/thread          one conversation: messages, busy, the step waiting for a yes
+  POST /api/assistant/key|forget      save or forget a provider's key (kept in <data>/ai_keys.json)
+  POST /api/assistant/models|test|select   list a provider's models, check the connection, choose model and mode
+  POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
   POST /api/maintenance/snooze       hide a due task from alerts for a while {"task_id", "days": 1|3|7}
@@ -312,6 +317,8 @@ import model_maker
 import updates
 import update_hold
 import remote
+import ai_assistant
+import ai_providers
 import watch_only
 import websocket
 import wled_bridge
@@ -493,6 +500,8 @@ _APP_ROUTES = {
     "/api/filament/charges": ("filament_inventory", lambda q: {"charges": filament_inventory.recent_charges(
         q.get("printer", [None])[0])}),
     "/api/remote": (None, lambda q: remote.status(PORT)),
+    "/api/assistant": ("ai_assistant", lambda q: ai_assistant.status()),
+    "/api/assistant/thread": ("ai_assistant", lambda q: ai_assistant.view(_q(q, "id", "online-demo"), _q(q, "since", "0"))),
     "/api/app/watch-only": (None, lambda q: watch_only.status()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(wait=False),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
@@ -1190,6 +1199,38 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             action = companion_sensor.configure if route.endswith("/sensors") else companion_sensor.ingest
             return self._send_json(action(body))
+
+        if route.startswith("/api/assistant/"):
+            if self._module_blocked("ai_assistant"):
+                return None
+            body = self._read_json_body()
+            verb = route[len("/api/assistant/"):]
+            demo = self._wants_demo()
+            try:
+                if verb == "key":
+                    ai_providers.save_key(body.get("provider"), body.get("api_key"), body.get("base_url"))
+                    return self._send_json(ai_assistant.status())
+                if verb == "forget":
+                    return self._send_json(ai_assistant.forget(body.get("provider")))
+                if verb == "select":
+                    return self._send_json(ai_assistant.select(body.get("provider"), body.get("model"), body.get("mode")))
+                if verb == "models":
+                    return self._send_json(ai_providers.list_models(body.get("provider")))
+                if verb == "test":
+                    return self._send_json(ai_assistant.test(body.get("provider")))
+                if verb == "chat":
+                    return self._send_json(ai_assistant.chat(body.get("thread"), body.get("text"), printer_id, demo,
+                                                             body.get("context")))
+                if verb == "decide":
+                    return self._send_json(ai_assistant.decide(body.get("thread"), body.get("n"), body.get("approve"),
+                                                               printer_id, demo))
+                if verb == "stop":
+                    return self._send_json(ai_assistant.stop(body.get("thread")))
+                if verb == "clear":
+                    return self._send_json(ai_assistant.clear(body.get("thread")))
+            except ai_providers.AIError as error:
+                return self._send_json({"error": str(error)}, status=502)
+            return self._send_json({"error": "Unknown endpoint"}, status=404)
 
         if route in ('/api/backup/preview','/api/backup/restore','/api/backup/discard'):
             if self._module_blocked('backup'):

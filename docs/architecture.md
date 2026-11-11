@@ -592,6 +592,23 @@ as refused) and published as a `sandbox` live event. Starting a print
 goes through the Confirm Print gate exactly as the queue does. Demo only,
 like every other demo hook.
 
+### The AI assistant (`backend/ai_assistant.py`, `backend/ai_providers.py`)
+
+`ai_providers.py` reaches a model three ways: a subscription's own program (`claude -p` with its
+tools switched off, or `codex exec`, each run in an empty temporary folder), an API key for one of 30
+services, or a local address. Two wire formats cover every service: Anthropic's Messages API and
+chat completions. Keys stay in `<data>/ai_keys.json`, never reach the browser, and backups blank them.
+
+`ai_assistant.py` keeps the model away from the printer. The model answers in text and may include
+fenced `action` blocks of JSON that name a tool from `TOOLS`. The server parses them, checks each step
+(`_check_allowed`: module switches, watch-only, the restart hold, a printer to talk to), decides
+whether the owner must approve it (`_needs_yes`, from the mode), runs it through `printer_control`,
+and sends the results back to the model for its next answer. Limits of its own sit on top: a 2 mm
+floor above the bed, read-only typed G-code, 12 steps a request, 6 model rounds. `start_print` only
+hands over to Confirm Print. A turn runs on its own thread; the browser polls
+`/api/assistant/thread` and shows each step as it lands. `frontend/assistant.js` draws the panel and,
+in the online demo, a scripted helper in place of a model. Guide: [AI assistant](ai-assistant.md).
+
 ### `backend/led_status.py` / `backend/color_check.py`
 The rings show their intended states without a hardware driver. The colour checker compares demo
 colours; real printers read observations from `companion_sensor.py`, whose versioned API binds a

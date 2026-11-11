@@ -80,7 +80,8 @@ class TestKinds(unittest.TestCase):
 
     def test_the_optional_extras_are_the_ones_that_need_a_program_a_device_or_a_service(self):
         self.assertEqual(self.kinds("extra"), sorted(
-            ["auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check"]))
+            ["auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check",
+             "ai_assistant"]))
 
     def test_a_few_features_are_ordinary_settings_that_switch_in_their_own_card(self):
         self.assertEqual(self.kinds("setting"), ["camera", "handoff", "timelapse"])
