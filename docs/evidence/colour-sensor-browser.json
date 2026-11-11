@@ -1,0 +1,163 @@
+{
+  "source": "Synthetic sensor messages submitted through the real local HTTP API, with a Moonraker stand-in. No physical sensor tested.",
+  "date": "2026-11-10",
+  "browser": "Chromium",
+  "checks": [
+    {
+      "width": 1366,
+      "theme": "light",
+      "look": "glass",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 1366,
+      "theme": "light",
+      "look": "workbench",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 1366,
+      "theme": "light",
+      "look": "control",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 1366,
+      "theme": "dark",
+      "look": "glass",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 1366,
+      "theme": "dark",
+      "look": "workbench",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 1366,
+      "theme": "dark",
+      "look": "control",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "look": "glass",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "look": "workbench",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "look": "control",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "look": "glass",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "look": "workbench",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "look": "control",
+      "errors": [],
+      "overflow": false,
+      "states": 4,
+      "currentSwatches": 1,
+      "refreshPreservedDetails": true,
+      "refreshPreservedFocus": true
+    }
+  ],
+  "network_failure_checks": {
+    "source": "Synthetic frontend response followed by a rejected fetch, on the static recorded demo; no physical sensor.",
+    "checks": [
+      {
+        "width": 1366,
+        "networkFailureHidesPreviousColour": true,
+        "errors": []
+      },
+      {
+        "width": 390,
+        "networkFailureHidesPreviousColour": true,
+        "errors": []
+      }
+    ]
+  },
+  "unit_suite": {
+    "command": "python3 -m unittest discover tests",
+    "tests": 1316,
+    "seconds": 780.29,
+    "python": "3.12.14",
+    "result": "OK",
+    "date": "2026-11-10",
+    "app_and_demo_servers_stopped": true
+  }
+}

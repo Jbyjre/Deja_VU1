@@ -10,6 +10,15 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## Unreleased
+
+- Colour-checker companions can send identified raw and calibrated observations through a versioned
+  API. Each channel is assigned to one head on one printer; old, repeated, wrong-sensor and low-quality
+  readings cannot appear as a current colour. The colour card shows each sensor's status and reading
+  details. Assignments survive restart; readings do not. Pico firmware, guided calibration and optical
+  advice in Confirm Print remain to build. Verified with synthetic messages and a Moonraker stand-in,
+  not a physical colour sensor.
+
 ## 0.20.6 (9 November 2026): The 3D twin shows filament moving in its tubes, spools turning, belts running...
 
 - The 3D twin shows filament moving in its tubes, spools turning, belts running, the chamber light and heads docking, and the online demo accepts Feed and the lights

@@ -2,8 +2,8 @@
 color_check.py
 ==============
 
-MODULE 3 - "Right Color Loaded?" Checker.  STATUS: interface + simulation only.
-No sensor driver code lives here yet, on purpose.
+MODULE 3 - "Right Color Loaded?" Checker.
+Receives versioned companion readings; sensor drivers and calibration remain separate.
 
 The plan
 --------
@@ -29,20 +29,22 @@ colours the printer reports, are the reference colours for those tests.
 
 What is here today
 ------------------
-The comparison logic is real and runs now. Color distance, tolerance
-thresholds, and the match/mismatch decision all work. Only the sensor read is
-faked - `read_sensor()` returns a plausible value instead of measuring light.
+The comparison logic runs in the demo. Real-printer reads use explicitly
+assigned companion sensors through companion_sensor.py. Missing, old,
+uncalibrated and low-quality readings never become a matching colour.
+Physical readings are observations only; print-time advice is not connected yet.
 
 Why no driver code yet
 ----------------------
 The sensor talks I2C, and the U1's sealed Rockchip SoC exposes no GPIO or I2C
 pins. The sensor hangs off the external Pico W, never the printer's board. No
-parts are bought yet. See docs/hardware-modules.md, Module 3.
+sensor driver or physical accuracy claim is included here. See docs/hardware-modules.md, Module 3.
 """
 
 import random
 
 import mock_moonraker
+import companion_sensor
 from mock_moonraker import get_current_job_requirements, get_printer_state
 
 # Same fixed seed idea as the mock printer: consistent demos.
@@ -124,15 +126,14 @@ def compare(expected_hex, detected_hex):
 
 def connect_sensor(toolhead_id):
     """
-    NOT IMPLEMENTED. Will open the I2C connection to a toolhead's color sensor.
-
-    Once built, this will select the sensor's channel on the TCA9548A and
-    set the sensor's gain and integration time - the two settings that
-    control how sensitive the reading is and how long each measurement takes.
-
-    Returns False today so callers know to fall back to simulation.
+    Reports whether an explicitly assigned sensor has a recent observation.
+    The companion owns I2C and the sensor's gain and integration time.
+    Missing hardware must never cause a real printer to fall back to simulation.
     """
-    return False
+    if not mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        return False
+    reading = companion_sensor.read(toolhead_id)
+    return bool(reading and reading["age_s"] is not None and reading["age_s"] < companion_sensor.MAX_AGE_S)
 
 
 def calibrate(toolhead_id):
@@ -153,15 +154,20 @@ def read_sensor(toolhead_id):
     """
     Read the color currently in a toolhead's filament path.
 
-    SIMULATED. With no sensor attached, this returns the color the mock
+    For a real printer, returns the assigned sensor's current status, never a
+    simulated value. For demo printers, this returns the color the mock
     printer says is loaded, then adds a small random wobble so the numbers
     look like a real measurement rather than a perfect copy. For toolheads
     listed in DEMO_MISMATCH_TOOLHEADS it deliberately reports the wrong spool,
     so the mismatch warning is visible in a demo instead of only green ticks.
 
-    Once hardware exists, this function reads the sensor and everything that
-    calls it stays exactly the same.
+    No calibrated value is derived from raw channels here.
     """
+    if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        return companion_sensor.read(toolhead_id) or {
+            "toolhead": toolhead_id, "status": "no_sensor", "simulated": False, "detected_hex": None,
+            "message": "No colour sensor is assigned to this head.",
+        }
     printer = get_printer_state()
     loaded = printer["toolheads"].get(toolhead_id, {})
     base_hex = loaded.get("filament_color_hex", "#808080")
@@ -193,22 +199,22 @@ def check_current_job():
     """
     Check every toolhead the current print file needs.
 
-    Reads what the print file expects, reads (simulated) sensor values, and
-    compares them. Returns one result per toolhead plus an overall verdict.
+    Demo values are compared with the sample file. For real printers, return
+    companion observations separately without issuing an optical print verdict.
     """
     job = get_current_job_requirements()
     if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
-        # A real printer and no sensor fitted: nothing was measured, so
-        # nothing is reported - the simulated reading (with its deliberate
-        # demo mismatch) must never be passed off as this printer's.
+        sensors = companion_sensor.status()["sensors"]
         return {
             "simulated": False,
-            "hardware_connected": False,
-            "note": "No colour sensor is fitted, so nothing was measured. Confirm Print still compares "
-                    "the file with what the printer itself reports loaded.",
+            "hardware_connected": any(s["age_s"] is not None and s["age_s"] < companion_sensor.MAX_AGE_S
+                                      for s in sensors),
+            "note": "Sensor readings are separate from the printer's reported colours. Confirm Print still "
+                    "compares the file with what the printer reports loaded; optical advice is not enabled.",
             "filename": job["filename"],
-            "overall": "no_sensor",
+            "overall": "sensor_readings" if sensors else "no_sensor",
             "checks": [],
+            "sensors": sensors,
         }
     results = []
 

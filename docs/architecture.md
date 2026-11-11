@@ -593,11 +593,13 @@ goes through the Confirm Print gate exactly as the queue does. Demo only,
 like every other demo hook.
 
 ### `backend/led_status.py` / `backend/color_check.py`
-Hardware-pending placeholders. The decision logic (state → colour, colour
-distance) is real and tested. The hardware write / sensor read is faked -
-so with a real printer the colour check reports "no sensor fitted" rather
-than passing a simulated reading (with its deliberate demo mismatch) off as
-that printer's, and the rings say what they *would* show. The colour
+The rings show their intended states without a hardware driver. The colour checker compares demo
+colours; real printers read observations from `companion_sensor.py`, whose versioned API binds a
+device/channel/sensor identity to one head on one printer. Assignments persist; observations do
+not. Capture and monotonic receipt age expire samples at 30 seconds; missing, uncalibrated and
+low-quality readings have no current colour. Raw values and companion-reported calibration stay
+available for diagnosis. Optical observations do not affect Confirm Print yet. Without an assigned
+sensor, a real printer reports "no sensor fitted" and never uses the demo reading. The colour
 checker's design (a TCS34725 or AS7341 sensor in a dark block at each rear
 filament inlet, read by a Pico W over Wi-Fi) and its planned behaviour are in
 `hardware-modules.md`, Module 3.
@@ -834,9 +836,9 @@ from the same seeded demo state.
 Done: add it under **Printers → Add a printer**. See
 [real-printer.md](real-printer.md).
 
-For the hardware modules, implement `_write_to_hardware()` in `led_status.py`
-and `connect_sensor()` / `calibrate()` / `read_sensor()` in `color_check.py`.
-Everything that calls them already works.
+For the hardware modules, the LED driver, companion firmware and sensor calibration remain to
+build. The [colour-sensor API](colour-sensor-api.md) defines ingestion and identity; it does not
+provide a physical sensor driver or establish colour accuracy.
 
 ## Testing
 
