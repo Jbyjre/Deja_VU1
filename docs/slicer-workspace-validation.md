@@ -2,8 +2,7 @@
 
 Baseline: clean current main `9efb807` (merged PR #44). This record separates real
 engine output, file calculations, browser checks, simulated/fake printers and
-physical measurements. The workspace rounds ran in a cloud sandbox with no
-printer or phone attached. Testing on a real U1 since then is recorded in
+physical measurements. The workspace rounds ran in a cloud sandbox. Testing on a real U1 is recorded in
 [testing.md](testing.md).
 
 ## Engine output

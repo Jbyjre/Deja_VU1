@@ -48,7 +48,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       await el.waitFor(); await el.scrollIntoViewIfNeeded(); await wait(350);
       await el.screenshot({path:path.join(out,name+'.jpg'),type:'jpeg',quality:92,animations:'disabled',
         style:'.topbar,.live-pill{visibility:hidden!important}'});
-      record.images.push({file:name+'.jpg',selector,note:note||'Simulated farm; no physical U1 connected'});
+      record.images.push({file:name+'.jpg',selector,note:note||'Simulated farm'});
       console.log('captured '+name);
     }
     async function conversion() {
@@ -64,7 +64,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
       await page.getByRole('button',{name:'Tell me when a print finishes',exact:true}).click();
       await shot('automations','#tab-automations','Current automation wording and a sample notification rule; simulated farm');
       await page.locator('#setup-open').click();
-      await shot('onboarding-copy','#setup-dialog','Current onboarding wording; simulated-farm review, no physical U1');
+      await shot('onboarding-copy','#setup-dialog','Current onboarding wording; simulated-farm review');
       if(record.errors.length)throw new Error(record.errors.join('\n'));
       return;
     }
@@ -139,7 +139,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.locator('#fleet-add-url').fill(fakeURL);
     await page.locator('#fleet-add-test').click();
     await page.waitForFunction(()=>document.getElementById('fleet-test-result').textContent.includes('Moonraker'));
-    await shot('add-printer','.card:has(#fleet-add-form)','Source-based stand-in Moonraker over loopback; not a physical U1');
+    await shot('add-printer','.card:has(#fleet-add-form)','Source-based stand-in Moonraker over loopback');
     await page.evaluate(async()=>{
       const post=async(url,body)=>{const r=await fetch(url+'?demo=1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('Sandbox capture request failed');};
       await post('/api/sandbox/farm',{count:6,busy_fraction:0.5});

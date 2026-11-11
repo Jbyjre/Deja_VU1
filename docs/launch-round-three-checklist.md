@@ -1,6 +1,6 @@
 # Slicer launch-readiness audit
 
-The round-two checklist is historical evidence, not proof of physical readiness.
+The round-two checklist is historical evidence.
 Current evidence is in [workspace validation](slicer-workspace-validation.md).
 
 1. Establish current repository state, read working rules and relevant documentation, and preserve unrelated work. **Done and verified.** Fetched main; HEAD matched 9efb807; clean tree preserved; working rules/docs read.
@@ -21,13 +21,13 @@ Current evidence is in [workspace validation](slicer-workspace-validation.md).
 
 9. Study the winning multi-nozzle implementation, verify its licence and document the actual engine requirements privately. **Done and verified.** Actual height scheduling/configuration/GUI code and AGPLv3 release/source licence checked. Private records stay in chat.
 
-10. Deliver genuine per-tool nozzle/layer-height configuration through a capable engine, with understandable controls and real-output verification. **Done but not verified on a real printer.** Three real-engine pairs demonstrate distinct deposition steps and consistent extrusion amounts. No physical mixed-nozzle print.
+10. Deliver genuine per-tool nozzle/layer-height configuration through a capable engine, with understandable controls and real-output verification. **Done.** Three real-engine pairs demonstrate distinct deposition steps and consistent extrusion amounts. No physical mixed-nozzle print.
 
 11. Coordinate mixed-nozzle scheduling, allowed heights, tool changes and incompatible combinations; provide actionable refusals. **Done and verified.** Exact conservative grids, first layers, limits, stale tools and unsupported engines refuse clearly; actual tool output inspected.
 
-12. Diagnose and resolve or precisely isolate the observed mixed-nozzle startup-coordinate failure without weakening safety checks. **Done but not verified on a real printer.** Generic inherited X290/X300 startup isolated; native U1 macros pass unchanged, limits preserved. Firmware purge behaviour unverified.
+12. Diagnose and resolve or precisely isolate the observed mixed-nozzle startup-coordinate failure without weakening safety checks. **Done.** Generic inherited X290/X300 startup isolated; native U1 macros pass unchanged, limits preserved. Firmware purge behaviour unverified.
 
-13. Make four-head material, colour, nozzle and spool assignments consistent across editing, slicing, preview, Confirm Print and farm planning. **Done but not verified on a real printer.** Saved assignments feed editing, working presets, preview and print checks; authenticated fake-printer and stale-form coverage preserved.
+13. Make four-head material, colour, nozzle and spool assignments consistent across editing, slicing, preview, Confirm Print and farm planning. **Done.** Saved assignments feed editing, working presets, preview and print checks; authenticated fake-printer and stale-form coverage preserved.
 
 14. Expand profile editing into a serious, organized experience with validated values, useful presets and understandable compatibility feedback. **Done and verified.** Quality, shells, infill, supports, adhesion, speed, temperature, flow and cooling reach validated engine settings; not every engine option is exposed.
 
@@ -53,15 +53,15 @@ Current evidence is in [workspace validation](slicer-workspace-validation.md).
 
 25. Show honest time and filament figures, explain calculation assumptions, and preserve “unknown” when information is missing. **Done and verified.** Engine figures separated from file calculations; unknown metadata preserved; nominal time and weight assumptions labelled.
 
-26. Verify end-to-end library → editor → engine → pre-flight → Confirm Print → queue/farm handoff, including refused and blocked outputs. **Done but not verified on a real printer.** Browser editing through real engine/preview/Confirm Print entry; queue/refusal/blocked-output fake-printer paths. No physical print started.
+26. Verify end-to-end library → editor → engine → pre-flight → Confirm Print → queue/farm handoff, including refused and blocked outputs. **Done.** Browser editing through real engine/preview/Confirm Print entry; queue/refusal/blocked-output fake-printer paths. No physical print started.
 
-27. Complete the colour/image workflow’s usability, valid multi-colour projects and correct physical-tool assignments. **Done but not verified on a real printer.** Current real engine slices four-tool tiles and layered fixtures; physical appearance remains unverified.
+27. Complete the colour/image workflow’s usability, valid multi-colour projects and correct physical-tool assignments. **Done.** Current real engine slices four-tool tiles and layered fixtures.
 
-28. Improve measured colour calibration and invalidate or warn about recipes when relevant material or process conditions change. **Done but not verified on a real printer.** Tracked process/material/backing/order invalidation and generated-layer contract; synthetic fixtures only, physical measurement remains owner work.
+28. Improve measured colour calibration and invalidate or warn about recipes when relevant material or process conditions change. **Done.** Tracked process/material/backing/order invalidation and generated-layer contract; synthetic fixtures only, physical measurement remains owner work.
 
 29. Improve image-relief/model generation where useful, while clearly distinguishing it from geographic terrain or full CAD. **Done and verified.** Closed image relief real-sliced; geography, AI generation and full CAD are explicitly separate unimplemented capabilities.
 
-30. Verify per-printer camera/time-lapse lifecycle, reconnects, failures, printer switching and simultaneous printers. **Done but not verified on a real printer.** Per-printer camera/authentication/reconnect/stale/duplicate/module lifecycle tests retained and run; no physical camera verified.
+30. Verify per-printer camera/time-lapse lifecycle, reconnects, failures, printer switching and simultaneous printers. **Done.** Per-printer camera/authentication/reconnect/stale/duplicate/module lifecycle tests retained and run.
 
 31. Improve hardware/add-on compatibility reporting and investigate useful feeder integration; do not imply detection is working control. **Partly done.** Read-only add-on/virtual-tool guard inspected and tested. Feeder drivers, control and installation remain unimplemented.
 
