@@ -89,6 +89,7 @@
   function take(body) {
     if (body && body.providers) st = body;
     decorate();
+    drawPage();
     return st;
   }
 
@@ -98,12 +99,14 @@
       const rec = await getJSON('/api/assistant').catch(() => ({}));
       if (rec && rec.providers) Object.assign(st, { providers: rec.providers.map(p => ({ ...p, installed: false, has_key: false, ready: false })), modes: rec.modes, default_mode: rec.default_mode, limits: rec.limits, security: rec.security });
       decorate();
+      drawPage();
       return st;
     }
     const body = await getJSON('/api/assistant');
     st = body && body.providers ? body : null;
     el.launch.hidden = !st;
     decorate();
+    drawPage();
     return st;
   }
 
@@ -149,6 +152,66 @@
       <span class="ai-prov-state">${esc(state)}</span></button></li>`;
   }
 
+  const modesHTML = group => Object.entries(st.modes || {}).map(([id, text]) => {
+    const [name, rest] = text.split(': ');
+    return `<label class="ai-mode"><input type="radio" name="${group}" value="${esc(id)}" ${id === st.mode ? 'checked' : ''}><span><b>${esc(name)}${id === st.default_mode ? ' <i>the usual choice</i>' : ''}</b>${esc(rest || '')}</span></label>`;
+  }).join('');
+  const limitsText = () => `These limits hold whatever you choose: heater limits, the printer’s own size, no moves before homing, the nozzle kept ${esc(String((st.limits || {}).z_floor_mm || 2))} mm off the bed, and a print starts only from Confirm Print.`;
+
+  /* ---- the AI tab: everything about the assistant on one screen ------------ */
+
+  function drawPage() {
+    const host = document.getElementById('ai-page');
+    if (!host || host.closest('[hidden]')) return;
+    if (!st) { host.innerHTML = '<section class="card liquid-glass"><div class="card-head"><div><h2>AI assistant</h2><p class="card-sub">Switched off. Turn it on in Settings, Optional extras.</p></div></div></section>'; return; }
+    const joined = st.connections || [], now = joined.find(c => c.id === st.provider), sec = st.security || {};
+    const by = level => (st.tools || []).filter(t => level.includes(t.level)).map(t => esc(t.what.replace(/\.$/, ''))).join(' · ');
+    host.innerHTML = `
+      <section class="card liquid-glass" id="ai-now"><div class="card-head"><div><h2>Your AI</h2><p class="card-sub">${st.demo ? 'Online demo: a scripted helper stands in for an AI' : now ? 'Connected and in use' : 'Nothing connected yet'}</p></div></div>
+        ${now ? `<p class="ai-page-now"><b>${esc(now.name)}</b><span>${esc(now.model || 'its usual model')}</span></p>
+          ${joined.length > 1 ? `<label class="ai-field"><span>Switch to</span><select id="ai-page-conn">${joined.map(c => `<option value="${esc(c.id)}"${c.id === st.provider ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}`
+        : `<p class="ai-hint">Deja Vu1 does everything without an AI. Connect one and you can also ask for things in your own words: run the printer, explain a warning, check a print through the camera, make a simple part.</p>
+          <p class="ai-hint">Best with a Claude or ChatGPT plan you already pay for. A model on this computer and an API key work too.</p>`}
+        <div class="ai-actions">${now || st.demo ? '<button class="btn primary" type="button" data-ai-open="chat">Open the assistant</button>' : ''}
+          <button class="btn${now || st.demo ? '' : ' primary'}" type="button" data-ai-open="connect">${now ? 'Add or manage connections' : 'Connect an AI'}</button></div>
+        <p class="ai-hint ai-page-tip">The Ask button at the bottom right opens it from any screen. So does Ctrl+J (Cmd+J on a Mac).</p></section>
+      <section class="card liquid-glass" id="ai-may"><div class="card-head"><div><h2>How much it may do</h2><p class="card-sub">Applies to every AI you connect</p></div></div>
+        <div class="ai-modes">${modesHTML('ai-mode-page')}</div>
+        ${(st.never_ask || []).length ? `<p class="ai-hint ai-never">Never asks about: ${st.never_ask.map(n => `<button type="button" class="ai-chip" data-reask="${esc(n.tool)}" aria-label="Ask again about: ${esc(n.label)}">${esc(n.label)} <span aria-hidden="true">×</span></button>`).join('')}</p>` : ''}
+        <p class="ai-hint ai-page-tip">${limitsText()}</p></section>
+      <section class="card liquid-glass" id="ai-private"><div class="card-head"><div><h2>Privacy and keys</h2><p class="card-sub">What leaves this computer, and how a key is kept</p></div></div>
+        <p class="ai-hint">The AI you choose receives what you type, the printer’s readings and the results of its steps. A camera picture goes only when it looks through the camera. A model on this computer keeps all of that at home.</p>
+        <div class="ai-safe"><h4>How a key is kept on this computer</h4>
+          <p>${esc(st.demo ? 'Deja Vu1 hands the key to your computer’s own keyring: Windows Data Protection, the macOS Keychain, or the desktop keyring on Linux. Where none answers it uses a file only your account can open, and tells you so.' : sec.how || '')}</p>${sec.problem && !st.demo ? `<p class="ai-safe-warn">${esc(sec.problem)}</p>` : ''}
+          <ul>${(sec.rules || []).map(r => `<li>${esc(r)}</li>`).join('')}</ul></div>
+        <p class="ai-hint ai-page-tip">A plan stores nothing here at all. If you use a key, make one only for Deja Vu1 and set a spending limit at the service.</p></section>
+      <section class="card liquid-glass" id="ai-can"><div class="card-head"><div><h2>What it can do</h2><p class="card-sub">${(st.tools || []).length} named steps. It has no other way to reach the printer</p></div></div>
+        <details class="ai-can"><summary>Reads</summary><p>${by(['read'])}</p></details>
+        <details class="ai-can"><summary>Does, inside the limits</summary><p>${by(['safe', 'ask'])}</p></details>
+        <details class="ai-can"><summary>Hands to you</summary><p>${by(['handoff', 'proposal'])}</p></details></section>`;
+  }
+
+  function wirePage() {
+    const host = document.getElementById('ai-page');
+    if (!host) return;
+    const post = async body => {
+      if (st.demo) { if (body.mode) st.mode = body.mode; return; }
+      const res = await postJSON('/api/assistant/select', body);
+      if (res.ok) take(res.body); else toast(res.body.error || 'That was not saved', 'bad');
+    };
+    host.addEventListener('change', e => {
+      if (e.target.name === 'ai-mode-page') post({ mode: e.target.value });
+      else if (e.target.id === 'ai-page-conn') post({ provider: e.target.value });
+    });
+    host.addEventListener('click', async e => {
+      const go = e.target.closest('[data-ai-open]'), again = e.target.closest('[data-reask]');
+      if (again) return post({ never_ask: st.never_ask.map(n => n.tool).filter(t => t !== again.dataset.reask) });
+      if (!go) return;
+      if (!open) await toggle(true);
+      if (go.dataset.aiOpen === 'connect') showConnect(); else if (st.ready) showChat();
+    });
+  }
+
   function showConnect() {
     stopPoll();
     el.body.dataset.view = 'connect';
@@ -159,10 +222,7 @@
     const sec = st.security || {};
     const keysOpen = of('key').some(p => p.has_key) || (picked && (provider(picked) || {}).kind === 'key');
     const joined = st.connections || [];
-    const modes = Object.entries(st.modes || {}).map(([id, text]) => {
-      const [name, rest] = text.split(': ');
-      return `<label class="ai-mode"><input type="radio" name="ai-mode" value="${esc(id)}" ${id === st.mode ? 'checked' : ''}><span><b>${esc(name)}${id === st.default_mode ? ' <i>the usual choice</i>' : ''}</b>${esc(rest || '')}</span></label>`;
-    }).join('');
+    const modes = modesHTML('ai-mode');
     el.body.innerHTML = `
       ${st.demo ? '<p class="ai-note">Online demo: a scripted helper answers here, on a simulated printer. On your own computer you connect one of these.</p>' : ''}
       ${joined.length ? `<section class="ai-group"><h3>Connected</h3>
@@ -186,7 +246,7 @@
         <label class="ai-search"><span class="sr-only">Find a service</span><input id="ai-find" type="search" placeholder="Find a service" autocomplete="off"></label>
         <ul class="ai-providers">${of('key').map(tile).join('')}</ul></details>
       <section class="ai-group"><h3>How much it may do</h3>
-        <p class="ai-hint">These limits hold whatever you choose: heater limits, the printer’s own size, no moves before homing, the nozzle kept ${esc(String((st.limits || {}).z_floor_mm || 2))} mm off the bed, and a print starts only from Confirm Print.</p>
+        <p class="ai-hint">${limitsText()}</p>
         <div class="ai-modes">${modes}</div>
         ${(st.never_ask || []).length ? `<p class="ai-hint ai-never">Never asks about: ${st.never_ask.map(n => `<button type="button" class="ai-chip" data-reask="${esc(n.tool)}" aria-label="Ask again about: ${esc(n.label)}">${esc(n.label)} <span aria-hidden="true">×</span></button>`).join('')}</p>` : ''}
       </section>`;
@@ -693,7 +753,8 @@
   /* ---- start ------------------------------------------------------------ */
 
   document.addEventListener('DOMContentLoaded', () => {
-    build(); wire();
+    build(); wire(); wirePage();
+    window.addEventListener('dv-tab', e => { if (e.detail && e.detail.tab === 'ai') (st ? drawPage() : refresh()); });
     window.addEventListener('dv-state', e => { live = e.detail || {}; });
     ['dv-tab', 'dv-section'].forEach(name => window.addEventListener(name, () => setTimeout(decorate, 0)));
     // Warnings and refusals anywhere in the app become something the assistant can explain.

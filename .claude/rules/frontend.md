@@ -90,8 +90,11 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   event), `logbook.js` (Care), `insights.js`, `printroom.js` (four-head editor), `backup.js`.
 
 - `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
-  right-edge strip, a sheet on phones): connect, a short "settle" screen, chat with the steps drawn as
-  a toolpath. It wraps `window.toast` to offer "Explain the last warning". In the online demo
+  right-edge strip, a sheet on phones): connect (plans, then local, then keys behind a fold), a short
+  "settle" screen, chat with the steps drawn as a toolpath and a picker for the AI and its model. It
+  also draws the AI tab (`#ai-page`, place `ai`) and the Ask shortcuts in `SPOTS`, which exist only
+  while an AI is connected: with none, nothing else in the app may mention AI. `.ai-glow` is the
+  one-minute welcome (transform and opacity only; keep it that cheap). It wraps `window.toast` to offer "Explain the last warning". In the online demo
   (`tour.on`) it never calls the server: a scripted helper sends the demo's own simulated commands and
   says what it is. Model text goes through `rich()`, which escapes first.
 

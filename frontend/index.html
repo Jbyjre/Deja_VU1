@@ -172,6 +172,7 @@
     <button class="navtab" data-tab="fleet">Printers</button>
     <button class="navtab" data-tab="control">Printer</button>
     <button class="navtab" data-tab="files">Files</button>
+    <button class="navtab" data-tab="ai">AI</button>
     <button class="navtab" data-tab="automations">Automations</button>
     <button class="navtab" data-tab="maintenance">Care</button>
     <button class="navtab" data-tab="prefs">Preferences</button>
@@ -902,6 +903,10 @@
   <!-- ============================================================ -->
   <!-- AUTOMATIONS                                                   -->
   <!-- ============================================================ -->
+  <section id="tab-ai" class="tab-panel" hidden>
+    <div class="grid-2 ai-page" id="ai-page"></div>
+  </section>
+
   <section id="tab-automations" class="tab-panel" hidden>
     <section class="card liquid-glass rules-card" id="rules-card">
       <div class="card-head"><div><h2>Rules</h2><p class="card-sub">Your rules, each in one sentence. Switch one off, test it, or delete it.</p></div></div>
@@ -1528,6 +1533,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
     <div class="ms-search" id="ms-search"></div>
     <div class="ms-grid" role="group" aria-label="More screens">
       <button data-tab="maintenance"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><b>Care</b><small>Maintenance &amp; filament</small></button>
+      <button data-tab="ai"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4.5 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 9.5h8M8 12.5h5"/></svg><b>AI</b><small>Connect your own AI and set what it may do</small></button>
       <button data-tab="automations"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg><b>Automations</b><small>If this, then that</small></button>
       <button data-tab="studio"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01"/></svg><b>Photo studio</b><small>Photo to print</small></button>
       <button data-tab="prefs"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6"/></svg><b>Preferences</b><small>Units, warm-up, look</small></button>

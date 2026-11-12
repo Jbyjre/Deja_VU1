@@ -62,6 +62,7 @@ window.Finder = (() => {
     ['Layer heights per head · mixed layer heights', 'Tools › Layer heights', 'mixed layer height per head nozzle detail speed fast fine thick thin variable', 'Layer heights per head'],
     ['Pick up where you left off · Orca import', 'Library', 'import orca orcaslicer snapmaker orca presets projects recent bring in migrate existing', 'Pick up where you left off'],
     ['Photo-to-Print studio', 'Photo studio', 'photo image picture heightmap tiles lithophane colour mosaic', 'Photo-to-Print Studio'],
+    ['AI assistant', 'AI', 'ai assistant claude chatgpt codex api key model connect approvals', null],
     ['Automation rules', 'Automations', 'automations rules if this then notify trigger', 'Rules'],
     ['New automation rule', 'Automations', 'add rule create automation', 'New rule'],
     ['What fired', 'Automations', 'automation log history fired', 'What fired'],

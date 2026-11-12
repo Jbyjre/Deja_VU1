@@ -118,16 +118,29 @@ slicing and launcher files have their own notes in this folder.
 ## The AI assistant
 
 - `ai_providers.py`: every way to reach a model (`PROVIDERS`: two subscription programs, 30 key
-  services, two local, one custom). Two wire formats only (Anthropic Messages, chat completions).
-  Keys live in `<data>/ai_keys.json` under the field `api_key` (backup.py blanks it), mode 600, and
-  `describe()` is the only thing the browser sees. Error text passes through `_scrub`. Never
-  hard-code a model name except `DEFAULT_MODELS`; the starting model comes from the service's list.
+  services, two local, one custom); any number stay connected. Two wire formats only (Anthropic
+  Messages, chat completions). `describe()` is the only thing the browser sees; error text passes
+  through `_scrub`; `_http` follows no redirect and sends a key only over https or to a local host.
+  Never hard-code a model name except `DEFAULT_MODELS` (a test checks `PROVIDERS`): lists come from
+  the service (`_model_rows`, `_suggest`), `codex debug models` or `CLAUDE_ALIASES`. `ask()` returns
+  a `Reply` (text plus `.usage`). The plans' programs get the instructions in a file and the request
+  on standard input, never in the command line. After changing an address run
+  `python3 tools/check-ai-services.py` and update the date above `PROVIDERS`.
+- `ai_vault.py`: where a key rests (DPAPI, `security -i`, `secret-tool`, else the 600 file). Every
+  save is read back; a failure falls back to the file and sets `describe()["problem"]`. The record
+  fields `api_key` and `api_key_sealed` are blanked by backup.py. Windows and macOS paths are
+  untested on those systems. `DEJAVU_KEY_STORE=file` forces the file.
 - `ai_assistant.py`: the model never calls the printer. It writes ```` ```action ```` JSON blocks naming a
   tool in `TOOLS`; each tool calls `printer_control` (the same checks as the Printer page) plus
   `LIMITS` (Z floor, read-only G-code allowlist `_SAFE_GCODE`, 12 steps a request). A new tool needs
-  a level (read | safe | ask | handoff), a `_label`, and a test in `tests/test_ai_assistant.py`.
+  a level (read | safe | ask | handoff | proposal), a `_label`, a module in `_GATES` if it has one, a
+  place in `_OFFLINE` if it needs no printer, and a test in `tests/test_ai_assistant.py`.
   `start_print` only returns a handoff; never let a tool start a print or send free G-code.
+  Modes: advice, ask, balanced, free (default), open. Only `HIGH_STAKES` asks in free; `never_ask`
+  holds the tools the owner released. The instructions (`_system`) must not change between
+  requests: readings travel in the message (`chat()`), so services can reuse the instructions.
   `_check_allowed` applies module switches, watch-only and the restart hold. Conversations are in
   memory only; a turn runs on its own thread inside `selection_only(printer)`.
 - Routes: `/api/assistant` and `/api/assistant/thread` (GET, in `_APP_ROUTES`), POST verbs under
-  `/api/assistant/`; provider failures answer 502 with words.
+  `/api/assistant/` (key, forget, select, models, check, test, chat, decide, stop, clear); provider
+  failures answer 502 with words.
