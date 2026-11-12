@@ -48,8 +48,11 @@ The rest of the dashboard was used with the same printer. The firmware version w
   reading, and `tools/translate.py` translated five strings into Simplified Chinese with the
   placeholder, link and `M112` unchanged. A stand-in chat service on the test computer drove the
   cost shown before sending, a price and a spending limit on the AI screen, and a conversation that
-  built a plate with four holes and a pocket (a closed STL within 0.2% of the exact volume). In the
-  suite, stand-in services, stand-in `claude` and `codex` programs and stand-in
+  built a plate with four holes and a pocket (a closed STL within 0.2% of the exact volume). The same
+  stand-in drove a conversation that made a 24-tooth gear (39 mm across, as module 1.5 gives, closed)
+  and switched on print watch from the AI screen. Slicing from the chat and print watch's camera
+  checks have run only against stand-in engines, cameras and AIs in the suite; no slicing engine or
+  real camera was on the test computer. In the suite, stand-in services, stand-in `claude` and `codex` programs and stand-in
   keyrings cover both wire formats, error messages, key storage, redirects and every safety limit.
   No paid key, real ChatGPT plan, real Windows or macOS keyring, or real U1 has been tried with it.
   Panel and AI screen checked at 1366 px and 390 px, light and dark, and in the static online demo,
