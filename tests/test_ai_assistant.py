@@ -819,6 +819,138 @@ class TestCosts(Base):
         self.assertEqual(self.steps(view), [("home", "done")])
 
 
+class TestSlicing(Base):
+    def job(self, **fields):
+        base = {"id": "job12345", "model": "cube.stl", "profile": "U1 PLA", "status": "done", "step": "Sliced",
+                "report": {"files": [{"name": "cube_plate_1.gcode", "layers": 50, "estimated_hours": 0.4,
+                                      "filament_grams": 7.5, "preflight": "ok", "deposition": None}]}}
+        base.update(fields)
+        return base
+
+    def test_it_slices_a_model_and_reports_the_slicers_own_figures(self):
+        with patch.object(ai_assistant.slicer_bridge, "start_job", return_value=self.job(status="waiting")) as start, \
+                patch.object(ai_assistant.slicer_bridge, "wait", return_value=self.job()):
+            ok, result = ai_assistant._carry_out("slice", {"name": "cube.stl", "profile": "p1"}, ai_assistant._ctx(PRINTER, True))
+        self.assertTrue(ok)
+        start.assert_called_once_with("cube.stl", "p1")
+        self.assertEqual(result["files"][0], {"name": "cube_plate_1.gcode", "layers": 50, "estimated_hours": 0.4,
+                                              "filament_grams": 7.5, "preflight": "ok"})
+        self.assertIn("start_print", result["note"])
+
+    def test_a_long_slice_hands_back_a_job_to_check_and_a_failure_is_refused_in_words(self):
+        with patch.object(ai_assistant.slicer_bridge, "start_job", return_value=self.job(status="waiting")), \
+                patch.object(ai_assistant.slicer_bridge, "wait", return_value=self.job(status="running", step="Slicing")):
+            ok, result = ai_assistant._carry_out("slice", {"name": "cube.stl"}, ai_assistant._ctx(PRINTER, True))
+        self.assertEqual((ok, result["status"], result["job"]), (True, "still slicing", "job12345"))
+        failed = self.job(status="failed", error="The engine stopped", cause={"title": "Missing filament profile"})
+        with patch.object(ai_assistant.slicer_bridge, "get_job", return_value=failed):
+            ok, result = ai_assistant._carry_out("slice_status", {"job": "job12345"}, ai_assistant._ctx(PRINTER, True))
+        self.assertFalse(ok)
+        self.assertEqual(result["refused"], "The engine stopped (Missing filament profile)")
+
+    def test_slicing_switched_off_is_refused(self):
+        modules.set_enabled("auto_print", False)
+        ok, result = ai_assistant._carry_out("slice", {"name": "cube.stl"}, ai_assistant._ctx(PRINTER, True))
+        self.assertFalse(ok)
+        self.assertIn("Slicing is switched off", result["refused"])
+
+    def test_the_instructions_describe_the_path_from_model_to_confirm_print(self):
+        system = ai_assistant._system(ai_assistant._ctx(PRINTER, True), "free")
+        for words in ("- slice:", "- slicer_profiles:", "slice it", "start_print opens Confirm Print", "make_shape outline"):
+            self.assertIn(words, system)
+        self.assertLess(len(system), 14000)
+
+
+class FakeJpeg:
+    data = b"\xff\xd8\xff" + b"0" * 64
+
+
+class TestPrintWatch(Base):
+    def setUp(self):
+        super().setUp()
+        ai_assistant._watch["log"].clear()
+        ai_assistant._watch["last"].clear()
+        self.state = {"state": "printing", "printer_name": "Workshop U1", "current_file": "bracket.gcode", "progress": 0.4}
+        self.picture = (FakeJpeg.data, "image/jpeg")
+        self.paused = []
+        from contextlib import contextmanager
+
+        @contextmanager
+        def use(pid):
+            yield None
+        for target, value in ((mock_moonraker, {"real_printer_ids": lambda: ["real-1"], "use_printer": use,
+                                                "get_printer_state": lambda: self.state,
+                                                "camera_snapshot": lambda: self.picture,
+                                                "is_real": lambda pid: pid == "real-1",
+                                                "is_connected": lambda pid=None: True}),
+                              (ai_assistant.printer_control, {"pause_print": lambda: self.paused.append(1) or {"ok": True}})):
+            for name, fn in value.items():
+                patcher = patch.object(target, name, fn)
+                patcher.start()
+                self.addCleanup(patcher.stop)
+
+    def tick(self, answer, now=1000.0):
+        self.asked = Script(answer)
+        with patch.object(ai_providers, "ask", self.asked):
+            return ai_assistant.watch_tick(now)
+
+    def test_it_does_nothing_until_switched_on(self):
+        self.assertEqual(self.tick('{"verdict": "failed", "why": "x"}'), [])
+        self.assertEqual(self.asked.seen, [])
+        self.assertFalse(ai_assistant.status()["watch"]["on"])
+
+    def test_a_check_sends_one_picture_and_records_the_verdict(self):
+        ai_assistant.watch_settings(on=True, minutes=10)
+        made = self.tick('Looks fine. {"verdict": "ok", "why": "Clean layers."}')
+        self.assertEqual([(m["verdict"], m["why"], m["paused"]) for m in made], [("ok", "Clean layers.", False)])
+        sent = self.asked.seen[0][0]
+        self.assertEqual(sent["images"][0][0], "image/jpeg")
+        self.assertIn("Workshop U1", sent["text"])
+        self.assertIn("40%", sent["text"])
+        self.assertIn("Say failed only when the picture clearly shows it", self.asked.systems[0])
+        self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}', now=1000 + 9 * 60), [])     # not due yet
+        self.assertEqual(len(self.tick('{"verdict": "ok", "why": "x"}', now=1000 + 10 * 60)), 1)
+        self.assertEqual(ai_assistant.status()["watch"]["usage"]["checks"], 2)
+
+    def test_a_clear_failure_is_only_reported_unless_pausing_is_allowed(self):
+        ai_assistant.watch_settings(on=True)
+        made = self.tick('{"verdict": "failed", "why": "Spaghetti across the bed."}')
+        self.assertEqual((made[0]["verdict"], made[0]["paused"], self.paused), ("failed", False, []))
+        ai_assistant._watch["last"].clear()
+        ai_assistant.watch_settings(pause=True)
+        made = self.tick('{"verdict": "failed", "why": "Spaghetti across the bed."}', now=5000)
+        self.assertEqual((made[0]["paused"], self.paused), (True, [1]))
+        self.assertEqual(ai_assistant.status()["watch"]["log"][0]["why"], "Spaghetti across the bed.")
+
+    def test_watch_only_mode_stops_the_pause_and_says_so(self):
+        ai_assistant.watch_settings(on=True, pause=True)
+        with patch.object(ai_assistant.watch_only, "is_on", return_value=True):
+            made = self.tick('{"verdict": "failed", "why": "Knocked loose."}')
+        self.assertEqual((made[0]["paused"], self.paused), (False, []))
+        self.assertIn("It was not paused", made[0]["why"])
+
+    def test_no_picture_an_unreadable_answer_or_an_idle_printer(self):
+        ai_assistant.watch_settings(on=True)
+        self.picture = (b"<svg/>", "image/svg+xml")
+        self.assertEqual(self.tick("{}")[0]["verdict"], "skipped")
+        self.assertEqual(self.asked.seen, [])
+        self.picture = (FakeJpeg.data, "image/jpeg")
+        ai_assistant._watch["last"].clear()
+        self.assertEqual(self.tick("I can't tell.")[0]["verdict"], "worry")
+        self.state["state"] = "standby"
+        self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}', now=99999), [])
+
+    def test_the_camera_switched_off_stops_it(self):
+        ai_assistant.watch_settings(on=True)
+        modules.set_enabled("camera", False)
+        self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}'), [])
+
+    def test_settings_are_checked(self):
+        with self.assertRaises(ValueError):
+            ai_assistant.watch_settings(minutes=2)
+        self.assertEqual(ai_assistant.watch_settings(on=True, minutes=15, pause=True)["watch"]["minutes"], 15)
+
+
 class TestAbilities(Base):
     def setUp(self):
         super().setUp()
@@ -891,6 +1023,33 @@ class TestAbilities(Base):
         self.assertAlmostEqual(volume(triangles) / wanted, 1, delta=0.005)
         with self.assertRaises(ValueError):
             ai_assistant._cut_holes(plate, [])
+
+    def test_free_form_shapes_come_out_as_closed_files(self):
+        import math
+        plate = ai_assistant._make_shape("outline", points=[[0, 0], [50, 0], [50, 20], [0, 20]], height=4,
+                                         holes=[[[10, 10], [14, 6], [18, 10], [14, 14]]], corner_radius=3, name="bracket")
+        self.assertEqual(plate["size_mm"][2], 4)
+        cup = ai_assistant._make_shape("revolve", profile=[[0, 0], [20, 0], [20, 40], [18, 40], [18, 2], [0, 2]], name="cup")
+        self.assertEqual([round(v, 3) for v in cup["size_mm"]][2], 40)
+        gear = ai_assistant._make_shape("gear", teeth=24, module=1.5, height=5, bore=5, name="gear")
+        self.assertAlmostEqual(max(gear["size_mm"][:2]), 39, delta=0.05)
+        box = ai_assistant._make_shape("box", width=30, depth=20, height=10, corner_radius=4, name="rounded")
+        for made in (plate, cup, gear, box):
+            _, triangles = ai_assistant._triangles(made["saved_as"])
+            self.assertTrue(closed(triangles), made["saved_as"])
+        _, triangles = ai_assistant._triangles(box["saved_as"])
+        self.assertAlmostEqual(volume(triangles) / ((30 * 20 - (4 - math.pi) * 16) * 10), 1, delta=0.003)
+        ok, result = ai_assistant._carry_out("make_shape", {"shape": "outline", "points": [[0, 0], [9, 9], [9, 0], [0, 9]],
+                                                            "height": 2}, ai_assistant._ctx(PRINTER, True))
+        self.assertFalse(ok)
+        self.assertIn("crosses itself", result["refused"])
+
+    def test_an_outline_part_can_be_cut_like_any_other(self):
+        made = ai_assistant._build_model([{"shape": "outline", "points": [[0, 0], [40, 0], [40, 10], [0, 10]], "height": 10},
+                                          {"shape": "gear", "teeth": 10, "module": 1, "height": 20, "at": [20, 5, -5],
+                                           "op": "cut"}], name="socket")
+        self.assertEqual(made["size_mm"], [40, 10, 10])
+        self.assertEqual(made["accuracy_mm"], 0.4)
 
     def test_a_library_model_can_be_a_part_and_keep_leaves_the_overlap(self):
         ball = ai_assistant._make_shape("sphere", diameter=20, segments=64, name="ball")["saved_as"]

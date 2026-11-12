@@ -69,6 +69,7 @@ API endpoints
                                      a model, the mode and the steps that never ask
   POST /api/assistant/check          is a plan's program installed and signed in (runs its own status command)
   POST /api/assistant/estimate|budget   tokens and cost before sending; the owner's prices and spending limit
+  POST /api/assistant/watch          print watch: a camera check by the AI every few minutes while a real printer prints
   POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
@@ -1222,6 +1223,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                     return self._send_json(ai_assistant.budget(body.get("provider"), body.get("model"), body.get("price_in"),
                                                                body.get("price_out"), body.get("cap_usd"),
                                                                bool(body.get("clear_price"))))
+                if verb == "watch":
+                    return self._send_json(ai_assistant.watch_settings(body.get("on"), body.get("minutes"), body.get("pause")))
                 if verb == "estimate":
                     return self._send_json(ai_assistant.estimate(body.get("thread"), body.get("text"), printer_id, demo,
                                                                  body.get("context")))
@@ -2227,6 +2230,7 @@ def main():
     threading.Thread(target=memory.watch, daemon=True).start()
     # AI keys saved before this computer's keyring was used move into it; a keyring can take a moment.
     threading.Thread(target=ai_providers.protect_saved_keys, name="ai-keys", daemon=True).start()
+    threading.Thread(target=ai_assistant.watch_loop, name="ai-watch", daemon=True).start()
     # Windows' Task Scheduler answers in a second or more; ask it now, so no page ever waits for it.
     threading.Thread(target=autostart.status, name="autostart-warm", daemon=True).start()
     print("=" * 58)

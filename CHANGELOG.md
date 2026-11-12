@@ -20,6 +20,16 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
 
 ## Unreleased
 
+- Draw a part and ask for it: the assistant pushes any outline up into a solid (with holes and
+  rounded corners), spins a profile into a round part such as a cup or a knob, makes spur gears from
+  their teeth and tooth size, and rounds the corners of boxes. It can trace an outline from a photo
+  of a sketch. These shapes are exact, closed solids and can be cut like any other part.
+- Ask the assistant to slice a model with one of your saved profiles: it reports the slicer's own
+  time and filament figures and opens Confirm Print for the result.
+- Print watch: switch it on from the AI screen and your AI looks at the camera every 5 to 60 minutes
+  while a real printer prints, warns you on screen when something looks wrong, and pauses only if
+  you allow it. Checked with stand-in cameras and AIs in the suite; not yet run on a real U1.
+
 - Ask the assistant for a part with holes, slots or pockets: it builds a model from parts that are
   added, cut away or kept where they overlap, can use a model from your library as one of the parts,
   and drills round holes straight into a library model. A wedge and a torus join the simple shapes.
