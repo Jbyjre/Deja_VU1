@@ -62,6 +62,10 @@ class Base(unittest.TestCase):
         self.addCleanup(ai_assistant.reset)
         self.addCleanup(mock_moonraker.reset_live_state)
         self.addCleanup(modules.reset_state)
+        # Test machines don't have the Claude Code program installed: stand in for it, so the plan counts as set up.
+        program = patch.object(ai_providers, "_program", return_value="/usr/bin/true")
+        program.start()
+        self.addCleanup(program.stop)
         with patch.object(ai_providers, "ask", return_value="ready"):
             ai_assistant.test("claude-code")
         ai_assistant.select(mode="balanced")     # most tests here are about steps that wait; the default is freer
@@ -1120,6 +1124,9 @@ class TestRoutes(APITestCase):
         mock_moonraker.reset_live_state()
         self.addCleanup(ai_assistant.reset)
         self.addCleanup(modules.reset_state)
+        program = patch.object(ai_providers, "_program", return_value="/usr/bin/true")
+        program.start()
+        self.addCleanup(program.stop)
 
     def test_the_whole_path_through_the_server(self):
         status, body = self.get("/api/assistant")
