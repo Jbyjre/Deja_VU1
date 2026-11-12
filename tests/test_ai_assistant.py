@@ -774,7 +774,55 @@ class TestAbilities(Base):
         with self.assertRaises(ValueError):
             ai_assistant._build_model([])
         with self.assertRaises(ai_assistant.Refused):
-            ai_assistant._build_model([{"shape": "box"}] * 41)
+            ai_assistant._build_model([{"shape": "box"}] * 61)
+
+    def test_a_ramp_and_a_ring_are_closed_solids_too(self):
+        import math
+        ramp = ai_assistant._shape("wedge", width=30, depth=10, height=6)
+        self.assertTrue(closed(ramp))
+        self.assertAlmostEqual(volume(ramp), 30 * 10 * 6 / 2, places=6)
+        ring = ai_assistant._shape("torus", diameter=40, thickness=8, segments=96)
+        self.assertTrue(closed(ring))
+        self.assertAlmostEqual(volume(ring) / (2 * math.pi ** 2 * 16 * 16), 1, delta=0.01)
+
+    def test_it_cuts_a_hole_through_a_part_it_builds(self):
+        import math
+        made = ai_assistant._build_model([{"shape": "box", "width": 40, "depth": 30, "height": 10},
+                                          {"shape": "cylinder", "diameter": 8, "height": 30, "at": [20, 15, -10], "op": "cut"}],
+                                         name="plate with hole")
+        self.assertEqual(made["size_mm"], [40, 30, 10])
+        self.assertEqual(made["accuracy_mm"], 0.4)
+        self.assertIn("0.4 mm grid", made["note"])
+        _, triangles = ai_assistant._triangles(made["saved_as"])
+        self.assertTrue(closed(triangles))
+        self.assertAlmostEqual(volume(triangles) / (40 * 30 * 10 - math.pi * 16 * 10), 1, delta=0.005)
+        with self.assertRaises(ValueError):
+            ai_assistant._build_model([{"shape": "box", "op": "melt"}])
+        with self.assertRaises(ai_assistant.Refused):         # nothing to cut from yet
+            ai_assistant._build_model([{"shape": "box", "op": "cut"}, {"shape": "box"}])
+
+    def test_it_drills_holes_into_a_model_from_the_library(self):
+        import math
+        plate = ai_assistant._make_shape("box", width=50, depth=20, height=5, name="bar")["saved_as"]
+        made = ai_assistant._cut_holes(plate, [{"x": 10, "y": 10, "diameter": 4}, {"x": 40, "y": 10, "diameter": 4},
+                                               {"x": 25, "y": 10, "diameter": 6, "depth": 2}])
+        self.assertEqual((made["holes"], made["size_mm"]), (3, [50, 20, 5]))
+        self.assertTrue(made["saved_as"].startswith("bar-shape-holes"))
+        _, triangles = ai_assistant._triangles(made["saved_as"])
+        self.assertTrue(closed(triangles))
+        wanted = 50 * 20 * 5 - 2 * math.pi * 4 * 5 - math.pi * 9 * 2
+        self.assertAlmostEqual(volume(triangles) / wanted, 1, delta=0.005)
+        with self.assertRaises(ValueError):
+            ai_assistant._cut_holes(plate, [])
+
+    def test_a_library_model_can_be_a_part_and_keep_leaves_the_overlap(self):
+        ball = ai_assistant._make_shape("sphere", diameter=20, segments=64, name="ball")["saved_as"]
+        made = ai_assistant._build_model([{"model": ball}, {"shape": "box", "width": 30, "depth": 30, "height": 10,
+                                                            "at": [-5, -5, 0], "op": "keep"}], name="dome")
+        self.assertAlmostEqual(made["size_mm"][2], 10, delta=made["accuracy_mm"])   # the ball's tip is rounded by the grid
+        _, triangles = ai_assistant._triangles(made["saved_as"])
+        import math
+        self.assertAlmostEqual(volume(triangles) / (2 / 3 * math.pi * 1000), 1, delta=0.01)
 
     def test_settings_come_as_a_checked_list_to_apply_never_as_a_change(self):
         view = self.say("stronger", act("suggest_settings", changes={"layer_height": 0.2, "sparse_infill_density": 25},
@@ -832,7 +880,7 @@ class TestAbilities(Base):
         ai_assistant.select(mode="free")
         self.say("hi", "Hello.")
         system = self.script.systems[0]
-        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "say you,",
+        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "- cut_holes:", "op cut", "say you,",
                       "- suggest_settings:", "asks only before it ends a print early"):
             self.assertIn(words, system)
         self.assertLess(len(system), 12000)
