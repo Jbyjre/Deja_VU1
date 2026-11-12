@@ -4,11 +4,12 @@
  * parts, one part of it (app.js SECTIONS). Nothing moves between screens, so
  * remembered tabs, tours, search and another device's handoff keep working.
  *
- * Page links: every destination has its own address (#/prepare, #/printer/<id>
+ * Page links: every destination has its own address (#/slice, #/printer/<id>
  * and so on). Moving around adds a step to the browser's history, so Back and
  * Forward move between screens, a refresh opens the same one, and a copied
- * link opens it on another browser. Old names (#/files, #/maintenance) still
- * resolve.
+ * link opens it on another browser. Old names (#/library, #/care, #/prepare)
+ * still resolve. G then a letter goes to a place, Alt+1 to 9 to the first nine,
+ * and ? lists every shortcut.
  *
  * Desktop: about 224 px wide with labels, or 64 px with icons only (the
  * collapse button or the [ key, remembered). Below 1180 px it starts collapsed;
@@ -16,7 +17,7 @@
  *
  * What the sidebar shows from the live fleet (the dv-fleet event): the selected
  * printer's state and progress on the Printer item, a count on Overview of the
- * printers that need you and on Care of the printers with upkeep due, and, from two
+ * printers that need you and on Maintenance of the printers with upkeep due, and, from two
  * printers on, a menu to choose which printer the Printer page shows. Arrow keys,
  * Home and End move between items; "Tools & learn" folds; with icons only, a label
  * appears beside the item you point at or focus.
@@ -26,11 +27,11 @@
     overview: 'M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z',
     printers: 'M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z',
     printer: 'M6 3h12v6H6zM4 9h16v8H4zM7 17h10v4H7zM16 12.5h.01',
-    library: 'M4 4h5v16H4zM10 4h4v16h-4zM15.5 5l3.8-1 2.6 15.4-3.8 1z',
-    prepare: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
-    jobs: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
-    materials: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-    care: 'M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
+    files: 'M4 4h5v16H4zM10 4h4v16h-4zM15.5 5l3.8-1 2.6 15.4-3.8 1z',
+    slice: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
+    queue: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
+    filament: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+    maintenance: 'M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
     settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8',
     prefs: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6',
     automations: 'M4 8h12l-3-3M20 16H8l3 3',
@@ -48,11 +49,11 @@
     ['overview', 'Overview', 'overview', null, 'main'],
     ['printers', 'Printers', 'fleet', 'printers', 'main'],
     ['printer', 'Printer', 'control', null, 'main'],
-    ['library', 'Library', 'files', 'library', 'main'],
-    ['prepare', 'Prepare', 'files', 'slicing', 'main'],
-    ['jobs', 'Jobs', 'files', 'jobs', 'main'],
-    ['materials', 'Materials', 'maintenance', 'filament', 'main'],
-    ['care', 'Care', 'maintenance', 'upkeep', 'main'],
+    ['files', 'Files', 'files', 'library', 'main'],
+    ['slice', 'Slice', 'files', 'slicing', 'main'],
+    ['queue', 'Queue', 'files', 'jobs', 'main'],
+    ['filament', 'Filament', 'maintenance', 'filament', 'main'],
+    ['maintenance', 'Maintenance', 'maintenance', 'upkeep', 'main'],
     ['ai', 'AI', 'ai', null, 'main'],
     ['settings', 'Settings', 'modules', null, 'main'],
     ['prefs', 'Preferences', 'prefs', null, 'main'],
@@ -64,9 +65,13 @@
     ['games', 'Games', 'games', null, 'tools']
   ].map(([id, label, tab, part, group]) => ({ id, label, tab, part, group }));
   const byId = Object.fromEntries(DEST.map(d => [d.id, d]));
+  // Keyboard: G then a letter goes to a place; Alt+1 to Alt+9 go to the first nine; ? lists them all.
+  const GO_KEYS = { o: 'overview', p: 'printers', r: 'printer', f: 'files', s: 'slice', q: 'queue', l: 'filament',
+    m: 'maintenance', a: 'ai', t: 'automations', ',': 'settings', e: 'prefs', d: 'desk', h: 'layers', g: 'games' };
+  const keyFor = id => Object.keys(GO_KEYS).find(k => GO_KEYS[k] === id);
   // Old screen names in links and remembered values.
-  const OLD = { fleet: 'printers', control: 'printer', files: 'library', maintenance: 'care', modules: 'settings',
-    autoprint: 'prepare', filament: 'materials' };
+  const OLD = { fleet: 'printers', control: 'printer', library: 'files', care: 'maintenance', modules: 'settings',
+    autoprint: 'slice', prepare: 'slice', jobs: 'queue', materials: 'filament' };
   const COLLAPSE_KEY = 'dejavu1.rail.collapsed';
   const TOOLS_KEY = 'dejavu1.rail.tools';
   const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Ready' };
@@ -203,7 +208,7 @@
     DEST.forEach(d => { label[d.id] = d.label; });
     label.overview += badge('overview', flagged.length, worst,
       plural(flagged.length, 'printer needs you', 'printers need you'));
-    label.care += badge('care', due, 'warn', plural(due, 'printer has upkeep due', 'printers have upkeep due'));
+    label.maintenance += badge('maintenance', due, 'warn', plural(due, 'printer has upkeep due', 'printers have upkeep due'));
     const tip = document.querySelector('#rail [data-dest="printer"]');
     if (tip) {
       const state = stateOf(p);
@@ -265,7 +270,8 @@
   function showTip(el) {
     const tip = document.getElementById('rail-tip');
     if (!tip || !document.documentElement.classList.contains('rail-collapsed') || menuOpen) return;
-    tip.textContent = el.getAttribute('aria-label') || el.textContent.trim();
+    const key = el.dataset && el.dataset.dest && keyFor(el.dataset.dest);
+    tip.innerHTML = `${esc(el.getAttribute('aria-label') || el.textContent.trim())}${key ? ` <kbd>G</kbd> <kbd>${esc(key.toUpperCase())}</kbd>` : ''}`;
     tip.hidden = false;
     const box = el.getBoundingClientRect();
     const rail = document.getElementById('rail').getBoundingClientRect();
@@ -293,11 +299,14 @@
     all[Math.max(0, Math.min(all.length - 1, to))].focus();
   }
   function typing(el) {
-    return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+    if (!el) return false;
+    if (el.isContentEditable || /^(TEXTAREA|SELECT)$/.test(el.tagName)) return true;
+    // A switch or a button with focus isn't typing, so the shortcuts still work after a click on one.
+    return el.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color)$/i.test(el.type || '');
   }
 
   function build() {
-    const item = d => `<a href="${routeFor(d)}" class="rail-item" data-dest="${d.id}">
+    const item = d => `<a href="${routeFor(d)}" class="rail-item" data-dest="${d.id}"${keyFor(d.id) ? ` aria-keyshortcuts="G ${keyFor(d.id).toUpperCase()}"` : ''}>
       ${svg(ICON[d.id])}${d.id === 'printer' ? '<i class="rail-dot" hidden aria-hidden="true"></i>' : ''}<span class="rail-label">${esc(d.label)}${d.id === 'printer' ? '<small id="rail-printer"></small>' : ''}</span>${
       d.id === 'printer' ? '<i class="rail-progress" hidden aria-hidden="true"><b></b></i>' : ''}<span class="rail-badge" hidden aria-hidden="true"></span></a>`;
     const row = d => d.id === 'printer'
@@ -364,11 +373,55 @@
     nav.addEventListener('focusin', e => { const el = e.target.closest('.rail-item, .rail-collapse, .rail-switch'); if (el && e.target.matches(':focus-visible')) showTip(el); else hideTip(); });
     nav.addEventListener('focusout', hideTip);
     nav.addEventListener('scroll', hideTip, { passive: true });
+    let leader = 0;
     document.addEventListener('keydown', e => {
-      if (e.key === '[' && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(e.target) && !PHONE.matches) {
-        setCollapsed(!document.documentElement.classList.contains('rail-collapsed'), true);
-      }
+      if (!typing(e.target) && !e.ctrlKey && !e.metaKey && !document.querySelector('.guide:not([hidden])')) onPageKey(e);
     });
+    function onPageKey(e) {
+      if (e.altKey) {
+        const n = /^Digit([1-9])$/.exec(e.code || '');
+        const main = DEST.filter(d => d.group === 'main');
+        if (n && main[+n[1] - 1]) { e.preventDefault(); location.hash = routeFor(main[+n[1] - 1]); }
+        return;
+      }
+      if (leader && Date.now() - leader < 1200) {
+        leader = 0;
+        const id = GO_KEYS[e.key.toLowerCase()];
+        if (id && byId[id]) { e.preventDefault(); location.hash = routeFor(byId[id]); }
+        return;
+      }
+      if (e.key === 'g' || e.key === 'G') { leader = Date.now(); return; }
+      if (e.key === '?') { e.preventDefault(); keySheet(); return; }
+      if (e.key === '[' && !PHONE.matches) setCollapsed(!document.documentElement.classList.contains('rail-collapsed'), true);
+    }
+  }
+
+  /* ? : every shortcut on one sheet. */
+  function keySheet() {
+    let sheet = document.getElementById('kb-sheet');
+    if (!sheet) {
+      sheet = document.createElement('dialog');
+      sheet.id = 'kb-sheet';
+      sheet.className = 'kb-sheet liquid-glass';
+      sheet.setAttribute('aria-labelledby', 'kb-title');
+      const go = Object.entries(GO_KEYS).filter(([, id]) => byId[id])
+        .map(([k, id]) => `<li><span>${esc(byId[id].label)}</span><span><kbd>G</kbd> <kbd>${esc(k.toUpperCase())}</kbd></span></li>`).join('');
+      const mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+      const mod = mac ? '⌘' : 'Ctrl';
+      sheet.innerHTML = `<h2 id="kb-title">Keyboard shortcuts</h2>
+        <div class="kb-cols"><section><h3>Go to</h3><ul>${go}</ul></section>
+        <section><h3>Anywhere</h3><ul>
+          <li><span>Search everything</span><span><kbd>${mod}</kbd> <kbd>K</kbd> or <kbd>/</kbd></span></li>
+          <li><span>Ask your AI</span><span><kbd>${mod}</kbd> <kbd>J</kbd></span></li>
+          <li><span>The first nine places</span><span><kbd>Alt</kbd> <kbd>1</kbd>–<kbd>9</kbd></span></li>
+          <li><span>Back and forward</span><span><kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd></span></li>
+          <li><span>Fold the sidebar</span><span><kbd>[</kbd></span></li>
+          <li><span>This list</span><span><kbd>?</kbd></span></li></ul></section></div>
+        <form method="dialog"><button class="btn primary" type="submit">Close</button></form>`;
+      sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
+      document.body.append(sheet);
+    }
+    if (!sheet.open) sheet.showModal();
   }
 
   function init() {
@@ -403,7 +456,8 @@
   window.Rail = {
     destinations: DEST.map(d => ({ ...d })), parse, current: () => current().id,
     destFor: tab => (DEST.find(d => d.tab === tab) || byId.overview).id,
-    shown: () => !!document.getElementById('rail') && !PHONE.matches
+    shown: () => !!document.getElementById('rail') && !PHONE.matches,
+    keys: keySheet, go: id => { if (byId[id] || byId[OLD[id]]) location.hash = routeFor(byId[id] || byId[OLD[id]]); }
   };
   init();
 })();

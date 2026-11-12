@@ -23,6 +23,8 @@ Actions
   light           wled_bridge.py - set the strip to a colour
   home_assistant  home_assistant_bridge.py - set a sensor's state
   pause           pause the print on the printer that triggered the rule
+  ai_look         the owner's AI looks through the camera (print watch's check), and may
+                  pause the print if it clearly failed and a second picture agrees
 
 Rules fire on the *edge*: when a trigger goes from false to true, not on
 every 250 ms tick while it stays true, and never more often than the
@@ -58,7 +60,7 @@ TRIGGERS = {"temperature", "state", "filament_mismatch", "maintenance_overdue", 
 SENSORS = {"chamber", "bed", "active_nozzle", "T0", "T1", "T2", "T3"}
 STATE_EVENTS = {"started", "finished", "failed", "paused", "resumed", "cancelled"}
 CONDITIONS = {"always", "while_printing", "outside_quiet_hours"}
-ACTIONS = {"notify", "light", "home_assistant", "pause", "cool_down", "macro"}
+ACTIONS = {"notify", "light", "home_assistant", "pause", "cool_down", "macro", "ai_look"}
 MAX_RULES = 50
 
 _lock = threading.RLock()
@@ -204,6 +206,8 @@ def validate(rule):
         if not macro or len(macro) > 64 or not macro.replace("_", "").isalnum():
             raise ValueError("Type the macro's name as the printer lists it, like LIGHT_OFF")
         clean_action["name"] = macro
+    elif atype == "ai_look":
+        clean_action["pause"] = action.get("pause") in (True, "true", 1, "1")
 
     printer = rule.get("printer") or "any"
     if printer != "any" and not mock_moonraker.has_printer(printer):
@@ -242,7 +246,8 @@ def _describe(trigger, action):
         what = "the printer stops answering"
     else:
         what = "maintenance overdue"
-    doing = {"cool_down": "cool down", "macro": f"run {action.get('name', 'macro')}"}.get(action["type"])
+    doing = {"cool_down": "cool down", "macro": f"run {action.get('name', 'macro')}",
+             "ai_look": "AI checks the camera" + (" (pauses a failed print)" if action.get("pause") else "")}.get(action["type"])
     return f"When {what} → {doing or action['type'].replace('_', ' ')}"
 
 
@@ -474,7 +479,7 @@ def run_action(rule, printer_id, detail, manual=False):
     action = rule["action"]
     owner = {"notify": "notifications", "light": "wled_bridge",
              "home_assistant": "home_assistant_bridge", "pause": "printer_control",
-             "cool_down": "printer_control", "macro": "printer_control"}.get(action["type"])
+             "cool_down": "printer_control", "macro": "printer_control", "ai_look": "ai_assistant"}.get(action["type"])
     if not modules.is_enabled("automations") or (owner and not modules.is_enabled(owner)):
         return _record(rule, printer_id, detail, {"ok": False,
                        "error": "Action stopped: its feature is switched off in Settings"}, manual=manual)
@@ -538,6 +543,19 @@ def run_action(rule, printer_id, detail, manual=False):
             result = {"ok": True, "detail": f"Ran {action['name']} on {printer_name}"}
         except (ValueError, mock_moonraker.PrinterCommandError) as exc:
             result = {"ok": False, "error": f"{action['name']} failed: {exc}"}
+    elif kind == "ai_look":
+        import ai_assistant
+        try:
+            if demo or not mock_moonraker.is_real(printer_id):
+                raise ValueError("demo printers have no camera for the AI to look through")
+            seen = ai_assistant.watch_once_for_rule(printer_id, rule["name"], bool(action.get("pause")))
+            if seen["verdict"] == "skipped":
+                result = {"ok": False, "error": f"The AI didn't look: {seen.get('why')}"}
+            else:
+                result = {"ok": True, "detail": f"AI: {seen['verdict']}. {seen.get('why', '')}"
+                          + (" Paused." if seen.get("paused") else "")}
+        except ValueError as exc:
+            result = {"ok": False, "error": f"AI check failed: {exc}"}
     else:
         result = {"ok": False, "error": f"Unknown action {kind}"}
     return _record(rule, printer_id, detail, result, manual=manual)

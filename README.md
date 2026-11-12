@@ -30,11 +30,12 @@ and overdue maintenance at the top.</sub>
 - **See every printer at once.** State, progress and finish time, the filament in each of the four
   heads, temperatures and a health score, for up to 12 printers. **Needs you** ranks what wants a
   person: a fault, a paused or finished print, maintenance that's due.
-- **Ask an assistant, with your own AI.** Connect a Claude or ChatGPT plan, a model on your computer,
-  or an API key from any of 29 services, and switch between them. Ask in your own words and watch
-  the twin: it reads the printer, files and history, homes, moves and heats by itself, makes simple
-  parts, suggests print settings, and asks only before it ends a print early. Fixed limits hold
-  whatever it is told, only your tap starts a print, and a key rests in your computer's keyring.
+- **Ask an assistant, with your own AI.** Sign in to a Claude or ChatGPT plan from the app, or connect
+  a model on your computer or an API key from any of 29 services. Print watch looks at the camera
+  every few minutes and can pause a failed print; print doctor reads a photo of a bad print. Ask in
+  your own words: it reads the printer, files and history, homes, moves and heats by itself, makes and
+  slices parts, writes automations, and asks only before it ends a print early. Fixed limits hold
+  whatever it is told, only your tap starts a print, and conversations stay on your computer.
   [AI assistant](docs/ai-assistant.md)
 - **Check a print before it starts.** Confirm Print reads the file and the printer together: the
   build volume, toolheads and temperatures (with line numbers), the colour loaded in each head,

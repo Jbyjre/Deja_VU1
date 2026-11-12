@@ -1479,6 +1479,25 @@ def camera_snapshot():
     return frame if isinstance(frame, bytes) else frame.encode(), "image/svg+xml"
 
 
+def printer_videos():
+    """The selected real printer's own recorded time-lapses. Demo printers record none."""
+    pid = selected_printer_id()
+    if not is_real(pid):
+        return {"videos": [], "roots": [], "demo": True}
+    if not is_connected(pid):
+        raise ValueError("The printer is not connected. Check its address and power")
+    return real_printer(pid).printer_videos()
+
+
+def printer_video_bytes(root, path, max_bytes):
+    pid = selected_printer_id()
+    if not is_real(pid):
+        raise ValueError("Demo printers record no videos")
+    if not is_connected(pid):
+        raise ValueError("The printer is not connected. Check its address and power")
+    return real_printer(pid).fetch_video(root, path, max_bytes)
+
+
 def set_filament(body):
     import tool_setup
     tool, colour, material = tool_setup.filament_fields(body)

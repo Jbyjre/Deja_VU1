@@ -737,3 +737,21 @@ body > .live-pill { right: calc(var(--orb-gap) + var(--orb) + 14px); }
 .server-lost[hidden] { display: none; }
 .server-lost a { margin-left: 4px; font-weight: 600; white-space: nowrap; }
 .server-lost a[hidden] { display: none; }
+
+/* Once the app is familiar (Familiar in app.js), the beginner help steps aside. */
+html.familiar .tips-btn, html.familiar .xp-more[data-xp-tips], html.familiar .newcomer-only { display: none !important; }
+html.familiar #tab-intro { display: none; }
+
+/* ? : the keyboard shortcut sheet (rail.js) */
+.kb-sheet { position: fixed; inset: 0; margin: auto; height: fit-content; border: 0; border-radius: 24px; padding: 22px 24px; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
+  color: var(--text); background: color-mix(in oklch, var(--paper-solid, #fff) 82%, transparent); overflow: auto;
+  box-shadow: 0 2px 4px rgb(0 0 0 / .14), 0 18px 48px rgb(0 0 0 / .26); }
+.kb-sheet::backdrop { background: rgb(10 14 22 / .32); backdrop-filter: blur(3px); }
+.kb-sheet h2 { font-size: 18px; margin: 0 0 12px; }
+.kb-sheet h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); margin: 0 0 6px; }
+.kb-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 28px; }
+.kb-sheet ul { list-style: none; margin: 0 0 12px; padding: 0; }
+.kb-sheet li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid color-mix(in oklch, var(--text) 8%, transparent); font-size: 13.5px; }
+.kb-sheet kbd, .rail-tip kbd { font: 600 11px/1 var(--font-mono); padding: 3px 6px; border-radius: 6px; border: 1px solid color-mix(in oklch, var(--text) 18%, transparent); background: color-mix(in oklch, var(--text) 5%, transparent); }
+.kb-sheet form { display: flex; justify-content: flex-end; margin-top: 8px; }
+@media (prefers-reduced-transparency: reduce) { .kb-sheet { background: var(--paper-solid, #fff); } }

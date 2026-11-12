@@ -24,6 +24,51 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
 
 ## Unreleased
 
+- Sign in to your ChatGPT plan from inside Deja Vu1 with OpenAI's Sign in with ChatGPT for open-source
+  apps: press Continue with ChatGPT, approve it in the browser, and requests count against your plan through
+  OpenAI's Responses API. Nothing to install, no key. The sign-in is kept by the computer's keyring,
+  refreshed before it runs out and revoked at OpenAI when you sign out. From another device, paste the
+  address the browser ended on. Codex stays available for people who already use it. Tested against a
+  stand-in for OpenAI's sign-in and API; not yet with a real ChatGPT account.
+- Claude plan: Sign in with Claude runs Claude Code's own sign-in from the app and passes on the code the
+  page shows, so no terminal is needed. When Claude Code says nobody is signed in, "I'm already signed in"
+  checks with one tiny request, because that status can be wrong while requests still work.
+- The AI screen leads with what your AI does: print watch first, then print doctor (a photo of a failed
+  print gives the cause and the fix, and goes in the logbook), a spool from a photo, rules in your own
+  words, making a part, better print settings and catch me up. Your AI, how much it may do, cost and
+  privacy are small cards below. Keys are explained once, where they are offered.
+- Print watch can be set up: how often (2 to 60 minutes), an extra look at the first layers, what to look
+  for (spaghetti, knocked loose, nozzle blob, layer shift, warping, stringing), how readily it worries,
+  your own notes, a comparison with the last picture (a print that stopped growing), a second look before
+  it pauses, and an alert. Check now looks at once, and the card shows the picture it studied.
+- Conversations are saved on this computer: the clock button lists them, newest first, and opens one
+  where you left off. Your message shows the moment you send it.
+- The chat is simpler: one chip in the header for the AI and its model, a photo button, and suggestions
+  only on the first few opens. Results come back as cards: temperatures as gauges, a sliced file with
+  Print it, a new model with its picture and Open it, spools as swatches, care tasks and queue lists.
+- Ask to go somewhere and the assistant opens the right card and lights it: the digital twin, the
+  camera, the console, time-lapses, the logbook and 30 more places. It no longer opens every answer with
+  the printer's state, and when it can't do something it says what it can do instead.
+- The assistant can add, switch and delete automations, change print watch, read the printers, list and
+  keep time-lapses, delete a file (it asks first), switch light and dark, and start a tour.
+- Automations: "Have my AI look through the camera" as an action, two ready-made AI rules, and Describe a
+  rule, which turns a sentence into a rule. These appear only while an AI is connected.
+- Disconnecting the last AI removes every AI touch: the shortcuts, the glow and the features. The Ask
+  button stays as a small round button.
+- Slicing setup: Use the stock U1 settings makes a profile from Snapmaker's own presets for your nozzles
+  in one press (the printer preset, its Standard process near 0.2 mm and each head's stock material), then
+  Check it all works slices the sample 3DBenchy. Find installed U1 profiles now lists the stock materials
+  for the 0.4 mm nozzle ("Generic PLA", "Generic PETG"), which were left out because their names don't
+  say U1.
+- Time-lapses: the printer's own recorded videos are listed under the flipbooks, to play or keep a copy on
+  this computer, and any flipbook saves as a video file made in the browser.
+- Add a spool from a photo: with an AI connected it reads the label and adds the spool; without one, the
+  colour is measured from the photo and the form fills in.
+- Clearer names in the sidebar: Files, Slice, Queue, Filament and Maintenance. Old links still work.
+- Keyboard: G then a letter goes to a place (G F for Files, G S for Slice), Alt+1 to 9 for the first
+  nine, and ? lists every shortcut. After a few visits the "Show me this screen" buttons and intro lines
+  step aside; Preferences, Beginner tips brings them back.
+
 - Draw a part and ask for it: the assistant pushes any outline up into a solid (with holes and
   rounded corners), spins a profile into a round part such as a cup or a knob, makes spur gears from
   their teeth and tooth size, and rounds the corners of boxes. It can trace an outline from a photo

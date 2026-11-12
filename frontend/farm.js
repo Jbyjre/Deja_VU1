@@ -726,11 +726,12 @@ const Farm = (() => {
           : 'Runs the slicer once, with no window, to read its version.',
         ok: check && check.ok ? `${check.detail}. ${check.support ? check.support.title : ''}` : '', act: 'Check it' },
       { key: 'profile', done: !!(s && s.profiles.length), title: 'Pick your print settings',
-        now: 'Choose the printer, process and filaments from the presets your slicer already has.',
-        ok: s ? plural(s.profiles.length, 'saved profile') : '', act: 'Choose presets' },
-      { key: 'model', done: ap.models.length > 0, title: 'Add a model',
-        now: 'An STL or 3MF file. The sample 3DBenchy makes a good first slice.',
-        ok: plural(ap.models.length, 'model') + ' in your library', act: 'Add the sample models' },
+        now: ap.stockError || 'One press uses Snapmaker’s own stock U1 settings, the ones Snapmaker Orca starts with. You can fine-tune them later.',
+        ok: s ? plural(s.profiles.length, 'saved profile') + (ap.stock ? `: ${ap.stock.name}` : '') : '', act: 'Use the stock U1 settings',
+        alt: 'Choose presets myself' },
+      { key: 'test', done: !!ap.tested || ap.jobs.some(j => j.status === 'done' || j.status === 'queued'), title: 'Check it all works',
+        now: ap.testing || 'Slices the sample 3DBenchy once with your settings, so you know the whole chain works before your first real print.',
+        ok: ap.tested || 'A slice has finished with these settings.', act: 'Run a test slice' },
     ];
   }
 
@@ -762,7 +763,7 @@ const Farm = (() => {
           ${st.key === 'find' && (i === at || ap.found) ? foundList() : ''}</div>
         ${i === at ? (st.key === 'find' && ap.found && !ap.found.error && ap.found.found.length
             ? '<button class="btn small" type="button" data-sr-act="find">Look again</button>'
-            : `<button class="btn primary small" type="button" data-sr-act="${st.key}">${esc(st.act)}</button>`)
+            : `<span class="sr-acts"><button class="btn primary small" type="button" data-sr-act="${st.key}"${ap.testing && st.key === 'test' ? ' disabled' : ''}>${esc(st.act)}</button>${st.alt ? `<button class="btn small" type="button" data-sr-act="${st.key}-own">${esc(st.alt)}</button>` : ''}</span>`)
           : st.done && st.key === 'find' ? '<button class="btn small" type="button" data-sr-act="find">Look again</button>' : ''}
       </li>`;
     }).join(''));
@@ -780,16 +781,60 @@ const Farm = (() => {
       return renderReady();
     }
     if (key === 'check') return $('ap-check').click();
-    if (key === 'profile') {
+    if (key === 'profile-own') {
       const card = document.querySelector('.native-profile');
       card?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       return $('np-scan')?.click();
     }
-    if (key === 'model') {
-      const r = await busy(btn, 'Adding… (about 15 s)', () => postJSON('/api/files/samples', {}));
-      if (!r.ok) return toast(`Couldn't add samples: ${r.body.error}`, 'bad');
-      if (window.Workshop) Workshop.loadFiles();
-      await loadModels();
+    if (key === 'profile') {
+      // One press: Snapmaker's stock presets that fit the fitted heads, saved as the default; then a test slice.
+      const r = await busy(btn, 'Setting up…', () => postJSON('/api/slicer/profiles/stock', {}));
+      if (!r.ok) { ap.stockError = r.body.error || `HTTP ${r.status}`; renderReady(); return toast(ap.stockError, 'bad', 9000); }
+      ap.stockError = '';
+      ap.stock = r.body.stock;
+      const made = ap.stock.heads_made ? ' Your four heads were set to what the printer reports (or PLA on 0.4 mm nozzles); change them under Profiles and tools.' : '';
+      toast(`Using ${ap.stock.presets.process} with ${ap.stock.presets.machine}.${made}`, 'ok', 9000);
+      await loadAutoPrint();
+      return testSlice();
+    }
+    if (key === 'test') return testSlice();
+  }
+
+  /* Check it all works: slice the sample 3DBenchy with the default profile and wait for the result. */
+  async function testSlice() {
+    if (ap.testing) return;
+    ap.testing = 'Adding the sample models…';
+    renderReady();
+    try {
+      if (!ap.models.some(m => m.name === '3dbenchy.stl')) {
+        const added = await postJSON('/api/files/samples', {});
+        if (!added.ok) throw new Error(added.body.error || 'The sample models could not be added');
+        if (window.Workshop) Workshop.loadFiles();
+        await loadModels();
+      }
+      const model = (ap.models.find(m => m.name === '3dbenchy.stl') || ap.models[0] || {}).name;
+      if (!model) throw new Error('No model to slice');
+      ap.testing = `Slicing ${model}… (usually under a minute)`;
+      renderReady();
+      const r = await postJSON(api('/api/slicer/slice'), { name: model, profile: null, queue: false });
+      if (!r.ok) throw new Error(r.body.error || `HTTP ${r.status}`);
+      const id = r.body.id;
+      for (let i = 0; i < 150; i++) {
+        await new Promise(res => setTimeout(res, 2000));
+        await loadJobs();
+        const job = ap.jobs.find(j => j.id === id);
+        if (!job || ['waiting', 'running'].includes(job.status)) continue;
+        if (job.status === 'failed' || job.status === 'cancelled') throw new Error(job.error || 'The test slice failed. Its cause is under Slicing jobs below');
+        const f = ((job.report || {}).files || [])[0] || {};
+        ap.tested = `Sliced ${model}: ${f.layers || '?'} layers, ${f.estimated_hours == null ? 'time unknown' : Workshop.fmtHours(f.estimated_hours)}, ${f.filament_grams == null ? 'filament unknown' : f.filament_grams.toFixed(1) + ' g'}. Everything works.`;
+        toast(ap.tested, 'ok', 8000);
+        return;
+      }
+      throw new Error('The test slice is taking longer than usual. It keeps going; its result shows under Slicing jobs');
+    } catch (e) {
+      toast(`Test slice: ${e.message}`, 'bad', 9000);
+    } finally {
+      ap.testing = '';
       renderReady();
     }
   }

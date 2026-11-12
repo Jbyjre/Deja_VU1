@@ -37,7 +37,7 @@ def sections():
 class TestRail(unittest.TestCase):
     def test_the_destinations_the_plan_asks_for(self):
         ids = [d[0] for d in DEST]
-        for wanted in ("overview", "printers", "printer", "library", "prepare", "jobs", "materials", "care",
+        for wanted in ("overview", "printers", "printer", "files", "slice", "queue", "filament", "maintenance",
                        "settings"):
             self.assertIn(wanted, ids)
         self.assertEqual(len(ids), len(set(ids)))
@@ -108,3 +108,14 @@ class TestRailLiveParts(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestKeyboard(unittest.TestCase):
+    def test_every_go_to_key_names_a_real_place(self):
+        block = RAIL[RAIL.index("const GO_KEYS"):RAIL.index("const keyFor")]
+        keys = dict(re.findall(r"'?([a-z,])'?: '([a-z]+)'", block))
+        ids = {d[0] for d in DEST}
+        self.assertGreaterEqual(len(keys), 12)
+        for key, place in keys.items():
+            self.assertIn(place, ids, f"G {key.upper()} goes nowhere")
+        self.assertEqual(len(set(keys.values())), len(keys))

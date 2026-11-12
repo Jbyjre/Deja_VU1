@@ -370,6 +370,7 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
 /* ---- Preferences tab -------------------------------------------------------- */
 .prefs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px 28px; }
 .pref h3 { font-size: 14px; margin-bottom: 6px; }
+.pref-note { font-size: 12.5px; color: var(--text-dim); margin: 0 0 8px; line-height: 1.4; }
 .pref select { min-height: 40px; width: 100%; }
 .pref-wide { grid-column: 1 / -1; }
 .pref-check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
@@ -413,3 +414,8 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
   .ov-word { font-size: 20px; }
   .ov-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Time-lapses: the printer's own recordings under the flipbooks */
+.tl-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tl-printer { margin-top: 14px; padding-top: 12px; border-top: 1px solid color-mix(in oklch, var(--text) 9%, transparent); }
+.tl-printer h3 { margin: 4px 0 6px; font-size: 13px; color: var(--text-dim); }

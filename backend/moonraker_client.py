@@ -1786,6 +1786,40 @@ class MoonrakerPrinter:
         meta = self.http.request("GET", "/server/files/metadata", {"filename": filename})
         return (meta.get("size"), meta.get("modified")) if isinstance(meta, dict) else (None, None)
 
+    VIDEO_ROOTS = ("camera", "timelapse")
+    VIDEO_KINDS = (".mp4", ".mkv", ".webm", ".mov", ".avi")
+
+    def printer_videos(self):
+        """
+        Time-lapse videos the printer itself recorded. Moonraker lists its file roots (GET /server/files/roots);
+        the U1's stock firmware keeps its recordings in a read-only root called "camera" (reported by owners on
+        firmware 2.0.0), and the moonraker-timelapse plugin, as the Extended Firmware uses, in "timelapse".
+        Each root is listed with GET /server/files/list?root=<root>.
+        """
+        roots = self.http.request("GET", "/server/files/roots") or []
+        names = [str(r.get("name")) for r in roots if isinstance(r, dict) and r.get("name") in self.VIDEO_ROOTS]
+        out = []
+        for root in names:
+            try:
+                listed = self.http.request("GET", "/server/files/list", query={"root": root}) or []
+            except PrinterRefused:
+                continue
+            for f in listed if isinstance(listed, list) else []:
+                path = str(f.get("path") or f.get("filename") or "")
+                if path.lower().endswith(self.VIDEO_KINDS) and ".." not in path.split("/"):
+                    out.append({"root": root, "path": path, "size": f.get("size"), "modified": f.get("modified")})
+        out.sort(key=lambda f: -(f.get("modified") or 0))
+        return {"videos": out[:200], "roots": names}
+
+    def fetch_video(self, root, path, max_bytes):
+        """One recorded video, as the printer holds it (GET /server/files/<root>/<path>)."""
+        root, path = str(root or ""), str(path or "").strip().lstrip("/")
+        if root not in self.VIDEO_ROOTS or not path or ".." in path.split("/") \
+                or not path.lower().endswith(self.VIDEO_KINDS):
+            raise ValueError("Choose one of the printer's videos")
+        return self.http.request("GET", f"/server/files/{root}/" + quote(path), raw=True, timeout=300.0,
+                                 max_bytes=max_bytes)
+
     def fetch_gcode(self, filename, max_bytes):
         """
         The file itself, as the printer holds it (Moonraker's file download,

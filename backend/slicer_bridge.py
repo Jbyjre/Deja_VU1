@@ -489,6 +489,62 @@ def add_installed_profile(body):
     return public_settings()
 
 
+STOCK_COLOURS = ("#f2f2f2", "#1b1b1b", "#d6402f", "#2f6fd6")      # used only when no printer reports its spools
+
+
+def _stock_heads():
+    """Four 0.4 mm heads for the stock presets, with the materials and colours the printer reports where it can."""
+    state = {}
+    try:
+        state = mock_moonraker.get_printer_state() or {}
+    except Exception:  # noqa: BLE001 - no printer just means the defaults
+        state = {}
+    heads = []
+    for i, name in enumerate(("T0", "T1", "T2", "T3")):
+        h = (state.get("toolheads") or {}).get(name) or {}
+        material = str(h.get("filament_material") or "PLA").upper().split()[0] if h.get("filament_material") else "PLA"
+        colour = str(h.get("filament_color_hex") or "")
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", colour):
+            colour = STOCK_COLOURS[i]
+        heads.append({"toolhead": name, "nozzle": 0.4, "height": 0.2, "color_hex": colour.lower(),
+                      "material": material if material in tool_setup.MATERIALS else "PLA", "spool_id": ""})
+    return heads
+
+
+def use_stock_profile():
+    """
+    One press: a profile made of Snapmaker's own stock U1 presets that fit the fitted heads (the printer preset,
+    its Standard process and each head's stock material), saved as the default. When the four heads were never
+    set up, they are filled from what the printer reports (or plain PLA on 0.4 mm nozzles) and saved first,
+    and the answer says so.
+    """
+    path, _ = slicer_path()
+    if not path:
+        raise ValueError("Find your slicer program first: Find it for me, in step 2")
+    found = installed_catalog()
+    if not found["available"]:
+        raise ValueError(found["problem"])
+    heads = tool_setup.get()["heads"]
+    made_heads = len(heads) != 4
+    if made_heads:
+        tool_setup.save({"heads": _stock_heads()})
+        heads = tool_setup.get()["heads"]
+    pick = slicer_profiles.stock_choice(found["presets"], heads)
+    names = pick["names"]
+    label = "Snapmaker stock · " + names["process"].split(" @")[0]
+    s = get_settings()
+    taken = {p.get("name") for p in s.get("profiles", [])}
+    name, n = label, 2
+    while name in taken:
+        name, n = f"{label} ({n})", n + 1
+    body = {"name": name[:60], "machine": pick["machine"], "process": pick["process"], "filaments": pick["filaments"],
+            "layer_mode": "shared", "options": {}}
+    out = add_installed_profile(body)
+    out["stock"] = {"name": body["name"], "presets": names, "notes": pick["notes"],
+                    "heads_made": made_heads, "heads": heads}
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Running the program
 # ---------------------------------------------------------------------------

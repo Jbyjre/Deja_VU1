@@ -14,24 +14,33 @@ Listed from most private to least. You can connect several and switch between th
 
 | Way | What you need | What Deja Vu1 stores |
 |---|---|---|
-| **Claude plan** (best choice) | [Claude Code](https://code.claude.com/docs/en/setup) installed and signed in on the computer that runs Deja Vu1 | Nothing |
-| **ChatGPT plan** (best choice) | [Codex](https://developers.openai.com/codex/cli) installed and signed in on the same computer | Nothing |
+| **Claude plan** (best choice) | [Claude Code](https://code.claude.com/docs/en/setup) installed on the computer that runs Deja Vu1; you sign in from Deja Vu1 | Nothing: Claude Code keeps its own sign-in |
+| **ChatGPT plan** (best choice) | A ChatGPT account; you sign in from Deja Vu1. Nothing to install | The sign-in, in your computer's keyring where there is one |
+| ChatGPT plan through Codex | [Codex](https://developers.openai.com/codex/cli) installed and signed in, if you already use it | Nothing |
 | **A model on this computer** | Ollama or LM Studio running, or any address that accepts the chat-completions format | The address |
 | **An API key** | A key from one of the 29 services below | The key, in your computer's keyring where there is one |
 
+Plans and key services run on their makers' computers, so the computer that runs Deja Vu1 needs the
+internet for them. A model on this computer works offline, and so does the rest of Deja Vu1.
+
 ### How a plan works
 
-Deja Vu1 runs the program you are already signed in to, with that program's own tools switched off,
-hands it your message, and reads the answer. It never sees your password or sign-in. Usage counts
-against your plan, the same as using the program yourself.
+- **ChatGPT:** press **Continue with ChatGPT**. Deja Vu1 uses OpenAI's own Sign in with ChatGPT for
+  open-source apps: the first time, your ChatGPT account registers Deja Vu1 as an app and you approve
+  it in the browser. Requests then count toward your plan's limits through OpenAI's Responses API; you
+  can see them, set a weekly cap or disconnect Deja Vu1 in ChatGPT, Settings, Usage. The browser comes
+  back to this computer by itself. Signing in from a phone or another computer? Paste the address the
+  browser ended on into the box under the button. The sign-in is refreshed before it runs out and
+  revoked at OpenAI when you press Sign out. The ChatGPT desktop app itself can't be used by other
+  apps, which is why this is the way in.
+- **Claude:** the Claude desktop app keeps its own sign-in that other programs can't use, so Claude
+  Code signs in once by itself. Press **Sign in with Claude**: Deja Vu1 runs Claude Code's own sign-in
+  (`claude auth login`), the page opens in your browser, and if the page shows a code you paste it into
+  Deja Vu1. Claude Code's "signed in?" check is sometimes wrong while requests still work, so **I'm
+  already signed in** checks with one tiny request instead.
 
-- **Claude:** the Claude desktop app and Claude Code are separate programs. Install Claude Code
-  once, run `claude auth login` in a terminal, and sign in with the same account.
-- **ChatGPT:** the Codex app and the `codex` command share one sign-in. If the command is not
-  installed yet, install it and run `codex login`.
-
-The Connect screen checks for you: it says whether the program is found and signed in, shows the
-command to run when it isn't, and has a Check again button.
+Deja Vu1 runs Claude Code (and Codex) with their own tools switched off, hands them your message and
+reads the answer. It never sees your password.
 
 ### Choosing a model
 
@@ -42,7 +51,9 @@ newest model of that family, or you leave it empty for your plan's usual model. 
 (OpenRouter and Vercel AI Gateway) report prices, and the list shows them. Refresh the list
 re-reads it. You can also type a model's exact name.
 
-Above the chat are two pickers: the AI in use and its model. Change either between messages.
+The chip at the top of the chat shows the AI in use and its model; press it to change either between
+messages. The clock button lists your saved conversations, newest first, so you can pick one up where
+you left off; they stay on this computer.
 
 ### API keys
 

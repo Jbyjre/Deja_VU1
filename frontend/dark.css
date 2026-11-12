@@ -228,3 +228,11 @@ html[data-theme="dark"]:not(#dv) :is(.ai-proposal th, .ai-proposal td) { border-
 html[data-theme="dark"]:not(#dv) .ai-copy { border-color: rgba(255, 255, 255, .22); }
 html[data-theme="dark"]:not(#dv) .ai-can { border-top-color: rgba(255, 255, 255, .12); }
 html[data-theme="dark"]:not(#dv) .ai-step.is-done .ai-node { background: var(--ok-text); }
+
+/* The assistant's round-3 surfaces */
+html[data-theme="dark"]:not(#dv) :is(.ai-card, .ai-compose, .ai-chats li, .ai-pop-item, .ai-look span) { background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .13); }
+html[data-theme="dark"]:not(#dv) .ai-pop { background: rgba(34, 35, 42, .97); }
+html[data-theme="dark"]:not(#dv) .ai-pop-item.is-on { background: color-mix(in oklch, var(--accent) 26%, transparent); }
+html[data-theme="dark"]:not(#dv) .ai-seg input:checked + span { background: rgba(255, 255, 255, .14); }
+html[data-theme="dark"]:not(#dv) :is(.ai-watch-more, .ai-card-row + .ai-card-row) { border-top-color: rgba(255, 255, 255, .12); }
+html[data-theme="dark"]:not(#dv) .ai-thumb { background: #fff; }

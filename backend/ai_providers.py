@@ -43,6 +43,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import ai_signin
 import ai_vault
 import storage
 
@@ -84,16 +85,21 @@ _FLAGSHIPS = r"claude-(opus|fable|sonnet)|gpt-\d|gemini-[\d.]+-pro|grok-\d"
 # GitHub Models was taken off on 12 November 2026: GitHub's documentation says it was fully retired on
 # 30 July 2026 (no inference address or model catalogue). A saved connection to it is dropped quietly.
 PROVIDERS = [
-    {"id": "claude-code", "name": "Claude plan (through Claude Code)", "kind": "cli", "program": "claude",
+    {"id": "claude-code", "name": "Claude plan", "kind": "cli", "program": "claude",
      "install_url": "https://code.claude.com/docs/en/setup",
      "signin": "claude auth login", "status": ["auth", "status"],
-     "note": "Uses the Claude plan you are signed in to in Claude Code, so there is no key and no extra bill. "
-             "The Claude desktop app is a separate program: install Claude Code once and sign in with the same account."},
+     "note": "Uses your Claude plan through Claude Code, Anthropic's own program for it, so there is no key and no "
+             "extra bill. The Claude desktop app keeps its own sign-in that other programs can't use, so Claude Code "
+             "signs in once by itself: press Sign in and approve it in your browser."},
+    {"id": "chatgpt", "name": "ChatGPT plan", "kind": "account",
+     "note": "Sign in with your ChatGPT account and Deja Vu1 uses your plan, through OpenAI's own Sign in with "
+             "ChatGPT. Nothing to install, no key and no extra bill. Requests count toward your plan's limits, "
+             "and you can see or stop them in ChatGPT, Settings, Usage."},
     {"id": "codex", "name": "ChatGPT plan (through Codex)", "kind": "cli", "program": "codex",
      "install_url": "https://developers.openai.com/codex/cli",
      "signin": "codex login", "status": ["login", "status"],
-     "note": "Uses the ChatGPT plan you are signed in to in Codex, so there is no key and no extra bill. "
-             "The Codex app and the Codex command share one sign-in."},
+     "note": "For people who already use Codex: Deja Vu1 runs it with the ChatGPT plan you signed in to there. "
+             "Most people should use ChatGPT plan above instead, which needs nothing installed."},
     _p("anthropic", "Anthropic (Claude API)", "https://api.anthropic.com/v1",
        "https://platform.claude.com/settings/keys", fmt="anthropic", env="ANTHROPIC_API_KEY", prefer=r"claude-opus"),
     _p("openai", "OpenAI (ChatGPT API)", "https://api.openai.com/v1",
@@ -214,7 +220,7 @@ def _local_host(host):
 
 def save_key(pid, api_key=None, base_url=None):
     p = provider(pid)
-    if p["kind"] == "cli":
+    if p["kind"] in ("cli", "account"):
         raise ValueError(f"{p['name']} uses its own sign-in, so there is no key to save")
     api_key = str(api_key or "").strip()
     base_url = str(base_url or "").strip()
@@ -248,7 +254,10 @@ def save_key(pid, api_key=None, base_url=None):
 
 
 def forget(pid):
-    provider(pid)
+    if provider(pid)["kind"] == "account":
+        ai_signin.sign_out_chatgpt()
+        _models.pop(pid, None)
+        return describe(pid)
     with _lock:
         data = _load()
         ai_vault.drop(pid, data.pop(pid, None))
@@ -316,8 +325,11 @@ def _program(p):
 _checks = {}                                # pid -> what check() last found
 
 
-def check(pid):
-    """Is the plan's program installed and signed in? Runs the program's own status command."""
+def check(pid, probe=False):
+    """
+    Is the plan's program installed and signed in? Runs the program's own status command; with `probe`,
+    a "no" from it is double-checked with one tiny request.
+    """
     p = provider(pid)
     if p["kind"] != "cli":
         raise ValueError(f"{p['name']} has no program to check")
@@ -339,6 +351,14 @@ def check(pid):
                 found["signed_in"] = done.returncode == 0 and "not logged" not in out.lower()
         except (OSError, subprocess.TimeoutExpired):
             pass                             # installed, sign-in unknown: Connect will find out
+        if found["signed_in"] is False and pid == "claude-code" and probe:
+            # `claude auth status` can say "not signed in" while requests still work (a sign-in kept somewhere
+            # the status command doesn't look). One tiny real request settles it.
+            try:
+                test(pid)
+                found["signed_in"], found["probed"] = True, True
+            except AIError:
+                pass
     _checks[pid] = found
     return describe(pid)
 
@@ -349,6 +369,12 @@ def describe(pid):
     """One provider as the browser sees it. The key itself never leaves this module."""
     p = provider(pid)
     row = {k: p[k] for k in ("id", "name", "kind", "note", "key_url", "install_url", "signin") if p.get(k)}
+    if p["kind"] == "account":
+        account = ai_signin.status_chatgpt()
+        row.update(installed=True, signed_in=account["signed_in"], plan_use=account["plan_use"],
+                   email=account["email"], waiting=account["waiting"], signin_error=account["error"],
+                   ready=account["signed_in"] and account["plan_use"], pictures=True, online=True)
+        return row
     if p["kind"] == "cli":
         seen = _checks.get(pid) or {}
         row["installed"] = bool(_program(p))
@@ -356,6 +382,7 @@ def describe(pid):
         row["version"] = seen.get("version", "")
         row["ready"] = row["installed"]
         row["pictures"] = True
+        row["online"] = True
         return row
     entry = _entry(pid)
     from_file = bool(entry.get("store"))  or bool(entry.get("api_key"))
@@ -367,6 +394,7 @@ def describe(pid):
     row["env"] = p.get("env") or ""
     row["lists_models"] = bool(p["models"])
     row["pictures"] = True
+    row["online"] = p["kind"] == "key"
     if p["kind"] in ("local", "custom"):
         row["base_url"] = _base(pid)
         row["ready"] = bool(row["base_url"]) and (p["kind"] == "local" or pid in _load())
@@ -599,7 +627,11 @@ def list_models(pid, refresh=False):
     cached = _models.get(pid)
     if cached and not refresh and time.time() - cached["at"] < MODELS_TTL:
         return cached["body"]
-    if p["kind"] == "cli":
+    if p["kind"] == "account":
+        rows = _chatgpt_models()
+        body = {"models": [r["id"] for r in rows], "rows": rows, "suggested": "", "optional": True,
+                "note": "Leave it on the first choice unless you want another. The list is the one your ChatGPT account offers."}
+    elif p["kind"] == "cli":
         if pid == "claude-code":
             rows = [{"id": name, "label": label, "created": 0.0} for name, label in CLAUDE_ALIASES]
             note = "Leave it empty for your plan's usual model. A short name always means the newest model of that family."
@@ -802,6 +834,122 @@ def _ask_codex(model, system, messages):
     return _reply(text, model or "")
 
 
+# ---- a ChatGPT plan, signed in from Deja Vu1 (ai_signin.py) --------------------
+
+CHATGPT_API = "https://api.openai.com/v1"
+_PLAN_LIMIT = {
+    "subscription_sharing_usage_limit_exceeded": "Your ChatGPT plan's allowance for apps is used up for now. It "
+    "comes back when your plan's limit resets; you can see it in ChatGPT, Settings, Usage.",
+    "subscription_sharing_usage_unavailable": "Your ChatGPT plan can't be used by apps right now. Check ChatGPT, "
+    "Settings, Usage, or try again later.",
+}
+
+
+def _chatgpt_token():
+    try:
+        return ai_signin.access_token()
+    except ai_signin.SignInError as error:
+        raise AIError(str(error))
+
+
+def _chatgpt_open(url, payload=None, timeout=TIMEOUT):
+    request = urllib.request.Request(url, data=json.dumps(payload).encode() if payload is not None else None,
+                                     method="POST" if payload is not None else "GET")
+    request.add_header("Authorization", "Bearer " + _chatgpt_token())
+    request.add_header("Content-Type", "application/json")
+    request.add_header("User-Agent", "DejaVu1")
+    try:
+        return _opener.open(request, timeout=timeout)
+    except urllib.error.HTTPError as error:
+        try:
+            body = json.loads(error.read(20000) or b"{}")
+            inner = body.get("error", body) if isinstance(body, dict) else {}
+            code = inner.get("code") if isinstance(inner, dict) else ""
+            detail = (inner.get("message") or "") if isinstance(inner, dict) else ""
+        except ValueError:
+            code, detail = "", ""
+        if code in _PLAN_LIMIT:
+            raise AIError(_PLAN_LIMIT[code])
+        if error.code in (401, 403):
+            raise AIError("ChatGPT didn't accept the sign-in. Press Continue with ChatGPT to sign in again. "
+                          + re.sub(r"\s+", " ", detail)[:200])
+        raise AIError(_explain(error.code, detail, provider("chatgpt")))
+    except (urllib.error.URLError, OSError, ValueError) as error:
+        raise AIError(f"Couldn't reach ChatGPT: {getattr(error, 'reason', error)}. A ChatGPT plan runs on OpenAI's "
+                      "computers, so this computer needs an internet connection for it.")
+
+
+def _chatgpt_models():
+    """The models this ChatGPT account offers, in the order the service gives them."""
+    with _chatgpt_open(CHATGPT_API + "/models", timeout=40) as response:
+        try:
+            body = json.loads(response.read(8 * 1024 * 1024))
+        except ValueError:
+            raise AIError("ChatGPT sent a model list that couldn't be read")
+    rows = []
+    for m in (body.get("models") or body.get("data") or []) if isinstance(body, dict) else []:
+        if not isinstance(m, dict) or m.get("visibility", "list") != "list":
+            continue
+        slug = str(m.get("slug") or m.get("id") or "")
+        if slug:
+            rows.append({"id": slug, "label": str(m.get("display_name") or ""), "created": 0.0})
+    return rows[:200]
+
+
+def _chatgpt_input(messages):
+    rows = []
+    last = len(messages) - 1
+    for i, m in enumerate(messages):
+        if m["role"] == "assistant":
+            rows.append({"role": "assistant", "content": [{"type": "output_text", "text": m["text"] or ""}]})
+            continue
+        parts = [{"type": "input_text", "text": m["text"] or ""}]
+        if i == last:
+            parts += [{"type": "input_image", "image_url": f"data:{mime};base64,{b64}"} for mime, b64 in _pictures(messages)]
+        rows.append({"role": "user", "content": parts})
+    return rows
+
+
+def _ask_chatgpt(model, system, messages):
+    """One answer through the Responses API, streamed as OpenAI requires for plan use (store off)."""
+    if not model:                                   # the service's own first choice for this account
+        listed = list_models("chatgpt").get("models") or []
+        if not listed:
+            raise AIError("Your ChatGPT account lists no models Deja Vu1 can use. Check your plan in ChatGPT.")
+        model = listed[0]
+    payload = {"model": model, "instructions": system, "input": _chatgpt_input(messages), "store": False,
+               "stream": True}
+    text, usage, used_model, done = [], {}, model or "", False
+    with _chatgpt_open(CHATGPT_API + "/responses", payload) as response:
+        for raw in response:
+            line = raw.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            try:
+                event = json.loads(line[5:].strip())
+            except ValueError:
+                continue
+            kind = event.get("type")
+            if kind == "response.output_text.delta":
+                text.append(str(event.get("delta") or ""))
+            elif kind in ("response.completed", "response.incomplete", "response.failed"):
+                body = event.get("response") or {}
+                usage = body.get("usage") or {}
+                used_model = body.get("model") or used_model
+                if kind == "response.failed":
+                    error = body.get("error") or {}
+                    code = error.get("code") or "unknown_error"
+                    raise AIError(_PLAN_LIMIT.get(code) or f"ChatGPT stopped the answer ({code}). {error.get('message') or ''}".strip())
+                done = kind == "response.completed" or bool(text)
+                break
+            elif kind == "error":
+                raise AIError(f"ChatGPT stopped the answer: {event.get('message') or event.get('code') or 'no reason given'}")
+    answer = "".join(text).strip()
+    if not done or not answer:
+        raise AIError("ChatGPT's answer stopped before it finished. Try again.")
+    return _reply(answer, used_model, _count(usage.get("input_tokens")), _count(usage.get("output_tokens")))
+
+
 # ---- one entry point ---------------------------------------------------------
 
 def supports_pictures(pid):
@@ -816,6 +964,8 @@ def ask(pid, model, system, messages):
     with the owner.
     """
     p = provider(pid)
+    if p["kind"] == "account":
+        return _ask_chatgpt(model, system, messages)
     if p["kind"] == "cli":
         return _ask_claude_code(model, system, messages) if pid == "claude-code" else \
             _ask_codex(model, system, messages)

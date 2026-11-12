@@ -64,12 +64,16 @@ API endpoints
   POST /api/remote/link               a pairing QR code for the shared address
   GET  /api/assistant                 the AI assistant: providers, which is connected, mode, limits (never a key)
   GET  /api/assistant/thread          one conversation: messages, busy, the step waiting for a yes
+  GET  /api/assistant/chats           saved conversations, newest first (kept on this computer)
   POST /api/assistant/key|forget      save or forget a provider's key (kept by the system keyring where there is one)
   POST /api/assistant/models|test|select   list a provider's models, check the connection, choose the AI in use,
                                      a model, the mode and the steps that never ask
   POST /api/assistant/check          is a plan's program installed and signed in (runs its own status command)
+  POST /api/assistant/signin         sign in to a plan from the app: ChatGPT (Sign in with ChatGPT) or Claude Code
   POST /api/assistant/estimate|budget   tokens and cost before sending; the owner's prices and spending limit
   POST /api/assistant/watch          print watch: a camera check by the AI every few minutes while a real printer prints
+  POST /api/assistant/watch/now      print watch: look through a real printer's camera now
+  GET  /api/assistant/watch/picture  the last picture print watch studied for ?printer=
   POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
@@ -140,6 +144,7 @@ API endpoints
   POST /api/slicer/check             runs "<slicer> --help": is it there, which version?
   POST /api/slicer/profiles          {"name", "machine", "process", "filaments": [...]}
   POST /api/slicer/profiles/<id>/remove
+  POST /api/slicer/profiles/stock    one press: a profile from Snapmaker's stock U1 presets that fit the fitted heads
   POST /api/slicer/slice             {"name", "profile", "queue": bool} - starts a job
   GET  /api/slicer/jobs              every recent job: running, done, queued or failed (in words)
 
@@ -154,6 +159,10 @@ API endpoints
 
   GET  /api/timelapse                recorded prints for this printer
   GET  /api/timelapse/frames?session=
+  GET  /api/timelapse/printer         the printer's own recorded videos, and the copies kept here
+  GET  /api/timelapse/printer-video?root=&path=   one of the printer's videos, straight from it
+  GET  /api/timelapse/video?name=     a copy kept here
+  POST /api/timelapse/keep|forget     keep a copy of a printer video here {root, path}; forget one {name}
   GET  /api/timelapse/frame?session=&name=
 
   GET  /api/filament                 spool inventory + idle-spool flags
@@ -488,6 +497,9 @@ _DATA_ROUTES = {
     "/api/timelapse": ("timelapse", lambda q: {
         "sessions": timelapse.sessions(mock_moonraker.selected_printer_id()),
         "recording": timelapse.is_recording(mock_moonraker.selected_printer_id())}),
+    "/api/timelapse/printer": ("timelapse", lambda q: {
+        **mock_moonraker.printer_videos(),
+        "saved": timelapse.saved_videos(mock_moonraker.selected_printer_id())}),
     "/api/timelapse/frames": ("timelapse", lambda q: {
         "frames": timelapse.frames(mock_moonraker.selected_printer_id(), _q(q, "session"))}),
 }
@@ -505,6 +517,7 @@ _APP_ROUTES = {
         q.get("printer", [None])[0])}),
     "/api/remote": (None, lambda q: remote.status(PORT)),
     "/api/assistant": ("ai_assistant", lambda q: ai_assistant.status()),
+    "/api/assistant/chats": ("ai_assistant", lambda q: ai_assistant.chats()),
     "/api/assistant/thread": ("ai_assistant", lambda q: ai_assistant.view(_q(q, "id", "online-demo"), _q(q, "since", "0"))),
     "/api/app/watch-only": (None, lambda q: watch_only.status()),
     "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(wait=False),
@@ -583,7 +596,10 @@ def module_routes():
     routes = {path: owner for path, (owner, _) in {**_DATA_ROUTES, **_APP_ROUTES}.items() if owner}
     routes["/api/sandbox"] = "sandbox"
     routes["/api/timelapse/frame"] = "timelapse"
+    routes["/api/timelapse/video"] = "timelapse"
+    routes["/api/timelapse/printer-video"] = "timelapse"
     routes["/api/camera/snapshot"] = "camera"
+    routes["/api/assistant/watch/picture"] = "ai_assistant"
     routes["/api/camera/stream"] = "camera"
     routes["/api/camera/live"] = "camera"
     routes["/api/camera/webrtc"] = "camera"
@@ -1112,6 +1128,14 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             download = query.get("download", ["0"])[0] == "1"
             return self._send_bytes(data, ctype, filename=file_library.clean_name(name) if download else None)
 
+        if route == "/api/assistant/watch/picture":
+            if self._module_blocked("ai_assistant"):
+                return None
+            seen = ai_assistant.watch_picture(query.get("printer", [""])[0])
+            if not seen:
+                return self._send_json({"error": "No picture yet"}, status=404)
+            return self._send_bytes(seen[0], seen[1])
+
         if route == "/api/camera/snapshot":
             if self._module_blocked("camera"):
                 return None
@@ -1157,6 +1181,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 return None
             return self._send_json({"time_scale": mock_moonraker.get_time_scale(),
                                     "printers": mock_moonraker.simulated_printer_ids()})
+
+        if route in ("/api/timelapse/video", "/api/timelapse/printer-video"):
+            if self._module_blocked("timelapse"):
+                return None
+            if route.endswith("/video"):
+                data, ctype = timelapse.saved_video(printer_id, _q(query, "name"))
+                name = _q(query, "name")
+            else:
+                if force_disconnected or not connected:
+                    return self._send_json({"connected": False, "demo": False})
+                path = _q(query, "path")
+                data = mock_moonraker.printer_video_bytes(_q(query, "root"), path, timelapse.MAX_VIDEO_BYTES)
+                name = os.path.basename(path)
+                ctype = timelapse.VIDEO_TYPES.get(name.rsplit(".", 1)[-1].lower(), "application/octet-stream")
+            download = query.get("download", ["0"])[0] == "1"
+            return self._send_bytes(data, ctype, filename=name if download else None)
 
         if route == "/api/timelapse/frame":
             if self._module_blocked("timelapse"):
@@ -1224,7 +1264,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                                                body.get("price_out"), body.get("cap_usd"),
                                                                bool(body.get("clear_price"))))
                 if verb == "watch":
-                    return self._send_json(ai_assistant.watch_settings(body.get("on"), body.get("minutes"), body.get("pause")))
+                    extra = {k: body.get(k) for k in ("first_layer", "compare", "confirm", "notify", "looks",
+                                                      "sensitivity", "notes")}
+                    return self._send_json(ai_assistant.watch_settings(body.get("on"), body.get("minutes"),
+                                                                       body.get("pause"), **extra))
+                if verb == "watch/now":
+                    return self._send_json(ai_assistant.watch_now(body.get("printer") or printer_id))
                 if verb == "estimate":
                     return self._send_json(ai_assistant.estimate(body.get("thread"), body.get("text"), printer_id, demo,
                                                                  body.get("context")))
@@ -1235,9 +1280,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                     return self._send_json(ai_assistant.status())
                 if verb == "test":
                     return self._send_json(ai_assistant.test(body.get("provider")))
+                if verb == "signin":
+                    return self._send_json(ai_assistant.signin(body.get("provider"), body.get("action"),
+                                                               body.get("value")))
                 if verb == "chat":
                     return self._send_json(ai_assistant.chat(body.get("thread"), body.get("text"), printer_id, demo,
-                                                             body.get("context")))
+                                                             body.get("context"), body.get("picture")))
                 if verb == "decide":
                     return self._send_json(ai_assistant.decide(body.get("thread"), body.get("n"), body.get("approve"),
                                                                printer_id, demo, bool(body.get("always"))))
@@ -1509,6 +1557,15 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             file_library.clean_name(name)          # refuse bad names before reading the body
             return self._send_json(photo_studio.save(name, self._read_raw_body(), query.get("note", [""])[0]))
 
+        if route in ("/api/timelapse/keep", "/api/timelapse/forget"):
+            if self._module_blocked("timelapse"):
+                return None
+            body = self._read_json_body()
+            if route.endswith("/forget"):
+                return self._send_json(timelapse.remove_saved_video(printer_id, body.get("name")))
+            data = mock_moonraker.printer_video_bytes(body.get("root"), body.get("path"), timelapse.MAX_VIDEO_BYTES)
+            return self._send_json(timelapse.keep_printer_video(printer_id, body.get("root"), body.get("path"), data))
+
         if route.startswith("/api/slicer/"):
             if self._module_blocked("auto_print"):
                 return None
@@ -1528,6 +1585,8 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                                                  body.get("process"), body.get("filaments")))
             if verb == "profiles/from-installed":
                 return self._send_json(slicer_bridge.add_installed_profile(body))
+            if verb == "profiles/stock":
+                return self._send_json(slicer_bridge.use_stock_profile())
             if verb.startswith('jobs/') and verb.endswith('/cancel'):
                 return self._send_json(slicer_bridge.cancel_job(verb.split('/')[1]))
             if verb.startswith("profiles/") and verb.endswith("/remove"):

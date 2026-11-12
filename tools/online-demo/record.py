@@ -46,7 +46,8 @@ LARGE = 150_000        # answers bigger than this (bytes of JSON) get their own 
 TIMELINE = {"/api/live/snapshot", "/api/live/events", "/api/fleet"}
 NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/camera/stream", "/api/camera/live",
                 "/api/backup", "/api/timelapse/frame", "/api/live",
-                "/api/camera/snapshot", "/api/app/info", "/api/remote"}
+                "/api/camera/snapshot", "/api/app/info", "/api/remote", "/api/timelapse/video",
+                "/api/timelapse/printer-video", "/api/assistant/watch/picture"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
             "/api/colours/plan": "name", "/api/print/preview": "file"}

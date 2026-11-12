@@ -119,7 +119,11 @@ def catalog(program, preset_folder=None):
     for key, e in entries.items():
         d = e['data']
         name = str(d.get('name') or '')
-        if str(d.get('instantiation')).lower() != 'true' or 'u1' not in name.lower():
+        # Snapmaker's own U1 presets don't all say U1 in their names: for the standard 0.4 mm nozzle the
+        # stock materials are "Generic PLA", "Generic PETG" and so on, made for the U1 by their compatible
+        # printers list. Those count too.
+        made_for_u1 = 'u1' in name.lower() or any('snapmaker u1' in str(c).lower() for c in d.get('compatible_printers') or [])
+        if str(d.get('instantiation')).lower() != 'true' or not made_for_u1:
             continue
         try:
             resolved = resolve(key, entries)
@@ -377,3 +381,62 @@ def prepare(program, body, heads, capabilities=None, preset_folder=None):
         'layer_mode': mode,
         'material_options': overrides,
     }
+
+
+def _nozzle_of(row):
+    try:
+        return sorted(float(n) for n in row.get('nozzles') or [])
+    except (TypeError, ValueError):
+        return []
+
+
+def stock_choice(presets, heads):
+    """
+    Snapmaker's stock U1 presets that fit the fitted heads: the printer preset for those nozzles, its Standard
+    process nearest 0.2 mm, and for each head the stock material of its type (Snapmaker's own Basic first,
+    then Generic). Returns {"machine", "process", "filaments", "names", "notes"} or raises ValueError in words.
+    """
+    nozzles = sorted(float(h['nozzle']) for h in heads)
+    if len(set(nozzles)) != 1:
+        raise ValueError('Your four heads have different nozzles, so no single stock preset fits. Choose presets by hand '
+                         'under Profiles and tools')
+    size = nozzles[0]
+    machines = [r for r in presets if r['type'] == 'machine' and _nozzle_of(r) == nozzles]
+    machines.sort(key=lambda r: (f'({size:g} nozzle)' not in r['name'], len(r['name'])))
+    if not machines:
+        raise ValueError(f'No stock Snapmaker U1 printer preset for a {size:g} mm nozzle was found in your slicer. Open the '
+                         'slicer once, add the Snapmaker U1 there, then try again')
+    machine = machines[0]
+    fits = lambda r: not r['compatible_printers'] or machine['name'] in r['compatible_printers']  # noqa: E731
+
+    def layer(r):
+        try:
+            return float(r.get('layer_height') or 0)
+        except (TypeError, ValueError):
+            return 0.0
+    processes = [r for r in presets if r['type'] == 'process' and fits(r)]
+    processes.sort(key=lambda r: ('standard' not in r['name'].lower(), abs(layer(r) - 0.2), len(r['name'])))
+    if not processes:
+        raise ValueError(f'No stock print preset fits {machine["name"]}. Choose presets by hand under Profiles and tools')
+    materials = [r for r in presets if r['type'] == 'filament' and fits(r)]
+    notes, filaments, names = [], [], []
+    for h in sorted(heads, key=lambda x: x['toolhead']):
+        kind = str(h.get('material') or 'PLA').upper()
+
+        def rank(r, kind=kind):
+            n = r['name']
+            base = n.split(' @')[0]
+            return (0 if base == f'Snapmaker {kind} Basic' else 1 if base == f'Generic {kind}' else
+                    2 if base.startswith(f'Snapmaker {kind}') else 3 if base.startswith(f'Generic {kind}') else 4, len(n))
+        same = [r for r in materials if str(r.get('material') or '').upper() == kind]
+        if not same:
+            same = [r for r in materials if str(r.get('material') or '').upper() == 'PLA']
+            notes.append(f"{h['toolhead']}: no stock {kind} preset fits, so it uses PLA settings. Pick its material by hand if it matters")
+        if not same:
+            raise ValueError(f'No stock material preset fits {machine["name"]}. Choose presets by hand under Profiles and tools')
+        pick = min(same, key=rank)
+        filaments.append(pick['id'])
+        names.append(pick['name'])
+    process = processes[0]
+    return {'machine': machine['id'], 'process': process['id'], 'filaments': filaments,
+            'names': {'machine': machine['name'], 'process': process['name'], 'filaments': names}, 'notes': notes}

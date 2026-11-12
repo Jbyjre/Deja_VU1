@@ -90,13 +90,28 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   event), `logbook.js` (Care), `insights.js`, `printroom.js` (four-head editor), `backup.js`.
 
 - `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
-  right-edge strip, a sheet on phones): connect (plans, then local, then keys behind a fold), a short
-  "settle" screen, chat with the steps drawn as a toolpath and a picker for the AI and its model. It
-  also draws the AI tab (`#ai-page`, place `ai`) and the Ask shortcuts in `SPOTS`, which exist only
-  while an AI is connected: with none, nothing else in the app may mention AI. `.ai-glow` is the
-  one-minute welcome (transform and opacity only; keep it that cheap). It wraps `window.toast` to offer "Explain the last warning". In the online demo
-  (`tour.on`) it never calls the server: a scripted helper sends the demo's own simulated commands and
-  says what it is. Model text goes through `rich()`, which escapes first.
+  right-edge strip, a sheet on phones). Views: chat (your message is drawn at once with `is-sending` and
+  replaced by the server's copy; steps as a toolpath; results as cards from `m.card`: printer gauges,
+  slice, model with thumbnail, spools, care, queue, rule), history (saved conversations from
+  `/api/assistant/chats`), connect (plans first: Claude Code sign-in and Sign in with ChatGPT run from the
+  form, local, then keys behind a fold with the one note on keys, `KEY_NOTE`) and settle. The header chip
+  (`#ai-who`) switches the AI and model. Hand-offs (`page` with `spot`, `confirm_print`, `ui` theme/tour)
+  run once, only for steps that arrive live (`autoFrom`), never when an old conversation is reopened.
+  `goTo(place, spot)` opens a place, reveals the card's part and lights it (`.ai-spot`); files open
+  through Files first (`openFile`). Suggestions show only on the first few opens (`dejavu1.ai.opens`).
+  It also draws the AI tab (`#ai-page`): features first (`watchCard`, `FEATURES`), set-up as small
+  cards (`#ai-setup`). `html.ai-on` and the shortcuts in `SPOTS`, the Automations "Describe a rule" card
+  and the AI presets exist only while an AI is connected; `afterDisconnect()` removes them all and the
+  launcher turns into a quiet round button (`is-quiet`). With none, nothing else in the app may mention
+  AI. `.ai-glow` is the one-minute welcome (transform and opacity only). It wraps `window.toast` to offer
+  "Explain the last warning". Photos are shrunk in the browser (`shrink`, under 1 MB as JPEG). In the
+  online demo (`tour.on`) it never calls the server: a scripted helper sends the demo's own simulated
+  commands and says what it is. Model text goes through `rich()`, which escapes first.
+- `app.js` `Familiar`: after four opens and three screens used, `html.familiar` hides the "Show me this
+  screen" buttons and the intro line (Preferences → Beginner tips, or Ctrl+K "tips", brings them back).
+- `rail.js` keyboard: `GO_KEYS` (G then a letter), Alt+1 to 9, `?` opens `#kb-sheet`; `typing()` skips
+  text fields but not switches. Sidebar ids are `files`, `slice`, `queue`, `filament`, `maintenance`;
+  `OLD` maps library, prepare, jobs, materials and care.
 
 ## Looks and theme
 

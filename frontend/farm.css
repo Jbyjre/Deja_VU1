@@ -630,3 +630,4 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 .fc-bar:not(.is-open)::before, .fc-bar:not(.is-open)::after { display: none; }
 .fc-bar:not(.is-open) .fc-count { font-size: 13px; color: var(--text-dim); }
 .fc-bar-actions[hidden] { display: none; }
+.sr-acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
