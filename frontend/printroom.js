@@ -386,6 +386,8 @@ window.PrintRoom = (() => {
     };
   }
   let editProfile = async () => {};
+  // The assistant's suggested settings land in the same fields the owner types in.
+  let applySuggested = () => false;
   function profiles() {
     const advanced = document.createElement('details');
     advanced.className = 'log';
@@ -418,6 +420,10 @@ window.PrintRoom = (() => {
       preparedHeads = [],
       loadedPrinter = null;
     const editor = SettingsEditor($('np-settings'));
+    applySuggested = map => {
+      editor.setValues({ ...editor.values(), ...map });
+      return !$('np-form').hidden;
+    };
     const fill = (el, list) => {
       el.innerHTML = list.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('');
     };
@@ -638,5 +644,5 @@ window.PrintRoom = (() => {
   window.addEventListener('dv-section', () => setTimeout(autoLoad, 0));
   window.addEventListener('dv-state', () => { if (loadedFor && loadedFor !== currentPrinter) setTimeout(autoLoad, 0); });
   setTimeout(autoLoad, 0);
-  return { load, rows, editProfile: (...args) => editProfile(...args) };
+  return { load, rows, editProfile: (...args) => editProfile(...args), applySuggested: map => applySuggested(map) };
 })();

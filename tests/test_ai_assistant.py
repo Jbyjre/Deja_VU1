@@ -158,7 +158,18 @@ class TestConversation(Base):
         view = self.say("status", act("status") + act("home"), "No printer.", demo=False)
         self.assertEqual(self.steps(view), [("status", "refused"), ("home", "refused")])
         self.assertIn("No printer is connected", self.script.systems[0])
-        self.assertNotIn("The printer right now", self.script.systems[0])
+        self.assertNotIn("The printer right now", self.script.seen[0][0]["text"])
+
+    def test_readings_travel_with_the_message_so_the_instructions_never_change(self):
+        self.idle()
+        first = self.say("fan", act("fan", percent=30), "Done.")
+        self.assertIsNotNone(first)
+        self.assertIn("[The printer right now]", self.script.seen[0][0]["text"])
+        self.assertIn("[Their message]\nfan", self.script.seen[0][0]["text"])
+        systems = list(self.script.systems)
+        self.say("fan again", act("fan", percent=60), "Done.")
+        self.assertEqual(set(systems + self.script.systems), {systems[0]})
+        self.assertNotIn('"heads"', systems[0])
 
     def test_the_owner_must_connect_an_ai_first(self):
         ai_assistant.reset()
@@ -371,6 +382,7 @@ class TestProviders(unittest.TestCase):
         self.assertEqual(body["messages"][0]["content"][0]["source"], {"type": "base64", "media_type": "image/jpeg", "data": "QUJD"})
         self.assertNotIn("temperature", body)
         self.assertNotIn("thinking", body)
+        self.assertEqual(body["cache_control"], {"type": "ephemeral"})
 
     def test_a_declined_answer_is_said_in_words(self):
         Recorder.reply = {"stop_reason": "refusal", "content": []}
@@ -816,7 +828,7 @@ class TestAbilities(Base):
         ai_assistant.select(mode="free")
         self.say("hi", "Hello.")
         system = self.script.systems[0]
-        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:",
+        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "say you,",
                       "- suggest_settings:", "asks only before it ends a print early"):
             self.assertIn(words, system)
         self.assertLess(len(system), 12000)

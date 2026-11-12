@@ -571,7 +571,7 @@ def _suggest_settings(changes, why=""):
         rows.append({"key": str(key), "label": option["label"], "group": option["tab"] + " › " + option["section"],
                      "value": stored, "unit": option.get("unit", "")})
     return {"proposal": "settings", "changes": rows, "why": re.sub(r"\s+", " ", str(why or ""))[:600],
-            "note": "Shown to the owner with an Apply button. Nothing changes until they press it."}
+            "note": "A list with a button is on screen. Nothing changes until it is pressed and the profile saved."}
 
 
 def _open_page(place):
@@ -720,6 +720,12 @@ def _label(name, args):
         "edit_model": lambda: f"Make a changed copy of {g('name')}",
         "make_shape": lambda: f"Make a {g('shape')}",
         "look": lambda: "Look through the camera",
+        "status": lambda: "Read the printer", "files": lambda: "Look through the files",
+        "file_info": lambda: f"Read {g('name')}", "queue": lambda: "Read the queue",
+        "maintenance": lambda: "Check what care is due", "filament": lambda: "Check the filament shelf",
+        "filament_check": lambda: "Check filament for this job", "history": lambda: "Read the print history",
+        "costs": lambda: "Read past print costs", "health": lambda: "Run the pre-print checks",
+        "console": lambda: "Read the console", "model_info": lambda: f"Measure {g('name')}",
         "build_model": lambda: f"Build a model from {len(g('parts') or [])} parts",
         "fan_named": lambda: f"Set the fan {g('name')} to {g('percent')}%",
         "queue_remove": lambda: "Take a job out of the queue",
@@ -846,14 +852,16 @@ def _system(ctx, mode):
     lines = [
         "You are the assistant built into Deja Vu1, a dashboard for the Snapmaker U1: a 3D printer with four "
         "heads (T0 to T3) that it swaps by itself, a 270 x 270 x 270 mm build space and Klipper firmware. You "
-        "help the owner run, understand and look after the printer, their files and their filament.",
+        "help the owner run, understand and look after the printer, their files and their filament. You are "
+        "talking with the owner: say you, never the owner or the user.",
         "",
         "How to work:",
         "- Do the task. Deja Vu1 decides which steps need the owner's yes and shows them a button, so never "
         "ask for permission in words and never tell them to press something you can do yourself.",
         "- Use tools for facts. Never invent a reading, a time, a weight or a cost; when something isn't "
-        "known, say so. The printer's state below is from the moment the message was sent; call status again "
-        "after you change something or when time has passed.",
+        "known, say so. Each message starts with what the printer reported at that moment; call status "
+        "once after you change something. If a reading still looks wrong after one more check, report what "
+        "you saw and stop: checking again costs the owner time and usage.",
         "- Ask for several steps at once when a task needs them, in the order they must happen (home before a "
         "move; heat before pushing filament). A refused step comes back with the reason: explain it, and don't "
         "repeat it with the same values.",
@@ -886,10 +894,6 @@ def _system(ctx, mode):
         lines.append(f"- {name}: {tool['args'] or 'no arguments'}. {tool['what']}")
     lines.append("")
     if ctx["live"]:
-        try:
-            lines.append("The printer right now: " + json.dumps(_brief_state(), default=str)[:1800])
-        except Exception:
-            lines.append("The printer's state couldn't be read just now.")
         if ctx["demo"] and not mock_moonraker.is_real(ctx["printer"]):
             lines.append("This is a simulated demo printer. Say so if the owner asks whether it is real.")
     else:
@@ -1078,12 +1082,21 @@ def chat(tid, text, printer_id, demo=False, context=None):
     if thread["busy"] or thread["pending"]:
         raise ValueError("The assistant is still working on the last request. Stop it first to send another")
     _add(thread, "user", text=text)
-    sent = text
+    ctx = _ctx(printer_id, demo)
+    sent = "[Their message]\n" + text
     if context:
-        sent = "[What the owner is looking at]\n" + str(context)[:4000] + "\n\n[Their message]\n" + text
+        sent = "[What they are looking at]\n" + str(context)[:4000] + "\n\n" + sent
+    if ctx["live"]:
+        # The readings travel with the message, not in the instructions, so the long instructions stay
+        # word-for-word the same between requests and a service can reuse them instead of re-reading them.
+        try:
+            with mock_moonraker.selection_only(printer_id):
+                sent = "[The printer right now]\n" + json.dumps(_brief_state(), default=str)[:1800] + "\n\n" + sent
+        except Exception:
+            sent = "[The printer's state couldn't be read just now]\n\n" + sent
     thread["history"].append({"role": "user", "text": sent})
     thread["rounds"], thread["work"] = 0, None
-    _start(thread, _ctx(printer_id, demo))
+    _start(thread, ctx)
     return view(tid, thread["seq"] - 1)
 
 

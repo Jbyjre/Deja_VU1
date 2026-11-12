@@ -631,7 +631,10 @@ def _ask_anthropic(pid, model, system, messages):
                  for mime, b64 in m.get("images") or []]
         parts.append({"type": "text", "text": m["text"] or "(nothing)"})
         content.append({"role": m["role"], "content": parts})
-    payload = {"model": model, "max_tokens": MAX_TOKENS, "system": system, "messages": content}
+    # cache_control: the service keeps the unchanged start of the request (the instructions and earlier
+    # messages) and charges far less to reuse it on the next step.
+    payload = {"model": model, "max_tokens": MAX_TOKENS, "system": system, "messages": content,
+               "cache_control": {"type": "ephemeral"}}
     headers = _auth(pid)
     if model in _ANTHROPIC_FALLBACK:
         payload["fallbacks"] = "default"
