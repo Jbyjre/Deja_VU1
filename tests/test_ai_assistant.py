@@ -948,7 +948,7 @@ class TestAbilities(Base):
         ai_assistant.select(mode="free")
         self.say("hi", "Hello.")
         system = self.script.systems[0]
-        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "- cut_holes:", "op cut", "say you,",
+        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "- cut_holes:", "op cut", "say you,", "language the owner writes in",
                       "- suggest_settings:", "asks only before it ends a print early"):
             self.assertIn(words, system)
         self.assertLess(len(system), 12000)
