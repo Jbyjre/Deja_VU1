@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.9 (12 November 2026): Draw a part as an outline or profile, make gears, slice from the chat, and le...
+
+- Draw a part as an outline or profile, make gears, slice from the chat, and let your AI watch a print through the camera (#95)
+
 ## 0.20.8 (11 November 2026): Ask an AI assistant to explain, plan and work the printer, using your own AI...
 
 - Ask an AI assistant to explain, plan and work the printer, using your own AI (#92)

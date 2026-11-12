@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.9",
+      "date": "2026-11-12",
+      "name": "Draw a part as an outline or profile, make gears, slice from the chat, and le...",
+      "published": true,
+      "summary": "Draw a part as an outline or profile, make gears, slice from the chat, and let your AI watch a print through the camera (#95).",
+      "changes": [
+        "Draw a part as an outline or profile, make gears, slice from the chat, and let your AI watch a print through the camera (#95)"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.8",
       "date": "2026-11-11",
       "name": "Ask an AI assistant to explain, plan and work the printer, using your own AI...",
