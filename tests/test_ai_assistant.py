@@ -9,6 +9,7 @@ subscription path runs stand-in `claude` and `codex` programs, and the keyrings 
     python3 -m unittest tests.test_ai_assistant
 """
 
+import base64
 import json
 import os
 import stat
@@ -226,7 +227,8 @@ class TestLimits(Base):
         name = next(f["name"] for f in ai_assistant._files() if f["name"].endswith(".gcode"))
         view = self.say("print it", act("start_print", filename=name))
         row = [m for m in view["messages"] if m["role"] == "action"][0]
-        self.assertEqual(row["handoff"], {"kind": "confirm_print", "filename": name, "place": None})
+        self.assertEqual({k: row["handoff"][k] for k in ("kind", "filename", "place")},
+                         {"kind": "confirm_print", "filename": name, "place": None})
         self.assertNotEqual(self.state()["state"], "printing")
 
     def test_cancelling_a_print_asks_even_in_the_most_hands_on_mode(self):
@@ -868,8 +870,9 @@ class FakeJpeg:
 class TestPrintWatch(Base):
     def setUp(self):
         super().setUp()
-        ai_assistant._watch["log"].clear()
-        ai_assistant._watch["last"].clear()
+        for book in ("log", "last", "first", "pictures"):
+            ai_assistant._watch[book].clear()
+        self.waited = []
         self.state = {"state": "printing", "printer_name": "Workshop U1", "current_file": "bracket.gcode", "progress": 0.4}
         self.picture = (FakeJpeg.data, "image/jpeg")
         self.paused = []
@@ -889,10 +892,13 @@ class TestPrintWatch(Base):
                 patcher.start()
                 self.addCleanup(patcher.stop)
 
-    def tick(self, answer, now=1000.0):
-        self.asked = Script(answer)
+    def tick(self, *answers, now=1000.0, due=True):
+        """One pass. `due` makes the check due now (a print's first check comes after the interval)."""
+        if due:
+            ai_assistant._watch["last"].setdefault("real-1", -10 ** 6)
+        self.asked = Script(*answers)
         with patch.object(ai_providers, "ask", self.asked):
-            return ai_assistant.watch_tick(now)
+            return ai_assistant.watch_tick(now, wait=self.waited.append)
 
     def test_it_does_nothing_until_switched_on(self):
         self.assertEqual(self.tick('{"verdict": "failed", "why": "x"}'), [])
@@ -907,9 +913,13 @@ class TestPrintWatch(Base):
         self.assertEqual(sent["images"][0][0], "image/jpeg")
         self.assertIn("Workshop U1", sent["text"])
         self.assertIn("40%", sent["text"])
-        self.assertIn("Say failed only when the picture clearly shows it", self.asked.systems[0])
+        self.assertIn("failed only when the picture clearly shows a failure", self.asked.systems[0])
         self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}', now=1000 + 9 * 60), [])     # not due yet
-        self.assertEqual(len(self.tick('{"verdict": "ok", "why": "x"}', now=1000 + 10 * 60)), 1)
+        later = self.tick('{"verdict": "ok", "why": "x"}', now=1000 + 10 * 60)
+        self.assertEqual(len(later), 1)
+        # the second check compares with the first picture: two pictures, earlier one first
+        self.assertEqual(len(self.asked.seen[0][0]["images"]), 2)
+        self.assertIn("The earlier picture is from", self.asked.seen[0][0]["text"])
         self.assertEqual(ai_assistant.status()["watch"]["usage"]["checks"], 2)
 
     def test_a_clear_failure_is_only_reported_unless_pausing_is_allowed(self):
@@ -918,12 +928,14 @@ class TestPrintWatch(Base):
         self.assertEqual((made[0]["verdict"], made[0]["paused"], self.paused), ("failed", False, []))
         ai_assistant._watch["last"].clear()
         ai_assistant.watch_settings(pause=True)
-        made = self.tick('{"verdict": "failed", "why": "Spaghetti across the bed."}', now=5000)
-        self.assertEqual((made[0]["paused"], self.paused), (True, [1]))
+        made = self.tick('{"verdict": "failed", "why": "Spaghetti across the bed."}', '{"verdict": "failed", "why": "Still."}',
+                         now=5000)
+        self.assertEqual((made[0]["paused"], made[0]["confirmed"], self.paused), (True, True, [1]))
+        self.assertEqual(self.waited, [ai_assistant.WATCH_CONFIRM_S])
         self.assertEqual(ai_assistant.status()["watch"]["log"][0]["why"], "Spaghetti across the bed.")
 
     def test_watch_only_mode_stops_the_pause_and_says_so(self):
-        ai_assistant.watch_settings(on=True, pause=True)
+        ai_assistant.watch_settings(on=True, pause=True, confirm=False)
         with patch.object(ai_assistant.watch_only, "is_on", return_value=True):
             made = self.tick('{"verdict": "failed", "why": "Knocked loose."}')
         self.assertEqual((made[0]["paused"], self.paused), (False, []))
@@ -940,6 +952,66 @@ class TestPrintWatch(Base):
         self.state["state"] = "standby"
         self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}', now=99999), [])
 
+    def test_a_second_picture_that_disagrees_leaves_the_print_running(self):
+        ai_assistant.watch_settings(on=True, pause=True)
+        made = self.tick('{"verdict": "failed", "why": "Spaghetti?"}', '{"verdict": "ok", "why": "Glare."}')
+        self.assertEqual((made[0]["paused"], made[0]["confirmed"], self.paused), (False, False, []))
+        self.assertIn("didn't confirm it", made[0]["why"])
+
+    def test_the_first_layers_get_their_own_early_check(self):
+        ai_assistant.watch_settings(on=True, minutes=30)
+        self.state.update(progress=0.01, layer=1)
+        self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}', due=False), [])     # counting starts now
+        self.state.update(progress=0.03, layer=2)
+        made = self.tick('{"verdict": "ok", "why": "First layer is down."}', now=1060, due=False)
+        self.assertEqual(made[0]["reason"], "first layers")
+        self.assertEqual(self.tick('{"verdict": "ok", "why": "x"}', now=1120, due=False), [])  # only once a print
+
+    def test_what_to_look_for_sensitivity_and_notes_reach_the_ai(self):
+        ai_assistant.watch_settings(on=True, looks=["warping", "stringing"], sensitivity="careful",
+                                    notes="The mark on the left of the sheet is old. Ignore it.", compare=False)
+        self.tick('{"verdict": "worry", "why": "A corner lifts.", "confidence": 0.7}')
+        system, sent = self.asked.systems[0], self.asked.seen[0][0]
+        self.assertIn("corners or edges lifting", system)
+        self.assertNotIn("spaghetti", system)
+        self.assertIn("first small sign", system)
+        self.assertIn("The mark on the left", sent["text"])
+        self.assertEqual(ai_assistant.status()["watch"]["log"][0]["confidence"], 0.7)
+        with self.assertRaises(ValueError):
+            ai_assistant.watch_settings(looks=["teleport"])
+        with self.assertRaises(ValueError):
+            ai_assistant.watch_settings(sensitivity="paranoid")
+
+    def test_an_alert_goes_out_when_asked(self):
+        sent = []
+        ai_assistant.watch_settings(on=True, notify=True)
+        with patch.object(ai_assistant.notifications, "notify", lambda m, p="normal": sent.append((m, p))):
+            made = self.tick('{"verdict": "worry", "why": "A blob near T1."}')
+        self.assertTrue(made[0]["alerted"])
+        self.assertIn("A blob near T1.", sent[0][0])
+
+    def test_check_now_and_the_picture_it_saw(self):
+        with patch.object(ai_providers, "ask", Script('{"verdict": "ok", "why": "Fine."}')), \
+                patch.object(mock_moonraker, "default_printer_id", lambda: "real-1"):
+            seen = ai_assistant.watch_now()
+        self.assertEqual(seen["verdict"], "ok")
+        self.assertEqual(ai_assistant.watch_picture("real-1"), self.picture)
+        with self.assertRaises(ValueError):
+            ai_assistant.watch_now("u1-workshop")
+
+    def test_an_automation_can_have_the_ai_look(self):
+        import automations
+        rule = automations.validate({"trigger": {"type": "layer", "value": 3}, "action": {"type": "ai_look", "pause": True}})
+        self.assertEqual(rule["action"], {"type": "ai_look", "pause": True})
+        self.assertIn("AI checks the camera", rule["name"])
+        with patch.object(ai_providers, "ask", Script('{"verdict": "failed", "why": "Off the bed."}', '{"verdict": "failed", "why": "Yes."}')), \
+                patch.object(ai_assistant.time, "sleep", lambda s: None), \
+                patch.object(mock_moonraker, "printer_name", lambda pid: "Workshop U1", create=True), \
+                patch.object(mock_moonraker, "has_printer", lambda pid: True, create=True):
+            done = automations.run_action({**rule, "id": "r1"}, "real-1", "layer 3")
+        self.assertTrue(done["ok"], done)
+        self.assertIn("Paused", done["detail"])
+
     def test_the_camera_switched_off_stops_it(self):
         ai_assistant.watch_settings(on=True)
         modules.set_enabled("camera", False)
@@ -947,7 +1019,7 @@ class TestPrintWatch(Base):
 
     def test_settings_are_checked(self):
         with self.assertRaises(ValueError):
-            ai_assistant.watch_settings(minutes=2)
+            ai_assistant.watch_settings(minutes=1)
         self.assertEqual(ai_assistant.watch_settings(on=True, minutes=15, pause=True)["watch"]["minutes"], 15)
 
 
@@ -1082,7 +1154,8 @@ class TestAbilities(Base):
     def test_it_opens_a_screen_for_the_owner(self):
         view = self.say("show care", act("open_page", place="care") + act("open_page", place="bank"))
         rows = [m for m in view["messages"] if m["role"] == "action"]
-        self.assertEqual(rows[0]["handoff"], {"kind": "page", "filename": None, "place": "care"})
+        self.assertEqual({k: rows[0]["handoff"][k] for k in ("kind", "place", "target")},
+                         {"kind": "page", "place": "maintenance", "target": "maintenance"})
         self.assertEqual(rows[1]["status"], "refused")
 
     def test_advice_only_may_still_suggest_and_open_a_screen(self):
@@ -1153,6 +1226,109 @@ FAKE_KEYRING = textwrap.dedent('''\
 
 
 @unittest.skipIf(os.name != "posix", "the stand-in keyrings are scripts")
+class TestRound3(Base):
+    """Saved conversations, photos, places, cards and the new steps (12 November, round 3)."""
+
+    def setUp(self):
+        super().setUp()
+        file_library.reset()
+        self.addCleanup(file_library.reset)
+
+    def test_a_conversation_is_saved_and_opens_again_after_a_restart(self):
+        self.say("Home it please", act("home") + "Homing.", "Homed.")
+        listed = ai_assistant.chats()["chats"]
+        self.assertEqual([c["title"] for c in listed], ["Home it please"])
+        self.assertEqual(listed[0]["last"], "Homed.")
+        ai_assistant._threads.clear()                              # as if Deja Vu1 had restarted
+        again = ai_assistant.view(self.tid)
+        self.assertEqual([m["role"] for m in again["messages"]][:2], ["user", "assistant"])
+        self.assertEqual(again["title"], "Home it please")
+        self.assertFalse(again["busy"])
+        self.assertEqual(ai_assistant.clear(self.tid)["chats"], [])
+        self.assertEqual(ai_assistant.chats()["chats"], [])
+
+    def test_a_photo_goes_with_the_message_and_is_never_saved(self):
+        picture = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8 a small jpeg").decode()
+        self.script = Script("I see a spool.")
+        with patch.object(ai_providers, "ask", self.script):
+            ai_assistant.chat(self.tid, "", PRINTER, demo=True, picture=picture)
+            view = self.wait()
+        sent = self.script.seen[0][-1]
+        self.assertEqual(sent["images"][0][0], "image/jpeg")
+        self.assertTrue(view["messages"][0]["picture"])
+        self.assertEqual(view["messages"][0]["text"], "What do you see in this photo?")
+        with open(ai_assistant._chat_path(self.tid), encoding="utf-8") as fh:
+            record = fh.read()
+        self.assertNotIn("small jpeg", record)
+        for bad in ("data:image/gif;base64,R0lG", "data:image/png;base64,!!!", "https://example.com/x.png"):
+            with self.assertRaises(ValueError):
+                ai_assistant._picture(bad)
+
+    def test_the_twin_and_other_places_open_the_right_card(self):
+        for words, place, spot in (("twin", "printer", "#twin-card"), ("digital twin", "printer", "#twin-card"),
+                                   ("camera", "printer", "#pp-camera-card"), ("library", "files", ""),
+                                   ("prepare", "slice", "#tab-autoprint"), ("care", "maintenance", "")):
+            out = ai_assistant._open_page(to=words)
+            self.assertEqual((out["place"], out["spot"]), (place, spot), words)
+        front = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
+        with open(os.path.join(front, "rail.js"), encoding="utf-8") as fh:
+            rail = fh.read()
+        with open(os.path.join(front, "index.html"), encoding="utf-8") as fh:
+            index = fh.read()
+        for key, (place, spot, _what) in ai_assistant.JUMPS.items():
+            self.assertIn(f"['{place}', '", rail, f"{key}: no place {place} in the sidebar")
+            if spot and spot != "#sec-modules":
+                self.assertTrue(f'id="{spot[1:]}"' in index or spot[1:] in rail or spot in ("#telemetry", "#logbook"), spot)
+        self.assertIn("Show you the 3D digital twin", ai_assistant._label("open_page", {"to": "twin"}))
+
+    def test_a_file_named_without_its_extension_is_still_found(self):
+        made = ai_assistant._make_shape("box", name="phone stand", width=30, depth=20, height=10)
+        stem = made["saved_as"].rsplit(".", 1)[0]
+        self.assertEqual(ai_assistant._lib_name(stem), made["saved_as"])
+        self.assertEqual(ai_assistant._lib_name(stem.upper() + ".STL"), made["saved_as"])
+        self.assertEqual(ai_assistant._model_info(stem)["name"], made["saved_as"])
+        with self.assertRaises(ValueError):
+            ai_assistant._lib_name("nothing-like-it")
+
+    def test_results_come_back_as_cards(self):
+        view = self.say("How hot?", act("status") + act("make_shape", shape="box", width=10, depth=10, height=5), "Done.")
+        cards = {m["tool"]: m.get("card") for m in view["messages"] if m["role"] == "action"}
+        self.assertEqual(cards["status"]["kind"], "printer")
+        self.assertEqual(len(cards["status"]["heads"]), 4)
+        self.assertEqual(cards["make_shape"]["kind"], "model")
+        self.assertEqual(cards["make_shape"]["size"], [10, 10, 5])
+
+    def test_it_reads_rules_and_print_watch_and_switches_the_look(self):
+        view = self.say("x", act("automation_add", rule={"trigger": {"type": "layer", "value": 3},
+                                                        "action": {"type": "ai_look", "pause": True}})
+                        + act("print_watch", on=True, minutes=5, looks=["warping"])
+                        + act("set_look", theme="dark") + act("show_tour", screen="ai") + act("printers"), "Done.")
+        rows = {m["tool"]: m for m in view["messages"] if m["role"] == "action"}
+        self.assertEqual(rows["automation_add"]["card"]["kind"], "rule")
+        self.assertIn("AI checks the camera", rows["automation_add"]["card"]["name"])
+        self.assertEqual(ai_assistant.status()["watch"]["looks"], ["warping"])
+        self.assertEqual(rows["set_look"]["handoff"]["action"], "theme")
+        self.assertEqual(rows["set_look"]["handoff"]["value"], "dark")
+        self.assertEqual(rows["show_tour"]["handoff"]["kind"], "ui")
+        self.assertEqual(rows["printers"]["status"], "done")
+        import automations
+        automations.reset()
+
+    def test_deleting_a_file_asks_first(self):
+        ai_assistant.select(mode="balanced")
+        made = ai_assistant._make_shape("box", name="spare")
+        view = self.say("Delete it", act("file_delete", name=made["saved_as"]), "Deleted.")
+        self.assertEqual(view["pending"]["tool"], "file_delete")
+        view = self.decide(view, True)
+        self.assertFalse(file_library.exists(made["saved_as"]))
+
+    def test_the_instructions_stop_the_idle_report_and_offer_another_way(self):
+        system = ai_assistant._system({"live": True, "demo": True, "printer": PRINTER}, "free")
+        self.assertIn("Don't open an answer with the printer's state", system)
+        self.assertIn("offer the closest thing you can", system)
+        self.assertIn("digital twin: twin", system)
+
+
 class TestKeyStorage(unittest.TestCase):
     KEY = "sk-test-0123456789abcdefXYZ9"
 
@@ -1442,7 +1618,7 @@ class TestRoutes(APITestCase):
         self.assertEqual([m["role"] for m in view["messages"]], ["user", "assistant", "action", "assistant"])
         with mock_moonraker.selection_only("u1-workshop"):
             self.assertEqual(mock_moonraker.get_printer_state()["tuning"]["part_fan"], 0.35)
-        self.assertEqual(self.post("/api/assistant/clear", {"thread": "thread-1"})[1], {"cleared": True})
+        self.assertEqual(self.post("/api/assistant/clear", {"thread": "thread-1"})[1], {"cleared": True, "chats": []})
 
     def test_a_provider_error_is_a_502_with_words(self):
         with patch.object(ai_providers, "ask", side_effect=ai_providers.AIError("No credit left")):

@@ -755,6 +755,38 @@ const store = {
   set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* not remembered */ } },
 };
 
+/* Familiar: once someone has opened the app a few times and used a few screens, the beginner help
+ * steps aside: the "Show me this screen" buttons and each screen's intro line. They come back with
+ * Preferences → "Show beginner tips again" (or Ctrl+K, "tips"). Remembered in this browser only. */
+window.Familiar = (() => {
+  const OPENS = 'dejavu1.opens', USED = 'dejavu1.used', FORCE = 'dejavu1.tips';
+  const OPENS_NEEDED = 4, SCREENS_NEEDED = 3;
+  let opens = (+store.get(OPENS) || 0) + 1;
+  store.set(OPENS, String(opens));
+  let used = [];
+  try { used = JSON.parse(store.get(USED) || '[]'); } catch (_) { used = []; }
+  const familiar = () => store.get(FORCE) !== 'on' && opens >= OPENS_NEEDED && new Set(used).size >= SCREENS_NEEDED;
+  const mark = () => document.documentElement.classList.toggle('familiar', familiar());
+  mark();
+  window.addEventListener('dv-tab', e => {
+    const tab = e.detail && e.detail.tab;
+    if (tab && !used.includes(tab)) { used.push(tab); store.set(USED, JSON.stringify(used.slice(-40))); mark(); }
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    const on = document.getElementById('tips-on'), off = document.getElementById('tips-off');
+    const paint = () => { on && on.classList.toggle('active', !familiar()); off && off.classList.toggle('active', familiar()); };
+    if (on) on.addEventListener('click', () => { store.set(FORCE, 'on'); mark(); paint(); });
+    if (off) off.addEventListener('click', () => { api.tipsAway(); paint(); });
+    paint();
+  });
+  const api = {
+    familiar, opens: () => opens,
+    tipsAgain() { store.set(FORCE, 'on'); mark(); },
+    tipsAway() { store.set(FORCE, ''); opens = Math.max(opens, OPENS_NEEDED); store.set(OPENS, String(opens)); used = [...new Set([...used, 'overview', 'control', 'files'])]; store.set(USED, JSON.stringify(used)); mark(); }
+  };
+  return api;
+})();
+
 const STORE_KEY = 'dejavu1.demo';
 let demoOn = store.get(STORE_KEY) === '1';
 
@@ -1256,9 +1288,9 @@ const TAB_KEY = 'dejavu1.tab';
 /* One plain sentence per tab, shown under the tab bar, so a first-time
    visitor knows what each section is for before reading it. */
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
-  ai: 'AI', automations: 'Automations', maintenance: 'Care', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
+  ai: 'AI', automations: 'Automations', maintenance: 'Maintenance', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
 const TAB_INTROS = {
-  ai: 'Everything about the assistant in one place: the AI you connected, how much it may do, and how a key is kept. Deja Vu1 works fully without one.',
+  ai: 'What your own AI can do here: watch prints through the camera, diagnose a print from a photo, add a spool from a photo and more. Deja Vu1 works fully without one.',
   overview: 'What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.',
   fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
   control: 'Everything about one printer: its live 3D twin and camera, moving and heating it, tuning, its readings and its history. If the printer says no, you see why.',
@@ -1292,14 +1324,14 @@ const SECTIONS = {
     ['sandbox', 'Practice farm', ['#tab-sandbox']],
   ],
   files: [
-    ['library', 'Library', ['#orca-import', '#convert-card', 'file library', '#file-detail', '#studio-link']],
-    ['slicing', 'Prepare', ['#tab-autoprint']],
-    ['jobs', 'Jobs', ['print queue']],
+    ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', '#file-detail', '#studio-link']],
+    ['slicing', 'Slice', ['#tab-autoprint']],
+    ['jobs', 'Queue', ['print queue']],
     ['layers', 'Layer heights', ['#tab-layerplan']],
   ],
   maintenance: [
-    ['upkeep', 'Upkeep', ['maintenance', '#logbook', 'swapped a nozzle']],
-    ['filament', 'Materials', ['#tab-filament']],
+    ['upkeep', 'Maintenance', ['maintenance', '#logbook', 'swapped a nozzle']],
+    ['filament', 'Filament', ['#tab-filament']],
   ],
   modules: [
     ['copy', 'This copy', ['your space', '#demo-card', '#watch-only-card', '#phone-install-card', '#version-card', '#desktop-card', '#about-card', '#memory-card', 'printer firmware', '#demo-tools-card']],
@@ -2384,7 +2416,60 @@ async function loadCharges(spools) {
   });
 }
 
+/* A spool from a photo. With an AI connected it reads the label and adds the spool itself; without one, the
+ * colour is measured from the middle of the photo (bright glare and dark shadow left out) and the form fills in. */
+const COLOUR_NAMES = [['Red', 0], ['Orange', 28], ['Yellow', 52], ['Lime', 85], ['Green', 125], ['Teal', 170], ['Blue', 215],
+  ['Purple', 270], ['Pink', 320], ['Red', 360]];
+function colourFromPhoto(img) {
+  const c = document.createElement('canvas'), n = 80;
+  c.width = n; c.height = n;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0, n, n);
+  const px = g.getImageData(n * 0.3, n * 0.3, n * 0.4, n * 0.4).data;
+  let r = 0, gr = 0, b = 0, k = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    const hi = Math.max(px[i], px[i + 1], px[i + 2]), lo = Math.min(px[i], px[i + 1], px[i + 2]);
+    if (hi > 245 && lo > 230) continue;              // glare
+    if (hi < 18) continue;                            // deep shadow
+    r += px[i]; gr += px[i + 1]; b += px[i + 2]; k++;
+  }
+  if (!k) { for (let i = 0; i < px.length; i += 4) { r += px[i]; gr += px[i + 1]; b += px[i + 2]; k++; } }
+  [r, gr, b] = [r / k, gr / k, b / k].map(Math.round);
+  const hex = '#' + [r, gr, b].map(v => v.toString(16).padStart(2, '0')).join('');
+  const max = Math.max(r, gr, b) / 255, min = Math.min(r, gr, b) / 255, l = (max + min) / 2, d = max - min;
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  let name;
+  if (sat < 0.16) name = l > 0.82 ? 'White' : l < 0.18 ? 'Black' : 'Grey';
+  else {
+    let h = max === r / 255 ? ((gr - b) / 255 / d) % 6 : max === gr / 255 ? (b - r) / 255 / d + 2 : (r - gr) / 255 / d + 4;
+    h = (h * 60 + 360) % 360;
+    name = COLOUR_NAMES.reduce((best, c) => (Math.abs(c[1] - h) < Math.abs(best[1] - h) ? c : best))[0];
+    if (name === 'Orange' && l < 0.32) name = 'Brown';
+  }
+  return { hex, name };
+}
+
 function initSpoolForm() {
+  $('spool-photo').addEventListener('click', async () => {
+    if (!window.Assistant || !Assistant.pickPhoto) return;
+    const aiOn = document.documentElement.classList.contains('ai-on');
+    const got = await Assistant.pickPhoto(true);
+    if (!got) return;
+    if (aiOn) {
+      Assistant.ask('This is a photo of a filament spool or its label. Read the material, the colour (its name and a hex code close to it), the brand and the weight left if it shows. Then add it to my filament shelf with spool_add. Say what you could not read.', null, got.data);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const { hex, name } = colourFromPhoto(img);
+      $('spool-color-hex').value = hex;
+      if (!$('spool-color-name').value.trim()) $('spool-color-name').value = name;
+      if (!$('spool-material').value.trim()) $('spool-material').value = 'PLA';
+      $('spool-material').focus();
+      toast(`Colour taken from the photo: ${name} (${hex}). Check the material and grams, then press Add spool.`, 'info', 7000);
+    };
+    img.src = got.data;
+  });
   $('spool-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const material = $('spool-material').value.trim() || 'PLA';

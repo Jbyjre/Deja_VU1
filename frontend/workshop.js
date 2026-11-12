@@ -533,7 +533,7 @@ const Workshop = (() => {
         add(2, 'warning', `${p.name} is idle with ${waiting} file${waiting === 1 ? '' : 's'} waiting`, 'Start the next one from Files', 'files');
       }
       (p.alerts || []).filter(a => a.level === 'warning' && a.text !== 'Paused').forEach(a =>
-        add(3, 'warning', `${p.name}: ${a.text}`, 'See what is due in Care', 'maintenance'));
+        add(3, 'warning', `${p.name}: ${a.text}`, 'See what is due in Maintenance', 'maintenance'));
       if (p.state === 'printing' && p.remaining_hours != null && p.remaining_hours <= SOON_HOURS) {
         add(4, 'info', `${p.name} finishes in ${fmtHours(p.remaining_hours)}`, `${p.current_file || 'Current print'} · done ${doneAt(p.remaining_hours)}`, 'control');
       }
@@ -2777,14 +2777,18 @@ const Workshop = (() => {
     { group: 'Look after the printer', label: 'Tell me when maintenance is due', rule: { trigger: { type: 'maintenance_overdue', task: 'any' }, action: { type: 'notify', message: 'Maintenance is due', priority: 'normal' } } },
     { group: 'Look after the printer', label: 'Pause if the nozzle passes 260°C', rule: { trigger: { type: 'temperature', sensor: 'active_nozzle', op: 'above', value: 260 }, action: { type: 'pause' } } },
     { group: 'Lights', label: 'Amber light when paused', rule: { trigger: { type: 'state', event: 'paused' }, action: { type: 'light', color: '#ffaa00' } } },
+    // Only offered while an AI is connected (html.ai-on): the AI looks through the camera when the trigger fires.
+    { group: 'Your AI', ai: true, label: 'AI checks the first layers (pauses a failure)', rule: { trigger: { type: 'layer', value: 3 }, action: { type: 'ai_look', pause: true } } },
+    { group: 'Your AI', ai: true, label: 'AI looks at the halfway point', rule: { trigger: { type: 'progress', value: 50 }, action: { type: 'ai_look', pause: false } } },
   ];
+  const aiOn = () => document.documentElement.classList.contains('ai-on');
 
   function ruleForm() {
     const form = $('rule-form');
     const printers = live.fleet.length ? live.fleet : [];
     form.innerHTML = `
       <div class="rf-presets" role="group" aria-label="Start from an example"><p class="rf-presets-lead">Start from an example, then change anything:</p>
-        ${[...new Set(PRESETS.map(p => p.group))].map(g => `<div class="rf-group"><span class="rf-group-name">${esc(g)}</span>${PRESETS.map((p, i) => p.group === g
+        ${[...new Set(PRESETS.filter(p => !p.ai || aiOn()).map(p => p.group))].map(g => `<div class="rf-group"><span class="rf-group-name">${esc(g)}</span>${PRESETS.map((p, i) => p.group === g && (!p.ai || aiOn())
           ? `<button class="chip-btn" type="button" data-preset="${i}">${esc(p.label)}</button>` : '').join('')}</div>`).join('')}</div>
       <fieldset class="rf-step"><legend>When</legend>
         <label class="sr-only" for="rf-trigger">Trigger</label>
@@ -2797,7 +2801,7 @@ const Workshop = (() => {
       </fieldset>
       <fieldset class="rf-step"><legend>Then</legend>
         <label class="sr-only" for="rf-action">Action</label>
-        <select id="rf-action">${Object.entries(ACTIONS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select>
+        <select id="rf-action">${Object.entries(ACTIONS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}${aiOn() ? '<option value="ai_look">Have my AI look through the camera</option>' : ''}</select>
         <div class="rf-params" id="rf-aparams"></div>
       </fieldset>
       <fieldset class="rf-step"><legend>On</legend>
@@ -2830,6 +2834,7 @@ const Workshop = (() => {
           : a === 'home_assistant' ? `<input type="text" id="rf-entity" value="sensor.dejavu1_alert" aria-label="Entity"> <input type="text" id="rf-state" value="on" aria-label="State" style="width:90px">`
             : a === 'macro' ? `<input type="text" id="rf-macro" placeholder="LIGHT_OFF" aria-label="Macro name" style="text-transform:uppercase"> <span class="log-empty">As the printer lists it under Printer → Printer's own buttons</span>`
               : a === 'cool_down' ? '<span class="log-empty">Sets every head and the bed to off on the printer that triggered the rule. Never while it prints.</span>'
+              : a === 'ai_look' ? '<label class="rf-check"><input type="checkbox" id="rf-ai-pause" checked> Pause the print if it clearly failed</label> <span class="log-empty">Your AI studies one camera picture, and a second one before it pauses. The result shows in What fired and on the AI screen.</span>'
                 : '<span class="log-empty">Pauses the print on the printer that triggered the rule.</span>';
     };
     $('rf-trigger').addEventListener('change', tparams);
@@ -2846,7 +2851,9 @@ const Workshop = (() => {
       $('rf-action').value = p.action.type; aparams();
       if (p.action.message) { $('rf-message').value = p.action.message; $('rf-priority').value = p.action.priority; }
       if (p.action.color) $('rf-color').value = p.action.color;
+      if (p.action.type === 'ai_look' && $('rf-ai-pause')) $('rf-ai-pause').checked = !!p.action.pause;
       $('rf-name').value = PRESETS[+b.dataset.preset].label;
+      $('rf-save').scrollIntoView({ block: 'nearest', behavior: REDUCED.matches ? 'auto' : 'smooth' });
     }));
     form.onsubmit = async (e) => {
       e.preventDefault();
@@ -2861,6 +2868,7 @@ const Workshop = (() => {
       if (a === 'light') action.color = $('rf-color').value;
       if (a === 'home_assistant') Object.assign(action, { entity_id: $('rf-entity').value, state: $('rf-state').value });
       if (a === 'macro') action.name = $('rf-macro').value.trim().toUpperCase();
+      if (a === 'ai_look') action.pause = $('rf-ai-pause').checked;
       const rule = { name: $('rf-name').value, trigger, action, condition: $('rf-condition').value, printer: $('rf-printer').value, cooldown_s: +$('rf-cooldown').value };
       const r = await runCommand($('rf-save'), demoOn ? '/api/automations?demo=1' : '/api/automations', { rule },
         { sending: 'Saving…', done: 'Rule saved', failed: 'Rule not saved' });
@@ -2876,7 +2884,8 @@ const Workshop = (() => {
       : t.type === 'link_lost' ? 'the printer stops answering'
       : t.type === 'state' ? `a print ${t.event}` : t.type === 'filament_mismatch' ? 'the loaded filament doesn\'t match' : `maintenance${t.task && t.task !== 'any' ? ` (${t.task.replace('_', ' ')})` : ''} is overdue`;
     const then = a.type === 'notify' ? `send "${a.message}"` : a.type === 'light' ? `set the light to <span class="chip" style="background:${esc(a.color)}"></span>` : a.type === 'home_assistant' ? `set ${esc(a.entity_id)} to "${esc(a.state)}"`
-      : a.type === 'cool_down' ? 'turn the heaters off' : a.type === 'macro' ? `run ${a.name}` : 'pause the print';
+      : a.type === 'cool_down' ? 'turn the heaters off' : a.type === 'macro' ? `run ${a.name}`
+      : a.type === 'ai_look' ? `have my AI look through the camera${a.pause ? ' and pause a clear failure' : ''}` : 'pause the print';
     const cond = { always: '', while_printing: ' while printing', outside_quiet_hours: ' outside quiet hours' }[rule.condition];
     return `When ${esc(when)}${cond}, ${a.type === 'light' ? then : esc(then)}${rule.printer !== 'any' ? ` on ${esc(printerName(rule.printer))}` : ''}.`;
   }
@@ -3159,9 +3168,89 @@ const Workshop = (() => {
       <div class="reg-row">
         <span class="reg-name">${esc(s.filename || 'print')}</span>
         <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'} · ${esc(s.source)}${s.last_error ? ' · '+esc(s.last_error) : ''}</span>
-        <button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
+        <span class="tl-acts"><button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
+        <button class="btn small" data-flip-video="${esc(s.session)}" data-flip-name="${esc(s.filename || 'print')}" type="button" ${s.frames > 1 && window.MediaRecorder ? '' : 'hidden'}>Save as video</button></span>
       </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>';
     qsa('[data-flip]', host).forEach(b => b.addEventListener('click', () => playFlipbook(b.dataset.flip)));
+    qsa('[data-flip-video]', host).forEach(b => b.addEventListener('click', () => flipbookVideo(b.dataset.flipVideo, b.dataset.flipName, b)));
+    loadPrinterVideos(host);
+  }
+
+  /* The printer's own recordings (the U1 keeps them in its read-only camera folder) and the copies kept here. */
+  async function loadPrinterVideos(host) {
+    const data = await getJSON(api('/api/timelapse/printer')).catch(() => null);
+    if (!data || data.demo || (!data.videos && !data.saved) || !host.isConnected) return;
+    const size = n => (n == null ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+    const when = t => (t ? new Date(t * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+    const link = v => api(`/api/timelapse/printer-video?root=${enc(v.root)}&path=${enc(v.path)}`);
+    const box = document.createElement('div');
+    box.className = 'tl-printer';
+    box.innerHTML = `<h3>On the printer</h3>${(data.videos || []).length ? (data.videos || []).slice(0, 12).map(v => `
+      <div class="reg-row"><span class="reg-name">${esc(v.path.split('/').pop())}</span><span class="log-empty">${esc(when(v.modified))} · ${esc(size(v.size))}</span>
+        <span class="tl-acts"><a class="btn small" href="${esc(link(v))}" target="_blank" rel="noopener">Play</a>
+        <button class="btn small" type="button" data-keep-root="${esc(v.root)}" data-keep-path="${esc(v.path)}">Keep a copy here</button></span></div>`).join('')
+      : `<p class="log-empty">${(data.roots || []).length ? 'The printer has no recorded videos right now.' : 'This printer’s firmware lists no video folder. Deja Vu1’s own flipbooks above still work.'}</p>`}
+      ${(data.saved || []).length ? `<h3>Kept on this computer</h3>${data.saved.map(v => `<div class="reg-row"><span class="reg-name">${esc(v.name)}</span><span class="log-empty">${esc(size(v.size))}</span>
+        <span class="tl-acts"><a class="btn small" href="${esc(api('/api/timelapse/video?name=' + enc(v.name)))}" target="_blank" rel="noopener">Play</a>
+        <a class="btn small" href="${esc(api('/api/timelapse/video?download=1&name=' + enc(v.name)))}">Download</a>
+        <button class="btn small" type="button" data-forget-video="${esc(v.name)}">Remove</button></span></div>`).join('')}` : ''}
+      <p class="field-hint">The printer keeps only its latest recordings, so keep the ones you want. A video from a print that stopped early may not play if the printer never finished writing it; the flipbook of that print above still has its frames.</p>`;
+    host.querySelector('.tl-printer')?.remove();
+    host.append(box);
+    qsa('[data-keep-path]', box).forEach(b => b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = 'Copying…';
+      const r = await postJSON(api('/api/timelapse/keep'), { root: b.dataset.keepRoot, path: b.dataset.keepPath });
+      toast(r.ok ? `Kept ${r.body.saved} on this computer` : `Not kept: ${r.body.error}`, r.ok ? 'ok' : 'bad');
+      loadPrinterVideos(host);
+    }));
+    qsa('[data-forget-video]', box).forEach(b => b.addEventListener('click', async () => {
+      const r = await postJSON(api('/api/timelapse/forget'), { name: b.dataset.forgetVideo });
+      if (r.ok) loadPrinterVideos(host);
+    }));
+  }
+
+  /* A flipbook as a video file, made in this browser (no encoder is installed): each frame is drawn onto a
+   * canvas while the browser records it, at the flipbook's 12 frames a second. */
+  async function flipbookVideo(session, name, btn) {
+    const data = await getJSON(api(`/api/timelapse/frames?session=${enc(session)}`)).catch(() => null);
+    if (!data || !data.frames || data.frames.length < 2) { toast('Not enough frames for a video yet', 'warn'); return; }
+    btn.disabled = true;
+    const label = btn.textContent;
+    try {
+      const imgs = await Promise.all(data.frames.map(n => new Promise((ok, no) => {
+        const img = new Image();
+        img.onload = () => ok(img); img.onerror = () => no(new Error('A frame could not be read'));
+        img.src = api(`/api/timelapse/frame?session=${enc(session)}&name=${enc(n)}`);
+      })));
+      const w = Math.min(1280, imgs[0].naturalWidth || 960), h = Math.round(w * ((imgs[0].naturalHeight || 540) / (imgs[0].naturalWidth || 960)));
+      const canvas = document.createElement('canvas');
+      canvas.width = w - (w % 2); canvas.height = h - (h % 2);
+      const ctx = canvas.getContext('2d');
+      const type = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find(t => MediaRecorder.isTypeSupported(t));
+      if (!type) throw new Error('This browser can’t record video');
+      const rec = new MediaRecorder(canvas.captureStream(12), { mimeType: type, videoBitsPerSecond: 6e6 });
+      const parts = [];
+      rec.ondataavailable = e => { if (e.data.size) parts.push(e.data); };
+      const done = new Promise(r => { rec.onstop = r; });
+      rec.start();
+      for (let i = 0; i < imgs.length; i++) {
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(imgs[i], 0, 0, canvas.width, canvas.height);
+        btn.textContent = `Making ${Math.round((i + 1) / imgs.length * 100)}%`;
+        await new Promise(r => setTimeout(r, 1000 / 12));
+      }
+      rec.stop();
+      await done;
+      const blob = new Blob(parts, { type: type.split(';')[0] });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(name || 'print').replace(/\.[a-z0-9]+$/i, '')}-timelapse.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast(`Saved ${a.download}`, 'ok');
+    } catch (e) {
+      toast(`Couldn’t make the video: ${e.message}`, 'bad');
+    } finally { btn.disabled = false; btn.textContent = label; }
   }
 
   const flip = { frames: [], i: 0, timer: null };

@@ -282,3 +282,100 @@ class InstalledProfiles(unittest.TestCase):
         self.assertEqual(material['filament_extruder_variant'], ['Direct Drive Standard'])
         self.assertNotIn('filament_flow_support', material)
         self.assertEqual(json.loads(Path(result['process']).read_text())['nozzle_diameter'], ['0.4'] * 4)
+
+
+class StockU1Settings(unittest.TestCase):
+    """One press: Snapmaker's own stock presets that fit the fitted heads (12 November)."""
+
+    FIXTURE = Path(__file__).resolve().parent / 'fixtures' / 'snapmaker_u1_profiles.json'
+
+    def rows(self):
+        d = json.loads(self.FIXTURE.read_text(encoding='utf-8'))
+        out = []
+        for kind, key in (('machine', 'machines'), ('process', 'processes'), ('filament', 'filaments')):
+            for name, v in d[key].items():
+                kind_of = v.get('filament_type')
+                out.append({'id': name, 'name': name, 'type': kind, 'compatible_printers': v.get('compatible_printers') or [],
+                            'nozzles': v.get('nozzle_diameter'), 'layer_height': v.get('layer_height'),
+                            'material': kind_of[0] if isinstance(kind_of, list) else kind_of})
+        return out
+
+    def heads(self, nozzle=0.4, materials=('PLA', 'PETG', 'TPU', 'ASA')):
+        return [{'toolhead': f'T{i}', 'nozzle': nozzle, 'material': m} for i, m in enumerate(materials)]
+
+    def test_the_stock_04_nozzle_presets_from_snapmakers_own_profiles(self):
+        pick = profiles.stock_choice(self.rows(), self.heads())
+        self.assertEqual(pick['names']['machine'], 'Snapmaker U1 (0.4 nozzle)')
+        self.assertEqual(pick['names']['process'], '0.20mm Standard @Snapmaker U1 (0.4 nozzle)')
+        self.assertEqual(pick['names']['filaments'], ['Snapmaker PLA Basic @U1', 'Generic PETG', 'Generic TPU',
+                                                      'Generic ASA @U1 0.4 nozzle'])
+        self.assertEqual(pick['notes'], [])
+
+    def test_other_nozzles_and_unknown_materials(self):
+        pick = profiles.stock_choice(self.rows(), self.heads(0.6, ('PLA',) * 4))
+        self.assertEqual(pick['names']['machine'], 'Snapmaker U1 (0.6 nozzle)')
+        self.assertTrue(all(n.endswith('@U1 0.6 nozzle') for n in pick['names']['filaments']))
+        with self.assertRaises(ValueError):
+            profiles.stock_choice(self.rows(), self.heads()[:3] + [{'toolhead': 'T3', 'nozzle': 0.6, 'material': 'PLA'}])
+        rows = [r for r in self.rows() if not (r['type'] == 'filament' and r['material'] == 'TPU')]
+        pick = profiles.stock_choice(rows, self.heads())
+        self.assertIn('T2: no stock TPU preset fits', pick['notes'][0])
+
+
+class StockMaterialsWithoutU1InTheirName(InstalledProfiles):
+    def test_generic_materials_made_for_the_u1_are_listed(self):
+        self.write('generic', {'type': 'filament', 'name': 'Generic PLA', 'instantiation': 'true', 'filament_type': ['PLA'],
+                               'compatible_printers': ['Snapmaker U1 (0.4 nozzle)']})
+        self.write('other', {'type': 'filament', 'name': 'Generic PLA', 'instantiation': 'true', 'filament_type': ['PLA'],
+                             'compatible_printers': ['Another printer']})
+        names = [r['name'] for r in profiles.catalog(str(self.program))['presets']]
+        self.assertEqual(names.count('Generic PLA'), 1)
+
+
+class StockProfileEndToEnd(unittest.TestCase):
+    """use_stock_profile(): the heads are filled in when never set up, and the profile becomes the default."""
+
+    def setUp(self):
+        import slicer_bridge
+        import tool_setup
+        self.bridge, self.tools = slicer_bridge, tool_setup
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.program = root / 'bin/orca-slicer'
+        self.program.parent.mkdir()
+        self.program.write_text('#!/bin/sh\nexit 0\n')
+        self.program.chmod(0o755)
+        presets = root / 'resources/profiles/Snapmaker'
+        presets.mkdir(parents=True)
+        for name, d in {
+            'machine': {'type': 'machine', 'name': 'Snapmaker U1 (0.4 nozzle)', 'instantiation': 'true',
+                        'printer_model': 'Snapmaker U1', 'nozzle_diameter': ['0.4'] * 4},
+            'process': {'type': 'process', 'name': '0.20mm Standard @Snapmaker U1 (0.4 nozzle)', 'instantiation': 'true',
+                        'layer_height': '0.2', 'compatible_printers': ['Snapmaker U1 (0.4 nozzle)']},
+            'fine': {'type': 'process', 'name': '0.08mm Standard @Snapmaker U1 (0.4 nozzle)', 'instantiation': 'true',
+                     'layer_height': '0.08', 'compatible_printers': ['Snapmaker U1 (0.4 nozzle)']},
+            'pla': {'type': 'filament', 'name': 'Generic PLA', 'instantiation': 'true', 'filament_type': ['PLA'],
+                    'compatible_printers': ['Snapmaker U1 (0.4 nozzle)']},
+        }.items():
+            (presets / f'{name}.json').write_text(json.dumps(d))
+        slicer_bridge.save_settings({'slicer_path': str(self.program)})
+        self.addCleanup(lambda: slicer_bridge.save_settings({'slicer_path': ''}))
+
+    def test_one_press_makes_the_default_profile(self):
+        with patch.object(self.tools, 'get', return_value={'heads': []}), \
+                patch.object(self.tools, 'save', side_effect=lambda body: self.__dict__.setdefault('heads', body['heads'])):
+            with self.assertRaises(ValueError):            # the stand-in heads are only recorded, not returned
+                self.bridge.use_stock_profile()
+        self.assertEqual([h['nozzle'] for h in self.heads], [0.4] * 4)
+        self.assertEqual({h['material'] for h in self.heads}, {'PLA'})
+        heads = [{'toolhead': f'T{i}', 'nozzle': 0.4, 'height': 0.2, 'material': 'PLA', 'color_hex': '#112233', 'spool_id': ''}
+                 for i in range(4)]
+        with patch.object(self.tools, 'get', return_value={'heads': heads}):
+            out = self.bridge.use_stock_profile()
+        self.assertEqual(out['stock']['presets']['process'], '0.20mm Standard @Snapmaker U1 (0.4 nozzle)')
+        self.assertEqual(out['stock']['presets']['filaments'], ['Generic PLA'] * 4)
+        self.assertFalse(out['stock']['heads_made'])
+        made = next(p for p in out['profiles'] if p['name'] == out['stock']['name'])
+        self.assertEqual(out['default_profile'], made['id'])
+        self.assertEqual(out['stock']['name'], 'Snapmaker stock · 0.20mm Standard')

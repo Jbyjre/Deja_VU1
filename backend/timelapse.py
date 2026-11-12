@@ -92,7 +92,7 @@ def resume(printer_id, filename):
 
 
 def _prune(printer_id):
-    sessions = sorted(os.listdir(_dir(printer_id))) if os.path.isdir(_dir(printer_id)) else []
+    sessions = sorted(n for n in os.listdir(_dir(printer_id)) if n[:1].isdigit()) if os.path.isdir(_dir(printer_id)) else []
     for old in sessions[:-KEEP_SESSIONS]:
         shutil.rmtree(_dir(printer_id, old), ignore_errors=True)
 
@@ -260,6 +260,70 @@ def simulated_frame(state, job):
         f'<text x="386" y="24" font-family="monospace" font-size="13" fill="#9aa6bb" text-anchor="end">layer {layer}/{total}</text>'
         '</svg>'
     ).encode("utf-8")
+
+
+# -- the printer's own recordings ------------------------------------------------------------
+# The printer keeps only so many of its own videos, and the stock firmware's folder is read-only, so Deja Vu1
+# can keep a copy here: <data>/timelapse/<printer>/saved/<name>.
+
+MAX_VIDEO_BYTES = 400 * 1024 * 1024
+_VIDEO = re.compile(r"^[A-Za-z0-9 _().,+-]{1,140}\.(mp4|mkv|webm|mov|avi)$", re.I)
+VIDEO_TYPES = {"mp4": "video/mp4", "mkv": "video/x-matroska", "webm": "video/webm", "mov": "video/quicktime",
+               "avi": "video/x-msvideo"}
+
+
+def _saved_dir(printer_id):
+    return os.path.join(_dir(printer_id), "saved")
+
+
+def saved_videos(printer_id):
+    folder = _saved_dir(printer_id)
+    try:
+        names = [n for n in os.listdir(folder) if _VIDEO.fullmatch(n) and not n.startswith(".")]
+    except OSError:
+        return []
+    rows = [{"name": n, "size": os.path.getsize(os.path.join(folder, n)),
+             "saved_at": datetime.fromtimestamp(os.path.getmtime(os.path.join(folder, n))).isoformat(timespec="seconds")}
+            for n in names]
+    return sorted(rows, key=lambda r: r["saved_at"], reverse=True)
+
+
+def keep_printer_video(printer_id, root, path, data):
+    """Keep a copy of one of the printer's own videos. Returns the saved name."""
+    name = re.sub(r"[^A-Za-z0-9 _().,+-]", "_", os.path.basename(str(path or "")))[:140]
+    if not _VIDEO.fullmatch(name):
+        raise ValueError("That isn't a video Deja Vu1 can keep")
+    folder = _saved_dir(printer_id)
+    with _lock:
+        os.makedirs(folder, exist_ok=True)
+        target = os.path.join(folder, name)
+        tmp = target + ".part"
+        with open(tmp, "wb") as fh:
+            fh.write(data)
+        os.replace(tmp, target)
+    return {"saved": name, "from": f"{root}/{path}", "videos": saved_videos(printer_id)}
+
+
+def saved_video(printer_id, name):
+    name = str(name or "")
+    if not _VIDEO.fullmatch(name):
+        raise ValueError("Bad video name")
+    path = os.path.join(_saved_dir(printer_id), name)
+    if not os.path.isfile(path):
+        raise FileNotFoundError("No such video")
+    with open(path, "rb") as fh:
+        return fh.read(), VIDEO_TYPES[name.rsplit(".", 1)[1].lower()]
+
+
+def remove_saved_video(printer_id, name):
+    name = str(name or "")
+    if not _VIDEO.fullmatch(name):
+        raise ValueError("Bad video name")
+    try:
+        os.remove(os.path.join(_saved_dir(printer_id), name))
+    except OSError:
+        pass
+    return {"videos": saved_videos(printer_id)}
 
 
 def reset():
