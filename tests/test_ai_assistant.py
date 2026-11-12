@@ -62,6 +62,10 @@ class Base(unittest.TestCase):
         self.addCleanup(ai_assistant.reset)
         self.addCleanup(mock_moonraker.reset_live_state)
         self.addCleanup(modules.reset_state)
+        # Test machines don't have the Claude Code program installed: stand in for it, so the plan counts as set up.
+        program = patch.object(ai_providers, "_program", return_value="/usr/bin/true")
+        program.start()
+        self.addCleanup(program.stop)
         with patch.object(ai_providers, "ask", return_value="ready"):
             ai_assistant.test("claude-code")
         ai_assistant.select(mode="balanced")     # most tests here are about steps that wait; the default is freer
@@ -339,9 +343,10 @@ class TestProviders(unittest.TestCase):
     def point(self, pid):
         return patch.dict(ai_providers._BY_ID[pid], {"base": self.base})
 
-    def test_there_are_at_least_thirty_key_services_and_two_subscriptions(self):
+    def test_there_are_29_key_services_and_two_subscriptions(self):
         kinds = [p["kind"] for p in ai_providers.PROVIDERS]
-        self.assertGreaterEqual(kinds.count("key"), 30)
+        self.assertEqual(kinds.count("key"), 29)
+        self.assertNotIn("github", ai_providers._BY_ID)                 # retired by GitHub on 30 July 2026
         self.assertEqual([p["id"] for p in ai_providers.PROVIDERS if p["kind"] == "cli"], ["claude-code", "codex"])
         self.assertEqual(len({p["id"] for p in ai_providers.PROVIDERS}), len(ai_providers.PROVIDERS))
         for p in ai_providers.PROVIDERS:
@@ -701,6 +706,14 @@ class TestConnections(Base):
         self.assertFalse(status["ready"])
         self.assertEqual(status["connections"], [])
 
+    def test_a_connection_to_a_retired_service_is_dropped_quietly(self):
+        ai_assistant.storage.save_json(ai_assistant._SETTINGS_PATH, {"provider": "github", "tested": {"github": 1, "claude-code": 1},
+                                                                    "models": {"github": "openai/gpt-9"}})
+        status = ai_assistant.status()
+        self.assertEqual(status["provider"], "claude-code")
+        self.assertTrue(status["ready"])
+        self.assertEqual([c["id"] for c in status["connections"]], ["claude-code"])
+
     def test_a_saved_setup_from_the_first_version_still_works(self):
         ai_assistant.storage.save_json(ai_assistant._SETTINGS_PATH, {"provider": "claude-code", "tested": "claude-code",
                                                                     "mode": "balanced", "models": {}})
@@ -738,6 +751,74 @@ def volume(triangles):
                for a, b, c in triangles) / 6
 
 
+def priced(text, tokens_in, tokens_out, cost=None):
+    reply = ai_providers.Reply(text)
+    reply.usage = {"model": "maker/model-9", "in": tokens_in, "out": tokens_out, "cost_usd": cost}
+    return reply
+
+
+class TestCosts(Base):
+    def use_openrouter(self, listed=True):
+        ai_providers.save_key("openrouter", "sk-or-test-0123456789abcdef")
+        rows = [{"id": "maker/model-9", "in_per_million": 3.0, "out_per_million": 15.0}] if listed else []
+        ai_providers._models["openrouter"] = {"at": time.time(), "body": {"rows": rows}}
+        ai_assistant.select(provider="openrouter", model="maker/model-9")
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            ai_assistant.test("openrouter")
+
+    def test_a_plan_or_a_local_ai_costs_nothing_per_message(self):
+        self.assertEqual(ai_assistant.estimate(self.tid, "hello")["price"], {"charge": "plan"})
+        self.assertEqual(ai_assistant._price_row("ollama", "llama9"), {"charge": "none"})
+
+    def test_before_the_first_answer_the_text_is_counted_and_called_an_estimate(self):
+        self.use_openrouter()
+        guess = ai_assistant.estimate(self.tid, "x" * 400, PRINTER, demo=True)
+        self.assertEqual(guess["basis"], "estimate")
+        self.assertEqual(guess["price"], {"charge": "tokens", "in": 3.0, "out": 15.0, "from": "service"})
+        system = len(ai_assistant._system(ai_assistant._ctx(PRINTER, True), ai_assistant._settings()["mode"]))
+        self.assertEqual(guess["tokens_in"], -(-(system + 400 + ai_assistant.STATE_CHARS + 20) // 4))
+        self.assertIsNone(guess["tokens_out"])                 # unknown until the service has answered once
+        self.assertAlmostEqual(guess["cost_usd"], guess["tokens_in"] * 3 / 1e6)
+
+    def test_after_an_answer_the_services_own_count_is_the_starting_point(self):
+        self.use_openrouter()
+        self.say("hi", priced("Hello there.", 5000, 40))
+        guess = ai_assistant.estimate(self.tid, "and again", PRINTER, demo=True)
+        self.assertEqual(guess["basis"], "reported")
+        self.assertEqual(guess["tokens_out"], 40)
+        self.assertGreater(guess["tokens_in"], 5000)
+        self.assertEqual(guess["answers_per_request"], 1)
+        self.assertEqual(ai_assistant.view(self.tid)["usage"]["priced_usd"], round(5000 * 3 / 1e6 + 40 * 15 / 1e6, 6))
+
+    def test_without_a_listed_price_the_owners_own_price_is_used_and_nothing_is_guessed(self):
+        self.use_openrouter(listed=False)
+        guess = ai_assistant.estimate(self.tid, "hello")
+        self.assertEqual((guess["price"], guess["cost_usd"]), ({"charge": "unknown"}, None))
+        status = ai_assistant.budget(price_in=1.25, price_out=10)
+        self.assertEqual(status["price"], {"charge": "tokens", "in": 1.25, "out": 10, "from": "yours"})
+        self.assertIsNotNone(ai_assistant.estimate(self.tid, "hello")["cost_usd"])
+        self.assertEqual(ai_assistant.budget(clear_price=True)["price"], {"charge": "unknown"})
+        with self.assertRaises(ValueError):
+            ai_assistant.budget(price_in=-1, price_out=2)
+
+    def test_a_spending_limit_refuses_a_message_that_would_pass_it(self):
+        self.use_openrouter()
+        self.assertEqual(ai_assistant.budget(cap_usd=0.0001)["cap_usd"], 0.0001)
+        with self.assertRaises(ValueError) as caught:
+            self.say("hello", "Hi.")
+        self.assertIn("more than your limit of $0.0001", str(caught.exception))
+        self.assertIsNone(ai_assistant.budget(cap_usd=0)["cap_usd"])
+
+    def test_a_spending_limit_stops_between_rounds_of_steps(self):
+        self.use_openrouter()
+        ai_assistant.budget(cap_usd=0.05)
+        self.idle()
+        view = self.say("home", priced(act("home"), 1000, 30, 0.03), priced("Homed.", 1000, 12, 0.03))
+        self.assertIn("another answer would pass it", view["messages"][-1]["text"])
+        self.assertEqual(view["usage"]["answers"], 1)
+        self.assertEqual(self.steps(view), [("home", "done")])
+
+
 class TestAbilities(Base):
     def setUp(self):
         super().setUp()
@@ -770,7 +851,55 @@ class TestAbilities(Base):
         with self.assertRaises(ValueError):
             ai_assistant._build_model([])
         with self.assertRaises(ai_assistant.Refused):
-            ai_assistant._build_model([{"shape": "box"}] * 41)
+            ai_assistant._build_model([{"shape": "box"}] * 61)
+
+    def test_a_ramp_and_a_ring_are_closed_solids_too(self):
+        import math
+        ramp = ai_assistant._shape("wedge", width=30, depth=10, height=6)
+        self.assertTrue(closed(ramp))
+        self.assertAlmostEqual(volume(ramp), 30 * 10 * 6 / 2, places=6)
+        ring = ai_assistant._shape("torus", diameter=40, thickness=8, segments=96)
+        self.assertTrue(closed(ring))
+        self.assertAlmostEqual(volume(ring) / (2 * math.pi ** 2 * 16 * 16), 1, delta=0.01)
+
+    def test_it_cuts_a_hole_through_a_part_it_builds(self):
+        import math
+        made = ai_assistant._build_model([{"shape": "box", "width": 40, "depth": 30, "height": 10},
+                                          {"shape": "cylinder", "diameter": 8, "height": 30, "at": [20, 15, -10], "op": "cut"}],
+                                         name="plate with hole")
+        self.assertEqual(made["size_mm"], [40, 30, 10])
+        self.assertEqual(made["accuracy_mm"], 0.4)
+        self.assertIn("0.4 mm grid", made["note"])
+        _, triangles = ai_assistant._triangles(made["saved_as"])
+        self.assertTrue(closed(triangles))
+        self.assertAlmostEqual(volume(triangles) / (40 * 30 * 10 - math.pi * 16 * 10), 1, delta=0.005)
+        with self.assertRaises(ValueError):
+            ai_assistant._build_model([{"shape": "box", "op": "melt"}])
+        with self.assertRaises(ai_assistant.Refused):         # nothing to cut from yet
+            ai_assistant._build_model([{"shape": "box", "op": "cut"}, {"shape": "box"}])
+
+    def test_it_drills_holes_into_a_model_from_the_library(self):
+        import math
+        plate = ai_assistant._make_shape("box", width=50, depth=20, height=5, name="bar")["saved_as"]
+        made = ai_assistant._cut_holes(plate, [{"x": 10, "y": 10, "diameter": 4}, {"x": 40, "y": 10, "diameter": 4},
+                                               {"x": 25, "y": 10, "diameter": 6, "depth": 2}])
+        self.assertEqual((made["holes"], made["size_mm"]), (3, [50, 20, 5]))
+        self.assertTrue(made["saved_as"].startswith("bar-shape-holes"))
+        _, triangles = ai_assistant._triangles(made["saved_as"])
+        self.assertTrue(closed(triangles))
+        wanted = 50 * 20 * 5 - 2 * math.pi * 4 * 5 - math.pi * 9 * 2
+        self.assertAlmostEqual(volume(triangles) / wanted, 1, delta=0.005)
+        with self.assertRaises(ValueError):
+            ai_assistant._cut_holes(plate, [])
+
+    def test_a_library_model_can_be_a_part_and_keep_leaves_the_overlap(self):
+        ball = ai_assistant._make_shape("sphere", diameter=20, segments=64, name="ball")["saved_as"]
+        made = ai_assistant._build_model([{"model": ball}, {"shape": "box", "width": 30, "depth": 30, "height": 10,
+                                                            "at": [-5, -5, 0], "op": "keep"}], name="dome")
+        self.assertAlmostEqual(made["size_mm"][2], 10, delta=made["accuracy_mm"])   # the ball's tip is rounded by the grid
+        _, triangles = ai_assistant._triangles(made["saved_as"])
+        import math
+        self.assertAlmostEqual(volume(triangles) / (2 / 3 * math.pi * 1000), 1, delta=0.01)
 
     def test_settings_come_as_a_checked_list_to_apply_never_as_a_change(self):
         view = self.say("stronger", act("suggest_settings", changes={"layer_height": 0.2, "sparse_infill_density": 25},
@@ -828,7 +957,7 @@ class TestAbilities(Base):
         ai_assistant.select(mode="free")
         self.say("hi", "Hello.")
         system = self.script.systems[0]
-        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "say you,",
+        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "- cut_holes:", "op cut", "say you,", "language the owner writes in",
                       "- suggest_settings:", "asks only before it ends a print early"):
             self.assertIn(words, system)
         self.assertLess(len(system), 12000)
@@ -1120,6 +1249,19 @@ class TestRoutes(APITestCase):
         mock_moonraker.reset_live_state()
         self.addCleanup(ai_assistant.reset)
         self.addCleanup(modules.reset_state)
+        program = patch.object(ai_providers, "_program", return_value="/usr/bin/true")
+        program.start()
+        self.addCleanup(program.stop)
+
+    def test_cost_before_sending_and_the_owners_limit_through_the_server(self):
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            self.post("/api/assistant/test", {"provider": "claude-code"})
+        status, body = self.post("/api/assistant/estimate?demo=1", {"thread": "thread-9", "text": "hi"})
+        self.assertEqual((status, body["price"]), (200, {"charge": "plan"}))
+        status, body = self.post("/api/assistant/budget", {"cap_usd": 2})
+        self.assertEqual((status, body["cap_usd"]), (200, 2))
+        status, body = self.post("/api/assistant/budget", {"price_in": -5, "price_out": 1})
+        self.assertEqual(status, 400)
 
     def test_the_whole_path_through_the_server(self):
         status, body = self.get("/api/assistant")

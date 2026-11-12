@@ -23,8 +23,9 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1408 tests passed in 1042.3 seconds on Python 3.13.18 (Linux, 12 November 2026,
-  version 0.20.8 plus the assistant's second round). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
+- **The test suite:** 1438 tests passed in 1147.5 seconds on Python 3.13.18 (Linux, 12 November 2026,
+  version 0.20.8 plus the assistant's third round, run without Claude Code on the path as on GitHub's
+  test machines). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
   release job runs it again before publishing.
 - **The printer connection** in the suite, against a Moonraker stand-in (`tests/fake_moonraker.py`)
   over real sockets: commands, refusals, watch-only mode (no write gets through), sign-in, the
@@ -40,9 +41,15 @@ The rest of the dashboard was used with the same printer. The firmware version w
 - **The AI assistant:** a full conversation through a Claude plan (Claude Code 2.1.322) on a demo
   printer on Linux, 12 November 2026: connecting, a cancel after one Approve, homing and heating with
   no approvals, a camera picture, a settings suggestion and the token count. Codex 0.167.2's options,
-  model list and "not signed in" answer were read from the program. The 30 key services' addresses
-  answered a request without a key the same day (GitHub Models could not be checked from the test
-  computer). In the suite, stand-in services, stand-in `claude` and `codex` programs and stand-in
+  model list and "not signed in" answer were read from the program. The key services' addresses
+  answered a request without a key the same day. GitHub Models has since been taken off the list:
+  GitHub's documentation says GitHub retired it on 30 July 2026. Later on 12 November, through the
+  same Claude plan: a question asked in Spanish was answered in Spanish with the demo printer's bed
+  reading, and `tools/translate.py` translated five strings into Simplified Chinese with the
+  placeholder, link and `M112` unchanged. A stand-in chat service on the test computer drove the
+  cost shown before sending, a price and a spending limit on the AI screen, and a conversation that
+  built a plate with four holes and a pocket (a closed STL within 0.2% of the exact volume). In the
+  suite, stand-in services, stand-in `claude` and `codex` programs and stand-in
   keyrings cover both wire formats, error messages, key storage, redirects and every safety limit.
   No paid key, real ChatGPT plan, real Windows or macOS keyring, or real U1 has been tried with it.
   Panel and AI screen checked at 1366 px and 390 px, light and dark, and in the static online demo,

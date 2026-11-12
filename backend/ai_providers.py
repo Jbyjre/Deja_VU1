@@ -81,6 +81,8 @@ _FLAGSHIPS = r"claude-(opus|fable|sonnet)|gpt-\d|gemini-[\d.]+-pro|grok-\d"
 # as that service does when no key is sent (most with "missing key", which is the proof the address
 # is right). `prefer` is only a search pattern used to choose a starting model from the list the
 # service itself returns; no model name is assumed to exist except Anthropic's fallback.
+# GitHub Models was taken off on 12 November 2026: GitHub's documentation says it was fully retired on
+# 30 July 2026 (no inference address or model catalogue). A saved connection to it is dropped quietly.
 PROVIDERS = [
     {"id": "claude-code", "name": "Claude plan (through Claude Code)", "kind": "cli", "program": "claude",
      "install_url": "https://code.claude.com/docs/en/setup",
@@ -127,9 +129,6 @@ PROVIDERS = [
        env="NEBIUS_API_KEY"),
     _p("huggingface", "Hugging Face", "https://router.huggingface.co/v1", "https://huggingface.co/settings/tokens",
        env="HF_TOKEN"),
-    _p("github", "GitHub Models", "https://models.github.ai/inference", "https://github.com/settings/tokens",
-       env="GITHUB_MODELS_TOKEN", models="https://models.github.ai/catalog/models", prefer=_FLAGSHIPS,
-       note="Needs a GitHub token with the Models permission."),
     _p("moonshot", "Moonshot (Kimi)", "https://api.moonshot.ai/v1", "https://platform.moonshot.ai/console/api-keys",
        env="MOONSHOT_API_KEY", prefer=r"kimi"),
     _p("alibaba", "Alibaba Cloud (Qwen)", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
@@ -582,6 +581,16 @@ def _codex_models(p):
     listed.sort(key=lambda r: r.get("priority") if isinstance(r.get("priority"), (int, float)) else 999)
     return [{"id": str(r["slug"]), "label": re.sub(r"\s+", " ", str(r.get("description") or r.get("display_name") or ""))[:90],
              "created": 0.0} for r in listed]
+
+
+def reported_price(pid, model):
+    """The service's own list price for a model, from its last model list: (in, out) dollars per million tokens."""
+    rows = ((_models.get(pid) or {}).get("body") or {}).get("rows") or []
+    for r in rows:
+        if r.get("id") == model and isinstance(r.get("in_per_million"), (int, float)) \
+                and isinstance(r.get("out_per_million"), (int, float)):
+            return r["in_per_million"], r["out_per_million"]
+    return None
 
 
 def list_models(pid, refresh=False):

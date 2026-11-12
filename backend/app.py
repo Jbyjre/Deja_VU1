@@ -68,6 +68,7 @@ API endpoints
   POST /api/assistant/models|test|select   list a provider's models, check the connection, choose the AI in use,
                                      a model, the mode and the steps that never ask
   POST /api/assistant/check          is a plan's program installed and signed in (runs its own status command)
+  POST /api/assistant/estimate|budget   tokens and cost before sending; the owner's prices and spending limit
   POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
@@ -1217,6 +1218,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 if verb == "select":
                     return self._send_json(ai_assistant.select(body.get("provider"), body.get("model"), body.get("mode"),
                                                                body.get("never_ask")))
+                if verb == "budget":
+                    return self._send_json(ai_assistant.budget(body.get("provider"), body.get("model"), body.get("price_in"),
+                                                               body.get("price_out"), body.get("cap_usd"),
+                                                               bool(body.get("clear_price"))))
+                if verb == "estimate":
+                    return self._send_json(ai_assistant.estimate(body.get("thread"), body.get("text"), printer_id, demo,
+                                                                 body.get("context")))
                 if verb == "models":
                     return self._send_json(ai_providers.list_models(body.get("provider"), bool(body.get("refresh"))))
                 if verb == "check":

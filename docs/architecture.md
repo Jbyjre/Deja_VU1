@@ -596,7 +596,7 @@ like every other demo hook.
 
 `ai_providers.py` reaches a model three ways: a subscription's own program (`claude -p` with its
 tools switched off, or `codex exec -s read-only`, each run in an empty temporary folder), an API key
-for one of 30 services, or a local address. Several can be connected at once. Two wire formats cover
+for one of 29 services, or a local address. Several can be connected at once. Two wire formats cover
 every service: Anthropic's Messages API and chat completions. Model lists are read from the service
 or program, newest first, and kept for six hours. `ai_vault.py` rests each key in the operating
 system's store (Windows Data Protection, the macOS Keychain, the Secret Service keyring), reads it
