@@ -17,7 +17,7 @@ Listed from most private to least. You can connect several and switch between th
 | **Claude plan** (best choice) | [Claude Code](https://code.claude.com/docs/en/setup) installed and signed in on the computer that runs Deja Vu1 | Nothing |
 | **ChatGPT plan** (best choice) | [Codex](https://developers.openai.com/codex/cli) installed and signed in on the same computer | Nothing |
 | **A model on this computer** | Ollama or LM Studio running, or any address that accepts the chat-completions format | The address |
-| **An API key** | A key from one of the 30 services below | The key, in your computer's keyring where there is one |
+| **An API key** | A key from one of the 29 services below | The key, in your computer's keyring where there is one |
 
 ### How a plan works
 
@@ -52,7 +52,7 @@ the service.
 
 Key services (30): Anthropic, OpenAI, Google AI Studio (Gemini), xAI (Grok), Mistral, DeepSeek, Groq,
 OpenRouter, Together AI, Fireworks AI, Perplexity, Cerebras, SambaNova, DeepInfra, Hyperbolic, Novita
-AI, Nebius, Hugging Face, GitHub Models, Moonshot (Kimi), Alibaba Cloud (Qwen), Z.ai (GLM), Cohere,
+AI, Nebius, Hugging Face, Moonshot (Kimi), Alibaba Cloud (Qwen), Z.ai (GLM), Cohere,
 AI21, NVIDIA NIM, Vercel AI Gateway, MiniMax, Venice, Chutes and Featherless.
 
 **How a key is kept.** Deja Vu1 hands the key to the operating system and tells you which store is
@@ -93,16 +93,38 @@ model on your own computer keeps all of that at home.
 - **Look after the rest:** add, move and remove queued jobs, record a care task as done or put it
   off, note a problem and its fix in the logbook, add a spool or record its weight, open a screen
   for you.
-- **Models:** make a box, cylinder, cone, sphere, tube or prism; build one part from several of
-  those placed together (a stand, a bracket); make a scaled, turned or mirrored copy of an STL, 3MF
-  or OBJ. The original stays as it was. It cannot cut holes or sculpt.
+- **Models:** make a box, cylinder, cone, sphere, tube, prism, wedge (a ramp) or torus (a ring);
+  build one part from several placed together, where each part is added, cut away or kept only where
+  it overlaps the rest (a bracket with screw holes, a box with a slot, a pocket for a magnet); use a
+  model from your library as one of the parts; drill round holes straight into a library model; make
+  a scaled, turned or mirrored copy of an STL, 3MF or OBJ. The original stays as it was. Cutting
+  works on a 0.4 mm grid (coarser for a large part, and the answer says the size): flat faces stay
+  flat and exact, and edges come out rounded by about one grid step. A model with gaps in its
+  surface gets a warning to check the result in the 3D view.
 - **Print settings:** it suggests settings as a list with the reason. One press puts them in the
   profile editor, and nothing changes until you save the profile.
 - **Explain:** while an AI is connected, cards such as Needs you, Confirm Print, the console and a
   file's details carry an Ask shortcut that sends what is on the card with your question.
 
-Each step shows in the chat as it happens, with the printer's answer. Under the chat is the number
-of tokens the service reported for the conversation; Deja Vu1 estimates nothing.
+- **Your language:** write in any language and it answers in that language. Screen and button
+  names, setting names, file names and G-code stay as they appear in the app.
+
+Each step shows in the chat as it happens, with the printer's answer.
+
+### What a message costs
+
+Under the message box, before you send, the assistant shows about how many tokens the next answer
+will read and what that costs. Before the service has answered in a conversation, Deja Vu1 counts
+the text at about 4 characters a token and says so; after that it starts from the service's own
+count. The price comes from the service's model list where it reports one (OpenRouter and Vercel AI
+Gateway), or from a price you type on the AI screen under **Cost and limit**, from the service's
+pricing page. With no price known, it shows the tokens and no cost. A plan shows no charge per
+message, and a model on your computer costs nothing.
+
+On the same card you can set a limit for one request. A message whose first answer would cost more
+is not sent, and a request with several rounds of steps stops before the round that would pass the
+limit, and says so. Below the chat, the tokens the service reported for the conversation are added
+up, with the cost the service reported or, where it reports none, the cost at the known price.
 
 ## The limits
 
@@ -143,8 +165,16 @@ released are listed beside the settings, and one press makes each ask again.
   is still to try.
 - **Every key service's address** answered a request without a key on 12 November 2026
   (`python3 tools/check-ai-services.py`), which shows the address is right. Hyperbolic had moved and
-  was corrected. GitHub Models could not be checked from the test computer. No paid key was used, so
-  a first real conversation through each service is still to try.
+  was corrected. GitHub Models was taken off the list on 12 November 2026: GitHub's documentation
+  says GitHub retired it on 30 July 2026. No paid key was used, so a first real conversation through
+  each service is still to try.
+- **Holes, cost and language, 12 November 2026:** a stand-in chat service on the test computer, set
+  up as "Another address", drove the real app in Chromium: the cost line before sending (about 2,100
+  tokens, counted from the text), a price and a limit entered on the AI screen, and a conversation
+  that built a 60 x 40 x 5 mm plate with four 4 mm holes and a pocket. The saved STL was closed and
+  within 0.2% of the exact volume. Through the Claude plan, the assistant answered a question asked
+  in Spanish in Spanish, with the demo printer's bed reading, and `tools/translate.py` translated five
+  strings into Simplified Chinese with the placeholder, link and `M112` unchanged.
 - **Key storage:** the suite runs the Linux keyring and macOS Keychain paths against stand-in
   programs, and the fallback to the private file. Windows Data Protection and the macOS Keychain
   were written from Microsoft's and Apple's documentation and have not been run on those systems;
@@ -152,6 +182,25 @@ released are listed beside the settings, and one press makes each ask again.
 - **The suite** covers both wire formats, error messages, redirects, every safety limit and every
   setting with stand-in services and stand-in `claude` and `codex` programs.
 - The assistant has not driven a real U1 yet. Its commands go through the same code that has.
+
+## Translating Deja Vu1
+
+`tools/translate.py` is a tool for whoever translates the app. It sends the words through the AI you
+connected in Deja Vu1 and checks every answer before writing it:
+
+```bash
+python3 tools/translate.py catalogue strings/en.json --to zh-CN   # fills strings/zh-CN.json
+python3 tools/translate.py doc docs/getting-started.md --to ja    # writes docs/ja/getting-started.md
+python3 tools/translate.py doc docs/getting-started.md --to de --dry-run   # counts only
+```
+
+A catalogue run sends only the keys the translation doesn't have yet. Code blocks, inline code,
+placeholders such as `{file}`, HTML tags and link addresses never reach the AI: each is swapped for a
+numbered mark and put back afterwards, and an answer that loses a mark is refused. Names in
+`tools/translation-glossary.json` under "keep" (Deja Vu1, Klipper, G-code, PLA and others) must come
+back as written. Screen names under "fixed" (Confirm Print, Needs you) are translated once, saved
+in the glossary and reused. A text that fails the checks twice stays in English and the tool lists
+it.
 
 ## In the online demo
 

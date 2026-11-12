@@ -120,6 +120,10 @@ def _settings():
     if isinstance(tested, str):                       # an earlier version kept one connection
         tested = {tested: 0}
     data["tested"] = tested if isinstance(tested, dict) else {}
+    known = {p["id"] for p in ai_providers.PROVIDERS}        # a service taken off the list is dropped quietly
+    data["tested"] = {k: v for k, v in data["tested"].items() if k in known}
+    if data["provider"] not in known:
+        data["provider"] = next(iter(data["tested"]), "")
     data["never_ask"] = [t for t in data.get("never_ask") or [] if t in TOOLS]
     data["seen"] = [p for p in data.get("seen") or [] if isinstance(p, str)]
     return data

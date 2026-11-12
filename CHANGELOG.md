@@ -20,6 +20,29 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
 
 ## Unreleased
 
+- Ask the assistant for a part with holes, slots or pockets: it builds a model from parts that are
+  added, cut away or kept where they overlap, can use a model from your library as one of the parts,
+  and drills round holes straight into a library model. A wedge and a torus join the simple shapes.
+  The cuts are made on a 0.4 mm grid (coarser for a large part, and the answer gives the size); flat
+  faces stay exact and edges round off by about one grid step. Checked: closed surfaces and volumes
+  within 0.2% of the exact figure in the suite, and a plate with four holes and a pocket made through
+  a full conversation in the browser.
+- See what a message costs before you send it. The assistant shows about how many tokens the next
+  answer reads and its price, from the service's list price or a price you type on the AI screen
+  (Cost and limit), and starts from the service's own count once it has answered. Set a limit per
+  request: a message over it isn't sent, and a request with several rounds stops before passing it.
+  Plans and local models show no charge per message.
+- Write to the assistant in any language and it answers in that language, keeping screen names,
+  settings, file names and G-code as they are. Checked through a Claude plan with a question in
+  Spanish.
+- `tools/translate.py` translates the app's strings or a guide through the AI you connected, with
+  code, placeholders and links protected, kept names checked and screen names translated once and
+  reused. Checked through a Claude plan with five strings into Simplified Chinese.
+- GitHub Models is off the list of key services: GitHub retired it on 30 July 2026. A saved
+  connection to it is dropped and another connection takes over. 29 key services remain.
+- The assistant's tests pass on machines without Claude Code installed (they failed on GitHub's
+  test machines after the last release).
+
 - An AI assistant, using your own AI: a Claude plan through Claude Code, a ChatGPT plan through Codex,
   an API key from any of 30 services, or a model on your computer (Ollama, LM Studio or another
   address). It reads the printer, files, queue, care list, spools, history and camera, homes, moves,

@@ -343,9 +343,10 @@ class TestProviders(unittest.TestCase):
     def point(self, pid):
         return patch.dict(ai_providers._BY_ID[pid], {"base": self.base})
 
-    def test_there_are_at_least_thirty_key_services_and_two_subscriptions(self):
+    def test_there_are_29_key_services_and_two_subscriptions(self):
         kinds = [p["kind"] for p in ai_providers.PROVIDERS]
-        self.assertGreaterEqual(kinds.count("key"), 30)
+        self.assertEqual(kinds.count("key"), 29)
+        self.assertNotIn("github", ai_providers._BY_ID)                 # retired by GitHub on 30 July 2026
         self.assertEqual([p["id"] for p in ai_providers.PROVIDERS if p["kind"] == "cli"], ["claude-code", "codex"])
         self.assertEqual(len({p["id"] for p in ai_providers.PROVIDERS}), len(ai_providers.PROVIDERS))
         for p in ai_providers.PROVIDERS:
@@ -704,6 +705,14 @@ class TestConnections(Base):
             status = ai_assistant.forget("claude-code")
         self.assertFalse(status["ready"])
         self.assertEqual(status["connections"], [])
+
+    def test_a_connection_to_a_retired_service_is_dropped_quietly(self):
+        ai_assistant.storage.save_json(ai_assistant._SETTINGS_PATH, {"provider": "github", "tested": {"github": 1, "claude-code": 1},
+                                                                    "models": {"github": "openai/gpt-9"}})
+        status = ai_assistant.status()
+        self.assertEqual(status["provider"], "claude-code")
+        self.assertTrue(status["ready"])
+        self.assertEqual([c["id"] for c in status["connections"]], ["claude-code"])
 
     def test_a_saved_setup_from_the_first_version_still_works(self):
         ai_assistant.storage.save_json(ai_assistant._SETTINGS_PATH, {"provider": "claude-code", "tested": "claude-code",

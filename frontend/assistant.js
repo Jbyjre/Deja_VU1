@@ -469,11 +469,13 @@
     const out = [], s = live || {};
     if (lastTrouble) out.push(['Explain the last warning', `Explain this message from Deja Vu1 in plain words, and what to try: "${lastTrouble}"`]);
     const file = document.querySelector('#file-detail:not([hidden]) #fd-name, .file-detail:not([hidden]) .fd-name');
-    if (file && file.textContent.trim()) out.push([`About ${file.textContent.trim()}`, `Tell me what ${file.textContent.trim()} needs to print: time, filament and anything to watch for.`]);
+    const name = file ? file.textContent.trim() : '';
+    if (name && /\.(stl|3mf|obj)$/i.test(name)) out.push([`Add screw holes to ${name}`, `Check the size of ${name}, then make a copy with a 3.2 mm screw hole through it near each corner, 6 mm in from the edges.`]);
+    else if (name) out.push([`About ${name}`, `Tell me what ${name} needs to print: time, filament and anything to watch for.`]);
     if (s.state === 'printing' || s.state === 'paused') out.push(['How is the print going?', 'How is the print going? Check the temperatures and progress.'], ['Look at the camera', 'Look through the camera and tell me if the print looks right.']);
     else out.push(['Home all axes', 'Home all axes, then tell me where the head is.'], ['Warm up for PLA', 'Warm up for PLA: the bed and the active head.']);
     out.push(['What care is due?', 'What maintenance is due, and which task matters most?'], ['Do I have enough filament?', 'Check my filament against the queue and tell me if anything will run short.'],
-      ['Make a phone stand', 'Make a simple phone stand from a few solid parts and save it to my files.']);
+      ['Make a phone stand', 'Make a phone stand from a few solid parts, with a slot cut through the base for the charging cable, and save it to my files.']);
     return out.slice(0, 5);
   }
 

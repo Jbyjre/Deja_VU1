@@ -117,7 +117,7 @@ slicing and launcher files have their own notes in this folder.
 
 ## The AI assistant
 
-- `ai_providers.py`: every way to reach a model (`PROVIDERS`: two subscription programs, 30 key
+- `ai_providers.py`: every way to reach a model (`PROVIDERS`: two subscription programs, 29 key
   services, two local, one custom); any number stay connected. Two wire formats only (Anthropic
   Messages, chat completions). `describe()` is the only thing the browser sees; error text passes
   through `_scrub`; `_http` follows no redirect and sends a key only over https or to a local host.
