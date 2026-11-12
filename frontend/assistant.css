@@ -45,7 +45,7 @@ html.ai-open .ai-launch { opacity: 0; pointer-events: none; }
 .ai-hint { margin: 0 0 8px; font: 500 12.5px/1.45 var(--font-sans); color: var(--text-faint); }
 .ai-hint a { color: var(--accent-text); }
 .ai-providers { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.ai-group[data-kind="cli"] .ai-providers { grid-template-columns: 1fr; }
+.ai-group:is([data-kind="cli"], [data-kind="local"]) .ai-providers { grid-template-columns: 1fr; }
 .ai-prov {
   width: 100%; min-height: 44px; padding: 8px 12px; border-radius: 14px; cursor: pointer; text-align: left;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -72,6 +72,46 @@ html.ai-open .ai-launch { opacity: 0; pointer-events: none; }
 .ai-mode input { margin: 3px 0 0; accent-color: var(--accent-text); }
 .ai-mode span { font: 500 12.5px/1.45 var(--font-sans); color: var(--text-dim); }
 .ai-mode b { display: block; font-weight: 650; color: var(--text); }
+
+/* -- connect: plans first, then local models, then keys behind a fold -- */
+.ai-group h3 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ai-badge { padding: 3px 8px; border-radius: 999px; font: 650 10.5px/1 var(--font-mono); letter-spacing: .03em; text-transform: uppercase; color: var(--ok-text); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.ai-slot:empty { display: none; }
+.ai-slot { margin-top: 8px; }
+.ai-keys .ai-slot { margin: 0 0 10px; }
+.ai-joined { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+.ai-joined li { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 4px; border-radius: 14px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .08); }
+.ai-joined li.is-on { border-color: var(--ok-text); }
+.ai-joined-main { flex: 1; min-width: 0; min-height: 40px; padding: 4px 8px; border: 0; background: none; cursor: pointer; text-align: left; border-radius: 10px; color: var(--text); }
+.ai-joined-main b { display: block; font: 650 13px/1.3 var(--font-sans); }
+.ai-joined-main span { display: block; font: 500 11.5px/1.3 var(--font-mono); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai-joined .ai-prov-state { color: var(--ok-text); }
+.ai-keys > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 14px; cursor: pointer; list-style: none; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .08); }
+.ai-keys > summary::-webkit-details-marker { display: none; }
+.ai-keys > summary h3 { margin: 0; }
+.ai-keys > summary span { font: 600 11px/1 var(--font-mono); color: var(--text-faint); }
+.ai-keys > summary::after { content: ""; width: 7px; height: 7px; margin-left: 2px; border-right: 1.5px solid var(--text-faint); border-bottom: 1.5px solid var(--text-faint); transform: rotate(45deg); transition: transform .2s ease; }
+.ai-keys[open] > summary::after { transform: rotate(-135deg); }
+.ai-keys[open] > summary { margin-bottom: 10px; }
+.ai-keys .ai-search { display: block; margin: 0 0 8px; }
+.ai-safe { margin: 0 0 10px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--ok) 8%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 28%, transparent); }
+.ai-safe h4 { margin: 0 0 4px; font: 650 12.5px/1.3 var(--font-sans); color: var(--text); }
+.ai-safe p, .ai-safe li { margin: 0; font: 500 12.5px/1.5 var(--font-sans); color: var(--text-dim); }
+.ai-safe ul { margin: 6px 0 0; padding-left: 16px; }
+.ai-safe-warn { margin-top: 6px !important; color: var(--warn-text) !important; }
+.ai-step-help, .ai-ok { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; font: 500 12.5px/1.6 var(--font-sans); color: var(--text-dim); background: rgba(0, 0, 0, .04); }
+.ai-ok { color: var(--ok-text); background: color-mix(in srgb, var(--ok) 10%, transparent); font-weight: 600; }
+.ai-step-help code, .ai-form code { font: 600 12px var(--font-mono); padding: 2px 6px; border-radius: 6px; background: rgba(0, 0, 0, .07); color: var(--text); }
+.ai-step-help a { color: var(--accent-text); }
+.ai-copy { min-height: 24px; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .14); background: none; cursor: pointer; font: 600 11px/1 var(--font-sans); color: var(--text-dim); }
+.ai-field span i, .ai-mode b i { font: 500 11px/1 var(--font-sans); color: var(--text-faint); font-style: normal; margin-left: 4px; }
+.ai-field select, .ai-field input { width: 100%; box-sizing: border-box; }
+.ai-field input[hidden] { display: none; }
+.ai-field select + input { margin-top: 6px; }
+.ai-actions { flex-wrap: wrap; }
+.ai-never { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 0; }
+.ai-chip { min-height: 26px; padding: 3px 9px; border-radius: 999px; cursor: pointer; font: 600 11.5px/1.2 var(--font-sans); color: var(--text-dim); background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .12); }
+.ai-chip:hover { border-color: var(--bad-text); color: var(--bad-text); }
 
 /* -- settle: three short checks, then the screen fades into the chat -- */
 .ai-settle { margin: auto 0; text-align: center; transition: opacity .4s ease, transform .4s ease; }
@@ -123,6 +163,57 @@ html.ai-open .ai-launch { opacity: 0; pointer-events: none; }
 .ai-approve { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .ai-thinking { display: inline-flex; gap: 6px; padding: 10px 6px; }
 
+/* Above the chat: the AI in use and its model, as two quiet pickers on one shared strip. */
+.ai-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; border-radius: 12px; overflow: hidden; background: rgba(0, 0, 0, .08); border: 1px solid rgba(0, 0, 0, .08); flex: none; }
+.ai-bar label { min-width: 0; }
+.ai-bar select { width: 100%; min-height: 34px; padding: 4px 26px 4px 10px; border: 0; border-radius: 0; background-color: rgba(255, 255, 255, .62); font: 600 12px/1.2 var(--font-sans); color: var(--text); text-overflow: ellipsis; box-shadow: none; }
+.ai-bar select:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+.ai-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 24px; }
+.ai-usage { font: 500 11px/1.3 var(--font-mono); color: var(--text-faint); }
+.ai-always { flex-basis: 100%; padding: 2px 0; border: 0; background: none; cursor: pointer; text-align: left; font: 600 12px/1.3 var(--font-sans); color: var(--text-dim); text-decoration: underline; text-underline-offset: 3px; }
+.ai-always:hover { color: var(--text); }
+.ai-proposal { margin-top: 6px; padding: 10px 12px 12px; border-radius: 14px; background: rgba(255, 255, 255, .62); border: 1px solid rgba(0, 0, 0, .08); }
+.ai-proposal > p:first-child { margin: 0 0 8px; font: 500 12.5px/1.5 var(--font-sans); color: var(--text-dim); }
+.ai-proposal table { width: 100%; border-collapse: collapse; }
+.ai-proposal th, .ai-proposal td { padding: 5px 0; border-top: 1px solid rgba(0, 0, 0, .07); font: 600 12.5px/1.3 var(--font-sans); text-align: left; vertical-align: top; }
+.ai-proposal tr:first-child th, .ai-proposal tr:first-child td { border-top: 0; }
+.ai-proposal th small { display: block; font: 500 10.5px/1.3 var(--font-sans); color: var(--text-faint); }
+.ai-proposal td { text-align: right; font-family: var(--font-mono); color: var(--accent-text); white-space: nowrap; }
+
+/* A shortcut in a card's heading. It exists only while an AI is connected. */
+.ai-ask { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; margin-left: auto; padding: 4px 11px 4px 8px; border-radius: 999px; cursor: pointer; font: 600 12px/1 var(--font-sans); color: var(--text-dim); background: color-mix(in oklch, var(--accent) 9%, transparent); border: 1px solid color-mix(in oklch, var(--accent) 32%, transparent); animation: ai-in .3s ease both; }
+.ai-ask svg { width: 14px; height: 14px; fill: none; stroke: var(--accent-text); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ai-ask:hover { color: var(--text); border-color: var(--accent-text); }
+.ai-ask:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+/* The welcome: the edge of the screen glows for one minute the first time an AI answers, like a
+   nozzle coming up to heat, then fades and never repeats for that connection. It sits above the page
+   and takes no clicks. */
+.ai-glow { position: fixed; inset: 0; z-index: 200; pointer-events: none; opacity: 0; visibility: hidden; }
+html.ai-glow-on .ai-glow { visibility: visible; animation: ai-glow-life 60s ease-in-out both; }
+/* Four thin strips, one on each edge. Each holds a band of colour twice its length that slides along
+   it, so the light travels round the screen while the browser only moves layers and repaints nothing. */
+.ai-glow i { position: absolute; overflow: hidden; }
+.ai-glow i::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--accent), oklch(86% .13 85), var(--accent), oklch(72% .17 20), var(--accent)); }
+.ai-glow i:nth-child(1), .ai-glow i:nth-child(3) { left: 0; right: 0; height: 4px; }
+.ai-glow i:nth-child(1) { top: 0; }
+.ai-glow i:nth-child(3) { bottom: 0; }
+.ai-glow i:nth-child(2), .ai-glow i:nth-child(4) { top: 0; bottom: 0; width: 4px; }
+.ai-glow i:nth-child(2) { right: 0; }
+.ai-glow i:nth-child(4) { left: 0; }
+.ai-glow i:nth-child(1)::before, .ai-glow i:nth-child(3)::before { width: 200%; }
+.ai-glow i:nth-child(2)::before, .ai-glow i:nth-child(4)::before { height: 200%; background-image: linear-gradient(180deg, var(--accent), oklch(86% .13 85), var(--accent), oklch(72% .17 20), var(--accent)); }
+html.ai-glow-on .ai-glow i:nth-child(1)::before { animation: ai-glow-x 9s linear infinite; }
+html.ai-glow-on .ai-glow i:nth-child(3)::before { animation: ai-glow-x 9s linear infinite reverse; }
+html.ai-glow-on .ai-glow i:nth-child(2)::before { animation: ai-glow-y 9s linear infinite; }
+html.ai-glow-on .ai-glow i:nth-child(4)::before { animation: ai-glow-y 9s linear infinite reverse; }
+.ai-glow::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 56px 6px color-mix(in oklch, var(--accent) 55%, transparent), inset 0 0 150px 0 color-mix(in oklch, var(--accent) 18%, transparent); }
+html.ai-glow-on .ai-glow::after { animation: ai-glow-breathe 5s ease-in-out infinite alternate; }
+@keyframes ai-glow-x { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+@keyframes ai-glow-y { from { transform: translateY(-50%); } to { transform: translateY(0); } }
+@keyframes ai-glow-breathe { from { opacity: .55; } to { opacity: 1; } }
+@keyframes ai-glow-life { 0% { opacity: 0; } 3% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; } }
+
 .ai-ideas { display: flex; flex-wrap: wrap; gap: 6px; }
 .ai-ideas[hidden] { display: none; }
 .ai-idea { min-height: 32px; padding: 6px 12px; border-radius: 999px; cursor: pointer; font: 600 12px/1.2 var(--font-sans); color: var(--text-dim); background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .09); }
@@ -130,7 +221,7 @@ html.ai-open .ai-launch { opacity: 0; pointer-events: none; }
 .ai-compose { display: flex; align-items: flex-end; gap: 8px; }
 .ai-compose textarea { flex: 1; min-height: 40px; resize: none; box-sizing: border-box; border-radius: 18px; padding: 10px 14px; font: 500 13.5px/1.4 var(--font-sans); }
 .ai-compose [hidden] { display: none; }
-.ai-clear { align-self: center; padding: 6px 10px; border: 0; background: none; cursor: pointer; font: 600 11.5px/1 var(--font-sans); color: var(--text-faint); text-decoration: underline; text-underline-offset: 3px; }
+.ai-clear { margin-left: auto; padding: 6px 10px; border: 0; background: none; cursor: pointer; font: 600 11.5px/1 var(--font-sans); color: var(--text-faint); text-decoration: underline; text-underline-offset: 3px; }
 
 @media (max-width: 720px) {
   .ai-launch { bottom: calc(var(--dock-h, 150px) + 20px + env(safe-area-inset-bottom)); padding: 0 16px 0 13px; }
@@ -140,9 +231,22 @@ html.ai-open .ai-launch { opacity: 0; pointer-events: none; }
   .ai-panel, .ai-launch, .ai-settle { transition: opacity .15s ease; transform: none; }
   .ai-msg, .ai-step { animation: none; }
   .ai-pulse i, .ai-thinking i, .ai-node, .ai-settle li::before { animation: none !important; }
+  .ai-ask { animation: none; }
+  /* The welcome stays, held still: it shows for the same minute and fades without turning or pulsing. */
+  html.ai-glow-on .ai-glow i::before, html.ai-glow-on .ai-glow::after { animation: none; }
   .ai-log { scroll-behavior: auto; }
 }
 @media (prefers-contrast: more) {
-  .ai-prov, .ai-mode, .ai-form, .ai-idea, .ai-msg.is-assistant { border: 1.5px solid var(--text); }
+  .ai-prov, .ai-mode, .ai-form, .ai-idea, .ai-msg.is-assistant, .ai-joined li, .ai-keys > summary, .ai-safe, .ai-proposal, .ai-ask, .ai-chip, .ai-bar { border: 1.5px solid var(--text); }
   .ai-step::before { background: var(--text); }
 }
+
+/* -- the AI tab: the same pieces as the panel, laid out as cards -- */
+.ai-page .ai-hint { font-size: 13.5px; }
+.ai-page-now { margin: 0 0 14px; }
+.ai-page-now b { display: block; font: 650 19px/1.25 var(--font-display, var(--font-sans)); }
+.ai-page-now span { font: 500 12.5px/1.4 var(--font-mono); color: var(--text-faint); }
+.ai-page-tip { margin: 12px 0 0; }
+.ai-can { border-top: 1px solid rgba(0, 0, 0, .08); }
+.ai-can summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; font: 650 13.5px/1.3 var(--font-sans); }
+.ai-can p { margin: 0 0 12px; font: 500 12.5px/1.6 var(--font-sans); color: var(--text-dim); }

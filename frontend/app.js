@@ -1256,8 +1256,9 @@ const TAB_KEY = 'dejavu1.tab';
 /* One plain sentence per tab, shown under the tab bar, so a first-time
    visitor knows what each section is for before reading it. */
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
-  automations: 'Automations', maintenance: 'Care', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
+  ai: 'AI', automations: 'Automations', maintenance: 'Care', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
 const TAB_INTROS = {
+  ai: 'Everything about the assistant in one place: the AI you connected, how much it may do, and how a key is kept. Deja Vu1 works fully without one.',
   overview: 'What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.',
   fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
   control: 'Everything about one printer: its live 3D twin and camera, moving and heating it, tuning, its readings and its history. If the printer says no, you see why.',

@@ -64,8 +64,10 @@ API endpoints
   POST /api/remote/link               a pairing QR code for the shared address
   GET  /api/assistant                 the AI assistant: providers, which is connected, mode, limits (never a key)
   GET  /api/assistant/thread          one conversation: messages, busy, the step waiting for a yes
-  POST /api/assistant/key|forget      save or forget a provider's key (kept in <data>/ai_keys.json)
-  POST /api/assistant/models|test|select   list a provider's models, check the connection, choose model and mode
+  POST /api/assistant/key|forget      save or forget a provider's key (kept by the system keyring where there is one)
+  POST /api/assistant/models|test|select   list a provider's models, check the connection, choose the AI in use,
+                                     a model, the mode and the steps that never ask
+  POST /api/assistant/check          is a plan's program installed and signed in (runs its own status command)
   POST /api/assistant/chat|decide|stop|clear   say something, approve or decline a step, stop, start over
   POST /api/tools/layer-plan         mixed-nozzle layer plan {"heads": [{toolhead, nozzle, height}], "exact", "part_height"}
   POST /api/maintenance/swap         record a nozzle/hotend swap {"kind", "toolhead", "nozzle"?}
@@ -1213,9 +1215,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                 if verb == "forget":
                     return self._send_json(ai_assistant.forget(body.get("provider")))
                 if verb == "select":
-                    return self._send_json(ai_assistant.select(body.get("provider"), body.get("model"), body.get("mode")))
+                    return self._send_json(ai_assistant.select(body.get("provider"), body.get("model"), body.get("mode"),
+                                                               body.get("never_ask")))
                 if verb == "models":
-                    return self._send_json(ai_providers.list_models(body.get("provider")))
+                    return self._send_json(ai_providers.list_models(body.get("provider"), bool(body.get("refresh"))))
+                if verb == "check":
+                    ai_providers.check(body.get("provider"))
+                    return self._send_json(ai_assistant.status())
                 if verb == "test":
                     return self._send_json(ai_assistant.test(body.get("provider")))
                 if verb == "chat":
@@ -1223,7 +1229,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
                                                              body.get("context")))
                 if verb == "decide":
                     return self._send_json(ai_assistant.decide(body.get("thread"), body.get("n"), body.get("approve"),
-                                                               printer_id, demo))
+                                                               printer_id, demo, bool(body.get("always"))))
                 if verb == "stop":
                     return self._send_json(ai_assistant.stop(body.get("thread")))
                 if verb == "clear":
@@ -2211,6 +2217,8 @@ def main():
                      name="refind").start()
     threading.Thread(target=app_updates.watch, args=(lambda: _install_update(server),), daemon=True).start()
     threading.Thread(target=memory.watch, daemon=True).start()
+    # AI keys saved before this computer's keyring was used move into it; a keyring can take a moment.
+    threading.Thread(target=ai_providers.protect_saved_keys, name="ai-keys", daemon=True).start()
     # Windows' Task Scheduler answers in a second or more; ask it now, so no page ever waits for it.
     threading.Thread(target=autostart.status, name="autostart-warm", daemon=True).start()
     print("=" * 58)

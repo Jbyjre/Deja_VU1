@@ -23,8 +23,8 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1359 tests passed in 809.5 seconds on Python 3.13.18 (Linux, 11 November 2026,
-  version 0.20.7 plus the AI assistant). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
+- **The test suite:** 1408 tests passed in 1042.3 seconds on Python 3.13.18 (Linux, 12 November 2026,
+  version 0.20.8 plus the assistant's second round). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the
   release job runs it again before publishing.
 - **The printer connection** in the suite, against a Moonraker stand-in (`tests/fake_moonraker.py`)
   over real sockets: commands, refusals, watch-only mode (no write gets through), sign-in, the
@@ -38,12 +38,15 @@ The rest of the dashboard was used with the same printer. The firmware version w
   look in light and dark, text contrast measured against WCAG AA, and the online demo at both
   widths.
 - **The AI assistant:** a full conversation through a Claude plan (Claude Code 2.1.322) on a demo
-  printer on Linux, 11 November 2026: reading the printer, a fan change, an Approve step for heat and
-  a refused 500 °C request. The 30 key services' addresses answered a request without a key the same
-  day. In the suite, stand-in services and stand-in `claude` and `codex` programs cover both wire
-  formats, error messages, key handling and every safety limit. No paid key, real ChatGPT plan or
-  real U1 has been tried with it. Panel checked at 1366 px and 390 px, light and dark, and in the
-  static online demo, with no page errors. [AI assistant](ai-assistant.md).
+  printer on Linux, 12 November 2026: connecting, a cancel after one Approve, homing and heating with
+  no approvals, a camera picture, a settings suggestion and the token count. Codex 0.167.2's options,
+  model list and "not signed in" answer were read from the program. The 30 key services' addresses
+  answered a request without a key the same day (GitHub Models could not be checked from the test
+  computer). In the suite, stand-in services, stand-in `claude` and `codex` programs and stand-in
+  keyrings cover both wire formats, error messages, key storage, redirects and every safety limit.
+  No paid key, real ChatGPT plan, real Windows or macOS keyring, or real U1 has been tried with it.
+  Panel and AI screen checked at 1366 px and 390 px, light and dark, and in the static online demo,
+  with no page errors. [AI assistant](ai-assistant.md).
 - **Colour-checker ingestion:** synthetic version 1 messages through the actual local HTTP API and
   a Moonraker stand-in, including identity mismatch, replay, clock changes, expiry, low quality,
   raw-only samples, reassignment and restart. The colour card was checked at both widths in all

@@ -1,9 +1,10 @@
 """
-The AI assistant (backend/ai_assistant.py, backend/ai_providers.py).
+The AI assistant (backend/ai_assistant.py, backend/ai_providers.py, backend/ai_vault.py).
 
 No test here needs a real AI or a real key. The model is a scripted stand-in (`Script`), the two
-wire formats are checked against small local servers that answer in each format's shape, and the
-subscription path runs stand-in `claude` and `codex` programs.
+wire formats are checked against small local servers that answer in each format's shape, the
+subscription path runs stand-in `claude` and `codex` programs, and the keyrings are stand-in
+`secret-tool` and `security` programs.
 
     python3 -m unittest tests.test_ai_assistant
 """
@@ -25,6 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import ai_assistant        # noqa: E402
 import ai_providers        # noqa: E402
+import ai_vault            # noqa: E402
 import backup              # noqa: E402
 import file_library        # noqa: E402
 import mock_moonraker      # noqa: E402
@@ -62,6 +64,7 @@ class Base(unittest.TestCase):
         self.addCleanup(modules.reset_state)
         with patch.object(ai_providers, "ask", return_value="ready"):
             ai_assistant.test("claude-code")
+        ai_assistant.select(mode="balanced")     # most tests here are about steps that wait; the default is freer
         self.tid = "thread-" + self.id().split(".")[-1][:40].replace("_", "-")
 
     def idle(self):
@@ -155,7 +158,18 @@ class TestConversation(Base):
         view = self.say("status", act("status") + act("home"), "No printer.", demo=False)
         self.assertEqual(self.steps(view), [("status", "refused"), ("home", "refused")])
         self.assertIn("No printer is connected", self.script.systems[0])
-        self.assertNotIn("The printer right now", self.script.systems[0])
+        self.assertNotIn("The printer right now", self.script.seen[0][0]["text"])
+
+    def test_readings_travel_with_the_message_so_the_instructions_never_change(self):
+        self.idle()
+        first = self.say("fan", act("fan", percent=30), "Done.")
+        self.assertIsNotNone(first)
+        self.assertIn("[The printer right now]", self.script.seen[0][0]["text"])
+        self.assertIn("[Their message]\nfan", self.script.seen[0][0]["text"])
+        systems = list(self.script.systems)
+        self.say("fan again", act("fan", percent=60), "Done.")
+        self.assertEqual(set(systems + self.script.systems), {systems[0]})
+        self.assertNotIn('"heads"', systems[0])
 
     def test_the_owner_must_connect_an_ai_first(self):
         ai_assistant.reset()
@@ -208,7 +222,7 @@ class TestLimits(Base):
         name = next(f["name"] for f in ai_assistant._files() if f["name"].endswith(".gcode"))
         view = self.say("print it", act("start_print", filename=name))
         row = [m for m in view["messages"] if m["role"] == "action"][0]
-        self.assertEqual(row["handoff"], {"kind": "confirm_print", "filename": name})
+        self.assertEqual(row["handoff"], {"kind": "confirm_print", "filename": name, "place": None})
         self.assertNotEqual(self.state()["state"], "printing")
 
     def test_cancelling_a_print_asks_even_in_the_most_hands_on_mode(self):
@@ -368,6 +382,7 @@ class TestProviders(unittest.TestCase):
         self.assertEqual(body["messages"][0]["content"][0]["source"], {"type": "base64", "media_type": "image/jpeg", "data": "QUJD"})
         self.assertNotIn("temperature", body)
         self.assertNotIn("thinking", body)
+        self.assertEqual(body["cache_control"], {"type": "ephemeral"})
 
     def test_a_declined_answer_is_said_in_words(self):
         Recorder.reply = {"stop_reason": "refusal", "content": []}
@@ -432,19 +447,45 @@ class TestProviders(unittest.TestCase):
 FAKE_CLAUDE = textwrap.dedent('''\
     #!/usr/bin/env python3
     import json, os, sys
-    json.dump({"args": sys.argv[1:], "stdin": sys.stdin.read(), "cwd": os.listdir(".")}, open(os.environ["FAKE_AI_LOG"], "w"))
+    args = sys.argv[1:]
+    if args[:2] == ["auth", "status"]:
+        print(json.dumps({"loggedIn": not os.environ.get("FAKE_AI_FAIL")})); sys.exit(0)
+    if args == ["--version"]:
+        print("9.9.9 (Claude Code)"); sys.exit(0)
+    rules = open(args[args.index("--system-prompt-file") + 1]).read() if "--system-prompt-file" in args else ""
+    json.dump({"args": args, "stdin": sys.stdin.read(), "cwd": os.listdir("."), "rules": rules}, open(os.environ["FAKE_AI_LOG"], "w"))
     if os.environ.get("FAKE_AI_FAIL"):
         print(json.dumps({"type": "result", "is_error": True, "result": "Not logged in"})); sys.exit(1)
-    print(json.dumps({"type": "result", "is_error": False, "result": "from the plan"}))
+    result = {"type": "result", "is_error": False, "result": "from the plan", "total_cost_usd": 0.0123,
+              "usage": {"input_tokens": 40, "cache_read_input_tokens": 60, "output_tokens": 7},
+              "modelUsage": {"claude-test-9": {}}}
+    if "stream-json" in args:
+        print(json.dumps({"type": "system", "subtype": "init"}))
+    print(json.dumps(result))
 ''')
 FAKE_CODEX = textwrap.dedent('''\
     #!/usr/bin/env python3
     import json, os, sys
-    json.dump({"args": sys.argv[1:], "stdin": sys.stdin.read()}, open(os.environ["FAKE_AI_LOG"], "w"))
+    args = sys.argv[1:]
+    if args == ["login", "status"]:
+        print("Not logged in" if os.environ.get("FAKE_AI_FAIL") else "Logged in using ChatGPT")
+        sys.exit(1 if os.environ.get("FAKE_AI_FAIL") else 0)
+    if args == ["--version"]:
+        print("codex-cli 9.9.9"); sys.exit(0)
+    if args == ["debug", "models"]:
+        print(json.dumps({"models": [
+            {"slug": "gpt-9-work", "display_name": "GPT-9 Work", "description": "Everyday work.", "visibility": "list", "priority": 2},
+            {"slug": "gpt-9-top", "display_name": "GPT-9 Top", "description": "The most demanding work.", "visibility": "list", "priority": 1},
+            {"slug": "internal-review", "visibility": "hide", "priority": 0}]})); sys.exit(0)
+    pictures = [os.path.getsize(args[i + 1]) for i, a in enumerate(args) if a == "-i"]
+    json.dump({"args": args, "stdin": sys.stdin.read(), "pictures": pictures}, open(os.environ["FAKE_AI_LOG"], "w"))
     sys.stderr.write("progress...\\n")
     if os.environ.get("FAKE_AI_FAIL"):
         sys.stderr.write("not signed in\\n"); sys.exit(1)
-    print("from chatgpt")
+    if os.environ.get("FAKE_AI_STDOUT"):
+        print("from chatgpt"); sys.exit(0)
+    open(args[args.index("-o") + 1], "w").write("from chatgpt")
+    print("noise that is not the answer")
 ''')
 
 
@@ -474,11 +515,12 @@ class TestSubscriptions(unittest.TestCase):
         seen = self.read_log()
         args = seen["args"]
         self.assertEqual(args[args.index("--tools") + 1], "")
-        self.assertEqual(args[args.index("--system-prompt") + 1], "SYSTEM RULES")
+        self.assertEqual(seen["rules"], "SYSTEM RULES")
+        self.assertNotIn("SYSTEM RULES", " ".join(args))
         for flag in ("-p", "--no-session-persistence", "--strict-mcp-config", "--disable-slash-commands"):
             self.assertIn(flag, args)
         self.assertNotIn("--model", args)
-        self.assertEqual(seen["cwd"], [])
+        self.assertEqual(seen["cwd"], ["instructions.txt"])
         self.assertIn("Owner: now cool", seen["stdin"])
         self.assertTrue(ai_providers.describe("claude-code")["installed"])
 
@@ -486,15 +528,62 @@ class TestSubscriptions(unittest.TestCase):
         answer = ai_providers.ask("codex", "", "SYSTEM RULES", self.messages)
         self.assertEqual(answer, "from chatgpt")
         seen = self.read_log()
-        self.assertEqual(seen["args"], ["exec", "--skip-git-repo-check", "--ephemeral", "-"])
+        self.assertEqual(seen["args"][:5], ["exec", "--skip-git-repo-check", "--ephemeral", "-s", "read-only"])
+        self.assertEqual(seen["args"][-1], "-")
+        self.assertNotIn("-m", seen["args"])
         self.assertIn("SYSTEM RULES", seen["stdin"])
 
     def test_not_signed_in_says_what_to_do(self):
         with patch.dict(os.environ, {"FAKE_AI_FAIL": "1"}):
-            for pid, words in (("claude-code", "/login"), ("codex", "codex login")):
+            for pid, words in (("claude-code", "claude auth login"), ("codex", "codex login")):
                 with self.assertRaises(ai_providers.AIError) as caught:
                     ai_providers.ask(pid, "", "S", self.messages)
                 self.assertIn(words, str(caught.exception))
+
+    def test_the_plan_reports_what_it_used(self):
+        answer = ai_providers.ask("claude-code", "opus", "S", self.messages)
+        self.assertEqual(answer.usage, {"model": "claude-test-9", "in": 100, "out": 7, "cost_usd": 0.0123})
+        self.assertEqual(self.read_log()["args"][-2:], ["--model", "opus"])
+
+    def test_a_camera_picture_reaches_both_plans(self):
+        look = self.messages + [{"role": "user", "text": "results", "images": [("image/jpeg", "QUJD")]}]
+        self.assertEqual(ai_providers.ask("claude-code", "", "S", look), "from the plan")
+        seen = self.read_log()
+        self.assertIn("stream-json", seen["args"])
+        sent = json.loads(seen["stdin"])
+        self.assertEqual(sent["message"]["content"][0]["source"], {"type": "base64", "media_type": "image/jpeg", "data": "QUJD"})
+        self.assertIn("Owner: results", sent["message"]["content"][1]["text"])
+        self.assertEqual(ai_providers.ask("codex", "gpt-9-top", "S", look), "from chatgpt")
+        seen = self.read_log()
+        self.assertEqual(seen["pictures"], [3])
+        self.assertEqual(seen["args"][seen["args"].index("-m") + 1], "gpt-9-top")
+
+    def test_codex_answers_on_standard_output_are_read_too(self):
+        with patch.dict(os.environ, {"FAKE_AI_STDOUT": "1"}):
+            self.assertEqual(ai_providers.ask("codex", "", "S", self.messages), "from chatgpt")
+
+    def test_the_sign_in_check_uses_each_programs_own_status_command(self):
+        for pid, version in (("claude-code", "9.9.9 (Claude Code)"), ("codex", "codex-cli 9.9.9")):
+            row = ai_providers.check(pid)
+            self.assertEqual((row["installed"], row["signed_in"], row["version"]), (True, True, version))
+            with patch.dict(os.environ, {"FAKE_AI_FAIL": "1"}):
+                self.assertIs(ai_providers.check(pid)["signed_in"], False)
+        with self.assertRaises(ValueError):
+            ai_providers.check("openai")
+
+    def test_each_plan_lists_its_own_models(self):
+        codex = ai_providers.list_models("codex", refresh=True)
+        self.assertEqual(codex["models"], ["gpt-9-top", "gpt-9-work"])
+        self.assertTrue(codex["optional"])
+        claude = ai_providers.list_models("claude-code", refresh=True)
+        self.assertEqual(claude["models"], ["fable", "opus", "sonnet", "haiku"])
+        self.assertEqual(claude["suggested"], "")
+
+    def test_a_program_outside_the_path_is_still_found(self):
+        python = os.path.dirname(sys.executable)          # the stand-in needs python, and nothing else, on the PATH
+        with patch.dict(os.environ, {"PATH": python}), patch.object(ai_providers, "_places", return_value=[self.dir]):
+            self.assertTrue(ai_providers.describe("claude-code")["installed"])
+            self.assertEqual(ai_providers.ask("claude-code", "", "S", self.messages), "from the plan")
 
     def test_a_missing_program_says_so(self):
         with patch.dict(os.environ, {"PATH": "/nonexistent"}):
@@ -502,6 +591,525 @@ class TestSubscriptions(unittest.TestCase):
             with self.assertRaises(ai_providers.AIError) as caught:
                 ai_providers.ask("codex", "", "S", self.messages)
         self.assertIn("isn't installed", str(caught.exception))
+
+
+class TestApprovals(Base):
+    """Out of the box the assistant works freely and asks only before it ends a print early."""
+
+    def setUp(self):
+        super().setUp()
+        ai_assistant.select(mode=ai_assistant.DEFAULT_MODE)
+
+    def test_the_default_lets_it_home_heat_and_move_without_asking(self):
+        self.assertEqual(ai_assistant.status()["mode"], "free")
+        self.idle()
+        view = self.say("get ready", act("home") + act("bed_temp", target=60) + act("nozzle_temp", toolhead="T0", target=210)
+                        + act("move_to", x=100, y=100, z=20), "Ready.")
+        self.assertEqual(self.steps(view), [("home", "done"), ("bed_temp", "done"), ("nozzle_temp", "done"), ("move_to", "done")])
+        self.assertIsNone(view["pending"])
+        self.assertEqual(self.state()["toolheads"]["T0"]["target_temperature"], 210)
+
+    def test_ending_a_print_early_is_the_one_thing_it_asks_about(self):
+        for tool, args in (("cancel_print", {}), ("skip_object", {"name": "BENCHY_1"})):
+            ai_assistant.clear(self.tid)
+            view = self.say("stop that", act(tool, **args))
+            self.assertEqual(self.steps(view), [(tool, "waiting")], tool)
+            ai_assistant.stop(self.tid)
+        self.assertEqual(self.state()["state"], "printing")
+
+    def test_no_approvals_never_asks_and_the_limits_still_hold(self):
+        ai_assistant.select(mode="open")
+        view = self.say("cancel and overheat", act("nozzle_temp", toolhead="T0", target=500) + act("cancel_print"), "Cancelled.")
+        self.assertEqual(self.steps(view), [("nozzle_temp", "refused"), ("cancel_print", "done")])
+        self.assertNotEqual(self.state()["state"], "printing")
+
+    def test_dont_ask_again_is_remembered_shown_and_can_be_taken_back(self):
+        ai_assistant.select(mode="ask")
+        view = self.say("fan", act("fan", percent=20))
+        self.assertEqual(self.steps(view), [("fan", "waiting")])
+        with patch.object(ai_providers, "ask", self.script):
+            ai_assistant.decide(self.tid, view["pending"]["n"], True, PRINTER, demo=True, always=True)
+            self.wait()
+        self.assertEqual([row["tool"] for row in ai_assistant.status()["never_ask"]], ["fan"])
+        ai_assistant.clear(self.tid)
+        view = self.say("fan again", act("fan", percent=40) + act("speed", percent=90))
+        self.assertEqual(self.steps(view), [("fan", "done"), ("speed", "waiting")])
+        ai_assistant.stop(self.tid)
+        ai_assistant.select(never_ask=[])
+        self.assertEqual(ai_assistant.status()["never_ask"], [])
+
+    def test_a_decline_with_dont_ask_again_changes_nothing(self):
+        ai_assistant.select(mode="ask")
+        view = self.say("fan", act("fan", percent=20))
+        with patch.object(ai_providers, "ask", self.script):
+            ai_assistant.decide(self.tid, view["pending"]["n"], False, PRINTER, demo=True, always=True)
+            self.wait()
+        self.assertEqual(ai_assistant.status()["never_ask"], [])
+
+    def test_every_tool_has_a_level_a_label_and_a_place_in_the_rules(self):
+        for name, tool in ai_assistant.TOOLS.items():
+            self.assertIn(tool["level"], ("read", "safe", "ask", "handoff", "proposal"), name)
+            self.assertTrue(ai_assistant._label(name, {}), name)
+            self.assertFalse(ai_assistant._needs_yes(name, {}, "open"), name)
+            if tool["level"] in ("read", "handoff", "proposal"):
+                self.assertFalse(ai_assistant._needs_yes(name, {}, "ask"), name)
+        for name in ai_assistant.HIGH_STAKES:
+            self.assertTrue(ai_assistant._needs_yes(name, {}, "free"), name)
+
+
+class TestConnections(Base):
+    """Several AIs connected at once: a Claude plan, a ChatGPT plan and keys, with one in use."""
+
+    def connect(self, pid):
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            return ai_assistant.test(pid)
+
+    def test_each_connection_stays_and_the_owner_switches_between_them(self):
+        ai_providers.save_key("openai", "sk-test-0123456789abcdef")
+        with patch.object(ai_providers, "_program", return_value="/usr/bin/true"):
+            self.assertFalse(self.connect("codex")["first"] is False)
+            status = self.connect("openai")
+            self.assertEqual([c["id"] for c in status["connections"]], ["claude-code", "codex", "openai"])
+            self.assertEqual(status["provider"], "openai")
+            status = ai_assistant.select(provider="claude-code")
+            self.assertTrue(status["ready"])
+            self.assertEqual(status["provider"], "claude-code")
+            status = ai_assistant.select(provider="openai", model="gpt-9")
+            self.assertEqual((status["provider"], status["model"]), ("openai", "gpt-9"))
+            self.assertEqual(ai_assistant.select(provider="codex", model="gpt-9-top")["models"]["codex"], "gpt-9-top")
+
+    def test_the_first_connection_is_marked_once_for_the_welcome(self):
+        ai_providers.save_key("groq", "gsk-test-0123456789abcdef")
+        self.assertTrue(self.connect("groq")["first"])
+        self.assertFalse(self.connect("groq")["first"])
+
+    def test_an_untested_ai_is_not_in_use_until_its_check_passes(self):
+        ai_providers.save_key("mistral", "mk-test-0123456789abcdef")
+        status = ai_assistant.select(provider="mistral", model="mistral-large-9")
+        self.assertEqual(status["provider"], "claude-code")
+        self.assertEqual(status["models"]["mistral"], "mistral-large-9")
+        self.assertTrue(status["ready"])
+
+    def test_forgetting_the_one_in_use_falls_back_to_another(self):
+        ai_providers.save_key("openai", "sk-test-0123456789abcdef")
+        self.connect("openai")
+        with patch.object(ai_providers, "_program", return_value="/usr/bin/true"):
+            status = ai_assistant.forget("openai")
+            self.assertEqual(status["provider"], "claude-code")
+            self.assertTrue(status["ready"])
+            status = ai_assistant.forget("claude-code")
+        self.assertFalse(status["ready"])
+        self.assertEqual(status["connections"], [])
+
+    def test_a_saved_setup_from_the_first_version_still_works(self):
+        ai_assistant.storage.save_json(ai_assistant._SETTINGS_PATH, {"provider": "claude-code", "tested": "claude-code",
+                                                                    "mode": "balanced", "models": {}})
+        with patch.object(ai_providers, "_program", return_value="/usr/bin/true"):
+            status = ai_assistant.status()
+        self.assertTrue(status["ready"])
+        self.assertEqual(status["mode"], "balanced")
+
+    def test_the_tokens_a_service_reports_are_added_up_and_nothing_is_estimated(self):
+        def answer(text, tokens_in, tokens_out, cost=None):
+            reply = ai_providers.Reply(text)
+            reply.usage = {"model": "claude-test-9", "in": tokens_in, "out": tokens_out, "cost_usd": cost}
+            return reply
+        self.idle()
+        view = self.say("home", answer(act("home"), 900, 30, 0.01), answer("Homed.", 1000, 12, 0.02))
+        self.assertEqual(view["usage"], {"answers": 2, "in": 1900, "out": 42, "counted": 2, "cost_usd": 0.03,
+                                         "model": "claude-test-9"})
+        ai_assistant.clear(self.tid)
+        view = self.say("hi", "Plain text with no usage.")
+        self.assertEqual((view["usage"]["answers"], view["usage"]["counted"], view["usage"]["in"]), (1, 0, 0))
+
+
+def closed(triangles):
+    """Every edge is used once in each direction: a watertight solid with its faces outward."""
+    edges = {}
+    for t in triangles:
+        for a, b in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+            key = (tuple(round(v, 6) for v in a), tuple(round(v, 6) for v in b))
+            edges[key] = edges.get(key, 0) + 1
+    return all(n == 1 and edges.get((b, a)) == 1 for (a, b), n in edges.items())
+
+
+def volume(triangles):
+    return sum(a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])
+               for a, b, c in triangles) / 6
+
+
+class TestAbilities(Base):
+    def setUp(self):
+        super().setUp()
+        file_library.reset()
+        self.addCleanup(file_library.reset)
+
+    def test_every_shape_is_a_closed_solid_with_its_faces_outward(self):
+        import math
+        expected = {"box": 20 * 20 * 20, "cylinder": math.pi * 100 * 20, "cone": math.pi * 100 * 20 / 3,
+                    "sphere": 4 / 3 * math.pi * 1000, "tube": math.pi * (100 - 36) * 20, "prism": None}
+        for shape, wanted in expected.items():
+            triangles = ai_assistant._shape(shape, diameter=20, inner_diameter=12, height=20, segments=96, sides=6)
+            self.assertTrue(closed(triangles), shape)
+            self.assertGreater(volume(triangles), 0, shape)
+            if wanted:
+                self.assertAlmostEqual(volume(triangles) / wanted, 1, delta=0.01, msg=shape)
+
+    def test_a_tube_needs_a_hole_smaller_than_itself(self):
+        with self.assertRaises(ValueError):
+            ai_assistant._shape("tube", diameter=10, inner_diameter=12, height=5)
+
+    def test_it_builds_one_model_from_placed_parts(self):
+        made = ai_assistant._build_model([{"shape": "box", "width": 40, "depth": 20, "height": 4},
+                                          {"shape": "cylinder", "diameter": 8, "height": 30, "at": [20, 10, 4]},
+                                          {"shape": "box", "width": 10, "depth": 10, "height": 2, "rotate": [0, 0, 90], "at": [50, 0, 0]}],
+                                         name="peg stand")
+        self.assertEqual(made["size_mm"], [50, 20, 34])
+        self.assertTrue(made["saved_as"].startswith("peg-stand"))
+        self.assertEqual(ai_assistant._model_info(made["saved_as"])["lowest_z"], 0)
+        with self.assertRaises(ValueError):
+            ai_assistant._build_model([])
+        with self.assertRaises(ai_assistant.Refused):
+            ai_assistant._build_model([{"shape": "box"}] * 41)
+
+    def test_settings_come_as_a_checked_list_to_apply_never_as_a_change(self):
+        view = self.say("stronger", act("suggest_settings", changes={"layer_height": 0.2, "sparse_infill_density": 25},
+                                         why="Thicker layers and more infill for a stronger part."), "Here you go.")
+        row = [m for m in view["messages"] if m["role"] == "action"][0]
+        self.assertEqual(row["status"], "done")
+        self.assertEqual([(c["key"], c["value"]) for c in row["proposal"]["changes"]],
+                         [("layer_height", "0.2"), ("sparse_infill_density", "25%")])
+        self.assertEqual(row["proposal"]["changes"][0]["label"], "Layer height")
+        self.assertIn("stronger part", row["proposal"]["why"])
+        ai_assistant.clear(self.tid)
+        view = self.say("silly", act("suggest_settings", changes={"layer_height": 9}) + act("suggest_settings", changes={"start_gcode": "G1"}))
+        self.assertEqual([s[1] for s in self.steps(view)], ["refused", "refused"])
+
+    def test_the_settings_list_is_searchable_and_never_floods_the_model(self):
+        self.assertIn("note", ai_assistant._print_settings())
+        found = ai_assistant._print_settings("infill")["settings"]
+        self.assertTrue(found and all("infill" in (r["key"] + r["label"]).lower() for r in found[:3]))
+        self.assertLess(len(json.dumps(ai_assistant._print_settings("wall"))), ai_assistant.MAX_RESULT)
+
+    def test_it_opens_a_screen_for_the_owner(self):
+        view = self.say("show care", act("open_page", place="care") + act("open_page", place="bank"))
+        rows = [m for m in view["messages"] if m["role"] == "action"]
+        self.assertEqual(rows[0]["handoff"], {"kind": "page", "filename": None, "place": "care"})
+        self.assertEqual(rows[1]["status"], "refused")
+
+    def test_advice_only_may_still_suggest_and_open_a_screen(self):
+        ai_assistant.select(mode="advice")
+        view = self.say("x", act("open_page", place="care") + act("suggest_settings", changes={"layer_height": 0.2}) + act("queue_tidy"))
+        self.assertEqual([s[1] for s in self.steps(view)], ["done", "done", "refused"])
+
+    def test_queue_care_notes_and_spools_work_through_the_same_checked_functions(self):
+        file_library.add_samples()
+        name = next(f["name"] for f in ai_assistant._files() if f["name"].endswith(".gcode"))
+        ai_assistant.select(mode="free")
+        view = self.say("tidy up", act("queue_add", filename=name) + act("logbook_add", problem="Stringing on T1", fix="Dried the spool")
+                        + act("spool_add", material="PLA", color_name="Red", color_hex="#ff0000", grams_remaining=800)
+                        + act("logbook") + act("queue") + act("filament"), "Done.")
+        self.assertEqual([s[1] for s in self.steps(view)], ["done"] * 6, [m.get("detail") for m in view["messages"]])
+        told = self.script.seen[1][-1]["text"]
+        self.assertIn("Stringing on T1", told)
+        self.assertIn(name, told)
+        self.assertIn("Red", told)
+
+    def test_a_switched_off_part_of_the_app_refuses_in_words(self):
+        modules.set_enabled("print_queue", False)
+        modules.set_enabled("maintenance", False)
+        view = self.say("x", act("queue_tidy") + act("care_snooze", task_id="nozzle", days=3) + act("maintenance"))
+        details = [m["detail"] for m in view["messages"] if m["role"] == "action"]
+        self.assertIn("The print queue is switched off", details[0])
+        self.assertIn("Care is switched off", details[1])
+        self.assertIn("Care is switched off", details[2])
+
+    def test_the_instructions_tell_it_to_act_and_treat_file_text_as_data(self):
+        ai_assistant.select(mode="free")
+        self.say("hi", "Hello.")
+        system = self.script.systems[0]
+        for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "say you,",
+                      "- suggest_settings:", "asks only before it ends a print early"):
+            self.assertIn(words, system)
+        self.assertLess(len(system), 12000)
+
+
+FAKE_KEYRING = textwrap.dedent('''\
+    #!/usr/bin/env python3
+    """A stand-in for `secret-tool` and macOS `security`: one JSON file is the keyring."""
+    import json, os, sys
+    path, args = os.environ["FAKE_KEYRING"], sys.argv[1:]
+    json.dump(args, open(path + ".args", "a")); open(path + ".args", "a").write("\\n")
+    if os.environ.get("FAKE_KEYRING_LOCKED"):
+        sys.exit(1)
+    ring = json.load(open(path)) if os.path.exists(path) else {}
+    def save(): json.dump(ring, open(path, "w"))
+    if os.path.basename(sys.argv[0]) == "secret-tool":
+        name = args[args.index("account") + 1]
+        if args[0] == "store": ring[name] = sys.stdin.read(); save()
+        elif args[0] == "lookup":
+            if name not in ring: sys.exit(1)
+            sys.stdout.write(ring[name])
+        elif args[0] == "clear": ring.pop(name, None); save()
+    else:
+        if args == ["-i"]:
+            words = sys.stdin.read().split()
+            ring[words[words.index("-a") + 1]] = words[words.index("-w") + 1]; save()
+        else:
+            name = args[args.index("-a") + 1]
+            if args[0] == "find-generic-password":
+                if name not in ring: sys.exit(44)
+                print(ring[name])
+            elif args[0] == "delete-generic-password": ring.pop(name, None); save()
+''')
+
+
+@unittest.skipIf(os.name != "posix", "the stand-in keyrings are scripts")
+class TestKeyStorage(unittest.TestCase):
+    KEY = "sk-test-0123456789abcdefXYZ9"
+
+    def setUp(self):
+        ai_providers.reset()
+        self.addCleanup(ai_providers.reset)
+        self.dir = tempfile.mkdtemp(prefix="dv-ring-")
+        for name in ("secret-tool", "security"):
+            path = os.path.join(self.dir, name)
+            with open(path, "w") as handle:
+                handle.write(FAKE_KEYRING)
+            os.chmod(path, 0o755)
+        self.ring = os.path.join(self.dir, "ring.json")
+
+    def use(self, store, **extra):
+        env = patch.dict(os.environ, {"DEJAVU_KEY_STORE": store, "FAKE_KEYRING": self.ring,
+                                      "PATH": self.dir + os.pathsep + os.environ["PATH"], **extra})
+        env.start()
+        self.addCleanup(env.stop)
+        program = patch.object(ai_vault, "SECURITY", os.path.join(self.dir, "security"))
+        program.start()
+        self.addCleanup(program.stop)
+
+    def on_disk(self):
+        with open(ai_providers._KEYS_PATH) as handle:
+            return handle.read()
+
+    def test_with_a_keyring_the_key_is_not_in_any_deja_vu1_file(self):
+        for store in ("secret-service", "keychain"):
+            self.use(store)
+            row = ai_providers.save_key("openai", self.KEY)
+            self.assertEqual((row["has_key"], row["key_hint"], row["key_store"]), (True, "…XYZ9", store))
+            self.assertNotIn(self.KEY, self.on_disk())
+            ai_vault.forget_cache()
+            self.assertEqual(ai_providers._key("openai"), self.KEY)
+            self.assertTrue(ai_providers.security()["encrypted"])
+            self.assertEqual(ai_providers.security()["problem"], "")
+            with open(self.ring + ".args") as handle:
+                self.assertNotIn(self.KEY, handle.read(), "a key must never travel in a command line")
+            ai_providers.forget("openai")
+            with open(self.ring) as handle:
+                self.assertEqual(json.load(handle), {})
+            self.assertFalse(ai_providers.describe("openai")["has_key"])
+
+    def test_a_locked_keyring_never_loses_a_key_and_says_where_it_went(self):
+        self.use("secret-service", FAKE_KEYRING_LOCKED="1")
+        row = ai_providers.save_key("openai", self.KEY)
+        self.assertEqual(row["key_store"], "file")
+        ai_vault.forget_cache()
+        self.assertEqual(ai_providers._key("openai"), self.KEY)
+        self.assertIn("private file instead", ai_providers.security()["problem"])
+        if os.name == "posix":
+            self.assertEqual(stat.S_IMODE(os.stat(ai_providers._KEYS_PATH).st_mode), 0o600)
+
+    def test_windows_protection_falls_back_cleanly_where_it_does_not_exist(self):
+        self.use("dpapi")
+        self.assertEqual(ai_providers.save_key("openai", self.KEY)["key_store"], "file")
+        ai_vault.forget_cache()
+        self.assertEqual(ai_providers._key("openai"), self.KEY)
+
+    def test_the_plain_file_says_it_is_not_encrypted(self):
+        self.use("file")
+        ai_providers.save_key("openai", self.KEY)
+        told = ai_providers.security()
+        self.assertFalse(told["encrypted"])
+        self.assertIn("not encrypted", told["how"])
+        self.assertIn(self.KEY, self.on_disk())
+
+    def test_keys_saved_before_the_keyring_move_into_it(self):
+        self.use("file")
+        ai_providers.save_key("openai", self.KEY)
+        ai_providers.save_key("custom", "local-key-0123456789", "http://192.168.1.20:8080/v1")
+        os.environ["DEJAVU_KEY_STORE"] = "secret-service"
+        ai_vault.forget_cache()
+        self.assertEqual(ai_providers.protect_saved_keys(), 2)
+        self.assertNotIn(self.KEY, self.on_disk())
+        with open(ai_providers.storage.prev_path(ai_providers._KEYS_PATH)) as handle:
+            self.assertNotIn(self.KEY, handle.read())
+        ai_vault.forget_cache()
+        self.assertEqual(ai_providers._key("openai"), self.KEY)
+        self.assertEqual(ai_providers.describe("custom")["base_url"], "http://192.168.1.20:8080/v1")
+        self.assertEqual(ai_providers.protect_saved_keys(), 0)
+
+    def test_a_key_the_keychain_command_cannot_carry_goes_to_the_file(self):
+        self.use("keychain")
+        odd = 'sk-"quoted"-0123456789'
+        self.assertEqual(ai_providers.save_key("openai", odd)["key_store"], "file")
+        ai_vault.forget_cache()
+        self.assertEqual(ai_providers._key("openai"), odd)
+
+    def test_a_key_in_the_environment_is_used_and_nothing_is_stored(self):
+        self.use("file", GROQ_API_KEY="gsk-from-environment-0123")
+        row = ai_providers.describe("groq")
+        self.assertEqual((row["has_key"], row["from_environment"], row["key_store"], row["key_hint"]),
+                         (True, True, "environment", ""))
+        self.assertEqual(ai_providers._key("groq"), "gsk-from-environment-0123")
+        self.assertFalse(os.path.exists(ai_providers._KEYS_PATH) and "gsk-from" in self.on_disk())
+
+
+class Bouncer(BaseHTTPRequestHandler):
+    """Answers every request with a redirect to another address."""
+    target = ""
+
+    def _answer(self):
+        self.send_response(302)
+        self.send_header("Location", Bouncer.target + self.path)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    do_GET = do_POST = _answer
+
+    def log_message(self, *args):
+        pass
+
+
+class TestKeySafety(unittest.TestCase):
+    KEY = "sk-test-0123456789abcdefXYZ9"
+
+    def setUp(self):
+        ai_providers.reset()
+        self.addCleanup(ai_providers.reset)
+        Recorder.seen, Recorder.status = [], 200
+        Recorder.reply = {"choices": [{"message": {"content": "stolen"}}]}
+        self.server, self.base = serve(Recorder)
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+
+    def test_a_redirect_is_never_followed_so_a_key_cannot_be_carried_elsewhere(self):
+        Bouncer.target = self.base
+        bouncer, address = serve(Bouncer)
+        self.addCleanup(bouncer.server_close)
+        self.addCleanup(bouncer.shutdown)
+        ai_providers.save_key("groq", self.KEY)
+        with patch.dict(ai_providers._BY_ID["groq"], {"base": address}), self.assertRaises(ai_providers.AIError) as caught:
+            ai_providers.ask("groq", "m", "S", [{"role": "user", "text": "x"}])
+        self.assertIn("didn't follow", str(caught.exception))
+        self.assertEqual(Recorder.seen, [])
+
+    def test_a_key_never_travels_unencrypted_to_the_internet(self):
+        with self.assertRaises(ValueError) as caught:
+            ai_providers.save_key("custom", self.KEY, "http://example.com/v1")
+        self.assertIn("only sent over https", str(caught.exception))
+        ai_providers.save_key("custom", self.KEY, "https://example.com/v1")
+        with self.assertRaises(ai_providers.AIError):
+            ai_providers._http("custom", "http://example.com/v1/models", headers={"Authorization": "Bearer " + self.KEY})
+        for home in ("http://localhost:8080/v1", "http://192.168.1.20:1234/v1", "http://printer-pc.local:8080/v1",
+                     "http://10.0.0.7/v1", "http://mybox:11434/v1"):
+            ai_providers.save_key("custom", self.KEY, home)
+        for public in ("8.8.8.8", "example.com", "evil.local.example.com"):
+            self.assertFalse(ai_providers._local_host(public), public)
+
+    def test_what_the_page_is_told_about_safety_holds_no_key(self):
+        ai_providers.save_key("openai", self.KEY)
+        shown = json.dumps(ai_assistant.status())
+        self.assertNotIn(self.KEY, shown)
+        self.assertNotIn(self.KEY[:12], shown)
+        told = ai_assistant.status()["security"]
+        self.assertEqual(len(told["rules"]), 3)
+        self.assertIn(told["store"], ai_vault.STORES)
+
+
+class TestModelLists(unittest.TestCase):
+    KEY = "sk-test-0123456789abcdefXYZ9"
+
+    def setUp(self):
+        ai_providers.reset()
+        self.addCleanup(ai_providers.reset)
+        Recorder.seen, Recorder.status = [], 200
+        self.server, self.base = serve(Recorder)
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+
+    def listed(self, pid, reply, models="models"):
+        Recorder.reply = reply
+        ai_providers.save_key(pid, self.KEY)
+        target = self.base + "/" + models
+        with patch.dict(ai_providers._BY_ID[pid], {"base": self.base, "models": target}):
+            return ai_providers.list_models(pid, refresh=True)
+
+    def test_the_newest_model_comes_first_and_is_the_starting_choice(self):
+        rows = [{"id": "gpt-7", "created": 1700000000 + 86400 * i} for i in range(1)]
+        rows += [{"id": "gpt-8", "created": 1800000000}, {"id": "gpt-9", "created": 1900000000},
+                 {"id": "gpt-9-mini", "created": 1900000500}, {"id": "gpt-9-preview", "created": 1900000900},
+                 {"id": "text-embedding-9", "created": 1900001000}, {"id": "gpt-8.5", "created": 1850000000}]
+        listed = self.listed("openai", {"data": rows})
+        self.assertEqual(listed["models"], ["gpt-9-preview", "gpt-9-mini", "gpt-9", "gpt-8.5", "gpt-8", "gpt-7"])
+        self.assertEqual(listed["suggested"], "gpt-9")
+
+    def test_anthropic_dates_and_names_are_read(self):
+        listed = self.listed("anthropic", {"data": [
+            {"id": "claude-opus-5-5", "display_name": "Claude Opus 5.5", "created_at": "2026-09-01T00:00:00Z", "type": "model"},
+            {"id": "claude-new-9", "display_name": "Claude New 9", "created_at": "2027-02-01T00:00:00Z", "type": "model"},
+            {"id": "claude-old-1", "display_name": "Claude Old", "created_at": "2024-02-01T00:00:00Z", "type": "model"},
+            {"id": "claude-mid-3", "display_name": "Claude Mid", "created_at": "2025-02-01T00:00:00Z", "type": "model"},
+            {"id": "claude-mid-4", "display_name": "Claude Mid 4", "created_at": "2025-08-01T00:00:00Z", "type": "model"}]})
+        self.assertEqual(listed["models"][0], "claude-new-9")
+        self.assertEqual(listed["rows"][0]["label"], "Claude New 9")
+        self.assertEqual(listed["suggested"], "claude-opus-5-5")
+
+    def test_googles_own_list_is_read_with_its_own_header(self):
+        listed = self.listed("google", {"models": [
+            {"name": "models/gemini-9.5-pro", "displayName": "Gemini 9.5 Pro", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/gemini-9.5-flash", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/gemini-10-pro-preview", "supportedGenerationMethods": ["generateContent"]},
+            {"name": "models/text-embedding-9", "supportedGenerationMethods": ["embedContent"]},
+            {"name": "models/aqa", "supportedGenerationMethods": ["generateAnswer"]}]})
+        self.assertEqual(listed["models"], ["gemini-10-pro-preview", "gemini-9.5-flash", "gemini-9.5-pro"])
+        self.assertEqual(listed["suggested"], "gemini-9.5-pro")
+        headers = {k.lower(): v for k, v in Recorder.seen[0][2].items()}
+        self.assertEqual(headers["x-goog-api-key"], self.KEY)
+        self.assertNotIn("authorization", headers)
+
+    def test_prices_are_shown_only_where_the_service_reports_them(self):
+        rows = [{"id": "anthropic/claude-opus-9", "created": 1900000000 + i, "pricing": {"prompt": "0.000004", "completion": "0.00002"}}
+                for i in range(1)] + [{"id": f"maker/model-{i}", "created": 1800000000 + i * 99999} for i in range(6)]
+        listed = self.listed("openrouter", {"data": rows})
+        top = listed["rows"][0]
+        self.assertEqual((top["id"], top["in_per_million"], top["out_per_million"]), ("anthropic/claude-opus-9", 4.0, 20.0))
+        self.assertEqual(listed["suggested"], "anthropic/claude-opus-9")
+        rows[0]["id"] = "gpt-9"
+        self.assertNotIn("in_per_million", self.listed("openai", {"data": rows})["rows"][0])
+
+    def test_a_host_of_many_makers_models_suggests_nothing(self):
+        listed = self.listed("groq", {"data": [{"id": "maker-a/big-70b"}, {"id": "maker-b/small-8b"}]})
+        self.assertEqual(listed["suggested"], "")
+        self.assertEqual(len(listed["models"]), 2)
+
+    def test_a_list_is_kept_for_a_while_and_read_again_when_asked(self):
+        self.listed("openai", {"data": [{"id": "gpt-9"}]})
+        Recorder.reply = {"data": [{"id": "gpt-10"}]}
+        with patch.dict(ai_providers._BY_ID["openai"], {"base": self.base}):
+            self.assertEqual(ai_providers.list_models("openai")["models"], ["gpt-9"])
+            self.assertEqual(ai_providers.list_models("openai", refresh=True)["models"], ["gpt-10"])
+
+    def test_no_model_name_is_written_into_the_connections_file(self):
+        with open(ai_providers.__file__) as handle:
+            source = handle.read()
+        import re
+        body = source[source.index("PROVIDERS = ["):source.index("_BY_ID = ")]
+        self.assertEqual(re.findall(r"(?:gpt|gemini|grok|llama|mistral|qwen)-\\d[\\w.-]*\\d", body), [])
+
+    def test_every_address_is_https_and_distinct(self):
+        bases = [p["base"] for p in ai_providers.PROVIDERS if p["kind"] == "key"]
+        self.assertEqual(len(bases), len(set(bases)))
+        self.assertNotIn("hyperbolic.xyz", " ".join(bases))
 
 
 class TestRoutes(APITestCase):
@@ -545,6 +1153,36 @@ class TestRoutes(APITestCase):
         self.assertEqual(self.get("/api/assistant")[0], 403)
         self.assertEqual(self.post("/api/assistant/chat", {"thread": "thread-1", "text": "hi"})[0], 403)
         self.assertEqual(self.post("/api/assistant/key", {"provider": "openai", "api_key": "k" * 20})[0], 403)
+
+    def test_dont_ask_again_and_taking_it_back_through_the_server(self):
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            self.post("/api/assistant/test", {"provider": "claude-code"})
+        self.assertEqual(self.post("/api/assistant/select", {"mode": "ask"})[1]["mode"], "ask")
+        script = Script(act("fan", percent=35), "Done.")
+        with patch.object(ai_providers, "ask", script):
+            self.post("/api/assistant/chat?demo=1&printer=u1-workshop", {"thread": "thread-2", "text": "fan 35"})
+            for _ in range(300):
+                view = self.get("/api/assistant/thread?id=thread-2")[1]
+                if not view["busy"]:
+                    break
+                time.sleep(0.01)
+            status, _ = self.post("/api/assistant/decide?demo=1&printer=u1-workshop",
+                                  {"thread": "thread-2", "n": view["pending"]["n"], "approve": True, "always": True})
+            self.assertEqual(status, 200)
+            for _ in range(300):
+                if not self.get("/api/assistant/thread?id=thread-2")[1]["busy"]:
+                    break
+                time.sleep(0.01)
+        self.assertEqual([r["tool"] for r in self.get("/api/assistant")[1]["never_ask"]], ["fan"])
+        self.assertEqual(self.post("/api/assistant/select", {"never_ask": []})[1]["never_ask"], [])
+
+    def test_the_status_says_how_keys_are_kept_and_which_mode_is_the_default(self):
+        body = self.get("/api/assistant")[1]
+        self.assertEqual(body["default_mode"], "free")
+        self.assertEqual(sorted(body["modes"]), ["advice", "ask", "balanced", "free", "open"])
+        self.assertIn("how", body["security"])
+        self.assertEqual(body["connections"], [])
+        self.assertEqual(self.post("/api/assistant/check", {"provider": "openai"})[0], 400)
 
     def test_saving_a_key_answers_without_it(self):
         status, body = self.post("/api/assistant/key", {"provider": "mistral", "api_key": "mk-0123456789abcdef"})
