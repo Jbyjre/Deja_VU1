@@ -52,6 +52,8 @@ import print_gate
 import print_queue
 import printer_control
 import process_settings
+import shapes
+import slicer_bridge
 import storage
 import update_hold
 import watch_only
@@ -112,6 +114,7 @@ def _settings():
     data.setdefault("provider", "")
     data.setdefault("models", {})
     data["prices"] = data.get("prices") if isinstance(data.get("prices"), dict) else {}
+    data["watch"] = _watch_settings(data)
     if not isinstance(data.get("cap_usd"), (int, float)) or data["cap_usd"] <= 0:
         data["cap_usd"] = None
     if data.get("mode") not in MODES:
@@ -157,6 +160,7 @@ def status():
         "ready": bool(active),
         "price": _price_row(s["provider"], s["models"].get(s["provider"], ai_providers.DEFAULT_MODELS.get(s["provider"], ""))),
         "cap_usd": s["cap_usd"],
+        "watch": watch_view(),
         "limits": LIMITS,
         "security": ai_providers.security(),
         "tools": [{"name": name, "level": t["level"], "what": t["what"]} for name, t in TOOLS.items()],
@@ -522,11 +526,25 @@ def _ring(n):
     return [(math.cos(2 * math.pi * i / n), math.sin(2 * math.pi * i / n)) for i in range(n)]
 
 
-def _shape(shape, width=20, depth=20, height=20, diameter=20, inner_diameter=None, segments=48, sides=6, thickness=None, **_):
+def _shape(shape, width=20, depth=20, height=20, diameter=20, inner_diameter=None, segments=48, sides=6, thickness=None,
+           points=None, holes=None, profile=None, corner_radius=None, teeth=20, module=2, bore=None, **_):
     """The triangles of one solid standing on Z = 0, faces outward. Sizes in mm."""
     number = printer_control._number
     shape = str(shape or "").lower()
     tris = []
+    if shape in ("outline", "extrude", "polygon"):
+        return shapes.extrude(points, number(height, "Height", 0.1, 270), holes=holes,
+                              radius=number(corner_radius or 0, "Corner radius", 0, 100))
+    if shape in ("revolve", "lathe", "spin"):
+        return shapes.revolve(profile, segments=int(number(segments, "Segments", 8, 256)) if segments != 48 else 96)
+    if shape == "gear":
+        outline, _info = shapes.gear_outline(int(number(teeth, "Teeth", 6, 200)), number(module, "Module", 0.3, 10))
+        hole = [shapes.circle(number(bore, "Bore", 0.5, 200), 64)] if bore not in (None, "", 0) else None
+        return shapes.extrude(outline, number(height, "Height", 0.2, 270), holes=hole)
+    if shape == "box" and corner_radius not in (None, "", 0):
+        w, d = number(width, "Width", 0.2, 270), number(depth, "Depth", 0.2, 270)
+        return shapes.extrude([[0, 0], [w, 0], [w, d], [0, d]], number(height, "Height", 0.2, 270),
+                              radius=number(corner_radius, "Corner radius", 0, min(w, d) / 2))
     if shape == "sphere":
         r = number(diameter, "Diameter", 0.2, 270) / 2
         n = int(number(segments, "Segments", 8, 128))
@@ -594,7 +612,8 @@ def _shape(shape, width=20, depth=20, height=20, diameter=20, inner_diameter=Non
                 if top:
                     tris.append(((0, 0, h), hi0, hi1))
     else:
-        raise ValueError("The assistant can make a box, cylinder, cone, sphere, tube, prism, wedge or torus")
+        raise ValueError("The assistant can make a box, cylinder, cone, sphere, tube, prism, wedge, torus, outline, "
+                         "revolve or gear")
     return tris
 
 
@@ -770,6 +789,184 @@ def _suggest_settings(changes, why=""):
             "note": "A list with a button is on screen. Nothing changes until it is pressed and the profile saved."}
 
 
+SLICE_WAIT_S = 240          # how long one step waits for the engine before handing back a job to check on
+
+
+def _slicer_profiles():
+    s = slicer_bridge.public_settings()
+    return {"profiles": [{"id": p.get("id"), "name": p.get("name")} for p in s["profiles"]],
+            "default": s["default_profile"], "problem": s["problem"] or ""}
+
+
+def _job_words(job):
+    if not job:
+        raise ValueError("There is no slicing job with that id")
+    base = {"job": job["id"], "model": job["model"], "profile": job["profile"]}
+    if job["status"] in ("waiting", "running"):
+        return {**base, "status": "still slicing", "step": job.get("step") or "",
+                "note": "The engine is still working. Check again with slice_status."}
+    if job["status"] in ("failed", "cancelled"):
+        cause = (job.get("cause") or {}).get("title") or ""
+        raise ValueError((job.get("error") or "The slice failed") + (f" ({cause})" if cause else ""))
+    files = [{"name": f["name"], "layers": f.get("layers"), "estimated_hours": f.get("estimated_hours"),
+              "filament_grams": f.get("filament_grams"), "preflight": f.get("preflight")}
+             for f in (job.get("report") or {}).get("files", [])]
+    return {**base, "status": "sliced", "files": files,
+            "note": "Saved to the library. To print one, use start_print: Confirm Print checks it first."}
+
+
+def _slice(name, profile=None):
+    """Slice a library model with a saved profile and wait (a few minutes at most) for the G-code."""
+    job = slicer_bridge.start_job(file_library.clean_name(name), profile or None)
+    return _job_words(slicer_bridge.wait(job["id"], SLICE_WAIT_S))
+
+
+def _slice_status(job):
+    return _job_words(slicer_bridge.get_job(str(job or "")))
+
+
+# -- print watch: a camera check every few minutes while a real printer prints -------------
+
+WATCH_MINUTES = (5, 60)
+_watch = {"log": [], "last": {}, "usage": {"checks": 0, "in": 0, "out": 0, "cost_usd": 0.0}}
+_WATCH_SYSTEM = (
+    "You check one camera picture of a 3D print in progress on a Snapmaker U1, a printer with four heads. "
+    "Look for a failed print: loose strands like spaghetti, a part knocked loose or moved on the bed, a large "
+    "blob around the nozzle, or plastic laid in mid-air. Normal things are not failures: purge lines, a wipe "
+    "tower, supports, the heads and their docks, glare and shadows. Answer with only JSON: "
+    '{"verdict": "ok" | "worry" | "failed", "why": "one short sentence"}. Say failed only when the picture '
+    "clearly shows it. If the print can't be seen, answer worry and say why.")
+
+
+def _watch_settings(s):
+    w = s.get("watch") if isinstance(s.get("watch"), dict) else {}
+    try:
+        minutes = int(w.get("minutes") or 10)
+    except (TypeError, ValueError):
+        minutes = 10
+    return {"on": bool(w.get("on")), "minutes": max(WATCH_MINUTES[0], min(WATCH_MINUTES[1], minutes)),
+            "pause": bool(w.get("pause"))}
+
+
+def watch_settings(on=None, minutes=None, pause=None):
+    """Print watch: on or off, how often, and whether a clear failure pauses the print."""
+    with _lock:
+        s = _settings()
+        if on is not None:
+            s["watch"]["on"] = bool(on)
+        if minutes is not None:
+            s["watch"]["minutes"] = int(printer_control._number(minutes, "Minutes", *WATCH_MINUTES))
+        if pause is not None:
+            s["watch"]["pause"] = bool(pause)
+        storage.save_json(_SETTINGS_PATH, s)
+    return status()
+
+
+def _watch_verdict(answer):
+    text = str(answer or "")
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        data = json.loads(m.group(0)) if m else {}
+    except ValueError:
+        data = {}
+    verdict = str(data.get("verdict") or "").lower()
+    if verdict not in ("ok", "worry", "failed"):
+        return "worry", "The answer couldn't be read as a verdict: " + re.sub(r"\s+", " ", text)[:160]
+    return verdict, re.sub(r"\s+", " ", str(data.get("why") or ""))[:300]
+
+
+def _watch_log(entry):
+    _watch["log"].append({"at": time.time(), **entry})
+    del _watch["log"][:-30]
+    if entry.get("verdict") in ("worry", "failed"):
+        try:
+            live_feed.publish_event({"type": "ai_watch", "printer": entry["printer"], "printer_name": entry.get("printer_name"),
+                                     "verdict": entry["verdict"], "why": entry.get("why", ""), "paused": entry.get("paused")})
+        except Exception:
+            pass
+
+
+def watch_tick(now=None):
+    """One pass over the real printers: check each one that is printing and due. Returns the new log rows."""
+    now = time.time() if now is None else now
+    s = _settings()
+    w = s["watch"]
+    if not w["on"] or not modules.is_enabled("ai_assistant") or not modules.is_enabled("camera"):
+        return []
+    st = status()
+    if not st["ready"]:
+        return []
+    made = []
+    for printer in mock_moonraker.real_printer_ids():
+        try:
+            with mock_moonraker.use_printer(printer):
+                state = mock_moonraker.get_printer_state() or {}
+                if state.get("state") != "printing":
+                    _watch["last"].pop(printer, None)
+                    continue
+                if now - _watch["last"].get(printer, 0) < w["minutes"] * 60:
+                    continue
+                _watch["last"][printer] = now
+                name = state.get("printer_name") or printer
+                file = state.get("current_file") or ""
+                data, mime = mock_moonraker.camera_snapshot()
+        except Exception as error:
+            entry = {"printer": printer, "verdict": "skipped", "why": f"The camera couldn't be read: {error}"}
+            _watch_log(entry)
+            made.append(entry)
+            continue
+        if not str(mime).startswith("image/") or "svg" in str(mime) or len(data) > 4 * 1024 * 1024:
+            entry = {"printer": printer, "printer_name": name, "verdict": "skipped", "why": "No camera picture to study."}
+            _watch_log(entry)
+            made.append(entry)
+            continue
+        progress = state.get("progress")
+        done = f"{progress * 100:.0f}%" if isinstance(progress, (int, float)) else "unknown"
+        text = f"[Print check] Printer: {name}. File: {file or 'unknown'}. Progress: {done}."
+        try:
+            answer = ai_providers.ask(st["provider"], st["model"], _WATCH_SYSTEM,
+                                      [{"role": "user", "text": text, "images": [(mime, base64.b64encode(data).decode())]}])
+        except Exception as error:
+            entry = {"printer": printer, "printer_name": name, "verdict": "skipped", "why": f"The AI didn't answer: {error}"}
+            _watch_log(entry)
+            made.append(entry)
+            continue
+        used = getattr(answer, "usage", None) or {}
+        u = _watch["usage"]
+        u["checks"] += 1
+        u["in"] += used.get("in") or 0
+        u["out"] += used.get("out") or 0
+        cost = used.get("cost_usd")
+        if not isinstance(cost, (int, float)):
+            cost = _money(_price_row(st["provider"], st["model"]), used.get("in"), used.get("out"))
+        u["cost_usd"] = round(u["cost_usd"] + (cost or 0), 6)
+        verdict, why = _watch_verdict(answer)
+        entry = {"printer": printer, "printer_name": name, "file": file, "verdict": verdict, "why": why, "paused": False}
+        if verdict == "failed" and w["pause"]:
+            ok, result = _carry_out("pause", {}, _ctx(printer, False))
+            entry["paused"] = ok
+            if not ok:
+                entry["why"] += " It was not paused: " + str(result.get("refused") or "")
+        _watch_log(entry)
+        made.append(entry)
+    return made
+
+
+def watch_loop():
+    """Started by the server: a pass every 20 seconds, which does nothing while print watch is off."""
+    while True:
+        try:
+            watch_tick()
+        except Exception:
+            pass
+        time.sleep(20)
+
+
+def watch_view():
+    s = _settings()
+    return {**s["watch"], "log": list(reversed(_watch["log"][-12:])), "usage": dict(_watch["usage"])}
+
+
 def _open_page(place):
     place = str(place or "").strip().lower()
     if place not in PLACES:
@@ -802,6 +999,8 @@ TOOLS = {
     "model_info": _tool("read", "A 3D model's size, triangle count and whether it fits.", "name", _model_info),
     "logbook": _tool("read", "Problems and fixes noted for this printer.", "", _logbook_read),
     "print_settings": _tool("read", "The slicing settings you may suggest, with limits.", "find (a word, optional)", _print_settings),
+    "slicer_profiles": _tool("read", "The saved slicing profiles and which is the default.", "", _slicer_profiles),
+    "slice_status": _tool("read", "How a slicing job is going, and its G-code when done.", "job (id from slice)", _slice_status),
 
     "home": _tool("safe", "Home axes.", 'axes: ["X","Y","Z"] (optional, default all)', lambda axes=None: printer_control.home(axes)),
     "move_to": _tool("safe", "Move the head to a position in mm.", "x, y, z, speed (all optional, mm and mm/s)", _move),
@@ -818,10 +1017,12 @@ TOOLS = {
     "emergency_stop": _tool("safe", "Stop the printer at once (M112).", "", lambda: printer_control.emergency_stop()),
     "edit_model": _tool("safe", "Make a changed copy of a model: scale, fit to a size, turn or mirror.",
                         "name, scale | scale_xyz [x,y,z] | fit_mm, rotate_axis, rotate_degrees, mirror", _edit_model),
-    "make_shape": _tool("safe", "Make a simple model in mm: box, cylinder, cone, sphere, tube, prism, wedge (a ramp "
-                        "rising along X) or torus (a ring).",
-                        "shape, width, depth, height, diameter, inner_diameter, sides, thickness, name (as the shape needs)",
-                        _make_shape),
+    "make_shape": _tool("safe", "Make a model in mm: box (corner_radius rounds it), cylinder, cone, sphere, tube, prism, "
+                        "wedge (a ramp rising along X), torus (a ring), outline (points [[x,y],...] pushed up by height, "
+                        "holes [[[x,y],...]], corner_radius), revolve (profile [[radius,z],...] spun round Z: a cup, "
+                        "vase or knob) or gear (teeth, module = tooth size in mm, height, bore).",
+                        "shape and what it needs: width, depth, height, diameter, inner_diameter, sides, thickness, points, "
+                        "holes, profile, corner_radius, teeth, module, bore, name", _make_shape),
     "build_model": _tool("safe", "Make one model from parts placed together, cut away or kept where they overlap (a bracket "
                          "with screw holes, a box with a slot, a library model with a pocket). Parts work in order.",
                          "parts: [{shape and its sizes | model (a library file, lowest corner at 0, optional scale), "
@@ -830,6 +1031,8 @@ TOOLS = {
     "cut_holes": _tool("safe", "Make a copy of a library model with round holes drilled straight down.",
                        "name, holes: [{x, y (mm from the model's front-left corner), diameter, depth (optional: "
                        "through if left out), from top|bottom}], detail (optional)", _cut_holes),
+    "slice": _tool("safe", "Slice a library model (STL or 3MF) into G-code with a saved profile; waits a few minutes "
+                   "at most. Gives the time and filament the slicer worked out.", "name, profile (id, optional)", _slice),
     "fan_named": _tool("safe", "Set one of the printer's other fans by its name.", "name, percent 0-100",
                        lambda name, percent: printer_control.set_fan_generic(name, percent)),
     "queue_remove": _tool("safe", "Take a job out of the queue.", "item_id (from queue)", lambda item_id: print_queue.remove(item_id)),
@@ -881,15 +1084,17 @@ TOOLS = {
                               "changes {setting_name: value}, why (one or two sentences)", _suggest_settings),
 }
 # Steps that work without a printer: files, the queue, care records, notes, spools, screens.
-_OFFLINE = {"edit_model", "make_shape", "build_model", "cut_holes", "queue_add", "queue_remove", "queue_move", "queue_tidy", "care_done",
+_OFFLINE = {"edit_model", "make_shape", "build_model", "cut_holes", "slice", "queue_add", "queue_remove", "queue_move", "queue_tidy", "care_done",
             "care_snooze", "logbook_add", "spool_add", "spool_weight", "open_page", "suggest_settings", "start_print"}
 _NEEDS_PRINTER = {name for name, t in TOOLS.items() if t["level"] in ("safe", "ask")} - _OFFLINE
 _NEEDS_PRINTER |= {"status", "console", "look", "health", "filament_check"}
-_FILE_TOOLS = {"files", "file_info", "model_info", "edit_model", "make_shape", "build_model", "cut_holes", "start_print"}
+_FILE_TOOLS = {"files", "file_info", "model_info", "edit_model", "make_shape", "build_model", "cut_holes", "slice",
+               "start_print"}
 _GATES = {"queue": "print_queue", "queue_add": "print_queue", "queue_remove": "print_queue", "queue_move": "print_queue",
           "queue_tidy": "print_queue", "maintenance": "maintenance", "care_done": "maintenance", "care_snooze": "maintenance",
           "filament": "filament_inventory", "filament_check": "filament_inventory", "spool_add": "filament_inventory",
           "spool_weight": "filament_inventory", "print_settings": "auto_print", "suggest_settings": "auto_print",
+          "slice": "auto_print", "slice_status": "auto_print", "slicer_profiles": "auto_print",
           "costs": "cost_calculator", "look": "camera"}
 _WRITES_PRINTER = _NEEDS_PRINTER - {"status", "console", "look", "health", "filament_check"}
 
@@ -932,6 +1137,9 @@ def _label(name, args):
         "console": lambda: "Read the console", "model_info": lambda: f"Measure {g('name')}",
         "build_model": lambda: f"Build a model from {len(g('parts') or [])} parts",
         "cut_holes": lambda: f"Cut {len(g('holes') or [])} holes in {g('name')}",
+        "slice": lambda: f"Slice {g('name')}",
+        "slice_status": lambda: "Check the slice",
+        "slicer_profiles": lambda: "Read the slicing profiles",
         "fan_named": lambda: f"Set the fan {g('name')} to {g('percent')}%",
         "queue_remove": lambda: "Take a job out of the queue",
         "queue_move": lambda: f"Move a queued job {g('direction')}",
@@ -1078,7 +1286,11 @@ def _system(ctx, mode):
         "owner gets a list to apply. For a new part, use make_shape or build_model. build_model joins parts, cuts "
         "holes, slots and pockets (op cut) and keeps overlaps (op keep), and takes library models as parts; "
         "cut_holes drills round holes into a library model. Call model_info first for a library model's size. "
-        "Results are accurate to the grid size they report. Scale, turn and mirror with edit_model.",
+        "Results are accurate to the grid size they report. Scale, turn and mirror with edit_model. For a shape "
+        "drawn in a picture or described by its outline, use make_shape outline (trace the points in mm); for a "
+        "round object, revolve; for a gear, gear.",
+        "- To get a part ready to print: make or pick the model, slice it (slicer_profiles lists the profiles), "
+        "then start_print opens Confirm Print with the G-code. Say the time and filament the slicer reported.",
         "- Answer in the language the owner writes in. Keep the app's screen and button names, setting names, "
         "file names, G-code commands and macro names exactly as they appear, and add a translation in brackets "
         "the first time one matters. Asked to translate something, translate it.",

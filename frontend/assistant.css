@@ -177,6 +177,17 @@ html.ai-open .ai-launch { opacity: 0; pointer-events: none; }
 .ai-link { padding: 0; border: 0; background: none; font: inherit; color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .ai-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .ai-budget-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ai-switch { display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 0 0 10px; font: 600 13.5px/1.3 var(--font-sans); color: var(--text); cursor: pointer; }
+.ai-switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+.ai-switch-low { align-self: end; font-weight: 500; color: var(--text-dim); }
+.ai-watch-log { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.ai-watch-log li { padding: 8px 10px; border-radius: 12px; background: color-mix(in oklch, var(--text) 4%, transparent); border-left: 3px solid var(--text-faint); }
+.ai-watch-log li.ai-watch-ok { border-left-color: var(--ok-text, #2e7d32); }
+.ai-watch-log li.ai-watch-worry { border-left-color: var(--warn-text); }
+.ai-watch-log li.ai-watch-failed { border-left-color: #c8102e; }
+.ai-watch-log b { font: 650 12.5px/1.3 var(--font-sans); }
+.ai-watch-log span { margin-left: 6px; font: 500 11.5px/1.3 var(--font-mono); color: var(--text-faint); }
+.ai-watch-log p { margin: 3px 0 0; font: 500 12.5px/1.4 var(--font-sans); color: var(--text-dim); }
 @media (max-width: 520px) { .ai-budget-row { grid-template-columns: 1fr; } }
 .ai-always { flex-basis: 100%; padding: 2px 0; border: 0; background: none; cursor: pointer; text-align: left; font: 600 12px/1.3 var(--font-sans); color: var(--text-dim); text-decoration: underline; text-underline-offset: 3px; }
 .ai-always:hover { color: var(--text); }

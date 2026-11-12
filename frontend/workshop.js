@@ -311,6 +311,10 @@ const Workshop = (() => {
       toast(`Rule "${event.rule_name}": ${event.ok ? event.detail : event.error}`, event.ok ? 'ok' : 'warn', 6500);
       loadRuleLog();
       loadRules();
+    } else if (event.type === 'ai_watch') {
+      // backend/ai_assistant.py watch_tick: the AI looked at the camera during a print and something looked wrong.
+      const what = event.verdict === 'failed' ? (event.paused ? 'the print looks failed, so it was paused' : 'the print looks failed') : 'the print may need a look';
+      toast(`${event.printer_name || 'Printer'}: ${what}. ${event.why || ''}`, event.verdict === 'failed' ? 'bad' : 'warn', 15000);
     } else if (event.type === 'printer_moved') {
       // backend/refind.py: the same printer (same serial number) answered at another address.
       toast(`${event.printer_name} answered at a new address, ${event.to.replace(/^https?:\/\//, '')}. Deja Vu1 uses it now.`, 'ok', 9000);

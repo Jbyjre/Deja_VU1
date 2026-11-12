@@ -170,7 +170,7 @@
       <section class="card liquid-glass" id="ai-now"><div class="card-head"><div><h2>Your AI</h2><p class="card-sub">${st.demo ? 'Online demo: a scripted helper stands in for an AI' : now ? 'Connected and in use' : 'Nothing connected yet'}</p></div></div>
         ${now ? `<p class="ai-page-now"><b>${esc(now.name)}</b><span>${esc(now.model || 'its usual model')}</span></p>
           ${joined.length > 1 ? `<label class="ai-field"><span>Switch to</span><select id="ai-page-conn">${joined.map(c => `<option value="${esc(c.id)}"${c.id === st.provider ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}`
-        : `<p class="ai-hint">Deja Vu1 does everything without an AI. Connect one and you can also ask for things in your own words: run the printer, explain a warning, check a print through the camera, make a part or cut holes in one of yours.</p>
+        : `<p class="ai-hint">Deja Vu1 does everything without an AI. Connect one and you can also ask for things in your own words: run the printer, explain a warning, check a print through the camera, make a part or cut holes in one of yours, slice it, and watch a print for you.</p>
           <p class="ai-hint">Best with a Claude or ChatGPT plan you already pay for. A model on this computer and an API key work too.</p>`}
         <div class="ai-actions">${now || st.demo ? '<button class="btn primary" type="button" data-ai-open="chat">Open the assistant</button>' : ''}
           <button class="btn${now || st.demo ? '' : ' primary'}" type="button" data-ai-open="connect">${now ? 'Add or manage connections' : 'Connect an AI'}</button></div>
@@ -180,6 +180,7 @@
         ${(st.never_ask || []).length ? `<p class="ai-hint ai-never">Never asks about: ${st.never_ask.map(n => `<button type="button" class="ai-chip" data-reask="${esc(n.tool)}" aria-label="Ask again about: ${esc(n.label)}">${esc(n.label)} <span aria-hidden="true">×</span></button>`).join('')}</p>` : ''}
         <p class="ai-hint ai-page-tip">${limitsText()}</p></section>
       ${costCard()}
+      ${watchCard()}
       <section class="card liquid-glass" id="ai-private"><div class="card-head"><div><h2>Privacy and keys</h2><p class="card-sub">What leaves this computer, and how a key is kept</p></div></div>
         <p class="ai-hint">The AI you choose receives what you type, the printer’s readings and the results of its steps. A camera picture goes only when it looks through the camera. A model on this computer keeps all of that at home.</p>
         <div class="ai-safe"><h4>How a key is kept on this computer</h4>
@@ -213,6 +214,24 @@
       <p class="ai-hint ai-page-tip">Before each message the assistant shows about how many tokens it will read and what that costs. Once the service answers, its own count is used. With a limit, a request that would pass it stops and says so.</p>` : ''}</section>`;
   }
 
+  function watchCard() {
+    const w = st.watch || {}, now = (st.connections || []).find(c => c.id === st.provider);
+    const when = t => new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const word = { ok: 'Looks fine', worry: 'Worth a look', failed: 'Looks failed', skipped: 'Not checked' };
+    const log = (w.log || []).slice(0, 6).map(e => `<li class="ai-watch-${esc(e.verdict)}"><b>${esc(word[e.verdict] || e.verdict)}</b>
+      <span>${esc(e.printer_name || e.printer || '')} · ${when(e.at)}${e.paused ? ' · paused' : ''}</span><p>${esc(e.why || '')}</p></li>`).join('');
+    const u = w.usage || {};
+    const body = st.demo
+      ? '<p class="ai-hint">Print watch needs a real printer’s camera, so it is off in the online demo.</p>'
+      : !now ? '<p class="ai-hint">Connect an AI to use print watch.</p>'
+      : `<label class="ai-switch"><input type="checkbox" id="ai-watch-on"${w.on ? ' checked' : ''}> <span>Check my prints through the camera</span></label>
+        <div class="ai-budget-row"><label class="ai-field"><span>Every</span><select id="ai-watch-min">${[5, 10, 15, 30, 60].map(m => `<option value="${m}"${m === w.minutes ? ' selected' : ''}>${m} minutes</option>`).join('')}</select></label>
+        <label class="ai-switch ai-switch-low"><input type="checkbox" id="ai-watch-pause"${w.pause ? ' checked' : ''}> <span>Pause when it clearly sees a failed print</span></label></div>
+        <p class="ai-hint ai-page-tip">Each check sends one camera picture to your AI while a real printer prints. Without pausing it only tells you. Watch-only mode and the safety checks still apply to a pause.${u.checks ? ` So far: ${u.checks} check${u.checks === 1 ? '' : 's'}${u.cost_usd ? `, about $${u.cost_usd.toFixed(u.cost_usd < 0.01 ? 4 : 2)}` : ''}.` : ''}</p>
+        ${log ? `<ul class="ai-watch-log">${log}</ul>` : ''}`;
+    return `<section class="card liquid-glass" id="ai-watch-card"><div class="card-head"><div><h2>Print watch</h2><p class="card-sub">Your AI looks at the camera every few minutes during a print</p></div></div>${body}</section>`;
+  }
+
   function wirePage() {
     const host = document.getElementById('ai-page');
     if (!host) return;
@@ -230,7 +249,13 @@
       const res = await postJSON('/api/assistant/budget', body);
       if (res.ok) { take(res.body); toast('Saved', 'ok'); } else toast(res.body.error || 'That was not saved', 'bad');
     });
-    host.addEventListener('change', e => {
+    host.addEventListener('change', async e => {
+      if (['ai-watch-on', 'ai-watch-min', 'ai-watch-pause'].includes(e.target.id)) {
+        const v = id => host.querySelector(id);
+        const res = await postJSON('/api/assistant/watch', { on: v('#ai-watch-on').checked, minutes: +v('#ai-watch-min').value, pause: v('#ai-watch-pause').checked });
+        if (res.ok) take(res.body); else toast(res.body.error || 'That was not saved', 'bad');
+        return;
+      }
       if (e.target.name === 'ai-mode-page') post({ mode: e.target.value });
       else if (e.target.id === 'ai-page-conn') post({ provider: e.target.value });
     });
@@ -549,7 +574,7 @@
   function greet() {
     const log = el.body.querySelector('#ai-log');
     if (!log || log.children.length) return;
-    log.insertAdjacentHTML('beforeend', `<div class="ai-msg is-assistant ai-hello"><p>Ready. Tell me what you want in your own words: I can run the printer, read your files and history, look through the camera, make parts and cut holes in your models.</p></div>`);
+    log.insertAdjacentHTML('beforeend', `<div class="ai-msg is-assistant ai-hello"><p>Ready. Tell me what you want in your own words: I can run the printer, read your files and history, look through the camera, make parts from a sketch or a description, and slice them ready to print.</p></div>`);
   }
 
   function drawIdeas() {

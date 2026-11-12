@@ -93,7 +93,10 @@ model on your own computer keeps all of that at home.
 - **Look after the rest:** add, move and remove queued jobs, record a care task as done or put it
   off, note a problem and its fix in the logbook, add a spool or record its weight, open a screen
   for you.
-- **Models:** make a box, cylinder, cone, sphere, tube, prism, wedge (a ramp) or torus (a ring);
+- **Models:** make a box (with rounded corners if you like), cylinder, cone, sphere, tube, prism,
+  wedge (a ramp) or torus (a ring); push any outline up into a solid, with holes and rounded corners
+  (draw a shape on paper, send a photo, and it traces the outline); spin a profile around into a
+  round part (a cup, a vase, a knob); make a spur gear from its number of teeth and tooth size;
   build one part from several placed together, where each part is added, cut away or kept only where
   it overlaps the rest (a bracket with screw holes, a box with a slot, a pocket for a magnet); use a
   model from your library as one of the parts; drill round holes straight into a library model; make
@@ -101,6 +104,15 @@ model on your own computer keeps all of that at home.
   works on a 0.4 mm grid (coarser for a large part, and the answer says the size): flat faces stay
   flat and exact, and edges come out rounded by about one grid step. A model with gaps in its
   surface gets a warning to check the result in the 3D view.
+- **Slice:** it slices a model from your library with a saved profile (Files, Slicing, Profiles)
+  and reports the time and filament the slicer worked out. To print the result it opens Confirm
+  Print, which checks the file first; it cannot start a print itself.
+- **Print watch:** on the AI screen, switch on **Print watch** and your AI looks at the camera every
+  5 to 60 minutes while a real printer prints. If a picture looks wrong it tells you on screen. If
+  you also tick **Pause when it clearly sees a failed print**, it pauses the print through the same
+  checks as the Pause button (watch-only mode still blocks it). Each check sends one camera picture
+  to your AI; the card counts the checks and their cost. Demo printers have a drawn camera, so print
+  watch only runs on real printers.
 - **Print settings:** it suggests settings as a list with the reason. One press puts them in the
   profile editor, and nothing changes until you save the profile.
 - **Explain:** while an AI is connected, cards such as Needs you, Confirm Print, the console and a
@@ -182,6 +194,9 @@ released are listed beside the settings, and one press makes each ask again.
 - **The suite** covers both wire formats, error messages, redirects, every safety limit and every
   setting with stand-in services and stand-in `claude` and `codex` programs.
 - The assistant has not driven a real U1 yet. Its commands go through the same code that has.
+
+An outline, a profile or a gear is built exactly from its points, with flat faces and sharp
+corners where you drew them. Only joining, cutting and keeping parts uses the grid described above.
 
 ## Translating Deja Vu1
 
