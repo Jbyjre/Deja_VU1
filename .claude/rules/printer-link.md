@@ -96,6 +96,10 @@ its behaviour, never paste it.
 - `webrtc_relay.py`: the Extended Firmware's WebRTC camera; only request, answer and
   remote_candidate, only to the printer's own host, 64 KB max; the page falls back to pictures
   after 8 s.
+- The printer's own recorded videos: `MoonrakerPrinter.printer_videos()` lists the `camera` root (the
+  U1's stock firmware keeps recordings there, read-only, as reported by owners on firmware 2.0.0) and
+  `timelapse` (moonraker-timelapse); `fetch_video` reads one. `timelapse.keep_printer_video` keeps a copy
+  under `<data>/timelapse/<printer>/saved/`, which `_prune` leaves alone.
 - Time-lapse uses `mock_moonraker.camera_snapshot()` per real printer, one bounded capture worker
   per printer, session and module switches rechecked before save.
 

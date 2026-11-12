@@ -117,8 +117,8 @@ slicing and launcher files have their own notes in this folder.
 
 ## The AI assistant
 
-- `ai_providers.py`: every way to reach a model (`PROVIDERS`: two subscription programs, 29 key
-  services, two local, one custom); any number stay connected. Two wire formats only (Anthropic
+- `ai_providers.py`: every way to reach a model (`PROVIDERS`: the ChatGPT plan as an `account`, two
+  subscription programs, 29 key services, two local, one custom); any number stay connected. Two wire formats only (Anthropic
   Messages, chat completions). `describe()` is the only thing the browser sees; error text passes
   through `_scrub`; `_http` follows no redirect and sends a key only over https or to a local host.
   Never hard-code a model name except `DEFAULT_MODELS` (a test checks `PROVIDERS`): lists come from
@@ -136,11 +136,23 @@ slicing and launcher files have their own notes in this folder.
   a level (read | safe | ask | handoff | proposal), a `_label`, a module in `_GATES` if it has one, a
   place in `_OFFLINE` if it needs no printer, and a test in `tests/test_ai_assistant.py`.
   `start_print` only returns a handoff; never let a tool start a print or send free G-code.
+  `JUMPS` is the map of places the assistant can open (`open_page` `to`, with a card `spot`); a new card
+  worth reaching gets a row. `_lib_name` finds a file named without its extension. `_card()` gives the
+  chat a small picture of a result. Print watch settings live in `_watch_settings` (looks, sensitivity,
+  notes, first_layer, compare, confirm, notify); `_watch_one` takes a second picture before pausing.
   Modes: advice, ask, balanced, free (default), open. Only `HIGH_STAKES` asks in free; `never_ask`
   holds the tools the owner released. The instructions (`_system`) must not change between
   requests: readings travel in the message (`chat()`), so services can reuse the instructions.
-  `_check_allowed` applies module switches, watch-only and the restart hold. Conversations are in
-  memory only; a turn runs on its own thread inside `selection_only(printer)`.
-- Routes: `/api/assistant` and `/api/assistant/thread` (GET, in `_APP_ROUTES`), POST verbs under
-  `/api/assistant/` (key, forget, select, models, check, test, chat, decide, stop, clear); provider
-  failures answer 502 with words.
+  `_check_allowed` applies module switches, watch-only and the restart hold. Conversations are saved
+  to `<data>/ai_chats/<id>.json` (pictures left out, newest 80 kept) and reload after a restart; a turn
+  runs on its own thread inside `selection_only(printer)`. `chat()` takes an attached photo (`_picture`).
+- `ai_signin.py`: Sign in with ChatGPT for open-source apps (developers.openai.com/siwc: register with
+  `dynamic_agent_client`, PKCE, a loopback listener on 127.0.0.1:1455 or a pasted address, the ID token
+  checked against OpenAI's keys with a standard-library RS256 check, tokens in `ai_vault`, refreshed
+  five minutes early, revoked on sign-out) and Claude Code's `claude auth login --claudeai` run with the
+  code passed on standard input. Its timers are daemon threads. Answers for the ChatGPT plan go through
+  `ai_providers._ask_chatgpt` (Responses API, `store: false`, `stream: true`).
+- Routes: `/api/assistant`, `/api/assistant/thread`, `/api/assistant/chats` (GET, in `_APP_ROUTES`),
+  `/api/assistant/watch/picture` (GET), POST verbs under `/api/assistant/` (key, forget, select, models,
+  check, signin, test, chat, decide, stop, clear, watch, watch/now); provider failures answer 502 with
+  words.

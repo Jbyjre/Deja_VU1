@@ -263,7 +263,7 @@ window.FarmDesk = (() => {
           <td class="dk-num">${Math.round(r.grams)} g</td><td class="dk-num">${have == null ? '—' : Math.round(have) + ' g' + plus}</td>
           <td>${have == null ? '<span class="dk-tag">no spools tracked</span>' : short > 0 && unknownW ? `<span class="dk-tag">weigh ${unknownW === 1 ? 'a spool' : 'spools'} to know</span>` : short > 0 ? `<span class="dk-tag is-bad">short ${Math.round(short)} g</span>` : `<span class="dk-tag is-ok">covered</span>`}</td></tr>`;
       }).join('')}</tbody></table>
-      <p class="dk-note">From the slicer's per-head figures for each queued file${unknown ? `; ${unknown} file${unknown > 1 ? 's' : ''} had none and ${unknown > 1 ? 'are' : 'is'} left out` : ''}. Spools are matched by material and a close colour. Track spools in Care → Filament inventory.</p>`;
+      <p class="dk-note">From the slicer's per-head figures for each queued file${unknown ? `; ${unknown} file${unknown > 1 ? 's' : ''} had none and ${unknown > 1 ? 'are' : 'is'} left out` : ''}. Spools are matched by material and a close colour. Track spools in Maintenance → Filament inventory.</p>`;
   }
 
   /* ---- Worth printing ---- */

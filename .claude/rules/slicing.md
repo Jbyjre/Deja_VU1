@@ -55,8 +55,14 @@ id stays `auto_print`.
   home folders as `~`.
 - `find_slicers`: usual install folders, one level deep, names containing "orca", no installers,
   nothing run.
-- Files › Slicing opens with "Get ready to slice" (`farm.js` `renderReady`): five steps, the first
-  undone one has the only button; "Find it for me" is `POST /api/slicer/find`. `farm.js`
+- Files › Slicing opens with "Get ready to slice" (`farm.js` `renderReady`): five steps (on, find,
+  check, print settings, check it all works), the first undone one has the main button; "Find it for me"
+  is `POST /api/slicer/find`. "Use the stock U1 settings" is `POST /api/slicer/profiles/stock`
+  (`slicer_bridge.use_stock_profile`, `slicer_profiles.stock_choice`): Snapmaker's own presets for the
+  fitted nozzles, saved as the default, then `testSlice()` slices the sample 3DBenchy. With no heads set
+  up it saves four 0.4 mm heads from what the printer reports (else PLA). The catalog counts a preset as
+  U1 when its name says U1 or its `compatible_printers` names a Snapmaker U1: the 0.4 mm stock
+  materials are "Generic PLA" and so on. `farm.js`
   `causeHtml`/`bindCause` draw a failure's cause in Files, Slicing and Prepare (`#sw-cause`).
 - Evidence: `docs/slicer-workspace-validation.md`, `docs/native-studio-validation.md`,
   `docs/viewer-performance.json`. Real Orca 2.4.2 and Snapmaker Orca 02.08.01.55 Linux slices are

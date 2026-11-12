@@ -57,6 +57,17 @@ The rest of the dashboard was used with the same printer. The firmware version w
   No paid key, real ChatGPT plan, real Windows or macOS keyring, or real U1 has been tried with it.
   Panel and AI screen checked at 1366 px and 390 px, light and dark, and in the static online demo,
   with no page errors. [AI assistant](ai-assistant.md).
+  Round 5, 12 November 2026, through the same Claude plan on a demo printer: "Take me to the digital
+  twin" opened the Printer page at the twin; a phone stand was made, its card's Open it opened the file
+  in Files, and the readings came back as a card; a saved conversation reopened after a server restart;
+  disconnecting removed every AI shortcut (10 to 0). Sign in with ChatGPT ran against a stand-in for
+  OpenAI's sign-in and Responses API in the suite (registration, PKCE, the ID token's signature,
+  refresh, sign-out, the plan's usage-limit error); no real ChatGPT account has signed in yet. Claude
+  Code's sign-in ran against a stand-in `claude` program. The stock U1 slicer settings were chosen from
+  Snapmaker's own preset list (version 02.03.03.03, in `tests/fixtures`) and saved as a profile against
+  stand-in preset files; no slicing engine was on the test computer, so the test slice has not run for
+  real. Listing and keeping the printer's own videos ran against a stand-in Moonraker answering the
+  `camera` root the way owners report the U1's firmware 2.0.0 does; not yet on the real U1.
 - **Colour-checker ingestion:** synthetic version 1 messages through the actual local HTTP API and
   a Moonraker stand-in, including identity mismatch, replay, clock changes, expiry, low quality,
   raw-only samples, reassignment and restart. The colour card was checked at both widths in all
