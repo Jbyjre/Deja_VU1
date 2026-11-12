@@ -111,6 +111,9 @@ def _settings():
     data = data if isinstance(data, dict) else {}
     data.setdefault("provider", "")
     data.setdefault("models", {})
+    data["prices"] = data.get("prices") if isinstance(data.get("prices"), dict) else {}
+    if not isinstance(data.get("cap_usd"), (int, float)) or data["cap_usd"] <= 0:
+        data["cap_usd"] = None
     if data.get("mode") not in MODES:
         data["mode"] = DEFAULT_MODE
     tested = data.get("tested")
@@ -148,6 +151,8 @@ def status():
         "default_mode": DEFAULT_MODE,
         "never_ask": [{"tool": t, "label": TOOLS[t]["what"].rstrip(".")} for t in s["never_ask"]],
         "ready": bool(active),
+        "price": _price_row(s["provider"], s["models"].get(s["provider"], ai_providers.DEFAULT_MODELS.get(s["provider"], ""))),
+        "cap_usd": s["cap_usd"],
         "limits": LIMITS,
         "security": ai_providers.security(),
         "tools": [{"name": name, "level": t["level"], "what": t["what"]} for name, t in TOOLS.items()],
@@ -182,6 +187,98 @@ def select(provider=None, model=None, mode=None, never_ask=None):
             s["never_ask"] = [t for t in never_ask if t in TOOLS and TOOLS[t]["level"] in ("safe", "ask")]
         storage.save_json(_SETTINGS_PATH, s)
     return status()
+
+
+def _price_row(pid, model):
+    """What one answer costs per token for the AI in use, and where that figure came from. Never guessed."""
+    if not pid:
+        return None
+    kind = ai_providers.provider(pid)["kind"]
+    if kind == "cli":
+        return {"charge": "plan"}
+    if kind == "local":
+        return {"charge": "none"}
+    own = (_settings()["prices"].get(pid) or {}).get(model or "")
+    if isinstance(own, dict):
+        return {"charge": "tokens", "in": own.get("in"), "out": own.get("out"), "from": "yours"}
+    reported = ai_providers.reported_price(pid, model)
+    if reported:
+        return {"charge": "tokens", "in": reported[0], "out": reported[1], "from": "service"}
+    return {"charge": "unknown"}
+
+
+def budget(provider=None, model=None, price_in=None, price_out=None, cap_usd=None, clear_price=False):
+    """
+    The owner's own price for a model (dollars per million tokens, from the service's pricing page) and an
+    optional spending limit for one request. A limit of 0 or empty means none.
+    """
+    number = printer_control._number
+    with _lock:
+        s = _settings()
+        pid = provider or s["provider"]
+        if pid:
+            ai_providers.provider(pid)
+        model = _model_name(model if model is not None else s["models"].get(pid, ai_providers.DEFAULT_MODELS.get(pid, "")))
+        if clear_price:
+            (s["prices"].get(pid) or {}).pop(model, None)
+        elif price_in not in (None, "") or price_out not in (None, ""):
+            if not pid:
+                raise ValueError("Connect an AI first")
+            s["prices"].setdefault(pid, {})[model] = {"in": number(price_in or 0, "Price in", 0, 1000),
+                                                      "out": number(price_out or 0, "Price out", 0, 1000)}
+        if cap_usd is not None:
+            cap = number(cap_usd or 0, "Limit", 0, 1000)
+            s["cap_usd"] = cap or None
+        storage.save_json(_SETTINGS_PATH, s)
+    return status()
+
+
+CHARS_PER_TOKEN = 4         # a usual rule for English text; the service counts exactly once it answers
+STATE_CHARS = 1900          # the printer's readings sent with each message (cut to 1,800 characters, plus a heading)
+
+
+def _tokens(text):
+    return int(math.ceil(len(text or "") / CHARS_PER_TOKEN))
+
+
+def _money(price, tokens_in, tokens_out):
+    if not price or price.get("charge") != "tokens" or tokens_in is None:
+        return None
+    return round(tokens_in * (price["in"] or 0) / 1e6 + (tokens_out or 0) * (price["out"] or 0) / 1e6, 6)
+
+
+def estimate(tid, text="", printer_id=None, demo=False, context=None):
+    """
+    Before sending: about how many tokens the next answer reads, and what it costs at the known price.
+    When the service has answered in this conversation, its own count is the starting point; before that,
+    the text is counted at about four characters a token, and the result says it is an estimate.
+    """
+    s = status()
+    if not s["ready"]:
+        return {"ready": False}
+    settings = _settings()
+    ctx = _ctx(printer_id, demo)
+    message = len(str(text or "")) + min(len(str(context or "")), 4000) + (STATE_CHARS if ctx["live"] else 0) + 20
+    thread = _threads.get(str(tid or ""))
+    history = (thread or {}).get("history") or []
+    if thread and thread.get("last_in"):
+        last = history[-1]["text"] if history and history[-1]["role"] == "assistant" else ""
+        tokens_in, basis = thread["last_in"] + _tokens(last) + int(math.ceil(message / CHARS_PER_TOKEN)), "reported"
+    else:
+        chars = len(_system(ctx, settings["mode"])) + sum(len(h.get("text") or "") for h in history[-40:]) + message
+        tokens_in, basis = int(math.ceil(chars / CHARS_PER_TOKEN)), "estimate"
+    usage = (thread or {}).get("usage") or {}
+    tokens_out = round(usage["out"] / usage["counted"]) if usage.get("counted") else None
+    requests = (thread or {}).get("requests") or 0
+    answers = round(usage["answers"] / requests, 1) if requests and usage.get("answers") else None
+    price = s["price"]
+    per_answer = _money(price, tokens_in, tokens_out)
+    out = {"ready": True, "provider": s["provider"], "model": s["model"], "price": price, "tokens_in": tokens_in,
+           "basis": basis, "tokens_out": tokens_out, "answers_per_request": answers, "cost_usd": per_answer,
+           "cap_usd": settings["cap_usd"], "pictures": any(h.get("images") for h in history)}
+    if per_answer is not None and settings["cap_usd"] and per_answer > settings["cap_usd"]:
+        out["over_cap"] = True
+    return out
 
 
 def test(provider):
@@ -1129,6 +1226,12 @@ def _run(thread, ctx):
                         _add(thread, "note", text="That was a lot of steps for one request, so the assistant stopped "
                                                   "here. Ask it to carry on if there is more to do.")
                         return
+                cap, spent = _settings()["cap_usd"], thread.get("request_cost") or 0.0
+                if cap and thread["rounds"] and spent + (thread.get("last_cost") or 0) > cap:
+                    _add(thread, "note", text=f"This request has used about ${spent:.4f} of your ${cap:g} limit, and "
+                                              "another answer would pass it, so the assistant stopped here. Ask it to "
+                                              "carry on to allow another round.")
+                    return
                 thread["rounds"] += 1
                 answer = ai_providers.ask(pid, model, _system(ctx, settings["mode"]), thread["history"][-40:])
                 _count_usage(thread, answer)
@@ -1151,15 +1254,30 @@ def _run(thread, ctx):
 
 
 def _count_usage(thread, answer):
-    """Add up what the service reported for this answer. Nothing is estimated."""
+    """
+    Add up what the service reported for this answer. Tokens are never estimated here; a cost is the
+    service's own figure, or its reported tokens at the known price (kept apart, as priced_usd).
+    """
     total, used = thread["usage"], getattr(answer, "usage", None) or {}
     total["answers"] += 1
     if isinstance(used.get("in"), int) or isinstance(used.get("out"), int):
         total["counted"] += 1
         total["in"] += used.get("in") or 0
         total["out"] += used.get("out") or 0
+        if isinstance(used.get("in"), int):
+            thread["last_in"] = used["in"]
+    cost = None
     if isinstance(used.get("cost_usd"), (int, float)):
-        total["cost_usd"] = round(total["cost_usd"] + used["cost_usd"], 6)
+        cost = used["cost_usd"]
+        total["cost_usd"] = round(total["cost_usd"] + cost, 6)
+    elif isinstance(used.get("in"), int):
+        s = _settings()
+        cost = _money(_price_row(s["provider"], s["models"].get(s["provider"], "")), used.get("in"), used.get("out"))
+        if cost is not None:
+            total["priced_usd"] = round(total.get("priced_usd", 0.0) + cost, 6)
+    if cost is not None:
+        thread["last_cost"] = cost
+        thread["request_cost"] = round((thread.get("request_cost") or 0.0) + cost, 6)
     if used.get("model"):
         total["model"] = str(used["model"])[:120]
 
@@ -1187,7 +1305,14 @@ def chat(tid, text, printer_id, demo=False, context=None):
     thread = _thread(tid, printer_id)
     if thread["busy"] or thread["pending"]:
         raise ValueError("The assistant is still working on the last request. Stop it first to send another")
+    guess = estimate(tid, text, printer_id, demo, context) if s["cap_usd"] else {}
+    if guess.get("over_cap"):
+        raise ValueError(f"This message would cost about ${guess['cost_usd']:.4f} for the first answer, more than "
+                         f"your limit of ${s['cap_usd']:g} a request. Raise the limit on the AI screen, or press "
+                         "Start over to send less.")
     _add(thread, "user", text=text)
+    thread["requests"] = thread.get("requests", 0) + 1
+    thread["request_cost"] = 0.0
     ctx = _ctx(printer_id, demo)
     sent = "[Their message]\n" + text
     if context:

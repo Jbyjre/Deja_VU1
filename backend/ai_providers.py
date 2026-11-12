@@ -584,6 +584,16 @@ def _codex_models(p):
              "created": 0.0} for r in listed]
 
 
+def reported_price(pid, model):
+    """The service's own list price for a model, from its last model list: (in, out) dollars per million tokens."""
+    rows = ((_models.get(pid) or {}).get("body") or {}).get("rows") or []
+    for r in rows:
+        if r.get("id") == model and isinstance(r.get("in_per_million"), (int, float)) \
+                and isinstance(r.get("out_per_million"), (int, float)):
+            return r["in_per_million"], r["out_per_million"]
+    return None
+
+
 def list_models(pid, refresh=False):
     """The models the service or program itself reports, newest first, with a starting choice."""
     p = provider(pid)

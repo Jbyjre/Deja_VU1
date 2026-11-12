@@ -170,7 +170,7 @@
       <section class="card liquid-glass" id="ai-now"><div class="card-head"><div><h2>Your AI</h2><p class="card-sub">${st.demo ? 'Online demo: a scripted helper stands in for an AI' : now ? 'Connected and in use' : 'Nothing connected yet'}</p></div></div>
         ${now ? `<p class="ai-page-now"><b>${esc(now.name)}</b><span>${esc(now.model || 'its usual model')}</span></p>
           ${joined.length > 1 ? `<label class="ai-field"><span>Switch to</span><select id="ai-page-conn">${joined.map(c => `<option value="${esc(c.id)}"${c.id === st.provider ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}`
-        : `<p class="ai-hint">Deja Vu1 does everything without an AI. Connect one and you can also ask for things in your own words: run the printer, explain a warning, check a print through the camera, make a simple part.</p>
+        : `<p class="ai-hint">Deja Vu1 does everything without an AI. Connect one and you can also ask for things in your own words: run the printer, explain a warning, check a print through the camera, make a part or cut holes in one of yours.</p>
           <p class="ai-hint">Best with a Claude or ChatGPT plan you already pay for. A model on this computer and an API key work too.</p>`}
         <div class="ai-actions">${now || st.demo ? '<button class="btn primary" type="button" data-ai-open="chat">Open the assistant</button>' : ''}
           <button class="btn${now || st.demo ? '' : ' primary'}" type="button" data-ai-open="connect">${now ? 'Add or manage connections' : 'Connect an AI'}</button></div>
@@ -179,6 +179,7 @@
         <div class="ai-modes">${modesHTML('ai-mode-page')}</div>
         ${(st.never_ask || []).length ? `<p class="ai-hint ai-never">Never asks about: ${st.never_ask.map(n => `<button type="button" class="ai-chip" data-reask="${esc(n.tool)}" aria-label="Ask again about: ${esc(n.label)}">${esc(n.label)} <span aria-hidden="true">×</span></button>`).join('')}</p>` : ''}
         <p class="ai-hint ai-page-tip">${limitsText()}</p></section>
+      ${costCard()}
       <section class="card liquid-glass" id="ai-private"><div class="card-head"><div><h2>Privacy and keys</h2><p class="card-sub">What leaves this computer, and how a key is kept</p></div></div>
         <p class="ai-hint">The AI you choose receives what you type, the printer’s readings and the results of its steps. A camera picture goes only when it looks through the camera. A model on this computer keeps all of that at home.</p>
         <div class="ai-safe"><h4>How a key is kept on this computer</h4>
@@ -191,6 +192,27 @@
         <details class="ai-can"><summary>Hands to you</summary><p>${by(['handoff', 'proposal'])}</p></details></section>`;
   }
 
+  function costCard() {
+    const p = st.price || {}, now = (st.connections || []).find(c => c.id === st.provider);
+    const where = { service: 'the price the service lists', yours: 'the price you entered' }[p.from] || '';
+    const state = st.demo ? 'Nothing in the online demo costs anything.'
+      : !now ? 'Connect an AI to see what a message costs.'
+      : p.charge === 'plan' ? 'Your plan covers it: messages use its allowance, with no charge per message.'
+      : p.charge === 'none' ? 'It runs on this computer, so a message costs nothing.'
+      : p.charge === 'tokens' ? `${esc(now.model || now.name)}: $${esc(p.in)} per million tokens in, $${esc(p.out)} out, from ${where}.`
+      : `${esc(now.model || now.name)}: the service lists no price, so no cost is shown. Type it from the service’s pricing page.`;
+    const keyed = now && !st.demo && ['tokens', 'unknown'].includes(p.charge);
+    return `<section class="card liquid-glass" id="ai-cost-card"><div class="card-head"><div><h2>Cost and limit</h2><p class="card-sub">See what a message costs before you send it</p></div></div>
+      <p class="ai-hint">${state}</p>
+      ${keyed ? `<form class="ai-budget" id="ai-budget">
+        <div class="ai-budget-row"><label class="ai-field"><span>Price in <i>$ per million tokens</i></span><input id="ai-price-in" type="number" min="0" max="1000" step="0.01" inputmode="decimal" value="${p.from === 'yours' ? esc(p.in) : ''}" placeholder="${p.from === 'service' ? esc(p.in) : 'From its pricing page'}"></label>
+        <label class="ai-field"><span>Price out <i>$ per million tokens</i></span><input id="ai-price-out" type="number" min="0" max="1000" step="0.01" inputmode="decimal" value="${p.from === 'yours' ? esc(p.out) : ''}" placeholder="${p.from === 'service' ? esc(p.out) : ''}"></label></div>
+        <label class="ai-field"><span>Stop a request after <i>$, empty for no limit</i></span><input id="ai-cap" type="number" min="0" max="1000" step="0.01" inputmode="decimal" value="${st.cap_usd ? esc(st.cap_usd) : ''}" placeholder="No limit"></label>
+        <div class="ai-actions"><button class="btn primary" type="submit">Save</button>${p.from === 'yours' ? '<button class="btn" type="button" id="ai-price-clear">Forget my price</button>' : ''}</div>
+      </form>
+      <p class="ai-hint ai-page-tip">Before each message the assistant shows about how many tokens it will read and what that costs. Once the service answers, its own count is used. With a limit, a request that would pass it stops and says so.</p>` : ''}</section>`;
+  }
+
   function wirePage() {
     const host = document.getElementById('ai-page');
     if (!host) return;
@@ -199,11 +221,25 @@
       const res = await postJSON('/api/assistant/select', body);
       if (res.ok) take(res.body); else toast(res.body.error || 'That was not saved', 'bad');
     };
+    host.addEventListener('submit', async e => {
+      if (e.target.id !== 'ai-budget') return;
+      e.preventDefault();
+      const v = id => host.querySelector(id).value.trim();
+      const body = { cap_usd: v('#ai-cap') || 0 };
+      if (v('#ai-price-in') || v('#ai-price-out')) Object.assign(body, { price_in: v('#ai-price-in') || 0, price_out: v('#ai-price-out') || 0 });
+      const res = await postJSON('/api/assistant/budget', body);
+      if (res.ok) { take(res.body); toast('Saved', 'ok'); } else toast(res.body.error || 'That was not saved', 'bad');
+    });
     host.addEventListener('change', e => {
       if (e.target.name === 'ai-mode-page') post({ mode: e.target.value });
       else if (e.target.id === 'ai-page-conn') post({ provider: e.target.value });
     });
     host.addEventListener('click', async e => {
+      if (e.target.id === 'ai-price-clear') {
+        const res = await postJSON('/api/assistant/budget', { clear_price: true });
+        if (res.ok) take(res.body);
+        return;
+      }
       const go = e.target.closest('[data-ai-open]'), again = e.target.closest('[data-reask]');
       if (again) return post({ never_ask: st.never_ask.map(n => n.tool).filter(t => t !== again.dataset.reask) });
       if (!go) return;
@@ -459,12 +495,13 @@
         <button class="btn primary" id="ai-send" type="submit">Send</button>
         <button class="btn danger" id="ai-stop" type="button" hidden>Stop</button>
       </form>
+      <p class="ai-cost" id="ai-cost" aria-live="polite"></p>
       <div class="ai-foot"><span id="ai-usage" class="ai-usage"></span><button class="ai-clear" id="ai-clear" type="button">Start over</button></div>`;
     rows.clear(); seen = 0;
     const text = el.body.querySelector('#ai-text');
     el.body.querySelector('#ai-compose').addEventListener('submit', e => { e.preventDefault(); send(text.value); });
     text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text.value); } });
-    text.addEventListener('input', () => { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 140) + 'px'; });
+    text.addEventListener('input', () => { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 140) + 'px'; costSoon(); });
     el.body.querySelector('#ai-stop').addEventListener('click', () => (st.demo ? demoStop() : postJSON('/api/assistant/stop', { thread: threadId() }).then(poll)));
     el.body.querySelector('#ai-clear').addEventListener('click', async () => {
       if (!st.demo) await postJSON('/api/assistant/clear', { thread: threadId() });
@@ -472,6 +509,7 @@
     });
     wireBar();
     drawIdeas();
+    costSoon(0);
     if (!wasReady) { wasReady = true; greet(); }
     if (st.demo) demoPaint(); else poll();
     text.focus({ preventScroll: true });
@@ -509,7 +547,7 @@
   function greet() {
     const log = el.body.querySelector('#ai-log');
     if (!log || log.children.length) return;
-    log.insertAdjacentHTML('beforeend', `<div class="ai-msg is-assistant ai-hello"><p>Ready. Tell me what you want in your own words: I can run the printer, read your files and history, look through the camera, and make simple parts.</p></div>`);
+    log.insertAdjacentHTML('beforeend', `<div class="ai-msg is-assistant ai-hello"><p>Ready. Tell me what you want in your own words: I can run the printer, read your files and history, look through the camera, make parts and cut holes in your models.</p></div>`);
   }
 
   function drawIdeas() {
@@ -519,14 +557,48 @@
     host.querySelectorAll('.ai-idea').forEach(b => b.addEventListener('click', () => send(ideas()[+b.dataset.i][1])));
   }
 
+  const dollars = n => '$' + (n < 0.01 ? n.toFixed(4) : n.toFixed(2));
+  const brief = n => (n >= 10000 ? (n / 1000).toFixed(1) + 'k' : count(n));
+
+  /* Before sending: what the next answer is likely to read and cost. The server counts the conversation
+   * so far (the service's own figure once it has answered) and prices it only at a known price. */
+  let costTimer = 0;
+  function costSoon(wait = 450) {
+    clearTimeout(costTimer);
+    costTimer = setTimeout(drawCost, wait);
+  }
+  async function drawCost() {
+    const host = el.body.querySelector('#ai-cost'), box = el.body.querySelector('#ai-text');
+    if (!host || !st || st.demo || !st.ready) { if (host) host.textContent = ''; return; }
+    const res = await postJSON(api('/api/assistant/estimate'), { thread: threadId(), text: box ? box.value : '' }).catch(() => null);
+    if (!res || !res.ok || !res.body.ready || !host.isConnected) return;
+    host.innerHTML = costText(res.body);
+    host.classList.toggle('is-over', !!res.body.over_cap);
+  }
+  function costText(e) {
+    const p = e.price || {};
+    if (p.charge === 'plan') return 'Uses your plan’s allowance: no charge per message.';
+    if (p.charge === 'none') return 'Runs on this computer: no charge.';
+    const tokens = `about ${brief(e.tokens_in)} tokens in`;
+    const how = e.basis === 'estimate' ? ' Estimated from the text, at about 4 characters a token.' : '';
+    if (p.charge !== 'tokens' || e.cost_usd == null) {
+      return `Next answer: ${tokens}.${how} <button type="button" class="ai-link" data-place="ai" data-part="ai-cost-card">Add this model’s price</button> to see a cost before you send.`;
+    }
+    const out = e.tokens_out != null ? `, with answers here about ${brief(e.tokens_out)} tokens long` : ', plus the answer';
+    const rounds = e.answers_per_request > 1 ? ` A request here has taken about ${e.answers_per_request} answers.` : '';
+    const cap = e.cap_usd ? ` Your limit: ${dollars(e.cap_usd)} a request.` : '';
+    const over = e.over_cap ? ' <b>That is over your limit, so it won’t send.</b>' : '';
+    return `Next answer: about <b>${dollars(e.cost_usd)}</b> for ${tokens}${out}.${how}${rounds}${cap}${over}`;
+  }
+
   /* Only what the service itself reported; nothing here is an estimate of ours. */
   function drawUsage(u) {
     const host = el.body.querySelector('#ai-usage');
     if (!host) return;
     if (!u || !u.counted) { host.textContent = ''; return; }
     const plan = (provider(st.provider) || {}).kind === 'cli';
-    const brief = n => (n >= 10000 ? (n / 1000).toFixed(1) + 'k' : count(n));
-    const cost = u.cost_usd ? ` · $${u.cost_usd < 0.01 ? u.cost_usd.toFixed(4) : u.cost_usd.toFixed(2)}${plan ? ' list price, in your plan' : ''}` : '';
+    const cost = u.cost_usd ? ` · ${dollars(u.cost_usd)}${plan ? ' list price, in your plan' : ''}`
+      : u.priced_usd ? ` · about ${dollars(u.priced_usd)} at ${(st.price || {}).from === 'yours' ? 'your' : 'the listed'} price` : '';
     host.textContent = `${brief(u.in)} tokens in · ${brief(u.out)} out${cost}`;
     host.title = u.model ? `As reported by the service. Last answer came from ${u.model}.` : 'As reported by the service.';
   }
@@ -606,7 +678,12 @@
       if (!t) return;
       if (t.dataset.print) { if (window.Workshop) Workshop.openConfirm(t.dataset.print, t); return; }
       if (t.dataset.file) { if (window.Workshop && Workshop.openFile) Workshop.openFile(t.dataset.file, t); return; }
-      if (t.dataset.place) { location.hash = '#/' + t.dataset.place; return; }
+      if (t.dataset.place) {
+        location.hash = '#/' + t.dataset.place;
+        const part = t.dataset.part;
+        if (part) setTimeout(() => { const n = document.getElementById(part); if (n) n.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+        return;
+      }
       if (t.dataset.apply) { applyProposal(+t.dataset.apply); return; }
       const always = 'always' in t.dataset, yes = always || 'yes' in t.dataset, n = +(t.dataset.yes || t.dataset.no || t.dataset.always);
       t.parentElement.querySelectorAll('button').forEach(b => { b.disabled = true; });
@@ -629,7 +706,7 @@
       drawUsage(body.usage);
       seen = body.seq;
       if (body.busy) polling = setTimeout(poll, 700);
-      else drawIdeas();
+      else { drawIdeas(); costSoon(0); }
     }
   }
 
@@ -738,7 +815,7 @@
       await demoStep('Read the printer', null, null, 'read');
       const heads = Object.entries(s.toolheads || {}).map(([k, h]) => `${k} ${Math.round(h.temperature)} °C`).join(', ');
       demoSay(`**${s.printer_name || 'The printer'}** is ${s.state || 'idle'}${s.current_file ? ` on ${s.current_file}, ${Math.round((s.progress || 0) * 100)}% done` : ''}.\n- Heads: ${heads || 'not reported'}\n- Bed: ${Math.round(s.bed_temperature || 0)} °C`);
-    } else demoSay('This is the online demo’s scripted helper, so it only knows a few requests: home, warm up, cool down, pause, resume, cancel, set the fan, or how the print is going. With your own AI connected it reads your files, history and camera, makes simple parts, suggests print settings and works the printer in your own words.');
+    } else demoSay('This is the online demo’s scripted helper, so it only knows a few requests: home, warm up, cool down, pause, resume, cancel, set the fan, or how the print is going. With your own AI connected it reads your files, history and camera, makes parts and cuts holes in your models, suggests print settings and works the printer in your own words.');
     demoPaint(false); drawIdeas();
   }
   async function demoDecide(n, yes) {

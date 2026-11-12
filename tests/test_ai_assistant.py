@@ -742,6 +742,74 @@ def volume(triangles):
                for a, b, c in triangles) / 6
 
 
+def priced(text, tokens_in, tokens_out, cost=None):
+    reply = ai_providers.Reply(text)
+    reply.usage = {"model": "maker/model-9", "in": tokens_in, "out": tokens_out, "cost_usd": cost}
+    return reply
+
+
+class TestCosts(Base):
+    def use_openrouter(self, listed=True):
+        ai_providers.save_key("openrouter", "sk-or-test-0123456789abcdef")
+        rows = [{"id": "maker/model-9", "in_per_million": 3.0, "out_per_million": 15.0}] if listed else []
+        ai_providers._models["openrouter"] = {"at": time.time(), "body": {"rows": rows}}
+        ai_assistant.select(provider="openrouter", model="maker/model-9")
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            ai_assistant.test("openrouter")
+
+    def test_a_plan_or_a_local_ai_costs_nothing_per_message(self):
+        self.assertEqual(ai_assistant.estimate(self.tid, "hello")["price"], {"charge": "plan"})
+        self.assertEqual(ai_assistant._price_row("ollama", "llama9"), {"charge": "none"})
+
+    def test_before_the_first_answer_the_text_is_counted_and_called_an_estimate(self):
+        self.use_openrouter()
+        guess = ai_assistant.estimate(self.tid, "x" * 400, PRINTER, demo=True)
+        self.assertEqual(guess["basis"], "estimate")
+        self.assertEqual(guess["price"], {"charge": "tokens", "in": 3.0, "out": 15.0, "from": "service"})
+        system = len(ai_assistant._system(ai_assistant._ctx(PRINTER, True), ai_assistant._settings()["mode"]))
+        self.assertEqual(guess["tokens_in"], -(-(system + 400 + ai_assistant.STATE_CHARS + 20) // 4))
+        self.assertIsNone(guess["tokens_out"])                 # unknown until the service has answered once
+        self.assertAlmostEqual(guess["cost_usd"], guess["tokens_in"] * 3 / 1e6)
+
+    def test_after_an_answer_the_services_own_count_is_the_starting_point(self):
+        self.use_openrouter()
+        self.say("hi", priced("Hello there.", 5000, 40))
+        guess = ai_assistant.estimate(self.tid, "and again", PRINTER, demo=True)
+        self.assertEqual(guess["basis"], "reported")
+        self.assertEqual(guess["tokens_out"], 40)
+        self.assertGreater(guess["tokens_in"], 5000)
+        self.assertEqual(guess["answers_per_request"], 1)
+        self.assertEqual(ai_assistant.view(self.tid)["usage"]["priced_usd"], round(5000 * 3 / 1e6 + 40 * 15 / 1e6, 6))
+
+    def test_without_a_listed_price_the_owners_own_price_is_used_and_nothing_is_guessed(self):
+        self.use_openrouter(listed=False)
+        guess = ai_assistant.estimate(self.tid, "hello")
+        self.assertEqual((guess["price"], guess["cost_usd"]), ({"charge": "unknown"}, None))
+        status = ai_assistant.budget(price_in=1.25, price_out=10)
+        self.assertEqual(status["price"], {"charge": "tokens", "in": 1.25, "out": 10, "from": "yours"})
+        self.assertIsNotNone(ai_assistant.estimate(self.tid, "hello")["cost_usd"])
+        self.assertEqual(ai_assistant.budget(clear_price=True)["price"], {"charge": "unknown"})
+        with self.assertRaises(ValueError):
+            ai_assistant.budget(price_in=-1, price_out=2)
+
+    def test_a_spending_limit_refuses_a_message_that_would_pass_it(self):
+        self.use_openrouter()
+        self.assertEqual(ai_assistant.budget(cap_usd=0.0001)["cap_usd"], 0.0001)
+        with self.assertRaises(ValueError) as caught:
+            self.say("hello", "Hi.")
+        self.assertIn("more than your limit of $0.0001", str(caught.exception))
+        self.assertIsNone(ai_assistant.budget(cap_usd=0)["cap_usd"])
+
+    def test_a_spending_limit_stops_between_rounds_of_steps(self):
+        self.use_openrouter()
+        ai_assistant.budget(cap_usd=0.05)
+        self.idle()
+        view = self.say("home", priced(act("home"), 1000, 30, 0.03), priced("Homed.", 1000, 12, 0.03))
+        self.assertIn("another answer would pass it", view["messages"][-1]["text"])
+        self.assertEqual(view["usage"]["answers"], 1)
+        self.assertEqual(self.steps(view), [("home", "done")])
+
+
 class TestAbilities(Base):
     def setUp(self):
         super().setUp()
@@ -1175,6 +1243,16 @@ class TestRoutes(APITestCase):
         program = patch.object(ai_providers, "_program", return_value="/usr/bin/true")
         program.start()
         self.addCleanup(program.stop)
+
+    def test_cost_before_sending_and_the_owners_limit_through_the_server(self):
+        with patch.object(ai_providers, "ask", return_value="ready"):
+            self.post("/api/assistant/test", {"provider": "claude-code"})
+        status, body = self.post("/api/assistant/estimate?demo=1", {"thread": "thread-9", "text": "hi"})
+        self.assertEqual((status, body["price"]), (200, {"charge": "plan"}))
+        status, body = self.post("/api/assistant/budget", {"cap_usd": 2})
+        self.assertEqual((status, body["cap_usd"]), (200, 2))
+        status, body = self.post("/api/assistant/budget", {"price_in": -5, "price_out": 1})
+        self.assertEqual(status, 400)
 
     def test_the_whole_path_through_the_server(self):
         status, body = self.get("/api/assistant")
