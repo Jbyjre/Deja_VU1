@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.10 (12 November 2026): Sign in to your Claude or ChatGPT plan from the app, set up print watch, reop...
+
+- Sign in to your Claude or ChatGPT plan from the app, set up print watch, reopen saved chats, and slice with the stock U1 settings in one press (#96)
+
 ## 0.20.9 (12 November 2026): Draw a part as an outline or profile, make gears, slice from the chat, and le...
 
 - Draw a part as an outline or profile, make gears, slice from the chat, and let your AI watch a print through the camera (#95)

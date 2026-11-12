@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.10",
+      "date": "2026-11-12",
+      "name": "Sign in to your Claude or ChatGPT plan from the app, set up print watch, reop...",
+      "published": true,
+      "summary": "Sign in to your Claude or ChatGPT plan from the app, set up print watch, reopen saved chats, and slice with the stock U1 settings in one press (#96).",
+      "changes": [
+        "Sign in to your Claude or ChatGPT plan from the app, set up print watch, reopen saved chats, and slice with the stock U1 settings in one press (#96)"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.9",
       "date": "2026-11-12",
       "name": "Draw a part as an outline or profile, make gears, slice from the chat, and le...",
