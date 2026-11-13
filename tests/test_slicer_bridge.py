@@ -822,7 +822,7 @@ class TestEngineSupportAndChanges(SlicerBridgeTest):
         self.configure()
         result = slicer_bridge.check()
         self.assertEqual(result["support"]["level"], "untested")
-        self.assertIn("Not tested at this version (2.3.2)", result["support"]["title"])
+        self.assertIn("OrcaSlicer 2.3.2. Its recorded runs are at 2.4.2", result["support"]["title"])
         self.assertEqual(slicer_bridge.public_settings()["last_check"]["support"]["level"], "untested")
 
     def test_a_failed_check_carries_no_support_claim(self):

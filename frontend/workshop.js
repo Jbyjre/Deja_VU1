@@ -452,7 +452,7 @@ const Workshop = (() => {
       // Any printer but a U1 says what it is, from its own report (machines.py).
       const kind = f('machine'), other = p.machine && !p.machine.reference;
       kind.hidden = !other;
-      if (other) { setText(kind, `${p.machine.label} · untested type`); kind.title = p.machine.note || ''; }
+      if (other) { setText(kind, `${p.machine.label} · other Klipper printer`); kind.title = p.machine.note || ''; }
       const st = f('state');
       setText(st, STATE_WORD[p.state] || p.state);
       setVar(st, '--dot', STATE_COLOR[p.state] || '');

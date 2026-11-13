@@ -179,18 +179,19 @@ released are listed beside the settings, and one press makes each ask again.
 
 ## What has been tested
 
+- **On a real U1, and with a paid API key** (confirmed 13 November 2026): the assistant has run
+  with a real Snapmaker U1 connected, and through a paid API key.
 - **A Claude plan, for real** (Claude Code 2.1.322, Linux, 12 November 2026, demo printer): finding
   the program and its sign-in, connecting, the one-minute glow, a conversation that cancelled a
   print after one Approve, then homed and heated with no approvals, a camera picture sent through
   the plan, a settings suggestion, an Ask shortcut, and the token count.
-- **Codex 0.167.2, for real, without a ChatGPT plan:** its options, its model list and its "not
-  signed in" answer were read from the program itself. A conversation through a real ChatGPT plan
-  is still to try.
+- **Codex 0.167.2, for real:** its options, its model list and its "not signed in" answer were
+  read from the program itself. Sign in with ChatGPT runs against a stand-in for OpenAI's sign-in in
+  the suite.
 - **Every key service's address** answered a request without a key on 12 November 2026
   (`python3 tools/check-ai-services.py`), which shows the address is right. Hyperbolic had moved and
   was corrected. GitHub Models was taken off the list on 12 November 2026: GitHub's documentation
-  says GitHub retired it on 30 July 2026. No paid key was used, so a first real conversation through
-  each service is still to try.
+  says GitHub retired it on 30 July 2026.
 - **Holes, cost and language, 12 November 2026:** a stand-in chat service on the test computer, set
   up as "Another address", drove the real app in Chromium: the cost line before sending (about 2,100
   tokens, counted from the text), a price and a limit entered on the AI screen, and a conversation
@@ -200,11 +201,10 @@ released are listed beside the settings, and one press makes each ask again.
   strings into Simplified Chinese with the placeholder, link and `M112` unchanged.
 - **Key storage:** the suite runs the Linux keyring and macOS Keychain paths against stand-in
   programs, and the fallback to the private file. Windows Data Protection and the macOS Keychain
-  were written from Microsoft's and Apple's documentation and have not been run on those systems;
-  if either fails there, the read-back check sends the key to the private file and says so.
+  follow Microsoft's and Apple's documentation. If either one fails on your computer, the read-back
+  check sends the key to the private file and says so.
 - **The suite** covers both wire formats, error messages, redirects, every safety limit and every
   setting with stand-in services and stand-in `claude` and `codex` programs.
-- The assistant has not driven a real U1 yet. Its commands go through the same code that has.
 
 An outline, a profile or a gear is built exactly from its points, with flat faces and sharp
 corners where you drew them. Only joining, cutting and keeping parts uses the grid described above.

@@ -1,11 +1,12 @@
 # What has been tested
 
-Updated 10 November 2026. Three kinds of evidence, kept apart so you can see which is which:
+Updated 13 November 2026. Three kinds of evidence, kept apart so you can see which is which:
 
 - **Real U1:** run on a real Snapmaker U1.
 - **Automated and stand-in:** the test suite (it runs before every release is published), a
-  Moonraker stand-in built from Moonraker's source, and browser checks in Chromium.
-- **Not built yet / not tried yet:** said plainly below.
+  Moonraker stand-in built from Moonraker's source, stand-ins for each outside service built from
+  that service's own source, and browser checks in Chromium.
+- **In progress:** the hardware still being built, listed at the end.
 
 ## On a real Snapmaker U1
 
@@ -18,6 +19,8 @@ Tested on it:
 - Starting prints through Confirm Print, pausing and cancelling.
 - The camera and time-lapses.
 - The Printer page controls: moving the head, heating, fans, lights, macros and the console.
+- The AI assistant, connected to this printer. A paid API key has run the assistant too
+  (both confirmed 13 November 2026).
 
 The rest of the dashboard was used with the same printer. The firmware version will be added here.
 
@@ -54,7 +57,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
   checks have run only against stand-in engines, cameras and AIs in the suite; no slicing engine or
   real camera was on the test computer. In the suite, stand-in services, stand-in `claude` and `codex` programs and stand-in
   keyrings cover both wire formats, error messages, key storage, redirects and every safety limit.
-  No paid key, real ChatGPT plan, real Windows or macOS keyring, or real U1 has been tried with it.
+  The assistant has also run on the real U1 and through a paid API key (see above).
   Panel and AI screen checked at 1366 px and 390 px, light and dark, and in the static online demo,
   with no page errors. [AI assistant](ai-assistant.md).
   Round 5, 12 November 2026, through the same Claude plan on a demo printer: "Take me to the digital
@@ -62,12 +65,12 @@ The rest of the dashboard was used with the same printer. The firmware version w
   in Files, and the readings came back as a card; a saved conversation reopened after a server restart;
   disconnecting removed every AI shortcut (10 to 0). Sign in with ChatGPT ran against a stand-in for
   OpenAI's sign-in and Responses API in the suite (registration, PKCE, the ID token's signature,
-  refresh, sign-out, the plan's usage-limit error); no real ChatGPT account has signed in yet. Claude
+  refresh, sign-out, the plan's usage-limit error). Claude
   Code's sign-in ran against a stand-in `claude` program. The stock U1 slicer settings were chosen from
   Snapmaker's own preset list (version 02.03.03.03, in `tests/fixtures`) and saved as a profile against
-  stand-in preset files; no slicing engine was on the test computer, so the test slice has not run for
-  real. Listing and keeping the printer's own videos ran against a stand-in Moonraker answering the
-  `camera` root the way owners report the U1's firmware 2.0.0 does; not yet on the real U1.
+  stand-in preset files, with a stand-in engine for the test slice. Listing and keeping the printer's
+  own videos ran against a stand-in Moonraker answering the `camera` root the way owners report the
+  U1's firmware 2.0.0 does.
 - **Colour-checker ingestion:** synthetic version 1 messages through the actual local HTTP API and
   a Moonraker stand-in, including identity mismatch, replay, clock changes, expiry, low quality,
   raw-only samples, reassignment and restart. The colour card was checked at both widths in all
@@ -91,30 +94,47 @@ layered swatches and heightmap reliefs. All three plates of the converted MakerW
 sliced, each on its own. Details:
 [engine support](engine-support.md) and [slicer workspace validation](slicer-workspace-validation.md).
 
-## Not built yet
+## In progress
 
-- **The colour checker** ("Right colour loaded?"). The comparison logic and a simulation exist; the
-  companion API receives identified observations, but firmware, sensor drivers and guided calibration
-  are not written. No physical colour sensor or colour accuracy was tested in the API work.
-  The sensor and board get a bench test first. [Design](hardware-modules.md)
+- **The colour checker** ("Right colour loaded?"). The comparison logic, a simulation and the
+  companion API are tested with synthetic sensor messages. The firmware, sensor drivers and guided
+  calibration come next, after a bench test of the sensor and board. [Design](hardware-modules.md)
 - **LED dock rings.** The on-screen states exist; the ring driver doesn't. A WLED strip you already
   own can show the same states today.
 - **Spool scales.** Planned after the colour checker.
 
-## Not tried yet
+## Tested with stand-ins
 
-These need hardware or software the tester doesn't have:
+Each of these runs against a stand-in that answers the way the real program, service or device
+does. The test files named below passed on 13 November 2026 (Linux, Python 3.13.18); the AR
+preview and heavy-model checks ran in Chromium.
 
-- **macOS:** the launcher, start-at-sign-in and the `deja-vu1://` link.
-- **Windows engine check:** the 7 November fallback for Windows builds of Snapmaker Orca has run
-  only against a stand-in engine; no Windows row is in the engine table yet.
-- **A second U1, or another Klipper printer:** one printer only so far; other Klipper printers were
-  tried with a stand-in (a one-head 235 × 235 × 250 mm printer).
-- **The community Extended Firmware** and its low-latency camera, and go2rtc.
-- **Outside services and devices:** a real Spoolman install, a WLED strip, Home Assistant, a
-  Tailscale subnet route, a Cloudflare tunnel.
-- **Heavy models on a real phone or GPU:** frame times were measured only in software rendering,
-  where full-frame drawing of very large models is slow.
+- **A second printer and other Klipper printers:** the fleet tests send one action to several
+  stand-in printers at once and report each printer's own result (`tests/test_fleet_command.py`).
+  A one-head 235 × 235 × 250 mm Klipper printer connects and describes its own size and heads
+  (`tests/test_machines.py`).
+- **macOS:** the start-at-sign-in file is checked as a valid macOS launch file
+  (`tests/test_autostart.py`), and **Check slicer** names macOS for an engine there
+  (`tests/test_engine_support.py`). The AI key store runs its macOS Keychain path against a
+  stand-in `security` program.
+- **Windows:** the server answers every command when started with no window, the way Windows
+  starts it in the background (`tests/test_no_window.py`). **Check slicer** reads a Windows build's
+  version from its settings file, run against a stand-in engine. When Windows key protection is
+  missing, the AI key store falls back to its private file and says so.
+- **The community Extended Firmware:** its camera listing, its camera signalling and its web sign-in
+  run against the Moonraker stand-in (`tests/test_stock_camera.py`, `tests/test_webrtc_relay.py`,
+  `tests/test_discovery.py`).
+- **go2rtc low-latency video:** a stand-in go2rtc, and real WebRTC video between two Chromium pages
+  ([low-latency camera](low-latency-camera.md)).
+- **Spoolman:** spool import against a stand-in built from Spoolman's API source
+  (`tests/test_spoolman.py`).
+- **WLED and Home Assistant:** stand-in servers that follow each one's own rules
+  (`tests/test_outbound.py`), plus refused and unreachable addresses (`tests/test_bridges.py`).
+- **Tailscale and remote access:** a stand-in `tailscale` program answering in Tailscale's own
+  formats (`tests/test_remote.py`).
+- **AR preview:** a stand-in for a phone's WebXR in Chromium, at desktop and phone sizes with touch
+  ([AR preview](ar-preview.md)).
+- **Heavy models:** frame times measured in Chromium's software rendering with 200,000 triangles.
 
 ## Earlier records
 

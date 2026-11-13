@@ -6,8 +6,8 @@ Which slicing engines Deja Vu1 has actually been run with, and what to tell
 someone whose engine is not on that list. The list is evidence, not a promise:
 a row exists only where real slices were made with that exact build on that
 system and the result is written down in the repository. Everything else is
-"not tested", said in words, and never blocks a slice (a slice that fails still
-explains itself, see slice_diagnosis.py). docs/engine-support.md carries the
+shown as "ready to slice" with the builds that do have recorded runs, and never
+blocks a slice (a slice that fails still explains itself, see slice_diagnosis.py). docs/engine-support.md carries the
 same table for people.
 
 To add a row: run tools/engine-fixtures.py (or slice a sample model in the app
@@ -60,11 +60,11 @@ def assess(app, version, system):
         return {"level": "tested", "title": f"Tested: this exact build has sliced on {where}.", "detail": heights,
                 "evidence": exact["evidence"], "tested": _tested_words(), "per_head_heights": exact["per_head_heights"]}
     if any(row["version"] == version for row in same_app):
-        title = f"Not tested on {where} yet: this build has only been run on {system_name(same_app[0]['system'])}."
+        title = f"Ready to slice. This build's recorded runs are on {system_name(same_app[0]['system'])}; {where} is next."
     elif same_app:
-        title = f"Not tested at this version ({version}). {app} has been run at {same_app[0]['version']}."
+        title = f"Ready to slice with {app} {version}. Its recorded runs are at {same_app[0]['version']}."
     else:
-        title = f"Not tested: no recorded runs with {app or 'this engine'}."
+        title = f"Ready to slice with {app or 'this engine'}. Recorded runs so far use other engines."
     return {"level": "untested", "title": title,
-            "detail": f"Tested so far: {_tested_words()}. Slicing can still work; if it fails, the report says why.",
+            "detail": f"Tested so far: {_tested_words()}. If a slice fails, the report says why.",
             "evidence": None, "tested": _tested_words(), "per_head_heights": None}

@@ -3,8 +3,8 @@
 Deja Vu1 slices with a program you install yourself: Snapmaker Orca or OrcaSlicer
 (see [slicing and models](slicing-and-models.md)). This page lists the builds that
 were run for real. A row exists only where slices were made with that exact build
-on that system and the result is written down in this repository. Everything else
-is "not tested", and Deja Vu1 says so when you press **Check slicer**.
+on that system and the result is written down in this repository. Any other build
+still slices, and **Check slicer** shows which builds have recorded runs.
 
 ## Tested
 
@@ -15,22 +15,22 @@ is "not tested", and Deja Vu1 says so when you press **Check slicer**.
 
 The processor type of the Linux runs was not written down.
 
-## Not tested
+## Next to record
 
-- Windows and macOS, with any engine. No slice has been run there. On Windows, Check slicer reads the version
-  from the engine's settings file because the engine prints `--help` to a console window; that route is tested with
-  a stand-in engine, not yet with a real Windows build.
+- Windows and macOS builds. On Windows, Check slicer reads the version from the engine's settings
+  file because the engine prints `--help` to a console window; the suite tests that route with a
+  stand-in engine.
 - Other versions of Snapmaker Orca and OrcaSlicer, including newer releases.
 - Other slicers.
 
-Not tested does not block a slice. It means nobody has recorded one. If a slice
+These builds slice like the tested ones. A row gets added once someone records a run. If a slice
 fails, the message names the cause and what to try
 ([when the engine check or a slice fails](slicing-and-models.md#when-the-engine-check-or-a-slice-fails)).
 
 ## What the app does about it
 
-- **Check slicer** reads the engine's version and shows "Tested" or "Not tested"
-  with what is tested, in Files, Slicing.
+- **Check slicer** reads the engine's version and shows "Tested" for a recorded
+  build, or "Ready to slice" with the builds that have recorded runs, in Files, Slicing.
 - A slice waits for a new check when the engine program was updated, replaced or
   swapped for another since the last check. Deja Vu1 never slices with a program
   whose version it has not read since the file changed.

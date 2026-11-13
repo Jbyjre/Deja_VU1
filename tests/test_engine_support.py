@@ -31,20 +31,20 @@ class TestAssess(unittest.TestCase):
         for system, word in (("Windows", "Windows"), ("Darwin", "macOS")):
             result = support.assess("Snapmaker_Orca", "02.08.01.55", system)
             self.assertEqual(result["level"], "untested")
-            self.assertIn(f"Not tested on {word} yet", result["title"])
-            self.assertIn("only been run on Linux", result["title"])
+            self.assertIn(f"{word} is next", result["title"])
+            self.assertIn("recorded runs are on Linux", result["title"])
             self.assertIsNone(result["per_head_heights"])
 
     def test_another_version_of_a_known_engine_is_not_tested(self):
         result = support.assess("OrcaSlicer", "2.3.2", "Linux")
         self.assertEqual(result["level"], "untested")
-        self.assertIn("Not tested at this version (2.3.2)", result["title"])
+        self.assertIn("OrcaSlicer 2.3.2", result["title"])
         self.assertIn("2.4.2", result["title"])
 
     def test_an_unknown_engine_is_not_tested(self):
         result = support.assess("SomethingElse", "1.0", "Linux")
         self.assertEqual(result["level"], "untested")
-        self.assertIn("no recorded runs with SomethingElse", result["title"])
+        self.assertIn("Ready to slice with SomethingElse", result["title"])
 
     def test_the_engine_name_matches_however_it_is_spelled(self):
         self.assertEqual(support.assess("snapmaker orca", "02.08.01.55", "Linux")["level"], "tested")
@@ -54,7 +54,7 @@ class TestAssess(unittest.TestCase):
         result = support.assess("X", "1", "Windows")
         self.assertIn("Snapmaker_Orca 02.08.01.55 on Linux", result["detail"])
         self.assertIn("OrcaSlicer 2.4.2 on Linux", result["detail"])
-        self.assertIn("Slicing can still work", result["detail"])
+        self.assertIn("If a slice fails, the report says why", result["detail"])
 
     def test_system_words(self):
         self.assertEqual(support.system_name("Darwin"), "macOS")

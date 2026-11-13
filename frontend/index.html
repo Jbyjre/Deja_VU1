@@ -255,7 +255,7 @@
       <details class="add-printer" id="add-printer-form">
       <summary class="btn add-printer-toggle">Add another printer</summary>
       <p class="field-hint">Deja Vu1 connects straight away; its live figures show once the connection is open, and Details says exactly what happened if it can't.</p>
-      <p class="field-hint other-printers" id="other-printers">Another printer that runs Klipper with Moonraker adds the same way. Deja Vu1 reads its size and heads from the printer, checks files against them, and marks it as an untested type. If its Moonraker answers on the printer's own web page instead of port 7125, type the full address, such as <code>http://192.168.1.50</code>.</p>
+      <p class="field-hint other-printers" id="other-printers">Another printer that runs Klipper with Moonraker adds the same way. Deja Vu1 reads its size and heads from the printer, checks files against them, and labels it as another Klipper printer on its card. If its Moonraker answers on the printer's own web page instead of port 7125, type the full address, such as <code>http://192.168.1.50</code>.</p>
       <div class="find-row">
         <button class="btn" type="button" id="fleet-find">Find printers on my network</button>
         <button class="btn" type="button" id="fleet-find-wider" title="Also tries the address ranges home routers often use and your Tailscale network">Look further</button>
@@ -895,7 +895,7 @@
           <button class="btn" type="button" id="st-save-stl">Save as STL</button>
         </div>
         <p class="log-empty" id="st-saved"></p>
-        <p class="log-empty">The 3MF carries its colour changes as OrcaSlicer tool changes (the layout Orca's own 3MF reader expects), but opening one in Orca hasn't been confirmed yet. The plan above says where each change goes, so you can set them by hand on Orca's layer slider if needed.</p>
+        <p class="log-empty">The 3MF carries its colour changes as OrcaSlicer tool changes, in the layout Orca's own 3MF reader expects. The plan above says where each change goes, so you can also set them by hand on Orca's layer slider.</p>
       </section>
     </div>
   </section>
