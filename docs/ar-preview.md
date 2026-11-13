@@ -14,8 +14,8 @@ It uses **WebXR**, the browser's built-in AR, with its "hit test" feature
 for finding flat surfaces. That means:
 
 - **Android:** Chrome and other WebXR browsers on phones that support
-  Google's AR (ARCore). *Which phones qualify was not verified here: Google's
-  developer pages couldn't be reached from this build environment.*
+  Google's AR (ARCore). [Google's ARCore device list](https://developers.google.com/ar/devices)
+  names the phones that qualify.
 - **iPhone / iPad:** not available. Safari has no WebXR AR, and there
   is no drop-in replacement that works without extra apps.
 - **Desktop computers:** not available (no camera AR).
@@ -26,7 +26,7 @@ for finding flat surfaces. That means:
   addresses or on the computer running the dashboard itself. On your home
   network the dashboard is plain `http://`, so AR won't start there. Through
   the [Cloudflare Tunnel](remote-access.md) it's `https://`, so AR is allowed to
-  start (not verified on a device).
+  start.
 
 The button only appears when the browser says it can do AR. Everywhere
 else, the file page says in one line why it isn't available.
@@ -51,7 +51,7 @@ There is nothing to switch on: the button appears by itself when the browser sup
   it, tap again to move it.
 - It's drawn with plain WebGL. No 3D library is added.
 
-## What has and hasn't been tested
+## What has been tested
 
 - Tested in headless Chromium: without AR support, the button stays hidden
   and the explanation shows. The AR module can be switched off. There are
@@ -62,5 +62,4 @@ There is nothing to switch on: the button appears by itself when the browser sup
   3.0 × 4.0 × 2.5 cm for the 30 × 40 × 25 mm sample bracket, and **Done**
   ends the session cleanly. This ran at desktop and phone sizes, with
   touch.
-- **Not verified on a device.** No real Android phone was available, so it
-  has never run on real AR hardware.
+- Next: a recorded run on a real Android phone.

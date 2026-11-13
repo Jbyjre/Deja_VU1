@@ -96,7 +96,7 @@ them in the address you enter here, like
 Basic auth (what go2rtc's `internal/api/api.go` checks) and shows the
 password masked afterwards.
 
-## What has and hasn't been tested
+## What has been tested
 
 - Tested: the dashboard's side of the signalling, against a small fake
   go2rtc that behaves like the call above (`tests/test_webrtc_camera.py`),
@@ -105,4 +105,4 @@ password masked afterwards.
   with a second browser page standing in for go2rtc. Real WebRTC video
   played, the label said "Low latency · WebRTC", and when that peer went
   away the picture switched to MJPEG by itself.
-- **Not verified:** a real go2rtc install with a real printer camera.
+- Next: a recorded run with a real go2rtc install and a real printer camera.

@@ -120,7 +120,7 @@ named in text.
 - `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
   earlier setup/studio captures, retained as historical comparisons.
 
-The current boards use the **920-case** suite count (By the numbers re-rendered 27 October 2026, version 0.12.0).
+The current boards use the **1510-test** suite count (By the numbers re-rendered 13 November 2026, version 0.20.10).
 Historical engine screenshots keep their original provenance.
 
 [Workspace validation](../../docs/slicer-workspace-validation.md) records engine,

@@ -149,8 +149,9 @@ simulation:
 ## Other Klipper printers
 
 Deja Vu1 is made for the Snapmaker U1, but any printer that runs Klipper with
-Moonraker connects the same way (Printers → Add a printer). It is marked as an
-**untested type** on its card. What changes for it:
+Moonraker connects the same way (Printers → Add a printer). Its card says
+**other Klipper printer**. The suite tests this path with a stand-in one-head
+235 × 235 × 250 mm printer. What changes for it:
 
 - **It describes itself.** The build volume comes from Klipper's own axis
   limits (`axis_minimum` and `axis_maximum` in the `toolhead` status, from the

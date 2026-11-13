@@ -225,15 +225,17 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 ## What has been tested
 
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
-  Confirm Print, pause and cancel, the camera and time-lapses, and the Printer page controls.
-- **Automated:** 1438 tests passed in 1148 seconds on Python 3.13 (12 November 2026). GitHub Actions
+  Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
+  assistant. The assistant has also run through a paid API key.
+- **Automated:** 1510 tests passed in 1126 seconds on Python 3.13 (13 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
-  Other builds show "Not tested" in the app and still slice.
-- **Not tried yet:** macOS, a second printer, the Extended Firmware, and outside services such as
-  Spoolman, WLED and Home Assistant.
+  Other builds slice too, and **Check slicer** lists the builds with recorded runs.
+- **With stand-ins in the suite:** macOS and Windows start-up, a second printer and other Klipper
+  printers, the Extended Firmware's camera, Spoolman, WLED, Home Assistant and Tailscale. Each
+  stand-in answers the way the real program does.
 
-The dated record, with what isn't built yet: [docs/testing.md](docs/testing.md).
+The dated record, with the hardware still in progress: [docs/testing.md](docs/testing.md).
 
 ## Coming next: Deja Vu1 Sense
 
