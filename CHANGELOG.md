@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.11 (13 November 2026): See how each part of Deja Vu1 is tested, including the AI assistant on a real...
+
+- See how each part of Deja Vu1 is tested, including the AI assistant on a real U1 (#97)
+
 ## 0.20.10 (12 November 2026): Sign in to your Claude or ChatGPT plan from the app, set up print watch, reop...
 
 - Sign in to your Claude or ChatGPT plan from the app, set up print watch, reopen saved chats, and slice with the stock U1 settings in one press (#96)
