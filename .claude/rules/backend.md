@@ -109,7 +109,12 @@ slicing and launcher files have their own notes in this folder.
 - `websocket.py` is also the client framing for `moonraker_client.py` and shadows PyPI's
   `websocket-client`, so `backend/` must stay first on `sys.path`.
 - `led_status.py`: decision logic and simulation. `color_check.py` uses `companion_sensor.py` for
-  physical observations and simulation only for demo printers; `calibrate()` raises NotImplementedError.
+  physical observations and simulation only for demo printers. `calibrate(toolhead, step)` records a white or
+  dark reference from the head's latest reading (under 5 s old, no quality flag) through `sensor_calibration.py`
+  (AS7341 and TCS34725; `reconcile()` drops a calibration when the chip, channel or assignment changes; a
+  colour the companion sends itself is left alone). `print_gate._filament_match` adds `measured` evidence per head
+  (`color_check.evidence`, `advice`): advice only, demo printers get a repeatable simulation with no advice, and
+  `printer_control._start_locked` records a start that went ahead against the sensor (`colour_overrides.json`).
   The companion API saves explicit per-printer channel/sensor bindings, retains readings only in memory,
   expires captures at 30 seconds and never gives optical print approval. Drivers and firmware remain to build.
   Keep the README's hardware line, `color_check.py`'s

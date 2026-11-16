@@ -97,8 +97,10 @@ sliced, each on its own. Details:
 ## In progress
 
 - **The colour checker** ("Right colour loaded?"). The comparison logic, a simulation and the
-  companion API are tested with synthetic sensor messages. The firmware, sensor drivers and guided
-  calibration come next, after a bench test of the sensor and board. [Design](hardware-modules.md)
+  companion API, the white-reference calibration and the Confirm Print advice are tested with synthetic sensor
+  messages and a stand-in printer (`tests/test_sensor_calibration.py` and the sensor workflow in
+  `tools/browser-walk.js`). The firmware, sensor drivers and a bench test of a physical sensor come next.
+  [Design](hardware-modules.md)
 - **LED dock rings.** The on-screen states exist; the ring driver doesn't. A WLED strip you already
   own can show the same states today.
 - **Spool scales.** Planned after the colour checker.

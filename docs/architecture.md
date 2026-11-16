@@ -619,7 +619,12 @@ colours; real printers read observations from `companion_sensor.py`, whose versi
 device/channel/sensor identity to one head on one printer. Assignments persist; observations do
 not. Capture and monotonic receipt age expire samples at 30 seconds; missing, uncalibrated and
 low-quality readings have no current colour. Raw values and companion-reported calibration stay
-available for diagnosis. Optical observations do not affect Confirm Print yet. Without an assigned
+available for diagnosis. `sensor_calibration.py` turns raw counts into a colour from a white reference (and an
+optional dark one) recorded in the sensor's housing, for the AS7341 and the TCS34725; a replaced chip, a moved
+channel or a removed assignment drops that head's calibration, and a colour the companion reports itself stays
+as it sent it. Confirm Print shows the sensor's reading beside the file's colour and the printer's report
+(`color_check.evidence` and `advice`): a disagreement adds a warning and never a block, and a start that goes
+ahead against it is recorded in `colour_overrides.json`. Without an assigned
 sensor, a real printer reports "no sensor fitted" and never uses the demo reading. The colour
 checker's design (a TCS34725 or AS7341 sensor in a dark block at each rear
 filament inlet, read by a Pico W over Wi-Fi) and its planned behaviour are in
@@ -857,8 +862,8 @@ from the same seeded demo state.
 Done: add it under **Printers → Add a printer**. See
 [real-printer.md](real-printer.md).
 
-For the hardware modules, the LED driver, companion firmware and sensor calibration remain to
-build. The [colour-sensor API](colour-sensor-api.md) defines ingestion and identity; it does not
+For the hardware modules, the LED driver and the companion firmware remain to build. The
+[colour-sensor API](colour-sensor-api.md) defines ingestion, identity and calibration; it does not
 provide a physical sensor driver or establish colour accuracy.
 
 ## Testing

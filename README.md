@@ -246,7 +246,10 @@ reads the filament, and a Raspberry Pi Pico W sends the reading to Deja Vu1. Two
 the AS7341 and the TCS34725, get a bench test on real spools before anything goes near the printer.
 A sensor mismatch starts as a warning you can accept. Spool scales come after it.
 The [companion API](docs/colour-sensor-api.md) now receives identified sensor readings and expires
-old samples. Firmware, guided calibration and optical advice in Confirm Print are still to build.
+old samples. Deja Vu1 also turns a sensor's raw counts into a colour from a white reference you record in
+the housing, and Confirm Print shows the sensor beside the file's colour and the printer's report as advice
+that never blocks a start. Both are tested with synthetic readings and a stand-in printer. The Pico firmware
+and a bench test of a physical sensor are still to do.
 [The design](docs/hardware-modules.md)
 
 ## How it's built
