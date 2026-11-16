@@ -3058,7 +3058,11 @@ async function refreshAll() {
  * need that as aria-pressed. One observer keeps the two in step for every
  * .pill-toggle, whichever code changed it. */
 function initPressedSync() {
-  const sync = b => b.setAttribute('aria-pressed', String(b.classList.contains('active')));
+  const sync = b => {
+    // A radio reports its choice with aria-checked (set where it is chosen); aria-pressed is not allowed on it.
+    if (b.getAttribute('role') === 'radio') b.removeAttribute('aria-pressed');
+    else b.setAttribute('aria-pressed', String(b.classList.contains('active')));
+  };
   const watch = new MutationObserver(records => records.forEach(r => { if (r.target.tagName === 'BUTTON') sync(r.target); }));
   document.querySelectorAll('.pill-toggle').forEach(group => {
     group.querySelectorAll('button').forEach(sync);

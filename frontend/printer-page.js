@@ -259,7 +259,7 @@ window.PrinterPage = (() => {
     const layer = s.layer && s.layer.current && s.layer.total ? `Layer ${s.layer.current} of ${s.layer.total}` : '';
     const lines = busy(s) || s.state === 'complete'
       ? `<p class="ov-file">${esc(s.current_file || 'Current print')}</p>
-         <div class="ov-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>
+         <div class="ov-progress" role="progressbar" aria-label="Print progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>
          <p class="ov-facts"><b>${pct}%</b>${left != null && s.state !== 'complete' ? ` · ${esc(hoursWords(left))} left · done ${esc(doneAt(left) || '')}` : ''}${layer ? ` · ${esc(layer)}` : ''}</p>`
       : s.state === 'error'
         ? `<p class="ov-file">${esc(s.state_message || 'The printer stopped with an error')}</p>`

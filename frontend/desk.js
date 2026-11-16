@@ -184,7 +184,7 @@ window.FarmDesk = (() => {
         <div class="dk-track">${shade}${bars.join('') || '<span class="dk-idle">Ready · nothing queued</span>'}</div></div>`;
     }).join('');
     const ruler = ticks.filter(t => t.i % 3 === 0).map(t => `<span style="left:${t.i * hourW}%">${String(t.h).padStart(2, '0')}:00</span>`).join('');
-    $('dk-timeline').innerHTML = data.printers.length ? `<div class="dk-scroll"><div class="dk-grid">
+    $('dk-timeline').innerHTML = data.printers.length ? `<div class="dk-scroll" tabindex="0" role="region" aria-label="Print schedule by printer, scrolls sideways"><div class="dk-grid">
         <div class="dk-lane dk-ruler-row"><div class="dk-name"><small>${clock(now)} now</small></div><div class="dk-track dk-ruler">${ruler}<span class="dk-now" aria-hidden="true"></span></div></div>
         ${lanes}</div></div>
       <p class="dk-key"><span class="dk-k is-run"></span>printing <span class="dk-k is-paused"></span>paused <span class="dk-k is-queued"></span>queued <span class="dk-k is-wait"></span>waits for you <span class="dk-k is-night"></span>outside your hours · Times are the slicer's estimates; real prints run longer or shorter.</p>`

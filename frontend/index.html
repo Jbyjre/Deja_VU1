@@ -543,7 +543,7 @@
       </section>
       <section class="card liquid-glass pp-console" id="pp-console">
         <div class="card-head"><div><h2>G-code console</h2><p class="card-sub">Type any command the printer understands</p></div></div>
-        <div class="console-log" id="gcode-log"></div>
+        <div class="console-log" id="gcode-log" tabindex="0" role="log" aria-label="G-code console output"></div>
         <div style="display:flex; gap:8px;">
           <input type="text" id="gcode-input" placeholder="Send a G-code command…" style="flex:1;" disabled aria-label="G-code command">
           <button class="btn primary" id="gcode-send" disabled>Send</button>
