@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.12 (16 November 2026): Open the online demo on the dashboard, see the camera as soon as demo data st...
+
+- Open the online demo on the dashboard, see the camera as soon as demo data starts, and keep printer file rows inside a phone screen (#98)
+
 ## 0.20.11 (13 November 2026): See how each part of Deja Vu1 is tested, including the AI assistant on a real...
 
 - See how each part of Deja Vu1 is tested, including the AI assistant on a real U1 (#97)

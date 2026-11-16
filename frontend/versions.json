@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.12",
+      "date": "2026-11-16",
+      "name": "Open the online demo on the dashboard, see the camera as soon as demo data st...",
+      "published": true,
+      "summary": "Open the online demo on the dashboard, see the camera as soon as demo data starts, and keep printer file rows inside a phone screen (#98).",
+      "changes": [
+        "Open the online demo on the dashboard, see the camera as soon as demo data starts, and keep printer file rows inside a phone screen (#98)"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.11",
       "date": "2026-11-13",
       "name": "See how each part of Deja Vu1 is tested, including the AI assistant on a real...",
