@@ -1,6 +1,6 @@
 # What has been tested
 
-Updated 13 November 2026. Three kinds of evidence, kept apart so you can see which is which:
+Updated 16 November 2026. Three kinds of evidence, kept apart so you can see which is which:
 
 - **Real U1:** run on a real Snapmaker U1.
 - **Automated and stand-in:** the test suite (it runs before every release is published), a
@@ -26,10 +26,34 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1513 tests passed on Python 3.13.18 (Linux, 16 November 2026, version 0.20.11
-  plus three first-visit fixes), run as four parallel groups: 868.0 seconds of test time in all, 373
-  seconds from start to finish. The single run before it: 1510 tests in 1126.4 seconds (13 November). GitHub Actions runs the
-  suite on Python 3.8, 3.10, 3.12 and 3.13, and the release job runs it again before publishing.
+- **The test suite:** 1557 tests passed on Python 3.13.18 (Linux, 16 November 2026, version 0.20.14
+  plus colour calibration, the sensor in Confirm Print, the browser walk and the screen fixes it found),
+  run as five parallel groups (the browser walk on its own): 977.9 seconds of test time in all, about 254
+  seconds from start to finish. The browser walk's group failed once on a wait that was too short while the
+  other groups loaded the computer; its waits were lengthened and it passed again, also under artificial load.
+  The run before it: 1513 tests, 868.0 seconds of test time in all and 373 seconds from start to finish
+  (16 November, before these changes); the single run before that: 1510 tests in 1126.4 seconds
+  (13 November). GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13, and the release job
+  runs it again before publishing. A test (`tests/test_public_numbers.py`) fails when the test count in the
+  README, this page, the board or the slicer record, or a figure in the board's picture, no longer matches
+  the code.
+- **The browser walk** (`node tools/browser-walk.js --axe`, 16 November 2026, Chromium on Linux): all 17
+  places at 1366 px and 390 px, in light and dark, with demo data and with none (136 visits), plus 17
+  workflow runs: importing a file, Confirm Print on every sample G-code file, a slow answer for an earlier
+  file, the queue, opening a model, the slicer set-up card, phone pairing, the colour sensor on a stand-in
+  printer, and script payloads planted in file names, printer names, spools and notes. No script error, server
+  error, sideways scrolling or stray `undefined` text, and no payload ran. It took 5 minutes 20 seconds. Each
+  check was shown to fail on a planted fault first. [Check Deja Vu1 yourself](for-reviewers.md).
+- **Accessibility** (axe-core 4.10.2, WCAG 2.2 AA and best-practice rules, every place at 1366 px light and
+  dark and 390 px light, with demo data, 16 November 2026): three failing rules were found and fixed (the
+  Light, Dark and System buttons carried an attribute their role does not allow, the Farm desk schedule and
+  the G-code console could not be reached with the Tab key, the Overview progress bar had no name). After
+  the fixes no rule fails. An automated check covers part of WCAG; it does not replace a screen-reader test.
+- **Protections against other web pages** (a running server probed with curl, 16 November 2026): an unknown
+  or rebinding-style Host header answered 421; a cross-site POST and `Origin: null` answered 403; a file
+  name with `../` was refused or reduced to a plain name inside the library; the source files and the data
+  folder were not served (404); the anti-framing headers were present; a WebSocket request from another
+  origin answered 403.
 - **The printer connection** in the suite, against a Moonraker stand-in (`tests/fake_moonraker.py`)
   over real sockets: commands, refusals, watch-only mode (no write gets through), sign-in, the
   camera list, pictures and live stream, reconnects, a printer that moved to another address, and
