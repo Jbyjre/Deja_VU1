@@ -19,7 +19,9 @@
  * Workflows (demo data, both widths): import a file through the file picker; open every sample G-code file
  * in Confirm Print and check the verdict is complete and that "blocked" really disables Start; a slow answer
  * for an earlier file must not replace the one on screen; add to and remove from the queue; open a model;
- * the slicer set-up card; the phone pairing sheet.
+ * the slicer set-up card; the phone pairing sheet; the colour sensor on a stand-in printer (tools/stand-in-printer.py):
+ * assign it, record a white reference with the real button, and see the sensor beside the file's and the printer's
+ * colours in Confirm Print.
  * Needs Playwright for Node and a Chromium (DEJAVU_BROWSER names the file if it is somewhere unusual).
  * Exit code 0 only when every check passed; the cause of each failure is printed. */
 const fs = require('fs');
@@ -116,8 +118,10 @@ async function openSession(browser, base, cfg) {
     if (!ok) note(text);
   };
   page.on('pageerror', e => note('script error: ' + e.message));
+  /* A stand-in printer answers only part of Moonraker: its 502s for features it lacks are not the app's fault. */
+  const ignored = cfg.standIn ? IGNORED_CONSOLE.concat([/status of 502/]) : IGNORED_CONSOLE;
   page.on('console', m => {
-    if (m.type() === 'error' && !IGNORED_CONSOLE.some(re => re.test(m.text()))) note('console error: ' + m.text());
+    if (m.type() === 'error' && !ignored.some(re => re.test(m.text()))) note('console error: ' + m.text());
   });
   page.on('requestfailed', r => {
     if (r.url().startsWith(base) && !/ERR_ABORTED/.test(r.failure() ? r.failure().errorText : '')) {
@@ -127,8 +131,8 @@ async function openSession(browser, base, cfg) {
   page.on('response', async r => {
     const url = r.url();
     if (!url.startsWith(base)) return;
-    if (r.status() >= 500) note('server error ' + r.status() + ': ' + url.replace(base, ''));
-    if (!demo && url.startsWith(base + '/api/') && r.status() === 200 && /\/api\/(printer|state|status|live)/.test(url)) {
+    if (r.status() >= 500 && !(cfg.standIn && r.status() === 502)) note('server error ' + r.status() + ': ' + url.replace(base, ''));
+    if (!demo && !cfg.standIn && url.startsWith(base + '/api/') && r.status() === 200 && /\/api\/(printer|state|status|live)/.test(url)) {
       try {
         const body = await r.json();
         if (body && body.connected === true) note('invented a connected printer with no demo data: ' + url.replace(base, ''));
@@ -362,6 +366,95 @@ const FLOWS = [
   }]
 ];
 
+/* The colour sensor on a stand-in printer: calibrate with the real button, see it in Confirm Print. */
+async function sensorFlow(s, standIn) {
+  const { page } = s;
+  const post = (url, body, raw) => page.evaluate(async ([u, b, r]) => {
+    const res = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: r || JSON.stringify(b || {}) });
+    return { status: res.status, body: await res.json().catch(() => ({})) };
+  }, [url, body, raw]);
+  const bands = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8'];
+  const blue = [0.35, 0.6, 0.55, 0.3, 0.1, 0.05, 0.04, 0.04];
+  let id = null;
+  try {
+    id = (await post('/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn })).body.id;
+    s.check(!!id, 'the stand-in printer could not be added');
+    await post('/api/modules/color_check/toggle', { enabled: true });
+    const q = '?printer=' + id;
+    const bind = { toolhead: 'T0', device_id: 'pico-1', channel_id: 'inlet-0', sensor_id: 'as7341-1', sensor_model: 'AS7341' };
+    s.check((await post('/api/colorcheck/sensors' + q, { version: 1, simulated: false, bindings: [bind] })).status === 200, 'the sensor could not be assigned');
+    const send = ratio => post('/api/colorcheck/readings' + q, {
+      version: 1, simulated: false, device_id: 'pico-1', channel_id: 'inlet-0', sensor_id: 'as7341-1', sensor_model: 'AS7341',
+      captured_at: Date.now() / 1000, quality_flags: [], calibrated: null,
+      raw: Object.fromEntries(bands.map((n, i) => [n, 1000 * (Array.isArray(ratio) ? ratio[i] : ratio)]))
+    });
+    await post('/api/files/upload?name=walk_sensor.gcode', null, '; filament_colour = #ff0000\n; filament_type = PLA\nG28\nT0\nG1 X20 Y20 Z0.2 E1\nM104 S0\n');
+    await page.evaluate(() => {
+      const t = document.getElementById('demo-toggle');
+      if (t && t.checked) t.click();
+    });
+    await page.evaluate(pid => Workshop.selectPrinter(pid), id);
+    await page.waitForTimeout(1000);
+    await send(1);
+    await page.evaluate(() => {
+      location.hash = '#/filament';
+    });
+    await page.waitForTimeout(800);
+    await page.evaluate(() => Sections.reveal(document.getElementById('colors')));
+    await page.locator('#colors [data-cal="white"]').waitFor({ timeout: 10000 });
+    await page.waitForFunction(() => /needs calibration/i.test(document.getElementById('colors').innerText), null, { timeout: 15000 }).catch(() => {});
+    s.check(/needs calibration/i.test(await page.locator('#colors').innerText()), 'a sensor with only raw counts does not say it needs calibration');
+    await send(1);
+    await page.locator('#colors [data-cal="white"]').click();
+    await page.waitForFunction(() => /Calibration dv1-/.test(document.getElementById('colors').innerText), null, { timeout: 10000 }).catch(() => {});
+    s.check(/Calibration dv1-/.test(await page.locator('#colors').innerText()), 'the white reference was not recorded from the button');
+    await send(blue);
+    await page.waitForTimeout(300);
+    await page.evaluate(() => Workshop.loadFiles && Workshop.loadFiles());
+    await page.waitForFunction(() => /#0075c9/i.test(document.getElementById('colors').innerText), null, { timeout: 8000 }).catch(() => {});
+    s.check(/#0075c9/i.test(await page.locator('#colors').innerText()), 'a calibrated blue sample did not show as #0075c9');
+    await page.evaluate(async () => {
+      location.hash = '#/files';
+      await Workshop.loadFiles();
+      await Workshop.openFile('walk_sensor.gcode');
+    });
+    await page.locator('#fd-print').first().click();
+    await page.locator('#confirm-body .gate-banner').waitFor({ timeout: 20000 });
+    const gate = await page.locator('#confirm-body').innerText();
+    s.check(/Colour sensor reads #0075c9, far from the file/.test(gate), 'Confirm Print does not show the sensor beside the file and printer colours');
+    s.check(/not as proof/.test(gate), 'the sensor warning does not say it is not proof');
+    await closeConfirm(page);
+  } finally {
+    if (id) await post('/api/fleet/registry/' + id + '/remove', {});
+  }
+}
+
+function startStandIn() {
+  return new Promise((resolve, reject) => {
+    const child = spawn('python3', [path.join(ROOT, 'tools', 'stand-in-printer.py')], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] });
+    child.stdout.once('data', d => resolve({ child, url: String(d).trim() }));
+    child.once('error', reject);
+    child.once('exit', code => reject(new Error('the stand-in printer exited with ' + code)));
+  });
+}
+
+async function runSensorFlow(browser, base, cfg, results) {
+  const s = await openSession(browser, base, { ...cfg, demo: false, standIn: true });
+  s.where = 'flow: the colour sensor on a stand-in printer';
+  let standIn = null;
+  try {
+    standIn = await startStandIn();
+    await sensorFlow(s, standIn.url);
+  } catch (e) {
+    s.note('the flow stopped: ' + String(e.message).split('\n')[0]);
+  } finally {
+    if (standIn) standIn.child.kill();
+  }
+  results.flows += 1;
+  await s.context.close();
+  for (const p of s.problems) results.failures.push({ config: cfg, ...p });
+}
+
 async function runFlows(browser, base, cfg, tmp, results, filter) {
   const s = await openSession(browser, base, cfg);
   await loadSamples(s.page);
@@ -419,6 +512,10 @@ async function runFlows(browser, base, cfg, tmp, results, filter) {
     if (!flag('--flows-only')) for (const cfg of matrix) await walkPlaces(browser, server.base, places, cfg, out, results);
     if (!flag('--places-only')) {
       for (const width of widths) await runFlows(browser, server.base, { width, demo: true, theme: 'light' }, tmp, results, option('--flow'));
+      const wanted = option('--flow');
+      if (!wanted || 'colour sensor'.includes(wanted.toLowerCase()) || wanted.toLowerCase().includes('sensor')) {
+        for (const width of widths) await runSensorFlow(browser, server.base, { width, demo: false, theme: 'light' }, results);
+      }
     }
   } finally {
     await browser.close();
