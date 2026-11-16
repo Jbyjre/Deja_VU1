@@ -13,6 +13,7 @@ moonraker_client, depending on which printer is selected.
 
 import threading
 
+import color_check
 import file_library
 import mock_moonraker
 import print_gate
@@ -91,6 +92,11 @@ def _start_locked(filename, confirmed):
     mock_moonraker.upload_file(filename, len(data), data)
     state = mock_moonraker.start_print(filename, gate["job"])
     file_library.touch(filename, "last_printed")
+    if gate["verdict"] == "confirm":
+        try:
+            color_check.record_override(filename, gate)      # went ahead against the colour sensor, if it said so
+        except (OSError, ValueError, KeyError, TypeError):
+            pass                                              # a note that cannot be saved never stops a print
     return state
 
 

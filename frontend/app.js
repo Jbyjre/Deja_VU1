@@ -1716,6 +1716,27 @@ async function loadRings() {
 
 /* ---- Module: colour check ------------------------------------------------*/
 
+/* One listener for the calibration buttons: they are redrawn with every refresh. */
+function bindCalibration() {
+  const host = $('colors');
+  if (host.dataset.calBound) return;
+  host.dataset.calBound = '1';
+  host.addEventListener('click', async e => {
+    const button = e.target.closest('[data-cal]');
+    if (!button) return;
+    const step = button.dataset.cal;
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = step === 'clear' ? 'Forgetting…' : 'Recording…';
+    const done = { white: 'White reference recorded', dark: 'Dark reference recorded', clear: 'References forgotten' };
+    const r = await postJSON(api('/api/colorcheck/calibration'), { toolhead: button.dataset.head, step });
+    toast(r.ok ? `${done[step]} for ${button.dataset.head}` : (r.body && r.body.error) || 'The sensor refused that', r.ok ? 'ok' : 'bad');
+    button.disabled = false;
+    button.textContent = label;
+    loadColorCheck();
+  });
+}
+
 async function loadColorCheck() {
   const printer = currentPrinter;
   const data = await getJSON(api('/api/colorcheck')).catch(() => null);
@@ -1755,11 +1776,22 @@ async function loadColorCheck() {
         : '';
       const reading = sensor.reading;
       const age = sensor.age_s == null ? '' : ` · ${Math.floor(sensor.age_s)} s ago`;
+      const cal = sensor.calibration;
+      const head = esc(sensor.toolhead);
+      const calibration = !cal ? '' : cal.supported
+        ? `<div class="cal-row"><p class="crow-msg">${esc(cal.message)}${cal.id ? ` Calibration ${esc(cal.id)}.` : ''}</p>
+          <div class="cal-actions">
+            <button class="btn small" type="button" data-cal="white" data-head="${head}">Record white reference</button>
+            <button class="btn small" type="button" data-cal="dark" data-head="${head}">Record dark reference</button>
+            ${cal.has_white || cal.has_dark ? `<button class="btn small" type="button" data-cal="clear" data-head="${head}">Forget references</button>` : ''}
+          </div></div>`
+        : `<p class="crow-msg">${esc(cal.message)}</p>`;
       return `<div class="crow">
-        <div class="crow-top"><span class="crow-head">Head ${esc(sensor.toolhead)}</span>
+        <div class="crow-top"><span class="crow-head">Head ${head}</span>
           <span class="badge">${esc(labels[sensor.status] || 'No reading')}</span></div>
         ${colour}
         <p class="crow-msg">${esc(sensor.message)}</p>
+        ${calibration}
         <details class="sensor-details" data-head="${esc(sensor.toolhead)}"${expanded.has(sensor.toolhead) ? ' open' : ''}><summary>Reading details${esc(age)}</summary>
           <p>${esc(sensor.sensor_model)} · Hub ${esc(sensor.device_id)} · Channel ${esc(sensor.channel_id)} · Sensor ${esc(sensor.sensor_id)}</p>
           ${reading ? `<p>Captured ${esc(new Date(reading.captured_at * 1000).toLocaleString())}.
@@ -1767,8 +1799,8 @@ async function loadColorCheck() {
             <p>Received ${esc(new Date(reading.received_at * 1000).toLocaleString())}.</p>
             <p>Raw values: ${esc(JSON.stringify(reading.raw))}</p>
             <p>Quality flags: ${esc(reading.quality_flags.join(', ') || 'None reported')}</p>
-            ${reading.calibrated ? `<p>Calibration reported by sensor: ${esc(reading.calibrated.calibration_id)}.
-              Confidence: ${esc(reading.calibrated.confidence)}.</p>` : ''}` : ''}
+            ${reading.calibrated ? `<p>${reading.calibrated.source === 'deja-vu1' ? 'Calibrated by Deja Vu1' : 'Calibration reported by sensor'}:
+              ${esc(reading.calibrated.calibration_id)}. Confidence ${esc(reading.calibrated.confidence)}, a display setting and not a measured accuracy.</p>` : ''}` : ''}
         </details>
       </div>`;
     }).join(''));
@@ -1776,6 +1808,7 @@ async function loadColorCheck() {
       [...document.querySelectorAll('#colors .sensor-details')]
         .find(d => d.dataset.head === focusedHead)?.querySelector('summary').focus({ preventScroll: true });
     }
+    bindCalibration();
     $('colors-note').textContent = data.note;
     $('colors-note').hidden = false;
     return;
@@ -3058,7 +3091,11 @@ async function refreshAll() {
  * need that as aria-pressed. One observer keeps the two in step for every
  * .pill-toggle, whichever code changed it. */
 function initPressedSync() {
-  const sync = b => b.setAttribute('aria-pressed', String(b.classList.contains('active')));
+  const sync = b => {
+    // A radio reports its choice with aria-checked (set where it is chosen); aria-pressed is not allowed on it.
+    if (b.getAttribute('role') === 'radio') b.removeAttribute('aria-pressed');
+    else b.setAttribute('aria-pressed', String(b.classList.contains('active')));
+  };
   const watch = new MutationObserver(records => records.forEach(r => { if (r.target.tagName === 'BUTTON') sync(r.target); }));
   document.querySelectorAll('.pill-toggle').forEach(group => {
     group.querySelectorAll('button').forEach(sync);

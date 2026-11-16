@@ -227,7 +227,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
   assistant. The assistant has also run through a paid API key.
-- **Automated:** 1513 tests passed on Python 3.13 (16 November 2026). GitHub Actions
+- **Automated:** 1557 tests passed on Python 3.13 (16 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
   Other builds slice too, and **Check slicer** lists the builds with recorded runs.
@@ -246,7 +246,10 @@ reads the filament, and a Raspberry Pi Pico W sends the reading to Deja Vu1. Two
 the AS7341 and the TCS34725, get a bench test on real spools before anything goes near the printer.
 A sensor mismatch starts as a warning you can accept. Spool scales come after it.
 The [companion API](docs/colour-sensor-api.md) now receives identified sensor readings and expires
-old samples. Firmware, guided calibration and optical advice in Confirm Print are still to build.
+old samples. Deja Vu1 also turns a sensor's raw counts into a colour from a white reference you record in
+the housing, and Confirm Print shows the sensor beside the file's colour and the printer's report as advice
+that never blocks a start. Both are tested with synthetic readings and a stand-in printer. The Pico firmware
+and a bench test of a physical sensor are still to do.
 [The design](docs/hardware-modules.md)
 
 ## How it's built
@@ -262,7 +265,7 @@ old samples. Firmware, guided calibration and optical advice in Confirm Print ar
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1438 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1557 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 
@@ -272,6 +275,7 @@ old samples. Firmware, guided calibration and optical advice in Confirm Print ar
 | Adding a real printer, and what each message means | [Connecting a real printer](docs/real-printer.md) |
 | Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [what to check](docs/beta-testing.md) |
 | What ran where, with dates | [What has been tested](docs/testing.md) |
+| Reviewing it: ten minutes without a printer, what is new since Phase 1, what is not done | [Check Deja Vu1 yourself](docs/for-reviewers.md) |
 | Slicing, plates and engines | [Slicing and models](docs/slicing-and-models.md), [engine support](docs/engine-support.md) |
 | Reaching it away from home | [Remote access](docs/remote-access.md), [low-latency camera](docs/low-latency-camera.md), [AR preview](docs/ar-preview.md) |
 | The AI assistant: connecting, limits, what was tested | [AI assistant](docs/ai-assistant.md) |
@@ -289,7 +293,10 @@ python3 start.py          # opens http://localhost:8000
 ```
 
 Run the tests with `python3 -m unittest discover tests` (about 11 to 15 minutes; they use simulated
-printers and a temporary data folder). Every change also shows in the online demo, which is the
+printers and a temporary data folder). `node tools/browser-walk.js` opens every screen and the main
+workflows in a real browser (it needs Node, Playwright for Node and a Chromium; `--axe` adds an
+accessibility check), and `python3 tools/stand-in-printer.py` runs a pretend printer to try the
+dashboard against. Every change also shows in the online demo, which is the
 same `frontend/` folder playing back a recording: a new or changed route needs
 `python3 tools/online-demo/record.py`. Every merge to `main` publishes a release, and the pull
 request title becomes its note. [CONTRIBUTING.md](CONTRIBUTING.md) has the house rules;

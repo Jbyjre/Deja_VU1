@@ -2617,10 +2617,32 @@ const Workshop = (() => {
     confirmFile = filename;
     const dialog = $('confirm-dialog');
     $('confirm-sub').textContent = `${filename} on ${printerName(currentPrinter || (live.fleet[0] || {}).id)}`;
+    // Nothing from the file checked before may show, or stay pressable, while this one is checked.
+    const health = $('confirm-health');
+    health.innerHTML = '<span class="gm-num">–</span><span class="gm-lbl">health</span>';
+    health.style.removeProperty('--gm');
+    health.removeAttribute('title');
+    qs('#confirm-dialog .dialog-panel').style.removeProperty('--glass-tint');
+    $('confirm-go').disabled = true;
+    $('confirm-go').textContent = 'Start print';
     $('confirm-body').innerHTML = '<p class="log-empty">Checking the file and the printer…</p>';
     openDialog(dialog, fromEl);
-    const gate = preloaded || await getJSON(api(`/api/print/confirm?file=${enc(filename)}`));
+    const gate = preloaded || await getJSON(api(`/api/print/confirm?file=${enc(filename)}`)).catch(() => null);
+    // A slow answer for a file checked earlier must not replace what the dialog shows now.
+    if (confirmFile !== filename || !dialog.open) return;
+    if (!gate) { $('confirm-body').innerHTML = '<p class="log-empty">Could not check this file. Try again.</p>'; return; }
     renderGate(gate);
+  }
+
+  /* What the colour sensor reads, apart from the file's colour and the printer's report. Advice only. */
+  function sensorLine(m) {
+    const chip = /^#[0-9a-f]{6}$/i.test(m.hex || '')
+      ? `<span class="chip" style="background:${esc(m.hex)}" title="What the colour sensor reads"></span>` : '';
+    const against = { match: 'matches the file', close: 'close to the file', mismatch: 'far from the file' }[m.versus_file];
+    const words = m.hex
+      ? `Colour sensor reads ${esc(m.hex)}${m.simulated ? ' (simulated)' : ''}${against ? `, ${against}` : ''}`
+      : 'Colour sensor: no current colour';
+    return `<span class="gf-sensor">${chip}<span>${words}</span></span>`;
   }
 
   function renderGate(gate) {
@@ -2643,6 +2665,7 @@ const Workshop = (() => {
         <span class="chip" style="background:${esc(f.loaded_hex || 'transparent')}" title="Loaded"></span>
         <span class="gf-text">${esc(f.loaded_name || 'nothing loaded')} ${f.material_mismatch ? `· ${esc(f.loaded_material || '')} loaded, the file needs ${esc(f.expected_material)}` : f.expected_material ? `· ${esc(f.expected_material)}` : ''}</span>
         <span class="gf-status">${f.material_mismatch ? 'Wrong material' : ({ match: 'Match', close: 'Close', mismatch: 'Wrong colour', not_loaded: 'Not loaded', missing_toolhead: 'No such toolhead', no_colour_in_file: 'No colour in file', unknown: 'Not reported', unknown_colour: 'Colour not reported' }[f.status] || esc(f.status))}</span>
+        ${f.measured ? sensorLine(f.measured) : ''}
       </div>`).join('');
     $('confirm-body').innerHTML = `
       <div class="gate-banner ${gate.verdict}">${banner}</div>

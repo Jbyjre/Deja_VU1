@@ -689,6 +689,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
   overflow-y: auto;
   margin-bottom: 10px;
 }
+.console-log:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .console-log .c-cmd { color: var(--text-dim); }
 .console-log .c-detail { color: var(--text-faint); }
 

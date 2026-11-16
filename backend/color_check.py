@@ -32,7 +32,9 @@ What is here today
 The comparison logic runs in the demo. Real-printer reads use explicitly
 assigned companion sensors through companion_sensor.py. Missing, old,
 uncalibrated and low-quality readings never become a matching colour.
-Physical readings are observations only; print-time advice is not connected yet.
+Calibration (sensor_calibration.py) turns raw counts into a colour from a white
+reference recorded in the housing. Confirm Print shows what the sensor reads next
+to the file's colour and the printer's report, as advice that never blocks a start.
 
 Why no driver code yet
 ----------------------
@@ -41,11 +43,21 @@ pins. The sensor hangs off the external Pico W, never the printer's board. No
 sensor driver or physical accuracy claim is included here. See docs/hardware-modules.md, Module 3.
 """
 
+import os
 import random
+import threading
+import time
 
 import mock_moonraker
 import companion_sensor
+import sensor_calibration
+import storage
 from mock_moonraker import get_current_job_requirements, get_printer_state
+
+_DATA_DIR = storage.DATA_DIR
+_OVERRIDES_PATH = os.path.join(_DATA_DIR, "colour_overrides.json")
+_overrides_lock = threading.Lock()
+MAX_OVERRIDES = 200
 
 # Same fixed seed idea as the mock printer: consistent demos.
 _RNG = random.Random(4242)
@@ -65,6 +77,9 @@ WARN_TOLERANCE = 90
 # mismatch warning would never be visible. Listing a toolhead here makes the
 # simulation report the wrong spool for it, so a demo shows both outcomes.
 DEMO_MISMATCH_TOOLHEADS = {"T1"}
+
+# A reference reading must be this fresh, so the white target is already in the housing when it is taken.
+REFERENCE_MAX_AGE_S = 5
 
 
 def _hex_to_rgb(value):
@@ -136,18 +151,34 @@ def connect_sensor(toolhead_id):
     return bool(reading and reading["age_s"] is not None and reading["age_s"] < companion_sensor.MAX_AGE_S)
 
 
-def calibrate(toolhead_id):
+def calibrate(toolhead_id, step="white"):
     """
-    NOT IMPLEMENTED. Will white-balance the sensor.
+    Record one reference for a head's sensor from its latest reading: the white
+    target ("white"), the empty housing ("dark"), or forget both ("clear").
 
-    Optical sensors read differently depending on ambient light and how far
-    the filament sits from the lens. The dark housing fixes both; this will
-    still take a reference reading against a known white target so later
-    readings can be corrected.
+    Optical sensors read differently with the light and the distance to the
+    filament. The dark housing fixes both; the white reference is what turns
+    later raw counts into a colour (sensor_calibration.py). The reading used
+    must be a few seconds old at most, so the target is already in place.
     """
-    raise NotImplementedError(
-        "Sensor calibration not implemented. Awaiting physical hardware."
-    )
+    pid = mock_moonraker.selected_printer_id()
+    if not mock_moonraker.is_real(pid):
+        raise ValueError("Calibration needs an added printer with a physical sensor; demo printers have none")
+    sensor = companion_sensor.read(toolhead_id)
+    if sensor is None:
+        raise ValueError(f"No colour sensor is assigned to head {toolhead_id}")
+    identity = {key: sensor[key] for key in sensor_calibration.IDENTITY}
+    if step == "clear":
+        return sensor_calibration.record_reference(pid, toolhead_id, identity, "clear", None, None)
+    reading = sensor.get("reading")
+    if not reading or sensor["age_s"] is None or sensor["age_s"] > REFERENCE_MAX_AGE_S:
+        raise ValueError(f"Wait for a new reading from {toolhead_id}'s sensor (under {REFERENCE_MAX_AGE_S} seconds "
+                         "old), then try again")
+    if reading["quality_flags"]:
+        raise ValueError("The sensor flagged this sample (" + ", ".join(reading["quality_flags"]) +
+                         "). Fix the light or the target's position, then try again")
+    return sensor_calibration.record_reference(pid, toolhead_id, identity, step, reading["raw"],
+                                               reading["captured_at"])
 
 
 def read_sensor(toolhead_id):
@@ -192,6 +223,98 @@ def read_sensor(toolhead_id):
 
 
 # ---------------------------------------------------------------------------
+# Confirm Print: the sensor's view, beside the file's colour and the printer's report
+# ---------------------------------------------------------------------------
+
+def evidence(toolhead_id, state, expected_hex):
+    """
+    What the colour sensor says about one head, for Confirm Print. Advice only: it is shown next to the file's
+    colour and the printer's own report, and it never blocks a start.
+
+    Returns None when this head has no sensor, so there is nothing to say. Demo printers get a labelled
+    simulation with no randomness, so the same file always shows the same thing.
+    """
+    if mock_moonraker.is_real(mock_moonraker.selected_printer_id()):
+        sensor = companion_sensor.read(toolhead_id)
+        if sensor is None:
+            return None
+        item = {"status": sensor["status"], "age_s": sensor["age_s"], "message": sensor["message"],
+                "simulated": False, "hex": None}
+        if sensor["status"] == "reading":
+            calibrated = sensor["reading"]["calibrated"]
+            item.update(hex=sensor["detected_hex"], calibration_id=calibrated["calibration_id"],
+                        source=calibrated.get("source", "companion"))
+    else:
+        loaded = (state.get("toolheads") or {}).get(toolhead_id) or {}
+        if not loaded.get("filament_color_hex"):
+            return None
+        item = {"status": "reading", "age_s": 0, "message": "Simulated reading.", "simulated": True,
+                "hex": "#f2f2f0" if toolhead_id in DEMO_MISMATCH_TOOLHEADS else loaded["filament_color_hex"]}
+    if item["hex"] and expected_hex:
+        verdict = compare(expected_hex, item["hex"])
+        item["versus_file"] = verdict["verdict"]
+        item["distance"] = verdict["distance"]
+    return item
+
+
+def advice(where, expected_hex, printer_hex, seen):
+    """
+    One plain sentence for a sensor reading, as ("warn" | "info", text), or None when there is nothing to say.
+    A warning asks for a look at the spool; it is never proof, because the sensor has not been checked
+    against known colours. A simulated reading only ever gets a note, and only when it differs from the file,
+    so a demo can show what a mis-loaded spool looks like without changing any verdict.
+    """
+    if seen["simulated"]:
+        if seen.get("versus_file") == "mismatch":
+            return "info", (f"{where}: the simulated colour sensor reads {seen['hex']}, far from the file's "
+                            f"{expected_hex}. This is demo data showing what a wrong spool looks like")
+        return None
+    if seen["status"] != "reading":
+        return "info", f"{where}: the colour sensor has no current colour. {seen['message']}"
+    if "versus_file" not in seen:
+        return None
+    if seen["versus_file"] == "mismatch":
+        if printer_hex and compare(expected_hex, printer_hex)["verdict"] == "match":
+            return "warn", (f"{where}: the printer reports the file's colour, but the colour sensor reads "
+                            f"{seen['hex']}. Look at the spool, and check this sensor is assigned to the right head")
+        return "warn", (f"{where}: the colour sensor reads {seen['hex']}, far from the file's {expected_hex}. "
+                        "The sensor has not been checked against known colours, so use this as a reason "
+                        "to look at the spool, not as proof")
+    if seen["versus_file"] == "close":
+        return "info", f"{where}: the colour sensor reads {seen['hex']}, a close call against the file's {expected_hex}"
+    return "info", f"{where}: the colour sensor reads {seen['hex']}, which matches the file's colour"
+
+
+def record_override(filename, gate):
+    """
+    Keep a note when a print starts after the colour sensor disagreed with the file, so there is a record of
+    who went ahead and what the sensor, the printer and the file each said. Real sensors only.
+    """
+    heads = [{"toolhead": row["toolhead"], "file_hex": row.get("expected_hex"), "printer_hex": row.get("loaded_hex"),
+              "sensor_hex": row["measured"]["hex"], "distance": row["measured"].get("distance"),
+              "calibration_id": row["measured"].get("calibration_id"), "source": row["measured"].get("source")}
+             for row in gate.get("filament", [])
+             if row.get("measured") and not row["measured"]["simulated"]
+             and row["measured"].get("versus_file") == "mismatch"]
+    if not heads:
+        return
+    entry = {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "printer_id": mock_moonraker.selected_printer_id(),
+             "file": filename, "heads": heads}
+    with _overrides_lock:
+        rows = storage.load_json(_OVERRIDES_PATH, [])
+        rows.append(entry)
+        storage.save_json(_OVERRIDES_PATH, rows[-MAX_OVERRIDES:])
+
+
+def overrides(limit=50):
+    """The recorded starts that went ahead against the sensor's reading, newest first, for the selected printer."""
+    pid = mock_moonraker.selected_printer_id()
+    with _overrides_lock:
+        rows = [row for row in storage.load_json(_OVERRIDES_PATH, []) if row.get("printer_id") == pid]
+    return {"printer_id": pid, "overrides": list(reversed(rows))[:limit]}
+
+
+# ---------------------------------------------------------------------------
 # Public API - what the dashboard calls
 # ---------------------------------------------------------------------------
 
@@ -209,8 +332,9 @@ def check_current_job():
             "simulated": False,
             "hardware_connected": any(s["age_s"] is not None and s["age_s"] < companion_sensor.MAX_AGE_S
                                       for s in sensors),
-            "note": "Sensor readings are separate from the printer's reported colours. Confirm Print still "
-                    "compares the file with what the printer reports loaded; optical advice is not enabled.",
+            "note": "Sensor readings are kept apart from the printer's reported colours. Confirm Print shows both "
+                    "beside the file's colour as advice: a sensor that disagrees asks for a look at the spool and "
+                    "never blocks a start or identifies a material.",
             "filename": job["filename"],
             "overall": "sensor_readings" if sensors else "no_sensor",
             "checks": [],

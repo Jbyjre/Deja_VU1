@@ -141,9 +141,9 @@ class TestColorCheckJob(unittest.TestCase):
         else:
             self.assertEqual(self.data["overall"], "match")
 
-    def test_sensor_is_not_connected_and_calibration_refuses_to_run(self):
+    def test_sensor_is_not_connected_and_calibration_refuses_a_demo_printer(self):
         self.assertFalse(color_check.connect_sensor("T0"))
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(ValueError):
             color_check.calibrate("T0")
 
 

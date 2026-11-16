@@ -251,9 +251,14 @@ already knows. A few tagged spools in different colours cover the test.
 ### Calibration
 
 Room light and the distance to the filament both shift readings. The dark
-housing removes most of the first and fixes the second. The sensor still
-needs a white-balance reference before first use; `calibrate()` is stubbed
-for this.
+housing removes most of the first and fixes the second. Deja Vu1 then divides
+each channel by a white reference: the counts the sensor reads from a white
+target in the filament's place, light on. An optional dark reference (housing
+empty) removes the sensor's own offset. The AS7341's eight bands are joined
+into a spectrum and converted to sRGB; the TCS34725's red, green and blue are
+used directly. Replacing the chip or moving its channel drops the calibration.
+This is built and tested with synthetic counts. How close it comes to a
+spool's true colour is not measured yet: that is the bench test.
 
 ### Stage two: TD
 
@@ -296,10 +301,11 @@ assigned companion sensors through `backend/companion_sensor.py` and the
 [version 1 companion API](colour-sensor-api.md). It retains raw channels, device and sensor identity,
 calibration provenance, quality flags and capture/receipt times. Old, uncalibrated or low-quality
 samples never show a current colour. With no assigned sensor it reports "no sensor fitted";
-demo readings never stand in for physical readings. Pico firmware, sensor drivers and
-`calibrate()` are still to build and test with hardware.
-The behaviour above (checking on load, the one-click accept, "couldn't
-read", the one-tap colour offer) is planned and not written yet.
+demo readings never stand in for physical readings. `backend/sensor_calibration.py` turns raw counts
+into a colour from a recorded white reference, and Confirm Print shows the sensor's reading beside the file's
+colour and the printer's report as advice. Pico firmware and sensor drivers are still to build and test with
+hardware. Checking when filament loads, the one-click accept and the one-tap colour offer are planned and
+not written yet.
 
 ### Plan once a U1 is available
 

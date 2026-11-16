@@ -127,7 +127,7 @@ window.Explain = (() => {
     'dock status rings': ['Optional lights around each [[dock]] that show what each head is doing, with LED rings or a WLED strip you already own.',
       'The screen works today. The light hardware isn’t finished yet.'],
     'right colour loaded': ['Readings from an optional colour checker, kept separate from the colours the printer reports loaded.',
-      'Old, uncalibrated or low-quality readings show why no current colour is available. Optical readings do not approve or block a print. Demo readings are labelled.'],
+      'Old, uncalibrated or low-quality readings show why no current colour is available. Record a white reference here to calibrate a sensor. Confirm Print shows what the sensor reads beside the file’s colour and the printer’s report; it can ask for a look at the spool and never approves or blocks a print. Demo readings are labelled.'],
     'filament inventory': ['The spools you have on hand, and how much is left on each.',
       'Add a spool once. Prints take their filament off it as they run.'],
     'what changed': ['Compares the print you are about to start with the last time this same file printed well.',
