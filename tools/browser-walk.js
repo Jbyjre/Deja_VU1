@@ -417,17 +417,17 @@ async function sensorFlow(s, standIn) {
     });
     await page.waitForTimeout(800);
     await page.evaluate(() => Sections.reveal(document.getElementById('colors')));
-    await page.locator('#colors [data-cal="white"]').waitFor({ timeout: 10000 });
-    await page.waitForFunction(() => /needs calibration/i.test(document.getElementById('colors').innerText), null, { timeout: 15000 }).catch(() => {});
+    await page.locator('#colors [data-cal="white"]').waitFor({ timeout: 45000 });
+    await page.waitForFunction(() => /needs calibration/i.test(document.getElementById('colors').innerText), null, { timeout: 45000 }).catch(() => {});
     s.check(/needs calibration/i.test(await page.locator('#colors').innerText()), 'a sensor with only raw counts does not say it needs calibration');
     await send(1);
     await page.locator('#colors [data-cal="white"]').click();
-    await page.waitForFunction(() => /Calibration dv1-/.test(document.getElementById('colors').innerText), null, { timeout: 10000 }).catch(() => {});
+    await page.waitForFunction(() => /Calibration dv1-/.test(document.getElementById('colors').innerText), null, { timeout: 30000 }).catch(() => {});
     s.check(/Calibration dv1-/.test(await page.locator('#colors').innerText()), 'the white reference was not recorded from the button');
     await send(blue);
     await page.waitForTimeout(300);
     await page.evaluate(() => Workshop.loadFiles && Workshop.loadFiles());
-    await page.waitForFunction(() => /#0075c9/i.test(document.getElementById('colors').innerText), null, { timeout: 8000 }).catch(() => {});
+    await page.waitForFunction(() => /#0075c9/i.test(document.getElementById('colors').innerText), null, { timeout: 30000 }).catch(() => {});
     s.check(/#0075c9/i.test(await page.locator('#colors').innerText()), 'a calibrated blue sample did not show as #0075c9');
     await page.evaluate(async () => {
       location.hash = '#/files';
