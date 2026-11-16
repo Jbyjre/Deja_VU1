@@ -14,7 +14,7 @@ here with what Deja Vu1 does with each.
   (`tests/fake_moonraker.py`) were written from reading that source and its
   documentation; no code was copied. The G-code pre-flight reads lines the
   way Klipper does, written from reading Klipper's tokeniser.
-- **The community Extended Firmware for the U1** (paxx12/SnapmakerU1-Extended-Firmware
+- **The community Extended Firmware for the U1** (paxx12-snapmaker-u1/SnapmakerU1-Extended-Firmware
   and its camera service paxx12/v4l2-mpp, GPL-3.0). Deja Vu1 reads the camera
   it publishes and signs in the way its Web Authentication expects. The
   addresses and formats were read from its source and documentation; no code
