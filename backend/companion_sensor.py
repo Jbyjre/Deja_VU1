@@ -1,7 +1,9 @@
-"""Version 1 colour-checker messages. No sensor driver or calibration is inferred here.
+"""Version 1 colour-checker messages. No sensor driver is inferred here.
 
 Bindings survive restart; readings deliberately do not. A companion must send a new
 sample after restart, reassignment or replacement before anything can be current.
+A colour comes from the companion's own claim, or from this sensor's white reference
+(sensor_calibration.py) when the companion sent raw counts only.
 """
 
 import copy
@@ -12,6 +14,7 @@ import threading
 import time
 
 import mock_moonraker
+import sensor_calibration
 import storage
 
 _DATA_DIR = storage.DATA_DIR
@@ -89,6 +92,8 @@ def configure(body):
                 raise ValueError("That sensor channel is assigned to another printer; disconnect it there first")
         saved[pid] = bindings
         storage.save_json(_PATH, saved)
+        # A replaced chip, a moved channel or a removed assignment must not keep an old white reference.
+        sensor_calibration.reconcile(saved)
         for removed in set(_readings) - set(saved):
             _readings.pop(removed, None)
         # Even changing back to the same mapping requires a new observation.
@@ -133,6 +138,9 @@ def ingest(body):
         if not binding:
             raise ValueError("This sensor is not assigned to this printer; check its hub, channel and sensor IDs")
         head = binding["toolhead"]
+        if reading["calibrated"] is None:
+            # No colour from the companion: use this sensor's own white reference, if it has one.
+            reading["calibrated"] = sensor_calibration.apply(pid, head, identity, raw)
         previous = _readings.get(pid, {}).get(head)
         if previous and captured <= previous["reading"]["captured_at"]:
             raise ValueError("This reading is repeated or older than the last one; send a new measurement")
@@ -172,9 +180,13 @@ def status():
     pid = mock_moonraker.selected_printer_id()
     with _lock:
         bindings = _bindings().get(pid, []) if mock_moonraker.is_real(pid) else []
+        sensors = []
+        for b in bindings:
+            view = _view(b, _readings.get(pid, {}).get(b["toolhead"]))
+            view["calibration"] = sensor_calibration.head_status(pid, b)
+            sensors.append(view)
         return {"version": VERSION, "printer_id": pid, "simulated": not mock_moonraker.is_real(pid),
-                "max_age_s": MAX_AGE_S,
-                "sensors": [_view(b, _readings.get(pid, {}).get(b["toolhead"])) for b in bindings]}
+                "max_age_s": MAX_AGE_S, "sensors": sensors}
 
 
 def read(toolhead):

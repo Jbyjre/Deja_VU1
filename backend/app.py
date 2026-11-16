@@ -84,6 +84,7 @@ API endpoints
   GET  /api/colorcheck/sensors       assigned companion sensors and reading status
   POST /api/colorcheck/sensors       version 1 physical sensor assignments, per printer
   POST /api/colorcheck/readings      one version 1 companion observation
+  POST /api/colorcheck/calibration   {"toolhead", "step": "white"|"dark"|"clear"} record or forget a reference
   GET  /api/printer                  raw mock printer state
   GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints
   GET  /api/chamber                  chamber temperature now + last 30 minutes
@@ -1243,6 +1244,12 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             body = self._read_json_body()
             action = companion_sensor.configure if route.endswith("/sensors") else companion_sensor.ingest
             return self._send_json(action(body))
+
+        if route == "/api/colorcheck/calibration":
+            if self._module_blocked("color_check"):
+                return None
+            body = self._read_json_body()
+            return self._send_json(color_check.calibrate(body.get("toolhead"), body.get("step") or "white"))
 
         if route.startswith("/api/assistant/"):
             if self._module_blocked("ai_assistant"):

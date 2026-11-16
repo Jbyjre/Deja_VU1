@@ -32,7 +32,9 @@ What is here today
 The comparison logic runs in the demo. Real-printer reads use explicitly
 assigned companion sensors through companion_sensor.py. Missing, old,
 uncalibrated and low-quality readings never become a matching colour.
-Physical readings are observations only; print-time advice is not connected yet.
+Calibration (sensor_calibration.py) turns raw counts into a colour from a white
+reference recorded in the housing. Confirm Print shows what the sensor reads next
+to the file's colour and the printer's report, as advice that never blocks a start.
 
 Why no driver code yet
 ----------------------
@@ -45,6 +47,7 @@ import random
 
 import mock_moonraker
 import companion_sensor
+import sensor_calibration
 from mock_moonraker import get_current_job_requirements, get_printer_state
 
 # Same fixed seed idea as the mock printer: consistent demos.
@@ -65,6 +68,9 @@ WARN_TOLERANCE = 90
 # mismatch warning would never be visible. Listing a toolhead here makes the
 # simulation report the wrong spool for it, so a demo shows both outcomes.
 DEMO_MISMATCH_TOOLHEADS = {"T1"}
+
+# A reference reading must be this fresh, so the white target is already in the housing when it is taken.
+REFERENCE_MAX_AGE_S = 5
 
 
 def _hex_to_rgb(value):
@@ -136,18 +142,34 @@ def connect_sensor(toolhead_id):
     return bool(reading and reading["age_s"] is not None and reading["age_s"] < companion_sensor.MAX_AGE_S)
 
 
-def calibrate(toolhead_id):
+def calibrate(toolhead_id, step="white"):
     """
-    NOT IMPLEMENTED. Will white-balance the sensor.
+    Record one reference for a head's sensor from its latest reading: the white
+    target ("white"), the empty housing ("dark"), or forget both ("clear").
 
-    Optical sensors read differently depending on ambient light and how far
-    the filament sits from the lens. The dark housing fixes both; this will
-    still take a reference reading against a known white target so later
-    readings can be corrected.
+    Optical sensors read differently with the light and the distance to the
+    filament. The dark housing fixes both; the white reference is what turns
+    later raw counts into a colour (sensor_calibration.py). The reading used
+    must be a few seconds old at most, so the target is already in place.
     """
-    raise NotImplementedError(
-        "Sensor calibration not implemented. Awaiting physical hardware."
-    )
+    pid = mock_moonraker.selected_printer_id()
+    if not mock_moonraker.is_real(pid):
+        raise ValueError("Calibration needs an added printer with a physical sensor; demo printers have none")
+    sensor = companion_sensor.read(toolhead_id)
+    if sensor is None:
+        raise ValueError(f"No colour sensor is assigned to head {toolhead_id}")
+    identity = {key: sensor[key] for key in sensor_calibration.IDENTITY}
+    if step == "clear":
+        return sensor_calibration.record_reference(pid, toolhead_id, identity, "clear", None, None)
+    reading = sensor.get("reading")
+    if not reading or sensor["age_s"] is None or sensor["age_s"] > REFERENCE_MAX_AGE_S:
+        raise ValueError(f"Wait for a new reading from {toolhead_id}'s sensor (under {REFERENCE_MAX_AGE_S} seconds "
+                         "old), then try again")
+    if reading["quality_flags"]:
+        raise ValueError("The sensor flagged this sample (" + ", ".join(reading["quality_flags"]) +
+                         "). Fix the light or the target's position, then try again")
+    return sensor_calibration.record_reference(pid, toolhead_id, identity, step, reading["raw"],
+                                               reading["captured_at"])
 
 
 def read_sensor(toolhead_id):
