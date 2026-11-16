@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.15 (16 November 2026): Calibrate a colour sensor from a white reference, see it in Confirm Print, an...
+
+- Calibrate a colour sensor from a white reference, see it in Confirm Print, and check every screen in a real browser
+
 ## 0.20.14 (16 November 2026): Follow the Extended Firmware links to its current home (#100)
 
 - Follow the Extended Firmware links to its current home (#100)
