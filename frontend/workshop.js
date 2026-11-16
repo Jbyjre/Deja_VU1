@@ -2617,9 +2617,20 @@ const Workshop = (() => {
     confirmFile = filename;
     const dialog = $('confirm-dialog');
     $('confirm-sub').textContent = `${filename} on ${printerName(currentPrinter || (live.fleet[0] || {}).id)}`;
+    // Nothing from the file checked before may show, or stay pressable, while this one is checked.
+    const health = $('confirm-health');
+    health.innerHTML = '<span class="gm-num">–</span><span class="gm-lbl">health</span>';
+    health.style.removeProperty('--gm');
+    health.removeAttribute('title');
+    qs('#confirm-dialog .dialog-panel').style.removeProperty('--glass-tint');
+    $('confirm-go').disabled = true;
+    $('confirm-go').textContent = 'Start print';
     $('confirm-body').innerHTML = '<p class="log-empty">Checking the file and the printer…</p>';
     openDialog(dialog, fromEl);
-    const gate = preloaded || await getJSON(api(`/api/print/confirm?file=${enc(filename)}`));
+    const gate = preloaded || await getJSON(api(`/api/print/confirm?file=${enc(filename)}`)).catch(() => null);
+    // A slow answer for a file checked earlier must not replace what the dialog shows now.
+    if (confirmFile !== filename || !dialog.open) return;
+    if (!gate) { $('confirm-body').innerHTML = '<p class="log-empty">Could not check this file. Try again.</p>'; return; }
     renderGate(gate);
   }
 
