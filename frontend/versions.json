@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.13",
+      "date": "2026-11-16",
+      "name": "Read each release's full notes under its own version in the changelog (#99)",
+      "published": true,
+      "summary": "Read each release's full notes under its own version in the changelog (#99).",
+      "changes": [
+        "Read each release's full notes under its own version in the changelog (#99)"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.12",
       "date": "2026-11-16",
       "name": "Open the online demo on the dashboard, see the camera as soon as demo data st...",

@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.13 (16 November 2026): Read each release's full notes under its own version in the changelog (#99)
+
+- Read each release's full notes under its own version in the changelog (#99)
+
 ## 0.20.12 (16 November 2026): Open the online demo on the dashboard, see the camera as soon as demo data st...
 
 - Open the online demo on the dashboard, see the camera as soon as demo data starts, and keep printer file rows inside a phone screen (#98)
