@@ -10,6 +10,10 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+## 0.20.14 (16 November 2026): Follow the Extended Firmware links to its current home (#100)
+
+- Follow the Extended Firmware links to its current home (#100)
+
 ## 0.20.13 (16 November 2026): Read each release's full notes under its own version in the changelog (#99)
 
 - Read each release's full notes under its own version in the changelog (#99)
