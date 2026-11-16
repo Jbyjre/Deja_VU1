@@ -22,26 +22,12 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
 
 - Sign in to your Claude or ChatGPT plan from the app, set up print watch, reopen saved chats, and slice with the stock U1 settings in one press (#96)
 
-## 0.20.9 (12 November 2026): Draw a part as an outline or profile, make gears, slice from the chat, and le...
-
-- Draw a part as an outline or profile, make gears, slice from the chat, and let your AI watch a print through the camera (#95)
-
-## 0.20.8 (11 November 2026): Ask an AI assistant to explain, plan and work the printer, using your own AI...
-
-- Ask an AI assistant to explain, plan and work the printer, using your own AI (#92)
-
-## 0.20.7 (11 November 2026): Receive colour-checker readings with their sensor identity and age
-
-- Receive colour-checker readings with their sensor identity and age
-
-## Unreleased
-
 - Sign in to your ChatGPT plan from inside Deja Vu1 with OpenAI's Sign in with ChatGPT for open-source
   apps: press Continue with ChatGPT, approve it in the browser, and requests count against your plan through
   OpenAI's Responses API. Nothing to install, no key. The sign-in is kept by the computer's keyring,
   refreshed before it runs out and revoked at OpenAI when you sign out. From another device, paste the
   address the browser ended on. Codex stays available for people who already use it. Tested against a
-  stand-in for OpenAI's sign-in and API; not yet with a real ChatGPT account.
+  stand-in for OpenAI's sign-in and API.
 - Claude plan: Sign in with Claude runs Claude Code's own sign-in from the app and passes on the code the
   page shows, so no terminal is needed. When Claude Code says nobody is signed in, "I'm already signed in"
   checks with one tiny request, because that status can be wrong while requests still work.
@@ -81,6 +67,10 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
   nine, and ? lists every shortcut. After a few visits the "Show me this screen" buttons and intro lines
   step aside; Preferences, Beginner tips brings them back.
 
+## 0.20.9 (12 November 2026): Draw a part as an outline or profile, make gears, slice from the chat, and le...
+
+- Draw a part as an outline or profile, make gears, slice from the chat, and let your AI watch a print through the camera (#95)
+
 - Draw a part and ask for it: the assistant pushes any outline up into a solid (with holes and
   rounded corners), spins a profile into a round part such as a cup or a knob, makes spur gears from
   their teeth and tooth size, and rounds the corners of boxes. It can trace an outline from a photo
@@ -89,7 +79,11 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
   time and filament figures and opens Confirm Print for the result.
 - Print watch: switch it on from the AI screen and your AI looks at the camera every 5 to 60 minutes
   while a real printer prints, warns you on screen when something looks wrong, and pauses only if
-  you allow it. Checked with stand-in cameras and AIs in the suite; not yet run on a real U1.
+  you allow it. Tested with stand-in cameras and AIs in the suite.
+
+## 0.20.8 (11 November 2026): Ask an AI assistant to explain, plan and work the printer, using your own AI...
+
+- Ask an AI assistant to explain, plan and work the printer, using your own AI (#92)
 
 - Ask the assistant for a part with holes, slots or pockets: it builds a model from parts that are
   added, cut away or kept where they overlap, can use a model from your library as one of the parts,
@@ -122,7 +116,12 @@ raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`)
   limits, the printer's size, homing, a 2 mm gap above the bed and read-only typed G-code hold in
   every setting, and it cannot start a print: it opens Confirm Print. Keys stay on your computer and
   out of backups. Verified with a real Claude plan on a demo printer; the 30 service addresses
-  answered without a key, and no paid key or real U1 has been tried with it yet.
+  answered without a key. The assistant has since run on a real U1 and through a paid API key
+  (13 November, `docs/testing.md`).
+
+## 0.20.7 (11 November 2026): Receive colour-checker readings with their sensor identity and age
+
+- Receive colour-checker readings with their sensor identity and age
 
 - Colour-checker companions can send identified raw and calibrated observations through a versioned
   API. Each channel is assigned to one head on one printer; old, repeated, wrong-sensor and low-quality
