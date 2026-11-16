@@ -90,7 +90,7 @@ Sources, at the commits read:
 - Snapmaker's U1 Moonraker - [Snapmaker/u1-moonraker](https://github.com/Snapmaker/u1-moonraker) `a308cfa`
 - Klipper - [Klipper3d/klipper](https://github.com/Klipper3d/klipper) `ce7002b`
 - Snapmaker's U1 Klipper - [Snapmaker/u1-klipper](https://github.com/Snapmaker/u1-klipper) `10f2f69`, re-read at `93cb12f` (firmware 2.0.0, October 2026)
-- The community Extended Firmware - [paxx12/SnapmakerU1-Extended-Firmware](https://github.com/paxx12/SnapmakerU1-Extended-Firmware) `417e639`, and its camera service [paxx12/v4l2-mpp](https://github.com/paxx12/v4l2-mpp) `9279584` (camera addresses, the Web Authentication login)
+- The community Extended Firmware - [paxx12-snapmaker-u1/SnapmakerU1-Extended-Firmware](https://github.com/paxx12-snapmaker-u1/SnapmakerU1-Extended-Firmware) `417e639`, and its camera service [paxx12/v4l2-mpp](https://github.com/paxx12/v4l2-mpp) `9279584` (camera addresses, the Web Authentication login)
 
 What reading them changed - each of these would have been a bug on the
 first real connection, and none of them could show up against the

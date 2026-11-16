@@ -115,7 +115,7 @@ Usually the printer stays on your home Wi-Fi and the Deja Vu1 computer stays
 with it; only the phone travels. If you'd rather run Deja Vu1 on a computer
 somewhere else, the community Extended Firmware can put the **printer itself**
 on your Tailscale network: firmware-config → Remote Access → VPN Provider →
-Tailscale (its own [VPN guide](https://github.com/paxx12/SnapmakerU1-Extended-Firmware/blob/main/docs/vpn.md)).
+Tailscale (its own [VPN guide](https://github.com/paxx12-snapmaker-u1/SnapmakerU1-Extended-Firmware/blob/main/docs/vpn.md)).
 Its Moonraker trusts Tailscale addresses (`100.64.0.0/10`), so in Deja Vu1 add
 the printer by its Tailscale address, for example `100.95.6.132` (the app adds
 `:7125`). That firmware marks the VPN as experimental and warns it uses extra
