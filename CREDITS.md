@@ -35,6 +35,15 @@ here with what Deja Vu1 does with each.
   the SIL Open Font License; their licences are beside them in
   `frontend/fonts/`.
 
+## Published numbers used
+
+- **CIE 1931 colour-matching curves**, as the multi-lobe fit in Table 1 of Wyman, Sloan and Shirley,
+  "Simple Analytic Approximations to the CIE XYZ Color Matching Functions", *Journal of Computer Graphics
+  Techniques* 2(2), 2013. Only the published coefficients are used, in `backend/sensor_calibration.py`; the
+  code around them is Deja Vu1's own.
+- **AS7341 channel wavelengths** (eight visible bands from 415 to 680 nm), from the manufacturer's
+  datasheet (ams OSRAM), used by the same file.
+
 ## In the launch film
 
 `frontend/media/` holds the launch film the product page plays. The app does
