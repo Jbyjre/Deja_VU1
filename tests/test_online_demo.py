@@ -64,5 +64,33 @@ class TestRecording(unittest.TestCase):
         self.assertEqual(key("/api/x", {}), "/api/x")
 
 
+def _compact(name):
+    """A frontend file with all spacing removed, so these checks survive reformatting."""
+    with open(os.path.join(ROOT, "frontend", name), encoding="utf-8") as f:
+        return "".join(f.read().split())
+
+
+class TestFirstLook(unittest.TestCase):
+    """What a first-time visitor of the demo sees, found by walking every screen in Chromium."""
+
+    def test_the_public_demo_opens_on_the_dashboard_not_the_setup_wizard(self):
+        # Every step of the wizard is disabled or says "recording" in the public demo; it stays
+        # one press away under Preferences, Replay setup.
+        self.assertIn("elseif(!read(seenKey)&&!tourOn())open();", _compact("launchpad.js"))
+
+    def test_cameras_ask_again_when_demo_data_or_the_printer_changes(self):
+        src = _compact("printer-page.js")
+        self.assertIn("addEventListener('dv-printer',restartCams)", src)
+        self.assertIn("$('demo-toggle')", src)
+        self.assertIn("addEventListener('change',restartCams)", src)
+
+    def test_printer_file_rows_wrap_instead_of_widening_a_phone_page(self):
+        css = _compact("printer.css")
+        row = css[css.index(".pf-listli{"):]
+        row = row[:row.index("}")]
+        self.assertIn("min-width:0", row)
+        self.assertIn("flex-wrap:wrap", row)
+
+
 if __name__ == "__main__":
     unittest.main()

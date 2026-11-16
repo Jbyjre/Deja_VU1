@@ -273,9 +273,9 @@
 /* Print a file */
 .pf-upload { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
 .pf-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.pf-list li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .06); }
+.pf-list li { display: flex; flex-wrap: wrap; min-width: 0; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .5); border: 1px solid rgba(0, 0, 0, .06); }
 .pf-meta { font: 500 11px/1 var(--font-mono); color: var(--text-faint); white-space: nowrap; }
-.pf-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12.5px/1.3 var(--font-mono); }
+.pf-name { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 12.5px/1.3 var(--font-mono); }
 
 @media (max-width: 720px) {
   .pc-finish { display: none; }

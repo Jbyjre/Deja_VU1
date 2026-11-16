@@ -298,6 +298,6 @@
   greeting();
   // versions.js loads after this file, so wait until every script has run.
   const allLoaded=new Promise(r=>document.readyState==='loading'?addEventListener('DOMContentLoaded',r,{once:true}):r());
-  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(viaPhoneLink)save(seenKey,'1');else if(!read(seenKey))open();});
+  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(viaPhoneLink)save(seenKey,'1');else if(!read(seenKey)&&!tourOn())open();});
   if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

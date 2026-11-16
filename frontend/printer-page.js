@@ -684,6 +684,12 @@ window.PrinterPage = (() => {
     window.addEventListener('dv-tab', () => setTimeout(syncCams, 0));
     window.addEventListener('dv-section', () => setTimeout(syncCams, 0));
     document.addEventListener('visibilitychange', syncCams);
+    // A camera that failed waits for the next screen change. Switching demo data or the printer is a new
+    // source, so ask again at once instead of keeping "Camera not answering" from the old one.
+    const restartCams = () => { cams.forEach(c => { if (c.on) stopCam(c, 'Connecting…'); }); setTimeout(syncCams, 0); };
+    window.addEventListener('dv-printer', restartCams);
+    const demoBox = $('demo-toggle');
+    if (demoBox) demoBox.addEventListener('change', restartCams);
     setTimeout(syncCams, 0);
     renderNow(null);
     renderTemps(null);
