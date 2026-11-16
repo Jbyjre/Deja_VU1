@@ -259,11 +259,15 @@ def evidence(toolhead_id, state, expected_hex):
 
 def advice(where, expected_hex, printer_hex, seen):
     """
-    One plain sentence for a sensor reading, as ("warn" | "info", text), or None for a simulated reading.
+    One plain sentence for a sensor reading, as ("warn" | "info", text), or None when there is nothing to say.
     A warning asks for a look at the spool; it is never proof, because the sensor has not been checked
-    against known colours.
+    against known colours. A simulated reading only ever gets a note, and only when it differs from the file,
+    so a demo can show what a mis-loaded spool looks like without changing any verdict.
     """
     if seen["simulated"]:
+        if seen.get("versus_file") == "mismatch":
+            return "info", (f"{where}: the simulated colour sensor reads {seen['hex']}, far from the file's "
+                            f"{expected_hex}. This is demo data showing what a wrong spool looks like")
         return None
     if seen["status"] != "reading":
         return "info", f"{where}: the colour sensor has no current colour. {seen['message']}"

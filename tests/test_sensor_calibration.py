@@ -342,6 +342,17 @@ class ConfirmPrintEvidence(unittest.TestCase):
         self.assertEqual(rows[0]["status"], "unknown_colour")
         self.assertEqual(rows[0]["measured"]["versus_file"], "match")
 
+    def test_a_demo_wrong_spool_gets_a_note_and_never_a_warning(self):
+        state = head_state()
+        state["toolheads"]["T1"] = dict(state["toolheads"]["T0"], filament_color_hex="#101010")
+        required = [{"toolhead": "T1", "expected_color_hex": "#101010", "expected_material": "PLA", "grams": 5}]
+        with mock.patch.object(mock_moonraker, "is_real", return_value=False):
+            rows, blocking, warnings = print_gate._filament_match(required, state)
+        self.assertEqual(rows[0]["measured"]["versus_file"], "mismatch")        # T1 is the demo's wrong spool
+        self.assertEqual(rows[0]["measured"]["advice"]["level"], "info")
+        self.assertIn("demo data", rows[0]["measured"]["advice"]["text"])
+        self.assertEqual((blocking, warnings), ([], []))
+
     def test_demo_printers_show_a_labelled_simulation_with_no_advice(self):
         with mock.patch.object(mock_moonraker, "is_real", return_value=False):
             first = print_gate._filament_match(FILE_NEEDS_RED, head_state())
