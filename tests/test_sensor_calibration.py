@@ -17,6 +17,8 @@ import color_check
 import companion_sensor as sensor
 import mock_moonraker
 import modules
+import print_gate
+import printer_control
 import sensor_calibration as cal
 from tests.test_real_printer import RealPrinterAPI
 
@@ -264,6 +266,136 @@ class CalibrationFlow(unittest.TestCase):
         self.assertEqual(self.head()["detected_hex"], "#bcbcbc")
 
 
+def seen_reading(hex_value, status="reading", source="deja-vu1"):
+    """What companion_sensor.read returns for a head, trimmed to what the gate uses."""
+    row = {"toolhead": "T0", "status": status, "age_s": 1.0, "detected_hex": hex_value if status == "reading" else None,
+           "message": "Colour reported by the sensor." if status == "reading" else "This reading is old. Check power."}
+    if status == "reading":
+        row["reading"] = {"calibrated": {"hex": hex_value, "calibration_id": "dv1-abc12345", "confidence": 0.9,
+                                         "source": source}}
+    return row
+
+
+def head_state(hex_value="#ff0000", loaded=True):
+    return {"toolheads": {"T0": {"status": "ready", "filament_loaded": loaded, "filament_color_hex": hex_value,
+                                 "filament_color_name": "Red", "filament_material": "PLA"}}, "extruder_map": {}}
+
+
+FILE_NEEDS_RED = [{"toolhead": "T0", "expected_color_hex": "#ff0000", "expected_material": "PLA", "grams": 5}]
+
+
+class ConfirmPrintEvidence(unittest.TestCase):
+    """The sensor's colour sits beside the file's and the printer's, as advice that never blocks."""
+
+    def setUp(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        patches = [mock.patch.object(color_check, "_OVERRIDES_PATH", os.path.join(folder.name, "overrides.json")),
+                   mock.patch.object(mock_moonraker, "selected_printer_id", return_value="real-a"),
+                   mock.patch.object(mock_moonraker, "is_real", side_effect=lambda pid: pid.startswith("real-"))]
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def match(self, reading, state=None):
+        with mock.patch.object(sensor, "read", return_value=reading):
+            return print_gate._filament_match(FILE_NEEDS_RED, state or head_state())
+
+    def test_a_head_with_no_sensor_shows_nothing_extra(self):
+        rows, blocking, warnings = self.match(None)
+        self.assertNotIn("measured", rows[0])
+        self.assertEqual((blocking, warnings), ([], []))
+
+    def test_a_sensor_that_agrees_adds_evidence_and_no_warning(self):
+        rows, blocking, warnings = self.match(seen_reading("#f21010"))
+        self.assertEqual(rows[0]["measured"]["versus_file"], "match")
+        self.assertEqual(rows[0]["measured"]["calibration_id"], "dv1-abc12345")
+        self.assertEqual(rows[0]["measured"]["advice"]["level"], "info")
+        self.assertEqual((blocking, warnings), ([], []))
+        self.assertEqual(rows[0]["status"], "match")          # the printer's own report still decides
+
+    def test_a_sensor_that_disagrees_warns_and_never_blocks(self):
+        rows, blocking, warnings = self.match(seen_reading("#0000ff"), head_state("#e03030"))
+        self.assertEqual(blocking, [])
+        self.assertEqual(rows[0]["measured"]["versus_file"], "mismatch")
+        self.assertEqual(len(warnings), 2)                      # the printer's own close call, and the sensor
+        self.assertIn("not as proof", warnings[-1])
+
+    def test_when_the_printer_agrees_with_the_file_the_wrong_head_is_suggested(self):
+        rows, blocking, warnings = self.match(seen_reading("#0000ff"))
+        self.assertEqual(blocking, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("assigned to the right head", warnings[0])
+        self.assertIn("printer reports the file's colour", warnings[0])
+
+    def test_an_old_or_missing_reading_is_a_note_not_a_warning(self):
+        rows, blocking, warnings = self.match(seen_reading(None, status="stale"))
+        self.assertEqual((blocking, warnings), ([], []))
+        self.assertIsNone(rows[0]["measured"]["hex"])
+        self.assertIn("no current colour", rows[0]["measured"]["advice"]["text"])
+        self.assertEqual(rows[0]["measured"]["advice"]["level"], "info")
+
+    def test_a_printer_that_reports_no_colour_still_gets_the_sensors_view(self):
+        state = head_state(None)
+        state["toolheads"]["T0"]["filament_color_name"] = None
+        rows, blocking, warnings = self.match(seen_reading("#ff0505"), state)
+        self.assertEqual(rows[0]["status"], "unknown_colour")
+        self.assertEqual(rows[0]["measured"]["versus_file"], "match")
+
+    def test_demo_printers_show_a_labelled_simulation_with_no_advice(self):
+        with mock.patch.object(mock_moonraker, "is_real", return_value=False):
+            first = print_gate._filament_match(FILE_NEEDS_RED, head_state())
+            second = print_gate._filament_match(FILE_NEEDS_RED, head_state())
+        rows, blocking, warnings = first
+        self.assertTrue(rows[0]["measured"]["simulated"])
+        self.assertNotIn("advice", rows[0]["measured"])
+        self.assertEqual((blocking, warnings), ([], []))
+        self.assertEqual(first, second)                         # same file, same picture: no randomness
+
+    def test_a_start_that_goes_ahead_against_the_sensor_is_recorded(self):
+        rows, _, _ = self.match(seen_reading("#0000ff"))
+        color_check.record_override("part.gcode", {"filament": rows})
+        saved = color_check.overrides()["overrides"]
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(saved[0]["file"], "part.gcode")
+        self.assertEqual(saved[0]["heads"][0]["sensor_hex"], "#0000ff")
+        self.assertEqual(saved[0]["heads"][0]["file_hex"], "#ff0000")
+        self.assertEqual(saved[0]["heads"][0]["calibration_id"], "dv1-abc12345")
+
+    def test_agreement_simulation_and_other_printers_leave_no_record(self):
+        agreeing, _, _ = self.match(seen_reading("#f21010"))
+        color_check.record_override("a.gcode", {"filament": agreeing})
+        with mock.patch.object(mock_moonraker, "is_real", return_value=False):
+            simulated, _, _ = print_gate._filament_match(FILE_NEEDS_RED, head_state())
+        color_check.record_override("b.gcode", {"filament": simulated})
+        self.assertEqual(color_check.overrides()["overrides"], [])
+        rows, _, _ = self.match(seen_reading("#0000ff"))
+        color_check.record_override("c.gcode", {"filament": rows})
+        with mock.patch.object(mock_moonraker, "selected_printer_id", return_value="real-b"):
+            self.assertEqual(color_check.overrides()["overrides"], [])
+
+    def test_only_a_confirm_verdict_is_recorded_and_a_failed_note_never_stops_the_print(self):
+        gate = {"verdict": "confirm", "job": {}, "filament": []}
+        patches = (mock.patch.object(printer_control.file_library, "read_bytes", return_value=b""),
+                   mock.patch.object(printer_control.file_library, "touch"),
+                   mock.patch.object(printer_control.mock_moonraker, "upload_file"),
+                   mock.patch.object(printer_control.mock_moonraker, "start_print", return_value={"state": "printing"}))
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+        with mock.patch.object(printer_control.print_gate, "summary", return_value=gate), \
+                mock.patch.object(color_check, "record_override") as record:
+            printer_control._start_locked("x.gcode", True)
+            record.assert_called_once_with("x.gcode", gate)
+        with mock.patch.object(printer_control.print_gate, "summary", return_value=dict(gate, verdict="clear")), \
+                mock.patch.object(color_check, "record_override") as record:
+            printer_control._start_locked("x.gcode", True)
+            record.assert_not_called()
+        with mock.patch.object(printer_control.print_gate, "summary", return_value=gate), \
+                mock.patch.object(color_check, "record_override", side_effect=OSError("disk full")):
+            self.assertEqual(printer_control._start_locked("x.gcode", True), {"state": "printing"})
+
+
 class CalibrationAPI(RealPrinterAPI):
     def setUp(self):
         super().setUp()
@@ -303,6 +435,11 @@ class CalibrationAPI(RealPrinterAPI):
     def test_the_route_respects_the_module_switch(self):
         modules.set_enabled("color_check", False)
         self.assertEqual(self.request("/api/colorcheck/calibration" + self.route, {"toolhead": "T0"})[0], 403)
+        self.assertEqual(self.request("/api/colorcheck/overrides" + self.route)[0], 403)
+
+    def test_the_override_record_answers_empty_until_something_is_recorded(self):
+        status, body = self.request("/api/colorcheck/overrides" + self.route)
+        self.assertEqual((status, body["overrides"]), (200, []))
 
 
 if __name__ == "__main__":

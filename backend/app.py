@@ -85,6 +85,7 @@ API endpoints
   POST /api/colorcheck/sensors       version 1 physical sensor assignments, per printer
   POST /api/colorcheck/readings      one version 1 companion observation
   POST /api/colorcheck/calibration   {"toolhead", "step": "white"|"dark"|"clear"} record or forget a reference
+  GET  /api/colorcheck/overrides     prints started against the colour sensor's reading, newest first
   GET  /api/printer                  raw mock printer state
   GET  /api/printer/job              the running job: file, time, grams, what each toolhead prints
   GET  /api/chamber                  chamber temperature now + last 30 minutes
@@ -509,6 +510,7 @@ _DATA_ROUTES = {
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
     "/api/colorcheck/sensors": ("color_check", lambda q: companion_sensor.status()),
+    "/api/colorcheck/overrides": ("color_check", lambda q: color_check.overrides()),
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),
     "/api/slicer/catalog": ("auto_print", lambda q: slicer_bridge.installed_catalog()),
     "/api/slicer/schema": ("auto_print", lambda q: process_settings.schema()),

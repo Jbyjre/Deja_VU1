@@ -673,7 +673,10 @@ body:has(> .live-pill:not([hidden])) { padding-bottom: 104px; }
 .gate-grid > div { display: flex; flex-direction: column; gap: 2px; }
 .gate-grid b { font: 700 16px/1.2 var(--font-mono); }
 .gate-grid.divider-row > * { padding: 12px 14px; }
-.gate-fil { display: flex; align-items: center; gap: 8px; padding: 8px 0; font-size: 13px; border-bottom: 1px solid rgba(0, 0, 0, .05); }
+.gate-fil { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; font-size: 13px; border-bottom: 1px solid rgba(0, 0, 0, .05); }
+.gf-sensor { display: flex; align-items: center; gap: 8px; flex: 0 0 100%; padding-left: 32px; font-size: 12px; color: var(--text-dim); }
+.cal-row { margin-top: 6px; }
+.cal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .gf-th { font: 700 12px/1 var(--font-mono); min-width: 24px; }
 .gf-text { flex: 1; color: var(--text-dim); }
 .gf-status { font: 600 11px/1 var(--font-mono); text-transform: uppercase; }

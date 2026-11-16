@@ -190,11 +190,12 @@ def head_status(printer_id, binding):
         had_dark = bool(entry and entry.get("dark"))
         return {"state": "needs_white" if had_dark else "none", "supported": True, "id": None,
                 "has_white": False, "has_dark": had_dark, "updated_at": entry and entry.get("updated_at"),
-                "message": "Put the white target in the housing, wait for a reading, then record the white reference."}
+                "message": "Put the white target in the housing, wait for a reading, then record the white "
+                           "reference. For the optional dark reference, empty the housing and record that."}
     return {"state": "ready", "supported": True, "id": _calibration_id(entry), "has_white": True,
             "has_dark": bool(entry.get("dark")), "updated_at": entry.get("updated_at"),
-            "message": "Calibrated against a white reference" +
-                       ("" if entry.get("dark") else ". A dark reference is optional; it improves dark colours")}
+            "message": "Calibrated against a white reference." +
+                       ("" if entry.get("dark") else " A dark reference is optional; it improves dark colours.")}
 
 
 def record_reference(printer_id, toolhead, identity, step, raw, captured_at):

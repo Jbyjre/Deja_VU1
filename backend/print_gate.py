@@ -98,6 +98,17 @@ def _filament_match(required, state):
                 row["material_mismatch"] = True
                 row["loaded_material"] = actual_material
                 blocking.append(f"{where} has {actual_material} loaded, but the file needs {req['expected_material']}")
+        if dock is not None:
+            # What the colour sensor reads, kept apart from the file's colour and the printer's report.
+            # Advice only: a warning asks for a look, nothing here blocks a start.
+            seen = color_check.evidence(head, state, req.get("expected_color_hex"))
+            if seen:
+                row["measured"] = seen
+                note = color_check.advice(where, req.get("expected_color_hex"), row.get("loaded_hex"), seen)
+                if note:
+                    seen["advice"] = {"level": note[0], "text": note[1]}
+                    if note[0] == "warn":
+                        warnings.append(note[1])
         rows.append(row)
     return rows, blocking, warnings
 
@@ -139,6 +150,8 @@ def summary(filename, printer_state=None):
     rows, fil_block, fil_warn = _filament_match(required, state)
     blocking += fil_block
     warnings += fil_warn
+    info += [row["measured"]["advice"]["text"] for row in rows
+             if row.get("measured", {}).get("advice", {}).get("level") == "info"]
     spools = None
     if modules.is_enabled("filament_inventory"):
         spools = filament_inventory.estimate_for_job(required,state)
