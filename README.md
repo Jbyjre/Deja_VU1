@@ -275,6 +275,7 @@ and a bench test of a physical sensor are still to do.
 | Adding a real printer, and what each message means | [Connecting a real printer](docs/real-printer.md) |
 | Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [what to check](docs/beta-testing.md) |
 | What ran where, with dates | [What has been tested](docs/testing.md) |
+| Reviewing it: ten minutes without a printer, what is new since Phase 1, what is not done | [Check Deja Vu1 yourself](docs/for-reviewers.md) |
 | Slicing, plates and engines | [Slicing and models](docs/slicing-and-models.md), [engine support](docs/engine-support.md) |
 | Reaching it away from home | [Remote access](docs/remote-access.md), [low-latency camera](docs/low-latency-camera.md), [AR preview](docs/ar-preview.md) |
 | The AI assistant: connecting, limits, what was tested | [AI assistant](docs/ai-assistant.md) |
@@ -292,7 +293,10 @@ python3 start.py          # opens http://localhost:8000
 ```
 
 Run the tests with `python3 -m unittest discover tests` (about 11 to 15 minutes; they use simulated
-printers and a temporary data folder). Every change also shows in the online demo, which is the
+printers and a temporary data folder). `node tools/browser-walk.js` opens every screen and the main
+workflows in a real browser (it needs Node, Playwright for Node and a Chromium; `--axe` adds an
+accessibility check), and `python3 tools/stand-in-printer.py` runs a pretend printer to try the
+dashboard against. Every change also shows in the online demo, which is the
 same `frontend/` folder playing back a recording: a new or changed route needs
 `python3 tools/online-demo/record.py`. Every merge to `main` publishes a release, and the pull
 request title becomes its note. [CONTRIBUTING.md](CONTRIBUTING.md) has the house rules;
