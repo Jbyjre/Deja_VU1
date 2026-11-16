@@ -7,6 +7,8 @@
  *   node tools/browser-walk.js --quick         one width (1366 px) and demo data only
  *   node tools/browser-walk.js --probe         only says whether Playwright and a Chromium are available
  *   --places-only, --flows-only, --flow "text" pick a part (a workflow whose title has that text)
+ *   --axe                                     also run axe-core (WCAG 2.2 AA and best practice) on every place;
+ *                                             needs `npm install axe-core` where Node can find it
  *
  * Places: every place in the sidebar (read from frontend/rail.js, so a new place is walked by itself) at
  * 1366 px and 390 px, in light and dark, with demo data and with none. For each visit it checks:
@@ -21,7 +23,8 @@
  * for an earlier file must not replace the one on screen; add to and remove from the queue; open a model;
  * the slicer set-up card; the phone pairing sheet; the colour sensor on a stand-in printer (tools/stand-in-printer.py):
  * assign it, record a white reference with the real button, and see the sensor beside the file's and the printer's
- * colours in Confirm Print.
+ * colours in Confirm Print; text from files, printers, spools and notes shows as plain text (script payloads are
+ * planted in each, after a control that proves the check can see an injection).
  * Needs Playwright for Node and a Chromium (DEJAVU_BROWSER names the file if it is somewhere unusual).
  * Exit code 0 only when every check passed; the cause of each failure is printed. */
 const fs = require('fs');
@@ -157,6 +160,8 @@ async function openSession(browser, base, cfg) {
   return session;
 }
 
+let axeSource = null;
+
 async function walkPlaces(browser, base, places, cfg, out, results) {
   const s = await openSession(browser, base, cfg);
   const { page } = s;
@@ -179,6 +184,17 @@ async function walkPlaces(browser, base, places, cfg, out, results) {
     if (bad) {
       const at = facts.text.indexOf(bad[0]);
       s.note('stray text "' + bad[0] + '" near: ' + facts.text.slice(Math.max(0, at - 40), at + 40).replace(/\s+/g, ' '));
+    }
+    if (axeSource) {
+      await page.addScriptTag({ content: axeSource });
+      const found = await page.evaluate(async () => {
+        const r = await axe.run(document, {
+          runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] },
+          resultTypes: ['violations']
+        });
+        return r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, target: v.nodes[0].target.join(' ') }));
+      });
+      for (const v of found) s.note('accessibility [' + v.impact + '] ' + v.id + ' on ' + v.count + ' element(s), first: ' + v.target);
     }
     if (out) {
       const name = [place.id, cfg.width, cfg.demo ? 'demo' : 'empty', cfg.theme].join('-') + '.png';
@@ -429,6 +445,106 @@ async function sensorFlow(s, standIn) {
   }
 }
 
+/* Text from files, printers, spools and notes must show as text. Plants script payloads, walks every place. */
+const PAYLOADS = [
+  '<img src=x onerror="window.__xss=(window.__xss||0)+1">',
+  '"><svg onload=window.__xss=(window.__xss||0)+100>',
+  "'><script>window.__xss=(window.__xss||0)+10000</script>"
+];
+
+async function injectionFlow(s, places, standIns) {
+  const { page } = s;
+  const probe = () => page.evaluate(() => ({
+    ran: window.__xss || 0,
+    planted: document.querySelectorAll('img[src="x"],[onerror*="__xss"],[onload*="__xss"],[onmouseover*="__xss"]').length,
+    first: ((document.querySelector('img[src="x"],[onerror*="__xss"],[onload*="__xss"],[onmouseover*="__xss"]') || {}).outerHTML || '').slice(0, 120)
+  }));
+  // Control: the detector must see a payload that really is injected, or its silence means nothing.
+  await page.evaluate(p => document.body.insertAdjacentHTML('beforeend', p), PAYLOADS[0]);
+  await page.waitForTimeout(300);
+  const control = await probe();
+  s.check(control.ran > 0 || control.planted > 0, 'the injection check cannot see a payload it planted itself');
+  await page.reload();
+  await page.waitForSelector('body[data-tab]');
+  await page.keyboard.press('Escape');
+  const post = (url, body, raw) => page.evaluate(async ([u, b, r]) => {
+    const res = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: r || JSON.stringify(b || {}) });
+    return { status: res.status, body: await res.json().catch(() => ({})) };
+  }, [url, body, raw]);
+  const [p1, p2, p3] = PAYLOADS;
+  s.check(standIns.length === 2, 'two stand-in printers are needed');
+  const printers = [];
+  try {
+    await post('/api/logbook/add', { problem: p1, fix: p2, tags: [p3, 'walk'] });
+    await post('/api/filament/spools', { material: p1, color_name: p2, color_hex: '#ff0000', grams_remaining: 500, weight_source: 'weighed' });
+    await post('/api/filament/spools', { material: 'PLA', color_name: p1, color_hex: '#00ff00', grams_remaining: 100, weight_source: 'estimated' });
+    // Two connected stand-ins, so the fleet cards, the header chip and the sidebar's printer menu all draw names.
+    for (const [name, url] of [[p1, standIns[0]], [p2, standIns[1]]]) {
+      printers.push((await post('/api/fleet/registry', { name, moonraker_url: url })).body.id);
+    }
+    s.check(printers.every(Boolean), 'the stand-in printers could not be added');
+    const gcode = '; generated by ' + p1 + '\n; filament_colour = #ff0000"onmouseover="window.__xss=9;' + p2 + '\n; filament_type = ' + p3 + '\nG28\nG1 X10 Y10 Z0.2 E1\nM104 S0\n';
+    await post('/api/files/upload?name=' + encodeURIComponent(p1 + '.gcode'), null, gcode);
+    await post('/api/files/upload?name=plain_walk.gcode', null, gcode);
+    await page.reload();
+    await page.waitForSelector('body[data-tab]');
+    await page.keyboard.press('Escape');
+    for (const place of places) {
+      s.where = 'text as text: ' + place.id;
+      await page.evaluate(id => {
+        location.hash = '#/' + id;
+      }, place.id);
+      await page.waitForTimeout(450);
+      if (place.id === 'files') {
+        await page.evaluate(async () => {
+          await Workshop.loadFiles();
+          await Workshop.openFile('plain_walk.gcode');
+        });
+        await page.waitForTimeout(500);
+      }
+      // Screens show one part at a time: ask for all of them so every list is drawn.
+      await page.evaluate(() => {
+        const all = document.querySelector('.tab-panel:not([hidden]) .sec-bar .sec-all');
+        if (all) all.click();
+      });
+      await page.waitForTimeout(500);
+      const seen = await probe();
+      s.check(seen.ran === 0 && seen.planted === 0, 'planted text ran or became markup (' + JSON.stringify(seen) + ')');
+    }
+    // The sidebar's printer menu only draws its rows when it is opened.
+    s.where = 'text as text: the printer menu';
+    const menuButton = page.locator('#rail-switch');
+    if (await menuButton.isVisible().catch(() => false)) {
+      await menuButton.click();
+      await page.waitForTimeout(500);
+      const seen = await probe();
+      s.check(seen.ran === 0 && seen.planted === 0, 'planted text ran or became markup (' + JSON.stringify(seen) + ')');
+      await page.keyboard.press('Escape');
+    } else {
+      s.note('with two printers the sidebar shows no printer menu button');
+    }
+  } finally {
+    for (const id of printers) if (id) await post('/api/fleet/registry/' + id + '/remove', {});
+  }
+}
+
+async function runInjectionFlow(browser, base, places, cfg, results) {
+  const s = await openSession(browser, base, { ...cfg, demo: false, standIn: true });
+  s.where = 'flow: text from files, printers, spools and notes shows as text';
+  const standIns = [];
+  try {
+    for (let i = 0; i < 2; i++) standIns.push(await startStandIn());
+    await injectionFlow(s, places, standIns.map(x => x.url));
+  } catch (e) {
+    s.note('the flow stopped: ' + String(e.message).split('\n')[0]);
+  } finally {
+    for (const x of standIns) x.child.kill();
+  }
+  results.flows += 1;
+  await s.context.close();
+  for (const p of s.problems) results.failures.push({ config: cfg, ...p });
+}
+
 function startStandIn() {
   return new Promise((resolve, reject) => {
     const child = spawn('python3', [path.join(ROOT, 'tools', 'stand-in-printer.py')], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] });
@@ -489,6 +605,14 @@ async function runFlows(browser, base, cfg, tmp, results, filter) {
     console.log('ready: ' + exe);
     process.exit(0);
   }
+  if (flag('--axe')) {
+    try {
+      axeSource = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
+    } catch (e) {
+      console.error('axe-core is not installed (npm install axe-core).');
+      process.exit(2);
+    }
+  }
   const places = readPlaces();
   if (places.length < 10) {
     console.error('Read only ' + places.length + ' places from frontend/rail.js; the walk cannot trust its table.');
@@ -513,6 +637,9 @@ async function runFlows(browser, base, cfg, tmp, results, filter) {
     if (!flag('--places-only')) {
       for (const width of widths) await runFlows(browser, server.base, { width, demo: true, theme: 'light' }, tmp, results, option('--flow'));
       const wanted = option('--flow');
+      if (!wanted || 'text'.includes(wanted.toLowerCase()) || wanted.toLowerCase().includes('text')) {
+        await runInjectionFlow(browser, server.base, places, { width: 1366, theme: 'light' }, results);
+      }
       if (!wanted || 'colour sensor'.includes(wanted.toLowerCase()) || wanted.toLowerCase().includes('sensor')) {
         for (const width of widths) await runSensorFlow(browser, server.base, { width, demo: false, theme: 'light' }, results);
       }
