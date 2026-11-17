@@ -306,7 +306,8 @@
 /* ---- demo data: in the top bar until a real printer is connected -------- */
 body.has-printer .topbar-right > .switch:not(:has(input:checked)) { display: none; }
 @media (max-width: 720px) {
-  .topbar-right > .switch .switch-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* A switch with no words beside it is a puzzle on a phone: keep "Demo data" visible, small. */
+  .topbar-right > .switch .switch-label { font-size: 12px; white-space: nowrap; }
 }
 
 /* The twin's turntable: its own button, pressed while it turns. */
