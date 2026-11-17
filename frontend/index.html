@@ -1292,6 +1292,22 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
         <label class="switch" for="tester-setting"><span class="switch-label">Record a tester report</span>
           <input type="checkbox" id="tester-setting" data-setting-module="tester" data-setting-name="Tester mode"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
       <p class="tester-demo-note" id="tester-demo-note" role="note" hidden><b>Sample numbers.</b> This is the online demo, so the figures below are made up to show the layout and nothing is recorded. Install Deja Vu1 to use Tester mode.</p>
+      <div class="tester-live" id="tester-live" data-module-body="tester">
+        <div class="tester-tiles" role="group" aria-label="Recorded so far">
+          <div class="stat"><span class="stat-key">Days</span><span class="stat-val" id="tester-days">0</span></div>
+          <div class="stat"><span class="stat-key">Actions</span><span class="stat-val" id="tester-actions">0</span></div>
+          <div class="stat"><span class="stat-key">Errors</span><span class="stat-val" id="tester-errors">0</span></div>
+          <div class="stat"><span class="stat-key">Slow spots</span><span class="stat-val" id="tester-slow">0</span></div>
+        </div>
+        <p class="field-hint tester-since" id="tester-since" aria-live="polite">Nothing recorded yet. Use Deja Vu1 as usual.</p>
+        <div class="tester-actions">
+          <button class="btn primary" type="button" id="tester-view">View report</button>
+          <button class="btn" type="button" id="tester-save">Save tester report</button>
+          <button class="btn tester-delete" type="button" id="tester-delete">Delete tester data</button>
+        </div>
+        <p class="field-hint tester-status" id="tester-status" role="status"></p>
+        <p class="field-hint">Switching Tester mode off stops the recording at once. What was recorded stays here until you press Delete tester data.</p>
+      </div>
       <div class="tester-lists">
         <div class="well tester-list">
           <h3>What it records</h3>
@@ -1318,22 +1334,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
             <li>The printer's G-code</li>
           </ul>
         </div>
-      </div>
-      <div class="tester-live" id="tester-live" data-module-body="tester">
-        <div class="tester-tiles" role="group" aria-label="Recorded so far">
-          <div class="stat"><span class="stat-key">Days</span><span class="stat-val" id="tester-days">0</span></div>
-          <div class="stat"><span class="stat-key">Actions</span><span class="stat-val" id="tester-actions">0</span></div>
-          <div class="stat"><span class="stat-key">Errors</span><span class="stat-val" id="tester-errors">0</span></div>
-          <div class="stat"><span class="stat-key">Slow spots</span><span class="stat-val" id="tester-slow">0</span></div>
-        </div>
-        <p class="field-hint tester-since" id="tester-since" aria-live="polite">Nothing recorded yet. Use Deja Vu1 as usual.</p>
-        <div class="tester-actions">
-          <button class="btn primary" type="button" id="tester-view">View report</button>
-          <button class="btn" type="button" id="tester-save">Save tester report</button>
-          <button class="btn tester-delete" type="button" id="tester-delete">Delete tester data</button>
-        </div>
-        <p class="field-hint tester-status" id="tester-status" role="status"></p>
-        <p class="field-hint">Switching Tester mode off stops the recording at once. What was recorded stays here until you press Delete tester data.</p>
       </div>
     </section>
     <div class="grid-2" style="align-items:start;">

@@ -21,7 +21,7 @@
   const SLOW_CLICK = 1000, SLOW_REQ = 2000, LONG_TASK = 200, SAMPLE_EVERY = 20000, SAMPLE_MS = 3000;
   const nativeFetch = window.fetch.bind(window);
 
-  let on = false, sid = '', queue = [], sending = false, flushTimer = 0;
+  let on = false, sid = '', queue = [], sending = false, flushTimer = 0, firstSample = 0;
   let screenName = '', screenSince = 0, visTotal = 0, visSince = 0;
   let lastLayers = null, sampling = false, lastClick = null, clickCtx = null;
   const actions = [];                       // the last few things done, saved with an error or a note
@@ -58,6 +58,9 @@
       dpr: Math.round((window.devicePixelRatio || 1) * 100) / 100 });
     push(setup());
     noteScreen();
+    watchLongTasks();
+    clearTimeout(firstSample);
+    firstSample = setTimeout(sample, 6000);     // a first smoothness sample soon after recording starts, then every 20 s
     clearInterval(flushTimer);
     flushTimer = setInterval(() => { aggFlush(false); flush(false); }, FLUSH_MS);
   }
@@ -67,6 +70,8 @@
     on = false;
     queue = [];
     agg.clear();
+    unwatchLongTasks();
+    clearTimeout(firstSample);
     clearInterval(flushTimer);
   }
 
@@ -308,16 +313,24 @@
     };
   }
 
-  try {
-    new PerformanceObserver(list => {
-      if (!on) return;
-      for (const entry of list.getEntries()) {
-        if (entry.duration < LONG_TASK) continue;
-        const recent = lastClick && performance.now() - lastClick.t0 < 1500 ? lastClick.ctl : undefined;
-        push({ k: 'long', ms: Math.round(entry.duration), screen: screenNow(), ctl: recent });
-      }
-    }).observe({ entryTypes: ['longtask'] });
-  } catch (_) { /* this browser has no long-task timing: slow clicks and requests are still recorded */ }
+  let watcher = null;
+  function watchLongTasks() {
+    if (watcher) return;
+    try {
+      watcher = new PerformanceObserver(list => {
+        if (!on) return;
+        for (const entry of list.getEntries()) {
+          if (entry.duration < LONG_TASK) continue;
+          const recent = lastClick && performance.now() - lastClick.t0 < 1500 ? lastClick.ctl : undefined;
+          push({ k: 'long', ms: Math.round(entry.duration), screen: screenNow(), ctl: recent });
+        }
+      });
+      watcher.observe({ entryTypes: ['longtask'] });
+    } catch (_) { watcher = null; /* this browser has no long-task timing: slow clicks and requests are still recorded */ }
+  }
+  function unwatchLongTasks() {
+    if (watcher) { try { watcher.disconnect(); } catch (_) { /* nothing to do */ } watcher = null; }
+  }
 
   /* ---- smoothness ---------------------------------------------------------------------------------- */
 
@@ -442,7 +455,7 @@
   /* ---- the Settings card ------------------------------------------------------------------------------- */
 
   const $t = id => document.getElementById(id);
-  let sure = 0;
+  let sure = 0, statusAt = 0;
   const SAMPLE = { days: 5, actions: 1284, errors: 3, slow: 7, since: 'sample', last: 'sample' };
 
   const when = iso => (iso ? iso.replace('T', ' ').slice(0, 16) : '');
@@ -455,7 +468,7 @@
       : 'Nothing recorded yet. Use Deja Vu1 as usual.';
   }
 
-  async function refreshCard() {
+  async function refreshCard(force) {
     const card = $t('tester-card');
     if (!card) return;
     const demo = inDemo();
@@ -472,6 +485,8 @@
     }
     if (live) live.hidden = !wanted();
     if (!wanted() || !card.offsetParent) return;
+    if (!force && Date.now() - statusAt < 4000) return;
+    statusAt = Date.now();
     try {
       const res = await nativeFetch('/api/tester/status');
       if (res.ok) fill(await res.json());
@@ -508,7 +523,8 @@
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(link.href), 30000);
-      status('Saved ' + name + ' (' + (blob.size / 1048576).toFixed(1) + ' MB). Attach it to your forum message.');
+      const size = blob.size >= 1048576 ? (blob.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(blob.size / 1024)) + ' KB';
+      status('Saved ' + name + ' (' + size + '). Attach it to your forum message.');
     } catch (_) {
       status('The report could not be saved. Deja Vu1 may be restarting; try again in a moment.');
     } finally {
@@ -530,7 +546,7 @@
       status(res.ok ? 'Everything Tester mode recorded was deleted from this computer.' : 'Nothing was deleted: Tester mode is off. Switch it on first.');
       queue = [];
       agg.clear();
-      refreshCard();
+      refreshCard(true);
     } catch (_) {
       status('Nothing was deleted. Deja Vu1 may be restarting; try again in a moment.');
     }

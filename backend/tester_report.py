@@ -986,7 +986,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .featgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;padding:0;margin:8px 0;list-style:none}
 .featgrid li{display:flex;gap:8px;align-items:baseline;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.featgrid small{color:var(--faint);display:block}footer{color:var(--faint);font-size:.85rem;margin-top:24px}
+.featgrid small{color:var(--faint);display:block}.featgrid .pill{flex:none;white-space:nowrap}footer{color:var(--faint);font-size:.85rem;margin-top:24px}
 @media(max-width:560px){section{padding:14px 12px}dl{grid-template-columns:1fr}dt{margin-top:6px}}
 @media print{body{background:#fff}section{break-inside:avoid;border-color:#bbb}details{display:block}}
 """
@@ -1001,8 +1001,8 @@ def _beat(days):
     biggest = max([d["clicks"] for d in days] + [1])
     step = (width - 2 * pad) / float(max(count, 1))
     bar = min(40.0, step * 0.55)
-    parts = ["<svg class=\"beat\" viewBox=\"0 0 %d %d\" role=\"img\" aria-label=\"%s\">" % (
-        width, height, _h("Activity for each day: %s" % "; ".join(
+    parts = ["<svg class=\"beat\" viewBox=\"0 0 %d %d\" style=\"max-width:%dpx\" role=\"img\" aria-label=\"%s\">" % (
+        width, height, width, _h("Activity for each day: %s" % "; ".join(
             "%s %s, %s, %s" % (d["day"], _plural(d["clicks"], "action"), _plural(d["errors"], "error"), _plural(d["slow"], "slow spot")) for d in days)))]
     base = height - 26
     parts.append("<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" stroke=\"currentColor\" opacity=\".25\"/>" % (pad, base, width - pad, base))
@@ -1020,7 +1020,7 @@ def _beat(days):
     return "".join(parts)
 
 
-def render_html(report, theme=None):
+def render_html(report, theme=None, sample=False):
     s, setup = report["summary"], report["setup"]
     server = setup.get("server") or {}
     thin = report["thinning"]
@@ -1030,15 +1030,20 @@ def render_html(report, theme=None):
     add("<!doctype html><html lang=\"en\"%s><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
         "<meta name=\"color-scheme\" content=\"light dark\"><title>Deja Vu1 tester report</title><style>%s</style></head><body><main>" % (theme_attr, _CSS))
     span = "%s to %s" % (_h((s["first"] or "")[:10]), _h((s["last"] or "")[:10])) if s["first"] else "no use recorded yet"
-    add("<header class=\"top\"><div class=\"kicker\">Deja Vu1 tester report</div><h1>How Deja Vu1 behaved on this computer</h1>"
-        "<p class=\"sub\">Written %s from %s. Everything here was recorded on this computer. Nothing was sent anywhere; you send this file yourself.</p></header>"
-        % (_h(report["generated"].replace("T", " ")), span))
+    if sample:
+        add("<header class=\"top\"><div class=\"kicker\">Deja Vu1 tester report &middot; sample</div><h1>How Deja Vu1 behaved on this computer</h1>"
+            "<p class=\"note\"><b>Sample report.</b> Every number on this page is made up to show the layout, for the online demo. "
+            "Nothing here was recorded on your computer. A real report holds your own use of the app.</p></header>")
+    else:
+        add("<header class=\"top\"><div class=\"kicker\">Deja Vu1 tester report</div><h1>How Deja Vu1 behaved on this computer</h1>"
+            "<p class=\"sub\">Written %s from %s. Everything here was recorded on this computer. Nothing was sent anywhere; you send this file yourself.</p></header>"
+            % (_h(report["generated"].replace("T", " ")), span))
 
     # Summary in plain words
     bad = s["errors_total"] > 0
     add("<section class=\"hero\" aria-labelledby=\"sum\"><h2 id=\"sum\">The short version</h2><p class=\"lead\">")
     add("Deja Vu1 was open on <b>%s</b> in <b>%s</b>, for <b>%s</b> in all. " % (_plural(s["days_used"], "day"), _plural(s["sessions"], "session"), _hm(s["minutes_open"])))
-    add("%s were pressed across %s. " % (_plural(s["clicks"], "button or control"), _plural(s["screens_opened"], "screen visit")))
+    add("Buttons and controls were pressed %s across %s. " % (_plural(s["clicks"], "time"), _plural(s["screens_opened"], "screen visit")))
     add("%s started on a printer, %s finished, %s failed and %s were cancelled%s. " % (
         _plural(s["prints_started"], "print"), s["prints_finished"], s["prints_failed"], s["prints_cancelled"],
         " (%s more on demo data)" % s["demo_prints_started"] if s["demo_prints_started"] else ""))

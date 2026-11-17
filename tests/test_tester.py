@@ -242,6 +242,22 @@ class TestMasking(TesterBase):
                 continue
             self.assertNotIn(secret, out, secret)
 
+    def test_spool_names_the_person_typed_are_hidden_too(self):
+        import filament_inventory
+        filament_inventory.add_spool("PLA", "Aunt Marge's Galaxy Black", "#101010", 800)
+        tester._known_cache["at"] = 0.0
+        try:
+            out = tester.mask('button "Remove spool Aunt Marge\'s Galaxy Black" in #filament-card')
+            self.assertNotIn("Marge", out)
+            self.assertNotIn("Galaxy", out)
+            self.assertIn("<spool>", out)
+            self.assertEqual(tester.mask("A black screen appeared"), "A black screen appeared")
+        finally:
+            for spool in filament_inventory.get_inventory():
+                if spool.get("color_name") == "Aunt Marge's Galaxy Black":
+                    filament_inventory.remove_spool(spool["id"])
+            tester._known_cache["at"] = 0.0
+
     def test_routes_lose_ids_and_queries(self):
         self.assertEqual(tester.route_of("/api/fleet/registry/u1-garage/remove?key=abc"), "/api/fleet/registry/:id/remove")
         self.assertEqual(tester.route_of("/api/files/thumb?name=Secret.3mf"), "/api/files/thumb")

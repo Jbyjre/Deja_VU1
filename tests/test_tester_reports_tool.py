@@ -1,0 +1,152 @@
+"""
+tools/tester-reports.py: several testers' zips combined into real totals.
+
+Two sample zips are built with the real Tester mode code (different computers, prints, errors and features),
+then combined; the totals are checked by hand-counting what went in.
+"""
+
+import importlib.util
+import io
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.join(HERE, "..")
+sys.path.insert(0, os.path.join(ROOT, "backend"))
+
+import modules                    # noqa: E402
+import tester                     # noqa: E402
+import tester_report              # noqa: E402
+
+TOOL = os.path.join(ROOT, "tools", "tester-reports.py")
+_spec = importlib.util.spec_from_file_location("tester_reports_tool", TOOL)
+tool = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(tool)
+
+
+def _zip_with(events, server=None):
+    """Record `events` with Tester mode, save the report and clear the record. Returns the zip's bytes."""
+    modules.set_enabled("tester", True)
+    tester.refresh()
+    tester.delete_all()
+    tester.ingest({"events": events})
+    now = int(time.time() * 1000)
+    tester.record("printer", ev="print_started", printer="printer 1", demo=False, t=now)
+    data = tester_report.build_zip()[1]
+    return data
+
+
+class TestCombiningReports(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(self.cleanup)
+
+    def cleanup(self):
+        modules.set_enabled("tester", False)
+        tester.refresh()
+        tester.delete_all()
+
+    def write(self, name, data):
+        path = os.path.join(self.dir, name)
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
+
+    def two_reports(self):
+        now = int(time.time() * 1000)
+        a = _zip_with([
+            {"k": "session", "s": "aaaaaa01", "ev": "start", "device": "desk", "t": now - 5000},
+            {"k": "setup", "s": "aaaaaa01", "browser": "Chrome", "bver": "131", "ua_os": "Windows", "w": 1920, "h": 1080, "t": now - 4900},
+            {"k": "click", "s": "aaaaaa01", "ctl": "#slow", "screen": "printer", "paint": 2200, "slow": True, "t": now - 4000},
+            {"k": "click", "s": "aaaaaa01", "ctl": "#fast", "screen": "printer", "paint": 30, "t": now - 3000},
+            {"k": "err", "s": "aaaaaa01", "kind": "js", "msg": "TypeError: x is undefined at line 10", "t": now - 2000},
+            {"k": "req", "s": "aaaaaa01", "route": "/api/files/samples", "method": "POST", "status": 200, "ms": 9000, "slow": True, "t": now - 1500},
+            {"k": "fps", "s": "aaaaaa01", "surface": "twin", "fps": 30, "t": now - 1000},
+            {"k": "feature", "s": "aaaaaa01", "name": "needs_you", "t": now - 900},
+        ])
+        b = _zip_with([
+            {"k": "session", "s": "bbbbbb01", "ev": "start", "device": "phone", "t": now - 5000},
+            {"k": "setup", "s": "bbbbbb01", "browser": "Safari", "bver": "17", "ua_os": "macOS", "w": 1440, "h": 900, "t": now - 4900},
+            {"k": "click", "s": "bbbbbb01", "ctl": "#slow", "screen": "printer", "paint": 1500, "slow": True, "t": now - 4000},
+            {"k": "err", "s": "bbbbbb01", "kind": "js", "msg": "TypeError: x is undefined at line 99", "t": now - 2000},
+            {"k": "err", "s": "bbbbbb01", "kind": "toast", "msg": "Pause failed", "t": now - 1900},
+            {"k": "fps", "s": "bbbbbb01", "surface": "twin", "fps": 50, "t": now - 1000},
+        ])
+        return self.write("a.zip", a), self.write("b.zip", b)
+
+    def test_the_totals_are_what_went_in(self):
+        paths = self.two_reports()
+        reports = [tool.load(p) for p in paths]
+        total = tool.combine(reports)
+        self.assertEqual(total["testers"], 2)
+        self.assertEqual(total["clicks"], 3)                                   # 2 + 1
+        self.assertEqual(total["sessions"], 2)
+        self.assertEqual(total["prints"]["started"], 2)                       # one print each
+        self.assertEqual(total["devices"], {"desk": 1, "phone": 1})
+        self.assertEqual(sorted(total["browsers"]), ["Chrome 131", "Safari 17"])
+        # The same error said with different numbers is one kind, seen by both testers
+        kinds = {e["message"]: e for e in total["errors"]}
+        merged = next(e for m, e in kinds.items() if m.startswith("TypeError"))
+        self.assertEqual((merged["count"], merged["testers"]), (2, 2))
+        self.assertEqual(sum(e["count"] for e in total["errors"]), 3)
+        slow = {c["control"]: c for c in total["slowest_controls"]}
+        self.assertEqual((slow["#slow"]["presses"], slow["#slow"]["slow_presses"], slow["#slow"]["slowest_ms"], slow["#slow"]["testers"]), (2, 2, 2200, 2))
+        self.assertNotIn("#fast", slow)                                        # never slow
+        self.assertEqual(total["slowest_requests"][0]["request"], "POST /api/files/samples")
+        self.assertEqual(total["smoothness_median_fps"]["twin"], {"testers": 2, "lowest": 30, "median": 40, "highest": 50})
+        used = {f["name"]: f["testers_used"] for f in total["features"]}
+        self.assertEqual(used["Needs you"], 1)
+        self.assertEqual(used["The 3D twin"], 2)
+        self.assertEqual(used["Spoolman"], 0)
+        self.assertIn("Spoolman", total["features_nobody_used"])
+        self.assertNotIn("Needs you", total["features_nobody_used"])
+
+    def test_the_command_line_prints_a_readable_summary_and_json(self):
+        a, b = self.two_reports()
+        text = subprocess.run([sys.executable, TOOL, self.dir], capture_output=True, text=True, check=True).stdout
+        self.assertIn("2 reports combined", text)
+        self.assertIn("Nobody used:", text)
+        self.assertIn("Spoolman", text)
+        self.assertIn("Started 2", text)
+        data = json.loads(subprocess.run([sys.executable, TOOL, a, b, "--json"], capture_output=True, text=True, check=True).stdout)
+        self.assertEqual(data["testers"], 2)
+        self.assertEqual(data["skipped"], 0)
+
+    def test_a_bad_zip_is_skipped_in_words_and_the_rest_still_count(self):
+        a, _ = self.two_reports()
+        bad = self.write("bad.zip", b"not a zip")
+        other = self.write("other.zip", b"")
+        import zipfile
+        with zipfile.ZipFile(other, "w") as z:
+            z.writestr("report.json", json.dumps({"schema_version": 99}))
+        done = subprocess.run([sys.executable, TOOL, a, bad, other, "--json"], capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0)
+        self.assertIn("skipped:", done.stderr)
+        self.assertIn("bad.zip", done.stderr)
+        self.assertIn("schema_version 99", done.stderr)
+        data = json.loads(done.stdout)
+        self.assertEqual((data["testers"], data["skipped"]), (1, 2))
+
+    def test_nothing_readable_is_a_failure_in_words(self):
+        bad = self.write("bad.zip", b"nope")
+        done = subprocess.run([sys.executable, TOOL, bad], capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("No readable tester reports", done.stderr)
+
+    def test_the_tool_uses_only_the_standard_library(self):
+        with open(TOOL, encoding="utf-8") as f:
+            source = f.read()
+        for line in source.splitlines():
+            if line.startswith(("import ", "from ")):
+                name = line.split()[1].split(".")[0]
+                self.assertIn(name, sys.stdlib_module_names if hasattr(sys, "stdlib_module_names") else
+                              {"argparse", "io", "json", "os", "re", "statistics", "sys", "zipfile", "collections"}, line)
+
+
+if __name__ == "__main__":
+    unittest.main()

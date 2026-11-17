@@ -1065,24 +1065,24 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         except _Gone:
             return None
         except printer_control.PrintBlocked as exc:
-            tester.note_refused(self.path, 409, str(exc))
+            self._note_refusal(409, str(exc))
             return self._send_json({"error": str(exc), "blocked": True, "gate": exc.gate}, status=409)
         except watch_only.WatchOnly as exc:
             # Refused here on purpose, not by the printer: said as such.
-            tester.note_refused(self.path, 409, str(exc))
+            self._note_refusal(409, str(exc))
             return self._send_json({"error": str(exc), "watch_only": True}, status=409)
         except update_hold.UpdateHold as exc:
             # Deja Vu1 is restarting: it sends the printer nothing for a few seconds. Not a printer failure.
-            tester.note_refused(self.path, 409, str(exc))
+            self._note_refusal(409, str(exc))
             return self._send_json({"error": str(exc), "updating": True}, status=409)
         except mock_moonraker.PrinterCommandError as exc:
             # The printer side failed. Say so plainly - never a success.
-            tester.note_refused(self.path, 502, f"The printer reported a failure: {exc}")
+            self._note_refusal(502, f"The printer reported a failure: {exc}")
             return self._send_json({"error": f"The printer reported a failure: {exc}",
                                     "printer_failed": True}, status=502)
         except ValueError as exc:
             if self.path.startswith(("/api/printer/control/", "/api/fleet/broadcast")):
-                tester.note_refused(self.path, 400, str(exc))
+                self._note_refusal(400, str(exc))
             return self._send_json({"error": str(exc)}, status=400)
         except (ConnectionError, BrokenPipeError):
             return None                               # the browser left
@@ -1093,6 +1093,11 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             tester.note_error("server", sys.exc_info()[1], route=self.path, status=500)
             return self._send_json({"error": "Something went wrong on the dashboard server. "
                                              "The details are in its terminal window."}, status=500)
+
+    def _note_refusal(self, status, words):
+        """Tester mode: a command (a POST) the printer or a safety check turned down. A failed read is only a failed request."""
+        if self.command == "POST":
+            tester.note_refused(self.path, status, words)
 
     def _gate(self, connected):
         """True when printer figures may be served (and sent the refusal if not)."""

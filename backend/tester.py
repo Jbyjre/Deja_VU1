@@ -127,7 +127,7 @@ _HAS_EXT = re.compile(r"\.(?:" + _EXT + r")\b", re.I)
 _PATH_FILE = re.compile(r"(?:(?:" + _NAME_WORD + r")\s+){0,4}"
                         r"(?:[A-Za-z]:)?(?:[\\/][^\\/\s\"'<>|*?:]+)*[\\/]?[^\\/\s\"'<>|*?:]+\.(" + _EXT_I + r")\b")
 
-_known_cache = {"at": 0.0, "files": [], "printers": []}
+_known_cache = {"at": 0.0, "files": [], "printers": [], "spools": []}
 _seen_names = set()               # file names the hooks have handled this run (never written to disk)
 _PLAIN_PRINTER = ("snapmaker u1", "u1", "printer", "demo printer")
 
@@ -196,7 +196,7 @@ def _known_private():
     now = time.monotonic()
     if now - _known_cache["at"] < 5.0:
         return _known_cache
-    files, printers = set(_seen_names), set()
+    files, printers, spools = set(_seen_names), set(), set()
     try:
         import file_library
         files.update(str(n) for n in file_library._load_index())
@@ -212,8 +212,16 @@ def _known_private():
                         printers.add(value)
     except Exception:                      # noqa: BLE001
         pass
+    try:
+        import filament_inventory
+        for spool in filament_inventory.get_inventory():
+            name = " ".join(str((spool or {}).get("color_name") or "").split())
+            if name != "Unnamed" and (len(name) >= 8 or " " in name):      # a plain "Black" is not a private name
+                spools.add(name)
+    except Exception:                      # noqa: BLE001
+        pass
     _known_cache.update(at=now, files=sorted((f for f in files if len(f) >= 3), key=len, reverse=True),
-                        printers=sorted(printers, key=len, reverse=True))
+                        printers=sorted(printers, key=len, reverse=True), spools=sorted(spools, key=len, reverse=True))
     return _known_cache
 
 
@@ -236,6 +244,9 @@ def mask(text, limit=MAX_TEXT):
     for name in known["printers"]:
         if name.lower() in text.lower():
             text = re.sub(re.escape(name), "<printer>", text, flags=re.I)
+    for name in known["spools"]:
+        if name.lower() in text.lower():
+            text = re.sub(re.escape(name), "<spool>", text, flags=re.I)
     if _HAS_EXT.search(text):
         for quoted in _QUOTED_FILES:
             text = quoted.sub(lambda m: _inline(m.group(2), "." + m.group(3)), text)
