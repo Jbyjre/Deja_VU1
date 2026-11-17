@@ -1338,6 +1338,7 @@ const SECTIONS = {
     ['extras', 'Optional extras', ['optional extras']],
     ['phone', 'Phone & away', ['paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
+    ['tester', 'Tester mode', ['#tester-card']],
   ],
 };
 const SECTION_KEY = 'dejavu1.section.';

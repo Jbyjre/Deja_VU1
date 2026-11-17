@@ -112,6 +112,11 @@ API endpoints
   GET  /api/import/orca              presets and recent projects found in Orca on this computer
   POST /api/import/orca/projects     {"ids"} copy recent projects into Files
   POST /api/import/orca/profile      {"name", "machine", "process", "filaments"} a profile from your presets
+  GET  /api/tester/status            Tester mode: days, actions, errors and slow spots recorded so far (module "tester")
+  GET  /api/tester/report.html       the tester report as one readable page (?theme=light|dark)
+  GET  /api/tester/report.zip        the report as deja-vu1-tester-report-YYYY-MM-DD.zip to attach to a forum message
+  POST /api/tester/events            the browser's batch of events {"events": [...]}; private details are hidden
+  POST /api/tester/delete            delete everything Tester mode recorded
   POST /api/app/updates/git          update a git checkout (fast-forward only)
   POST /api/app/repair               put the newest published files back over this copy, then restart
   POST /api/app/restart              restart the dashboard (launcher only)
@@ -334,6 +339,8 @@ import update_hold
 import remote
 import ai_assistant
 import ai_providers
+import tester
+import tester_report
 import watch_only
 import websocket
 import wled_bridge
@@ -492,7 +499,7 @@ _DATA_ROUTES = {
                           else {"queues": {}, "queue_disabled": True}),
     "/api/chamber": ("chamber_climate", lambda q: _chamber()),
     "/api/health": (None, lambda q: print_gate.printer_health()),
-    "/api/print/confirm": (None, lambda q: print_gate.summary(_q(q, "file"))),
+    "/api/print/confirm": (None, lambda q: _confirm_print(_q(q, "file"))),
     "/api/print/preview": (None, lambda q: print_preview.for_current(_q(q, "file", ""))),
     "/api/insights": (None, lambda q: insights.current()),
     "/api/queue": ("print_queue", lambda q: print_queue.get()),
@@ -560,7 +567,20 @@ _APP_ROUTES = {
     "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
+    "/api/tester/status": ("tester", lambda q: tester.status()),
 }
+
+def _confirm_print(name):
+    """The Confirm Print summary, noted for Tester mode (the file as 'file 3, .3mf, 2.4 MB', never its name)."""
+    gate = print_gate.summary(name)
+    if tester.enabled():
+        try:
+            size = os.path.getsize(os.path.join(file_library.FILES_DIR, file_library.clean_name(name)))
+        except (OSError, ValueError, TypeError):
+            size = None
+        tester.note_gate(name, gate, size)
+    return gate
+
 
 def _loaded_heads(demo=False):
     """What each head of the selected printer holds now, for matching a project's colours; None if unknown."""
@@ -606,6 +626,8 @@ def module_routes():
     routes["/api/camera/stream"] = "camera"
     routes["/api/camera/live"] = "camera"
     routes["/api/camera/webrtc"] = "camera"
+    routes["/api/tester/report.html"] = "tester"
+    routes["/api/tester/report.zip"] = "tester"
     return routes
 
 
@@ -751,6 +773,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if filename:
             self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.send_header("Cache-Control", "private, max-age=60" if cache else "no-store")
+        if content_type.startswith("text/html"):
+            # The tester report is one page with no scripts: nothing may run or load in it.
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'self'")
         if content_type.startswith("image/svg"):
             # Frames are drawn by this server; still, never let an SVG run script.
             self.send_header("Content-Security-Policy", "script-src 'none'")
@@ -1040,18 +1065,24 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         except _Gone:
             return None
         except printer_control.PrintBlocked as exc:
+            tester.note_refused(self.path, 409, str(exc))
             return self._send_json({"error": str(exc), "blocked": True, "gate": exc.gate}, status=409)
         except watch_only.WatchOnly as exc:
             # Refused here on purpose, not by the printer: said as such.
+            tester.note_refused(self.path, 409, str(exc))
             return self._send_json({"error": str(exc), "watch_only": True}, status=409)
         except update_hold.UpdateHold as exc:
             # Deja Vu1 is restarting: it sends the printer nothing for a few seconds. Not a printer failure.
+            tester.note_refused(self.path, 409, str(exc))
             return self._send_json({"error": str(exc), "updating": True}, status=409)
         except mock_moonraker.PrinterCommandError as exc:
             # The printer side failed. Say so plainly - never a success.
+            tester.note_refused(self.path, 502, f"The printer reported a failure: {exc}")
             return self._send_json({"error": f"The printer reported a failure: {exc}",
                                     "printer_failed": True}, status=502)
         except ValueError as exc:
+            if self.path.startswith(("/api/printer/control/", "/api/fleet/broadcast")):
+                tester.note_refused(self.path, 400, str(exc))
             return self._send_json({"error": str(exc)}, status=400)
         except (ConnectionError, BrokenPipeError):
             return None                               # the browser left
@@ -1059,6 +1090,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             # Never let a crash take the whole server down mid-demo. The
             # details go to the terminal, not to whoever sent the request.
             traceback.print_exc()
+            tester.note_error("server", sys.exc_info()[1], route=self.path, status=500)
             return self._send_json({"error": "Something went wrong on the dashboard server. "
                                              "The details are in its terminal window."}, status=500)
 
@@ -1142,6 +1174,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/camera/snapshot":
             if self._module_blocked("camera"):
                 return None
+            tester.note_feature("camera")
             if force_disconnected or (not connected and not _demo(query)):
                 return self._send_json({"connected": False, "demo": False})
             data, mime = mock_moonraker.camera_snapshot()
@@ -1150,6 +1183,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/camera/stream":
             if self._module_blocked("camera"):
                 return None
+            tester.note_feature("camera")
             return self._relay_camera()
 
         if route == "/api/camera/webrtc":
@@ -1164,9 +1198,22 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/camera/live":
             if self._module_blocked("camera"):
                 return None
+            tester.note_feature("camera")
             if force_disconnected or not connected:
                 return self._send_json({"connected": False, "demo": False})
             return self._camera_live()
+
+        if route == "/api/tester/report.html":
+            if self._module_blocked("tester"):
+                return None
+            return self._send_bytes(tester_report.build_html(_q(query, "theme", "")).encode("utf-8"),
+                                    "text/html; charset=utf-8")
+
+        if route == "/api/tester/report.zip":
+            if self._module_blocked("tester"):
+                return None
+            filename, data = tester_report.build_zip()
+            return self._send_bytes(data, "application/zip", filename=filename)
 
         if route in _APP_ROUTES:
             module_id, producer = _APP_ROUTES[route]
@@ -1188,6 +1235,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route in ("/api/timelapse/video", "/api/timelapse/printer-video"):
             if self._module_blocked("timelapse"):
                 return None
+            tester.note_feature("timelapse")
             if route.endswith("/video"):
                 data, ctype = timelapse.saved_video(printer_id, _q(query, "name"))
                 name = _q(query, "name")
@@ -1204,6 +1252,7 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         if route == "/api/timelapse/frame":
             if self._module_blocked("timelapse"):
                 return None
+            tester.note_feature("timelapse")
             if force_disconnected or not self._gate(connected):
                 if force_disconnected:
                     self._send_json({"connected": False, "demo": False})
@@ -1442,10 +1491,20 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.snooze(
                 body.get("task_id") or "", body.get("days")), require="task_id")
 
+        if route in ("/api/tester/events", "/api/tester/delete"):
+            if self._module_blocked("tester"):
+                return None
+            body = self._read_json_body()
+            if route == "/api/tester/delete":
+                return self._send_json(tester.delete_all())
+            return self._send_json(tester.ingest(body))
+
         if route.startswith("/api/modules/") and route.endswith("/toggle"):
             module_id = route[len("/api/modules/"):-len("/toggle")]
             body = self._read_json_body()
             result = modules.set_enabled(module_id, body.get("enabled", True))
+            if module_id == "tester":
+                tester.refresh()                 # turning it off stops the recording at once
             if module_id == "printer_link":
                 fleet.sync_real_printers()
             return self._send_json({"modules": result})
@@ -1626,7 +1685,9 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             try:
                 data, report = converter_3mf.convert(file_library.read_bytes(name), body.get("plan"))
             except converter_3mf.ConversionError as exc:
+                tester.note_convert(name, None, error=str(exc))
                 return self._send_json(exc.as_dict(), status=400)
+            tester.note_convert(name, report)
             new_name = converter_3mf.converted_name(file_library.clean_name(name))
             entry = file_library.save(new_name, data, origin="converted",
                                       note=f"Converted from {name} ({report['source_label']})")
@@ -2227,6 +2288,7 @@ def _run_install(server, repair, raise_errors=False):
         if not isinstance(exc, ValueError):
             traceback.print_exc()
         app_updates.set_job("failed", "failed", words, repair=repair)
+        tester.record("update", **{"from": app_updates.version(), "to": None, "ok": False, "words": words})
         if raise_errors:
             raise
         return None
@@ -2291,6 +2353,9 @@ def main():
     console.disable_quick_edit()
     server = _bind()
     live_feed.start()
+    modules.apply_environment()
+    tester.install_hooks()
+    tester.note_update_result(readiness.last_update())
     # A saved printer that stops answering is looked for at a new address by its serial number.
     threading.Thread(target=refind.watch, kwargs={"publish": live_feed.publish_event}, daemon=True,
                      name="refind").start()

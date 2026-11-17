@@ -63,6 +63,7 @@ import file_library
 import gcode_tools
 import slice_diagnosis
 import storage
+import tester
 import slicer_profiles
 import slicing_contract
 import project_plates
@@ -1314,6 +1315,12 @@ def _work(job_id, name, profile_id, queue_to, on_done):
             stage = trace.get("stage")
             _job_update(job_id, finished_at=datetime.now().isoformat(timespec="seconds"), stage=stage,
                         stage_label=slice_diagnosis.stage_label(stage))
+            if tester.enabled():
+                try:
+                    done = get_job(job_id) or {}
+                    tester.note_slice(done, _receipt(done, trace))
+                except Exception:         # noqa: BLE001 - Tester mode never changes how a slice ends
+                    pass
             _operation.cancel = None
             with _lock:
                 _cancellations.pop(job_id, None)

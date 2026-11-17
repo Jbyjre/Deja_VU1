@@ -282,11 +282,20 @@ REGISTRY = [
         "status": "ready",
         "default_enabled": True,
     },
+    {
+        "id": "tester",
+        "name": "Tester mode",
+        "description": "Keeps a report on this computer of how Deja Vu1 behaved while you used it: "
+                        "errors, slow buttons, prints and what you tried. Nothing is sent anywhere; "
+                        "you save one file and share it yourself.",
+        "status": "optional",
+        "default_enabled": False,
+    },
 ]
 
 EXTRAS = ("auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check",
           "ai_assistant")
-SETTINGS = ("camera", "timelapse", "handoff")
+SETTINGS = ("camera", "timelapse", "handoff", "tester")
 for _module in REGISTRY:
     _module["kind"] = "extra" if _module["id"] in EXTRAS else "setting" if _module["id"] in SETTINGS else "core"
 
@@ -364,6 +373,13 @@ def set_enabled(module_id, enabled):
         state[module_id] = bool(enabled)
         _save_state(state)
     return get_all()
+
+
+def apply_environment():
+    """DEJAVU_TESTER=1 switches Tester mode on at start. Settings can still switch it off afterwards."""
+    if os.environ.get("DEJAVU_TESTER", "").strip().lower() in ("1", "true", "yes", "on"):
+        if not _load_state().get("tester"):
+            set_enabled("tester", True)
 
 
 def reset_state():

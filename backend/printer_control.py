@@ -18,6 +18,7 @@ import file_library
 import mock_moonraker
 import print_gate
 import printer_extras
+import tester
 
 _start_locks = {}
 _start_locks_guard = threading.Lock()
@@ -91,6 +92,8 @@ def _start_locked(filename, confirmed):
     # these (checked on arrival by their SHA-256) before it prints them.
     mock_moonraker.upload_file(filename, len(data), data)
     state = mock_moonraker.start_print(filename, gate["job"])
+    printer_id = mock_moonraker.selected_printer_id()
+    tester.note_start(filename, printer_id, demo=not mock_moonraker.is_real(printer_id))
     file_library.touch(filename, "last_printed")
     if gate["verdict"] == "confirm":
         try:
