@@ -45,6 +45,7 @@ PORT_IN_USE = 3                # backend/app.py exits with this when the port is
 CRASH_LIMIT = 5                # restarts after a crash allowed within CRASH_WINDOW seconds
 CRASH_WINDOW = 600
 START_WAIT = 90                # seconds a new version gets to answer before the old one is put back
+HELPER_QUIT_GRACE = 10         # seconds the window still waits after the helper that starts the server has quit
 HEALTH_EVERY = 20              # seconds between the launcher's checks that the server still answers
 HEALTH_MISSES = 5              # unanswered checks in a row (about 2 minutes) before a stuck server is restarted
 HEARTBEAT_EVERY = 5            # seconds between the launcher's "I am here" notes
@@ -94,6 +95,17 @@ def register_starters():
 def say(message):
     print(message, flush=True)
     log(message)
+
+
+def log_since(path, offset, lines=25):
+    """The last few lines written to a log file after `offset` bytes ('' when it can't be read)."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(offset)
+            text = fh.read().decode("utf-8", "replace")
+    except OSError:
+        return ""
+    return "\n".join(text.strip("\n").splitlines()[-lines:]).rstrip()
 
 
 def log(message):
@@ -547,6 +559,8 @@ def start_in_background():
         env = dict(os.environ, DEJAVU_NO_BROWSER="1", DEJAVU_BACKGROUND="1")
         env.pop("DEJAVU_BACKGROUND_PARENT", None)
         python = sys.executable
+        child = None
+        log_from = os.path.getsize(out_path) if os.path.exists(out_path) else 0
         with open(out_path, "ab") as out:
             kwargs = {"cwd": HERE, "env": env, "stdin": subprocess.DEVNULL, "stdout": out,
                       "stderr": subprocess.STDOUT, "close_fds": True}
@@ -562,18 +576,29 @@ def start_in_background():
                 try:
                     # Out of the window's job too, where it has one, so nothing that ends the
                     # window's processes together can end Deja Vu1 (CREATE_BREAKAWAY_FROM_JOB).
-                    subprocess.Popen(command, **dict(kwargs, creationflags=kwargs["creationflags"] | 0x01000000))
+                    child = subprocess.Popen(command, **dict(kwargs, creationflags=kwargs["creationflags"] | 0x01000000))
                 except OSError:
-                    subprocess.Popen(command, **kwargs)     # a job that forbids leaving it: start inside it
+                    child = subprocess.Popen(command, **kwargs)     # a job that forbids leaving it: start inside it
             else:
-                subprocess.Popen(command, **kwargs)
+                child = subprocess.Popen(command, **kwargs)
         say("Starting Deja Vu1 in the background…")
         deadline = time.monotonic() + START_WAIT
+        ended = None
         while time.monotonic() < deadline and not already_running():
+            # The helper that starts the server quits by itself when it can't (the port is taken, say) and
+            # writes why to the log. Waiting the whole START_WAIT for that would leave the window silent.
+            if ended is None and child is not None and isinstance(child.poll(), int):
+                ended = time.monotonic()
+            if ended is not None and time.monotonic() - ended > HELPER_QUIT_GRACE:
+                break
             time.sleep(0.5)
         running = already_running()
         if not running:
-            say(f"Deja Vu1 didn't answer within {START_WAIT} s. What it printed is in {out_path}")
+            if ended is not None:
+                say("Deja Vu1 couldn't start. This is what it reported:")
+                say(log_since(out_path, log_from) or f"Nothing was written. Its notes are in {out_path}")
+            else:
+                say(f"Deja Vu1 didn't answer within {START_WAIT} s. What it printed is in {out_path}")
             return 1
     else:
         print(f"Deja Vu1 {running} is already running at http://localhost:{PORT}.", flush=True)
