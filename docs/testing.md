@@ -26,8 +26,11 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1612 tests passed on Python 3.13.18 (Linux, 17 November 2026, version 0.20.15
-  plus Tester mode and its checks), run as one serial run: 1369.6 seconds (22 minutes 50 seconds). The run before it: 1557
+- **The test suite:** 1621 tests passed on Python 3.13.18 (Linux, 17 November 2026, version 0.20.15
+  plus the first-run fixes), run as five parallel groups: 1278.8 seconds of test time in all, 516 seconds from
+  start to finish. The check that the count quoted here is right failed on that run (it still said 1612) and
+  passed once the number was updated. The run before it: 1612 tests (17 November 2026, version 0.20.15 plus
+  Tester mode and its checks), one serial run: 1369.6 seconds (22 minutes 50 seconds). The run before that: 1557
   tests (16 November 2026, version 0.20.14 plus colour calibration, the sensor in Confirm Print, the browser
   walk and the screen fixes it found), run as five parallel groups (the browser walk on its own): 977.9 seconds of test time in all, about 254
   seconds from start to finish. The browser walk's group failed once on a wait that was too short while the
