@@ -5,14 +5,21 @@
   // A phone that arrived by scanning the QR code (phone.js) joins a dashboard that is
   // already set up on the computer, so it goes straight to the dashboard, not setup.
   const viaPhoneLink = new URLSearchParams(location.search).has('pair');
-  const read = k => { try { return localStorage.getItem(k) || ''; } catch (_) { return ''; } };
-  const save = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); return true; } catch (_) { return false; } };
+  // store (app.js) falls back to the tab's memory when the browser blocks saved settings; save() says whether it will last.
+  const read = k => store.get(k) || '';
+  const save = (k, v) => { if (v) return store.set(k, v); store.remove(k); return true; };
   const dialog = $('setup-dialog'), content = $('setup-content');
   let step = 0, mode = 'real', info = null, returnFocus = null, activeTarget = null, generation = 0;
+  // The printer step: what was typed (kept when the step redraws), the printer once it is added, and a note for the next step.
+  let typedUrl = '', added = '', carry = '', connecting = null;
   // Every step is full screen. The tour step hands over to the guided tour
   // (guide.js), which points at the real dashboard, then comes back here.
-  const names = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Your phone', 'Desktop app', 'Keep up to date'];
-  const TOUR = names.indexOf('The tour');
+  // A phone opens the dashboard of the computer that runs Deja Vu1, so it skips the steps about the computer
+  // (showing a code for a phone, the desktop app, updates) and gets the Home Screen step instead.
+  const COMPUTER_STEPS = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Your phone', 'Desktop app', 'Keep up to date'];
+  const PHONE_STEPS = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Home Screen'];
+  const onPhone = () => matchMedia('(max-width: 720px)').matches && matchMedia('(pointer: coarse)').matches;
+  let names = COMPUTER_STEPS, TOUR = names.indexOf('The tour');
   const privacy = 'Only saved in this browser on this device. Never sent to the server, logs, backups or update checks. Optional; delete it any time.';
   function greeting() {
     const name = read(key);
@@ -43,6 +50,58 @@
     return `Connect your phone to the same home Wi-Fi and type ${address} into its browser. Use the computer’s address, not localhost or the printer’s address.`;
   }
   const installText = 'On iPhone: open Safari → Share → Add to Home Screen. On Android: open Chrome’s menu → Add to Home screen (or Install app, when offered). A normal http:// home-network address may only offer a shortcut; offline support and full app installation need a secure https:// address. Browser options vary.';
+  // Tests the typed address and adds the printer. Resolves true once it is added, false (the reason on screen) when it is not.
+  function connectPrinter() {
+    if (!connecting) connecting = doConnect().finally(() => { connecting = null; });
+    return connecting;
+  }
+  async function doConnect() {
+    const view = generation, btn = $('setup-test'), status = $('setup-status');
+    const url = $('setup-url').value.trim(), apiKey = $('setup-key').value;
+    const say = text => { if (view === generation) status.textContent = text; };
+    if (!url) { say('Type the printer’s address first. It is on the printer’s screen, like 192.168.1.50.'); $('setup-url').focus(); return false; }
+    btn.disabled = true; say('Testing the printer connection…');
+    try {
+      const body = { moonraker_url: url, api_key: apiKey };
+      // A printer behind a web-page sign-in: read its key with that sign-in first.
+      if (!apiKey && !$('setup-login').hidden && $('setup-pass').value) {
+        say('Signing in to the printer…');
+        const login = await postJSON('/api/printers/login', { moonraker_url: url, username: $('setup-user').value, password: $('setup-pass').value });
+        if (view !== generation) return false;
+        $('setup-pass').value = '';
+        if (!login.ok) throw new Error(login.body.error);
+        body.api_key = login.body.api_key; body.moonraker_url = login.body.url;
+      }
+      const test = await postJSON('/api/printers/test', body);
+      if (view !== generation) return false;
+      if (test.ok && test.body.url) body.moonraker_url = test.body.url;
+      if (test.ok && test.body.needs_key) { $('setup-login').hidden = false; $('setup-user').focus(); }
+      if (!test.ok || !test.body.ok || test.body.error) throw new Error(test.body.error || 'The printer did not answer.');
+      // Replaying setup with a printer that is already in the list uses that printer instead of failing as a duplicate.
+      const bare = u => String(u || '').replace(/\/+$/, '');
+      const listed = await getJSON('/api/fleet/registry').catch(() => null);
+      const same = listed && (listed.printers || []).find(p => bare(p.moonraker_url) === bare(body.moonraker_url));
+      let printerId = same && same.id;
+      if (!printerId) {
+        const r = await postJSON('/api/fleet/registry', { ...body, name: 'My U1' });
+        if (!r.ok) throw new Error(r.body.error);
+        printerId = r.body.id;
+      }
+      setDemo(false); currentPrinter = printerId; store.set(PRINTER_KEY, currentPrinter);
+      if (window.Workshop) Workshop.reconnect();
+      refreshAll();
+      added = body.moonraker_url; typedUrl = '';
+      if (view === generation) { status.textContent = 'Connection test passed. Your printer is added; live readings will appear when the connection opens.'; $('setup-key').value = ''; btn.textContent = 'Printer added'; }
+      return true;
+    } catch (e) {
+      say(e.message || 'Could not connect. Check the address and try again.');
+      if (view === generation) btn.disabled = false;
+      return false;
+    }
+  }
+  // Continue with an address typed but not connected yet connects it first, so the address is not thrown away.
+  const wantsConnect = () => !tourOn() && mode === 'real' && !added && !!$('setup-url') && !!$('setup-url').value.trim();
+  let skipFor = '';
   function render() {
     const view = ++generation;
     clearHighlight();
@@ -60,17 +119,19 @@
         <label for="setup-name">What should we call you? <span class="field-hint">Optional</span></label>
         <input id="setup-name" type="text" maxlength="40" autocomplete="off" placeholder="Your name" value="${esc(read(key))}">
         <p class="field-hint">${esc(privacy)}</p>`;
-      $('setup-name').addEventListener('input', e => { if (!save(key, e.target.value.trim().slice(0,40))) $('setup-status').textContent='This browser is not allowing saved preferences.'; greeting(); });
+      $('setup-name').addEventListener('input', e => { $('setup-status').textContent = save(key, e.target.value.trim().slice(0,40)) ? '' : 'This browser is blocking saved settings, so your name is only kept until this tab closes.'; greeting(); });
+      $('setup-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('setup-next').click(); } });
     } else if (names[step] === 'Make it yours') {
       content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
       if (typeof Backdrop !== 'undefined') Backdrop.picker($('setup-backdrop'));
     } else if (names[step] === 'Your printer') {
       content.innerHTML = `<h2 id="setup-title">Your printer, or a demo first?</h2><p class="setup-lead">The demo fills every screen with pretend printers, labelled as pretend. Connecting your own printer never starts a print.</p>
-        <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo">Try the demo</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" ${tourOn()?'disabled':''}>Connect my printer</button></div>
+        <div class="setup-choices"><button class="btn ${mode==='demo'?'primary':''}" id="setup-demo" aria-pressed="${mode==='demo'}">Try the demo</button><button class="btn ${mode==='real'?'primary':''}" id="setup-real" aria-pressed="${mode==='real'}" ${tourOn()?'disabled':''}>Connect my printer</button></div>
         ${tourOn()?'<p class="setup-note">Public demo · a recording only. To connect a printer, run the download on your own computer.</p>':''}
-        <div id="setup-connect" ${mode==='demo'||tourOn()?'hidden':''}>
+        ${added&&mode==='real'&&!tourOn()?`<p class="setup-note">Added: My U1 at ${esc(added)}. More printers can be added later under Printers.</p>`:''}
+        <div id="setup-connect" ${mode==='demo'||tourOn()||added?'hidden':''}>
           <button class="btn" id="setup-find">Find printers on my Wi-Fi</button><div id="setup-found"></div>
-          <label for="setup-url">Printer address</label><input id="setup-url" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="192.168.1.50">
+          <label for="setup-url">Printer address</label><input id="setup-url" type="text" inputmode="url" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="192.168.1.50" value="${esc(typedUrl)}">
           <div id="setup-login" hidden>
             <p class="field-hint">This printer asks for a sign-in. Use the username and password from its web page. Only the printer’s key is kept, never the password.</p>
             <label for="setup-user">Printer username</label><input id="setup-user" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="admin">
@@ -94,34 +155,12 @@
           $('setup-status').textContent=found.length?'Choose a printer, then test the connection.':'No printers found. You can enter the printer address yourself.';
         } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not search. Try entering the address yourself.';} finally{btn.disabled=false;}
       };
-      if ($('setup-test')) $('setup-test').onclick=async e=>{
-        const btn=e.currentTarget, url=$('setup-url').value.trim(), apiKey=$('setup-key').value;
-        btn.disabled=true;$('setup-status').textContent='Testing the printer connection…';
-        try {
-          const body={moonraker_url:url,api_key:apiKey};
-          // A printer behind a web-page sign-in: read its key with that sign-in first.
-          if(!apiKey&&!$('setup-login').hidden&&$('setup-pass').value){
-            $('setup-status').textContent='Signing in to the printer…';
-            const login=await postJSON('/api/printers/login',{moonraker_url:url,username:$('setup-user').value,password:$('setup-pass').value});
-            $('setup-pass').value='';
-            if(view!==generation)return;
-            if(!login.ok)throw new Error(login.body.error);
-            body.api_key=login.body.api_key;body.moonraker_url=login.body.url;
-          }
-          const test=await postJSON('/api/printers/test',body);
-          if(view!==generation)return;
-          if(test.ok&&test.body.url)body.moonraker_url=test.body.url;
-          if(test.ok&&test.body.needs_key){$('setup-login').hidden=false;$('setup-user').focus();}
-          if(!test.ok||!test.body.ok||test.body.error)throw new Error(test.body.error||'The printer did not answer.');
-          const r=await postJSON('/api/fleet/registry',{...body,name:'My U1'});
-          if(!r.ok)throw new Error(r.body.error);
-          setDemo(false);currentPrinter=r.body.id;store.set(PRINTER_KEY,currentPrinter);
-          if(window.Workshop)Workshop.reconnect();refreshAll();
-          if(view!==generation)return;
-          $('setup-status').textContent='Connection test passed. Your printer is added; live readings will appear when the connection opens.';
-          $('setup-key').value='';btn.textContent='Printer added';
-        } catch(e){if(view===generation)$('setup-status').textContent=e.message||'Could not connect. Check the address and try again.';btn.disabled=false;}
-      };
+      if ($('setup-url')) {
+        $('setup-url').addEventListener('input', e => { typedUrl = e.target.value; });
+        $('setup-connect').addEventListener('input', () => { skipFor = ''; });
+        $('setup-url').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); connectPrinter(); } });
+      }
+      if ($('setup-test')) $('setup-test').onclick = () => connectPrinter();
     } else if (step === TOUR) {
       content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
         <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
@@ -155,6 +194,11 @@
       $('setup-autostart').onclick=async()=>{await saveAutostart(true);const on=!!(info&&info.autostart&&info.autostart.on);$('setup-autostart').textContent=on?'Starts with this computer':'Start it with this computer';$('setup-autostart').disabled=on;};
       if(auto&&auto.on){$('setup-autostart').textContent='Starts with this computer';$('setup-autostart').disabled=true;}
       if(tourOn()||serverMissing()||!auto||!auto.supported){$('setup-install').disabled=tourOn()||serverMissing();$('setup-window').disabled=tourOn()||serverMissing();$('setup-autostart').disabled=true;}
+    } else if (names[step] === 'Home Screen') {
+      content.innerHTML=`<h2 id="setup-title">Keep it on your Home Screen.</h2>
+        <p class="setup-lead">This phone shows the dashboard of the computer that runs Deja Vu1. No app store and no account. Put it on your Home Screen to open it like an app.</p>
+        <div class="setup-ways"><div class="setup-way"><strong>Add it to your Home Screen</strong><span>${esc(installText)}</span></div></div>
+        <p class="field-hint">Updates and the computer’s own settings are changed on the computer. Keep the computer awake and on the same Wi-Fi as this phone.</p>`;
     } else {
       const kind=info&&info.install_kind==='git'?'Your copy came from git or GitHub Desktop, so updates come straight from GitHub.':'Updates arrive inside the app. In Settings you choose newest builds (each fix as it lands) or stable releases (fewer, bigger steps).';
       content.innerHTML=`<h2 id="setup-title">Stay up to date.</h2>
@@ -164,16 +208,29 @@
         <details class="setup-more"><summary>More about updates</summary><p>Deja Vu1 makes a safety copy before it installs anything, then restarts itself. Settings can let updates install on their own while every printer is idle. Start Deja Vu1 with its double-click launcher so it can restart after an update.</p><p class="field-hint">Checking sends GitHub no name, printer details or settings. Settings → Version &amp; updates lists every version and has a tour of each. Printer firmware updates are separate and come from Snapmaker.</p></details>`;
       $('setup-auto').onchange=async e=>{const r=await postJSON('/api/app/updates/settings',{automatic:e.target.checked});if(!r.ok){e.target.checked=!e.target.checked;$('setup-status').textContent=r.body.error||'Could not save that.';}else{info={...info,...r.body};Versions.refresh();}};
     }
-    $('setup-status').textContent='';
+    $('setup-status').textContent=carry;carry='';
     const title=$('setup-title');title.tabIndex=-1;title.focus({preventScroll:true});
   }
   function open() {
     returnFocus=document.activeElement;step=0;mode=tourOn()?'demo':'real';
+    names=onPhone()?PHONE_STEPS:COMPUTER_STEPS;TOUR=names.indexOf('The tour');typedUrl='';added='';carry='';skipFor='';
     dialog.showModal();render();refreshInfo();
   }
   $('setup-replay').onclick=open;
   $('setup-skip').onclick=finish;
-  $('setup-next').onclick=()=>{if(step===names.length-1)finish();else{step++;render();}};
+  $('setup-next').onclick=async()=>{
+    const next=$('setup-next');
+    if(names[step]==='Your printer'&&wantsConnect()){
+      const typed=$('setup-url').value.trim();
+      // A second Continue for an address that did not connect moves on: the printer can be added later under Printers.
+      if(typed!==skipFor){
+        next.disabled=true;const ok=await connectPrinter();next.disabled=false;
+        if(!ok){skipFor=typed;if($('setup-url'))$('setup-status').textContent+=' Press Continue again to skip this and add the printer later under Printers.';return;}
+        carry='Printer added: My U1.';
+      }
+    }
+    if(step===names.length-1)finish();else{step++;render();}
+  };
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
   dialog.addEventListener('cancel',e=>{e.preventDefault();finish();});
   // However the sheet closes, the page behind it must come back (full-screen setup hides it).

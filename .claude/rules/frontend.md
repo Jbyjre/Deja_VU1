@@ -65,7 +65,11 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   every 10 s); `nudgeLive` reconnects on visibilitychange, online and bfcache pageshow. Fleet cards,
   Needs you, files, dialogs, morph animations.
 - `launchpad.js`: setup (skippable), the desktop-app card, update settings. Browser-only names never
-  enter requests. `phone.js`: the QR sheet and `?pair=` redemption; `Phone.install()` picks install
+  enter requests. Setup has seven steps on a computer and five on a phone (`PHONE_STEPS`: no code to scan,
+  no desktop app or updates, a Home Screen step instead; a phone is a narrow screen with a coarse pointer).
+  Continue on the printer step connects a typed address first (`connectPrinter`; a second Continue skips it);
+  a printer already in the list is reused. Its flags go through `store` (app.js), which falls back from
+  localStorage to sessionStorage to the page's memory. `tools/setup-walk.js` checks all of it in Chromium. `phone.js`: the QR sheet and `?pair=` redemption; `Phone.install()` picks install
   steps (Chrome installs only from https, localhost or a flagged address).
 - `explain.js`: an ⓘ after each known card title (HELP, keyed by the title's letters and digits) and
   `[[word]]` glossary links. Write notes in plain words. `tests/test_explain.py` fails when a note's
