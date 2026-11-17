@@ -27,7 +27,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
 ## Automated and stand-in
 
 - **The test suite:** 1612 tests passed on Python 3.13.18 (Linux, 17 November 2026, version 0.20.15
-  plus Tester mode and its checks), run as one serial run: RUN_TIME_PLACEHOLDER. The run before it: 1557
+  plus Tester mode and its checks), run as one serial run: 1369.6 seconds (22 minutes 50 seconds). The run before it: 1557
   tests (16 November 2026, version 0.20.14 plus colour calibration, the sensor in Confirm Print, the browser
   walk and the screen fixes it found), run as five parallel groups (the browser walk on its own): 977.9 seconds of test time in all, about 254
   seconds from start to finish. The browser walk's group failed once on a wait that was too short while the
@@ -54,7 +54,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
   on the stand-in printer, a request held back 2.6 seconds, a button that freezes the page for 1.4 seconds, an error, a
   failed promise, an error toast and a note), saves the zip, and opens its `report.html` with no network at 1366 px and
   390 px in light and dark. Cost of recording on the Printer page with the 3D twin, in Chromium with software
-  rendering (24 alternating pairs of 6-second stretches, off against on): press to next paint +2.5 % (standard error
+  rendering (24 alternating pairs of 6-second stretches, off against on, in two runs of 12): press to next paint +2.5 % (standard error
   1.2), the page's main-thread time +2.1 % (1.3), frame time +1.8 % (3.9, within the noise). A CPU profile puts the
   recorder's own script at 27 ms over 72.5 seconds, 0.04 % of the time. Not tested: Tester mode on a real U1, on
   Windows or macOS, or in a browser other than Chromium.
