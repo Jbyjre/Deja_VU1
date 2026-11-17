@@ -544,10 +544,17 @@
   function status(text) { const el = $t('tester-status'); if (el) el.textContent = text; }
 
   function openReport() {
-    const dialog = $t('tester-dialog'), frame = $t('tester-frame');
-    if (!dialog || !frame) return;
+    const dialog = $t('tester-dialog'), host = $t('tester-frame-host');
+    if (!dialog || !host) return;
     const dark = document.documentElement.dataset.theme === 'dark';
+    // The frame exists only while the report is open: a sandboxed frame has no scripts and no access to this page.
+    const frame = document.createElement('iframe');
+    frame.id = 'tester-frame';
+    frame.title = 'Tester report';
+    frame.setAttribute('sandbox', '');
     frame.src = inDemo() ? 'tester-report-sample.html' : '/api/tester/report.html?theme=' + (dark ? 'dark' : 'light');
+    host.textContent = '';
+    host.appendChild(frame);
     try { dialog.showModal(); } catch (_) { dialog.setAttribute('open', ''); }
   }
 
@@ -609,7 +616,7 @@
     else if (hit.id === 'tester-close') { const d = $t('tester-dialog'); if (d) d.close(); }
   });
   document.addEventListener('close', e => {
-    if (e.target && e.target.id === 'tester-dialog') { const f = $t('tester-frame'); if (f) f.src = 'about:blank'; }
+    if (e.target && e.target.id === 'tester-dialog') { const host = $t('tester-frame-host'); if (host) host.textContent = ''; }
   }, true);
 
   // The app calls syncModuleBodies() right after it learns whether a module is on: when the list is read at

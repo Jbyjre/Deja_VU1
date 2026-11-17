@@ -360,7 +360,11 @@ class TestHooks(TesterBase):
         self.assertIn("table.wide{min-width", page)
         self.turn_on()
         tester.note_gate("A.gcode", {"verdict": "clear", "blocking": [], "warnings": [], "info": []}, 10)
-        self.assertIn('class="wide"', tester_report.build_html())
+        page = tester_report.build_html()
+        self.assertIn('class="wide"', page)
+        # A frame that scrolls sideways must be reachable with the keyboard and have a name (axe: scrollable-region-focusable)
+        self.assertIn('class="scroll" tabindex="0" role="region" aria-label="', page)
+        self.assertNotIn('<div class="scroll"><table', page)
 
     def test_slices_conversions_and_updates(self):
         self.turn_on()

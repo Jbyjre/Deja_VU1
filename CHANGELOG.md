@@ -10,6 +10,21 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**17 November 2026, Tester mode.** Settings has a new Tester mode part. Switched on (or started with `DEJAVU_TESTER=1`),
+Deja Vu1 keeps a record on your computer of how it behaved while you used it: every error, every button that was slow to
+show a change, every request that failed or took over two seconds, printer connects and drops, refused commands and how
+each print ended, Confirm Print checks, slices and conversions, how smoothly the 3D twin and the G-code preview drew, and
+which features you tried. A **Something felt off** button on every screen saves a note with the screen and your last ten
+actions. **View report** shows everything before you send it, and **Save tester report** writes one zip (a report page that
+opens with no internet, the same data as JSON, the raw events and a README) that stays under 25 MB. Addresses, keys, Wi-Fi
+names, serial numbers, folders with a user name, and file, printer and spool names are replaced before anything is
+written, in the browser and again on the server. Nothing is sent anywhere. `tools/tester-reports.py` combines several
+reports into totals, and `docs/beta-testing.md` is rewritten for the double-click install and this flow. Checked in Chromium
+on Linux against a stand-in printer, with the switch off (the browser sends nothing, every route answers 403) and on;
+recording cost on the Printer page with the 3D twin, measured over 24 alternating pairs: press to next paint +2.5 %,
+page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
+on macOS.
+
 ## 0.20.15 (16 November 2026): Calibrate a colour sensor from a white reference, see it in Confirm Print, an...
 
 - Calibrate a colour sensor from a white reference, see it in Confirm Print, and check every screen in a real browser

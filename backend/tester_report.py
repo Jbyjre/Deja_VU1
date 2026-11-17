@@ -950,7 +950,10 @@ def _table(headers, rows, caption=None, cls=""):
     head = "".join("<th scope=\"col\"%s>%s</th>" % (" class=\"n\"" if h in _NUMERIC else "", _h(h)) for h in headers)
     body = "".join("<tr>%s</tr>" % "".join(c if isinstance(c, _Raw) else "<td>%s</td>" % _h(c) for c in row) for row in rows)
     cap = "<caption class=\"sr\">%s</caption>" % _h(caption) if caption else ""
-    return "<div class=\"scroll\"><table class=\"%s\">%s<thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>" % (cls, cap, head, body)
+    # A frame that scrolls sideways on a phone must be reachable with the keyboard, and have a name.
+    name = caption or "%s table" % ", ".join(headers[:3])
+    return "<div class=\"scroll\" tabindex=\"0\" role=\"region\" aria-label=\"%s\"><table class=\"%s\">%s<thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>" % (
+        _h(name), cls, cap, head, body)
 
 
 class _Raw(str):
@@ -1002,7 +1005,7 @@ td.mono{font-family:var(--mono);font-size:.85rem}
 .pill.off{color:var(--faint)}dl{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:4px 16px;margin:0}dt{color:var(--dim)}dd{margin:0}
 .empty{color:var(--faint);font-style:italic}.note{border-left:3px solid var(--accent);padding:6px 12px;margin:8px 0;background:var(--bg);border-radius:0 8px 8px 0}
 .note small,.small{color:var(--faint);font-size:.85rem}details{margin:.5rem 0}summary{cursor:pointer;color:var(--accent);font-weight:600}
-summary:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+summary:focus-visible,a:focus-visible,.scroll:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font:.8rem/1.45 var(--mono);white-space:pre-wrap}
 .beat{display:block;width:100%;height:auto;margin:10px 0 2px}.beat text{font:11px var(--mono);fill:var(--faint)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
