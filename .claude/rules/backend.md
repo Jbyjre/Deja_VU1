@@ -55,6 +55,9 @@ slicing and launcher files have their own notes in this folder.
 
 ## Storage and safety copies
 
+- `file_library.clean_name` keeps file names plain: accents come off (Käse is Kase), letters of other alphabets
+  become a short code from the whole name (`model-3f9a1c.stl`) so two names never collapse into one file. A
+  cleaned name cleans to itself; keep it that way, because every lookup runs through it.
 - `storage.save_json` writes atomically and keeps a hidden `.<name>.prev`; damaged files are
   repaired from it or a safety copy. Code that lists a data folder must skip names starting with ".".
 - A module that keeps files sets `_DATA_DIR = storage.DATA_DIR`
