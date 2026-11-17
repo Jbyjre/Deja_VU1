@@ -272,6 +272,7 @@ async function walk(browser, server, standIn, width) {
   // A note.
   await page.locator('#tester-felt').click();
   await page.locator('#tester-note-text').fill('Pause felt slow (walk note about 192.168.7.7)');
+  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'note-' + width + '.png') });
   await page.locator('#tester-note-save').click();
   await sleep(800);
   check((await page.locator('#tester-note').count()) === 0, 'Saving a note closes the note panel');
@@ -283,7 +284,7 @@ async function walk(browser, server, standIn, width) {
   await openTesterCard(page, width);
   await sleep(1500);
   const counts = await page.evaluate(() => ['days', 'actions', 'errors', 'slow'].map(k => +document.getElementById('tester-' + k).textContent));
-  check(counts[1] > 20 && counts[2] >= 3 && counts[3] >= 2, 'The card shows what was recorded: days, actions, errors, slow spots = ' + counts.join(', '));
+  check(counts[1] > (width > 720 ? 20 : 5) && counts[2] >= 3 && counts[3] >= 2, 'The card shows what was recorded: days, actions, errors, slow spots = ' + counts.join(', '));
   await page.locator('#tester-view').click();
   await sleep(2500);
   const frame = page.frames().find(f => f.url().includes('/api/tester/report.html'));

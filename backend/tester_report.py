@@ -464,6 +464,7 @@ class Aggregator:
         self.firmware = {}
         self.gates = []
         self.gate_reasons = Counter()
+        self.gate_reason_text = {}
         self.gate_by_file = {}
         self.slices = []
         self.converts = []
@@ -639,7 +640,9 @@ class Aggregator:
         row = {"t": _iso(t), "_t": t, "file": ev.get("file"), "verdict": verdict, "blocking": ev.get("blocking") or [],
                "warnings": ev.get("warnings") or [], "went_on": False}
         for reason in row["blocking"] + row["warnings"]:
-            self.gate_reasons[_norm_message(reason)] += 1
+            key = _norm_message(reason)
+            self.gate_reasons[key] += 1
+            self.gate_reason_text.setdefault(key, reason)
         self.gate_by_file[_file_key(ev.get("file"))] = row
         if len(self.gates) < 500:
             self.gates.append(row)
@@ -815,7 +818,7 @@ class Aggregator:
             "printer": {"connections": dict(self.link), "firmware": self.firmware, "prints": prints,
                         "confirmed_by_printer": confirmed, "refused": self.refused, "timeline": self.timeline},
             "confirm_print": {"checks": len(self.gates), "by_verdict": dict(gate_totals), "went_on_to_print": went_on,
-                              "reasons": [{"reason": r, "count": c} for r, c in self.gate_reasons.most_common(30)],
+                              "reasons": [{"reason": self.gate_reason_text.get(r, r), "count": c} for r, c in self.gate_reasons.most_common(30)],
                               "list": self.gates},
             "slicing": self.slices, "converter": self.converts, "smoothness": fps,
             "features": {"used": [f["name"] for f in used], "not_used": [f["name"] for f in features if not f["used"]],
@@ -928,10 +931,16 @@ def _hm(minutes):
     return "%d h %02d min" % (minutes // 60, round(minutes % 60))
 
 
+_NUMERIC = {"Times", "Median", "Slowest", "Pressed", "Failed", "Slow", "Sessions", "Open", "Actions", "Prints", "Errors", "Slow spots", "Visits",
+            "Time open", "Time", "Plates", "Colours", "Samples", "Lowest", "Length", "Status", "Screen changed after", "Request finished after"}
+
+
 def _table(headers, rows, caption=None, cls=""):
     if not rows:
         return ""
-    head = "".join("<th scope=\"col\">%s</th>" % _h(h) for h in headers)
+    if len(headers) >= 4:
+        cls = (cls + " wide").strip()              # wide tables scroll sideways inside their frame instead of squeezing their columns
+    head = "".join("<th scope=\"col\"%s>%s</th>" % (" class=\"n\"" if h in _NUMERIC else "", _h(h)) for h in headers)
     body = "".join("<tr>%s</tr>" % "".join(c if isinstance(c, _Raw) else "<td>%s</td>" % _h(c) for c in row) for row in rows)
     cap = "<caption class=\"sr\">%s</caption>" % _h(caption) if caption else ""
     return "<div class=\"scroll\"><table class=\"%s\">%s<thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>" % (cls, cap, head, body)
@@ -947,6 +956,11 @@ def _cell(text, cls=""):
 
 def _empty(text):
     return "<p class=\"empty\">%s</p>" % _h(text)
+
+
+def _when(iso):
+    """A time in a table: it stays on one line."""
+    return _Raw("<td class=\"when\">%s</td>" % _h(str(iso or "").replace("T", " ")))
 
 
 _CSS = """
@@ -973,7 +987,8 @@ section.hero{padding:22px 18px}.lead{font-size:1.1rem;line-height:1.55;max-width
 .scroll{overflow-x:auto;margin:.4rem 0 .2rem;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:.92rem}th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);white-space:nowrap}
-td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.wide{min-width:700px}table.wide td:last-child{min-width:200px}td.when{white-space:nowrap}
+td{overflow-wrap:break-word}td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
 td.mono{font-family:var(--mono);font-size:.85rem}
 .pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:.8rem;font-weight:600;border:1px solid currentColor}
 .pill.ok{color:var(--ok);background:var(--ok-bg)}.pill.bad{color:var(--bad);background:var(--bad-bg)}.pill.warn{color:var(--warn);background:var(--warn-bg)}
@@ -1092,17 +1107,17 @@ def render_html(report, theme=None, sample=False):
     add("<section aria-labelledby=\"slow\"><h2 id=\"slow\">The slowest 25 actions</h2><p class=\"small\">A click counts as slow when the screen took over %s to change; a request over %s; "
         "the browser itself freezing for over %s is a long task.</p>" % (_h(_ms(slow["thresholds_ms"]["click"])), _h(_ms(slow["thresholds_ms"]["request"])), _h(_ms(slow["thresholds_ms"]["long_task"]))))
     add(_table(["When", "Control", "Screen", "Screen changed after", "Request finished after"],
-               [[r["t"].replace("T", " "), r["control"], r["screen"], _cell(_ms(r["paint_ms"]), "n"), _cell(_ms(r["request_ms"]), "n")] for r in slow["slowest_actions"]], "Slowest actions") or _empty("No actions recorded."))
+               [[_when(r["t"]), r["control"], r["screen"], _cell(_ms(r["paint_ms"]), "n"), _cell(_ms(r["request_ms"]), "n")] for r in slow["slowest_actions"]], "Slowest actions") or _empty("No actions recorded."))
     if slow["per_control"]:
         add("<h3>Controls that were slow more than once</h3>")
         add(_table(["Control", "Pressed", "Slow", "Median", "Slowest"], [[c["control"], _cell(c["count"], "n"), _cell(c["slow_count"], "n"), _cell(_ms(c["median_ms"]), "n"), _cell(_ms(c["slowest_ms"]), "n")] for c in slow["per_control"][:25]]))
     if slow["slow_requests"]:
         add("<h3>Requests over %s</h3>" % _h(_ms(slow["thresholds_ms"]["request"])))
-        add(_table(["When", "Request", "Status", "Time", "Screen"], [[r["t"].replace("T", " "), "%s %s" % (r["method"], r["route"]), r["status"], _cell(_ms(r["ms"]), "n"), r["screen"]] for r in slow["slow_requests"][:30]]))
+        add(_table(["When", "Request", "Status", "Time", "Screen"], [[_when(r["t"]), "%s %s" % (r["method"], r["route"]), r["status"], _cell(_ms(r["ms"]), "n"), r["screen"]] for r in slow["slow_requests"][:30]]))
     lt = slow["long_tasks"]
     add("<h3>Browser freezes</h3>")
     add("<p>%s over %s, %s in total.</p>" % (_h(_plural(lt["count"], "long task")), _h(_ms(slow["thresholds_ms"]["long_task"])), _h(_ms(lt["total_ms"]))) if lt["count"] else _empty("No freezes over %s." % _ms(slow["thresholds_ms"]["long_task"])))
-    add(_table(["When", "Length", "Screen"], [[r["t"].replace("T", " "), _cell(_ms(r["ms"]), "n"), r["screen"]] for r in lt["examples"][:20]]))
+    add(_table(["When", "Length", "Screen"], [[_when(r["t"]), _cell(_ms(r["ms"]), "n"), r["screen"]] for r in lt["examples"][:20]]))
     add("</section>")
 
     # Errors
@@ -1124,7 +1139,7 @@ def render_html(report, theme=None, sample=False):
     failed = report["requests"]["failed"]
     if failed:
         add("<details><summary>%s failed in full</summary>" % _plural(report["requests"]["failed_total"], "request"))
-        add(_table(["When", "Request", "Status", "Time", "What the app said"], [[r["t"].replace("T", " "), "%s %s" % (r["method"], r["route"]), r["status"], _cell(_ms(r["ms"]), "n"), r["error"]] for r in failed[:150]]))
+        add(_table(["When", "Request", "Status", "Time", "What the app said"], [[_when(r["t"]), "%s %s" % (r["method"], r["route"]), r["status"], _cell(_ms(r["ms"]), "n"), r["error"]] for r in failed[:150]]))
         add("</details>")
     add("</section>")
 
@@ -1138,9 +1153,9 @@ def render_html(report, theme=None, sample=False):
         add(_table(["Command", "Times", "Median", "Slowest"], [[c["what"], _cell(c["count"], "n"), _cell(_ms(c["median_ms"]), "n"), _cell(_ms(c["slowest_ms"]), "n")] for c in pr["confirmed_by_printer"]]))
     if pr["refused"]:
         add("<h3>Commands that were refused</h3>")
-        add(_table(["When", "Printer or route", "In the app's words"], [[r["t"].replace("T", " "), r["route"] or r["printer"] or "", r["words"]] for r in pr["refused"][:100]]))
+        add(_table(["When", "Printer or route", "In the app's words"], [[_when(r["t"]), r["route"] or r["printer"] or "", r["words"]] for r in pr["refused"][:100]]))
     add("<h3>Timeline</h3>")
-    add(_table(["When", "What happened", "Printer", "File"], [[r["t"].replace("T", " "), (r["event"] or "").replace("_", " ") + (" (demo)" if r["demo"] else ""), r["printer"], r["file"]] for r in pr["timeline"][:200]]) or _empty("No printer events recorded."))
+    add(_table(["When", "What happened", "Printer", "Detail"], [[_when(r["t"]), (r["event"] or "").replace("_", " ") + (" (demo)" if r["demo"] else ""), r["printer"], r["file"] or r["words"]] for r in pr["timeline"][:200]]) or _empty("No printer events recorded."))
     add("</section>")
 
     cp = report["confirm_print"]
@@ -1149,16 +1164,16 @@ def render_html(report, theme=None, sample=False):
         _plural(cp["checks"], "check"), cp["by_verdict"].get("clear", 0), cp["by_verdict"].get("confirm", 0), cp["by_verdict"].get("blocked", 0), cp["went_on_to_print"]) if cp["checks"] else _empty("Confirm Print was not used."))
     if cp["reasons"]:
         add(_table(["Reason shown", "Times"], [[r["reason"], _cell(r["count"], "n")] for r in cp["reasons"][:20]]))
-    add(_table(["When", "File", "Result", "Went on", "Reasons"], [[r["t"].replace("T", " "), r["file"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ({"clear": "ok", "confirm": "warn", "blocked": "bad"}.get(r["verdict"], "off"), _h(r["verdict"]))), "yes" if r["went_on"] else "no", "; ".join(r["blocking"] + r["warnings"])] for r in cp["list"][:100]]))
+    add(_table(["When", "File", "Result", "Went on", "Reasons"], [[_when(r["t"]), r["file"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ({"clear": "ok", "confirm": "warn", "blocked": "bad"}.get(r["verdict"], "off"), _h(r["verdict"]))), "yes" if r["went_on"] else "no", "; ".join(r["blocking"] + r["warnings"])] for r in cp["list"][:100]]))
     add("</section>")
 
     add("<section aria-labelledby=\"sl\"><h2 id=\"sl\">Slicing and converting</h2><h3>Slices</h3>")
-    add(_table(["When", "Engine", "Result", "Time", "Model", "Stage"], [[r["t"].replace("T", " "), ("%s %s" % (r["engine"] or "", r["version"] or "")).strip(), _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if r["ok"] else "bad", "worked" if r["ok"] else _h(r["status"] or "failed"))), _ms(r["seconds"] * 1000) if r["seconds"] is not None else "", r["model"], r["stage"]] for r in report["slicing"][:60]]) or _empty("No slices recorded."))
+    add(_table(["When", "Engine", "Result", "Time", "Model", "Stage"], [[_when(r["t"]), ("%s %s" % (r["engine"] or "", r["version"] or "")).strip(), _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if r["ok"] else "bad", "worked" if r["ok"] else _h(r["status"] or "failed"))), _ms(r["seconds"] * 1000) if r["seconds"] is not None else "", r["model"], r["stage"]] for r in report["slicing"][:60]]) or _empty("No slices recorded."))
     for r in report["slicing"]:
         if r.get("report"):
             add("<details><summary>Report for help, %s</summary><pre>%s</pre></details>" % (_h(r["t"].replace("T", " ")), _h(r["report"])))
     add("<h3>Conversions</h3>")
-    add(_table(["When", "Source", "Result", "Plates", "Colours", "Warnings shown"], [[r["t"].replace("T", " "), r["source"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if r["ok"] else "bad", "worked" if r["ok"] else "failed")), r["plates"], r["colours"], "; ".join(r["warnings"] or []) or (r["error"] or "")] for r in report["converter"][:60]]) or _empty("No conversions recorded."))
+    add(_table(["When", "Source", "Result", "Plates", "Colours", "Warnings shown"], [[_when(r["t"]), r["source"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if r["ok"] else "bad", "worked" if r["ok"] else "failed")), r["plates"], r["colours"], "; ".join(r["warnings"] or []) or (r["error"] or "")] for r in report["converter"][:60]]) or _empty("No conversions recorded."))
     add("</section>")
 
     sm = report["smoothness"]
@@ -1196,7 +1211,7 @@ def render_html(report, theme=None, sample=False):
     add("</details></section>")
 
     add("<section aria-labelledby=\"up\"><h2 id=\"up\">Updates</h2>")
-    add(_table(["When", "From", "To", "Result", "What it said"], [[u["t"].replace("T", " "), u["from"], u["to"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if u["ok"] else "bad", "worked" if u["ok"] else "did not work")), u["words"]] for u in report["updates"]]) or _empty("No self-update happened during the test."))
+    add(_table(["When", "From", "To", "Result", "What it said"], [[_when(u["t"]), u["from"], u["to"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if u["ok"] else "bad", "worked" if u["ok"] else "did not work")), u["words"]] for u in report["updates"]]) or _empty("No self-update happened during the test."))
     add("</section>")
 
     add("<section aria-labelledby=\"nv\"><h2 id=\"nv\">What this report never holds</h2><ul>%s</ul>"

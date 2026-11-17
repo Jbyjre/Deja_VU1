@@ -345,6 +345,23 @@ class TestHooks(TesterBase):
         self.assertEqual((cp["checks"], cp["by_verdict"], cp["went_on_to_print"]), (2, {"confirm": 1, "blocked": 1}, 1))
         self.assertEqual({r["reason"] for r in cp["reasons"]}, {"Maintenance overdue: nozzle", "The printer is busy (printing)"})
 
+    def test_reasons_group_by_meaning_but_show_the_words_as_they_were_said(self):
+        self.turn_on()
+        tester.note_gate("A.gcode", {"verdict": "blocked", "blocking": ["T1 has PETG loaded, but the file needs PLA"], "warnings": [], "info": []}, 10)
+        tester.note_gate("B.gcode", {"verdict": "blocked", "blocking": ["T2 has PETG loaded, but the file needs PLA"], "warnings": [], "info": []}, 10)
+        reasons = tester_report.build_report()["confirm_print"]["reasons"]
+        self.assertEqual(len(reasons), 1)                                   # the same reason on two heads
+        self.assertEqual(reasons[0]["count"], 2)
+        self.assertEqual(reasons[0]["reason"], "T1 has PETG loaded, but the file needs PLA")
+        self.assertNotIn("#", reasons[0]["reason"])
+
+    def test_wide_tables_scroll_inside_their_frame_on_a_phone(self):
+        page = tester_report.build_html()
+        self.assertIn("table.wide{min-width", page)
+        self.turn_on()
+        tester.note_gate("A.gcode", {"verdict": "clear", "blocking": [], "warnings": [], "info": []}, 10)
+        self.assertIn('class="wide"', tester_report.build_html())
+
     def test_slices_conversions_and_updates(self):
         self.turn_on()
         tester.note_slice({"status": "failed", "model": "M.3mf", "stage": "run", "cause": {"code": "engine_exit"},
@@ -588,6 +605,50 @@ class TestAWeekOfEvents(TesterBase):
         tester.ingest({"events": [{"k": "err", "msg": "boom", "kind": "js"}]})
         second = tester_report.totals()
         self.assertEqual((second["actions"], second["errors"]), (2, 1))
+
+
+class TestTheOnlineDemoSample(unittest.TestCase):
+    """The demo's Settings card shows made-up figures and opens a made-up report; both must say so and agree."""
+
+    @classmethod
+    def setUpClass(cls):
+        import importlib.util
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        spec = importlib.util.spec_from_file_location("tester_sample_report", os.path.join(root, "tools", "tester-sample-report.py"))
+        cls.tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cls.tool)
+        cls.root = root
+
+    def test_the_committed_sample_page_is_what_the_tool_builds_now(self):
+        report, page = self.tool.build()
+        with open(os.path.join(self.root, "frontend", "demo", "tester-report-sample.html"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), page, "Run python3 tools/tester-sample-report.py and commit frontend/demo/tester-report-sample.html")
+
+    def test_it_says_it_is_a_sample_and_holds_no_script(self):
+        report, page = self.tool.build()
+        self.assertIn("Sample report.", page)
+        self.assertIn("made up", page)
+        self.assertNotIn("<script", page.lower())
+
+    def test_the_cards_sample_figures_match_the_sample_report(self):
+        import re
+        report, page = self.tool.build()
+        with open(os.path.join(self.root, "frontend", "tester.js"), encoding="utf-8") as f:
+            match = re.search(r"SAMPLE = \{ days: (\d+), actions: (\d+), errors: (\d+), slow: (\d+)", f.read())
+        self.assertTrue(match)
+        s = report["summary"]
+        self.assertEqual([int(x) for x in match.groups()], [s["days_used"], s["clicks"], s["errors_total"], s["slow_spots"]])
+
+    def test_the_demo_never_asks_for_the_tester_routes(self):
+        import runpy
+        root = self.root
+        recorder = runpy.run_path(os.path.join(root, "tools", "online-demo", "record.py"), run_name="recorder")
+        for route in ("/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip"):
+            self.assertIn(route, recorder["NOT_RECORDED"])
+        with open(os.path.join(root, "frontend", "tester.js"), encoding="utf-8") as f:
+            source = f.read()
+        self.assertIn("inDemo()", source)
+        self.assertIn("if (inDemo() ||", source)                 # wanted() is false in the demo, so nothing is recorded or sent
 
 
 if __name__ == "__main__":

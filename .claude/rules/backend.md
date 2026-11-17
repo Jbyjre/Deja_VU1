@@ -44,7 +44,7 @@ slicing and launcher files have their own notes in this folder.
 
 - Each module has a `kind`: `extra` (Settings → Optional extras lists only these seven: auto_print,
   webrtc_camera, led_status, wled_bridge, home_assistant_bridge, color_check, ai_assistant), `setting` (camera,
-  timelapse, handoff: a switch in their own card) and `core` (always on, no switch on screen).
+  timelapse, handoff, tester: a switch in their own card) and `core` (always on, no switch on screen).
   A new feature that needs something outside Deja Vu1 is an `extra`; anything else is `core`.
 - The server enforces every switch (a disabled module's routes answer 403; tests switch core ones
   off). `modules.is_enabled()` returns True for unknown ids, so a typo in a route's module id
@@ -88,7 +88,7 @@ slicing and launcher files have their own notes in this folder.
 - `automations.py`: triggers include progress, time_left, layer, error, link_lost; actions include
   cool_down (never mid-print) and macro (must be one the printer lists). `notifications.py` sends
   only from rules.
-- `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py` (30 module ids).
+- `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py` (31 module ids).
 - `pairing.py`: device keys (hash stored, HttpOnly cookie); redeeming again from a paired browser
   replaces its entry. The optional device lock (`_locked_out`) always allows loopback.
 - `qr.py`: standard-library QR codes, checked against python-qrcode. `phone_link()` in app.py.
@@ -119,6 +119,37 @@ slicing and launcher files have their own notes in this folder.
   expires captures at 30 seconds and never gives optical print approval. Drivers and firmware remain to build.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
+
+## Tester mode (`tester.py`, `tester_report.py`)
+
+- Module `tester` (kind `setting`, off by default; `DEJAVU_TESTER=1` switches it on at start through
+  `modules.apply_environment()`, and Settings can still switch it off). Off: every `/api/tester/*` route answers 403
+  (the module gate) and `tester.record` and `tester.ingest` write nothing. The switch is cached for a second;
+  `tester.refresh()` after a toggle makes turning it off immediate.
+- Events are JSON Lines under `<data>/tester/events-YYYY-MM-DD.jsonl` (`events-archive.jsonl` holds old days summed up).
+  `backup.py` and `memory.py` skip the folder. Nothing is sent anywhere; the tester saves a zip
+  (`GET /api/tester/report.zip`) and attaches it to a message. `POST /api/tester/events` takes the browser's batch
+  (at most 400 events; only the kinds and fields in `tester._BROWSER`, in the shapes it lists, so no field can carry
+  typed text); `GET /api/tester/report.html?theme=` is the in-app viewer (CSP `default-src 'none'`).
+- `tester.mask()` runs on every string, in the browser's events and the server's own, and again in `thin_files`. It hides
+  addresses, keys, Wi-Fi names, serial numbers, `/Users/<name>/` folders, and file, printer and spool names the
+  app knows (`_known_private()`; names live in memory only, the disk holds salted hashes in `ids.json`). A file shows as
+  `file_label()`: "file 3, .3mf, 2.4 MB". An inline replacement carries no dot (`file 3 (3mf)`) so it is never masked again.
+  Version strings (`version`, `from`, `to`, `facts`) go through `version_text()`: 1.0.0.123 is a firmware, not an address.
+  Unquoted names with spaces that the app doesn't know can leave a few words; the zip says so and is readable first.
+- Server hooks are one line each and never raise: `live_feed.publish_event` (print events) and `_detect_locked`
+  (connects and drops), `app._dispatch` (refused POST commands, 500s), `_confirm_print` (Confirm Print), `printer_control`
+  (start), `slicer_bridge._work` (slices), `/api/convert`, `app.main` (last update). Camera and time-lapse pictures are plain
+  images, so those routes call `tester.note_feature()`. `MoonrakerPrinter.version_facts()` reads only `server.info` and
+  `machine.system_info`, both allowed in watch-only mode. Which `product_info` field holds the U1's firmware version is
+  not verified: every version-named field is recorded.
+- Routine background `GET`s arrive as five-minute summaries; every other request, and every failed or slow one, is one
+  event. Past `EXPORT_LIMIT` (20 MB) `thin_files` replaces the oldest routine events (clicks that were not slow,
+  working requests, screen visits, smoothness samples) with one `thinned` line per day and name; errors, slow actions, notes
+  and printer events are never thinned, and the report counts before it thins. `compact()` does the same on disk past 40 MB.
+- The report's feature rules are `tester_report.FEATURES` (22 features, each with the questions-sheet section). A new
+  feature worth counting gets a row. The report holds no script and loads nothing from outside; everything in it goes
+  through `_h()`.
 
 ## The AI assistant
 

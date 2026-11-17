@@ -456,7 +456,8 @@
 
   const $t = id => document.getElementById(id);
   let sure = 0, statusAt = 0;
-  const SAMPLE = { days: 5, actions: 1284, errors: 3, slow: 7, since: 'sample', last: 'sample' };
+  // The online demo's made-up figures. They match the sample report page (tools/tester-sample-report.py; a test keeps them in step).
+  const SAMPLE = { days: 6, actions: 458, errors: 2, slow: 16, since: 'sample', last: 'sample' };
 
   const when = iso => (iso ? iso.replace('T', ' ').slice(0, 16) : '');
   function fill(info) {

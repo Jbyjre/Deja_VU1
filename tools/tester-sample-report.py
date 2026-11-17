@@ -94,18 +94,25 @@ def events():
     return [{k: v for k, v in e.items() if v is not None} for e in out]
 
 
-def main():
+def build():
+    """(report dict, page html) for the sample, from the fixed made-up events."""
     agg = tester_report.Aggregator()
     for event in events():
         agg.add(event)
     server = {"os": "Windows 11 (sample)", "python": "3.12.4", "machine": "AMD64", "app_version": "0.20.16", "printers_added": 1, "watch_only": False,
               "engine": {"app": "OrcaSlicer", "version": "2.4.2", "ok": True}, "modules_on": [], "modules_off": ["wled_bridge", "webrtc_camera"]}
     report = agg.result(server_setup=server, now=stamp("2026-11-28", 22) / 1000.0)
-    page = tester_report.render_html(report, sample=True)
+    return report, tester_report.render_html(report, sample=True)
+
+
+def main():
+    report, page = build()
     target = os.path.join(ROOT, "frontend", "demo", "tester-report-sample.html")
     with open(target, "w", encoding="utf-8", newline="\n") as f:
         f.write(page)
-    print("wrote %s (%d bytes)" % (os.path.relpath(target, ROOT), len(page.encode("utf-8"))))
+    s = report["summary"]
+    print("wrote %s (%d bytes); the card's sample figures are days %d, actions %d, errors %d, slow spots %d" % (
+        os.path.relpath(target, ROOT), len(page.encode("utf-8")), s["days_used"], s["clicks"], s["errors_total"], s["slow_spots"]))
 
 
 if __name__ == "__main__":

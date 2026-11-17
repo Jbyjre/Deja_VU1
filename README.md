@@ -273,7 +273,7 @@ and a bench test of a physical sensor are still to do.
 |---|---|
 | Installing and first steps | [Getting started](docs/getting-started.md) |
 | Adding a real printer, and what each message means | [Connecting a real printer](docs/real-printer.md) |
-| Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [what to check](docs/beta-testing.md) |
+| Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [test it and send a report](docs/beta-testing.md) |
 | What ran where, with dates | [What has been tested](docs/testing.md) |
 | Reviewing it: ten minutes without a printer, what is new since Phase 1, what is not done | [Check Deja Vu1 yourself](docs/for-reviewers.md) |
 | Slicing, plates and engines | [Slicing and models](docs/slicing-and-models.md), [engine support](docs/engine-support.md) |
