@@ -1,0 +1,61 @@
+/* tester.css: Tester mode's Settings card, the "Something felt off" button and note, and the report viewer.
+   It loads before theme.css, so the reduced-transparency and increased-contrast rules there still win.
+   Colours come from the shared tokens, so the dark theme and the other looks apply without more rules. */
+
+.tester-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 4px 0 16px; }
+.tester-list { padding: 14px 16px; }
+.tester-list h3 { margin: 0 0 8px; font: 600 11px/1 var(--font-mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-faint); }
+.tester-list ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; font-size: 13.5px; line-height: 1.45; color: var(--text-dim); }
+.tester-demo-note { margin: 0 0 14px; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; border: 1px dashed var(--accent); color: var(--text); background: color-mix(in oklch, var(--accent) 10%, transparent); }
+.tester-demo-note[hidden], .tester-live[hidden] { display: none; }
+.tester-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 6px; }
+.tester-tiles .stat-val { font-size: 30px; }
+.tester-since { margin: 6px 0 14px; flex: none; }
+.tester-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.tester-delete { margin-left: auto; }
+.tester-status { margin: 4px 0; }
+.tester-card.is-demo .tester-delete, .tester-card.is-demo #tester-save { display: none; }
+@media (max-width: 560px) {
+  .tester-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tester-delete { margin-left: 0; }
+}
+
+/* A small pill above the notification orb on every screen while recording, and the note it opens. */
+.tester-felt {
+  position: fixed; z-index: 93; right: var(--orb-gap, 20px); bottom: calc(var(--orb-gap, 20px) + var(--orb, 52px) + 12px);
+  min-height: 36px; padding: 0 16px; border-radius: 999px; cursor: pointer; border: 0;
+  font: 650 13px/1 var(--font-display, var(--font-sans)); color: var(--text);
+  box-shadow: 0 1px 2px oklch(25% 0.02 265 / .14), 0 8px 22px oklch(25% 0.02 265 / .2);
+}
+.tester-felt:hover { transform: translateY(-1px); }
+.tester-felt:focus-visible, .tester-note textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tester-note {
+  position: fixed; z-index: 96; right: var(--orb-gap, 20px); bottom: calc(var(--orb-gap, 20px) + var(--orb, 52px) + 60px);
+  width: min(380px, calc(100vw - 24px)); padding: 16px 16px 14px; border-radius: 22px; color: var(--text);
+}
+.tester-note-title { margin: 0 0 6px; font-size: 17px; }
+.tester-note-hint { margin: 0 0 10px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.tester-note textarea { display: block; width: 100%; min-height: 86px; margin: 0 0 10px; resize: vertical; font: inherit; font-size: 14px; }
+.tester-note-row { display: flex; align-items: center; gap: 8px; }
+.tester-note-where { flex: 1; min-width: 0; font: 11.5px var(--font-mono); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 720px) {
+  .tester-felt { bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 74px); }
+  .tester-note { right: 12px; bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 120px); }
+}
+@media (prefers-contrast: more) {
+  .tester-felt, .tester-note { border: 1.5px solid var(--text); }
+}
+@media (prefers-reduced-motion: reduce) { .tester-felt { transition: none; } .tester-felt:hover { transform: none; } }
+
+/* The report viewer: the same page the saved file holds, in a frame with no scripts and no network. */
+.glass-dialog.setup-dialog.tester-dialog:not(.is-morph-target) {
+  width: min(1100px, calc(100vw - 24px)); height: min(860px, calc(100dvh - 24px)); max-height: none; padding: 18px;
+  display: none; grid-template-rows: auto auto minmax(0, 1fr); gap: 8px;
+}
+.glass-dialog.setup-dialog.tester-dialog[open]:not(.is-morph-target) { display: grid; }
+.tester-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tester-dialog-head h2 { margin: 0; font-size: 22px; }
+.tester-dialog-hint { margin: 0; font-size: 13px; color: var(--text-dim); }
+.tester-frame-host { min-height: 0; height: 100%; }
+.tester-dialog iframe { display: block; width: 100%; height: 100%; min-height: 0; border: 1px solid var(--line, rgba(0, 0, 0, .15)); border-radius: 12px; background: #fff; }
+@media (max-width: 600px) { .glass-dialog.setup-dialog.tester-dialog:not(.is-morph-target) { padding: 12px; } }

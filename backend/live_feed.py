@@ -35,6 +35,7 @@ from datetime import datetime
 import automations
 import modules
 import storage
+import tester
 import cost_calculator
 import filament_inventory
 import fleet
@@ -145,6 +146,7 @@ def publish_event(event):
         event = {"id": _event_seq, "time": datetime.now().isoformat(timespec="seconds"), **event}
         _events.append(event)
         _cond.notify_all()
+    tester.note_print_event(event)          # nothing happens unless Tester mode is on
     return event
 
 
@@ -251,6 +253,7 @@ def _detect_locked(printer_id, state, finish_event):
         before = _state_before_this_start(printer_id)
         resumed = before in ("printing", "paused") and state["state"] in ("printing", "paused")
     _prev_state[printer_id] = None if state.get("never_connected") else state["state"]
+    tester.note_link(printer_id, state, simulated)
     if not simulated and not state.get("never_connected"):
         _remember(printer_id, state)
     events = _print_events(before, state["state"])

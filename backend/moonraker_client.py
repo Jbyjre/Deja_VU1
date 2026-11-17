@@ -1453,6 +1453,31 @@ class MoonrakerPrinter:
             serial = (_str(product.get("serial_number")) or "").strip().upper()[:40]
             self.serial = serial or None
 
+    def version_facts(self):
+        """
+        The versions this printer reports about itself, for Tester mode: Moonraker's version and every
+        version-named field of Snapmaker's product_info. Names, serial numbers and addresses are never
+        read into the result. Two read-only calls that watch-only mode allows.
+        """
+        facts = {}
+        try:
+            info = self._call("server.info")
+            if isinstance(info, dict) and _str(info.get("moonraker_version")):
+                facts["moonraker_version"] = _str(info.get("moonraker_version"))[:60]
+        except Exception:                 # noqa: BLE001
+            pass
+        try:
+            system = self._call("machine.system_info")
+            product = _obj(_obj(system if isinstance(system, dict) else {}, "system_info"), "product_info")
+            if _str(product.get("machine_type")):
+                facts["machine_type"] = _str(product.get("machine_type"))[:40]
+            for key, value in sorted(product.items()):
+                if "version" in str(key).lower() and isinstance(value, (str, int, float)) and not isinstance(value, bool):
+                    facts["product_info." + str(key)[:30]] = str(value)[:60]
+        except Exception:                 # noqa: BLE001
+            pass
+        return facts
+
     def _setup(self):
         """server.info, then (Klipper willing) list objects and subscribe. True when live."""
         info = self._call("server.info")

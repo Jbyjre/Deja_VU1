@@ -80,6 +80,7 @@ window.Finder = (() => {
     ['About Deja Vu1 · check it yourself', 'Settings', 'about version credits licence check it yourself self test verify proof', 'About Deja Vu1'],
     ['Preferences', 'Preferences', 'units celsius fahrenheit accent preferences warm up preheat presets pla petg tpu start screen camera celebrate step', 'Preferences'],
     ['Notifications', 'Settings', 'ntfy discord telegram push email notify alerts', 'Notifications'],
+    ['Tester mode · save a tester report', 'Settings', 'tester mode report beta testing record bugs slow lag log zip forum something felt off', 'Tester mode'],
     ['Backup, firmware & recovery', 'Settings', 'backup restore recovery firmware update snapshot', 'Printer firmware & app recovery'],
     ['App updates', 'Settings', 'update upgrade new version newest build latest automatic install github command paste powershell terminal', '#version-card'],
     ['Restart, repair or stop the app', 'Settings', 'restart repair reinstall fix broken files stop quit close shut down manage app', '#vc-manage'],

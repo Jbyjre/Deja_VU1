@@ -46,7 +46,7 @@ MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_TOTAL_BYTES = 48 * 1024 * 1024
 # Folders that are not memory: staging and restore areas, the copies
 # themselves, and bulky content the full backup covers.
-_SKIP_DIRS = {"snapshots", "restore-staging", "restored", "updates", "update-staging"}
+_SKIP_DIRS = {"snapshots", "restore-staging", "restored", "updates", "update-staging", "tester"}
 _NAME = re.compile(r"safety-(\d{8}-\d{6})-([a-z-]{1,24})\.zip")
 _lock = threading.Lock()
 

@@ -142,6 +142,8 @@ window.Explain = (() => {
       'Same dashboard, same data. Installing needs Chrome or Edge.'],
     'install on this phone': ['Put Deja Vu1 on this phone’s home screen, so it opens full screen like any app.',
       'Android’s Chrome installs only from a secure address. The steps here tell Chrome to trust your own computer’s address, once.'],
+    'tester mode': ['For people testing Deja Vu1 for the maker. Switched on, it keeps a report on this computer of your errors, slow buttons, prints and which features you tried.',
+      'You can read the whole report before you send anything. It leaves out file names, pictures, addresses, keys and anything you type, and you attach the saved file to a message yourself.'],
     'about deja vu1': ['What Deja Vu1 is, who made what it builds on, and a self-check you can run.', ''],
     'your data is safe': ['Deja Vu1 keeps safety copies of everything it remembers: printers, spools, maintenance, rules and more.',
       'It makes one every six hours, when it starts and before each update. Restore one with a click, and undo that too.'],

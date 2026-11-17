@@ -84,7 +84,7 @@ class TestKinds(unittest.TestCase):
              "ai_assistant"]))
 
     def test_a_few_features_are_ordinary_settings_that_switch_in_their_own_card(self):
-        self.assertEqual(self.kinds("setting"), ["camera", "handoff", "timelapse"])
+        self.assertEqual(self.kinds("setting"), ["camera", "handoff", "tester", "timelapse"])
 
     def test_everything_else_is_part_of_deja_vu1(self):
         core = self.kinds("core")
@@ -106,7 +106,7 @@ class TestKinds(unittest.TestCase):
         modules.set_enabled("backup", False)
         self.assertFalse(modules.is_enabled("backup"))
 
-    def test_the_page_lists_only_extras_and_gives_the_three_settings_their_own_switch(self):
+    def test_the_page_lists_only_extras_and_gives_each_setting_its_own_switch(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         with open(os.path.join(root, "frontend", "index.html"), encoding="utf-8") as f:
             page = f.read()

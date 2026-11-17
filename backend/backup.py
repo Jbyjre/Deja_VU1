@@ -27,7 +27,8 @@ _EXCLUDED = {
     'updates',
     'update-staging',
     'snapshots',
-}  # snapshots: memory.py's safety copies
+    'tester',
+}  # snapshots: memory.py's safety copies; tester: Tester mode's own record, kept out of backups
 _SECRET = re.compile(r'(?:api[_-]?key|token|password|secret|webhook|authorization|private[_-]?key)', re.I)
 
 

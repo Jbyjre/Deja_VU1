@@ -25,5 +25,9 @@ paths:
   set `DEJAVU_NO_REGISTER=1`.
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line contains that text: it
   kills the shell. Kill by PID; stop and restart a server in two separate commands.
+- Tester mode: `tests/test_tester.py` (switch, masking, thinning of a 26 MB week, the zip, the demo sample),
+  `tests/test_tester_reports_tool.py` (`tools/tester-reports.py`), and `tests/test_tester_browser.py`, which runs
+  `node tools/tester-walk.js` (off then on, a stand-in printer, a slow action and an error on purpose) and reads the zip.
+  `node tools/tester-walk.js --overhead` measures what recording costs on the Printer page.
 - GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13 (Ubuntu 24.04). Write no
   parenthesised `with (a, b):`; `ruff check --select E701,E702 backend tests tools` must stay clean.

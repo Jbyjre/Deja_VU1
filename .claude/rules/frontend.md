@@ -17,7 +17,8 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant.js` → `rail.js`. `games.js` loads on demand (`loadGames()`).
+  `backup.js` → `maker.js` → `assistant.js` → `rail.js`. `games.js` loads on demand (`loadGames()`). `tester.js` loads
+  right after `app.js` (it wraps `fetch`, `toast` and `syncModuleBodies`, which `app.js` defines).
 - CSS: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `assistant.css` → `theme.css` →
   `dark.css` → `looks.css`.
 - `app.js` defines the shared globals: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`,
@@ -89,6 +90,15 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
 - `desk.js` (Farm desk in Printers), `telemetry.js` (Overview readout, fed by workshop's `dv-state`
   event), `logbook.js` (Care), `insights.js`, `printroom.js` (four-head editor), `backup.js`.
 
+- `tester.js` + `tester.css`: Tester mode. It records only while `modGate` says the module is on, never in the online demo
+  (`tour.on`) or without a server, and never sends `/api/tester/*` calls itself into the record. It follows
+  `syncModuleBodies()` to start and stop. A control is named by its id, an action attribute from `ACTION_ATTRS`
+  (never `data-file`, `data-id`, `data-printer`) or, last, its own words with file names replaced. Clicks are timed to the next
+  paint (a task queued from inside `requestAnimationFrame`); a press waits up to 300 ms to pick up the requests it started.
+  The card (`#tester-card`, its own Settings part) shows counts from `/api/tester/status`, the viewer is `#tester-dialog`
+  with a sandboxed frame, and in the demo it shows `SAMPLE` figures that must match `tester-report-sample.html`
+  (`python3 tools/tester-sample-report.py`; `tests/test_tester.py` checks both). `#tester-felt` and `#tester-note` are the
+  "Something felt off" button and note.
 - `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
   right-edge strip, a sheet on phones). Views: chat (your message is drawn at once with `is-sending` and
   replaced by the server's copy; steps as a toolpath; results as cards from `m.card`: printer gauges,
