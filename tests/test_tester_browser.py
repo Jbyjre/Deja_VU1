@@ -65,6 +65,7 @@ class TestTesterWalk(unittest.TestCase):
         self.assertIn("PASSED", self.out)
         self.assertIn("Tester mode off: the browser sent nothing to /api/tester (0 requests)", self.out)
         self.assertIn("Tester mode off: /api/tester/events answers 403", self.out)
+        self.assertIn("The browser hid the address before it sent anything", self.out)
 
     def test_the_saved_zip_holds_every_section(self):
         self.assertIsNotNone(self.report, "the walk saved no zip:\n" + self.out[-2000:])
@@ -85,6 +86,8 @@ class TestTesterWalk(unittest.TestCase):
         self.assertGreaterEqual(r["confirm_print"]["checks"], 1)
         self.assertEqual(r["confirm_print"]["went_on_to_print"], 1)
         self.assertTrue(r["printer"]["confirmed_by_printer"], "pause and resume should be confirmed by the printer")
+        self.assertEqual([c["what"] for c in r["printer"]["sent_not_read_back"]], ["Walk: Emergency stop sent"])
+        self.assertEqual(r["printer"]["sent_not_read_back"][0]["median_ms"], 123)
         self.assertEqual(r["printer"]["connections"].get("connect"), 1)
         self.assertEqual(len(r["features"]["detail"]), 22)
         self.assertIn("Confirm Print", r["features"]["used"])

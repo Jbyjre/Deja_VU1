@@ -412,6 +412,7 @@ class TestTheReport(TesterBase):
             {"k": "err", "s": "sess01", "kind": "js", "msg": "TypeError: Cannot read properties of undefined (reading 'x')", "file": "app.js", "line": 11,
              "screen": "printer", "t": now - 240000},
             {"k": "printer", "ev": "confirmed", "what": "Paused", "ms": 420, "t": now - 230000},
+            {"k": "printer", "ev": "sent", "what": "Emergency stop sent", "ms": 210, "t": now - 229000},
             {"k": "fps", "s": "sess01", "surface": "twin", "fps": 41, "layers": 300, "t": now - 220000},
             {"k": "fps", "s": "sess01", "surface": "gcode", "fps": 58, "layers": 120, "t": now - 210000},
             {"k": "feature", "name": "needs_you", "s": "sess01", "t": now - 200000},
@@ -443,6 +444,7 @@ class TestTheReport(TesterBase):
         self.assertEqual(report["slow"]["long_tasks"]["count"], 1)
         self.assertEqual([r["route"] for r in report["requests"]["failed"]], ["/api/printer/control/pause"])
         self.assertEqual(report["printer"]["confirmed_by_printer"][0]["median_ms"], 420)
+        self.assertEqual(report["printer"]["sent_not_read_back"], [{"what": "Emergency stop sent", "count": 1, "median_ms": 210, "slowest_ms": 210}])
         self.assertEqual(report["printer"]["refused"][0]["words"], "Homing is refused mid-print")
         self.assertEqual(report["printer"]["firmware"]["printer 1"]["machine_type"], "Snapmaker U1")
         self.assertEqual(report["smoothness"]["twin"]["lowest_fps"], 41)
@@ -596,6 +598,26 @@ class TestAWeekOfEvents(TesterBase):
         self.assertEqual(report["summary"]["clicks"], made["clicks"])
         self.assertTrue(report["thinning"]["happened"])
         self.assertTrue(report["thinning"]["medians_are_estimates"])
+
+    def test_an_event_that_arrives_while_the_record_is_summed_up_is_kept(self):
+        self.turn_on()
+        self.write_week(10)
+        real = tester_report.thin_files
+        old_event = {"k": "note", "text": "late note", "screen": "files", "t": int(time.time() * 1000) - 30 * 3600 * 1000}
+
+        def slow_thin(paths, out, limit):
+            # Mid-way, a note stamped 30 hours ago arrives: its day's file is one of the finished days being summed up.
+            tester.ingest({"events": [old_event]})
+            return real(paths, out, limit)
+
+        tester_report.thin_files = slow_thin
+        try:
+            tester.compact(target=5 * 1024 * 1024)
+        finally:
+            tester_report.thin_files = real
+        texts = [e.get("text") for e in tester_report.iter_events(tester.event_files())]
+        self.assertEqual(texts.count("late note"), 1)
+        self.assertFalse(tester._compacting.is_set())
 
     def test_the_status_counts_come_from_the_files_and_grow_with_them(self):
         self.turn_on()

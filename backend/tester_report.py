@@ -459,6 +459,7 @@ class Aggregator:
         self.timeline = []
         self.refused = []
         self.confirmed = {}
+        self.sent = {}
         self.print_counts = {"real": Counter(), "demo": Counter()}
         self.link = Counter()
         self.firmware = {}
@@ -628,6 +629,10 @@ class Aggregator:
             stat = self.confirmed.setdefault(str(ev.get("what") or "?"), _Stat())
             stat.add(ev.get("ms"))
             return
+        elif what == "sent":
+            stat = self.sent.setdefault(str(ev.get("what") or "?"), _Stat())
+            stat.add(ev.get("ms"))
+            return
         elif what == "start_requested":
             gate = self.gate_by_file.get(_file_key(ev.get("file")))
             if gate is not None and t >= gate["_t"]:
@@ -774,6 +779,8 @@ class Aggregator:
         used = [f for f in features if f["used"]]
         confirmed = [{"what": what, "count": s.n, "median_ms": _round(s.median()), "slowest_ms": _round(s.max)}
                      for what, s in sorted(self.confirmed.items())]
+        sent = [{"what": what, "count": s.n, "median_ms": _round(s.median()), "slowest_ms": _round(s.max)}
+                for what, s in sorted(self.sent.items())]
         gate_totals = Counter(g["verdict"] for g in self.gates)
         went_on = sum(1 for g in self.gates if g["went_on"])
         for g in self.gates:
@@ -816,7 +823,7 @@ class Aggregator:
                          "failed": self.failed},
             "errors": {"total": self.error_total, "groups": errors},
             "printer": {"connections": dict(self.link), "firmware": self.firmware, "prints": prints,
-                        "confirmed_by_printer": confirmed, "refused": self.refused, "timeline": self.timeline},
+                        "confirmed_by_printer": confirmed, "sent_not_read_back": sent, "refused": self.refused, "timeline": self.timeline},
             "confirm_print": {"checks": len(self.gates), "by_verdict": dict(gate_totals), "went_on_to_print": went_on,
                               "reasons": [{"reason": self.gate_reason_text.get(r, r), "count": c} for r, c in self.gate_reasons.most_common(30)],
                               "list": self.gates},
@@ -1151,6 +1158,10 @@ def render_html(report, theme=None, sample=False):
     if pr["confirmed_by_printer"]:
         add("<h3>Commands the printer confirmed</h3>")
         add(_table(["Command", "Times", "Median", "Slowest"], [[c["what"], _cell(c["count"], "n"), _cell(_ms(c["median_ms"]), "n"), _cell(_ms(c["slowest_ms"]), "n")] for c in pr["confirmed_by_printer"]]))
+    if pr["sent_not_read_back"]:
+        add("<h3>Commands sent, timed by the app</h3><p class=\"small\">Deja Vu1 does not read these back from the printer, so it says "
+            "\"sent\" and not \"confirmed\". The emergency stop is one.</p>")
+        add(_table(["Command", "Times", "Median", "Slowest"], [[c["what"], _cell(c["count"], "n"), _cell(_ms(c["median_ms"]), "n"), _cell(_ms(c["slowest_ms"]), "n")] for c in pr["sent_not_read_back"]]))
     if pr["refused"]:
         add("<h3>Commands that were refused</h3>")
         add(_table(["When", "Printer or route", "In the app's words"], [[_when(r["t"]), r["route"] or r["printer"] or "", r["words"]] for r in pr["refused"][:100]]))

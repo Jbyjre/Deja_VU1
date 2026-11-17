@@ -613,6 +613,31 @@ hands over to Confirm Print. A turn runs on its own thread; the browser polls
 `/api/assistant/thread` and shows each step as it lands. `frontend/assistant.js` draws the panel and,
 in the online demo, a scripted helper in place of a model. Guide: [AI assistant](ai-assistant.md).
 
+### Tester mode (`backend/tester.py`, `backend/tester_report.py`, `frontend/tester.js`)
+
+Tester mode keeps a record of how Deja Vu1 behaved while someone used it, so an outside tester can send one file
+instead of writing everything down. It is the `tester` module (kind `setting`, off by default, switched on in
+Settings or by starting with `DEJAVU_TESTER=1`). Switched off, every `/api/tester` route answers 403, the browser
+records and sends nothing, and the server writes nothing.
+
+The browser side (`tester.js`) watches screens, presses (timed to the next paint), requests (it wraps `fetch`), errors,
+error toasts, browser freezes over 200 ms and how many frames a second the 3D twin and the G-code preview draw. It
+sends batches of at most 400 events to `POST /api/tester/events`, which keeps only the kinds and fields listed in
+`tester._BROWSER`. The server adds its own events: print starts, finishes and cancels, connects and drops, refused
+commands, Confirm Print checks, slices, conversions and updates. Everything is appended to JSON Lines files in
+`<data>/tester/`. Nothing is sent anywhere: the tester saves a zip and attaches it to a message.
+
+Private details never reach the disk. `tester.mask()` replaces addresses, keys, Wi-Fi names, serial numbers, folders that
+hold a user name and the names of files, printers and spools, in the browser's events and the server's own, and the
+report builder masks again. A file appears as "file 3, .3mf, 2.4 MB".
+
+`tester_report.py` reads the events once, streaming, and builds the totals for the Settings card, `report.json`
+(with a `schema_version`), `report.html` (one page with no script that loads nothing from outside), `events.jsonl` and a
+README, packed into one zip. When the raw events would pass 20 MB it replaces the oldest routine ones with one line per day
+and control, keeps every error, slow action, note and printer event, counts before it thins, and says so in the report.
+`tools/tester-reports.py` combines several zips into totals; `tools/tester-walk.js` walks the feature in a real browser and
+measures what recording costs.
+
 ### `backend/led_status.py` / `backend/color_check.py`
 The rings show their intended states without a hardware driver. The colour checker compares demo
 colours; real printers read observations from `companion_sensor.py`, whose versioned API binds a

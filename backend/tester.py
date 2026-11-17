@@ -356,10 +356,13 @@ def _append_lines(by_day):
         except OSError:
             _stats["failed"] += 1
             return 0
+        today = _day(time.time() * 1000)
         for day, lines in by_day.items():
             if _size["bytes"] > STOP_AT:
                 _stats["refused"] += len(lines)
                 continue
+            if _compacting.is_set():
+                day = today                  # finished days are being summed up: they must not change under it
             data = "".join(lines)
             try:
                 with open(os.path.join(folder(), "events-%s.jsonl" % day), "a", encoding="utf-8", newline="\n") as f:
@@ -385,36 +388,42 @@ def _compact_in_background():
         compact()
     except Exception:                   # noqa: BLE001
         traceback.print_exc()
-    finally:
-        _compacting.clear()
 
 
 def compact(target=None):
     """
     Sum up the routine events of every finished day into one archive file, oldest first, so the raw
     record stays under COMPACT_AT. Errors, slow actions, notes and the printer's story are kept whole.
+
+    The slow part runs without the recorder's lock: while the flag is set, new events go to today's file only,
+    so the finished days it reads cannot change, and recording carries on.
     """
     import tester_report
     target = target or int(COMPACT_AT * 0.6)
-    with _lock:
-        files = _event_files()
-        today = "events-%s.jsonl" % _day(time.time() * 1000)
-        old = [p for p in files if os.path.basename(p) != today]
+    _compacting.set()
+    try:
+        with _lock:
+            files = _event_files()
+            today = "events-%s.jsonl" % _day(time.time() * 1000)
+            old = [p for p in files if os.path.basename(p) != today]
+            keep_today = sum(os.path.getsize(p) for p in files if p not in old and os.path.exists(p))
         if not old:
             return 0
         out = os.path.join(folder(), ".archive.tmp")
-        keep_today = sum(os.path.getsize(p) for p in files if p not in old and os.path.exists(p))
         kept = tester_report.thin_files(old, out, max(1, target - keep_today))
-        os.replace(out, os.path.join(folder(), "events-archive.jsonl"))
+        with _lock:
+            os.replace(out, os.path.join(folder(), "events-archive.jsonl"))
+            for path in old:
+                if os.path.basename(path) != "events-archive.jsonl":
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+            _size["bytes"] = disk_bytes()
         tester_report.forget()
-        for path in old:
-            if os.path.basename(path) != "events-archive.jsonl":
-                try:
-                    os.remove(path)
-                except OSError:
-                    pass
-        _size["bytes"] = disk_bytes()
         return kept
+    finally:
+        _compacting.clear()
 
 
 def _line(event):
@@ -578,7 +587,7 @@ def _record_versions(printer_id):
         facts = printer.version_facts() if printer is not None else None
         if facts:
             record("printer", ev="firmware", printer=printer_label(printer_id), facts=facts)
-    except Exception:                   # noqa: BLE001 - a printer that won't say is simply not recorded
+    except Exception:                   # noqa: BLE001 - a printer that won't say is not recorded
         pass
 
 

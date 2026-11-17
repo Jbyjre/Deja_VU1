@@ -88,13 +88,54 @@
       density: root.dataset.density || 'comfortable', motion: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full' };
   }
 
+  /* ---- hiding what is private ------------------------------------------------------------------ */
+
+  // Addresses, keys, Wi-Fi names, serial numbers, folders with a user name and file names are replaced here, before an
+  // event is queued, and the server hides the same things again before it writes. The patterns are built from strings
+  // inside try/catch: a browser without lookbehind skips those and the server still masks them.
+  const OCT = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+  const HIDE = [
+    ['((?:[a-z]:)?[\\\\/]{1,2}(?:users|home)[\\\\/]{1,2})(?:[^\\\\/\\r\\n\'"<>:|?*,;)\\]]+(?=[\\\\/])|[^\\\\/\\s\'"<>:|?*,;)\\]]+)', 'gi', '$1<user>'],
+    ['\\b([a-z][a-z0-9+.-]{1,12}://)[^/\\s\'"<>?#]+', 'gi', '$1<host>'],
+    ['([?&;](?:api[_-]?key|apikey|token|access[_-]?token|key|secret|password|pwd|auth|signature|sig)=)[^&\\s\'"<>]+', 'gi', '$1<hidden>'],
+    ['\\b(bearer|basic|token)\\s+[A-Za-z0-9._~+/=-]{8,}', 'gi', '$1 <key>'],
+    ['\\b(api[_-]?key|apikey|x-api-key|access[_-]?token|refresh[_-]?token|authorization|secret|password|passwd|pwd|token|webhook)(\\\\?["\']?\\s*[:=]\\s*\\\\?["\']?)[^\\s"\',;&}\\\\]{3,}', 'gi', '$1$2<hidden>'],
+    ['\\bsk-[A-Za-z0-9_-]{10,}|\\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}|\\bgithub_pat_[A-Za-z0-9_]{20,}|\\bxox[abprs]-[A-Za-z0-9-]{10,}|\\bAIza[0-9A-Za-z_-]{30,}|\\bAKIA[0-9A-Z]{16}|\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]*', 'g', '<key>'],
+    ['\\b(ssid|network name)(\\\\?["\']?\\s*[:=]\\s*\\\\?["\']?)[^\\s"\',;]{1,40}', 'gi', '$1$2<network>'],
+    ['\\b(serial(?:[_ -]?(?:number|no))?|s/n|device[_-]?id|machine[_-]?id|uuid)\\b(\\\\?["\']?\\s*[:=#]?\\s*\\\\?["\']?)[A-Za-z0-9-]{4,}', 'gi', '$1$2<id>'],
+    ['[\\w.+-]+@[\\w-]+(?:\\.[\\w-]+)+', 'g', '<email>'],
+    ['(?<![\\w:-])(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}(?![\\w:-])', 'gi', '<mac>'],
+    ['(?<![\\w.])' + OCT + '(?:\\.' + OCT + '){3}(?![\\w])(?::\\d{2,5})?', 'g', '<ip>'],
+    ['(?<![\\w:])(?:(?:[0-9a-f]{1,4}:){1,7}:(?:[0-9a-f]{1,4}(?::[0-9a-f]{1,4}){0,6})?|(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|::1)(?![\\w:])', 'gi', '<ip>'],
+    ['\\b[0-9a-f]{20,}\\b', 'gi', '<key>'],
+    ['(?<![\\w-])(?=[A-Za-z0-9_+-]*\\d)(?=[A-Za-z0-9_+-]*[A-Za-z])[A-Za-z0-9_+-]{24,}(?![\\w-])', 'g', '<key>']
+  ].map(([source, flags, replacement]) => {
+    try { return [new RegExp(source, flags), replacement]; } catch (_) { return null; }
+  }).filter(Boolean);
+
+  function hide(text) {
+    let out = String(text).slice(0, 4000).replace(FILE_WORD, '<file>');
+    for (const [re, replacement] of HIDE) out = out.replace(re, replacement);
+    return out;
+  }
+
+  function hideAll(event) {
+    for (const key of Object.keys(event)) {
+      const value = event[key];
+      if (key === 'k' || key === 's') continue;
+      if (typeof value === 'string') event[key] = hide(value);
+      else if (Array.isArray(value)) event[key] = value.map(v => (typeof v === 'string' ? hide(v) : v));
+    }
+    return event;
+  }
+
   /* ---- sending -------------------------------------------------------------------------------- */
 
   function push(event) {
     if (!on) return;
     event.t = event.t || Date.now();
     event.s = sid;
-    queue.push(event);
+    queue.push(hideAll(event));
     if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
     if (queue.length >= FLUSH_AT) setTimeout(() => flush(false), 0);
   }
@@ -307,6 +348,10 @@
           const done = /^(.*): confirmed by the printer in (\d+) ms$/.exec(text);
           if (done) push({ k: 'printer', ev: 'confirmed', what: done[1].slice(0, 60), ms: +done[2] });
           else if (/sent, but the printer now reports/.test(text)) push({ k: 'printer', ev: 'unconfirmed', what: text.slice(0, 120) });
+          else if (kind === 'ok') {
+            const sent = /^(.*) \((\d+) ms\)$/.exec(text);
+            if (sent) push({ k: 'printer', ev: 'sent', what: sent[1].slice(0, 60), ms: +sent[2] });
+          }
         }
       } catch (_) { /* recording never changes what the app does */ }
       return toastNow.apply(this, arguments);
@@ -461,18 +506,20 @@
 
   const when = iso => (iso ? iso.replace('T', ' ').slice(0, 16) : '');
   function fill(info) {
+    const problem = info.write_failures || info.refused ? " Some events could not be written to this computer's disk. Is it full?" : '';
     ['days', 'actions', 'errors', 'slow'].forEach(k => { const el = $t('tester-' + k); if (el) el.textContent = String(info[k] == null ? 0 : info[k]); });
     const since = $t('tester-since');
     if (since) since.textContent = info.since === 'sample' ? 'Sample numbers, made up to show the layout.' : info.since
       ? 'Recording since ' + when(info.since) + '. Last event ' + when(info.last) + '. ' + (info.notes ? info.notes + ' note' + (info.notes === 1 ? '' : 's') + '. ' : '')
         + (info.thinned ? 'The record was long, so ' + info.thinned.toLocaleString() + ' routine events were summed up; errors and slow spots are all kept. ' : '')
       : 'Nothing recorded yet. Use Deja Vu1 as usual.';
+    if (since && problem) since.textContent += problem;
   }
 
   async function refreshCard(force) {
     const card = $t('tester-card');
-    if (!card) return;
     const demo = inDemo();
+    if (!card || (!demo && !card.offsetParent && !force)) return;       // the card is not on screen: nothing to draw
     card.classList.toggle('is-demo', demo);
     const note = $t('tester-demo-note');
     if (note) note.hidden = !demo;

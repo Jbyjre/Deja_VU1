@@ -2,7 +2,8 @@
 /* Tester mode in a real browser.
  *
  *   node tools/tester-walk.js --zip FILE [--shots DIR]   the walk: off, then on, then save the report
- *   node tools/tester-walk.js --overhead [--rounds N]    what recording costs on the Printer page with the 3D twin
+ *   node tools/tester-walk.js --overhead [--pages N --pairs N --secs N --reps N]   what recording costs on the Printer page with the 3D twin
+ *   node tools/tester-walk.js --profile [--secs N]       the main-thread time spent inside tester.js, from a CPU profile
  *   node tools/tester-walk.js --probe                    only says whether Playwright and a Chromium are available
  *
  * The walk starts its own server and a stand-in printer (tests/fake_moonraker.py, a pretend printer, not a real one).
@@ -107,12 +108,38 @@ function check(ok, text) {
 }
 
 /* A page that reports what it sends to /api/tester and what goes wrong in it. */
+/* To find what costs frames, a copy of tester.js with one part taken out can be served instead (--variant NAME). */
+const VARIANTS = {
+  nolong: [["watcher.observe({ entryTypes: ['longtask'] });", ''], ['watchLongTasks();', '']],
+  nosample: [['firstSample = setTimeout(sample, 6000);', ''], ['setInterval(sample, SAMPLE_EVERY);', '']],
+  nofetch: [['window.fetch = function (input, init) {', 'window.__unusedFetch = function (input, init) {']],
+  noflush: [['flushTimer = setInterval(() => { aggFlush(false); flush(false); }, FLUSH_MS);', '']],
+  noclick: [["document.addEventListener('click', onClick, true);", '']],
+  norecorder: [['function start() {\n    on = true;', 'function start() {\n    return;']]
+};
+
 async function openPage(browser, base, { width = 1366, theme = 'light', offline = false } = {}) {
   const context = await browser.newContext({ viewport: { width, height: width <= 720 ? 844 : 900 }, serviceWorkers: 'block', offline });
+  const variant = option('--variant');
+  if (variant) {
+    if (!VARIANTS[variant]) throw new Error('unknown --variant ' + variant);
+    await context.route('**/tester.js', async route => {
+      const response = await route.fetch();
+      let body = await response.text();
+      for (const [from, to] of VARIANTS[variant]) {
+        if (!body.includes(from)) throw new Error('variant ' + variant + ': text not found: ' + from);
+        body = body.replace(from, to);
+      }
+      await route.fulfill({ response, body });
+    });
+  }
   const page = await context.newPage();
-  const seen = { tester: [], problems: [] };
+  const seen = { tester: [], problems: [], bodies: [] };
   page.on('request', r => {
-    if (r.url().startsWith(base) && r.url().includes('/api/tester/')) seen.tester.push(r.method() + ' ' + r.url().replace(base, ''));
+    if (r.url().startsWith(base) && r.url().includes('/api/tester/')) {
+      seen.tester.push(r.method() + ' ' + r.url().replace(base, ''));
+      if (r.method() === 'POST') seen.bodies.push(r.postData() || '');
+    }
   });
   page.on('pageerror', e => {
     // Playwright's own script reads navigator.serviceWorker in every frame, and that read throws inside a sandboxed
@@ -266,6 +293,8 @@ async function walk(browser, server, standIn, width) {
     setTimeout(() => { throw new Error('walk: deliberate error'); }, 10);
     Promise.reject(new Error('walk: deliberate rejection'));
     if (typeof toast === 'function') toast('Walk: deliberate error toast at 192.168.7.7', 'bad', 3000);
+    // The wording the app uses for a command it timed but did not read back (the emergency stop).
+    if (typeof toast === 'function') toast('Walk: Emergency stop sent (123 ms)', 'ok', 2000);
   });
   await sleep(1200);
 
@@ -279,6 +308,9 @@ async function walk(browser, server, standIn, width) {
   await page.evaluate(() => window.Tester && window.Tester.flush());
   await sleep(1500);
   check(seen.tester.some(r => r.startsWith('POST /api/tester/events')), 'Tester mode on: the browser sent events');
+  const sentText = seen.bodies.join('\n');
+  check(sentText.length > 0 && !sentText.includes('192.168.7.7') && sentText.includes('<ip>'),
+    'The browser hid the address before it sent anything (' + sentText.length + ' bytes sent)');
 
   // 3. The card, the viewer, the zip.
   await openTesterCard(page, width);
@@ -347,13 +379,17 @@ const sd = a => {
 };
 
 /* One stretch on the Printer page with Tester mode as asked: wait for it to settle, time every frame for `secs` seconds (the
- * stretch includes one smoothness sample, the recorder's most active moment), then press five twin controls twice each and time
+ * stretch includes one smoothness sample, the recorder's most active moment), then press five twin controls and time
  * every press from the click to the next paint. */
-async function stretch(page, mode, secs) {
-  await post(page, '/api/modules/tester/toggle', { enabled: mode === 'on' });
+const metricsOf = async cdp => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(m => [m.name, m.value]));
+
+async function stretch(page, mode, secs, cdp) {
+  // The app's own postJSON, the call the Settings switch makes: it updates the page's module state at once.
+  await page.evaluate(async on => { await postJSON('/api/modules/tester/toggle', { enabled: on }); }, mode === 'on');
   await sleep(1800);
   const state = await page.evaluate(() => !!(window.Tester && window.Tester.isOn()));
   if (state !== (mode === 'on')) throw new Error('Tester mode was ' + (state ? 'on' : 'off') + ' when ' + mode + ' was asked for');
+  const m0 = await metricsOf(cdp);
   const frames = await page.evaluate(
     ms =>
       new Promise(resolve => {
@@ -370,12 +406,16 @@ async function stretch(page, mode, secs) {
       }),
     secs * 1000
   );
+  const m1 = await metricsOf(cdp);
+  // Main-thread seconds spent per second of the stretch: all tasks, script, layout, style recalculation, in the page's renderer.
+  const busy = Object.fromEntries(['TaskDuration', 'ScriptDuration', 'LayoutDuration', 'RecalcStyleDuration'].map(k => [k, (m1[k] - m0[k]) / secs]));
   await page.evaluate(() => {
     window.__paints = [];
   });
   const clicks = [];
+  if (flag('--frames-only')) return { frames, clicks: [0], busy };
   for (const sel of ['[data-view="front"]', '[data-view="top"]', '[data-view="iso"]', '[data-twin="zoom-in"]', '[data-twin="zoom-out"]']) {
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < +(option('--reps') || 1); i++) {
       const before = await page.evaluate(() => window.__paints.length);
       await page.locator(sel).first().click();
       await sleep(300);
@@ -383,7 +423,7 @@ async function stretch(page, mode, secs) {
       if (paints.length > before) clicks.push(paints[paints.length - 1]);
     }
   }
-  return { frames, clicks };
+  return { frames, clicks, busy };
 }
 
 async function overhead(browser, server) {
@@ -392,11 +432,16 @@ async function overhead(browser, server) {
   const fh = { off: [], on: [] }, ch = { off: [], on: [] };
   for (let p = 0; p < pages; p++) {
     const { context, page } = await openPage(browser, server.base, { width: 1366 });
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Performance.enable');
     await page.evaluate(() => {
       const t = document.getElementById('demo-toggle');
       if (t && !t.checked) t.click();
       location.hash = '#/printer';
     });
+    // A steady workload: the twin turning slowly draws every frame the same way, so a small cost shows above the noise.
+    if (flag('--spin')) await page.locator('#twin-spin').click();
+    if (flag('--hide-felt')) await page.addStyleTag({ content: '#tester-felt, #tester-note { display: none !important; }' });   // to see whether the glass pill costs frames
     await sleep(6000);
     await page.evaluate(() => {
       window.__paints = [];
@@ -410,23 +455,31 @@ async function overhead(browser, server) {
       const order = (p + k) % 2 ? ['on', 'off'] : ['off', 'on'];
       const pair = {};
       for (const mode of order) {
-        const r = await stretch(page, mode, secs);
-        pair[mode] = { frame_mean: mean(r.frames), frame_median: median(r.frames), frame_p95: r.frames.slice().sort((a, b) => a - b)[Math.floor(r.frames.length * 0.95)],
+        const r = await stretch(page, mode, secs, cdp);
+        pair[mode] = { busy: r.busy, frame_mean: mean(r.frames), frame_median: median(r.frames), frame_p95: r.frames.slice().sort((a, b) => a - b)[Math.floor(r.frames.length * 0.95)],
           click_mean: mean(r.clicks), click_median: median(r.clicks), frames: r.frames.length, presses: r.clicks.length };
         fh[mode].push(...r.frames);
         ch[mode].push(...r.clicks);
       }
       rows.push({ page: p + 1, pair: k + 1, order: order.join('>'), off: pair.off, on: pair.on });
       console.log(JSON.stringify({ page: p + 1, pair: k + 1, order: order.join('>'),
-        frame_mean_ms: [+pair.off.frame_mean.toFixed(1), +pair.on.frame_mean.toFixed(1)], click_mean_ms: [+pair.off.click_mean.toFixed(0), +pair.on.click_mean.toFixed(0)] }));
+        frame_mean_ms: [+pair.off.frame_mean.toFixed(1), +pair.on.frame_mean.toFixed(1)], click_mean_ms: [+pair.off.click_mean.toFixed(0), +pair.on.click_mean.toFixed(0)],
+        main_thread_busy_s_per_s: [+pair.off.busy.TaskDuration.toFixed(4), +pair.on.busy.TaskDuration.toFixed(4)] }));
     }
     await context.close();
   }
   const pct = (a, b) => ((b - a) / a) * 100;
+  const se = a => sd(a) / Math.sqrt(a.length);
   const frameDiffs = rows.map(r => pct(r.off.frame_mean, r.on.frame_mean));
   const clickDiffs = rows.map(r => pct(r.off.click_mean, r.on.click_mean));
-  const se = a => sd(a) / Math.sqrt(a.length);
+  const busyDiffs = {};
+  for (const k of ['TaskDuration', 'ScriptDuration', 'LayoutDuration', 'RecalcStyleDuration']) {
+    busyDiffs[k] = { off_mean: mean(rows.map(r => r.off.busy[k])), on_mean: mean(rows.map(r => r.on.busy[k])),
+      paired_difference_ms_per_s: { mean: mean(rows.map(r => (r.on.busy[k] - r.off.busy[k]) * 1000)), standard_error: se(rows.map(r => (r.on.busy[k] - r.off.busy[k]) * 1000)) },
+      paired_difference_percent: { mean: mean(rows.map(r => pct(r.off.busy[k], r.on.busy[k]))), standard_error: se(rows.map(r => pct(r.off.busy[k], r.on.busy[k]))) } };
+  }
   const out = {
+    main_thread_seconds_per_second: busyDiffs,
     method: 'one page per block, Tester mode switched off and on in alternating ' + secs + ' s stretches on the Printer page (demo data, 3D twin), ' + pairs + ' pairs per page',
     pages, pairs_per_page: pairs, pairs: rows.length,
     frame_time_ms: { off_mean: mean(fh.off), on_mean: mean(fh.on), off_median: median(fh.off), on_median: median(fh.on), frames: [fh.off.length, fh.on.length],
@@ -436,6 +489,58 @@ async function overhead(browser, server) {
   };
   console.log(JSON.stringify(out, null, 2));
   if (option('--json')) fs.writeFileSync(option('--json'), JSON.stringify({ rows, out }, null, 2));
+  return out;
+}
+
+/* The CPU time the recorder itself uses: a V8 profile of the page over a busy stretch with Tester mode on, adding up the time
+ * the main thread spent in tester.js. It does not depend on the twin's frame-time noise, so it can show a small cost. */
+async function profile(browser, server) {
+  const secs = +(option('--secs') || 60);
+  const { context, page } = await openPage(browser, server.base, { width: 1366 });
+  await page.evaluate(() => {
+    const t = document.getElementById('demo-toggle');
+    if (t && !t.checked) t.click();
+    location.hash = '#/printer';
+  });
+  await sleep(4000);
+  await page.evaluate(async () => { await postJSON('/api/modules/tester/toggle', { enabled: true }); });
+  await sleep(1800);
+  check(await page.evaluate(() => !!(window.Tester && window.Tester.isOn())), 'profile: Tester mode is recording');
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Profiler.enable');
+  await cdp.send('Profiler.setSamplingInterval', { interval: 100 });
+  await cdp.send('Profiler.start');
+  const began = Date.now();
+  let presses = 0;
+  while (Date.now() - began < secs * 1000) {
+    for (const sel of ['[data-view="front"]', '[data-view="top"]', '[data-view="iso"]', '[data-twin="zoom-in"]', '[data-twin="zoom-out"]']) {
+      await page.locator(sel).first().click();
+      presses += 1;
+      await sleep(700);
+    }
+  }
+  const { profile: prof } = await cdp.send('Profiler.stop');
+  const wallMs = Date.now() - began;
+  const byId = new Map(prof.nodes.map(n => [n.id, n]));
+  let total = 0, busy = 0, recorder = 0;
+  const byFunction = {};
+  prof.samples.forEach((id, i) => {
+    const dt = (prof.timeDeltas[i] || 0) / 1000;
+    const n = byId.get(id);
+    const fn = n.callFrame.functionName || '(anonymous)';
+    total += dt;
+    if (!/^\((idle|program|root)\)$/.test(fn)) busy += dt;
+    if (/\/tester\.js$/.test(n.callFrame.url || '')) {
+      recorder += dt;
+      byFunction[fn] = (byFunction[fn] || 0) + dt;
+    }
+  });
+  const out = { seconds: wallMs / 1000, presses, profile_ms: +total.toFixed(1), main_thread_busy_ms: +busy.toFixed(1), tester_js_ms: +recorder.toFixed(2),
+    tester_js_share_of_busy_percent: +((recorder / busy) * 100).toFixed(3), tester_js_share_of_wall_percent: +((recorder / wallMs) * 100).toFixed(3),
+    tester_js_by_function_ms: Object.fromEntries(Object.entries(byFunction).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => [k, +v.toFixed(2)])) };
+  console.log(JSON.stringify(out, null, 2));
+  if (option('--json')) fs.writeFileSync(option('--json'), JSON.stringify(out, null, 2));
+  await context.close();
   return out;
 }
 
@@ -466,6 +571,8 @@ async function overhead(browser, server) {
   try {
     if (flag('--overhead')) {
       await overhead(browser, server);
+    } else if (flag('--profile')) {
+      await profile(browser, server);
     } else {
       standIn = await startStandIn();
       let zipPath = null;
