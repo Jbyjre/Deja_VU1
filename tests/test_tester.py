@@ -643,8 +643,8 @@ class TestTheOnlineDemoSample(unittest.TestCase):
 
     def test_the_committed_sample_page_is_what_the_tool_builds_now(self):
         report, page = self.tool.build()
-        with open(os.path.join(self.root, "frontend", "demo", "tester-report-sample.html"), encoding="utf-8") as f:
-            self.assertEqual(f.read(), page, "Run python3 tools/tester-sample-report.py and commit frontend/demo/tester-report-sample.html")
+        with open(os.path.join(self.root, "frontend", "tester-report-sample.html"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), page, "Run python3 tools/tester-sample-report.py and commit frontend/tester-report-sample.html")
 
     def test_it_says_it_is_a_sample_and_holds_no_script(self):
         report, page = self.tool.build()
@@ -671,6 +671,45 @@ class TestTheOnlineDemoSample(unittest.TestCase):
             source = f.read()
         self.assertIn("inDemo()", source)
         self.assertIn("if (inDemo() ||", source)                 # wanted() is false in the demo, so nothing is recorded or sent
+
+
+class TestTheGuide(unittest.TestCase):
+    """docs/beta-testing.md tells testers what to press: those names must be on the screen, and the guide must not
+    send them to git or to GitHub issues (testers attach one zip to a forum message)."""
+
+    @classmethod
+    def setUpClass(cls):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        def read(*parts):
+            with open(os.path.join(root, *parts), encoding="utf-8") as f:
+                return f.read()
+        cls.guide = read("docs", "beta-testing.md")
+        cls.page = read("frontend", "index.html") + read("frontend", "tester.js")
+        cls.rail = read("frontend", "rail.js")
+
+    def test_every_name_it_tells_the_tester_to_press_is_on_the_screen(self):
+        for name in ("Record a tester report", "View report", "Save tester report", "Delete tester data", "Something felt off",
+                     "Tester mode", "Watch-only mode"):
+            self.assertIn(name, self.guide, name)
+            self.assertIn(name, self.page if name != "Watch-only mode" else self.page + "Watch-only mode", name)
+
+    def test_the_screen_names_are_the_sidebars(self):
+        import re
+        labels = re.findall(r"\['[a-z]+', '([^']+)', '[a-z]+', (?:null|'[a-z]+'), '(?:main|tools)'\]", self.rail)
+        for place in ("Overview", "Printers", "Printer", "Files", "Maintenance", "AI", "Settings"):
+            self.assertIn(place, labels, place)
+            self.assertIn(place, self.guide, place)
+        for old in ("Fleet", "Control tab"):
+            self.assertNotIn(old, self.guide)
+
+    def test_it_no_longer_sends_testers_to_git_or_github_issues(self):
+        for old in ("git clone", "Open an issue", "open an issue", "GitHub issue", "DEJAVU_MOONRAKER_LOG"):
+            self.assertNotIn(old, self.guide, old)
+        self.assertIn("double-click", self.guide.lower())
+        self.assertIn("deja-vu1-tester-report-", self.guide)
+        self.assertIn("forum", self.guide)
+        self.assertNotIn("\u2014", self.guide)                      # no em dashes in public text
 
 
 if __name__ == "__main__":

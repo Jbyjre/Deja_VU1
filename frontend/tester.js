@@ -547,7 +547,7 @@
     const dialog = $t('tester-dialog'), frame = $t('tester-frame');
     if (!dialog || !frame) return;
     const dark = document.documentElement.dataset.theme === 'dark';
-    frame.src = inDemo() ? 'demo/tester-report-sample.html' : '/api/tester/report.html?theme=' + (dark ? 'dark' : 'light');
+    frame.src = inDemo() ? 'tester-report-sample.html' : '/api/tester/report.html?theme=' + (dark ? 'dark' : 'light');
     try { dialog.showModal(); } catch (_) { dialog.setAttribute('open', ''); }
   }
 

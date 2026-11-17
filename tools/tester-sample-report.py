@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Writes frontend/demo/tester-report-sample.html: the page "View sample report" opens in the online demo.
+Writes frontend/tester-report-sample.html (not in frontend/demo/, which the demo recorder empties): the page "View sample report" opens in the online demo.
 
     python3 tools/tester-sample-report.py
 
@@ -107,7 +107,7 @@ def build():
 
 def main():
     report, page = build()
-    target = os.path.join(ROOT, "frontend", "demo", "tester-report-sample.html")
+    target = os.path.join(ROOT, "frontend", "tester-report-sample.html")
     with open(target, "w", encoding="utf-8", newline="\n") as f:
         f.write(page)
     s = report["summary"]

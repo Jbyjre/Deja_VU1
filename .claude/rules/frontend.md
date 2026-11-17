@@ -96,7 +96,7 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   (never `data-file`, `data-id`, `data-printer`) or, last, its own words with file names replaced. Clicks are timed to the next
   paint (a task queued from inside `requestAnimationFrame`); a press waits up to 300 ms to pick up the requests it started.
   The card (`#tester-card`, its own Settings part) shows counts from `/api/tester/status`, the viewer is `#tester-dialog`
-  with a sandboxed frame, and in the demo it shows `SAMPLE` figures that must match `demo/tester-report-sample.html`
+  with a sandboxed frame, and in the demo it shows `SAMPLE` figures that must match `tester-report-sample.html`
   (`python3 tools/tester-sample-report.py`; `tests/test_tester.py` checks both). `#tester-felt` and `#tester-note` are the
   "Something felt off" button and note.
 - `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
