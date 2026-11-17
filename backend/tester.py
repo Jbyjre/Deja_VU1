@@ -4,13 +4,15 @@ tester.py
 
 Tester mode: a record of how Deja Vu1 behaves, kept on this computer only.
 
-A tester switches it on in Settings (or starts with DEJAVU_TESTER=1), uses the app as usual and later
-saves one zip file to attach to a forum message. This module is the recording half: it takes events
-from the browser and from the server, hides anything private, and appends them to JSON Lines files
-under <data>/tester/. tester_report.py reads them back and builds the report.
+This tester build records from the first start (modules.TESTER_ALWAYS_ON). The tester uses the app as usual,
+answers the questions the app asks at the end of the test round (tester_study.py) and saves one zip file to
+attach to a forum message. This module is the recording half: it takes events from the browser and from the
+server, hides anything private, and appends them to JSON Lines files under <data>/tester/. tester_report.py
+reads them back and builds the report.
 
 Rules this file keeps:
-  - Switched off (the "tester" module), nothing is written and every tester route answers 403.
+  - With the "tester" module off (a developer's DEJAVU_TESTER=0, or a build that makes it optional), nothing
+    is written and every tester route answers 403.
   - Nothing is sent anywhere. There is no network call in this file.
   - Recording never raises into the app: every hook swallows its own failures.
   - Private things never reach the disk: addresses, keys, home-folder names, file names, printer names,
@@ -33,7 +35,7 @@ import storage
 
 _DATA_DIR = storage.DATA_DIR
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_TEXT = 300                    # longest string kept in one field
 MAX_NOTE = 1200                   # the tester's own notes may be longer
 MAX_LIST = 12
@@ -456,19 +458,31 @@ def record(_kind, **fields):
 # What the browser may send. A value of the wrong shape is dropped, so no field can carry typed text.
 #   w: one short word-like token   n: a number   b: yes/no   t: text (masked)   l: a short list of text
 _BROWSER = {
-    "session": {"ev": "w", "device": "w", "ms": "n", "w": "n", "h": "n", "dpr": "n"},
+    "session": {"ev": "w", "device": "w", "ms": "n", "w": "n", "h": "n", "dpr": "n", "first": "b", "up": "n"},
     "setup": {"browser": "w", "bver": "w", "ua_os": "w", "w": "n", "h": "n", "dpr": "n", "look": "w", "theme": "w",
-              "lang": "w", "touch": "b", "density": "w", "motion": "w"},
-    "screen": {"screen": "w", "ms": "n"},
-    "click": {"ctl": "t", "screen": "w", "paint": "n", "req": "n", "route": "t", "slow": "b"},
+              "lang": "w", "touch": "b", "density": "w", "motion": "w", "cores": "n", "mem": "n", "ptr": "w",
+              "standalone": "b", "tz": "n", "contrast": "w", "transp": "w", "cpref": "w", "conn": "w", "secure": "b"},
+    "screen": {"screen": "w", "ms": "n", "via": "t"},
+    "click": {"ctl": "t", "screen": "w", "paint": "n", "req": "n", "route": "t", "slow": "b", "how": "w", "btn": "n",
+              "mods": "w", "dbl": "b", "x": "n", "y": "n", "gap": "n", "role": "w"},
+    "change": {"ctl": "t", "screen": "w", "role": "w", "val": "w", "num": "n", "on": "b", "idx": "n", "of": "n",
+               "files": "n", "ext": "w"},
+    "key": {"combo": "t", "screen": "w"},
     "long": {"ms": "n", "screen": "w", "ctl": "t"},
     "req": {"route": "t", "method": "w", "status": "n", "ms": "n", "err": "t", "screen": "w", "slow": "b",
             "n": "n", "ok": "n", "fail": "n", "p50": "n", "max": "n", "agg": "b", "bucket": "n"},
-    "err": {"kind": "w", "msg": "t", "file": "w", "line": "n", "col": "n", "screen": "w", "last": "l", "route": "t"},
+    "err": {"kind": "w", "msg": "t", "file": "w", "line": "n", "col": "n", "screen": "w", "last": "l", "route": "t",
+            "stack": "l", "ctl": "t", "pstate": "w", "online": "b", "age": "n"},
     "printer": {"ev": "w", "what": "t", "ms": "n"},
     "fps": {"surface": "w", "fps": "n", "secs": "n", "triangles": "n", "layers": "n", "screen": "w"},
     "feature": {"name": "w"},
-    "note": {"text": "t", "screen": "w", "last": "l"},
+    "note": {"text": "t", "screen": "w", "last": "l", "tag": "w", "after_err": "b", "err": "t", "pstate": "w"},
+    "onboarding": {"ev": "w", "step": "n", "of": "n", "name": "t", "ms": "n", "how": "w", "first": "b"},
+    "perf": {"fcp": "n", "lcp": "n", "cls": "n", "dcl": "n", "load": "n", "ttfb": "n", "heap": "n", "nodes": "n",
+             "long": "n", "up": "n", "boot": "b"},
+    "net": {"ev": "w", "code": "n", "clean": "b", "ms": "n", "screen": "w"},
+    "study": {"ev": "w", "n": "n", "days": "n", "ms": "n", "sec": "n", "of": "n"},
+    "resize": {"w": "n", "h": "n", "bp": "w"},
 }
 _WORD = re.compile(r"[A-Za-z0-9_.:/#=\[\]-]{1,48}")
 _SESSION = re.compile(r"[0-9a-z]{6,24}")
@@ -489,6 +503,9 @@ def _browser_event(raw, now_ms):
     session = raw.get("s")
     if isinstance(session, str) and _SESSION.fullmatch(session):
         event["s"] = session
+    order = raw.get("q")
+    if isinstance(order, int) and not isinstance(order, bool) and 0 <= order < 10 ** 9:
+        event["q"] = order                  # the order things happened in within one visit
     for field, shape in schema.items():
         value = raw.get(field)
         if value is None:
@@ -508,8 +525,8 @@ def _browser_event(raw, now_ms):
         elif shape == "l":
             if isinstance(value, list):
                 event[field] = [mask(v, 80) for v in value[:10] if isinstance(v, str)]
-    if kind == "note" and not event.get("text"):
-        return None
+    if kind == "note" and not event.get("text") and not event.get("tag"):
+        return None                         # a note needs words or a tag ("Slow", "Broken"...)
     return event
 
 
@@ -537,7 +554,7 @@ def ingest(body):
 # What the server notes by itself
 # ---------------------------------------------------------------------------
 
-def _where(exc, depth=3):
+def _where(exc, depth=5):
     try:
         out = []
         for frame in traceback.extract_tb(exc.__traceback__)[-depth:]:
@@ -710,18 +727,86 @@ def note_update_result(result):
         pass
 
 
-def install_hooks():
-    """Uncaught exceptions on server threads are recorded too (the usual handler still runs)."""
-    previous = threading.excepthook
+SLOW_HANDLER_MS = 1500
+_NOT_TIMED = ("/api/camera/", "/api/live", "/api/timelapse/video", "/api/backup", "/api/tester/", "/api/assistant/chat",
+              "/api/files/raw")
 
-    def hook(args):
+
+def note_handler(method, path, ms):
+    """A request the server itself took long to answer, so the report can tell a slow server from a slow network."""
+    if ms < SLOW_HANDLER_MS or not enabled():
+        return
+    try:
+        route = route_of(path)
+        if not route.startswith(_NOT_TIMED):
+            record("slowroute", method=str(method or "GET"), route=route, ms=int(ms))
+    except Exception:                   # noqa: BLE001
+        pass
+
+
+SAMPLE_EVERY = 300
+_started = time.time()
+_installed = {"hooks": False, "sampler": False}
+
+
+def _rss_mb():
+    """Memory this server uses, in MB, where the system says so (Linux and macOS; None on Windows)."""
+    try:
+        with open("/proc/self/statm", encoding="ascii") as handle:
+            return round(int(handle.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 1048576.0, 1)
+    except (OSError, ValueError, IndexError, AttributeError):
+        pass
+    try:
+        import resource
+        import sys
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return round(peak / 1048576.0 if sys.platform == "darwin" else peak / 1024.0, 1)
+    except Exception:                   # noqa: BLE001
+        return None
+
+
+def server_sample():
+    """What the server process is using: uptime, processor time, memory, threads and free disk space."""
+    out = {"up": int(time.time() - _started), "cpu": round(time.process_time(), 1), "threads": threading.active_count(),
+           "rss": _rss_mb()}
+    try:
+        import shutil
+        out["disk_free"] = int(shutil.disk_usage(_DATA_DIR).free / 1048576)
+    except (OSError, ValueError):
+        out["disk_free"] = None
+    return out
+
+
+def _sampler_loop():
+    gone = threading.Event()
+    gone.wait(20)
+    while True:
         try:
-            note_error("thread", args.exc_value)
+            if enabled():
+                record("server", **server_sample())
         except Exception:               # noqa: BLE001
             pass
-        previous(args)
+        gone.wait(SAMPLE_EVERY)
 
-    threading.excepthook = hook
+
+def install_hooks():
+    """Uncaught exceptions on server threads are recorded too (the usual handler still runs), and the server notes
+    its own memory and processor use every five minutes."""
+    if not _installed["hooks"]:
+        _installed["hooks"] = True
+        previous = threading.excepthook
+
+        def hook(args):
+            try:
+                note_error("thread", args.exc_value)
+            except Exception:           # noqa: BLE001
+                pass
+            previous(args)
+
+        threading.excepthook = hook
+    if not _installed["sampler"]:
+        _installed["sampler"] = True
+        threading.Thread(target=_sampler_loop, name="tester-sampler", daemon=True).start()
 
 
 # ---------------------------------------------------------------------------
@@ -730,9 +815,11 @@ def install_hooks():
 
 def status():
     import tester_report
+    import tester_study
     totals = tester_report.totals()
-    return {"on": True, "schema_version": SCHEMA_VERSION, **totals, "bytes": disk_bytes(),
-            "limit_bytes": EXPORT_LIMIT, "write_failures": _stats["failed"], "refused": _stats["refused"]}
+    return {"on": True, "always_on": bool(modules.TESTER_ALWAYS_ON), "schema_version": SCHEMA_VERSION, **totals,
+            "bytes": disk_bytes(), "limit_bytes": EXPORT_LIMIT, "write_failures": _stats["failed"],
+            "refused": _stats["refused"], "study": tester_study.describe()}
 
 
 def delete_all():
@@ -744,7 +831,7 @@ def delete_all():
         except OSError:
             names = []
         for name in names:
-            if name.startswith(".") or name.endswith((".jsonl", ".json", ".tmp", ".prev")):
+            if name.startswith(".") or name.endswith((".jsonl", ".json", ".tmp", ".prev")) or ".corrupt-" in name:
                 try:
                     os.remove(os.path.join(folder(), name))
                     removed += 1
@@ -753,6 +840,7 @@ def delete_all():
         _size.update(bytes=0, since=0)
         _known_cache["at"] = 0.0
         _links.clear()
+        _feature_seen.clear()
     try:
         import tester_report
         tester_report.forget()

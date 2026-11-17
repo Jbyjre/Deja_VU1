@@ -29,7 +29,7 @@ tool = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(tool)
 
 
-def _zip_with(events, server=None):
+def _zip_with(events, server=None, answers=None):
     """Record `events` with Tester mode, save the report and clear the record. Returns the zip's bytes."""
     modules.set_enabled("tester", True)
     tester.refresh()
@@ -37,6 +37,9 @@ def _zip_with(events, server=None):
     tester.ingest({"events": events})
     now = int(time.time() * 1000)
     tester.record("printer", ev="print_started", printer="printer 1", demo=False, t=now)
+    if answers:
+        import tester_study
+        tester_study.save_answers(answers)
     data = tester_report.build_zip()[1]
     return data
 
@@ -47,7 +50,6 @@ class TestCombiningReports(unittest.TestCase):
         self.addCleanup(self.cleanup)
 
     def cleanup(self):
-        modules.set_enabled("tester", False)
         tester.refresh()
         tester.delete_all()
 
@@ -116,6 +118,73 @@ class TestCombiningReports(unittest.TestCase):
         data = json.loads(subprocess.run([sys.executable, TOOL, a, b, "--json"], capture_output=True, text=True, check=True).stdout)
         self.assertEqual(data["testers"], 2)
         self.assertEqual(data["skipped"], 0)
+
+    def two_rounds(self):
+        """Two testers with answers, a first run and the same problem (one of them said so)."""
+        import tester_study
+        now = int(time.time() * 1000)
+        a = _zip_with([
+            {"k": "session", "s": "aaaaaa01", "ev": "start", "first": True, "t": now - 9000},
+            {"k": "onboarding", "s": "aaaaaa01", "ev": "wizard_open", "first": True, "step": 1, "of": 7, "t": now - 8900},
+            {"k": "onboarding", "s": "aaaaaa01", "ev": "wizard_end", "how": "done", "step": 7, "of": 7, "ms": 60000, "t": now - 8000},
+            {"k": "click", "s": "aaaaaa01", "ctl": "#go", "screen": "printers", "paint": 25, "how": "mouse", "t": now - 7000},
+            {"k": "click", "s": "aaaaaa01", "ctl": "#go2", "screen": "printers", "paint": 35, "how": "touch", "t": now - 6900},
+            {"k": "err", "s": "aaaaaa01", "kind": "js", "msg": "TypeError: x is undefined at line 10", "file": "app.js", "line": 10, "screen": "files", "t": now - 6000},
+            {"k": "perf", "s": "aaaaaa01", "boot": True, "load": 800, "t": now - 5000},
+        ], answers={"q8": {"c": "no", "t": "Refused"}, "q46": {"c": None, "t": "Confirm Print"}, "q21": {"c": "didnt_try", "t": ""}})
+        b = _zip_with([
+            {"k": "session", "s": "bbbbbb01", "ev": "start", "t": now - 9000},
+            {"k": "onboarding", "s": "bbbbbb01", "ev": "wizard_end", "how": "skipped", "step": 2, "of": 7, "ms": 9000, "t": now - 8000},
+            {"k": "click", "s": "bbbbbb01", "ctl": "#go", "screen": "printers", "paint": 45, "how": "key", "t": now - 7000},
+            {"k": "err", "s": "bbbbbb01", "kind": "js", "msg": "TypeError: x is undefined at line 99", "file": "app.js", "line": 99, "screen": "files", "t": now - 6000},
+            {"k": "note", "s": "bbbbbb01", "text": "Files screen broke", "tag": "broken", "screen": "files", "t": now - 5900},
+            {"k": "perf", "s": "bbbbbb01", "boot": True, "load": 1200, "t": now - 5000},
+        ], answers={"q8": {"c": "yes", "t": ""}, "q46": {"c": None, "t": "The twin"}, "q47": {"c": None, "t": "Files crashed"}})
+        return self.write("a.zip", a), self.write("b.zip", b)
+
+    def test_answers_findings_first_run_and_pressing_are_combined(self):
+        total = tool.combine([tool.load(p) for p in self.two_rounds()])
+        q = {x["id"]: x for x in total["questions"]}
+        self.assertEqual((q["q8"]["answered"], q["q8"]["choices"], q["q8"]["of"]), (2, {"no": 1, "yes": 1}, 2))
+        self.assertEqual([t["text"] for t in q["q46"]["texts"]], ["Confirm Print", "The twin"])
+        self.assertEqual([t["tester"] for t in q["q46"]["texts"]], [1, 2])
+        self.assertEqual(q["q21"]["choices"], {"didnt_try": 1})
+        merged = next(f for f in total["findings"] if f["kind"] == "error")
+        self.assertEqual((merged["testers"], merged["tester_numbers"], merged["severity"]), (2, [1, 2], "high"))
+        self.assertTrue(any(f["kind"] == "note" and f["tester_said"] for f in total["findings"]))
+        self.assertEqual([f["severity"] for f in total["findings"]], sorted((f["severity"] for f in total["findings"]), key=lambda v: {"high": 0, "medium": 1, "low": 2}[v]))
+        self.assertEqual((total["first_run"]["setup_finished"], total["first_run"]["setup_skipped"], total["first_run"]["setup_opened"]), (1, 1, 1))
+        self.assertEqual(total["how_they_press"], {"mouse": 1, "touch": 1, "key": 1})
+        self.assertEqual(total["median_page_load_ms"], 1000)
+        self.assertEqual(total["rounds"], {"round_3": 2, "not_finished": 2})
+
+    def test_the_answers_and_findings_switches_print_text_a_person_can_read(self):
+        a, b = self.two_rounds()
+        answers = subprocess.run([sys.executable, TOOL, a, b, "--answers"], capture_output=True, text=True, check=True).stdout
+        self.assertIn("8. Did the printer show as connected", answers)
+        self.assertIn("Tester 1: Confirm Print", answers)
+        self.assertIn("Tester 2: The twin", answers)
+        self.assertIn("Yes 1, No 1, Didn't try it 0", answers)
+        findings = subprocess.run([sys.executable, TOOL, a, b, "--findings"], capture_output=True, text=True, check=True).stdout
+        self.assertTrue(findings.startswith("# Deja Vu1 tester findings, 2 reports combined"))
+        self.assertIn("- Testers: 2 of 2 (1, 2)", findings)
+        text = subprocess.run([sys.executable, TOOL, a, b], capture_output=True, text=True, check=True).stdout
+        for needle in ("First run", "Setup opened 1 time: finished 1, skipped 1", "Problems that came up", "The questions: how many answered"):
+            self.assertIn(needle, text)
+
+    def test_a_schema_1_report_still_combines(self):
+        a, _ = self.two_reports()
+        import zipfile
+        path = self.write("old.zip", b"")
+        with zipfile.ZipFile(a) as src, zipfile.ZipFile(path, "w") as out:
+            report = json.loads(src.read("report.json"))
+            for key in ("study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings"):
+                report.pop(key, None)
+            report["schema_version"] = 1
+            out.writestr("report.json", json.dumps(report))
+        total = tool.combine([tool.load(path)])
+        self.assertEqual((total["testers"], total["clicks"], total["questions"], total["findings"]), (1, 2, [], []))
+        self.assertIn("1 report combined", tool.render(total))
 
     def test_a_bad_zip_is_skipped_in_words_and_the_rest_still_count(self):
         a, _ = self.two_reports()

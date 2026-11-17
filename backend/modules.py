@@ -25,6 +25,11 @@ most of them parts of Deja Vu1 itself, and nobody could tell what a switch was f
   "core"     - part of Deja Vu1 and always on. The server can still refuse its routes when told to
                (tests do), but no screen offers a switch, and a copy saved with one off is switched
                back on once (see DEFAULTS_VERSION).
+
+Tester mode is a "setting" that this build keeps always on (TESTER_ALWAYS_ON below): the people who run
+this build are testers, so it records from the first start and has no switch on screen. Setting
+TESTER_ALWAYS_ON to False gives back the optional switch in Settings (off by default). A developer can
+still start with DEJAVU_TESTER=0 to keep a run out of the record; nothing in the app offers that.
 """
 
 import os
@@ -36,6 +41,10 @@ _lock = threading.Lock()
 
 _DATA_DIR = storage.DATA_DIR
 _STATE_PATH = os.path.join(_DATA_DIR, "modules.json")
+
+# While True, Tester mode is on from the first start and cannot be switched off from Settings.
+TESTER_ALWAYS_ON = True
+_OFF_WORDS = ("0", "false", "no", "off")
 
 REGISTRY = [
     {
@@ -286,10 +295,10 @@ REGISTRY = [
         "id": "tester",
         "name": "Tester mode",
         "description": "Keeps a report on this computer of how Deja Vu1 behaved while you used it: "
-                        "errors, slow buttons, prints and what you tried. Nothing is sent anywhere; "
-                        "you save one file and share it yourself.",
+                        "what you pressed, errors, slow buttons, prints and what you tried. In this tester "
+                        "build it is always on. Nothing is sent anywhere; you save one file and share it yourself.",
         "status": "optional",
-        "default_enabled": False,
+        "default_enabled": TESTER_ALWAYS_ON,
     },
 ]
 
@@ -297,7 +306,9 @@ EXTRAS = ("auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assi
           "ai_assistant")
 SETTINGS = ("camera", "timelapse", "handoff", "tester")
 for _module in REGISTRY:
-    _module["kind"] = "extra" if _module["id"] in EXTRAS else "setting" if _module["id"] in SETTINGS else "core"
+    _module["kind"] = ("extra" if _module["id"] in EXTRAS
+                       else "setting" if _module["id"] in SETTINGS and not (_module["id"] == "tester" and TESTER_ALWAYS_ON)
+                       else "core")
 
 _BY_ID = {m["id"]: m for m in REGISTRY}
 
@@ -344,13 +355,31 @@ def _save_state(state):
     storage.save_json(_STATE_PATH, state)
 
 
+def _tester_override():
+    """True or False when the tester build decides Tester mode regardless of the saved switch, else None."""
+    if os.environ.get("DEJAVU_TESTER", "").strip().lower() in _OFF_WORDS:
+        return False                      # a developer's off: this run stays out of the record
+    return True if TESTER_ALWAYS_ON else None
+
+
+def _effective(module_id, state):
+    if module_id == "tester":
+        forced = _tester_override()
+        if forced is not None:
+            return forced
+    return state.get(module_id, _BY_ID[module_id]["default_enabled"])
+
+
 def get_all():
     """Every module with its metadata and current on/off state."""
     state = _load_state()
-    return [
-        {**module, "enabled": state.get(module["id"], module["default_enabled"])}
-        for module in REGISTRY
-    ]
+    rows = []
+    for module in REGISTRY:
+        row = {**module, "enabled": _effective(module["id"], state)}
+        if module["id"] == "tester":
+            row["kind"] = "core" if TESTER_ALWAYS_ON else "setting"          # the flag can change at run time (tests do)
+        rows.append(row)
+    return rows
 
 
 def is_enabled(module_id):
@@ -362,12 +391,14 @@ def is_enabled(module_id):
     """
     if module_id not in _BY_ID:
         return True
-    return _load_state().get(module_id, True)
+    return bool(_effective(module_id, _load_state()))
 
 
 def set_enabled(module_id, enabled):
     if module_id not in _BY_ID:
         raise ValueError(f"Unknown module: {module_id}")
+    if module_id == "tester" and TESTER_ALWAYS_ON and not enabled:
+        raise ValueError("Tester mode is always on in this tester build, so it has no switch")
     with _lock:                      # two devices switching two modules at once both stick
         state = _load_state()
         state[module_id] = bool(enabled)
@@ -376,7 +407,10 @@ def set_enabled(module_id, enabled):
 
 
 def apply_environment():
-    """DEJAVU_TESTER=1 switches Tester mode on at start. Settings can still switch it off afterwards."""
+    """
+    DEJAVU_TESTER=1 switches Tester mode on at start (when the build does not keep it on already). Settings can
+    still switch it off afterwards in that case. DEJAVU_TESTER=0 is read by _tester_override(), not here.
+    """
     if os.environ.get("DEJAVU_TESTER", "").strip().lower() in ("1", "true", "yes", "on"):
         if not _load_state().get("tester"):
             set_enabled("tester", True)

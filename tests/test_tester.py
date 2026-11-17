@@ -1,6 +1,10 @@
 """
 Tester mode (backend/tester.py, backend/tester_report.py): the record a tester saves as one zip.
 
+The tester build keeps Tester mode always on (modules.TESTER_ALWAYS_ON). These tests set that flag to False, which is the
+optional-switch build the flag can go back to, so they can prove the switch still works: they test the off path and the on
+path without depending on the build's default. tests/test_tester_study.py covers the always-on build.
+
 What these prove:
   - switched off, every tester route answers 403 and nothing is written;
   - switched on, events are kept, and nothing private reaches events.jsonl, report.json or report.html;
@@ -47,6 +51,8 @@ def _all_text(data):
 
 class TesterBase(unittest.TestCase):
     def setUp(self):
+        self._always_on, self._env = modules.TESTER_ALWAYS_ON, os.environ.pop("DEJAVU_TESTER", None)
+        modules.TESTER_ALWAYS_ON = False             # the optional-switch build
         modules.set_enabled("tester", False)
         tester.refresh()
         tester.delete_all()
@@ -55,6 +61,10 @@ class TesterBase(unittest.TestCase):
         modules.set_enabled("tester", False)
         tester.refresh()
         tester.delete_all()
+        modules.TESTER_ALWAYS_ON = self._always_on
+        if self._env is not None:
+            os.environ["DEJAVU_TESTER"] = self._env
+        tester.refresh()
 
     def turn_on(self):
         modules.set_enabled("tester", True)
@@ -137,6 +147,7 @@ class TestTheRoutes(TesterBase):
 
     def test_every_tester_route_answers_403_while_it_is_off(self):
         for method, path in (("GET", "/api/tester/status"), ("GET", "/api/tester/report.html"), ("GET", "/api/tester/report.zip"),
+                             ("GET", "/api/tester/study"), ("POST", "/api/tester/study"), ("POST", "/api/tester/answers"),
                              ("POST", "/api/tester/events"), ("POST", "/api/tester/delete")):
             status, body, _ = self.call(method, path, {"events": []} if method == "POST" else None)
             self.assertEqual(status, 403, path)
@@ -162,7 +173,7 @@ class TestTheRoutes(TesterBase):
         status, body, headers = self.call("GET", "/api/tester/report.zip")
         self.assertEqual(status, 200)
         self.assertRegex(headers["Content-Disposition"], r'deja-vu1-tester-report-\d{4}-\d{2}-\d{2}\.zip')
-        self.assertEqual(sorted(zipfile.ZipFile(io.BytesIO(body)).namelist()), ["README.txt", "events.jsonl", "report.html", "report.json"])
+        self.assertEqual(sorted(zipfile.ZipFile(io.BytesIO(body)).namelist()), ["README.txt", "events.jsonl", "findings.md", "report.html", "report.json"])
         status, body, _ = self.call("POST", "/api/tester/delete")
         self.assertEqual(status, 200)
         self.assertEqual(tester.event_files(), [])
@@ -434,9 +445,10 @@ class TestTheReport(TesterBase):
     def test_the_report_holds_every_section(self):
         self.synthetic_session()
         report = tester_report.build_report(server_setup=tester_report.setup_facts())
-        self.assertEqual(report["schema_version"], 1)
+        self.assertEqual(report["schema_version"], 2)
         for key in ("summary", "setup", "sessions", "screens", "clicks", "slow", "requests", "errors", "printer", "confirm_print",
-                    "slicing", "converter", "smoothness", "features", "notes", "updates", "timeline", "thinning", "never_recorded"):
+                    "slicing", "converter", "smoothness", "features", "notes", "updates", "timeline", "thinning", "never_recorded",
+                    "study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings"):
             self.assertIn(key, report)
         s = report["summary"]
         self.assertEqual((s["sessions"], s["clicks"], s["prints_started"], s["prints_failed"]), (1, 2, 1, 1))
@@ -460,25 +472,28 @@ class TestTheReport(TesterBase):
         self.assertTrue(all("questions_section" in f for f in report["features"]["detail"]))
         self.assertFalse(report["thinning"]["happened"])
 
-    def test_the_zip_has_four_files_and_a_page_with_no_scripts(self):
+    def test_the_zip_has_five_files_and_a_page_with_no_scripts(self):
         self.synthetic_session()
         name, data = tester_report.build_zip()
         z = zipfile.ZipFile(io.BytesIO(data))
-        self.assertEqual(sorted(z.namelist()), ["README.txt", "events.jsonl", "report.html", "report.json"])
+        self.assertEqual(sorted(z.namelist()), ["README.txt", "events.jsonl", "findings.md", "report.html", "report.json"])
         page = z.read("report.html").decode()
         self.assertNotIn("<script", page.lower())
         self.assertNotIn("http://", page)
         self.assertNotIn("https://", page)
         self.assertNotIn("src=", page)
-        for heading in ("The short version", "Day by day", "Setup", "The slowest 25 actions", "Errors", "The printer", "Confirm Print",
-                        "Slicing and converting", "Smoothness", "Features used and not used", "Their notes", "Updates"):
+        for heading in ("The short version", "Fix these first", "Their answers", "The first run", "How they used it", "Day by day", "Setup",
+                        "The slowest 25 actions", "Errors", "The printer", "Confirm Print", "Slicing and converting", "Smoothness and speed",
+                        "Features used and not used", "Their notes", "Updates"):
             self.assertIn(heading, page)
         self.assertIn("#slow-btn", page)
         self.assertIn("TypeError", page)
         self.assertIn("The pause button felt stuck", page)
         report = json.loads(z.read("report.json"))
-        self.assertEqual(report["schema_version"], 1)
+        self.assertEqual(report["schema_version"], 2)
         self.assertIn("never", z.read("README.txt").decode().lower())
+        self.assertIn("findings.md", z.read("README.txt").decode())
+        self.assertIn("# Deja Vu1 tester findings", z.read("findings.md").decode())
         for line in z.read("events.jsonl").decode().splitlines():
             json.loads(line)
 
@@ -689,12 +704,14 @@ class TestTheGuide(unittest.TestCase):
             with open(os.path.join(root, *parts), encoding="utf-8") as f:
                 return f.read()
         cls.guide = read("docs", "beta-testing.md")
-        cls.page = read("frontend", "index.html") + read("frontend", "tester.js")
+        cls.page = (read("frontend", "index.html") + read("frontend", "tester.js") + read("frontend", "tester-study.js")
+                    + read("backend", "tester_questions.py"))
         cls.rail = read("frontend", "rail.js")
 
     def test_every_name_it_tells_the_tester_to_press_is_on_the_screen(self):
-        for name in ("Record a tester report", "View report", "Save tester report", "Delete tester data", "Something felt off",
-                     "Tester mode", "Watch-only mode"):
+        for name in ("Answer the questions", "Start testing", "View report", "Save tester report", "Save my tester report", "Delete tester data",
+                     "Something felt off", "Something went wrong? Tell us", "Broken", "Slow", "Confusing", "Looks wrong", "Idea", "Works well",
+                     "Didn't try it", "Use this", "Tester mode", "Watch-only mode"):
             self.assertIn(name, self.guide, name)
             self.assertIn(name, self.page if name != "Watch-only mode" else self.page + "Watch-only mode", name)
 
@@ -714,6 +731,7 @@ class TestTheGuide(unittest.TestCase):
         self.assertIn("deja-vu1-tester-report-", self.guide)
         self.assertIn("forum", self.guide)
         self.assertNotIn("\u2014", self.guide)                      # no em dashes in public text
+        self.assertNotIn("Record a tester report", self.guide)       # the switch is gone: the tester build records from the first start
 
 
 if __name__ == "__main__":

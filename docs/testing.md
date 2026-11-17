@@ -26,8 +26,11 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1612 tests passed on Python 3.13.18 (Linux, 17 November 2026, version 0.20.15
-  plus Tester mode and its checks), run as one serial run: 1369.6 seconds (22 minutes 50 seconds). The run before it: 1557
+- **The test suite:** 1665 tests passed on Python 3.13.18 (Linux, 17 November 2026, version 0.20.15
+  plus the always-on Tester mode, its test round and questions), run in three parts of the test files so each fits the
+  ten-minute limit of the tool that ran them: 275.4, 420.6 and 382.7 seconds of test time (1078.7 seconds in all). The
+  run before it: 1612 tests (17 November, version 0.20.15 plus Tester mode and its checks), one serial run of 1369.6
+  seconds (22 minutes 50 seconds). The run before that: 1557
   tests (16 November 2026, version 0.20.14 plus colour calibration, the sensor in Confirm Print, the browser
   walk and the screen fixes it found), run as five parallel groups (the browser walk on its own): 977.9 seconds of test time in all, about 254
   seconds from start to finish. The browser walk's group failed once on a wait that was too short while the
@@ -46,18 +49,25 @@ The rest of the dashboard was used with the same printer. The firmware version w
   error, sideways scrolling or stray `undefined` text, and no payload ran. It took 5 minutes 20 seconds. Each
   check was shown to fail on a planted fault first. [Check Deja Vu1 yourself](for-reviewers.md).
 - **Tester mode** (17 November 2026, Chromium on Linux, against a stand-in printer, not a real U1). The tests
-  cover the switch (every `/api/tester` route answers 403 while it is off and nothing is written),
-  the masking of addresses, keys, folders with a user name and the names of files, printers and spools through
-  every way in, a synthetic week of 26 MB thinned to a zip under 25 MB with the totals unchanged, the sections of the
-  saved zip, watch-only mode with Tester mode on, and `tools/tester-reports.py` combining two reports.
-  `node tools/tester-walk.js` uses the app with the switch off (the browser sends nothing) and on (every place, a print
-  on the stand-in printer, a request held back 2.6 seconds, a button that freezes the page for 1.4 seconds, an error, a
-  failed promise, an error toast and a note), saves the zip, and opens its `report.html` with no network at 1366 px and
-  390 px in light and dark. Cost of recording on the Printer page with the 3D twin, in Chromium with software
-  rendering (24 alternating pairs of 6-second stretches, off against on, in two runs of 12): press to next paint +2.5 % (standard error
-  1.2), the page's main-thread time +2.1 % (1.3), frame time +1.8 % (3.9, within the noise). A CPU profile puts the
-  recorder's own script at 27 ms over 72.5 seconds, 0.04 % of the time. Not tested: Tester mode on a real U1, on
-  Windows or macOS, or in a browser other than Chromium.
+  cover the always-on build (no switch on screen, the server refuses to switch it off, `DEJAVU_TESTER=0` keeps a run out of the
+  record and every `/api/tester` route answers 403), the 52 questions, the round of 1, 2 or 3 days and the answers it keeps, the
+  masking of addresses, keys, folders with a user name and the names of files, printers and spools through every way in
+  (answers included), a synthetic week of 26 MB thinned to a zip under 25 MB with the totals unchanged, the five files of the
+  saved zip, how presses were made, the paths between screens, the first run, errors named by kind and tied to a part of the
+  app, the ranked findings, watch-only mode with Tester mode on, and `tools/tester-reports.py` combining reports of both
+  versions. `node tools/tester-walk.js` starts one server with `DEJAVU_TESTER=0` (the browser sends nothing) and then the
+  shipped build: the first-run setup clicked through and skipped, the welcome panel and 2 days chosen, every place, a double and
+  a right press, a list choice, shortcuts, the quick tour, a print on the stand-in printer, a request held back 2.6 seconds, a
+  button that freezes the page for 1.4 seconds, an error, a failed promise, an error toast, a tagged note written right after
+  the error, the round run out, 7 of the 52 questions answered, and the zip saved from the last step and from Settings. A
+  phone-sized touch browser taps something and the record says touch. It opens the zip's `report.html` with no network at 1366 px
+  and 390 px in light and dark. The walk passes 48 checks at 1366 px and at 390 px, and the online demo on a static server shows
+  the sample figures, records nothing and asks the server for nothing. Cost of recording on the Printer page with the 3D twin, in
+  Chromium with software rendering (8 alternating pairs of 8-second stretches on one server, a normal page against one whose
+  recorder does nothing): press to next paint -1.1 % (standard error 1.2), the page's main-thread time +3.7 % (2.8), median
+  frame time equal at 16.7 ms, mean frame time +9 % (5) from a few slow frames. That mean is above the 5 % the first build
+  aimed for. A CPU profile puts the recorder's own script at 25 ms over 42 seconds, 0.06 % of the time. Not tested: Tester mode
+  on a real U1, on Windows or macOS, or in a browser other than Chromium.
 - **Accessibility** (axe-core 4.10.2, WCAG 2.2 AA and best-practice rules, every place at 1366 px light and
   dark and 390 px light, with demo data, 16 November 2026): three failing rules were found and fixed (the
   Light, Dark and System buttons carried an attribute their role does not allow, the Farm desk schedule and

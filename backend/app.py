@@ -116,7 +116,10 @@ API endpoints
   GET  /api/tester/report.html       the tester report as one readable page (?theme=light|dark)
   GET  /api/tester/report.zip        the report as deja-vu1-tester-report-YYYY-MM-DD.zip to attach to a forum message
   POST /api/tester/events            the browser's batch of events {"events": [...]}; private details are hidden
-  POST /api/tester/delete            delete everything Tester mode recorded
+  POST /api/tester/delete            delete everything Tester mode recorded (the answers and the plan too)
+  GET  /api/tester/study             the test round: 1, 2 or 3 days, the day, status (?questions=1 adds the 52 questions, the saved answers and hints)
+  POST /api/tester/study             {"length_days": 1|2|3} or {"welcomed": true} or {"finish": true|false}
+  POST /api/tester/answers           {"answers": {"q7": {"c": "yes", "t": "..."}}}; each answer is masked and kept on this computer
   POST /api/app/updates/git          update a git checkout (fast-forward only)
   POST /api/app/repair               put the newest published files back over this copy, then restart
   POST /api/app/restart              restart the dashboard (launcher only)
@@ -340,7 +343,9 @@ import remote
 import ai_assistant
 import ai_providers
 import tester
+import tester_questions
 import tester_report
+import tester_study
 import watch_only
 import websocket
 import wled_bridge
@@ -568,7 +573,27 @@ _APP_ROUTES = {
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
     "/api/tester/status": ("tester", lambda q: tester.status()),
+    "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
+
+
+def _tester_study(q):
+    """The test round, and with ?questions=1 the questions, the saved answers and what the app saw next to each."""
+    info = tester_study.describe()
+    if _q(q, "questions", "") in ("1", "true", "yes"):
+        info = {**info, "sections": tester_questions.public(), "choices": tester_questions.CHOICES,
+                "answers": tester_study.answers_view(), "hints": tester_study.hints(tester_report.cached_report())}
+    return info
+
+
+def _tester_study_update(body):
+    if "length_days" in body:
+        tester_study.set_length(body.get("length_days"))
+    if body.get("welcomed"):
+        tester_study.mark_welcomed()
+    if "finish" in body:
+        tester_study.finish(bool(body.get("finish")))
+    return tester_study.describe()
 
 def _confirm_print(name):
     """The Confirm Print summary, noted for Tester mode (the file as 'file 3, .3mf, 2.4 MB', never its name)."""
@@ -1046,6 +1071,13 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
         return urlparse(origin).netloc.lower() in allowed
 
     def _dispatch(self, handler):
+        started = time.perf_counter()
+        try:
+            return self._dispatch_timed(handler)
+        finally:
+            tester.note_handler(self.command, self.path, (time.perf_counter() - started) * 1000.0)
+
+    def _dispatch_timed(self, handler):
         try:
             printer_id = self._printer_id()
         except LookupError as exc:
@@ -1496,12 +1528,16 @@ class DejaVuHandler(SimpleHTTPRequestHandler):
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.snooze(
                 body.get("task_id") or "", body.get("days")), require="task_id")
 
-        if route in ("/api/tester/events", "/api/tester/delete"):
+        if route in ("/api/tester/events", "/api/tester/delete", "/api/tester/study", "/api/tester/answers"):
             if self._module_blocked("tester"):
                 return None
             body = self._read_json_body()
             if route == "/api/tester/delete":
                 return self._send_json(tester.delete_all())
+            if route == "/api/tester/study":
+                return self._send_json(_tester_study_update(body))
+            if route == "/api/tester/answers":
+                return self._send_json(tester_study.save_answers(body.get("answers")))
             return self._send_json(tester.ingest(body))
 
         if route.startswith("/api/modules/") and route.endswith("/toggle"):

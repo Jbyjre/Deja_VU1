@@ -1,18 +1,24 @@
 #!/usr/bin/env node
 /* Tester mode in a real browser.
  *
- *   node tools/tester-walk.js --zip FILE [--shots DIR]   the walk: off, then on, then save the report
- *   node tools/tester-walk.js --overhead [--pages N --pairs N --secs N --reps N]   what recording costs on the Printer page with the 3D twin
+ *   node tools/tester-walk.js --zip FILE [--shots DIR]   the walk: a run kept off, then the tester build as shipped, then save the report
+ *   node tools/tester-walk.js --overhead [--pages N --pairs N --secs N --reps N] [--same-server]   what recording costs on the Printer page with the 3D twin
+ *                                                     (--same-server: one server; the "off" pages run a copy of tester.js whose start() does nothing)
  *   node tools/tester-walk.js --profile [--secs N]       the main-thread time spent inside tester.js, from a CPU profile
  *   node tools/tester-walk.js --probe                    only says whether Playwright and a Chromium are available
  *
- * The walk starts its own server and a stand-in printer (tests/fake_moonraker.py, a pretend printer, not a real one).
- *   1. Tester mode off: the pages are used and the browser sends nothing to /api/tester; the routes answer 403.
- *   2. Tester mode on, switched on in Settings like a person would: every place is opened, controls are pressed, a file
- *      is checked and printed on the stand-in printer, paused and cancelled, and three things go wrong on purpose:
- *      a request held back for 2.6 s, a button that freezes the page for 1.4 s, and an error, a failed promise and an
- *      error toast. "Something felt off" saves a note.
- *   3. Settings > Tester mode: View report opens the viewer, Save tester report downloads the zip (kept at --zip).
+ * The walk starts its own servers and a stand-in printer (tests/fake_moonraker.py, a pretend printer, not a real one).
+ *   1. A run started with DEJAVU_TESTER=0 (a developer's off): the pages are used, the browser sends nothing to /api/tester and
+ *      the routes answer 403.
+ *   2. The tester build as shipped (always on, no switch): the first-run setup is clicked through, the welcome panel asks how
+ *      long to test (2 days), every place is opened, controls are pressed (also double and right presses, a list choice, keys,
+ *      the tour), a file is checked and printed on the stand-in printer, paused and cancelled, and three things go wrong on
+ *      purpose: a request held back for 2.6 s, a button that freezes the page for 1.4 s, and an error, a failed promise and an
+ *      error toast. "Something felt off" saves a tagged note, with the error that just happened.
+ *   3. The round runs out (the saved start is moved back), the page asks for the answers, some of the 52 questions are answered
+ *      and the zip is saved from the last step (kept at --zip). Settings > Tester mode is checked too: no switch, the plan,
+ *      View report and Save tester report.
+ *   4. A phone-sized touch browser taps something, and the server's record says it was a touch.
  *   4. With --shots, screenshots of the card and the saved report.html (opened from the zip with no network, at 1366 and
  *      390 px, light and dark) go to DIR.
  * Prints one line per check and exits 0 only when every check passed. tests/test_tester_browser.py runs it and then
@@ -67,11 +73,11 @@ const get = url =>
       .on('error', reject);
   });
 
-async function startServer() {
+async function startServer(extraEnv = {}) {
   const port = await freePort();
   const data = fs.mkdtempSync(path.join(os.tmpdir(), 'dejavu-tester-'));
-  const env = { ...process.env, PORT: String(port), DEJAVU_DATA_DIR: data, DEJAVU_NO_BROWSER: '1' };
-  delete env.DEJAVU_TESTER;
+  const env = { ...process.env, PORT: String(port), DEJAVU_DATA_DIR: data, DEJAVU_NO_BROWSER: '1', ...extraEnv };
+  if (!('DEJAVU_TESTER' in extraEnv)) delete env.DEJAVU_TESTER;
   const child = spawn('python3', [path.join(ROOT, 'backend', 'app.py')], { cwd: ROOT, env, stdio: 'ignore' });
   const base = 'http://127.0.0.1:' + port;
   for (let i = 0; i < 100; i++) {
@@ -114,13 +120,13 @@ const VARIANTS = {
   nosample: [['firstSample = setTimeout(sample, 6000);', ''], ['setInterval(sample, SAMPLE_EVERY);', '']],
   nofetch: [['window.fetch = function (input, init) {', 'window.__unusedFetch = function (input, init) {']],
   noflush: [['flushTimer = setInterval(() => { aggFlush(false); flush(false); }, FLUSH_MS);', '']],
-  noclick: [["document.addEventListener('click', onClick, true);", '']],
+  noclick: [["document.addEventListener('click', e => press(e, 0), true);", '']],
   norecorder: [['function start() {\n    on = true;', 'function start() {\n    return;']]
 };
 
-async function openPage(browser, base, { width = 1366, theme = 'light', offline = false } = {}) {
-  const context = await browser.newContext({ viewport: { width, height: width <= 720 ? 844 : 900 }, serviceWorkers: 'block', offline });
-  const variant = option('--variant');
+async function openPage(browser, base, { width = 1366, theme = 'light', offline = false, keepSetup = false, touch = false, variantName = option('--variant') } = {}) {
+  const context = await browser.newContext({ viewport: { width, height: width <= 720 ? 844 : 900 }, serviceWorkers: 'block', offline, hasTouch: touch, isMobile: touch });
+  const variant = variantName;
   if (variant) {
     if (!VARIANTS[variant]) throw new Error('unknown --variant ' + variant);
     await context.route('**/tester.js', async route => {
@@ -155,7 +161,7 @@ async function openPage(browser, base, { width = 1366, theme = 'light', offline 
   });
   await page.goto(base + '/?dashboard', { waitUntil: 'load' });
   await page.waitForSelector('body[data-tab]', { timeout: 15000 });
-  await page.keyboard.press('Escape');
+  if (!keepSetup) await page.keyboard.press('Escape');
   await page.evaluate(t => {
     document.documentElement.dataset.theme = t;
   }, theme);
@@ -200,32 +206,53 @@ async function openTesterCard(page, width) {
 
 /* ---- the walk ---------------------------------------------------------------------------------------- */
 
+const tick = text => console.log('     ' + text);
+
+async function walkOff(browser, offServer, width) {
+  // 1. A run a developer keeps out of the record: the pages are used and nothing is sent.
+  const off = await openPage(browser, offServer.base, { width });
+  for (const id of ['overview', 'printers', 'printer', 'files', 'settings']) await goTo(off.page, id, width);
+  await sleep(6000);
+  check(off.seen.tester.length === 0, 'DEJAVU_TESTER=0: the browser sent nothing to /api/tester (' + off.seen.tester.length + ' requests)');
+  for (const [route, body] of [['/api/tester/events', { events: [{ k: 'click', ctl: '#x' }] }], ['/api/tester/study', {}], ['/api/tester/answers', { answers: {} }]]) {
+    const answer = await post(off.page, route, body);
+    check(answer.status === 403, 'DEJAVU_TESTER=0: ' + route + ' answers 403 (got ' + answer.status + ')');
+  }
+  const statusOff = await getJson(off.page, '/api/tester/status');
+  check(statusOff.status === 403, 'DEJAVU_TESTER=0: /api/tester/status answers 403 (got ' + statusOff.status + ')');
+  check(!fs.existsSync(path.join(offServer.data, 'tester')), 'DEJAVU_TESTER=0: no tester folder was written');
+  check((await off.page.locator('#tester-felt, #tester-chip, #tester-panel').count()) === 0, 'DEJAVU_TESTER=0: no tester buttons are on the screen');
+  await off.context.close();
+}
+
 async function walk(browser, server, standIn, width) {
   const { base } = server;
-  // 1. Off: the pages are used and nothing is sent.
-  const off = await openPage(browser, base, { width });
-  await post(off.page, '/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn.url });
-  await sleep(1500);
-  for (const id of ['overview', 'printers', 'printer', 'files', 'settings']) await goTo(off.page, id, width);
-  await sleep(1500);
-  check(off.seen.tester.length === 0, 'Tester mode off: the browser sent nothing to /api/tester (' + off.seen.tester.length + ' requests)');
-  const statusOff = await getJson(off.page, '/api/tester/status');
-  check(statusOff.status === 403, 'Tester mode off: /api/tester/status answers 403 (got ' + statusOff.status + ')');
-  const eventsOff = await post(off.page, '/api/tester/events', { events: [{ k: 'click', ctl: '#x' }] });
-  check(eventsOff.status === 403, 'Tester mode off: /api/tester/events answers 403 (got ' + eventsOff.status + ')');
-  check(!fs.existsSync(path.join(server.data, 'tester')), 'Tester mode off: no tester folder was written');
-  await off.context.close();
+  const { context, page, seen } = await openPage(browser, base, { width, keepSetup: true });
 
-  // 2. On, switched on in Settings like a person would.
-  const { context, page, seen } = await openPage(browser, base, { width });
+  // 2. The tester build as shipped. The first run opens the setup by itself; it is clicked through to step 3 and skipped.
+  await page.waitForSelector('#setup-dialog[open]', { timeout: 10000 });
+  check(true, 'The first run opens the setup by itself');
   await sleep(1500);
-  await openTesterCard(page, width);
-  const card = await page.locator('#tester-card').count();
-  check(card === 1, 'Settings has the Tester mode card');
-  await page.locator('label[for="tester-setting"]').click();
-  await page.waitForSelector('#tester-felt', { timeout: 8000 }).catch(() => {});
-  check((await page.locator('#tester-felt').count()) === 1, 'Switching it on shows "Something felt off" on the screen');
-  check(await page.locator('#tester-live').isVisible(), 'The counts and buttons appear once it is on');
+  await page.click('#setup-next');
+  await sleep(500);
+  await page.click('#setup-next');
+  await sleep(500);
+  await page.click('#setup-skip');
+  await sleep(800);
+  check((await page.locator('#tester-felt').count()) === 1, 'Recording is on with no switch: "Something felt off" is on the screen');
+  check((await page.locator('#tester-dock #tester-chip').count()) === 1, 'The test-round chip sits beside it');
+  await page.waitForSelector('#tester-panel', { timeout: 12000 }).catch(() => {});
+  const welcome = await page.locator('#tester-panel').innerText().catch(() => '');
+  check(/You are testing Deja Vu1/.test(welcome), 'The welcome panel says what is recorded and asks how long to test');
+  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'welcome-' + width + '.png') });
+  await page.click('#tester-panel [data-length="2"]');
+  await sleep(600);
+  await page.click('#tester-panel [data-panel="start"]');
+  await sleep(600);
+  check((await page.locator('#tester-chip').innerText()).toLowerCase().includes('day 1 of 2'), 'Choosing 2 days shows "Test day 1 of 2"');
+
+  await post(page, '/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn.url });
+  await sleep(2500);
 
   const places = ['overview', 'printers', 'printer', 'files', 'slice', 'queue', 'filament', 'maintenance', 'ai', 'settings', 'prefs', 'automations'];
   for (const id of places) {
@@ -238,9 +265,33 @@ async function walk(browser, server, standIn, width) {
           await sleep(150);
         }
       }
+      // A double press, a right press and a press with a key held.
+      await page.locator('[data-view="top"]').first().dblclick().catch(() => {});
+      await page.locator('[data-view="iso"]').first().click({ button: 'right' }).catch(() => {});
+      await page.keyboard.press('Escape');
+      await page.locator('[data-twin="zoom-in"]').first().click({ modifiers: ['Shift'] }).catch(() => {});
       await sleep(7500); // long enough for a smoothness sample of the twin
     }
+    if (id === 'automations' && (await page.locator('#rf-trigger').count())) {
+      await page.locator('#rf-trigger').focus().catch(() => {});          // a choice in a list, made with the keyboard like a person would
+      await page.keyboard.press('ArrowDown');
+      await sleep(200);
+    }
   }
+  await page.keyboard.press('Control+k');                              // a shortcut: the finder opens
+  await sleep(400);
+  await page.keyboard.press('Escape');
+
+  // The quick tour, ended after a few stops.
+  await goTo(page, 'settings', width);
+  await page.evaluate(() => document.getElementById('guide-replay') && document.getElementById('guide-replay').click());
+  await page.waitForSelector('.guide-card', { timeout: 8000 }).catch(() => {});
+  for (let i = 0; i < 3; i++) {
+    await page.locator('.guide-card [data-act="next"]').click({ timeout: 4000 }).catch(() => {});
+    await sleep(600);
+  }
+  await page.locator('.guide-card [data-act="end"]').click({ timeout: 4000 }).catch(() => {});
+  await sleep(800);
 
   // A file, Confirm Print, a print on the stand-in printer, pause, cancel.
   await post(page, '/api/files/samples', {});
@@ -253,12 +304,12 @@ async function walk(browser, server, standIn, width) {
       break;
     }
   }
-  check(!!gcode, 'The sample files include a G-code file that Confirm Print lets through')
+  check(!!gcode, 'The sample files include a G-code file that Confirm Print lets through');
   if (gcode) {
     const gate = await getJson(page, '/api/print/confirm?file=' + encodeURIComponent(gcode.name));
     check(gate.status === 200, 'Confirm Print answers for a sample file (' + gate.status + ')');
     const start = await post(page, '/api/printer/control/start', { filename: gcode.name, confirmed: true });
-    console.log('     start answered ' + start.status + (start.body && start.body.error ? ': ' + String(start.body.error).slice(0, 120) : ''));
+    tick('start answered ' + start.status + (start.body && start.body.error ? ': ' + String(start.body.error).slice(0, 120) : ''));
     await sleep(3500);
     await goTo(page, 'printer', width);
     await sleep(1200);
@@ -297,48 +348,131 @@ async function walk(browser, server, standIn, width) {
     if (typeof toast === 'function') toast('Walk: Emergency stop sent (123 ms)', 'ok', 2000);
   });
   await sleep(1200);
+  check(await page.locator('#tester-felt.is-alert').count() === 1, 'After an error the note button says "Something went wrong? Tell us"');
 
-  // A note.
+  // A tagged note, written right after the error: the note carries the error.
   await page.locator('#tester-felt').click();
+  check((await page.locator('#tester-note-error').count()) === 1, 'The note shows the error that just happened');
+  await page.locator('[data-tag="slow"]').click();
   await page.locator('#tester-note-text').fill('Pause felt slow (walk note about 192.168.7.7)');
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'note-' + width + '.png') });
   await page.locator('#tester-note-save').click();
   await sleep(800);
   check((await page.locator('#tester-note').count()) === 0, 'Saving a note closes the note panel');
+  // A note that is only a tag, one tap.
+  await page.keyboard.press('Alt+Shift+N');
+  await page.locator('[data-tag="good"]').click();
+  await page.locator('#tester-note-save').click();
+  await sleep(600);
   await page.evaluate(() => window.Tester && window.Tester.flush());
   await sleep(1500);
   check(seen.tester.some(r => r.startsWith('POST /api/tester/events')), 'Tester mode on: the browser sent events');
   const sentText = seen.bodies.join('\n');
   check(sentText.length > 0 && !sentText.includes('192.168.7.7') && sentText.includes('<ip>'),
     'The browser hid the address before it sent anything (' + sentText.length + ' bytes sent)');
+  check(/"how":"mouse"/.test(sentText) && /"btn":2/.test(sentText) && /"dbl":true/.test(sentText) && /"mods":"shift"/.test(sentText),
+    'Presses carry how they were made: mouse, a right press, a double press and a held key');
+  check(/"k":"change"/.test(sentText) && /"idx":\d+/.test(sentText), 'A choice in a list was recorded (its place in the list, never its words)');
+  check(/"k":"key","combo":"ctrl-k"/.test(sentText), 'A keyboard shortcut was recorded');
+  check(/"ev":"wizard_open"/.test(sentText) && /"ev":"wizard_end"/.test(sentText) && /"ev":"tour_start"/.test(sentText) && /"ev":"tour_end"/.test(sentText),
+    'The setup and the tour were recorded step by step');
 
-  // 3. The card, the viewer, the zip.
+  // 3. Settings > Tester mode: always on, the plan, the numbers.
   await openTesterCard(page, width);
   await sleep(1500);
+  check((await page.locator('#tester-setting').count()) === 0 && (await page.locator('#tester-always').isVisible()), 'The Tester mode card says "Always on" and has no switch');
+  check(await page.locator('#tester-plan').isVisible(), 'The card shows the test round');
   const counts = await page.evaluate(() => ['days', 'actions', 'errors', 'slow'].map(k => +document.getElementById('tester-' + k).textContent));
   check(counts[1] > (width > 720 ? 20 : 5) && counts[2] >= 3 && counts[3] >= 2, 'The card shows what was recorded: days, actions, errors, slow spots = ' + counts.join(', '));
+  if (option('--shots')) {
+    await page.locator('#tester-card').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(option('--shots'), 'card-on-' + width + '.png') });
+  }
+
+  // The round runs out: its saved start is moved back three days, and the page is opened again.
+  const studyPath = path.join(server.data, 'tester', 'study.json');
+  const study = JSON.parse(fs.readFileSync(studyPath, 'utf8'));
+  check(study.length_days === 2 && study.welcomed === true, 'The server kept the 2-day choice and that the welcome was seen');
+  study.started -= 3 * 86400000;
+  fs.writeFileSync(studyPath, JSON.stringify(study));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#tester-panel', { timeout: 20000 }).catch(() => {});
+  const endText = await page.locator('#tester-panel').innerText().catch(() => '');
+  check(/Your test round is over/.test(endText), 'When the days are up the page asks for the answers');
+  check((await page.locator('#tester-chip.is-due').count()) === 1, 'The chip says "Answer the questions"');
+  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'end-' + width + '.png') });
+  await page.click('#tester-panel [data-panel="answer"]');
+  await page.waitForSelector('#tester-q[open]', { timeout: 8000 });
+  await page.waitForSelector('#tester-q-body .tq-intro', { timeout: 8000 });
+  await sleep(300);
+  await page.click('#tester-q-next');
+  await page.fill('#tq-q1', 'Linux (the walk)');
+  await page.fill('#tq-q2', '3.13');
+  await sleep(1200);
+  await page.click('#tester-q-next');                                   // section 2: First run
+  await page.click('[data-q="q8"] [data-choice="no"]');
+  await page.fill('#tq-q8', 'It said connection refused at 192.168.7.7');
+  await page.click('[data-q="q9"] [data-choice="didnt_try"]');
+  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'questions-' + width + '.png') });
+  await page.click('#tester-q-next');                                   // section 3: Speed
+  await page.click('[data-q="q11"] [data-choice="yes"]');
+  await page.fill('#tq-q11', 'Pause');
+  await page.click('[data-step="11"]');                                 // jump to Overall
+  await page.fill('#tq-q47', 'The page threw an error on purpose.');
+  await page.click('[data-step="12"]');
+  await page.fill('#tq-q52', 'The walk broke things on purpose (192.168.7.7).');
+  await sleep(1500);
+  check(((await page.locator('#tester-q-saved-note').innerText()) || '').length > 0, 'Answers are saved as they are typed');
+  await page.click('#tester-q-next');
+  await page.waitForSelector('.tq-done', { timeout: 8000 });
+  const doneText = await page.locator('.tq-done').innerText();
+  check(/You answered 7 of 52/.test(doneText), 'The last step counts the answers: ' + (/You answered [^.]*/.exec(doneText) || [''])[0]);
+  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'questions-done-' + width + '.png') });
+  const zipPath = option('--zip') || path.join(os.tmpdir(), 'tester-walk.zip');
+  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click('[data-q-act="save"]')]);
+  await download.saveAs(zipPath);
+  check(/^deja-vu1-tester-report-\d{4}-\d{2}-\d{2}\.zip$/.test(download.suggestedFilename()), 'The last step downloads ' + download.suggestedFilename());
+  await sleep(1500);
+  check(/Saved deja-vu1-tester-report-/.test(await page.locator('#tester-q-saved').innerText()), 'It says where the file went and what to do with it');
+  await page.click('#tester-q-close');
+  await sleep(800);
+  check((await page.locator('#tester-chip').innerText()).includes('finished'), 'After the last step the chip says "Test finished"');
+
+  // View report and Save tester report in Settings still work.
+  await openTesterCard(page, width);
+  await sleep(1500);
   await page.locator('#tester-view').click();
   await sleep(2500);
   const frame = page.frames().find(f => f.url().includes('/api/tester/report.html'));
   check(!!frame, 'View report opens the report in the viewer');
   if (frame) {
     const headings = await frame.evaluate(() => [...document.querySelectorAll('h2')].map(h => h.textContent));
-    check(headings.includes('The short version') && headings.includes('Errors'), 'The viewer shows the readable report (' + headings.length + ' sections)');
+    check(headings.includes('The short version') && headings.includes('Fix these first') && headings.includes('Their answers') && headings.includes('Errors'),
+      'The viewer shows the readable report (' + headings.length + ' sections)');
   }
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'viewer-' + width + '.png') });
   await page.locator('#tester-close').click();
-  const [download] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.locator('#tester-save').click()]);
-  const zipPath = option('--zip') || path.join(os.tmpdir(), 'tester-walk.zip');
-  await download.saveAs(zipPath);
-  check(/^deja-vu1-tester-report-\d{4}-\d{2}-\d{2}\.zip$/.test(download.suggestedFilename()), 'Save tester report downloads ' + download.suggestedFilename());
+  const [again] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.locator('#tester-save').click()]);
+  check(/^deja-vu1-tester-report-\d{4}-\d{2}-\d{2}\.zip$/.test(again.suggestedFilename()), 'Save tester report in Settings downloads ' + again.suggestedFilename());
   await sleep(500);
-  if (option('--shots')) {
-    await page.locator('#tester-card').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(option('--shots'), 'card-on-' + width + '.png') });
-  }
   for (const p of seen.problems) check(false, 'the page reported: ' + p);
   await context.close();
   return zipPath;
+}
+
+/* 4. A phone-sized touch browser: a tap is recorded as a touch. */
+async function walkTouch(browser, server) {
+  const { context, page } = await openPage(browser, server.base, { width: 390, touch: true });
+  await sleep(1500);
+  await page.locator('#thumb-dock [data-tab="printers"], #thumb-dock a, #thumb-dock button').first().tap().catch(() => {});
+  await sleep(600);
+  await page.evaluate(() => window.Tester && window.Tester.flush());
+  await sleep(1500);
+  const dir = path.join(server.data, 'tester');
+  const text = fs.readdirSync(dir).filter(n => /^events-.*\.jsonl$/.test(n)).map(n => fs.readFileSync(path.join(dir, n), 'utf8')).join('\n');
+  check(/"how":"touch"/.test(text), 'A tap on a phone-sized touch screen is recorded as a touch');
+  check(/"device":"phone"/.test(text), 'A narrow window is recorded as a phone');
+  await context.close();
 }
 
 /* report.html from the zip, opened with no network, looks right at both widths in both themes. */
@@ -384,11 +518,10 @@ const sd = a => {
 const metricsOf = async cdp => Object.fromEntries((await cdp.send('Performance.getMetrics')).metrics.map(m => [m.name, m.value]));
 
 async function stretch(page, mode, secs, cdp) {
-  // The app's own postJSON, the call the Settings switch makes: it updates the page's module state at once.
-  await page.evaluate(async on => { await postJSON('/api/modules/tester/toggle', { enabled: on }); }, mode === 'on');
+  // The page was opened on a server with recording on, or one started with DEJAVU_TESTER=0 (off). Check it is as asked.
   await sleep(1800);
   const state = await page.evaluate(() => !!(window.Tester && window.Tester.isOn()));
-  if (state !== (mode === 'on')) throw new Error('Tester mode was ' + (state ? 'on' : 'off') + ' when ' + mode + ' was asked for');
+  if (state !== (mode === 'on') && !option('--variant')) throw new Error('Tester mode was ' + (state ? 'on' : 'off') + ' when ' + mode + ' was asked for');
   const m0 = await metricsOf(cdp);
   const frames = await page.evaluate(
     ms =>
@@ -426,36 +559,58 @@ async function stretch(page, mode, secs, cdp) {
   return { frames, clicks, busy };
 }
 
-async function overhead(browser, server) {
+/* One fresh page on the server for `mode`, settled on the Printer page with the 3D twin, then one timed stretch. */
+async function oneStretch(browser, servers, mode, secs) {
+  // --same-server: both kinds of page use one server; the "off" page runs a copy of tester.js whose start() does nothing.
+  const variantName = flag('--same-server') && mode === 'off' ? 'norecorder' : option('--variant');
+  const { context, page } = await openPage(browser, servers[mode].base, { width: 1366, variantName });
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Performance.enable');
+  await page.evaluate(() => {
+    const t = document.getElementById('demo-toggle');
+    if (t && !t.checked) t.click();
+    location.hash = '#/printer';
+  });
+  // A steady workload: the twin turning slowly draws every frame the same way, so a small cost shows above the noise.
+  if (flag('--spin')) await page.locator('#twin-spin').click();
+  if (flag('--hide-felt')) await page.addStyleTag({ content: '#tester-dock, #tester-note, #tester-panel { display: none !important; }' });   // to see whether the glass pills cost frames
+  await sleep(6000);
+  await page.evaluate(() => {
+    window.__paints = [];
+    // Capture phase on window: it runs before the recorder's own listener, so the press is timed from the start.
+    window.addEventListener('click', () => {
+      const t0 = performance.now();
+      requestAnimationFrame(() => setTimeout(() => window.__paints.push(performance.now() - t0), 0));
+    }, true);
+  });
+  const result = await stretch(page, mode, secs, cdp);
+  await context.close();
+  return result;
+}
+
+const postServer = (base, route, body) =>
+  new Promise((resolve, reject) => {
+    const data = JSON.stringify(body || {});
+    const req = http.request(base + route, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } }, res => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    req.on('error', reject);
+    req.end(data);
+  });
+
+async function overhead(browser, servers) {
   const pages = +(option('--pages') || 3), pairs = +(option('--pairs') || 5), secs = +(option('--secs') || 9);
+  // The steady state: the welcome panel (a glass panel on screen until it is acknowledged) is a one-time thing, not part of what recording costs.
+  await postServer(servers.on.base, '/api/tester/study', { welcomed: true });
   const rows = [];
   const fh = { off: [], on: [] }, ch = { off: [], on: [] };
   for (let p = 0; p < pages; p++) {
-    const { context, page } = await openPage(browser, server.base, { width: 1366 });
-    const cdp = await context.newCDPSession(page);
-    await cdp.send('Performance.enable');
-    await page.evaluate(() => {
-      const t = document.getElementById('demo-toggle');
-      if (t && !t.checked) t.click();
-      location.hash = '#/printer';
-    });
-    // A steady workload: the twin turning slowly draws every frame the same way, so a small cost shows above the noise.
-    if (flag('--spin')) await page.locator('#twin-spin').click();
-    if (flag('--hide-felt')) await page.addStyleTag({ content: '#tester-felt, #tester-note { display: none !important; }' });   // to see whether the glass pill costs frames
-    await sleep(6000);
-    await page.evaluate(() => {
-      window.__paints = [];
-      // Capture phase on window: it runs before the recorder's own listener, so the press is timed from the start.
-      window.addEventListener('click', () => {
-        const t0 = performance.now();
-        requestAnimationFrame(() => setTimeout(() => window.__paints.push(performance.now() - t0), 0));
-      }, true);
-    });
     for (let k = 0; k < pairs; k++) {
       const order = (p + k) % 2 ? ['on', 'off'] : ['off', 'on'];
       const pair = {};
       for (const mode of order) {
-        const r = await stretch(page, mode, secs, cdp);
+        const r = await oneStretch(browser, servers, mode, secs);
         pair[mode] = { busy: r.busy, frame_mean: mean(r.frames), frame_median: median(r.frames), frame_p95: r.frames.slice().sort((a, b) => a - b)[Math.floor(r.frames.length * 0.95)],
           click_mean: mean(r.clicks), click_median: median(r.clicks), frames: r.frames.length, presses: r.clicks.length };
         fh[mode].push(...r.frames);
@@ -466,7 +621,6 @@ async function overhead(browser, server) {
         frame_mean_ms: [+pair.off.frame_mean.toFixed(1), +pair.on.frame_mean.toFixed(1)], click_mean_ms: [+pair.off.click_mean.toFixed(0), +pair.on.click_mean.toFixed(0)],
         main_thread_busy_s_per_s: [+pair.off.busy.TaskDuration.toFixed(4), +pair.on.busy.TaskDuration.toFixed(4)] }));
     }
-    await context.close();
   }
   const pct = (a, b) => ((b - a) / a) * 100;
   const se = a => sd(a) / Math.sqrt(a.length);
@@ -480,7 +634,7 @@ async function overhead(browser, server) {
   }
   const out = {
     main_thread_seconds_per_second: busyDiffs,
-    method: 'one page per block, Tester mode switched off and on in alternating ' + secs + ' s stretches on the Printer page (demo data, 3D twin), ' + pairs + ' pairs per page',
+    method: 'a fresh page per stretch, on a server started with DEJAVU_TESTER=0 (off) and on a normal one (on), alternating ' + secs + ' s stretches on the Printer page (demo data, 3D twin), ' + pairs + ' pairs per block',
     pages, pairs_per_page: pairs, pairs: rows.length,
     frame_time_ms: { off_mean: mean(fh.off), on_mean: mean(fh.on), off_median: median(fh.off), on_median: median(fh.on), frames: [fh.off.length, fh.on.length],
       difference_percent_of_means: pct(mean(fh.off), mean(fh.on)), paired_difference_percent: { mean: mean(frameDiffs), standard_error: se(frameDiffs), median: median(frameDiffs) } },
@@ -502,9 +656,7 @@ async function profile(browser, server) {
     if (t && !t.checked) t.click();
     location.hash = '#/printer';
   });
-  await sleep(4000);
-  await page.evaluate(async () => { await postJSON('/api/modules/tester/toggle', { enabled: true }); });
-  await sleep(1800);
+  await sleep(5000);
   check(await page.evaluate(() => !!(window.Tester && window.Tester.isOn())), 'profile: Tester mode is recording');
   const cdp = await context.newCDPSession(page);
   await cdp.send('Profiler.enable');
@@ -566,17 +718,21 @@ async function profile(browser, server) {
   const shotDir = option('--shots');
   if (shotDir) fs.mkdirSync(shotDir, { recursive: true });
   const server = await startServer();
+  const offServer = flag('--profile') || flag('--same-server') ? null : await startServer({ DEJAVU_TESTER: '0' });
   let standIn = null;
   const browser = await playwright.chromium.launch({ executablePath: exe, args: ['--no-sandbox'] });
   try {
     if (flag('--overhead')) {
-      await overhead(browser, server);
+      await overhead(browser, { on: server, off: offServer || server });
     } else if (flag('--profile')) {
       await profile(browser, server);
     } else {
       standIn = await startStandIn();
       let zipPath = null;
-      for (const width of (option('--width') ? [+option('--width')] : [1366])) zipPath = await walk(browser, server, standIn, width);
+      const width = option('--width') ? +option('--width') : 1366;
+      await walkOff(browser, offServer, width);
+      zipPath = await walk(browser, server, standIn, width);
+      await walkTouch(browser, server);
       if (shotDir) await shots(browser, zipPath, shotDir);
     }
   } finally {
@@ -584,6 +740,10 @@ async function profile(browser, server) {
     if (standIn) standIn.child.kill();
     server.child.kill();
     fs.rmSync(server.data, { recursive: true, force: true });
+    if (offServer) {
+      offServer.child.kill();
+      fs.rmSync(offServer.data, { recursive: true, force: true });
+    }
   }
   console.log((results.failed.length ? 'FAILED' : 'PASSED') + ': ' + results.passed + ' checks passed, ' + results.failed.length + ' failed');
   process.exit(results.failed.length ? 1 : 0);

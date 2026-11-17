@@ -120,36 +120,53 @@ slicing and launcher files have their own notes in this folder.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
 
-## Tester mode (`tester.py`, `tester_report.py`)
+## Tester mode (`tester.py`, `tester_report.py`, `tester_study.py`, `tester_questions.py`)
 
-- Module `tester` (kind `setting`, off by default; `DEJAVU_TESTER=1` switches it on at start through
-  `modules.apply_environment()`, and Settings can still switch it off). Off: every `/api/tester/*` route answers 403
-  (the module gate) and `tester.record` and `tester.ingest` write nothing. The switch is cached for a second;
-  `tester.refresh()` after a toggle makes turning it off immediate.
+- Module `tester` is always on in this build (`modules.TESTER_ALWAYS_ON = True`: kind `core`, enabled whatever the saved state
+  says, and `set_enabled("tester", False)` raises). `DEJAVU_TESTER=0` is the one way to keep a run out of the record: the module
+  reads off, every `/api/tester/*` route answers 403 (the module gate) and `tester.record` and `tester.ingest` write nothing.
+  With the flag False the module is a `setting`, off by default, and `DEJAVU_TESTER=1` or the Settings switch turns it on. The
+  switch is cached for a second; `tester.refresh()` after a change makes it immediate.
 - Events are JSON Lines under `<data>/tester/events-YYYY-MM-DD.jsonl` (`events-archive.jsonl` holds old days summed up).
   `backup.py` and `memory.py` skip the folder. Nothing is sent anywhere; the tester saves a zip
   (`GET /api/tester/report.zip`) and attaches it to a message. `POST /api/tester/events` takes the browser's batch
   (at most 400 events; only the kinds and fields in `tester._BROWSER`, in the shapes it lists, so no field can carry
-  typed text); `GET /api/tester/report.html?theme=` is the in-app viewer (CSP `default-src 'none'`).
+  typed text; every event may carry `q`, its order within the visit); `GET /api/tester/report.html?theme=` is the in-app
+  viewer (CSP `default-src 'none'`). A note needs words or a tag.
+- The kinds the browser sends: session, setup, screen (with `via`), click (`how`, `btn`, `mods`, `dbl`, `x`, `y`, `gap`, `role`),
+  change (a switch, slider or list place, never words), key, long, req, err (`stack`, `ctl`, `pstate`), printer, fps, feature,
+  note (`tag`, `err`), onboarding (the setup wizard and the tour, each step when it is left), perf (start-up timings, page memory),
+  net (offline, the live link closing), study (the questions' funnel) and resize. A new field goes in `_BROWSER` with its shape.
 - `tester.mask()` runs on every string, in the browser's events and the server's own, and again in `thin_files`. It hides
   addresses, keys, Wi-Fi names, serial numbers, `/Users/<name>/` folders, and file, printer and spool names the
   app knows (`_known_private()`; names live in memory only, the disk holds salted hashes in `ids.json`). A file shows as
   `file_label()`: "file 3, .3mf, 2.4 MB". An inline replacement carries no dot (`file 3 (3mf)`) so it is never masked again.
   Version strings (`version`, `from`, `to`, `facts`) go through `version_text()`: 1.0.0.123 is a firmware, not an address.
-  Unquoted names with spaces that the app doesn't know can leave a few words; the zip says so and is readable first.
+  A Wi-Fi name is masked only when labelled (`ssid=`, "Wi-Fi name"); unquoted names the app doesn't know can leave a few words,
+  so the zip says it is readable first and question 4 asks testers to leave the network's name out.
 - Server hooks are one line each and never raise: `live_feed.publish_event` (print events) and `_detect_locked`
-  (connects and drops), `app._dispatch` (refused POST commands, 500s), `_confirm_print` (Confirm Print), `printer_control`
-  (start), `slicer_bridge._work` (slices), `/api/convert`, `app.main` (last update). Camera and time-lapse pictures are plain
-  images, so those routes call `tester.note_feature()`. `MoonrakerPrinter.version_facts()` reads only `server.info` and
-  `machine.system_info`, both allowed in watch-only mode. Which `product_info` field holds the U1's firmware version is
-  not verified: every version-named field is recorded.
+  (connects and drops), `app._dispatch` (refused POST commands, 500s, and `note_handler` for answers over 1.5 s), `_confirm_print`
+  (Confirm Print), `printer_control` (start), `slicer_bridge._work` (slices), `/api/convert`, `app.main` (last update and
+  `install_hooks()`, which also starts a sampler that notes the server's memory, processor time, threads and free disk every five
+  minutes). Camera and time-lapse pictures are plain images, so those routes call `tester.note_feature()`.
+  `MoonrakerPrinter.version_facts()` reads only `server.info` and `machine.system_info`, both allowed in watch-only mode. Which
+  `product_info` field holds the U1's firmware version is not verified: every version-named field is recorded.
 - Routine background `GET`s arrive as five-minute summaries; every other request, and every failed or slow one, is one
-  event. Past `EXPORT_LIMIT` (20 MB) `thin_files` replaces the oldest routine events (clicks that were not slow,
-  working requests, screen visits, smoothness samples) with one `thinned` line per day and name; errors, slow actions, notes
-  and printer events are never thinned, and the report counts before it thins. `compact()` does the same on disk past 40 MB.
-- The report's feature rules are `tester_report.FEATURES` (22 features, each with the questions-sheet section). A new
-  feature worth counting gets a row. The report holds no script and loads nothing from outside; everything in it goes
-  through `_h()`.
+  event. Past `EXPORT_LIMIT` (20 MB) `thin_files` replaces the oldest routine events (clicks that were not slow, working requests,
+  screen visits, smoothness samples) with one `thinned` line per day and name; errors, slow actions, notes and printer events are
+  never thinned, and the report counts before it thins. `compact()` does the same on disk past 40 MB.
+- The test round (`tester_study.py`, `<data>/tester/study.json`): 1, 2 or 3 days (3 by default), `describe()` gives the day and
+  the status (`running`, `due`, `finished`), answers are masked and capped, `delete_all()` removes the file and so restarts the
+  round. `tester_questions.py` holds the 52 questions in 12 sections in the order of the tester questions sheet (`SECTIONS`,
+  `BY_ID`); `bad` marks the answer that points at trouble and `finding` the free answers that go to the findings list.
+  Routes: `GET /api/tester/study` (`?questions=1` adds the questions, the answers and the hints), `POST /api/tester/study`
+  (`length_days`, `welcomed`, `finish`) and `POST /api/tester/answers`. All answer 403 when the module is off.
+- The report's feature rules are `tester_report.FEATURES` (22 features, each with the questions-sheet section); `CATEGORIES`
+  names the kinds of error and what each means, `ROUTE_AREAS` ties a request to a part of the app. `_findings()` builds the ranked
+  work list (errors, slow controls, failed requests, refused commands, failed slices, low frame rates, notes, troubled answers,
+  memory growth); 403 and 409 answers are refusals on purpose and are not findings. The zip holds `report.html`, `findings.md`,
+  `report.json` (schema 2), `events.jsonl` and `README.txt`. The report holds no script and loads nothing from outside; everything
+  in it goes through `_h()`.
 
 ## The AI assistant
 
