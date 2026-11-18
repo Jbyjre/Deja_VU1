@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.18",
+      "date": "2026-11-18",
+      "name": "The 3D twin's bed and head stay where they really are while the printer homes",
+      "published": true,
+      "summary": "The 3D twin's bed and head stay where they really are while the printer homes.",
+      "changes": [
+        "The 3D twin's bed and head stay where they really are while the printer homes"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.17",
       "date": "2026-11-18",
       "name": "Keep Tester mode on from the first start, ask the test questions in the app a...",

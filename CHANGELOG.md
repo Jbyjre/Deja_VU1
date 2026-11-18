@@ -52,6 +52,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.18 (18 November 2026): The 3D twin's bed and head stay where they really are while the printer homes
+
+- The 3D twin's bed and head stay where they really are while the printer homes
+
 ## 0.20.17 (18 November 2026): Keep Tester mode on from the first start, ask the test questions in the app a...
 
 - Keep Tester mode on from the first start, ask the test questions in the app and rank what to fix
