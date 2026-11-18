@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.21",
+      "date": "2026-11-18",
+      "name": "The dashboard's largest files are split into smaller parts; nothing changes o...",
+      "published": true,
+      "summary": "The dashboard's largest files are split into smaller parts; nothing changes on screen.",
+      "changes": [
+        "The dashboard's largest files are split into smaller parts; nothing changes on screen"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.20",
       "date": "2026-11-18",
       "name": "Session notes: the core skill as the source of truth, and screens moving to o...",

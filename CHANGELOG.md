@@ -72,6 +72,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.21 (18 November 2026): The dashboard's largest files are split into smaller parts; nothing changes o...
+
+- The dashboard's largest files are split into smaller parts; nothing changes on screen
+
 ## 0.20.20 (18 November 2026): Session notes: the core skill as the source of truth, and screens moving to o...
 
 - Session notes: the core skill as the source of truth, and screens moving to one surface (#107)
