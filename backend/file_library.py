@@ -19,9 +19,11 @@ whether or not a printer is connected. It never contains printer readings.
 """
 
 import base64
+import hashlib
 import os
 import re
 import threading
+import unicodedata
 from datetime import datetime
 
 import gcode_tools
@@ -72,13 +74,28 @@ def kind_of(name):
     return None
 
 
+# Latin letters with no accent to take off that still have a plain spelling.
+_PLAIN_LATIN = str.maketrans({"ß": "ss", "ẞ": "SS", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE", "ø": "o", "Ø": "O",
+                              "đ": "d", "Đ": "D", "ł": "l", "Ł": "L", "þ": "th", "Þ": "Th", "ð": "d", "Ð": "D", "ı": "i"})
+
+
 def clean_name(name):
     """
-    A safe file name: no folders, no hidden files, only ordinary
-    characters, and an extension this library understands.
+    A safe file name: no folders, no hidden files, only ordinary characters, and an extension this library understands.
+
+    Accented letters lose their accent (Käse becomes Kase). Letters of other alphabets cannot stay in a name the printer
+    sees too, and turning each into "_" made different names one file (кубик.stl and шарик.stl both became _____.stl, and
+    the second replaced the first). A name with such letters keeps its plain part and ends in a short code taken from the
+    whole original name: model-3f9a1c.stl. The same name always gives the same result, and a cleaned name cleans to itself.
     """
     name = os.path.basename(str(name or "").replace("\\", "/")).strip()
-    name = re.sub(r"[^A-Za-z0-9._ ()+-]", "_", name)
+    plain = "".join(c for c in unicodedata.normalize("NFKD", name.translate(_PLAIN_LATIN)) if not unicodedata.combining(c))
+    cleaned = re.sub(r"[^A-Za-z0-9._ ()+-]", "_", plain)
+    if any(ord(c) > 127 and c.isalnum() for c in plain):
+        ext = next((cleaned[-len(e):] for e in ALLOWED_EXTENSIONS if cleaned.lower().endswith(e)), "")
+        stem = re.sub(r"_+", "_", cleaned[:len(cleaned) - len(ext)]).strip("_ .-")
+        cleaned = f"{stem or 'model'}-{hashlib.sha1(name.encode('utf-8')).hexdigest()[:6]}{ext}"
+    name = cleaned
     if not name or name.startswith("."):
         raise ValueError("That file name isn't allowed")
     if len(name) > 120:

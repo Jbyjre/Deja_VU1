@@ -154,6 +154,7 @@ def _git(root, *args, timeout=60):
         raise ValueError(GIT_MISSING)
     flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
     done = subprocess.run([git, '-C', str(root), *args], capture_output=True, text=True, timeout=timeout,
+                          encoding='utf-8', errors='replace',
                           stdin=subprocess.DEVNULL, creationflags=flags,
                           env={**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'LC_ALL': 'C'})
     if done.returncode:
@@ -504,11 +505,12 @@ def git_update(root=ROOT):
         raise ValueError(GIT_MISSING)
     env = dict(os.environ, GIT_TERMINAL_PROMPT='0')
     dirty = subprocess.run([git, '-C', str(root), 'status', '--porcelain', '--untracked-files=no'],
-                           capture_output=True, text=True, timeout=30, env=env)
+                           capture_output=True, text=True, timeout=30, env=env,
+                           encoding='utf-8', errors='replace')
     if dirty.returncode or dirty.stdout.strip():
         raise ValueError('This copy has local code changes. Commit or set them aside first; nothing was changed')
     pulled = subprocess.run([git, '-C', str(root), 'pull', '--ff-only'], capture_output=True, text=True,
-                            timeout=180, env=env)
+                            timeout=180, env=env, encoding='utf-8', errors='replace')
     words = re.sub(r'://[^/\s@]+@', '://', (pulled.stderr or pulled.stdout or '').strip())
     if pulled.returncode:
         raise ValueError('Git could not bring this copy up to date: ' + (words.splitlines() or ['no reason given'])[-1][:200])

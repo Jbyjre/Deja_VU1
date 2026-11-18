@@ -75,10 +75,17 @@ You need your own running copy for real readings.
    announcements and the usual Moonraker port on the computer's local subnet;
    it cannot find every printer across different networks.
 7. If no result appears, get the printer's IP address from its screen or your
-   router's device list. Enter `http://PRINTER-IP:7125`, for example
-   `http://192.168.1.50:7125`. An IP address is a device's address on the network.
-   Enter the printer's API key only if it requires one; this is its access key.
-   Test the connection. Do not share the key in screenshots or bug reports.
+   router's device list and type it into **Printer address**, for example
+   `192.168.1.50`. An IP address is a device's address on the network: four numbers
+   from 0 to 255 with dots between them. A shorter one is refused with a reason,
+   because the computer would read it as a different device. Deja Vu1 adds
+   `http://` and the port (`:7125`) itself, and the full form
+   `http://192.168.1.50:7125` works too. **Continue** connects an address you
+   typed but did not test yet; if that fails, it says why, and pressing
+   **Continue** a second time skips the printer so you can add it later under
+   **Printers**. Enter the printer's API key only if it requires one; this is its
+   access key. Test the connection. Do not share the key in screenshots or bug
+   reports.
 8. Wait for **Connected**, with **Demo data** off. Check that temperatures and
    print status match the printer. A successful connection test is not proof
    that every printer function works. Start with the watch-only checks in

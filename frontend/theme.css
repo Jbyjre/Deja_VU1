@@ -922,6 +922,9 @@ html.setup-full-open body > *:not(.bg):not(dialog):not(script) { visibility: hid
 .setup-dialog.is-full h2 { font-size: clamp(34px, 5.2vw, 60px); line-height: 1.04; margin-bottom: 20px; text-wrap: balance; }
 .setup-dialog.is-full .setup-mark { font-size: 56px; }
 .setup-lead { font-size: clamp(16px, 1.6vw, 19px); color: var(--text-dim); max-width: 60ch; }
+/* The intro paragraph needs air before what follows it; the checkbox keeps the size the picker gives it. */
+.setup-dialog .setup-lead { margin-bottom: 22px; }
+.setup-dialog .bp-switch input { display: inline-block; min-height: 0; margin: 0; }
 .setup-points { list-style: none; padding: 0; margin: 22px 0 8px; display: grid; gap: 10px; }
 .setup-points li { padding: 12px 16px; border-radius: 14px; background: var(--paper-solid); box-shadow: var(--shadow-card); }
 .setup-dialog.is-full .setup-footer {

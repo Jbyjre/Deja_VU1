@@ -32,6 +32,16 @@ _EXCLUDED = {
 _SECRET = re.compile(r'(?:api[_-]?key|token|password|secret|webhook|authorization|private[_-]?key)', re.I)
 
 
+def _write_exact(path, text):
+    """
+    Write a text file as UTF-8, with its line endings exactly as given. A plain text write uses the computer's own code
+    page (a data folder path with letters outside the Windows one would fail to save) and turns every \n into \r\n on
+    Windows (so a \r\n written on purpose came out as \r\r\n).
+    """
+    with open(path, 'w', encoding='utf-8', newline='') as handle:
+        handle.write(text)
+
+
 def _safe_name(name):
     if (
         not isinstance(name, str)
@@ -299,15 +309,18 @@ def restore(body):
             + repr(str(start))
             + "]))\n"
         )
-        (staging / 'launch-restored.py').write_text(launcher)
-        (staging / 'Start restored app.command').write_text(
-            '#!/bin/sh\ncd "$(dirname "$0")" || exit 1\nexec python3 launch-restored.py\n'
+        _write_exact(staging / 'launch-restored.py', launcher)
+        _write_exact(
+            staging / 'Start restored app.command',
+            '#!/bin/sh\ncd "$(dirname "$0")" || exit 1\nexec python3 launch-restored.py\n',
         )
         (staging / 'Start restored app.command').chmod(0o700)
-        (staging / 'Start restored app.bat').write_text(
-            '@echo off\r\ncd /d "%~dp0"\r\npython launch-restored.py\r\npause\r\n'
+        _write_exact(
+            staging / 'Start restored app.bat',
+            '@echo off\r\ncd /d "%~dp0"\r\npython launch-restored.py\r\npause\r\n',
         )
-        (staging / 'RECOVERY.txt').write_text(
+        _write_exact(
+            staging / 'RECOVERY.txt',
             'Stop the running Deja Vu1 app first. Open the launcher for your operating system. Your original data is unchanged. Review printer addresses, re-enter connection credentials, check the engine and re-enable automatic modules only after review. Return to the original launcher to recover the previous installation.\n'
         )
         os.replace(staging, destination)

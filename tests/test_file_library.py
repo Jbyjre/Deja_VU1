@@ -41,6 +41,29 @@ class TestLibrary(unittest.TestCase):
         entry = file_library.save("../sneaky.gcode", b"PRINT_START\nG1 X1 E1\n")
         self.assertEqual(entry["name"], "sneaky.gcode")
 
+    def test_names_in_other_alphabets_never_become_the_same_file(self):
+        # Every letter outside A-Z used to become "_", so кубик.stl and шарик.stl were both _____.stl and the second replaced the first.
+        names = ["кубик.stl", "шарик.stl", "模型一.stl", "模型二.stl", "Würfel 模型.stl", "Würfel 立方.stl", "ΚΥΒΟΣ.3MF"]
+        cleaned = [file_library.clean_name(n) for n in names]
+        self.assertEqual(len(set(cleaned)), len(names))
+        for original, name in zip(names, cleaned):
+            self.assertEqual(file_library.clean_name(name), name, original)            # a cleaned name cleans to itself
+            self.assertRegex(name, r"^[A-Za-z0-9._ ()+-]+$")
+            self.assertEqual(file_library.clean_name(original), name)                  # the same name always gives the same file
+            file_library.save(original, b"solid x\nendsolid x\n" if original.lower().endswith("stl") else b"PK")
+        listed = {f["name"] for f in file_library.list_files()["files"]}
+        self.assertTrue(set(cleaned) <= listed, listed)
+        self.assertTrue(cleaned[0].startswith("model-") and cleaned[0].endswith(".stl"))
+        self.assertTrue(cleaned[4].startswith("Wurfel-"))                              # the plain part stays
+        self.assertTrue(cleaned[6].endswith(".3MF"))                                   # and the extension keeps its case
+
+    def test_accents_are_taken_off_not_turned_into_underscores(self):
+        self.assertEqual(file_library.clean_name("Käse Würfel (v2).stl"), "Kase Wurfel (v2).stl")
+        self.assertEqual(file_library.clean_name("Straße.gcode"), "Strasse.gcode")
+        self.assertEqual(file_library.clean_name("résumé.OBJ"), "resume.OBJ")
+        self.assertEqual(file_library.clean_name("plain name (1)+x.stl"), "plain name (1)+x.stl")
+        self.assertEqual(file_library.clean_name("a#b&c.stl"), "a_b_c.stl")
+
     def test_edit_keeps_the_original_and_restores_it(self):
         file_library.add_samples()
         name = "3dbenchy_pla.gcode"

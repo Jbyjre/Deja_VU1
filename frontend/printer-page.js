@@ -205,7 +205,9 @@ window.PrinterPage = (() => {
         const r = await fetch(api(`/api/camera/snapshot?t=${Date.now()}`));
         if (!r.ok || (r.headers.get('Content-Type') || '').includes('json')) {
           const d = await r.json().catch(() => ({}));
-          throw new Error(d.error || (d.connected === false ? 'No printer connected.' : 'The camera did not answer.'));
+          const failure = new Error(d.error || (d.connected === false ? 'No printer connected.' : 'The camera did not answer.'));
+          failure.noPrinter = d.connected === false && !d.error;
+          throw failure;
         }
         const blob = await r.blob();
         if (run !== cam.run) return;
@@ -227,6 +229,12 @@ window.PrinterPage = (() => {
         cam.timer = setTimeout(next, Math.max(0, 200 - (performance.now() - asked)));
       } catch (e) {
         if (run !== cam.run) return;
+        if (e && e.noPrinter) {
+          // Nothing to show yet is not a camera fault: say what is missing, not that the camera failed.
+          stopCam(cam, 'No printer connected');
+          note(cam, 'Add your printer under Printers, turn on demo data to look around, or check that a printer you added is on and on the same Wi-Fi as this computer.');
+          return;
+        }
         stopCam(cam, 'Camera not answering');
         note(cam, `${e.message || e} Add a camera address under Printer → Camera & time-lapses if your printer has one.`);
       }

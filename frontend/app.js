@@ -750,10 +750,29 @@ async function postJSON(url, payload) {
 /* localStorage can throw (private browsing in some browsers, or site data
  * blocked). Remembered choices are a convenience, so a failure here must
  * never stop the dashboard loading. */
-const store = {
-  get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch (_) { /* not remembered */ } },
-};
+/* This browser's memory. A browser that blocks saved site data (strict privacy settings, some private windows) makes
+ * localStorage throw, so a value then goes to the tab's own memory (sessionStorage), and failing that to the page, so
+ * the setup screen and the chosen screen at least hold until the tab closes or reloads. set() says whether the value
+ * will outlive the tab. */
+const store = (() => {
+  const page = new Map();
+  const tries = [() => localStorage, () => sessionStorage];
+  return {
+    get(key) {
+      for (const area of tries) { try { const v = area().getItem(key); if (v !== null) return v; } catch (_) { /* blocked */ } }
+      return page.has(key) ? page.get(key) : null;
+    },
+    set(key, value) {
+      for (const [i, area] of tries.entries()) { try { area().setItem(key, value); return i === 0; } catch (_) { /* blocked or full */ } }
+      page.set(key, String(value));
+      return false;
+    },
+    remove(key) {
+      for (const area of tries) { try { area().removeItem(key); } catch (_) { /* blocked */ } }
+      page.delete(key);
+    },
+  };
+})();
 
 /* Familiar: once someone has opened the app a few times and used a few screens, the beginner help
  * steps aside: the "Show me this screen" buttons and each screen's intro line. They come back with

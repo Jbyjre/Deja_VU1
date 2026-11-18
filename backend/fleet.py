@@ -149,6 +149,14 @@ def check_url(url):
     port = int(m.group(1)) if m else None
     if port is not None and not 1 <= port <= 65535:
         raise ValueError(f"{port} isn't a port number - ports run from 1 to 65535 (Moonraker usually uses 7125)")
+    # Numbers and dots only is meant as an IP address. The system reads a short one such as 192.168.1 as a different
+    # address (192.168.0.1) without a word, so an incomplete or impossible one is refused here, with the fix.
+    host = re.sub(r"^https?://", "", str(url).strip()).split("/")[0].split(":")[0]
+    if re.fullmatch(r"[0-9.]+", host):
+        parts = host.split(".")
+        if len(parts) != 4 or not all(p.isdigit() and int(p) <= 255 for p in parts):
+            raise ValueError(f"{host} isn't a full address. An address is four numbers from 0 to 255 with dots between them, "
+                             "like 192.168.1.50; the printer's screen or your router's list of devices shows it")
 
 
 def add(name, moonraker_url, api_key=None):
