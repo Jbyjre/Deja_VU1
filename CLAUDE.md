@@ -25,9 +25,10 @@ disagree, trust the code and fix the note.
    | README, docs, CHANGELOG, pictures | `.claude/rules/public-text.md` |
 
 2. **The private repository `Jbyjre/Deja-VU1-Studio` is attached to every build session.** Its
+   `NEXT.md` is the handoff from the last session (its `CLAUDE.md` loads it by itself);
    `context/README.md` says what to read for each task; `STATUS.md` is where the project stands;
-   `FEATURES.md` indexes the work; `context/dependency-map.md` (generated) shows what depends on
-   what. Owner preferences, plans and marketing live there, never here.
+   `FEATURES.md` is the build plan in clusters, one per session; `context/dependency-map.md`
+   (generated) shows what depends on what. Owner preferences, plans and marketing live there, never here.
 3. **Never read these whole:** `CHANGELOG.md`, `docs/architecture.md`, `frontend/games.js`,
    `frontend/workshop.js`, `frontend/app.js`, `backend/app.py`, `backend/moonraker_client.py`.
    Search, then read a part with offset and limit.

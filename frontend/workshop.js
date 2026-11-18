@@ -1590,7 +1590,7 @@ const Workshop = (() => {
     if (views && views.hidden) views.hidden = false;
     if ($('twin-modes') && $('twin-modes').hidden) $('twin-modes').hidden = false;
     if (!twin.built) buildTwin();
-    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; twin.held = null; }
+    if (twin.state && twin.state.printer_id !== state.printer_id) { twin.pick = null; twin.job = null; twin.jobAt = 0; twin.held = null; twin.homing = null; }
     if (twin.state && twin.state.current_file !== state.current_file) { twin.job = null; twin.jobAt = 0; }
     twin.state = state;
     if (twin.model) syncTwinPrint(state);
@@ -1624,7 +1624,8 @@ const Workshop = (() => {
     const nb = ' ';
     // The printer's own numbers only once it has homed: before that Klipper reports a position it made up.
     const where = twin.posKind === 'exact' ? `X${nb}${x.toFixed(1)} · Y${nb}${y.toFixed(1)} · Z${nb}${twin.zKnown ? z.toFixed(2) + nb + 'mm' : 'not homed'}`
-      : twin.posKind === 'last' ? 'Not homed · drawn where it was last seen' : 'Not homed · position unknown';
+      : twin.posKind === 'homing' ? 'Homing · drawn moving as the printer reports, from where it was'
+        : twin.posKind === 'last' ? 'Not homed · drawn where it was last seen' : 'Not homed · position unknown';
     const running = state.state === 'printing' || state.state === 'paused';
     setText($('twin-readout'), where + (active ? ` · ${active}${nb}active` : '') +
       (running && layer.total ? ` · layer${nb}${layer.current}/${layer.total}` : ''));
@@ -1673,10 +1674,14 @@ const Workshop = (() => {
       twin.seen = last ? [true, true, true] : [false, false, false];
     }
     const held = twin.held, seen = twin.seen;
+    // While an axis homes, its reading is a made-up frame: follow the real motion from where it was instead.
+    const H = typeof Twin3D !== 'undefined' && Twin3D.homing;
+    const hm = H ? H.followHoming(twin.homing || (twin.homing = H.newHoming()),
+      raw.map((v, i) => homed.includes('xyz'[i]) ? v : NaN), lo, hi, held, performance.now()) : null;
     let exact = true;
     const out = raw.map((v, i) => {
       const ok = homed.includes('xyz'[i]) && Number.isFinite(v);
-      if (ok) { held[i] = Math.min(hi[i], Math.max(lo[i], v)); seen[i] = true; }
+      if (ok) { held[i] = Math.min(hi[i], Math.max(lo[i], hm && hm.pos[i] != null ? hm.pos[i] : v)); seen[i] = true; }
       else {
         exact = false;
         if (held[i] == null) held[i] = i === 2 ? hi[i] / 2 : (lo[i] + hi[i]) / 2;
@@ -1685,9 +1690,10 @@ const Workshop = (() => {
     });
     // The head's place on the bed needs X and Y; Z (the bed's height) homes last and is only a number.
     const flat = homed.includes('x') && homed.includes('y') && Number.isFinite(raw[0]) && Number.isFinite(raw[1]);
-    twin.posKind = flat ? 'exact' : seen[0] && seen[1] ? 'last' : 'unknown';
-    twin.zKnown = exact;
-    if (flat) rememberHead(pid, out);
+    const homing = !!(hm && hm.homing.some(Boolean));
+    twin.posKind = homing ? 'homing' : flat ? 'exact' : seen[0] && seen[1] ? 'last' : 'unknown';
+    twin.zKnown = exact && !(hm && hm.homing[2]);
+    if (flat && !homing) rememberHead(pid, out);
     return out;
   }
   const HEAD_KEY = 'dejavu1.twin-last-head';

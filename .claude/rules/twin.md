@@ -36,8 +36,14 @@ paths:
   card's sync line before judging how the twin moves.
 - Where the head is drawn (`drawnPosition`): exact once X and Y are homed; before that the place it was last
   seen (`dejavu1.twin-last-head`, per printer), else the middle marked "position unknown". The head's tag
-  (`l.say`) says printing, paused, on carriage, last known position or position unknown. Never print
+  (`l.say`) says printing, paused, on carriage, homing, last known position or position unknown. Never print
   Klipper's made-up numbers while unhomed.
+- Homing (`Twin3D.homing`, pure, `tests/test_twin_homing.py`): a homing move starts from a position Klipper makes
+  up past the far end of the axis (endstop plus or minus 1.5 times the travel) with the axis already marked homed,
+  so drawing the reading threw the bed to the bottom on Home. A reading outside the axis starts an offset that
+  keeps the axis where it was drawn and moves it by the reported motion; a sudden jump back inside the axis
+  (Klipper setting the endstop position), 2 s still inside it, or 3 minutes ends it. The readout says Homing.
+  Checked against a stand-in replaying that sequence; not yet watched on a real U1 (its homing macro may differ).
 - Extrusion: the bead and halo at the nozzle (`dyn.bead`, `dyn.halo`, marked `rest: true` so the drawing
   skips them) show while `extruding`: the file's own stretches (`timeline.extrusion`) when it is followed,
   else the printer's `sync.extruding`.
