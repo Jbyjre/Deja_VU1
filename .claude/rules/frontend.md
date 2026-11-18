@@ -17,7 +17,7 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant.js` → `rail.js`. `games.js` loads on demand (`loadGames()`). `tester.js` loads
+  `backup.js` → `maker.js` → `assistant.js` → `pagebar.js` → `rail.js`. `games.js` loads on demand (`loadGames()`). `tester.js` loads
   right after `app.js` (it wraps `fetch`, `toast` and `syncModuleBodies`, which `app.js` defines).
 - CSS: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `assistant.css` → `theme.css` →
   `dark.css` → `looks.css`.
@@ -52,13 +52,29 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   `dv-tab`, `dv-section`, `dv-printer` and `dv-fleet`. `#rail-menu` is a child of `body` (the
   rail's backdrop-filter would trap a fixed child). Items carry `aria-label`, never `title`. A new
   place needs a `DEST` row and an icon (`tests/test_rail.py`).
+- Page bar (`pagebar.js`, before `rail.js`, which stays last; `tests/test_pagebar.py`, `node tools/pagebar-walk.js`): the
+  header (`#topbar`) has two looks, set by `data-page` on `<html>`. `overview` is the banner (brand, printer button, demo
+  switch). `page`, every other screen, is one slim bar: the place's icon and name (the sidebar's, from `Rail.label` and
+  `Rail.icon`), the screen's parts as tabs in `#pb-tabs` (a second row, only when the screen has parts), the place's main
+  buttons in `#pb-actions`, then search, printer button, demo switch and the `?` button. `theme-boot.js` sets `data-page`
+  from the link, the chosen start screen or the last screen before the first paint; `showTab` keeps it right, except that
+  its first call (`initial`) leaves it alone and `pagebar.js` settles it on `dv-rail`, so a link to Printer never flashes
+  the Overview look. A main button in `ACTIONS` presses a control the screen already has (`mirror` copies its words and
+  disabled state): the bar's Emergency stop is `#pp-estop` pressed, so it still asks first and still shows a refusal in
+  words, and that card button hides on a computer so there is one. A new place's button needs no new route. On a phone the
+  bar drops the printer button, the demo switch and the main buttons (the dock and Overview say the state, the card keeps
+  its Emergency stop) and keeps a Simulated label. The `?` button opens `#tab-intro` as a small card (the screen's
+  sentence plus "Show me this screen"), also for people who turned beginner tips off. The search is a round button that
+  opens leftwards (`.topbar .feature-finder`; a global `max-width: 100%` on inputs once held it at 40 px); its icon is
+  `--pb-search-icon` because the dark and Workbench rules reset `background`. The sidebar carries the brand at its top.
 - Tabs: Overview (cards about now, no twin); Printer (data-tab `control`, kept for saved tabs and
   tours: the twin, camera, Move pad, temperatures, extrude, tune, fans, mesh, macros, console);
   Preferences (`prefs`). Photo studio has no tab button.
 - Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and Settings show
   one part at a time. Cards are sorted by `#id`, `.class` or the start of their h2 title; a card no
   rule names joins the first part. A new card on those screens needs a rule.
-  `Sections.reveal` opens the part of anything scrolled to.
+  `Sections.reveal` opens the part of anything scrolled to. Each screen's row of parts (`.sec-bar`) is built into
+  the header's `#pb-tabs` and shown for the open screen; look it up by its id (`SECTION_BAR_IDS`), not inside the panel.
 - `printer-page.js` + `printer.css`: the Printer page, the Overview cards, the camera view (`.pcam`,
   at most five pictures a second, only while visible) and Preferences.
 - `workshop.js`: live WebSocket with a polling fallback (asks once a second and retries the WebSocket
@@ -73,7 +89,7 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
   steps (Chrome installs only from https, localhost or a flagged address).
 - `explain.js`: an ⓘ after each known card title (HELP, keyed by the title's letters and digits) and
   `[[word]]` glossary links. Write notes in plain words. `tests/test_explain.py` fails when a note's
-  card is renamed. `finder.js` (Ctrl/Cmd+K) ignores the ⓘ button; `tests/test_finder.py`.
+  card is renamed. `finder.js` (Ctrl/Cmd+K) ignores the ⓘ button; `tests/test_finder.py`. Its search box lives at the right of the top bar (`.feature-finder`) and moves into the phone's More sheet.
 - `guide.js`: tours. The quick tour (`Guide.everything()`) is nine stops; keep it short. More detail
   lives in `Guide.screen(tab)`, 1 to 4 stops per screen.
 - `orb.js`: the notification orb; `toast()` hands every message to `Orb.notify`. One translucent

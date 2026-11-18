@@ -1195,7 +1195,8 @@ async function loadConnection() {
       ? data.message : 'No printer connected. Nothing is contacted.';
   }
 
-  $('notice').hidden = !(demoOn && !data.connected);
+  // Demo data stays labelled: the chip says Simulated, the switch beside it is on, and this is the whole sentence.
+  pill.title = demoOn && !data.connected ? 'Demo data: no printer is connected, so every figure is simulated.' : '';
 }
 
 /* ---- no server: a browser-only preview ----------------------------------
@@ -1258,7 +1259,6 @@ function noPrinterEmpty(sub, what) {
 function showServerMissing() {
   document.body.classList.add('no-server');
   $('server-banner').hidden = false;
-  $('notice').hidden = true;
 
   const toggle = $('demo-toggle');
   demoOn = false;                       // the remembered choice is kept for when the server is back
@@ -1304,7 +1304,7 @@ function initServerBanner() {
 /* ---- tabs -----------------------------------------------------------------*/
 
 const TAB_KEY = 'dejavu1.tab';
-/* One plain sentence per tab, shown under the tab bar, so a first-time
+/* One plain sentence per tab, behind the ? button in the top bar, so a first-time
    visitor knows what each section is for before reading it. */
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
   ai: 'AI', automations: 'Automations', maintenance: 'Maintenance', prefs: 'Preferences', modules: 'Settings', games: 'Games' };
@@ -1392,7 +1392,9 @@ window.Sections = (() => {
     // A two-column row left with one card gives it the whole width.
     panel.querySelectorAll('.grid-2').forEach(g => g.classList.toggle('sec-single',
       [...g.children].filter(c => !c.hidden && !c.classList.contains('sec-off')).length === 1));
-    panel.querySelectorAll('.sec-bar button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sec === now)));
+    // The row of parts lives in the page bar (#pb-tabs), not inside the panel.
+    const bar = $(SECTION_BAR_IDS[tab]);
+    if (bar) bar.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.sec === now)));
   }
   function choose(tab, key, remember = true) {
     if (!SECTIONS[tab] || (key !== 'all' && !SECTIONS[tab].some(([k]) => k === key))) return;
@@ -1423,7 +1425,8 @@ window.Sections = (() => {
       const saved = store.get(SECTION_KEY + tab);
       chosen[tab] = saved === 'all' || SECTIONS[tab].some(([k]) => k === saved) ? saved : SECTIONS[tab][0][0];
       const bar = document.createElement('nav');
-      bar.className = 'sec-bar'; bar.id = SECTION_BAR_IDS[tab]; bar.setAttribute('aria-label', `Parts of ${TAB_NAMES[tab] || tab}`);
+      bar.className = 'sec-bar'; bar.id = SECTION_BAR_IDS[tab]; bar.dataset.tab = tab; bar.hidden = true;
+      bar.setAttribute('aria-label', `Parts of ${TAB_NAMES[tab] || tab}`);
       bar.innerHTML = `<div class="sec-track">${[...SECTIONS[tab], ['all', 'Everything']].map(([k, label]) =>
         `<button type="button" data-sec="${k}" aria-pressed="false"${k === 'all' ? ' class="sec-all"' : ''}>${esc(label)}</button>`).join('')}</div>`;
       bar.addEventListener('click', e => {
@@ -1432,7 +1435,8 @@ window.Sections = (() => {
         choose(tab, b.dataset.sec);
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
       });
-      panel.prepend(bar);
+      const home = $('pb-tabs');            // the slim bar at the top; the panel itself only if the page has none
+      if (home) home.append(bar); else { bar.hidden = false; panel.prepend(bar); }
       apply(tab);
       // Cards drawn later (telemetry, logbook, the farm desk…) are sorted as they arrive.
       let queued = 0;
@@ -1464,7 +1468,7 @@ function initTabs() {
   // scroll to the section.
   const FOLDED = { sandbox: 'fleet', autoprint: 'files', filament: 'maintenance' };
 
-  function show(requested) {
+  function show(requested, initial = false) {
     const name = FOLDED[requested] || requested;
     tabs.forEach(t => {
       t.classList.toggle('active', t.dataset.tab === name);
@@ -1473,6 +1477,10 @@ function initTabs() {
     panels.forEach(p => { p.hidden = p.id !== `tab-${name}`; });
     store.set(TAB_KEY, name);
     document.body.dataset.tab = name;
+    // The top of the page: the banner on Overview, the slim bar with this screen's parts elsewhere. The first call
+    // only repeats what theme-boot.js chose from the link; pagebar.js settles it once the sidebar has opened the screen.
+    if (!initial) document.documentElement.dataset.page = name === 'overview' ? 'overview' : 'page';
+    document.querySelectorAll('#pb-tabs > .sec-bar').forEach(b => { b.hidden = b.dataset.tab !== name; });
     const intro = $('tab-intro');
     if (intro && TAB_INTROS[name]) intro.innerHTML = `<strong>${esc(TAB_NAMES[name] || name)}</strong> ${esc(TAB_INTROS[name])}`
       + (window.Guide && Guide.has(name) ? ` <button type="button" class="tips-btn" data-tips="${esc(name)}"><span aria-hidden="true">✦</span> Show me this screen</button>` : '');
@@ -1494,7 +1502,7 @@ function initTabs() {
 
   // Preferences → Open on: a fixed screen, or the one used last.
   const opening = store.get('dejavu1.pref.start');
-  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'overview'));
+  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'overview'), true);
 }
 
 /* ---- status ribbon (always visible) --------------------------------------*/

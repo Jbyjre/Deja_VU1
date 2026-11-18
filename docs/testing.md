@@ -26,9 +26,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1681 tests passed on Python 3.13.18 (Linux, 18 November 2026, version 0.20.17 plus the 3D twin
-  following homing), one serial run, 1062.8 seconds; the check that the quoted count is right failed on that run (it still
-  said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
+- **The test suite:** 1692 tests passed on Python 3.13.18 (Linux, 18 November 2026, version 0.20.18 plus the page bar), run in four serial parts of 509, 407, 343 and 433 tests (1018 seconds in all); the check that the quoted count is right failed on the first pass (it still said 1681) and passed once the number was updated. The run before that: 1681 tests (Linux, 18 November 2026, version 0.20.17 plus the 3D twin following homing), one serial run, 1062.8 seconds; the same check failed on that run (it still said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
   fixes and the always-on Tester mode with its test round and questions, together), run in two waves of parallel
   groups: four groups of tests that need no browser (1601 tests, 270 seconds from start to finish), then four groups
   of browser-driven tests (73 tests, 134 seconds). Together that is 960.2 seconds of test time. The browser walk
@@ -57,6 +55,14 @@ The rest of the dashboard was used with the same printer. The firmware version w
   printer, and script payloads planted in file names, printer names, spools and notes. No script error, server
   error, sideways scrolling or stray `undefined` text, and no payload ran. It took 5 minutes 20 seconds. Each
   check was shown to fail on a planted fault first. [Check Deja Vu1 yourself](for-reviewers.md).
+- **The page bar** (18 November 2026, Chromium on Linux, demo data). `node tools/pagebar-walk.js` makes 22 checks on the
+  slim bar at the top of every screen except Overview: a link to Printer never shows the Overview look, all 16 other
+  places show their own name, their parts and the open part, the ? note, the search and the main buttons work,
+  Emergency stop in the bar asks first and sends nothing when refused, and a 390 px phone gets the short bar with no
+  sideways scrolling (`tests/test_pagebar.py` runs it where Chromium is installed). The browser walk above ran again
+  after the change: 136 visits and 17 workflow runs, no problems. Its `--axe` option, run with the axe-core release
+  installed that day, reports one extra rule (label in name, 6 sidebar and header controls such as the printer button);
+  the same six appear on the code from before the bar, so they are not new, and they are not fixed yet.
 - **Tester mode** (17 November 2026, Chromium on Linux, against a stand-in printer, not a real U1). The tests
   cover the always-on build (no switch on screen, the server refuses to switch it off, `DEJAVU_TESTER=0` keeps a run out of the
   record and every `/api/tester` route answers 403), the 52 questions, the round of 1, 2 or 3 days and the answers it keeps, the
