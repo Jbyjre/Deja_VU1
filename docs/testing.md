@@ -26,11 +26,18 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1665 tests passed on Python 3.13.18 (Linux, 17 November 2026, version 0.20.15
-  plus the always-on Tester mode, its test round and questions), run in three parts of the test files so each fits the
-  ten-minute limit of the tool that ran them: 275.4, 420.6 and 382.7 seconds of test time (1078.7 seconds in all). The
-  run before it: 1612 tests (17 November, version 0.20.15 plus Tester mode and its checks), one serial run of 1369.6
-  seconds (22 minutes 50 seconds). The run before that: 1557
+- **The test suite:** 1674 tests passed on Python 3.13.18 (Linux, 18 November 2026, version 0.20.15 plus the first-run
+  fixes and the always-on Tester mode with its test round and questions, together), run in two waves of parallel
+  groups: four groups of tests that need no browser (1601 tests, 270 seconds from start to finish), then four groups
+  of browser-driven tests (73 tests, 134 seconds). Together that is 960.2 seconds of test time. The browser walk
+  failed once in the second wave, when a 45-second wait ran out while three other browser groups shared the four
+  processor cores, and passed when run again on its own (82.1 seconds); the total counts that passing run. The run
+  before it, on the Tester mode branch alone: 1665 tests (17 November 2026), in three parts of the test files: 275.4,
+  420.6 and 382.7 seconds of test time (1078.7 seconds in all). The run before that, on the first-run fixes branch
+  alone: 1621 tests (17 November 2026), five parallel groups: 1278.8 seconds of test time in all, 516 seconds from
+  start to finish; the check that the count quoted here is right failed on that run (it still said 1612) and passed
+  once the number was updated. The run before that: 1612 tests (17 November 2026, version 0.20.15 plus Tester mode and
+  its checks), one serial run: 1369.6 seconds (22 minutes 50 seconds). The run before that: 1557
   tests (16 November 2026, version 0.20.14 plus colour calibration, the sensor in Confirm Print, the browser
   walk and the screen fixes it found), run as five parallel groups (the browser walk on its own): 977.9 seconds of test time in all, about 254
   seconds from start to finish. The browser walk's group failed once on a wait that was too short while the

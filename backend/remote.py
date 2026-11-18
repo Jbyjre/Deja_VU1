@@ -56,7 +56,8 @@ def _run(args, timeout=6):
     program = cli()
     if not program:
         raise LookupError("Tailscale isn't installed on this computer")
-    return subprocess.run([program] + list(args), capture_output=True, text=True, timeout=timeout)
+    return subprocess.run([program] + list(args), capture_output=True, text=True, timeout=timeout,
+                          encoding='utf-8', errors='replace')
 
 
 def _json(args):
@@ -186,7 +187,8 @@ def share(port, wait=15):
         proc = _pending["proc"]
         if proc is None or proc.poll() is not None:
             proc = subprocess.Popen([program, "serve", "--bg", "--yes", f"http://127.0.0.1:{port}"],
-                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                    encoding='utf-8', errors='replace')
             _pending.update(proc=proc, url=None, lines=[], started=time.monotonic())
             threading.Thread(target=_reap, args=(proc,), daemon=True).start()
     deadline = time.monotonic() + wait

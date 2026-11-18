@@ -70,6 +70,30 @@ class FullBackup(unittest.TestCase):
         self.assertTrue((folder / 'Start restored app.command').is_file())
         self.assertEqual((folder / 'data/files/part.gcode').read_bytes(), b'G90\n')
 
+    def test_recovery_files_are_utf8_with_their_line_endings_kept(self):
+        # Windows saves a plain text file in its own code page (a data folder with other letters in its path fails) and turns
+        # each \n into \r\n, so the batch file's own \r\n came out as \r\r\n. Linux hides both, so how each file is opened is checked.
+        opened = []
+        real_open = open
+
+        def spy(path, mode='r', *args, **kwargs):
+            if 'w' in mode:
+                opened.append((Path(path).name, kwargs.get('encoding'), kwargs.get('newline')))
+            return real_open(path, mode, *args, **kwargs)
+
+        review = backup.preview_restore(self.archive())
+        with patch.object(backup, 'open', spy, create=True):
+            folder = Path(backup.restore({'id': review['id'], 'confirmed': True})['folder'])
+        names = {n for n, _, _ in opened}
+        for name in ('launch-restored.py', 'Start restored app.command', 'Start restored app.bat', 'RECOVERY.txt'):
+            self.assertIn(name, names)
+        for name, encoding, newline in opened:
+            self.assertEqual((encoding, newline), ('utf-8', ''), name)
+        batch = (folder / 'Start restored app.bat').read_bytes()
+        self.assertIn(b'\r\n', batch)
+        self.assertNotIn(b'\r\r', batch)
+        compile((folder / 'launch-restored.py').read_text(encoding='utf-8'), 'launch-restored.py', 'exec')
+
     def test_checksum_traversal_duplicate_and_old_exports_refused(self):
         valid = self.archive()
         for change in ('checksum', 'traversal', 'extra', 'old'):

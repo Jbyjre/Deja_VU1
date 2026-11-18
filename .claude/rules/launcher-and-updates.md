@@ -64,6 +64,9 @@ Installing and updating must work every time, including while a print runs.
 - The supervisor restarts a crashed server (not exit 0, 75, 3 or a signal) at most `CRASH_LIMIT`
   times in `CRASH_WINDOW`, and one that is running but silent for about 2 minutes. It writes
   `<data>/supervisor.json` every 5 s; a second launcher that finds a fresh note waits.
+- The window that starts it watches the helper it started: when the helper quits (the port is taken) and nothing
+  answers within `HELPER_QUIT_GRACE` (10 s), the window prints what the helper wrote to `background.log`
+  instead of waiting `START_WAIT`.
 - The health check matches `DEJAVU_LAUNCH_ID` or the PID, never through a proxy, for up to
   `START_WAIT` (90 s), asking `/api/app/alive` first and falling back to `/api/app/info` on 404.
 - `autostart.py`: Windows Task Scheduler task "Deja Vu1" (sign-in, wake, every 5 minutes; no admin)

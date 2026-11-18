@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.16",
+      "date": "2026-11-18",
+      "name": "Connect a printer with Continue in setup, set up from a phone, see start-up p...",
+      "published": true,
+      "summary": "Connect a printer with Continue in setup, set up from a phone, see start-up problems at once, and keep files with non-English names.",
+      "changes": [
+        "Connect a printer with Continue in setup, set up from a phone, see start-up problems at once, and keep files with non-English names"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.15",
       "date": "2026-11-16",
       "name": "Calibrate a colour sensor from a white reference, see it in Confirm Print, an...",

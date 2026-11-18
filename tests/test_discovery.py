@@ -189,6 +189,17 @@ class TestPortCheck(unittest.TestCase):
         fleet.check_url("http://192.168.1.50:7125")
         fleet.check_url("http://u1.local")
 
+    def test_an_incomplete_ip_address_is_refused_not_read_as_another_device(self):
+        # 192.168.1 is read by the system as 192.168.0.1, which would test (and could add) a different device.
+        for typed in ("192.168.1", "192.168", "10", "192.168.1.500", "192.168.1.5.9", "http://192.168.1:7125"):
+            with self.subTest(typed=typed), self.assertRaises(ValueError) as e:
+                fleet.check_url(fleet.normalise_url(typed))
+            self.assertIn("isn't a full address", str(e.exception))
+            self.assertIn("192.168.1.50", str(e.exception))
+        for fine in ("192.168.1.50", "10.0.0.7:7125", "http://172.16.0.2", "u1.local", "snapmaker-u1", "3d-printer.local:7125",
+                     "255.255.255.255", "0.0.0.0"):
+            fleet.check_url(fleet.normalise_url(fine))
+
 
 if __name__ == "__main__":
     unittest.main()

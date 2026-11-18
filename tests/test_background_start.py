@@ -108,6 +108,36 @@ class BackgroundStart(unittest.TestCase):
         self.assertEqual(code, 0)
         popen.assert_not_called()
 
+    def run_failing_start(self, helper_exit):
+        """Nothing ever answers. The helper either quits at once (helper_exit is its exit code) or keeps running."""
+        said = []
+
+        def popen(command, **kwargs):
+            kwargs["stdout"].write("  Deja Vu1 couldn't start: port 8000 is already in use by another program.\n".encode())
+            kwargs["stdout"].flush()
+            return mock.Mock(poll=mock.Mock(return_value=helper_exit))
+
+        self.answers = iter([])
+        self.start.START_WAIT = 30
+        self.start.HELPER_QUIT_GRACE = 0
+        with mock.patch.object(self.start, "already_running", return_value=None), \
+                mock.patch.object(self.start, "say", side_effect=said.append), \
+                mock.patch.object(self.start.subprocess, "Popen", side_effect=popen), \
+                mock.patch.object(self.start.time, "monotonic", side_effect=iter([i * 0.5 for i in range(400)])):
+            code = self.start.start_in_background()
+        return code, " ".join(said)
+
+    def test_a_server_that_cannot_start_says_why_at_once_instead_of_after_90_seconds(self):
+        code, said = self.run_failing_start(helper_exit=0)
+        self.assertEqual(code, 1)
+        self.assertIn("port 8000 is already in use", said)          # the reason the server wrote, shown in the window
+        self.assertNotIn("didn't answer within", said)
+
+    def test_a_helper_that_is_still_running_keeps_the_old_wait_and_message(self):
+        code, said = self.run_failing_start(helper_exit=None)
+        self.assertEqual(code, 1)
+        self.assertIn("didn't answer within 30 s", said)
+
 
 if __name__ == "__main__":
     unittest.main()
