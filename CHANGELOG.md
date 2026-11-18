@@ -10,6 +10,14 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**18 November 2026, the 3D twin follows homing as the printer really moves.** Pressing Home made the twin's bed drop
+to the bottom of the machine at once while the real bed had not moved: at the start of a homing move Klipper reports a
+position it makes up past the far end of the axis and counts the real motion from there. The twin now keeps each homing
+axis where it was and moves it by the motion the printer reports, so the bed rises toward the nozzle at the real speed, and
+it takes the printer's own position again once Klipper sets the endstop position. The readout under the twin says Homing
+meanwhile. Checked with a stand-in printer replaying a Z homing in Chromium and with seven tests of the sequence; not yet
+watched on a real U1.
+
 **17 November 2026, Tester mode is always on in this build and asks its own questions.** A tester no longer turns anything on:
 Deja Vu1 keeps its record from the first start, on your computer only, and nothing is sent anywhere. The record is wider. It
 holds how each control was pressed (mouse, touch, pen or keyboard, a double or right press, held keys, where it landed, the

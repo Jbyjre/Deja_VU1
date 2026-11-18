@@ -878,8 +878,9 @@ const Twin3D = (() => {
     // focus: 0 frames the whole machine, 1 the print on the plate (the Print view).
     const cam = { yaw: VIEWS.iso[0], pitch: VIEWS.iso[1], zoom: 1, tx: 0, ty: 0, vyaw: 0, vpitch: 0, focus: 0 };
     let state = null, pos = [135, 135, 0], selected = '', W = 0, H = 0, queued = false, style = 'model', showCase = false;
-    // How well the dashboard knows where the head is: "exact" (homed), "last" (not homed, drawn where it was
-    // last seen) or "unknown" (not homed and never seen). The head's tag says so.
+    // How well the dashboard knows where the head is: "exact" (homed), "homing" (an axis is homing and is drawn
+    // from its reported motion), "last" (not homed, drawn where it was last seen) or "unknown" (not homed and
+    // never seen). The head's tag says so.
     let posKind = 'exact';
     // Filament, spools and heads in motion, per head name: how far the filament has run (mm), the spool's turn
     // (radians), its speed now, a feed in progress, the last filament-sensor reading, and how far a head is
@@ -1233,7 +1234,7 @@ const Twin3D = (() => {
         add(lm.stems, MAT.cable, { id, lining: true, loop: true });
         const at = style === 'drawing' ? [hx, hy, tipZ + HEAD.h + 14] : [hx, hy, tipZ + HEAD.h + 24];
         // The working head's tag says what it is doing, or how sure the dashboard is of where it is.
-        const say = !on ? '' : posKind === 'unknown' ? 'position unknown' : posKind === 'last' ? 'last known position' : note;
+        const say = !on ? '' : posKind === 'unknown' ? 'position unknown' : posKind === 'last' ? 'last known position' : posKind === 'homing' ? 'homing' : note;
         labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature, say });
       });
       if (lamp) items.forEach(it => { if (!it.lining && !it.shell && !it.rest) it.lamp = lamp.rgb; });
@@ -1846,6 +1847,41 @@ const Twin3D = (() => {
     };
   }
 
+  /* Homing, followed as it really moves. At the start of a homing move Klipper declares the axis homed at a
+   * position it makes up, past the far end of the axis (the endstop plus or minus 1.5 times the travel,
+   * kinematics home() in Klipper), then counts the real motion from there. Drawn as read, the bed dropped to the
+   * bottom the moment Home was pressed while the real one had not moved. Those made-up numbers are a constant
+   * offset from the real place, so the twin keeps drawing the axis where it was and moves it by what the printer
+   * reports it moved. The offset ends when Klipper sets a real position again (a sudden jump back inside the
+   * axis), when the reading inside the axis stays still for 2 s, or after 3 minutes. */
+  const HOMING_STILL_MS = 2000, HOMING_MAX_MS = 180000, HOMING_JUMP_MM_S = 250;
+  function newHoming() { return { last: [null, null, null], at: 0, off: [null, null, null], since: [0, 0, 0], still: [0, 0, 0] }; }
+  function followHoming(h, raw, lo, hi, drawn, now) {
+    const pos = [], homing = [], dt = Math.max(0.05, (now - h.at) / 1000);
+    for (let i = 0; i < 3; i++) {
+      const v = raw[i];
+      if (!Number.isFinite(v)) { pos.push(null); homing.push(false); continue; }
+      const span = Math.max(1, hi[i] - lo[i]), slack = Math.max(5, span * 0.05);
+      const outside = v < lo[i] - slack || v > hi[i] + slack;
+      const last = h.last[i], step = last == null ? 0 : Math.abs(v - last);
+      if (h.off[i] == null && outside) {
+        const was = drawn && Number.isFinite(drawn[i]) ? drawn[i] : last != null && !(last < lo[i] - slack || last > hi[i] + slack) ? last : (lo[i] + hi[i]) / 2;
+        h.off[i] = Math.min(hi[i], Math.max(lo[i], was)) - v; h.since[i] = now; h.still[i] = now;
+      } else if (h.off[i] != null) {
+        if (step > 0.05) h.still[i] = now;
+        const jumped = step > span * 0.3 && step / dt > HOMING_JUMP_MM_S;
+        if (!outside && (jumped || now - h.still[i] >= HOMING_STILL_MS)) h.off[i] = null;
+        else if (now - h.since[i] >= HOMING_MAX_MS) h.off[i] = null;
+      }
+      h.last[i] = v;
+      if (h.off[i] == null) { pos.push(v); homing.push(false); }
+      else { pos.push(Math.min(hi[i], Math.max(lo[i], v + h.off[i]))); homing.push(true); }
+    }
+    h.at = now;
+    return { pos, homing };
+  }
+
   return { create, ENVELOPE, BODY, sync: { newFollow, buildTrack, timeAtByte, posAt, nearest, syncFrom, advance, extrudingAt },
-           fx: { feedEvent, feedSpeed, feedLength, activeSpeed, flowAlpha, spoolTurn, beltRun, lampOf } };
+           fx: { feedEvent, feedSpeed, feedLength, activeSpeed, flowAlpha, spoolTurn, beltRun, lampOf },
+           homing: { newHoming, followHoming, HOMING_STILL_MS } };
 })();
