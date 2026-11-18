@@ -14,6 +14,9 @@ import os
 import shutil
 import subprocess
 import unittest
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frontend_parts import read_frontend  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
@@ -47,6 +50,8 @@ class SetupSource(unittest.TestCase):
     """Source checks that run everywhere, without a browser (spacing in these tests does not matter)."""
 
     def read(self, *parts):
+        if len(parts) == 2 and parts[0] == "frontend":
+            return read_frontend(parts[1])     # a split file comes back whole (frontend_parts.py)
         with open(os.path.join(ROOT, *parts), encoding="utf-8") as f:
             return f.read()
 

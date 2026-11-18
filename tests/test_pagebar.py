@@ -10,6 +10,9 @@ Chromium, so it is skipped where they are missing (GitHub's Python jobs). Run it
 import os
 import re
 import shutil
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frontend_parts import read_frontend  # noqa: E402
 import subprocess
 import unittest
 
@@ -19,6 +22,8 @@ TOOL = os.path.join(ROOT, "tools", "pagebar-walk.js")
 
 
 def read(*parts):
+    if len(parts) == 2 and parts[0] == "frontend":
+        return read_frontend(parts[1])     # a split file comes back whole (frontend_parts.py)
     with open(os.path.join(ROOT, *parts), encoding="utf-8") as f:
         return f.read()
 

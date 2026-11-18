@@ -7,6 +7,8 @@ Tests for modules.py - the feature on/off registry.
 import os
 import sys
 import unittest
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frontend_parts import read_frontend  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
@@ -121,8 +123,7 @@ class TestKinds(unittest.TestCase):
                 self.assertEqual(page.count('data-setting-module="tester"'), 0)          # always on: the card has no switch
                 continue
             self.assertEqual(page.count(f'data-setting-module="{module_id}"'), 1, module_id)
-        with open(os.path.join(root, "frontend", "app.js"), encoding="utf-8") as f:
-            script = f.read()
+        script = read_frontend("app.js")                                # every part of the split file
         self.assertIn("m.kind === 'extra'", script)                     # the list filters on the server's word
 
 

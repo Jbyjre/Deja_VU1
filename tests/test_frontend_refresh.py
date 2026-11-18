@@ -8,13 +8,15 @@ import os
 import re
 import unittest
 from collections import deque
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frontend_parts import parts_of, read_frontend  # noqa: E402
 
 FRONTEND = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 
 
 def read(name):
-    with open(os.path.join(FRONTEND, name), encoding="utf-8") as f:
-        return f.read()
+    return read_frontend(name)          # a split file comes back whole (frontend_parts.py)
 
 
 class TestPacmanMaze(unittest.TestCase):
@@ -138,10 +140,20 @@ class TestPageWiring(unittest.TestCase):
 
     def test_games_load_only_when_the_games_tab_opens(self):
         app_src, page = read("app.js"), read("index.html")
-        self.assertNotIn("games.js", page)                  # not a start-up script
-        self.assertIn("s.src = 'games.js'", app_src)        # fetched by loadGames()
+        listed = re.search(r"const GAME_PARTS = \[(.*?)\];", app_src, re.S).group(1)
+        self.assertEqual(re.findall(r"'([a-z0-9-]+\.js)'", listed), parts_of("games.js"))   # loadGames() fetches every part, in order
+        for part in parts_of("games.js"):
+            self.assertNotIn(part, page)                    # not a start-up script
+        self.assertIn("s.src = file", app_src)
         self.assertNotIn("function newPacmanArcade", app_src)
-        self.assertIn("initGames();", read("games.js"))
+        self.assertTrue(read("games.js").rstrip().endswith("initGames();"))   # the last part starts the arcade
+        # The start-up timers settle which game functions are active, so they sit in the last part: started
+        # earlier, a slow computer could run them before the later parts arrive.
+        last = parts_of("games.js")[-1]
+        for timer in ("setTimeout(installArcadePlus, 50);", "stopCurrentGame = () => {\n    gameStop();"):
+            homes = [part for part in parts_of("games.js")
+                     if timer in open(os.path.join(FRONTEND, part), encoding="utf-8").read()]
+            self.assertEqual(homes, [last], timer)
 
     def test_game_timers_go_through_the_frame_clock(self):
         src = read("games.js")

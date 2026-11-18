@@ -25,13 +25,15 @@ disagree, trust the code and fix the note.
    | README, docs, CHANGELOG, pictures | `.claude/rules/public-text.md` |
 
 2. **The private repository `Jbyjre/Deja-VU1-Studio` is attached to every build session.** Its
-   `NEXT.md` is the handoff from the last session (its `CLAUDE.md` loads it by itself);
-   `context/README.md` says what to read for each task; `STATUS.md` is where the project stands;
-   `FEATURES.md` is the build plan in clusters, one per session; `context/dependency-map.md`
+   `NEXT.md` says what the last one or two sessions did and which cluster comes next (its `CLAUDE.md` loads it by
+   itself); `FEATURES.md` holds every feature still to build, in keyword clusters, one per session;
+   `context/README.md` says what to read for each task; `STATUS.md` is where the project stands; `context/dependency-map.md`
    (generated) shows what depends on what. Owner preferences, plans and marketing live there, never here.
-3. **Never read these whole:** `CHANGELOG.md`, `docs/architecture.md`, `frontend/games.js`,
-   `frontend/workshop.js`, `frontend/app.js`, `backend/app.py`, `backend/moonraker_client.py`.
-   Search, then read a part with offset and limit.
+3. **Never read these whole:** `CHANGELOG.md`, `docs/architecture.md`, `frontend/workshop.js`, `frontend/twin3d.js`,
+   `frontend/assistant.js`, `backend/app.py`, `backend/moonraker_client.py`, `backend/ai_assistant.py`.
+   Search, then read a part with offset and limit. `app.js`, `games.js`, `theme.css`, `workshop.css` and
+   `tester_report.py` are split into parts of one area each (the table in `.claude/rules/frontend.md`): open only
+   the part you need.
 
 ## Skills
 
@@ -142,7 +144,7 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
   (250 ms tick), `fleet.py`, `print_gate.py` (Confirm Print), `gcode_tools.py`, `slicer_bridge.py`,
   `app_updates.py`, `storage.py`, `modules.py`, `ai_assistant.py` + `ai_providers.py` + `ai_vault.py`
   (the assistant, its safety limits and key storage), and one module per feature.
-- `frontend/`: published as the product page and online demo. `index.html` + `app.js` (shared
+- `frontend/`: published as the product page and online demo. `index.html` + `app.js` and its six parts (shared
   globals) + one script per feature, `rail.js` (sidebar) last; `welcome.html` (product page);
   `demo/` (the recording); `media/` (the launch film).
 - `tests/`: unittest; `fake_moonraker.py` is a Moonraker stand-in.

@@ -17,15 +17,39 @@ cards or intro text; after it, build every screen from those blocks.
 
 ## Load order and shared names
 
-- Scripts: `theme-boot.js` in `<head>`, then `app.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
+- Scripts: `theme-boot.js` in `<head>`, then `app.js` and its six parts (below) → `tester.js` → `tester-study.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
   `ar.js` → `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant.js` → `pagebar.js` → `rail.js`. `games.js` loads on demand (`loadGames()`). `tester.js` loads
-  right after `app.js` (it wraps `fetch`, `toast` and `syncModuleBodies`, which `app.js` defines).
-- CSS: `style.css` → `workshop.css` → `farm.css` → `printer.css` → `guide.css` → `assistant.css` → `theme.css` →
-  `dark.css` → `looks.css`.
+  `backup.js` → `maker.js` → `assistant.js` → `pagebar.js` → `rail.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
+  right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
+- CSS: `style.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
+  `guide.css` → `assistant.css` → `tester.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
+  `looks.css`.
+
+## Split files (18 November 2026)
+
+Five big files were split into parts of one area each so a session reads only what it needs. Every part's header
+says what it holds; `tests/frontend_parts.py` lists the families, and tests read a family whole (`read_frontend`).
+
+| Family | Parts, in load order |
+|---|---|
+| `app.js` (scripts, `index.html`) | `app.js` (helpers, server check, demo routing), `app-demo.js` (the demo's simulation), `app-shell.js` (saved settings, hints, which printer, honest commands, units, tab title, accent, connection, preview, tabs, `SECTIONS`, the ribbon), `app-modules.js` (maintenance, LED rings, colour check, printer control), `app-print.js` (skip an object, watch-only, filament, what changed), `app-extras.js` (extras, pairing, notifications, updates, cost, smart home, the games loader, the highlight), `app-start.js` (start-up, stopped answering) |
+| `games.js` (`GAME_PARTS` in `app-extras.js`) | `games.js`, `games-classic.js`, `games-arcade.js`, `games-shell.js`, `games-puzzle.js`, `games-v2.js`, `games-world.js` |
+| `theme.css` | `theme.css` (the design system), `theme-screens.css`, `theme-shell.css` (phone layout, page bar) |
+| `workshop.css` | `workshop.css`, `workshop-files.css`, `workshop-panels.css` |
+| `backend/tester_report.py` | `tester_report.py` (numbers, findings, zip) and `tester_report_render.py` (report.html, findings.md, README) |
+
+How to split a classic script safely (what this split found): the parts share one global scope, but **function
+hoisting stops at a file's edge**. Cut only between top-level statements, and check that nothing which runs while
+the page loads (a `const x = someFunction`, a call, a timer started at load) reaches a function or `var` from a
+later part. A name declared twice keeps its last declaration in one file but the latest-loaded one across files,
+and a load-time reassignment (`renderGame = ...`) must stay in the same part as any later declaration of that name.
+Timers that settle which functions are active go at the end of the last part. Prove it: the parts with their headers
+removed equal the old file, and in Chromium every top-level name has the same type and source before and after.
+`workshop.js`, `twin3d.js` and `assistant.js` are each one closure (`const X = (() => { ... })()`), so they can't be
+cut this way; split them when their cluster rewrites them (LEAN in the private `FEATURES.md`).
 - `app.js` defines the shared globals: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`,
   `doneAt()`, `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`. A top-level `const` in
   a classic script is not a `window` property, so shared modules assign `window.Orb`,
@@ -174,10 +198,13 @@ cards or intro text; after it, build every screen from those blocks.
   reduced motion turns it Still. New surprises go in its SURPRISES section. Any look but Glass is
   Still.
 
-## Games (`games.js`)
+## Games (`games.js` and its six parts)
 
 Every game timer goes through `frameEvery()` (rAF-driven fixed steps). `fitGameCanvas()` sizes the
-canvas. `tests/test_frontend_refresh.py` reads `games.js` as text: keep it independent of spacing.
+canvas. `tests/test_frontend_refresh.py` reads the arcade as text: keep it independent of spacing. `loadGames()`
+loads the parts one after another and, after a failure, only the parts still missing (a part run twice would
+declare its names twice). The two start-up timers that settle the active game functions sit at the end of
+`games-world.js`.
 
 ## Online demo
 
