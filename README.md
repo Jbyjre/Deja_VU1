@@ -227,7 +227,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
   assistant. The assistant has also run through a paid API key.
-- **Automated:** 1674 tests passed on Python 3.13 (18 November 2026). GitHub Actions
+- **Automated:** 1681 tests passed on Python 3.13 (18 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
   Other builds slice too, and **Check slicer** lists the builds with recorded runs.
@@ -265,7 +265,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1674 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1681 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

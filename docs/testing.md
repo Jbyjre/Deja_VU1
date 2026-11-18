@@ -26,7 +26,9 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1674 tests passed on Python 3.13.18 (Linux, 18 November 2026, version 0.20.15 plus the first-run
+- **The test suite:** 1681 tests passed on Python 3.13.18 (Linux, 18 November 2026, version 0.20.17 plus the 3D twin
+  following homing), one serial run, 1062.8 seconds; the check that the quoted count is right failed on that run (it still
+  said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
   fixes and the always-on Tester mode with its test round and questions, together), run in two waves of parallel
   groups: four groups of tests that need no browser (1601 tests, 270 seconds from start to finish), then four groups
   of browser-driven tests (73 tests, 134 seconds). Together that is 960.2 seconds of test time. The browser walk
