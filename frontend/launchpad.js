@@ -23,7 +23,7 @@
   const privacy = 'Only saved in this browser on this device. Never sent to the server, logs, backups or update checks. Optional; delete it any time.';
   function greeting() {
     const name = read(key);
-    $('private-greeting').textContent = name ? `Hello, ${name}` : 'Your print bench';
+    $('private-greeting').textContent = name ? `Hello, ${name}` : 'Your Snapmaker U1 dashboard';
     $('private-name').value = name;
   }
   function clearHighlight() { if (activeTarget) activeTarget.classList.remove('setup-highlight'); activeTarget = null; }
@@ -164,7 +164,7 @@
     } else if (step === TOUR) {
       content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
         <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
-        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> the “Show me this screen” button under the tab bar has a few tips for whichever screen is open.</li></ul>
+        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> the ? button in the top bar opens a short note and a few tips for whichever screen is open.</li></ul>
         <div class="setup-choices"><button class="btn primary" id="setup-guide">Start the tour</button></div>
         <p class="field-hint">The tour never moves or starts a printer. End it any time with × or Esc; it comes back here. Replay it later from Settings → Your space.</p>`;
       $('setup-guide').onclick=()=>{
@@ -235,7 +235,7 @@
   dialog.addEventListener('cancel',e=>{e.preventDefault();finish();});
   // However the sheet closes, the page behind it must come back (full-screen setup hides it).
   dialog.addEventListener('close',()=>{if(!dialog.open){dialog.classList.remove('is-full');document.documentElement.classList.remove('setup-full-open');}});
-  $('private-name').addEventListener('input',e=>{save(key,e.target.value.trim().slice(0,40));$('private-greeting').textContent=e.target.value.trim()?`Hello, ${e.target.value.trim()}`:'Your print bench';});
+  $('private-name').addEventListener('input',e=>{save(key,e.target.value.trim().slice(0,40));$('private-greeting').textContent=e.target.value.trim()?`Hello, ${e.target.value.trim()}`:'Your Snapmaker U1 dashboard';});
   $('private-delete').onclick=()=>{save(key,'');greeting();toast('Name deleted from this browser','ok');};
   /* ---- the desktop app -----------------------------------------------------
      Two ways out of the browser tab: install the dashboard as an app (Chrome

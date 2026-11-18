@@ -3493,8 +3493,8 @@ const Workshop = (() => {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !sheet.hidden) { setSheet(false); more.focus(); }
     });
-    // The sheet's own tools: what the computer shows in the strip under the
-    // header (search, Camera, Set up & help) and the line under the tab bar.
+    // The sheet's own tools: what the computer shows in the top bar (search, the ? note)
+    // and beside it (Camera, Set up & help).
     sheet.addEventListener('click', (e) => {
       const b = e.target.closest('[data-more]');
       if (!b) return;
@@ -3522,7 +3522,7 @@ const Workshop = (() => {
    * the end of every tab can always be scrolled clear of it. */
   function initDockStack() {
     const dock = $('thumb-dock'), pill = $('live-pill'), offer = $('handoff');
-    const finder = qs('.feature-finder'), finderHome = qs('.launch-strip');
+    const finder = qs('.feature-finder'), finderHome = qs('.topbar-right');
     const phone = window.matchMedia('(max-width: 720px)');
     const place = () => {
       if (phone.matches) dock.prepend(offer, pill);
@@ -3530,7 +3530,7 @@ const Workshop = (() => {
       // On a phone the search lives at the top of the More sheet.
       if (finder && finderHome) {
         if (phone.matches) $('ms-search').append(finder);
-        else if (!finderHome.contains(finder)) finderHome.querySelector('div').after(finder);
+        else if (!finderHome.contains(finder)) finderHome.prepend(finder);
       }
     };
     phone.addEventListener('change', place);

@@ -48,7 +48,21 @@
     try { window.dispatchEvent(new CustomEvent('dv-density', { detail: { density: choice } })); } catch (e) { /* old browser */ }
   }
   applyDensity(density());
-  var media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  // Which top of the page the first paint gets: the Deja Vu1 banner on Overview, the slim page bar on
+  // every other screen. A link such as #/printer wins over the remembered screen, as in rail.js.
+  // pagebar.js keeps data-page right after this.
+  function firstPage() {
+    try {
+      var link = /^#\/([a-z-]+)/.exec(location.hash || '');
+      var start = localStorage.getItem('dejavu1.pref.start');
+      var name = link ? link[1] : ((start && start !== 'last' ? start : localStorage.getItem('dejavu1.tab')) || 'overview');
+      return name === 'overview' ? 'overview' : 'page';
+    } catch (e) {
+      return 'overview';
+    }
+  }
+  document.documentElement.setAttribute('data-page', firstPage());
+  var media =window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function pref() {
     try {
       var v = localStorage.getItem(KEY);

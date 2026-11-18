@@ -318,6 +318,7 @@
     nav.id = 'rail';
     nav.setAttribute('aria-label', 'Main');
     nav.innerHTML = `
+      <a class="rail-brand" id="rail-brand" href="#/overview" aria-label="Deja Vu1, go to Overview"><span class="rail-mark" aria-hidden="true"><i></i></span><span class="rail-label">Deja&nbsp;Vu1</span></a>
       <div class="rail-list">${DEST.filter(d => d.group === 'main').map(row).join('')}</div>
       <button class="rail-group rail-fold" id="rail-tools-h" type="button" aria-expanded="true" aria-controls="rail-tools">
         <span>Tools &amp; learn</span>${svg(ICON.chevron)}</button>
@@ -337,6 +338,11 @@
     tip.setAttribute('role', 'presentation');
     document.body.append(menu, tip);
 
+    document.getElementById('rail-brand').addEventListener('click', e => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+      e.preventDefault();
+      go(byId.overview);
+    });
     nav.addEventListener('click', e => {
       const a = e.target.closest('[data-dest]');
       if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;   // a new tab keeps its own link
@@ -451,11 +457,13 @@
     const start = parse(location.hash);
     restoring = true;
     try { if (start) go(start.d, start.printer); sync(); } finally { restoring = false; }
+    window.dispatchEvent(new CustomEvent('dv-rail'));   // the page bar (pagebar.js) can now ask for names and icons
   }
 
   window.Rail = {
     destinations: DEST.map(d => ({ ...d })), parse, current: () => current().id,
     destFor: tab => (DEST.find(d => d.tab === tab) || byId.overview).id,
+    label: id => (byId[id] || byId.overview).label, icon: id => (ICON[id] ? svg(ICON[id]) : ''),
     shown: () => !!document.getElementById('rail') && !PHONE.matches,
     keys: keySheet, go: id => { if (byId[id] || byId[OLD[id]]) location.hash = routeFor(byId[id] || byId[OLD[id]]); }
   };

@@ -10,6 +10,26 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**18 November 2026, every screen has one slim bar at the top, and the work starts higher on the page.** The large banner with the
+Deja Vu1 name stays on Overview. Every other screen opens with a bar that names the screen, shows its parts as tabs (on
+Printer: Control, Live readings, History & upkeep, Camera & time-lapses; on Files: Your files, Slice, Queue, Layer heights)
+and carries the buttons that screen needs: Emergency stop on Printer, Add printer on Printers, Add files on Files. Search,
+the printer button, the demo switch and a ? button sit at the right. The ? button opens a short note about the screen with
+its Show me this screen button, also for people who turned the beginner tips off. The greeting row, the demo banner and the
+intro sentence under the tabs are gone from the page: demo data is still labelled by the Simulated label and the switch. The
+first card now starts 112 px down an 800 px laptop window on Overview (it was 323) and 143 px down on Printer, Files and
+Settings (it was 379); on a 390 px phone it starts at 92 and 131 (it was 144 and 204). The Emergency stop in the bar presses
+the Printer screen's own button, so it still asks first and still says so when the printer refuses, and the card's copy
+steps aside on a computer so there is one. A link to a screen opens it with the right top from the first moment. The sidebar
+shows the Deja Vu1 name at its top. Dark, Workbench, Control room, reduced transparency, increased contrast and reduced
+motion each have their form of the bar. Tested: 1692 tests passed (11 new, `tests/test_pagebar.py`), a new Chromium walk of
+the bar (`node tools/pagebar-walk.js`, 22 checks), the browser walk again (136 visits and 17 workflow runs, no problems), the
+first-run walk (19 checks) and the online demo served from static files. Not tested: pressing Yes on the bar's Emergency
+stop, because that stops a printer (the button it presses is the unchanged one on the Printer screen), a real phone, and a
+real U1; the screenshots and walks use simulated printers. An accessibility scan with the newest axe release also reports
+six controls whose spoken name leaves out their visible text (the sidebar's Overview, Printer and Maintenance items and its
+fold button, the version chip, the printer button). The same six appear on the code from before the bar. They are not fixed yet.
+
 **18 November 2026, the 3D twin follows homing as the printer really moves.** Pressing Home made the twin's bed drop
 to the bottom of the machine at once while the real bed had not moved: at the start of a homing move Klipper reports a
 position it makes up past the far end of the axis and counts the real motion from there. The twin now keeps each homing

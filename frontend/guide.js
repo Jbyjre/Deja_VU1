@@ -2,7 +2,7 @@
      - the quick tour (setup, Settings → Your space): nine stops that hop
        between screens, about a minute,
      - "Show me this screen": a few stops on the open screen (the button in
-       the line under the tab bar), and
+       the note behind the ? button in the top bar), and
      - each version's "What's new" tour (versions.js).
    A stop spotlights a real part of the dashboard with a glass callout whose
    tail points at it; the callout glides to the next stop, across screens,
@@ -281,7 +281,7 @@ window.Guide = (() => {
     { target: '#orb', title: 'Messages live here',
       text: 'Updates and alerts rise out of this orb and sink back in. Click it to read the last 30.', try: 'Send a test message', action: 'orb-demo' },
     { eyebrow: 'That’s the tour', title: 'You’re ready.',
-      html: `<p>Every screen has a <strong>Show me this screen</strong> button under the tab bar with a few more tips.</p>
+      html: `<p>Every screen has a <strong>?</strong> button in the top bar. It says what the screen is for and has a <strong>Show me this screen</strong> button with a few more tips.</p>
         <p>Replay this tour from <strong>Settings → Your space</strong>. Ready for your own printer? <strong>Printers → Add a printer</strong>.</p>` },
   ];
 
@@ -343,7 +343,7 @@ window.Guide = (() => {
   // Stops that point at something (the welcome and the ending don't count).
   function count() { return QUICK.filter(s => s.target && (!s.when || s.when())).length; }
 
-  // The "Show me this screen" button in the line under the tab bar (app.js puts it there).
+  // The "Show me this screen" button in the note behind the ? button in the top bar (app.js puts it there).
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-tips]');
     if (b) screen(b.dataset.tips);

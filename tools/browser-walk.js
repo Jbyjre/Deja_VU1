@@ -504,7 +504,7 @@ async function injectionFlow(s, places, standIns) {
       }
       // Screens show one part at a time: ask for all of them so every list is drawn.
       await page.evaluate(() => {
-        const all = document.querySelector('.tab-panel:not([hidden]) .sec-bar .sec-all');
+        const all = document.querySelector('#pb-tabs .sec-bar:not([hidden]) .sec-all');
         if (all) all.click();
       });
       await page.waitForTimeout(500);
