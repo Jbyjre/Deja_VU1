@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.17",
+      "date": "2026-11-18",
+      "name": "Keep Tester mode on from the first start, ask the test questions in the app a...",
+      "published": true,
+      "summary": "Keep Tester mode on from the first start, ask the test questions in the app and rank what to fix.",
+      "changes": [
+        "Keep Tester mode on from the first start, ask the test questions in the app and rank what to fix"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.16",
       "date": "2026-11-18",
       "name": "Connect a printer with Continue in setup, set up from a phone, see start-up p...",
