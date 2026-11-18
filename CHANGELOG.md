@@ -10,6 +10,25 @@ the app's version history (Settings → Version & updates, from
 From 0.9.0 on, every merge to `main` publishes a release: a merge that does not
 raise `VERSION` by hand gets the next number by itself (`tools/next-release.py`).
 
+**17 November 2026, Tester mode is always on in this build and asks its own questions.** A tester no longer turns anything on:
+Deja Vu1 keeps its record from the first start, on your computer only, and nothing is sent anywhere. The record is wider. It
+holds how each control was pressed (mouse, touch, pen or keyboard, a double or right press, held keys, where it landed, the
+pause before it) in the order it happened, switches, sliders and list choices you changed, keyboard shortcuts, each step of
+setup and the quick tour, how fast the app opens, how much memory the page and the server use, dropped connections, requests the
+server itself answered slowly, and every error with the control pressed just before it, the lines of code, the part of the app
+and what the printer was doing. You choose a test round of 1, 2 or 3 days; a button beside **Something felt off** shows the day,
+and when the days are up the app asks 52 questions in 12 short sections (saved as you type, every one skippable, with what the
+app recorded next to it) and then saves the report. **Something felt off** takes a tag (Broken, Slow, Confusing, Looks wrong,
+Idea, Works well), and right after an error one press saves a note with that error. The report opens with **Fix these first**, a
+ranked list of errors, slow controls, failed requests, failed slices, low frame rates, notes and troubled answers, each naming the
+part of the app and where to look; the zip adds `findings.md` with the same list. `tools/tester-reports.py` reads both report
+versions and adds the questions, the combined work list (`--findings`), every written answer (`--answers`) and how the first run
+went. `TESTER_ALWAYS_ON` in `backend/modules.py` gives back the optional switch, and `DEJAVU_TESTER=0` keeps one run out of the
+record. Checked in Chromium on Linux against a stand-in printer at 1366 and 390 px, and the online demo on a static server
+(it records nothing). Recording cost on the Printer page with the 3D twin: press to next paint -1.1 %, the page's main-thread
+time +3.7 %, median frame time equal, mean frame time +9 % from a few slow frames in software rendering (`docs/testing.md`).
+Not yet tried on a real U1, on Windows or on macOS.
+
 **17 November 2026, Tester mode.** Settings has a new Tester mode part. Switched on (or started with `DEJAVU_TESTER=1`),
 Deja Vu1 keeps a record on your computer of how it behaved while you used it: every error, every button that was slow to
 show a change, every request that failed or took over two seconds, printer connects and drops, refused commands and how

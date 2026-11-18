@@ -1,13 +1,15 @@
 """
 Tester mode in a real browser (tools/tester-walk.js): the walk, then the saved zip.
 
-The walk starts the server and a stand-in printer (tests/fake_moonraker.py), uses the app with Tester mode off (nothing is sent,
-the routes answer 403), switches it on in Settings, opens every place, presses controls, checks and starts a print on the
-stand-in printer, and makes three things go wrong on purpose: a request held for 2.6 s, a button that freezes the page for
-1.4 s, and an error, a failed promise and an error toast. Then it presses View report and Save tester report.
+The walk starts the servers and a stand-in printer (tests/fake_moonraker.py). It checks that a run kept off with DEJAVU_TESTER=0
+records nothing, then uses the tester build as shipped (always on): the first-run setup, the welcome panel and the choice of 2
+days, every place, presses of every kind, a file checked and printed on the stand-in printer, and three things made to go wrong
+on purpose (a request held for 2.6 s, a button that freezes the page for 1.4 s, an error with a failed promise and an error toast).
+It writes a note right after the error, lets the round run out, answers some of the 52 questions and saves the zip from the last
+step.
 
-This module reads the saved zip and checks that every section is there, with the slow action, the errors and the note the walk
-made, and that nothing private (an IP address typed into the deliberate error and the note) reached any file.
+This module reads that zip and checks that every section is there, with what the walk did on purpose, and that nothing private
+(an IP address typed into the deliberate error, the note and an answer) reached any file.
 
 It needs Node, Playwright for Node and a Chromium, so it is skipped where they are missing (GitHub's Python jobs).
 """
@@ -60,26 +62,30 @@ class TestTesterWalk(unittest.TestCase):
         shutil.rmtree(cls.dir, ignore_errors=True)
 
     def test_the_walk_passes(self):
-        # Off: nothing sent and every route 403; on: events sent, the card, the viewer and the download work.
+        # A run kept off records nothing; the shipped build records, asks the questions and saves the zip.
         self.assertEqual(self.code, 0, "The tester walk failed:\n" + self.out[-3000:])
         self.assertIn("PASSED", self.out)
-        self.assertIn("Tester mode off: the browser sent nothing to /api/tester (0 requests)", self.out)
-        self.assertIn("Tester mode off: /api/tester/events answers 403", self.out)
+        self.assertIn("DEJAVU_TESTER=0: the browser sent nothing to /api/tester (0 requests)", self.out)
+        self.assertIn("DEJAVU_TESTER=0: /api/tester/events answers 403", self.out)
+        self.assertIn("Recording is on with no switch", self.out)
         self.assertIn("The browser hid the address before it sent anything", self.out)
+        self.assertIn("When the days are up the page asks for the answers", self.out)
 
     def test_the_saved_zip_holds_every_section(self):
         self.assertIsNotNone(self.report, "the walk saved no zip:\n" + self.out[-2000:])
-        self.assertEqual(sorted(self.archive.namelist()), ["README.txt", "events.jsonl", "report.html", "report.json"])
+        self.assertEqual(sorted(self.archive.namelist()), ["README.txt", "events.jsonl", "findings.md", "report.html", "report.json"])
         r = self.report
+        self.assertEqual(r["schema_version"], 2)
         for key in ("summary", "setup", "sessions", "screens", "clicks", "slow", "requests", "errors", "printer", "confirm_print",
-                    "slicing", "converter", "smoothness", "features", "notes", "updates", "timeline", "thinning", "never_recorded"):
+                    "slicing", "converter", "smoothness", "features", "notes", "updates", "timeline", "thinning", "never_recorded",
+                    "study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings"):
             self.assertIn(key, r)
         setup = r["setup"]
         self.assertTrue(setup["server"]["os"] and setup["server"]["python"] and setup["server"]["app_version"])
         self.assertEqual(setup["server"]["printers_added"], 1)
         self.assertEqual(setup["browsers"][-1]["browser"], "Chrome")
-        self.assertTrue(setup["browsers"][-1]["w"])
-        self.assertGreaterEqual(len(r["sessions"]), 1)
+        self.assertTrue(setup["browsers"][-1]["w"] and setup["browsers"][-1]["cores"])
+        self.assertGreaterEqual(len(r["sessions"]), 2)                          # the page was opened again when the round ran out
         self.assertGreaterEqual(len(r["screens"]["totals"]), 8)
         self.assertGreater(r["clicks"]["total"], 20)
         self.assertEqual(r["summary"]["prints_started"], 1)
@@ -105,8 +111,70 @@ class TestTesterWalk(unittest.TestCase):
         kinds = {g["kind"] for g in r["errors"]["groups"]}
         self.assertTrue({"js", "promise", "toast"} <= kinds, kinds)
         self.assertTrue(all(g["last_actions"] for g in r["errors"]["groups"] if g["kind"] == "js"))
-        self.assertEqual(r["notes"][0]["text"].split(" (")[0], "Pause felt slow")
-        self.assertTrue(r["notes"][0]["last_actions"])
+        js = next(g for g in r["errors"]["groups"] if g["kind"] == "js" and "deliberate error" in g["message"])
+        self.assertEqual(js["category"], "app_bug")
+        self.assertTrue(js["controls"], "the control pressed just before the error")
+        self.assertIn(js["area"], ("The 3D twin", "Printer page", "Printer page controls"))
+
+    def test_the_notes_carry_their_tag_and_the_error_that_came_just_before(self):
+        notes = self.report["notes"]
+        slow = next(n for n in notes if n["tag"] == "slow")
+        self.assertEqual(slow["text"].split(" (")[0], "Pause felt slow")
+        self.assertTrue(slow["after_error"])
+        self.assertIn("deliberate", slow["error"])
+        self.assertTrue(slow["last_actions"])
+        self.assertTrue(any(n["tag"] == "good" and n["text"] == "" for n in notes), "a note that is only a tag")
+
+    def test_it_knows_how_the_first_run_went(self):
+        ob = self.report["onboarding"]
+        self.assertTrue(ob["first_run"])
+        wizard = ob["wizard"]
+        self.assertEqual((wizard["opened"], wizard["skipped"], wizard["finished"], wizard["furthest_step"], wizard["steps_total"]), (1, 1, 0, 3, 7))
+        self.assertEqual([s["name"] for s in wizard["steps"]], ["Welcome", "Make it yours", "Your printer"])
+        self.assertEqual(ob["tour"]["started"], 1)
+        self.assertEqual(ob["tour"]["ended_early"], 1)
+        self.assertGreaterEqual(ob["tour"]["steps_seen"], 2)
+        ids = {m["id"] for m in self.report["milestones"]}
+        for needed in ("setup_opened", "setup_closed", "added_a_printer", "printer_connected", "first_print_started", "first_error", "first_note", "questions_opened"):
+            self.assertIn(needed, ids)
+
+    def test_it_knows_how_the_controls_were_pressed(self):
+        use = self.report["usage"]
+        click = use["how_they_click"]
+        self.assertGreater(click["methods"].get("mouse", 0), 20)
+        self.assertEqual(click["buttons"].get("right"), 1)
+        self.assertTrue(any(d["control"].startswith("[data-view=top]") or "top" in d["control"] for d in click["double_presses"]), click["double_presses"])
+        self.assertIn("shift", click["modifiers"])
+        self.assertTrue(any(k["combo"] == "ctrl-k" for k in use["keys"]))
+        self.assertGreaterEqual(use["changes"]["total"], 1)
+        self.assertTrue(any(c["value"] and c["value"].startswith("option ") for c in use["changes"]["recent"]))
+        self.assertTrue(use["paths"]["transitions"])
+        self.assertTrue(use["journey"] and use["journey"][0]["actions"])
+        self.assertGreater(self.report["stats"]["click_to_paint"]["samples"], 20)
+        self.assertGreaterEqual(self.report["performance"]["start_up"]["samples"], 1)
+        self.assertGreaterEqual(self.report["server_health"]["samples"], 1)
+
+    def test_the_questions_were_answered_in_the_app_and_are_in_the_report(self):
+        study = self.report["study"]
+        plan = study["plan"]
+        self.assertEqual((plan["length_days"], plan["status"], plan["welcomed"]), (2, "finished", True))
+        self.assertEqual((study["answered"], study["total"], study["didnt_try"], study["with_words"]), (7, 52, 1, 6))
+        answers = {a["id"]: a for a in study["answers"] if a["answered"]}
+        self.assertEqual(sorted(answers), ["q1", "q11", "q2", "q47", "q52", "q8", "q9"])
+        self.assertEqual((answers["q8"]["choice"], answers["q9"]["choice"], answers["q11"]["choice"]), ("no", "didnt_try", "yes"))
+        self.assertIn("connection refused", answers["q8"]["answer"])
+        self.assertIn("<ip>", answers["q8"]["answer"])
+        titles = " | ".join(f["title"] for f in self.report["findings"])
+        for needle in ("Answered No to question 8", "Answered Yes to question 11", "Question 52", "Question 47"):
+            self.assertIn(needle, titles)
+        self.assertRegex(titles, r"A script error in the page: (Uncaught )?Error: walk: deliberate error")
+        self.assertEqual(self.report["summary"]["findings"]["high"] >= 2, True)
+        md = self.archive.read("findings.md").decode("utf-8")
+        self.assertIn("## F1 [high]", md)
+        self.assertIn("## Their answers", md)
+        page = self.archive.read("report.html").decode("utf-8")
+        for heading in ("Fix these first", "Their answers", "The first run", "How they used it", "Smoothness and speed"):
+            self.assertIn(heading, page)
 
     def test_nothing_private_reached_any_file(self):
         self.assertIsNotNone(self.archive)

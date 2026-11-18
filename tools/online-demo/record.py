@@ -49,7 +49,7 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 "/api/camera/snapshot", "/api/app/info", "/api/remote", "/api/timelapse/video",
                 "/api/timelapse/printer-video", "/api/assistant/watch/picture",
                 # Tester mode is off in the demo: its card shows labelled sample figures and a sample report page instead.
-                "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip"}
+                "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip", "/api/tester/study"}
 # Routes that need a file name, and the parameter it goes in.
 PER_FILE = {"/api/files/analysis": "name", "/api/files/plates": "name", "/api/print/confirm": "file",
             "/api/colours/plan": "name", "/api/print/preview": "file"}

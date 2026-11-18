@@ -14,38 +14,122 @@
 .tester-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
 .tester-delete { margin-left: auto; }
 .tester-status { margin: 4px 0; }
-.tester-card.is-demo .tester-delete, .tester-card.is-demo #tester-save { display: none; }
+.tester-card.is-demo .tester-delete, .tester-card.is-demo #tester-save, .tester-card.is-demo #tester-answer, .tester-card.is-demo .tester-plan, .tester-card.is-demo .tester-always { display: none; }
 @media (max-width: 560px) {
   .tester-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tester-delete { margin-left: 0; }
 }
 
-/* A small pill above the notification orb on every screen while recording, and the note it opens. */
-.tester-felt {
+/* One row above the notification orb on every screen while recording: the test-round chip and the note button. */
+.tester-dock {
   position: fixed; z-index: 93; right: var(--orb-gap, 20px); bottom: calc(var(--orb-gap, 20px) + var(--orb, 52px) + 12px);
-  min-height: 36px; padding: 0 16px; border-radius: 999px; cursor: pointer; border: 0;
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; max-width: calc(100vw - 2 * var(--orb-gap, 20px)); pointer-events: none;
+}
+.tester-dock > * { pointer-events: auto; }
+/* Flat on purpose: a glass pill blurs whatever is behind it again on every frame, and on a screen with the moving 3D twin that cost
+   a visible share of the frame time in a software-rendered browser. The panels these buttons open are glass; they exist only while open. */
+.tester-felt, .tester-chip {
+  min-height: 36px; padding: 0 16px; border-radius: 999px; cursor: pointer;
   font: 650 13px/1 var(--font-display, var(--font-sans)); color: var(--text);
+  background: color-mix(in oklch, var(--paper-solid, #fff) 92%, transparent); border: 1px solid var(--hair, oklch(25% 0.02 265 / .1));
   box-shadow: 0 1px 2px oklch(25% 0.02 265 / .14), 0 8px 22px oklch(25% 0.02 265 / .2);
 }
-.tester-felt:hover { transform: translateY(-1px); }
+.tester-chip { font-weight: 600; padding: 0 14px; }
+.tester-chip.is-due, .tester-felt.is-alert { outline: 2px solid var(--accent); outline-offset: 0; }
+.tester-felt:hover, .tester-chip:hover { transform: translateY(-1px); }
+.tester-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tester-felt:focus-visible, .tester-note textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tester-note {
   position: fixed; z-index: 96; right: var(--orb-gap, 20px); bottom: calc(var(--orb-gap, 20px) + var(--orb, 52px) + 60px);
   width: min(380px, calc(100vw - 24px)); padding: 16px 16px 14px; border-radius: 22px; color: var(--text);
 }
 .tester-note-title { margin: 0 0 6px; font-size: 17px; }
+.tester-note-error { margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; font-size: 12.5px; line-height: 1.4; color: var(--text); background: oklch(62% 0.18 25 / .14); overflow-wrap: anywhere; }
+.tester-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
 .tester-note-hint { margin: 0 0 10px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
 .tester-note textarea { display: block; width: 100%; min-height: 86px; margin: 0 0 10px; resize: vertical; font: inherit; font-size: 14px; }
 .tester-note-row { display: flex; align-items: center; gap: 8px; }
 .tester-note-where { flex: 1; min-width: 0; font: 11.5px var(--font-mono); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 720px) {
-  .tester-felt { bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 74px); }
-  .tester-note { right: 12px; bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 120px); }
+  .tester-dock { bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 74px); right: 12px; max-width: calc(100vw - 24px); }
+  .tester-note, .tester-hub { right: 12px; bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 120px); }
+  .tester-panel { bottom: calc(var(--orb-gap, 20px) + var(--orb, 44px) + 74px); }
 }
 @media (prefers-contrast: more) {
-  .tester-felt, .tester-note { border: 1.5px solid var(--text); }
+  .tester-felt, .tester-chip, .tester-note, .tester-hub, .tester-panel { border: 1.5px solid var(--text); }
+  .tester-length, .tester-tag, .tq-chip { border-color: var(--text); }
 }
-@media (prefers-reduced-motion: reduce) { .tester-felt { transition: none; } .tester-felt:hover { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tester-felt, .tester-chip, .tester-bar i { transition: none; } .tester-felt:hover, .tester-chip:hover { transform: none; }
+}
+
+/* The test round: the chip's popover, the welcome and end-of-test panels, the plan in Settings. */
+.tester-hub, .tester-panel { position: fixed; padding: 16px; border-radius: 22px; color: var(--text); }
+.tester-hub { z-index: 96; right: var(--orb-gap, 20px); bottom: calc(var(--orb-gap, 20px) + var(--orb, 52px) + 60px); width: min(340px, calc(100vw - 24px)); }
+.tester-panel { z-index: 97; left: 50%; bottom: 24px; transform: translateX(-50%); width: min(520px, calc(100vw - 24px)); padding: 18px 20px; }
+.tester-hub h2, .tester-panel h2 { margin: 0 0 8px; font-size: 17px; }
+.tester-panel p, .tester-hub p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--text-dim); }
+.tester-hub p b { color: var(--text); }
+.tester-hub-label { margin: 8px 0 6px; font: 600 11px/1 var(--font-mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-faint); }
+.tester-hub-row, .tester-panel-row, .tq-done-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+.tester-hub-row { justify-content: flex-start; }
+.tester-bar, .tester-q-progress { height: 6px; border-radius: 99px; overflow: hidden; background: color-mix(in oklch, var(--text) 10%, transparent); margin: 6px 0 10px; }
+.tester-bar i, .tester-q-progress i { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width .3s ease; }
+.tester-lengths { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.tester-length, .tester-tag, .tq-chip {
+  min-height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer; color: var(--text); background: transparent;
+  border: 1px solid color-mix(in oklch, var(--text) 22%, transparent); font: 600 13px/1 var(--font-sans);
+}
+/* The chosen one: a tint of the accent with dark text and an accent ring (white on the accent blue is only 3.2:1). */
+.tester-length[aria-pressed="true"], .tester-tag[aria-pressed="true"], .tq-chip[aria-pressed="true"], .tq-dot.is-now {
+  background: color-mix(in oklch, var(--accent) 22%, var(--paper-solid, #fff)); border-color: var(--accent); color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700;
+}
+.tester-length:focus-visible, .tester-tag:focus-visible, .tq-chip:focus-visible, .tester-link:focus-visible, .tq-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tester-link { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.tester-always { align-self: flex-start; }
+.tester-plan { margin: 0 0 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid color-mix(in oklch, var(--text) 14%, transparent); }
+.tester-plan[hidden] { display: none; }
+.tester-plan-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
+.tester-plan-head b { font-size: 16px; }
+.tester-plan-head span { font-size: 13px; color: var(--text-dim); }
+.tester-plan-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.tester-plan-row .tester-hub-label { margin: 0; }
+.tester-plan .field-hint { margin: 8px 0 0; }
+
+/* The questions. */
+.glass-dialog.setup-dialog.tester-q:not(.is-morph-target) {
+  width: min(760px, calc(100vw - 24px)); height: min(820px, calc(100dvh - 24px)); max-height: none; padding: 18px 20px;
+  display: none; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 8px;
+  background: var(--paper-solid, #fff); backdrop-filter: none; -webkit-backdrop-filter: none;       /* solid: the page behind must not show through while someone reads */
+}
+.glass-dialog.setup-dialog.tester-q[open]:not(.is-morph-target) { display: grid; }
+.tester-q-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tester-q-head h2 { margin: 0; font-size: 22px; }
+.tester-q-head h2:focus { outline: none; }
+.tester-q-sub { margin: 4px 0 0; font-size: 13px; color: var(--text-dim); }
+.tester-q-progress { margin: 0; }
+.tq-dots { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.tq-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font: 600 12px/1 var(--font-mono); color: var(--text); background: transparent; border: 1px solid color-mix(in oklch, var(--text) 22%, transparent); }
+.tq-dot.is-some { border-color: var(--accent); }
+.tq-dot.is-done { background: color-mix(in oklch, var(--accent) 22%, transparent); border-color: var(--accent); }
+.tester-q-body { min-height: 0; overflow: auto; padding: 4px 6px 4px 0; }
+.tq { border: 0; margin: 0 0 16px; padding: 0 0 14px; min-width: 0; border-bottom: 1px solid color-mix(in oklch, var(--text) 10%, transparent); }
+.tq legend { padding: 0; margin: 0 0 6px; font: 600 15px/1.45 var(--font-sans); color: var(--text); }
+.tq-n { display: inline-block; min-width: 26px; margin-right: 4px; font: 600 12px/1 var(--font-mono); color: var(--text-dim); }
+.tq-help, .tq-saw { margin: 0 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.tq-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.tq-text { display: block; width: 100%; resize: vertical; font: inherit; font-size: 14px; }
+.tq-intro ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; color: var(--text-dim); }
+.tq-intro p, .tq-done p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; color: var(--text-dim); }
+.tq-done .field-hint { min-height: 1.4em; }
+.tester-q-foot { display: flex; align-items: center; gap: 10px; }
+.tester-q-note { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text-faint); }
+.tester-q-foot #tester-q-next { margin-left: auto; }
+@media (max-width: 600px) {
+  .glass-dialog.setup-dialog.tester-q:not(.is-morph-target) { padding: 12px; }
+  .tester-panel { padding: 14px; }
+}
 
 /* The report viewer: the same page the saved file holds, in a frame with no scripts and no network. */
 .glass-dialog.setup-dialog.tester-dialog:not(.is-morph-target) {

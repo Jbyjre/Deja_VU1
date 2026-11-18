@@ -1288,11 +1288,22 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
       <p class="field-hint">Restoring takes one more safety copy first, so a restore can itself be undone. The dashboard then restarts to read the restored records. Model files and camera pictures are covered by the full backup below, not by safety copies.</p>
     </section>
     <section class="card liquid-glass tester-card" id="tester-card">
-      <div class="card-head"><div><h2>Tester mode</h2><p class="card-sub">Keeps a report of how Deja Vu1 behaved while you used it. It stays on this computer. When you are done you read it, save one file and attach it to your forum message. Deja Vu1 sends nothing anywhere.</p></div>
-        <label class="switch" for="tester-setting"><span class="switch-label">Record a tester report</span>
-          <input type="checkbox" id="tester-setting" data-setting-module="tester" data-setting-name="Tester mode"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
+      <div class="card-head"><div><h2>Tester mode</h2><p class="card-sub">This tester build keeps a report of how Deja Vu1 behaved while you used it. It is always on, it stays on this computer and Deja Vu1 sends nothing anywhere. When your test round ends you answer some questions, read the report, save one file and attach it to your forum message.</p></div>
+        <span class="pill tester-always" id="tester-always">Always on</span></div>
       <p class="tester-demo-note" id="tester-demo-note" role="note" hidden><b>Sample numbers.</b> This is the online demo, so the figures below are made up to show the layout and nothing is recorded. Install Deja Vu1 to use Tester mode.</p>
+      <p class="tester-demo-note" id="tester-off-note" role="note" hidden>Tester mode is switched off for this run (the server was started with DEJAVU_TESTER=0), so nothing is being recorded.</p>
       <div class="tester-live" id="tester-live" data-module-body="tester">
+        <div class="tester-plan" id="tester-plan" hidden>
+          <div class="tester-plan-head"><b id="tester-plan-title">Day 1 of 3</b><span id="tester-plan-sub"></span></div>
+          <div class="tester-bar" aria-hidden="true"><i id="tester-plan-fill" style="width:0%"></i></div>
+          <div class="tester-plan-row"><span class="tester-hub-label">Test for</span>
+            <div class="tester-lengths" role="group" aria-label="How many days to test">
+              <button type="button" class="tester-length" data-length="1" aria-pressed="false">1 day</button>
+              <button type="button" class="tester-length" data-length="2" aria-pressed="false">2 days</button>
+              <button type="button" class="tester-length" data-length="3" aria-pressed="true">3 days</button>
+            </div></div>
+          <p class="field-hint" id="tester-plan-q">0 of 52 questions answered.</p>
+        </div>
         <div class="tester-tiles" role="group" aria-label="Recorded so far">
           <div class="stat"><span class="stat-key">Days</span><span class="stat-val" id="tester-days">0</span></div>
           <div class="stat"><span class="stat-key">Actions</span><span class="stat-val" id="tester-actions">0</span></div>
@@ -1301,25 +1312,28 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
         </div>
         <p class="field-hint tester-since" id="tester-since" aria-live="polite">Nothing recorded yet. Use Deja Vu1 as usual.</p>
         <div class="tester-actions">
-          <button class="btn primary" type="button" id="tester-view">View report</button>
+          <button class="btn primary" type="button" id="tester-answer">Answer the questions</button>
+          <button class="btn" type="button" id="tester-view">View report</button>
           <button class="btn" type="button" id="tester-save">Save tester report</button>
           <button class="btn tester-delete" type="button" id="tester-delete">Delete tester data</button>
         </div>
         <p class="field-hint tester-status" id="tester-status" role="status"></p>
-        <p class="field-hint">Switching Tester mode off stops the recording at once. What was recorded stays here until you press Delete tester data.</p>
+        <p class="field-hint">Everything recorded stays here until you press Delete tester data, which also removes your answers and starts the test round again. The <b>Something felt off</b> button, bottom right, saves a note whenever you like.</p>
       </div>
       <div class="tester-lists">
         <div class="well tester-list">
           <h3>What it records</h3>
           <ul>
             <li>Your setup: Deja Vu1 and printer firmware versions, your computer, browser and screen, which features are on</li>
-            <li>Each screen you open and how long you stay</li>
-            <li>Each button you press and how long the screen took to change</li>
-            <li>Every error, and anything slow to respond</li>
+            <li>Each screen you open and how long you stay, and the order you do things in</li>
+            <li>Each button you press, how you pressed it (mouse, touch or keyboard) and how long the screen took to change</li>
+            <li>Switches, sliders and choices you change, and keyboard shortcuts</li>
+            <li>How setup and the tour went, and how fast the app opens</li>
+            <li>Every error, what you pressed just before it, and anything slow to respond</li>
             <li>Printer connects and drops, refused commands, and how each print ended</li>
             <li>Confirm Print checks, slices and conversions, and whether they worked</li>
-            <li>How smoothly the 3D twin and the G-code preview draw</li>
-            <li>Which features you tried, and any notes you write with the <b>Something felt off</b> button</li>
+            <li>How smoothly the 3D twin and the G-code preview draw, and how much memory the app uses</li>
+            <li>Which features you tried, your notes from the <b>Something felt off</b> button and your answers to the questions</li>
           </ul>
         </div>
         <div class="well tester-list">
@@ -1330,7 +1344,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
             <li>IP addresses, host names or printer serial numbers</li>
             <li>Wi-Fi names, API keys or AI sign-ins</li>
             <li>AI chat text</li>
-            <li>Anything you type into a field, except your own notes</li>
+            <li>Anything you type into a field, except your own notes and answers</li>
             <li>The printer's G-code</li>
           </ul>
         </div>
@@ -1696,8 +1710,16 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
   <p class="tester-dialog-hint">This page is everything the saved file will hold. Nothing has been sent anywhere.</p>
   <div class="tester-frame-host" id="tester-frame-host"></div>
 </dialog>
+<dialog id="tester-q" class="glass-dialog setup-dialog tester-q tester-ui" aria-labelledby="tester-q-title">
+  <div class="tester-q-head"><div><h2 id="tester-q-title">A few questions</h2><p class="tester-q-sub" id="tester-q-sub"></p></div><button class="btn" type="button" id="tester-q-close">Close</button></div>
+  <div class="tester-q-progress" aria-hidden="true"><i id="tester-q-fill" style="width:0%"></i></div>
+  <div id="tester-q-dots"></div>
+  <div class="tester-q-body" id="tester-q-body"></div>
+  <div class="tester-q-foot"><button class="btn" type="button" id="tester-q-back" hidden>Back</button><span class="tester-q-note" id="tester-q-saved-note" role="status" aria-live="polite"></span><button class="btn primary" type="button" id="tester-q-next">Start</button></div>
+</dialog>
 <script src="app.js"></script>
 <script src="tester.js"></script>
+<script src="tester-study.js"></script>
 <script src="layout.js"></script>
 <script src="orb.js"></script>
 <script src="backdrop.js"></script>

@@ -84,7 +84,9 @@ class TestKinds(unittest.TestCase):
              "ai_assistant"]))
 
     def test_a_few_features_are_ordinary_settings_that_switch_in_their_own_card(self):
-        self.assertEqual(self.kinds("setting"), ["camera", "handoff", "tester", "timelapse"])
+        # Tester mode is one too in a build that makes it optional; this tester build keeps it on, with no switch (see test_tester_study.py).
+        expected = ["camera", "handoff", "timelapse"] + ([] if modules.TESTER_ALWAYS_ON else ["tester"])
+        self.assertEqual(self.kinds("setting"), sorted(expected))
 
     def test_everything_else_is_part_of_deja_vu1(self):
         core = self.kinds("core")
@@ -115,6 +117,9 @@ class TestKinds(unittest.TestCase):
         self.assertNotIn("<h2>Print cost pricing</h2>", page)           # the prices sit in the Print cost card now
         self.assertEqual(page.count('id="cost-electricity"'), 1)
         for module_id in modules.SETTINGS:
+            if module_id == "tester" and modules.TESTER_ALWAYS_ON:
+                self.assertEqual(page.count('data-setting-module="tester"'), 0)          # always on: the card has no switch
+                continue
             self.assertEqual(page.count(f'data-setting-module="{module_id}"'), 1, module_id)
         with open(os.path.join(root, "frontend", "app.js"), encoding="utf-8") as f:
             script = f.read()

@@ -94,15 +94,21 @@ server. Load the frontend-design and liquid-glass skills before changing a scree
 - `desk.js` (Farm desk in Printers), `telemetry.js` (Overview readout, fed by workshop's `dv-state`
   event), `logbook.js` (Care), `insights.js`, `printroom.js` (four-head editor), `backup.js`.
 
-- `tester.js` + `tester.css`: Tester mode. It records only while `modGate` says the module is on, never in the online demo
-  (`tour.on`) or without a server, and never sends `/api/tester/*` calls itself into the record. It follows
-  `syncModuleBodies()` to start and stop. A control is named by its id, an action attribute from `ACTION_ATTRS`
-  (never `data-file`, `data-id`, `data-printer`) or, last, its own words with file names replaced. Clicks are timed to the next
-  paint (a task queued from inside `requestAnimationFrame`); a press waits up to 300 ms to pick up the requests it started.
-  The card (`#tester-card`, its own Settings part) shows counts from `/api/tester/status`, the viewer is `#tester-dialog`
-  with a sandboxed frame, and in the demo it shows `SAMPLE` figures that must match `tester-report-sample.html`
-  (`python3 tools/tester-sample-report.py`; `tests/test_tester.py` checks both). `#tester-felt` and `#tester-note` are the
-  "Something felt off" button and note.
+- `tester.js` + `tester-study.js` + `tester.css`: Tester mode. `tester.js` records from the first start once `serverReady()` has
+  resolved and the module list says the module is on, never in the online demo (`tour.on`) or without a server, and never sends
+  `/api/tester/*` calls itself into the record. A control is named by its id, an action attribute from `ACTION_ATTRS` (never
+  `data-file`, `data-id`, `data-printer`) or, last, its own words with file names replaced. Presses carry how they were made, the
+  order, where they landed and the pause before them; clicks are timed to the next paint (a task queued from inside
+  `requestAnimationFrame`) and wait up to 300 ms for the requests they started. Only trusted events are recorded. The setup
+  wizard and the guided tour are watched from outside (MutationObservers on `#setup-dialog`, `#setup-step` and `<html>`'s
+  `guide-open`); `launchpad.js` and `guide.js` are not changed for it. The tester's own panels carry `tester-ui`, which the
+  recorder leaves out. `#tester-dock` holds the flat chip (`#tester-chip`, tester-study.js) and the "Something felt off" button
+  (`#tester-felt`, flat on purpose: glass behind the moving 3D view cost frames). `#tester-note` takes a tag and the error just
+  before it. `tester-study.js` is the round: the welcome panel, the hub, the end-of-test prompt and `#tester-q`, the 52 questions
+  saved as typed. The Settings card (`#tester-card`) has no switch (an "Always on" pill, the plan, counts, Answer the questions,
+  View report, Save tester report, Delete tester data) and `#tester-off-note` for a run started with `DEJAVU_TESTER=0`. In the demo
+  it shows `SAMPLE` figures that must match `tester-report-sample.html` (`python3 tools/tester-sample-report.py`;
+  `tests/test_tester.py` checks both); the plan and the questions never show there.
 - `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
   right-edge strip, a sheet on phones). Views: chat (your message is drawn at once with `is-sending` and
   replaced by the server's copy; steps as a toolpath; results as cards from `m.card`: printer gauges,

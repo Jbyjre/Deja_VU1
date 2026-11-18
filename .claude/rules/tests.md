@@ -25,9 +25,12 @@ paths:
   set `DEJAVU_NO_REGISTER=1`.
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line contains that text: it
   kills the shell. Kill by PID; stop and restart a server in two separate commands.
-- Tester mode: `tests/test_tester.py` (switch, masking, thinning of a 26 MB week, the zip, the demo sample),
-  `tests/test_tester_reports_tool.py` (`tools/tester-reports.py`), and `tests/test_tester_browser.py`, which runs
-  `node tools/tester-walk.js` (off then on, a stand-in printer, a slow action and an error on purpose) and reads the zip.
-  `node tools/tester-walk.js --overhead` measures what recording costs on the Printer page.
+- Tester mode: `tests/test_tester.py` (the optional-switch build: it sets `modules.TESTER_ALWAYS_ON = False`; masking, thinning of a
+  26 MB week, the zip, the demo sample, the guide's names), `tests/test_tester_study.py` (the always-on build, the 52 questions, the
+  round, answers, the study routes), `tests/test_tester_insights.py` (the wider record, how people pressed, paths, the first run,
+  error kinds, the ranked findings, nothing private in any file), `tests/test_tester_reports_tool.py` (`tools/tester-reports.py`,
+  schema 1 and 2), `tests/test_tester_printer.py` and `tests/test_tester_browser.py`, which runs `node tools/tester-walk.js` (a run kept
+  off with `DEJAVU_TESTER=0`, then the shipped build: setup, welcome, a print, mistakes on purpose, a tagged note, the questions, the
+  download) and reads the zip. `node tools/tester-walk.js --overhead --same-server` measures what recording costs on the Printer page.
 - GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13 (Ubuntu 24.04). Write no
   parenthesised `with (a, b):`; `ruff check --select E701,E702 backend tests tools` must stay clean.

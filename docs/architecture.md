@@ -613,30 +613,39 @@ hands over to Confirm Print. A turn runs on its own thread; the browser polls
 `/api/assistant/thread` and shows each step as it lands. `frontend/assistant.js` draws the panel and,
 in the online demo, a scripted helper in place of a model. Guide: [AI assistant](ai-assistant.md).
 
-### Tester mode (`backend/tester.py`, `backend/tester_report.py`, `frontend/tester.js`)
+### Tester mode (`backend/tester.py`, `backend/tester_report.py`, `backend/tester_study.py`, `frontend/tester.js`)
 
 Tester mode keeps a record of how Deja Vu1 behaved while someone used it, so an outside tester can send one file
-instead of writing everything down. It is the `tester` module (kind `setting`, off by default, switched on in
-Settings or by starting with `DEJAVU_TESTER=1`). Switched off, every `/api/tester` route answers 403, the browser
-records and sends nothing, and the server writes nothing.
+instead of writing everything down. It is the `tester` module. In the tester build it is always on (`TESTER_ALWAYS_ON` in
+`backend/modules.py`: no switch on screen, and the server refuses to switch it off); starting with `DEJAVU_TESTER=0` keeps one
+run out of the record, and every `/api/tester` route then answers 403, the browser records and sends nothing, and the server writes
+nothing. With the flag False it is an optional setting again, off by default. It never records in the online demo.
 
-The browser side (`tester.js`) watches screens, presses (timed to the next paint), requests (it wraps `fetch`), errors,
-error toasts, browser freezes over 200 ms and how many frames a second the 3D twin and the G-code preview draw. It
-sends batches of at most 400 events to `POST /api/tester/events`, which keeps only the kinds and fields listed in
-`tester._BROWSER`. The server adds its own events: print starts, finishes and cancels, connects and drops, refused
-commands, Confirm Print checks, slices, conversions and updates. Everything is appended to JSON Lines files in
-`<data>/tester/`. Nothing is sent anywhere: the tester saves a zip and attaches it to a message.
+The browser side (`tester.js`) watches screens, presses (how each was made, in order, timed to the next paint), switches and
+list choices, shortcuts, requests (it wraps `fetch`), errors with the control pressed just before them, error toasts, the setup
+and the tour, browser freezes over 200 ms, start-up timings, memory, the live link closing, and how many frames a second the
+3D twin and the G-code preview draw. It sends batches of at most 400 events to `POST /api/tester/events`, which keeps only the
+kinds and fields listed in `tester._BROWSER`. The server adds its own events: print starts, finishes and cancels, connects and
+drops, refused commands, Confirm Print checks, slices, conversions, updates, slow answers and its own memory and processor use.
+Everything is appended to JSON Lines files in `<data>/tester/`. Nothing is sent anywhere: the tester saves a zip and attaches it
+to a message.
+
+The test round (`backend/tester_study.py`, `frontend/tester-study.js`): the tester chooses 1, 2 or 3 days, a chip shows the day,
+and when the days are up the app asks 52 questions (`backend/tester_questions.py`) and then saves the report. Answers live in
+`<data>/tester/study.json`, masked like everything else, and go into the report next to what the app recorded.
 
 Private details never reach the disk. `tester.mask()` replaces addresses, keys, Wi-Fi names, serial numbers, folders that
 hold a user name and the names of files, printers and spools, in the browser's events and the server's own, and the
 report builder masks again. A file appears as "file 3, .3mf, 2.4 MB".
 
 `tester_report.py` reads the events once, streaming, and builds the totals for the Settings card, `report.json`
-(with a `schema_version`), `report.html` (one page with no script that loads nothing from outside), `events.jsonl` and a
-README, packed into one zip. When the raw events would pass 20 MB it replaces the oldest routine ones with one line per day
-and control, keeps every error, slow action, note and printer event, counts before it thins, and says so in the report.
-`tools/tester-reports.py` combines several zips into totals; `tools/tester-walk.js` walks the feature in a real browser and
-measures what recording costs.
+(`schema_version` 2), `report.html` (one page with no script that loads nothing from outside), `findings.md` (the ranked work
+list), `events.jsonl` and a README, packed into one zip. The page starts with Fix these first, a ranked list of errors, slow
+controls, failed requests, failed slices, low frame rates, notes and troubled answers, each with its part of the app and where to
+look. When the raw events would pass 20 MB it replaces the oldest routine ones with one line per day and control, keeps every
+error, slow action, note and printer event, counts before it thins, and says so in the report.
+`tools/tester-reports.py` combines several zips into totals, the combined work list and every written answer;
+`tools/tester-walk.js` walks the feature in a real browser and measures what recording costs.
 
 ### `backend/led_status.py` / `backend/color_check.py`
 The rings show their intended states without a hardware driver. The colour checker compares demo

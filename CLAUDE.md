@@ -82,8 +82,11 @@ soften the AI-assistance disclosure. Details: `.claude/rules/public-text.md`.
 - **Module switches are enforced by the server:** a disabled module's routes answer 403; background
   automation, queue advancement, camera capture, time-lapse and filament deduction are gated too.
   An in-flight request cannot be recalled. `ar_preview` is browser-only; pairing is always on.
-- **Tester mode records only while its switch is on** (the server answers 403 on every `/api/tester` route otherwise) and
-  keeps everything on the computer; nothing private reaches the record (`tester.mask`). Never add a route that sends it anywhere.
+- **Tester mode is always on in this tester build** (`TESTER_ALWAYS_ON` in `backend/modules.py`; no switch on screen, the server
+  refuses to switch it off). `DEJAVU_TESTER=0` keeps one run out of the record and makes every `/api/tester` route answer 403.
+  Setting the flag to False gives back the optional switch, off by default. It never records in the online demo or without a
+  server, keeps everything on the computer (`tester.mask`; answers to the questions are masked too) and sends it nowhere. Never
+  add a route that sends it anywhere.
 - **Honest controls:** a command the printer refuses is shown as refused, in words.
 - **Security:** there is no login. Protection is a Host-header allowlist (421), an Origin check on
   POSTs and the WebSocket (403) and anti-framing headers. Never add an exception keyed on a request

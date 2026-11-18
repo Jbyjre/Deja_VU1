@@ -38,7 +38,6 @@ class TestTesterWithAPrinter(RealPrinterAPI):
         self.addCleanup(self.finish)
 
     def finish(self):
-        modules.set_enabled("tester", False)
         tester.refresh()
         tester.delete_all()
 
