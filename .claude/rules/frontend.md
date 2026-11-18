@@ -10,6 +10,11 @@ published** (Cloudflare serves it as the product page and the online demo), so n
 keys or private text here. Every change shows in the online demo: check `/?demo` on a static
 server. Load the frontend-design and liquid-glass skills before changing a screen.
 
+**Direction (18 November 2026):** screens are moving from cards to one working surface per screen (docked panes that
+fill the window, thin dividers, no gaps, no explainer paragraphs), Glass by default everywhere, dark mode at least as
+good as light. Until the SHELL cluster (private `FEATURES.md`) writes its building blocks into this note, don't add new
+cards or intro text; after it, build every screen from those blocks.
+
 ## Load order and shared names
 
 - Scripts: `theme-boot.js` in `<head>`, then `app.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →

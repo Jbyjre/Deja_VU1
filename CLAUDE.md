@@ -35,7 +35,7 @@ disagree, trust the code and fix the note.
 
 ## Skills
 
-Load `anthropic-skills:core` (the owner's standing rules) and `anthropic-skills:context-efficient` first in every
+Load `anthropic-skills:core` (the owner's standing rules and the source of truth for how every session works) and `anthropic-skills:context-efficient` first in every
 session. For any screen, style or picture
 of the app, then load `anthropic-skills:frontend-design` and `anthropic-skills:liquid-glass` (Glass
 is the default look). For public text, `anthropic-skills:stop-slop`. Others as the job needs
