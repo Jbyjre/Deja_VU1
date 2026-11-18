@@ -25,6 +25,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.16 (18 November 2026): Connect a printer with Continue in setup, set up from a phone, see start-up p...
+
+- Connect a printer with Continue in setup, set up from a phone, see start-up problems at once, and keep files with non-English names
+
 ## 0.20.15 (16 November 2026): Calibrate a colour sensor from a white reference, see it in Confirm Print, an...
 
 - Calibrate a colour sensor from a white reference, see it in Confirm Print, and check every screen in a real browser
