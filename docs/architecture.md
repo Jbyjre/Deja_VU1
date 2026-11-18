@@ -673,14 +673,14 @@ only its module state. No framework, so there is nothing to install.
 
 ### `frontend/`
 Twelve page, script and style files, the app icons and `manifest.webmanifest`, and three folders. The twelve are `index.html`, `style.css` and `app.js`
-(the original dashboard and the games, and the shared helpers the other
-scripts use), `workshop.css` and `workshop.js` (live connection, fleet, the
+(the original dashboard and the shared helpers the other scripts use; since 18 November 2026 it is seven files of
+one area each, `app.js` to `app-start.js`, and the games are their own seven `games*.js` files loaded on demand), `workshop.css` and `workshop.js` (live connection, fleet, the
 "Needs you" list, files, automations, phone layout, Liquid Glass 2.0),
 `viewer3d.js` (the STL / 3MF parsers and the WebGL renderer), `ar.js`
 (the WebXR "view on your desk" preview), `studio.js` (the Photo-to-Print
 Studio), `farm.js` + `farm.css` (fleet command center, fleet history, farm
-sandbox, auto-print pipeline), `theme.css` (the "Layer lines" design layer,
-loaded last; also the only stylesheet for the "Needs you" card) and
+sandbox, auto-print pipeline), `theme.css` (the "Layer lines" design layer, with
+`theme-screens.css` and `theme-shell.css` after it, loaded last; also the only stylesheet for the "Needs you" card) and
 `welcome.html` (the product page a static host shows instead of the
 dashboard). `fonts/` holds the three bundled typefaces with their SIL Open
 Font License files, `img/` the product page's screenshots, taken from the
@@ -832,7 +832,7 @@ off; a `data-module-off="<id>"` slot shows the off state in their place.
 Settings fields have visible labels (`.field`), because a placeholder
 disappears the moment the box holds a value.
 
-The Block World game (its code is still in `app.js`, though it isn't in the
+The Block World game (its code is in `games-v2.js`, though it isn't in the
 current game picker) generalizes the same rotate-by-negative-yaw-
 around-the-camera trick Echo Maze uses for its room-to-room turns, extended
 from 90-degree snaps to continuous free movement:

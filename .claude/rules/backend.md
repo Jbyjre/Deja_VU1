@@ -123,7 +123,9 @@ slicing and launcher files have their own notes in this folder.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
 
-## Tester mode (`tester.py`, `tester_report.py`, `tester_study.py`, `tester_questions.py`)
+## Tester mode (`tester.py`, `tester_report.py` + `tester_report_render.py`, `tester_study.py`, `tester_questions.py`)
+
+`tester_report_render.py` holds report.html, findings.md and the zip's README; `tester_report.py` imports them.
 
 - Module `tester` is always on in this build (`modules.TESTER_ALWAYS_ON = True`: kind `core`, enabled whatever the saved state
   says, and `set_enabled("tester", False)` raises). `DEJAVU_TESTER=0` is the one way to keep a run out of the record: the module

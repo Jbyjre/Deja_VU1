@@ -98,7 +98,9 @@ def _pages():
             path = FRONTEND / name
             if not path.is_file() or path.stat().st_size == 0:
                 missing.append(name)
-    for name in ('sw.js', 'games.js', 'versions.json'):
+    extra = ('sw.js', 'games.js', 'games-classic.js', 'games-arcade.js', 'games-shell.js', 'games-puzzle.js', 'games-v2.js',
+             'games-world.js', 'versions.json')
+    for name in extra:
         count += 1
         if not (FRONTEND / name).is_file():
             missing.append(name)
@@ -106,7 +108,7 @@ def _pages():
         shown = ', '.join(missing[:4]) + (f' and {len(missing) - 4} more' if len(missing) > 4 else '')
         return _check('pages', 'Pages', 'bad', f'Missing or empty in the app folder: {shown}',
                       'Paste the Repair block. It puts the app files back; your settings, printers and files stay')
-    return _check('pages', 'Pages', 'ok', f'The dashboard and the {count - 3} files it loads are all there')
+    return _check('pages', 'Pages', 'ok', f'The dashboard and the {count - len(extra)} files it loads are all there')
 
 
 def _demo():

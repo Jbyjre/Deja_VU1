@@ -3,13 +3,15 @@
 import os
 import re
 import unittest
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frontend_parts import read_frontend  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def read(name):
-    with open(os.path.join(ROOT, "frontend", name), encoding="utf-8") as f:
-        return f.read()
+    return read_frontend(name)          # a split file comes back whole (frontend_parts.py)
 
 
 RAIL = read("rail.js")

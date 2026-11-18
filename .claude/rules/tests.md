@@ -18,7 +18,8 @@ paths:
   `python3 -c "import unittest; print(unittest.defaultTestLoader.discover('tests').countTestCases())"`.
   Quote a count and date only from a run you made, and change every copy together (README,
   `tools/readme-images/boards.html`, `docs/slicer-workspace-validation.md`, `docs/testing.md`).
-- Some tests read source files as text (`test_frontend_refresh.py` reads `games.js`,
+- Some tests read source files as text (`test_frontend_refresh.py` reads the arcade, through
+  `tests/frontend_parts.py`, which joins a split file's parts so a test finds code in whichever part holds it;
   `test_plate_keyboard.py` reads `plate.js`, `test_install_blocks.py` reads the README). Write such
   tests so spacing doesn't matter.
 - Tests that finish prints must reset the print queue (bed clearance). Tests that start the launcher
