@@ -61,7 +61,9 @@ The rest of the dashboard was used with the same printer. The firmware version w
   button that freezes the page for 1.4 seconds, an error, a failed promise, an error toast, a tagged note written right after
   the error, the round run out, 7 of the 52 questions answered, and the zip saved from the last step and from Settings. A
   phone-sized touch browser taps something and the record says touch. It opens the zip's `report.html` with no network at 1366 px
-  and 390 px in light and dark. The walk passes 48 checks at 1366 px and at 390 px, and the online demo on a static server shows
+  and 390 px in light and dark. axe-core 4.10.2 (WCAG 2.2 AA and best-practice rules) finds nothing on the welcome panel, the
+  test-round popover, the note panel, the questions and the Settings card in light and dark at 1366 px, after the contrast of the
+  selected chips was fixed (white on the accent blue was 3.25:1). The walk passes 48 checks at 1366 px and at 390 px, and the online demo on a static server shows
   the sample figures, records nothing and asks the server for nothing. Cost of recording on the Printer page with the 3D twin, in
   Chromium with software rendering (8 alternating pairs of 8-second stretches on one server, a normal page against one whose
   recorder does nothing): press to next paint -1.1 % (standard error 1.2), the page's main-thread time +3.7 % (2.8), median

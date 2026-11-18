@@ -80,7 +80,11 @@
   min-height: 32px; padding: 0 12px; border-radius: 999px; cursor: pointer; color: var(--text); background: transparent;
   border: 1px solid color-mix(in oklch, var(--text) 22%, transparent); font: 600 13px/1 var(--font-sans);
 }
-.tester-length[aria-pressed="true"], .tester-tag[aria-pressed="true"], .tq-chip[aria-pressed="true"] { background: var(--accent); border-color: transparent; color: #fff; }
+/* The chosen one: a tint of the accent with dark text and an accent ring (white on the accent blue is only 3.2:1). */
+.tester-length[aria-pressed="true"], .tester-tag[aria-pressed="true"], .tq-chip[aria-pressed="true"], .tq-dot.is-now {
+  background: color-mix(in oklch, var(--accent) 22%, var(--paper-solid, #fff)); border-color: var(--accent); color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--accent); font-weight: 700;
+}
 .tester-length:focus-visible, .tester-tag:focus-visible, .tq-chip:focus-visible, .tester-link:focus-visible, .tq-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tester-link { background: none; border: 0; padding: 0; font: inherit; font-size: 13px; color: var(--accent); text-decoration: underline; cursor: pointer; }
 .tester-always { align-self: flex-start; }
@@ -109,11 +113,10 @@
 .tq-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font: 600 12px/1 var(--font-mono); color: var(--text); background: transparent; border: 1px solid color-mix(in oklch, var(--text) 22%, transparent); }
 .tq-dot.is-some { border-color: var(--accent); }
 .tq-dot.is-done { background: color-mix(in oklch, var(--accent) 22%, transparent); border-color: var(--accent); }
-.tq-dot.is-now { background: var(--accent); border-color: transparent; color: #fff; }
 .tester-q-body { min-height: 0; overflow: auto; padding: 4px 6px 4px 0; }
 .tq { border: 0; margin: 0 0 16px; padding: 0 0 14px; min-width: 0; border-bottom: 1px solid color-mix(in oklch, var(--text) 10%, transparent); }
 .tq legend { padding: 0; margin: 0 0 6px; font: 600 15px/1.45 var(--font-sans); color: var(--text); }
-.tq-n { display: inline-block; min-width: 26px; margin-right: 4px; font: 600 12px/1 var(--font-mono); color: var(--accent); }
+.tq-n { display: inline-block; min-width: 26px; margin-right: 4px; font: 600 12px/1 var(--font-mono); color: var(--text-dim); }
 .tq-help, .tq-saw { margin: 0 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
 .tq-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .tq-text { display: block; width: 100%; resize: vertical; font: inherit; font-size: 14px; }
