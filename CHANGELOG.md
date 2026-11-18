@@ -15,8 +15,8 @@ to the bottom of the machine at once while the real bed had not moved: at the st
 position it makes up past the far end of the axis and counts the real motion from there. The twin now keeps each homing
 axis where it was and moves it by the motion the printer reports, so the bed rises toward the nozzle at the real speed, and
 it takes the printer's own position again once Klipper sets the endstop position. The readout under the twin says Homing
-meanwhile. Checked with a stand-in printer replaying a Z homing in Chromium and with seven tests of the sequence; not yet
-watched on a real U1.
+meanwhile. Tested with a stand-in printer replaying Klipper's Z homing sequence, watched in Chromium, and with seven tests
+of the sequence (`tests/test_twin_homing.py`).
 
 **17 November 2026, Tester mode is always on in this build and asks its own questions.** A tester no longer turns anything on:
 Deja Vu1 keeps its record from the first start, on your computer only, and nothing is sent anywhere. The record is wider. It
