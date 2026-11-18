@@ -72,6 +72,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.20 (18 November 2026): Session notes: the core skill as the source of truth, and screens moving to o...
+
+- Session notes: the core skill as the source of truth, and screens moving to one surface (#107)
+
 ## 0.20.19 (18 November 2026): Every screen has one slim top bar with its own tabs and buttons
 
 - Every screen has one slim top bar with its own tabs and buttons

@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.20",
+      "date": "2026-11-18",
+      "name": "Session notes: the core skill as the source of truth, and screens moving to o...",
+      "published": true,
+      "summary": "Session notes: the core skill as the source of truth, and screens moving to one surface (#107).",
+      "changes": [
+        "Session notes: the core skill as the source of truth, and screens moving to one surface (#107)"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.19",
       "date": "2026-11-18",
       "name": "Every screen has one slim top bar with its own tabs and buttons",
