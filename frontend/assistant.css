@@ -388,9 +388,14 @@ html.ai-glow-on .ai-glow::after { animation: ai-glow-breathe 5s ease-in-out infi
 /* A sparkle in a card heading; its words show on hover or focus, so it never crowds a card. */
 .ai-ask { padding: 4px 7px; gap: 0; }
 .ai-ask svg { width: 15px; height: 15px; }
-.ai-ask span { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width .25s ease, opacity .2s ease, margin .25s ease; }
-.ai-ask:is(:hover, :focus-visible) span { max-width: 220px; opacity: 1; margin-left: 6px; }
-@media (hover: none) { .ai-ask span { max-width: 220px; opacity: 1; margin-left: 6px; } }
+/* The shortcut is always the size of its icon. Its words appear as a floating label beside it, so showing them never changes the layout of
+   the heading it sits in (when the button itself grew by 220px on hover, the title and the switch next to it jumped and rewrapped). */
+.ai-ask { position: relative; flex: none; }
+.ai-ask span { position: absolute; z-index: 3; right: calc(100% + 8px); top: 50%; transform: translateY(-50%); max-width: none; padding: 5px 10px; border-radius: 999px;
+  white-space: nowrap; pointer-events: none; opacity: 0; visibility: hidden; transition: opacity .15s ease, visibility .15s;
+  color: var(--text); background: var(--paper-solid, #fff); border: 1px solid var(--hair, oklch(25% 0.02 265 / .14)); box-shadow: 0 6px 18px oklch(25% 0.02 265 / .18); }
+.ai-ask:is(:hover, :focus-visible) span { opacity: 1; visibility: visible; }
+@media (hover: none) { .ai-ask span { display: none; } }
 
 /* ==== The AI screen: what it does first, the set-up below ==== */
 .ai-page { display: grid; gap: 16px; }

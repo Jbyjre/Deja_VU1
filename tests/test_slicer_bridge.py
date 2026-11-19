@@ -98,6 +98,12 @@ FAKE_ORCA = textwrap.dedent('''\
     if mode == "crash_no_result":
         sys.stderr.write("Segmentation fault\\n")
         sys.exit(3)
+    if mode == "slicing_error_no_result":
+        # What the Windows and macOS builds do (they write no result.json): the reason is printed first, then Orca's own
+        # "found error" line announces the exit, and the program ends with -100 (CLI_SLICING_ERROR).
+        sys.stdout.write("[2026-11-19 10:00:01] [warning] plate 1: found slicing warnings: Empty layers detected between 4.2 and 4.4 at 192.168.1.50\\n")
+        sys.stdout.write("Slic3r::CLI::run found error, exit\\n")
+        sys.exit(256 - 100)
     if mode == "no_output":
         result(0, "Success.")
         sys.exit(0)
@@ -450,6 +456,41 @@ class TestSlicing(SlicerBridgeTest):
 
     def test_a_crash_without_result_json_still_explains(self):
         self.assertFailsWithoutAFile("crash_no_result", "exited with code 3: Segmentation fault")
+
+    def test_a_slicing_error_without_result_json_is_still_orcas_minus_100_with_the_reason_not_the_exit_line(self):
+        report = self.assertFailsWithoutAFile(
+            "slicing_error_no_result",
+            r"Orca hit an error while slicing \(Orca's code -100\)\. It printed: .*Empty layers detected between 4\.2 and 4\.4")
+        self.assertIsNone(report["orca_result"])
+        self.assertEqual(report["exit_code"], 156)
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"])
+        self.assertEqual(job["cause"]["code"], "orca_-100")
+        self.assertIn("Empty layers detected", job["cause"]["evidence"])
+        self.assertNotIn("found error", job["cause"]["evidence"])
+        self.assertTrue(any("slices on screen" in f for f in job["cause"]["fixes"]))
+
+    def test_a_failed_slice_hands_the_engines_whole_output_to_tester_mode_and_does_not_keep_it(self):
+        import modules
+        import tester
+        import tester_report
+        modules.set_enabled("tester", True)
+        tester.refresh()
+        tester.delete_all()
+        self.addCleanup(tester.delete_all)
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "slicing_error_no_result"
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"])
+        self.assertEqual(job["status"], "failed")
+        event = next(e for e in tester_report.iter_events(tester.event_files()) if e["k"] == "slice")
+        self.assertFalse(event["ok"])
+        self.assertEqual(event["exit"], 156)
+        self.assertIn("Empty layers detected between 4.2 and 4.4", event["stdout"])
+        self.assertIn("Slic3r::CLI::run found error, exit", event["stdout"])
+        self.assertNotIn("192.168.1.50", event["stdout"])                      # masked like every other string
+        self.assertIn("<ip>", event["stdout"])
+        self.assertIn("(Orca's code -100)", event["why"])
+        self.assertTrue(event["report"].startswith('{"outcome"'), event["report"][:80])
+        self.assertNotIn("engine_output", slicer_bridge._traces.get(job["id"], {}))      # not held in memory afterwards
 
     def test_success_but_no_gcode(self):
         self.assertFailsWithoutAFile("no_output", "wrote no G-code")

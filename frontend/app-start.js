@@ -138,7 +138,8 @@ let updateTicks = 0;
  * it says so in a strip at the top, keeps trying every 4 seconds, and after
  * 20 seconds offers the page with the paste-in fix. When the program answers
  * again the strip goes, and a restarted program reloads the page. */
-const serverWatch = { fails: 0, since: 0, pid: null, el: null };
+const QUIET_MS = 10000;       // how long the server must stay silent before the page says anything: a restart or a wake-up from sleep is over by then
+const serverWatch = { fails: 0, since: 0, pid: null, el: null, shown: false };
 function serverStrip(text, help) {
   if (!serverWatch.el) {
     const el = document.createElement('div');
@@ -177,20 +178,22 @@ async function watchServer() {
   if (d && d.version) {
     const restarted = serverWatch.pid && d.server_pid && d.server_pid !== serverWatch.pid;
     serverWatch.pid = d.server_pid || serverWatch.pid;
-    if (serverWatch.fails >= 2 || restarted) {
+    if (serverWatch.shown || restarted) {
       if (serverWatch.el) serverWatch.el.hidden = true;
       const el = document.activeElement;
       const typing = el && (el.isContentEditable || (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value));
       if (restarted && !typing && !document.querySelector('dialog[open]')) {
         toast('Deja Vu1 is back. Reloading this page…', 'ok', 3000);
         setTimeout(() => location.reload(), 1200);
-      } else if (serverWatch.fails >= 2) toast('Deja Vu1 is answering again.', 'ok');
+      } else if (serverWatch.shown) toast('Deja Vu1 is answering again.', 'ok');         // only if the page had said it stopped
     }
+    serverWatch.shown = false;
     serverWatch.fails = 0;
     return;
   }
   if (++serverWatch.fails === 1) serverWatch.since = Date.now();
-  if (serverWatch.fails < 2) return;
+  if (Date.now() - serverWatch.since < QUIET_MS) return;          // a short loss is carried through quietly (reads that fail ask for an early check, so this counts time, not checks)
+  serverWatch.shown = true;
   let updating = 0;
   try { updating = Number(sessionStorage.getItem('dv-updating')) || 0; } catch (_) { updating = 0; }
   const secs = Math.round((Date.now() - serverWatch.since) / 1000);

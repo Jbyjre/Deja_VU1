@@ -16,6 +16,7 @@ placeholder_state, plate_objects, print_sync, refused_words, toolhead_for, trans
 from datetime import datetime
 from urllib.parse import quote, urlencode, urlparse
 import base64
+import contextlib
 import gcode_tools
 import http.client
 import json
@@ -740,6 +741,73 @@ class HttpTransport:
             raise PrinterUnreachable(f"{self.endpoint.label}'s reply to {path} had no \"result\" in it - "
                                      "is that address Moonraker itself?")
         return decoded["result"]
+
+
+def _stream_method(self, path, byte_range=None, idle_timeout=30.0):
+    """
+    A file download that is passed on as it arrives, so nothing waits for the whole file and none of it is held in memory.
+    Yields (status, headers, chunks): `chunks` gives the body 64 KB at a time, `headers` are the printer's, names in lower case.
+    A byte_range such as "bytes=0-1023" is sent as a Range request (Moonraker's file server answers 206 to it). The wait is for
+    each piece, not for the whole file. An answer of 400 or more raises in words, like request() does.
+    """
+    import watch_only
+    watch_only.check_request("GET", path)
+    headers = {"Accept": "*/*", "User-Agent": f"DejaVu1/{CLIENT_VERSION}"}
+    if self.api_key:
+        headers["X-Api-Key"] = self.api_key
+    if byte_range:
+        headers["Range"] = byte_range
+    started = time.monotonic()
+    entry = {"t": datetime.now().isoformat(timespec="seconds"), "via": "http", "method": "GET", "path": path, "sent": "", "streamed": True}
+    conn = None
+    try:
+        cls = http.client.HTTPSConnection if self.endpoint.tls else http.client.HTTPConnection
+        kwargs = {"context": ssl.create_default_context()} if self.endpoint.tls else {}
+        conn = cls(self.endpoint.host, self.endpoint.port, timeout=CONNECT_TIMEOUT, **kwargs)
+        conn.connect()
+        conn.sock.settimeout(idle_timeout)
+        conn.request("GET", path, headers=headers)
+        resp = conn.getresponse()
+    except (OSError, http.client.HTTPException, ValueError) as exc:
+        words = self._explain(exc, idle_timeout)
+        entry.update(error=words, ms=round((time.monotonic() - started) * 1000))
+        self._log(entry)
+        if conn:
+            conn.close()
+        raise PrinterUnreachable(words) from None
+    try:
+        entry["status"] = resp.status
+        if resp.status >= 400:
+            message = clean_error(resp.read(2048).decode("utf-8", "replace")[:200])
+            if resp.status in (401, 403):
+                words = refused_words(resp.status, message)
+            elif resp.status == 404:
+                words = f"Moonraker has no {path.split('?')[0]}"
+            else:
+                words = message or f"{self.endpoint.label} answered {resp.status}"
+            entry["error"] = words
+            err_obj = PrinterRefused(words)
+            err_obj.status = resp.status
+            raise err_obj
+
+        def chunks():
+            try:
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        return
+                    yield chunk
+            except (OSError, http.client.HTTPException) as exc:
+                raise PrinterUnreachable(self._explain(exc, idle_timeout)) from None
+
+        yield resp.status, {k.lower(): v for k, v in resp.getheaders()}, chunks()
+    finally:
+        entry["ms"] = round((time.monotonic() - started) * 1000)
+        self._log(entry)
+        conn.close()
+
+
+HttpTransport.stream = contextlib.contextmanager(_stream_method)
 
 
 def multipart(fields, file_field, filename, data):

@@ -46,11 +46,11 @@ window.PrinterPage = (() => {
   }
 
   /* ---- the camera view ------------------------------------------------------
-   * One small player per place (Overview card, beside the twin). It uses the
-   * camera stream address when one is saved (real video through the relay),
-   * otherwise asks the printer for one picture after another, as soon as the
-   * last has arrived, instead of waiting a fixed second and a half. It runs only
-   * while it can be seen, and stops when the tab or the browser is hidden. */
+   * One small player per place (Overview card, beside the twin). The printer's own camera is the default and needs nothing set up:
+   * the Extended Firmware's WebRTC where the printer offers it, else the live stream Deja Vu1 builds from the printer's pictures,
+   * else one picture after another, as soon as the last has arrived. A saved camera address is tried first when there is one. Whatever
+   * does not answer is skipped by itself, in that order, and the note under the picture says in a few words which one is showing. It
+   * runs only while it can be seen, and stops when the tab or the browser is hidden. */
   const cams = [];
   function initCam(host) {
     host.innerHTML = `<div class="pcam-frame" data-mode="off">
@@ -60,7 +60,7 @@ window.PrinterPage = (() => {
         <button class="pcam-toggle" type="button" aria-pressed="false">Turn camera on</button>
       </div><p class="pcam-note" hidden></p>`;
     const saved = store.get(`dejavu1.cam.${host.dataset.cam}`);
-    const cam = { host, run: 0, on: saved ? saved !== 'off' : store.get('dejavu1.pref.cam') !== 'off', url: null, timer: 0 };
+    const cam = { host, run: 0, on: saved ? saved !== 'off' : store.get('dejavu1.pref.cam') !== 'off', url: null, timer: 0, noStream: null, noLive: null };
     cam.frame = host.querySelector('.pcam-frame');
     cam.img = host.querySelector('.pcam-img');
     cam.mode = host.querySelector('.pcam-mode');
@@ -75,6 +75,15 @@ window.PrinterPage = (() => {
     return cam;
   }
   const visible = el => el && el.offsetParent !== null && !document.hidden;
+  /* What the picture fell back from, in a few words (each is remembered per printer until the page is reloaded). */
+  const pkey = () => String(currentPrinter || 'none');
+  const fellBack = cam => {
+    const stream = cam.noStream === pkey(), live = cam.noLive === pkey();
+    if (stream && live) return 'The saved camera address and the live stream did not answer, so this shows still pictures from the printer.';
+    if (stream) return 'The saved camera address did not answer, so this shows the printer\u2019s own camera.';
+    if (live) return 'The live stream did not start, so this shows still pictures from the printer.';
+    return '';
+  };
   /* WebRTC, where the printer's camera offers it (the Extended Firmware's does: backend/webrtc_relay.py).
    * The three signalling messages pass through Deja Vu1; the video comes straight from the printer.
    * No outside server is asked for help connecting (no STUN), so it works where the browser can
@@ -156,11 +165,19 @@ window.PrinterPage = (() => {
     const settings = await getJSON('/api/camera/settings').catch(() => null);
     if (run !== cam.run) return;
     if (settings && settings.error && /module/i.test(settings.error)) { stopCam(cam, 'Camera switched off'); note(cam, 'Turn the Camera module on in Settings → Features.'); return; }
-    if (settings && settings.stream_url) {
+    if (settings && settings.stream_url && cam.noStream !== pkey()) {
       cam.frame.dataset.mode = 'stream';
       setText(cam.mode, 'Live video');
-      cam.img.onload = () => { if (run === cam.run) cam.img.hidden = false; };
-      cam.img.onerror = () => { if (run === cam.run) { stopCam(cam, 'The camera stream stopped'); note(cam, 'Check the address under Camera & time-lapses, then turn it on again.'); } };
+      let shown = false;
+      cam.img.onload = () => { if (run === cam.run) { cam.img.hidden = false; shown = true; } };
+      cam.img.onerror = () => {
+        if (run !== cam.run) return;
+        cam.img.onload = cam.img.onerror = null;
+        if (shown) { cam.timer = setTimeout(() => { if (run === cam.run) { cam.frame.dataset.mode = 'off'; startCam(cam); } }, 1500); return; }     // it was working: ask again
+        cam.noStream = pkey();                // it never answered: the printer's own camera, by itself
+        cam.frame.dataset.mode = 'off';
+        startCam(cam);
+      };
       cam.img.src = `/api/camera/stream?t=${Date.now()}`;
       return;
     }
@@ -179,18 +196,19 @@ window.PrinterPage = (() => {
     // A real printer's built-in camera comes as one live stream (Deja Vu1 fetches each new
     // picture as soon as the last arrived). Demo data, or a stream that won't start, uses
     // single pictures below, which also show the reason when the camera can't start.
-    if (!demoOn && !cam.noLive) {
+    if (!demoOn && cam.noLive !== pkey()) {
       let live = false;
+      note(cam, fellBack(cam));
       cam.img.onload = () => {
         if (run !== cam.run) return;
         cam.img.hidden = false;
-        if (!live) { live = true; setText(cam.mode, 'Live'); note(cam, ''); }
+        if (!live) { live = true; setText(cam.mode, 'Live'); note(cam, fellBack(cam)); }
       };
       cam.img.onerror = () => {
         if (run !== cam.run) return;
         cam.img.onload = cam.img.onerror = null;
         if (live) { cam.timer = setTimeout(() => { if (run === cam.run) { cam.frame.dataset.mode = 'off'; startCam(cam); } }, 1500); return; }
-        cam.noLive = true;                 // this printer: single pictures from now on
+        cam.noLive = pkey();       // this printer: single pictures from now on, said in the note
         startCam(cam);
       };
       cam.img.src = api(`/api/camera/live?t=${Date.now()}`);
@@ -224,6 +242,7 @@ window.PrinterPage = (() => {
         const secs = (performance.now() - began) / 1000;
         const rate = shown > 2 && secs > 0 ? `${(shown / secs).toFixed(1)} pictures a second` : 'Pictures';
         setText(cam.mode, blob.type.includes('svg') ? 'Demo picture, not a photo' : rate);
+        note(cam, fellBack(cam));
         // Ask again as soon as this one is up: at most five a second, so a fast
         // printer camera can't flood the Wi-Fi.
         cam.timer = setTimeout(next, Math.max(0, 200 - (performance.now() - asked)));

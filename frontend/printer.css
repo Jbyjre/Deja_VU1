@@ -417,6 +417,16 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
 }
 
 /* Time-lapses: the printer's own recordings under the flipbooks */
-.tl-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tl-acts { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; flex: none; }
+/* The rows: the empty-state style (.log-empty) pads its top by 10px, which pushed this line below its name; and a long name must wrap, not push the buttons off. */
+#timelapse-host .reg-row { align-items: center; }
+#timelapse-host .reg-name { min-width: 0; flex: 1 1 180px; overflow-wrap: anywhere; }
+#timelapse-host .reg-row > .log-empty { padding-top: 0; flex: 0 1 auto; }
+#timelapse-host .tl-acts .btn { white-space: nowrap; min-width: 0; }
+#timelapse-host .tl-acts [data-keep-path] { min-width: 8.5em; }          /* "Keep a copy here" and "Copying 63%" take the same room: nothing shifts as it counts */
+#timelapse-host .tl-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; border: 1px dashed color-mix(in oklch, var(--text) 25%, transparent); }
+#timelapse-host .tl-note[hidden] { display: none; }
+#timelapse-host.is-off .tl-acts { opacity: .5; pointer-events: none; }
+.tl-failed { margin: 4px 0; color: var(--bad, #b42318); }
 .tl-printer { margin-top: 14px; padding-top: 12px; border-top: 1px solid color-mix(in oklch, var(--text) 9%, transparent); }
 .tl-printer h3 { margin: 4px 0 6px; font-size: 13px; color: var(--text-dim); }

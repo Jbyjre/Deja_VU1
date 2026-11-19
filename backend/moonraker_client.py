@@ -791,6 +791,38 @@ class MoonrakerPrinter:
         return self.http.request("GET", f"/server/files/{root}/" + quote(path), raw=True, timeout=300.0,
                                  max_bytes=max_bytes)
 
+    def _video_path(self, root, path):
+        root, path = str(root or ""), str(path or "").strip().lstrip("/")
+        if root not in self.VIDEO_ROOTS or not path or ".." in path.split("/") \
+                or not path.lower().endswith(self.VIDEO_KINDS):
+            raise ValueError("Choose one of the printer's videos")
+        return f"/server/files/{root}/" + quote(path)
+
+    def stream_video(self, root, path, byte_range=None):
+        """A context manager for one video, passed on as it arrives (see HttpTransport.stream). Playing never waits for the whole file."""
+        return self.http.stream(self._video_path(root, path), byte_range=byte_range)
+
+    def download_video(self, root, path, out, max_bytes, on_progress=None):
+        """Copy one video into the open file `out` as it arrives. on_progress(bytes_so_far, total_or_None) is called after each piece."""
+        with self.stream_video(root, path) as (_status, headers, chunks):
+            try:
+                total = int(headers.get("content-length") or 0) or None
+            except ValueError:
+                total = None
+            if total and total > max_bytes:
+                raise ValueError(f"That video is {total // (1024 * 1024)} MB, more than the {max_bytes // (1024 * 1024)} MB Deja Vu1 keeps")
+            size = 0
+            for chunk in chunks:
+                size += len(chunk)
+                if size > max_bytes:
+                    raise ValueError(f"That video is larger than the {max_bytes // (1024 * 1024)} MB Deja Vu1 keeps")
+                out.write(chunk)
+                if on_progress:
+                    on_progress(size, total)
+            if total and size < total:
+                raise PrinterUnreachable("The printer stopped sending the video part-way (the connection dropped)")
+            return size
+
     def fetch_gcode(self, filename, max_bytes):
         """
         The file itself, as the printer holds it (Moonraker's file download,

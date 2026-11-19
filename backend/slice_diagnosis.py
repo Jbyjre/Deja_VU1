@@ -209,7 +209,8 @@ def orca_code(code):
     """
     if not isinstance(code, int) or isinstance(code, bool):
         return None
-    for candidate in (code, code - 0x100000000 if code >= 0x80000000 else None, code - 256 if 128 <= code <= 255 else None):
+    # A negative number is never converted: on Linux and macOS it means "ended by a signal" (-6 is an abort, not Orca's -6).
+    for candidate in (code - 0x100000000 if code >= 0x80000000 else None, code - 256 if 128 <= code <= 255 else None):
         if isinstance(candidate, int) and candidate < 0 and candidate in ORCA_FIXES:
             return candidate
     return None

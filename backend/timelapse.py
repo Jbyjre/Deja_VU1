@@ -288,6 +288,97 @@ def saved_videos(printer_id):
     return sorted(rows, key=lambda r: r["saved_at"], reverse=True)
 
 
+# -- keeping a copy: a background job, so a slow copy never holds a connection or the rest of the app ----------------
+# The U1's video files are large and its Wi-Fi is slow: copying one took 28 s to 187 s. The press returns at once with a job,
+# the copy streams to disk (never held in memory) and the page watches its progress with GET /api/timelapse/jobs.
+
+MAX_KEEP_JOBS = 20
+_keeps = {}                    # (printer id, root, path) -> the job
+_keep_order = []
+
+
+def _saved_name(path):
+    name = re.sub(r"[^A-Za-z0-9 _().,+-]", "_", os.path.basename(str(path or "")))[:140]
+    if not _VIDEO.fullmatch(name):
+        raise ValueError("That isn't a video Deja Vu1 can keep")
+    return name
+
+
+def start_keep(printer_id, root, path, copy):
+    """
+    Start copying one of the printer's videos here and return its job at once. `copy(out, on_progress)` writes the video to
+    the open file `out` and calls on_progress(bytes, total_or_None). Pressing Keep again on a video that is still copying
+    returns the same job instead of starting a second copy.
+    """
+    name = _saved_name(path)
+    key = (printer_id, str(root or ""), str(path or ""))
+    with _lock:
+        job = _keeps.get(key)
+        if job and job["state"] == "running":
+            return dict(job)
+        job = {"id": uuid.uuid4().hex[:8], "printer": printer_id, "root": key[1], "path": key[2], "name": name, "state": "running",
+               "bytes": 0, "total": None, "error": None, "started_at": datetime.now().isoformat(timespec="seconds"), "finished_at": None}
+        _keeps[key] = job
+        if key in _keep_order:
+            _keep_order.remove(key)
+        _keep_order.append(key)
+        while len(_keep_order) > MAX_KEEP_JOBS:
+            _keeps.pop(_keep_order.pop(0), None)
+    threading.Thread(target=_run_keep, args=(key, job, copy), name="timelapse-keep", daemon=True).start()
+    return dict(job)
+
+
+def _finish_keep(job, **fields):
+    with _lock:
+        job.update(fields, finished_at=datetime.now().isoformat(timespec="seconds"))
+
+
+def _run_keep(key, job, copy):
+    import modules
+    folder = _saved_dir(key[0])
+    target = os.path.join(folder, job["name"])
+    tmp = target + ".part"
+
+    def progress(done, total):
+        with _lock:
+            job["bytes"], job["total"] = done, total
+
+    try:
+        os.makedirs(folder, exist_ok=True)
+        with open(tmp, "wb") as out:
+            copy(out, progress)
+        if not modules.is_enabled("timelapse"):
+            raise ValueError("Time-lapses were switched off while the copy ran, so it was not kept")
+        os.replace(tmp, target)
+        with _lock:
+            job["bytes"] = os.path.getsize(target)
+        _finish_keep(job, state="done")
+    except Exception as exc:            # noqa: BLE001 - a copy always ends in a worded state
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        _finish_keep(job, state="failed", error=str(exc) or "The copy failed")
+
+
+def keep_jobs(printer_id):
+    """The copies for one printer, newest first: running ones with their progress, and how the finished ones ended."""
+    with _lock:
+        rows = [dict(_keeps[k]) for k in reversed(_keep_order) if k in _keeps and k[0] == printer_id]
+    return {"jobs": rows, "saved": saved_videos(printer_id)}
+
+
+def saved_video_path(printer_id, name):
+    """(path, content type) of a kept copy, so it can be sent from disk in pieces."""
+    name = str(name or "")
+    if not _VIDEO.fullmatch(name):
+        raise ValueError("Bad video name")
+    path = os.path.join(_saved_dir(printer_id), name)
+    if not os.path.isfile(path):
+        raise FileNotFoundError("No such video")
+    return path, VIDEO_TYPES[name.rsplit(".", 1)[1].lower()]
+
+
 def keep_printer_video(printer_id, root, path, data):
     """Keep a copy of one of the printer's own videos. Returns the saved name."""
     name = re.sub(r"[^A-Za-z0-9 _().,+-]", "_", os.path.basename(str(path or "")))[:140]
@@ -328,5 +419,7 @@ def remove_saved_video(printer_id, name):
 
 def reset():
     with _lock:
+        _keeps.clear()
+        del _keep_order[:]
         _active.clear()
         shutil.rmtree(_ROOT, ignore_errors=True)
