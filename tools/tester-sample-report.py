@@ -3,6 +3,7 @@
 Writes frontend/tester-report-sample.html (not in frontend/demo/, which the demo recorder empties): the page "View sample report" opens in the online demo.
 
     python3 tools/tester-sample-report.py
+    python3 tools/tester-sample-report.py --real some/folder/report.html     the same figures on the real page (no sample note), for layout checks
 
 Every figure is invented here, in this file, to show the layout of a real report, and the page says so at the
 top. It is built with the same code that builds a real report (backend/tester_report.py) from a fixed set of
@@ -209,6 +210,11 @@ def build():
 
 def main():
     report, page = build()
+    if len(sys.argv) > 2 and sys.argv[1] == "--real":
+        with open(sys.argv[2], "w", encoding="utf-8", newline="\n") as f:
+            f.write(tester_report.render_html(report, sample=False))
+        print("wrote %s (the sample's figures on the real page, not for publishing)" % sys.argv[2])
+        return
     target = os.path.join(ROOT, "frontend", "tester-report-sample.html")
     with open(target, "w", encoding="utf-8", newline="\n") as f:
         f.write(page)

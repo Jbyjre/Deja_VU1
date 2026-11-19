@@ -42,16 +42,19 @@ KIND_WORDS = {"error": "error", "slow": "slow", "request": "request", "server": 
               "network": "network", "onboarding": "first run", "stall": "server stall"}
 
 TOP_CSS = """
-.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0 0 14px;padding:0;list-style:none}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0 0 12px;padding:0;list-style:none}
 .strip li{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--card)}
 .strip b{display:block;font:700 1.35rem/1.15 var(--mono);font-variant-numeric:tabular-nums}.strip span{color:var(--dim);font-size:.82rem}
 .strip li.bad b{color:var(--bad)}.strip li.warn b{color:var(--warn)}.strip li.ok b{color:var(--ok)}
-.fixlist{margin:0;padding:0;list-style:none;display:grid;gap:6px}
-.fix{border:1px solid var(--line);border-radius:10px;background:var(--bg)}.fix>summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:8px 12px;color:var(--ink)}
-.fix>summary b{font-weight:650}.fix .rank{font:700 .85rem var(--mono);color:var(--faint);min-width:1.6em}.fix .meta{color:var(--faint);font-size:.82rem;font-weight:400;overflow-wrap:anywhere}
+.fixlist{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}.fixlist>li{min-width:0}
+.fix{margin:0;border:1px solid var(--line);border-radius:10px;background:var(--bg)}.fix>summary{display:flex;flex-wrap:nowrap;align-items:baseline;gap:4px 10px;padding:6px 12px;color:var(--ink)}
+.fix>summary b{font-weight:650;flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fix .rank{font:700 .85rem var(--mono);color:var(--faint);min-width:1.6em}
+.fix .meta{flex:none;color:var(--faint);font-size:.82rem;font-weight:400;white-space:nowrap}
+.fix[open]>summary{flex-wrap:wrap}.fix[open]>summary b{flex:1 1 20ch;white-space:normal;overflow:visible}.fix[open]>summary .meta{white-space:normal}
 .fix .facts{padding:2px 14px 12px;grid-template-columns:minmax(110px,max-content) 1fr}.fix .facts dd ol{margin:0;padding-left:1.2em}
 .fix code{font:.82rem var(--mono);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:0 5px;white-space:nowrap}
 .groups details{border:1px solid var(--line);border-radius:10px;padding:2px 10px;margin:.4rem 0}
+@media(max-width:700px){.fix>summary{flex-wrap:wrap}.fix>summary b{flex:1 1 100%;white-space:normal;overflow:visible;order:1}.fix .meta{order:2;white-space:normal}}
 @media(max-width:560px){.fix .facts{grid-template-columns:1fr}}
 """
 
@@ -114,8 +117,8 @@ def finding_html(report, f, number=None):
         pills += "<span class=\"pill ok\">the tester said</span> "
     code = f.get("code") or []
     meta = " &middot; ".join(_h(x) for x in (how_often(f), screen_of(f), code[0] if code else "") if x)
-    out = ["<li><details class=\"fix\" id=\"%s\"><summary>%s%s%s<b>%s</b><span class=\"meta\">%s</span></summary><dl class=\"facts\">" % (
-        _h(f["id"]), ("<span class=\"rank\">%d</span>" % number) if number else "", pills, "", _h(f["title"]), meta)]
+    out = ["<li><details class=\"fix\" id=\"%s\"><summary>%s%s<b title=\"%s\">%s</b><span class=\"meta\">%s</span></summary><dl class=\"facts\">" % (
+        _h(f["id"]), ("<span class=\"rank\">%d</span>" % number) if number else "", pills, _h(f["title"]), _h(f["title"]), meta)]
     out.append("<dt>What happened</dt><dd>%s</dd>" % _h(f.get("detail") or f["title"]))
     out.append("<dt>How often</dt><dd>%s</dd>" % _h(how_often(f)))
     out.append("<dt>Screen</dt><dd>%s</dd>" % _h(screen_of(f)))
@@ -140,8 +143,7 @@ def top_html(report):
     out = ["<ul class=\"strip\" aria-label=\"What was recorded\">%s</ul>" % "".join(
         "<li class=\"%s\"><b>%s</b><span>%s</span></li>" % (cls, _h(v), _h(label)) for v, label, cls in headline(report))]
     out.append("<section aria-labelledby=\"fix\"><h2 id=\"fix\">Fix first</h2><p class=\"small\">The %s worst faults in Deja Vu1 itself, worst first. "
-               "Open one for what happened, how often, the screen, the last presses before it and where to look in the code. "
-               "The same list is in findings.md.</p>" % ("ten" if len(first) >= 10 else str(len(first)) if first else "no"))
+               "Open one for what happened, how often, the screen, the last presses and where to look in the code.</p>" % ("ten" if len(first) >= 10 else str(len(first)) if first else "no"))
     if first:
         out.append("<ol class=\"fixlist\">%s</ol>" % "".join(finding_html(report, f, f["fix_first"]) for f in first))
     else:

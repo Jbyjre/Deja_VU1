@@ -2,7 +2,7 @@
 /* The tester fix release's page bugs, in a real browser, one scenario each (the owner's own tester report found them).
  *
  *   node tools/testfix-check.js                 every scenario
- *   node tools/testfix-check.js --only gauge,lost   some of them (gauge, timelapse, keep, aiwidth, camera, lost, limit, freeze)
+ *   node tools/testfix-check.js --only gauge,lost   some of them (gauge, timelapse, keep, aiwidth, camera, lost, limit, freeze, report)
  *   node tools/testfix-check.js --probe         only says whether Playwright and a Chromium are available
  *
  * Each scenario starts Deja Vu1 (backend/app.py) on a spare port in a temporary data folder and drives the page in Chromium, with the
@@ -18,13 +18,14 @@
  *   lost       losing the server for a moment shows no error, and the page tells the tester only when it lasts
  *   limit      six copies started at once do not hold up the next request (a browser keeps at most six connections to one address)
  *   freeze     an idle printer's page is not frozen by the 3D twin being drawn again and again with nothing new to show
+ *   report     the report's headline and its ten "fix first" rows fit one 1366 x 800 screen, stay inside their card and open to the five facts
  */
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const net = require('net');
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
@@ -283,6 +284,8 @@ async function camera(browser, base) {
   check(state.shown, 'camera: a picture from the printer\'s own camera is on screen');
   check(/saved camera address and the live stream did not answer/.test(state.note || ''), 'camera: the note says so in a few words (' + (state.note || '') + ')');
   check(!(state.note || '').match(/Check the address/), 'camera: it does not tell the tester to go and fix an address');
+  const recorded = JSON.parse((await get(base + '/api/tester/status')).body);
+  check(recorded.errors === 0, 'camera: the fallback is not recorded as an error in the tester report (' + recorded.errors + ' errors)');
   check(errors.length === 0, 'camera: no script error (' + (errors.join(' | ').slice(0, 160) || 'none') + ')');
   await context.close();
 }
@@ -398,7 +401,64 @@ async function freeze(browser, base, serverUrl) {
   }
 }
 
-const ALL = { gauge, timelapse, keep, aiwidth, camera, lost, limit, freeze };
+/* The sample report is the real report's page with made-up figures (tools/tester-sample-report.py), so it has the same layout. */
+async function report(browser) {
+  const file = 'file://' + path.join(ROOT, 'frontend', 'tester-report-sample.html');
+  for (const scheme of ['light', 'dark']) {
+    const context = await browser.newContext({ viewport: { width: 1366, height: 800 }, colorScheme: scheme });
+    const page = await context.newPage();
+    await page.goto(file);
+    const m = await page.evaluate(() => {
+      const section = document.querySelector('section[aria-labelledby=fix]');
+      const box = section.getBoundingClientRect();
+      const rows = [...section.querySelectorAll('details.fix')];
+      return {
+        bottom: Math.round(box.bottom),
+        height: innerHeight,
+        rows: rows.length,
+        closed: rows.every(d => !d.open),
+        inside: rows.every(d => d.getBoundingClientRect().right <= box.right + 0.5 && d.getBoundingClientRect().left >= box.left - 0.5),
+        tooTall: rows.filter(d => d.getBoundingClientRect().height > 48).length,
+        scroll: document.documentElement.scrollWidth > innerWidth,
+        strip: document.querySelectorAll('ul.strip li').length,
+        titled: rows.every(d => d.querySelector('summary b').getAttribute('title'))
+      };
+    });
+    check(m.rows === 10 && m.closed, 'report: ten fix-first rows, all closed (' + scheme + ', ' + m.rows + ' rows)');
+    check(m.strip === 6, 'report: the headline strip has six figures (' + scheme + ')');
+    check(m.bottom <= m.height, 'report: the headline and all ten rows end at ' + m.bottom + ' px of ' + m.height + ' (' + scheme + ')');
+    check(m.inside && !m.scroll, 'report: every row stays inside its card and the page does not scroll sideways (' + scheme + ')');
+    check(m.tooTall === 0, 'report: every closed row is one line (' + scheme + ')');
+    check(m.titled, 'report: a shortened title still shows in full when pointed at (' + scheme + ')');
+    if (scheme === 'light') {
+      await page.locator('details.fix').first().evaluate(d => { d.open = true; });
+      const names = await page.locator('details.fix').first().locator('dt').allInnerTexts();
+      for (const want of ['What happened', 'How often', 'Screen', 'Last presses before it', 'Where to look']) {
+        check(names.includes(want), 'report: an open row has "' + want + '"');
+      }
+    }
+    await context.close();
+  }
+  const real = path.join(os.tmpdir(), 'dejavu-real-report-' + process.pid + '.html');
+  const made = spawnSync('python3', [path.join(ROOT, 'tools', 'tester-sample-report.py'), '--real', real], { cwd: ROOT });
+  check(made.status === 0, 'report: the same figures written as a real report (no sample note)');
+  const live = await browser.newContext({ viewport: { width: 1366, height: 800 } });
+  const livePage = await live.newPage();
+  await livePage.goto('file://' + real);
+  const bottom = await livePage.evaluate(() => Math.round(document.querySelector('section[aria-labelledby=fix]').getBoundingClientRect().bottom));
+  check(bottom <= 800, 'report: on a real report (no sample note) the headline and all ten rows end at ' + bottom + ' px of 800');
+  await live.close();
+  fs.rmSync(real, { force: true });
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const small = await phone.newPage();
+  await small.goto(file);
+  const wide = await small.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  const rowWrap = await small.evaluate(() => [...document.querySelectorAll('details.fix')].every(d => d.getBoundingClientRect().right <= innerWidth));
+  check(!wide && rowWrap, 'report: at 390 px wide nothing runs off the side');
+  await phone.close();
+}
+
+const ALL = { gauge, timelapse, keep, aiwidth, camera, lost, limit, freeze, report };
 
 async function main() {
   let playwright;

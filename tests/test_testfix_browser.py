@@ -11,6 +11,7 @@ Each came from a tester's report and each scenario fails on the code as it was b
   lost       a moment without the server showed "Failed to fetch" errors and turned the note button into an alert
   limit      six long requests used up the browser's six connections to one address, so the next request waited as long as they ran
   freeze     an idle printer's page froze for about 4 s in every 10 because the 3D twin was drawn again and again with nothing new to show
+  report     the report's "fix first" list took 1,100 px for ten rows; the headline and all ten closed rows now fit one 1366 x 800 screen
 
 It needs Node, Playwright for Node and a Chromium, so it is skipped where they are missing (GitHub's Python jobs).
 """
@@ -49,7 +50,7 @@ class TestTheTesterFixPageBugs(unittest.TestCase):
         self.assertIn("0 failed", self.out)
 
     def test_each_scenario_ran_and_checked_something(self):
-        for name in ("gauge", "timelapse", "keep", "aiwidth", "camera", "lost", "limit", "freeze"):
+        for name in ("gauge", "timelapse", "keep", "aiwidth", "camera", "lost", "limit", "freeze", "report"):
             self.assertIn("--- " + name, self.out, name)
             self.assertRegex(self.out, r"ok   %s: " % name)
 

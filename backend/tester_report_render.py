@@ -72,7 +72,7 @@ main{max-width:1080px;margin:0 auto;padding:24px 16px 64px}
 header.top{padding:8px 0 20px}.kicker{font:600 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 h1{font-size:clamp(1.6rem,4vw+1rem,2.6rem);line-height:1.1;margin:.4rem 0 .5rem;text-wrap:balance}
 h2{font-size:1.25rem;margin:0 0 .75rem;text-wrap:balance}h3{font-size:1rem;margin:1.1rem 0 .4rem}
-p{margin:.35rem 0}.sub{color:var(--dim);max-width:62ch;text-wrap:pretty}
+p{margin:.35rem 0}.sub{color:var(--dim);max-width:62ch;text-wrap:pretty}header.top .sub{max-width:none}
 section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;margin:0 0 16px}
 section.hero{padding:22px 18px}.lead{font-size:1.1rem;line-height:1.55;max-width:70ch;text-wrap:pretty}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0 0;padding:0;list-style:none}
@@ -167,11 +167,10 @@ def render_html(report, theme=None, sample=False):
     span = "%s to %s" % (_h((s["first"] or "")[:10]), _h((s["last"] or "")[:10])) if s["first"] else "no use recorded yet"
     if sample:
         add("<header class=\"top\"><div class=\"kicker\">Deja Vu1 tester report &middot; sample</div><h1>How Deja Vu1 behaved on this computer</h1>"
-            "<p class=\"note\"><b>Sample report.</b> Every number on this page is made up to show the layout, for the online demo. "
-            "Nothing here was recorded on your computer. A real report holds your own use of the app.</p></header>")
+            "<p class=\"note\"><b>Sample report.</b> Every number here is made up to show the layout. A real report holds your own use of the app.</p></header>")
     else:
         add("<header class=\"top\"><div class=\"kicker\">Deja Vu1 tester report</div><h1>How Deja Vu1 behaved on this computer</h1>"
-            "<p class=\"sub\">Written %s from %s. Everything here was recorded on this computer. Nothing was sent anywhere; you send this file yourself.</p></header>"
+            "<p class=\"sub\">Written %s from %s. Recorded on this computer and sent nowhere; you send this file yourself.</p></header>"
             % (_h(report["generated"].replace("T", " ")), span))
 
     # What to fix: the headline strip, the ten worst faults, the conditions around the app, the rest by part of the app
