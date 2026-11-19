@@ -404,7 +404,9 @@ async function walk(browser, server, standIn, width) {
   await page.click('#tester-q-next');                                   // section 3: Speed
   await page.fill('#tq-q5', 'Pause');
   await page.click('[data-step="8"]');                                  // Phone and AI: the two optional questions
-  check((await page.locator('[data-choice="didnt_try"]').count()) === 2, 'Only the phone and AI questions have a one-press "Didn\u2019t try it"');
+  await page.waitForSelector('[data-q="q16"]', { timeout: 5000 }).catch(() => {});
+  const quick = await page.locator('[data-choice="didnt_try"]').count();
+  check(quick === 2, 'Only the phone and AI questions have a one-press "Didn\u2019t try it" (found ' + quick + ')');
   await page.click('[data-q="q16"] [data-choice="didnt_try"]');
   await page.click('[data-step="9"]');                                  // Overall
   await page.fill('#tq-q19', 'The page threw an error on purpose.');
