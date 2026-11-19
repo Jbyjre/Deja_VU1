@@ -2,15 +2,17 @@
 tester_study.py
 ===============
 
-The tester's side of the test round: how long they test (1, 2 or 3 days), where they are in it, and the answers
-they give to the questions in tester_questions.py. It lives in <data>/tester/study.json beside the recorded
-events, stays on this computer, and goes into the saved report only when the tester saves one.
+The tester's answers to the 22 questions in tester_questions.py. They live in <data>/tester/study.json beside the recorded
+events, stay on this computer, and go into the saved report only when the tester saves one.
 
-The plan starts the first time the browser asks for it. When the days are up the app asks the tester to answer
-the questions and save the report; they can answer any time before that, and recording never stops.
+Recording is always on and never has an end date, so nothing here asks how long to test. The tester answers when they like
+(Settings, Tester mode), in any order, and every question can be skipped.
 
-Answers are typed text, so each one is passed through tester.mask() like every other string. Nothing here
-touches the network.
+Answers are typed text, so each one is passed through tester.mask() like every other string. Nothing here touches the
+network.
+
+study.json version 1 came from the build that asked for a round of one to three days and 52 questions. Its question
+numbers mean different questions now, so those answers are set aside under "earlier_answers" and never shown or exported.
 """
 
 import os
@@ -21,9 +23,7 @@ import storage
 import tester
 import tester_questions
 
-LENGTHS = (1, 2, 3)
-DEFAULT_DAYS = 3
-DAY_MS = 24 * 3600 * 1000
+VERSION = 2
 MAX_ANSWER = 1500
 MAX_ANSWERS_PER_CALL = 60
 _lock = threading.RLock()
@@ -38,8 +38,7 @@ def _now_ms():
 
 
 def _fresh(now_ms):
-    return {"v": 1, "length_days": DEFAULT_DAYS, "started": now_ms, "welcomed": False, "answers": {},
-            "finished_at": None, "exports": [], "length_changes": 0}
+    return {"v": VERSION, "started": now_ms, "answers": {}, "exports": []}
 
 
 def _load(create=True):
@@ -49,10 +48,21 @@ def _load(create=True):
         data = _fresh(_now_ms())
         if create and tester.enabled():
             _save(data)
+    elif data.get("v") != VERSION:
+        data = _migrated(data)
+        if create and tester.enabled():
+            _save(data)
     data.setdefault("answers", {})
     data.setdefault("exports", [])
-    if data.get("length_days") not in LENGTHS:
-        data["length_days"] = DEFAULT_DAYS
+    return data
+
+
+def _migrated(old):
+    """A file from the 52-question build: keep when recording began and the saves, set the answers aside."""
+    data = _fresh(old["started"])
+    data["exports"] = old.get("exports") if isinstance(old.get("exports"), list) else []
+    if isinstance(old.get("answers"), dict) and old["answers"]:
+        data["earlier_answers"] = old["answers"]
     return data
 
 
@@ -73,69 +83,26 @@ def _is_answered(answer):
 
 
 def describe(now=None, create=True):
-    """Where the tester is in the round: the plan, the day, what is left, how many questions are answered."""
+    """Where the tester is: when recording began, how many questions are answered, when the report was last saved."""
     with _lock:
         data = _load(create)
     now = int(now if now is not None else _now_ms())
-    days = data["length_days"]
-    ends = data["started"] + days * DAY_MS
-    status = "finished" if data.get("finished_at") else ("due" if now >= ends else "running")
     answers = data["answers"]
     answered = [q for q, a in answers.items() if q in tester_questions.BY_ID and _is_answered(a)]
     optional_left = [q["id"] for q in tester_questions.QUESTIONS if q["optional"] and q["id"] not in answered]
     exports = data.get("exports") or []
-    return {"length_days": days, "lengths": list(LENGTHS), "started": _iso(data["started"]), "started_ms": data["started"],
-            "ends": _iso(ends), "ends_ms": ends, "now_ms": now, "status": status,
-            "day": max(1, min(days, int((now - data["started"]) // DAY_MS) + 1)),
-            "hours_left": max(0.0, round((ends - now) / 3600000.0, 1)),
+    return {"started": _iso(data["started"]), "started_ms": data["started"], "now_ms": now,
             "answered": len(answered), "total": tester_questions.COUNT, "optional_unanswered": len(optional_left),
-            "welcomed": bool(data.get("welcomed")), "finished_at": _iso(data.get("finished_at")),
             "last_export": _iso(exports[-1]["at"]) if exports else None, "exports": len(exports)}
-
-
-def set_length(days):
-    try:
-        days = int(days)
-    except (TypeError, ValueError):
-        raise ValueError("Choose 1, 2 or 3 days")
-    if days not in LENGTHS:
-        raise ValueError("Choose 1, 2 or 3 days")
-    with _lock:
-        data = _load()
-        if days != data["length_days"]:
-            data["length_days"] = days
-            data["length_changes"] = data.get("length_changes", 0) + 1
-            if data.get("finished_at") and _now_ms() < data["started"] + days * DAY_MS:
-                data["finished_at"] = None            # a longer round reopens a finished one
-            _save(data)
-    return describe()
-
-
-def mark_welcomed():
-    with _lock:
-        data = _load()
-        if not data.get("welcomed"):
-            data["welcomed"] = True
-            _save(data)
-    return describe()
-
-
-def finish(done=True):
-    """The tester finished the questions (done) or wants to answer more (reopen)."""
-    with _lock:
-        data = _load()
-        data["finished_at"] = _now_ms() if done else None
-        _save(data)
-    return describe()
 
 
 def save_answers(batch):
     """
-    Store answers: {"q7": {"c": "yes", "t": "It found it"}, ...}. An answer with no choice and no words clears
-    that question. Unknown questions and choices are ignored. Returns how many were kept.
+    Store answers: {"q16": {"c": "didnt_try", "t": ""}, "q19": {"c": null, "t": "The twin lagged"}, ...}. An answer
+    with no choice and no words clears that question. Unknown questions and choices are ignored. Returns how many were kept.
     """
     if not isinstance(batch, dict):
-        raise ValueError("Send {\"answers\": {\"q1\": {\"c\": \"yes\", \"t\": \"...\"}}}")
+        raise ValueError("Send {\"answers\": {\"q19\": {\"c\": null, \"t\": \"...\"}}}")
     now = _now_ms()
     with _lock:
         data = _load()
@@ -171,8 +138,8 @@ def answers_view():
     return out
 
 
-def view(plan, answers):
-    """The plan and the answers as the report holds them: every question, in order, with its answer."""
+def view(progress, answers):
+    """The progress and the answers as the report holds them: every question, in order, with its answer."""
     rows = []
     for section in tester_questions.SECTIONS:
         for q in section["questions"]:
@@ -187,7 +154,7 @@ def view(plan, answers):
         by_section.append({"section": section["id"], "name": section["name"], "optional": section["optional"],
                            "answered": sum(1 for r in mine if r["answered"]), "of": len(mine),
                            "didnt_try": sum(1 for r in mine if r["choice"] == "didnt_try")})
-    return {"plan": plan, "answered": sum(1 for r in rows if r["answered"]), "total": tester_questions.COUNT, "sections": by_section,
+    return {"progress": progress, "answered": sum(1 for r in rows if r["answered"]), "total": tester_questions.COUNT, "sections": by_section,
             "didnt_try": sum(1 for r in rows if r["choice"] == "didnt_try"),
             "with_words": sum(1 for r in rows if r["answer"].strip()), "answers": rows}
 
@@ -206,13 +173,16 @@ def _auto_values(report):
     browsers = (report.get("setup") or {}).get("browsers") or []
     firmware = (report.get("printer") or {}).get("firmware") or {}
     engine = server.get("engine") or {}
-    out = {"os": server.get("os"), "python": server.get("python"), "firmware": None, "browser": None, "engine": None}
+    out = {"firmware": None, "computer": None, "engine": None}
+    browser = None
     if browsers:
         b = browsers[-1]
-        out["browser"] = ("%s %s on %s" % (b.get("browser"), b.get("bver") or "", b.get("ua_os") or "")).replace("  ", " ").strip()
+        browser = ("%s %s" % (b.get("browser"), b.get("bver") or "")).strip() if b.get("browser") else None
     if firmware:
         first = next(iter(firmware.values())) or {}
         out["firmware"] = ", ".join("%s %s" % (k, v) for k, v in sorted(first.items())) or None
+    bits = [server.get("os"), ("Python %s" % server["python"]) if server.get("python") else None, browser]
+    out["computer"] = ", ".join(str(b) for b in bits if b) or None
     out["engine"] = ("%s %s" % (engine.get("app"), engine.get("version") or "")).strip() if engine.get("app") else "none set up"
     return out
 
