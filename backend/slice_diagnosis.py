@@ -75,7 +75,10 @@ ORCA_FIXES = {
     -52: ["Move every object fully inside the build plate, then slice again.",
           "If the model is far larger than the plate, check that it was saved in millimetres."],
     -58: ["Raise the slicing time limit in Files, Slicing, or use a smaller model."],
-    -100: ["Open the report: the last lines of the engine's output say what failed."],
+    -100: ["Open the same model in Orca with the same presets and slice it there: Orca shows the warning that stopped the slice.",
+           "The command-line engine treats some slicing warnings (empty layers, overlapping toolpaths) as errors, so a model that "
+           "slices on screen can still stop here.",
+           "The whole output the engine printed is in the report: the line before its \"found error\" line names the reason."],
     -101: ["Move or turn the model, then slice again."],
     -102: ["Move or turn the model, then slice again."],
 }
@@ -190,6 +193,36 @@ def from_text(text):
             ["Close other programs and slice again.", "Try a smaller or simpler model."],
             evidence=_line_with(text, found))
     return None
+
+
+# Orca ends with `found error` on its own line to announce the exit (flush_and_exit in its command-line code). It says nothing
+# about the reason: the reason is printed before it.
+_FOUND_ERROR = re.compile(r"\bfound error\b", re.I)
+_PROBLEM = re.compile(r"error|fail|cannot|can't|unable|invalid|conflict|overlap|empty|exceed|warning", re.I)
+
+
+def orca_code(code):
+    """
+    Orca's own (negative) error number from the number the program ended with, or None. Orca's code is -100 for a slicing error;
+    Windows reports that as 4294967196 (an unsigned 32-bit number) and macOS and Linux as 156 (the low byte). Only a number
+    Orca documents counts, so an ordinary exit code is never taken for one.
+    """
+    if not isinstance(code, int) or isinstance(code, bool):
+        return None
+    for candidate in (code, code - 0x100000000 if code >= 0x80000000 else None, code - 256 if 128 <= code <= 255 else None):
+        if isinstance(candidate, int) and candidate < 0 and candidate in ORCA_FIXES:
+            return candidate
+    return None
+
+
+def reason_lines(*texts, limit=3):
+    """
+    The last few lines of the engine's output that say why it failed: lines that name a problem, else the last lines, never
+    Orca's own "found error" line. Each is cut at 240 characters.
+    """
+    lines = [line.strip() for text in texts for line in str(text or "").splitlines()
+             if line.strip() and not _FOUND_ERROR.search(line)]
+    return [line[:240] for line in ([x for x in lines if _PROBLEM.search(x)] or lines)[-limit:]]
 
 
 def from_exit(code, os_name=None):

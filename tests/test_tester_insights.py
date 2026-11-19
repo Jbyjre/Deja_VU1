@@ -326,33 +326,201 @@ class TestErrorsAndFindings(InsightBase):
         self.assertTrue(next(f for f in findings if f["kind"] == "note" and f["severity"] == "low"))      # the "works well" note
         self.assertEqual(r["summary"]["findings"], {k: sum(1 for f in findings if f["severity"] == k) for k in ("high", "medium", "low")})
 
-    def test_answers_that_point_at_trouble_become_findings(self):
-        tester_study.save_answers({"q8": {"c": "no", "t": "Said connection refused"}, "q11": {"c": "yes", "t": "Pause"}, "q12": {"c": "no", "t": ""},
-                                   "q51": {"c": "yes", "t": "My nickname showed"}, "q47": {"c": None, "t": "The twin lagged"}, "q46": {"c": None, "t": "Confirm Print"},
-                                   "q21": {"c": "didnt_try", "t": ""}, "q25": {"c": "no", "t": ""}})
-        titles = {f["title"].split(":")[0]: f for f in self.report()["findings"] if f["kind"] == "answer"}
-        self.assertEqual(titles["Answered No to question 8"]["severity"], "high")
-        self.assertEqual(titles["Answered Yes to question 11"]["severity"], "medium")
-        self.assertEqual(titles["Answered Yes to question 51"]["severity"], "high")        # something private in the report
-        self.assertEqual(titles["Answered No to question 25"]["severity"], "high")         # a colour mismatch let through
-        self.assertEqual(titles["Question 47"]["severity"], "medium")
-        self.assertNotIn("Answered No to question 12", titles)                              # "no" is the good answer there
-        self.assertNotIn("Question 46", titles)                                              # praise is not a problem
-        self.assertTrue(all(f["tester_said"] for f in titles.values()))
-        self.assertIn("Said connection refused", titles["Answered No to question 8"]["detail"])
+    def test_only_the_what_frustrated_you_and_change_one_thing_answers_become_findings(self):
+        tester_study.save_answers({"q19": {"c": None, "t": "The twin lagged"}, "q20": {"c": None, "t": "Make Pause faster"},
+                                   "q18": {"c": None, "t": "Confirm Print"}, "q16": {"c": "didnt_try", "t": ""}, "q10": {"c": None, "t": "It caught it"}})
+        found = {f["title"].split(":")[0]: f for f in self.report()["findings"] if f["kind"] == "answer"}
+        self.assertEqual(sorted(found), ["Question 19", "Question 20"])
+        self.assertTrue(all(f["tester_said"] and f["severity"] == "medium" for f in found.values()))
+        self.assertIn("The twin lagged", found["Question 19"]["title"])
+        self.assertIn("What frustrated you most", found["Question 19"]["detail"])
 
-    def test_findings_md_reads_as_a_work_list(self):
+    def test_findings_md_opens_with_the_headline_and_fix_first_then_their_answers(self):
         self.feed([{"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: x", "file": "app.js", "line": 3, "screen": "files",
                     "last": ["click #a"], "t": self.ago(50)}])
-        tester_study.save_answers({"q52": {"c": None, "t": "It broke on Files"}})
+        tester_study.save_answers({"q19": {"c": None, "t": "It broke on Files"}})
         text = tester_report.render_findings(self.report())
         self.assertTrue(text.startswith("# Deja Vu1 tester findings"))
-        self.assertIn("## F1 [high]", text)
-        self.assertIn("- Part of the app: Files", text)
-        self.assertIn("- Where: Code: app.js:3", text)
-        self.assertIn("## Their answers", text)
+        self.assertLess(text.index("press"), text.index("## Fix first"))                      # the headline counts come first
+        self.assertIn("## Fix first", text)
+        self.assertIn("### 1. F1 [high] A script error in the page: TypeError: x", text)
+        self.assertIn("- Screen: files", text)
+        self.assertIn("- Last presses before it: click #a", text)
+        self.assertIn("- Where to look: frontend/app.js:3", text)
+        self.assertIn("## Their answers (1 of 22 questions)", text)
         self.assertIn("It broke on Files", text)
-        self.assertNotIn("—", text)
+        self.assertNotIn("\u2014", text)
+
+
+class TestFixFirst(InsightBase):
+    """The report says what to fix first: stalls are one finding, the app's faults come before conditions around it, at most ten."""
+
+    ROUTES = ["/api/connection", "/api/leds", "/api/cost/:id", "/api/printers", "/api/fleet", "/api/health", "/api/queue",
+              "/api/filament/spools", "/api/camera/status", "/api/app/alive", "/api/maintenance", "/api/chamber", "/api/live", "/api/modules"]
+
+    def stall(self, seconds=27):
+        """14 routes that each waited `seconds` at the same moment while a time-lapse was being kept on the server."""
+        wait = int(seconds * 1000)
+        events = [{"k": "click", "s": "sessa1", "ctl": "#nav-%d" % i, "screen": "printer", "paint": 40, "t": self.ago(60 - i)} for i in range(5)]
+        events += [{"k": "click", "s": "sessa1", "ctl": "#keep-copy", "screen": "printer", "paint": 30, "t": self.ago(40)}]
+        events += [{"k": "req", "s": "sessa1", "route": route, "method": "GET", "status": 200, "ms": wait + i * 100, "slow": True, "screen": "printer",
+                    "t": self.ago(1)} for i, route in enumerate(self.ROUTES)]
+        events += [{"k": "req", "s": "sessa1", "route": "/api/timelapse/keep", "method": "POST", "status": 200, "ms": wait + 1000, "slow": True,
+                    "screen": "printer", "t": self.ago(0.5)}]
+        # What these routes usually take: background reads that answered in a few milliseconds (summed up, as the browser sends them).
+        events += [{"k": "req", "s": "sessa1", "agg": True, "route": route, "method": "GET", "n": 300, "ok": 300, "fail": 0, "p50": 6, "max": 40,
+                    "bucket": 1, "t": self.ago(3600)} for route in self.ROUTES]
+        self.feed(events)
+        tester.record("slowroute", method="POST", route="/api/timelapse/keep", ms=wait + 1000)
+
+    def test_fourteen_requests_that_waited_together_are_one_finding_naming_what_was_running(self):
+        self.stall()
+        r = self.report()
+        self.assertEqual(len(r["stalls"]), 1)
+        stall = r["stalls"][0]
+        self.assertEqual(stall["waited"], 14)
+        self.assertEqual(stall["seconds"], 28)
+        self.assertEqual([x["route"] for x in stall["running"]], ["/api/timelapse/keep"])
+        self.assertEqual(stall["running"][0]["what"], "keeping a time-lapse video")
+        stalls = [f for f in r["findings"] if f["kind"] == "stall"]
+        self.assertEqual(len(stalls), 1)
+        f = stalls[0]
+        self.assertTrue(f["title"].startswith("The server stopped answering for 28 s at "), f["title"])
+        self.assertIn("14 requests waited at the same moment", f["detail"])
+        self.assertIn("Running at the time: keeping a time-lapse video (POST /api/timelapse/keep", f["detail"])
+        self.assertEqual((f["origin"], f["severity"]), ("app", "high"))
+        self.assertEqual(f["code"], ["backend/timelapse.py"])
+        self.assertEqual(f["trail"][-1], "click #keep-copy")
+        self.assertEqual(len(f["trail"]), 5)
+        # None of the 14 waiting routes is also its own finding.
+        self.assertFalse([x for x in r["findings"] if x["kind"] in ("slow", "request") and any(route in x["title"] for route in self.ROUTES)], [x["title"] for x in r["findings"]])
+        self.assertEqual(r["headline"]["stalls"], 1)
+
+    def test_the_stall_says_whether_the_wait_was_inside_the_server_or_before_it(self):
+        self.stall()
+        self.assertIn("before the requests reached the server's code", self.report()["stalls"][0]["where_waited"])
+        # When the server itself recorded the waiting routes as slow too, the delay was inside the server.
+        for route in self.ROUTES[:10]:
+            tester.record("slowroute", method="GET", route=route, ms=27000)
+        self.assertIn("inside the server", self.report()["stalls"][0]["where_waited"])
+
+    def test_one_slow_route_or_one_route_repeated_is_not_a_stall(self):
+        self.feed([{"k": "req", "s": "sessa1", "route": "/api/files", "method": "GET", "status": 200, "ms": 9000, "slow": True, "t": self.ago(5)}])
+        self.feed([{"k": "req", "s": "sessa1", "route": "/api/queue", "method": "GET", "status": 200, "ms": 4000 + i, "slow": True, "t": self.ago(3 - i * 0.1)} for i in range(4)])
+        r = self.report()
+        self.assertEqual(r["stalls"], [])
+        self.assertTrue([f for f in r["findings"] if f["title"].startswith("Request often slow: GET /api/queue")])
+
+    def test_slow_presses_during_a_stall_are_not_reported_as_slow_controls(self):
+        self.stall()
+        self.feed([{"k": "click", "s": "sessa1", "ctl": "#during-stall", "screen": "printer", "paint": 6000, "slow": True, "t": self.ago(1)},
+                   {"k": "click", "s": "sessa1", "ctl": "#really-slow", "screen": "printer", "paint": 6000, "slow": True, "t": self.ago(300)}])
+        titles = [f["title"] for f in self.report()["findings"]]
+        self.assertFalse([t for t in titles if "#during-stall" in t], titles)
+        self.assertTrue([t for t in titles if "#really-slow" in t], titles)
+
+    def test_requests_that_failed_because_the_page_lost_the_server_are_one_finding_kept_apart_from_the_apps_faults(self):
+        self.feed([{"k": "req", "s": "sessa1", "route": "/api/app/alive", "method": "GET", "status": 0, "ms": 30, "err": "Failed to fetch", "t": self.ago(300 - i)} for i in range(5)]
+                  + [{"k": "req", "s": "sessa1", "route": "/api/leds", "method": "GET", "status": 0, "ms": 40, "err": "Failed to fetch", "t": self.ago(30)},
+                     {"k": "err", "s": "sessa1", "kind": "promise", "msg": "Failed to fetch", "screen": "printer", "t": self.ago(29)},
+                     {"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: real bug", "file": "app.js", "line": 9, "screen": "files", "t": self.ago(20)}])
+        r = self.report()
+        lost = [f for f in r["findings"] if f["title"].startswith("The page lost the server")]
+        self.assertEqual(len(lost), 1)
+        self.assertEqual(lost[0]["title"], "The page lost the server 2 times")
+        self.assertEqual(lost[0]["origin"], "condition")
+        self.assertIn("6 requests failed with no answer", lost[0]["detail"])
+        self.assertFalse([f for f in r["findings"] if "Failed to fetch" in f["title"] or f["title"].startswith("Request failed: GET /api/app/alive")])
+        self.assertFalse(lost[0].get("fix_first"))
+        self.assertEqual(r["lost_link"]["requests"], 6)
+        self.assertTrue([f for f in r["findings"] if "real bug" in f["title"] and f["origin"] == "app"])
+
+    def test_a_loss_that_matches_a_restart_says_so(self):
+        self.feed([{"k": "req", "s": "sessa1", "route": "/api/app/alive", "method": "GET", "status": 0, "ms": 30, "err": "Failed to fetch", "t": self.ago(200)}])
+        tester.record("server", up=500, cpu=1.0, rss=80.0, threads=5, disk_free=9000)
+        tester.record("server", up=4, cpu=0.1, rss=60.0, threads=3, disk_free=9000)           # the second sample is after a restart
+        lost = self.report()["lost_link"]
+        self.assertEqual(lost["unexplained"], 1 if not lost["losses"][0]["why"] else 0)
+
+    def test_fix_first_holds_at_most_ten_app_faults_worst_first_and_never_a_condition(self):
+        events = []
+        for n in range(14):
+            events.append({"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: bug %s" % "abcdefghijklmn"[n], "file": "app.js", "line": 10 + n, "screen": "files", "t": self.ago(500 - n)})
+        events += [{"k": "printer", "s": "sessa1", "ev": "drop", "t": self.ago(100)} for _ in range(4)]
+        self.feed(events)
+        tester.record("printer", ev="drop")
+        r = self.report()
+        first = sorted((f for f in r["findings"] if f.get("fix_first")), key=lambda f: f["fix_first"])
+        self.assertEqual([f["fix_first"] for f in first], list(range(1, 11)))
+        self.assertTrue(all(f["origin"] == "app" and f["severity"] in ("high", "medium") for f in first))
+        self.assertEqual(len([f for f in r["findings"] if f["kind"] == "error" and f["origin"] == "app"]), 14)
+        drops = [f for f in r["findings"] if f["kind"] == "printer"]
+        self.assertTrue(drops and all(f["origin"] == "condition" and not f.get("fix_first") for f in drops))
+        self.assertEqual(r["summary"]["fix_first"], 10)
+
+    def test_every_fix_first_item_says_what_how_often_where_the_last_presses_and_the_code(self):
+        self.feed([{"k": "click", "s": "sessa1", "ctl": "#open-files", "screen": "files", "paint": 20, "t": self.ago(30)},
+                   {"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: x is null", "file": "workshop-part2.js", "line": 617, "screen": "printer",
+                    "last": ["click #nav-0", "click #nav-1", "click #open-files"], "t": self.ago(20)},
+                   {"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: x is null", "file": "workshop-part2.js", "line": 617, "screen": "printer",
+                    "last": ["click #open-files"], "t": self.ago(10)}])
+        f = next(x for x in self.report()["findings"] if x.get("fix_first") == 1)
+        self.assertEqual((f["count"], f["screens"], f["code"][0]), (2, ["printer"], "frontend/workshop-part2.js:617"))
+        self.assertEqual(f["trail"], ["click #open-files"])
+        self.assertIn("2 times in 1 session", f["detail"])
+        page = tester_report.build_html()
+        self.assertIn("frontend/workshop-part2.js:617", page)
+
+    def test_the_page_opens_with_the_headline_then_fix_first_with_ten_rows_at_most(self):
+        self.feed([{"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: bug %s" % "abcdefghijklm"[n], "file": "app.js", "line": n + 1, "screen": "files", "t": self.ago(100 - n)} for n in range(13)])
+        page = tester_report.build_html()
+        self.assertLess(page.index('class="strip"'), page.index('id="fix"'))
+        self.assertLess(page.index('id="fix"'), page.index('id="sum"'))                      # the long summary comes after
+        fix = page[page.index('id="fix"'):page.index('</section>', page.index('id="fix"'))]
+        self.assertEqual(fix.count('class="fix"'), 10)
+        self.assertIn("The ten worst faults", fix)
+        self.assertLess(page.index('id="fix"'), page.index('id="more"'))                      # the other three are under More findings, by part of the app
+        self.assertEqual(page[page.index('id="more"'):].count('class="fix"') >= 3, True)
+
+    def test_a_failed_slice_keeps_the_engines_whole_output_not_twelve_hundred_characters(self):
+        stderr = "\n".join("[warning] plate 1: layer %d is empty (tester at 192.168.1.50)" % n for n in range(1, 900)) + "\n[error] Empty layers detected between 4.2 and 4.4"
+        stdout = "Slic3r::CLI::run found error, exit"
+        self.assertGreater(len(stderr), 40000)
+        tester.note_slice({"status": "failed", "model": "M.3mf", "stage": "slice", "error": "Orca hit an error while slicing (Orca's code -100)", "cause": {"code": "orca_-100"}},
+                          {"engine": {"app": "Snapmaker_Orca", "version": "2.4.1"}, "run": {"exit_code": 4294967196}}, {"stdout": stdout, "stderr": stderr})
+        r = self.report()
+        sl = r["slicing"][0]
+        self.assertEqual((sl["ok"], sl["exit_code"]), (False, 4294967196))
+        self.assertGreater(len(sl["stderr"]), 38000)
+        self.assertTrue(sl["stderr"].endswith("[error] Empty layers detected between 4.2 and 4.4"))
+        self.assertIn("layer 1 is empty", sl["stderr"])
+        self.assertEqual(sl["stdout"], stdout)
+        self.assertNotIn("192.168.1.50", json.dumps(r))
+        self.assertIn("<ip>", sl["stderr"])
+        f = next(x for x in r["findings"] if x["kind"] == "slice")
+        self.assertIn("Exit code 4294967196", f["detail"])
+        self.assertIn("Orca's code -100", f["detail"])
+        self.assertEqual(f["slice"], 0)
+        text = tester_report.render_findings(r)
+        self.assertIn("Empty layers detected between 4.2 and 4.4", text)                    # the cause is in findings.md itself
+        self.assertIn("whole output", text)
+        self.assertIn("Empty layers detected between 4.2 and 4.4", tester_report.build_html())
+
+    def test_the_slice_report_line_starts_with_the_outcome_so_a_cut_never_loses_the_cause(self):
+        tester.note_slice({"status": "failed", "model": "M.3mf", "stage": "slice", "error": "Orca hit an error while slicing", "cause": {"code": "orca_-100"}},
+                          {"engine": {"app": "Snapmaker_Orca", "version": "2.4.1"}, "outcome": {"status": "failed", "message": "Orca hit an error while slicing", "cause": {"code": "orca_-100"}},
+                           "stage": {"reached": "slice"}, "host": {"os": "x" * 3000}, "run": {"exit_code": 156, "stdout": {"text": "y" * 3000}}})
+        line = next(e for e in self.events() if e["k"] == "slice")
+        self.assertTrue(line["report"].startswith('{"outcome": {"status": "failed", "message": "Orca hit an error while slicing"'), line["report"][:120])
+        self.assertLessEqual(len(line["report"]), tester.MAX_NOTE)
+
+    def test_the_code_pointers_name_files_that_exist(self):
+        import tester_report_part4 as causes
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        paths = [p for _prefix, files in causes.ROUTE_CODE for p in files] + [p for files in causes.AREA_CODE.values() for p in files]
+        self.assertGreater(len(paths), 30)
+        for path in paths:
+            self.assertTrue(os.path.isfile(os.path.join(root, path)), path)
 
 
 class TestNothingPrivateInTheSavedFiles(InsightBase):

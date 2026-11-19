@@ -29,12 +29,14 @@ tool = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(tool)
 
 
-def _zip_with(events, server=None, answers=None):
-    """Record `events` with Tester mode, save the report and clear the record. Returns the zip's bytes."""
+def _zip_with(events, server=None, answers=None, record=None):
+    """Record `events` with Tester mode (and whatever `record()` adds from the server's side), save the report and clear the record. Returns the zip's bytes."""
     modules.set_enabled("tester", True)
     tester.refresh()
     tester.delete_all()
     tester.ingest({"events": events})
+    if record:
+        record()
     now = int(time.time() * 1000)
     tester.record("printer", ev="print_started", printer="printer 1", demo=False, t=now)
     if answers:
@@ -131,7 +133,7 @@ class TestCombiningReports(unittest.TestCase):
             {"k": "click", "s": "aaaaaa01", "ctl": "#go2", "screen": "printers", "paint": 35, "how": "touch", "t": now - 6900},
             {"k": "err", "s": "aaaaaa01", "kind": "js", "msg": "TypeError: x is undefined at line 10", "file": "app.js", "line": 10, "screen": "files", "t": now - 6000},
             {"k": "perf", "s": "aaaaaa01", "boot": True, "load": 800, "t": now - 5000},
-        ], answers={"q8": {"c": "no", "t": "Refused"}, "q46": {"c": None, "t": "Confirm Print"}, "q21": {"c": "didnt_try", "t": ""}})
+        ], answers={"q19": {"c": None, "t": "Refused"}, "q18": {"c": None, "t": "Confirm Print"}, "q16": {"c": "didnt_try", "t": ""}})
         b = _zip_with([
             {"k": "session", "s": "bbbbbb01", "ev": "start", "t": now - 9000},
             {"k": "onboarding", "s": "bbbbbb01", "ev": "wizard_end", "how": "skipped", "step": 2, "of": 7, "ms": 9000, "t": now - 8000},
@@ -139,38 +141,102 @@ class TestCombiningReports(unittest.TestCase):
             {"k": "err", "s": "bbbbbb01", "kind": "js", "msg": "TypeError: x is undefined at line 99", "file": "app.js", "line": 99, "screen": "files", "t": now - 6000},
             {"k": "note", "s": "bbbbbb01", "text": "Files screen broke", "tag": "broken", "screen": "files", "t": now - 5900},
             {"k": "perf", "s": "bbbbbb01", "boot": True, "load": 1200, "t": now - 5000},
-        ], answers={"q8": {"c": "yes", "t": ""}, "q46": {"c": None, "t": "The twin"}, "q47": {"c": None, "t": "Files crashed"}})
+        ], answers={"q19": {"c": None, "t": "Files crashed"}, "q18": {"c": None, "t": "The twin"}, "q20": {"c": None, "t": "Faster Pause"}})
         return self.write("a.zip", a), self.write("b.zip", b)
 
     def test_answers_findings_first_run_and_pressing_are_combined(self):
         total = tool.combine([tool.load(p) for p in self.two_rounds()])
-        q = {x["id"]: x for x in total["questions"]}
-        self.assertEqual((q["q8"]["answered"], q["q8"]["choices"], q["q8"]["of"]), (2, {"no": 1, "yes": 1}, 2))
-        self.assertEqual([t["text"] for t in q["q46"]["texts"]], ["Confirm Print", "The twin"])
-        self.assertEqual([t["tester"] for t in q["q46"]["texts"]], [1, 2])
-        self.assertEqual(q["q21"]["choices"], {"didnt_try": 1})
+        q = {x["n"]: x for x in total["questions"]}
+        self.assertEqual((q[19]["answered"], q[19]["of"], q[19]["id"]), (2, 2, "q19"))
+        self.assertEqual([t["text"] for t in q[18]["texts"]], ["Confirm Print", "The twin"])
+        self.assertEqual([t["tester"] for t in q[18]["texts"]], [1, 2])
+        self.assertEqual(q[16]["choices"], {"didnt_try": 1})
+        self.assertEqual(total["questions_answered_median"], 3)
         merged = next(f for f in total["findings"] if f["kind"] == "error")
-        self.assertEqual((merged["testers"], merged["tester_numbers"], merged["severity"]), (2, [1, 2], "high"))
+        self.assertEqual((merged["testers"], merged["tester_numbers"], merged["severity"], merged["origin"]), (2, [1, 2], "high", "app"))
+        self.assertEqual(merged["code"][0], "frontend/app.js:10")
         self.assertTrue(any(f["kind"] == "note" and f["tester_said"] for f in total["findings"]))
         self.assertEqual([f["severity"] for f in total["findings"]], sorted((f["severity"] for f in total["findings"]), key=lambda v: {"high": 0, "medium": 1, "low": 2}[v]))
         self.assertEqual((total["first_run"]["setup_finished"], total["first_run"]["setup_skipped"], total["first_run"]["setup_opened"]), (1, 1, 1))
         self.assertEqual(total["how_they_press"], {"mouse": 1, "touch": 1, "key": 1})
         self.assertEqual(total["median_page_load_ms"], 1000)
-        self.assertEqual(total["rounds"], {"round_3": 2, "not_finished": 2})
+        self.assertNotIn("rounds", total)
 
     def test_the_answers_and_findings_switches_print_text_a_person_can_read(self):
         a, b = self.two_rounds()
         answers = subprocess.run([sys.executable, TOOL, a, b, "--answers"], capture_output=True, text=True, check=True).stdout
-        self.assertIn("8. Did the printer show as connected", answers)
+        self.assertIn("19. What frustrated you most", answers)
         self.assertIn("Tester 1: Confirm Print", answers)
         self.assertIn("Tester 2: The twin", answers)
-        self.assertIn("Yes 1, No 1, Didn't try it 0", answers)
+        self.assertIn("Didn't try it: 1", answers)
         findings = subprocess.run([sys.executable, TOOL, a, b, "--findings"], capture_output=True, text=True, check=True).stdout
         self.assertTrue(findings.startswith("# Deja Vu1 tester findings, 2 reports combined"))
+        self.assertIn("## Fix first", findings)
         self.assertIn("- Testers: 2 of 2 (1, 2)", findings)
+        self.assertIn("- Where to look: frontend/app.js:10", findings)
         text = subprocess.run([sys.executable, TOOL, a, b], capture_output=True, text=True, check=True).stdout
-        for needle in ("First run", "Setup opened 1 time: finished 1, skipped 1", "Problems that came up", "The questions: how many answered"):
+        for needle in ("First run", "Setup opened 1 time: finished 1, skipped 1", "Fix first: the app's own faults", "The questions: how many testers answered each"):
             self.assertIn(needle, text)
+
+    def stall_zip(self, seconds, hour_offset):
+        """A tester whose server stopped answering for `seconds` while a time-lapse was kept: nine routes waited together."""
+        now = int(time.time() * 1000)
+        routes = ["/api/connection", "/api/leds", "/api/cost/:id", "/api/health", "/api/queue", "/api/maintenance", "/api/chamber", "/api/printers", "/api/fleet"]
+        events = [{"k": "click", "s": "stall%02d" % hour_offset, "ctl": "#keep-copy", "screen": "printer", "paint": 30, "t": now - 40000}]
+        events += [{"k": "req", "s": "stall%02d" % hour_offset, "route": r, "method": "GET", "status": 200, "ms": seconds * 1000 + i * 50, "slow": True, "screen": "printer",
+                    "t": now - 1000} for i, r in enumerate(routes)]
+        events += [{"k": "req", "s": "stall%02d" % hour_offset, "route": r, "method": "GET", "agg": True, "n": 200, "ok": 200, "fail": 0, "p50": 6, "max": 40,
+                    "bucket": 1, "t": now - 3600000} for r in routes]
+        events.append({"k": "req", "s": "stall%02d" % hour_offset, "route": "/api/timelapse/keep", "method": "POST", "status": 200, "ms": seconds * 1000 + 1000, "slow": True,
+                       "screen": "printer", "t": now - 500})
+        events += [{"k": "req", "s": "stall%02d" % hour_offset, "route": "/api/app/alive", "method": "GET", "status": 0, "ms": 20, "err": "Failed to fetch", "t": now - 200000 + i}
+                   for i in range(3)]
+        return _zip_with(events, record=lambda: tester.record("slowroute", method="POST", route="/api/timelapse/keep", ms=seconds * 1000 + 1000))
+
+    def test_stalls_that_differ_only_in_their_numbers_are_one_top_fix_with_how_many_testers_hit_it(self):
+        a = self.write("s1.zip", self.stall_zip(27, 0))
+        b = self.write("s2.zip", self.stall_zip(31, 5))
+        total = tool.combine([tool.load(a), tool.load(b)])
+        stalls = [f for f in total["findings"] if f["kind"] == "stall"]
+        self.assertEqual(len(stalls), 1, [f["title"] for f in total["findings"]])
+        stall = stalls[0]
+        self.assertEqual((stall["testers"], stall["tester_numbers"], stall["origin"], stall["fix_first"]), (2, [1, 2], "app", 1))
+        self.assertEqual(stall["code"], ["backend/timelapse.py"])
+        self.assertEqual(stall["trail"][-1], "click #keep-copy")
+        lost = [f for f in total["findings"] if f["title"].startswith("The page lost the server")]
+        self.assertEqual((len(lost), lost[0]["origin"], lost[0]["fix_first"], lost[0]["testers"]), (1, "condition", None, 2))
+        text = tool.render_findings(total)
+        self.assertLess(text.index("## Fix first"), text.index("## Around the app"))
+        self.assertIn("### 1. [high] The server stopped answering", text)
+        self.assertIn("- Testers: 2 of 2 (1, 2)", text)
+        self.assertIn("- Where to look: backend/timelapse.py", text)
+        self.assertIn("- Last presses before it (from one tester): click #keep-copy", text)
+        self.assertIn("The page lost the server", text[text.index("## Around the app"):])
+        self.assertLessEqual(text[:text.index("## Around the app")].count("### "), 10)
+
+    def test_the_combined_fix_first_never_holds_more_than_ten(self):
+        events = [{"k": "err", "s": "many0001", "kind": "js", "msg": "TypeError: bug %s" % "abcdefghijklmnop"[n], "file": "app.js", "line": n + 1, "screen": "files",
+                   "t": int(time.time() * 1000) - 5000 - n} for n in range(16)]
+        data = self.write("many.zip", _zip_with(events))
+        total = tool.combine([tool.load(data)])
+        self.assertEqual(len([f for f in total["findings"] if f["fix_first"]]), 10)
+        self.assertEqual(sorted(f["fix_first"] for f in total["findings"] if f["fix_first"]), list(range(1, 11)))
+
+    def test_a_schema_2_report_with_no_origin_or_code_still_combines(self):
+        a, _ = self.two_rounds()
+        import zipfile
+        path = self.write("v2.zip", b"")
+        with zipfile.ZipFile(a) as src, zipfile.ZipFile(path, "w") as out:
+            report = json.loads(src.read("report.json"))
+            report["schema_version"] = 2
+            for f in report["findings"]:
+                for key in ("origin", "code", "screens", "fix_first"):
+                    f.pop(key, None)
+            out.writestr("report.json", json.dumps(report))
+        total = tool.combine([tool.load(path)])
+        self.assertTrue(total["findings"])
+        self.assertTrue(all(f["origin"] in ("app", "condition") for f in total["findings"]))
+        self.assertEqual(len([f for f in total["findings"] if f["fix_first"]]), len([f for f in total["findings"] if f["origin"] == "app" and f["severity"] in ("high", "medium")][:10]))
 
     def test_a_schema_1_report_still_combines(self):
         a, _ = self.two_reports()

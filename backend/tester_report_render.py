@@ -8,15 +8,12 @@ report looks reads only this file. tester_report.py builds the numbers (Aggregat
 imports README, render_html and render_findings from here; nothing here imports tester_report.
 """
 
-import html
+import html  # noqa: F401  (tests and callers escape through _h)
+from tester_report_top import SEV_PILL as _SEV_PILL, TOP_CSS, _h, _hm, _plural, finding_md, headline_text, top_html, top_md  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # report.html: one page, no scripts, nothing loaded from outside
 # ---------------------------------------------------------------------------
-
-def _h(value):
-    return html.escape("" if value is None else str(value), quote=True)
-
 
 def _ms(value):
     """A duration as plain text (escape it where it is put into a page)."""
@@ -24,17 +21,6 @@ def _ms(value):
         return "\u2013"
     value = float(value)
     return "%d ms" % value if value < 1000 else "%.1f s" % (value / 1000.0)
-
-
-def _plural(n, one, many=None):
-    return "%s %s" % (n, one if n == 1 else (many or one + "s"))
-
-
-def _hm(minutes):
-    minutes = float(minutes or 0)
-    if minutes < 60:
-        return "%d min" % round(minutes)
-    return "%d h %02d min" % (minutes // 60, round(minutes % 60))
 
 
 _NUMERIC = {"Times", "Median", "Slowest", "Pressed", "Failed", "Slow", "Sessions", "Open", "Actions", "Prints", "Errors", "Slow spots", "Visits",
@@ -113,7 +99,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .featgrid small{color:var(--faint);display:block}.featgrid .pill{flex:none;white-space:nowrap}footer{color:var(--faint);font-size:.85rem;margin-top:24px}
 @media(max-width:560px){section{padding:14px 12px}dl{grid-template-columns:1fr}dt{margin-top:6px}}
 @media print{body{background:#fff}section{break-inside:avoid;border-color:#bbb}details{display:block}}
-"""
+""" + TOP_CSS
 
 
 def _beat(days):
@@ -144,12 +130,6 @@ def _beat(days):
     return "".join(parts)
 
 
-_SEV_PILL = {"high": "bad", "medium": "warn", "low": "off"}
-_KIND_WORDS = {"error": "error", "slow": "slow", "request": "request", "server": "server", "refused": "refused", "printer": "printer",
-               "slice": "slice", "convert": "converter", "smooth": "smoothness", "note": "tester note", "answer": "tester answer",
-               "network": "network", "onboarding": "first run"}
-
-
 def _pill(text, cls):
     return _Raw("<td><span class=\"pill %s\">%s</span></td>" % (cls, _h(text)))
 
@@ -173,30 +153,11 @@ def _hours_svg(hours):
     return "".join(parts)
 
 
-def _finding_html(f):
-    out = ["<div class=\"note finding\"><span class=\"pill %s\">%s</span> <span class=\"pill off\">%s</span> " % (
-        _SEV_PILL[f["severity"]], _h(f["severity"]), _h(_KIND_WORDS.get(f["kind"], f["kind"])))]
-    if f.get("tester_said"):
-        out.append("<span class=\"pill ok\">the tester said</span> ")
-    out.append("<b>%s</b>" % _h(f["title"]))
-    if f.get("area"):
-        out.append("<br><small>Part of the app: %s</small>" % _h(f["area"]))
-    if f.get("detail"):
-        out.append("<br><small>%s</small>" % _h(f["detail"]))
-    if f.get("where"):
-        out.append("<br><small>Where to look: %s</small>" % _h(" | ".join(f["where"])))
-    if f.get("trail"):
-        out.append("<details><summary>The last %d actions before it</summary><pre>%s</pre></details>" % (len(f["trail"]), _h("\n".join(f["trail"]))))
-    out.append("</div>")
-    return "".join(out)
-
-
 def render_html(report, theme=None, sample=False):
     s, setup = report["summary"], report["setup"]
     server = setup.get("server") or {}
     thin = report["thinning"]
     study = report.get("study") or {}
-    plan = study.get("plan") or {}
     usage, stats, perf = report["usage"], report["stats"], report["performance"]
     out = []
     add = out.append
@@ -213,8 +174,10 @@ def render_html(report, theme=None, sample=False):
             "<p class=\"sub\">Written %s from %s. Everything here was recorded on this computer. Nothing was sent anywhere; you send this file yourself.</p></header>"
             % (_h(report["generated"].replace("T", " ")), span))
 
+    # What to fix: the headline strip, the ten worst faults, the conditions around the app, the rest by part of the app
+    add(top_html(report))
+
     # The short version
-    bad = s["errors_total"] > 0
     found = s.get("findings") or {}
     add("<section class=\"hero\" aria-labelledby=\"sum\"><h2 id=\"sum\">The short version</h2><p class=\"lead\">")
     add("Deja Vu1 was open on <b>%s</b> in <b>%s</b>, for <b>%s</b> in all. " % (_plural(s["days_used"], "day"), _plural(s["sessions"], "session"), _hm(s["minutes_open"])))
@@ -222,16 +185,10 @@ def render_html(report, theme=None, sample=False):
     add("%s started on a printer, %s finished, %s failed and %s were cancelled%s. " % (
         _plural(s["prints_started"], "print"), s["prints_finished"], s["prints_failed"], s["prints_cancelled"],
         " (%s more on demo data)" % s["demo_prints_started"] if s["demo_prints_started"] else ""))
-    add("There %s <b>%s</b> in <b>%s</b> and <b>%s</b>. " % (
-        "was" if s["errors_total"] == 1 else "were", _plural(s["errors_total"], "error"), _plural(s["error_groups"], "kind"), _plural(s["slow_spots"], "slow spot")))
-    add("<b>%d of %d</b> main features were tried." % (s["features_tried"], s["features_total"]))
-    if plan:
-        add(" The test round was <b>%s</b> (%s). They answered <b>%d of %d</b> questions." % (
-            _plural(plan.get("length_days", 0), "day"), {"finished": "finished", "due": "time was up, questions still open", "running": "still running"}.get(plan.get("status"), "unknown"),
-            study.get("answered", 0), study.get("total", 0)))
+    add("<b>%d of %d</b> main features were tried, and <b>%d of %d</b> questions were answered." % (
+        s["features_tried"], s["features_total"], study.get("answered", 0), study.get("total", 0)))
     add("</p><ul class=\"tiles\">")
     for value, label, cls in ((s["days_used"], "days used", ""), (s["prints_started"], "prints started", ""),
-                              (s["errors_total"], "errors", "bad" if bad else "ok"), (s["slow_spots"], "slow spots", "warn" if s["slow_spots"] else "ok"),
                               ("%d / %d" % (s["features_tried"], s["features_total"]), "features tried", ""),
                               (found.get("high", 0), "high findings", "bad" if found.get("high") else "ok"),
                               ("%d / %d" % (study.get("answered", 0), study.get("total", 0)), "questions answered", "")):
@@ -243,40 +200,25 @@ def render_html(report, theme=None, sample=False):
             "the totals above were counted before anything was dropped. Medians for thinned controls are estimates.</p>" % (_h(thin["limit_mb"]), _h(thin["dropped_events"])))
     add("</section>")
 
-    # Fix these first
-    findings = report.get("findings") or []
-    add("<section aria-labelledby=\"fix\"><h2 id=\"fix\">Fix these first</h2><p class=\"small\">Everything that went wrong or felt wrong, ranked: errors, slow controls, "
-        "failed requests, failed slices, low frame rates, notes and troubled answers. Each says which part of the app it belongs to and where to look. "
-        "The same list is in findings.md, ready to paste into a work session.</p>")
-    if not findings:
-        add(_empty("Nothing needed fixing in what was recorded."))
-    for f in findings[:15]:
-        add(_finding_html(f))
-    if len(findings) > 15:
-        add("<details><summary>%d more findings</summary>%s</details>" % (len(findings) - 15, "".join(_finding_html(f) for f in findings[15:50])))
-    add("</section>")
-
     # Their answers
     add("<section aria-labelledby=\"ans\"><h2 id=\"ans\">Their answers</h2>")
     answers = study.get("answers") or []
-    if not plan:
+    if not study.get("answered"):
         add(_empty("No answers were saved."))
     else:
-        add("<p>%d of %d questions answered, %d with words and %d marked \"Didn't try it\". Round: %s, from %s to %s.</p>" % (
-            study.get("answered", 0), study.get("total", 0), study.get("with_words", 0), study.get("didnt_try", 0),
-            _h(_plural(plan.get("length_days", 0), "day")), _h((plan.get("started") or "")[:16].replace("T", " ")), _h((plan.get("ends") or "")[:16].replace("T", " "))))
-        words = [a for a in answers if a["answered"] and a["n"] in (46, 47, 48, 49, 50, 52)]
+        add("<p>%d of %d questions answered, %d with words and %d marked \"Didn't try it\".</p>" % (
+            study.get("answered", 0), study.get("total", 0), study.get("with_words", 0), study.get("didnt_try", 0)))
+        words = [a for a in answers if a["answered"] and a["section"] == 9]
         if words:
             add("<h3>In their own words</h3>")
             for a in words:
-                add("<div class=\"note\"><small>%d. %s</small><br><b>%s</b>%s</div>" % (
-                    a["n"], _h(a["question"]), _h(a["answer"] or a["choice_label"] or ""), (" <span class=\"pill off\">%s</span>" % _h(a["choice_label"])) if a["choice_label"] and a["answer"] else ""))
+                add("<div class=\"note\"><small>%d. %s</small><br><b>%s</b></div>" % (a["n"], _h(a["question"]), _h(a["answer"] or a["choice_label"] or "")))
         for sec in study.get("sections") or []:
             rows = [a for a in answers if a["section"] == sec["section"] and a["answered"]]
             add("<details%s><summary>%s &middot; %d of %d answered%s</summary>" % (
                 " open" if rows and not sec["optional"] else "", _h("%d. %s" % (sec["section"], sec["name"])), sec["answered"], sec["of"],
                 " &middot; optional" if sec["optional"] else ""))
-            add(_table(["No.", "Question", "Answer", "Choice"], [[_cell(a["n"], "n"), a["question"], a["answer"], a["choice_label"] or ""] for a in rows]) or _empty("Not answered."))
+            add(_table(["No.", "Question", "Answer"], [[_cell(a["n"], "n"), a["question"], a["answer"] or a["choice_label"] or ""] for a in rows]) or _empty("Not answered."))
             add("</details>")
     add("</section>")
 
@@ -479,6 +421,11 @@ def render_html(report, theme=None, sample=False):
     for r in report["slicing"]:
         if r.get("report"):
             add("<details><summary>Report for help, %s</summary><pre>%s</pre></details>" % (_h(r["t"].replace("T", " ")), _h(r["report"])))
+        if r.get("stderr") or r.get("stdout"):
+            add("<details><summary>The engine's whole output, %s%s</summary><pre>%s</pre></details>" % (
+                _h(r["t"].replace("T", " ")), (", exit code %s" % _h(r["exit_code"])) if r.get("exit_code") is not None else "",
+                _h("\n\n".join(x for x in (("--- error output ---\n" + r["stderr"]) if r.get("stderr") else "",
+                                           ("--- other output ---\n" + r["stdout"]) if r.get("stdout") else "") if x))))
     add("<h3>Conversions</h3>")
     add(_table(["When", "Source", "Result", "Plates", "Colours", "Warnings shown"], [[_when(r["t"]), r["source"], _Raw("<td><span class=\"pill %s\">%s</span></td>" % ("ok" if r["ok"] else "bad", "worked" if r["ok"] else "failed")), r["plates"], r["colours"], "; ".join(r["warnings"] or []) or (r["error"] or "")] for r in report["converter"][:60]]) or _empty("No conversions recorded."))
     add("</section>")
@@ -513,9 +460,9 @@ def render_html(report, theme=None, sample=False):
     add("</section>")
 
     add("<section aria-labelledby=\"ft\"><h2 id=\"ft\">Features used and not used</h2><p class=\"small\">Used means the tester opened it or pressed one of its controls at least once. "
-        "The section is where the tester questions sheet asks about it.</p><ul class=\"featgrid\">")
+        "The section is where the 22 questions ask about it.</p><ul class=\"featgrid\">")
     for f in report["features"]["detail"]:
-        add("<li><span class=\"pill %s\">%s</span><span>%s<small>Questions, section %s: %s</small></span></li>" % ("ok" if f["used"] else "off", "used" if f["used"] else "not used", _h(f["name"]), f["questions_section"], _h(f["questions_section_name"])))
+        add("<li><span class=\"pill %s\">%s</span><span>%s<small>Questions, section %s: %s</small></span></li>" % ("ok" if f["used"] else "off", "used" if f["used"] else "not used", _h(f["name"]), f["questions_section"] or "none", _h(f["questions_section_name"] or "no question asks about it")))
     add("</ul></section>")
 
     sc = report["screens"]
@@ -541,40 +488,22 @@ def render_html(report, theme=None, sample=False):
 
 def render_findings(report):
     """findings.md: what to fix first, as plain text a developer can read or paste into a work session."""
-    s, plan = report["summary"], (report.get("study") or {}).get("plan") or {}
     server = (report["setup"].get("server") or {})
     lines = ["# Deja Vu1 tester findings", "",
-             "Report written %s. Deja Vu1 %s on %s, Python %s. %s, %s, %s, %d presses, %d errors in %d kinds, %d slow spots." % (
-                 report["generated"].replace("T", " "), server.get("app_version") or "?", server.get("os") or "?", server.get("python") or "?",
-                 _plural(s["days_used"], "day"), _plural(s["sessions"], "session"), _hm(s["minutes_open"]), s["clicks"], s["errors_total"], s["error_groups"], s["slow_spots"]), ""]
-    if plan:
-        lines.append("Test round: %s, status %s. Questions answered: %d of %d." % (_plural(plan.get("length_days", 0), "day"), plan.get("status"),
-                                                                                 report["study"]["answered"], report["study"]["total"]))
-        lines.append("")
-    lines += ["Each finding names the part of the app and where to look. Severity: high means a bug or a failure, medium means something that",
-              "went wrong or felt wrong more than once, low means worth a look. \"the tester said\" marks something they wrote or answered.", ""]
-    findings = report.get("findings") or []
-    if not findings:
-        lines.append("No findings: nothing went wrong in what was recorded.")
-    for f in findings:
-        lines.append("## %s [%s] %s" % (f["id"], f["severity"], f["title"]))
-        lines.append("- Kind: %s%s" % (f["kind"], ", the tester said" if f.get("tester_said") else ""))
-        if f.get("area"):
-            lines.append("- Part of the app: %s" % f["area"])
-        if f.get("detail"):
-            lines.append("- What: %s" % f["detail"])
-        for w in f.get("where") or []:
-            lines.append("- Where: %s" % w)
-        if f.get("trail"):
-            lines.append("- The last actions before it: %s" % "; ".join(f["trail"][-6:]))
-        lines.append("")
+             "Report written %s. Deja Vu1 %s on %s, Python %s." % (
+                 report["generated"].replace("T", " "), server.get("app_version") or "?", server.get("os") or "?", server.get("python") or "?"),
+             headline_text(report), "",
+             "Fix first holds at most ten of the app's own faults, worst first. Around the app lists conditions that are not the app's fault",
+             "(the printer off, the network down, the computer asleep). Severity: high means a bug or a failure, medium means something that",
+             "went wrong or felt wrong more than once, low means worth a look. \"the tester said\" marks something they wrote or answered.", ""]
+    lines += top_md(report)
     answers = [a for a in (report.get("study") or {}).get("answers", []) if a["answered"]]
     if answers:
-        lines.append("## Their answers")
+        lines.append("## Their answers (%d of %d questions)" % (report["study"]["answered"], report["study"]["total"]))
         lines.append("")
         for a in answers:
             lines.append("%d. %s" % (a["n"], a["question"]))
-            lines.append("   Answer: %s%s" % (a["answer"] or "", (" [%s]" % a["choice_label"]) if a["choice_label"] else ""))
+            lines.append("   Answer: %s" % (a["answer"] or a["choice_label"] or ""))
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -590,7 +519,9 @@ This zip holds five files. Nothing in it was sent anywhere: Deja Vu1 saved it on
 attach it to a forum message yourself.
 
 report.html   The report. Open it in any browser; it works with no internet and runs no scripts.
-findings.md   What went wrong or felt wrong, ranked, each with the part of the app and where to look.
+findings.md   What to fix first: the ten worst faults in the app, then conditions around it (the printer off, the
+              network down), then the rest. Each says what happened, how often, the screen, the last presses
+              before it and where to look in the code.
 report.json   The same numbers as data, with a schema_version, so several reports can be combined later.
 events.jsonl  The raw record, one event per line, after private details were hidden. Open it in any text
               editor if you want to check what was kept.
@@ -602,7 +533,7 @@ and the tour went), every error with what you pressed just before it, every slow
 connects, drops, refused commands and print results, Confirm Print results, slices and conversions (engine,
 worked or not, how long), how smoothly the 3D twin and the G-code preview drew, how quickly the app opened,
 how much memory the page and the server used, which features were tried, any notes you wrote with
-"Something felt off", your answers to the questions, and any self-update.
+"Something felt off", your answers to the 22 questions (only the ones you answered), and any self-update.
 
 What is never recorded:
 %s

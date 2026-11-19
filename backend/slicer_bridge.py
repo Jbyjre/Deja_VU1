@@ -77,7 +77,7 @@ from slicer_bridge_part1 import (  # noqa: F401  (split out 19 November 2026; na
     _could_be_program, _defaults, _explain, _free_name, _job_update, _jobs, _listing, _load_receipts, _lock,
     _looks_like_orca, _mark_interrupted, _mode_facts, _now, _operation, _order, _persist_locked, _previous_output,
     _profile, _profile_facts, _program_files, _program_identity, _run_lock, _save, _search_places,
-    _settings_file_is_orca, _shown_command, _stock_heads, _tail, _traces, any_active, cancel_all, cancel_job,
+    _plain, _settings_file_is_orca, _shown_command, _stock_heads, _tail, _traces, any_active, cancel_all, cancel_job,
     command_for, diagnose, engine_capabilities, engine_changed, find_slicers, get_job, get_settings,
     installed_catalog, jobs, public_settings, read_preset, remove_profile, reset, slicer_path, wait,
 )
@@ -507,6 +507,9 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
         trace["run"] = {"command": _shown_command(report["command"]), "seconds": seconds, "exit_code": code,
                         "timeout_s": timeout, "orca_result": result_json,
                         "stdout": slice_diagnosis.log_window(out), "stderr": slice_diagnosis.log_window(err)}
+        if code != 0 or (isinstance(result_json, dict) and result_json.get("return_code") not in (None, 0)):
+            # Everything the engine printed, for Tester mode's report (_work hands it over and drops it). The help report keeps a window.
+            trace["engine_output"] = {"stdout": _plain(out), "stderr": _plain(err)}
         if code is None:
             message = (f"Slicing didn't finish within {timeout} s, so it was stopped. A big model can "
                        "need longer (raise the time limit), or Orca may be stuck waiting for a screen")
@@ -776,10 +779,11 @@ def _work(job_id, name, profile_id, queue_to, on_done):
             stage = trace.get("stage")
             _job_update(job_id, finished_at=datetime.now().isoformat(timespec="seconds"), stage=stage,
                         stage_label=slice_diagnosis.stage_label(stage))
+            output = trace.pop("engine_output", None)
             if tester.enabled():
                 try:
                     done = get_job(job_id) or {}
-                    tester.note_slice(done, _receipt(done, trace))
+                    tester.note_slice(done, _receipt(done, trace), output)
                 except Exception:         # noqa: BLE001 - Tester mode never changes how a slice ends
                     pass
             _operation.cancel = None

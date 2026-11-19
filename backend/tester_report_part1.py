@@ -1,5 +1,5 @@
 """
-tester_report_part1.py: part 1 of 3 split out of tester_report.py (the tester report's numbers, findings and
+tester_report_part1.py: part 1 of 4 split out of tester_report.py (the tester report's numbers, findings and
 zip) on 19 November 2026, so a session reads only the part it needs. tester_report.py imports every name here
 back, so `tester_report.<name>` works as before. Holds: AREA_NAMES, CATEGORIES, FEATURES, NEVER, ROUTE_AREAS,
 ROUTINE_ORDER, SCREEN_NAMES, SEVERITY_RANK, SLOWEST, SLOW_CLICK_MS, SLOW_REQUEST_MS, _CLICK_BUCKETS, _DATA_DIR,
@@ -17,6 +17,7 @@ import statistics
 import storage
 import tester
 import tester_questions
+import tester_report_part4 as causes
 import time
 
 
@@ -40,7 +41,7 @@ SCREEN_NAMES = {"fleet": "printers", "control": "printer", "library": "files", "
                 "materials": "filament"}
 
 
-# Every main feature: how the report decides it was used, and where the tester questions sheet asks about it.
+# Every main feature: how the report decides it was used, and which section of the 22 questions covers it (None: no question asks).
 # rule kinds: screen (a place that was opened), route (method + path pattern of a request), kind (an event
 # the server noted), ctl (a control that was pressed), fps (a smoothness sample), flag (a feature event).
 FEATURES = [
@@ -64,17 +65,17 @@ FEATURES = [
                                                            ("route", "POST", r"^/api/maintenance/(done|swap|snooze)$")]),
     ("queue", "Print queue", 7, "Filament and care", [("screen", "queue"),
                                                      ("route", "POST", r"^/api/queue/(add|remove|move|auto|start-next|clear-done|bed-clear)$")]),
-    ("phone", "Phone", 8, "Phone and away from home", [("route", "POST", r"^/api/pairing/(link|code)$"),
+    ("phone", "Phone", 8, "Phone and AI", [("route", "POST", r"^/api/pairing/(link|code)$"),
                                                        ("ctl", r"#phone-connect-btn")]),
-    ("away", "Away from home", 8, "Phone and away from home", [("route", "POST", r"^/api/remote/(share|stop|link)$")]),
-    ("notifications", "Notifications", 8, "Phone and away from home",
+    ("away", "Away from home", None, None, [("route", "POST", r"^/api/remote/(share|stop|link)$")]),
+    ("notifications", "Notifications", None, None,
      [("route", "POST", r"^/api/notifications/(settings|test)$")]),
-    ("automations", "Automations", 8, "Phone and away from home", [("screen", "automations"),
+    ("automations", "Automations", None, None, [("screen", "automations"),
                                                                   ("route", "POST", r"^/api/automations")]),
-    ("ai_assistant", "AI assistant", 9, "The AI assistant", [("route", "POST", r"^/api/assistant/chat$")]),
-    ("print_watch", "Print watch", 9, "The AI assistant", [("route", "POST", r"^/api/assistant/watch")]),
-    ("print_doctor", "Print doctor", 9, "The AI assistant", [("ctl", r"(?i)print doctor|#ai-doctor")]),
-    ("updates", "Updates", 10, "Updates and settings", [("kind", "update"),
+    ("ai_assistant", "AI assistant", 8, "Phone and AI", [("route", "POST", r"^/api/assistant/chat$")]),
+    ("print_watch", "Print watch", 8, "Phone and AI", [("route", "POST", r"^/api/assistant/watch")]),
+    ("print_doctor", "Print doctor", 8, "Phone and AI", [("ctl", r"(?i)print doctor|#ai-doctor")]),
+    ("updates", "Updates", None, None, [("kind", "update"),
                                                         ("route", "POST", r"^/api/app/(updates/(install|check|git)|repair)$")]),
 ]
 
@@ -99,8 +100,7 @@ CATEGORIES = {
 }
 
 
-_NETWORK_WORDS = re.compile(r"(?i)failed to fetch|networkerror|network error|load failed|network connection was lost|err_connection|"
-                            r"err_network|err_internet|the user aborted")
+_NETWORK_WORDS = causes.NETWORK_WORDS
 
 
 _CLICK_BUCKETS = ((100, "up to 100 ms"), (300, "100 to 300 ms"), (1000, "0.3 to 1 s"), (3000, "1 to 3 s"), (float("inf"), "over 3 s"))
@@ -453,20 +453,104 @@ def _times(n):
     return "%d time%s" % (n, "" if n == 1 else "s")
 
 
+FIX_FIRST_MAX = 10            # the report's "fix first" list never holds more than this
+
+
+def _job(x):
+    """A running request in words: 'keeping a time-lapse video (POST /api/timelapse/keep, 28 s)'."""
+    where = "%s %s" % (x["method"], x["route"])
+    return ("%s (%s, %d s)" % (x["what"], where, x["seconds"])) if x["what"] != x["route"] else ("%s (%d s)" % (where, x["seconds"]))
+
+
+def _stall_findings(stalls, add):
+    """One finding per cause: the stalls that had the same thing running, with how often and how long."""
+    groups = {}
+    for s in stalls:
+        groups.setdefault(tuple((x["method"], x["route"]) for x in s["running"]) or ("?",), []).append(s)
+    for rows in groups.values():
+        worst = max(rows, key=lambda s: (s["seconds"] * s["waited"], s["seconds"]))
+        n = len(rows)
+        typical = int(round(statistics.median([s["seconds"] for s in rows])))
+        longest = max(s["longest_seconds"] for s in rows)
+        waited_all = sum(s["waited"] for s in rows)
+        away = all(s["condition"] for s in rows)
+        title = ("The server stopped answering for %d s at %s" % (worst["seconds"], worst["at"])) if n == 1 else \
+            "The server stopped answering %d times (%d s typically, up to %d s)" % (n, typical, longest)
+        bits = [("%s waited at the same moment." % _plural_requests(worst["waited"])) if n == 1 else
+                "%s waited in all, %d at the worst one (%s)." % (_plural_requests(waited_all), worst["waited"], worst["at"])]
+        if worst["running"]:
+            bits.append("Running at the time: %s." % "; ".join(_job(x) for x in worst["running"]))
+        else:
+            bits.append("No long job was recorded on the server at that time, so the cause is not in the record.")
+        names = ["%s %s" % (x["method"], x["route"]) for x in worst["routes"][:5]]
+        bits.append("Waiting: %s%s." % (", ".join(names), (" and %d more routes" % (len(worst["routes"]) - 5)) if len(worst["routes"]) > 5 else ""))
+        bits.append("The wait came %s." % worst["where_waited"])
+        if worst["condition"]:
+            bits.append("At that time: %s." % worst["condition"])
+        running = worst["running"][0] if worst["running"] else None
+        severity = "high" if (typical >= 20 or worst["waited"] >= 10) else "medium" if typical >= 5 else "low"
+        add("stall", severity, _feature_of(Counter(), {running["route"]: 1}, Counter()) if running else "Server", title, " ".join(bits),
+            min(typical, 120) * 0.5 + min(waited_all, 60) * 0.4 + n * 2,
+            ["Running: %s %s" % (running["method"], running["route"])] if running else None,
+            origin="condition" if away else "app", route=running["route"] if running else None,
+            code=None if running else ["backend/app.py", "backend/mock_moonraker.py"], count=n, first=rows[0]["start"], last=rows[-1]["start"],
+            trail=worst.get("trail") or [])
+
+
+def _plural_requests(n):
+    return "%d request%s" % (n, "" if n == 1 else "s")
+
+
+def _lost_link_finding(ll, net, add):
+    n = ll["times"]
+    bits = []
+    if ll["requests"]:
+        routes = ", ".join("%s (%d)" % (route, c) for route, c in list(ll["routes"].items())[:3])
+        bits.append("%s failed with no answer from the server (%s)." % (_plural_requests(ll["requests"]), routes))
+    if ll["shown_as_errors"]:
+        bits.append("It showed as an error on screen %s." % _times(ll["shown_as_errors"]))
+    if ll["losses"]:
+        bits.append("At %s." % ", ".join(x["at"] for x in ll["losses"][:4]))
+        reasons = Counter(x["why"] for x in ll["losses"] if x["why"])
+        if reasons:
+            bits.append("Cause in the record: %s." % "; ".join("%s (%d)" % (w, c) for w, c in reasons.most_common(3)))
+        if ll["unexplained"]:
+            bits.append("%d had no cause in the record: not a restart, not the computer asleep, not offline." % ll["unexplained"])
+    if net["live_link_closed_unexpectedly"]:
+        bits.append("The live link closed unexpectedly %s." % _times(net["live_link_closed_unexpectedly"]))
+    if net["seconds_offline"]:
+        bits.append("The computer was offline for %d s in all." % net["seconds_offline"])
+    add("network", "medium" if ll["unexplained"] >= 3 else "low", "Live link", "The page lost the server %s" % _times(n), " ".join(bits),
+        min(n, 30) * 1.2 + ll["unexplained"] * 2, ["Request: %s" % ", ".join(list(ll["routes"])[:3])] if ll["routes"] else None,
+        origin="condition", code=["frontend/app.js", "backend/app.py"], count=n)
+
+
 def _findings(r):
     """
-    The report's work list: every error, slow control, failed request, failed slice, low frame rate, note and trouble
-    answer, ranked, each with the place to look. A developer reads this first.
+    The report's work list, ranked, each item with what happened, how often, the screen, the last presses before it and where to
+    look in the code. Every item is either the app's own fault (origin "app": a script error, a server error, a failed slice, a
+    refused command, a slow press, a freeze, a stall, a tester's note) or a condition around the app (origin "condition": the printer
+    off, the network down, the computer asleep). The ten worst app faults rated high or medium are marked "fix_first": that is
+    the list the report opens with. When many requests waited at the same moment that is one stall, and requests that failed
+    because the page lost the server are one finding.
     """
     items = []
     base = {"high": 100.0, "medium": 50.0, "low": 10.0}
+    stalls = r.get("stalls") or []
 
-    def add(kind, severity, area, title, detail, score, where=None, **extra):
-        items.append({"kind": kind, "severity": severity, "area": area, "title": _short(title, 200), "detail": _short(detail, 700),
-                      "score": round(base[severity] + score, 1), "where": [w for w in (where or []) if w], **extra})
+    def add(kind, severity, area, title, detail, score, where=None, origin="app", route=None, screens=None, code=None, **extra):
+        item = {"kind": kind, "origin": origin, "severity": severity, "area": area, "screens": list(screens or []),
+                "title": _short(title, 200), "detail": _short(detail, 1200), "score": round(base[severity] + score, 1),
+                "where": [w for w in (where or []) if w], "code": code if code is not None else causes.code_for(route=route, area=area, where=where)}
+        extra.setdefault("count", 1)
+        extra.setdefault("trail", [])
+        item.update(extra)
+        items.append(item)
 
     for g in r["errors"]["groups"]:
         category = g["category"]
+        if category == "network" and r.get("lost_link"):
+            continue                          # one finding below: the page lost the server
         severity = "high" if category in ("app_bug", "server_bug") else ("medium" if g["count"] >= 3 or category in ("toast", "csp") else "low")
         if category == "network" and g["count"] < 5:
             severity = "low"
@@ -483,47 +567,62 @@ def _findings(r):
         where = [("Code: %s" % (g["where"] if isinstance(g["where"], str) else " / ".join(g["where"]))) if g["where"] else None,
                  "Request: %s" % ", ".join(g["routes"]) if g["routes"] else None]
         add("error", severity, g["area"], "%s: %s" % (g["category_label"], g["message"]), " ".join(bits),
-            min(g["count"], 30) * 1.5 + g["sessions"] * 4, where, count=g["count"], first=g["first"], last=g["last"],
-            trail=g["last_actions"] or [])
+            min(g["count"], 30) * 1.5 + g["sessions"] * 4, where, origin="condition" if category == "network" else "app",
+            route=next(iter(g["routes"]), None), screens=list(g["screens"]), count=g["count"], sessions=g["sessions"], first=g["first"],
+            last=g["last"], trail=g["last_actions"] or [])
 
+    stalled_presses = Counter(row["control"] for row in r["slow"]["slow_clicks"] if causes.inside(stalls, row["t"]))
     for c in r["clicks"]["controls"]:
-        if not c["slow_count"]:
-            continue
-        severity = "high" if (c["slowest_ms"] or 0) >= 5000 or c["slow_count"] >= 5 else (
-            "medium" if c["slow_count"] >= 2 or (c["slowest_ms"] or 0) >= 3000 else "low")
+        slow = (c["slow_count"] or 0) - stalled_presses.get(c["control"], 0)
+        if slow <= 0:
+            continue                          # these presses were slow because the server had stopped answering: see the stall
+        severity = "high" if (c["slowest_ms"] or 0) >= 5000 or slow >= 5 else ("medium" if slow >= 2 or (c["slowest_ms"] or 0) >= 3000 else "low")
         add("slow", severity, ", ".join(c["screens"]) or None, "Slow to respond: %s" % c["control"],
             "Pressed %d times; the screen took over %d ms to change %s. Median %s ms, slowest %s ms." % (
-                c["count"], r["slow"]["thresholds_ms"]["click"], _times(c["slow_count"]), c["median_ms"], c["slowest_ms"]),
-            min(c["slow_count"], 30) * 1.2 + min((c["slowest_ms"] or 0) / 500.0, 20), ["Control: %s" % c["control"]],
-            count=c["slow_count"])
+                c["count"], r["slow"]["thresholds_ms"]["click"], _times(slow), c["median_ms"], c["slowest_ms"]),
+            min(slow, 30) * 1.2 + min((c["slowest_ms"] or 0) / 500.0, 20), ["Control: %s" % c["control"]], screens=list(c["screens"]), count=slow)
 
     failing = {}
     for row in r["requests"]["failed"]:
+        if not row.get("status") and _NETWORK_WORDS.search(str(row.get("error") or "")):
+            continue                          # the page lost the server: one finding below
         failing.setdefault((row["method"], row["route"]), []).append(row)
     for (method, route), rows in failing.items():
         statuses = Counter(x["status"] for x in rows)
         if set(statuses) <= {403, 409, 423}:
-            continue                      # a refusal on purpose (watch-only, a safety check, a switched-off part): listed under the printer
+            continue                          # a refusal on purpose (watch-only, a safety check, a switched-off part): listed under the printer
         worst = max(statuses)
         severity = "high" if worst >= 500 else "medium" if (worst == 404 or (0 in statuses and len(rows) >= 3)) else "low"
         words = next((x["error"] for x in reversed(rows) if x.get("error")), "")
         add("request", severity, _feature_of(Counter(), {route: 1}, Counter()), "Request failed: %s %s" % (method, route),
             "%s (%s). %s" % (_times(len(rows)), ", ".join("%s x%d" % (k, v) for k, v in statuses.most_common(3)), ("The app said: %s" % words) if words else ""),
-            min(len(rows), 30) * 1.2, ["Request: %s %s" % (method, route)], count=len(rows))
+            min(len(rows), 30) * 1.2, ["Request: %s %s" % (method, route)], route=route, screens=sorted({x["screen"] for x in rows if x.get("screen")}), count=len(rows))
 
+    in_stall, worst_left = Counter(), {}
+    for x in r["slow"]["slow_requests"]:
+        key = (x["method"], x["route"])
+        if causes.inside(stalls, x["t"]):
+            in_stall[key] += 1
+        else:
+            worst_left[key] = max(worst_left.get(key, 0), x.get("ms") or 0)
     for row in r["requests"]["routes"]:
-        if row["slow_count"] >= 2 and (row["slowest_ms"] or 0) >= 3000:
+        key = (row["method"], row["route"])
+        left = row["slow_count"] - in_stall.get(key, 0)
+        worst = worst_left.get(key) or row["slowest_ms"] or 0
+        if left >= 2 and worst >= 3000:
             add("slow", "medium", _feature_of(Counter(), {row["route"]: 1}, Counter()), "Request often slow: %s %s" % (row["method"], row["route"]),
-                "Took over %d ms %s of %d. Median %s ms, slowest %s ms." % (r["slow"]["thresholds_ms"]["request"], _times(row["slow_count"]), row["count"],
-                                                                         row["median_ms"], row["slowest_ms"]),
-                min(row["slow_count"], 20), ["Request: %s %s" % (row["method"], row["route"])], count=row["slow_count"])
+                "Took over %d ms %s of %d. Median %s ms, slowest %s ms." % (r["slow"]["thresholds_ms"]["request"], _times(left), row["count"],
+                                                                         row["median_ms"], worst),
+                min(left, 20), ["Request: %s %s" % (row["method"], row["route"])], route=row["route"], count=left)
 
     for row in r["server_health"]["slow_routes"]:
         add("server", "medium" if row["count"] >= 2 or row["slowest_ms"] >= 5000 else "low", _feature_of(Counter(), {row["route"]: 1}, Counter()),
             "The server was slow to answer: %s %s" % (row["method"], row["route"]),
             "%s over %d ms on the server itself (median %s ms, slowest %s ms), so the delay is in the server's work, not the network." % (
                 _times(row["count"]), tester.SLOW_HANDLER_MS, row["median_ms"], row["slowest_ms"]),
-            min(row["count"], 20), ["Request: %s %s" % (row["method"], row["route"])], count=row["count"])
+            min(row["count"], 20), ["Request: %s %s" % (row["method"], row["route"])], route=row["route"], count=row["count"])
+
+    _stall_findings(stalls, add)
 
     refused = Counter()
     refused_rows = {}
@@ -535,29 +634,34 @@ def _findings(r):
         row = refused_rows[key]
         add("refused", "medium" if n >= 3 else "low", "Printer controls", "A command was refused: %s" % (row.get("words") or row.get("route")),
             "%s. The words are the app's own, as the tester read them. Refusals by watch-only or a safety check are meant; check that this one was." % _times(n),
-            n, ["Route: %s" % row.get("route")] if row.get("route") else None, count=n)
+            n, ["Route: %s" % row.get("route")] if row.get("route") else None, route=row.get("route"), count=n)
 
     link = r["printer"]["connections"]
     if link.get("drop", 0):
         add("printer", "medium" if link["drop"] >= 3 else "low", "Printer link", "The printer connection dropped %s" % _times(link["drop"]),
             "Reconnected %s. Check the Wi-Fi, the printer's Moonraker and how long each drop lasted in the printer timeline." % _times(link.get("reconnect", 0)),
-            link["drop"], count=link["drop"])
+            link["drop"], origin="condition", code=["backend/moonraker_client.py", "backend/live_feed.py"], count=link["drop"])
     failed_prints = r["printer"]["prints"]["real"].get("print_failed", 0)
     if failed_prints:
         add("printer", "medium", "Printing", "A print failed (%d)" % failed_prints,
-            "The printer reported a print as failed. It may be a physical failure, so read the printer timeline.", failed_prints * 3, count=failed_prints)
+            "The printer reported a print as failed. It may be a physical failure, so read the printer timeline.", failed_prints * 3,
+            origin="condition", code=["backend/live_feed.py"], count=failed_prints)
 
-    for sl in r["slicing"]:
+    for index, sl in enumerate(r["slicing"]):
         if not sl["ok"]:
+            said = sl.get("why") or sl.get("cause") or "not given"
+            code = ("Exit code %s. " % sl["exit_code"]) if sl.get("exit_code") is not None else ""
             add("slice", "high", "Slicing", "A slice failed (%s %s, stage %s)" % (sl.get("engine") or "engine", sl.get("version") or "", sl.get("stage") or "unknown"),
-                "Cause: %s. The report for help is in report.html under Slicing." % (sl.get("cause") or "not given"), 10, ["Time: %s" % sl["t"]])
+                "Cause: %s. %sThe engine's whole output is kept under Slicing in report.html." % (said, code), 10, ["Time: %s" % sl["t"]],
+                code=["backend/slicer_bridge.py", "backend/slice_diagnosis.py"], slice=index, trail=sl.get("trail") or [])
     for cv in r["converter"]:
         if not cv["ok"]:
-            add("convert", "high", "Converter", "A conversion failed (%s)" % (cv.get("source") or "project"), cv.get("error") or "No reason was recorded.", 10, ["Time: %s" % cv["t"]])
+            add("convert", "high", "Converter", "A conversion failed (%s)" % (cv.get("source") or "project"), cv.get("error") or "No reason was recorded.", 10,
+                ["Time: %s" % cv["t"]], code=["backend/converter_3mf.py"])
     warned = Counter(w for cv in r["converter"] for w in (cv.get("warnings") or []))
     for text, n in warned.most_common(5):
         if n >= 2:
-            add("convert", "low", "Converter", "The converter warned: %s" % text, "Shown %s." % _times(n), n, count=n)
+            add("convert", "low", "Converter", "The converter warned: %s" % text, "Shown %s." % _times(n), n, code=["backend/converter_3mf.py"], count=n)
 
     for surface, v in r["smoothness"].items():
         if v["median_fps"] is not None and v["median_fps"] < 24:
@@ -569,9 +673,10 @@ def _findings(r):
     lt = r["slow"]["long_tasks"]
     if lt["count"] >= 5:
         screens = Counter(x["screen"] for x in lt["examples"] if x.get("screen"))
-        add("slow", "high" if lt["count"] >= 20 else "medium", ", ".join(s for s, _ in screens.most_common(2)) or None,
+        top = [name for name, _ in screens.most_common(3)]
+        add("slow", "high" if lt["count"] >= 20 else "medium", AREA_NAMES.get(top[0], top[0].capitalize()) if top else None,
             "The page froze %d times for over %d ms" % (lt["count"], r["slow"]["thresholds_ms"]["long_task"]),
-            "%d ms frozen in all. Most on: %s." % (lt["total_ms"], ", ".join(s for s, _ in screens.most_common(3)) or "unknown"), min(lt["count"], 40) / 2.0, count=lt["count"])
+            "%d ms frozen in all. Most on: %s." % (lt["total_ms"], ", ".join(top) or "unknown"), min(lt["count"], 40) / 2.0, screens=top, count=lt["count"])
 
     tag_severity = {"broken": "high", "slow": "medium", "confusing": "medium", "wrong": "medium", "idea": "low", "good": "low"}
     for n in r["notes"]:
@@ -585,46 +690,52 @@ def _findings(r):
         if n.get("last_actions"):
             bits.append("Last actions: %s." % "; ".join(n["last_actions"][-5:]))
         add("note", severity, n["screen"], "Tester note%s: %s" % (" (%s)" % n["tag"] if n.get("tag") else "", words), " ".join(bits), 25, tester_said=True,
-            trail=n.get("last_actions") or [])
+            screens=[n["screen"]] if n.get("screen") else [], trail=n.get("last_actions") or [])
 
     for a in r["study"].get("answers", []):
         q = tester_questions.BY_ID.get(a["id"]) or {}
-        if not a["answered"]:
-            continue
-        if q.get("bad") and a["choice"] == q["bad"]:
-            add("answer", q["sev"] or "medium", a["section_name"], "Answered %s to question %d: %s" % (a["choice_label"], a["n"], a["question"]),
-                ("Their words: %s" % a["answer"]) if a["answer"].strip() else "No words with it.", 20, tester_said=True)
-        elif q.get("finding") and a["answer"].strip():
+        if a["answered"] and q.get("finding") and a["answer"].strip():
             add("answer", q["sev"] or "medium", a["section_name"], "Question %d: %s" % (a["n"], a["answer"]), "Asked: %s" % a["question"], 20, tester_said=True)
 
     health = r["server_health"]
     mem = health["memory_mb"]
     if mem["first"] and mem["last"] and mem["last"] > 1.5 * mem["first"] and mem["last"] - mem["first"] > 150 and health["hours_running"] >= 6:
         add("server", "medium", "Server", "The server's memory grew from %s MB to %s MB over %s hours" % (mem["first"], mem["last"], health["hours_running"]),
-            "Highest %s MB. A slow climb like this points at a leak." % mem["highest"], 15)
+            "Highest %s MB. A slow climb like this points at a leak." % mem["highest"], 15, code=["backend/app.py"])
     if health["disk_free_mb_lowest"] is not None and health["disk_free_mb_lowest"] < 500:
-        add("server", "medium", "Server", "The disk had only %s MB free" % health["disk_free_mb_lowest"], "Recording and time-lapses stop when the disk is full.", 5)
+        add("server", "medium", "Server", "The disk had only %s MB free" % health["disk_free_mb_lowest"], "Recording and time-lapses stop when the disk is full.", 5,
+            origin="condition", code=["backend/timelapse.py", "backend/tester.py"])
     mem_page = r["performance"]["memory"]
     if mem_page["first_mb"] and mem_page["last_mb"] and mem_page["last_mb"] > 2 * mem_page["first_mb"] and mem_page["last_mb"] - mem_page["first_mb"] > 100 and mem_page["hours_between"] >= 3:
         add("slow", "medium", "The page", "The page's memory grew from %s MB to %s MB over %s hours" % (mem_page["first_mb"], mem_page["last_mb"], mem_page["hours_between"]),
-            "The dashboard left open for hours keeps growing. Look for something that is drawn again and never freed.", 15)
+            "The dashboard left open for hours keeps growing. Look for something that is drawn again and never freed.", 15, code=["frontend/app.js"])
     net = r["network"]
-    if net["live_link_closed_unexpectedly"] >= 3:
+    if r.get("lost_link"):
+        _lost_link_finding(r["lost_link"], net, add)
+    elif net["live_link_closed_unexpectedly"] >= 3:
         add("network", "medium", "Live link", "The live link to the server closed unexpectedly %s" % _times(net["live_link_closed_unexpectedly"]),
-            "Readings stop updating until it reconnects. %s offline in all." % _short("%d s" % net["seconds_offline"], 20), net["live_link_closed_unexpectedly"])
+            "Readings stop updating until it reconnects. %s offline in all." % _short("%d s" % net["seconds_offline"], 20), net["live_link_closed_unexpectedly"],
+            origin="condition", code=["frontend/app.js", "backend/app.py"], count=net["live_link_closed_unexpectedly"])
     onboarding, ms = r["onboarding"], {m["id"]: m for m in r["milestones"]}
     if onboarding["wizard"]["closed_early"]:
         add("onboarding", "low", "Setup", "Setup was closed before the end", "Furthest step reached: %s of %s." % (onboarding["wizard"]["furthest_step"], onboarding["wizard"]["steps_total"] or "?"),
-            5, count=onboarding["wizard"]["closed_early"])
+            5, count=onboarding["wizard"]["closed_early"], code=["frontend/launchpad.js"])
     first_connect = ms.get("printer_connected")
     if not first_connect and r["summary"]["clicks"] >= 20 and not r["summary"]["demo_prints_started"]:
         add("onboarding", "medium", "Setup", "No printer connected during the test",
-            "Twenty or more presses and no connect. Read their answers to questions 4, 7 and 8, and the requests for /api/printers/test.", 8)
+            "Twenty or more presses and no connect. Read their answers to questions 3 and 4, and the requests for /api/printers/test.", 8, origin="condition",
+            code=["backend/fleet.py", "backend/discovery.py"])
     elif first_connect and (first_connect["minutes_after_start"] or 0) > 15:
         add("onboarding", "low", "Setup", "Connecting the first printer took %s minutes" % first_connect["minutes_after_start"],
-            "Measured from the first press. See the Journey for what they tried first.", 4)
+            "Measured from the first press. See the Journey for what they tried first.", 4, code=["backend/fleet.py", "backend/discovery.py"])
 
     items.sort(key=lambda f: (SEVERITY_RANK[f["severity"]], -f["score"], f["title"]))
-    for number, item in enumerate(items[:80], 1):
+    picked = 0
+    for item in items:
+        if picked < FIX_FIRST_MAX and item["origin"] == "app" and item["severity"] in ("high", "medium"):
+            picked += 1
+            item["fix_first"] = picked
+    kept = items[:80] + [f for f in items[80:] if f.get("fix_first")]
+    for number, item in enumerate(kept, 1):
         item["id"] = "F%d" % number
-    return items[:80]
+    return kept

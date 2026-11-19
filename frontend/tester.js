@@ -9,7 +9,7 @@
  *      computer: the server keeps it in its data folder and nothing leaves unless the tester saves the zip and
  *      attaches it to a message.
  *   2. The Settings card (counts, View report, Save tester report, Delete tester data) and a "Something felt off"
- *      button on every screen. tester-study.js adds the test round and the questions on top of it.
+ *      button on every screen. tester-study.js adds the 22 questions on top of it.
  *
  * It never records what is typed into a field, a file's name, a picture, or an address. A control is named by its
  * id or an action word (data-tab, data-act...); a button's own words are used only when it has neither, and
@@ -414,7 +414,8 @@
     const control = lastClick && performance.now() - lastClick.t0 < 15000 ? lastClick.ctl : undefined;
     push({ k: 'err', kind, msg, file: file ? base(file) : undefined, line, col, screen: screenNow(), last: actions.slice(), stack: stack && stack.length ? stack : undefined,
       ctl: control, pstate: printerState || undefined, online: navigator.onLine === false ? false : undefined, age: Math.round(performance.now() / 1000) });
-    if (kind === 'js' || kind === 'promise' || kind === 'toast') alertNote(msg);
+    // A lost server is recorded (the report groups it) but is not something to tell the tester about: the page reconnects by itself.
+    if ((kind === 'js' || kind === 'promise' || kind === 'toast') && !/failed to fetch|networkerror|network error|load failed|network connection was lost|did not answer/i.test(msg)) alertNote(msg);
   }
 
   window.addEventListener('error', e => {
@@ -724,7 +725,7 @@
       return;
     }
     if (felt) return;
-    // One row at the bottom right holds the test-round chip (tester-study.js adds it) and the note button.
+    // One row at the bottom right holds the note button.
     dock = document.createElement('div');
     dock.id = 'tester-dock';
     dock.className = 'tester-dock tester-ui';
@@ -800,7 +801,7 @@
   const $t = id => document.getElementById(id);
   let sure = 0, statusAt = 0, lastInfo = null;
   // The online demo's made-up figures. They match the sample report page (tools/tester-sample-report.py; a test keeps them in step).
-  const SAMPLE = { days: 6, actions: 458, errors: 2, slow: 16, since: 'sample', last: 'sample' };
+  const SAMPLE = { days: 6, actions: 459, errors: 2, slow: 26, since: 'sample', last: 'sample' };
 
   const when = iso => (iso ? iso.replace('T', ' ').slice(0, 16) : '');
   function fill(info) {
@@ -907,7 +908,7 @@
     button.textContent = 'Delete tester data';
     try {
       const res = await nativeFetch(EVENTS_URL.replace('events', 'delete'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      status(res.ok ? 'Everything Tester mode recorded was deleted from this computer, your answers and test round too.' : 'Nothing was deleted: Tester mode is off for this run.');
+      status(res.ok ? 'Everything Tester mode recorded was deleted from this computer, your answers too.' : 'Nothing was deleted: Tester mode is off for this run.');
       queue = [];
       agg.clear();
       refreshCard(true);

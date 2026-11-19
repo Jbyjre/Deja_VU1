@@ -93,8 +93,13 @@ def events():
         {"k": "gate", "file": "file 3, .gcode, 800 KB", "verdict": "blocked", "blocking": ["Pre-flight: Extrudes outside the build volume"], "warnings": [],
          "t": stamp(DAYS[3], 20, 15)},
         {"k": "slice", "engine": "OrcaSlicer", "version": "2.4.2", "ok": True, "status": "done", "secs": 48.5, "model": "file 4, .3mf, 1.2 MB", "t": stamp(DAYS[2], 19, 2)},
-        {"k": "slice", "engine": "OrcaSlicer", "version": "2.4.2", "ok": False, "status": "failed", "secs": 3.1, "model": "file 5, .stl, 9.8 MB", "stage": "run",
-         "report": "Sample: the engine stopped at the run stage (a made-up failure for this page).", "t": stamp(DAYS[2], 19, 20)},
+        {"k": "slice", "engine": "Snapmaker_Orca", "version": "2.4.1", "ok": False, "status": "failed", "secs": 3.1, "model": "file 5, .stl, 9.8 MB", "stage": "slice",
+         "cause": "orca_-100", "exit": 4294967196,
+         "why": "Orca hit an error while slicing (Orca's code -100). It printed: [warning] plate 1: found slicing warnings: Empty layers detected between 4.2 and 4.4 (a made-up failure for this page)",
+         "stderr": "[sample] This output is made up to show the layout.\n[warning] plate 1: found slicing warnings: Empty layers detected between 4.2 and 4.4",
+         "stdout": "[sample] slicing plate 1\nSlic3r::CLI::run found error, exit",
+         "report": '{"outcome": {"status": "failed", "message": "Orca hit an error while slicing (Orca\'s code -100)", "cause": "orca_-100"}, "stage": "slice"}',
+         "t": stamp(DAYS[2], 19, 20)},
         {"k": "convert", "source": "Bambu Studio", "ok": True, "plates": 2, "colours": 3, "warnings": ["Check the nozzle size"], "t": stamp(DAYS[3], 19, 40)},
         {"k": "note", "s": "sample02", "text": "Pause took a few seconds to react.", "screen": "printer", "last": ["click #ctrl-pause-resume", "open printer"],
          "t": stamp(DAYS[2], 20, 13)},
@@ -132,9 +137,21 @@ def events():
     for number in range(3):
         out.append({"k": "slowroute", "method": "GET", "route": "/api/files/analysis", "ms": 2100 + number * 400, "t": stamp(DAYS[2], 19, 30 + number)})
     out.append({"k": "resize", "s": "sample03", "w": 390, "h": 844, "bp": "phone", "t": stamp(DAYS[3], 21, 0)})
-    for number, (ev, extra_fields) in enumerate([("welcome_shown", {}), ("length", {"days": 3}), ("welcome_done", {"days": 3}), ("end_prompt", {}), ("questions_open", {"n": 0}),
-                                                  ("section", {"sec": 1, "ms": 61000}), ("section", {"sec": 4, "ms": 118000}), ("finish", {"n": 41}), ("report_viewed", {}),
-                                                  ("report_saved", {"n": 182000})]):
+    # Made up: nine requests waited about 27 s together while a time-lapse copy ran, then the page lost the server twice.
+    stall_end = stamp(DAYS[2], 20, 31)
+    for number, route in enumerate(["/api/connection", "/api/leds", "/api/cost/:id", "/api/health", "/api/queue", "/api/maintenance", "/api/chamber", "/api/printers", "/api/fleet"]):
+        out.append({"k": "req", "s": "sample02", "route": route, "method": "GET", "status": 200, "ms": 26800 + number * 90, "slow": True, "screen": "printer", "t": stall_end})
+        out.append({"k": "req", "s": "sample02", "route": route, "method": "GET", "agg": True, "n": 400, "ok": 400, "fail": 0, "p50": 7, "max": 60, "t": stamp(DAYS[2], 20, 0)})
+    out.append({"k": "req", "s": "sample02", "route": "/api/timelapse/keep", "method": "POST", "status": 200, "ms": 28000, "slow": True, "screen": "printer", "t": stall_end + 500})
+    out.append({"k": "slowroute", "method": "POST", "route": "/api/timelapse/keep", "ms": 28000, "t": stall_end + 500})
+    for number in range(5):               # the server notes itself every five minutes, so the computer was awake and Deja Vu1 was running
+        out.append({"k": "server", "up": 90000 + number * 300, "cpu": 540.0 + number, "rss": 131.0, "threads": 23, "disk_free": 51400, "t": stall_end - 600000 + number * 300000})
+    out.append({"k": "click", "s": "sample02", "ctl": "button \"Keep a copy here\" in #timelapse-card", "screen": "printer", "paint": 35, "how": "mouse", "role": "button",
+                "t": stall_end - 28500})
+    for number, (day, hour, minute, second) in enumerate([(DAYS[3], 21, 2, 5), (DAYS[3], 21, 2, 9), (DAYS[4], 18, 40, 0)]):
+        out.append({"k": "req", "s": "sample03", "route": "/api/app/alive", "method": "GET", "status": 0, "ms": 30, "err": "Failed to fetch", "t": stamp(day, hour, minute, second)})
+    for number, (ev, extra_fields) in enumerate([("questions_open", {"n": 0}), ("section", {"sec": 1, "ms": 61000}), ("section", {"sec": 4, "ms": 118000}),
+                                                  ("finish", {"n": 17}), ("report_viewed", {}), ("report_saved", {"n": 182000})]):
         out.append(dict({"k": "study", "s": "sample05", "ev": ev, "t": stamp(DAYS[5], 17, 20 + number)}, **extra_fields))
     # The two errors carry more: the control pressed, the printer's state and a call stack.
     for e in out:
@@ -149,32 +166,33 @@ def events():
 
 
 SAMPLE_ANSWERS = {
-    "q1": (None, "Windows 11"), "q2": (None, "3.12.4"), "q3": (None, "Stock firmware"), "q5": (None, "Chrome"),
-    "q6": (None, "About ten minutes. I had to install Python first."),
-    "q7": (None, "It found the printer on the first try."), "q8": ("yes", ""), "q9": ("yes", "I looked at the camera and the temperatures."),
-    "q10": (None, "The sidebar made sense. Printers and Printer look alike at first."),
-    "q11": ("yes", "Pause, on the Printer screen."), "q12": ("no", ""), "q13": ("no", ""), "q14": ("no", ""),
-    "q15": ("yes", ""), "q16": ("yes", ""), "q19": ("yes", ""), "q20": ("no", "The camera picture took about 20 seconds to appear."),
-    "q21": ("didnt_try", ""), "q22": ("yes", ""), "q23": (None, "The summary was clear."), "q24": ("yes", "It stopped a file that went off the bed. That was right."),
-    "q26": ("yes", ""), "q27": ("didnt_try", ""), "q28": ("yes", ""), "q29": (None, "Heating and the fans. Both did what I expected."),
-    "q30": ("yes", "OrcaSlicer."), "q31": ("yes", ""), "q32": ("didnt_try", ""), "q33": ("didnt_try", ""), "q34": ("yes", ""), "q35": ("yes", ""),
-    "q36": ("yes", ""), "q37": ("yes", "The phone layout was good."), "q38": ("didnt_try", ""), "q39": ("didnt_try", ""), "q40": ("didnt_try", ""),
-    "q44": ("yes", ""), "q45": ("no", ""), "q46": (None, "Confirm Print. It caught a mistake I would have made."),
-    "q47": (None, "Pause felt slow, and one error appeared on the Files screen."), "q48": (None, "What the difference is between Printers and Printer."),
-    "q49": (None, "Make the camera start faster."), "q50": ("yes", "It tells me things the printer's own screen does not."),
-    "q51": ("no", ""), "q52": (None, "The Files screen threw an error once when I opened it during a print."),
+    "q1": (None, "Four months, 0.4 mm on every head, Snapmaker Orca. Stock firmware."),
+    "q2": (None, "About ten minutes. I had to install Python first."),
+    "q3": (None, "It found the printer on the first try."),
+    "q4": (None, "The sidebar made sense. Printers and Printer look alike at first."),
+    "q5": (None, "Pause felt slow once, and I pressed it twice."),
+    "q6": (None, "Temperatures and progress matched the touchscreen. All four heads showed up."),
+    "q7": (None, "Yes. A change on the touchscreen showed up in about 20 seconds."),
+    "q8": (None, "The camera picture took about 20 seconds to appear. The twin kept up."),
+    "q9": (None, "The summary was clear. It stopped a file that went off the bed, and that was right."),
+    "q11": (None, "Pause said confirmed by the printer. I did not skip an object."),
+    "q13": (None, "Slicing with Snapmaker Orca failed once; the preview of the other slice looked right."),
+    "q16": ("didnt_try", ""), "q17": ("didnt_try", ""),
+    "q18": (None, "Confirm Print. It caught a mistake I would have made."),
+    "q19": (None, "Pause felt slow, and one error appeared on the Files screen."),
+    "q20": (None, "Make the camera start faster."),
+    "q21": (None, "Yes, for a short print."),
+    "q22": (None, "Yes. It tells me things the printer's own screen does not."),
 }
 
 
 def sample_study():
-    """The made-up test round and answers, in the shape tester_study.view() gives."""
-    plan = {"length_days": 3, "lengths": [1, 2, 3], "started": "2026-11-23T18:01:00", "started_ms": stamp(DAYS[0], 18, 1), "ends": "2026-11-26T18:01:00",
-            "ends_ms": stamp(DAYS[3], 18, 1), "now_ms": stamp(DAYS[5], 17, 30), "status": "finished", "day": 3, "hours_left": 0.0,
-            "answered": 0, "total": 52, "optional_unanswered": 0, "welcomed": True, "finished_at": "2026-11-28T17:27:00",
-            "last_export": "2026-11-28T17:29:00", "exports": 1}
+    """The made-up answers, in the shape tester_study.view() gives."""
+    progress = {"started": "2026-11-23T18:01:00", "started_ms": stamp(DAYS[0], 18, 1), "now_ms": stamp(DAYS[5], 17, 30), "answered": 0, "total": 22,
+                "optional_unanswered": 0, "last_export": "2026-11-28T17:29:00", "exports": 1}
     answers = {qid: {"c": choice, "t": text, "at": None} for qid, (choice, text) in SAMPLE_ANSWERS.items()}
-    study = tester_study.view(plan, answers)
-    study["plan"]["answered"] = study["answered"]
+    study = tester_study.view(progress, answers)
+    study["progress"]["answered"] = study["answered"]
     return study
 
 

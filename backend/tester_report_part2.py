@@ -4,13 +4,14 @@ zip) on 19 November 2026, so a session reads only the part it needs. tester_repo
 back, so `tester_report.<name>` works as before. Holds: Aggregator, _os_name, build_report, setup_facts.
 """
 
-from collections import Counter
+from collections import Counter, deque
 import modules
 import platform
 import re
 import tester
 import tester_questions
 import tester_study
+import tester_report_part4 as causes
 import time
 from tester_report_part1 import CATEGORIES, FEATURES, NEVER, SCREEN_NAMES, SLOWEST, SLOW_CLICK_MS, SLOW_REQUEST_MS, _CLICK_BUCKETS, _Stat, _bucket, _day, _feature_of, _file_key, _findings, _iso, _median, _norm_message, _percentile, _rng, _round, categorize, iter_events  # noqa: F401
 
@@ -85,6 +86,11 @@ class Aggregator:
         self.study_events = []
         # health
         self.slowroutes = {}
+        self.presses = deque(maxlen=30000)   # (t_ms, "click <control>") of the latest presses, for "the last presses before it"
+        self.waits = []                      # (start_ms, end_ms, method, route, status, failed) of each request the browser found slow
+        self.busy = []                       # (start_ms, end_ms, method, route) of each request the server itself took long to answer
+        self.lost = []                       # (t_ms, method, route, words) of each request that failed with no answer from the server
+        self.net_windows = []                # (start_ms, end_ms, why) of each time the computer was offline
         self.server_samples = []
         self.perf_boot = []
         self.perf_samples = []
@@ -116,6 +122,17 @@ class Aggregator:
         rows = self.journey.setdefault(session, [])
         if len(rows) < 90:
             rows.append((t, len(rows), dict({"t": _iso(t), "did": what, "what": name}, **{k: v for k, v in extra.items() if v not in (None, "")})))
+
+    def _trail(self, t_ms, n=5, within_ms=10 * 60 * 1000):
+        """The last few presses before a moment, oldest first, when they were within ten minutes of it."""
+        out = []
+        for when, label in reversed(self.presses):
+            if when > t_ms:
+                continue
+            if t_ms - when > within_ms or len(out) >= n:
+                break
+            out.append(label)
+        return out[::-1]
 
     # -- events ------------------------------------------------------------------
     def add(self, ev):
@@ -214,6 +231,8 @@ class Aggregator:
                     self.paint_all[spot] = paint
         self._step(session, t, "pressed", ev.get("ctl"), how=ev.get("how"), screen=SCREEN_NAMES.get(ev.get("screen"), ev.get("screen")),
                    ms=paint, double=True if ev.get("dbl") else None, button="right" if ev.get("btn") == 2 else None)
+        if ev.get("ctl"):
+            self.presses.append((t, "click %s" % str(ev["ctl"])[:80]))
         value = max(paint or 0, req or 0)
         row = {"t": _iso(t), "control": ev.get("ctl"), "screen": SCREEN_NAMES.get(ev.get("screen"), ev.get("screen")),
                "paint_ms": paint, "request_ms": req, "route": ev.get("route")}
@@ -254,6 +273,11 @@ class Aggregator:
                 self._mark("added_a_printer", t)
         row = {"t": _iso(t), "method": key[0], "route": key[1], "status": ev.get("status"), "ms": ev.get("ms"),
                "error": ev.get("err"), "screen": SCREEN_NAMES.get(ev.get("screen"), ev.get("screen"))}
+        # A request is stamped when it finished, so it began `ms` earlier. Slow ones are kept to find the ones that waited together.
+        if slow and isinstance(ev.get("ms"), (int, float)) and len(self.waits) < 8000:
+            self.waits.append((t - ev["ms"], t, key[0], key[1], ev.get("status"), failed))
+        if failed and not ev.get("status") and len(self.lost) < 4000:
+            self.lost.append((t, key[0], key[1], ev.get("err")))
         if failed:
             stat["fail"] += 1
             self.failed_total += 1
@@ -360,9 +384,10 @@ class Aggregator:
     def _on_slice(self, ev, t, session):
         self._mark("first_slice", t)
         if len(self.slices) < 200:
-            self.slices.append({"t": _iso(t), "engine": ev.get("engine"), "version": ev.get("version"), "ok": bool(ev.get("ok")),
+            self.slices.append({"t": _iso(t), "t_ms": t, "engine": ev.get("engine"), "version": ev.get("version"), "ok": bool(ev.get("ok")),
                                 "status": ev.get("status"), "seconds": ev.get("secs"), "stage": ev.get("stage"),
-                                "cause": ev.get("cause"), "model": ev.get("model"), "report": ev.get("report")})
+                                "cause": ev.get("cause"), "model": ev.get("model"), "report": ev.get("report"),
+                                "exit_code": ev.get("exit"), "why": ev.get("why"), "stderr": ev.get("stderr"), "stdout": ev.get("stdout")})
 
     def _on_convert(self, ev, t, session):
         self._mark("first_conversion", t)
@@ -469,7 +494,7 @@ class Aggregator:
         elif what == "report_saved":
             self._mark("report_saved", t)
         if len(self.study_events) < 300:
-            self.study_events.append({"t": _iso(t), "event": what, "n": ev.get("n"), "days": ev.get("days"), "ms": ev.get("ms"),
+            self.study_events.append({"t": _iso(t), "event": what, "n": ev.get("n"), "ms": ev.get("ms"),
                                       "section": ev.get("sec")})
 
     def _on_slowroute(self, ev, t, session):
@@ -477,6 +502,8 @@ class Aggregator:
         entry = self.slowroutes.setdefault(key, {"ms": _Stat(), "first": t, "last": t})
         entry["ms"].add(ev.get("ms"), True)
         entry["first"], entry["last"] = min(entry["first"], t), max(entry["last"], t)
+        if isinstance(ev.get("ms"), (int, float)) and len(self.busy) < 4000:
+            self.busy.append((t - ev["ms"], t, key[0], key[1]))
 
     def _on_server(self, ev, t, session):
         if len(self.server_samples) < 800:
@@ -496,6 +523,8 @@ class Aggregator:
         what = str(ev.get("ev") or "")
         if what == "online" and isinstance(ev.get("ms"), (int, float)):
             self.net_down_ms += ev["ms"]
+            if len(self.net_windows) < 300:
+                self.net_windows.append((t - ev["ms"], t, "the computer was offline"))
         if len(self.net) < 300:
             self.net.append({"t": _iso(t), "event": what, "code": ev.get("code"), "clean": ev.get("clean"), "ms": ev.get("ms"),
                              "screen": SCREEN_NAMES.get(ev.get("screen"), ev.get("screen"))})
@@ -638,7 +667,7 @@ class Aggregator:
         error_sessions = set()
         for g in groups:
             error_sessions |= g["sessions"]
-        report["study"] = study if study is not None else {"plan": None, "answered": 0, "total": tester_questions.COUNT, "sections": [],
+        report["study"] = study if study is not None else {"progress": None, "answered": 0, "total": tester_questions.COUNT, "sections": [],
                                                            "didnt_try": 0, "with_words": 0, "answers": []}
         report["onboarding"] = self._onboarding()
         report["milestones"] = self._milestones()
@@ -647,9 +676,25 @@ class Aggregator:
         report["performance"] = self._performance()
         report["server_health"] = self._server_health()
         report["network"] = self._network()
+        quiet = causes.quiet_gaps([x["t"] for x in self.server_samples])
+        restarts = causes.restarts_from([(x["t"], x.get("up")) for x in self.server_samples])
+        report["quiet_periods"] = [{"start": _iso(a), "end": _iso(b), "why": why} for a, b, why in quiet[:40]]
+        typical = {key: entry["ms"].median() for key, entry in self.routes.items() if entry["ms"].n}
+        report["stalls"] = causes.find_stalls(self.waits, self.busy, quiet + self.net_windows, typical)
+        for stall in report["stalls"]:
+            stall["trail"] = self._trail(stall["start_ms"])
+        report["lost_link"] = causes.lost_link(self.lost, errors, restarts, quiet, self.net_windows)
+        for sl in report["slicing"]:
+            sl["trail"] = self._trail(sl["t_ms"])
+        report["headline"] = {"minutes_used": report["summary"]["minutes_open"], "days_used": report["summary"]["days_used"],
+                              "sessions": report["summary"]["sessions"], "presses": clicks_total, "errors": self.error_total,
+                              "error_kinds": len(errors), "slow_spots": slow_total, "freezes": self.long_total,
+                              "freeze_seconds": round(self.long_ms / 1000.0), "stalls": len(report["stalls"]),
+                              "prints_started": prints["real"].get("print_started", 0)}
         report["findings"] = _findings(report)
         counts = Counter(f["severity"] for f in report["findings"])
         report["summary"]["findings"] = {k: counts.get(k, 0) for k in ("high", "medium", "low")}
+        report["summary"]["fix_first"] = len([f for f in report["findings"] if f.get("fix_first")])
         return report
 
     def _onboarding(self):
