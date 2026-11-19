@@ -98,8 +98,9 @@ its behaviour, never paste it.
   after 8 s.
 - The printer's own recorded videos: `MoonrakerPrinter.printer_videos()` lists the `camera` root (the
   U1's stock firmware keeps recordings there, read-only, as reported by owners on firmware 2.0.0) and
-  `timelapse` (moonraker-timelapse); `fetch_video` reads one. `timelapse.keep_printer_video` keeps a copy
-  under `<data>/timelapse/<printer>/saved/`, which `_prune` leaves alone.
+  `timelapse` (moonraker-timelapse). A video plays as it arrives (`HttpTransport.stream`, `printer_video_stream`: Range is passed to
+  the printer, so a scrub works) and is never held in memory. Keeping a copy is a background job (`timelapse.start_keep`, one per video,
+  streamed to `<data>/timelapse/<printer>/saved/`, which `_prune` leaves alone; `GET /api/timelapse/jobs` reports progress).
 - Time-lapse uses `mock_moonraker.camera_snapshot()` per real printer, one bounded capture worker
   per printer, session and module switches rechecked before save.
 

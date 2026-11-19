@@ -4,9 +4,10 @@ Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware
 ([what was tested](testing.md)). Your U1, your network and your filaments can
 show problems that ours did not. This page is for people who agreed to test it.
 
-You install Deja Vu1 and use it for 1, 2 or 3 days, whatever you choose. The
-app keeps a report of how it behaved. When your days are up it asks you some
-questions, you read the report, and you attach one file to a forum message.
+You install Deja Vu1 and use it the way you would anyway, for as long as you
+like. The app keeps a report of how it behaved. Whenever you want, you answer
+some questions, read the report, and attach one file to a forum message.
+Nothing has to be done on a schedule.
 
 ## Before you start
 
@@ -50,22 +51,21 @@ Then go to **Printers**, press **Find printers**, pick your U1 and press
 **Test and connect**. If nothing turns up, type its address, usually
 `http://<printer address>:7125`.
 
-## Your test round
+## Using it
 
 1. **Setup opens by itself** the first time. Go through it, or skip it. The
-   report notes how it went, so do whichever you would do anyway.
-2. **A panel asks how long you will test: 1, 2 or 3 days.** It is 3 days unless
-   you pick another. Press **Start testing**. You can change the length later
-   from the **Test day** button at the bottom right, or in **Settings → Tester
-   mode**.
-3. **Use Deja Vu1 the way you would anyway.** Two buttons sit at the bottom
-   right on every screen: **Test day 1 of 3** shows where you are in the round,
-   and **Something felt off** saves a note.
-4. **When your days are up** the app asks you to answer the questions. You can
-   also open them at any time with **Answer the questions**.
-5. **Read the report and save it.** The last step of the questions saves it.
+   report notes how it went, so do whichever you would do anyway. Nothing else
+   appears with it: no pop-up, no panel.
+2. **Use Deja Vu1 the way you would anyway.** One button sits at the bottom
+   right on every screen: **Something felt off** saves a note.
+3. **Answer the questions whenever you like.** Open **Settings → Tester mode**
+   and press **Answer the questions**. You can answer a few, leave, and come back
+   later. There is no deadline and no number of days to pick.
+4. **Read the report and save it** when you are ready. The last step of the
+   questions saves it, and so does **Save tester report** in **Settings →
+   Tester mode**. You can save it again later.
 
-If you quit Deja Vu1 and start it again, the round carries on where it was.
+If you quit Deja Vu1 and start it again, everything carries on where it was.
 
 ## Something felt off
 
@@ -80,22 +80,25 @@ for 20 seconds, and the note carries that error with it.
 
 ## The questions
 
-There are 52, in 12 short sections: your setup, the first run, speed, watching
-the printer, printing, files and slicing, filament and care, phone and away from
-home, the AI assistant, updates and settings, overall, and one last section.
+There are 22, in nine short sections: your setup, the first run, speed, watching
+the printer, printing, files and slicing, filament and care, phone and AI, and
+overall. They ask for what the report cannot record: what you expected, what
+confused you, whether the figures matched your printer and whether you would
+trust the app.
 
 - Every question can be skipped. Your answers are saved as you type, so you can
   stop and come back.
-- Where a question has Yes and No buttons, press one and add a few words about
-  what happened.
-- If you did not try something, press **Didn't try it** instead of guessing.
-- Next to some questions the app shows what it recorded ("the printer
-  connected 2 times"), so you can check your memory. Where it knows the answer
-  (your computer, Python, browser), press **Use this**.
+- Only the two questions about your phone and the AI assistant (16 and 17) are
+  optional, and they have a **Didn't try it** button. For the others, say in a
+  few words if you did not try something.
+- Next to some questions the app shows what it recorded ("the printer connected
+  2 times"), so you can check your memory. Where it knows the answer (your
+  firmware, your computer and browser, your slicing engine), press **Use this**.
 - Please write the answers yourself, without an AI. Leave out your network's
   name and the printer's address.
 
-Your answers go into the report beside what the app recorded.
+Your answers go into the report beside what the app recorded. The same 22
+questions are in the message that invited you, so you can answer there instead.
 
 ## What to try
 
@@ -150,7 +153,9 @@ report shows which features nobody opened.
   you skipped, finished or closed it.
 - Anything slow: a press that took over a second to show a change, a request
   over two seconds, every time the browser froze for over 0.2 seconds, and every
-  request the server itself took over 1.5 seconds to answer.
+  request the server itself took over 1.5 seconds to answer. When many requests
+  waited at the same moment, the report treats that as one stall and says what
+  the server was doing at the time.
 - Every request to Deja Vu1's own server: the route without its query, the
   method, the answer and the time. Routine background reads that worked are
   summed up in five-minute groups. Every other request, and every request that
@@ -168,9 +173,10 @@ report shows which features nobody opened.
   cancelled.
 - Every Confirm Print check, the reasons it gave and whether you went on to
   print.
-- Every slice (engine, version, how long, worked or not, and the report for
-  help when it failed) and every conversion (where the project came from,
-  plates, colours, warnings).
+- Every slice (engine, version, how long, worked or not). When a slice fails,
+  also the exit code, the report for help and everything the engine printed,
+  with private text hidden the same way as everything else. Every conversion
+  (where the project came from, plates, colours, warnings).
 - How many frames per second the 3D twin and the G-code preview drew while they
   were on screen, and how large the model was.
 - Which of the main features you tried.
@@ -214,8 +220,8 @@ The zip holds five files:
 
 | File | What it is |
 |---|---|
-| `report.html` | The report. Opens in any browser with no internet and runs no scripts. It starts with a list of what to fix first, then your answers, your notes, how the first run went, how you used the app and the details. |
-| `findings.md` | What went wrong or felt wrong, ranked, each with the part of the app and where to look. |
+| `report.html` | The report. Opens in any browser with no internet and runs no scripts. It opens with the headline counts (time used, presses, errors, slow spots, page freezes, server stalls) and a **Fix first** list of at most ten faults in Deja Vu1 itself. Each says what happened, how often, the screen, your last presses before it and where to look in the code. Conditions around the app (the printer off, the network down) are listed apart, then everything else by part of the app, your answers, your notes and the details. |
+| `findings.md` | The same fix-first list as plain text, ready to paste into a work session. |
 | `report.json` | The same numbers as data, so reports from several testers can be combined. |
 | `events.jsonl` | The raw record, one event per line, after masking. Open it in any text editor to check. |
 | `README.txt` | What each file is. |
@@ -229,7 +235,7 @@ every note and the printer's whole story, and the report says how many events it
 summed up.
 
 To remove everything Tester mode recorded, press **Delete tester data**. It also
-removes your answers and starts the test round again.
+removes your answers.
 
 ## What has and has not been checked
 

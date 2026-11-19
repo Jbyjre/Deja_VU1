@@ -31,11 +31,18 @@ paths:
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line contains that text: it
   kills the shell. Kill by PID; stop and restart a server in two separate commands.
 - Tester mode: `tests/test_tester.py` (the optional-switch build: it sets `modules.TESTER_ALWAYS_ON = False`; masking, thinning of a
-  26 MB week, the zip, the demo sample, the guide's names), `tests/test_tester_study.py` (the always-on build, the 52 questions, the
-  round, answers, the study routes), `tests/test_tester_insights.py` (the wider record, how people pressed, paths, the first run,
-  error kinds, the ranked findings, nothing private in any file), `tests/test_tester_reports_tool.py` (`tools/tester-reports.py`,
-  schema 1 and 2), `tests/test_tester_printer.py` and `tests/test_tester_browser.py`, which runs `node tools/tester-walk.js` (a run kept
-  off with `DEJAVU_TESTER=0`, then the shipped build: setup, welcome, a print, mistakes on purpose, a tagged note, the questions, the
-  download) and reads the zip. `node tools/tester-walk.js --overhead --same-server` measures what recording costs on the Printer page.
+  26 MB week, the zip, the demo sample, the guide's names), `tests/test_tester_study.py` (the always-on build, the 22 questions, answers,
+  the study routes, the move from the 52-question file), `tests/test_tester_insights.py` (the wider record, how people pressed, paths,
+  the first run, error kinds, the findings, `TestFixFirst`: stalls, the lost server, the ten, the whole engine output, nothing private
+  in any file), `tests/test_tester_reports_tool.py` (`tools/tester-reports.py`, schemas 1 to 3, the combined fix-first list),
+  `tests/test_tester_printer.py` and `tests/test_tester_browser.py`, which runs `node tools/tester-walk.js` (a run kept off with
+  `DEJAVU_TESTER=0`, then the shipped build: setup with no pop-up, a print, mistakes on purpose, a tagged note, the questions opened from
+  Settings, the download) and reads the zip. `node tools/tester-walk.js --overhead --same-server` measures what recording costs on the
+  Printer page.
+- Page bugs from a tester's report: `tests/test_testfix_browser.py` runs `node tools/testfix-check.js` (gauge, time-lapse list, Keep a
+  copy, the AI shortcut's width, the camera fallback, a lost server, six copies at once, an idle printer's freezes; each fails on the
+  code before the fix). `tests/test_long_jobs.py` covers the server side (a copy is a job, a video streams and answers Range) with
+  `tests/fake_moonraker.py`'s throttled videos; `tests/fake_moonraker_serve.py` runs that stand-in as its own process for the browser
+  checks. These browser checks block the service worker and mark setup as seen, and the Chromium here draws WebGL in software.
 - GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13 (Ubuntu 24.04). Write no
   parenthesised `with (a, b):`; `ruff check --select E701,E702 backend tests tools` must stay clean.

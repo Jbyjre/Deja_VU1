@@ -157,13 +157,27 @@ code can sit in more than one part: search the family (`grep -n "function render
   `requestAnimationFrame`) and wait up to 300 ms for the requests they started. Only trusted events are recorded. The setup
   wizard and the guided tour are watched from outside (MutationObservers on `#setup-dialog`, `#setup-step` and `<html>`'s
   `guide-open`); `launchpad.js` and `guide.js` are not changed for it. The tester's own panels carry `tester-ui`, which the
-  recorder leaves out. `#tester-dock` holds the flat chip (`#tester-chip`, tester-study.js) and the "Something felt off" button
-  (`#tester-felt`, flat on purpose: glass behind the moving 3D view cost frames). `#tester-note` takes a tag and the error just
-  before it. `tester-study.js` is the round: the welcome panel, the hub, the end-of-test prompt and `#tester-q`, the 52 questions
-  saved as typed. The Settings card (`#tester-card`) has no switch (an "Always on" pill, the plan, counts, Answer the questions,
-  View report, Save tester report, Delete tester data) and `#tester-off-note` for a run started with `DEJAVU_TESTER=0`. In the demo
-  it shows `SAMPLE` figures that must match `tester-report-sample.html` (`python3 tools/tester-sample-report.py`;
-  `tests/test_tester.py` checks both); the plan and the questions never show there.
+  recorder leaves out. `#tester-dock` holds the "Something felt off" button (`#tester-felt`, flat on purpose: glass behind the moving 3D
+  view cost frames) and is hidden while the guided tour is open; there is no chip, hub, welcome panel or end-of-test panel, and nothing
+  appears with the first-run setup. `#tester-note` takes a tag and the error just before it (a lost server is recorded but never turns the
+  button into an alert). `tester-study.js` is the 22 questions: the dialog `#tester-q` (opened by `#tester-answer` in Settings or
+  `Tester.answer()`), nine steps and a last one that saves the report; "Didn't try it" only on the two optional questions. The Settings
+  card (`#tester-card`) has no switch (an "Always on" pill, `#tester-progress`, Answer the questions, View report, Save tester report,
+  Delete tester data) and `#tester-off-note` for a run started with `DEJAVU_TESTER=0`. In the demo it shows `SAMPLE` figures that must
+  match `tester-report-sample.html` (`python3 tools/tester-sample-report.py`; `tests/test_tester.py` checks both); the questions never
+  show there.
+- Reads that fail: `getJSON` (app-demo.js) asks again once after 0.7 s and then throws `ServerLost` (`quiet: true`), which no page shows
+  as an error; a global `unhandledrejection` listener swallows network losses and asks `watchServer` (app-start.js) to look at once.
+  The "stopped answering" strip appears only after `QUIET_MS` (10 s) of silence. Commands (`postJSON`) are never retried.
+- The time-lapse list (`loadTimelapse`, workshop-part5.js; `loadPrinterVideos`, part3) draws into three boxes (`#tl-note`, `#tl-flips`,
+  `#tl-printer`) and replaces one only when its HTML changed; a failed or refused read leaves what is drawn (a switched-off module adds a
+  note and dims it). Keep a copy is a server job: the press returns at once, `/api/timelapse/jobs` is polled while one runs and the
+  row shows "Copying 63%". Do not hold a long request open from the page: a browser keeps at most six connections to one address.
+- The Printer page camera (`printer-page.js` `startCam`) tries a saved stream address, then WebRTC where offered, then the live stream, then
+  still pictures, skipping what fails (remembered per printer until reload) and saying which is showing in `.pcam-note`.
+- The 3D twin draws again only when `twinSignature()` (workshop-part2.js) changes, it follows a print, or something moves; its drawing
+  steps down in resolution (`twin3d.js` `adaptQuality`) when a draw is slow and waits 2.5 times a slow draw's cost. `tools/freeze-profile.js`
+  shows where a screen's freezes come from; `tools/testfix-check.js` holds the browser checks for all of this.
 - `assistant.js` + `assistant.css`: the AI assistant's Ask button and panel (`.liquid-glass.deep`, a
   right-edge strip, a sheet on phones). Views: chat (your message is drawn at once with `is-sending` and
   replaced by the server's copy; steps as a toolpath; results as cards from `m.card`: printer gauges,
