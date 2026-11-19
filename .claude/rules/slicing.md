@@ -47,7 +47,10 @@ id stays `auto_print`.
   they differ). Add a row only with a recorded run. Untested never blocks a slice.
 - `engine_changed`: a slice waits for a new check when the program's path, size or mtime changed.
 - `slice_diagnosis.py` (pure functions): the cause of a failed check or slice from text, exit code,
-  start failure or Orca's result codes. `ORCA_FIXES` must cover every code in
+  start failure or Orca's result codes. `result.json` exists on Linux only, so `orca_code()` maps the unsigned exit code Windows
+  reports (4294967196) and the low byte macOS reports (156) back to Orca's number (-100); a negative code is a signal and is never
+  converted. `reason_lines()` never returns Orca's own "found error" line, which only announces the exit. A failed slice's whole
+  engine output goes to Tester mode (`trace["engine_output"]`, dropped after) and is not kept in memory. `ORCA_FIXES` must cover every code in
   `slicer_bridge.ORCA_ERRORS`. Package names only when checked against Debian and Ubuntu.
 - Jobs are printer-scoped, cancellable process groups, at most eight active or waiting. Each carries
   `trace`, `cause`, `stage`; they persist to `<data>/slice-receipts.json`, and an interrupted job

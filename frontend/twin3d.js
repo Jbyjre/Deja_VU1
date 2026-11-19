@@ -179,13 +179,18 @@ function create(host, { onPick } = {}) {
     let partsMeshes = [], partsKey = '', loopMeshes = {}, loopKey = '', screenKey = '', shadowKey = '', labels = [], viewName = 'iso';
     let viewChanged = () => {};
 
+    // How many of the canvas's pixels are drawn, 1 at full size. Where drawing is slow (software graphics, a weak driver) each draw ended in
+    // a main-thread stall of up to a second that froze the whole page; drawing fewer pixels costs about that much less, and the browser
+    // stretches the picture to the same size. It steps down when a draw is measured slow and back up after a quiet spell (see render).
+    let quality = 1, qualityAt = 0;
     function resize() {
       const r = canvas.getBoundingClientRect();
       if (!r.width || !r.height) return false;
       // The drawing renders at twice the pixels, so its ink lines come out smooth.
       const dpr = style === 'drawing' ? Math.max(2, Math.min(3, devicePixelRatio || 1)) : Math.min(2, devicePixelRatio || 1);
       W = r.width; H = r.height;
-      const w = Math.round(W * dpr), h = Math.round(H * dpr);
+      const k = style === 'drawing' ? 1 : quality;
+      const w = Math.max(2, Math.round(W * dpr * k)), h = Math.max(2, Math.round(H * dpr * k));
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
       return true;
     }
@@ -600,7 +605,15 @@ function create(host, { onPick } = {}) {
     function render() {
       const began = performance.now();
       draw();
-      requestAnimationFrame(() => { drawMs = drawMs * 0.7 + Math.max(0, performance.now() - began - 17) * 0.3; });
+      requestAnimationFrame(() => { drawMs = drawMs * 0.7 + Math.max(0, performance.now() - began - 17) * 0.3; adaptQuality(); });
+    }
+    // Aim for draws of about 60 ms or less. A slow measure (over 120 ms, averaged over a few draws so one hiccup does not count) draws
+    // fewer pixels from the next frame on; draws that stay cheap (under 25 ms for 8 seconds) bring the pixels back a step at a time.
+    function adaptQuality() {
+      if (style === 'drawing') return;
+      const now = performance.now();
+      if (drawMs > 120 && quality > 0.34) { quality = Math.max(0.34, quality * 0.7); qualityAt = now; }
+      else if (drawMs < 25 && quality < 1 && now - qualityAt > 8000) { quality = Math.min(1, quality / 0.85); qualityAt = now; }
     }
     function draw() {
       queued = false;
@@ -1071,6 +1084,7 @@ function create(host, { onPick } = {}) {
       /* Following the G-code: whether it is, and how well (for the card's
        * sync note). drift: seconds between the playhead and the last reading. */
       drawCost() { return drawMs; },
+      drawQuality() { return quality; },
       /* True while filament, a spool or a head is moving: the card keeps redrawing (at the pace it can afford). */
       moving() { return fx.busy; },
       syncInfo() {

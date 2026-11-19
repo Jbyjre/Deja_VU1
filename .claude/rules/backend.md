@@ -135,14 +135,15 @@ slicing and launcher files have their own notes in this folder.
   both parts as it was twice in the old file; the later one (part 2) is the one every caller uses.
 - `slicer_bridge.py` (jobs, the engine run) with `slicer_bridge_part1.py`; `mock_moonraker.py` (the fleet and every
   printer function) with `mock_moonraker_part1.py`; `tester_report.py` (a short module: the zip, thinning) with
-  `tester_report_part1.py` to `part3.py` (the Aggregator and the findings) and `tester_report_render.py` (the pages).
+  `tester_report_part1.py` to `part4.py` (the findings, the Aggregator, the stalls and code pointers) and `tester_report_render.py` +
+  `tester_report_top.py` (the pages and their shared top).
 - Names that tests replace on a module (`app.EXTRA_HOSTS`, `app.SLICE_GRACE`, `tester_report.thin_files`,
   `slicer_bridge.subprocess`, `mock_moonraker.is_real` and the like) stay in the original module with every function
   that reads them, so a replacement still reaches every caller. `app.py` hands `_install_update` and `phone_link` to
   `app_post.py` after defining them.
 - New code goes in the part for its area; a name used elsewhere is imported from the original module as before.
 
-## Tester mode (`tester.py`, `tester_report.py` + `tester_report_render.py`, `tester_study.py`, `tester_questions.py`)
+## Tester mode (`tester.py`, `tester_report.py` + parts, `tester_report_render.py` + `tester_report_top.py`, `tester_study.py`, `tester_questions.py`)
 
 `tester_report_render.py` holds report.html, findings.md and the zip's README; `tester_report.py` imports them.
 
@@ -179,18 +180,33 @@ slicing and launcher files have their own notes in this folder.
   event. Past `EXPORT_LIMIT` (20 MB) `thin_files` replaces the oldest routine events (clicks that were not slow, working requests,
   screen visits, smoothness samples) with one `thinned` line per day and name; errors, slow actions, notes and printer events are
   never thinned, and the report counts before it thins. `compact()` does the same on disk past 40 MB.
-- The test round (`tester_study.py`, `<data>/tester/study.json`): 1, 2 or 3 days (3 by default), `describe()` gives the day and
-  the status (`running`, `due`, `finished`), answers are masked and capped, `delete_all()` removes the file and so restarts the
-  round. `tester_questions.py` holds the 52 questions in 12 sections in the order of the tester questions sheet (`SECTIONS`,
-  `BY_ID`); `bad` marks the answer that points at trouble and `finding` the free answers that go to the findings list.
-  Routes: `GET /api/tester/study` (`?questions=1` adds the questions, the answers and the hints), `POST /api/tester/study`
-  (`length_days`, `welcomed`, `finish`) and `POST /api/tester/answers`. All answer 403 when the module is off.
-- The report's feature rules are `tester_report.FEATURES` (22 features, each with the questions-sheet section); `CATEGORIES`
-  names the kinds of error and what each means, `ROUTE_AREAS` ties a request to a part of the app. `_findings()` builds the ranked
-  work list (errors, slow controls, failed requests, refused commands, failed slices, low frame rates, notes, troubled answers,
-  memory growth); 403 and 409 answers are refusals on purpose and are not findings. The zip holds `report.html`, `findings.md`,
-  `report.json` (schema 2), `events.jsonl` and `README.txt`. The report holds no script and loads nothing from outside; everything
-  in it goes through `_h()`.
+- The 22 questions (`tester_study.py`, `<data>/tester/study.json`, version 2): no round, no length, no end date. `describe()` gives when
+  recording began, how many are answered and when the report was last saved. Answers are masked and capped; `delete_all()` removes the
+  file. A version 1 file (the 52-question build) is set aside under `earlier_answers` and never shown or exported, because `q7` meant a
+  different question there. `tester_questions.py` holds the 22 questions in nine sections in the exact words of the private repository's
+  `outreach/tester-feedback-questions.md` (`test_tester_study` compares them when that repository sits next to this one); only 16 and 17
+  are optional and have the `didnt_try` choice; `finding` marks the free answers (19 and 20) that go to the findings list. Routes: `GET
+  /api/tester/study` (`?questions=1` adds the questions, the answers and the hints) and `POST /api/tester/answers`; both answer 403 when
+  the module is off. There is no `POST /api/tester/study` any more.
+- The report's feature rules are `tester_report.FEATURES` (22 features, each with its section of the 22 questions, or None); `CATEGORIES`
+  names the kinds of error and what each means, `ROUTE_AREAS` ties a request to a part of the app. `_findings()` (part 1) builds the
+  ranked work list. Every item has an `origin`: "app" (a script or server error, a failed slice or conversion, a refused command, a slow
+  press, a freeze, a stall, a tester's note or answer) or "condition" (the printer off, the network down, the computer asleep, the disk
+  full). The ten worst app items rated high or medium carry `fix_first` 1 to 10: that is the list both pages open with
+  (`tester_report_top.py` builds the headline strip, Fix first, Around the app and More findings for report.html and findings.md, and
+  holds the formatting helpers). Each item also has `screens`, `trail` (the last presses), `count`, `sessions` and `code`, the files to
+  open (`tester_report_part4.py`: `code_for()` takes a script error's own file and line, else the module that answers the route, else the
+  screen's scripts; `ROUTE_CODE` and `AREA_CODE` name only files that exist, a test checks). Requests the browser found slow are grouped
+  by `find_stalls()` into stalls: three or more requests on two or more routes that waited at the same moment, with what the server was
+  running (from the server's own `slowroute` events and each route's usual time: a route that normally answers fast is what waited, a
+  job that normally takes seconds is what it waited for), whether the wait was inside the server or before it reached it, and a
+  condition when the computer slept or was offline. Presses that were slow during a stall are not reported again as slow controls.
+  `lost_link()` makes requests that failed with "Failed to fetch" one finding (a condition), each loss tied to a restart, a sleep or an
+  offline period when the record shows one. The zip holds `report.html`, `findings.md`, `report.json` (schema 3: adds `headline`,
+  `stalls`, `lost_link`, `quiet_periods`), `events.jsonl` and `README.txt`. The report holds no script and loads nothing from outside;
+  everything in it goes through `_h()`. `tester.note_slice(job, receipt, output)` records a failed slice's exit code, why, and the engine's
+  whole `stdout` and `stderr` (`tester.mask_output`, masked in pieces, up to `MAX_OUTPUT`); the slice event's `report` field starts with the
+  outcome so its 1,200-character cut never loses the cause.
 
 ## The AI assistant
 

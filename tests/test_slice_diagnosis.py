@@ -139,6 +139,46 @@ class TestOrcaCodes(unittest.TestCase):
         self.assertEqual(missing, [], "a code with words but nothing to try")
 
 
+class TestOrcaNumbersFromHowTheProgramEnded(unittest.TestCase):
+    """result.json is written on Linux only, so Windows and macOS give the exit code alone: -100 arrives as 4294967196 or 156."""
+
+    def test_windows_reports_minus_100_as_an_unsigned_32_bit_number(self):
+        self.assertEqual(diag.orca_code(4294967196), -100)           # 2**32 - 100, as a Windows tester's report showed
+        self.assertEqual(diag.orca_code(4294967246), -50)
+        self.assertEqual(diag.orca_code(4294967295), -1)
+
+    def test_macos_and_linux_report_it_as_its_low_byte(self):
+        self.assertEqual(diag.orca_code(156), -100)
+        self.assertEqual(diag.orca_code(204), -52)
+        self.assertEqual(diag.orca_code(255), -1)
+
+    def test_an_ordinary_exit_code_is_never_taken_for_one(self):
+        for code in (0, 1, 2, 3, 127, 126, 130, 4294967295 - 100000, None, True, "156"):
+            self.assertIsNone(diag.orca_code(code), code)
+        for signal_code in (-1, -6, -9, -11, -15, -100):               # on Linux and macOS a negative code is a signal: -6 is an abort, not Orca's -6
+            self.assertIsNone(diag.orca_code(signal_code), signal_code)
+
+    def test_the_reason_is_never_orcas_found_error_line(self):
+        out = ("starting\n[warning] plate 1: found slicing warnings: Empty layers detected\nSlic3r::CLI::run found error, exit\n")
+        self.assertEqual(diag.reason_lines(out), ["[warning] plate 1: found slicing warnings: Empty layers detected"])
+        self.assertEqual(diag.reason_lines("", "Slic3r::CLI::run found error, return -100, exit..."), [])
+        self.assertEqual(diag.reason_lines("a\nb\nc\nd\ne", limit=2), ["d", "e"])                 # no line names a problem: the last lines
+        self.assertEqual(diag.reason_lines("x" * 500)[0], "x" * 240)
+
+    def test_the_bridge_words_the_windows_code_with_the_reason(self):
+        import slicer_bridge
+        out = b"[warning] plate 1: found slicing warnings: Empty layers detected between 4.2 and 4.4\nSlic3r::CLI::run found error, exit\n"
+        headline, cause = slicer_bridge.diagnose(4294967196, None, out, b"")
+        self.assertEqual(headline, "Orca hit an error while slicing (Orca's code -100). It printed: "
+                                   "[warning] plate 1: found slicing warnings: Empty layers detected between 4.2 and 4.4")
+        self.assertEqual(cause["code"], "orca_-100")
+        self.assertIn("Empty layers detected", cause["evidence"])
+        self.assertTrue(any("slices on screen" in fix for fix in cause["fixes"]))
+        # With only Orca's own line there is no reason to show, and the headline says so plainly rather than quoting the exit line.
+        headline, cause = slicer_bridge.diagnose(4294967196, None, b"Slic3r::CLI::run found error, exit\n", b"")
+        self.assertEqual(headline, "Orca hit an error while slicing (Orca's code -100)")
+
+
 class TestWhatAReportHolds(unittest.TestCase):
     def test_the_home_folder_is_hidden_in_every_spelling(self):
         home = os.path.expanduser("~")

@@ -112,14 +112,13 @@ API endpoints
   GET  /api/import/orca              presets and recent projects found in Orca on this computer
   POST /api/import/orca/projects     {"ids"} copy recent projects into Files
   POST /api/import/orca/profile      {"name", "machine", "process", "filaments"} a profile from your presets
-  GET  /api/tester/status            Tester mode: days, actions, errors and slow spots recorded so far (module "tester")
+  GET  /api/tester/status            Tester mode: days used, actions, errors and slow spots recorded so far (module "tester")
   GET  /api/tester/report.html       the tester report as one readable page (?theme=light|dark)
   GET  /api/tester/report.zip        the report as deja-vu1-tester-report-YYYY-MM-DD.zip to attach to a forum message
   POST /api/tester/events            the browser's batch of events {"events": [...]}; private details are hidden
-  POST /api/tester/delete            delete everything Tester mode recorded (the answers and the plan too)
-  GET  /api/tester/study             the test round: 1, 2 or 3 days, the day, status (?questions=1 adds the 52 questions, the saved answers and hints)
-  POST /api/tester/study             {"length_days": 1|2|3} or {"welcomed": true} or {"finish": true|false}
-  POST /api/tester/answers           {"answers": {"q7": {"c": "yes", "t": "..."}}}; each answer is masked and kept on this computer
+  POST /api/tester/delete            delete everything Tester mode recorded (the answers too)
+  GET  /api/tester/study             how many of the 22 questions are answered (?questions=1 adds the questions, the saved answers and hints)
+  POST /api/tester/answers           {"answers": {"q19": {"c": null, "t": "..."}, "q16": {"c": "didnt_try"}}}; each answer is masked and kept on this computer
   POST /api/app/updates/git          update a git checkout (fast-forward only)
   POST /api/app/repair               put the newest published files back over this copy, then restart
   POST /api/app/restart              restart the dashboard (launcher only)
@@ -353,7 +352,7 @@ from app_part1 import (  # noqa: F401  (split out 19 November 2026; names kept h
     DejaVuServer, LIVE_FPS, LIVE_SECONDS, MAX_UPLOAD, PORT, PORT_IN_USE, WRITE_GRACE, _APP_ROUTES,
     _CONTROL_ACTIONS, _DATA_ROUTES, _FARM_ROUTES, _Gone, _LOCAL_SUFFIXES, _QUEUE_ACTIONS, _chamber, _close_down,
     _colour_plan, _confirm_print, _demo, _fleet_rows, _host_name, _live_snapshot, _loaded_heads, _print_phone_qr,
-    _q, _restart_soon, _tester_study, _tester_study_update, module_routes,
+    _q, _restart_soon, _tester_study, module_routes,
 )
 import app_post
 from app_get import GetRoutes  # GET routes, the WebSocket and the timed dispatch (split out)
@@ -514,6 +513,58 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
             self.send_header("Content-Security-Policy", "script-src 'none'")
         self.end_headers()
         self.wfile.write(data)
+
+    def _send_stream(self, status, content_type, chunks, length=None, extra=None, filename=None):
+        """
+        Send a body as it arrives (a video from the printer): the headers first, then each piece, so a large file starts playing at once
+        and none of it is held in memory. A browser that stops watching closes the connection, which ends this quietly; a printer that
+        stops sending part-way ends it with a short body, which the browser reads as a failed video, never as a whole one.
+        """
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        if length is not None:
+            self.send_header("Content-Length", str(length))
+        self.send_header("Accept-Ranges", "bytes")
+        for name, value in (extra or {}).items():
+            self.send_header(name, value)
+        if filename:
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        try:
+            for chunk in chunks:
+                self.wfile.write(chunk)
+        except Exception:               # noqa: BLE001 - the headers are out: all that is left is to end the connection
+            self.close_connection = True
+
+    def _send_file_ranged(self, path, content_type, filename=None):
+        """A file from disk, in pieces, answering a single 'Range: bytes=a-b' so a video can be scrubbed."""
+        size = os.path.getsize(path)
+        match = re.fullmatch(r"bytes=(\d*)-(\d*)", self.headers.get("Range", "").strip())
+        start, end, status = 0, size - 1, 200
+        if match and (match.group(1) or match.group(2)):
+            first, last = match.groups()
+            start, end = (max(0, size - int(last)), size - 1) if first == "" else (int(first), min(size - 1, int(last) if last else size - 1))
+            if start > end or start >= size:
+                self.send_response(416)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.end_headers()
+                return None
+            status = 206
+
+        def pieces():
+            with open(path, "rb") as f:
+                f.seek(start)
+                left = end - start + 1
+                while left > 0:
+                    chunk = f.read(min(65536, left))
+                    if not chunk:
+                        return
+                    yield chunk
+                    left -= len(chunk)
+
+        extra = {"Content-Range": f"bytes {start}-{end}/{size}"} if status == 206 else None
+        return self._send_stream(status, content_type, pieces(), length=end - start + 1, extra=extra, filename=filename)
 
     def _content_length(self):
         """

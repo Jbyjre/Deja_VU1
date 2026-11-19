@@ -4,9 +4,8 @@ tester.py
 
 Tester mode: a record of how Deja Vu1 behaves, kept on this computer only.
 
-This tester build records from the first start (modules.TESTER_ALWAYS_ON). The tester uses the app as usual,
-answers the questions the app asks at the end of the test round (tester_study.py) and saves one zip file to
-attach to a forum message. This module is the recording half: it takes events from the browser and from the
+This tester build records from the first start (modules.TESTER_ALWAYS_ON) and never stops. The tester uses the app as
+usual, answers the 22 questions when they like (tester_study.py) and saves one zip file to attach to a forum message. This module is the recording half: it takes events from the browser and from the
 server, hides anything private, and appends them to JSON Lines files under <data>/tester/. tester_report.py
 reads them back and builds the report.
 
@@ -35,9 +34,10 @@ import storage
 
 _DATA_DIR = storage.DATA_DIR
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 MAX_TEXT = 300                    # longest string kept in one field
 MAX_NOTE = 1200                   # the tester's own notes may be longer
+MAX_OUTPUT = 400000               # a failed slice keeps the engine's whole output, up to this many characters (the start and the end beyond it)
 MAX_LIST = 12
 EXPORT_LIMIT = 20 * 1024 * 1024   # events.jsonl inside the saved zip stays under this
 COMPACT_AT = 40 * 1024 * 1024     # raw events on disk before the oldest routine ones are summed up
@@ -277,6 +277,27 @@ def mask(text, limit=MAX_TEXT):
     return text if len(text) <= limit else text[:limit - 1] + "…"
 
 
+def mask_output(text, limit=MAX_OUTPUT):
+    """
+    Long program output (what a slicing engine printed), masked like every other string but kept whole: mask() looks at 20,000
+    characters at a time, so this masks it in pieces cut at line ends. Past `limit` the start and the end are kept.
+    """
+    text = "" if text is None else str(text)
+    if len(text) > limit:
+        head = limit // 4
+        text = "%s\n... (%d characters left out) ...\n%s" % (text[:head], len(text) - limit, text[-(limit - head):])
+    pieces, chunk, size = [], [], 0
+    for line in text.split("\n"):
+        if size + len(line) + 1 > 15000 and chunk:
+            pieces.append(mask("\n".join(chunk), 20001))
+            chunk, size = [], 0
+        chunk.append(line[:15000])
+        size += min(len(line), 15000) + 1
+    if chunk:
+        pieces.append(mask("\n".join(chunk), 20001))
+    return "\n".join(pieces).strip()
+
+
 _VERSION_FIELDS = ("version", "from", "to", "facts", "engine_version", "app_version")
 _VERSION_OK = re.compile(r"[A-Za-z0-9._+~() /-]{1,80}")
 
@@ -447,6 +468,8 @@ def record(_kind, **fields):
             if key in _VERSION_FIELDS:
                 event[key] = ({str(k)[:40]: version_text(v) for k, v in list(value.items())[:30]} if isinstance(value, dict)
                               else version_text(value) if isinstance(value, (str, int, float)) else None)
+            elif key in ("stdout", "stderr"):
+                event[key] = mask_output(value) if isinstance(value, (str, bytes)) else None
             else:
                 event[key] = clean(value, MAX_NOTE if key in ("report", "text") else MAX_TEXT)
         return bool(_append_lines({_day(event["t"]): [_line(event)]}))
@@ -668,8 +691,23 @@ def note_gate(filename, gate, size=None):
         pass
 
 
-def note_slice(job, receipt=None):
-    """One slice: engine, version, worked or not, how long, and the report for help when it failed."""
+def _slice_summary(receipt):
+    """A failed slice's report for help in few characters: what happened first (the stored line is cut at MAX_NOTE), the rest after."""
+    run, outcome, engine = receipt.get("run") or {}, receipt.get("outcome") or {}, receipt.get("engine") or {}
+    cause = outcome.get("cause") or {}
+    summary = {"outcome": {"status": outcome.get("status"), "message": outcome.get("message"), "cause": cause.get("code")},
+               "stage": (receipt.get("stage") or {}).get("reached"),
+               "run": {k: run.get(k) for k in ("exit_code", "seconds", "timeout_s")},
+               "result_json": run.get("orca_result"),
+               "engine": {k: engine.get(k) for k in ("app", "version")}, "command": run.get("command")}
+    return json.dumps(summary, default=str)
+
+
+def note_slice(job, receipt=None, output=None):
+    """
+    One slice: engine, version, worked or not, how long, and for a failure the cause, the exit code and everything the engine
+    printed (`output`: {"stdout": ..., "stderr": ...}), so the reason is never lost to a cut.
+    """
     if not enabled():
         return
     try:
@@ -684,11 +722,17 @@ def note_slice(job, receipt=None):
         except (ValueError, TypeError):
             secs = None
         failed = job.get("status") == "failed"
+        output = output if isinstance(output, dict) else {}
+        run = (receipt or {}).get("run") or {}
         record("slice", engine=engine.get("app"), version=engine.get("version"), ok=job.get("status") in ("done", "queued"),
                status=job.get("status"), secs=secs, stage=job.get("stage"),
                cause=(job.get("cause") or {}).get("code") if isinstance(job.get("cause"), dict) else None,
                model=file_label(job.get("model")) if job.get("model") else None,
-               report=json.dumps(receipt, default=str)[:6000] if (failed and receipt) else None)
+               exit=run.get("exit_code") if failed and isinstance(run.get("exit_code"), int) else None,
+               why=(job.get("error") or None) if failed else None,
+               stderr=output.get("stderr") if failed and output.get("stderr") else None,
+               stdout=output.get("stdout") if failed and output.get("stdout") else None,
+               report=_slice_summary(receipt) if (failed and receipt) else None)
     except Exception:                   # noqa: BLE001
         pass
 

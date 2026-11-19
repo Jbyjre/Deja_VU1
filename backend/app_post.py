@@ -57,7 +57,7 @@ import tester_study
 import watch_only
 import wled_bridge
 from app_part1 import (  # noqa: F401
-    PORT, _CONTROL_ACTIONS, _QUEUE_ACTIONS, _q, _restart_soon, _tester_study_update,
+    PORT, _CONTROL_ACTIONS, _QUEUE_ACTIONS, _q, _restart_soon,
 )
 
 # app.py hands these over right after it defines them (they stay there because they read settings that tests and
@@ -276,14 +276,12 @@ class PostRoutes:
             return self._handle_maintenance(connected, force_disconnected, lambda body: maintenance.snooze(
                 body.get("task_id") or "", body.get("days")), require="task_id")
 
-        if route in ("/api/tester/events", "/api/tester/delete", "/api/tester/study", "/api/tester/answers"):
+        if route in ("/api/tester/events", "/api/tester/delete", "/api/tester/answers"):
             if self._module_blocked("tester"):
                 return None
             body = self._read_json_body()
             if route == "/api/tester/delete":
                 return self._send_json(tester.delete_all())
-            if route == "/api/tester/study":
-                return self._send_json(_tester_study_update(body))
             if route == "/api/tester/answers":
                 return self._send_json(tester_study.save_answers(body.get("answers")))
             return self._send_json(tester.ingest(body))
@@ -420,8 +418,18 @@ class PostRoutes:
             body = self._read_json_body()
             if route.endswith("/forget"):
                 return self._send_json(timelapse.remove_saved_video(printer_id, body.get("name")))
-            data = mock_moonraker.printer_video_bytes(body.get("root"), body.get("path"), timelapse.MAX_VIDEO_BYTES)
-            return self._send_json(timelapse.keep_printer_video(printer_id, body.get("root"), body.get("path"), data))
+            root, path = body.get("root"), body.get("path")
+            if force_disconnected or not connected:
+                return self._send_json({"connected": False, "demo": False})
+            # Checked now, in words, so a wrong press is refused at once; the copy itself runs in the background and streams to disk.
+            if not mock_moonraker.is_real(printer_id):
+                raise ValueError("Demo printers record no videos")
+            if not mock_moonraker.is_connected(printer_id):
+                raise ValueError("The printer is not connected. Check its address and power")
+            mock_moonraker.real_printer(printer_id)._video_path(root, path)
+            job = timelapse.start_keep(printer_id, root, path, lambda out, progress: mock_moonraker.printer_video_download(
+                printer_id, root, path, out, timelapse.MAX_VIDEO_BYTES, progress))
+            return self._send_json({"job": job, "running": job["state"] == "running"}, status=202)
 
         if route.startswith("/api/slicer/"):
             if self._module_blocked("auto_print"):

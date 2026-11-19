@@ -351,6 +351,34 @@ function serverReady() {
   return server.checked;
 }
 
+/* Losing the server for a moment (an update restarting it, the computer waking up, the Wi-Fi blinking) is not an error the person
+ * needs to see. A read is asked once more after a short wait; if that fails too it fails as a ServerLost, which every caller that
+ * already says "no data" on a failed read handles as before, and which no page shows as an error. The page's watcher
+ * (watchServer, app-start.js) is told at once, and it says so only if the outage lasts. */
+class ServerLost extends Error {
+  constructor(url) { super('Deja Vu1 did not answer'); this.name = 'ServerLost'; this.quiet = true; this.url = url; }
+}
+const NETWORK_LOSS = /failed to fetch|networkerror|network error|load failed|network connection was lost|err_connection|err_network|err_internet/i;
+const isNetworkLoss = e => !!e && (e.quiet === true || (e instanceof TypeError && NETWORK_LOSS.test(e.message || '')));
+let lostCheckAt = 0;
+function checkServerSoon() {
+  if (Date.now() - lostCheckAt < 2000 || typeof watchServer !== 'function') return;
+  lostCheckAt = Date.now();
+  setTimeout(watchServer, 300);
+}
+async function fetchRead(url) {
+  try { return await fetch(url); } catch (err) {
+    if (err && err.name === 'AbortError') throw err;
+    await new Promise(r => setTimeout(r, 700));
+    try { return await fetch(url); } catch (again) {
+      if (again && again.name === 'AbortError') throw again;
+      checkServerSoon();
+      throw new ServerLost(url);
+    }
+  }
+}
+window.addEventListener('unhandledrejection', e => { if (isNetworkLoss(e.reason)) { e.preventDefault(); checkServerSoon(); } });
+
 async function getJSON(url) {
   if (!await serverReady()) return serverMissingBody();
   const path = url.split('?')[0];
@@ -359,7 +387,7 @@ async function getJSON(url) {
     const owner = modGate.routes[path];
     if (owner && modGate.off.has(owner)) return { error: 'Module disabled', module_disabled: true };
   }
-  const response = await fetch(url);
+  const response = await fetchRead(url);
   const body = await response.json().catch(() => ({}));
   if (response.status === 401 && body.pairing_required) showPairGate();
   if (path === '/api/modules') noteModules(body);

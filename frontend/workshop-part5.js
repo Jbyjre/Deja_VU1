@@ -1,6 +1,6 @@
 /* workshop-part5.js: part 5 of 5 of workshop.js, the live connection, fleet, files, automations and Liquid Glass
  * 2.0. Split out of the one closure workshop.js was (18 November 2026) so a session reads only the part it needs.
- * Loaded before workshop.js, after workshop-part4.js; it hands its names on through WorkshopPart5. Holds: celebrate,
+ * Loaded before workshop.js, after workshop-part4.js; it hands its names on through WorkshopPart5. Holds: bindTimelapse, celebrate,
  * checkHandoff, closeDialog, connect, convertFromCard, honourReducedMotion, init, initConfirm, initConverterCard,
  * initDialogs, initFiles, initFleet, initPhone, loadRules, loadTimelapse, nudgeLive, onEvent, onTab, openLocalFiles,
  * openPrinterMenu, playFlipbook, reconnect, refresh, renderFleet, ruleForm, selectPrinter, showSummary,
@@ -15,7 +15,7 @@ const WorkshopPart5 = (() => {
   const { ACTIONS, PRESETS, TRIGGERS, aiOn, closeFile, currentTab, deviceId, flip, flipbookVideo, initBlobResize,
     initCameraForm, initDemoTools, initDockStack, initGlassMenu, initHoldToCancel, initPressGlow, initScrollEdge,
     initSwap, loadCamera, loadForecast, loadPrinterVideos, loadRuleLog, loadSideBySide, morph, moveTabBlob,
-    openMenu, renderGate, reportView, sentence, stopCamera, syncNav } = WorkshopPart3;
+    openMenu, renderGate, reportView, sentence, stopCamera, syncNav, tlForget, tlKeep, tlReset } = WorkshopPart3;
   const { applyState, convertFile, loadFiles, loadQueue, openDialog, openFile, refreshPrinter, renderLocalFiles,
     startNext } = WorkshopPart4;
 
@@ -550,21 +550,54 @@ async function loadRules() {
     }));
   }
 
+/* The time-lapse list: three boxes (a note, the flipbooks, the printer's videos) that are filled in place and replaced only when their
+ * content changed. A slow or failed answer, a refresh, or the Record time-lapses switch being flipped leaves the list where it is. */
+function bindTimelapse(host) {
+    if (host.dataset.bound) return;
+    host.dataset.bound = '1';
+    host.addEventListener('click', e => {
+      const hit = sel => e.target.closest(sel);
+      let b;
+      if ((b = hit('[data-keep-path]'))) { if (!b.disabled) tlKeep(b); }
+      else if ((b = hit('[data-forget-video]'))) tlForget(b);
+      else if ((b = hit('[data-flip-video]'))) flipbookVideo(b.dataset.flipVideo, b.dataset.flipName, b);
+      else if ((b = hit('[data-flip]'))) playFlipbook(b.dataset.flip);
+    });
+  }
+
 async function loadTimelapse() {
     const host = $('timelapse-host');
     if (!host) return;
+    const printer = String(currentPrinter || '');
+    if (host.dataset.printer !== printer || !host.querySelector('#tl-flips')) {
+      host.dataset.printer = printer;
+      host.dataset.drawn = '';
+      host.innerHTML = '<p class="field-hint tl-note" id="tl-note" role="status" hidden></p><div id="tl-flips"></div><div id="tl-printer" class="tl-printer"></div>';
+      tlReset();
+      bindTimelapse(host);
+    }
     const data = await getJSON(api('/api/timelapse')).catch(() => null);
-    if (isModuleDisabled(data)) { host.innerHTML = moduleDisabledEmpty('Time-lapse flipbook'); return; }
-    if (!data || !hasData(data)) { host.innerHTML = demoNeeded('time-lapses'); return; }
-    host.innerHTML = data.sessions.length ? data.sessions.map(s => `
+    const note = host.querySelector('#tl-note');
+    if (!note) return;
+    if (isModuleDisabled(data)) {
+      note.hidden = false;
+      note.textContent = 'Time-lapses are switched off, so nothing new is recorded. Your recordings stay listed here and open again when it is switched on.';
+      host.classList.add('is-off');
+      if (!host.dataset.drawn) setHTML(host.querySelector('#tl-flips'), '');
+      return;
+    }
+    host.classList.remove('is-off');
+    note.hidden = true;
+    const flips = host.querySelector('#tl-flips');
+    if (!data || !hasData(data)) { if (!host.dataset.drawn) setHTML(flips, demoNeeded('time-lapses')); return; }       // a failed look keeps the list
+    host.dataset.drawn = '1';
+    setHTML(flips, data.sessions.length ? data.sessions.map(s => `
       <div class="reg-row">
         <span class="reg-name">${esc(s.filename || 'print')}</span>
         <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'} · ${esc(s.source)}${s.last_error ? ' · '+esc(s.last_error) : ''}</span>
         <span class="tl-acts"><button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
         <button class="btn small" data-flip-video="${esc(s.session)}" data-flip-name="${esc(s.filename || 'print')}" type="button" ${s.frames > 1 && window.MediaRecorder ? '' : 'hidden'}>Save as video</button></span>
-      </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>';
-    qsa('[data-flip]', host).forEach(b => b.addEventListener('click', () => playFlipbook(b.dataset.flip)));
-    qsa('[data-flip-video]', host).forEach(b => b.addEventListener('click', () => flipbookVideo(b.dataset.flipVideo, b.dataset.flipName, b)));
+      </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>');
     loadPrinterVideos(host);
   }
 async function playFlipbook(session) {

@@ -10,14 +10,14 @@
  * The walk starts its own servers and a stand-in printer (tests/fake_moonraker.py, a pretend printer, not a real one).
  *   1. A run started with DEJAVU_TESTER=0 (a developer's off): the pages are used, the browser sends nothing to /api/tester and
  *      the routes answer 403.
- *   2. The tester build as shipped (always on, no switch): the first-run setup is clicked through, the welcome panel asks how
- *      long to test (2 days), every place is opened, controls are pressed (also double and right presses, a list choice, keys,
+ *   2. The tester build as shipped (always on, no switch): the first-run setup is clicked through, and no tester pop-up, chip or panel
+ *      appears with it; every place is opened, controls are pressed (also double and right presses, a list choice, keys,
  *      the tour), a file is checked and printed on the stand-in printer, paused and cancelled, and three things go wrong on
  *      purpose: a request held back for 2.6 s, a button that freezes the page for 1.4 s, and an error, a failed promise and an
  *      error toast. "Something felt off" saves a tagged note, with the error that just happened.
- *   3. The round runs out (the saved start is moved back), the page asks for the answers, some of the 52 questions are answered
- *      and the zip is saved from the last step (kept at --zip). Settings > Tester mode is checked too: no switch, the plan,
- *      View report and Save tester report.
+ *   3. Settings > Tester mode is checked (no switch, no days to pick, the 22 questions' progress, View report, Save tester report), the
+ *      questions are opened from there with no round to run out, some of the 22 are answered (only 16 and 17 have a "Didn't try it") and
+ *      the zip is saved from the last step (kept at --zip).
  *   4. A phone-sized touch browser taps something, and the server's record says it was a touch.
  *   4. With --shots, screenshots of the card and the saved report.html (opened from the zip with no network, at 1366 and
  *      390 px, light and dark) go to DIR.
@@ -214,14 +214,14 @@ async function walkOff(browser, offServer, width) {
   for (const id of ['overview', 'printers', 'printer', 'files', 'settings']) await goTo(off.page, id, width);
   await sleep(6000);
   check(off.seen.tester.length === 0, 'DEJAVU_TESTER=0: the browser sent nothing to /api/tester (' + off.seen.tester.length + ' requests)');
-  for (const [route, body] of [['/api/tester/events', { events: [{ k: 'click', ctl: '#x' }] }], ['/api/tester/study', {}], ['/api/tester/answers', { answers: {} }]]) {
+  for (const [route, body] of [['/api/tester/events', { events: [{ k: 'click', ctl: '#x' }] }], ['/api/tester/answers', { answers: {} }]]) {
     const answer = await post(off.page, route, body);
     check(answer.status === 403, 'DEJAVU_TESTER=0: ' + route + ' answers 403 (got ' + answer.status + ')');
   }
   const statusOff = await getJson(off.page, '/api/tester/status');
   check(statusOff.status === 403, 'DEJAVU_TESTER=0: /api/tester/status answers 403 (got ' + statusOff.status + ')');
   check(!fs.existsSync(path.join(offServer.data, 'tester')), 'DEJAVU_TESTER=0: no tester folder was written');
-  check((await off.page.locator('#tester-felt, #tester-chip, #tester-panel').count()) === 0, 'DEJAVU_TESTER=0: no tester buttons are on the screen');
+  check((await off.page.locator('#tester-felt, #tester-dock').count()) === 0, 'DEJAVU_TESTER=0: no tester buttons are on the screen');
   await off.context.close();
 }
 
@@ -240,16 +240,10 @@ async function walk(browser, server, standIn, width) {
   await page.click('#setup-skip');
   await sleep(800);
   check((await page.locator('#tester-felt').count()) === 1, 'Recording is on with no switch: "Something felt off" is on the screen');
-  check((await page.locator('#tester-dock #tester-chip').count()) === 1, 'The test-round chip sits beside it');
-  await page.waitForSelector('#tester-panel', { timeout: 12000 }).catch(() => {});
-  const welcome = await page.locator('#tester-panel').innerText().catch(() => '');
-  check(/You are testing Deja Vu1/.test(welcome), 'The welcome panel says what is recorded and asks how long to test');
-  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'welcome-' + width + '.png') });
-  await page.click('#tester-panel [data-length="2"]');
-  await sleep(600);
-  await page.click('#tester-panel [data-panel="start"]');
-  await sleep(600);
-  check((await page.locator('#tester-chip').innerText()).toLowerCase().includes('day 1 of 2'), 'Choosing 2 days shows "Test day 1 of 2"');
+  await sleep(4000);
+  check((await page.locator('#tester-chip, #tester-hub, #tester-panel').count()) === 0, 'No tester pop-up, chip or panel appears on the first start (setup closed, 4 s later)');
+  check((await page.locator('#tester-dock > *').count()) === 1, 'The only tester control on the screen is "Something felt off"');
+  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'first-start-' + width + '.png') });
 
   await post(page, '/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn.url });
   await sleep(2500);
@@ -381,52 +375,48 @@ async function walk(browser, server, standIn, width) {
   await openTesterCard(page, width);
   await sleep(1500);
   check((await page.locator('#tester-setting').count()) === 0 && (await page.locator('#tester-always').isVisible()), 'The Tester mode card says "Always on" and has no switch');
-  check(await page.locator('#tester-plan').isVisible(), 'The card shows the test round');
+  check((await page.locator('[data-length], #tester-plan').count()) === 0, 'The card has no days to pick and no round');
+  check(/^0 of 22 questions answered/.test((await page.locator('#tester-progress').innerText()).trim()), 'The card says how many of the 22 questions are answered');
   const counts = await page.evaluate(() => ['days', 'actions', 'errors', 'slow'].map(k => +document.getElementById('tester-' + k).textContent));
   check(counts[1] > (width > 720 ? 20 : 5) && counts[2] >= 3 && counts[3] >= 2, 'The card shows what was recorded: days, actions, errors, slow spots = ' + counts.join(', '));
   if (option('--shots')) {
     await page.locator('#tester-card').scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(option('--shots'), 'card-on-' + width + '.png') });
   }
+  const studyFile = path.join(server.data, 'tester', 'study.json');
+  const study = JSON.parse(fs.readFileSync(studyFile, 'utf8'));
+  check(study.v === 2 && study.length_days === undefined && study.welcomed === undefined, 'The server keeps no length, no welcome and no end date');
 
-  // The round runs out: its saved start is moved back three days, and the page is opened again.
-  const studyPath = path.join(server.data, 'tester', 'study.json');
-  const study = JSON.parse(fs.readFileSync(studyPath, 'utf8'));
-  check(study.length_days === 2 && study.welcomed === true, 'The server kept the 2-day choice and that the welcome was seen');
-  study.started -= 3 * 86400000;
-  fs.writeFileSync(studyPath, JSON.stringify(study));
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForSelector('#tester-panel', { timeout: 20000 }).catch(() => {});
-  const endText = await page.locator('#tester-panel').innerText().catch(() => '');
-  check(/Your test round is over/.test(endText), 'When the days are up the page asks for the answers');
-  check((await page.locator('#tester-chip.is-due').count()) === 1, 'The chip says "Answer the questions"');
-  if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'end-' + width + '.png') });
-  await page.click('#tester-panel [data-panel="answer"]');
+  // The questions open from the card, at any time: there is no round to run out.
+  await page.click('#tester-answer');
   await page.waitForSelector('#tester-q[open]', { timeout: 8000 });
   await page.waitForSelector('#tester-q-body .tq-intro', { timeout: 8000 });
+  check(/22 questions in 9 short sections/.test(await page.locator('#tester-q-body .tq-intro').innerText()), 'The questions open with "22 questions in 9 short sections"');
   await sleep(300);
   await page.click('#tester-q-next');
+  check((await page.locator('[data-q="q1"] [data-choice]').count()) === 0, 'A question that is not optional has no "Didn\u2019t try it" button');
   await page.fill('#tq-q1', 'Linux (the walk)');
   await page.fill('#tq-q2', '3.13');
   await sleep(1200);
   await page.click('#tester-q-next');                                   // section 2: First run
-  await page.click('[data-q="q8"] [data-choice="no"]');
-  await page.fill('#tq-q8', 'It said connection refused at 192.168.7.7');
-  await page.click('[data-q="q9"] [data-choice="didnt_try"]');
+  await page.fill('#tq-q3', 'It said connection refused at 192.168.7.7');
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'questions-' + width + '.png') });
   await page.click('#tester-q-next');                                   // section 3: Speed
-  await page.click('[data-q="q11"] [data-choice="yes"]');
-  await page.fill('#tq-q11', 'Pause');
-  await page.click('[data-step="11"]');                                 // jump to Overall
-  await page.fill('#tq-q47', 'The page threw an error on purpose.');
-  await page.click('[data-step="12"]');
-  await page.fill('#tq-q52', 'The walk broke things on purpose (192.168.7.7).');
+  await page.fill('#tq-q5', 'Pause');
+  await page.click('[data-step="8"]');                                  // Phone and AI: the two optional questions
+  await page.waitForSelector('[data-q="q16"]', { timeout: 5000 }).catch(() => {});
+  const quick = await page.locator('[data-choice="didnt_try"]').count();
+  check(quick === 2, 'Only the phone and AI questions have a one-press "Didn\u2019t try it" (found ' + quick + ')');
+  await page.click('[data-q="q16"] [data-choice="didnt_try"]');
+  await page.click('[data-step="9"]');                                  // Overall
+  await page.fill('#tq-q19', 'The page threw an error on purpose.');
+  await page.fill('#tq-q20', 'The walk broke things on purpose (192.168.7.7).');
   await sleep(1500);
   check(((await page.locator('#tester-q-saved-note').innerText()) || '').length > 0, 'Answers are saved as they are typed');
   await page.click('#tester-q-next');
   await page.waitForSelector('.tq-done', { timeout: 8000 });
   const doneText = await page.locator('.tq-done').innerText();
-  check(/You answered 7 of 52/.test(doneText), 'The last step counts the answers: ' + (/You answered [^.]*/.exec(doneText) || [''])[0]);
+  check(/You answered 7 of 22/.test(doneText), 'The last step counts the answers: ' + (/You answered [^.]*/.exec(doneText) || [''])[0]);
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'questions-done-' + width + '.png') });
   const zipPath = option('--zip') || path.join(os.tmpdir(), 'tester-walk.zip');
   const [download] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click('[data-q-act="save"]')]);
@@ -436,7 +426,9 @@ async function walk(browser, server, standIn, width) {
   check(/Saved deja-vu1-tester-report-/.test(await page.locator('#tester-q-saved').innerText()), 'It says where the file went and what to do with it');
   await page.click('#tester-q-close');
   await sleep(800);
-  check((await page.locator('#tester-chip').innerText()).includes('finished'), 'After the last step the chip says "Test finished"');
+  await openTesterCard(page, width);
+  await sleep(1500);
+  check(/^7 of 22 questions answered\. Report last saved/.test((await page.locator('#tester-progress').innerText()).trim()), 'The card now says 7 of 22 answered and when the report was last saved');
 
   // View report and Save tester report in Settings still work.
   await openTesterCard(page, width);
@@ -447,7 +439,7 @@ async function walk(browser, server, standIn, width) {
   check(!!frame, 'View report opens the report in the viewer');
   if (frame) {
     const headings = await frame.evaluate(() => [...document.querySelectorAll('h2')].map(h => h.textContent));
-    check(headings.includes('The short version') && headings.includes('Fix these first') && headings.includes('Their answers') && headings.includes('Errors'),
+    check(headings.includes('The short version') && headings.includes('Fix first') && headings.includes('Their answers') && headings.includes('Errors'),
       'The viewer shows the readable report (' + headings.length + ' sections)');
   }
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'viewer-' + width + '.png') });
@@ -601,8 +593,6 @@ const postServer = (base, route, body) =>
 
 async function overhead(browser, servers) {
   const pages = +(option('--pages') || 3), pairs = +(option('--pairs') || 5), secs = +(option('--secs') || 9);
-  // The steady state: the welcome panel (a glass panel on screen until it is acknowledged) is a one-time thing, not part of what recording costs.
-  await postServer(servers.on.base, '/api/tester/study', { welcomed: true });
   const rows = [];
   const fh = { off: [], on: [] }, ch = { off: [], on: [] };
   for (let p = 0; p < pages; p++) {

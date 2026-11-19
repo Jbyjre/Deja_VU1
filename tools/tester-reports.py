@@ -9,11 +9,16 @@ Combine several Deja Vu1 tester reports into one set of real totals.
     python3 tools/tester-reports.py reports/ --findings      the combined work list as Markdown
 
 Each zip is the file a tester saved with Settings > Tester mode > Save tester report (or at the end of the questions).
-This reads report.json from each (schema_version 1 or 2) and prints: how many testers and days, prints on printers,
+This reads report.json from each (schema_version 1, 2 or 3) and prints: how many testers and days, prints on printers,
 which computers and browsers, how the first run went, how people pressed, the errors people hit (grouped by what they
 said), the slowest controls, the problems that came up for the most testers, what they answered, and the features nobody
 used. The counts are the ones a write-up can quote. Testers are numbered in the order given ("Tester 3"); a report holds
 no names, and neither does this output.
+
+The problems are combined the way one report ranks them: the app's own faults come first (at most ten under "Fix first", each
+with how many testers hit it, the screen, the last presses before it and where to look in the code), then the conditions around
+the app (the printer off, the network down), then the rest by part of the app. Findings that differ only in their numbers
+("stopped answering for 27 s at 13:31" and "for 31 s at 09:02") are one finding.
 
 Standard-library Python only.
 """
@@ -28,7 +33,8 @@ import sys
 import zipfile
 from collections import Counter, defaultdict
 
-SUPPORTED = (1, 2)
+SUPPORTED = (1, 2, 3)
+FIX_FIRST_MAX = 10
 SEVERITY_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
@@ -101,7 +107,7 @@ def combine(reports):
     connect_minutes = []
     paint_medians = []
     load_ms = []
-    study_testers = Counter()
+    answered_counts = []
     for index, report in enumerate(reports):
         s = report.get("summary") or {}
         out["days"] += s.get("days_used") or 0
@@ -175,14 +181,12 @@ def combine(reports):
             thinned_testers += 1
         # Schema 2: the test round and answers, the work list, the first run and how people pressed.
         study = report.get("study") or {}
-        plan = study.get("plan") or {}
-        if plan:
-            study_testers["round_" + str(plan.get("length_days"))] += 1
-            study_testers["finished" if plan.get("status") == "finished" else "not_finished"] += 1
+        if study.get("answered") is not None:
+            answered_counts.append(study.get("answered") or 0)
         for a in study.get("answers") or []:
             if not a.get("answered"):
                 continue
-            entry = answers.setdefault(a["id"], {"n": a.get("n"), "section": a.get("section_name"), "question": a.get("question"),
+            entry = answers.setdefault(a.get("question") or a["id"], {"n": a.get("n"), "section": a.get("section_name"), "question": a.get("question"),
                                                   "answered": 0, "choices": Counter(), "texts": []})
             entry["answered"] += 1
             if a.get("choice"):
@@ -191,14 +195,21 @@ def combine(reports):
                 entry["texts"].append({"tester": index + 1, "choice": a.get("choice_label"), "text": a["answer"].strip()})
         for f in report.get("findings") or []:
             key = (f.get("kind"), normal(f.get("title")))
-            entry = findings.setdefault(key, {"kind": f.get("kind"), "title": f.get("title"), "severity": f.get("severity") or "low",
-                                              "area": f.get("area"), "detail": f.get("detail"), "where": f.get("where") or [],
-                                              "testers": set(), "count": 0, "tester_said": False})
+            origin = f.get("origin") or ("condition" if f.get("kind") in ("network", "printer") else "app")   # reports before schema 3 have no origin
+            entry = findings.setdefault(key, {"kind": f.get("kind"), "title": f.get("title"), "severity": f.get("severity") or "low", "origin": origin,
+                                              "area": f.get("area"), "detail": f.get("detail"), "where": f.get("where") or [], "code": f.get("code") or [],
+                                              "screens": f.get("screens") or [], "trail": f.get("trail") or [], "testers": set(), "count": 0,
+                                              "tester_said": False})
             entry["testers"].add(index + 1)
             entry["count"] += f.get("count") or 1
             entry["tester_said"] = entry["tester_said"] or bool(f.get("tester_said"))
             if SEVERITY_RANK.get(f.get("severity"), 3) < SEVERITY_RANK.get(entry["severity"], 3):
                 entry["severity"] = f["severity"]
+            if not entry["trail"] and f.get("trail"):
+                entry["trail"] = f["trail"]
+            for place in f.get("code") or []:
+                if place not in entry["code"]:
+                    entry["code"].append(place)
         usage = report.get("usage") or {}
         for method, n in ((usage.get("how_they_click") or {}).get("methods") or {}).items():
             how[method] += n
@@ -247,13 +258,20 @@ def combine(reports):
     out["notes"] = notes
     out["slow_spots"] = slow_spots
     out["reports_thinned"] = thinned_testers
-    out["rounds"] = dict(study_testers)
-    out["questions"] = [{"id": qid, "n": e["n"], "section": e["section"], "question": e["question"], "answered": e["answered"], "of": len(reports),
+    out["questions_answered_median"] = statistics.median(answered_counts) if answered_counts else None
+    out["questions"] = [{"id": "q%s" % e["n"], "n": e["n"], "section": e["section"], "question": e["question"], "answered": e["answered"], "of": len(reports),
                          "choices": dict(e["choices"]), "texts": e["texts"]} for qid, e in sorted(answers.items(), key=lambda kv: kv[1]["n"] or 0)]
-    out["findings"] = sorted(({"kind": e["kind"], "title": e["title"], "severity": e["severity"], "area": e["area"], "detail": e["detail"], "where": e["where"],
-                               "testers": len(e["testers"]), "tester_numbers": sorted(e["testers"]), "count": e["count"], "tester_said": e["tester_said"]}
-                              for e in findings.values()),
-                             key=lambda f: (SEVERITY_RANK.get(f["severity"], 3), -f["testers"], -f["count"], f["title"] or ""))
+    ranked = sorted(({"kind": e["kind"], "title": e["title"], "severity": e["severity"], "origin": e["origin"], "area": e["area"], "detail": e["detail"],
+                      "where": e["where"], "code": e["code"][:4], "screens": e["screens"], "trail": e["trail"][-5:], "testers": len(e["testers"]),
+                      "tester_numbers": sorted(e["testers"]), "count": e["count"], "tester_said": e["tester_said"]} for e in findings.values()),
+                    key=lambda f: (SEVERITY_RANK.get(f["severity"], 3), -f["testers"], -f["count"], f["title"] or ""))
+    picked = 0
+    for f in ranked:
+        f["fix_first"] = None
+        if picked < FIX_FIRST_MAX and f["origin"] == "app" and f["severity"] in ("high", "medium"):
+            picked += 1
+            f["fix_first"] = picked
+    out["findings"] = ranked
     out["first_run"] = {"setup_opened": wizard["opened"], "setup_finished": wizard["finished"], "setup_skipped": wizard["skipped"],
                         "setup_closed_early": wizard["closed_early"],
                         "median_minutes_to_first_connection": statistics.median(connect_minutes) if connect_minutes else None,
@@ -351,18 +369,25 @@ def render(c):
         _counts(Counter(c["how_they_press"])), c["median_press_to_change_ms"] if c["median_press_to_change_ms"] is not None else "n/a",
         c["median_page_load_ms"] if c["median_page_load_ms"] is not None else "n/a"))
     add("")
-    add("Problems that came up (the top 15; --findings prints them all)")
-    for f in c["findings"][:15]:
-        add("  [%-6s] %d tester%s  %s" % (f["severity"], f["testers"], "" if f["testers"] == 1 else "s", (f["title"] or "")[:110]))
-    if not c["findings"]:
+    add("Fix first: the app's own faults, worst first, with how many testers hit each (--findings has the detail)")
+    first = [f for f in c["findings"] if f["fix_first"]]
+    for f in first:
+        add("  %2d. [%-6s] %d of %d tester%s  %s" % (f["fix_first"], f["severity"], f["testers"], c["testers"], "" if c["testers"] == 1 else "s", (f["title"] or "")[:100]))
+    if not first:
         add("  none")
+    around = [f for f in c["findings"] if f["origin"] == "condition"]
+    if around:
+        add("Around the app (conditions, not faults in it)")
+        for f in around[:10]:
+            add("  [%-6s] %d of %d tester%s  %s" % (f["severity"], f["testers"], c["testers"], "" if c["testers"] == 1 else "s", (f["title"] or "")[:100]))
     if c["questions"]:
         add("")
-        add("The questions: how many answered (Yes / No / Didn't try it where asked)")
+        add("The questions: how many testers answered each (median %s of %d per tester)" % (
+            c["questions_answered_median"] if c["questions_answered_median"] is not None else "n/a", max([q["n"] or 0 for q in c["questions"]] or [0])))
         for q in c["questions"]:
             ch = q["choices"]
             add("  %2d. %-58s %d of %d%s" % (q["n"], (q["question"] or "")[:58], q["answered"], q["of"],
-                                              "   Yes %d, No %d, Didn't try it %d" % (ch.get("yes", 0), ch.get("no", 0), ch.get("didnt_try", 0)) if ch else ""))
+                                              "   Didn't try it %d" % ch.get("didnt_try", 0) if ch.get("didnt_try") else ""))
         add("  (--answers prints every written answer)")
     return "\n".join(lines) + "\n"
 
@@ -377,27 +402,54 @@ def render_answers(c):
             lines += ["", section.upper(), ""]
         lines.append("%d. %s" % (q["n"], q["question"]))
         if q["choices"]:
-            lines.append("   Yes %d, No %d, Didn't try it %d" % (q["choices"].get("yes", 0), q["choices"].get("no", 0), q["choices"].get("didnt_try", 0)))
+            lines.append("   Didn't try it: %d" % q["choices"].get("didnt_try", 0))
         for t in q["texts"]:
             lines.append("   Tester %d%s: %s" % (t["tester"], " (%s)" % t["choice"] if t["choice"] else "", t["text"]))
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _fix_lines(c, f, number=None):
+    lines = ["### %s[%s] %s" % (("%d. " % number) if number else "", f["severity"], f["title"]),
+             "- Testers: %d of %d (%s), %d time%s%s" % (f["testers"], c["testers"], ", ".join(str(n) for n in f["tester_numbers"]), f["count"],
+                                                     "" if f["count"] == 1 else "s", ", the tester said" if f["tester_said"] else ""),
+             "- Screen: %s" % (", ".join(f["screens"]) if f.get("screens") else f.get("area") or "not recorded")]
+    if f.get("detail"):
+        lines.append("- What happened (from one tester): %s" % f["detail"])
+    lines.append("- Last presses before it (from one tester): %s" % ("; ".join(f["trail"]) if f.get("trail") else "none recorded"))
+    lines.append("- Where to look: %s" % ("; ".join(list(f.get("code") or []) + [w for w in f.get("where") or [] if not str(w).startswith("Code: ")])
+                                          or "not enough was recorded to point at code"))
+    lines.append("")
+    return lines
+
+
 def render_findings(c):
-    """The combined work list as Markdown: highest severity first, then the problems the most testers hit."""
-    lines = ["# Deja Vu1 tester findings, %d report%s combined" % (c["testers"], "" if c["testers"] == 1 else "s"), ""]
-    for number, f in enumerate(c["findings"], 1):
-        lines.append("## %d. [%s] %s" % (number, f["severity"], f["title"]))
-        lines.append("- Testers: %d of %d (%s), %d time%s%s" % (f["testers"], c["testers"], ", ".join(str(n) for n in f["tester_numbers"]), f["count"],
-                                                                "" if f["count"] == 1 else "s", ", the tester said" if f["tester_said"] else ""))
-        if f.get("area"):
-            lines.append("- Part of the app: %s" % f["area"])
-        if f.get("detail"):
-            lines.append("- What: %s" % f["detail"])
-        for w in f.get("where") or []:
-            lines.append("- Where: %s" % w)
-        lines.append("")
+    """The combined work list as Markdown: the top fixes first, then the conditions around the app, then the rest by part of the app."""
+    lines = ["# Deja Vu1 tester findings, %d report%s combined" % (c["testers"], "" if c["testers"] == 1 else "s"), "",
+             "Fix first holds the app's own faults rated high or medium, worst first (at most ten). A finding that several testers hit",
+             "is one finding with the testers listed. Around the app lists conditions that are not the app's fault.", "", "## Fix first", ""]
+    first = [f for f in c["findings"] if f["fix_first"]]
+    for f in first:
+        lines += _fix_lines(c, f, f["fix_first"])
+    if not first:
+        lines += ["Nothing needed fixing in what was recorded.", ""]
+    around = [f for f in c["findings"] if f["origin"] == "condition"]
+    if around:
+        lines += ["## Around the app", ""]
+        for f in around:
+            lines += _fix_lines(c, f)
+    more = [f for f in c["findings"] if f["origin"] == "app" and not f["fix_first"]]
+    if more:
+        lines += ["## More findings", ""]
+        groups = {}
+        for f in more:
+            groups.setdefault(f.get("area") or "Other", []).append(f)
+        for area, rows in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+            lines += ["### %s (%d)" % (area, len(rows)), ""]
+            for f in rows:
+                lines.append("- [%s] %s: %d of %d tester%s. Look at: %s" % (f["severity"], f["title"], f["testers"], c["testers"], "" if c["testers"] == 1 else "s",
+                                                                           ", ".join(f.get("code") or []) or "n/a"))
+            lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

@@ -218,18 +218,22 @@ class GetRoutes:
             if self._module_blocked("timelapse"):
                 return None
             tester.note_feature("timelapse")
-            if route.endswith("/video"):
-                data, ctype = timelapse.saved_video(printer_id, _q(query, "name"))
-                name = _q(query, "name")
-            else:
-                if force_disconnected or not connected:
-                    return self._send_json({"connected": False, "demo": False})
-                path = _q(query, "path")
-                data = mock_moonraker.printer_video_bytes(_q(query, "root"), path, timelapse.MAX_VIDEO_BYTES)
-                name = os.path.basename(path)
-                ctype = timelapse.VIDEO_TYPES.get(name.rsplit(".", 1)[-1].lower(), "application/octet-stream")
             download = query.get("download", ["0"])[0] == "1"
-            return self._send_bytes(data, ctype, filename=name if download else None)
+            if route.endswith("/video"):
+                name = _q(query, "name")
+                path, ctype = timelapse.saved_video_path(printer_id, name)
+                return self._send_file_ranged(path, ctype, filename=name if download else None)
+            if force_disconnected or not connected:
+                return self._send_json({"connected": False, "demo": False})
+            path = _q(query, "path")
+            name = os.path.basename(path)
+            ctype = timelapse.VIDEO_TYPES.get(name.rsplit(".", 1)[-1].lower(), "application/octet-stream")
+            # Passed on as the printer sends it (and a scrub is a Range request the printer answers), so a large video starts
+            # playing at once instead of after the whole file has crossed the printer's Wi-Fi, and none of it is held in memory.
+            with mock_moonraker.printer_video_stream(_q(query, "root"), path, self.headers.get("Range")) as (status, headers, chunks):
+                extra = {"Content-Range": headers["content-range"]} if headers.get("content-range") else None
+                return self._send_stream(status, ctype, chunks, length=headers.get("content-length"), extra=extra,
+                                         filename=name if download else None)
 
         if route == "/api/timelapse/frame":
             if self._module_blocked("timelapse"):

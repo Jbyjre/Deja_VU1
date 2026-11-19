@@ -4,7 +4,7 @@ answers) on 19 November 2026, so a session reads only the part it needs. app.py 
 `app.<name>` works as before. Holds: DejaVuServer, LIVE_FPS, LIVE_SECONDS, MAX_UPLOAD, PORT, PORT_IN_USE,
 WRITE_GRACE, _APP_ROUTES, _CONTROL_ACTIONS, _DATA_ROUTES, _FARM_ROUTES, _Gone, _LOCAL_SUFFIXES, _QUEUE_ACTIONS,
 _chamber, _close_down, _colour_plan, _confirm_print, _demo, _fleet_rows, _host_name, _live_snapshot,
-_loaded_heads, _print_phone_qr, _q, _restart_soon, _tester_study, _tester_study_update, module_routes.
+_loaded_heads, _print_phone_qr, _q, _restart_soon, _tester_study, module_routes.
 """
 
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -169,6 +169,7 @@ _DATA_ROUTES = {
     "/api/timelapse/printer": ("timelapse", lambda q: {
         **mock_moonraker.printer_videos(),
         "saved": timelapse.saved_videos(mock_moonraker.selected_printer_id())}),
+    "/api/timelapse/jobs": ("timelapse", lambda q: timelapse.keep_jobs(mock_moonraker.selected_printer_id())),
     "/api/timelapse/frames": ("timelapse", lambda q: {
         "frames": timelapse.frames(mock_moonraker.selected_printer_id(), _q(q, "session"))}),
 }
@@ -234,22 +235,12 @@ _APP_ROUTES = {
 
 
 def _tester_study(q):
-    """The test round, and with ?questions=1 the questions, the saved answers and what the app saw next to each."""
+    """The tester's progress, and with ?questions=1 the 22 questions, the saved answers and what the app saw next to each."""
     info = tester_study.describe()
     if _q(q, "questions", "") in ("1", "true", "yes"):
         info = {**info, "sections": tester_questions.public(), "choices": tester_questions.CHOICES,
                 "answers": tester_study.answers_view(), "hints": tester_study.hints(tester_report.cached_report())}
     return info
-
-
-def _tester_study_update(body):
-    if "length_days" in body:
-        tester_study.set_length(body.get("length_days"))
-    if body.get("welcomed"):
-        tester_study.mark_welcomed()
-    if "finish" in body:
-        tester_study.finish(bool(body.get("finish")))
-    return tester_study.describe()
 
 
 def _confirm_print(name):

@@ -6,7 +6,7 @@ ENV_PATH, EngineStartFailed, MAX_FOUND, MAX_JOBS_KEPT, MAX_PRESET_BYTES, MAX_PRO
 STOCK_COLOURS, SliceCancelled, SliceFailed, _DATA_DIR, _MAX_LISTED, _PATH, _RECEIPTS, _TAIL, _app_facts,
 _app_from_name, _cancellations, _capabilities, _check_program, _could_be_program, _defaults, _explain,
 _free_name, _job_update, _jobs, _listing, _load_receipts, _lock, _looks_like_orca, _mark_interrupted,
-_mode_facts, _now, _operation, _order, _persist_locked, _previous_output, _profile, _profile_facts,
+_mode_facts, _now, _operation, _order, _persist_locked, _plain, _previous_output, _profile, _profile_facts,
 _program_files, _program_identity, _run_lock, _save, _search_places, _settings_file_is_orca, _shown_command,
 _stock_heads, _tail, _traces, any_active, cancel_all, cancel_job, command_for, diagnose, engine_capabilities,
 engine_changed, find_slicers, get_job, get_settings, installed_catalog, jobs, public_settings, read_preset,
@@ -407,6 +407,11 @@ def _stock_heads():
     return heads
 
 
+def _plain(data):
+    """What the engine printed, as text (nothing cut)."""
+    return data.decode("utf-8", errors="replace") if isinstance(data, bytes) else (data or "")
+
+
 def _tail(data):
     text = (data or b"").decode("utf-8", errors="replace") if isinstance(data, bytes) else (data or "")
     return text[-_TAIL:].strip()
@@ -457,18 +462,26 @@ def _free_name(stem, plate, plates):
     return file_library.clean_name(name)
 
 
-def _explain(code, result_json, err_tail, out_tail):
+def _orca_number(code, result_json):
+    """Orca's own error number: from result.json (written on Linux only), else from how the program ended."""
     rc = result_json.get("return_code") if isinstance(result_json, dict) else None
+    return rc if rc is not None else slice_diagnosis.orca_code(code)
+
+
+def _explain(code, result_json, err_tail, out_tail):
+    rc = _orca_number(code, result_json)
     words = ORCA_ERRORS.get(rc) if rc is not None else None
     orca_says = (result_json or {}).get("error_string") if isinstance(result_json, dict) else None
+    reasons = "; ".join(slice_diagnosis.reason_lines(err_tail, out_tail, limit=2))
     if words and orca_says:
         return f"{words}. Orca said: {orca_says}"
-    if words or orca_says:
-        return words or f"Orca said: {orca_says}"
+    if words:
+        return f"{words} (Orca's code {rc})" + (f". It printed: {reasons}" if reasons else "")
+    if orca_says:
+        return f"Orca said: {orca_says}"
     if code is not None and code < 0 and os.name == "posix":
         return f"Orca stopped unexpectedly (signal {-code}) - it may have crashed"
-    last = (err_tail or out_tail).splitlines()[-1:] or [""]
-    return f"Orca exited with code {code}" + (f": {last[0][:200]}" if last[0] else "")
+    return f"Orca exited with code {code}" + (f": {reasons}" if reasons else "")
 
 
 def diagnose(code, result_json, out, err):
@@ -476,27 +489,32 @@ def diagnose(code, result_json, out, err):
     (headline, cause) for an engine run that failed. A message the system
     printed (a missing library, no screen) is more exact than Orca's own
     "couldn't start" code, so it wins there; otherwise Orca's own code and
-    words do, then the way the process ended, then its last line.
+    words do (from result.json, or from the exit code: result.json is only
+    written on Linux), then the way the process ended, then the lines that
+    say why. Orca's own "found error" line is never taken for the reason.
     """
     def as_text(data):
         return data.decode("utf-8", "replace") if isinstance(data, bytes) else (data or "")
 
-    rc = result_json.get("return_code") if isinstance(result_json, dict) else None
+    rc = _orca_number(code, result_json)
     from_system = slice_diagnosis.from_text(as_text(out) + "\n" + as_text(err))
     if from_system and rc in (None, -1):
         return from_system["title"], from_system
     words = ORCA_ERRORS.get(rc) if rc is not None else None
     says = result_json.get("error_string") if isinstance(result_json, dict) else None
+    reasons = slice_diagnosis.reason_lines(_tail(err), _tail(out))
     if words or says:
-        return _explain(code, result_json, "", ""), slice_diagnosis.from_orca(rc, words, says)
+        cause = slice_diagnosis.from_orca(rc, words, says)
+        if reasons and not says:
+            cause["evidence"] = slice_diagnosis.redact("\n".join(reasons))
+        return _explain(code, result_json, _tail(err), _tail(out)), cause
     ended = slice_diagnosis.from_exit(code)
     if ended:
         return ended["title"], ended
     headline = _explain(code, result_json, _tail(err), _tail(out))
-    last = (_tail(err) or _tail(out)).splitlines()[-1:] or [""]
     return headline, slice_diagnosis.make(
         "engine_exit", headline, "", ["Open the report: the last lines of the engine's output say what failed."],
-        evidence=last[0][:240] or None)
+        evidence=("\n".join(reasons) or None))
 
 
 class SliceFailed(ValueError):

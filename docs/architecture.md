@@ -630,21 +630,26 @@ drops, refused commands, Confirm Print checks, slices, conversions, updates, slo
 Everything is appended to JSON Lines files in `<data>/tester/`. Nothing is sent anywhere: the tester saves a zip and attaches it
 to a message.
 
-The test round (`backend/tester_study.py`, `frontend/tester-study.js`): the tester chooses 1, 2 or 3 days, a chip shows the day,
-and when the days are up the app asks 52 questions (`backend/tester_questions.py`) and then saves the report. Answers live in
-`<data>/tester/study.json`, masked like everything else, and go into the report next to what the app recorded.
+The questions (`backend/tester_study.py`, `backend/tester_questions.py`, `frontend/tester-study.js`): Tester mode records from the first
+start and never stops, so there is no length to pick and no end date. The tester opens the 22 questions (nine sections, the same
+words as the questions sheet) from Settings, Tester mode, whenever they like, and saves the report from the last step. Answers live
+in `<data>/tester/study.json`, masked like everything else, and go into the report next to what the app recorded. A `study.json`
+from the earlier 52-question build is set aside under `earlier_answers`, never shown under the new numbers.
 
 Private details never reach the disk. `tester.mask()` replaces addresses, keys, Wi-Fi names, serial numbers, folders that
 hold a user name and the names of files, printers and spools, in the browser's events and the server's own, and the
 report builder masks again. A file appears as "file 3, .3mf, 2.4 MB".
 
 `tester_report.py` reads the events once, streaming, and builds the totals for the Settings card, `report.json`
-(`schema_version` 2), `report.html` (one page with no script that loads nothing from outside), `findings.md` (the ranked work
-list), `events.jsonl` and a README, packed into one zip. The page starts with Fix these first, a ranked list of errors, slow
-controls, failed requests, failed slices, low frame rates, notes and troubled answers, each with its part of the app and where to
-look. When the raw events would pass 20 MB it replaces the oldest routine ones with one line per day and control, keeps every
-error, slow action, note and printer event, counts before it thins, and says so in the report.
-`tools/tester-reports.py` combines several zips into totals, the combined work list and every written answer;
+(`schema_version` 3), `report.html` (one page with no script that loads nothing from outside), `findings.md`, `events.jsonl` and a
+README, packed into one zip. Both pages open with the same top (`tester_report_top.py`): a headline strip, then Fix first (at most
+ten faults in Deja Vu1 itself, each with what happened, how often, the screen, the last presses before it and where to look in the
+code), then the conditions around the app (printer off, network down, computer asleep), then the rest by part of the app. Requests
+that waited at the same moment are one stall that names what the server was running; requests lost with the server are one finding
+(`tester_report_part4.py`, which also holds the code pointers). A failed slice keeps the engine's whole output. When the raw events
+would pass 20 MB it replaces the oldest routine ones with one line per day and control, keeps every error, slow action, note and
+printer event, counts before it thins, and says so in the report.
+`tools/tester-reports.py` combines several zips into totals, the combined fix-first list (each fix with how many testers hit it) and every written answer;
 `tools/tester-walk.js` walks the feature in a real browser and measures what recording costs.
 
 ### `backend/led_status.py` / `backend/color_check.py`

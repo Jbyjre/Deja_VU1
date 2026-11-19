@@ -7,7 +7,7 @@
  * loadCamera, loadForecast, loadPrinterVideos, loadRuleLog, loadSideBySide, localLines, morph, moveTabBlob,
  * openMenu, placeBlob, plateSummary, playWebRTC, pulseRefraction, renderGate, renderQuickActions, reportView,
  * sensorLine, sentence, setCamMode, showMjpeg, springCurve, startCamera, stopCamera, streamProblem, syncNav,
- * watchCamera, within
+ * tlForget, tlKeep, tlReset, watchCamera, within
  */
 'use strict';
 const WorkshopPart3 = (() => {
@@ -253,7 +253,7 @@ async function loadCamera() {
     cam.mjpeg = (s && s.stream_url) || '';
     cam.webrtc = webrtcModule && Boolean(w.go2rtc_url && w.stream) && typeof RTCPeerConnection === 'function';
     if (!cam.mjpeg && !cam.webrtc) {
-      host.innerHTML = empty('No camera set up', 'Add the printer camera\'s MJPEG address above. Nothing is simulated here, so the demo has no camera.');
+      host.innerHTML = empty('Nothing to set up', 'The printer\'s own camera shows on the Printer page, beside the twin. Add an address above only to use a different camera. Nothing is simulated here, so the demo has no camera.');
       cam.built = false;
       return;
     }
@@ -291,7 +291,7 @@ function showMjpeg(why) {
     const run = cam.run;
     const note = why ? `Using the normal camera feed: ${why}` : '';
     img.onload = () => { if (run === cam.run && $('cam-mode').dataset.mode === 'trouble') setCamMode('mjpeg', note); };
-    img.onerror = async () => { if (run === cam.run) setCamMode('trouble', `${await streamProblem()} Reconnect to try again.`); };
+    img.onerror = async () => { if (run === cam.run) setCamMode('trouble', `${await streamProblem()} The Printer page shows the printer\'s own camera instead. Reconnect to try this address again.`); };
     img.src = `/api/camera/stream?t=${Date.now()}`;
     setCamMode('mjpeg', note);
     watchCamera(run, note);
@@ -399,37 +399,97 @@ function stopCamera() {
     if (img) img.removeAttribute('src');
   }
 
-  /* The printer's own recordings (the U1 keeps them in its read-only camera folder) and the copies kept here. */
-async function loadPrinterVideos(host) {
-    const data = await getJSON(api('/api/timelapse/printer')).catch(() => null);
-    if (!data || data.demo || (!data.videos && !data.saved) || !host.isConnected) return;
-    const size = n => (n == null ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-    const when = t => (t ? new Date(t * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
-    const link = v => api(`/api/timelapse/printer-video?root=${enc(v.root)}&path=${enc(v.path)}`);
-    const box = document.createElement('div');
-    box.className = 'tl-printer';
-    box.innerHTML = `<h3>On the printer</h3>${(data.videos || []).length ? (data.videos || []).slice(0, 12).map(v => `
-      <div class="reg-row"><span class="reg-name">${esc(v.path.split('/').pop())}</span><span class="log-empty">${esc(when(v.modified))} · ${esc(size(v.size))}</span>
-        <span class="tl-acts"><a class="btn small" href="${esc(link(v))}" target="_blank" rel="noopener">Play</a>
-        <button class="btn small" type="button" data-keep-root="${esc(v.root)}" data-keep-path="${esc(v.path)}">Keep a copy here</button></span></div>`).join('')
+  /* The printer's own recordings (the U1 keeps them in its read-only camera folder) and the copies kept here.
+   * They are drawn into a box of their own and replaced only when they changed, so a refresh, a slow answer from the printer (its Wi-Fi
+   * can take many seconds) or a switch being flipped never blanks the list. Keeping a copy is a background job on the server: the
+   * press returns at once and the row shows its progress, so a long copy never holds a connection (a browser allows six to one address). */
+const tlPrinter = { data: null, jobs: [], busy: false, poll: 0, host: null, key: '' };
+
+const tlSize = n => (n == null ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+const tlWhen = t => (t ? new Date(t * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
+
+function tlJobFor(v) { return tlPrinter.jobs.find(j => j.state === 'running' && j.root === v.root && j.path === v.path); }
+
+function tlKeepLabel(job) {
+    if (!job) return 'Keep a copy here';
+    return job.total ? `Copying ${Math.min(99, Math.round(job.bytes / job.total * 100))}%` : 'Copying…';
+  }
+
+function tlPrinterHTML(data) {
+    const videos = (data.videos || []).slice(0, 12);
+    const failed = tlPrinter.jobs.filter(j => j.state === 'failed').slice(0, 3);
+    return `<h3>On the printer</h3>${videos.length ? videos.map(v => {
+      const job = tlJobFor(v);
+      return `<div class="reg-row"><span class="reg-name">${esc(v.path.split('/').pop())}</span><span class="log-empty">${esc(tlWhen(v.modified))} · ${esc(tlSize(v.size))}</span>
+        <span class="tl-acts"><a class="btn small" href="${esc(api(`/api/timelapse/printer-video?root=${enc(v.root)}&path=${enc(v.path)}`))}" target="_blank" rel="noopener">Play</a>
+        <button class="btn small" type="button" data-keep-root="${esc(v.root)}" data-keep-path="${esc(v.path)}"${job ? ` disabled aria-busy="true" title="${esc(tlSize(job.bytes))} of ${esc(tlSize(job.total) || 'unknown size')}"` : ''}>${esc(tlKeepLabel(job))}</button></span></div>`;
+    }).join('')
       : `<p class="log-empty">${(data.roots || []).length ? 'The printer has no recorded videos right now.' : 'This printer’s firmware lists no video folder. Deja Vu1’s own flipbooks above still work.'}</p>`}
-      ${(data.saved || []).length ? `<h3>Kept on this computer</h3>${data.saved.map(v => `<div class="reg-row"><span class="reg-name">${esc(v.name)}</span><span class="log-empty">${esc(size(v.size))}</span>
+      ${failed.map(j => `<p class="field-hint tl-failed" role="status">Not kept: ${esc(j.name)}. ${esc(j.error || '')}</p>`).join('')}
+      ${(data.saved || []).length ? `<h3>Kept on this computer</h3>${data.saved.map(v => `<div class="reg-row"><span class="reg-name">${esc(v.name)}</span><span class="log-empty">${esc(tlSize(v.size))}</span>
         <span class="tl-acts"><a class="btn small" href="${esc(api('/api/timelapse/video?name=' + enc(v.name)))}" target="_blank" rel="noopener">Play</a>
         <a class="btn small" href="${esc(api('/api/timelapse/video?download=1&name=' + enc(v.name)))}">Download</a>
         <button class="btn small" type="button" data-forget-video="${esc(v.name)}">Remove</button></span></div>`).join('')}` : ''}
       <p class="field-hint">The printer keeps only its latest recordings, so keep the ones you want. A video from a print that stopped early may not play if the printer never finished writing it; the flipbook of that print above still has its frames.</p>`;
-    host.querySelector('.tl-printer')?.remove();
-    host.append(box);
-    qsa('[data-keep-path]', box).forEach(b => b.addEventListener('click', async () => {
-      b.disabled = true; b.textContent = 'Copying…';
-      const r = await postJSON(api('/api/timelapse/keep'), { root: b.dataset.keepRoot, path: b.dataset.keepPath });
-      toast(r.ok ? `Kept ${r.body.saved} on this computer` : `Not kept: ${r.body.error}`, r.ok ? 'ok' : 'bad');
-      loadPrinterVideos(host);
-    }));
-    qsa('[data-forget-video]', box).forEach(b => b.addEventListener('click', async () => {
-      const r = await postJSON(api('/api/timelapse/forget'), { name: b.dataset.forgetVideo });
-      if (r.ok) loadPrinterVideos(host);
-    }));
+  }
+
+function tlReset() {
+    tlPrinter.data = null;
+    tlPrinter.jobs = [];
+  }
+
+function tlDrawPrinter() {
+    const box = tlPrinter.host && tlPrinter.host.querySelector('#tl-printer');
+    if (box && tlPrinter.data) setHTML(box, tlPrinterHTML(tlPrinter.data));
+  }
+
+async function loadPrinterVideos(host, force) {
+    if (tlPrinter.busy && !force) return;
+    tlPrinter.busy = true;
+    try {
+      const [data, jobs] = await Promise.all([getJSON(api('/api/timelapse/printer')).catch(() => null), getJSON(api('/api/timelapse/jobs')).catch(() => null)]);
+      if (!data || data.demo || (!data.videos && !data.saved) || !host.isConnected) return;    // what is drawn stays as it is
+      tlPrinter.host = host;
+      tlPrinter.data = data;
+      if (jobs && Array.isArray(jobs.jobs)) tlPrinter.jobs = jobs.jobs;
+      tlDrawPrinter();
+      if (tlPrinter.jobs.some(j => j.state === 'running')) tlWatchCopies();
+    } finally { tlPrinter.busy = false; }
+  }
+
+/* Watch the copies the server is making, once a second while any runs; say how each ended, then refresh the kept list once. */
+function tlWatchCopies() {
+    if (tlPrinter.poll) return;
+    const tick = async () => {
+      tlPrinter.poll = 0;
+      const r = await getJSON(api('/api/timelapse/jobs')).catch(() => null);
+      if (!r || !Array.isArray(r.jobs)) { tlPrinter.poll = setTimeout(tick, 3000); return; }     // the server may be restarting: look again
+      const before = tlPrinter.jobs;
+      tlPrinter.jobs = r.jobs;
+      r.jobs.forEach(j => {
+        const was = before.find(b => b.id === j.id);
+        if (was && was.state === 'running' && j.state !== 'running') toast(j.state === 'done' ? `Kept ${j.name} on this computer` : `Not kept: ${j.error}`, j.state === 'done' ? 'ok' : 'bad');
+      });
+      tlDrawPrinter();
+      if (r.jobs.some(j => j.state === 'running')) tlPrinter.poll = setTimeout(tick, 1000);
+      else if (tlPrinter.host) loadPrinterVideos(tlPrinter.host, true);
+    };
+    tlPrinter.poll = setTimeout(tick, 500);
+  }
+
+async function tlKeep(btn) {
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+    const r = await postJSON(api('/api/timelapse/keep'), { root: btn.dataset.keepRoot, path: btn.dataset.keepPath });
+    if (!r.ok) { toast(`Not kept: ${r.body.error}`, 'bad'); btn.disabled = false; btn.textContent = 'Keep a copy here'; return; }
+    if (r.body.job) tlPrinter.jobs = [r.body.job, ...tlPrinter.jobs.filter(j => j.id !== r.body.job.id)];
+    tlDrawPrinter();
+    tlWatchCopies();
+  }
+
+async function tlForget(btn) {
+    const r = await postJSON(api('/api/timelapse/forget'), { name: btn.dataset.forgetVideo });
+    if (r.ok && tlPrinter.host) loadPrinterVideos(tlPrinter.host, true);
   }
 
   /* A flipbook as a video file, made in this browser (no encoder is installed): each frame is drawn onto a
@@ -846,5 +906,5 @@ function initBlobResize() {
     flip, flipbookVideo, initBlobResize, initCameraForm, initDemoTools, initDockStack, initGlassMenu,
     initHoldToCancel, initPressGlow, initScrollEdge, initSwap, lerp, loadCamera, loadForecast, loadPrinterVideos,
     loadRuleLog, loadSideBySide, localLines, morph, moveTabBlob, openMenu, plateSummary, pulseRefraction,
-    renderGate, renderQuickActions, reportView, sentence, stopCamera, syncNav };
+    renderGate, renderQuickActions, reportView, sentence, stopCamera, syncNav, tlForget, tlKeep, tlReset };
 })();

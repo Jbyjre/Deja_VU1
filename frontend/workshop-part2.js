@@ -165,7 +165,7 @@ function buildTwin() {
     if (window.IntersectionObserver && !twin.watch) {
       twin.watch = new IntersectionObserver(entries => {
         twin.visible = entries.some(e => e.isIntersecting);
-        if (twin.visible && twin.stale) { twin.stale = false; queueTwin(); }
+        if (twin.visible && twin.stale) { twin.stale = false; twin.sig = null; queueTwin(); }
       });
       twin.watch.observe($('twin-card'));
     }
@@ -179,6 +179,7 @@ function buildTwin() {
 function setTwinMode(mode) {
     if (!twin.model && twin.built && typeof Twin3D !== 'undefined') {
       twin.model = Twin3D.create($('twin-model'), { onPick: id => choose(id) });
+      twin.sig = null;
       if (twin.model) { twin.model.onViewChange(name => markView(name)); twin.printKey = null; applyTwinOptions(); syncTwinPrint(twin.state); }
     }
     if (mode === 'model' && !twin.model) mode = 'drawing';
@@ -235,15 +236,22 @@ function queueTwin() {
     // other frame on a 60 Hz screen. (A 32 ms timer before the frame usually overshot to the
     // third frame, so a print moved the heads about 20 times a second, unevenly.)
     // Following a print's G-code the twin draws every frame where the model costs little to draw
-    // (a real graphics card). Where it costs more (software drawing) it leaves the page at least
-    // two thirds of the time: a 40 ms drawing waits 120 ms before the next, and a very slow one
-    // draws no more than about once a second.
+    // (a real graphics card). Where it costs more (software drawing) it leaves the page most of the
+    // time: a 40 ms drawing waits 120 ms before the next, and a slow one waits two and a half times its
+    // own cost (up to three seconds), so the page keeps at least 70% of the time however slow drawing is.
+    // (The wait used to shrink again above 750 ms, which left a page with one-second drawings frozen three quarters of the time.)
     const draw = () => {
       const cost = twin.model ? twin.model.drawCost() : 0;
-      const gap = cost < 8 ? 0 : Math.min(Math.max(1000 - cost, 250), Math.max(30, cost * 3));
+      const gap = cost < 8 ? 0 : cost < 100 ? Math.max(30, cost * 3) : Math.min(cost * 2.5, 3000);
       if (performance.now() - (twin.drawnAt || 0) < gap) { requestAnimationFrame(draw); return; }
       twin.queued = false;
       if (twin.model) {
+        // A reading arrives four times a second, so an idle printer was drawn again and again with nothing new to show. Where drawing
+        // is slow (a browser with graphics acceleration off) each of those drawings froze the page for up to a second. Draw again only
+        // when something the picture shows has changed, or while it follows a print or something is moving.
+        const sig = twinSignature(twin.state, twin.pos);
+        if (sig === twin.sig && !twin.model.moving() && !twin.model.syncInfo()) { renderChips(); renderSync(null); return; }
+        twin.sig = sig;
         // The drawing itself happens a frame later and takes `cost`: count the gap from its end.
         twin.drawnAt = performance.now() + cost;
         twin.model.update(twin.state, twin.pos, { pos: twin.posKind });
@@ -255,6 +263,17 @@ function queueTwin() {
     };
     requestAnimationFrame(draw);
   }
+
+/* What the 3D twin shows that comes from the printer's reading: where the head is (to half a millimetre), the state and progress,
+ * the heads' colours, materials and temperatures (as the touchscreen shows them) and the bed. When none of it differs from the last
+ * drawing there is nothing new to draw. */
+function twinSignature(state, pos) {
+  const st = state || {};
+  const heads = Object.entries(st.toolheads || {}).map(([k, d]) => [k, d.filament_color_hex, d.filament_material, d.filament_loaded, Math.round(d.temperature || 0), Math.round(d.target || 0)]);
+  const bed = st.bed || {};
+  return JSON.stringify([(pos || []).map(v => Math.round(v * 2) / 2), st.state, Math.round((st.progress || 0) * 200), st.active_toolhead, st.printer_id, st.printer_name,
+    st.current_file, st.layer && st.layer.current, st.link_lost, st.machine && st.machine.label, Math.round(bed.temp || 0), Math.round(bed.target || 0), heads]);
+}
 
 function drawTwin(measure) {
     const svg = $('wf-svg');
@@ -600,8 +619,10 @@ async function loadHealth() {
     const host = $('health-host');
     if (!host) return;
     const data = await getJSON(api('/api/health')).catch(() => null);
-    if (!data || !hasData(data) || data.score == null) { host.innerHTML = demoNeeded('print health'); host.dataset.built = ''; return; }
-    if (!host.dataset.built) {
+    // One failed or empty answer replaces the gauge with a note. Its animation must stop with it: it looks up the needle on every frame,
+    // and with the needle gone that was a script error (the page lost the server, and the next frame threw).
+    if (!data || !hasData(data) || data.score == null) { smooth.delete('gauge'); host.innerHTML = demoNeeded('print health'); host.dataset.built = ''; return; }
+    if (!host.dataset.built || !$('g-needle')) {
       host.dataset.built = '1';
       host.innerHTML = `<div class="gauge-wrap">${gaugeSVG()}<div class="g-num"><span id="g-score">—</span><small id="g-band"></small></div></div>
         <ul class="g-deductions" id="g-deductions"></ul>`;
@@ -613,8 +634,10 @@ async function loadHealth() {
     const color = data.band === 'good' ? 'var(--ok)' : (data.band === 'fair' ? 'var(--warn)' : 'var(--bad)');
     fill.style.stroke = color;
     tween('gauge', data.score, (v) => {
+      const needle = $('g-needle');
+      if (!needle) { smooth.delete('gauge'); return; }        // the panel was replaced while this was running
       fill.style.strokeDashoffset = `${arcLen * (1 - v / 100)}`;
-      $('g-needle').setAttribute('transform', `rotate(${-90 + v * 1.8} 100 100)`);
+      needle.setAttribute('transform', `rotate(${-90 + v * 1.8} 100 100)`);
       setText($('g-score'), Math.round(v));
     });
     host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band === 'blocked' ? 'can\'t start' : data.band}`);

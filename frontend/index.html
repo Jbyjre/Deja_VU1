@@ -637,7 +637,7 @@
 
     <div class="grid-2">
       <section class="card liquid-glass" id="camera-card">
-        <div class="card-head"><div><h2>Camera settings</h2><p class="card-sub">Which camera feed to use. The picture itself shows on the Control part, beside the twin.</p></div>
+        <div class="card-head"><div><h2>Camera settings</h2><p class="card-sub">The printer's own camera shows on the Printer page with nothing to set up. Add an address here only to use a different camera.</p></div>
           <label class="switch" for="camera-setting"><span class="switch-label">Use the camera</span>
             <input type="checkbox" id="camera-setting" data-setting-module="camera" data-setting-name="The camera" checked><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
         <form id="camera-form" class="inline-form">
@@ -646,7 +646,7 @@
           <button class="btn" type="submit">Save</button>
           <button class="btn primary" type="button" id="camera-find">Find my printer's camera</button>
         </form>
-        <p class="field-hint" id="camera-url-hint" role="status">Press <b>Find my printer's camera</b> and the app asks the selected printer which camera it has, checks the picture and saves the address. On the Extended Firmware it is usually <code>http://&lt;printer address&gt;/webcam/stream.mjpg</code>.</p>
+        <p class="field-hint" id="camera-url-hint" role="status">Optional. <b>Find my printer's camera</b> asks the selected printer which extra camera feed it has, checks the picture and saves the address. If the address stops answering, the Printer page switches to the printer's own camera by itself. On the Extended Firmware it is usually <code>http://&lt;printer address&gt;/webcam/stream.mjpg</code>.</p>
         <details class="webrtc-setup" id="webrtc-setup" hidden>
           <summary>Low-latency camera (optional, needs go2rtc)</summary>
           <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
@@ -1299,29 +1299,19 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
       <p class="field-hint">Restoring takes one more safety copy first, so a restore can itself be undone. The dashboard then restarts to read the restored records. Model files and camera pictures are covered by the full backup below, not by safety copies.</p>
     </section>
     <section class="card liquid-glass tester-card" id="tester-card">
-      <div class="card-head"><div><h2>Tester mode</h2><p class="card-sub">This tester build keeps a report of how Deja Vu1 behaved while you used it. It is always on, it stays on this computer and Deja Vu1 sends nothing anywhere. When your test round ends you answer some questions, read the report, save one file and attach it to your forum message.</p></div>
+      <div class="card-head"><div><h2>Tester mode</h2><p class="card-sub">Recording for the tester report, always on. It stays on this computer and Deja Vu1 sends nothing anywhere. What it records, and what it never records, is listed below.</p></div>
         <span class="pill tester-always" id="tester-always">Always on</span></div>
       <p class="tester-demo-note" id="tester-demo-note" role="note" hidden><b>Sample numbers.</b> This is the online demo, so the figures below are made up to show the layout and nothing is recorded. Install Deja Vu1 to use Tester mode.</p>
       <p class="tester-demo-note" id="tester-off-note" role="note" hidden>Tester mode is switched off for this run (the server was started with DEJAVU_TESTER=0), so nothing is being recorded.</p>
       <div class="tester-live" id="tester-live" data-module-body="tester">
-        <div class="tester-plan" id="tester-plan" hidden>
-          <div class="tester-plan-head"><b id="tester-plan-title">Day 1 of 3</b><span id="tester-plan-sub"></span></div>
-          <div class="tester-bar" aria-hidden="true"><i id="tester-plan-fill" style="width:0%"></i></div>
-          <div class="tester-plan-row"><span class="tester-hub-label">Test for</span>
-            <div class="tester-lengths" role="group" aria-label="How many days to test">
-              <button type="button" class="tester-length" data-length="1" aria-pressed="false">1 day</button>
-              <button type="button" class="tester-length" data-length="2" aria-pressed="false">2 days</button>
-              <button type="button" class="tester-length" data-length="3" aria-pressed="true">3 days</button>
-            </div></div>
-          <p class="field-hint" id="tester-plan-q">0 of 52 questions answered.</p>
-        </div>
         <div class="tester-tiles" role="group" aria-label="Recorded so far">
-          <div class="stat"><span class="stat-key">Days</span><span class="stat-val" id="tester-days">0</span></div>
+          <div class="stat"><span class="stat-key">Days used</span><span class="stat-val" id="tester-days">0</span></div>
           <div class="stat"><span class="stat-key">Actions</span><span class="stat-val" id="tester-actions">0</span></div>
           <div class="stat"><span class="stat-key">Errors</span><span class="stat-val" id="tester-errors">0</span></div>
           <div class="stat"><span class="stat-key">Slow spots</span><span class="stat-val" id="tester-slow">0</span></div>
         </div>
         <p class="field-hint tester-since" id="tester-since" aria-live="polite">Nothing recorded yet. Use Deja Vu1 as usual.</p>
+        <p class="field-hint tester-progress" id="tester-progress" aria-live="polite">0 of 22 questions answered.</p>
         <div class="tester-actions">
           <button class="btn primary" type="button" id="tester-answer">Answer the questions</button>
           <button class="btn" type="button" id="tester-view">View report</button>
@@ -1329,7 +1319,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
           <button class="btn tester-delete" type="button" id="tester-delete">Delete tester data</button>
         </div>
         <p class="field-hint tester-status" id="tester-status" role="status"></p>
-        <p class="field-hint">Everything recorded stays here until you press Delete tester data, which also removes your answers and starts the test round again. The <b>Something felt off</b> button, bottom right, saves a note whenever you like.</p>
+        <p class="field-hint">The 22 questions can be answered any time and skipped one by one. Everything recorded stays here until you press Delete tester data, which also removes your answers. The <b>Something felt off</b> button, bottom right, saves a note whenever you like.</p>
       </div>
       <div class="tester-lists">
         <div class="well tester-list">

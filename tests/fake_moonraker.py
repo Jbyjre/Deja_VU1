@@ -78,6 +78,8 @@ class FakeMoonraker:
         self.refuse_start_busy = u1        # the U1's 200-with-error start refusal
         self.corrupt_uploads = False
         self.http_faults = {}              # path -> {"status", "body", "delay", "truncate", "html"}
+        self.videos = {}                   # (root, path) -> bytes of a recorded video, served at /server/files/<root>/<path> for "camera" and "timelapse"
+        self.video_chunk_delay = 0.0       # seconds to wait after each 64 KB of a video, to mimic a slow link
         self.webcams = []                  # what /server/webcams/list answers (Moonraker's webcam.py)
         self.webcam_picture = None         # bytes served at /webcam/snapshot.jpg and as /webcam/stream.mjpg
         self.webrtc_messages = []          # every POST to /webcam/webrtc
@@ -409,6 +411,35 @@ class FakeMoonraker:
                     if limit > 0:
                         jobs = jobs[start:start + limit]
                     return self._reply(200, {"result": {"count": len(jobs), "jobs": jobs}})
+                for video_root in ("camera", "timelapse"):
+                    if parsed.path.startswith("/server/files/%s/" % video_root):
+                        # A recorded video, sent slowly when fake.video_chunk_delay is set (the U1's own video files are large
+                        # and its Wi-Fi is slow: the reported times were 78 to 219 s).
+                        from urllib.parse import unquote
+                        data = fake.videos.get((video_root, unquote(parsed.path[len("/server/files/%s/" % video_root):])))
+                        if data is None:
+                            return self._error(404, "File does not exist")
+                        # Moonraker's file server answers a single "Range: bytes=a-b" with 206, as a browser's scrub needs.
+                        import re as _re
+                        wanted = _re.fullmatch(r"bytes=(\d*)-(\d*)", (self.headers.get("Range") or "").strip())
+                        first, last = (wanted.groups() if wanted else ("", ""))
+                        start, end = 0, len(data) - 1
+                        if wanted and (first or last):
+                            start, end = (max(0, len(data) - int(last)), len(data) - 1) if first == "" else (int(first), min(len(data) - 1, int(last) if last else len(data) - 1))
+                        self.send_response(206 if (wanted and (first or last)) else 200)
+                        self.send_header("Content-Type", "video/mp4")
+                        self.send_header("Accept-Ranges", "bytes")
+                        if wanted and (first or last):
+                            self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, len(data)))
+                        self.send_header("Content-Length", str(end - start + 1))
+                        self.end_headers()
+                        step = 65536
+                        body = data[start:end + 1]
+                        for at in range(0, len(body), step):
+                            self.wfile.write(body[at:at + step])
+                            if fake.video_chunk_delay:
+                                time.sleep(fake.video_chunk_delay)
+                        return
                 if parsed.path.startswith("/server/files/gcodes/"):
                     # File download (Moonraker docs/external_api/file_manager.md,
                     # "File download": GET /server/files/{root}/{filename}).

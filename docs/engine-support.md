@@ -23,6 +23,19 @@ The processor type of the Linux runs was not written down.
 - Other versions of Snapmaker Orca and OrcaSlicer, including newer releases.
 - Other slicers.
 
+## Reported, not yet explained
+
+- **Snapmaker Orca 2.4.1 on Windows 11** (a tester's computer, November 2026): a slice ended with exit
+  code 4294967196, which is Orca's own error number -100 (Windows reports a negative exit code as an
+  unsigned 32-bit number; macOS and Linux report its low byte, 156). In Orca's command-line source -100
+  is the slicing error, raised for example when a plate has empty layers or overlapping toolpaths, and
+  Orca writes `result.json` only on Linux, so on Windows the exit code and the printed text are all there
+  is. That report kept only Orca's closing line (`Slic3r::CLI::run found error`), which announces the
+  exit and does not say why, so the cause of that failure is not known. Deja Vu1 now maps the exit code
+  back to -100, shows the lines Orca printed before its closing line, and keeps the engine's whole
+  output in the tester report. No Windows run has been recorded as working, so there is no Windows row
+  above.
+
 These builds slice like the tested ones. A row gets added once someone records a run. If a slice
 fails, the message names the cause and what to try
 ([when the engine check or a slice fails](slicing-and-models.md#when-the-engine-check-or-a-slice-fails)).

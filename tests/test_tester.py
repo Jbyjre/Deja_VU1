@@ -147,7 +147,7 @@ class TestTheRoutes(TesterBase):
 
     def test_every_tester_route_answers_403_while_it_is_off(self):
         for method, path in (("GET", "/api/tester/status"), ("GET", "/api/tester/report.html"), ("GET", "/api/tester/report.zip"),
-                             ("GET", "/api/tester/study"), ("POST", "/api/tester/study"), ("POST", "/api/tester/answers"),
+                             ("GET", "/api/tester/study"), ("POST", "/api/tester/answers"),
                              ("POST", "/api/tester/events"), ("POST", "/api/tester/delete")):
             status, body, _ = self.call(method, path, {"events": []} if method == "POST" else None)
             self.assertEqual(status, 403, path)
@@ -445,10 +445,11 @@ class TestTheReport(TesterBase):
     def test_the_report_holds_every_section(self):
         self.synthetic_session()
         report = tester_report.build_report(server_setup=tester_report.setup_facts())
-        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["schema_version"], 3)
         for key in ("summary", "setup", "sessions", "screens", "clicks", "slow", "requests", "errors", "printer", "confirm_print",
                     "slicing", "converter", "smoothness", "features", "notes", "updates", "timeline", "thinning", "never_recorded",
-                    "study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings"):
+                    "study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings", "headline", "stalls", "lost_link",
+                    "quiet_periods"):
             self.assertIn(key, report)
         s = report["summary"]
         self.assertEqual((s["sessions"], s["clicks"], s["prints_started"], s["prints_failed"]), (1, 2, 1, 1))
@@ -482,7 +483,7 @@ class TestTheReport(TesterBase):
         self.assertNotIn("http://", page)
         self.assertNotIn("https://", page)
         self.assertNotIn("src=", page)
-        for heading in ("The short version", "Fix these first", "Their answers", "The first run", "How they used it", "Day by day", "Setup",
+        for heading in ("The short version", "Fix first", "Their answers", "The first run", "How they used it", "Day by day", "Setup",
                         "The slowest 25 actions", "Errors", "The printer", "Confirm Print", "Slicing and converting", "Smoothness and speed",
                         "Features used and not used", "Their notes", "Updates"):
             self.assertIn(heading, page)
@@ -490,7 +491,7 @@ class TestTheReport(TesterBase):
         self.assertIn("TypeError", page)
         self.assertIn("The pause button felt stuck", page)
         report = json.loads(z.read("report.json"))
-        self.assertEqual(report["schema_version"], 2)
+        self.assertEqual(report["schema_version"], 3)
         self.assertIn("never", z.read("README.txt").decode().lower())
         self.assertIn("findings.md", z.read("README.txt").decode())
         self.assertIn("# Deja Vu1 tester findings", z.read("findings.md").decode())
@@ -709,7 +710,7 @@ class TestTheGuide(unittest.TestCase):
         cls.rail = read("frontend", "rail.js")
 
     def test_every_name_it_tells_the_tester_to_press_is_on_the_screen(self):
-        for name in ("Answer the questions", "Start testing", "View report", "Save tester report", "Save my tester report", "Delete tester data",
+        for name in ("Answer the questions", "View report", "Save tester report", "Save my tester report", "Delete tester data",
                      "Something felt off", "Something went wrong? Tell us", "Broken", "Slow", "Confusing", "Looks wrong", "Idea", "Works well",
                      "Didn't try it", "Use this", "Tester mode", "Watch-only mode"):
             self.assertIn(name, self.guide, name)

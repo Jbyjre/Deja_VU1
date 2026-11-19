@@ -1162,6 +1162,25 @@ def printer_video_bytes(root, path, max_bytes):
     return real_printer(pid).fetch_video(root, path, max_bytes)
 
 
+def printer_video_stream(root, path, byte_range=None):
+    """A context manager for one of the selected printer's videos, passed on as it arrives (Range requests included)."""
+    pid = selected_printer_id()
+    if not is_real(pid):
+        raise ValueError("Demo printers record no videos")
+    if not is_connected(pid):
+        raise ValueError("The printer is not connected. Check its address and power")
+    return real_printer(pid).stream_video(root, path, byte_range)
+
+
+def printer_video_download(printer_id, root, path, out, max_bytes, on_progress=None):
+    """Copy one video from the named printer into the open file `out` as it arrives (a background job calls this)."""
+    if not is_real(printer_id):
+        raise ValueError("Demo printers record no videos")
+    if not is_connected(printer_id):
+        raise ValueError("The printer is not connected. Check its address and power")
+    return real_printer(printer_id).download_video(root, path, out, max_bytes, on_progress)
+
+
 def set_filament(body):
     import tool_setup
     tool, colour, material = tool_setup.filament_fields(body)
