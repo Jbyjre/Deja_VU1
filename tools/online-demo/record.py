@@ -48,6 +48,8 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 "/api/backup", "/api/timelapse/frame", "/api/live",
                 "/api/camera/snapshot", "/api/app/info", "/api/remote", "/api/timelapse/video",
                 "/api/timelapse/printer-video", "/api/assistant/watch/picture",
+                # Progress of a copy of a real printer's video; demo printers record no videos, so there is never one to report.
+                "/api/timelapse/jobs",
                 # Tester mode is off in the demo: its card shows labelled sample figures and a sample report page instead.
                 "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip", "/api/tester/study"}
 # Routes that need a file name, and the parameter it goes in.
