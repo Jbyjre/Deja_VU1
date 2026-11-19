@@ -29,11 +29,10 @@ disagree, trust the code and fix the note.
    itself); `FEATURES.md` holds every feature still to build, in keyword clusters, one per session;
    `context/README.md` says what to read for each task; `STATUS.md` is where the project stands; `context/dependency-map.md`
    (generated) shows what depends on what. Owner preferences, plans and marketing live there, never here.
-3. **Never read these whole:** `CHANGELOG.md`, `docs/architecture.md`, `frontend/workshop.js`, `frontend/twin3d.js`,
-   `frontend/assistant.js`, `backend/app.py`, `backend/moonraker_client.py`, `backend/ai_assistant.py`.
-   Search, then read a part with offset and limit. `app.js`, `games.js`, `theme.css`, `workshop.css` and
-   `tester_report.py` are split into parts of one area each (the table in `.claude/rules/frontend.md`): open only
-   the part you need.
+3. **Never read these whole:** `CHANGELOG.md`, `docs/architecture.md`, `frontend/index.html` (the page's markup,
+   128 KB), `frontend/twin3d.js` (one 75 KB function) and the generated `frontend/tester-report-sample.html`. Search,
+   then read a part with offset and limit. Every other source file is under about 60 KB: the big ones are split into
+   parts of one area each (`.claude/rules/frontend.md` and `backend.md`, "Split files"); open only the part you need.
 
 ## Skills
 
@@ -139,7 +138,8 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
 
 ## Map in one screen
 
-- `backend/`: `app.py` (the whole web server and its route tables), `mock_moonraker.py` (one
+- `backend/`: `app.py` (the web server: route tables, security, `DejaVuHandler`; its GET and POST answers in
+  `app_get.py` and `app_post.py`, helpers in `app_part1.py`), `mock_moonraker.py` (one
   interface for simulated and real printers), `moonraker_client.py` (real printers), `live_feed.py`
   (250 ms tick), `fleet.py`, `print_gate.py` (Confirm Print), `gcode_tools.py`, `slicer_bridge.py`,
   `app_updates.py`, `storage.py`, `modules.py`, `ai_assistant.py` + `ai_providers.py` + `ai_vault.py`

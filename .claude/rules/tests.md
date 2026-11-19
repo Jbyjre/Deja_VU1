@@ -22,6 +22,10 @@ paths:
   `tests/frontend_parts.py`, which joins a split file's parts so a test finds code in whichever part holds it;
   `test_plate_keyboard.py` reads `plate.js`, `test_install_blocks.py` reads the README). Write such
   tests so spacing doesn't matter.
+- `test_ai_assistant.py` holds the shared helpers (`Base`, `act`, the fake servers) and the first half of the AI tests;
+  `test_ai_assistant_more.py` the rest, importing those helpers.
+- The twin tests (`test_twin_fx`, `test_twin_sync`, `test_twin_homing`) run `twin3d-part1.js` and `twin3d.js` together in
+  Node, in that order, as the page does.
 - Tests that finish prints must reset the print queue (bed clearance). Tests that start the launcher
   set `DEJAVU_NO_REGISTER=1`.
 - Don't `pkill -f 'backend/app.py'` from a shell whose own command line contains that text: it

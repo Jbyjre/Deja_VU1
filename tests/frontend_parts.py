@@ -1,7 +1,7 @@
 """The frontend files that were split into parts, and a reader that gives a test the whole file again.
 
-app.js, games.js, theme.css and workshop.css were each split into area-sized parts (18 November 2026) so a session
-reads only the part it needs. The parts load in order (index.html for the scripts and styles; GAME_PARTS in
+The big frontend files were each split into area-sized parts (18 and 19 November 2026) so a session reads only
+the part it needs. The parts load in order (index.html for the scripts and styles; GAME_PARTS in
 app-extras.js for the arcade) and share one scope, so a test that looks for a piece of code reads the whole family:
 it keeps working whichever part the code lives in.
 """
@@ -17,6 +17,12 @@ PARTS = {
                  "games-world.js"],
     "theme.css": ["theme.css", "theme-screens.css", "theme-shell.css"],
     "workshop.css": ["workshop.css", "workshop-files.css", "workshop-panels.css"],
+    "workshop.js": ["workshop-part1.js", "workshop-part2.js", "workshop-part3.js", "workshop-part4.js",
+                    "workshop-part5.js", "workshop.js"],
+    "twin3d.js": ["twin3d-part1.js", "twin3d.js"],
+    "assistant.js": ["assistant-part1.js", "assistant-part2.js", "assistant.js"],
+    "farm.js": ["farm-part1.js", "farm-part2.js", "farm.js"],
+    "style.css": ["style.css", "style-games.css", "style-layout.css"],
 }
 
 

@@ -76,7 +76,8 @@ class DesktopWindow(unittest.TestCase):
             self.assertEqual(desktop.app_browser('linux'), ('Chromium', str(fake)))
 
     def test_the_server_saves_the_choice(self):
-        app = (Path(__file__).resolve().parent.parent / 'backend' / 'app.py').read_text()
+        backend = Path(__file__).resolve().parent.parent / 'backend'
+        app = ''.join((backend / name).read_text() for name in ('app.py', 'app_part1.py', 'app_get.py', 'app_post.py'))  # the server's files
         self.assertIn('if route == "/api/app/desktop":', app)
         self.assertIn('"desktop": desktop.settings()', app)
 

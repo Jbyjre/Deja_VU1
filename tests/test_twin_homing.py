@@ -20,7 +20,7 @@ RUNNER = r"""
 const fs = require('fs'), vm = require('vm');
 const ctx = { window: {}, console, Math, Float64Array, Float32Array, Uint32Array };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(process.argv[1], 'utf8') + '\n;this.H = Twin3D.homing;', ctx);
+vm.runInContext(process.argv.slice(1).map(f => fs.readFileSync(f, 'utf8')).join('\n') + '\n;this.H = Twin3D.homing;', ctx);
 const H = ctx.H, lo = [0, 0, 0], hi = [270, 270, 270], out = {};
 // Z homes towards 0 at 10 mm/s from a bed parked at Z 200 (the head stays put at X 100, Y 120).
 function homeZ(start, retract) {
@@ -57,7 +57,7 @@ process.stdout.write(JSON.stringify(out));
 class TwinFollowsHoming(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        result = subprocess.run(["node", "-e", RUNNER, str(ROOT / "frontend/twin3d.js")], capture_output=True, text=True,
+        result = subprocess.run(["node", "-e", RUNNER, str(ROOT / "frontend/twin3d-part1.js"), str(ROOT / "frontend/twin3d.js")], capture_output=True, text=True,
                                 timeout=60, check=True)
         cls.out = json.loads(result.stdout)
 
