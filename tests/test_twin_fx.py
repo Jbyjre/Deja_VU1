@@ -16,7 +16,7 @@ RUNNER = r"""
 const fs = require('fs'), vm = require('vm');
 const ctx = { window: {}, console, Math, Float64Array, Float32Array, Uint32Array };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(process.argv[1], 'utf8') + '\n;this.Fx = Twin3D.fx;', ctx);
+vm.runInContext(process.argv.slice(1).map(f => fs.readFileSync(f, 'utf8')).join('\n') + '\n;this.Fx = Twin3D.fx;', ctx);
 const F = ctx.Fx, out = {};
 out.events = [F.feedEvent(false, true), F.feedEvent(true, false), F.feedEvent(true, true), F.feedEvent(undefined, true),
   F.feedEvent(null, false), F.feedEvent(false, null)];
@@ -41,7 +41,7 @@ process.stdout.write(JSON.stringify(out));
 class TwinFilamentAndLights(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        result = subprocess.run(["node", "-e", RUNNER, str(ROOT / "frontend/twin3d.js")], capture_output=True, text=True,
+        result = subprocess.run(["node", "-e", RUNNER, str(ROOT / "frontend/twin3d-part1.js"), str(ROOT / "frontend/twin3d.js")], capture_output=True, text=True,
                                 timeout=60, check=True)
         cls.out = json.loads(result.stdout)
 

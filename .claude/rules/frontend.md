@@ -10,27 +10,28 @@ published** (Cloudflare serves it as the product page and the online demo), so n
 keys or private text here. Every change shows in the online demo: check `/?demo` on a static
 server. Load the frontend-design and liquid-glass skills before changing a screen.
 
-**Direction (18 November 2026):** screens are moving from cards to one working surface per screen (docked panes that
-fill the window, thin dividers, no gaps, no explainer paragraphs), Glass by default everywhere, dark mode at least as
-good as light. Until the SHELL cluster (private `FEATURES.md`) writes its building blocks into this note, don't add new
-cards or intro text; after it, build every screen from those blocks.
+**Direction (18 and 19 November 2026):** each working screen becomes one connected, technical surface (the printer,
+plate, files, camera and readings flowing into each other, edge to edge, no gaps, no explainer paragraphs), Glass by
+default everywhere, dark mode at least as good as light. Cards stay where a small, self-contained task belongs in one
+(a setting, a confirmation, a short form). The SHELL cluster (private `FEATURES.md`) writes its building blocks here.
 
 ## Load order and shared names
 
 - Scripts: `theme-boot.js` in `<head>`, then `app.js` and its six parts (below) → `tester.js` → `tester-study.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
-  `ar.js` → `twin3d-scene.js` → `twin3d.js` → `workshop.js` → `studio.js` → `layer-stack.js` →
-  `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
+  `ar.js` → `twin3d-scene.js` → `twin3d-part1.js` → `twin3d.js` → `workshop-part1.js` … `workshop-part5.js` →
+  `workshop.js` → `studio.js` → `layer-stack.js` →
+  `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant.js` → `pagebar.js` → `rail.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
+  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `pagebar.js` → `rail.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
-- CSS: `style.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
+- CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
   `guide.css` → `assistant.css` → `tester.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
   `looks.css`.
 
-## Split files (18 November 2026)
+## Split files (18 and 19 November 2026)
 
-Five big files were split into parts of one area each so a session reads only what it needs. Every part's header
+The big files were split into parts of one area each so a session reads only what it needs. Every part's header
 says what it holds; `tests/frontend_parts.py` lists the families, and tests read a family whole (`read_frontend`).
 
 | Family | Parts, in load order |
@@ -40,6 +41,11 @@ says what it holds; `tests/frontend_parts.py` lists the families, and tests read
 | `theme.css` | `theme.css` (the design system), `theme-screens.css`, `theme-shell.css` (phone layout, page bar) |
 | `workshop.css` | `workshop.css`, `workshop-files.css`, `workshop-panels.css` |
 | `backend/tester_report.py` | `tester_report.py` (numbers, findings, zip) and `tester_report_render.py` (report.html, findings.md, README) |
+| `workshop.js` (closure `Workshop`) | `workshop-part1.js` … `workshop-part5.js` (definitions, each handing its names on as `WorkshopPart1` … `WorkshopPart5`; each header lists what it holds), then `workshop.js` (takes the names back, wires the page's listeners and timers, returns the `Workshop` API) |
+| `twin3d.js` (closure `Twin3D`) | `twin3d-part1.js` (shapes, materials, maths, drawing helpers; `Twin3DPart1`), then `twin3d.js` (`create()`, one 75 KB function that builds each twin with its own state, kept whole for the TWIN cluster) |
+| `assistant.js` (closure `Assistant`) | `assistant-part1.js`, `assistant-part2.js` (`AssistantPart1`, `AssistantPart2`), then `assistant.js` |
+| `farm.js` (closure `Farm`) | `farm-part1.js`, `farm-part2.js` (`FarmPart1`, `FarmPart2`), then `farm.js` (also `planLayers` and `LayerPlanner`) |
+| `style.css` | `style.css` (the base), `style-games.css`, `style-layout.css` (footer, responsive, accessibility, preview) |
 
 How to split a classic script safely (what this split found): the parts share one global scope, but **function
 hoisting stops at a file's edge**. Cut only between top-level statements, and check that nothing which runs while
@@ -48,8 +54,12 @@ later part. A name declared twice keeps its last declaration in one file but the
 and a load-time reassignment (`renderGame = ...`) must stay in the same part as any later declaration of that name.
 Timers that settle which functions are active go at the end of the last part. Prove it: the parts with their headers
 removed equal the old file, and in Chromium every top-level name has the same type and source before and after.
-`workshop.js`, `twin3d.js` and `assistant.js` are each one closure (`const X = (() => { ... })()`), so they can't be
-cut this way; split them when their cluster rewrites them (LEAN in the private `FEATURES.md`).
+A closure file (`const X = (() => { ... })()`) splits differently (19 November): pure definitions move into part files
+that each run their own small closure and return their names; the main file takes them back with
+`const { a, b } = XPart1;` at the top of its closure and keeps the code that wires the page. Variables the code changes
+while it runs live on one shared object (`wsState` in workshop, `aiState` in the assistant), so every part sees the
+same value: read and write `wsState.printerState`, never a copy. Order follows what depends on what, so one screen's
+code can sit in more than one part: search the family (`grep -n "function renderFiles" frontend/workshop*.js`).
 - `app.js` defines the shared globals: `$`, `esc`, `api()`, `getJSON`, `postJSON`, `paint()`,
   `doneAt()`, `hoursLeft()`, `toast`, `showTab`, `currentPrinter`, `demoOn`. A top-level `const` in
   a classic script is not a `window` property, so shared modules assign `window.Orb`,

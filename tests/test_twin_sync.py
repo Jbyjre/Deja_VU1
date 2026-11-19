@@ -25,7 +25,7 @@ RUNNER = r"""
 const fs = require('fs'), vm = require('vm');
 const ctx = { window: {}, console, Math, Float64Array, Float32Array, Uint32Array };
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(process.argv[1], 'utf8') + '\n;this.Sync = Twin3D.sync;', ctx);
+vm.runInContext(process.argv.slice(1).map(f => fs.readFileSync(f, 'utf8')).join('\n') + '\n;this.Sync = Twin3D.sync;', ctx);
 const S = ctx.Sync, data = JSON.parse(fs.readFileSync(0, 'utf8')), k = data.unit_mm;
 const tr = S.buildTrack(data.timeline, [], k);
 const file = 'f.gcode', out = {};
@@ -89,7 +89,7 @@ class TwinFollowsTheGcode(unittest.TestCase):
     def setUpClass(cls):
         text = sample_files.build("two_benchies_two_colours.gcode").decode("utf-8")
         cls.preview = print_preview.build(text)
-        result = subprocess.run(["node", "-e", RUNNER, str(ROOT / "frontend/twin3d.js")], input=json.dumps(cls.preview),
+        result = subprocess.run(["node", "-e", RUNNER, str(ROOT / "frontend/twin3d-part1.js"), str(ROOT / "frontend/twin3d.js")], input=json.dumps(cls.preview),
                                 capture_output=True, text=True, timeout=60, check=True)
         cls.out = json.loads(result.stdout)
 

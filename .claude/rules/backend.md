@@ -123,6 +123,25 @@ slicing and launcher files have their own notes in this folder.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
 
+## Split server files (19 November 2026)
+
+- `app.py` keeps the route tables, the security checks and `DejaVuHandler`; its helpers are in `app_part1.py`, its GET
+  answers, WebSocket and timed dispatch in `app_get.py` (class `GetRoutes`) and its POST answers in `app_post.py`
+  (class `PostRoutes`). `DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler)` takes them on as mixins, so
+  `self.<anything>` works as before. `app.py` imports every helper back, so `app.<name>` still works.
+- `ai_assistant.py` is `ai_assistant_part1.py` to `part3.py` (the last holds functions that call each other) plus a
+  short `ai_assistant.py` that imports them all back; `moonraker_client.py` keeps `MoonrakerPrinter`, with helpers in
+  `moonraker_client_part1.py` and the state and job translation in `moonraker_client_part2.py`. `_count` is defined in
+  both parts as it was twice in the old file; the later one (part 2) is the one every caller uses.
+- `slicer_bridge.py` (jobs, the engine run) with `slicer_bridge_part1.py`; `mock_moonraker.py` (the fleet and every
+  printer function) with `mock_moonraker_part1.py`; `tester_report.py` (a short module: the zip, thinning) with
+  `tester_report_part1.py` to `part3.py` (the Aggregator and the findings) and `tester_report_render.py` (the pages).
+- Names that tests replace on a module (`app.EXTRA_HOSTS`, `app.SLICE_GRACE`, `tester_report.thin_files`,
+  `slicer_bridge.subprocess`, `mock_moonraker.is_real` and the like) stay in the original module with every function
+  that reads them, so a replacement still reaches every caller. `app.py` hands `_install_update` and `phone_link` to
+  `app_post.py` after defining them.
+- New code goes in the part for its area; a name used elsewhere is imported from the original module as before.
+
 ## Tester mode (`tester.py`, `tester_report.py` + `tester_report_render.py`, `tester_study.py`, `tester_questions.py`)
 
 `tester_report_render.py` holds report.html, findings.md and the zip's README; `tester_report.py` imports them.

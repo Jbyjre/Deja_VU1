@@ -1,0 +1,156 @@
+/* style-layout.css: part 3 of 3 of style.css, loaded right after style-games.css (order matters: later rules win). It holds the footer, responsive layout, accessibility and the browser-only preview. */
+/* ---- footer --------------------------------------------------------------*/
+
+.foot {
+  display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+  font: 500 11.5px/1.5 var(--font-mono);
+  color: var(--text-faint);
+  letter-spacing: .2px;
+  border-top: 1px solid rgba(0, 0, 0, .07);
+  padding-top: 18px; margin-top: 24px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 880px) {
+  .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .flow-run { grid-template-columns: minmax(0, 1fr); }
+  .grid-2 .card { margin-bottom: 20px; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .divider-row { grid-template-columns: 1fr 1fr !important; }
+  /* Four headline numbers read as a 2 x 2 block down to phone width; a
+     single column made them a whole screen tall. */
+  .stats.divider-row, .fh-tiles.divider-row { grid-template-columns: 1fr 1fr !important; }
+  .stats.divider-row > *, .fh-tiles.divider-row > * { border-right: 1px solid rgba(0, 0, 0, .06) !important; border-bottom: 1px solid rgba(0, 0, 0, .06) !important; }
+  .stats.divider-row > :nth-child(2n), .fh-tiles.divider-row > :nth-child(2n) { border-right: none !important; }
+  .stats.divider-row > :nth-child(n+3), .fh-tiles.divider-row > :nth-child(n+3) { border-bottom: none !important; }
+}
+@media (max-width: 620px) {
+  .wrap { padding: 0 16px; }
+  .topbar { width: calc(100% - 32px); top: 10px; }
+  .topbar-inner { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .topbar-right { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  .task { grid-template-columns: 1fr; }
+  .task .btn { justify-self: start; }
+  .rings { grid-template-columns: repeat(2, 1fr); }
+  .stat-val { font-size: 26px; }
+  .stats.divider-row > *, .fh-tiles.divider-row > * { padding: 14px 15px; }
+  .divider-row { grid-template-columns: 1fr !important; }
+  .divider-row > * { border-right: none !important; border-bottom: 1px solid rgba(0, 0, 0, .06); }
+  .divider-row > *:last-child { border-bottom: none; }
+  .tabbar { width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+  .status-ribbon .rb-bar { width: 70px; }
+  .game-stats { justify-content: center; flex-wrap: wrap; }
+}
+
+/* ==========================================================================
+   Accessibility
+   These map to real system settings. Not optional polish.
+   ========================================================================== */
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #f4f5f8;
+  }
+  /* The content panels' own tint rule is more specific; solid wins here. */
+  .card.liquid-glass, .status-ribbon.liquid-glass, .stats.liquid-glass,
+  .divider-row.liquid-glass, .notice.liquid-glass, .fleet-card.liquid-glass,
+  .game-picker.liquid-glass { background-color: #f4f5f8; }
+  .liquid-glass::before { display: none; }
+  .bg { display: none; }
+  body { background: #eceef2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .liquid-glass::before {
+    background: radial-gradient(180px 180px at 50% 14%, rgba(255, 255, 255, .8), transparent 72%);
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root { --text-faint: #48484a; }
+  .liquid-glass {
+    background: #fdfdfe;
+    border: 1.5px solid rgba(0, 0, 0, .35);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .card.liquid-glass, .status-ribbon.liquid-glass, .stats.liquid-glass,
+  .divider-row.liquid-glass, .notice.liquid-glass, .fleet-card.liquid-glass,
+  .game-picker.liquid-glass { background-color: #fdfdfe; }
+  .liquid-glass::before { display: none; }
+  .task, .crow { border-color: rgba(0, 0, 0, .3); }
+  .btn { border-color: rgba(0, 0, 0, .35); }
+}
+
+/* ---- no server: the browser-only preview --------------------------------
+ * The pages served on their own (no Deja Vu1 server behind them). One
+ * banner explains; each card that needs the server keeps its heading and
+ * says so in one line. */
+
+.server-banner {
+  display: flex; align-items: flex-start; gap: 13px;
+  padding: 14px 18px; margin-bottom: 20px;
+  border-radius: 16px;
+  border-color: rgba(74, 141, 248, .4);
+}
+.server-banner[hidden] { display: none; }
+.server-banner .notice-mark { background: rgba(74, 141, 248, .18); color: var(--accent-text); margin-top: 1px; }
+.server-banner .sbn-body { flex: 1 1 auto; min-width: 0; display: grid; gap: 6px; }
+.server-banner p { font-size: 13.5px; color: var(--text-dim); }
+.server-banner strong { color: var(--accent-text); font-weight: 700; }
+.server-banner .chip-btn { margin: 2px 4px 2px 0; }
+.server-banner #server-retry { flex: 0 0 auto; }
+@media (max-width: 640px) {
+  .server-banner { flex-wrap: wrap; }
+  .server-banner #server-retry { margin-left: 35px; }
+}
+
+.conn.is-offline { color: var(--text-dim); }
+
+.card.needs-server > :not(.card-head):not(.needs-server-note) { display: none !important; }
+.card.needs-server { min-height: 0 !important; }
+.needs-server-note { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+.needs-server-note a, .server-banner a, .empty.is-off a { color: var(--accent-text); }
+
+body.no-server .stats,
+body.no-server #ctrl-temps,
+body.no-server #demo-tools-card,
+body.no-server #file-samples,
+body.no-server [data-module-off] { display: none !important; }
+
+.st-preview-hint {
+  margin: 0 0 12px; padding: 10px 14px; border-radius: 12px;
+  font-size: 13.5px; color: var(--text-dim);
+  background: rgba(255, 204, 0, .12); border: 1px solid rgba(255, 204, 0, .35);
+}
+.st-preview-hint[hidden] { display: none; }
+.file-grid .file-local-note { grid-column: 1 / -1; margin-bottom: 4px; }
+
+/* The online demo's note (app.js showTourBar): the server banner's shape, in
+   the accent colour. */
+.tour-bar { border-color: color-mix(in oklch, var(--accent) 45%, transparent); }
+.tour-bar .notice-mark { background: color-mix(in oklch, var(--accent) 20%, transparent); }
+.is-tour #notice { display: none !important; }   /* the demo note already says it's simulated */
+@media (max-width: 640px) { .tour-bar .notice-mark { display: none; } }
+.sensor-details {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.sensor-details summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+.sensor-details p {
+  margin: 6px 0;
+}

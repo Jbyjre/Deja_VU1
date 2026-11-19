@@ -70,10 +70,13 @@ def get_routes():
     """Every GET route the server answers, read from backend/app.py."""
     sys.path.insert(0, os.path.join(ROOT, "backend"))
     import app                                     # noqa: E402  (data dir is already temporary)
-    with open(os.path.join(ROOT, "backend", "app.py"), encoding="utf-8") as f:
-        source = f.read()
+    source = ""
+    for name in ("app.py", "app_get.py"):                # the GET routes live in app_get.py since 19 November 2026
+        with open(os.path.join(ROOT, "backend", name), encoding="utf-8") as f:
+            source += f.read() + "\n"
     start = source.index("def _handle_api_get")
-    body = source[start:source.index("\n    def ", start + 10)]
+    end = source.find("\n    def ", start + 10)
+    body = source[start:end if end > 0 else len(source)]
     named = {line.split('"')[1] for line in body.splitlines() if 'if route == "/api/' in line}
     return sorted(set(app._DATA_ROUTES) | set(app._APP_ROUTES) | named)
 
