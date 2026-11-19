@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.23",
+      "date": "2026-11-19",
+      "name": "Tester mode records from the first start, asks the same 22 questions any time...",
+      "published": true,
+      "summary": "Tester mode records from the first start, asks the same 22 questions any time, and its report opens with what to fix first.",
+      "changes": [
+        "Tester mode records from the first start, asks the same 22 questions any time, and its report opens with what to fix first"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.22",
       "date": "2026-11-19",
       "name": "The remaining large files are split into smaller parts; nothing changes on sc...",

@@ -74,6 +74,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.23 (19 November 2026): Tester mode records from the first start, asks the same 22 questions any time...
+
+- Tester mode records from the first start, asks the same 22 questions any time, and its report opens with what to fix first
+
 ## 0.20.22 (19 November 2026): The remaining large files are split into smaller parts; nothing changes on sc...
 
 - The remaining large files are split into smaller parts; nothing changes on screen
