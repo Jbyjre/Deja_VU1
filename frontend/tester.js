@@ -421,6 +421,9 @@
   window.addEventListener('error', e => {
     if (e.target && e.target !== window) {
       const src = e.target.src || e.target.href || '';
+      // The camera picture tries the saved address, then the live stream, then still pictures, and says which is showing (printer-page.js):
+      // an image that does not load from either stream route is that fallback working, not a fault to report.
+      if (e.target.tagName === 'IMG' && /\/api\/camera\/(live|stream)\b/.test(src)) return;
       if (/^(SCRIPT|LINK|IMG|VIDEO|AUDIO|SOURCE)$/.test(e.target.tagName) && src && !/^(data|blob):/i.test(src)) pushError('resource', 'Could not load ' + base(src));
       return;
     }

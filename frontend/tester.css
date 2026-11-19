@@ -10,7 +10,7 @@
 .tester-demo-note[hidden], .tester-live[hidden] { display: none; }
 .tester-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 6px; }
 .tester-tiles .stat-val { font-size: 30px; }
-.tester-progress { margin: 0 0 12px; flex: none; }
+.tester-progress { margin: 0 0 8px; flex: none; }
 .tester-since { margin: 6px 0 14px; flex: none; }
 .tester-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
 .tester-delete { margin-left: auto; }

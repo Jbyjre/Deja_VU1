@@ -2,11 +2,11 @@
 Tester mode in a real browser (tools/tester-walk.js): the walk, then the saved zip.
 
 The walk starts the servers and a stand-in printer (tests/fake_moonraker.py). It checks that a run kept off with DEJAVU_TESTER=0
-records nothing, then uses the tester build as shipped (always on): the first-run setup, the welcome panel and the choice of 2
-days, every place, presses of every kind, a file checked and printed on the stand-in printer, and three things made to go wrong
-on purpose (a request held for 2.6 s, a button that freezes the page for 1.4 s, an error with a failed promise and an error toast).
-It writes a note right after the error, lets the round run out, answers some of the 52 questions and saves the zip from the last
-step.
+records nothing, then uses the tester build as shipped (always on): the first-run setup, no tester pop-up with it, every place,
+presses of every kind, a file checked and printed on the stand-in printer, and three things made to go wrong on purpose (a request
+held for 2.6 s, a button that freezes the page for 1.4 s, an error with a failed promise and an error toast). It writes a note right
+after the error, opens the 22 questions from Settings, Tester mode (no round to run out), answers some and saves the zip from the
+last step.
 
 This module reads that zip and checks that every section is there, with what the walk did on purpose, and that nothing private
 (an IP address typed into the deliberate error, the note and an answer) reached any file.
@@ -69,23 +69,25 @@ class TestTesterWalk(unittest.TestCase):
         self.assertIn("DEJAVU_TESTER=0: /api/tester/events answers 403", self.out)
         self.assertIn("Recording is on with no switch", self.out)
         self.assertIn("The browser hid the address before it sent anything", self.out)
-        self.assertIn("When the days are up the page asks for the answers", self.out)
+        self.assertIn("No tester pop-up, chip or panel appears on the first start", self.out)
+        self.assertIn("The card has no days to pick and no round", self.out)
+        self.assertIn("Only the phone and AI questions have a one-press", self.out)
 
     def test_the_saved_zip_holds_every_section(self):
         self.assertIsNotNone(self.report, "the walk saved no zip:\n" + self.out[-2000:])
         self.assertEqual(sorted(self.archive.namelist()), ["README.txt", "events.jsonl", "findings.md", "report.html", "report.json"])
         r = self.report
-        self.assertEqual(r["schema_version"], 2)
+        self.assertEqual(r["schema_version"], 3)
         for key in ("summary", "setup", "sessions", "screens", "clicks", "slow", "requests", "errors", "printer", "confirm_print",
                     "slicing", "converter", "smoothness", "features", "notes", "updates", "timeline", "thinning", "never_recorded",
-                    "study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings"):
+                    "study", "onboarding", "milestones", "usage", "stats", "performance", "server_health", "network", "findings", "headline", "stalls", "lost_link"):
             self.assertIn(key, r)
         setup = r["setup"]
         self.assertTrue(setup["server"]["os"] and setup["server"]["python"] and setup["server"]["app_version"])
         self.assertEqual(setup["server"]["printers_added"], 1)
         self.assertEqual(setup["browsers"][-1]["browser"], "Chrome")
         self.assertTrue(setup["browsers"][-1]["w"] and setup["browsers"][-1]["cores"])
-        self.assertGreaterEqual(len(r["sessions"]), 2)                          # the page was opened again when the round ran out
+        self.assertGreaterEqual(len(r["sessions"]), 1)
         self.assertGreaterEqual(len(r["screens"]["totals"]), 8)
         self.assertGreater(r["clicks"]["total"], 20)
         self.assertEqual(r["summary"]["prints_started"], 1)
@@ -156,24 +158,26 @@ class TestTesterWalk(unittest.TestCase):
 
     def test_the_questions_were_answered_in_the_app_and_are_in_the_report(self):
         study = self.report["study"]
-        plan = study["plan"]
-        self.assertEqual((plan["length_days"], plan["status"], plan["welcomed"]), (2, "finished", True))
-        self.assertEqual((study["answered"], study["total"], study["didnt_try"], study["with_words"]), (7, 52, 1, 6))
+        self.assertNotIn("plan", study)
+        self.assertEqual((study["answered"], study["total"], study["didnt_try"], study["with_words"]), (7, 22, 1, 6))
         answers = {a["id"]: a for a in study["answers"] if a["answered"]}
-        self.assertEqual(sorted(answers), ["q1", "q11", "q2", "q47", "q52", "q8", "q9"])
-        self.assertEqual((answers["q8"]["choice"], answers["q9"]["choice"], answers["q11"]["choice"]), ("no", "didnt_try", "yes"))
-        self.assertIn("connection refused", answers["q8"]["answer"])
-        self.assertIn("<ip>", answers["q8"]["answer"])
+        self.assertEqual(sorted(answers), sorted(["q1", "q2", "q3", "q5", "q16", "q19", "q20"]))
+        self.assertEqual(answers["q16"]["choice"], "didnt_try")
+        self.assertIn("connection refused", answers["q3"]["answer"])
+        self.assertIn("<ip>", answers["q3"]["answer"])
         titles = " | ".join(f["title"] for f in self.report["findings"])
-        for needle in ("Answered No to question 8", "Answered Yes to question 11", "Question 52", "Question 47"):
+        for needle in ("Question 19", "Question 20"):
             self.assertIn(needle, titles)
         self.assertRegex(titles, r"A script error in the page: (Uncaught )?Error: walk: deliberate error")
         self.assertEqual(self.report["summary"]["findings"]["high"] >= 2, True)
+        first = [f for f in self.report["findings"] if f.get("fix_first")]
+        self.assertTrue(1 <= len(first) <= 10)
+        self.assertTrue(all(f["origin"] == "app" for f in first))
         md = self.archive.read("findings.md").decode("utf-8")
-        self.assertIn("## F1 [high]", md)
-        self.assertIn("## Their answers", md)
+        self.assertIn("## Fix first", md)
+        self.assertIn("## Their answers (7 of 22 questions)", md)
         page = self.archive.read("report.html").decode("utf-8")
-        for heading in ("Fix these first", "Their answers", "The first run", "How they used it", "Smoothness and speed"):
+        for heading in ("Fix first", "Their answers", "The first run", "How they used it", "Smoothness and speed"):
             self.assertIn(heading, page)
 
     def test_nothing_private_reached_any_file(self):

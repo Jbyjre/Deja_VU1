@@ -423,6 +423,7 @@ details.oi-app[open] > summary { border-bottom: 1px solid rgba(0, 0, 0, .06); ma
 #timelapse-host .reg-name { min-width: 0; flex: 1 1 180px; overflow-wrap: anywhere; }
 #timelapse-host .reg-row > .log-empty { padding-top: 0; flex: 0 1 auto; }
 #timelapse-host .tl-acts .btn { white-space: nowrap; min-width: 0; }
+#timelapse-host a.btn { text-decoration: none; }                           /* Play and Download are links: they look like the buttons beside them */
 #timelapse-host .tl-acts [data-keep-path] { min-width: 8.5em; }          /* "Keep a copy here" and "Copying 63%" take the same room: nothing shifts as it counts */
 #timelapse-host .tl-note { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; border: 1px dashed color-mix(in oklch, var(--text) 25%, transparent); }
 #timelapse-host .tl-note[hidden] { display: none; }
