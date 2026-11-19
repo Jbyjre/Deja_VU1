@@ -26,7 +26,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1692 tests passed on Python 3.13.18 (Linux, 18 November 2026, version 0.20.18 plus the page bar), run in four serial parts of 509, 407, 343 and 433 tests (1018 seconds in all); the check that the quoted count is right failed on the first pass (it still said 1681) and passed once the number was updated. The run before that: 1681 tests (Linux, 18 November 2026, version 0.20.17 plus the 3D twin following homing), one serial run, 1062.8 seconds; the same check failed on that run (it still said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
+- **The test suite:** 1726 tests passed on Python 3.13.18 (Linux, 19 November 2026, version 0.20.22 plus the tester fix), one serial run, 1305.4 seconds (21 minutes 46 seconds); the check that the quoted count is right failed on that run (it still said 1692) and passed once the number was updated. The run before that: 1692 tests (Linux, 18 November 2026, version 0.20.18 plus the page bar), run in four serial parts of 509, 407, 343 and 433 tests (1018 seconds in all); the check that the quoted count is right failed on the first pass (it still said 1681) and passed once the number was updated. The run before that: 1681 tests (Linux, 18 November 2026, version 0.20.17 plus the 3D twin following homing), one serial run, 1062.8 seconds; the same check failed on that run (it still said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
   fixes and the always-on Tester mode with its test round and questions, together), run in two waves of parallel
   groups: four groups of tests that need no browser (1601 tests, 270 seconds from start to finish), then four groups
   of browser-driven tests (73 tests, 134 seconds). Together that is 960.2 seconds of test time. The browser walk
@@ -63,28 +63,43 @@ The rest of the dashboard was used with the same printer. The firmware version w
   after the change: 136 visits and 17 workflow runs, no problems. Its `--axe` option, run with the axe-core release
   installed that day, reports one extra rule (label in name, 6 sidebar and header controls such as the printer button);
   the same six appear on the code from before the bar, so they are not new, and they are not fixed yet.
-- **Tester mode** (17 November 2026, Chromium on Linux, against a stand-in printer, not a real U1). The tests
+- **Tester mode** (19 November 2026, Chromium on Linux, against a stand-in printer, not a real U1). The tests
   cover the always-on build (no switch on screen, the server refuses to switch it off, `DEJAVU_TESTER=0` keeps a run out of the
-  record and every `/api/tester` route answers 403), the 52 questions, the round of 1, 2 or 3 days and the answers it keeps, the
-  masking of addresses, keys, folders with a user name and the names of files, printers and spools through every way in
-  (answers included), a synthetic week of 26 MB thinned to a zip under 25 MB with the totals unchanged, the five files of the
-  saved zip, how presses were made, the paths between screens, the first run, errors named by kind and tied to a part of the
-  app, the ranked findings, watch-only mode with Tester mode on, and `tools/tester-reports.py` combining reports of both
-  versions. `node tools/tester-walk.js` starts one server with `DEJAVU_TESTER=0` (the browser sends nothing) and then the
-  shipped build: the first-run setup clicked through and skipped, the welcome panel and 2 days chosen, every place, a double and
-  a right press, a list choice, shortcuts, the quick tour, a print on the stand-in printer, a request held back 2.6 seconds, a
-  button that freezes the page for 1.4 seconds, an error, a failed promise, an error toast, a tagged note written right after
-  the error, the round run out, 7 of the 52 questions answered, and the zip saved from the last step and from Settings. A
-  phone-sized touch browser taps something and the record says touch. It opens the zip's `report.html` with no network at 1366 px
-  and 390 px in light and dark. axe-core 4.10.2 (WCAG 2.2 AA and best-practice rules) finds nothing on the welcome panel, the
-  test-round popover, the note panel, the questions and the Settings card in light and dark at 1366 px, after the contrast of the
-  selected chips was fixed (white on the accent blue was 3.25:1). The walk passes 48 checks at 1366 px and at 390 px, and the online demo on a static server shows
-  the sample figures, records nothing and asks the server for nothing. Cost of recording on the Printer page with the 3D twin, in
-  Chromium with software rendering (8 alternating pairs of 8-second stretches on one server, a normal page against one whose
-  recorder does nothing): press to next paint -1.1 % (standard error 1.2), the page's main-thread time +3.7 % (2.8), median
-  frame time equal at 16.7 ms, mean frame time +9 % (5) from a few slow frames. That mean is above the 5 % the first build
-  aimed for. A CPU profile puts the recorder's own script at 25 ms over 42 seconds, 0.06 % of the time. Not tested: Tester mode
-  on a real U1, on Windows or macOS, or in a browser other than Chromium.
+  record and every `/api/tester` route answers 403), the 22 questions (nine sections, every one skippable, a one-press "Didn't try
+  it" on the two phone and AI questions, answers saved as typed, answers from the earlier 52-question build moved aside, and the
+  wording compared with the list sent to testers where that file sits next to the repository), the masking of addresses, keys,
+  folders with a user name and the names of files, printers and spools through every way in (answers included), a synthetic week
+  of 26 MB thinned to a zip under 25 MB with the totals unchanged, the five files of the saved zip, how presses were made, the
+  paths between screens, the first run, errors named by kind and tied to a part of the app, and the "Fix first" list: requests
+  that waited at the same moment as one item with what the server was doing, requests that failed because the page lost the
+  server as one item, the app's own faults apart from conditions around it, a failed slice's whole engine output, no more than
+  ten items, and nothing private in any file. Watch-only mode with Tester mode on, and `tools/tester-reports.py` combining
+  reports of schemas 1 to 3, are covered too. `node tools/tester-walk.js` (39 checks) starts one server with `DEJAVU_TESTER=0`
+  (the browser sends nothing) and then the shipped build: the first-run setup with no tester pop-up, every place, a double and a
+  right press, a list choice, shortcuts, the quick tour, a print on the stand-in printer, a request held back 2.6 seconds, a
+  button that freezes the page for 1.4 seconds, an error, a failed promise, an error toast, a tagged note written right after the
+  error, the 22 questions opened from Settings with 7 answered, and the zip saved from Settings. A phone-sized touch browser taps
+  something and the record says touch. It opens the zip's `report.html` with no network at 1366 px and 390 px in light and dark.
+  Not repeated for this build: the axe-core scan of the questions panel and the Settings card (the 17 November scan covered the
+  earlier panels) and the measurement of what recording costs on the Printer page (17 November, earlier build: press to next
+  paint -1.1 %, main-thread time +3.7 %, mean frame time +9 % from a few slow frames, median equal at 16.7 ms). Not tested:
+  Tester mode on a real U1, on Windows or macOS, or in a browser other than Chromium.
+- **Page and server fixes from a tester's report** (19 November 2026, Chromium on Linux with software graphics, against the
+  stand-in printer in `tests/fake_moonraker.py`, not a real U1). `node tools/testfix-check.js` runs nine scenarios and 62 checks;
+  `tests/test_testfix_browser.py` runs it. The first eight were run on the code from before the fixes and failed there, and
+  pass now: the print-health gauge replaced while it animates (no script error), the time-lapse list staying on screen while the
+  switch is flipped and while the printer is slow, "Keep a copy here" as a background copy with progress, the AI shortcut keeping
+  its width on hover, a failed camera address falling back to the printer's own camera by itself with a note and no recorded
+  error, a lost server shown as nothing at first and as one line once it lasts more than ten seconds, six copies started at once with the next request
+  still answered in 3 ms, and an idle printer with the 3D twin on screen (10 freezes over 200 ms, 4,044 ms in all, in ten idle
+  seconds before; none after). The ninth measures the report: its headline and ten closed "Fix first" rows end at 786 px of an
+  800 px screen on the sample and at 772 px on a real report, in light and dark, with nothing running off the side at 390 px
+  (the earlier layout measured 1,106 px). `tests/test_long_jobs.py` covers the server side with throttled stand-in videos: a copy
+  is a background job, a video plays as it arrives and answers Range. `tests/test_slice_diagnosis.py` and
+  `tests/test_slicer_bridge.py` cover Orca's exit codes: 4294967196 (Windows) and 156 (macOS, the low byte) read as -100, a
+  negative code is a signal and is never converted. Not tested: a real slice on Windows (the cause of the tester's -100 is not
+  known; the whole engine output is now kept so the next report shows it), the camera fallback on a real U1's built-in camera,
+  and page freezes on a computer with a graphics card (software drawing is slower, so read those figures as the stand-in's).
 - **Accessibility** (axe-core 4.10.2, WCAG 2.2 AA and best-practice rules, every place at 1366 px light and
   dark and 390 px light, with demo data, 16 November 2026): three failing rules were found and fixed (the
   Light, Dark and System buttons carried an attribute their role does not allow, the Farm desk schedule and
