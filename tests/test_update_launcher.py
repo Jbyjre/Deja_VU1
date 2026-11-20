@@ -76,7 +76,7 @@ class LauncherProcesses(unittest.TestCase):
                         self.assertFalse(stage.parent.exists())
                         self.assertEqual((root / 'backend/data/private.json').read_text(), 'keep me')
                         # The outcome is noted for the dashboard, with the reason when it was undone.
-                        result = json.loads((root / 'backend/data/update-result.json').read_text())
+                        result = _result(root)
                         self.assertEqual(result['ok'], not broken)
                         if broken:
                             self.assertIn('did not start', result['message'])
@@ -144,6 +144,15 @@ class LauncherRestartsAfterACrash(unittest.TestCase):
 
 
 LAUNCH_ID_SERVER = SERVER.replace('"server_pid": os.getpid()', '"server_pid": -1, "launch_id": os.environ.get("DEJAVU_LAUNCH_ID")')
+
+
+def _result(root, timeout=10):
+    """The launcher's note of the last update. It removes the staged files first and writes this a moment after."""
+    path = root / 'backend/data/update-result.json'
+    deadline = time.monotonic() + timeout
+    while not path.exists() and time.monotonic() < deadline:
+        time.sleep(.05)
+    return json.loads(path.read_text())
 
 
 def _start(root, port):
@@ -230,7 +239,7 @@ class LauncherNeverLeavesTheDashboardDown(unittest.TestCase):
                 while stage.parent.exists() and time.monotonic() < deadline:
                     time.sleep(.1)
                 self.assertFalse(stage.parent.exists())
-                self.assertTrue(json.loads((root / 'backend/data/update-result.json').read_text())['ok'])
+                self.assertTrue(_result(root)['ok'])
             finally:
                 _stop(proc)
                 output.close()

@@ -255,6 +255,25 @@ class TestRound3(Base):
         self.assertEqual(ai_assistant.clear(self.tid)["chats"], [])
         self.assertEqual(ai_assistant.chats()["chats"], [])
 
+    def test_start_over_stays_started_over_when_an_answer_ends_at_the_same_moment(self):
+        # The answer is on disk before the conversation reads as finished, so Start over never races its save.
+        busy_at_save = []
+        import ai_assistant_part3              # the part that runs a turn holds its own name for the save
+        save = ai_assistant_part3._save_chat
+
+        def watched(thread):
+            busy_at_save.append(thread["busy"])
+            save(thread)
+        with patch.object(ai_assistant_part3, "_save_chat", watched):
+            self.say("hello", "Hi there.")
+        self.assertIs(busy_at_save[-1], True, busy_at_save)     # the save at the end of the answer
+        # An answer still arriving for a cleared conversation does not write it back.
+        old = ai_assistant._thread(self.tid)
+        ai_assistant.clear(self.tid)
+        ai_assistant._save_chat(old)
+        self.assertFalse(os.path.exists(ai_assistant._chat_path(self.tid)))
+        self.assertEqual(ai_assistant.view(self.tid)["messages"], [])
+
     def test_a_photo_goes_with_the_message_and_is_never_saved(self):
         picture = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8 a small jpeg").decode()
         self.script = Script("I see a spool.")

@@ -890,9 +890,9 @@ def _run(thread, ctx):
     finally:
         if thread["stop"]:
             thread["work"], thread["pending"] = None, None
-        thread["busy"] = False
         thread["seq"] += 1
         _save_chat(thread)
+        thread["busy"] = False      # last: whoever sees it finished (Start over, a test) finds it already saved
 
 
 def _count_usage(thread, answer):

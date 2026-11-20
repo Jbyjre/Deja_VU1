@@ -70,7 +70,7 @@ def _chat_path(tid):
 
 def _save_chat(thread):
     """Keep a conversation on disk so it can be opened again after a restart. Pictures are left out."""
-    if not any(m["role"] == "user" for m in thread["messages"]):
+    if thread.get("cleared") or not any(m["role"] == "user" for m in thread["messages"]):
         return
     first = next(m["text"] for m in thread["messages"] if m["role"] == "user")
     record = {"id": thread["id"], "title": thread.get("title") or re.sub(r"\s+", " ", first).strip()[:70],
@@ -264,6 +264,8 @@ def clear(tid):
     """Delete a conversation, from memory and from this computer."""
     stop(tid)
     with _lock:
-        _threads.pop(str(tid), None)
+        gone = _threads.pop(str(tid), None)
+        if gone is not None:
+            gone["cleared"] = True      # an answer still arriving for it must not write it back to disk
         _drop_chat_file(str(tid))
     return {"cleared": True, **chats()}
