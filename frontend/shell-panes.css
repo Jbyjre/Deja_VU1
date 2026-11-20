@@ -10,7 +10,7 @@ html.has-shell .wrap :is(.card, .stats, .tab-sub, .pane-block) {
 }
 html.has-shell .wrap :is(.card, .stats, .tab-sub, .pane-block).liquid-glass::before, html.has-shell .wrap :is(.card, .stats, .tab-sub, .pane-block).liquid-glass::after { display: none; }
 html.has-shell .wrap :is(.card, .tab-sub, .pane-block) { padding: 0 0 14px; border-bottom: 1px solid var(--hair); }
-html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 16px; margin-right: 16px; }
+html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 16px; margin-right: 16px; max-width: calc(100% - 32px); }
 html.has-shell .wrap .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; min-height: 38px; margin: 0; padding: 8px 16px 6px; }
 html.has-shell .wrap .card-head > :first-child { flex: 1 1 auto; }
 html.has-shell .wrap :is(.card, .tab-sub) h2, html.has-shell .wrap .pane-block h2 {

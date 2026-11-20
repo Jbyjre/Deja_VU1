@@ -193,8 +193,9 @@ async function walk(browser, server, shots) {
 
   /* The strip: one instrument per printer; selecting one selects it everywhere. */
   await go(page, 'overview');
-  const strip = await page.evaluate(() => [...document.querySelectorAll('#strip-insts .inst')].map(b => ({ label: b.getAttribute('aria-label'), on: b.getAttribute('aria-pressed') })));
-  check(strip.length === 3 && strip.every(s => /^Demo printer \d/.test(s.label)) && strip.filter(s => s.on === 'true').length === 1, 'The strip has an instrument for each of the three demo printers: ' + JSON.stringify(strip.map(s => s.label.split(':')[0])));
+  const strip = await page.evaluate(() => [...document.querySelectorAll('#strip-insts .inst')].map(b => ({ label: b.textContent.replace(/\s+/g, ' ').trim(), on: b.getAttribute('aria-pressed'), named: !b.hasAttribute('aria-label') })));
+  check(strip.length === 3 && strip.every(s => /^Demo printer \d/.test(s.label) && s.named) && strip.filter(s => s.on === 'true').length === 1,
+    'The strip has an instrument for each of the three demo printers, each named by the text it shows: ' + JSON.stringify(strip.map(s => s.label)));
   await page.click('#strip-insts .inst:nth-child(2)');
   await page.waitForTimeout(1200);
   const sel = await page.evaluate(() => ({ pressed: [...document.querySelectorAll('#strip-insts .inst')].findIndex(b => b.getAttribute('aria-pressed') === 'true'), rail: document.getElementById('rail-printer').textContent }));

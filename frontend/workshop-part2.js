@@ -735,7 +735,6 @@ function renderPill(state) {
       `${state.current_file ? `, ${state.current_file}` : ''}${left != null ? `, done about ${doneAt(left)}` : ''}. Open printer control.`;
     if (pill.getAttribute('aria-label') !== label) {
       pill.setAttribute('aria-label', label);
-      $('qa-status').setAttribute('aria-label', label);
     }
     // The phone dock's status line carries the same reading.
     setText($('qa-status-text'), `${title} · ${sub}`);

@@ -145,7 +145,6 @@ class TestRailLiveParts(unittest.TestCase):
         # axe-core's WCAG 2.5.3: a control's spoken name must start with its visible label.
         self.assertIn("label.overview +=", RAIL)
         self.assertIn("aria-label", RAIL)
-        self.assertIn("Printer: ${name}", RAIL)
 
 
 if __name__ == "__main__":

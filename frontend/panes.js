@@ -187,7 +187,7 @@
 
   /* A region that scrolls must be reachable from the keyboard (WCAG 2.1.1): the screens and the panes take a tab stop. */
   function scrollers() {
-    document.querySelectorAll('.wrap > .tab-panel, .pane').forEach(el => {
+    document.querySelectorAll('.wrap > .tab-panel, .pane, .tm-scroll').forEach(el => {
       if (!el.hasAttribute('tabindex')) el.tabIndex = 0;
       if (el.classList.contains('tab-panel') && !el.hasAttribute('aria-label')) {
         el.setAttribute('role', 'region');
@@ -202,7 +202,7 @@
     setTimeout(scrollers, 1500);               // panes that settings.js and others add after the page loads
     buildCockpit();
     dock();
-    window.addEventListener('dv-tab', dock);
+    window.addEventListener('dv-tab', () => { dock(); scrollers(); });
   }
   window.Panes = { reset, dock, put, splitter, layoutKeys: () => splitters.map(s => s.name) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

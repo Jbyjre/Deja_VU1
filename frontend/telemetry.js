@@ -103,7 +103,7 @@ window.Telemetry = (() => {
       <div class="tm-env"><span>${label}</span><b>${num(a)}</b><small>${t ? `/ ${num(t, 0)} °C` : '°C'}</small>${bar(a, t, max)}${spark(traces[key] || [], t)}</div>`).join('');
     paint($('tm-body'), `<dl class="tm-kv">${kv.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
       <div class="tm-envs">${env}</div>
-      <div class="tm-scroll"><table class="tm-table"><thead><tr><th scope="col">Head</th><th scope="col">Dock</th><th scope="col">Nozzle °C</th><th scope="col">Last ${HISTORY} readings</th><th scope="col">Filament</th><th scope="col">Nozzle</th><th scope="col">Swaps</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="tm-scroll" tabindex="0" role="region" aria-label="Readings by head"><table class="tm-table"><thead><tr><th scope="col">Head</th><th scope="col">Dock</th><th scope="col">Nozzle °C</th><th scope="col">Last ${HISTORY} readings</th><th scope="col">Filament</th><th scope="col">Nozzle</th><th scope="col">Swaps</th></tr></thead><tbody>${rows}</tbody></table></div>
       ${reported == null && est != null ? '<p class="tm-note">Remaining time is estimated from progress and time spent so far; the printer did not report one.</p>' : ''}`);
   }
   window.addEventListener('dv-state', e => { if (e.detail) render(e.detail); });

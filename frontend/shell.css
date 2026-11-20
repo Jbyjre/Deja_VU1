@@ -312,3 +312,16 @@ html.has-shell .fx-enter kbd { font: 500 10.5px var(--font-mono); padding: 1px 5
 html.has-shell .rail-badge::after { content: attr(data-count); }
 html.has-shell .strip-cmd kbd::after, html.has-shell .halt kbd::after { content: attr(data-keys); }
 html.has-shell :is(.tab-panel, .pane, .set-body):focus-visible { outline-offset: -3px; }
+
+/* Tester mode's note button and panel float above the strip (they were placed relative to the old bottom-right orb). */
+html.has-shell .tester-dock { right: calc(var(--sh-gap) + 12px); bottom: calc(var(--strip-h) + var(--sh-gap) * 2 + 8px); max-width: calc(100vw - 2 * var(--sh-gap) - 24px); }
+html.has-shell .tester-note { right: calc(var(--sh-gap) + 12px); bottom: calc(var(--strip-h) + var(--sh-gap) * 2 + 56px); }
+@media (max-width: 720px) {
+  html.has-shell .tester-dock { right: 12px; bottom: calc(var(--dock-h, 150px) + var(--strip-h) + 30px); max-width: calc(100vw - 24px); }
+  html.has-shell .tester-note { right: 12px; bottom: calc(var(--dock-h, 150px) + var(--strip-h) + 76px); }
+}
+
+/* The telemetry status pills were light in every theme; in dark their light text needs a dark ground (4.5:1). */
+html[data-theme="dark"] .tm-status { background: color-mix(in oklch, var(--text) 12%, transparent); }
+html[data-theme="dark"] .tm-status.is-active { background: color-mix(in oklch, var(--ok) 24%, var(--paper-solid)); }
+html[data-theme="dark"] .tm-status.is-error { background: color-mix(in oklch, var(--bad) 24%, var(--paper-solid)); }

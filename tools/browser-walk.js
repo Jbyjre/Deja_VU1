@@ -155,7 +155,8 @@ async function openSession(browser, base, cfg) {
     await page.waitForTimeout(600);
   }
   await page.evaluate(t => {
-    document.documentElement.dataset.theme = t;
+    // The app's own switch, so the accent and everything else that listens for dv-theme follows, as it does for a person.
+    if (window.DVTheme) DVTheme.set(t); else document.documentElement.dataset.theme = t;
   }, theme);
   return session;
 }
@@ -186,15 +187,17 @@ async function walkPlaces(browser, base, places, cfg, out, results) {
       s.note('stray text "' + bad[0] + '" near: ' + facts.text.slice(Math.max(0, at - 40), at + 40).replace(/\s+/g, ' '));
     }
     if (axeSource) {
+      await page.waitForTimeout(1200);          // colour transitions after a theme switch must finish before contrast is measured
       await page.addScriptTag({ content: axeSource });
       const found = await page.evaluate(async () => {
         const r = await axe.run(document, {
           runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] },
           resultTypes: ['violations']
         });
-        return r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, target: v.nodes[0].target.join(' ') }));
+        return r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, target: v.nodes[0].target.join(' '),
+          why: ((v.nodes[0].any[0] || v.nodes[0].all[0] || v.nodes[0].none[0] || {}).message || '').slice(0, 170) }));
       });
-      for (const v of found) s.note('accessibility [' + v.impact + '] ' + v.id + ' on ' + v.count + ' element(s), first: ' + v.target);
+      for (const v of found) s.note('accessibility [' + v.impact + '] ' + v.id + ' on ' + v.count + ' element(s), first: ' + v.target + (v.id === 'color-contrast' || v.id === 'target-size' ? ' (' + v.why + ')' : ''));
     }
     if (out) {
       const name = [place.id, cfg.width, cfg.demo ? 'demo' : 'empty', cfg.theme].join('-') + '.png';

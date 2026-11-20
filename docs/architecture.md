@@ -764,8 +764,8 @@ their top line carries the print's progress, so the floating print pill
 isn't stacked on top as a second pane of glass. The pill (when it does
 show) and the "continue here" offer move into the dock's own column
 (`initDockStack`), so they sit above it by its real height, and the page's
-bottom padding follows that height. The header is one row, and tucks away
-while you scroll down a page, coming back as soon as you scroll up.
+bottom padding follows that height. The instrument strip (`strip.js`) sits above the dock
+and shows only the selected printer, with Halt at its right.
 
 The visual treatment is Apple Liquid Glass, built from five layers: a
 backdrop blur, edge refraction via an SVG displacement filter, a specular
@@ -775,8 +775,7 @@ and Firefox drop that one declaration and keep the plain blur, which still
 looks correct.
 
 That full material is used on the navigation and floating layer only: the
-top bar, tab bar, live print pill, sticky fleet command bar, menus, sheets
-and dialogs, which are what content scrolls under. Content cards keep the
+sidebar, instrument strip, phone dock, menus, sheets and dialogs, which are what content scrolls under. Content cards keep the
 tint, highlight, rim and shadow but have no `backdrop-filter`: behind them
 is only the background glow, so a blur there is invisible but is still
 re-run every frame. The background glows themselves are still, many-stop
@@ -811,14 +810,14 @@ own ids (`tab-sandbox`, `tab-autoprint`, `tab-filament`, class `tab-sub`);
 their old tab names still work in `showTab()`, opening the parent tab and
 scrolling to the section. The labels fit one line on a laptop; on a
 narrower screen the bar wraps to a second row rather than hiding a tab.
-On a phone the bottom bar holds Fleet, Now, Control and Files, and More
-opens the other five. A status strip and a floating live "print pill" stay
-visible on every tab - including mid-game. The printer chip in the header
-opens a list of printers; choosing one there keeps you on the tab you're
-on. That list is a small glass menu that live updates never re-render, so
+On a phone the bottom bar holds Overview, Printer, Slicer and Files, and More
+opens the other seven places. The instrument strip stays visible on every
+place, mid-game included, with Halt at its right. The printer row in the
+sidebar opens a list of printers; choosing one there keeps you where you
+are. That list is a small glass menu that live updates never re-render, so
 a refresh can't close it under the pointer.
 
-**Accent colour.** Blue by default; Settings > Preferences switches it.
+**Accent colour.** Blue by default; Settings > Look & layout switches it.
 Each choice in `ACCENTS` (app.js) sets `--accent`, `--accent-light`,
 `--on-accent` (text on an accent fill) and `--accent-text` together, each
 pair measured for WCAG AA. Only a colour someone picks is remembered.
