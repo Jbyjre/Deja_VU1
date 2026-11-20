@@ -813,6 +813,19 @@ class TestWhyItFailed(SlicerBridgeTest):
         self.assertEqual(report["output"]["plates"][0]["file"], "plate_1.gcode")
         self.assertIsNone(report["outcome"]["cause"])
 
+    def test_a_job_never_reads_finished_without_its_stage(self):
+        # The final status, the stage and the finish time are written in one update, so nothing that reads the
+        # job in between (the Slicing screen, a test) sees a failed job that does not yet say where it stopped.
+        seen, update = [], slicer_bridge._job_update
+
+        def watched(job_id, **fields):
+            if fields.get("status") in ("done", "queued", "failed", "cancelled"):
+                seen.append((fields["status"], fields.get("stage"), bool(fields.get("finished_at"))))
+            update(job_id, **fields)
+        with unittest.mock.patch.object(slicer_bridge, "_job_update", watched):
+            self.fail_a_job("missing_library")
+        self.assertEqual(seen, [("failed", "slice", True)])
+
     def test_a_cancelled_slice_keeps_the_stage_it_reached(self):
         self.configure()
         os.environ["FAKE_ORCA_MODE"] = "hang"

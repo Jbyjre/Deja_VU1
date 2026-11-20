@@ -725,6 +725,14 @@ def _work_selected(printer_id, *args):
         _work(*args)
 
 
+def _ended(trace):
+    """The fields a job gets the moment it ends, written with its final status in one update: a job that reads
+    finished always says where it stopped, never a moment later."""
+    stage = trace.get("stage")
+    return {"finished_at": datetime.now().isoformat(timespec="seconds"), "stage": stage,
+            "stage_label": slice_diagnosis.stage_label(stage)}
+
+
 def _work(job_id, name, profile_id, queue_to, on_done):
     with _run_lock:
         with _lock:
@@ -745,7 +753,7 @@ def _work(job_id, name, profile_id, queue_to, on_done):
                     "preflight_blocked", message, "", ["Open the sliced file's report in Library and read what "
                                                        "pre-flight blocked."]))
             if not queue_to:
-                _job_update(job_id, status="done", step="Sliced", report=report)
+                _job_update(job_id, status="done", step="Sliced", report=report, **_ended(trace))
             else:
                 # Still "running" until the queue step is over: a job reads as
                 # finished only once, with its final outcome - never "done"
@@ -758,27 +766,32 @@ def _work(job_id, name, profile_id, queue_to, on_done):
                             raise SliceCancelled('Slicing cancelled. No output was queued')
                         print_queue.add(report["files"][0]["name"], printer_id=queue_to)
                         _job_update(job_id, status="queued", queued={"printer": queue_to, "file": report["files"][0]["name"]},
-                                    step="Sliced and queued - it will be checked by Confirm Print before it starts")
+                                    step="Sliced and queued - it will be checked by Confirm Print before it starts",
+                                    **_ended(trace))
                 except SliceCancelled:
                     raise
                 except ValueError as exc:
                     _job_update(job_id, status="done", step=f"Sliced, but couldn't queue it: {exc}",
-                                queue_error=str(exc))
+                                queue_error=str(exc), **_ended(trace))
         except SliceCancelled as exc:
-            _job_update(job_id, status='cancelled', step=str(exc), error=None)
+            _job_update(job_id, status='cancelled', step=str(exc), error=None, **_ended(trace))
         except SliceFailed as exc:
-            _job_update(job_id, status="failed", step="Failed", error=str(exc), report=exc.report, cause=exc.cause)
+            _job_update(job_id, status="failed", step="Failed", error=str(exc), report=exc.report, cause=exc.cause,
+                        **_ended(trace))
         except ValueError as exc:
             cause = getattr(exc, "cause", None) or slice_diagnosis.for_stage(trace.get("stage"), str(exc))
-            _job_update(job_id, status="failed", step="Failed", error=str(exc), cause=cause)
+            _job_update(job_id, status="failed", step="Failed", error=str(exc), cause=cause, **_ended(trace))
         except Exception as exc:          # noqa: BLE001 - a job must always end in a worded state
             message = f"Unexpected error: {exc}"
             _job_update(job_id, status="failed", step="Failed", error=message, cause=slice_diagnosis.make(
-                "unexpected", message, "", ["Copy the report and ask for help."], repairable=False))
+                "unexpected", message, "", ["Copy the report and ask for help."], repairable=False), **_ended(trace))
         finally:
-            stage = trace.get("stage")
-            _job_update(job_id, finished_at=datetime.now().isoformat(timespec="seconds"), stage=stage,
-                        stage_label=slice_diagnosis.stage_label(stage))
+            ended = _ended(trace)
+            with _lock:
+                job = _jobs.get(job_id) or {}
+                if job.get("stage") != ended["stage"] or not job.get("finished_at"):
+                    job.update(ended)       # a job that ended some other way still gets its stage
+                    _persist_locked()
             output = trace.pop("engine_output", None)
             if tester.enabled():
                 try:

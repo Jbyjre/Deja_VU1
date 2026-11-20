@@ -121,7 +121,8 @@ class WebRTCCamera(unittest.TestCase):
         self.assertEqual(FakeGo2rtc.seen, [])
 
     def test_backend_never_imports_go2rtc(self):
-        src = open(webrtc_camera.__file__, encoding="utf-8").read()
+        with open(webrtc_camera.__file__, encoding="utf-8") as fh:
+            src = fh.read()
         imports = [line for line in src.splitlines() if line.startswith(("import ", "from "))]
         self.assertTrue(all(line.split()[1].split(".")[0] in
                             {"base64", "json", "os", "re", "urllib", "storage"} for line in imports), imports)

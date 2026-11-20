@@ -387,6 +387,13 @@ class DejaVuServer(ThreadingHTTPServer):
         self.server_name = host
         self.server_port = port
 
+    def handle_error(self, request, client_address):
+        # A browser that closes a tab or drops a connection before its answer is sent is normal, not a fault:
+        # leave it out of the console, where a traceback would only bury real errors.
+        if isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
 
 WRITE_GRACE = 20               # seconds a command already on its way to a printer may finish
 
