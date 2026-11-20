@@ -425,7 +425,7 @@ function renderControlTab(state) {
         <div class="stat-key" data-temp-key="${esc(th)}">${esc(th)}</div>
         <div class="stat-val" style="font-size:22px;" data-temp-val="${esc(th)}">—</div>
         <div class="stat-foot" data-temp-target="${esc(th)}"></div>
-        <div style="display:flex; gap:6px; margin-top:8px;">
+        <div class="temp-set" style="display:flex; gap:6px; margin-top:8px;">
           <label class="sr-only" for="target-${esc(th)}">${esc(th)} target temperature</label>
           <input type="number" inputmode="decimal" placeholder="°C" id="target-${esc(th)}" data-toolhead="${esc(th)}" style="width:100%; font-size:12px;">
           <button class="btn small" data-set-temp="${esc(th)}">Set</button>

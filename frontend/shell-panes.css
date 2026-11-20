@@ -207,3 +207,41 @@ html.has-shell .ai-intro-list li { align-items: center; padding: 13px 0; border-
   html.has-shell .ai-intro-text > :not(.ai-intro-list) { grid-column: 1; }
   html.has-shell .ai-intro-text > .ai-intro-list { grid-column: 2; grid-row: 1 / span 6; align-self: start; margin: 0; max-width: none; }
 }
+
+/* ---- Printer: calm until you click into something (panes.js foldCards and calmTwin) ------------------------------------------- */
+html.has-shell #cockpit .card.is-folded > :not(.card-head) { display: none !important; }
+html.has-shell #cockpit .card.is-folded > .card-head > :not(:first-child), html.has-shell #cockpit .card.is-folded .card-sub { display: none !important; }
+html.has-shell #cockpit .card.is-folded > .card-head { margin-bottom: 0; }
+html.has-shell #cockpit .card > .card-head { position: relative; }
+html.has-shell .fold-btn { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+html.has-shell .fold-btn::after { content: ""; position: absolute; inset: 0; }
+html.has-shell #cockpit .card-head :is(.xp-btn, .btn, .pp-presets, .pill-toggle) { position: relative; z-index: 1; }
+html.has-shell .fold-btn .fold-chev { flex: none; transition: transform .16s ease; }
+html.has-shell .fold-btn[aria-expanded="true"] .fold-chev { transform: rotate(90deg); }
+html.has-shell .fold-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+html.has-shell #cockpit .card.is-folded:hover { background: color-mix(in oklch, var(--text) 4%, transparent); }
+html.has-shell #pp-heaters:not(.is-setting) :is(#pp-presets, .temp-set, #pp-bed-form) { display: none !important; }
+html.has-shell #pp-heaters .pp-heat-set[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+/* the console folds to its title row */
+html.has-shell #cockpit:has(#pp-console.is-folded) { grid-template-rows: minmax(0, 1fr) 1px 44px !important; }
+html.has-shell #cockpit:has(#pp-console.is-folded) > .split.h { pointer-events: none; }
+
+/* the twin: no buttons until you click it; then it expands over the cockpit with every control */
+html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card > .twin-head, html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card .twin-tools { display: none; }
+html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card #twin-host { cursor: zoom-in; }
+html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card :is(.twin-chips, .twin-readout, .twin-extras) { display: none; }
+html.has-shell #cockpit.twin-expanded #twin-sync { display: none; }
+html.has-shell #cockpit.twin-hinted .twin-open-hint:not(:focus-visible) { opacity: 0; pointer-events: none; }
+html.has-shell #cockpit:not(.twin-expanded) .stage:hover .twin-open-hint { opacity: .85; pointer-events: auto; }
+html.has-shell .twin-open-hint { position: absolute; z-index: 3; left: 50%; top: 12px; transform: translateX(-50%); padding: 6px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12px var(--font-sans); cursor: pointer; opacity: .85; transition: opacity .2s ease; }
+html.has-shell .twin-open-hint:hover, html.has-shell .twin-open-hint:focus-visible { opacity: 1; color: var(--text); }
+html.has-shell #cockpit.twin-expanded .twin-open-hint { display: none; }
+html.has-shell .twin-close { position: absolute; z-index: 7; top: 10px; right: 12px; }
+html.has-shell .twin-close[hidden] { display: none; }
+html.has-shell #cockpit.twin-expanded > .stage { grid-column: 1 / -1; grid-row: 1 / -1; z-index: 6; background: var(--paper-solid); }
+html.has-shell #cockpit.twin-expanded > :not(.stage) { visibility: hidden; }
+html.has-shell #cockpit.twin-expanded .stage > #twin-card > .twin-head { padding-right: 90px; }
+@media (prefers-reduced-motion: reduce) { html.has-shell .fold-btn .fold-chev { transition: none; } }
+@media (max-width: 720px) {
+  html.has-shell #cockpit.twin-expanded > .stage { position: fixed; inset: 8px 8px calc(var(--dock-h, 150px) + var(--strip-h) + 30px); z-index: 40; border-radius: var(--sh-r); }
+}

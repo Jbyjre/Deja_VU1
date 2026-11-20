@@ -715,6 +715,7 @@ window.Sections = (() => {
       // A folded section (<details>) opens when something points into it.
       const fold = this.closest && this.closest('details:not([open])');
       if (fold && fold !== this) fold.open = true;
+      if (window.Panes && Panes.unfold) Panes.unfold(this);     // a folded Printer section opens too
       if (this.closest && this.closest('.sec-off')) reveal(this);
       return scrollTo.apply(this, args);
     };

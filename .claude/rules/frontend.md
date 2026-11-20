@@ -115,7 +115,13 @@ code can sit in more than one part: search the family (`grep -n "function render
   without losing its id, listeners or the `data-module-body` switch its wrapper carried. The twin is one shared instance: `Panes.dock()` moves
   `#twin-card` into the stage of the open place. `Panes.splitter(...)` makes a divider (W3C window splitter; sizes kept in `dejavu1.layout.*`;
   `Panes.reset()` is Settings › Reset layout). The cockpit's twin tools are two compact rows and the gesture hint (`#twin-hint`) shows only for "New to 3D
-  printing" or on a phone.
+  printing" or on a phone. The cockpit is calm until you click into something (`foldCards`, `calmTwin` in panes.js): each
+  pane section is a fold (`.fold-btn` in its h2, `.is-folded`; open ones kept in `dejavu1.cockpit.open`; Temperatures, Camera and Print a file open
+  first; Reset layout restores that); Temperatures shows readings and `#pp-heat-set` (Set temperatures) shows the boxes and material buttons; the console
+  folds to its title row. The twin turns by itself only on Printer (`autoSpin`, never with reduced motion), stops while the pointer is over it, hides
+  its head and tools, and a click (or `#twin-open`) expands it over the cockpit with every control (`#cockpit.twin-expanded`, `Panes.expandTwin`;
+  Escape or `#twin-close` closes). Anything that scrolls into a folded section opens it (`Panes.unfold`, from the scrollIntoView hook in app-shell.js).
+  Walks that press the twin's buttons call `Panes.expandTwin(true)` first.
 - Settings (`settings.js`): Preferences' cards are moved into the Settings screen, `SECTIONS.modules` sorts every card into a group (Printers &
   connection, Look & layout, Phone & away, Alerts & smart home, Tester mode, Updates, Advanced, Help), the left list shows one group at a time and the
   search shows every card that mentions the words. Demo data is in Advanced (`#demo-toggle` stays as a hidden input that `#demo-setting` mirrors).
