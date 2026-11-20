@@ -79,7 +79,12 @@ async function loadFiles() {
           <span class="fcd-meta">${esc(meta)}</span>
           <span class="fcd-tags"><span class="kind-tag">${esc(f.kind.toUpperCase())}</span>${verdict}${f.origin && f.origin !== 'upload' ? `<span class="origin-tag">${esc({ converted: 'U1 copy', colours: 'U1 colours', prepared: 'prepared plate' }[f.origin] || f.origin)}</span>` : ''}</span>
         </button>`;
-    }).join('') : empty('No files yet', 'Add your own G-code, STL, OBJ or 3MF files, or the sample files to try things out.');
+    }).join('') : `<button type="button" class="file-empty" id="file-empty">
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true" focusable="false"><path d="M12 16V5m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <b>Drop files here</b>
+        <span>G-code to print, or STL, OBJ and 3MF models. Press to choose them from this computer, or add the sample files above.</span></button>`;
+    const pick = $('file-empty');
+    if (pick) pick.onclick = () => $('file-upload').click();
     qsa('[data-open-file]').forEach(b => b.onclick = () => openFile(b.dataset.openFile, b.classList.contains('file-card') ? b : null));
   }
 

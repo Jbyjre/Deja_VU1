@@ -150,6 +150,30 @@ async function walk(browser, server, shots) {
     if (shots) await page.screenshot({ path: path.join(shots, `${dest}.png`) });
   }
 
+  /* Maintenance is flat rows under a band that filters; Files with nothing in it is one drop zone and a dragged file outlines the surface. */
+  await go(page, 'maintenance');
+  const mt = await page.evaluate(() => ({ rows: document.querySelectorAll('#tasks .task').length, band: document.querySelectorAll('#mt-band [data-mt]').length,
+    flat: getComputedStyle(document.querySelector('#tasks .task')).borderTopLeftRadius === '0px' && getComputedStyle(document.querySelector('#tasks .task')).boxShadow === 'none' }));
+  check(mt.rows >= 3 && mt.band === 3 && mt.flat, 'Maintenance: rows with no box, under a band with three filters: ' + JSON.stringify(mt));
+  await page.click('#mt-band [data-mt="overdue"]');
+  await page.waitForTimeout(250);
+  const mtf = await page.evaluate(() => ({ rows: document.querySelectorAll('#tasks .task').length, odd: document.querySelectorAll('#tasks .task:not(.overdue)').length,
+    pressed: document.querySelector('#mt-band [data-mt="overdue"]').getAttribute('aria-pressed'), kept: document.activeElement && document.activeElement.dataset.mt }));
+  check(mtf.rows > 0 && mtf.rows < mt.rows && mtf.odd === 0 && mtf.pressed === 'true' && mtf.kept === 'overdue', 'Maintenance: Overdue shows only overdue rows and keeps the focus: ' + JSON.stringify(mtf));
+  await page.click('#mt-band [data-mt="overdue"]');
+  await page.waitForTimeout(250);
+  check((await page.evaluate(() => document.querySelectorAll('#tasks .task').length)) === mt.rows, 'Maintenance: pressing the same count again shows every row');
+  await go(page, 'files');
+  const fe = await page.evaluate(() => ({ zone: !!document.getElementById('file-empty'), layout: getComputedStyle(document.querySelector('.files-layout')).gridTemplateColumns.split(' ').length }));
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(['G1 X1\n'], 'walk.gcode'));
+    document.getElementById('tab-files').dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+  });
+  const fd = await page.evaluate(() => ({ outlined: document.documentElement.classList.contains('is-dropping'), label: !document.getElementById('file-drop').hidden }));
+  check(fe.zone && fe.layout === 1 && fd.outlined && fd.label, 'Files: an empty library is one drop zone in one column, and a dragged file outlines the surface: ' + JSON.stringify({ fe, fd }));
+  await page.evaluate(() => document.getElementById('tab-files').dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: document.body })));
+
   /* Parts: Printer has seven, a part never opens another place, and All printers is a part of Printer. */
   await go(page, 'printer');
   const parts = await page.evaluate(() => [...document.querySelectorAll('#pb-parts [data-part]')].map(b => b.textContent.trim()));

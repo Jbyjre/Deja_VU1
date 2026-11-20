@@ -243,6 +243,12 @@ async function walk(browser, server, standIn, width) {
   await sleep(4000);
   check((await page.locator('#tester-chip, #tester-hub, #tester-panel').count()) === 0, 'No tester pop-up, chip or panel appears on the first start (setup closed, 4 s later)');
   check((await page.locator('#tester-dock > *').count()) === 1, 'The only tester control on the screen is "Something felt off"');
+  const feltBox = await page.evaluate(() => {
+    const f = document.getElementById('tester-felt'), strip = document.getElementById('strip'), wrap = document.getElementById('main');
+    const r = f.getBoundingClientRect(), a = strip.getBoundingClientRect(), b = wrap.getBoundingClientRect();
+    return { inStrip: strip.contains(f), insideStrip: r.top >= a.top - 1 && r.bottom <= a.bottom + 1, overSurface: r.bottom > b.top && r.top < b.bottom && r.right > b.left && r.left < b.right, w: Math.round(r.width) };
+  });
+  check(feltBox.inStrip && feltBox.insideStrip && !feltBox.overSurface && feltBox.w >= 24, 'The note button sits in the strip and covers none of the page: ' + JSON.stringify(feltBox));
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'first-start-' + width + '.png') });
 
   await post(page, '/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn.url });
@@ -252,6 +258,7 @@ async function walk(browser, server, standIn, width) {
   for (const id of places) {
     await goTo(page, id, width);
     if (id === 'printer') {
+      await page.evaluate(() => window.Panes && Panes.expandTwin && Panes.expandTwin(true));
       for (const sel of ['[data-view="front"]', '[data-view="top"]', '[data-view="iso"]', '[data-twin="zoom-in"]', '[data-twin="zoom-out"]', '[data-mode="drawing"]', '[data-mode="model"]']) {
         const el = page.locator(sel).first();
         if (await el.count()) {
@@ -263,6 +270,7 @@ async function walk(browser, server, standIn, width) {
       await page.locator('[data-view="top"]').first().dblclick().catch(() => {});
       await page.locator('[data-view="iso"]').first().click({ button: 'right' }).catch(() => {});
       await page.keyboard.press('Escape');
+      await page.evaluate(() => window.Panes && Panes.expandTwin && Panes.expandTwin(true));   // Escape also closes the expanded twin
       await page.locator('[data-twin="zoom-in"]').first().click({ modifiers: ['Shift'] }).catch(() => {});
       await sleep(7500); // long enough for a smoothness sample of the twin
     }
@@ -329,6 +337,7 @@ async function walk(browser, server, standIn, width) {
   await post(page, '/api/maintenance/snooze', { task_id: 'nozzle', days: 1 });
   await page.route('**/api/maintenance/snooze', route => route.continue());
   await goTo(page, 'printer', width);
+  await page.evaluate(() => window.Panes && Panes.expandTwin && Panes.expandTwin(true));   // the twin's buttons show after a click into it
   await page.evaluate(() => {
     const target = document.querySelector('[data-view="front"]');
     if (target) target.addEventListener('click', () => { const t = performance.now(); while (performance.now() - t < 1400); }, true);
@@ -540,6 +549,7 @@ async function stretch(page, mode, secs, cdp) {
   });
   const clicks = [];
   if (flag('--frames-only')) return { frames, clicks: [0], busy };
+  await page.evaluate(() => window.Panes && Panes.expandTwin && Panes.expandTwin(true));
   for (const sel of ['[data-view="front"]', '[data-view="top"]', '[data-view="iso"]', '[data-twin="zoom-in"]', '[data-twin="zoom-out"]']) {
     for (let i = 0; i < +(option('--reps') || 1); i++) {
       const before = await page.evaluate(() => window.__paints.length);
@@ -656,6 +666,7 @@ async function profile(browser, server) {
   const began = Date.now();
   let presses = 0;
   while (Date.now() - began < secs * 1000) {
+    await page.evaluate(() => window.Panes && Panes.expandTwin && Panes.expandTwin(true));
     for (const sel of ['[data-view="front"]', '[data-view="top"]', '[data-view="iso"]', '[data-twin="zoom-in"]', '[data-twin="zoom-out"]']) {
       await page.locator(sel).first().click();
       presses += 1;

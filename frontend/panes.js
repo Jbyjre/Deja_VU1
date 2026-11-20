@@ -182,6 +182,9 @@
 
   function reset() {
     Object.keys(localStorage).filter(k => k.startsWith(KEY)).forEach(k => { try { localStorage.removeItem(k); } catch (e) { /* private window */ } });
+    store.remove(OPEN_KEY);
+    const open = new Set(OPEN_FIRST);
+    document.querySelectorAll('#cockpit .pane > section.card[id]').forEach(c => { if (c.querySelector('.fold-btn')) setFold(c, open.has(c.id), false); });
     splitters.forEach(s => s.set(s.def, false));
   }
 
@@ -196,14 +199,143 @@
     });
   }
 
+  /* ---- the cockpit is calm until you click into something ----
+     Each section of the Printer screen shows its title (and the readings that matter) and opens with one press; what is open is
+     kept in this browser. The twin turns slowly by itself, stops while the pointer is over it, and shows its buttons only after a
+     click, when it expands over the cockpit (Escape or Close puts it back). Temperatures show readings; Set temperatures shows the
+     boxes and the material buttons. */
+  const OPEN_KEY = 'dejavu1.cockpit.open';
+  const OPEN_FIRST = ['pp-heaters', 'pp-camera-card', 'pp-print'];
+  const CHEVRON = '<svg class="fold-chev" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const openList = () => { try { const v = JSON.parse(store.get(OPEN_KEY) || 'null'); return Array.isArray(v) ? v : OPEN_FIRST.slice(); } catch (e) { return OPEN_FIRST.slice(); } };
+  function setFold(card, on, remember) {
+    card.classList.toggle('is-folded', !on);
+    const b = card.querySelector('.fold-btn');
+    if (b) b.setAttribute('aria-expanded', String(on));
+    if (!remember) return;
+    const list = new Set(openList());
+    if (on) list.add(card.id); else list.delete(card.id);
+    store.set(OPEN_KEY, JSON.stringify([...list]));
+  }
+  function foldCards(grid) {
+    const open = new Set(openList());
+    grid.querySelectorAll('.pane > section.card[id]').forEach(card => {
+      const h2 = card.querySelector(':scope > .card-head h2');
+      if (!h2 || h2.querySelector('.fold-btn')) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fold-btn';
+      [...h2.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim()).forEach(n => btn.append(n));
+      btn.insertAdjacentHTML('afterbegin', CHEVRON);
+      h2.prepend(btn);
+      btn.addEventListener('click', () => setFold(card, card.classList.contains('is-folded'), true));
+      setFold(card, open.has(card.id), false);
+    });
+    const heat = $('pp-heaters');
+    const head = heat && heat.querySelector(':scope > .card-head');
+    if (head && !$('pp-heat-set')) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn small pp-heat-set';
+      b.id = 'pp-heat-set';
+      b.textContent = 'Set temperatures';
+      b.setAttribute('aria-pressed', 'false');
+      b.addEventListener('click', () => {
+        const on = !heat.classList.contains('is-setting');
+        heat.classList.toggle('is-setting', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+      head.append(b);
+    }
+  }
+  function unfold(el) {
+    const card = el && el.closest && el.closest('#cockpit .card.is-folded');
+    if (card) setFold(card, true, true);
+    if (el && el.closest && el.closest('#pp-heaters') && el.closest('.temp-set, #pp-presets, #pp-bed-form')) $('pp-heaters').classList.add('is-setting');
+  }
+
+  /* The twin: turning by itself, still under the pointer, its buttons behind a click. */
+  let spunByUs = false;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const spinning = () => { const b = $('twin-spin'); return !!b && b.getAttribute('aria-pressed') === 'true'; };
+  function spin(on) {
+    const b = $('twin-spin');
+    if (!b || reduced.matches || spinning() === on) return;
+    b.click();
+  }
+  function expandTwin(on) {
+    const grid = $('cockpit');
+    if (!grid) return;
+    grid.classList.toggle('twin-expanded', on);
+    if (on) { store.set('dejavu1.cockpit.hinted', '1'); grid.classList.add('twin-hinted'); }   // the prompt goes once it has been used
+    const card = $('twin-card');
+    if (card) card.classList.toggle('is-open', on);
+    const x = $('twin-close');
+    if (x) x.hidden = !on;
+    if (on) spin(false); else autoSpin();
+    window.dispatchEvent(new Event('resize'));
+  }
+  function calmTwin() {
+    const stage = $('p-stage');
+    if (!stage || stage.dataset.calm) return;
+    stage.dataset.calm = '1';
+    if (store.get('dejavu1.cockpit.hinted')) $('cockpit').classList.add('twin-hinted');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn small twin-close';
+    close.id = 'twin-close';
+    close.hidden = true;
+    close.textContent = 'Close';
+    close.addEventListener('click', () => expandTwin(false));
+    stage.append(close);
+    const hint = document.createElement('button');
+    hint.type = 'button';
+    hint.className = 'twin-open-hint';
+    hint.id = 'twin-open';
+    hint.textContent = 'Click the printer for its controls';
+    hint.addEventListener('click', () => expandTwin(true));
+    stage.append(hint);
+    let down = null;
+    stage.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+    stage.addEventListener('pointerup', e => {
+      if (!down || $('cockpit').classList.contains('twin-expanded') || e.target.closest('button, a, input, select, summary, label')) { down = null; return; }
+      const still = Math.abs(e.clientX - down.x) < 5 && Math.abs(e.clientY - down.y) < 5 && Date.now() - down.t < 400;
+      down = null;
+      if (still) expandTwin(true);
+    });
+    stage.addEventListener('pointerenter', () => { if (spinning() && !$('cockpit').classList.contains('twin-expanded')) { spunByUs = true; spin(false); } });
+    stage.addEventListener('pointerleave', () => { if (spunByUs && !$('cockpit').classList.contains('twin-expanded')) { spunByUs = false; spin(true); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('cockpit') && $('cockpit').classList.contains('twin-expanded')) expandTwin(false); });
+    // It turns by itself whenever the Printer screen opens and after the expanded view closes (never with reduced motion).
+    window.addEventListener('dv-tab', autoSpin);
+    autoSpin();
+  }
+  // It turns only on the Printer screen: leaving it stops the turning this file started, so Overview and the rest stay still and cheap.
+  let autoOn = false;
+  function autoSpin() {
+    const grid = $('cockpit');
+    if (document.body.dataset.tab !== 'control') {
+      if (grid && grid.classList.contains('twin-expanded')) expandTwin(false);
+      if (autoOn) { autoOn = false; spunByUs = false; spin(false); }
+      return;
+    }
+    setTimeout(() => {
+      const stage = $('p-stage');
+      if (document.body.dataset.tab !== 'control' || !grid || grid.classList.contains('twin-expanded') || (stage && stage.matches(':hover')) || spinning()) return;
+      spin(true);
+      autoOn = spinning();
+    }, 900);
+  }
+
   function init() {
     buildOverview();
     scrollers();
     setTimeout(scrollers, 1500);               // panes that settings.js and others add after the page loads
     buildCockpit();
+    if ($('cockpit')) { foldCards($('cockpit')); calmTwin(); }
     dock();
     window.addEventListener('dv-tab', () => { dock(); scrollers(); });
   }
-  window.Panes = { reset, dock, put, splitter, layoutKeys: () => splitters.map(s => s.name) };
+  window.Panes = { reset, dock, put, splitter, unfold, expandTwin, layoutKeys: () => splitters.map(s => s.name) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

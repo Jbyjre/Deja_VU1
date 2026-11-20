@@ -326,6 +326,27 @@
   $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
   $('guide-replay').onclick = () => Guide.everything();
   window.DesktopApp = { install, help: installHelp, canPrompt: () => !!installEvent, standalone };
+
+  /* One quiet offer after the first real connection: a message with one button, shown once. Never on a phone, never in the demo, and
+     never when the app is already installed or the launcher already opens its own window. The permanent home is Settings, Desktop app. */
+  const OFFER_KEY = 'dejavu1.desktopOffer';
+  const offerBusy = () => !!document.querySelector('#setup-dialog[open]') || document.documentElement.classList.contains('guide-open');
+  function offerDesktop(tries) {
+    if (read(OFFER_KEY) || tourOn() || serverMissing() || standalone() || matchMedia('(max-width: 720px)').matches) return;
+    const d = info && info.desktop;
+    if (d && d.open_as === 'window') return;
+    if (offerBusy()) { if ((tries || 0) < 6) setTimeout(() => offerDesktop((tries || 0) + 1), 10000); return; }
+    save(OFFER_KEY, '1');
+    toast('Deja Vu1 can open in its own window instead of a browser tab.', 'info', 15000, {
+      action: { label: 'See how', run: () => { location.hash = '#/settings'; setTimeout(() => window.Settings && Settings.search('desktop app'), 400); } }
+    });
+  }
+  const connNow = $('conn');
+  if (connNow) {
+    new MutationObserver(() => {
+      if (connNow.classList.contains('is-live') && !connNow.classList.contains('is-demo')) setTimeout(() => offerDesktop(0), 8000);
+    }).observe(connNow, { attributes: true, attributeFilter: ['class'] });
+  }
   addEventListener('beforeinstallprompt', () => window.Phone && Phone.refreshInstall());
 
   // The search box lives in finder.js.

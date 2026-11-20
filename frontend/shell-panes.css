@@ -67,6 +67,13 @@ html.has-shell .stage > #twin-card .twin-head h2 { display: none; }
 html.has-shell .stage > #twin-card #twin-host { flex: 1; min-height: 0; margin: 0; }
 html.has-shell .stage > #twin-card .twin-note { display: none; }
 html.has-shell .stage > #twin-card[data-stage="overview"] .twin-tools { display: none; }
+/* The cockpit's twin tools take two compact rows, not three, and the gesture hint is for people new to 3D printing: the view gets the height. */
+html.has-shell .stage > #twin-card:not([data-stage="overview"]) .twin-tools { gap: 6px; margin: 0; padding: 8px 12px 6px; }
+html.has-shell .stage > #twin-card:not([data-stage="overview"]) .twin-tools .btn.small { min-width: 30px; min-height: 30px; padding: 0 10px; font-size: 12.5px; }
+html.has-shell .stage > #twin-card:not([data-stage="overview"]) .twin-tools .pill-toggle button { min-height: 28px; padding: 0 12px; font-size: 12px; }
+@media (min-width: 721px) {
+  html[data-experience="know"] .stage > #twin-card .twin-hint, html.familiar .stage > #twin-card .twin-hint { display: none; }
+}
 
 /* ---- Printer › Control: the cockpit ------------------------------------------------------------------------------------------- */
 html.has-shell #tab-control { display: flex; flex-direction: column; }
@@ -150,3 +157,91 @@ html.has-shell .pane .card-head > :first-child { min-width: 0; }
 /* the heads' tiles in a narrow pane: tighter padding so the target box keeps its word */
 html.has-shell .pane .divider-row > * { padding: 12px 10px; }
 html.has-shell .pane #ctrl-temps input { min-width: 0; }
+
+/* ---- Maintenance: rows with a band above them, not boxes ---------------------------------------------------------------------- */
+html.has-shell .mt-band { grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0 0 4px; border: 1px solid var(--hair); border-radius: 10px; overflow: hidden; }
+html.has-shell .mt-band[hidden] { display: none; }
+html.has-shell .mt-band .ro:last-child { border-right: 0; }
+html.has-shell .mt-band .ro-btn { appearance: none; border-top: 0; border-bottom: 0; border-left: 0; background: transparent; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+html.has-shell .mt-band .ro-btn:hover { background: color-mix(in oklch, var(--text) 5%, transparent); }
+html.has-shell .mt-band .ro-btn[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
+html.has-shell .mt-band .ro-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+html.has-shell .mt-band .ro-btn.overdue:not(.is-zero) b { color: color-mix(in srgb, var(--bad) 78%, black); }
+html.has-shell .mt-band .ro-btn.due_soon:not(.is-zero) b { color: #7a5a00; }
+html[data-theme="dark"].has-shell .mt-band .ro-btn.overdue:not(.is-zero) b { color: var(--bad); }
+html[data-theme="dark"].has-shell .mt-band .ro-btn.due_soon:not(.is-zero) b { color: var(--warn); }
+html.has-shell .mt-band .ro-btn.is-zero b { color: var(--text-faint); }
+html.has-shell #tasks { gap: 0; }
+html.has-shell #tasks .task { grid-template-columns: minmax(0, 1.25fr) minmax(200px, 0.9fr) 262px; gap: 4px 22px; padding: 11px 8px 11px 18px; background: none; border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; box-shadow: none; overflow: visible; }
+html.has-shell #tasks .task:hover { background: color-mix(in oklch, var(--text) 4%, transparent); }
+html.has-shell #tasks .task.overdue { background: color-mix(in oklch, var(--bad) 6%, transparent); }
+html.has-shell #tasks .task::before { left: 6px; top: 12px; bottom: 12px; width: 3px; border-radius: 3px; box-shadow: none; }
+html.has-shell #tasks .task-name { font-size: 13.5px; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+html.has-shell #tasks .task-desc { margin-top: 2px; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell #tasks .task-meta { margin: 0; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell #tasks .bar { height: 4px; margin-top: 7px; }
+html.has-shell #tasks .task-actions { flex-direction: row; align-items: center; justify-content: flex-end; gap: 8px; }
+html.has-shell #tasks .task-actions .btn { min-height: 30px; padding: 0 14px; font-size: 12.5px; white-space: nowrap; }
+html.has-shell #tasks .task-snooze { min-height: 30px; width: auto; max-width: 150px; font-size: 12.5px; }
+@media (max-width: 1100px) { html.has-shell .mt-band { grid-template-columns: repeat(3, minmax(0, 1fr)); } html.has-shell .mt-band .ro:nth-child(3) { border-right: 0; } html.has-shell .mt-band .ro:nth-child(n+4) { border-top: 1px solid var(--hair); } }
+@media (max-width: 720px) {
+  html.has-shell #tasks .task { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-right: 4px; }
+  html.has-shell #tasks .task-desc { white-space: normal; }
+  html.has-shell #tasks .task-actions { justify-content: flex-start; }
+}
+@media (prefers-contrast: more) { html.has-shell .mt-band, html.has-shell #tasks .task { border-color: var(--text); } }
+
+/* ---- Files: a dragged file anywhere on the screen outlines the whole working surface (the sidebar and strip stay as they are) -- */
+html.has-shell.is-dropping .wrap { outline: 2px dashed var(--accent); outline-offset: -8px; background-image: linear-gradient(color-mix(in oklch, var(--accent) 9%, transparent), color-mix(in oklch, var(--accent) 9%, transparent)); }
+html.has-shell #file-drop:not([hidden]) { position: fixed; z-index: 120; inset: auto auto calc(var(--strip-h) + 36px) 50%; transform: translateX(-50%); margin: 0; padding: 10px 20px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent, #fff); font: 600 14px/1.2 var(--font-sans); box-shadow: var(--shadow-sheet, 0 8px 24px rgba(0, 0, 0, .25)); pointer-events: none; white-space: nowrap; }
+
+/* ---- AI with none connected: an introduction with the headline back, the three gains as rows beside it ----------------------- */
+html.has-shell .wrap .ai-intro { padding: clamp(18px, 3vw, 34px) clamp(14px, 3vw, 34px); }
+html.has-shell .wrap .ai-intro h2 { margin: 0 0 10px; font: 700 clamp(24px, 2.8vw, 34px)/1.12 var(--font-display, var(--font-sans)); letter-spacing: -0.02em; text-transform: none; color: var(--text); }
+html.has-shell .files-layout { grid-template-columns: minmax(0, 1fr); }   /* Library and Queue are separate parts: one column each */
+html.has-shell .ai-intro .ai-actions { margin: 18px 0 10px; }
+html.has-shell .ai-intro-list { gap: 0; border-top: 1px solid var(--hair); }
+html.has-shell .ai-intro-list li { align-items: center; padding: 13px 0; border-bottom: 1px solid var(--hair); }
+@media (min-width: 1000px) {
+  html.has-shell .ai-intro-text { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); column-gap: clamp(28px, 5vw, 72px); align-content: start; }
+  html.has-shell .ai-intro-text > :not(.ai-intro-list) { grid-column: 1; }
+  html.has-shell .ai-intro-text > .ai-intro-list { grid-column: 2; grid-row: 1 / span 6; align-self: start; margin: 0; max-width: none; }
+}
+
+/* ---- Printer: calm until you click into something (panes.js foldCards and calmTwin) ------------------------------------------- */
+html.has-shell #cockpit .card.is-folded > :not(.card-head) { display: none !important; }
+html.has-shell #cockpit .card.is-folded > .card-head > :not(:first-child), html.has-shell #cockpit .card.is-folded .card-sub { display: none !important; }
+html.has-shell #cockpit .card.is-folded > .card-head { margin-bottom: 0; }
+html.has-shell #cockpit .card > .card-head { position: relative; }
+html.has-shell .fold-btn { display: inline-flex; align-items: center; gap: 7px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+html.has-shell .fold-btn::after { content: ""; position: absolute; inset: 0; }
+html.has-shell #cockpit .card-head :is(.xp-btn, .btn, .pp-presets, .pill-toggle) { position: relative; z-index: 1; }
+html.has-shell .fold-btn .fold-chev { flex: none; transition: transform .16s ease; }
+html.has-shell .fold-btn[aria-expanded="true"] .fold-chev { transform: rotate(90deg); }
+html.has-shell .fold-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+html.has-shell #cockpit .card.is-folded:hover { background: color-mix(in oklch, var(--text) 4%, transparent); }
+html.has-shell #pp-heaters:not(.is-setting) :is(#pp-presets, .temp-set, #pp-bed-form) { display: none !important; }
+html.has-shell #pp-heaters .pp-heat-set[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+/* the console folds to its title row */
+html.has-shell #cockpit:has(#pp-console.is-folded) { grid-template-rows: minmax(0, 1fr) 1px 44px !important; }
+html.has-shell #cockpit:has(#pp-console.is-folded) > .split.h { pointer-events: none; }
+
+/* the twin: no buttons until you click it; then it expands over the cockpit with every control */
+html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card > .twin-head, html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card .twin-tools { display: none; }
+html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card #twin-host { cursor: zoom-in; }
+html.has-shell #cockpit:not(.twin-expanded) .stage > #twin-card :is(.twin-chips, .twin-readout, .twin-extras) { display: none; }
+html.has-shell #cockpit.twin-expanded #twin-sync { display: none; }
+html.has-shell #cockpit.twin-hinted .twin-open-hint:not(:focus-visible) { opacity: 0; pointer-events: none; }
+html.has-shell #cockpit:not(.twin-expanded) .stage:hover .twin-open-hint { opacity: .85; pointer-events: auto; }
+html.has-shell .twin-open-hint { position: absolute; z-index: 3; left: 50%; top: 12px; transform: translateX(-50%); padding: 6px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12px var(--font-sans); cursor: pointer; opacity: .85; transition: opacity .2s ease; }
+html.has-shell .twin-open-hint:hover, html.has-shell .twin-open-hint:focus-visible { opacity: 1; color: var(--text); }
+html.has-shell #cockpit.twin-expanded .twin-open-hint { display: none; }
+html.has-shell .twin-close { position: absolute; z-index: 7; top: 10px; right: 12px; }
+html.has-shell .twin-close[hidden] { display: none; }
+html.has-shell #cockpit.twin-expanded > .stage { grid-column: 1 / -1; grid-row: 1 / -1; z-index: 6; background: var(--paper-solid); }
+html.has-shell #cockpit.twin-expanded > :not(.stage) { visibility: hidden; }
+html.has-shell #cockpit.twin-expanded .stage > #twin-card > .twin-head { padding-right: 90px; }
+@media (prefers-reduced-motion: reduce) { html.has-shell .fold-btn .fold-chev { transition: none; } }
+@media (max-width: 720px) {
+  html.has-shell #cockpit.twin-expanded > .stage { position: fixed; inset: 8px 8px calc(var(--dock-h, 150px) + var(--strip-h) + 30px); z-index: 40; border-radius: var(--sh-r); }
+}

@@ -430,7 +430,7 @@ async function loadConnection() {
   const label = $('conn-label');
   const wasReal = realOn;
   realOn = !!data.connected || (data.printers || []).some(p => p.connected);
-  // With a real printer, demo data is a Settings choice, not a switch in the top bar.
+  // With a real printer, demo data is a Settings choice (Advanced), not a switch on the screen.
   document.body.classList.toggle('has-printer', realOn);
   // A printer connecting (or dropping) while the page is open: open or
   // close the live connection to match, without waiting for a reload.
@@ -561,7 +561,7 @@ function initServerBanner() {
 /* ---- tabs -----------------------------------------------------------------*/
 
 const TAB_KEY = 'dejavu1.tab';
-/* One plain sentence per tab, behind the ? button in the top bar, so a first-time
+/* One plain sentence per tab, behind the ? button (held in the toolbar edge's hidden holder, pagebar.js), so a first-time
    visitor knows what each section is for before reading it. */
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
   models: 'Models', ai: 'AI', automations: 'Automations', maintenance: 'Maintenance', prefs: 'Preferences', modules: 'Settings',
@@ -715,6 +715,7 @@ window.Sections = (() => {
       // A folded section (<details>) opens when something points into it.
       const fold = this.closest && this.closest('details:not([open])');
       if (fold && fold !== this) fold.open = true;
+      if (window.Panes && Panes.unfold) Panes.unfold(this);     // a folded Printer section opens too
       if (this.closest && this.closest('.sec-off')) reveal(this);
       return scrollTo.apply(this, args);
     };
@@ -777,7 +778,7 @@ async function loadStatusRibbon() {
   renderStatusRibbon(await getJSON(api('/api/printer')));
 }
 
-/* The printer button in the top bar carries the state the old strip under the
+/* The printer chip (held in the toolbar edge's hidden holder; the strip shows the same) carries the state the old strip under the
  * tabs did: a word, the progress and the finish time, so it's never out of
  * sight on any tab. */
 function renderChipStatus(data) {

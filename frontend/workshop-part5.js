@@ -391,11 +391,14 @@ function initFiles() {
       toast(r.ok ? (r.body.added.length ? `Added ${r.body.added.length} sample files` : 'The sample files are already here') : `Couldn't add samples: ${r.body.error}`, r.ok ? 'ok' : 'bad');
       loadFiles();
     });
-    const lib = qs('.files-library');
+    // The whole Files screen takes a dropped file, not only the library's box.
+    const lib = $('tab-files');
     const drop = $('file-drop');
-    lib.addEventListener('dragover', (e) => { e.preventDefault(); drop.hidden = false; });
-    lib.addEventListener('dragleave', (e) => { if (!lib.contains(e.relatedTarget)) drop.hidden = true; });
-    lib.addEventListener('drop', (e) => { e.preventDefault(); drop.hidden = true; uploadFiles([...e.dataTransfer.files]); });
+    const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+    const showDrop = on => { drop.hidden = !on; document.documentElement.classList.toggle('is-dropping', on); };
+    lib.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); showDrop(true); });
+    lib.addEventListener('dragleave', (e) => { if (!lib.contains(e.relatedTarget)) showDrop(false); });
+    lib.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); showDrop(false); uploadFiles([...e.dataTransfer.files]); });
     $('fd-close').addEventListener('click', closeFile);
     $('ar-exit').addEventListener('click', () => { if (ar.handle) ar.handle.end(); else $('ar-overlay').hidden = true; });
   }
@@ -673,7 +676,7 @@ function initPhone() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !sheet.hidden) { setSheet(false); more.focus(); }
     });
-    // The sheet's own tools: what the computer shows in the top bar (search, the ? note)
+    // The sheet's own tools: what the computer shows in the toolbar edge (search, the ? note)
     // and beside it (Camera, Set up & help).
     sheet.addEventListener('click', (e) => {
       const b = e.target.closest('[data-more]');

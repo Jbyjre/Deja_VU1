@@ -349,7 +349,7 @@ async function loadPrinterControl() {
 /* ---- Watch-only mode -----------------------------------------------------*/
 
 /* The server refuses every command to a real printer while it is on; this only
-   shows it (top bar label, Settings switch). Checked with the update watcher. */
+   shows it (the Watch-only label in the strip, the Settings switch). Checked with the update watcher. */
 function showWatchOnly(w) {
   const on = !!(w && w.on);
   const pill = $('watch-only-pill'), box = $('watch-only-setting'), note = $('watch-only-note');
