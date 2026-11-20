@@ -30,7 +30,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     page.setDefaultTimeout(20000);
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(base + '/?dashboard');
-    await page.locator('label[for="demo-toggle"]').click();
+    await page.evaluate(() => document.querySelector('label[for="demo-toggle"]').click());
     await page.locator('#attention').waitFor();
     await page.evaluate(() => document.fonts.ready);
     if (await page.locator('#handoff-dismiss').isVisible()) await page.locator('#handoff-dismiss').click();

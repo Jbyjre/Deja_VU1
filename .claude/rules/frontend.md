@@ -10,10 +10,10 @@ published** (Cloudflare serves it as the product page and the online demo), so n
 keys or private text here. Every change shows in the online demo: check `/?demo` on a static
 server. Load the frontend-design and liquid-glass skills before changing a screen.
 
-**Direction (18 and 19 November 2026):** each working screen becomes one connected, technical surface (the printer,
-plate, files, camera and readings flowing into each other, edge to edge, no gaps, no explainer paragraphs), Glass by
-default everywhere, dark mode at least as good as light. Cards stay where a small, self-contained task belongs in one
-(a setting, a confirmation, a short form). The SHELL cluster (private `FEATURES.md`) writes its building blocks here.
+**Direction (18 and 19 November 2026, built in the SHELL cluster):** each working screen is one connected, technical surface (the printer,
+plate, files, camera and readings flowing into each other, edge to edge, no gaps, no explainer paragraphs), Glass by default everywhere, dark
+mode at least as good as light. Cards stay only where a small, self-contained task belongs in one (a setting, a confirmation, a short form).
+"Building blocks" below says what every screen is made from.
 
 ## Load order and shared names
 
@@ -23,11 +23,11 @@ default everywhere, dark mode at least as good as light. Cards stay where a smal
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `pagebar.js` → `rail.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
+  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `settings.js` → `strip.js` → `pagebar.js` → `rail.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
   `guide.css` → `assistant.css` → `tester.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
-  `looks.css`.
+  `shell.css` → `shell-panes.css` → `looks.css`.
 
 ## Split files (18 and 19 November 2026)
 
@@ -85,35 +85,45 @@ code can sit in more than one part: search the family (`grep -n "function render
 
 ## Places and screens
 
-- Sidebar (`rail.js`, loaded last): each place is a screen plus, where it has parts, one part
-  (`DEST`). Links are `#/<place>` (`#/printer/<id>`); `OLD` maps old names. 224 px or 64 px, folded
-  by default below 1180 px, hidden at 720 px and less (bottom bar and More sheet). It reads
-  `dv-tab`, `dv-section`, `dv-printer` and `dv-fleet`. `#rail-menu` is a child of `body` (the
-  rail's backdrop-filter would trap a fixed child). Items carry `aria-label`, never `title`. A new
-  place needs a `DEST` row and an icon (`tests/test_rail.py`).
-- Page bar (`pagebar.js`, before `rail.js`, which stays last; `tests/test_pagebar.py`, `node tools/pagebar-walk.js`): the
-  header (`#topbar`) has two looks, set by `data-page` on `<html>`. `overview` is the banner (brand, printer button, demo
-  switch). `page`, every other screen, is one slim bar: the place's icon and name (the sidebar's, from `Rail.label` and
-  `Rail.icon`), the screen's parts as tabs in `#pb-tabs` (a second row, only when the screen has parts), the place's main
-  buttons in `#pb-actions`, then search, printer button, demo switch and the `?` button. `theme-boot.js` sets `data-page`
-  from the link, the chosen start screen or the last screen before the first paint; `showTab` keeps it right, except that
-  its first call (`initial`) leaves it alone and `pagebar.js` settles it on `dv-rail`, so a link to Printer never flashes
-  the Overview look. A main button in `ACTIONS` presses a control the screen already has (`mirror` copies its words and
-  disabled state): the bar's Emergency stop is `#pp-estop` pressed, so it still asks first and still shows a refusal in
-  words, and that card button hides on a computer so there is one. A new place's button needs no new route. On a phone the
-  bar drops the printer button, the demo switch and the main buttons (the dock and Overview say the state, the card keeps
-  its Emergency stop) and keeps a Simulated label. The `?` button opens `#tab-intro` as a small card (the screen's
-  sentence plus "Show me this screen"), also for people who turned beginner tips off. The search is a round button that
-  opens leftwards (`.topbar .feature-finder`; a global `max-width: 100%` on inputs once held it at 40 px); its icon is
-  `--pb-search-icon` because the dark and Workbench rules reset `background`. The sidebar carries the brand at its top.
+- The frame (`#shell`, a grid of sidebar, working surface and strip; `html.has-shell` is set in `theme-boot.js` before paint). There is no top bar.
+  `rail.js` (loaded last) is the sidebar of eight places: Overview, Printer, Slicer, Files, Models, AI, Maintenance, Settings, plus a "More" group
+  (Automations, Photo studio, Games). A place is one or more screens (`data-tab` panels) and the parts of them (`SECTIONS`); `DEST` lists every
+  address a link can name (`#/<dest>`, `#/printer/<id>`) with its place, and `OLD` maps old names. The sidebar is 212 px or 60 px; it narrows by
+  itself in Printer, Slicer and Files (`narrow: true`), a width chosen with `[` or in Settings wins (`dejavu1.rail.mode`), and a narrow sidebar
+  shows its labels over the page on hover or focus without moving it. It reads `dv-tab`, `dv-section`, `dv-printer` and `dv-fleet`. Items carry
+  `aria-label` that starts with the visible label, never `title`. A new place needs a `PLACES` row, a `DEST` row and an icon (`tests/test_rail.py`).
+  `#rail-menu` is a child of `body` (the card's backdrop-filter would trap a fixed child).
+- The toolbar edge (`pagebar.js`, `#topbar`, the first row of the working surface; `tests/test_pagebar.py`, `node tools/pagebar-walk.js` is the
+  browser walk of the whole frame): the place's icon and name (the printer's name beside it on Printer), its parts as `role="tab"` buttons in
+  `#pb-parts` (from `Rail.partsOf`; a place with one part shows no row), the place's own buttons in `#pb-actions` and the search. A button in
+  `ACTIONS` presses a control the screen already has (`mirror` copies its words, disabled state and hidden state): Pause and Cancel appear only while a
+  print runs. Halt is not in it. Everything the old banner carried and other scripts write to by id (`#printer-chip`, `#demo-toggle`, `#ver-chip`,
+  `#pb-help`) is kept in the hidden holder `.tb-hold`; `#pb-tabs` stays hidden for `Sections`' own part buttons. The search (`finder.js`) is the
+  command bar: the input at rest, a centred sheet while it has focus (`.feature-finder:focus-within`). It lists every place, part, settings group and
+  action with its shortcut (`hint`); a new action goes in `ACTIONS` with its keys.
+- The strip (`strip.js`, `<footer id="strip">`): one instrument per printer (the layer-stack meter, name, progress or state, temperatures; three or
+  more printers drop the extras), `#conn` (says "Simulated" in demo mode), Find, the Ask button (`assistant.js` builds it; the strip adopts it), the
+  notification orb with its toasts (`orb.js`; its colour follows the link through `data-link`) and **Halt**. Halt (one press, or `H H`) stops the
+  selected printer through `runCommand` so a refusal is shown in words, then offers Restart firmware (`/api/printer/control/restart`, refused unless the
+  printer reports an error). Settings › Halt "Ask before Halt" (`dejavu1.pref.haltAsk`) adds a second press. Halt is #c8102e with white text in every
+  look. On a phone only the selected printer shows. The "continue on this computer" offer (`#handoff`) is a line in the strip on computers and stays in
+  the dock on phones (`initDockStack`, `workshop-part3.js`).
+- Panes (`panes.js`, `shell-panes.css`): Overview is a stage (the twin) with its readings under it and a side pane; Printer › Control is a cockpit (left
+  pane of heads, bed and tuning; the twin with the console under it; right pane of camera, move pad and files). `Panes.put(id, pane)` moves a card
+  without losing its id, listeners or the `data-module-body` switch its wrapper carried. The twin is one shared instance: `Panes.dock()` moves
+  `#twin-card` into the stage of the open place. `Panes.splitter(...)` makes a divider (W3C window splitter; sizes kept in `dejavu1.layout.*`;
+  `Panes.reset()` is Settings › Reset layout).
+- Settings (`settings.js`): Preferences' cards are moved into the Settings screen, `SECTIONS.modules` sorts every card into a group (Printers &
+  connection, Look & layout, Phone & away, Alerts & smart home, Tester mode, Updates, Advanced, Help), the left list shows one group at a time and the
+  search shows every card that mentions the words. Demo data is in Advanced (`#demo-toggle` stays as a hidden input that `#demo-setting` mirrors).
 - Tabs: Overview (cards about now, no twin); Printer (data-tab `control`, kept for saved tabs and
   tours: the twin, camera, Move pad, temperatures, extrude, tune, fans, mesh, macros, console);
   Preferences (`prefs`). Photo studio has no tab button.
 - Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and Settings show
   one part at a time. Cards are sorted by `#id`, `.class` or the start of their h2 title; a card no
   rule names joins the first part. A new card on those screens needs a rule.
-  `Sections.reveal` opens the part of anything scrolled to. Each screen's row of parts (`.sec-bar`) is built into
-  the header's `#pb-tabs` and shown for the open screen; look it up by its id (`SECTION_BAR_IDS`), not inside the panel.
+  `Sections.reveal` opens the part of anything scrolled to. The toolbar edge's parts row (`#pb-parts`) replaces `Sections`' own
+  buttons (`.sec-bar`, kept hidden in `#pb-tabs` for ids); `Sections.choose(tab, key)` is still the one way to open a part. "Everything" is gone.
 - `printer-page.js` + `printer.css`: the Printer page, the Overview cards, the camera view (`.pcam`,
   at most five pictures a second, only while visible) and Preferences.
 - `workshop.js`: live WebSocket with a polling fallback (asks once a second and retries the WebSocket
@@ -131,7 +141,7 @@ code can sit in more than one part: search the family (`grep -n "function render
   card is renamed. `finder.js` (Ctrl/Cmd+K) ignores the ⓘ button; `tests/test_finder.py`. Its search box lives at the right of the top bar (`.feature-finder`) and moves into the phone's More sheet.
 - `guide.js`: tours. The quick tour (`Guide.everything()`) is nine stops; keep it short. More detail
   lives in `Guide.screen(tab)`, 1 to 4 stops per screen.
-- `orb.js`: the notification orb; `toast()` hands every message to `Orb.notify`. One translucent
+- `orb.js`: the notification orb (in the strip); `toast()` hands every message to `Orb.notify`. One translucent
   sphere tinted by `--orb-tint`, no centre dot.
 - `versions.js` + `versions.json`: Version & updates, the header chip and each version's tour.
 - `layout.js`: two-column card grids (`.grid-2`, `.desk-grid`) fill without holes. Each card gets rows as
@@ -198,9 +208,36 @@ code can sit in more than one part: search the family (`grep -n "function render
   commands and says what it is. Model text goes through `rich()`, which escapes first.
 - `app.js` `Familiar`: after four opens and three screens used, `html.familiar` hides the "Show me this
   screen" buttons and the intro line (Preferences → Beginner tips, or Ctrl+K "tips", brings them back).
-- `rail.js` keyboard: `GO_KEYS` (G then a letter), Alt+1 to 9, `?` opens `#kb-sheet`; `typing()` skips
-  text fields but not switches. Sidebar ids are `files`, `slice`, `queue`, `filament`, `maintenance`;
-  `OLD` maps library, prepare, jobs, materials and care.
+- `rail.js` keyboard: `GO_KEYS` (G then a letter), Alt+1 to 8 (the eight places), `[` narrows or widens the sidebar, `H H` is Halt (`strip.js`), `?` opens
+  `#kb-sheet`; `typing()` skips text fields but not switches. `OLD` maps fleet, control, library, care, modules, autoprint, prepare, jobs and materials.
+
+## Building blocks (the SHELL frame)
+
+Every screen is made from these. Reuse them; add a variant only when a screen needs one, and say so here. `design/shell/PLAN.md` (private
+repository) holds the reasons.
+
+| Block | Where | What to know |
+|---|---|---|
+| Frame | `#shell`, `shell.css` | Grid: sidebar, working surface (`main.wrap`), strip. 8 px gutters. At 720 px and less the surface is the page and the strip and the dock are fixed at the bottom. |
+| Surface | `html.has-shell .wrap`, `shell-panes.css` | Paper, one shape. A `.card` inside it has no box: it is a cell with a hairline under it, its `h2` is a small mono-caps label, and `.card-head` is a 38 px row. Write cards as before; do not add backgrounds, borders or shadows to them. |
+| Toolbar edge | `#topbar`, `pagebar.js` | The place's name, its parts (`Rail.partsOf`), its buttons (`ACTIONS`), the search. Parts never open another place. |
+| Pane, divider | `panes.js` | `.pane` scrolls by itself; `.split` is a W3C window splitter. Put cards in a pane with `Panes.put`; give a new divider a name so Reset layout covers it. |
+| Stage | `.stage` | The main view that fills the space (the twin). Panes dock around it; nothing floats over it. |
+| Readouts, row | `.readouts`, `.ro`, `.row` | Mono figures with units; a row is dot or meter, title, mono sub-line and one action, 44 px high. |
+| Sheet | dialogs, `.orb-panel`, the command bar | The card that stays: a confirmation, a short form, one setting. Floating, so tier 3 glass: the strongest shadow. |
+| Layer-stack meter | `.stack` in the strip | A few lines that fill from the bottom as a print grows. The only decoration. |
+| Halt, orb | `strip.js` | See "The strip" above. |
+
+- **Glass by tier** (the `liquid-glass` skill): the sidebar and the strip are tier 4 (anchored: soft, wide shadow, edge lensing), sheets and the narrow
+  sidebar's hover overlay are tier 3, segmented controls tier 1. The working surface is paper because it is content; never put glass on glass.
+- **Tokens:** `shell.css` redefines the existing names (`--bg`, `--text`, `--text-dim`, `--text-faint`, `--hair`, `--paper`, `--paper-solid`, `--raised`,
+  `--edge`) in OKLCH and adds `--well` (sunk: inputs, segmented tracks), `--surface`, `--surface-2`, `--hair-strong`, `--accent-soft`, `--halt`. Dark is
+  built first: lighter surfaces show elevation, accent and states are desaturated, the room is deep blue. Never use a raw colour in a screen.
+- **Words:** no explainer line without a reason. A static `.card-sub` or `.field-hint` has no `id` and is hidden for "I know my way around"
+  (`html[data-experience]`, `DVTheme.experience()`) and, after a few visits, for "New to 3D printing" (`html.familiar`). A line with an `id`, a
+  `role="status"` or `aria-live`, or `.keep` is live or essential and stays. Names truncate with an ellipsis and keep the full name in `aria-label`.
+- **A new screen** needs: a `DEST` row and place in `rail.js`, parts in `SECTIONS`, a Workbench and Control room check (solid panel, one hairline),
+  a dark check, a 390 px check, and its actions in the command bar. `node tools/pagebar-walk.js --shots <folder>` takes the pictures.
 
 ## Looks and theme
 
@@ -239,5 +276,6 @@ route needs `python3 tools/online-demo/record.py` (about 3 minutes) and a commit
 The demo simulates single-printer commands (`tourControl`, including Feed, chamber light, fans and sensor
 toggles, remembered in `sim.tuning` and shown in the twin) and the fleet bar (`tourBroadcast`, with the
 real answer's words); a cancel parks the head. A command in `HANDS_ON` also needs its name in the route
-pattern in `tourPost`, or the demo refuses it. `/api/print/preview?file=` is recorded per sample file, and
+pattern in `tourPost`, or the demo refuses it. Halt (`estop`) puts the simulated printer into `sim.mode = 'error'` (heaters off) until Restart firmware, which the demo
+refuses unless the printer reports an error, as the server does. `/api/print/preview?file=` is recorded per sample file, and
 `tourGet` asks for the file on the plate, so a print started in the demo is drawn from its own layers.

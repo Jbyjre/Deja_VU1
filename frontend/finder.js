@@ -30,36 +30,35 @@ window.Finder = (() => {
     ['Fans, lights and sensors', 'Printer', 'fan fans light led lights chamber cavity filament runout sensor endstops limit switch auto feeding feed load', 'Fans, lights and sensors'],
     ['Print a file', 'Printer', 'upload print start file gcode preview confirm print', 'Print a file'],
     ['Temperature chart', 'Printer', 'temperature chart graph history heaters over time', '#pp-heaters'],
-    ['Emergency stop', 'Printer', 'emergency stop e-stop m112 halt kill', '#pp-head'],
     ['Digital twin', 'Printer', '3d model printer view drawing engineering realistic twin case off see-through print benchy colours', 'Digital twin'],
-    ['What your history says', 'Printer › History & upkeep', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
+    ['What your history says', 'Printer › History', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
     ['Quick control', 'Overview', 'pause resume cancel stop print buttons', 'Quick control'],
-    ['Print health', 'Printer › History & upkeep', 'first layer quality health score', 'Print health'],
-    ['Telemetry · live readings', 'Printer › Live readings', 'telemetry live readings numbers temperatures nozzle bed position layer progress swaps sensors', 'Telemetry'],
-    ['Chamber climate', 'Printer › Live readings', 'chamber temperature humidity enclosure air', 'Chamber climate'],
-    ['Print cost', 'Printer › History & upkeep', 'price money electricity cost per print spend', 'Print cost'],
+    ['Print health', 'Printer › History', 'first layer quality health score', 'Print health'],
+    ['Telemetry · live readings', 'Printer › Readings', 'telemetry live readings numbers temperatures nozzle bed position layer progress swaps sensors', 'Telemetry'],
+    ['Chamber climate', 'Printer › Readings', 'chamber temperature humidity enclosure air', 'Chamber climate'],
+    ['Print cost', 'Printer › History', 'price money electricity cost per print spend', 'Print cost'],
     ['Use it on your phone', 'Overview', 'phone mobile qr code scan camera pair handoff', 'Use this dashboard on your phone'],
     ['What the words mean', 'Settings', 'glossary words meaning help explain jargon g-code slicer stl 3mf moonraker nozzle head', 'Your space'],
     ['Objects on the plate', 'Printer', 'skip object exclude cancel one part plate objects', 'Objects on the plate'],
     ['Home axes', 'Printer', 'home g28 xyz axes', 'Move'],
     ['G-code console', 'Printer', 'terminal command macro gcode console klipper', 'G-code console'],
-    ['Your printers', 'Printers', 'fleet farm printers cards all printers', 'Your printers'],
-    ['Farm history', 'Printers › Farm desk', 'stats history chart success rate hours prints', 'Farm history'],
-    ['Add a printer', 'Printers', 'connect ip address moonraker discover find printer network new printer', 'Add a printer'],
-    ['Farm sandbox', 'Printers › Practice farm', 'simulate sandbox test events scenario practice', 'Farm sandbox'],
-    ['Dispatch timeline', 'Printers › Farm desk', 'dispatch schedule timeline gantt plan day plates clear overnight when free', 'Dispatch'],
-    ['Best printer for a file', 'Printers › Farm desk', 'best printer which printer match colours route send to', 'Best printer for a file'],
-    ['Print right now', 'Printers › Farm desk', 'what can i print now loaded colours match idle', 'Print right now'],
-    ['Filament outlook', 'Printers › Farm desk', 'filament needed shortfall buy stock queue grams resources', 'Filament outlook'],
-    ['Worth printing?', 'Printers › Farm desk', 'profit price sell margin money per hour worth cost per piece', 'Worth printing?'],
+    ['Your printers', 'Printer › All printers', 'fleet farm printers cards all printers', 'Your printers'],
+    ['Farm history', 'Printer › Farm', 'stats history chart success rate hours prints', 'Farm history'],
+    ['Add a printer', 'Printer › All printers', 'connect ip address moonraker discover find printer network new printer', 'Add a printer'],
+    ['Farm sandbox', 'Printer › Practice printers', 'simulate sandbox test events scenario practice', 'Farm sandbox'],
+    ['Dispatch timeline', 'Printer › Farm', 'dispatch schedule timeline gantt plan day plates clear overnight when free', 'Dispatch'],
+    ['Best printer for a file', 'Printer › Farm', 'best printer which printer match colours route send to', 'Best printer for a file'],
+    ['Print right now', 'Printer › Farm', 'what can i print now loaded colours match idle', 'Print right now'],
+    ['Filament outlook', 'Printer › Farm', 'filament needed shortfall buy stock queue grams resources', 'Filament outlook'],
+    ['Worth printing?', 'Printer › Farm', 'profit price sell margin money per hour worth cost per piece', 'Worth printing?'],
     ['File library', 'Files', 'library files upload gcode stl 3mf obj models library', 'File library'],
-    ['Print queue', 'Queue', 'jobs queue next schedule auto advance waiting jobs', 'Print queue'],
+    ['Print queue', 'Files › Queue', 'jobs queue next schedule auto advance waiting jobs', 'Print queue'],
     ['Bambu / MakerWorld to U1 converter', 'Files', 'library convert converter bambu makerworld elegoo x1c p1s a1 h2d 3mf project import printables', '#convert-card'],
-    ['Get ready to slice', 'Slice', 'prepare set up slicing setup find my slicer orca orcaslicer snapmaker orca install connect program path', 'Get ready to slice'],
-    ['Slicer and profiles', 'Slice', 'prepare slice slicer orca orcaslicer engine profile process preset quality speed infill supports', 'Slicer'],
-    ['Slice a model', 'Slice', 'prepare slice now gcode from model stl', 'Slice a model'],
-    ['Tools & filaments', 'Slice', 'prepare tools heads nozzles t0 t1 t2 t3 colours materials toolheads setup', 'Tools & filaments'],
-    ['Layer heights per head · mixed layer heights', 'Tools › Layer heights', 'mixed layer height per head nozzle detail speed fast fine thick thin variable', 'Layer heights per head'],
+    ['Get ready to slice', 'Slicer › Slice', 'prepare set up slicing setup find my slicer orca orcaslicer snapmaker orca install connect program path', 'Get ready to slice'],
+    ['Slicer and profiles', 'Slicer › Slice', 'prepare slice slicer orca orcaslicer engine profile process preset quality speed infill supports', 'Slicer'],
+    ['Slice a model', 'Slicer › Slice', 'prepare slice now gcode from model stl', 'Slice a model'],
+    ['Tools & filaments', 'Slicer › Slice', 'prepare tools heads nozzles t0 t1 t2 t3 colours materials toolheads setup', 'Tools & filaments'],
+    ['Layer heights per head · mixed layer heights', 'Slicer › Layer heights', 'mixed layer height per head nozzle detail speed fast fine thick thin variable', 'Layer heights per head'],
     ['Pick up where you left off · Orca import', 'Files', 'library import orca orcaslicer snapmaker orca presets projects recent bring in migrate existing', 'Pick up where you left off'],
     ['Photo-to-Print studio', 'Photo studio', 'photo image picture heightmap tiles lithophane colour mosaic', 'Photo-to-Print Studio'],
     ['AI assistant', 'AI', 'ai assistant claude chatgpt codex api key model connect approvals', null],
@@ -69,22 +68,22 @@ window.Finder = (() => {
     ['Logbook · problems and fixes', 'Maintenance', 'care logbook log problems fixes clog jam repair history notes what fixed', 'Logbook'],
     ['Maintenance tasks', 'Maintenance', 'care upkeep service lube belts clean grease rods maintenance due', 'Maintenance'],
     ['Swapped a nozzle or hotend', 'Maintenance', 'care nozzle swap hotend change replace', 'Swapped a nozzle or hotend?'],
-    ['Filament & colour', 'Filament', 'materials filament colour color spool loaded', 'Filament & colour'],
-    ['Dock status rings', 'Filament', 'materials led ring lights dock status', 'Dock status rings'],
-    ['Right colour loaded?', 'Filament', 'materials colour check color match wrong filament', 'Right colour loaded?'],
-    ['Filament inventory', 'Filament', 'materials spools spoolman inventory grams stock filament left', 'Filament inventory'],
-    ['Appearance', 'Preferences', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
+    ['Filament & colour', 'Maintenance › Filament', 'materials filament colour color spool loaded', 'Filament & colour'],
+    ['Dock status rings', 'Maintenance › Filament', 'materials led ring lights dock status', 'Dock status rings'],
+    ['Right colour loaded?', 'Maintenance › Filament', 'materials colour check color match wrong filament', 'Right colour loaded?'],
+    ['Filament inventory', 'Maintenance › Filament', 'materials spools spoolman inventory grams stock filament left', 'Filament inventory'],
+    ['Appearance', 'Settings › Look & layout', 'theme background dots dot colour color constellation colours accent look style', 'Appearance'],
     ['Optional extras · slicing, lights, Home Assistant', 'Settings', 'optional extras modules add-ons slicing slicer wled home assistant led lights low latency camera colour checker switch on off enable disable', 'Optional extras'],
     ['Paired devices', 'Settings', 'pair phone devices tablets lock only paired access password login security', 'Paired devices'],
     ['Your data is safe · safety copies', 'Settings', 'safety copy snapshot restore undo lost settings memory data recover', 'Your data is safe'],
     ['About Deja Vu1 · check it yourself', 'Settings', 'about version credits licence check it yourself self test verify proof', 'About Deja Vu1'],
-    ['Preferences', 'Preferences', 'units celsius fahrenheit accent preferences warm up preheat presets pla petg tpu start screen camera celebrate step', 'Preferences'],
+    ['Preferences', 'Settings › Look & layout', 'units celsius fahrenheit accent preferences warm up preheat presets pla petg tpu start screen camera celebrate step', 'Preferences'],
     ['Notifications', 'Settings', 'ntfy discord telegram push email notify alerts', 'Notifications'],
     ['Tester mode · save a tester report', 'Settings', 'tester mode report beta testing record bugs slow lag log zip forum something felt off questions answers', 'Tester mode'],
     ['Backup, firmware & recovery', 'Settings', 'backup restore recovery firmware update snapshot', 'Printer firmware & app recovery'],
     ['App updates', 'Settings', 'update upgrade new version newest build latest automatic install github command paste powershell terminal', '#version-card'],
     ['Restart, repair or stop the app', 'Settings', 'restart repair reinstall fix broken files stop quit close shut down manage app', '#vc-manage'],
-    ['Print cost prices', 'Printer › History & upkeep', 'electricity price filament price kwh cost settings pricing prices', '#cost-pricing'],
+    ['Print cost prices', 'Printer › History', 'electricity price filament price kwh cost settings pricing prices', '#cost-pricing'],
     ['WLED bridge', 'Settings', 'wled leds lights strip', 'WLED bridge'],
     ['Home Assistant bridge', 'Settings', 'home assistant hass sensors mqtt smart home', 'Home Assistant bridge'],
     ['Camera settings', 'Printer › Camera & time-lapses', 'camera webcam stream mjpeg webrtc go2rtc', 'Camera settings'],
@@ -94,6 +93,14 @@ window.Finder = (() => {
     ['Games', 'Games', 'games tetris pacman pac-man snake sky dash play bored', 'tab:games'],
   ];
   const ACTIONS = [
+    ['Halt the selected printer', 'Do', 'halt stop emergency estop e-stop m112 kill motors heaters', () => window.Strip && Strip.halt(), 'H H'],
+    ['Restart the printer\'s firmware', 'Do', 'restart firmware klipper recover error after halt', () => window.Strip && Strip.restart()],
+    ['Narrow or widen the sidebar', 'Do', 'sidebar narrow wide fold collapse icons labels', () => window.Rail && Rail.toggleNarrow(), '['],
+    ['Switch between light and dark', 'Do', 'dark light theme mode night day appearance', () => window.DVTheme && DVTheme.set(DVTheme.current() === 'dark' ? 'light' : 'dark')],
+    ['Reset layout', 'Do', 'reset layout panes sizes dividers sidebar defaults', () => { if (window.Panes) Panes.reset(); if (window.Rail) Rail.setMode('auto'); toast('Layout reset: every pane and the sidebar are back to their defaults', 'ok'); }],
+    ['Show me this screen', 'Do', 'tour tips guide this screen walk through help', () => { const t = document.body.dataset.tab; if (window.Guide && Guide.has(t)) Guide.screen(t); else toast('This screen has no extra tips', 'info'); }],
+    ['Hints: I know my way around', 'Do', 'experience hints words text less explainers expert', () => window.DVTheme && DVTheme.setExperience('know')],
+    ['Hints: New to 3D printing', 'Do', 'experience hints words text more explainers beginner new', () => window.DVTheme && DVTheme.setExperience('new')],
     ['Open the camera', 'Do', 'camera live view webcam watch', () => go('#pp-camera-card')],
     ['Ask the assistant', 'Do', 'ai assistant chat ask help claude chatgpt codex gemini grok api key explain', () => window.Assistant && Assistant.open()],
     ['Keyboard shortcuts', 'Do', 'keyboard shortcuts keys hotkeys go to power user fast', () => window.Rail && Rail.keys && Rail.keys()],
@@ -155,12 +162,23 @@ window.Finder = (() => {
 
   function entries() {
     const places = PLACES.map(([title, path, keys, target]) => ({ group: 'Go to', title, path, keys, run: () => go(target) }));
-    const actions = ACTIONS.map(([title, path, keys, run]) => ({ group: 'Do', title, path, keys, run }));
+    // Every place and every part of a place, with the keys that reach it (Rail is the one list of them).
+    const eight = window.Rail ? Rail.places.filter(p => p.group !== 'more') : [];
+    const dests = window.Rail ? Rail.destinations.filter(d => !d.hide).map(d => {
+      const home = Rail.destinations.find(x => x.place === d.place) === d;
+      const letter = Rail.keyFor(d.id), at = eight.findIndex(p => p.id === d.place);
+      const hint = [letter ? `G ${letter.toUpperCase()}` : '', home && at >= 0 ? `Alt ${at + 1}` : ''].filter(Boolean).join('  ');
+      return { group: 'Go to', title: home ? Rail.placeLabel(d.place) : `${Rail.placeLabel(d.place)} › ${d.label}`, path: 'Place', hint,
+        keys: `${d.label} ${d.place} ${d.id} go open place`, run: () => Rail.goDest(d.id) };
+    }) : [];
+    const groups = typeof SECTIONS !== 'undefined' && SECTIONS.modules ? SECTIONS.modules.map(([k, label]) => ({ group: 'Go to', title: `Settings › ${label}`, path: 'Setting', keys: `settings preferences ${label} group`,
+      run: () => { Rail.goDest('settings'); setTimeout(() => window.Sections && Sections.choose('modules', k), 0); } })) : [];
+    const actions = ACTIONS.map(([title, path, keys, run, hint]) => ({ group: 'Do', title, path, keys, run, hint }));
     const printers = dynamic.printers.map(p => ({ group: 'Printers', title: p.name, path: `${p.state || 'printer'}${p.current_file ? ' · ' + p.current_file : ''}`, keys: 'printer select switch ' + p.id,
-      run: () => { showTab('control'); if (window.Workshop && Workshop.selectPrinter) Workshop.selectPrinter(p.id); } }));
+      run: () => { if (window.Rail) Rail.goDest('printer', p.id); else showTab('control'); } }));
     const files = dynamic.files.map(f => ({ group: 'Files', title: f.name, path: `${(f.kind || '').toUpperCase()} file${f.origin ? ' · ' + f.origin : ''}`, keys: 'file open ' + (f.kind || ''),
       run: () => { showTab('files'); if (window.Workshop) Workshop.openFile(f.name); } }));
-    return [...places, ...actions, ...printers, ...files];
+    return [...dests, ...groups, ...places, ...actions, ...printers, ...files];
   }
   async function refreshDynamic() {
     if (Date.now() - loadedAt < 15000) return;
@@ -215,7 +233,7 @@ window.Finder = (() => {
     } else {
       list = all.map(e => ({ e, s: score(e, q) })).filter(x => x.s > 0)
         .sort((a, b) => b.s - a.s || a.e.title.length - b.e.title.length).slice(0, 12).map(x => x.e);
-      const order = ['Go to', 'Do', 'Printers', 'Files'];
+      const order = ['Go to', 'Do', 'Printer › All printers', 'Files'];
       const firstGroup = list[0] ? list[0].group : null;
       list.sort((a, b) => (a.group === firstGroup ? -1 : 0) - (b.group === firstGroup ? -1 : 0) || order.indexOf(a.group) - order.indexOf(b.group));
     }
@@ -231,7 +249,7 @@ window.Finder = (() => {
         html += `<li class="fx-item" role="option" id="fx-${i}" data-i="${i}" aria-selected="${i === active}">
           <span class="fx-ico" aria-hidden="true">${icon(e.group)}</span>
           <span class="fx-text"><span class="fx-title">${q ? mark(e.title, q) : esc(e.title)}</span><span class="fx-path">${esc(e.path)}</span></span>
-          <span class="fx-enter" aria-hidden="true">↵</span></li>`;
+          <span class="fx-enter" aria-hidden="true">${e.hint ? e.hint.split(/ +/).map(k => `<kbd>${esc(k)}</kbd>`).join('') : '↵'}</span></li>`;
       });
       panel.innerHTML = `<ul class="fx-list" role="listbox" id="fx-list" aria-label="Results">${html}</ul>
         <p class="fx-foot" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd> move <kbd>↵</kbd> open <kbd>esc</kbd> close</p>`;
@@ -272,7 +290,7 @@ window.Finder = (() => {
   input.setAttribute('aria-autocomplete', 'list');
   input.setAttribute('aria-controls', 'feature-results');
   input.setAttribute('aria-expanded', 'false');
-  input.placeholder = 'Search everything…';
+  input.placeholder = 'Find anything…';
   const hint = document.createElement('kbd');
   hint.className = 'fx-hint'; hint.setAttribute('aria-hidden', 'true'); hint.textContent = mac ? '⌘K' : 'Ctrl K';
   input.after(hint);

@@ -218,7 +218,7 @@ function renderFleet(printers) {
           <ul class="fc-alerts" data-f="alerts"></ul>
           <div class="fc-queue" data-f="queue"></div>
           <div class="fc-foot">
-            <button class="btn fc-open" type="button" data-open="${esc(p.id)}" aria-label="Open ${esc(p.name)}">Open printer</button>
+            <button class="btn fc-open" type="button" data-open="${esc(p.id)}" aria-label="Open printer ${esc(p.name)}">Open printer</button>
             ${p.web_url && /^https?:\/\//.test(p.web_url) ? `<a class="fc-web" href="${esc(p.web_url)}" target="_blank" rel="noopener noreferrer" title="The web page built into the printer">Its own page ↗</a>` : ''}
           </div>
         </article>`).join('');

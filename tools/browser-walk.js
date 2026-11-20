@@ -55,9 +55,9 @@ function findChromium(playwright) {
 /* The places, read from the sidebar's own table so the walk can't drift from the app. */
 function readPlaces() {
   const src = fs.readFileSync(path.join(ROOT, 'frontend', 'rail.js'), 'utf8');
-  const block = src.slice(src.indexOf('const DEST = ['), src.indexOf('].map(([id, label, tab, part, group])'));
-  const rows = [...block.matchAll(/\['([a-z]+)',\s*'([^']+)',\s*'([a-z]+)',\s*(null|'[a-z]+'),\s*'([a-z]+)'\]/g)];
-  return rows.map(m => ({ id: m[1], label: m[2], tab: m[3], part: m[4] === 'null' ? null : m[4].slice(1, -1) }));
+  const block = src.slice(src.indexOf('const DEST = ['), src.indexOf('].map(([id, label, place, tab, part, sep, hide])'));
+  const rows = [...block.matchAll(/\['([a-z]+)',\s*'([^']+)',\s*'([a-z]+)',\s*'([a-z]+)',\s*(null|'[a-z]+')/g)];
+  return rows.map(m => ({ id: m[1], label: m[2], place: m[3], tab: m[4], part: m[5] === 'null' ? null : m[5].slice(1, -1) }));
 }
 
 function freePort() {
@@ -120,7 +120,7 @@ async function openSession(browser, base, cfg) {
   session.check = (ok, text) => {
     if (!ok) note(text);
   };
-  page.on('pageerror', e => note('script error: ' + e.message));
+  page.on('pageerror', e => note('script error: ' + e.message + (process.env.WALK_STACK && e.stack ? ' | ' + e.stack.split('\n').slice(0, 4).join(' ; ') : '')));
   /* A stand-in printer answers only part of Moonraker: its 502s for features it lacks are not the app's fault. */
   const ignored = cfg.standIn ? IGNORED_CONSOLE.concat([/status of 502/]) : IGNORED_CONSOLE;
   page.on('console', m => {
@@ -155,7 +155,8 @@ async function openSession(browser, base, cfg) {
     await page.waitForTimeout(600);
   }
   await page.evaluate(t => {
-    document.documentElement.dataset.theme = t;
+    // The app's own switch, so the accent and everything else that listens for dv-theme follows, as it does for a person.
+    if (window.DVTheme) DVTheme.set(t); else document.documentElement.dataset.theme = t;
   }, theme);
   return session;
 }
@@ -186,15 +187,17 @@ async function walkPlaces(browser, base, places, cfg, out, results) {
       s.note('stray text "' + bad[0] + '" near: ' + facts.text.slice(Math.max(0, at - 40), at + 40).replace(/\s+/g, ' '));
     }
     if (axeSource) {
+      await page.waitForTimeout(1200);          // colour transitions after a theme switch must finish before contrast is measured
       await page.addScriptTag({ content: axeSource });
       const found = await page.evaluate(async () => {
         const r = await axe.run(document, {
           runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] },
           resultTypes: ['violations']
         });
-        return r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, target: v.nodes[0].target.join(' ') }));
+        return r.violations.map(v => ({ id: v.id, impact: v.impact, count: v.nodes.length, target: v.nodes[0].target.join(' '),
+          why: ((v.nodes[0].any[0] || v.nodes[0].all[0] || v.nodes[0].none[0] || {}).message || '').slice(0, 170) }));
       });
-      for (const v of found) s.note('accessibility [' + v.impact + '] ' + v.id + ' on ' + v.count + ' element(s), first: ' + v.target);
+      for (const v of found) s.note('accessibility [' + v.impact + '] ' + v.id + ' on ' + v.count + ' element(s), first: ' + v.target + (v.id === 'color-contrast' || v.id === 'target-size' ? ' (' + v.why + ')' : ''));
     }
     if (out) {
       const name = [place.id, cfg.width, cfg.demo ? 'demo' : 'empty', cfg.theme].join('-') + '.png';

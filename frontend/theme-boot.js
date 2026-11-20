@@ -62,6 +62,15 @@
     }
   }
   document.documentElement.setAttribute('data-page', firstPage());
+  // The SHELL frame (shell.css) styles everything under html.has-shell, so it is set before the first paint.
+  document.documentElement.classList.add('has-shell');
+  // Your experience (Settings › Look & layout, and the setup's "Make it yours"): "new" keeps short hints for the first visits,
+  // "know" (the default) shows none. shell-panes.css reads data-experience.
+  var EXP_KEY = 'dejavu1.pref.experience';
+  function experience() {
+    try { return localStorage.getItem(EXP_KEY) === 'new' ? 'new' : 'know'; } catch (e) { return 'know'; }
+  }
+  document.documentElement.setAttribute('data-experience', experience());
   var media =window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function pref() {
     try {
@@ -91,6 +100,13 @@
       choice = LOOKS.indexOf(choice) >= 0 ? choice : DEFAULT_LOOK;
       try { localStorage.setItem(UI_KEY, choice); } catch (e) { /* private window: this visit only */ }
       applyLook(choice);
+    },
+    experience: experience,
+    setExperience: function (choice) {
+      choice = choice === 'new' ? 'new' : 'know';
+      try { localStorage.setItem(EXP_KEY, choice); } catch (e) { /* private window: this visit only */ }
+      document.documentElement.setAttribute('data-experience', choice);
+      try { window.dispatchEvent(new CustomEvent('dv-experience', { detail: { experience: choice } })); } catch (e) { /* old browser */ }
     },
     densities: DENSITIES.slice(),
     density: density,

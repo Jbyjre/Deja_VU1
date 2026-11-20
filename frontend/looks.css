@@ -59,8 +59,7 @@
 /* ---- every panel: solid, one hairline, no blur, no drifting highlight ---- */
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass,
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice):not(.is-morph-target),
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.topbar, .tabbar, .status-ribbon, .rail, .rail-menu, .live-pill, .orb-panel, .more-sheet, .bottom-nav).liquid-glass,
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail {
+:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) :is(.topbar, .tabbar, .status-ribbon, .rail-menu, .live-pill, .orb-panel, .more-sheet, .bottom-nav, .strip, .rail-card).liquid-glass {
   background: var(--wb-panel);
   border: 1px solid var(--wb-line);
   border-radius: var(--wb-r);
@@ -72,8 +71,6 @@
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass::before, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass::after { display: none; }
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .liquid-glass:is(.card, .fleet-card)[data-tint] { background: var(--wb-panel); }
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .card { animation: none; }
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .topbar { top: 0; margin-top: 10px; border-radius: var(--wb-r); }
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .topbar.liquid-glass { box-shadow: 0 1px 0 var(--wb-line); }
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) dialog.glass-dialog .dialog-panel, :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .dialog-panel { border-radius: var(--wb-r); box-shadow: 0 18px 48px rgba(10, 14, 20, .22); }
 
 /* ---- type: one sans for words, the mono for readings ---- */
@@ -118,9 +115,6 @@
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui).pb-help-open #tab-intro strong { font-family: var(--font-sans); letter-spacing: 0; }
 
 /* ---- the sidebar ---- */
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail { top: 10px; bottom: 10px; left: 10px; padding: 8px 6px; }
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail-item { border-radius: var(--wb-r-sm); min-height: 36px; padding: 7px 10px; }
-:root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .rail-item.active { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
 
 /* ---- notifications: a plain round button, no glass sphere ---- */
 :root:is([data-ui="workbench"], [data-ui="control"]):not(#ui) .orb { background: var(--wb-panel); border: 1px solid var(--wb-line-strong); box-shadow: 0 2px 8px rgba(10, 14, 20, .14);
@@ -165,11 +159,8 @@
 :root[data-ui="control"]:not(#ui) .card h2, :root[data-ui="control"]:not(#ui) .dialog-panel h2 { font: 600 12px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
 :root[data-ui="control"]:not(#ui) .card-sub { font-size: 12.5px; }
 :root[data-ui="control"]:not(#ui) .btn { padding: 8px 13px; font-size: 12.5px; }
-:root[data-ui="control"]:not(#ui) .rail-item { min-height: 32px; padding: 6px 10px; font-size: 13px; }
-:root[data-ui="control"]:not(#ui) .rail-group { margin-top: 10px; }
 /* Status keeps its colour; chosen states and the accent go quiet. */
 :root[data-ui="control"]:not(#ui) :is(.pill-toggle button.active, .sec-track button[aria-pressed="true"]) { box-shadow: inset 0 -2px 0 var(--text); }
-:root[data-ui="control"]:not(#ui) .rail-item.active { background: var(--wb-raised); color: var(--text); box-shadow: inset 3px 0 0 var(--text); }
 
 /* ---- the Look choice in Preferences (every look) ---- */
 .look-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
@@ -211,7 +202,3 @@
 html[data-density="compact"]:not(#dv) .card { padding: 14px 16px; margin-bottom: 12px; }
 html[data-density="compact"]:not(#dv) .card-head { margin-bottom: 10px; gap: 8px 12px; }
 html[data-density="compact"]:not(#dv) :is(.grid-2, .flow-run) { gap: 12px; }
-html[data-density="compact"]:not(#dv) .rail { padding: 6px; gap: 0; }
-html[data-density="compact"]:not(#dv) .rail-item { min-height: 32px; padding-top: 4px; padding-bottom: 4px; }
-html[data-density="compact"]:not(#dv) .rail-group { margin-top: 8px; }
-html[data-density="compact"]:not(#dv) .rail-switch { min-height: 32px; }

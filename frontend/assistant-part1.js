@@ -91,7 +91,7 @@ function mark() {
     const on = ready();
     document.documentElement.classList.toggle('ai-on', on);
     el.launch.classList.toggle('is-quiet', !on);
-    el.launch.setAttribute('aria-label', on ? 'Open the assistant' : 'Set up an AI assistant (optional)');
+    el.launch.setAttribute('aria-label', on ? 'Ask the assistant' : 'Set up an AI assistant (optional)');
     if (!on) {
       aiState.lastTrouble = '';
       clearTimeout(aiState.glowing);
@@ -287,7 +287,7 @@ function costText(e) {
   }
 
 const STATUS = { running: 'Working', waiting: 'Needs your yes', done: 'Done', refused: 'Refused', declined: 'Declined' };
-const PLACE = { printers: 'Printers', printer: 'the Printer page', files: 'Files', slice: 'Slice', queue: 'the queue', filament: 'Filament', maintenance: 'Maintenance', settings: 'Settings', automations: 'Automations', overview: 'Overview', ai: 'the AI screen', prefs: 'Preferences', desk: 'the Farm desk', layers: 'Layer heights', studio: 'Photo studio', sandbox: 'the Practice farm', games: 'Games' };
+const PLACE = { printers: 'All printers', printer: 'the Printer screen', files: 'the file Library', slice: 'the Slicer', queue: 'the queue', filament: 'Filament', maintenance: 'Maintenance', settings: 'Settings', automations: 'Automations', overview: 'Overview', ai: 'the AI screen', prefs: 'Settings › Look & layout', desk: 'the Farm screen', layers: 'Layer heights', studio: 'Photo studio', sandbox: 'the practice printers', games: 'Games', models: 'Models', readings: 'the printer\u2019s readings', camera: 'the camera and time-lapses', history: 'the printer\u2019s history' };
 const SPOT_NAME = { '#twin-card': 'the digital twin', '#pp-camera-card': 'the camera', '#pp-move': 'the move pad', '#pp-heaters': 'temperatures', '#pp-console': 'the console', '#timelapse-card': 'time-lapses', '#pp-mesh': 'the bed mesh', '#tab-filament': 'Filament', '#logbook': 'the logbook', '#tab-autoprint': 'Slice' };
 
 function proposalHTML(m) {

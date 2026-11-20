@@ -257,7 +257,7 @@ window.Guide = (() => {
   const QUICK = [
     { eyebrow: 'Quick tour', title: 'A quick look around.',
       html: () => `<p>Nine stops across the dashboard, about a minute. Each one points at the real thing, and you can click it while the tour waits.</p>
-        ${needsDemo() ? '<p class="guide-aside">The screens are empty until a printer is connected. Demo data fills them with pretend printers (Demo printer 1, 2 and 3) so there is something to see. The switch in the header turns it off again.</p>' : ''}`,
+        ${needsDemo() ? '<p class="guide-aside">The screens are empty until a printer is connected. Demo data fills them with pretend printers (Demo printer 1, 2 and 3) so there is something to see. Settings → Advanced turns it off again.</p>' : ''}`,
       try: () => needsDemo() ? 'Turn on demo data' : null, action: 'demo-on' },
     { tab: 'overview', target: '#attention', title: 'What needs you',
       text: 'Jams, errors, finished prints and maintenance that is due, for every printer, most urgent first. Keep this screen open and nothing slips by.' },
@@ -281,8 +281,8 @@ window.Guide = (() => {
     { target: '#orb', title: 'Messages live here',
       text: 'Updates and alerts rise out of this orb and sink back in. Click it to read the last 30.', try: 'Send a test message', action: 'orb-demo' },
     { eyebrow: 'That’s the tour', title: 'You’re ready.',
-      html: `<p>Every screen has a <strong>?</strong> button in the top bar. It says what the screen is for and has a <strong>Show me this screen</strong> button with a few more tips.</p>
-        <p>Replay this tour from <strong>Settings → Your space</strong>. Ready for your own printer? <strong>Printers → Add a printer</strong>.</p>` },
+      html: `<p>Every screen has a few more tips of its own: press <strong>Ctrl+K</strong> (Cmd+K on a Mac) and choose <strong>Show me this screen</strong>.</p>
+        <p>Replay this tour from <strong>Settings → Help</strong>. Ready for your own printer? <strong>Printer → All printers → Add a printer</strong>.</p>` },
   ];
 
   /* ---- "Show me this screen": a few stops per screen ------------------------ */
@@ -306,10 +306,13 @@ window.Guide = (() => {
       { target: '#pp-tune', title: 'Tune', text: 'Speed, flow, part fan and pressure advance, during a print too. Further down: the bed mesh, other fans and lights, and printing a file.' },
     ],
     files: [
-      { target: '#convert-card', title: 'Convert a project', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
       { target: '#file-drop', closest: '.card', title: 'Your files', text: 'Click a file for its 3D view, layers, plate editor and checks.', try: () => tourOn() ? null : 'Add the sample files', action: 'samples' },
       { target: '#queue-host', closest: '.card', title: 'The queue', text: 'Prints waiting their turn, per printer. Confirm Print checks each one before it starts.' },
       { target: '#tab-layerplan', title: 'Slicing and layer heights', text: 'Slicing runs the Snapmaker Orca or OrcaSlicer you installed; Mixed layer heights plans a height per head; Import from Orca brings in your presets.' },
+    ],
+    models: [
+      { target: '#models-sites', title: 'Model sites', text: 'Each link opens a model site in a new tab. Deja Vu1 sends them nothing.' },
+      { target: '#convert-card', title: 'Convert a project', text: 'Turn a Bambu Studio, MakerWorld or OrcaSlicer project into one the U1 can print, with a report of every change.' },
     ],
     studio: [
       { target: '#st-body', title: 'Pictures into prints', text: 'Drop a photo, choose from the four colours you have loaded, and save a 3MF or STL tile or relief. Works in the browser.' },

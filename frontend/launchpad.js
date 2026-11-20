@@ -122,7 +122,14 @@
       $('setup-name').addEventListener('input', e => { $('setup-status').textContent = save(key, e.target.value.trim().slice(0,40)) ? '' : 'This browser is blocking saved settings, so your name is only kept until this tab closes.'; greeting(); });
       $('setup-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('setup-next').click(); } });
     } else if (names[step] === 'Make it yours') {
-      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
+      const exp = window.DVTheme ? DVTheme.experience() : 'know';
+      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">How much help should the screens give? Short hints for your first visits, or none. Settings changes it later.</p>
+        <div class="setup-choices" role="group" aria-label="Your experience"><button class="btn ${exp==='new'?'primary':''}" type="button" id="setup-exp-new" aria-pressed="${exp==='new'}">New to 3D printing</button><button class="btn ${exp==='know'?'primary':''}" type="button" id="setup-exp-know" aria-pressed="${exp==='know'}">I know my way around</button></div>
+        <p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
+      ['new', 'know'].forEach(v => { $('setup-exp-' + v).onclick = () => {
+        if (window.DVTheme) DVTheme.setExperience(v);
+        ['new', 'know'].forEach(o => { const b = $('setup-exp-' + o); b.classList.toggle('primary', o === v); b.setAttribute('aria-pressed', String(o === v)); });
+      }; });
       if (typeof Backdrop !== 'undefined') Backdrop.picker($('setup-backdrop'));
     } else if (names[step] === 'Your printer') {
       content.innerHTML = `<h2 id="setup-title">Your printer, or a demo first?</h2><p class="setup-lead">The demo fills every screen with pretend printers, labelled as pretend. Connecting your own printer never starts a print.</p>
@@ -164,7 +171,7 @@
     } else if (step === TOUR) {
       content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
         <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
-        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> the ? button in the top bar opens a short note and a few tips for whichever screen is open.</li></ul>
+        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> press Ctrl+K and choose Show me this screen for a few tips about whichever screen is open.</li></ul>
         <div class="setup-choices"><button class="btn primary" id="setup-guide">Start the tour</button></div>
         <p class="field-hint">The tour never moves or starts a printer. End it any time with × or Esc; it comes back here. Replay it later from Settings → Your space.</p>`;
       $('setup-guide').onclick=()=>{

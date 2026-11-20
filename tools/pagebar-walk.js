@@ -1,15 +1,18 @@
 #!/usr/bin/env node
 /*
- * The page bar walk: the slim bar at the top of every screen except Overview, in a real Chromium.
+ * The frame walk: the SHELL frame (sidebar of eight places, toolbar edge, instrument strip, docked panes) in a real Chromium.
+ * (The file keeps its old name, pagebar-walk.js, because tests and notes point at it.)
  *
  *   node tools/pagebar-walk.js            runs the walk and prints one line per check
  *   node tools/pagebar-walk.js --probe    only says whether Playwright and a Chromium are available
- *   node tools/pagebar-walk.js --shots DIR   also saves a screenshot of the bar on each place into DIR
+ *   node tools/pagebar-walk.js --shots DIR   also saves a screenshot of each place into DIR
  *
- * It starts its own server on an empty data folder, with demo data on. It checks that a link to a screen never
- * flashes the Overview look, that every sidebar place shows its own name, parts and buttons in the bar, that the
- * ? note, the search and the buttons work, that Emergency stop still asks first and sends nothing when refused, and
- * that a phone gets the short bar without sideways scrolling.
+ * It starts its own server on an empty data folder, with demo data on. It checks that nothing sits across the top of the page,
+ * that the eight places and their parts open the right screens (old links included), that the sidebar narrows by itself in a
+ * working place, that the strip shows every printer and Halt stops the selected one in words (with the two-press setting, the
+ * H H shortcut and Restart firmware), that the command bar lists places and actions with their shortcuts, that the dividers move
+ * by keyboard and are remembered, that the one twin is docked in the stage of the open place, that Settings searches, that
+ * explainer lines are gone for "I know my way around", and that a phone has no sideways scrolling and keeps Halt in reach.
  */
 'use strict';
 const fs = require('fs');
@@ -83,26 +86,12 @@ function check(ok, message) {
   console.log((ok ? 'ok   ' : 'FAIL ') + message);
 }
 
-async function openPage(browser, base, size, hash) {
+async function openPage(browser, base, size, hash, theme) {
   const context = await browser.newContext({ viewport: size });
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
-  // Every value data-page takes from the first moment on, to catch a flash of the wrong look.
-  await page.addInitScript(() => {
-    window.__looks = [];
-    const watch = () => {
-      if (!document.documentElement || window.__watching) return;
-      window.__watching = true;
-      window.__looks.push(document.documentElement.dataset.page || 'unset');
-      new MutationObserver(() => window.__looks.push(document.documentElement.dataset.page)).observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['data-page']
-      });
-    };
-    watch();
-    new MutationObserver(watch).observe(document, { childList: true, subtree: true });
-  });
+  if (theme) await page.addInitScript(t => { try { localStorage.setItem('dejavu1.pref.theme', t); } catch (e) { /* storage blocked */ } }, theme);
   await page.goto(base + '/' + (hash || ''));
   await page.waitForTimeout(1200);
   const skip = await page.$('text=Skip setup');
@@ -112,183 +101,277 @@ async function openPage(browser, base, size, hash) {
   }
   return page;
 }
-
 const go = async (page, id) => {
-  await page.evaluate(x => {
-    location.hash = '#/' + x;
-  }, id);
-  await page.waitForTimeout(700);
+  await page.evaluate(x => { location.hash = '#/' + x; }, id);
+  await page.waitForTimeout(600);
 };
+const demoOn = async page => {
+  await page.evaluate(() => {
+    const t = document.getElementById('demo-toggle');
+    if (t && !t.checked) { t.checked = true; t.dispatchEvent(new Event('change')); }
+  });
+  await page.waitForTimeout(2500);
+};
+const text = (page, sel) => page.evaluate(s => { const e = document.querySelector(s); return e ? e.textContent.trim() : null; }, sel);
 
 async function walk(browser, server, shots) {
-  /* A link to a screen: the look is right from the first moment. */
-  let page = await openPage(browser, server.base, { width: 1366, height: 800 }, '#/printer');
-  const looks = await page.evaluate(() => window.__looks);
-  check(looks.length > 0 && !looks.includes('overview'), 'A link to Printer never shows the Overview look: ' + JSON.stringify(looks));
+  const base = server.base;
+  let page = await openPage(browser, base, { width: 1366, height: 800 }, '#/overview');
 
-  /* No printer yet: the bar's Emergency stop copies the screen's own button, which is off. */
-  await go(page, 'printer');
-  const idle = await page.evaluate(() => {
-    const b = document.querySelector('#pb-actions [data-pb="estop"]');
-    return b && { text: b.textContent, disabled: b.disabled };
+  /* No printer yet: Halt is there and off, and the strip says so in words. */
+  const idle = await page.evaluate(() => ({ halt: document.getElementById('strip-halt').disabled, empty: (document.getElementById('strip-insts').textContent || '').trim() }));
+  check(idle.halt && /no printer/i.test(idle.empty), 'With no printer Halt is off and the strip says so: ' + JSON.stringify(idle));
+  await demoOn(page);
+
+  /* Nothing across the top: no bar, and the toolbar edge is the first row of the working surface. */
+  const top = await page.evaluate(() => {
+    const el = document.elementFromPoint(683, 3);
+    const bar = document.getElementById('topbar');
+    return { at: el ? (el.id || el.className || el.tagName) : null, inSurface: !!bar.closest('main.wrap'), barTop: Math.round(bar.getBoundingClientRect().top),
+      surfaceTop: Math.round(document.getElementById('main').getBoundingClientRect().top) };
   });
-  check(idle && idle.text === 'Emergency stop' && idle.disabled, 'With no printer the bar\'s Emergency stop is shown and off: ' + JSON.stringify(idle));
+  check(top.inSurface && top.barTop === top.surfaceTop && !/topbar|brand|pb-/.test(String(top.at)), 'No bar across the top; the toolbar edge is the surface\'s first row: ' + JSON.stringify(top));
 
-  await page.evaluate(() => {
-    const t = document.getElementById('demo-toggle');
-    if (t && !t.checked) t.click();
-  });
-  await page.waitForTimeout(2500);
-
-  /* Overview keeps the banner; nothing else does. */
-  await go(page, 'overview');
-  const ov = await page.evaluate(() => ({
-    brand: document.querySelector('.brand').offsetParent !== null,
-    bar: document.querySelector('.pb-page').offsetParent !== null,
-    intro: getComputedStyle(document.getElementById('tab-intro')).display !== 'none',
-    old: !!document.querySelector('.launch-strip, #notice')
+  /* The eight places, in order, and the More group. */
+  const names = await page.evaluate(() => ({
+    main: [...document.querySelectorAll('#rail .rail-list:not(#rail-tools) .rail-item, #rail .rail-foot .rail-item')].map(a => a.querySelector('.rail-label').textContent.trim()),
+    more: [...document.querySelectorAll('#rail-tools .rail-item')].map(a => a.querySelector('.rail-label').textContent.trim())
   }));
-  check(ov.brand && !ov.bar, 'Overview shows the banner and not the page bar');
-  check(!ov.intro && !ov.old, 'The intro line, the greeting row and the demo banner are gone from the page');
+  check(JSON.stringify(names.main) === JSON.stringify(['Overview', 'Printer', 'Slicer', 'Files', 'Models', 'AI', 'Maintenance', 'Settings']),
+    'The sidebar lists the eight places: ' + names.main.join(', '));
+  check(JSON.stringify(names.more) === JSON.stringify(['Automations', 'Photo studio', 'Games']), 'The More group holds Automations, Photo studio and Games: ' + names.more.join(', '));
 
-  /* Every place: its name, its parts and the part that is open. */
-  const places = await page.evaluate(() => Rail.destinations.filter(d => d.id !== 'overview').map(d => ({ id: d.id, label: d.label, tab: d.tab, part: d.part })));
-  let wrong = [];
-  for (const d of places) {
-    await go(page, d.id);
-    const got = await page.evaluate(() => {
-      const bar = document.querySelector('#pb-tabs .sec-bar:not([hidden])');
-      const open = bar && bar.querySelector('button[aria-pressed="true"]');
-      const tab = Rail.destinations.find(x => x.id === location.hash.slice(2).split('/')[0]).tab;
-      return {
-        expected: Sections.current(tab) || null,
-        look: document.documentElement.dataset.page,
-        title: document.getElementById('pb-title').textContent,
-        shown: document.querySelector('.pb-page').offsetParent !== null,
-        banner: document.querySelector('.brand').offsetParent !== null,
-        bars: document.querySelectorAll('#pb-tabs .sec-bar:not([hidden])').length,
-        open: open ? open.dataset.sec : null
-      };
-    });
-    // A screen has parts when the app lists them, even where the sidebar names the screen without one.
-    const fine = got.look === 'page' && got.title === d.label && got.shown && !got.banner && got.bars === (got.expected ? 1 : 0) && got.open === got.expected && (!d.part || got.open === d.part);
-    if (!fine) wrong.push(d.id + ' ' + JSON.stringify(got));
-    if (shots) await page.screenshot({ path: path.join(shots, 'bar-' + d.id + '.png'), clip: { x: 0, y: 0, width: 1366, height: 180 } });
+  /* Every place opens and names itself in the toolbar edge. */
+  for (const [dest, title] of [['overview', 'Overview'], ['printer', 'Printer'], ['slice', 'Slicer'], ['files', 'Files'], ['models', 'Models'], ['ai', 'AI'],
+    ['maintenance', 'Maintenance'], ['settings', 'Settings'], ['automations', 'Automations'], ['studio', 'Photo studio'], ['games', 'Games']]) {
+    await go(page, dest);
+    const got = await page.evaluate(() => ({ t: document.getElementById('pb-title').textContent.trim(), cur: (document.querySelector('#rail [aria-current="page"] .rail-label') || {}).textContent }));
+    check(got.t === title && got.cur === title, `#/${dest} opens ${title} and the sidebar marks it: ${JSON.stringify(got)}`);
+    if (shots) await page.screenshot({ path: path.join(shots, `${dest}.png`) });
   }
-  check(wrong.length === 0, 'All ' + places.length + ' places show their name, their parts and the open part in the bar' + (wrong.length ? ': ' + wrong.slice(0, 3).join(' | ') : ''));
 
-  /* The ? note: what the screen is for. */
-  await go(page, 'files');
-  await page.click('#pb-help');
-  await page.waitForTimeout(250);
-  const note = await page.evaluate(() => {
-    const e = document.getElementById('tab-intro');
-    const r = e.getBoundingClientRect();
-    return {
-      shown: getComputedStyle(e).display !== 'none',
-      says: /library|files/i.test(e.textContent),
-      tips: !!e.querySelector('[data-tips]'),
-      inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight,
-      pressed: document.getElementById('pb-help').getAttribute('aria-expanded')
-    };
-  });
-  check(note.shown && note.says && note.tips && note.inside && note.pressed === 'true', 'The ? button opens the screen\'s note, with its tips button, inside the window: ' + JSON.stringify(note));
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(150);
-  check(
-    await page.evaluate(() => getComputedStyle(document.getElementById('tab-intro')).display === 'none' && document.activeElement.id === 'pb-help'),
-    'Escape closes the note and gives focus back to the ? button'
-  );
-  await page.click('#pb-help');
-  await page.mouse.click(700, 600);
-  await page.waitForTimeout(150);
-  check(await page.evaluate(() => getComputedStyle(document.getElementById('tab-intro')).display === 'none'), 'A press elsewhere closes the note');
-
-  /* Search opens over the bar. */
-  await page.click('#feature-search');
-  await page.keyboard.type('twin');
-  await page.waitForTimeout(500);
-  const found = await page.evaluate(() => ({
-    width: Math.round(document.getElementById('feature-search').getBoundingClientRect().width),
-    results: document.querySelectorAll('#feature-results .fx-item').length
-  }));
-  check(found.width > 250 && found.results > 0, 'The search opens wider over the bar and finds results: ' + JSON.stringify(found));
-  await page.keyboard.press('Escape');
-  await page.evaluate(() => document.activeElement.blur());
-
-  /* A tab in the bar changes the part of the screen. */
+  /* Parts: Printer has seven, a part never opens another place, and All printers is a part of Printer. */
   await go(page, 'printer');
-  await page.click('#sec-control button[data-sec="live"]');
-  await page.waitForTimeout(400);
-  check(
-    await page.evaluate(() => document.querySelector('#sec-control button[aria-pressed="true"]').dataset.sec === 'live' && document.getElementById('twin-card').classList.contains('sec-off')),
-    'A tab in the bar opens that part of the Printer screen'
-  );
-  await page.click('#sec-control button[data-sec="control"]');
+  const parts = await page.evaluate(() => [...document.querySelectorAll('#pb-parts [data-part]')].map(b => b.textContent.trim()));
+  check(JSON.stringify(parts) === JSON.stringify(['Control', 'Readings', 'Camera & time-lapses', 'History', 'All printers', 'Farm', 'Practice printers']), 'Printer has its parts in the toolbar edge: ' + parts.join(' | '));
+  await page.click('#pb-parts [data-part="readings"]');
   await page.waitForTimeout(300);
+  let st = await page.evaluate(() => ({ title: document.getElementById('pb-title').textContent, section: Sections.current('control'), sel: document.querySelector('#pb-parts [aria-selected="true"]').textContent }));
+  check(st.title === 'Printer' && st.section === 'live' && st.sel === 'Readings', 'Readings is a part of Printer and Printer stays the place: ' + JSON.stringify(st));
+  await page.click('#pb-parts [data-part="printers"]');
+  await page.waitForTimeout(300);
+  st = await page.evaluate(() => ({ title: document.getElementById('pb-title').textContent, tab: document.body.dataset.tab, hash: location.hash }));
+  check(st.title === 'Printer' && st.tab === 'fleet' && st.hash === '#/printers', 'All printers is a part of Printer: ' + JSON.stringify(st));
 
-  /* Emergency stop asks first, and a refusal sends nothing. */
-  const posts = [];
-  page.on('request', r => {
-    if (r.method() === 'POST' && /\/control\/estop/.test(r.url())) posts.push(r.url());
-  });
-  let asked = null;
-  page.once('dialog', d => {
-    asked = d.message();
-    d.dismiss();
-  });
-  const live = await page.evaluate(() => document.querySelector('#pb-actions [data-pb="estop"]').disabled);
-  check(live === false, 'With a printer the bar\'s Emergency stop is on');
-  await page.click('#pb-actions [data-pb="estop"]');
-  await page.waitForTimeout(500);
-  check(!!asked && /^Emergency stop\?/.test(asked) && posts.length === 0, 'Emergency stop asks first, and saying no sends nothing: ' + JSON.stringify(asked && asked.slice(0, 40)));
-  check(await page.evaluate(() => getComputedStyle(document.getElementById('pp-estop')).display === 'none'), 'The card\'s own Emergency stop steps aside on a computer, so there is one');
-
-  /* The other main buttons. */
-  await go(page, 'printers');
-  await page.click('#pb-actions [data-pb="add-printer"]');
-  await page.waitForTimeout(400);
-  check(await page.evaluate(() => document.getElementById('add-printer-form').open && document.activeElement.id === 'fleet-add-name'), 'Add printer opens the form and puts the cursor in the name');
-  await go(page, 'files');
-  const chooser = page.waitForEvent('filechooser', { timeout: 3000 }).then(() => true, () => false);
-  await page.click('#pb-actions [data-pb="add-files"]');
-  check(await chooser, 'Add files opens the file chooser');
-
-  /* The sidebar's name goes home. */
-  await page.click('#rail-brand');
-  await page.waitForTimeout(500);
-  check(await page.evaluate(() => location.hash.startsWith('#/overview')), 'The name at the top of the sidebar goes to Overview');
-  check(page.errors.length === 0, 'No script errors on a laptop: ' + page.errors.slice(0, 2).join(' | '));
-  await page.context().close();
-
-  /* A phone: short bar, state in a small label, nothing scrolls sideways, the card keeps its own Emergency stop. */
-  page = await openPage(browser, server.base, { width: 390, height: 844 }, '#/printer');
-  await page.evaluate(() => {
-    const t = document.getElementById('demo-toggle');
-    if (t && !t.checked) t.click();
-  });
-  await page.waitForTimeout(2500);
-  for (const id of ['printer', 'files', 'settings']) {
-    await go(page, id);
-    const ph = await page.evaluate(() => {
-      const box = el => {
-        const r = el.getBoundingClientRect();
-        return r.left >= 0 && r.right <= innerWidth;
-      };
-      return {
-        title: document.getElementById('pb-title').textContent,
-        fits: box(document.querySelector('.topbar')) && box(document.getElementById('pb-help')) && box(document.querySelector('.pb-page')),
-        sideways: document.documentElement.scrollWidth > innerWidth,
-        demo: getComputedStyle(document.getElementById('conn')).display !== 'none',
-        estop: getComputedStyle(document.getElementById('pp-estop')).display !== 'none'
-      };
-    });
-    check(ph.title.length > 0 && ph.fits && !ph.sideways && ph.demo, 'On a phone the ' + id + ' bar fits, shows Simulated and does not scroll sideways: ' + JSON.stringify(ph));
-    if (id === 'printer') check(ph.estop, 'On a phone the Printer screen keeps its own Emergency stop');
-    if (shots) await page.screenshot({ path: path.join(shots, 'phone-' + id + '.png'), clip: { x: 0, y: 0, width: 390, height: 260 } });
+  /* Old links still land on the new home. */
+  for (const [old, title, extra] of [['slice', 'Slicer', 'slicing'], ['layers', 'Slicer', 'layers'], ['queue', 'Files', 'jobs'], ['library', 'Files', 'library'], ['filament', 'Maintenance', 'filament'],
+    ['care', 'Maintenance', 'upkeep'], ['prefs', 'Settings', 'look'], ['modules', 'Settings', null], ['desk', 'Printer', 'desk'], ['sandbox', 'Printer', 'sandbox'], ['fleet', 'Printer', 'printers'],
+    ['control', 'Printer', 'control'], ['prepare', 'Slicer', 'slicing'], ['jobs', 'Files', 'jobs']]) {
+    await go(page, old);
+    const r = await page.evaluate(() => ({ t: document.getElementById('pb-title').textContent.trim(), tab: document.body.dataset.tab, s: Sections.current(document.body.dataset.tab) }));
+    check(r.t === title && (extra == null || r.s === extra), `The old link #/${old} lands in ${title}${extra ? ' › ' + extra : ''}: ${JSON.stringify(r)}`);
   }
-  check(page.errors.length === 0, 'No script errors on a phone: ' + page.errors.slice(0, 2).join(' | '));
+
+  /* The sidebar narrows by itself in a working place, a chosen width wins, and [ toggles. */
+  await go(page, 'overview');
+  let w = await page.evaluate(() => ({ narrow: document.documentElement.classList.contains('rail-collapsed'), w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width) }));
+  check(!w.narrow && w.w >= 200, 'Overview keeps the full sidebar: ' + JSON.stringify(w));
+  await go(page, 'printer');
+  await page.waitForTimeout(400);
+  w = await page.evaluate(() => ({ narrow: document.documentElement.classList.contains('rail-collapsed'), w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width) }));
+  check(w.narrow && w.w <= 64, 'Printer narrows the sidebar by itself: ' + JSON.stringify(w));
+  await page.hover('#rail .rail-item[data-place="files"]');
+  await page.waitForTimeout(400);
+  w = await page.evaluate(() => ({ w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width), main: Math.round(document.getElementById('main').getBoundingClientRect().left) }));
+  check(w.w >= 200 && w.main < 100, 'A narrow sidebar shows its labels over the page without moving it: ' + JSON.stringify(w));
+  await page.mouse.move(700, 400);
+  await page.evaluate(() => Rail.setMode('wide'));
+  await go(page, 'files');
+  w = await page.evaluate(() => document.documentElement.classList.contains('rail-collapsed'));
+  check(!w, 'A width the person chose beats the place\'s own');
+  await page.evaluate(() => Rail.setMode('auto'));
+
+  /* The strip: one instrument per printer; selecting one selects it everywhere. */
+  await go(page, 'overview');
+  const strip = await page.evaluate(() => [...document.querySelectorAll('#strip-insts .inst')].map(b => ({ label: b.textContent.replace(/\s+/g, ' ').trim(), on: b.getAttribute('aria-pressed'), named: !b.hasAttribute('aria-label') })));
+  check(strip.length === 3 && strip.every(s => /^Demo printer \d/.test(s.label) && s.named) && strip.filter(s => s.on === 'true').length === 1,
+    'The strip has an instrument for each of the three demo printers, each named by the text it shows: ' + JSON.stringify(strip.map(s => s.label)));
+  await page.click('#strip-insts .inst:nth-child(2)');
+  await page.waitForTimeout(1200);
+  const sel = await page.evaluate(() => ({ pressed: [...document.querySelectorAll('#strip-insts .inst')].findIndex(b => b.getAttribute('aria-pressed') === 'true'), rail: document.getElementById('rail-printer').textContent }));
+  check(sel.pressed === 1 && /Demo printer 2/.test(sel.rail), 'Clicking an instrument selects that printer in the strip and the sidebar: ' + JSON.stringify(sel));
+  await page.click('#strip-insts .inst:nth-child(1)');
+  await page.waitForTimeout(900);
+
+  /* Halt: one press, says what happened in words, offers Restart firmware. */
+  await go(page, 'overview');
+  const before = await page.evaluate(() => ({ disabled: document.getElementById('strip-halt').disabled, label: document.getElementById('strip-halt').getAttribute('aria-label') }));
+  check(!before.disabled && /^Halt Demo printer 1/.test(before.label), 'Halt names the selected printer: ' + JSON.stringify(before));
+  await page.click('#strip-halt');
+  await page.waitForTimeout(1500);
+  let halted = await page.evaluate(() => ({ note: (document.getElementById('strip-halted').textContent || '').replace(/\s+/g, ' ').trim(), shown: !document.getElementById('strip-halted').hidden, restart: !!document.getElementById('strip-restart') }));
+  check(halted.shown && /Demo printer 1 halted: motors and heaters off/.test(halted.note) && halted.restart, 'One press of Halt stops the printer and says so in words, with Restart firmware: ' + JSON.stringify(halted));
+  await page.click('#strip-restart');
+  await page.waitForTimeout(1800);
+  halted = await page.evaluate(() => !document.getElementById('strip-halted').hidden);
+  check(!halted, 'Restart firmware puts the strip back');
+  /* The two-key shortcut, with the focus on the page. */
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.keyboard.press('h');
+  await page.keyboard.press('h');
+  await page.waitForTimeout(1500);
+  halted = await page.evaluate(() => !document.getElementById('strip-halted').hidden);
+  check(halted, 'H then H halts the selected printer');
+  await page.click('#strip-restart');
+  await page.waitForTimeout(1800);
+  /* Ask before Halt: the first press only arms the button. */
+  await page.evaluate(() => localStorage.setItem('dejavu1.pref.haltAsk', 'on'));
+  await page.click('#strip-halt');
+  await page.waitForTimeout(300);
+  const armed = await page.evaluate(() => ({ word: document.querySelector('#strip-halt .halt-word').textContent, shown: !document.getElementById('strip-halted').hidden }));
+  check(armed.word === 'Press again' && !armed.shown, 'With Ask before Halt on, the first press asks: ' + JSON.stringify(armed));
+  await page.click('#strip-halt');
+  await page.waitForTimeout(1500);
+  halted = await page.evaluate(() => !document.getElementById('strip-halted').hidden);
+  check(halted, 'The second press halts');
+  await page.click('#strip-restart');
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => localStorage.setItem('dejavu1.pref.haltAsk', 'off'));
+
+  /* The command bar: Ctrl K, with the shortcut shown beside each result. */
+  await page.keyboard.press('Control+k');
+  await page.waitForTimeout(300);
+  await page.keyboard.type('halt');
+  await page.waitForTimeout(300);
+  let bar = await page.evaluate(() => ({ open: !document.getElementById('feature-results').hidden, rows: [...document.querySelectorAll('#feature-results .fx-item')].map(li => li.textContent.replace(/\s+/g, ' ').trim()) }));
+  check(bar.open && bar.rows.some(r => /Halt the selected printer.*H\s*H/.test(r)), 'Ctrl K opens the command bar and Halt shows its shortcut: ' + JSON.stringify(bar.rows.slice(0, 3)));
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+k');
+  await page.keyboard.type('slicer');
+  await page.waitForTimeout(300);
+  bar = await page.evaluate(() => [...document.querySelectorAll('#feature-results .fx-item')].map(li => li.textContent.replace(/\s+/g, ' ').trim()));
+  check(bar.some(r => /^Slicer.*Alt\s*3/.test(r)) && bar.some(r => /Slicer › Layer heights/.test(r)), 'The command bar lists the place with its keys and its parts: ' + JSON.stringify(bar.slice(0, 4)));
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(600);
+  st = await text(page, '#pb-title');
+  check(st === 'Slicer', 'Enter on a place opens it: ' + st);
+
+  /* Dividers: W3C window splitter keys, remembered per browser. */
+  await go(page, 'printer');
+  await page.waitForTimeout(500);
+  const split = '#cockpit .split.v1';
+  const props = async () => page.evaluate(s => { const e = document.querySelector(s); return { role: e.getAttribute('role'), o: e.getAttribute('aria-orientation'), now: +e.getAttribute('aria-valuenow'), label: e.getAttribute('aria-label') }; }, split);
+  let p = await props();
+  check(p.role === 'separator' && p.o === 'vertical' && p.now === 300 && /heads/i.test(p.label), 'The divider is a labelled separator: ' + JSON.stringify(p));
+  await page.focus(split);
+  await page.keyboard.press('ArrowRight');
+  let q = await props();
+  await page.keyboard.press('Shift+ArrowRight');
+  const q2 = await props();
+  check(q.now === 312 && q2.now === 360, 'Arrow keys move the divider 12 px, Shift+arrow 48 px: ' + q.now + ', ' + q2.now);
+  await page.keyboard.press('Home');
+  q = await props();
+  check(q.now === 220, 'Home goes to the smallest size: ' + q.now);
+  await page.keyboard.press('Enter');
+  q = await props();
+  const hidden = await page.evaluate(() => Math.round(document.querySelector('#cockpit .p-left').getBoundingClientRect().width));
+  check(q.now === 0 && hidden === 0, 'Enter collapses the pane: ' + JSON.stringify({ now: q.now, width: hidden }));
+  await page.keyboard.press('Enter');
+  q = await props();
+  check(q.now === 220, 'Enter restores it: ' + q.now);
+  await page.reload();
+  await page.waitForTimeout(1500);
+  await go(page, 'printer');
+  q = await props();
+  check(q.now === 220, 'The size is kept in this browser: ' + q.now);
+  const box = await page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, split);
+  await page.mouse.move(box.x, box.y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 60, box.y, { steps: 5 });
+  await page.mouse.up();
+  q = await props();
+  check(q.now >= 270 && q.now <= 290, 'Dragging with the mouse moves it: ' + q.now);
+  await page.evaluate(() => Panes.reset());
+  q = await props();
+  check(q.now === 300, 'Reset layout puts the default size back: ' + q.now);
+
+  /* The one twin is docked in the stage of the open place. */
+  await go(page, 'overview');
+  await page.waitForTimeout(800);
+  let twin = await page.evaluate(() => { const c = document.getElementById('twin-card'); const r = c.getBoundingClientRect(); return { in: c.parentElement.id, w: Math.round(r.width), h: Math.round(r.height) }; });
+  check(twin.in === 'ov-stage' && twin.w > 300 && twin.h > 200, 'Overview opens on the printer in 3D: ' + JSON.stringify(twin));
+  await go(page, 'printer');
+  await page.waitForTimeout(800);
+  twin = await page.evaluate(() => { const c = document.getElementById('twin-card'); const r = c.getBoundingClientRect(); return { in: c.parentElement.id, w: Math.round(r.width), h: Math.round(r.height) }; });
+  check(twin.in === 'p-stage' && twin.w > 300 && twin.h > 200, 'The same twin sits in the Printer stage: ' + JSON.stringify(twin));
+
+  /* Settings: groups, search, demo data out of the way. */
+  await go(page, 'settings');
+  const set = await page.evaluate(() => ({ groups: [...document.querySelectorAll('.set-groups button')].map(b => b.textContent.trim()),
+    demoSwitchShown: !!document.querySelector('label[for=demo-toggle]').offsetParent }));
+  check(set.groups.length === 8 && set.groups[0] === 'Printers & connection' && set.groups.includes('Advanced') && !set.demoSwitchShown, 'Settings lists its groups and no demo switch sits in the toolbar: ' + JSON.stringify(set));
+  await page.fill('#set-search', 'demo');
+  await page.waitForTimeout(400);
+  const found = await page.evaluate(() => [...document.querySelectorAll('#set-body > :not(.sec-off):not(.set-miss)')].map(c => c.id || c.className.slice(0, 20)));
+  check(found.includes('demo-card') && !found.includes('phone-install-card'), 'Searching Settings finds the demo card from any group and leaves out cards that do not mention it: ' + JSON.stringify(found));
+  await page.fill('#set-search', '');
+  await page.waitForTimeout(300);
+  await page.click('.set-groups button[data-group="advanced"]');
+  await page.waitForTimeout(300);
+  const adv = await page.evaluate(() => ({ demo: !!document.getElementById('demo-card') && !document.getElementById('demo-card').classList.contains('sec-off'), sw: !!document.getElementById('demo-setting') }));
+  check(adv.demo && adv.sw, 'Demo data lives in Settings › Advanced: ' + JSON.stringify(adv));
+
+  /* Words: no explainer lines for "I know my way around"; short hints for "New to 3D printing". */
+  const blurbs = async () => page.evaluate(() => [...document.querySelectorAll('.card-sub:not([id]), .field-hint:not([id]):not(.keep):not([role="status"]):not([aria-live])')].filter(e => e.offsetParent !== null).length);
+  let counts = {};
+  for (const d of ['overview', 'printer', 'settings', 'files', 'maintenance']) { await go(page, d); counts[d] = await blurbs(); }
+  check(Object.values(counts).every(n => n === 0), 'No explainer lines for "I know my way around": ' + JSON.stringify(counts));
+  await page.evaluate(() => DVTheme.setExperience('new'));
+  await go(page, 'files');
+  const hints = await blurbs();
+  check(hints > 0, '"New to 3D printing" keeps short hints: ' + hints);
+  await page.evaluate(() => DVTheme.setExperience('know'));
+
+  /* No sideways scroll, in light and dark, and the page raised no error so far. */
+  check(page.errors.length === 0, 'The page raised no error on a computer: ' + page.errors.slice(0, 2).join(' | '));
   await page.context().close();
+
+  /* A phone: the strip keeps Halt in thumb reach above the dock, and nothing scrolls sideways. */
+  page = await openPage(browser, base, { width: 390, height: 844 }, '#/overview');
+  await demoOn(page);
+  for (const d of ['overview', 'printer', 'slice', 'files', 'models', 'ai', 'maintenance', 'settings']) {
+    await go(page, d);
+    await page.waitForTimeout(300);
+    const m = await page.evaluate(() => {
+      const strip = document.getElementById('strip').getBoundingClientRect(), halt = document.getElementById('strip-halt').getBoundingClientRect(), dock = document.querySelector('.bottom-nav').getBoundingClientRect();
+      return { over: document.documentElement.scrollWidth - window.innerWidth, haltIn: halt.right <= window.innerWidth && halt.bottom <= dock.top + 1 && halt.width >= 40, dock: dock.bottom <= window.innerHeight + 1, stripAbove: strip.bottom <= dock.top + 1 };
+    });
+    check(m.over <= 0 && m.haltIn && m.dock && m.stripAbove, `${d} on a phone: no sideways scroll, Halt above the dock: ${JSON.stringify(m)}`);
+    if (shots) await page.screenshot({ path: path.join(shots, `phone-${d}.png`) });
+  }
+  const dock = await page.evaluate(() => ({ dock: [...document.querySelectorAll('.bottom-nav button')].map(b => b.textContent.trim()), more: [...document.querySelectorAll('#more-sheet .ms-grid button')].map(b => b.querySelector('b').textContent.trim()) }));
+  check(JSON.stringify(dock.dock) === JSON.stringify(['Overview', 'Printer', 'Slicer', 'Files', 'More']) && dock.more.length === 7, 'The phone dock names the places and More holds the rest: ' + JSON.stringify(dock));
+  check(page.errors.length === 0, 'The page raised no error on a phone: ' + page.errors.slice(0, 2).join(' | '));
+  await page.context().close();
+
+  /* The other two looks and the dark theme wear the same frame. */
+  for (const [look, theme] of [['workbench', 'light'], ['control', 'dark'], ['glass', 'dark']]) {
+    page = await openPage(browser, base, { width: 1366, height: 800 }, '#/printer', theme);
+    await page.evaluate(l => DVTheme.setLook(l), look);
+    await demoOn(page);
+    await page.waitForTimeout(500);
+    const l = await page.evaluate(() => {
+      const card = getComputedStyle(document.querySelector('#rail .rail-card')), strip = getComputedStyle(document.getElementById('strip')), halt = getComputedStyle(document.getElementById('strip-halt'));
+      const flat = s => !/blur/.test(s.backdropFilter || s.webkitBackdropFilter || '');
+      return { theme: document.documentElement.dataset.theme, look: document.documentElement.dataset.ui, flat: flat(card) && flat(strip), halt: halt.backgroundColor };
+    });
+    const solid = look !== 'glass';
+    check(l.theme === theme && l.look === look && (!solid || l.flat) && l.halt === 'rgb(200, 16, 46)', `${look} (${theme}) keeps the frame, flat where it should be, Halt stays #c8102e: ` + JSON.stringify(l));
+    check(page.errors.length === 0, `${look} (${theme}) raised no error: ` + page.errors.slice(0, 2).join(' | '));
+    if (shots) await page.screenshot({ path: path.join(shots, `look-${look}-${theme}.png`) });
+    await page.context().close();
+  }
 }
 
 (async () => {

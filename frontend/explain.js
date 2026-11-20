@@ -20,7 +20,7 @@ window.Explain = (() => {
     'right now': ['What the printer you picked is doing: printing, paused, finished or ready for a print.',
       'While it prints you see how far along it is, the time left and the clock time it finishes.'],
     'temperatures': ['Each head, the bed and the chamber, against the temperature they are heading for.',
-      'On the Printer page you can set a target, or press PLA, PETG or TPU to warm up the head on the toolhead and the bed together. Change those values in Preferences.'],
+      'On the Printer page you can set a target, or press PLA, PETG or TPU to warm up the head on the toolhead and the bed together. Change those values in Settings › Look & layout.'],
     'move': ['Move the print head with the arrows, by the step you pick: 0.1, 1, 10 or 100 mm.',
       'Press Home all first so the printer knows where the head is. Moving waits until no print is running. Z+ opens the gap between the nozzle and the bed. Nozzle height nudges the first layer up or down while it prints.'],
     'extrude': ['Push filament out of the hot head, or pull it back (retract), by a length and speed you pick.',

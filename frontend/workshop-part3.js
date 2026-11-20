@@ -681,7 +681,12 @@ function initDockStack() {
     const phone = window.matchMedia('(max-width: 720px)');
     const place = () => {
       if (phone.matches) dock.prepend(offer, pill);
-      else dock.before(pill, offer);
+      else {
+        dock.before(pill);
+        // On a computer the "continue here" offer is a line in the instrument strip.
+        const insts = $('strip-insts');
+        if (insts) insts.before(offer); else dock.before(offer);
+      }
       // On a phone the search lives at the top of the More sheet.
       if (finder && finderHome) {
         if (phone.matches) $('ms-search').append(finder);
