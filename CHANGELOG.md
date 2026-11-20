@@ -76,6 +76,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.25 (20 November 2026): Start over in the assistant stays started over, and a failed slice always say...
+
+- Start over in the assistant stays started over, and a failed slice always says where it stopped
+
 ## 0.20.24 (20 November 2026): The tester report is checked against a replay of the first testers' run, and...
 
 - The tester report is checked against a replay of the first testers' run, and the Tester card and questions pass an accessibility scan
