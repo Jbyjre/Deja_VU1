@@ -1,4 +1,4 @@
-"""The left sidebar (frontend/rail.js): every destination opens a screen and part that exist."""
+"""The sidebar of eight places (frontend/rail.js): every destination opens a screen and part that exist."""
 
 import os
 import re
@@ -17,7 +17,8 @@ def read(name):
 RAIL = read("rail.js")
 APP = read("app.js")
 INDEX = read("index.html")
-DEST = re.findall(r"\['([a-z]+)', '([^']+)', '([a-z]+)', (null|'[a-z]+'), '(main|tools)'\]", RAIL)
+PLACES = re.findall(r"\{ id: '([a-z]+)', label: '([^']+)', group: '(main|foot|more)'", RAIL)
+DEST = re.findall(r"\['([a-z]+)', '([^']+)', '([a-z]+)', '([a-z]+)', (null|'[a-z]+')(?:, (?:true|false))*\]", RAIL)
 ICONS = set(re.findall(r"^\s+([a-z]+): 'M", RAIL, re.M))
 
 
@@ -36,88 +37,116 @@ def sections():
     return out
 
 
-class TestRail(unittest.TestCase):
-    def test_the_destinations_the_plan_asks_for(self):
-        ids = [d[0] for d in DEST]
-        for wanted in ("overview", "printers", "printer", "files", "slice", "queue", "filament", "maintenance",
-                       "settings"):
-            self.assertIn(wanted, ids)
-        self.assertEqual(len(ids), len(set(ids)))
-        self.assertGreaterEqual(len(DEST), 16)
+class TestPlaces(unittest.TestCase):
+    def test_the_eight_places_and_the_more_group(self):
+        ids = [p[0] for p in PLACES]
+        self.assertEqual([p[0] for p in PLACES if p[2] == "main"],
+                         ["overview", "printer", "slicer", "files", "models", "ai", "maintenance"])
+        self.assertEqual([p[0] for p in PLACES if p[2] == "foot"], ["settings"])
+        self.assertEqual([p[0] for p in PLACES if p[2] == "more"], ["automations", "studio", "games"])
+        self.assertEqual(len(ids), 11)
+        labels = dict((p[0], p[1]) for p in PLACES)
+        self.assertEqual(labels["studio"], "Photo studio")
 
-    def test_every_destination_opens_a_real_screen_and_part(self):
+    def test_every_place_has_a_home_and_an_icon(self):
+        homes = {}
+        for dest_id, _label, place, _tab, _part in DEST:
+            homes.setdefault(place, dest_id)
+        for place, _label, _group in PLACES:
+            self.assertIn(place, homes, place + " has no destination")
+            self.assertIn(place, ICONS, place + " has no icon")
+
+    def test_settings_is_no_longer_a_sun(self):
+        # The old icon was a circle with eight rays; the owner asked for a clear settings symbol of its own.
+        self.assertNotIn("M12 3v2.5M12 18.5V21", RAIL)
+        self.assertIn("settings: 'M4 7h9M17 7h3", RAIL)
+
+    def test_every_destination_opens_a_screen_and_part_that_exist(self):
         parts = sections()
-        for ident, label, tab, part, _group in DEST:
-            self.assertIn(f'id="tab-{tab}"', INDEX, f"{label}: no screen tab-{tab}")
+        self.assertGreaterEqual(len(DEST), 21)
+        for dest_id, _label, _place, tab, part in DEST:
+            self.assertIn('id="tab-%s"' % tab, INDEX, dest_id + ": no screen " + tab)
             if part != "null":
-                self.assertIn(part.strip("'"), parts.get(tab, []), f"{label}: {tab} has no part {part}")
-            self.assertIn(ident, ICONS, f"{label} has no icon")
+                self.assertIn(part.strip("'"), parts.get(tab, []), "%s: %s has no part %s" % (dest_id, tab, part))
+
+    def test_the_parts_of_printer_are_the_plans(self):
+        printer = [d for d in DEST if d[2] == "printer"]
+        self.assertEqual([d[1] for d in printer],
+                         ["Control", "Readings", "Camera & time-lapses", "History", "All printers", "Farm", "Practice printers"])
+        self.assertIn("'printers', 'All printers', 'printer', 'fleet', 'printers', true", RAIL)    # a new group in the row
 
     def test_old_screen_names_still_resolve(self):
-        old = dict(re.findall(r"([a-z]+): '([a-z]+)'", RAIL[RAIL.index("const OLD"):RAIL.index("const COLLAPSE_KEY")]))
-        tabs = set(re.findall(r'data-tab="([a-z]+)"', INDEX))
         ids = {d[0] for d in DEST}
-        for name, dest in old.items():
-            self.assertIn(dest, ids)
-        for tab in tabs:
-            self.assertTrue(tab in ids or tab in old, f"the old screen name {tab} has no destination")
+        old = dict(re.findall(r"(\w+): '(\w+)'", RAIL[RAIL.index("const OLD = {"):RAIL.index("const MODE_KEY")]))
+        for name in ("fleet", "control", "library", "care", "modules", "autoprint", "prepare", "jobs", "materials"):
+            self.assertIn(name, old, name + " no longer resolves")
+        for name, target in old.items():
+            self.assertIn(target, ids, "%s points at %s, which is not a destination" % (name, target))
+
+    def test_every_go_to_key_names_a_real_place(self):
+        ids = {d[0] for d in DEST}
+        keys = re.findall(r"(?:^|[ ,{])('?[a-z,]'?|,): '([a-z]+)'", RAIL[RAIL.index("const GO_KEYS = {"):RAIL.index("const keyFor")])
+        self.assertGreaterEqual(len(keys), 15)
+        for key, dest in keys:
+            self.assertIn(dest, ids, key + " goes nowhere")
+        letters = [k.strip("'") for k, _ in keys]
+        self.assertEqual(len(letters), len(set(letters)), "two destinations share a key")
+        self.assertIn("Alt", RAIL)
+        self.assertIn("/^Digit([1-8])$/", RAIL)       # Alt+1 to 8 are the eight places
 
     def test_the_sidebar_loads_last_and_keeps_the_phone_layout(self):
         scripts = re.findall(r'<script src="([^"]+)"', INDEX)
         self.assertEqual(scripts[-1], "rail.js")
-        css = read("workshop.css")
-        self.assertIn("@media (max-width: 720px) {\n  .rail { display: none; }", css)
-        self.assertIn("window.dispatchEvent(new CustomEvent('dv-tab'", APP)
+        self.assertEqual(scripts[-2], "pagebar.js")
+        self.assertIn("(max-width: 720px)", RAIL)
+        css = read("shell.css")
+        self.assertIn("html.has-shell .rail, html.has-shell .rail-menu { display: none; }", css)
+
+    def test_the_phone_dock_and_more_sheet_name_the_places(self):
+        dock = re.findall(r'<button data-tab="[a-z]+" data-dest="([a-z]+)">', INDEX[INDEX.index('<nav class="bottom-nav'):])
+        self.assertEqual(dock[:4], ["overview", "printer", "slice", "files"])
+        more = re.findall(r'data-dest="([a-z]+)"', INDEX[INDEX.index('<div class="ms-grid"'):INDEX.index('<div class="ms-tools"')])
+        self.assertEqual(more, ["models", "ai", "maintenance", "automations", "studio", "games", "settings"])
+        ids = {d[0] for d in DEST}
+        for dest in dock + more:
+            self.assertIn(dest, ids)
+
+    def test_models_has_what_works_today(self):
+        panel = INDEX[INDEX.index('id="tab-models"'):INDEX.index('id="tab-automations"')]
+        self.assertIn('id="convert-card"', panel)            # the converter moved here from Files
+        self.assertNotIn('id="convert-card"', INDEX[INDEX.index('id="tab-files"'):INDEX.index('id="tab-models"')])
+        links = re.findall(r'<a class="site-row" href="(https://[^"]+)" target="_blank" rel="noopener noreferrer">', panel)
+        self.assertGreaterEqual(len(links), 5)
 
 
 class TestRailLiveParts(unittest.TestCase):
-    """What the sidebar draws from the live fleet and how it is used from the keyboard (looked at in Chromium, 7 November 2026)."""
-
     def test_it_follows_the_fleet_the_page_already_receives(self):
-        self.assertIn("window.addEventListener('dv-fleet'", RAIL)
-        for part in ("rail-dot", "rail-progress", "rail-badge", "rail-switch", "rail-menu"):
-            self.assertIn(part, RAIL, part)
-        # Every item keeps an accessible name when only the icon shows, and says what the badge counts.
-        self.assertIn("a.setAttribute('aria-label', label[d.id])", RAIL)
-        self.assertNotIn('title="${esc(d.label)}"', RAIL)
-        self.assertIn("printers need you", RAIL)
-        self.assertIn("printers have upkeep due", RAIL)
+        for needle in ("dv-fleet", "needsYou", "dueCount", "rail-badge", "rail-switch", "rail-state", "aria-label"):
+            self.assertIn(needle, RAIL)
+        self.assertNotIn("title=", RAIL[RAIL.index("function build()"):RAIL.index("function keySheet()")])   # names are aria-label, never title
 
-    def test_the_keyboard_moves_through_the_items_and_never_while_typing(self):
-        for key in ("ArrowDown", "ArrowUp", "Home", "End"):
-            self.assertIn(key, RAIL)
-        self.assertIn("e.key === '['", RAIL)
-        self.assertIn("!typing(e.target)", RAIL)
-        self.assertIn("setAttribute('tabindex'", RAIL)
+    def test_a_working_place_narrows_the_sidebar_and_a_chosen_width_wins(self):
+        for needle in ("narrow: true", "chosenMode", "dejavu1.rail.mode", "rail-collapsed", "dv-rail-width"):
+            self.assertIn(needle, RAIL)
+        for place in ("printer", "slicer", "files"):
+            self.assertRegex(RAIL, r"\{ id: '%s', label: '[^']+', group: 'main', narrow: true \}" % place)
+        css = read("shell.css")
+        self.assertIn("html.has-shell.rail-collapsed .rail:is(:hover, :focus-within) .rail-card", css)   # labels over the page, not moving it
 
-    def test_tools_and_learn_folds_but_never_hides_the_place_you_are_in(self):
-        self.assertIn("dejavu1.rail.tools", RAIL)
-        self.assertIn("if (d.group === 'tools') setTools(true, false)", RAIL)
-        css = read("workshop.css")
-        self.assertIn(".rail-list.is-folded { display: none; }", css)
-        # With icons only there is no heading to unfold from, so nothing may stay folded.
-        self.assertIn("html.rail-collapsed .rail-list.is-folded { display: flex; }", css)
+    def test_more_folds_but_never_hides_the_place_you_are_in(self):
+        self.assertIn("setMore(true, false)", RAIL)
+        self.assertIn("is-folded", RAIL)
 
-    def test_the_menu_and_the_label_beside_an_icon_are_hidden_on_phones_and_in_dark(self):
-        css = read("workshop.css")
-        self.assertIn(".rail-menu, .rail-tip { display: none; }", css)
-        dark = read("dark.css")
-        self.assertIn('.rail-menu.liquid-glass', dark)
-        self.assertIn('.rail-tip', dark)
-        looks = read("looks.css")
-        self.assertIn(".rail, .rail-menu, .live-pill", looks)
+    def test_the_printer_menu_follows_the_switcher(self):
+        for needle in ("menuitemradio", "openMenu", "closeMenu", "Escape", "go(byId.printer, b.dataset.printer)"):
+            self.assertIn(needle, RAIL)
+
+    def test_the_label_in_the_name_rule(self):
+        # axe-core's WCAG 2.5.3: a control's spoken name must start with its visible label.
+        self.assertIn("label.overview +=", RAIL)
+        self.assertIn("aria-label", RAIL)
+        self.assertIn("Printer: ${name}", RAIL)
 
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class TestKeyboard(unittest.TestCase):
-    def test_every_go_to_key_names_a_real_place(self):
-        block = RAIL[RAIL.index("const GO_KEYS"):RAIL.index("const keyFor")]
-        keys = dict(re.findall(r"'?([a-z,])'?: '([a-z]+)'", block))
-        ids = {d[0] for d in DEST}
-        self.assertGreaterEqual(len(keys), 12)
-        for key, place in keys.items():
-            self.assertIn(place, ids, f"G {key.upper()} goes nowhere")
-        self.assertEqual(len(set(keys.values())), len(keys))

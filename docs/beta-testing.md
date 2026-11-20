@@ -22,7 +22,7 @@ Nothing has to be done on a schedule.
   Mainsail does. No firmware changes.
 - **Watch-only mode still works.** Switch on **Settings → Watch-only mode** (or
   start with `DEJAVU_WATCH_ONLY=1`) and Deja Vu1 refuses every command to the
-  printer. Reads, the camera and the emergency stop still go through. The
+  printer. Reads, the camera and Halt (the stop button) still go through. The
   report lists each refusal.
 - **Start Print has a safety check.** Confirm Print refuses a file that
   extrudes off the bed, wants a toolhead the U1 does not have, or does not
@@ -47,7 +47,7 @@ it; on Windows, let the installer add Python to PATH).
 [Getting started](getting-started.md) has the same steps with pictures of what
 each screen asks, and paste-in commands if you prefer those.
 
-Then go to **Printers**, press **Find printers**, pick your U1 and press
+Then open **Printer**, choose **All printers**, press **Find printers**, pick your U1 and press
 **Test and connect**. If nothing turns up, type its address, usually
 `http://<printer address>:7125`.
 

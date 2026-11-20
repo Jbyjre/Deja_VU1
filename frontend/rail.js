@@ -146,7 +146,7 @@
     const btn = document.getElementById('rail-collapse');
     if (btn) {
       btn.setAttribute('aria-pressed', String(narrow));
-      btn.setAttribute('aria-label', narrow ? 'Show the sidebar labels' : 'Narrow the sidebar to icons');
+      btn.setAttribute('aria-label', narrow ? 'Show labels, widen the sidebar' : 'Narrow, icons only');
       const lbl = btn.querySelector('.rail-label');
       if (lbl) lbl.textContent = narrow ? 'Show labels' : 'Narrow';
     }
@@ -231,7 +231,7 @@
     const el = item && item.querySelector('.rail-badge');
     if (!el) return '';
     el.hidden = !count;
-    el.textContent = count > 99 ? '99+' : String(count || '');
+    el.dataset.count = count > 99 ? '99+' : String(count || '');   // drawn by CSS, so the item's visible text is only its label
     el.dataset.level = level || '';
     return count ? `, ${words}` : '';
   }
@@ -268,7 +268,6 @@
       dot.dataset.state = state;
       document.getElementById('rail-printer').textContent = name || 'No printer';
       document.getElementById('rail-state').textContent = p ? stateWords(p) : 'Add one in Settings';
-      who.setAttribute('aria-label', name ? `Printer: ${name}, ${stateWords(p)}. Choose another` : 'No printer yet');
       who.disabled = !fleet.length;
     }
     if (menuOpen) drawMenu();
@@ -343,12 +342,12 @@
     nav.setAttribute('aria-label', 'Places');
     nav.innerHTML = `<div class="rail-card liquid-glass">
       <a class="rail-brand" id="rail-brand" href="#/overview" aria-label="Deja Vu1, go to Overview"><span class="rail-mark" aria-hidden="true"><i></i></span><span class="rail-label">Deja&nbsp;Vu1</span></a>
-      <button class="rail-who" id="rail-switch" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="rail-menu" aria-label="Printer">
+      <button class="rail-who" id="rail-switch" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="rail-menu">
         <i class="rail-dot" data-state="" aria-hidden="true"></i>
-        <span class="rail-label"><b id="rail-printer">No printer</b><small id="rail-state"></small></span>${svg(ICON.chevron)}</button>
+        <span class="rail-label"><b id="rail-printer">No printer</b> <small id="rail-state"></small></span>${svg(ICON.chevron)}</button>
       <div class="rail-scroll">
         <div class="rail-list">${PLACES.filter(p => p.group === 'main').map(item).join('')}</div>
-        <button class="rail-group rail-fold" id="rail-tools-h" type="button" aria-expanded="true" aria-controls="rail-tools">
+        <button class="rail-group rail-fold" id="rail-tools-h" type="button" aria-expanded="true" aria-controls="rail-tools" aria-label="More places">
           <span>More</span>${svg(ICON.chevron)}</button>
         <div class="rail-list" id="rail-tools" role="group" aria-labelledby="rail-tools-h">${PLACES.filter(p => p.group === 'more').map(item).join('')}</div>
       </div>
@@ -375,7 +374,7 @@
       go(byId.overview);
     });
     nav.addEventListener('click', e => {
-      const a = e.target.closest('[data-place]');
+      const a = e.target.closest('.rail-item[data-place]');   // not <html>, which also carries data-place
       if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;   // a new tab keeps its own link
       e.preventDefault();
       go(byId[a.dataset.dest]);

@@ -6,7 +6,7 @@
    tier 4: anchored, so a soft wide shadow); the working surface is paper, because it is content; sheets, the command bar and the
    sidebar's hover overlay are tier 3 (floating: the strongest shadow). The signature is the layer-stack meter (.stack): a few lines
    that fill from the bottom as a print grows. Type is the three faces the app already bundles; every number is mono with tabular
-   figures. Halt is #c8102e with white text in every look (contrast 6.6:1).
+   figures. Halt is #c8102e with white text in every look (contrast 5.9:1, measured).
 
    Specificity: theme.css, theme-shell.css and dark.css load before this file, so rules here that restyle an old name repeat the
    old rule's weight (html.has-shell is set in <head> by theme-boot.js, before the first paint). */
@@ -282,6 +282,10 @@ html.has-shell .bottom-nav button { gap: 2px; }
   html.has-shell .strip-cmd, html.has-shell .strip .conn:not(.is-demo) .conn-label, html.has-shell .strip .ai-launch span { display: none; }
   html.has-shell .strip .ai-launch { width: 34px; padding: 0; justify-content: center; }
   html.has-shell .halt { height: 40px; min-width: 44px; }
+  html.has-shell .strip-end { gap: 6px; padding-left: 4px; }
+  html.has-shell .inst-name { min-width: 3ch; max-width: 14ch; }
+  html.has-shell .inst { gap: 7px; }
+  html.has-shell .strip .conn { font-size: 10px; letter-spacing: 0; }
   html.has-shell .strip .orb-dock .orb-stack, html.has-shell .strip .orb-dock .orb-panel { width: calc(100vw - 24px); right: -6px; }
 }
 
@@ -303,3 +307,8 @@ html.has-shell .bottom-nav button { gap: 2px; }
 /* the command bar's results show each action's shortcut, so people learn it */
 html.has-shell .fx-enter { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-faint); }
 html.has-shell .fx-enter kbd { font: 500 10.5px var(--font-mono); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--hair-strong); background: var(--well); color: var(--text-faint); }
+
+/* Counts and key hints are drawn here, not written as text, so the visible text of a button or an item is just its label (WCAG 2.5.3). */
+html.has-shell .rail-badge::after { content: attr(data-count); }
+html.has-shell .strip-cmd kbd::after, html.has-shell .halt kbd::after { content: attr(data-keys); }
+html.has-shell :is(.tab-panel, .pane, .set-body):focus-visible { outline-offset: -3px; }

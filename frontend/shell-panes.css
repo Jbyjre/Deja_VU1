@@ -143,3 +143,10 @@ html.has-shell .wrap .card-head:not(:has(*:not(h2):not(.xp-btn))) { min-height: 
   html.has-shell .set-groups button { width: auto; white-space: nowrap; border: 1px solid var(--hair); }
   html.has-shell #tab-modules:not([hidden]) { overflow: visible; }
 }
+
+/* a pane's card head keeps its title and its count on one line */
+html.has-shell .pane .card-head { flex-wrap: nowrap; }
+html.has-shell .pane .card-head > :first-child { min-width: 0; }
+/* the heads' tiles in a narrow pane: tighter padding so the target box keeps its word */
+html.has-shell .pane .divider-row > * { padding: 12px 10px; }
+html.has-shell .pane #ctrl-temps input { min-width: 0; }

@@ -791,7 +791,7 @@
             <button class="btn small" type="button" id="lp-fitted">Use this printer's fitted nozzles</button>
           </div>
         </form>
-        <p class="lp-source">This plans layer heights; it does not slice a model. Nozzle limits come from Snapmaker's U1 machine profiles. To slice with it, save the same heights in Slice → Tools &amp; filaments and choose "Mixed" in a process profile; that needs an engine that lists per-head layer heights. Confirm Print checks each fitted nozzle before starting.</p>
+        <p class="lp-source">This plans layer heights; it does not slice a model. Nozzle limits come from Snapmaker's U1 machine profiles. To slice with it, save the same heights in Slicer › Slice › Tools &amp; filaments and choose "Mixed" in a process profile; that needs an engine that lists per-head layer heights. Confirm Print checks each fitted nozzle before starting.</p>
       </section>
     </section>
   </section>
@@ -1481,7 +1481,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
           <p>Snapmaker's app and Snapmaker Orca reach a U1 on another network through Snapmaker's cloud: in Cloud mode the printer keeps a connection open to Snapmaker's servers (MQTT over TLS, port 8883), and the app talks to those servers with your Snapmaker account. In LAN mode they need the same network. Deja Vu1 has no cloud and no account, so it goes through networks you control instead. Three ways, simplest first:</p>
           <ol>
             <li><b>Keep Deja Vu1 on a computer at home, next to the printer,</b> and open it from anywhere with the sharing above. Deja Vu1 starts with that computer, so it is always there. This is the same idea as Snapmaker's cloud: the side at home connects out, so nothing at home is opened up.</li>
-            <li><b>The printer on a second router, a mesh system or an extender at home:</b> Printers → Add a printer → <b>Look further</b> tries the address ranges home routers often use. Typing the printer's address works too, wherever your routers pass traffic between them.</li>
+            <li><b>The printer on a second router, a mesh system or an extender at home:</b> Printer → All printers → Add a printer → <b>Look further</b> tries the address ranges home routers often use. Typing the printer's address works too, wherever your routers pass traffic between them.</li>
             <li><b>Deja Vu1 away from the printer:</b> install Tailscale on any computer that stays at home and share its home network with your Tailscale network (a "subnet router": <code>tailscale set --advertise-routes=192.168.1.0/24</code> with your own range, then approve it in Tailscale's admin page). <b>Look further</b> then finds the U1 through it. Windows and the Mac app use shared routes by themselves; on Linux, run <code>tailscale set --accept-routes</code> on the computer with Deja Vu1.</li>
           </ol>
           <p>If a saved printer stops answering, Deja Vu1 looks for the same serial number at a new address by itself and switches to it, then says so.</p>
@@ -1561,7 +1561,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
         <span class="conn-dot" aria-hidden="true"></span>
         <span id="conn-label">Checking…</span>
       </div>
-    <button class="strip-cmd" id="strip-cmd" type="button" aria-label="Find anything" aria-keyshortcuts="Control+K Meta+K"><span class="strip-cmd-label">Find</span><kbd id="strip-cmd-key">Ctrl K</kbd></button>
+    <button class="strip-cmd" id="strip-cmd" type="button" aria-label="Find anything" aria-keyshortcuts="Control+K Meta+K"><span class="strip-cmd-label">Find</span><kbd id="strip-cmd-key"></kbd></button>
     <div class="orb-dock" id="orb-dock">
   <div class="orb-stack" id="toasts" aria-live="polite"></div>
   <section class="orb-panel liquid-glass deep" id="orb-panel" hidden aria-labelledby="orb-panel-title">

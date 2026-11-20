@@ -58,6 +58,12 @@ function tourState(pid) {
     delete st.objects;
     if (sim.parked) st.toolhead_position = sim.parked.slice();
     Object.entries(st.toolheads || {}).forEach(([name, h]) => { if (h.status === 'active') h.status = 'docked'; if (!sim.targets || !(name in sim.targets)) h.target_temperature = 0; });
+  } else if (sim.mode === 'error') {
+    // Halt: like the real server's M112, the printer is shut down with its heaters off until its firmware restarts.
+    Object.assign(st, { state: 'error', state_message: sim.message || 'Emergency stop: Klipper is shut down. Restart the firmware to go on',
+      current_file: null, progress: 0, active_toolhead: null, layer: { current: 0, total: 0 }, print_duration_hours: 0, bed_target: 0 });
+    delete st.objects;
+    Object.values(st.toolheads || {}).forEach(h => { h.target_temperature = 0; if (h.status === 'active') h.status = 'docked'; });
   } else if (sim.excluded && st.objects) {
     st.objects.excluded = [...new Set([...(st.objects.excluded || []), ...sim.excluded])];
   }
@@ -125,6 +131,12 @@ async function tourControl(action, pid, body) {
     tourLog(pid, 'FIRMWARE_RESTART'); tourLog(pid, '// Firmware restarted (online demo)');
     return tourDone(pid);
   }
+  if (action === 'estop') {
+    Object.assign(sim, { mode: 'error', frozen: null, file: null, targets: {}, bedTarget: 0,
+      message: 'Emergency stop: Klipper is shut down. Restart the firmware to go on (online demo)' });
+    tourLog(pid, 'M112'); tourLog(pid, '// Halt (online demo): the simulated printer is shut down until its firmware restarts');
+    return tourDone(pid);
+  }
   if (action === 'exclude') {
     const name = String(body.name || '');
     const objs = live.objects && live.objects.list || [];
@@ -157,7 +169,7 @@ async function tourControl(action, pid, body) {
     runout: b => `SET_FILAMENT_SENSOR SENSOR=${b.name} ENABLE=${b.enabled ? 1 : 0}`,
     'mesh-profile': b => b.action === 'load' ? `BED_MESH_PROFILE LOAD=${b.profile}` : 'BED_MESH_CLEAR',
     feed: b => `AUTO_FEEDING EXTRUDER=${String(b.toolhead || 'T0').slice(1)}`,
-    estop: () => 'M112', 'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
+    'bed-temperature': b => `SET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=${b.target}`,
   };
   if (HANDS_ON[action]) {
     // What a visitor sets on the lights, fans and sensors shows in the state (and so in the 3D twin) like a real printer's.

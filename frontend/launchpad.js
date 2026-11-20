@@ -171,7 +171,7 @@
     } else if (step === TOUR) {
       content.innerHTML=`<h2 id="setup-title">Take the quick tour.</h2>
         <p class="setup-lead">${Guide.count()} stops, about a minute. A glass callout hops around the real dashboard and points at each part, and you can click things as you go.</p>
-        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> the ? button in the top bar opens a short note and a few tips for whichever screen is open.</li></ul>
+        <ul class="setup-points"><li><strong>What needs you</strong>, the live 3D printer, every printer at once, files, controls and care.</li><li><strong>Search and your phone:</strong> find anything with Ctrl+K, and open the dashboard on your phone by scanning a code.</li><li><strong>More on each screen:</strong> press Ctrl+K and choose Show me this screen for a few tips about whichever screen is open.</li></ul>
         <div class="setup-choices"><button class="btn primary" id="setup-guide">Start the tour</button></div>
         <p class="field-hint">The tour never moves or starts a printer. End it any time with × or Esc; it comes back here. Replay it later from Settings → Your space.</p>`;
       $('setup-guide').onclick=()=>{

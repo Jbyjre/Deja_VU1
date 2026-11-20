@@ -185,8 +185,21 @@
     splitters.forEach(s => s.set(s.def, false));
   }
 
+  /* A region that scrolls must be reachable from the keyboard (WCAG 2.1.1): the screens and the panes take a tab stop. */
+  function scrollers() {
+    document.querySelectorAll('.wrap > .tab-panel, .pane').forEach(el => {
+      if (!el.hasAttribute('tabindex')) el.tabIndex = 0;
+      if (el.classList.contains('tab-panel') && !el.hasAttribute('aria-label')) {
+        el.setAttribute('role', 'region');
+        el.setAttribute('aria-label', (typeof TAB_NAMES !== 'undefined' && TAB_NAMES[el.id.replace(/^tab-/, '')]) || 'Screen');
+      }
+    });
+  }
+
   function init() {
     buildOverview();
+    scrollers();
+    setTimeout(scrollers, 1500);               // panes that settings.js and others add after the page loads
     buildCockpit();
     dock();
     window.addEventListener('dv-tab', dock);

@@ -199,7 +199,7 @@ async function goTo(page, id, width) {
 
 async function openTesterCard(page, width) {
   await goTo(page, 'settings', width);
-  const part = page.locator('button:has-text("Tester mode")').first();
+  const part = page.locator('.set-groups button:has-text("Tester mode")').first();   // Settings' list of groups
   await part.click();
   await sleep(500);
 }
@@ -307,8 +307,9 @@ async function walk(browser, server, standIn, width) {
     await sleep(3500);
     await goTo(page, 'printer', width);
     await sleep(1200);
-    const pause = page.locator('#ctrl-pause-resume');
-    if ((await pause.count()) && (await pause.isEnabled())) {
+    // The toolbar's Pause presses the screen's own button and shows only while a print runs.
+    const pause = page.locator(width > 720 ? '#pb-actions [data-pb="pause"]' : '#ctrl-pause-resume');
+    if ((await pause.count()) && (await pause.isVisible()) && (await pause.isEnabled())) {
       await pause.click();
       await sleep(2500);
       await pause.click().catch(() => {});

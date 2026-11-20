@@ -718,8 +718,9 @@ class TestTheGuide(unittest.TestCase):
 
     def test_the_screen_names_are_the_sidebars(self):
         import re
-        labels = re.findall(r"\['[a-z]+', '([^']+)', '[a-z]+', (?:null|'[a-z]+'), '(?:main|tools)'\]", self.rail)
-        for place in ("Overview", "Printers", "Printer", "Files", "Maintenance", "AI", "Settings"):
+        labels = re.findall(r"\{ id: '[a-z]+', label: '([^']+)', group: '(?:main|foot|more)'", self.rail)
+        labels += re.findall(r"\['[a-z]+', '([^']+)', '[a-z]+', '[a-z]+', (?:null|'[a-z]+')", self.rail)
+        for place in ("Overview", "All printers", "Printer", "Files", "Maintenance", "AI", "Settings"):
             self.assertIn(place, labels, place)
             self.assertIn(place, self.guide, place)
         for old in ("Fleet", "Control tab"):

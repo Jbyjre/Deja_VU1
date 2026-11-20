@@ -55,9 +55,9 @@ function findChromium(playwright) {
 /* The places, read from the sidebar's own table so the walk can't drift from the app. */
 function readPlaces() {
   const src = fs.readFileSync(path.join(ROOT, 'frontend', 'rail.js'), 'utf8');
-  const block = src.slice(src.indexOf('const DEST = ['), src.indexOf('].map(([id, label, tab, part, group])'));
-  const rows = [...block.matchAll(/\['([a-z]+)',\s*'([^']+)',\s*'([a-z]+)',\s*(null|'[a-z]+'),\s*'([a-z]+)'\]/g)];
-  return rows.map(m => ({ id: m[1], label: m[2], tab: m[3], part: m[4] === 'null' ? null : m[4].slice(1, -1) }));
+  const block = src.slice(src.indexOf('const DEST = ['), src.indexOf('].map(([id, label, place, tab, part, sep, hide])'));
+  const rows = [...block.matchAll(/\['([a-z]+)',\s*'([^']+)',\s*'([a-z]+)',\s*'([a-z]+)',\s*(null|'[a-z]+')/g)];
+  return rows.map(m => ({ id: m[1], label: m[2], place: m[3], tab: m[4], part: m[5] === 'null' ? null : m[5].slice(1, -1) }));
 }
 
 function freePort() {
@@ -120,7 +120,7 @@ async function openSession(browser, base, cfg) {
   session.check = (ok, text) => {
     if (!ok) note(text);
   };
-  page.on('pageerror', e => note('script error: ' + e.message));
+  page.on('pageerror', e => note('script error: ' + e.message + (process.env.WALK_STACK && e.stack ? ' | ' + e.stack.split('\n').slice(0, 4).join(' ; ') : '')));
   /* A stand-in printer answers only part of Moonraker: its 502s for features it lacks are not the app's fault. */
   const ignored = cfg.standIn ? IGNORED_CONSOLE.concat([/status of 502/]) : IGNORED_CONSOLE;
   page.on('console', m => {

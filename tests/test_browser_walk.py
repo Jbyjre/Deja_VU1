@@ -42,7 +42,7 @@ class TestBrowserWalk(unittest.TestCase):
         with open(os.path.join(ROOT, "frontend", "rail.js"), encoding="utf-8") as f:
             source = f.read()
         self.assertIn("const DEST = [", source)
-        self.assertIn("].map(([id, label, tab, part, group])", source)
+        self.assertIn("].map(([id, label, place, tab, part, sep, hide])", source)
         with open(TOOL, encoding="utf-8") as f:
             tool = f.read()
         self.assertIn("const DEST = [", tool)

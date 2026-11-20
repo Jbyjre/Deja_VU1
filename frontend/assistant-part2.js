@@ -16,7 +16,7 @@ function build() {
     launch.className = 'ai-launch liquid-glass';
     launch.id = 'ai-launch';
     launch.type = 'button';
-    launch.setAttribute('aria-label', 'Open the assistant');
+    launch.setAttribute('aria-label', 'Ask the assistant');
     launch.setAttribute('aria-expanded', 'false');
     launch.setAttribute('aria-controls', 'ai-panel');
     launch.innerHTML = ICON + '<span>Ask</span>';

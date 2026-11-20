@@ -100,7 +100,7 @@ model on your own computer keeps all of that at home.
   picture.
 - **Work the printer:** home, move, fans, speed, lights, heat and cool, push or pull filament, change
   heads, feed filament, flow, pressure advance, speed limits, bed probing and saved meshes, runout
-  sensors, the printer's own macros, pause and resume, emergency stop.
+  sensors, the printer's own macros, pause and resume, Halt (the emergency stop).
 - **Look after the rest:** add, move and remove queued jobs, record a care task as done or put it
   off, note a problem and its fix in the logbook, add a spool or record its weight, open a screen
   for you.
@@ -162,7 +162,7 @@ step with the same code as the Printer page's buttons. These hold in every setti
 - Typed G-code is read-only (M105, M114, M115, M119 and a few status commands).
 - One request carries out at most 12 steps.
 - Watch-only mode, the hold during a restart and the Printer control switch stop the assistant like
-  any other sender. Emergency stop always goes through.
+  any other sender. Halt (the emergency stop) always goes through.
 
 You choose how much it does without asking, on the AI screen or under Connections:
 

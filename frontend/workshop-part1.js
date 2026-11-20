@@ -208,7 +208,7 @@ function ringSVG(progress, color, size = 58) {
    * queue is files really waiting. */
 
 const attention = { queues: {}, queuesAt: 0, queueOff: false };
-const TAB_LABEL = { control: 'Printer', files: 'Files', maintenance: 'Care' };
+const TAB_LABEL = { control: 'Printer', files: 'Files', maintenance: 'Maintenance' };
 const SOON_HOURS = 0.25;
 
 async function refreshAttentionQueues() {

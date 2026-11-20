@@ -51,7 +51,7 @@ fs.mkdirSync(out,{recursive:true});
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await page.screenshot({path:`${out}/after-demo-${width}.png`});
    // Match the original empty-state screenshots, with demo switched off.
-   if(await page.locator('#demo-toggle').isChecked())await page.locator('label[for="demo-toggle"]').click();
+   if(await page.locator('#demo-toggle').isChecked())await page.evaluate(() => document.querySelector('label[for="demo-toggle"]').click());
    await page.waitForTimeout(1200);
    assert.equal(await page.locator('#attention').isVisible(),false);
    assert.equal(await page.locator('#twin-sub').textContent(),'Waiting for a printer connection');

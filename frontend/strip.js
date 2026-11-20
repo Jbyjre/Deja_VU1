@@ -42,16 +42,15 @@
     const printing = p.state === 'printing' && !p.link_lost;
     const done = printing && p.remaining_hours != null && typeof doneAt === 'function' ? doneAt(p.remaining_hours) : '';
     const noz = temp(p.nozzle_temperature), bed = temp(p.bed_temperature);
-    const label = `${p.name}: ${words(p)}${done ? `, done ${done}` : ''}${noz ? `, nozzle ${noz}` : ''}${bed ? `, bed ${bed}` : ''}`;
+    // No aria-label: the button's name is its own visible text (WCAG 2.5.3), with one hidden word for what the figure is.
     const read = printing
-      ? `<b>${pct(p)}%</b>${done ? `<span class="rd-extra"> done ${esc(done)}</span>` : ''}`
+      ? `<b>${pct(p)}%</b><span class="sr-only"> printing</span>${done ? `<span class="rd-extra"> done ${esc(done)}</span>` : ''}`
       : `<b>${esc(words(p))}</b>`;
-    return `<button type="button" class="inst" data-printer="${esc(p.id)}" data-state="${st}" aria-pressed="${here}"
-      aria-label="${esc(label)}. Show this printer" data-full="${esc(p.name)}">
+    return `<button type="button" class="inst" data-printer="${esc(p.id)}" data-state="${st}" aria-pressed="${here}" data-full="${esc(p.name)}">
       <span class="stack" aria-hidden="true" style="--p:${printing ? pct(p) : st === 'complete' ? 100 : 0}%"><i></i></span>
-      <span class="inst-name">${esc(p.name)}</span>
-      <span class="inst-rd">${read}</span>
-      ${noz || bed ? `<span class="inst-temps rd-extra">${noz ? `<span>T ${esc(noz)}</span>` : ''}${bed ? `<span>Bed ${esc(bed)}</span>` : ''}</span>` : ''}
+      <span class="inst-name" title="${esc(p.name)}">${esc(p.name)}</span>
+      <span class="inst-rd"> ${read}</span>
+      ${noz || bed ? ` <span class="inst-temps rd-extra">${noz ? `<span>T ${esc(noz)}</span>` : ''} ${bed ? `<span>Bed ${esc(bed)}</span>` : ''}</span>` : ''}
     </button>`;
   }
 
@@ -137,9 +136,9 @@
     const strip = $('strip');
     if (!strip) return;
     const cmdKey = $('strip-cmd-key');
-    if (cmdKey) cmdKey.textContent = mac ? '⌘K' : 'Ctrl K';
+    if (cmdKey) cmdKey.dataset.keys = mac ? '⌘K' : 'Ctrl K';      // drawn by CSS, so a button's visible text is only its label
     const haltKey = strip.querySelector('.halt-key');
-    if (haltKey) haltKey.textContent = 'H H';
+    if (haltKey) haltKey.dataset.keys = 'H H';
     strip.addEventListener('click', e => {
       const inst = e.target.closest('[data-printer]');
       if (inst) {

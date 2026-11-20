@@ -145,7 +145,7 @@ async function profileScreen(browser, base, screen, tab, secs, demo) {
   if (demo) {
     await page.evaluate(() => showTab('modules'));
     await sleep(500);
-    await page.click('label[for=demo-toggle]').catch(() => {});
+    await page.evaluate(() => document.querySelector('label[for=demo-toggle]').click()).catch(() => {});
     await sleep(1500);
   }
   await page.evaluate(() => { window.__long.length = 0; });

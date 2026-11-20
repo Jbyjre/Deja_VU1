@@ -14,7 +14,7 @@ filaments, finds what ours can't. This page is how to run one.
 - **Watch-only.** Watch a print you're already running, with Deja Vu1 in
   **watch-only mode**: its server then refuses every command to the printer
   (pause, resume, cancel, temperatures, home, G-code, start, uploads), so
-  nothing moves or heats even if a button is pressed. Emergency stop still
+  nothing moves or heats even if a button is pressed. Halt (the stop button) still
   works. Step 2 starts it that way.
 - **Nothing installed on the printer.** Deja Vu1 runs on a computer on the
   same network and talks to Moonraker, the web API built into the U1.
@@ -46,7 +46,7 @@ its controls. Keep it on your home network for the session (see
 
    `DEJAVU_WATCH_ONLY=1` keeps watch-only mode on until Deja Vu1 is started
    without it, whatever the Settings switch says. A **Watch-only** label shows
-   in the top bar while it is on.
+   in the strip at the bottom while it is on.
 
    While a print runs, Klipper reports several times a second, so the detailed
    log is long. The `2> dejavu-log.txt` part puts it in a file in that folder

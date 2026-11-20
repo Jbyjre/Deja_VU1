@@ -108,7 +108,7 @@ window.DVWorkspace = (() => {
         const setup = data?.module_disabled ? 'Slicing is off.' : data?.problem || (!(data?.profiles?.length) ? 'No slice profile saved yet.' : '');
         $('sw-slice').disabled = !!setup || !DVPlate.active?.canSlice();
         if (setup) {
-          // Say why, and offer the way there: the five-step set-up in Files › Slicing.
+          // Say why, and offer the way there: the five-step set-up in Slicer › Slice.
           $('sw-job').innerHTML = `${esc(setup)} <button class="btn small" type="button" id="sw-setup-link">Set up slicing</button>`;
           $('sw-setup-link').onclick = () => { Sections.choose('files', 'slicing'); $('slice-ready').scrollIntoView({ block: 'start' }); };
         } else if ($('sw-slice').disabled) $('sw-job').textContent = 'Keep every object inside the 270 mm build volume before slicing.';

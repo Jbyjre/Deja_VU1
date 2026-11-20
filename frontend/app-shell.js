@@ -597,9 +597,9 @@ const SECTIONS = {
     ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
   ],
   fleet: [
-    ['printers', 'Your printers', ['your printers', 'add a printer']],
-    ['desk', 'Farm desk', ['#tab-desk', 'farm history']],
-    ['sandbox', 'Practice farm', ['#tab-sandbox']],
+    ['printers', 'All printers', ['your printers', 'add a printer']],
+    ['desk', 'Farm', ['#tab-desk', 'farm history']],
+    ['sandbox', 'Practice printers', ['#tab-sandbox']],
   ],
   files: [
     ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', '#file-detail', '#studio-link']],

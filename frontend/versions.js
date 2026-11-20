@@ -105,7 +105,7 @@ window.Versions = (() => {
 
   function renderChip(v, latest) {
     const chip = $('ver-chip');
-    if (v) { chip.hidden = false; chip.textContent = `v${v}`; }
+    if (v) { chip.hidden = false; chip.textContent = `v${v}`; chip.setAttribute('aria-label', `v${v} version history`); }
     chip.classList.toggle('has-update', !!(latest && latest.available));
     $('foot-version').textContent = v ? `Version ${v} · ` : '';
     if (!window.Orb) return;
