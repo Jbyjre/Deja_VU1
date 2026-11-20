@@ -471,6 +471,45 @@ class TestFixFirst(InsightBase):
         page = tester_report.build_html()
         self.assertIn("frontend/workshop-part2.js:617", page)
 
+    def test_a_replay_of_the_first_testers_run_puts_its_faults_in_fix_first_and_its_conditions_beside_them(self):
+        """The run that found these: a 27 s wait while a time-lapse copy ran, a gauge script error, an Orca -100 slice on Windows,
+        six moments without the server and 24 page freezes. Fix first names the three faults with where to look; the lost server
+        stays a condition; the freezes are counted in the headline."""
+        self.stall(27)
+        events = [{"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: Cannot read properties of null (reading 'setAttribute')",
+                   "file": "workshop.js", "line": 1746, "screen": "printer", "last": ["click #tab-control"], "t": self.ago(900)}]
+        events += [{"k": "req", "s": "sessa1", "route": "/api/app/alive", "method": "GET", "status": 0, "ms": 30, "err": "Failed to fetch",
+                    "t": self.ago(1500 - 200 * i)} for i in range(6)]
+        screens = ["settings", "printer", "files"]
+        events += [{"k": "long", "s": "sessa1", "ms": 1040, "screen": screens[i % 3], "t": self.ago(1200 - 10 * i)} for i in range(24)]
+        self.feed(events)
+        tester.note_slice({"status": "failed", "model": "Benchy.3mf", "stage": "slice", "error": "Orca hit an error while slicing (Orca's code -100)",
+                           "cause": {"code": "orca_-100"}},
+                          {"engine": {"app": "Snapmaker_Orca", "version": "2.4.1"}, "run": {"exit_code": 4294967196}},
+                          {"stdout": "Slic3r::CLI::run found error, exit", "stderr": "[error] the engine's own words"})
+        r = self.report()
+        first = sorted((f for f in r["findings"] if f.get("fix_first")), key=lambda f: f["fix_first"])
+        by_kind = {f["kind"]: f for f in first}
+        self.assertTrue({"stall", "slice", "error"} <= set(by_kind), [(f["kind"], f["title"]) for f in first])
+        self.assertTrue(all(f["origin"] == "app" for f in first))
+        self.assertIn("keeping a time-lapse video", by_kind["stall"]["detail"])
+        self.assertEqual(by_kind["stall"]["code"], ["backend/timelapse.py"])
+        self.assertIn("Snapmaker_Orca 2.4.1", by_kind["slice"]["title"])
+        self.assertIn("Orca's code -100", by_kind["slice"]["detail"])
+        self.assertEqual(by_kind["slice"]["code"][0], "backend/slicer_bridge.py")
+        self.assertIn("Cannot read properties of null", by_kind["error"]["title"])
+        self.assertEqual(by_kind["error"]["code"][0], "frontend/workshop.js:1746")
+        self.assertEqual(by_kind["error"]["trail"], ["click #tab-control"])
+        lost = [f for f in r["findings"] if f["title"].startswith("The page lost the server")]
+        self.assertEqual(len(lost), 1)
+        self.assertEqual(lost[0]["origin"], "condition")
+        self.assertFalse(lost[0].get("fix_first"))
+        h = r["headline"]
+        self.assertEqual((h["freezes"], h["freeze_seconds"], h["stalls"]), (24, 25, 1))
+        page = tester_report.build_html()
+        self.assertLess(page.index("Fix first"), page.index("Around the app"))
+        self.assertLessEqual(page.count('<details class="fix"'), 10)
+
     def test_the_page_opens_with_the_headline_then_fix_first_with_ten_rows_at_most(self):
         self.feed([{"k": "err", "s": "sessa1", "kind": "js", "msg": "TypeError: bug %s" % "abcdefghijklm"[n], "file": "app.js", "line": n + 1, "screen": "files", "t": self.ago(100 - n)} for n in range(13)])
         page = tester_report.build_html()
