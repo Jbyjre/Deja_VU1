@@ -26,7 +26,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
 
 ## Automated and stand-in
 
-- **The test suite:** 1726 tests passed on Python 3.13.18 (Linux, 19 November 2026, version 0.20.22 plus the tester fix), one serial run, 1305.4 seconds (21 minutes 46 seconds); the check that the quoted count is right failed on that run (it still said 1692) and passed once the number was updated. The run before that: 1692 tests (Linux, 18 November 2026, version 0.20.18 plus the page bar), run in four serial parts of 509, 407, 343 and 433 tests (1018 seconds in all); the check that the quoted count is right failed on the first pass (it still said 1681) and passed once the number was updated. The run before that: 1681 tests (Linux, 18 November 2026, version 0.20.17 plus the 3D twin following homing), one serial run, 1062.8 seconds; the same check failed on that run (it still said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
+- **The test suite:** 1727 tests passed on Python 3.13.18 (Linux, 20 November 2026, version 0.20.22 plus the tester fix and its replay test), one serial run, TBD_SECONDS seconds (TBD_MINUTES); the check that the quoted count is right passed on that run. The run before that: 1726 tests (Linux, 19 November 2026, version 0.20.22 plus the tester fix), one serial run, 1305.4 seconds (21 minutes 46 seconds); the check that the quoted count is right failed on that run (it still said 1692) and passed once the number was updated. The run before that: 1692 tests (Linux, 18 November 2026, version 0.20.18 plus the page bar), run in four serial parts of 509, 407, 343 and 433 tests (1018 seconds in all); the check that the quoted count is right failed on the first pass (it still said 1681) and passed once the number was updated. The run before that: 1681 tests (Linux, 18 November 2026, version 0.20.17 plus the 3D twin following homing), one serial run, 1062.8 seconds; the same check failed on that run (it still said 1674) and passed once the number was updated. The run before that: 1674 tests (Linux, 18 November 2026, version 0.20.15 plus the first-run
   fixes and the always-on Tester mode with its test round and questions, together), run in two waves of parallel
   groups: four groups of tests that need no browser (1601 tests, 270 seconds from start to finish), then four groups
   of browser-driven tests (73 tests, 134 seconds). Together that is 960.2 seconds of test time. The browser walk
@@ -80,10 +80,12 @@ The rest of the dashboard was used with the same printer. The firmware version w
   button that freezes the page for 1.4 seconds, an error, a failed promise, an error toast, a tagged note written right after the
   error, the 22 questions opened from Settings with 7 answered, and the zip saved from Settings. A phone-sized touch browser taps
   something and the record says touch. It opens the zip's `report.html` with no network at 1366 px and 390 px in light and dark.
-  Not repeated for this build: the axe-core scan of the questions panel and the Settings card (the 17 November scan covered the
-  earlier panels) and the measurement of what recording costs on the Printer page (17 November, earlier build: press to next
-  paint -1.1 %, main-thread time +3.7 %, mean frame time +9 % from a few slow frames, median equal at 16.7 ms). Not tested:
-  Tester mode on a real U1, on Windows or macOS, or in a browser other than Chromium.
+  axe-core 4.10.2 (WCAG 2.2 AA and best-practice rules) finds nothing on the Settings card, the questions (the first section and
+  the Phone and AI quick answers) or the note panel, at 1366 px and 390 px in light and dark (19 November). An automated scan covers part
+  of WCAG and does not replace a screen-reader test. Not repeated for this build: the measurement of what recording costs on the
+  Printer page (17 November, earlier build: press to next paint -1.1 %, main-thread time +3.7 %, mean frame time +9 % from a few
+  slow frames, median equal at 16.7 ms). Not tested: Tester mode on a real U1, on Windows or macOS, or in a browser other than
+  Chromium.
 - **Page and server fixes from a tester's report** (19 November 2026, Chromium on Linux with software graphics, against the
   stand-in printer in `tests/fake_moonraker.py`, not a real U1). `node tools/testfix-check.js` runs nine scenarios and 62 checks;
   `tests/test_testfix_browser.py` runs it. The first eight were run on the code from before the fixes and failed there, and
