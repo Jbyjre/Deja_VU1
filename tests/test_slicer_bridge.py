@@ -481,7 +481,14 @@ class TestSlicing(SlicerBridgeTest):
         os.environ["FAKE_ORCA_MODE"] = "slicing_error_no_result"
         job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"])
         self.assertEqual(job["status"], "failed")
-        event = next(e for e in tester_report.iter_events(tester.event_files()) if e["k"] == "slice")
+        # The job reads "failed" a moment before the slicing thread hands the engine's output to Tester mode, so wait for the event.
+        event = None
+        for _ in range(200):
+            event = next((e for e in tester_report.iter_events(tester.event_files()) if e["k"] == "slice"), None)
+            if event:
+                break
+            time.sleep(0.05)
+        self.assertIsNotNone(event, "Tester mode never received the failed slice")
         self.assertFalse(event["ok"])
         self.assertEqual(event["exit"], 156)
         self.assertIn("Empty layers detected between 4.2 and 4.4", event["stdout"])
