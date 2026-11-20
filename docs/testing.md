@@ -81,7 +81,7 @@ The rest of the dashboard was used with the same printer. The firmware version w
   error, the 22 questions opened from Settings with 7 answered, and the zip saved from Settings. A phone-sized touch browser taps
   something and the record says touch. It opens the zip's `report.html` with no network at 1366 px and 390 px in light and dark.
   axe-core 4.10.2 (WCAG 2.2 AA and best-practice rules) finds nothing on the Settings card, the questions (the first section and
-  the Phone and AI quick answers) or the note panel, at 1366 px and 390 px in light and dark (19 November). An automated scan covers part
+  the Phone and AI quick answers) or the note panel, at 1366 px and 390 px in light and dark (20 November). An automated scan covers part
   of WCAG and does not replace a screen-reader test. Not repeated for this build: the measurement of what recording costs on the
   Printer page (17 November, earlier build: press to next paint -1.1 %, main-thread time +3.7 %, mean frame time +9 % from a few
   slow frames, median equal at 16.7 ms). Not tested: Tester mode on a real U1, on Windows or macOS, or in a browser other than
