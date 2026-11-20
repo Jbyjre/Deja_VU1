@@ -41,6 +41,8 @@
 <link rel="stylesheet" href="theme-screens.css">
 <link rel="stylesheet" href="theme-shell.css">
 <link rel="stylesheet" href="dark.css">
+<link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="shell-panes.css">
 <link rel="stylesheet" href="looks.css">
 <script src="theme-boot.js"></script>
 <link rel="preload" href="fonts/InstrumentSans-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -106,33 +108,32 @@
   <div class="ring-motif blue" style="width:100px;height:100px;bottom:14%;left:6%;opacity:.07;"></div>
 </div>
 
-<!-- The header has two looks (theme.css "Page bar", pagebar.js). On Overview it is the banner: brand, printer, demo
-     switch. On every other screen it is one slim bar: the screen's name, its parts as tabs (app.js Sections puts them
-     in #pb-tabs), that screen's own buttons, then the printer, search and help. -->
-<header class="topbar liquid-glass" id="topbar">
-  <div class="topbar-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">
-        <span class="brand-ring"></span>
-        <span class="brand-dot"></span>
-      </span>
-      <div class="brand-text">
-        <div class="brand-title"><h1>Deja&nbsp;Vu1</h1><button class="ver-chip" id="ver-chip" type="button" hidden title="Version history" aria-label="Version history"></button></div>
-        <p id="private-greeting">Your Snapmaker U1 dashboard</p>
-      </div>
-    </div>
+<div class="shell" id="shell">
 
+
+
+<!-- The toolbar edge: the top of the working surface, not a bar across the page. It holds the place's name, its parts
+     (pagebar.js puts them in #pb-tabs), that place's own buttons and the search. Everything the old banner carried
+     lives somewhere else now: the printers, the connection, the orb and Halt in the strip at the bottom, the demo
+     switch in Settings. The hidden holder keeps the elements other scripts write to by id. -->
+<main class="wrap" id="main">
+  <header class="topbar" id="topbar">
     <div class="pb-page">
       <span class="pb-icon" id="pb-icon" aria-hidden="true"></span>
-      <div class="pb-text">
-        <h1 class="pb-title" id="pb-title">Overview</h1>
-        <p class="pb-sub" id="pb-sub" hidden></p>
-      </div>
+      <h1 class="pb-title" id="pb-title">Overview</h1>
+      <span class="pb-sub" id="pb-sub" hidden></span>
     </div>
-    <div class="pb-actions" id="pb-actions"></div>
-
+    <div class="pb-parts" id="pb-parts" role="tablist" aria-label="Parts of this place" hidden></div>
+    <!-- Holds app.js Sections' own part buttons, which the parts row above replaces. Kept so tours and code that look
+         them up by id still find them. -->
+    <div class="pb-tabs" id="pb-tabs" hidden></div>
     <div class="topbar-right">
+      <div class="pb-actions" id="pb-actions"></div>
       <div class="feature-finder"><label class="sr-only" for="feature-search">Search screens, settings, printers and files</label><input id="feature-search" type="search" placeholder="Search everything…" title="Search everything (Ctrl+K)" autocomplete="off" spellcheck="false"><div id="feature-results" class="liquid-glass" hidden></div></div>
+    </div>
+    <div class="tb-hold" hidden>
+      <button class="ver-chip" id="ver-chip" type="button" hidden title="Version history" aria-label="Version history"></button>
+      <p id="private-greeting">Your Snapmaker U1 dashboard</p>
       <button class="printer-chip" id="printer-chip" type="button" aria-label="Choose a printer"
               aria-haspopup="menu" aria-expanded="false">
         <span class="pc-dot" aria-hidden="true"></span>
@@ -141,13 +142,6 @@
         <span class="pc-caret" aria-hidden="true">▾</span>
         <span class="pc-progress" aria-hidden="true"><i id="pc-progress"></i></span>
       </button>
-      <button class="wo-pill" id="watch-only-pill" type="button" hidden
-              title="Watch-only mode is on: nothing that moves, heats or prints is sent to your printers">Watch-only</button>
-      <div class="conn" id="conn">
-        <span class="conn-dot" aria-hidden="true"></span>
-        <span id="conn-label">Checking…</span>
-      </div>
-
       <label class="switch" for="demo-toggle">
         <span class="switch-label">Demo data</span>
         <input type="checkbox" id="demo-toggle">
@@ -155,12 +149,7 @@
       </label>
       <button class="pb-help" id="pb-help" type="button" aria-label="About this screen" aria-expanded="false" aria-controls="tab-intro"><span aria-hidden="true">?</span></button>
     </div>
-
-    <div class="pb-tabs" id="pb-tabs"></div>
-  </div>
-</header>
-
-<main class="wrap">
+  </header>
   <section class="server-banner liquid-glass" id="server-banner" hidden>
     <span class="notice-mark" aria-hidden="true">i</span>
     <div class="sbn-body" id="server-banner-text">
@@ -678,20 +667,6 @@
   <!-- FILES                                                         -->
   <!-- ============================================================ -->
   <section id="tab-files" class="tab-panel" hidden>
-    <section class="card liquid-glass convert-card" id="convert-card" aria-labelledby="cv-title">
-      <div class="cv-copy">
-        <span class="eyebrow">CONVERTER · 3MF PROJECTS</span>
-        <h2 id="cv-title">A project from any slicer <span aria-hidden="true">→</span><span class="sr-only">to</span> Snapmaker U1</h2>
-        <p class="card-sub">MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer, Creality Print, Elegoo, QIDI or PrusaSlicer. Keeps the designer's walls, infill, supports and painted colours. Swaps the printer and filament presets for U1 ones, fits five or more colours onto the four heads (alike colours share one) and re-places every plate on the U1's 270 mm bed. Your original file is never changed; the U1 copy is saved beside it.</p>
-        <ol class="cv-steps"><li>Choose a .3mf</li><li>Read the report</li><li>Open the U1 copy and slice</li></ol>
-      </div>
-      <div class="cv-actions">
-        <label class="btn primary cv-pick">Choose a .3mf…<input type="file" id="cv-file" accept=".3mf"></label>
-        <button class="btn" id="cv-sample" type="button">Try the 3-plate MakerWorld sample</button>
-        <p class="field-hint" id="cv-note" role="status" aria-live="polite">Projects already set up for a U1 are left as they are. Open any project in Files to choose which head prints each colour.</p>
-      </div>
-      <div class="cv-report" id="cv-report" hidden></div>
-    </section>
     <div class="files-layout">
       <section class="card liquid-glass files-library" data-browser-only>
         <div class="card-head">
@@ -910,6 +885,37 @@
         <p class="log-empty">The 3MF carries its colour changes as OrcaSlicer tool changes, in the layout Orca's own 3MF reader expects. The plan above says where each change goes, so you can also set them by hand on Orca's layer slider.</p>
       </section>
     </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- MODELS: where to find a model, and the converter for projects from other slicers -->
+  <!-- ============================================================ -->
+  <section id="tab-models" class="tab-panel" hidden>
+    <section class="pane-block models-sites" id="models-sites" aria-labelledby="models-sites-title">
+      <h2 id="models-sites-title">Model sites</h2>
+      <p class="card-sub">Each one opens in a new tab. Deja Vu1 sends them nothing.</p>
+      <ul class="site-list">
+        <li><a class="site-row" href="https://makerworld.com/" target="_blank" rel="noopener noreferrer"><b>MakerWorld</b><span>makerworld.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
+        <li><a class="site-row" href="https://www.printables.com/" target="_blank" rel="noopener noreferrer"><b>Printables</b><span>www.printables.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
+        <li><a class="site-row" href="https://www.thingiverse.com/" target="_blank" rel="noopener noreferrer"><b>Thingiverse</b><span>www.thingiverse.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
+        <li><a class="site-row" href="https://thangs.com/" target="_blank" rel="noopener noreferrer"><b>Thangs</b><span>thangs.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
+        <li><a class="site-row" href="https://cults3d.com/" target="_blank" rel="noopener noreferrer"><b>Cults</b><span>cults3d.com</span><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span class="sr-only">(opens in a new tab)</span></a></li>
+      </ul>
+    </section>
+    <section class="card liquid-glass convert-card" id="convert-card" aria-labelledby="cv-title">
+      <div class="cv-copy">
+        <span class="eyebrow">CONVERTER · 3MF PROJECTS</span>
+        <h2 id="cv-title">A project from any slicer <span aria-hidden="true">→</span><span class="sr-only">to</span> Snapmaker U1</h2>
+        <p class="card-sub">MakerWorld, Printables, NexPrint, Bambu Studio, OrcaSlicer, Creality Print, Elegoo, QIDI or PrusaSlicer. Keeps the designer's walls, infill, supports and painted colours. Swaps the printer and filament presets for U1 ones, fits five or more colours onto the four heads (alike colours share one) and re-places every plate on the U1's 270 mm bed. Your original file is never changed; the U1 copy is saved beside it.</p>
+        <ol class="cv-steps"><li>Choose a .3mf</li><li>Read the report</li><li>Open the U1 copy and slice</li></ol>
+      </div>
+      <div class="cv-actions">
+        <label class="btn primary cv-pick">Choose a .3mf…<input type="file" id="cv-file" accept=".3mf"></label>
+        <button class="btn" id="cv-sample" type="button">Try the 3-plate MakerWorld sample</button>
+        <p class="field-hint" id="cv-note" role="status" aria-live="polite">Projects already set up for a U1 are left as they are. Open any project in Files to choose which head prints each colour.</p>
+      </div>
+      <div class="cv-report" id="cv-report" hidden></div>
+    </section>
   </section>
 
   <!-- ============================================================ -->
@@ -1164,7 +1170,7 @@
           <input type="checkbox" id="demo-setting"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
     </section>
     <section class="card liquid-glass watch-only-card" id="watch-only-card">
-      <div class="card-head"><div><h2>Watch-only mode</h2><p class="card-sub">Deja Vu1 reads your printers and sends them nothing that moves, heats, prints, uploads or changes a setting. Emergency stop still works.</p></div>
+      <div class="card-head"><div><h2>Watch-only mode</h2><p class="card-sub">Deja Vu1 shows everything and sends nothing to the printer. Halt still works.</p></div>
         <label class="switch" for="watch-only-setting"><span class="switch-label">Watch only</span>
           <input type="checkbox" id="watch-only-setting"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
       <p class="field-hint" id="watch-only-note">The server refuses the commands itself, so no screen, rule or queue can send one. Demo printers stay playable.</p>
@@ -1538,9 +1544,25 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 
 </main>
 
-<!-- Always-on overlays: toasts, the live print pill, "continue here". -->
-<!-- The notification orb: messages rise out of it and sink back in (orb.js). -->
-<div class="orb-dock" id="orb-dock">
+<!-- The instrument strip (strip.js): one instrument per printer, the connection, the command bar's button, the notification
+     orb and Halt. It replaces the title bar and the floating buttons. -->
+<footer class="strip liquid-glass" id="strip" aria-label="Printers and connection">
+  <div class="strip-insts" id="strip-insts" role="group" aria-label="Printers"></div>
+  <div class="handoff" id="handoff" hidden role="status">
+  <span id="handoff-text"></span>
+  <button class="btn small primary" id="handoff-go" type="button">Open here</button>
+  <button class="btn small" id="handoff-dismiss" type="button" aria-label="Dismiss">✕</button>
+</div>
+  <p class="strip-halted" id="strip-halted" role="status" hidden></p>
+  <div class="strip-end">
+    <button class="wo-pill" id="watch-only-pill" type="button" hidden
+              title="Watch-only: Deja Vu1 shows everything and sends nothing to the printer">Watch-only</button>
+    <div class="conn" id="conn">
+        <span class="conn-dot" aria-hidden="true"></span>
+        <span id="conn-label">Checking…</span>
+      </div>
+    <button class="strip-cmd" id="strip-cmd" type="button" aria-label="Find anything" aria-keyshortcuts="Control+K Meta+K"><span class="strip-cmd-label">Find</span><kbd id="strip-cmd-key">Ctrl K</kbd></button>
+    <div class="orb-dock" id="orb-dock">
   <div class="orb-stack" id="toasts" aria-live="polite"></div>
   <section class="orb-panel liquid-glass deep" id="orb-panel" hidden aria-labelledby="orb-panel-title">
     <div class="orb-panel-head">
@@ -1556,6 +1578,14 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
     <span class="orb-count" id="orb-count" hidden></span>
   </button>
 </div>
+    <button class="halt" id="strip-halt" type="button" disabled aria-label="Halt the selected printer: stops every motor and heater at once"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg><span class="halt-word">Halt</span><kbd class="halt-key" aria-hidden="true"></kbd></button>
+  </div>
+</footer>
+</div><!-- /shell -->
+
+<!-- Always-on overlays: toasts, the live print pill, "continue here". -->
+<!-- The notification orb: messages rise out of it and sink back in (orb.js). -->
+
 
 <button class="live-pill liquid-glass" id="live-pill" type="button" hidden data-tint
         aria-label="Current print - open printer control">
@@ -1573,11 +1603,6 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
      chip. Glass over glass, so it takes the deep refraction too. -->
 <div class="glass-menu liquid-glass deep" id="glass-menu" role="menu" hidden></div>
 
-<div class="handoff liquid-glass" id="handoff" hidden role="status">
-  <span id="handoff-text"></span>
-  <button class="btn small primary" id="handoff-go" type="button">Open here</button>
-  <button class="btn small" id="handoff-dismiss" type="button" aria-label="Dismiss">✕</button>
-</div>
 
 <!-- Phone layout: thumb-first. Primary tabs and the quick actions live at
      the bottom of the screen, where a thumb reaches without shifting grip. -->
@@ -1596,23 +1621,23 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
     </button>
     <button class="qa-btn" id="qa-next" type="button">Start next</button>
   </div>
-  <nav class="bottom-nav liquid-glass" aria-label="Main sections">
-    <button data-tab="overview"><span class="bn-ico" aria-hidden="true">◉</span>Now</button>
-    <button data-tab="fleet"><span class="bn-ico" aria-hidden="true">▦</span>Printers</button>
-    <button data-tab="control"><span class="bn-ico" aria-hidden="true">⏯</span>Printer</button>
-    <button data-tab="files"><span class="bn-ico" aria-hidden="true">▤</span>Files</button>
-    <button id="bn-more" type="button" aria-haspopup="true"><span class="bn-ico" aria-hidden="true">⋯</span>More</button>
+  <nav class="bottom-nav liquid-glass" aria-label="Places">
+    <button data-tab="overview" data-dest="overview"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/></svg>Overview</button>
+    <button data-tab="control" data-dest="printer"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3h12v6H6zM4 9h16v8H4zM7 17h10v4H7zM16 12.5h.01"/></svg>Printer</button>
+    <button data-tab="files" data-dest="slice"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>Slicer</button>
+    <button data-tab="files" data-dest="files"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h5v16H4zM10 4h4v16h-4zM15.5 5l3.8-1 2.6 15.4-3.8 1z"/></svg>Files</button>
+    <button id="bn-more" type="button" aria-haspopup="true"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg>More</button>
   </nav>
   <div class="more-sheet liquid-glass" id="more-sheet" role="dialog" aria-label="More" hidden>
     <div class="ms-search" id="ms-search"></div>
-    <div class="ms-grid" role="group" aria-label="More screens">
-      <button data-tab="maintenance"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><b>Maintenance</b><small>Upkeep &amp; filament</small></button>
-      <button data-tab="ai"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4.5 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M8 9.5h8M8 12.5h5"/></svg><b>AI</b><small>Connect your own AI and set what it may do</small></button>
-      <button data-tab="automations"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg><b>Automations</b><small>If this, then that</small></button>
-      <button data-tab="studio"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01"/></svg><b>Photo studio</b><small>Photo to print</small></button>
-      <button data-tab="prefs"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6"/></svg><b>Preferences</b><small>Units, warm-up, look</small></button>
-      <button data-tab="games"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.5a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.3a2 2 0 0 1-3.4-.9l-.6-2.5A4 4 0 0 1 7 9zM8 11.5v3M6.5 13h3M15.5 12.5h.01M17.5 14h.01"/></svg><b>Games</b><small>While it prints</small></button>
-      <button data-tab="modules" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg><b>Settings</b><small>Updates, phone, modules</small></button>
+    <div class="ms-grid" role="group" aria-label="More places">
+      <button data-tab="models" data-dest="models"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5M16 5.2l-8 4.6"/></svg><b>Models</b><small>Find a model, convert a project</small></button>
+      <button data-tab="ai" data-dest="ai"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4.5 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8 9.5h8M8 12.5h5"/></svg><b>AI</b><small>Your assistant and print watch</small></button>
+      <button data-tab="maintenance" data-dest="maintenance"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><b>Maintenance</b><small>Upkeep and filament</small></button>
+      <button data-tab="automations" data-dest="automations"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 8h12l-3-3M20 16H8l3 3"/></svg><b>Automations</b><small>If this, then that</small></button>
+      <button data-tab="studio" data-dest="studio"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01"/></svg><b>Photo studio</b><small>A photo to a colour print</small></button>
+      <button data-tab="games" data-dest="games"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.5a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.3a2 2 0 0 1-3.4-.9l-.6-2.5A4 4 0 0 1 7 9z"/></svg><b>Games</b><small>Something to play during a print</small></button>
+      <button data-tab="modules" data-dest="settings" class="ms-wide"><svg class="ms-ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5"/></svg><b>Settings</b><small>Look, phone, alerts and updates</small></button>
     </div>
     <div class="ms-tools" role="group" aria-label="Help and tools">
       <button type="button" data-more="camera">Camera</button>
@@ -1767,6 +1792,9 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="assistant-part1.js"></script>
 <script src="assistant-part2.js"></script>
 <script src="assistant.js"></script>
+<script src="panes.js"></script>
+<script src="settings.js"></script>
+<script src="strip.js"></script>
 <script src="pagebar.js"></script>
 <script src="rail.js"></script>
 </body>

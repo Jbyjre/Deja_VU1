@@ -1,82 +1,100 @@
-/* rail.js: the left sidebar and the page links behind it.
+/* rail.js: the sidebar of eight places and the page links behind it.
  *
- * Each destination is a screen (a data-tab panel) and, where the screen is in
- * parts, one part of it (app.js SECTIONS). Nothing moves between screens, so
- * remembered tabs, tours, search and another device's handoff keep working.
+ * A place is what the sidebar lists: Overview, Printer, Slicer, Files, Models, AI, Maintenance, Settings, and a small
+ * "More" group (Automations, Photo studio, Games). A place is one or more screens (data-tab panels) and, where a screen
+ * is in parts, one part of it (app.js SECTIONS). Nothing moves between screens, so remembered tabs, tours, search and
+ * another device's handoff keep working. A place's parts are the row in the toolbar edge (pagebar.js); no place opens a
+ * part of another place.
  *
- * Page links: every destination has its own address (#/slice, #/printer/<id>
- * and so on). Moving around adds a step to the browser's history, so Back and
- * Forward move between screens, a refresh opens the same one, and a copied
- * link opens it on another browser. Old names (#/library, #/care, #/prepare)
- * still resolve. G then a letter goes to a place, Alt+1 to 9 to the first nine,
- * and ? lists every shortcut.
+ * Page links: every destination has its own address (#/slice, #/printer/<id> and so on). Moving around adds a step to
+ * the browser's history, so Back and Forward move between screens, a refresh opens the same one, and a copied link
+ * opens it on another browser. Old names (#/library, #/care, #/prepare) still resolve. G then a letter goes to a
+ * destination, Alt+1 to 8 to the eight places, and ? lists every shortcut.
  *
- * Desktop: about 224 px wide with labels, or 64 px with icons only (the
- * collapse button or the [ key, remembered). Below 1180 px it starts collapsed;
- * at phone width (720 px and less) the bottom bar and the More sheet stay in charge.
+ * Width: 212 px with labels, or 60 px with icons only. In Printer, Slicer and Files the sidebar narrows by itself so
+ * the place gets the room; a choice made with the fold button or the [ key is remembered and wins over that. A narrow
+ * sidebar shows its labels over the page, without moving it, while it is hovered or holds focus. At phone width
+ * (720 px and less) the bottom bar and the More sheet take over.
  *
- * What the sidebar shows from the live fleet (the dv-fleet event): the selected
- * printer's state and progress on the Printer item, a count on Overview of the
- * printers that need you and on Maintenance of the printers with upkeep due, and, from two
- * printers on, a menu to choose which printer the Printer page shows. Arrow keys,
- * Home and End move between items; "Tools & learn" folds; with icons only, a label
- * appears beside the item you point at or focus.
+ * What the sidebar shows from the live fleet (the dv-fleet event): the selected printer, its state and progress in the
+ * row under the brand (it opens a menu to pick another), a count on Overview of the printers that need you and on
+ * Maintenance of the printers with upkeep due. Arrow keys, Home and End move between items.
  */
 (() => {
   const ICON = {
     overview: 'M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z',
-    printers: 'M4 5h7v6H4zM13 5h7v6h-7zM4 13h7v6H4zM13 13h7v6h-7z',
     printer: 'M6 3h12v6H6zM4 9h16v8H4zM7 17h10v4H7zM16 12.5h.01',
+    slicer: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
     files: 'M4 4h5v16H4zM10 4h4v16h-4zM15.5 5l3.8-1 2.6 15.4-3.8 1z',
-    slice: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
-    queue: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
-    filament: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-    maintenance: 'M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
-    settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8',
-    prefs: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 4v6M8 14v6',
-    automations: 'M4 8h12l-3-3M20 16H8l3 3',
+    models: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5M16 5.2l-8 4.6',
     ai: 'M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-6l-4.5 3.5V17H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8 9.5h8M8 12.5h5',
-    desk: 'M3 20h18M5 20V9h14v11M9 9V5h6v4',
-    layers: 'M12 4l9 5-9 5-9-5zM3 14l9 5 9-5',
+    maintenance: 'M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z',
+    settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 4.5v5M9 14.5v5',
+    automations: 'M4 8h12l-3-3M20 16H8l3 3',
     studio: 'M4 6h16v12H4zM4 15l4.5-4.5 4 4 2.5-2.5L20 17M15.5 9.5h.01',
-    sandbox: 'M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z',
     games: 'M7 9h10a4 4 0 0 1 3.9 4.9l-.6 2.5a2 2 0 0 1-3.4.9L15 15H9l-1.9 2.3a2 2 0 0 1-3.4-.9l-.6-2.5A4 4 0 0 1 7 9z',
     collapse: 'M15 6l-6 6 6 6',
     chevron: 'M6 9l6 6 6-6'
   };
-  // [id, label, screen, part, group]
+  // The places, in the order the sidebar lists them. `narrow` places take the room by narrowing the sidebar.
+  const PLACES = [
+    { id: 'overview', label: 'Overview', group: 'main' },
+    { id: 'printer', label: 'Printer', group: 'main', narrow: true },
+    { id: 'slicer', label: 'Slicer', group: 'main', narrow: true },
+    { id: 'files', label: 'Files', group: 'main', narrow: true },
+    { id: 'models', label: 'Models', group: 'main' },
+    { id: 'ai', label: 'AI', group: 'main' },
+    { id: 'maintenance', label: 'Maintenance', group: 'main' },
+    { id: 'settings', label: 'Settings', group: 'foot' },
+    { id: 'automations', label: 'Automations', group: 'more' },
+    { id: 'studio', label: 'Photo studio', group: 'more' },
+    { id: 'games', label: 'Games', group: 'more' }
+  ];
+  const placeById = Object.fromEntries(PLACES.map(p => [p.id, p]));
+  // Every address a link can name: [id, label, place, screen, part]. The first one of a place is its home; the rest
+  // are its parts, in the order the toolbar edge shows them. `sep` starts a new group in that row.
   const DEST = [
-    ['overview', 'Overview', 'overview', null, 'main'],
-    ['printers', 'Printers', 'fleet', 'printers', 'main'],
-    ['printer', 'Printer', 'control', null, 'main'],
-    ['files', 'Files', 'files', 'library', 'main'],
-    ['slice', 'Slice', 'files', 'slicing', 'main'],
-    ['queue', 'Queue', 'files', 'jobs', 'main'],
-    ['filament', 'Filament', 'maintenance', 'filament', 'main'],
-    ['maintenance', 'Maintenance', 'maintenance', 'upkeep', 'main'],
-    ['ai', 'AI', 'ai', null, 'main'],
-    ['settings', 'Settings', 'modules', null, 'main'],
-    ['prefs', 'Preferences', 'prefs', null, 'main'],
-    ['automations', 'Automations', 'automations', null, 'tools'],
-    ['desk', 'Farm desk', 'fleet', 'desk', 'tools'],
-    ['layers', 'Layer heights', 'files', 'layers', 'tools'],
-    ['studio', 'Photo studio', 'studio', null, 'tools'],
-    ['sandbox', 'Practice farm', 'fleet', 'sandbox', 'tools'],
-    ['games', 'Games', 'games', null, 'tools']
-  ].map(([id, label, tab, part, group]) => ({ id, label, tab, part, group }));
+    ['overview', 'Overview', 'overview', 'overview', null],
+    ['printer', 'Control', 'printer', 'control', 'control'],
+    ['readings', 'Readings', 'printer', 'control', 'live'],
+    ['camera', 'Camera & time-lapses', 'printer', 'control', 'camera'],
+    ['history', 'History', 'printer', 'control', 'history'],
+    ['printers', 'All printers', 'printer', 'fleet', 'printers', true],
+    ['desk', 'Farm', 'printer', 'fleet', 'desk'],
+    ['sandbox', 'Practice printers', 'printer', 'fleet', 'sandbox'],
+    ['slice', 'Slice', 'slicer', 'files', 'slicing'],
+    ['layers', 'Layer heights', 'slicer', 'files', 'layers'],
+    ['files', 'Library', 'files', 'files', 'library'],
+    ['queue', 'Queue', 'files', 'files', 'jobs'],
+    ['models', 'Models', 'models', 'models', null],
+    ['ai', 'AI', 'ai', 'ai', null],
+    ['maintenance', 'Upkeep', 'maintenance', 'maintenance', 'upkeep'],
+    ['filament', 'Filament', 'maintenance', 'maintenance', 'filament'],
+    ['settings', 'Settings', 'settings', 'modules', null],
+    ['prefs', 'Look & layout', 'settings', 'modules', 'look', false, true],
+    ['automations', 'Automations', 'automations', 'automations', null],
+    ['studio', 'Photo studio', 'studio', 'studio', null],
+    ['games', 'Games', 'games', 'games', null]
+  ].map(([id, label, place, tab, part, sep, hide]) => ({ id, label, place, tab, part, sep: !!sep, hide: !!hide, group: placeById[place].group }));
   const byId = Object.fromEntries(DEST.map(d => [d.id, d]));
-  // Keyboard: G then a letter goes to a place; Alt+1 to Alt+9 go to the first nine; ? lists them all.
-  const GO_KEYS = { o: 'overview', p: 'printers', r: 'printer', f: 'files', s: 'slice', q: 'queue', l: 'filament',
-    m: 'maintenance', a: 'ai', t: 'automations', ',': 'settings', e: 'prefs', d: 'desk', h: 'layers', g: 'games' };
+  const homeOf = place => DEST.find(d => d.place === place);
+  const partsOf = place => DEST.filter(d => d.place === place && !d.hide);
+  // Keyboard: G then a letter goes to a destination; Alt+1 to Alt+8 go to the eight places; ? lists them all.
+  const GO_KEYS = { o: 'overview', r: 'printer', i: 'readings', p: 'printers', s: 'slice', h: 'layers', f: 'files', q: 'queue',
+    w: 'models', a: 'ai', m: 'maintenance', l: 'filament', ',': 'settings', e: 'prefs', t: 'automations', d: 'desk',
+    u: 'studio', g: 'games' };
   const keyFor = id => Object.keys(GO_KEYS).find(k => GO_KEYS[k] === id);
   // Old screen names in links and remembered values.
   const OLD = { fleet: 'printers', control: 'printer', library: 'files', care: 'maintenance', modules: 'settings',
-    autoprint: 'slice', prepare: 'slice', jobs: 'queue', materials: 'filament' };
-  const COLLAPSE_KEY = 'dejavu1.rail.collapsed';
-  const TOOLS_KEY = 'dejavu1.rail.tools';
+    autoprint: 'slice', prepare: 'slice', jobs: 'queue', materials: 'filament', slicer: 'slice', sandbox: 'sandbox',
+    live: 'readings', upkeep: 'maintenance' };
+  const MODE_KEY = 'dejavu1.rail.mode';          // 'wide' | 'narrow' | nothing (the place decides)
+  const OLD_COLLAPSE_KEY = 'dejavu1.rail.collapsed';
+  const MORE_KEY = 'dejavu1.rail.tools';
   const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Ready' };
   const WIDE = window.matchMedia('(min-width: 1180px)');
   const PHONE = window.matchMedia('(max-width: 720px)');
+  const root = document.documentElement;
   let restoring = false;
   let fleet = [];
   let paintedFor = '';
@@ -90,6 +108,7 @@
     const part = window.Sections && Sections.current(tab);
     return DEST.find(d => d.tab === tab && d.part && d.part === part) || DEST.find(d => d.tab === tab) || byId.overview;
   }
+  const currentPlace = () => placeById[current().place];
 
   function routeFor(d) {
     const pid = typeof currentPrinter !== 'undefined' && currentPrinter;
@@ -107,19 +126,59 @@
     if (printer && window.Workshop && printer !== currentPrinter) Workshop.selectPrinter(printer, null, true);
     showTab(d.tab);
     if (d.part && window.Sections) Sections.choose(d.tab, d.part);
+    const surface = document.getElementById('main');
+    if (surface) surface.scrollTop = 0;
     window.scrollTo({ top: 0 });
+  }
+
+  /* ---- narrow or wide ---- */
+  function chosenMode() {
+    const m = store.get(MODE_KEY);
+    if (m === 'wide' || m === 'narrow') return m;
+    const old = store.get(OLD_COLLAPSE_KEY);          // the choice from before the places: '1' folded, '0' open
+    return old === '1' ? 'narrow' : old === '0' ? 'wide' : null;
+  }
+  function applyNarrow() {
+    const mode = chosenMode();
+    const narrow = mode ? mode === 'narrow' : (!!currentPlace().narrow || !WIDE.matches);
+    root.classList.toggle('rail-collapsed', narrow);
+    root.dataset.rail = narrow ? 'narrow' : 'wide';
+    const btn = document.getElementById('rail-collapse');
+    if (btn) {
+      btn.setAttribute('aria-pressed', String(narrow));
+      btn.setAttribute('aria-label', narrow ? 'Show the sidebar labels' : 'Narrow the sidebar to icons');
+      const lbl = btn.querySelector('.rail-label');
+      if (lbl) lbl.textContent = narrow ? 'Show labels' : 'Narrow';
+    }
+    if (narrow) closeMenu(false);
+    window.dispatchEvent(new CustomEvent('dv-rail-width', { detail: { narrow } }));
+  }
+  function toggleNarrow() {
+    store.set(MODE_KEY, root.classList.contains('rail-collapsed') ? 'wide' : 'narrow');
+    applyNarrow();
   }
 
   /* Keep the address and the highlighted item in step with the page. */
   function sync() {
     const d = current();
+    root.dataset.place = d.place;
     const rail = document.getElementById('rail');
-    if (rail) rail.querySelectorAll('[data-dest]').forEach(a => {
-      const on = a.dataset.dest === d.id;
+    if (rail) rail.querySelectorAll('[data-place]').forEach(a => {
+      const on = a.dataset.place === d.place;
       a.classList.toggle('active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    if (d.group === 'tools') setTools(true, false);   // you can't be somewhere that is folded away
+    // The phone's bottom bar: one button per place, and More lit for every place the bar does not list.
+    const dockPlaces = ['overview', 'printer', 'slicer', 'files'];
+    document.querySelectorAll('.bottom-nav [data-dest]').forEach(b => {
+      const on = byId[b.dataset.dest] && byId[b.dataset.dest].place === d.place;
+      b.classList.toggle('active', !!on);
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    const more = document.getElementById('bn-more');
+    if (more) more.classList.toggle('active', !dockPlaces.includes(d.place));
+    if (d.group === 'more') setMore(true, false);   // you can't be somewhere that is folded away
+    applyNarrow();
     paintStatus(true);
     if (rail && !rail.contains(document.activeElement)) roving();
     const route = routeFor(d);
@@ -129,24 +188,13 @@
     else history.pushState({ dest: d.id }, '', url);
   }
 
-  function setCollapsed(on, remember) {
-    document.documentElement.classList.toggle('rail-collapsed', on);
-    const btn = document.getElementById('rail-collapse');
-    if (btn) {
-      btn.setAttribute('aria-expanded', String(!on));
-      btn.setAttribute('aria-label', on ? 'Show the sidebar labels' : 'Hide the sidebar labels');
-    }
-    if (on) closeMenu(false);
-    if (remember) store.set(COLLAPSE_KEY, on ? '1' : '0');
-  }
-
-  function setTools(open, remember) {
+  function setMore(open, remember) {
     const list = document.getElementById('rail-tools');
     const head = document.getElementById('rail-tools-h');
     if (!list || !head) return;
     list.classList.toggle('is-folded', !open);
     head.setAttribute('aria-expanded', String(open));
-    if (remember) store.set(TOOLS_KEY, open ? '1' : '0');
+    if (remember) store.set(MORE_KEY, open ? '1' : '0');
   }
 
   /* ---- what the live fleet says ---- */
@@ -178,8 +226,8 @@
   }
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-  function badge(id, count, level, words) {
-    const item = document.querySelector(`#rail [data-dest="${id}"]`);
+  function badge(placeId, count, level, words) {
+    const item = document.querySelector(`#rail [data-place="${placeId}"]`);
     const el = item && item.querySelector('.rail-badge');
     if (!el) return '';
     el.hidden = !count;
@@ -200,35 +248,29 @@
     const worst = levels.includes('bad') ? 'bad' : levels.includes('warn') ? 'warn' : 'ok';
     const due = dueCount();
     const sig = JSON.stringify([name, p && [p.id, p.state, p.link_lost, Math.round((p.progress || 0) * 100)],
-      flagged.length, worst, due, fleet.map(f => [f.id, f.name, f.state, f.link_lost]), document.documentElement.dataset.theme]);
+      flagged.length, worst, due, fleet.map(f => [f.id, f.name, f.state, f.link_lost]), root.dataset.theme]);
     if (!force && sig === paintedFor) return;
     paintedFor = sig;
 
     const label = {};
-    DEST.forEach(d => { label[d.id] = d.label; });
+    PLACES.forEach(pl => { label[pl.id] = pl.label; });
     label.overview += badge('overview', flagged.length, worst,
       plural(flagged.length, 'printer needs you', 'printers need you'));
     label.maintenance += badge('maintenance', due, 'warn', plural(due, 'printer has upkeep due', 'printers have upkeep due'));
-    const tip = document.querySelector('#rail [data-dest="printer"]');
-    if (tip) {
-      const state = stateOf(p);
-      const dot = tip.querySelector('.rail-dot');
-      dot.dataset.state = state;
-      dot.hidden = !state;
-      const bar = tip.querySelector('.rail-progress');
-      const printing = state === 'printing';
-      bar.hidden = !printing;
-      if (printing) bar.firstElementChild.style.width = `${Math.round((p.progress || 0) * 100)}%`;
-      const who = document.getElementById('rail-printer');
-      if (who) who.textContent = name || '';
-      label.printer = `Printer${name ? `: ${name}` : ''}${p ? `, ${stateWords(p)}` : ''}`;
-    }
-    DEST.forEach(d => {
-      const a = rail.querySelector(`[data-dest="${d.id}"]`);
-      if (a) a.setAttribute('aria-label', label[d.id]);
+    PLACES.forEach(pl => {
+      const a = rail.querySelector(`[data-place="${pl.id}"]`);
+      if (a) a.setAttribute('aria-label', label[pl.id]);
     });
-    const sw = document.getElementById('rail-switch');
-    if (sw) sw.hidden = fleet.length < 2;
+    const who = document.getElementById('rail-switch');
+    if (who) {
+      const state = stateOf(p);
+      const dot = who.querySelector('.rail-dot');
+      dot.dataset.state = state;
+      document.getElementById('rail-printer').textContent = name || 'No printer';
+      document.getElementById('rail-state').textContent = p ? stateWords(p) : 'Add one in Settings';
+      who.setAttribute('aria-label', name ? `Printer: ${name}, ${stateWords(p)}. Choose another` : 'No printer yet');
+      who.disabled = !fleet.length;
+    }
     if (menuOpen) drawMenu();
   }
 
@@ -242,52 +284,35 @@
         <span>${esc(p.name)}</span><small>${esc(stateWords(p))}</small></button>`).join('');
   }
   function openMenu() {
-    const row = document.getElementById('rail-printer-row');
+    const row = document.getElementById('rail-switch');
     const menu = document.getElementById('rail-menu');
-    const sw = document.getElementById('rail-switch');
-    if (!row || !menu || !sw || sw.hidden || fleet.length < 2) return;
+    if (!row || !menu || row.disabled || !fleet.length) return;
     drawMenu();
     menu.hidden = false;
     const box = row.getBoundingClientRect();
-    const rail = document.getElementById('rail').getBoundingClientRect();
-    menu.style.left = `${Math.round(rail.right + 8)}px`;
+    menu.style.left = `${Math.round(Math.min(box.right + 8, window.innerWidth - menu.offsetWidth - 8))}px`;
     menu.style.top = `${Math.max(8, Math.round(Math.min(box.top, window.innerHeight - menu.offsetHeight - 8)))}px`;
     menuOpen = true;
-    sw.setAttribute('aria-expanded', 'true');
+    row.setAttribute('aria-expanded', 'true');
     (menu.querySelector('[aria-checked="true"]') || menu.firstElementChild).focus();
   }
   function closeMenu(refocus) {
     const menu = document.getElementById('rail-menu');
-    const sw = document.getElementById('rail-switch');
+    const row = document.getElementById('rail-switch');
     if (!menu || !menuOpen) return;
     menuOpen = false;
     menu.hidden = true;
-    if (sw) sw.setAttribute('aria-expanded', 'false');
-    if (refocus && sw) sw.focus();
+    if (row) row.setAttribute('aria-expanded', 'false');
+    if (refocus && row) row.focus();
   }
-
-  /* ---- the label beside an icon in the narrow sidebar ---- */
-  function showTip(el) {
-    const tip = document.getElementById('rail-tip');
-    if (!tip || !document.documentElement.classList.contains('rail-collapsed') || menuOpen) return;
-    const key = el.dataset && el.dataset.dest && keyFor(el.dataset.dest);
-    tip.innerHTML = `${esc(el.getAttribute('aria-label') || el.textContent.trim())}${key ? ` <kbd>G</kbd> <kbd>${esc(key.toUpperCase())}</kbd>` : ''}`;
-    tip.hidden = false;
-    const box = el.getBoundingClientRect();
-    const rail = document.getElementById('rail').getBoundingClientRect();
-    tip.style.left = `${Math.round(rail.right + 8)}px`;
-    tip.style.top = `${Math.round(box.top + box.height / 2 - tip.offsetHeight / 2)}px`;
-  }
-  const hideTip = () => { const tip = document.getElementById('rail-tip'); if (tip) tip.hidden = true; };
 
   /* ---- keyboard: one tab stop, arrows inside ---- */
-  const stops = () => [...document.querySelectorAll('#rail .rail-item, #rail .rail-switch, #rail .rail-fold, #rail .rail-collapse')]
-    .filter(el => !el.hidden && el.offsetParent !== null
-      && !(el.classList.contains('rail-fold') && document.documentElement.classList.contains('rail-collapsed')));
+  const STOP = '#rail .rail-item, #rail #rail-switch, #rail .rail-fold, #rail .rail-collapse';
+  const stops = () => [...document.querySelectorAll(STOP)]
+    .filter(el => !el.hidden && !el.disabled && el.offsetParent !== null && !el.closest('.is-folded'));
   function roving(focused) {
     const mine = focused || document.querySelector('#rail .rail-item.active');
-    document.querySelectorAll('#rail .rail-item, #rail .rail-switch, #rail .rail-fold, #rail .rail-collapse')
-      .forEach(el => el.setAttribute('tabindex', el === mine ? '0' : '-1'));
+    document.querySelectorAll(STOP).forEach(el => el.setAttribute('tabindex', el === mine ? '0' : '-1'));
   }
   function onRailKey(e) {
     const all = stops();
@@ -306,37 +331,43 @@
   }
 
   function build() {
-    const item = d => `<a href="${routeFor(d)}" class="rail-item" data-dest="${d.id}"${keyFor(d.id) ? ` aria-keyshortcuts="G ${keyFor(d.id).toUpperCase()}"` : ''}>
-      ${svg(ICON[d.id])}${d.id === 'printer' ? '<i class="rail-dot" hidden aria-hidden="true"></i>' : ''}<span class="rail-label">${esc(d.label)}${d.id === 'printer' ? '<small id="rail-printer"></small>' : ''}</span>${
-      d.id === 'printer' ? '<i class="rail-progress" hidden aria-hidden="true"><b></b></i>' : ''}<span class="rail-badge" hidden aria-hidden="true"></span></a>`;
-    const row = d => d.id === 'printer'
-      ? `<div class="rail-row" id="rail-printer-row">${item(d)}<button class="rail-switch" id="rail-switch" type="button" hidden
-          aria-haspopup="menu" aria-expanded="false" aria-controls="rail-menu" aria-label="Choose which printer to show">${svg(ICON.chevron)}</button></div>`
-      : item(d);
+    const item = pl => {
+      const d = homeOf(pl.id);
+      const key = keyFor(d.id);
+      return `<a href="${routeFor(d)}" class="rail-item" data-dest="${d.id}" data-place="${pl.id}"${key ? ` aria-keyshortcuts="G ${key.toUpperCase()}"` : ''}>
+      ${svg(ICON[pl.id])}<span class="rail-label">${esc(pl.label)}</span><span class="rail-badge" hidden aria-hidden="true"></span></a>`;
+    };
     const nav = document.createElement('nav');
-    nav.className = 'rail liquid-glass';
+    nav.className = 'rail';
     nav.id = 'rail';
-    nav.setAttribute('aria-label', 'Main');
-    nav.innerHTML = `
+    nav.setAttribute('aria-label', 'Places');
+    nav.innerHTML = `<div class="rail-card liquid-glass">
       <a class="rail-brand" id="rail-brand" href="#/overview" aria-label="Deja Vu1, go to Overview"><span class="rail-mark" aria-hidden="true"><i></i></span><span class="rail-label">Deja&nbsp;Vu1</span></a>
-      <div class="rail-list">${DEST.filter(d => d.group === 'main').map(row).join('')}</div>
-      <button class="rail-group rail-fold" id="rail-tools-h" type="button" aria-expanded="true" aria-controls="rail-tools">
-        <span>Tools &amp; learn</span>${svg(ICON.chevron)}</button>
-      <div class="rail-list" id="rail-tools" role="group" aria-labelledby="rail-tools-h">${DEST.filter(d => d.group === 'tools').map(item).join('')}</div>
-      <button class="rail-collapse" id="rail-collapse" type="button" aria-controls="rail">${svg(ICON.collapse)}<span class="rail-label">Hide labels</span></button>`;
-    document.body.prepend(nav);
+      <button class="rail-who" id="rail-switch" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="rail-menu" aria-label="Printer">
+        <i class="rail-dot" data-state="" aria-hidden="true"></i>
+        <span class="rail-label"><b id="rail-printer">No printer</b><small id="rail-state"></small></span>${svg(ICON.chevron)}</button>
+      <div class="rail-scroll">
+        <div class="rail-list">${PLACES.filter(p => p.group === 'main').map(item).join('')}</div>
+        <button class="rail-group rail-fold" id="rail-tools-h" type="button" aria-expanded="true" aria-controls="rail-tools">
+          <span>More</span>${svg(ICON.chevron)}</button>
+        <div class="rail-list" id="rail-tools" role="group" aria-labelledby="rail-tools-h">${PLACES.filter(p => p.group === 'more').map(item).join('')}</div>
+      </div>
+      <div class="rail-foot">
+        ${PLACES.filter(p => p.group === 'foot').map(item).join('')}
+        <button class="rail-collapse" id="rail-collapse" type="button" aria-controls="rail" aria-pressed="false">${svg(ICON.collapse)}<span class="rail-label">Narrow</span></button>
+        <span class="rail-version" id="rail-version"></span>
+      </div></div>`;
+    const shell = document.getElementById('shell') || document.body;
+    shell.prepend(nav);
+    const chip = document.getElementById('ver-chip');     // the version chip lives at the foot of the sidebar
+    if (chip) document.getElementById('rail-version').append(chip);
     const menu = document.createElement('div');
     menu.className = 'rail-menu liquid-glass';
     menu.id = 'rail-menu';
     menu.hidden = true;
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', 'Printers');
-    const tip = document.createElement('div');
-    tip.className = 'rail-tip';
-    tip.id = 'rail-tip';
-    tip.hidden = true;
-    tip.setAttribute('role', 'presentation');
-    document.body.append(menu, tip);
+    document.body.append(menu);
 
     document.getElementById('rail-brand').addEventListener('click', e => {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
@@ -344,16 +375,19 @@
       go(byId.overview);
     });
     nav.addEventListener('click', e => {
-      const a = e.target.closest('[data-dest]');
+      const a = e.target.closest('[data-place]');
       if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;   // a new tab keeps its own link
       e.preventDefault();
       go(byId[a.dataset.dest]);
     });
-    document.getElementById('rail-collapse').addEventListener('click', () =>
-      setCollapsed(!document.documentElement.classList.contains('rail-collapsed'), true));
+    document.getElementById('rail-collapse').addEventListener('click', toggleNarrow);
     document.getElementById('rail-tools-h').addEventListener('click', () =>
-      setTools(document.getElementById('rail-tools').classList.contains('is-folded'), true));
-    document.getElementById('rail-switch').addEventListener('click', () => (menuOpen ? closeMenu(true) : openMenu()));
+      setMore(document.getElementById('rail-tools').classList.contains('is-folded'), true));
+    document.getElementById('rail-switch').addEventListener('click', () => {
+      if (menuOpen) closeMenu(true);
+      else if (fleet.length > 1) openMenu();
+      else go(byId.printer);
+    });
     menu.addEventListener('click', e => {
       const b = e.target.closest('[data-printer]');
       if (!b) return;
@@ -373,21 +407,21 @@
       if (menuOpen && !e.target.closest('#rail-menu, #rail-switch')) closeMenu(false);
     });
     nav.addEventListener('keydown', onRailKey);
-    nav.addEventListener('focusin', e => { roving(e.target.closest('.rail-item, .rail-switch, .rail-fold, .rail-collapse')); });
-    nav.addEventListener('mouseover', e => { const el = e.target.closest('.rail-item, .rail-collapse, .rail-switch'); if (el) showTip(el); });
-    nav.addEventListener('mouseleave', hideTip);
-    nav.addEventListener('focusin', e => { const el = e.target.closest('.rail-item, .rail-collapse, .rail-switch'); if (el && e.target.matches(':focus-visible')) showTip(el); else hideTip(); });
-    nav.addEventListener('focusout', hideTip);
-    nav.addEventListener('scroll', hideTip, { passive: true });
+    nav.addEventListener('focusin', e => { roving(e.target.closest('.rail-item, #rail-switch, .rail-fold, .rail-collapse')); });
+    // The phone's bottom bar and More sheet name places too; workshop-part5.js opens the screen, this picks the part.
+    document.addEventListener('click', e => {
+      const b = e.target.closest('#thumb-dock [data-dest]');
+      if (b && byId[b.dataset.dest]) go(byId[b.dataset.dest]);
+    });
     let leader = 0;
     document.addEventListener('keydown', e => {
       if (!typing(e.target) && !e.ctrlKey && !e.metaKey && !document.querySelector('.guide:not([hidden])')) onPageKey(e);
     });
     function onPageKey(e) {
       if (e.altKey) {
-        const n = /^Digit([1-9])$/.exec(e.code || '');
-        const main = DEST.filter(d => d.group === 'main');
-        if (n && main[+n[1] - 1]) { e.preventDefault(); location.hash = routeFor(main[+n[1] - 1]); }
+        const n = /^Digit([1-8])$/.exec(e.code || '');
+        const eight = PLACES.filter(p => p.group !== 'more');
+        if (n && eight[+n[1] - 1]) { e.preventDefault(); location.hash = routeFor(homeOf(eight[+n[1] - 1].id)); }
         return;
       }
       if (leader && Date.now() - leader < 1200) {
@@ -398,7 +432,7 @@
       }
       if (e.key === 'g' || e.key === 'G') { leader = Date.now(); return; }
       if (e.key === '?') { e.preventDefault(); keySheet(); return; }
-      if (e.key === '[' && !PHONE.matches) setCollapsed(!document.documentElement.classList.contains('rail-collapsed'), true);
+      if (e.key === '[' && !PHONE.matches) toggleNarrow();
     }
   }
 
@@ -417,11 +451,12 @@
       sheet.innerHTML = `<h2 id="kb-title">Keyboard shortcuts</h2>
         <div class="kb-cols"><section><h3>Go to</h3><ul>${go}</ul></section>
         <section><h3>Anywhere</h3><ul>
-          <li><span>Search everything</span><span><kbd>${mod}</kbd> <kbd>K</kbd> or <kbd>/</kbd></span></li>
+          <li><span>Find anything</span><span><kbd>${mod}</kbd> <kbd>K</kbd> or <kbd>/</kbd></span></li>
+          <li><span>Halt the selected printer</span><span><kbd>H</kbd> <kbd>H</kbd></span></li>
           <li><span>Ask your AI</span><span><kbd>${mod}</kbd> <kbd>J</kbd></span></li>
-          <li><span>The first nine places</span><span><kbd>Alt</kbd> <kbd>1</kbd>–<kbd>9</kbd></span></li>
+          <li><span>The eight places</span><span><kbd>Alt</kbd> <kbd>1</kbd>–<kbd>8</kbd></span></li>
           <li><span>Back and forward</span><span><kbd>Alt</kbd> <kbd>←</kbd> <kbd>→</kbd></span></li>
-          <li><span>Fold the sidebar</span><span><kbd>[</kbd></span></li>
+          <li><span>Narrow or widen the sidebar</span><span><kbd>[</kbd></span></li>
           <li><span>This list</span><span><kbd>?</kbd></span></li></ul></section></div>
         <form method="dialog"><button class="btn primary" type="submit">Close</button></form>`;
       sheet.addEventListener('click', e => { if (e.target === sheet) sheet.close(); });
@@ -433,19 +468,16 @@
   function init() {
     if (!window.showTab || !window.Sections) return;
     build();
-    document.documentElement.classList.add('has-rail');
-    const saved = store.get(COLLAPSE_KEY);
-    setCollapsed(saved == null ? !WIDE.matches : saved === '1', false);
-    setTools(store.get(TOOLS_KEY) !== '0', false);
+    root.classList.add('has-rail');
+    setMore(store.get(MORE_KEY) !== '0', false);
     window.addEventListener('dv-fleet', e => { fleet = Array.isArray(e.detail) ? e.detail : []; paintStatus(false); });
     window.addEventListener('dv-theme', () => paintStatus(true));
     roving();
-    WIDE.addEventListener('change', e => { if (store.get(COLLAPSE_KEY) == null) setCollapsed(!e.matches, false); });
+    WIDE.addEventListener('change', () => applyNarrow());
     window.addEventListener('dv-tab', () => sync());
     window.addEventListener('dv-section', () => sync());
     // Another printer on the same page: the address follows without a new history step.
     window.addEventListener('dv-printer', () => { restoring = true; try { sync(); } finally { restoring = false; } });
-    window.addEventListener('resize', hideTip);
     window.addEventListener('popstate', () => {
       const r = parse(location.hash);
       if (!r) return;
@@ -457,15 +489,21 @@
     const start = parse(location.hash);
     restoring = true;
     try { if (start) go(start.d, start.printer); sync(); } finally { restoring = false; }
-    window.dispatchEvent(new CustomEvent('dv-rail'));   // the page bar (pagebar.js) can now ask for names and icons
+    window.dispatchEvent(new CustomEvent('dv-rail'));   // the toolbar edge (pagebar.js) can now ask for names and icons
   }
 
   window.Rail = {
-    destinations: DEST.map(d => ({ ...d })), parse, current: () => current().id,
-    destFor: tab => (DEST.find(d => d.tab === tab) || byId.overview).id,
-    label: id => (byId[id] || byId.overview).label, icon: id => (ICON[id] ? svg(ICON[id]) : ''),
+    destinations: DEST.map(d => ({ ...d })), places: PLACES.map(p => ({ ...p })), parse, current: () => current().id,
+    place: () => current().place, partsOf: id => partsOf(id).map(d => ({ ...d })),
+    destFor: tab => (DEST.find(d => d.tab === tab) ? homeOf(DEST.find(d => d.tab === tab).place) : byId.overview).id,
+    label: id => (byId[id] || byId.overview).label, placeLabel: id => (placeById[id] || placeById.overview).label,
+    icon: id => (ICON[(byId[id] || { place: id }).place] ? svg(ICON[(byId[id] || { place: id }).place]) : ''),
     shown: () => !!document.getElementById('rail') && !PHONE.matches,
-    keys: keySheet, go: id => { if (byId[id] || byId[OLD[id]]) location.hash = routeFor(byId[id] || byId[OLD[id]]); }
+    narrow: () => root.classList.contains('rail-collapsed'), toggleNarrow,
+    mode: () => chosenMode() || 'auto',
+    setMode: m => { store.set(MODE_KEY, m === 'wide' || m === 'narrow' ? m : ''); store.set(OLD_COLLAPSE_KEY, ''); applyNarrow(); },
+    keyFor, keys: keySheet, go: id => { if (byId[id] || byId[OLD[id]]) location.hash = routeFor(byId[id] || byId[OLD[id]]); },
+    goDest: (id, printer) => { const d = byId[id] || byId[OLD[id]]; if (d) go(d, printer); }
   };
   init();
 })();

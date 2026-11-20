@@ -1,0 +1,145 @@
+/* shell-panes.css: the building blocks (pane, divider, stage, readouts, row) and the flat surface every place is drawn on.
+   Loaded right after shell.css. A screen is one connected surface: its cards lose their boxes and become cells separated by hairlines,
+   and the screens that dock (Overview, Printer › Control, Settings) are grids of panes with draggable dividers (panes.js).
+   Cards stay only where a small, self-contained task belongs in a box: a setting, a confirmation, a short form (sheets and dialogs). */
+
+/* ---- the flat surface: a card is a cell, not a box ---------------------------------------------------------------------------- */
+html.has-shell .wrap :is(.card, .stats, .divider-row, .notice, .tab-sub, .pane-block).liquid-glass,
+html.has-shell .wrap :is(.card, .stats, .tab-sub, .pane-block) {
+  background: transparent; border: 0; border-radius: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; animation: none; margin: 0;
+}
+html.has-shell .wrap :is(.card, .stats, .tab-sub, .pane-block).liquid-glass::before, html.has-shell .wrap :is(.card, .stats, .tab-sub, .pane-block).liquid-glass::after { display: none; }
+html.has-shell .wrap :is(.card, .tab-sub, .pane-block) { padding: 0 0 14px; border-bottom: 1px solid var(--hair); }
+html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 16px; margin-right: 16px; }
+html.has-shell .wrap .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; min-height: 38px; margin: 0; padding: 8px 16px 6px; }
+html.has-shell .wrap .card-head > :first-child { flex: 1 1 auto; }
+html.has-shell .wrap :is(.card, .tab-sub) h2, html.has-shell .wrap .pane-block h2 {
+  margin: 0; font: 600 11px/1.3 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint);
+}
+html.has-shell .wrap .pane-block h2 { padding: 12px 16px 4px; }
+html.has-shell .wrap .pane-block > .card-sub { margin: 0 16px 6px; }
+html.has-shell .wrap .grid-2, html.has-shell .wrap .flow-run, html.has-shell .wrap .desk-grid, html.has-shell .wrap .ov-grid { gap: 0; }
+html.has-shell .wrap .grid-2 > .card, html.has-shell .wrap .flow-run > .card, html.has-shell .wrap .flow-run > .grid-2 > .card { box-shadow: inset -1px 0 var(--hair); }
+html.has-shell .wrap .grid-2:empty, html.has-shell .wrap .flow-run:empty, html.has-shell .wrap .ov-grid:empty { display: none; }
+html.has-shell .wrap .divider-row { background: transparent; border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; box-shadow: none; }
+html.has-shell .wrap .divider-row > * { border-right-color: var(--hair); }
+html.has-shell .wrap .stats { padding: 0; border-bottom: 1px solid var(--hair); }
+html.has-shell .wrap .fleet-card { border-radius: 12px; box-shadow: none; border: 1px solid var(--hair-strong); }
+html.has-shell .wrap :is(.card-sub, .field-hint:not([role="status"]):not([aria-live])) { text-wrap: pretty; }
+
+/* ---- pane, divider, stage, readouts ------------------------------------------------------------------------------------------ */
+html.has-shell .panes { display: grid; flex: 1; min-height: 0; position: relative; }
+html.has-shell .pane { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; overscroll-behavior: contain; position: relative; }
+html.has-shell .pane > .card:last-child { border-bottom: 0; }
+html.has-shell .split { position: relative; background: var(--hair); touch-action: none; z-index: 2; }
+html.has-shell .split.v { width: 1px; cursor: col-resize; }
+html.has-shell .split.h { height: 1px; cursor: row-resize; }
+html.has-shell .split::before { content: ""; position: absolute; inset: 0 -5px; }
+html.has-shell .split.h::before { inset: -5px 0; }
+html.has-shell .split::after { content: ""; position: absolute; top: 50%; left: -2px; width: 5px; height: 28px; margin-top: -14px; border-radius: 3px; opacity: 0.45;
+  background: repeating-linear-gradient(0deg, var(--text-faint) 0 1px, transparent 1px 3px); }
+html.has-shell .split.h::after { top: -2px; left: 50%; width: 28px; height: 5px; margin: 0 0 0 -14px; background: repeating-linear-gradient(90deg, var(--text-faint) 0 1px, transparent 1px 3px); }
+html.has-shell .split:hover, html.has-shell .split:focus-visible, html.has-shell .split.dragging { background: var(--accent); }
+html.has-shell .split:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+html.has-shell.is-resizing, html.has-shell.is-resizing * { user-select: none; cursor: col-resize; }
+html.has-shell .stage { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  background: radial-gradient(80% 80% at 50% 45%, var(--stage-a) 45%, var(--stage-b)); }
+html.has-shell .readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); border-top: 1px solid var(--hair); background: var(--surface-2); flex: none; }
+html.has-shell .ro { padding: 9px 14px 10px; border-right: 1px solid var(--hair); min-width: 0; }
+html.has-shell .ro span { display: block; font: 600 10px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell .ro b { display: block; font: 500 17px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; letter-spacing: -0.02em; }
+html.has-shell .row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid var(--hair); min-height: 44px; }
+
+/* ---- Overview: the printer in 3D, its readings, a side pane --------------------------------------------------------------------- */
+html.has-shell .ov-panes { grid-template-columns: minmax(0, 1fr) 1px var(--side, 360px); height: 100%; }
+html.has-shell .ov-main { display: flex; flex-direction: column; overflow: hidden; }
+html.has-shell .ov-main .stage { flex: 1 1 auto; }
+html.has-shell .ov-main > #ov-now { flex: none; max-height: 36%; overflow: auto; border-top: 1px solid var(--hair); border-bottom: 0; background: var(--surface-2); }
+html.has-shell .ov-side > :is(.card, .stats, .pair-card) { flex: none; }
+html.has-shell #tab-overview { overflow: hidden; }
+
+/* ---- the twin as a stage ------------------------------------------------------------------------------------------------------ */
+html.has-shell .stage > #twin-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; position: relative; }
+html.has-shell .stage > #twin-card > .twin-head { flex: none; padding: 8px 14px 0; align-items: flex-start; }
+html.has-shell .stage > #twin-card[data-stage="overview"] > .twin-head { position: absolute; z-index: 2; top: 0; left: 0; right: 0; padding: 10px 14px; pointer-events: none; }
+html.has-shell .stage > #twin-card[data-stage="overview"] > .twin-head > * { pointer-events: auto; }
+html.has-shell .stage > #twin-card .twin-head h2 { display: none; }
+html.has-shell .stage > #twin-card #twin-host { flex: 1; min-height: 0; margin: 0; }
+html.has-shell .stage > #twin-card .twin-note { display: none; }
+html.has-shell .stage > #twin-card[data-stage="overview"] .twin-tools { display: none; }
+
+/* ---- Printer › Control: the cockpit ------------------------------------------------------------------------------------------- */
+html.has-shell #tab-control { display: flex; flex-direction: column; }
+html.has-shell #tab-control:not([hidden]) { overflow: hidden; }
+html.has-shell #tab-control.sec-one:not(.is-control) { overflow: auto; }
+html.has-shell .cockpit { grid-template-columns: var(--left, 300px) 1px minmax(0, 1fr) 1px var(--right, 330px); grid-template-rows: minmax(0, 1fr) 1px var(--bottom, 170px); }
+html.has-shell .cockpit > .p-left { grid-column: 1; grid-row: 1 / 4; }
+html.has-shell .cockpit > .v1 { grid-column: 2; grid-row: 1 / 4; }
+html.has-shell .cockpit > .stage { grid-column: 3; grid-row: 1; }
+html.has-shell .cockpit > .v2 { grid-column: 4; grid-row: 1 / 4; }
+html.has-shell .cockpit > .p-right { grid-column: 5; grid-row: 1 / 4; }
+html.has-shell .cockpit > .h { grid-column: 3; grid-row: 2; }
+html.has-shell .cockpit > .p-bottom { grid-column: 3; grid-row: 3; }
+html.has-shell .pane .divider-row.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html.has-shell .pane .divider-row.cols-4 > * { border-bottom: 1px solid var(--hair); }
+html.has-shell .pane { overflow-x: hidden; }
+html.has-shell .pp-head .pp-actions { display: none; }
+html.has-shell .pp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--hair); flex: none; }
+
+/* ---- Models ------------------------------------------------------------------------------------------------------------------- */
+html.has-shell .site-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+html.has-shell .site-row { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--hair); color: var(--text); text-decoration: none; min-height: 48px; }
+html.has-shell .site-row b { font-weight: 600; }
+html.has-shell .site-row span:not(.sr-only) { font: 11.5px var(--font-mono); color: var(--text-faint); margin-left: auto; }
+html.has-shell .site-row svg { width: 14px; height: 14px; fill: none; stroke: var(--text-faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+html.has-shell .site-row:hover { background: var(--accent-soft); }
+
+/* ---- a phone: the panes stack under the stage; the dividers go ---------------------------------------------------------------- */
+@media (max-width: 720px) {
+  html.has-shell .panes { display: flex; flex-direction: column; height: auto; }
+  html.has-shell .split { display: none; }
+  html.has-shell .pane { overflow: visible; }
+  html.has-shell .stage { min-height: 320px; }
+  html.has-shell .ov-panes { height: auto; }
+  html.has-shell #tab-overview, html.has-shell #tab-control:not([hidden]) { overflow: visible; }
+  html.has-shell .cockpit > .stage { order: -1; }
+  html.has-shell .ov-main > #ov-now { max-height: none; }
+}
+@media (prefers-reduced-transparency: reduce) { html.has-shell .readouts, html.has-shell .ov-main > #ov-now { background: var(--surface-solid); } }
+@media (prefers-contrast: more) {
+  html.has-shell .split { background: var(--text-faint); }
+  html.has-shell .wrap :is(.card, .tab-sub, .pane-block), html.has-shell .card-head, html.has-shell .row { border-color: var(--hair-strong); }
+}
+
+/* ---- Settings: a list of groups on the left, rows on the right ---------------------------------------------------------------- */
+html.has-shell #tab-modules:not([hidden]) { overflow: hidden; }
+html.has-shell .set-panes { grid-template-columns: 232px minmax(0, 1fr); height: 100%; }
+html.has-shell .set-nav { border-right: 1px solid var(--hair); background: var(--surface-2); padding: 10px 8px; }
+html.has-shell .set-search input { width: 100%; height: 34px; border-radius: 9px; border: 1px solid var(--hair-strong); background: var(--well); color: var(--text); padding: 0 10px; font: 13px var(--font-sans); }
+html.has-shell .set-groups { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+html.has-shell .set-groups button { width: 100%; min-height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-dim); font: 520 13px var(--font-sans); text-align: left; cursor: pointer; }
+html.has-shell .set-groups button:hover { color: var(--text); background: var(--accent-soft); }
+html.has-shell .set-groups button[aria-current="true"] { background: var(--accent-soft); color: var(--text); box-shadow: inset 2px 0 0 var(--accent); }
+html.has-shell .set-count { margin: 10px 10px 0; font: 11.5px var(--font-mono); color: var(--text-faint); }
+html.has-shell .set-body > .set-miss, html.has-shell .set-miss { display: none; }
+html.has-shell .set-body > .card { max-width: 920px; }
+html.has-shell .set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 20px; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--hair); }
+html.has-shell .set-row:last-child { border-bottom: 0; }
+html.has-shell .set-t b { display: block; font-weight: 600; font-size: 13.5px; }
+html.has-shell .set-t span { display: block; }
+html.has-shell .set-reset { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ---- words: no explainer lines for "I know my way around" -------------------------------------------------------------------- */
+/* A static explainer has no id; a line with an id is live (a state, a count) and stays. Live regions and lines marked .keep stay too. */
+html:not([data-experience="new"]) .wrap :is(.card-sub:not([id]), .field-hint:not([id]):not(.keep):not([role="status"]):not([aria-live]), .xp-btn),
+html.familiar .wrap :is(.card-sub:not([id]), .field-hint:not([id]):not(.keep):not([role="status"]):not([aria-live]), .xp-btn) { display: none; }
+html.has-shell .wrap .card-head:not(:has(*:not(h2):not(.xp-btn))) { min-height: 34px; }
+
+/* ---- a phone: Settings groups become a row of chips -------------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  html.has-shell .set-panes { display: flex; flex-direction: column; height: auto; }
+  html.has-shell .set-nav { border-right: 0; border-bottom: 1px solid var(--hair); padding: 8px; }
+  html.has-shell .set-groups { flex-direction: row; overflow-x: auto; scrollbar-width: none; margin-top: 8px; }
+  html.has-shell .set-groups button { width: auto; white-space: nowrap; border: 1px solid var(--hair); }
+  html.has-shell #tab-modules:not([hidden]) { overflow: visible; }
+}

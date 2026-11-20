@@ -122,7 +122,14 @@
       $('setup-name').addEventListener('input', e => { $('setup-status').textContent = save(key, e.target.value.trim().slice(0,40)) ? '' : 'This browser is blocking saved settings, so your name is only kept until this tab closes.'; greeting(); });
       $('setup-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('setup-next').click(); } });
     } else if (names[step] === 'Make it yours') {
-      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
+      const exp = window.DVTheme ? DVTheme.experience() : 'know';
+      content.innerHTML = `<h2 id="setup-title">Make it yours.</h2><p class="setup-lead">How much help should the screens give? Short hints for your first visits, or none. Settings changes it later.</p>
+        <div class="setup-choices" role="group" aria-label="Your experience"><button class="btn ${exp==='new'?'primary':''}" type="button" id="setup-exp-new" aria-pressed="${exp==='new'}">New to 3D printing</button><button class="btn ${exp==='know'?'primary':''}" type="button" id="setup-exp-know" aria-pressed="${exp==='know'}">I know my way around</button></div>
+        <p class="setup-lead">Pick a background and colours. Move your mouse or a finger across the screen and it reacts. Settings → Appearance changes it later.</p><div id="setup-backdrop"></div>`;
+      ['new', 'know'].forEach(v => { $('setup-exp-' + v).onclick = () => {
+        if (window.DVTheme) DVTheme.setExperience(v);
+        ['new', 'know'].forEach(o => { const b = $('setup-exp-' + o); b.classList.toggle('primary', o === v); b.setAttribute('aria-pressed', String(o === v)); });
+      }; });
       if (typeof Backdrop !== 'undefined') Backdrop.picker($('setup-backdrop'));
     } else if (names[step] === 'Your printer') {
       content.innerHTML = `<h2 id="setup-title">Your printer, or a demo first?</h2><p class="setup-lead">The demo fills every screen with pretend printers, labelled as pretend. Connecting your own printer never starts a print.</p>

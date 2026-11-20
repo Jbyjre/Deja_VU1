@@ -1,0 +1,305 @@
+/* shell.css: the frame. The sidebar of eight places, the toolbar edge, the command bar, the instrument strip, the phone layout and the
+   tokens they share. Loaded after dark.css and before looks.css; shell-panes.css (loaded right after) holds the building blocks and the
+   flat surface the places are drawn on.
+
+   Direction (design/shell/PLAN.md): an instrument deck around the printer. Glass is the frame's controls (the sidebar and the strip,
+   tier 4: anchored, so a soft wide shadow); the working surface is paper, because it is content; sheets, the command bar and the
+   sidebar's hover overlay are tier 3 (floating: the strongest shadow). The signature is the layer-stack meter (.stack): a few lines
+   that fill from the bottom as a print grows. Type is the three faces the app already bundles; every number is mono with tabular
+   figures. Halt is #c8102e with white text in every look (contrast 6.6:1).
+
+   Specificity: theme.css, theme-shell.css and dark.css load before this file, so rules here that restyle an old name repeat the
+   old rule's weight (html.has-shell is set in <head> by theme-boot.js, before the first paint). */
+
+/* ---- tokens ---------------------------------------------------------------------------------------------------------------- */
+:root {
+  --rail-wide: 212px;
+  --rail-narrow: 60px;
+  --strip-h: 52px;
+  --sh-gap: 8px;
+  --sh-r: 18px;
+  --sh-r-in: 10px;
+  --well: oklch(94.5% 0.008 250);
+  --surface: oklch(98.6% 0.003 250 / 0.82);
+  --surface-2: oklch(96.4% 0.006 250 / 0.78);
+  --surface-solid: oklch(98.4% 0.003 250);
+  --hair-strong: oklch(30% 0.02 265 / 0.2);
+  --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
+  --halt: #c8102e;
+  --halt-ink: #fff;
+  --stage-a: #f5f8fb;
+  --stage-b: oklch(94.5% 0.008 250);
+  --shadow-anchored: 0 1px 2px rgba(20, 30, 50, 0.06), 0 8px 24px rgba(20, 30, 50, 0.08);
+  --shadow-float: 0 2px 4px rgba(20, 30, 50, 0.14), 0 14px 34px rgba(20, 30, 50, 0.22);
+}
+/* Dark is built first, not inverted: elevation shows as lighter surfaces (not shadows), the accent and the state colours are
+   desaturated, text sits at 94% lightness on 20% surfaces, and the room is deep blue, never black. */
+html[data-theme="dark"]:not(#dv) {
+  --bg: oklch(15% 0.022 256);
+  --text: oklch(94% 0.008 250);
+  --text-dim: oklch(82% 0.012 250);
+  --text-faint: oklch(73% 0.014 250);
+  --hair: oklch(88% 0.02 250 / 0.1);
+  --hair-strong: oklch(88% 0.02 250 / 0.2);
+  --layer-ink: oklch(85% 0.03 250 / 0.035);
+  --accent-text: oklch(80% 0.1 250);
+  --ok-text: oklch(80% 0.12 152);
+  --warn-text: oklch(85% 0.12 85);
+  --bad-text: oklch(78% 0.13 25);
+  --paper: oklch(20.5% 0.02 256 / 0.88);
+  --paper-solid: oklch(21% 0.02 256);
+  --raised: oklch(24% 0.022 256);
+  --edge: oklch(88% 0.02 250 / 0.2);
+  --well: oklch(17% 0.018 256);
+  --surface: oklch(20.5% 0.02 256 / 0.88);
+  --surface-2: oklch(23.5% 0.022 256 / 0.86);
+  --surface-solid: oklch(21% 0.02 256);
+  --stage-a: oklch(23% 0.022 256);
+  --stage-b: oklch(18.5% 0.02 256);
+  --accent-soft: color-mix(in oklch, var(--accent) 22%, transparent);
+  --shadow-anchored: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-float: 0 2px 4px rgba(0, 0, 0, 0.5), 0 14px 34px rgba(0, 0, 0, 0.5);
+}
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(60% 50% at 18% 85%, oklch(62% 0.13 55 / 0.14), transparent 70%),
+    radial-gradient(55% 55% at 85% 10%, oklch(60% 0.13 250 / 0.18), transparent 70%),
+    repeating-linear-gradient(0deg, oklch(85% 0.03 250 / 0.035) 0 1px, transparent 1px 5px),
+    linear-gradient(160deg, oklch(14% 0.02 258), oklch(17.5% 0.025 245));
+  background-color: oklch(14% 0.02 258);
+}
+
+/* ---- the frame ------------------------------------------------------------------------------------------------------------- */
+html.has-shell { --rail-w: var(--rail-wide); }
+html.has-shell.rail-collapsed { --rail-w: var(--rail-narrow); }
+html.has-shell body { margin: 0; padding: 0; height: 100dvh; overflow: hidden; }
+html.has-shell .shell {
+  height: 100dvh; display: grid; gap: var(--sh-gap); padding: var(--sh-gap);
+  padding-left: max(var(--sh-gap), env(safe-area-inset-left, 0px)); padding-right: max(var(--sh-gap), env(safe-area-inset-right, 0px));
+  grid-template-columns: var(--rail-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) var(--strip-h);
+  grid-template-areas: "rail main" "rail strip"; transition: grid-template-columns 0.22s ease;
+}
+html.has-shell .wrap {
+  grid-area: main; min-width: 0; min-height: 0; max-width: none; margin: 0; padding: 0; display: flex; flex-direction: column;
+  position: relative; overflow: hidden; border-radius: var(--sh-r); background: var(--surface); box-shadow: var(--shadow-anchored);
+}
+html.has-shell .wrap::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px var(--hair); z-index: 3; }
+html.has-shell .wrap > .tab-panel:not([hidden]) { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; overscroll-behavior: contain; }
+html.has-shell #tabbar, html.has-shell #status-ribbon, html.has-shell .tab-intro, html.has-shell .wrap > .foot, html.has-shell .pb-tabs { display: none; }
+html.has-shell .server-banner { margin: 10px 12px 0; flex: none; }
+html.has-shell .tb-hold[hidden] { display: none; }
+
+/* ---- the sidebar ----------------------------------------------------------------------------------------------------------- */
+html.has-shell .rail { grid-area: rail; position: relative; z-index: 8; min-height: 0; }
+html.has-shell .rail-card {
+  position: absolute; inset: 0 auto 0 0; width: 100%; display: flex; flex-direction: column; padding: 10px 8px; overflow: hidden;
+  border-radius: var(--sh-r); box-shadow: var(--shadow-anchored); transition: width 0.18s ease, box-shadow 0.18s ease;
+}
+html.has-shell.rail-collapsed .rail:is(:hover, :focus-within) .rail-card { width: var(--rail-wide); box-shadow: var(--shadow-float); background: var(--surface-solid); }
+html.has-shell .rail-brand { display: flex; align-items: center; gap: 10px; padding: 4px 9px 10px; min-height: 40px; color: var(--text); text-decoration: none; }
+html.has-shell .rail-mark { width: 22px; height: 22px; flex: none; border-radius: 6px; position: relative; overflow: hidden;
+  background: repeating-linear-gradient(0deg, var(--accent) 0 2px, transparent 2px 4px); }
+html.has-shell .rail-mark i { position: absolute; inset: 0; background: linear-gradient(0deg, transparent 55%, var(--surface-solid) 55%); opacity: 0.85; }
+html.has-shell .rail-brand .rail-label { font: 650 16px/1 var(--font-display); letter-spacing: -0.01em; }
+html.has-shell .rail-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+html.has-shell .rail-who {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 6px 10px; margin-bottom: 8px; text-align: left;
+  border: 1px solid var(--hair); border-radius: var(--sh-r-in); background: var(--surface-2); color: var(--text); cursor: pointer;
+}
+html.has-shell .rail-who:disabled { cursor: default; opacity: 0.8; }
+html.has-shell .rail-who .rail-label { flex: 1; display: block; }
+html.has-shell .rail-who b, html.has-shell .rail-who small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell .rail-who b { font-size: 13px; font-weight: 600; }
+html.has-shell .rail-who small { font: 11.5px var(--font-mono); color: var(--text-faint); }
+html.has-shell .rail-who svg { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--text-faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell .rail-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: var(--text-faint); display: inline-block; position: static; }
+html.has-shell .rail-dot[data-state="ready"], html.has-shell .rail-dot[data-state="complete"] { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ok) 22%, transparent); }
+html.has-shell .rail-dot[data-state="printing"] { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+html.has-shell .rail-dot[data-state="paused"] { background: var(--warn, #d9a400); box-shadow: 0 0 0 3px color-mix(in oklch, var(--warn, #d9a400) 24%, transparent); }
+html.has-shell .rail-dot[data-state="error"], html.has-shell .rail-dot[data-state="lost"] { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in oklch, var(--bad) 22%, transparent); }
+html.has-shell .rail-scroll { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: 2px; }
+html.has-shell .rail-scroll::-webkit-scrollbar { display: none; }
+html.has-shell .rail-list { display: flex; flex-direction: column; gap: 2px; }
+html.has-shell .rail-list.is-folded { display: none; }
+html.has-shell .rail-item, html.has-shell .rail-collapse {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 38px; padding: 0 11px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--text-dim); font: 520 13.5px/1.2 var(--font-sans); text-decoration: none; text-align: left; position: relative; white-space: nowrap; cursor: pointer;
+}
+html.has-shell .rail-item svg, html.has-shell .rail-collapse svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell .rail-item:hover, html.has-shell .rail-collapse:hover { background: var(--accent-soft); color: var(--text); }
+html.has-shell .rail-item.active { color: var(--text); background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--hair); }
+html.has-shell .rail-item.active::before { content: ""; position: absolute; left: -8px; top: 9px; bottom: 9px; width: 3px; border-radius: 3px;
+  background: repeating-linear-gradient(0deg, var(--accent) 0 2px, transparent 2px 3px); }
+html.has-shell .rail-badge { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font: 600 10.5px/18px var(--font-mono); text-align: center;
+  background: color-mix(in oklch, var(--warn, #d9a400) 26%, transparent); color: var(--text); }
+html.has-shell .rail-badge[data-level="bad"] { background: color-mix(in oklch, var(--bad) 24%, transparent); }
+html.has-shell .rail-badge[hidden] { display: none; }
+html.has-shell .rail-group { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 10px 0 2px; padding: 0 11px; border: 0; background: none;
+  font: 600 10.5px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); cursor: pointer; }
+html.has-shell .rail-group svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform 0.15s; }
+html.has-shell .rail-group[aria-expanded="false"] svg { transform: rotate(-90deg); }
+html.has-shell .rail-foot { border-top: 1px solid var(--hair); padding-top: 8px; margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+html.has-shell .rail-collapse svg { transition: transform 0.2s; }
+html.has-shell .rail-collapse[aria-pressed="true"] svg { transform: rotate(180deg); }
+html.has-shell .rail-version { padding: 2px 11px 0; min-height: 18px; }
+html.has-shell .rail-version .ver-chip { font: 11px var(--font-mono); color: var(--text-faint); }
+/* A narrow sidebar clips its labels (the card is 60 px wide; hover or focus widens it over the page), and shows a count as a dot. */
+html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-badge { position: absolute; top: 5px; right: 6px; min-width: 9px; width: 9px; height: 9px; padding: 0; font-size: 0; }
+html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-group span { display: none; }
+html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-version { display: none; }
+html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-who svg { display: none; }
+html.has-shell .rail-menu { position: fixed; z-index: 70; min-width: 230px; padding: 6px; border-radius: 14px; box-shadow: var(--shadow-float); }
+html.has-shell .rail-menu[hidden] { display: none; }
+html.has-shell .rail-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 9px; background: none; color: var(--text); font: 13px var(--font-sans); text-align: left; cursor: pointer; }
+html.has-shell .rail-menu button small { margin-left: auto; color: var(--text-faint); font: 11.5px var(--font-mono); }
+html.has-shell .rail-menu button:hover, html.has-shell .rail-menu button:focus-visible { background: var(--accent-soft); }
+html.has-shell .rail-menu button[aria-checked="true"] { box-shadow: inset 0 0 0 1px var(--hair-strong); }
+
+/* ---- the toolbar edge ------------------------------------------------------------------------------------------------------ */
+html.has-shell .topbar {
+  position: relative; top: auto; z-index: 4; flex: none; display: flex; align-items: center; gap: 14px; width: auto; max-width: none; min-height: 50px; margin: 0;
+  padding: 0 12px 0 16px; border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; background: transparent; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; container: topbar / inline-size;
+}
+html.has-shell .pb-page { display: flex; align-items: center; gap: 10px; min-width: 0; flex: none; }
+html.has-shell .pb-icon { width: 22px; height: 22px; flex: none; display: grid; place-items: center; color: var(--accent-text); background: none; border: 0; box-shadow: none; }
+html.has-shell .pb-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell .pb-title { margin: 0; font: 640 17px/1 var(--font-display); letter-spacing: -0.01em; white-space: nowrap; color: var(--text); }
+html.has-shell .pb-sub { font: 12px var(--font-mono); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 22ch; }
+html.has-shell .pb-sub[hidden] { display: none; }
+html.has-shell .pb-parts { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--well); overflow-x: auto; scrollbar-width: none; flex: 0 1 auto; min-width: 0; }
+html.has-shell .pb-parts::-webkit-scrollbar { display: none; }
+html.has-shell .pb-parts[hidden] { display: none; }
+html.has-shell .pb-part { border: 0; background: transparent; padding: 0 11px; min-height: 28px; border-radius: 7px; font: 550 12.5px var(--font-sans); color: var(--text-dim); white-space: nowrap; cursor: pointer; }
+html.has-shell .pb-part.has-sep { margin-left: 8px; position: relative; }
+html.has-shell .pb-part.has-sep::before { content: ""; position: absolute; left: -6px; top: 6px; bottom: 6px; width: 1px; background: var(--hair-strong); }
+html.has-shell .pb-part:hover { color: var(--text); }
+html.has-shell .pb-part[aria-selected="true"] { background: var(--surface-solid); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--hair); }
+html.has-shell .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; }
+html.has-shell .pb-actions { display: flex; align-items: center; gap: 6px; }
+html.has-shell .pb-actions .btn { min-height: 30px; padding: 0 12px; font-size: 12.5px; white-space: nowrap; }
+html.has-shell .pb-actions .btn[hidden] { display: none; }
+html.has-shell .pb-actions:empty { display: none; }
+
+/* ---- the command bar: the search field at rest, a centred sheet while it has focus (finder.js opens it with Ctrl or Cmd K) --- */
+html.has-shell .feature-finder { position: relative; flex: none; }
+html.has-shell .feature-finder #feature-search {
+  height: 32px; width: 188px; padding: 0 52px 0 32px; border: 1px solid var(--hair-strong); border-radius: 9px; background-color: var(--well); color: var(--text); font: 13px var(--font-sans);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23788' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M16 16l4 4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 10px center; box-shadow: none; transition: none;
+}
+html.has-shell .feature-finder .fx-hint { position: absolute; right: 8px; top: 7px; font: 500 10.5px var(--font-mono); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--hair-strong); color: var(--text-faint); background: var(--surface-solid); pointer-events: none; }
+html.has-shell .feature-finder:focus-within {
+  position: fixed; z-index: 120; top: 12vh; left: 50%; transform: translateX(-50%); width: min(620px, calc(100vw - 24px)); border-radius: 16px; background: var(--surface-solid);
+  box-shadow: var(--shadow-float); border: 1px solid var(--hair-strong); overflow: hidden;
+}
+html.has-shell .feature-finder:focus-within::before { content: ""; position: fixed; inset: 0; z-index: -1; background: oklch(18% 0.02 265 / 0.38); }
+html.has-shell .feature-finder:focus-within #feature-search { width: 100%; height: 52px; padding: 0 18px 0 44px; border: 0; border-bottom: 1px solid var(--hair); border-radius: 0; background-color: transparent; font-size: 15px; background-position: 16px center; outline: none; }
+html.has-shell .feature-finder:focus-within .fx-hint { display: none; }
+html.has-shell .feature-finder #feature-results { position: static; width: auto; max-height: min(52vh, 460px); overflow: auto; margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.has-shell .feature-finder #feature-results::before, html.has-shell .feature-finder #feature-results::after { display: none; }
+html.has-shell .feature-finder #feature-results[hidden] { display: none; }
+
+/* ---- the instrument strip -------------------------------------------------------------------------------------------------- */
+html.has-shell .strip { grid-area: strip; position: relative; z-index: 9; display: flex; align-items: center; gap: 0; min-width: 0; padding: 0 8px; border-radius: var(--sh-r); box-shadow: var(--shadow-anchored); --orb: 26px; --orb-gap: 0px; }
+html.has-shell .strip-insts { display: flex; align-items: center; min-width: 0; flex: 1 1 auto; overflow: hidden; }
+html.has-shell .inst { display: flex; align-items: center; gap: 9px; min-width: 0; height: 36px; padding: 0 14px; border: 0; border-right: 1px solid var(--hair); border-radius: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; flex: 0 1 auto; }
+html.has-shell .inst:first-child { padding-left: 8px; }
+html.has-shell .inst[aria-pressed="true"] { background: var(--accent-soft); border-radius: 9px; border-right-color: transparent; }
+html.has-shell .inst-name { font: 600 12.5px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18ch; min-width: 7ch; flex: 0 1 auto; }
+html.has-shell .strip-insts:not([data-count="1"]):not([data-count="2"]) :is(.inst-temps, .rd-extra) { display: none; }
+html.has-shell .inst-rd { flex: none; }
+html.has-shell .inst-rd, html.has-shell .inst-temps { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-dim); white-space: nowrap; }
+html.has-shell .inst-rd b { color: var(--text); font-weight: 600; }
+html.has-shell .inst-temps { display: inline-flex; gap: 10px; color: var(--text-faint); }
+html.has-shell .strip-empty { padding: 0 10px; font: 12px var(--font-mono); color: var(--text-faint); }
+html.has-shell .stack { width: 14px; height: 20px; flex: none; border-radius: 3px; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg, var(--hair-strong) 0 1.5px, transparent 1.5px 3px); }
+html.has-shell .stack i { position: absolute; inset: auto 0 0; height: var(--p, 0%); background: repeating-linear-gradient(0deg, var(--accent) 0 1.5px, transparent 1.5px 3px); }
+html.has-shell .inst[data-state="complete"] .stack i, html.has-shell .inst[data-state="ready"] .stack i { background: repeating-linear-gradient(0deg, var(--ok) 0 1.5px, transparent 1.5px 3px); }
+html.has-shell .inst[data-state="error"] .stack i, html.has-shell .inst[data-state="lost"] .stack i { background: repeating-linear-gradient(0deg, var(--bad) 0 1.5px, transparent 1.5px 3px); }
+html.has-shell .strip-halted { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; margin: 0; padding: 0 10px; font-size: 12.5px; color: var(--text); }
+html.has-shell .strip-halted[hidden] { display: none; }
+html.has-shell .halted-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--halt); }
+html.has-shell .halted-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell .strip.is-halted .strip-insts, html.has-shell .strip.is-halted .halt { display: none; }
+html.has-shell .strip-end { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: none; padding-left: 8px; position: relative; }
+html.has-shell .strip .conn { display: inline-flex; align-items: center; gap: 6px; padding: 0; margin: 0; border: 0; background: none; box-shadow: none; font: 11.5px var(--font-mono); color: var(--text-dim); white-space: nowrap; }
+html.has-shell .strip .wo-pill { padding: 5px 9px; }
+html.has-shell .strip-cmd { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--surface-solid); color: var(--text-dim); font: 550 12.5px var(--font-sans); cursor: pointer; }
+html.has-shell .strip-cmd kbd, html.has-shell .halt kbd { font: 500 10.5px var(--font-mono); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--hair-strong); color: var(--text-faint); background: var(--well); }
+html.has-shell .halt { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 10px; border: 0; border-radius: 10px; background: var(--halt); color: var(--halt-ink); font: 700 13px var(--font-sans); letter-spacing: 0.02em; white-space: nowrap; cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 2px 8px rgba(200, 16, 46, 0.35); }
+html.has-shell .halt svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linejoin: round; stroke-linecap: round; }
+html.has-shell .halt kbd { background: rgba(255, 255, 255, 0.16); color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+html.has-shell .halt:disabled { background: color-mix(in oklch, var(--halt) 38%, var(--well)); color: var(--text-dim); box-shadow: none; cursor: not-allowed; }
+html.has-shell .halt.is-armed { outline: 2px solid var(--text); outline-offset: 2px; }
+html.has-shell :is(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+/* the connection orb: the link's colour (strip.js sets data-link) */
+html.has-shell .strip .orb { --orb-tint: var(--ok); }
+html.has-shell .strip .orb[data-link="wait"] { --orb-tint: var(--warn, #d9a400); }
+html.has-shell .strip .orb[data-link="bad"] { --orb-tint: var(--bad); }
+html.has-shell .strip .orb-dock { position: relative; right: auto; bottom: auto; display: flex; flex-direction: row; align-items: center; gap: 0; z-index: 96; }
+html.has-shell .strip .orb-dock .orb-stack { position: absolute; right: 0; bottom: calc(100% + 18px); width: min(360px, calc(100vw - 24px)); }
+html.has-shell .strip .orb-dock .orb-panel { position: absolute; right: 0; bottom: calc(100% + 18px); }
+html.has-shell .strip .ai-launch { position: static; z-index: auto; height: 30px; padding: 0 12px 0 10px; box-shadow: none; font-size: 12.5px; border: 1px solid var(--hair-strong); background: var(--surface-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
+html.has-shell .strip .ai-launch.is-quiet { width: 30px; padding: 0; }
+html.has-shell .strip .ai-launch::before, html.has-shell .strip .ai-launch::after { display: none; }
+html.has-shell .live-pill { display: none; }
+/* the "continue on this computer" offer is a line in the strip: while it shows, it stands in for the instruments */
+html.has-shell .strip #handoff { position: static; display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; margin: 0; padding: 0 10px; background: none; border: 0; box-shadow: none; font-size: 12.5px; transform: none; }
+html.has-shell .strip #handoff[hidden] { display: none; }
+html.has-shell .strip:has(#handoff:not([hidden])) .strip-insts { display: none; }
+html.has-shell .strip #handoff::before, html.has-shell .strip #handoff::after { display: none; }
+html.has-shell .wrap #pp-estop { display: none; }
+
+/* the phone's bottom bar and More sheet draw their icons with the same line style as the sidebar */
+html.has-shell .bn-ico, html.has-shell .ms-ico { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; font-size: 0; }
+html.has-shell .bottom-nav button { gap: 2px; }
+
+/* ---- a narrower window: the strip keeps what matters ----------------------------------------------------------------------- */
+@media (max-width: 1180px) { html.has-shell .inst-temps { display: none; } }
+@media (max-width: 980px) { html.has-shell .rd-extra, html.has-shell .strip-cmd-label, html.has-shell .halt-key { display: none; } html.has-shell .feature-finder #feature-search { width: 150px; } }
+@container topbar (max-width: 760px) { .pb-sub, .feature-finder .fx-hint { display: none; } .feature-finder #feature-search { width: 120px; } }
+
+/* ---- a phone: one printer in the strip, Halt under the thumb, the dock below ------------------------------------------------ */
+@media (max-width: 720px) {
+  html.has-shell body { height: auto; overflow: auto; }
+  html.has-shell .shell { height: auto; min-height: 100dvh; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "main"; padding: 8px 8px calc(var(--dock-h, 150px) + var(--strip-h) + 40px); }
+  html.has-shell .rail, html.has-shell .rail-menu { display: none; }
+  html.has-shell .wrap { overflow: visible; min-height: calc(100dvh - 190px); }
+  html.has-shell .wrap > .tab-panel:not([hidden]) { overflow: visible; }
+  html.has-shell .topbar { flex-wrap: wrap; padding: 8px 12px; gap: 6px 10px; }
+  html.has-shell .pb-parts { order: 3; width: 100%; flex: 1 0 100%; }
+  html.has-shell .pb-sub { display: none; }
+  html.has-shell .topbar-right { margin-left: auto; }
+  html.has-shell .pb-actions .btn { padding: 0 10px; }
+  html.has-shell .feature-finder #feature-search { width: 34px; padding: 0; color: transparent; background-position: center; cursor: pointer; }
+  html.has-shell .feature-finder .fx-hint { display: none; }
+  html.has-shell .feature-finder:focus-within #feature-search { width: 100%; padding: 0 18px 0 44px; color: var(--text); background-position: 16px center; }
+  html.has-shell .strip { position: fixed; z-index: 30; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); bottom: calc(var(--dock-h, 150px) + 18px); height: var(--strip-h); grid-area: auto; padding: 0 6px; }
+  html.has-shell .inst:not([aria-pressed="true"]) { display: none; }
+  html.has-shell .inst[aria-pressed="true"] { flex: 1 1 auto; background: transparent; padding-left: 6px; }
+  html.has-shell .strip-cmd, html.has-shell .strip .conn:not(.is-demo) .conn-label, html.has-shell .strip .ai-launch span { display: none; }
+  html.has-shell .strip .ai-launch { width: 34px; padding: 0; justify-content: center; }
+  html.has-shell .halt { height: 40px; min-width: 44px; }
+  html.has-shell .strip .orb-dock .orb-stack, html.has-shell .strip .orb-dock .orb-panel { width: calc(100vw - 24px); right: -6px; }
+}
+
+/* ---- accessibility: the three settings the Liquid Glass skill requires every approximation to honour -------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html.has-shell .shell, html.has-shell .rail-card, html.has-shell .rail-collapse svg, html.has-shell .rail-group svg { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  html.has-shell .rail-card, html.has-shell .strip, html.has-shell .rail-menu { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-solid); }
+  html.has-shell .wrap { background: var(--surface-solid); }
+}
+@media (prefers-contrast: more) {
+  html.has-shell .rail-card, html.has-shell .strip, html.has-shell .wrap { box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .rail-item.active, html.has-shell .pb-part[aria-selected="true"], html.has-shell .inst[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .topbar, html.has-shell .rail-foot { border-color: var(--text); }
+  html.has-shell .halt { outline: 2px solid var(--text); }
+}
+
+/* the command bar's results show each action's shortcut, so people learn it */
+html.has-shell .fx-enter { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-faint); }
+html.has-shell .fx-enter kbd { font: 500 10.5px var(--font-mono); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--hair-strong); background: var(--well); color: var(--text-faint); }

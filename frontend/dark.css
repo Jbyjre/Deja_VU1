@@ -94,13 +94,6 @@ html[data-theme="dark"] .pill {
 html[data-theme="dark"] dialog.glass-dialog::backdrop { background: var(--scrim); }
 html[data-theme="dark"] .dialog-panel { color: var(--text); }
 
-/* ---- the sidebar ---- */
-html[data-theme="dark"] .rail-item:hover, html[data-theme="dark"] .rail-collapse:hover {
-  background: rgba(200, 215, 235, .08); color: var(--text);
-}
-html[data-theme="dark"] .rail-item.active { background: color-mix(in srgb, var(--accent) 24%, transparent); color: #d4e5ff; }
-html[data-theme="dark"] .rail-switch:hover, html[data-theme="dark"] .rail-menu button:hover { background: rgba(200, 215, 235, .08); color: var(--text); }
-html[data-theme="dark"] .rail-tip { background: #e8edf5; color: #10151d; }
 
 /* ---- the theme choice itself ---- */
 .theme-choice { display: inline-flex; flex-wrap: wrap; gap: 8px; }
@@ -244,4 +237,3 @@ html[data-theme="dark"] .pb-help:hover { color: var(--text); }
 html[data-theme="dark"] .pb-help[aria-expanded="true"] { background: var(--accent); border-color: transparent; color: #fff; }
 html[data-theme="dark"] .pb-icon { background: color-mix(in oklch, var(--accent) 22%, #18212d); box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent) 30%, transparent); }
 html[data-theme="dark"].pb-help-open #tab-intro { background: color-mix(in oklch, #18212d 94%, transparent); border-color: var(--edge); }
-html[data-theme="dark"] .rail-brand { color: var(--text); }

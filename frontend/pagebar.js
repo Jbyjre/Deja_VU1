@@ -1,31 +1,33 @@
-/* pagebar.js: the slim bar at the top of every screen except Overview.
+/* pagebar.js: the toolbar edge, the top of the working surface.
  *
- * The header (index.html #topbar) has two looks, chosen by data-page on <html>: "overview" is the banner
- * (brand, printer, demo switch) and "page" is this bar. theme-boot.js sets data-page before the first paint and
- * app.js showTab keeps it right. This file fills the bar: the screen's name and icon (the sidebar's own), the
- * printer's name on the Printer screen, that screen's main buttons, and the ? note, which is the screen's
- * one-line intro with its "Show me this screen" button. The screen's parts are the bar's tabs: app.js Sections
- * puts their row in #pb-tabs.
+ * It is not a bar across the page. It is the first row of the surface the place is drawn on, and it holds three things:
+ * the place's name (the sidebar's own words and icon; the printer's name beside it on Printer), the place's parts as a
+ * row of tabs (#pb-parts: Printer has Control, Readings, Camera & time-lapses, History and the All printers group;
+ * a place with one part shows no row), and the place's own buttons (#pb-actions) next to the search. app.js Sections
+ * still decides which cards show; the row only asks it through Rail.goDest.
  *
- * A button here never does more than the screen's own button: it presses that button, so Emergency stop still
- * asks first and still says in words when the printer refuses. A screen without the control shows no button.
+ * A button here never does more than the screen's own button: it presses that button, so Cancel still asks twice and
+ * still says in words when the printer refuses. A mirrored button follows its source: its words, its disabled state and
+ * whether it is shown at all (Pause and Cancel appear only while a print runs). Halt is not here: it lives in the
+ * strip at the bottom (strip.js), one press from every place.
  */
 (() => {
   const $ = id => document.getElementById(id);
-  const root = document.documentElement;
   let fleet = [];
   let watcher = null;
   let paintedFor = '';
+  let partsFor = '';
 
   const tabName = () => {
     const tab = document.body.dataset.tab || 'overview';
     return (typeof TAB_NAMES !== 'undefined' && TAB_NAMES[tab]) || tab;
   };
-  /* The sidebar's destination for the open screen and part: { id, label }. */
+  /* The sidebar's place for the open screen and part: { id, place, label }. */
   function here() {
-    if (!window.Rail) return { id: '', label: tabName() };
+    if (!window.Rail) return { id: '', place: '', label: tabName() };
     const id = Rail.current();
-    return { id, label: Rail.label(id) };
+    const place = Rail.place();
+    return { id, place, label: Rail.placeLabel(place) };
   }
   function printerName() {
     const id = typeof currentPrinter !== 'undefined' && currentPrinter;
@@ -34,7 +36,7 @@
     return id && window.Workshop && Workshop.printerName ? Workshop.printerName(id) || '' : '';
   }
 
-  /* ---- main buttons ---- */
+  /* ---- the place's own buttons ---- */
   function openAddPrinter() {
     const form = $('add-printer-form'), name = $('fleet-add-name');
     if (form) form.open = true;
@@ -42,9 +44,10 @@
     name.scrollIntoView({ block: 'center' });   // opens the part and any fold it sits in (app.js Sections)
     name.focus({ preventScroll: true });
   }
-  // `mirror` copies a control the screen already has (its words, its disabled state) and presses it.
+  // Keyed by the part's address. `mirror` copies a control the screen already has (its words, its disabled state and
+  // whether it shows) and presses it.
   const ACTIONS = {
-    printer: [{ key: 'estop', mirror: 'pp-estop', cls: 'estop' }],
+    printer: [{ key: 'pause', mirror: 'ctrl-pause-resume', cls: 'primary' }, { key: 'cancel', mirror: 'ctrl-cancel', cls: 'danger' }],
     printers: [{ key: 'add-printer', label: 'Add printer', cls: 'primary', run: openAddPrinter }],
     files: [{ key: 'add-files', label: 'Add files', cls: 'primary', run: () => { const f = $('file-upload'); if (f) f.click(); } }]
   };
@@ -52,19 +55,23 @@
   function mirror(btn, src) {
     const copy = () => {
       btn.disabled = src.disabled;
+      btn.hidden = src.hidden;
       const words = src.textContent.trim();
       if (words && btn.textContent !== words) btn.textContent = words;
       btn.title = src.title || '';
     };
     copy();
-    watcher = new MutationObserver(copy);
-    watcher.observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+    const w = new MutationObserver(copy);
+    w.observe(src, { attributes: true, childList: true, characterData: true, subtree: true });
+    return w;
   }
 
+  let watchers = [];
   function paintActions(id) {
     const box = $('pb-actions');
     if (!box) return;
-    if (watcher) { watcher.disconnect(); watcher = null; }
+    watchers.forEach(w => w.disconnect());
+    watchers = [];
     box.textContent = '';
     (ACTIONS[id] || []).forEach(a => {
       const src = a.mirror ? $(a.mirror) : null;
@@ -75,16 +82,50 @@
       btn.dataset.pb = a.key;
       btn.textContent = a.label || '';
       btn.addEventListener('click', () => { if (src) { if (!src.disabled) src.click(); } else a.run(); });
-      if (src) mirror(btn, src);
+      if (src) watchers.push(mirror(btn, src));
       box.append(btn);
     });
   }
 
-  /* ---- the screen's name ---- */
+  /* ---- the parts row ---- */
+  function paintParts(place, destId) {
+    const row = $('pb-parts');
+    if (!row) return;
+    const parts = window.Rail ? Rail.partsOf(place) : [];
+    const sig = place + ':' + parts.length;
+    if (sig !== partsFor) {
+      partsFor = sig;
+      row.innerHTML = parts.length < 2 ? '' : parts.map(p => `<button type="button" role="tab" class="pb-part${p.sep ? ' has-sep' : ''}" data-part="${esc(p.id)}"
+        aria-selected="false" tabindex="-1">${esc(p.label)}</button>`).join('');
+    }
+    row.hidden = parts.length < 2;
+    row.querySelectorAll('[data-part]').forEach(b => {
+      const on = b.dataset.part === destId;
+      b.setAttribute('aria-selected', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+  }
+  const row = $('pb-parts');
+  if (row) {
+    row.addEventListener('click', e => {
+      const b = e.target.closest('[data-part]');
+      if (b && window.Rail) Rail.goDest(b.dataset.part);
+    });
+    row.addEventListener('keydown', e => {
+      const all = [...row.querySelectorAll('[data-part]')];
+      const at = all.indexOf(document.activeElement);
+      const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: all.length - 1 }[e.key];
+      if (at < 0 || to == null) return;
+      e.preventDefault();
+      all[(to + all.length) % all.length].focus();
+    });
+  }
+
+  /* ---- the place's name ---- */
   function render() {
     const d = here();
-    const sub = d.id === 'printer' ? printerName() : '';
-    const sig = JSON.stringify([d.id, d.label, sub]);
+    const sub = d.place === 'printer' ? printerName() : '';
+    const sig = JSON.stringify([d.id, d.place, d.label, sub]);
     if (sig === paintedFor) return;
     const placeChanged = !paintedFor || JSON.parse(paintedFor)[0] !== d.id;
     paintedFor = sig;
@@ -93,42 +134,12 @@
     if (icon) icon.innerHTML = window.Rail ? Rail.icon(d.id) : '';
     const line = $('pb-sub');
     if (line) { line.textContent = sub; line.hidden = !sub; }
+    paintParts(d.place, d.id);
     if (placeChanged) paintActions(d.id);
   }
 
-  /* ---- the ? note: what this screen is for, and its tips ---- */
-  const help = $('pb-help'), note = $('tab-intro');
-  const noteOpen = () => root.classList.contains('pb-help-open');
-  function placeNote() {
-    const bar = $('topbar').getBoundingClientRect(), at = help.getBoundingClientRect();
-    const w = Math.min(380, window.innerWidth - 24);
-    const left = Math.max(12, Math.min(at.right - w, window.innerWidth - w - 12));
-    note.style.setProperty('--pb-note-top', `${Math.round(bar.bottom + 8)}px`);
-    note.style.setProperty('--pb-note-left', `${Math.round(left)}px`);
-    note.style.setProperty('--pb-note-w', `${Math.round(w)}px`);
-  }
-  function setNote(open) {
-    root.classList.toggle('pb-help-open', open);
-    help.setAttribute('aria-expanded', String(open));
-    if (open) placeNote();
-  }
-  help.addEventListener('click', () => setNote(!noteOpen()));
-  document.addEventListener('click', e => {
-    if (!noteOpen()) return;
-    // A tip button starts its tour, which takes over the screen: the note has done its job.
-    if (e.target.closest('[data-tips]') || !e.target.closest('#tab-intro, #pb-help')) setNote(false);
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape' || !noteOpen()) return;
-    setNote(false);
-    help.focus();
-  });
-  window.addEventListener('resize', () => { if (noteOpen()) placeNote(); });
-
-  // The sidebar has opened the screen a link asked for: make the header's look match it.
-  const settle = () => { root.dataset.page = (document.body.dataset.tab || 'overview') === 'overview' ? 'overview' : 'page'; };
-  window.addEventListener('dv-tab', () => { setNote(false); render(); });
-  window.addEventListener('dv-rail', () => { settle(); render(); });
+  window.addEventListener('dv-tab', render);
+  window.addEventListener('dv-rail', render);
   ['dv-section', 'dv-printer'].forEach(name => window.addEventListener(name, render));
   window.addEventListener('dv-fleet', e => { fleet = Array.isArray(e.detail) ? e.detail : []; render(); });
   document.addEventListener('DOMContentLoaded', render);
