@@ -80,6 +80,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.27 (20 November 2026): A calmer Printer screen you click into, Maintenance as a list you can filter,...
+
+- A calmer Printer screen you click into, Maintenance as a list you can filter, and Files takes a dropped file anywhere
+
 ## 0.20.26 (20 November 2026): A new frame: one connected surface, a sidebar of eight places, and a strip al...
 
 - A new frame: one connected surface, a sidebar of eight places, and a strip along the bottom with Halt

@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.27",
+      "date": "2026-11-20",
+      "name": "A calmer Printer screen you click into, Maintenance as a list you can filter,...",
+      "published": true,
+      "summary": "A calmer Printer screen you click into, Maintenance as a list you can filter, and Files takes a dropped file anywhere.",
+      "changes": [
+        "A calmer Printer screen you click into, Maintenance as a list you can filter, and Files takes a dropped file anywhere"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.26",
       "date": "2026-11-20",
       "name": "A new frame: one connected surface, a sidebar of eight places, and a strip al...",
