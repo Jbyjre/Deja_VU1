@@ -243,6 +243,12 @@ async function walk(browser, server, standIn, width) {
   await sleep(4000);
   check((await page.locator('#tester-chip, #tester-hub, #tester-panel').count()) === 0, 'No tester pop-up, chip or panel appears on the first start (setup closed, 4 s later)');
   check((await page.locator('#tester-dock > *').count()) === 1, 'The only tester control on the screen is "Something felt off"');
+  const feltBox = await page.evaluate(() => {
+    const f = document.getElementById('tester-felt'), strip = document.getElementById('strip'), wrap = document.getElementById('main');
+    const r = f.getBoundingClientRect(), a = strip.getBoundingClientRect(), b = wrap.getBoundingClientRect();
+    return { inStrip: strip.contains(f), insideStrip: r.top >= a.top - 1 && r.bottom <= a.bottom + 1, overSurface: r.bottom > b.top && r.top < b.bottom && r.right > b.left && r.left < b.right, w: Math.round(r.width) };
+  });
+  check(feltBox.inStrip && feltBox.insideStrip && !feltBox.overSurface && feltBox.w >= 24, 'The note button sits in the strip and covers none of the page: ' + JSON.stringify(feltBox));
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'first-start-' + width + '.png') });
 
   await post(page, '/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn.url });

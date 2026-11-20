@@ -2,7 +2,7 @@
      - the quick tour (setup, Settings → Your space): nine stops that hop
        between screens, about a minute,
      - "Show me this screen": a few stops on the open screen (the button in
-       the note behind the ? button in the top bar), and
+       the note behind the ? button, which the toolbar edge holds hidden), and
      - each version's "What's new" tour (versions.js).
    A stop spotlights a real part of the dashboard with a glass callout whose
    tail points at it; the callout glides to the next stop, across screens,
@@ -168,7 +168,7 @@ window.Guide = (() => {
         void card.offsetWidth;
         card.style.transition = '';
       }
-      // Centre the target in the space under the sticky top bar; a tall one starts just below it.
+      // Centre the target in the space under the toolbar edge (the sticky .topbar); a tall one starts just below it.
       const bar = document.querySelector('.topbar'), r = target.getBoundingClientRect();
       const top = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().bottom + 12 : 12;
       const room = innerHeight - top, y = r.height > room * .85 ? r.top - top : r.top - top - (room - r.height) / 2;
@@ -346,7 +346,7 @@ window.Guide = (() => {
   // Stops that point at something (the welcome and the ending don't count).
   function count() { return QUICK.filter(s => s.target && (!s.when || s.when())).length; }
 
-  // The "Show me this screen" button in the note behind the ? button in the top bar (app.js puts it there).
+  // The "Show me this screen" button in the note behind the ? button (app.js puts it there; the toolbar edge holds it hidden).
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-tips]');
     if (b) screen(b.dataset.tips);

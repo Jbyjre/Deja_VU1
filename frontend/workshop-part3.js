@@ -595,7 +595,7 @@ const deviceName = (() => {
     if (/Android/.test(ua)) return /Mobile/.test(ua) ? 'Android phone' : 'Android tablet';
     if (/Mac/.test(ua)) return 'Mac';
     if (/Windows/.test(ua)) return 'Windows PC';
-    return 'Computer';
+    return 'other computer';
   })();
 
 function currentTab() { return store.get('dejavu1.tab') || 'overview'; }
@@ -873,7 +873,7 @@ function initPressGlow() {
     }, { passive: true });
   }
 
-  /* Scroll edge: the top bar frosts harder once content is under it. The two
+  /* Scroll edge: the toolbar edge (.topbar) frosts harder once content is under it. The two
    * thresholds stop it flickering when the page rests right at the edge. */
 function initScrollEdge() {
     let on = false, queued = false, tucked = false, lastY = window.scrollY;

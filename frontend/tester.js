@@ -715,9 +715,16 @@
     alertUntil = Date.now() + 20000;
     alertWords = String(words || '').slice(0, 200);
     felt.classList.add('is-alert');
-    felt.textContent = 'Something went wrong? Tell us';
+    feltWords('Something went wrong? Tell us');
     clearTimeout(alertTimer);
-    alertTimer = setTimeout(() => { if (felt) { felt.classList.remove('is-alert'); felt.textContent = 'Something felt off'; } }, 20000);
+    alertTimer = setTimeout(() => { if (felt) { felt.classList.remove('is-alert'); feltWords('Something felt off'); } }, 20000);
+  }
+
+  // The button is a small flag and its words. In the strip a narrow window shows only the flag, so the words are also its name.
+  function feltWords(words) {
+    felt.setAttribute('aria-label', words);
+    const t = felt.querySelector('.tester-felt-text');
+    if (t) t.textContent = words;
   }
 
   function paintFelt() {
@@ -728,7 +735,7 @@
       return;
     }
     if (felt) return;
-    // One row at the bottom right holds the note button.
+    // The note button lives in the instrument strip, so it never sits over the page; without a strip it floats at the bottom right.
     dock = document.createElement('div');
     dock.id = 'tester-dock';
     dock.className = 'tester-dock tester-ui';
@@ -736,12 +743,19 @@
     felt.type = 'button';
     felt.id = 'tester-felt';
     felt.className = 'tester-felt tester-ui';          // a flat pill: glass behind a moving 3D view costs frames on every screen
-    felt.textContent = 'Something felt off';
-    felt.title = 'Alt + Shift + N';
+    felt.innerHTML = '<svg class="tester-felt-ico" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">'
+      + '<path d="M3.5 14V2.5M3.5 3h8l-2 3 2 3h-8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '<span class="tester-felt-text"></span>';
+    feltWords('Something felt off');
+    felt.title = 'Something felt off (Alt + Shift + N)';
     felt.setAttribute('aria-haspopup', 'dialog');
     felt.addEventListener('click', openNote);
     dock.appendChild(felt);
-    document.body.appendChild(dock);
+    const end = document.querySelector('#strip .strip-end');
+    if (end) {
+      dock.classList.add('in-strip');
+      end.insertBefore(dock, document.getElementById('strip-cmd') || end.firstChild);
+    } else document.body.appendChild(dock);
   }
 
   document.addEventListener('keydown', e => {

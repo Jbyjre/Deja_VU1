@@ -285,6 +285,9 @@ html.has-shell .bottom-nav button { gap: 2px; }
   html.has-shell .strip-end { gap: 6px; padding-left: 4px; }
   html.has-shell .inst-name { min-width: 3ch; max-width: 14ch; }
   html.has-shell .inst { gap: 7px; }
+  /* the "continue here" offer is a sheet in the dock: it had no ground, so the page's words showed through it */
+  html.has-shell .thumb-dock > .handoff { background: var(--surface-solid); border: 1px solid var(--hair-strong); border-radius: var(--sh-r); box-shadow: var(--shadow-anchored); padding: 8px 8px 8px 14px; }
+  html.has-shell .inst .stack { display: none; }   /* room for the note flag: the name matters more than the meter on a phone */
   html.has-shell .strip .conn { font-size: 10px; letter-spacing: 0; }
   html.has-shell .strip .orb-dock .orb-stack, html.has-shell .strip .orb-dock .orb-panel { width: calc(100vw - 24px); right: -6px; }
 }
@@ -313,6 +316,22 @@ html.has-shell .rail-badge::after { content: attr(data-count); }
 html.has-shell .strip-cmd kbd::after, html.has-shell .halt kbd::after { content: attr(data-keys); }
 html.has-shell :is(.tab-panel, .pane, .set-body):focus-visible { outline-offset: -3px; }
 
+/* Tester mode's note button sits in the strip (tester.js moves it there), so it never covers the page; narrow windows and phones show
+   only its flag. Its panel floats above the strip. Without a strip the button floats at the bottom right as before. */
+html.has-shell .tester-dock.in-strip { position: static; display: flex; flex: none; flex-wrap: nowrap; gap: 0; max-width: none; z-index: auto; }
+html.has-shell .tester-dock.in-strip .tester-felt { display: inline-flex; align-items: center; gap: 7px; height: 30px; min-height: 30px; padding: 0 11px 0 9px; border-radius: 8px; border: 1px solid var(--hair-strong); background: var(--surface-solid); box-shadow: none; color: var(--text-dim); font: 550 12.5px var(--font-sans); white-space: nowrap; }
+html.has-shell .tester-dock.in-strip .tester-felt:hover { transform: none; color: var(--text); }
+html.has-shell .tester-dock.in-strip .tester-felt.is-alert { color: var(--text); outline: 2px solid var(--accent); outline-offset: 0; }
+html.has-shell .tester-dock.in-strip .tester-felt-ico { flex: none; }
+@media (max-width: 1340px) {
+  html.has-shell .tester-dock.in-strip .tester-felt:not(.is-alert) { width: 30px; padding: 0; justify-content: center; }
+  html.has-shell .tester-dock.in-strip .tester-felt:not(.is-alert) .tester-felt-text { display: none; }
+}
+@media (max-width: 720px) {
+  html.has-shell .tester-dock.in-strip .tester-felt.is-alert { width: 30px; padding: 0; justify-content: center; }
+  html.has-shell .tester-dock.in-strip .tester-felt.is-alert .tester-felt-text { display: none; }
+}
+@media (prefers-contrast: more) { html.has-shell .tester-dock.in-strip .tester-felt { border: 1.5px solid var(--text); color: var(--text); } }
 /* Tester mode's note button and panel float above the strip (they were placed relative to the old bottom-right orb). */
 html.has-shell .tester-dock { right: calc(var(--sh-gap) + 12px); bottom: calc(var(--strip-h) + var(--sh-gap) * 2 + 8px); max-width: calc(100vw - 2 * var(--sh-gap) - 24px); }
 html.has-shell .tester-note { right: calc(var(--sh-gap) + 12px); bottom: calc(var(--strip-h) + var(--sh-gap) * 2 + 56px); }

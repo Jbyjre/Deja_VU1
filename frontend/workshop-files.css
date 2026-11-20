@@ -22,6 +22,18 @@
 .chip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
 .file-grid > .empty { grid-column: 1 / -1; }
+.file-empty {
+  grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: min(44vh, 340px); padding: 28px; border: 1.5px dashed var(--hair-strong, rgba(0, 0, 0, .2)); border-radius: 14px;
+  background: transparent; color: var(--text-dim); font: inherit; text-align: center; cursor: pointer;
+  transition: border-color .18s ease, background .18s ease;
+}
+.file-empty b { font: 650 17px/1.2 var(--font-display, var(--font-sans)); color: var(--text); }
+.file-empty span { max-width: 46ch; font-size: 13px; line-height: 1.5; }
+.file-empty svg { color: var(--accent-text, var(--accent)); }
+.file-empty:hover { border-color: var(--accent); background: var(--accent-soft, rgba(0, 113, 227, .06)); }
+.file-empty:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .file-empty { transition: none; } }
 .file-card {
   display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer; font: inherit; color: inherit;
   padding: 10px; border-radius: 16px; background: rgba(255, 255, 255, .45); border: 1px solid rgba(255, 255, 255, .7);

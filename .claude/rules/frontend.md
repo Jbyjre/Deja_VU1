@@ -107,15 +107,23 @@ code can sit in more than one part: search the family (`grep -n "function render
   selected printer through `runCommand` so a refusal is shown in words, then offers Restart firmware (`/api/printer/control/restart`, refused unless the
   printer reports an error). Settings › Halt "Ask before Halt" (`dejavu1.pref.haltAsk`) adds a second press. Halt is #c8102e with white text in every
   look. On a phone only the selected printer shows. The "continue on this computer" offer (`#handoff`) is a line in the strip on computers and stays in
-  the dock on phones (`initDockStack`, `workshop-part3.js`).
+  the dock on phones (`initDockStack`, `workshop-part3.js`), where it has its own ground (`.thumb-dock > .handoff`). Tester mode's `#tester-dock` (the
+  "Something felt off" button, `#tester-felt`) is moved by `tester.js` into `.strip-end` before Find (`.in-strip`), so no floating button covers the page; below
+  1340 px and on phones only its flag shows (the words stay its accessible name), and its note panel still floats above the strip.
 - Panes (`panes.js`, `shell-panes.css`): Overview is a stage (the twin) with its readings under it and a side pane; Printer › Control is a cockpit (left
   pane of heads, bed and tuning; the twin with the console under it; right pane of camera, move pad and files). `Panes.put(id, pane)` moves a card
   without losing its id, listeners or the `data-module-body` switch its wrapper carried. The twin is one shared instance: `Panes.dock()` moves
   `#twin-card` into the stage of the open place. `Panes.splitter(...)` makes a divider (W3C window splitter; sizes kept in `dejavu1.layout.*`;
-  `Panes.reset()` is Settings › Reset layout).
+  `Panes.reset()` is Settings › Reset layout). The cockpit's twin tools are two compact rows and the gesture hint (`#twin-hint`) shows only for "New to 3D
+  printing" or on a phone.
 - Settings (`settings.js`): Preferences' cards are moved into the Settings screen, `SECTIONS.modules` sorts every card into a group (Printers &
   connection, Look & layout, Phone & away, Alerts & smart home, Tester mode, Updates, Advanced, Help), the left list shows one group at a time and the
   search shows every card that mentions the words. Demo data is in Advanced (`#demo-toggle` stays as a hidden input that `#demo-setting` mirrors).
+- Maintenance (`app-modules.js`, `shell-panes.css`): `#mt-band` is a readouts band whose Overdue, Due soon and OK cells are buttons that filter `#tasks` (press the
+  same one again for all; `renderTasks()` redraws and keeps the focus) beside the printer's totals; each `.task` row has three cells (name and description,
+  gauge, actions) with a hairline under it and a 3 px status stripe, flat in every look. Overview's small `.task` rows are untouched. Files: the whole
+  `#tab-files` takes a dropped file (`html.is-dropping` outlines the surface, `#file-drop` is the label) and an empty library is one dashed button
+  (`#file-empty`). AI with none connected: the headline and the three gains as rows beside it (`.ai-intro`).
 - Tabs: Overview (cards about now, no twin); Printer (data-tab `control`, kept for saved tabs and
   tours: the twin, camera, Move pad, temperatures, extrude, tune, fans, mesh, macros, console);
   Preferences (`prefs`). Photo studio has no tab button.
@@ -129,7 +137,8 @@ code can sit in more than one part: search the family (`grep -n "function render
 - `workshop.js`: live WebSocket with a polling fallback (asks once a second and retries the WebSocket
   every 10 s); `nudgeLive` reconnects on visibilitychange, online and bfcache pageshow. Fleet cards,
   Needs you, files, dialogs, morph animations.
-- `launchpad.js`: setup (skippable), the desktop-app card, update settings. Browser-only names never
+- `launchpad.js`: setup (skippable), the desktop-app card, update settings. One quiet offer after the first real connection (`offerDesktop`: a message
+  with "See how", once, key `dejavu1.desktopOffer`; never on a phone, in the demo, in the installed app or when the launcher already opens a window). Browser-only names never
   enter requests. Setup has seven steps on a computer and five on a phone (`PHONE_STEPS`: no code to scan,
   no desktop app or updates, a Home Screen step instead; a phone is a narrow screen with a coarse pointer).
   Continue on the printer step connects a typed address first (`connectPrinter`; a second Continue skips it);

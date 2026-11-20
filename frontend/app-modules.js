@@ -17,16 +17,20 @@ function clearStats() {
 }
 
 function renderTaskRow(task) {
+  const snoozed = task.snoozed_until
+    ? ` · <b>snoozed until ${esc(new Date(task.snoozed_until).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))}</b>` : '';
   return `
     <div class="task ${task.status}">
-      <div>
+      <div class="task-main">
         <div class="task-name">
           ${esc(task.name)}
           <span class="pill">${STATUS_TEXT[task.status]}</span>
         </div>
-        <div class="task-desc">${esc(task.description)}</div>
+        <div class="task-desc" title="${esc(task.description)}">${esc(task.description)}</div>
+      </div>
+      <div class="task-gauge">
+        <div class="task-meta" title="${esc(task.reason)}">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min${snoozed}</div>
         <div class="bar"><span style="width:${Math.min(task.percent, 100)}%"></span></div>
-        <div class="task-meta">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min${task.snoozed_until ? ` · <b>snoozed until ${esc(new Date(task.snoozed_until).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))}</b>` : ''}</div>
       </div>
       <div class="task-actions">
         <button class="btn" data-task="${esc(task.id)}">Mark done</button>
@@ -36,12 +40,58 @@ function renderTaskRow(task) {
     </div>`;
 }
 
+// The band above the list: how many jobs are overdue, coming due and fine (press one to show only those) and the printer's totals.
+const mtState = { filter: '', data: null };
+function maintenanceBand(data) {
+  const n = { overdue: 0, due_soon: 0, ok: 0 };
+  data.tasks.forEach(t => { n[t.status] = (n[t.status] || 0) + 1; });
+  const cell = (key, label, count) => `<button type="button" class="ro ro-btn ${key}${count ? '' : ' is-zero'}" data-mt="${key}" aria-pressed="${mtState.filter === key}">
+      <span>${label}</span><b>${count}</b></button>`;
+  const t = data.totals;
+  return cell('overdue', 'Overdue', n.overdue) + cell('due_soon', 'Due soon', n.due_soon) + cell('ok', 'OK', n.ok)
+    + `<div class="ro"><span>Print hours</span><b>${t.total_print_hours.toFixed(0)}</b></div>`
+    + `<div class="ro"><span>Prints</span><b>${t.total_prints}</b></div>`
+    + `<div class="ro"><span>Filament</span><b>${(t.total_filament_grams / 1000).toFixed(1)} kg</b></div>`;
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('#mt-band [data-mt]');
+  if (!b) return;
+  const key = b.dataset.mt;
+  mtState.filter = mtState.filter === key ? '' : key;
+  renderTasks();
+  const again = $('mt-band').querySelector(`[data-mt="${key}"]`);   // the band was redrawn: keep the keyboard where it was
+  if (again) again.focus();
+});
+
+function renderTasks() {
+  const data = mtState.data;
+  if (!data) return;
+  const shown = mtState.filter ? data.tasks.filter(t => t.status === mtState.filter) : data.tasks;
+  $('tasks').innerHTML = shown.length ? shown.map(renderTaskRow).join('') : EMPTY('Nothing here', 'No jobs in this group. Press the same number again to see them all.');
+  stagger([...document.querySelectorAll('#tasks .task')]);
+  document.querySelectorAll('#tasks .btn[data-task]').forEach(button => {
+    button.addEventListener('click', () => markDone(button));
+  });
+  // Not now: the task stays listed here, but leaves Needs you and the alerts until then.
+  document.querySelectorAll('#tasks [data-snooze]').forEach(sel => sel.addEventListener('change', async () => {
+    if (!sel.value) return;
+    const r = await postJSON(api('/api/maintenance/snooze'), { task_id: sel.dataset.snooze, days: +sel.value });
+    if (r.ok) toast(`Snoozed: it comes back ${sel.value === '1' ? 'tomorrow' : `in ${sel.value} days`}, and stays listed here`, 'ok');
+    else toast(`Couldn't snooze it: ${r.body.error || r.status}`, 'bad');
+    loadMaintenance();
+  }));
+  paint($('mt-band'), maintenanceBand(data));
+  $('mt-band').hidden = false;
+}
+
 async function loadMaintenance() {
   const data = await getJSON(api('/api/maintenance'));
 
   if (isModuleDisabled(data)) {
     clearStats();
     $('tasks').innerHTML = moduleDisabledEmpty('Maintenance reminders');
+    $('mt-band').hidden = true;
     $('log-wrap').hidden = true;
     paint($('overview-maintenance'), moduleDisabledEmpty('Maintenance reminders'));
     return;
@@ -51,6 +101,7 @@ async function loadMaintenance() {
     clearStats();
     $('tasks').innerHTML = EMPTY('No printer connected',
       'Maintenance reminders appear once print history is available. Turn on demo data to preview them.');
+    $('mt-band').hidden = true;
     $('log-wrap').hidden = true;
     paint($('overview-maintenance'), noPrinterEmpty('Turn on demo data to preview.', 'maintenance'));
     return;
@@ -71,19 +122,8 @@ async function loadMaintenance() {
   document.querySelectorAll('.stat').forEach(t => t.classList.remove('is-empty'));
   $('stat-due').closest('.stat').classList.toggle('is-alert', data.summary.overdue > 0);
 
-  $('tasks').innerHTML = data.tasks.map(renderTaskRow).join('');
-  stagger([...document.querySelectorAll('#tasks .task')]);
-  document.querySelectorAll('#tasks .btn[data-task]').forEach(button => {
-    button.addEventListener('click', () => markDone(button));
-  });
-  // Not now: the task stays listed here, but leaves Needs you and the alerts until then.
-  document.querySelectorAll('#tasks [data-snooze]').forEach(sel => sel.addEventListener('change', async () => {
-    if (!sel.value) return;
-    const r = await postJSON(api('/api/maintenance/snooze'), { task_id: sel.dataset.snooze, days: +sel.value });
-    if (r.ok) toast(`Snoozed: it comes back ${sel.value === '1' ? 'tomorrow' : `in ${sel.value} days`}, and stays listed here`, 'ok');
-    else toast(`Couldn't snooze it: ${r.body.error || r.status}`, 'bad');
-    loadMaintenance();
-  }));
+  mtState.data = data;
+  renderTasks();
 
   // Overview tab gets the top 3 most urgent, read-only.
   paint($('overview-maintenance'), data.tasks.length
@@ -387,7 +427,7 @@ function renderControlTab(state) {
         <div class="stat-foot" data-temp-target="${esc(th)}"></div>
         <div style="display:flex; gap:6px; margin-top:8px;">
           <label class="sr-only" for="target-${esc(th)}">${esc(th)} target temperature</label>
-          <input type="number" inputmode="decimal" placeholder="target" id="target-${esc(th)}" data-toolhead="${esc(th)}" style="width:100%; font-size:12px;">
+          <input type="number" inputmode="decimal" placeholder="°C" id="target-${esc(th)}" data-toolhead="${esc(th)}" style="width:100%; font-size:12px;">
           <button class="btn small" data-set-temp="${esc(th)}">Set</button>
         </div>
       </div>`).join('');
