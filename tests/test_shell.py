@@ -1,7 +1,8 @@
 """
-The SHELL frame's own pieces: the instrument strip with Halt (strip.js), the docked panes and dividers (panes.js), Settings as one
-place (settings.js), the command bar's entries (finder.js) and the stylesheets (shell.css, shell-panes.css). Source checks that run
-everywhere; tools/pagebar-walk.js (tests/test_pagebar.py) exercises them in a real browser.
+The frame's own pieces: the floating dock and Halt (strip.js, cockpit.js), the dividers and the one shared twin (panes.js), the tiles and sheets
+of the Printer screen and Overview (cockpit.js, overview.js, deck.js), Settings as one place (settings.js), the command bar's entries (finder.js)
+and the stylesheets (shell.css, shell-panes.css, cockpit.css). Source checks that run everywhere; tools/pagebar-walk.js (tests/test_pagebar.py)
+exercises them in a real browser.
 """
 
 import os
@@ -14,6 +15,11 @@ from frontend_parts import read_frontend  # noqa: E402
 INDEX = read_frontend("index.html")
 STRIP = read_frontend("strip.js")
 PANES = read_frontend("panes.js")
+COCKPIT = read_frontend("cockpit.js")
+OVERVIEW = read_frontend("overview.js")
+DECK = read_frontend("deck.js")
+INTRO = read_frontend("intro.js")
+COCKPIT_CSS = read_frontend("cockpit.css")
 SETTINGS = read_frontend("settings.js")
 FINDER = read_frontend("finder.js")
 SHELL = read_frontend("shell.css")
@@ -26,12 +32,23 @@ DARK = read_frontend("dark.css")
 
 
 class TestStrip(unittest.TestCase):
-    def test_the_strip_holds_the_printers_the_connection_the_orb_and_halt(self):
-        strip = INDEX[INDEX.index('<footer class="strip liquid-glass" id="strip"'):INDEX.index("</footer>", INDEX.index('id="strip"'))]
-        for needle in ('id="strip-insts"', 'id="strip-halted"', 'id="conn"', 'id="conn-label"', 'id="strip-cmd"', 'id="orb-dock"', 'id="orb"', 'id="toasts"',
-                       'id="strip-halt"', 'id="watch-only-pill"', 'id="handoff"'):
-            self.assertIn(needle, strip)
-        self.assertLess(strip.index('id="orb-dock"'), strip.index('id="strip-halt"'))      # Halt is the last thing, under the thumb
+    def test_the_dock_holds_the_orb_the_link_words_and_the_offer_and_nothing_runs_along_the_bottom(self):
+        dock = INDEX[INDEX.index('<footer class="strip float-dock" id="strip"'):INDEX.index("</footer>", INDEX.index('id="strip"'))]
+        for needle in ('id="conn"', 'id="conn-label"', 'id="orb-dock"', 'id="orb"', 'id="toasts"', 'id="watch-only-pill"', 'id="handoff"'):
+            self.assertIn(needle, dock)
+        for gone in ('id="strip-insts"', 'id="strip-cmd"', 'id="strip-halt"', 'id="strip-halted"'):
+            self.assertNotIn(gone, dock)                          # no printers, no Find, no Halt: the printers are in the sidebar
+        self.assertNotIn("liquid-glass", dock[:dock.index(">")])    # and the dock itself is no glass bar (its notification panel still is glass)
+        self.assertIn("position: fixed", SHELL[SHELL.index("html.has-shell .strip {"):SHELL.index("html.has-shell .strip > *")])
+        self.assertIn('grid-template-areas: "rail main";', SHELL)        # the frame has no bottom row
+
+    def test_halt_is_built_on_the_printer_screen_and_nowhere_else(self):
+        self.assertIn('id="strip-halt"', COCKPIT)
+        self.assertIn('id="strip-halted"', COCKPIT)
+        self.assertNotIn('id="strip-halt"', INDEX)
+        self.assertNotIn('id="strip-halt"', OVERVIEW)
+        self.assertIn("document.addEventListener('click'", STRIP)       # the button is built after strip.js is parsed: one listener on the page
+        self.assertIn("e.key !== 'h'", STRIP)                            # the shortcut H H still works from every place
 
     def test_halt_stops_the_selected_printer_with_one_press_and_says_so_in_words(self):
         self.assertIn("'/api/printer/control/estop'", STRIP)
@@ -62,16 +79,18 @@ class TestStrip(unittest.TestCase):
         self.assertIn("background: var(--halt); color: var(--halt-ink)", SHELL)
         self.assertNotIn("--halt", LOOKS)                           # no look recolours it
 
-    def test_the_ask_button_and_the_handoff_offer_join_the_strip(self):
+    def test_the_ask_button_and_the_handoff_offer_join_the_dock(self):
         self.assertIn("ai-launch", STRIP)
-        self.assertIn("insts.before(offer)", read_frontend("workshop-part3.js"))
+        self.assertIn("floating.prepend(offer)", read_frontend("workshop-part3.js"))
         self.assertIn("html.has-shell .strip #handoff", SHELL)
 
-    def test_one_instrument_per_printer_with_a_layer_stack_meter(self):
-        for needle in ("class=\"stack\"", "inst-name", "data-printer", "aria-pressed", "doneAt(", "formatTemp("):
-            self.assertIn(needle, STRIP)
-        self.assertIn("repeating-linear-gradient(0deg, var(--accent) 0 1.5px", SHELL)
-        self.assertIn(".strip-insts:not([data-count=\"1\"]):not([data-count=\"2\"])", SHELL)      # three or more printers drop the extras
+    def test_the_link_is_named_only_when_something_is_off(self):
+        self.assertIn('html.has-shell .strip .conn:is(.is-live, :not([class*="is-"])) { display: none; }', SHELL)
+
+    def test_the_printers_are_chosen_in_the_sidebar_not_in_a_bar(self):
+        self.assertNotIn('class="stack"', STRIP)
+        self.assertNotIn("function instrument", STRIP)
+        self.assertIn('id="rail-switch"', RAIL)
 
 
 class TestAccessibleNames(unittest.TestCase):
@@ -82,14 +101,15 @@ class TestAccessibleNames(unittest.TestCase):
         self.assertIn(".rail-badge::after { content: attr(data-count); }", SHELL)
         self.assertIn("dataset.keys", STRIP)
         self.assertIn("kbd::after { content: attr(data-keys); }", SHELL)
-        self.assertIn('<kbd id="strip-cmd-key"></kbd>', INDEX)
+        self.assertIn('<kbd class="halt-key" aria-hidden="true"></kbd>', COCKPIT)
 
-    def test_the_printer_row_and_the_instruments_are_named_by_what_they_show(self):
+    def test_the_printer_row_and_the_tiles_are_named_by_what_they_show(self):
         row = RAIL[RAIL.index('id="rail-switch"'):RAIL.index("rail-scroll")]
         self.assertNotIn('aria-label="', row)
-        inst = STRIP[STRIP.index("function instrument"):STRIP.index("function paint(")]
-        self.assertNotIn('aria-label="', inst)
-        self.assertIn("aria-pressed", inst)
+        for tile in ('id="tile-temps"', 'id="tile-tune"', 'id="tile-job"'):
+            button = COCKPIT[COCKPIT.index(tile):COCKPIT.index(">", COCKPIT.index(tile))]
+            self.assertNotIn("aria-label", button, tile)          # the name is the visible text, which holds the figures
+            self.assertIn('aria-haspopup="dialog"', button)
         self.assertIn('aria-label="More places"', RAIL)
         self.assertIn("version history", read_frontend("versions.js"))
 
@@ -119,28 +139,91 @@ class TestPanes(unittest.TestCase):
         self.assertIn("window.Panes", PANES)
         self.assertIn("Panes.reset()", SETTINGS)
 
-    def test_every_card_it_moves_is_on_the_page(self):
-        ids = re.findall(r"put\('([a-z-]+)'", PANES) + re.findall(r"\['([a-z' ,-]+)'\]\.forEach\(id => put", PANES)
-        flat = []
-        for chunk in ids:
-            flat += [i.strip(" '") for i in chunk.split(",")]
-        self.assertGreaterEqual(len(flat), 12)
-        for one in flat:
-            if one:
-                self.assertIn('id="%s"' % one, INDEX, one + " is not on the page")
+    def test_every_card_the_screens_move_is_on_the_page(self):
+        ids = []
+        for source in (COCKPIT, OVERVIEW):
+            for chunk in re.findall(r"\[([a-z' ,-]+)\]\.forEach\(id => put\(id,", source):
+                ids += [i.strip(" '") for i in chunk.split(",")]
+            ids += re.findall(r"put\('([a-z-]+)'", source)
+        self.assertGreaterEqual(len(ids), 14)
+        for one in ids:
+            self.assertIn('id="%s"' % one, INDEX, one + " is not on the page")
 
     def test_a_moved_card_keeps_the_module_switch_its_wrapper_carried(self):
         self.assertIn("dataset.moduleBody", PANES)
 
-    def test_the_twin_is_one_shared_instance_docked_into_the_open_place(self):
-        self.assertIn("ov-stage", PANES)
+    def test_the_twin_is_one_shared_instance_docked_into_the_printer_stage_and_lent_to_sheets(self):
         self.assertIn("p-stage", PANES)
+        self.assertIn("p-stage", COCKPIT)
+        self.assertNotIn("ov-stage", PANES)                       # Overview has no 3D printer: it lives on the Printer screen
         self.assertIn("slot.prepend(card)", PANES)
+        self.assertIn("card.closest('.cp-sheet')", PANES)           # a sheet that borrowed it keeps it until it closes
         self.assertEqual(INDEX.count('id="twin-card"'), 1)
 
-    def test_a_phone_has_no_dividers_and_panes_stack_under_the_stage(self):
+    def test_a_phone_has_no_dividers_and_the_stage_comes_first(self):
         self.assertIn("html.has-shell .split { display: none; }", PANES_CSS)
-        self.assertIn("html.has-shell .cockpit > .stage { order: -1; }", PANES_CSS)
+        phone = COCKPIT_CSS[COCKPIT_CSS.index("@media (max-width: 720px)"):]
+        self.assertIn("html.has-shell .cp > .split { display: none; }", phone)
+        self.assertIn("html.has-shell .cp > .cp-stage { order: 1;", phone)
+
+    def test_dragging_a_divider_is_one_move_per_frame_and_tells_the_twin_rarely(self):
+        for needle in ("requestAnimationFrame", "setTimeout(() => window.dispatchEvent(new Event('resize')), 90)", "announce(!live)"):
+            self.assertIn(needle, PANES)
+        self.assertNotIn("ev => set(from + sign", PANES)           # no resize broadcast for every pointer event
+
+
+class TestTilesAndSheets(unittest.TestCase):
+    def test_every_sheet_names_cards_that_exist(self):
+        block = COCKPIT[COCKPIT.index("const SHEETS = {"):COCKPIT.index("const DOCK")]
+        ids = set(re.findall(r"'([a-z-]+)'", block)) & set(re.findall(r"'((?:pp|ctrl|cp|twin)-[a-z-]+)'", block))
+        self.assertGreaterEqual(len(ids), 10)
+        for one in ids:
+            if one != "cp-job":                                   # built by cockpit.js itself
+                self.assertIn('id="%s"' % one, INDEX, one)
+        self.assertIn("section.id = 'cp-job'", COCKPIT.replace("job.id", "section.id"))
+        for name in ("move", "extrude", "tune", "macros"):
+            body = block[block.index("    %s:" % name):]
+            body = body[:body.index("\n")]
+            self.assertIn("'twin-card'", body, name)                # the smart view: the 3D printer and the camera come beside these
+            self.assertIn("'pp-camera-card'", body, name)
+
+    def test_a_sheet_is_a_modal_dialog_that_closes_with_escape_traps_focus_and_hands_cards_back(self):
+        for needle in ("role', 'dialog'", "aria-modal", "e.key === 'Escape'", "e.key === 'Tab'", "release()", "homeOf(", "xBtn.focus(",
+                       "back.focus(", "prefers-reduced-motion"):
+            self.assertIn(needle, DECK)
+        self.assertIn("grows out of what opened it", DECK)
+
+    def test_nothing_on_the_printer_screen_scrolls_but_a_sheet_may(self):
+        rail = COCKPIT_CSS[COCKPIT_CSS.index("html.has-shell .cp-rail {"):]
+        rail = rail[:rail.index("}")]
+        self.assertIn("overflow: hidden", rail)
+        self.assertNotIn("overflow: auto", rail)
+        self.assertIn("overflow: auto", COCKPIT_CSS[COCKPIT_CSS.index("html.has-shell .cp-main {"):][:200])
+
+    def test_overview_is_a_glance_with_no_3d_printer(self):
+        self.assertNotIn("twin", OVERVIEW.replace("The 3D printer is on the Printer screen only", ""))
+        for needle in ("attention", "ov-now", "ov-camera", "ov-printers", "data-open"):
+            self.assertIn(needle, OVERVIEW)
+        self.assertIn("nth-child(n+4)", COCKPIT_CSS)                # the first three of Needs you; the rest in a sheet
+
+    def test_the_halted_note_and_restart_sit_with_halt(self):
+        self.assertLess(COCKPIT.index('id="strip-halted"'), COCKPIT.index('id="strip-halt"'))
+        self.assertIn("strip-restart", STRIP)
+
+
+class TestOpeningScene(unittest.TestCase):
+    def test_it_plays_only_on_a_fresh_start_never_with_reduced_motion_or_a_robot_and_can_be_switched_off(self):
+        for needle in ("type === 'navigate'", "dejavu1.pref.intro", "prefers-reduced-motion", "navigator.webdriver", "nointro", "intro-pending"):
+            self.assertIn(needle, BOOT)
+        self.assertIn("5200", BOOT)                                 # the cover is lifted by a timer too: a page is never left covered
+        for needle in ("HOLD_MS = 3000", "drawsInSoftware", "swiftshader", "intro=force", "keydown", "pointerdown", "Skip", "reduced()"):
+            self.assertIn(needle, INTRO)
+        self.assertIn("'Opening scene'", SETTINGS)
+
+    def test_the_twin_is_lent_to_the_scene_and_handed_back(self):
+        self.assertIn("stage.append(card)", INTRO)
+        self.assertIn("home.parent.insertBefore(card, home.next)", INTRO)
+        self.assertIn("Panes.dock()", INTRO)
 
 
 class TestSettings(unittest.TestCase):
@@ -160,7 +243,8 @@ class TestSettings(unittest.TestCase):
         self.assertIn("Deja Vu1 shows everything and sends nothing to the printer. Halt still works.", INDEX)
 
     def test_the_new_rows_exist(self):
-        for needle in ("'layout-card'", "'halt-card'", 'id="halt-ask"', "Reset layout", "Your experience", "Sidebar width", 'id="set-search"'):
+        for needle in ("'layout-card'", "'halt-card'", "'practice-card'", 'id="halt-ask"', 'id="practice-show"', "Reset layout", "Your experience", "Opens on hover",
+                       "Always open", "Opening scene", 'id="set-search"'):
             self.assertIn(needle, SETTINGS)
 
     def test_a_search_shows_every_matching_card_and_clearing_it_goes_back(self):

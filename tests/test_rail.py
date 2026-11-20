@@ -96,8 +96,9 @@ class TestPlaces(unittest.TestCase):
 
     def test_the_sidebar_loads_last_and_keeps_the_phone_layout(self):
         scripts = re.findall(r'<script src="([^"]+)"', INDEX)
-        self.assertEqual(scripts[-1], "rail.js")
-        self.assertEqual(scripts[-2], "pagebar.js")
+        self.assertEqual(scripts[-1], "intro.js")            # the opening scene borrows the twin once everything else is built
+        self.assertEqual(scripts[-2], "rail.js")
+        self.assertEqual(scripts[-3], "pagebar.js")
         self.assertIn("(max-width: 720px)", RAIL)
         css = read("shell.css")
         self.assertIn("html.has-shell .rail, html.has-shell .rail-menu { display: none; }", css)
@@ -111,10 +112,15 @@ class TestPlaces(unittest.TestCase):
         for dest in dock + more:
             self.assertIn(dest, ids)
 
-    def test_models_has_what_works_today(self):
+    def test_the_u1_profiles_converter_is_the_first_thing_on_files_and_models_points_to_it(self):
+        files = INDEX[INDEX.index('id="tab-files"'):INDEX.index('id="tab-models"')]
+        self.assertIn('id="convert-card"', files)
+        self.assertLess(files.index('id="convert-card"'), files.index('class="files-layout"'))      # above the library
+        self.assertIn("Snapmaker U1 profiles", files)
+        self.assertIn("Bambu Studio", files)
         panel = INDEX[INDEX.index('id="tab-models"'):INDEX.index('id="tab-automations"')]
-        self.assertIn('id="convert-card"', panel)            # the converter moved here from Files
-        self.assertNotIn('id="convert-card"', INDEX[INDEX.index('id="tab-files"'):INDEX.index('id="tab-models"')])
+        self.assertNotIn('id="convert-card"', panel)
+        self.assertIn('id="models-to-profiles"', panel)           # Models points to the banner
         links = re.findall(r'<a class="site-row" href="(https://[^"]+)" target="_blank" rel="noopener noreferrer">', panel)
         self.assertGreaterEqual(len(links), 5)
 
@@ -125,13 +131,23 @@ class TestRailLiveParts(unittest.TestCase):
             self.assertIn(needle, RAIL)
         self.assertNotIn("title=", RAIL[RAIL.index("function build()"):RAIL.index("function keySheet()")])   # names are aria-label, never title
 
-    def test_a_working_place_narrows_the_sidebar_and_a_chosen_width_wins(self):
-        for needle in ("narrow: true", "chosenMode", "dejavu1.rail.mode", "rail-collapsed", "dv-rail-width"):
+    def test_the_sidebar_rests_as_icons_opens_on_hover_and_closes_three_seconds_after_you_leave(self):
+        for needle in ("chosenMode", "dejavu1.rail.mode", "rail-collapsed", "dv-rail-width", "LINGER_MS = 3000", "rail-open", "pointerenter", "pointerleave",
+                       "focusin", "focusout", "e.pointerType === 'touch'"):
             self.assertIn(needle, RAIL)
-        for place in ("printer", "slicer", "files"):
-            self.assertRegex(RAIL, r"\{ id: '%s', label: '[^']+', group: 'main', narrow: true \}" % place)
+        self.assertNotIn("narrow: true", RAIL)                  # no place decides the width: the sidebar is icons everywhere
+        self.assertIn("mode ? mode === 'narrow' : true", RAIL)
         css = read("shell.css")
-        self.assertIn("html.has-shell.rail-collapsed .rail:is(:hover, :focus-within) .rail-card", css)   # labels over the page, not moving it
+        self.assertIn("html.has-shell.rail-collapsed.rail-open .rail-card", css)       # labels over the page, not moving it
+        self.assertIn("transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1)", css)
+        self.assertNotIn(".rail:is(:hover, :focus-within)", css)                       # opening is the script's, so it can linger
+
+    def test_practice_printers_stay_out_of_sight_until_settings_turns_them_on(self):
+        for needle in ("PRACTICE_KEY = 'dejavu1.pref.practice'", "shownDest", "setPractice", "dv-practice", "!shownDest(d)"):
+            self.assertIn(needle, RAIL)
+        self.assertIn('id="practice-show"', read("settings.js"))
+        self.assertIn("'#practice-card'", read("app-shell.js"))
+        self.assertIn("Rail.practice()", read("finder.js"))
 
     def test_more_folds_but_never_hides_the_place_you_are_in(self):
         self.assertIn("setMore(true, false)", RAIL)

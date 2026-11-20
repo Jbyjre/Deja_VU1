@@ -15,7 +15,7 @@
 :root {
   --rail-wide: 212px;
   --rail-narrow: 60px;
-  --strip-h: 52px;
+  --strip-h: 0px;
   --sh-gap: 8px;
   --sh-r: 18px;
   --sh-r-in: 10px;
@@ -76,8 +76,8 @@ html.has-shell body { margin: 0; padding: 0; height: 100dvh; overflow: hidden; }
 html.has-shell .shell {
   height: 100dvh; display: grid; gap: var(--sh-gap); padding: var(--sh-gap);
   padding-left: max(var(--sh-gap), env(safe-area-inset-left, 0px)); padding-right: max(var(--sh-gap), env(safe-area-inset-right, 0px));
-  grid-template-columns: var(--rail-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) var(--strip-h);
-  grid-template-areas: "rail main" "rail strip"; transition: grid-template-columns 0.22s ease;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "rail main"; transition: grid-template-columns 0.22s ease;
 }
 html.has-shell .wrap {
   grid-area: main; min-width: 0; min-height: 0; max-width: none; margin: 0; padding: 0; display: flex; flex-direction: column;
@@ -93,9 +93,14 @@ html.has-shell .tb-hold[hidden] { display: none; }
 html.has-shell .rail { grid-area: rail; position: relative; z-index: 8; min-height: 0; }
 html.has-shell .rail-card {
   position: absolute; inset: 0 auto 0 0; width: 100%; display: flex; flex-direction: column; padding: 10px 8px; overflow: hidden;
-  border-radius: var(--sh-r); box-shadow: var(--shadow-anchored); transition: width 0.18s ease, box-shadow 0.18s ease;
+  border-radius: var(--sh-r); box-shadow: var(--shadow-anchored);
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background-color 0.3s ease;
 }
-html.has-shell.rail-collapsed .rail:is(:hover, :focus-within) .rail-card { width: var(--rail-wide); box-shadow: var(--shadow-float); background: var(--surface-solid); }
+/* Open: wider over the page, never moving it. It closes 3 seconds after the pointer leaves (rail.js), over the same curve. */
+html.has-shell.rail-collapsed.rail-open .rail-card { width: var(--rail-wide); box-shadow: var(--shadow-float); background: var(--surface-solid); }
+html.has-shell .rail-label, html.has-shell .rail-badge, html.has-shell .rail-group span { transition: opacity 0.2s ease; }
+html.has-shell.rail-collapsed:not(.rail-open) .rail-card .rail-label { opacity: 0; }
+html.has-shell.rail-collapsed.rail-open .rail-card .rail-label { transition-delay: 0.08s; }
 html.has-shell .rail-brand { display: flex; align-items: center; gap: 10px; padding: 4px 9px 10px; min-height: 40px; color: var(--text); text-decoration: none; }
 html.has-shell .rail-mark { width: 22px; height: 22px; flex: none; border-radius: 6px; position: relative; overflow: hidden;
   background: repeating-linear-gradient(0deg, var(--accent) 0 2px, transparent 2px 4px); }
@@ -144,10 +149,10 @@ html.has-shell .rail-collapse[aria-pressed="true"] svg { transform: rotate(180de
 html.has-shell .rail-version { padding: 2px 11px 0; min-height: 18px; }
 html.has-shell .rail-version .ver-chip { font: 11px var(--font-mono); color: var(--text-faint); }
 /* A narrow sidebar clips its labels (the card is 60 px wide; hover or focus widens it over the page), and shows a count as a dot. */
-html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-badge { position: absolute; top: 5px; right: 6px; min-width: 9px; width: 9px; height: 9px; padding: 0; font-size: 0; }
-html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-group span { display: none; }
-html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-version { display: none; }
-html.has-shell.rail-collapsed .rail:not(:hover):not(:focus-within) .rail-who svg { display: none; }
+html.has-shell.rail-collapsed:not(.rail-open) .rail-badge { position: absolute; top: 5px; right: 6px; min-width: 9px; width: 9px; height: 9px; padding: 0; font-size: 0; }
+html.has-shell.rail-collapsed:not(.rail-open) .rail-group span { display: none; }
+html.has-shell.rail-collapsed:not(.rail-open) .rail-version { display: none; }
+html.has-shell.rail-collapsed:not(.rail-open) .rail-who svg { display: none; }
 html.has-shell .rail-menu { position: fixed; z-index: 70; min-width: 230px; padding: 6px; border-radius: 14px; box-shadow: var(--shadow-float); }
 html.has-shell .rail-menu[hidden] { display: none; }
 html.has-shell .rail-menu button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 9px; background: none; color: var(--text); font: 13px var(--font-sans); text-align: left; cursor: pointer; }
@@ -200,33 +205,41 @@ html.has-shell .feature-finder #feature-results { position: static; width: auto;
 html.has-shell .feature-finder #feature-results::before, html.has-shell .feature-finder #feature-results::after { display: none; }
 html.has-shell .feature-finder #feature-results[hidden] { display: none; }
 
-/* ---- the instrument strip -------------------------------------------------------------------------------------------------- */
-html.has-shell .strip { grid-area: strip; position: relative; z-index: 9; display: flex; align-items: center; gap: 0; min-width: 0; padding: 0 8px; border-radius: var(--sh-r); box-shadow: var(--shadow-anchored); --orb: 26px; --orb-gap: 0px; }
-html.has-shell .strip-insts { display: flex; align-items: center; min-width: 0; flex: 1 1 auto; overflow: hidden; }
-html.has-shell .inst { display: flex; align-items: center; gap: 9px; min-width: 0; height: 36px; padding: 0 14px; border: 0; border-right: 1px solid var(--hair); border-radius: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; flex: 0 1 auto; }
-html.has-shell .inst:first-child { padding-left: 8px; }
-html.has-shell .inst[aria-pressed="true"] { background: var(--accent-soft); border-radius: 9px; border-right-color: transparent; }
-html.has-shell .inst-name { font: 600 12.5px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18ch; min-width: 7ch; flex: 0 1 auto; }
-html.has-shell .strip-insts:not([data-count="1"]):not([data-count="2"]) :is(.inst-temps, .rd-extra) { display: none; }
-html.has-shell .inst-rd { flex: none; }
-html.has-shell .inst-rd, html.has-shell .inst-temps { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-dim); white-space: nowrap; }
-html.has-shell .inst-rd b { color: var(--text); font-weight: 600; }
-html.has-shell .inst-temps { display: inline-flex; gap: 10px; color: var(--text-faint); }
-html.has-shell .strip-empty { padding: 0 10px; font: 12px var(--font-mono); color: var(--text-faint); }
-html.has-shell .stack { width: 14px; height: 20px; flex: none; border-radius: 3px; position: relative; overflow: hidden; background: repeating-linear-gradient(0deg, var(--hair-strong) 0 1.5px, transparent 1.5px 3px); }
-html.has-shell .stack i { position: absolute; inset: auto 0 0; height: var(--p, 0%); background: repeating-linear-gradient(0deg, var(--accent) 0 1.5px, transparent 1.5px 3px); }
-html.has-shell .inst[data-state="complete"] .stack i, html.has-shell .inst[data-state="ready"] .stack i { background: repeating-linear-gradient(0deg, var(--ok) 0 1.5px, transparent 1.5px 3px); }
-html.has-shell .inst[data-state="error"] .stack i, html.has-shell .inst[data-state="lost"] .stack i { background: repeating-linear-gradient(0deg, var(--bad) 0 1.5px, transparent 1.5px 3px); }
-html.has-shell .strip-halted { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; margin: 0; padding: 0 10px; font-size: 12.5px; color: var(--text); }
-html.has-shell .strip-halted[hidden] { display: none; }
-html.has-shell .halted-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--halt); }
-html.has-shell .halted-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-html.has-shell .strip.is-halted .strip-insts, html.has-shell .strip.is-halted .halt { display: none; }
-html.has-shell .strip-end { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: none; padding-left: 8px; position: relative; }
-html.has-shell .strip .conn { display: inline-flex; align-items: center; gap: 6px; padding: 0; margin: 0; border: 0; background: none; box-shadow: none; font: 11.5px var(--font-mono); color: var(--text-dim); white-space: nowrap; }
-html.has-shell .strip .wo-pill { padding: 5px 9px; }
-html.has-shell .strip-cmd { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--surface-solid); color: var(--text-dim); font: 550 12.5px var(--font-sans); cursor: pointer; }
-html.has-shell .strip-cmd kbd, html.has-shell .halt kbd { font: 500 10.5px var(--font-mono); padding: 1px 5px; border-radius: 5px; border: 1px solid var(--hair-strong); color: var(--text-faint); background: var(--well); }
+/* ---- the floating dock ------------------------------------------------------------------------------------------------------ */
+/* No bar along the bottom: the orb, the Ask button and the "continue here" offer float in the corner over whatever is there. Link words show only
+   when something is off. Screens keep their last 56 px clear so nothing of theirs sits under it (see the end of this file). */
+html.has-shell .strip {
+  position: fixed; z-index: 60; right: max(14px, env(safe-area-inset-right, 0px)); bottom: max(12px, env(safe-area-inset-bottom, 0px)); left: auto; top: auto;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; padding: 0; margin: 0; border: 0; border-radius: 0;
+  background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; --orb: 44px; --orb-gap: 0px;
+}
+html.has-shell .strip > * { pointer-events: auto; }
+html.has-shell .strip-end { display: flex; align-items: center; gap: 8px; flex: none; position: relative; margin: 0; padding: 0; }
+html.has-shell .strip .conn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; margin: 0; border: 1px solid var(--hair-strong); border-radius: 999px;
+  background: var(--surface-solid); box-shadow: var(--shadow-anchored); font: 11.5px var(--font-mono); color: var(--text-dim); white-space: nowrap; }
+html.has-shell .strip .conn:is(.is-live, :not([class*="is-"])) { display: none; }          /* connected is the normal state: nothing to say */
+html.has-shell .strip .wo-pill { padding: 5px 10px; box-shadow: var(--shadow-anchored); }
+/* the connection orb: the link's colour (strip.js sets data-link) */
+html.has-shell .strip .orb { --orb-tint: var(--ok); box-shadow: var(--shadow-float); }
+html.has-shell .strip .orb[data-link="wait"] { --orb-tint: var(--warn, #d9a400); }
+html.has-shell .strip .orb[data-link="bad"] { --orb-tint: var(--bad); }
+html.has-shell .strip .orb-dock { position: relative; right: auto; bottom: auto; display: flex; flex-direction: row; align-items: center; gap: 0; z-index: 96; }
+html.has-shell .strip .orb-dock .orb-stack { position: absolute; right: 0; bottom: calc(100% + 14px); width: min(360px, calc(100vw - 24px)); }
+html.has-shell .strip .orb-dock .orb-panel { position: absolute; right: 0; bottom: calc(100% + 14px); }
+html.has-shell .strip .ai-launch { position: static; z-index: auto; height: 36px; padding: 0 14px 0 12px; font-size: 12.5px; border: 1px solid var(--hair-strong); background: var(--surface-solid); box-shadow: var(--shadow-anchored); backdrop-filter: none; -webkit-backdrop-filter: none; }
+html.has-shell .strip .ai-launch.is-quiet { width: 36px; padding: 0; }
+html.has-shell .strip .ai-launch::before, html.has-shell .strip .ai-launch::after { display: none; }
+html.has-shell .live-pill { display: none; }
+/* the "continue on this computer" offer is a small sheet above the orb */
+html.has-shell .strip #handoff { position: static; display: flex; align-items: center; gap: 10px; max-width: min(420px, calc(100vw - 28px)); margin: 0; padding: 8px 8px 8px 14px; border: 1px solid var(--hair-strong); border-radius: 14px;
+  background: var(--surface-solid); box-shadow: var(--shadow-float); font-size: 12.5px; transform: none; }
+html.has-shell .strip #handoff[hidden] { display: none; }
+html.has-shell .strip #handoff::before, html.has-shell .strip #handoff::after { display: none; }
+html.has-shell .wrap #pp-estop { display: none; }
+/* what a screen that scrolls keeps clear at its foot, so nothing of it sits under the dock */
+html.has-shell .wrap > .tab-panel:not(#tab-control):not(#tab-overview)::after { content: ""; display: block; flex: none; height: 60px; }
+
+/* Halt: one red button, on the Printer screen */
 html.has-shell .halt { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px 0 10px; border: 0; border-radius: 10px; background: var(--halt); color: var(--halt-ink); font: 700 13px var(--font-sans); letter-spacing: 0.02em; white-space: nowrap; cursor: pointer;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 2px 8px rgba(200, 16, 46, 0.35); }
 html.has-shell .halt svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linejoin: round; stroke-linecap: round; }
@@ -234,37 +247,19 @@ html.has-shell .halt kbd { background: rgba(255, 255, 255, 0.16); color: #fff; b
 html.has-shell .halt:disabled { background: color-mix(in oklch, var(--halt) 38%, var(--well)); color: var(--text-dim); box-shadow: none; cursor: not-allowed; }
 html.has-shell .halt.is-armed { outline: 2px solid var(--text); outline-offset: 2px; }
 html.has-shell :is(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-/* the connection orb: the link's colour (strip.js sets data-link) */
-html.has-shell .strip .orb { --orb-tint: var(--ok); }
-html.has-shell .strip .orb[data-link="wait"] { --orb-tint: var(--warn, #d9a400); }
-html.has-shell .strip .orb[data-link="bad"] { --orb-tint: var(--bad); }
-html.has-shell .strip .orb-dock { position: relative; right: auto; bottom: auto; display: flex; flex-direction: row; align-items: center; gap: 0; z-index: 96; }
-html.has-shell .strip .orb-dock .orb-stack { position: absolute; right: 0; bottom: calc(100% + 18px); width: min(360px, calc(100vw - 24px)); }
-html.has-shell .strip .orb-dock .orb-panel { position: absolute; right: 0; bottom: calc(100% + 18px); }
-html.has-shell .strip .ai-launch { position: static; z-index: auto; height: 30px; padding: 0 12px 0 10px; box-shadow: none; font-size: 12.5px; border: 1px solid var(--hair-strong); background: var(--surface-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
-html.has-shell .strip .ai-launch.is-quiet { width: 30px; padding: 0; }
-html.has-shell .strip .ai-launch::before, html.has-shell .strip .ai-launch::after { display: none; }
-html.has-shell .live-pill { display: none; }
-/* the "continue on this computer" offer is a line in the strip: while it shows, it stands in for the instruments */
-html.has-shell .strip #handoff { position: static; display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; margin: 0; padding: 0 10px; background: none; border: 0; box-shadow: none; font-size: 12.5px; transform: none; }
-html.has-shell .strip #handoff[hidden] { display: none; }
-html.has-shell .strip:has(#handoff:not([hidden])) .strip-insts { display: none; }
-html.has-shell .strip #handoff::before, html.has-shell .strip #handoff::after { display: none; }
-html.has-shell .wrap #pp-estop { display: none; }
 
 /* the phone's bottom bar and More sheet draw their icons with the same line style as the sidebar */
 html.has-shell .bn-ico, html.has-shell .ms-ico { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; font-size: 0; }
 html.has-shell .bottom-nav button { gap: 2px; }
 
-/* ---- a narrower window: the strip keeps what matters ----------------------------------------------------------------------- */
-@media (max-width: 1180px) { html.has-shell .inst-temps { display: none; } }
-@media (max-width: 980px) { html.has-shell .rd-extra, html.has-shell .strip-cmd-label, html.has-shell .halt-key { display: none; } html.has-shell .feature-finder #feature-search { width: 150px; } }
+/* ---- a narrower window ------------------------------------------------------------------------------------------------------ */
+@media (max-width: 980px) { html.has-shell .halt-key { display: none; } html.has-shell .feature-finder #feature-search { width: 150px; } }
 @container topbar (max-width: 760px) { .pb-sub, .feature-finder .fx-hint { display: none; } .feature-finder #feature-search { width: 120px; } }
 
-/* ---- a phone: one printer in the strip, Halt under the thumb, the dock below ------------------------------------------------ */
+/* ---- a phone: the page scrolls, the orb floats above the dock, Halt is on the Printer screen ------------------------------------ */
 @media (max-width: 720px) {
   html.has-shell body { height: auto; overflow: auto; }
-  html.has-shell .shell { height: auto; min-height: 100dvh; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "main"; padding: 8px 8px calc(var(--dock-h, 150px) + var(--strip-h) + 40px); }
+  html.has-shell .shell { height: auto; min-height: 100dvh; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; grid-template-areas: "main"; padding: 8px 8px calc(var(--dock-h, 150px) + 40px); }
   html.has-shell .rail, html.has-shell .rail-menu { display: none; }
   html.has-shell .wrap { overflow: visible; min-height: calc(100dvh - 190px); }
   html.has-shell .wrap > .tab-panel:not([hidden]) { overflow: visible; }
@@ -276,18 +271,12 @@ html.has-shell .bottom-nav button { gap: 2px; }
   html.has-shell .feature-finder #feature-search { width: 34px; padding: 0; color: transparent; background-position: center; cursor: pointer; }
   html.has-shell .feature-finder .fx-hint { display: none; }
   html.has-shell .feature-finder:focus-within #feature-search { width: 100%; padding: 0 18px 0 44px; color: var(--text); background-position: 16px center; }
-  html.has-shell .strip { position: fixed; z-index: 30; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); bottom: calc(var(--dock-h, 150px) + 18px); height: var(--strip-h); grid-area: auto; padding: 0 6px; }
-  html.has-shell .inst:not([aria-pressed="true"]) { display: none; }
-  html.has-shell .inst[aria-pressed="true"] { flex: 1 1 auto; background: transparent; padding-left: 6px; }
-  html.has-shell .strip-cmd, html.has-shell .strip .conn:not(.is-demo) .conn-label, html.has-shell .strip .ai-launch span { display: none; }
-  html.has-shell .strip .ai-launch { width: 34px; padding: 0; justify-content: center; }
+  html.has-shell .strip { bottom: calc(var(--dock-h, 150px) + 14px); right: max(12px, env(safe-area-inset-right, 0px)); --orb: 40px; }
+  html.has-shell .strip .ai-launch span { display: none; }
+  html.has-shell .strip .ai-launch { width: 36px; padding: 0; justify-content: center; }
   html.has-shell .halt { height: 40px; min-width: 44px; }
-  html.has-shell .strip-end { gap: 6px; padding-left: 4px; }
-  html.has-shell .inst-name { min-width: 3ch; max-width: 14ch; }
-  html.has-shell .inst { gap: 7px; }
   /* the "continue here" offer is a sheet in the dock: it had no ground, so the page's words showed through it */
   html.has-shell .thumb-dock > .handoff { background: var(--surface-solid); border: 1px solid var(--hair-strong); border-radius: var(--sh-r); box-shadow: var(--shadow-anchored); padding: 8px 8px 8px 14px; }
-  html.has-shell .inst .stack { display: none; }   /* room for the note flag: the name matters more than the meter on a phone */
   html.has-shell .strip .conn { font-size: 10px; letter-spacing: 0; }
   html.has-shell .strip .orb-dock .orb-stack, html.has-shell .strip .orb-dock .orb-panel { width: calc(100vw - 24px); right: -6px; }
 }
@@ -297,12 +286,12 @@ html.has-shell .bottom-nav button { gap: 2px; }
   html.has-shell .shell, html.has-shell .rail-card, html.has-shell .rail-collapse svg, html.has-shell .rail-group svg { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  html.has-shell .rail-card, html.has-shell .strip, html.has-shell .rail-menu { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-solid); }
+  html.has-shell .rail-card, html.has-shell .rail-menu { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-solid); }
   html.has-shell .wrap { background: var(--surface-solid); }
 }
 @media (prefers-contrast: more) {
-  html.has-shell .rail-card, html.has-shell .strip, html.has-shell .wrap { box-shadow: inset 0 0 0 1.5px var(--text); }
-  html.has-shell .rail-item.active, html.has-shell .pb-part[aria-selected="true"], html.has-shell .inst[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .rail-card, html.has-shell .wrap { box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .rail-item.active, html.has-shell .pb-part[aria-selected="true"] { box-shadow: inset 0 0 0 1.5px var(--text); }
   html.has-shell .topbar, html.has-shell .rail-foot { border-color: var(--text); }
   html.has-shell .halt { outline: 2px solid var(--text); }
 }
@@ -313,7 +302,7 @@ html.has-shell .fx-enter kbd { font: 500 10.5px var(--font-mono); padding: 1px 5
 
 /* Counts and key hints are drawn here, not written as text, so the visible text of a button or an item is just its label (WCAG 2.5.3). */
 html.has-shell .rail-badge::after { content: attr(data-count); }
-html.has-shell .strip-cmd kbd::after, html.has-shell .halt kbd::after { content: attr(data-keys); }
+html.has-shell .halt kbd::after { content: attr(data-keys); }
 html.has-shell :is(.tab-panel, .pane, .set-body):focus-visible { outline-offset: -3px; }
 
 /* Tester mode's note button sits in the strip (tester.js moves it there), so it never covers the page; narrow windows and phones show
@@ -332,12 +321,10 @@ html.has-shell .tester-dock.in-strip .tester-felt-ico { flex: none; }
   html.has-shell .tester-dock.in-strip .tester-felt.is-alert .tester-felt-text { display: none; }
 }
 @media (prefers-contrast: more) { html.has-shell .tester-dock.in-strip .tester-felt { border: 1.5px solid var(--text); color: var(--text); } }
-/* Tester mode's note button and panel float above the strip (they were placed relative to the old bottom-right orb). */
-html.has-shell .tester-dock { right: calc(var(--sh-gap) + 12px); bottom: calc(var(--strip-h) + var(--sh-gap) * 2 + 8px); max-width: calc(100vw - 2 * var(--sh-gap) - 24px); }
-html.has-shell .tester-note { right: calc(var(--sh-gap) + 12px); bottom: calc(var(--strip-h) + var(--sh-gap) * 2 + 56px); }
+/* Tester mode's note panel opens above the dock (the button itself sits in the dock's row, tester.js moves it there). */
+html.has-shell .tester-note { right: 14px; bottom: 70px; }
 @media (max-width: 720px) {
-  html.has-shell .tester-dock { right: 12px; bottom: calc(var(--dock-h, 150px) + var(--strip-h) + 30px); max-width: calc(100vw - 24px); }
-  html.has-shell .tester-note { right: 12px; bottom: calc(var(--dock-h, 150px) + var(--strip-h) + 76px); }
+  html.has-shell .tester-note { right: 12px; bottom: calc(var(--dock-h, 150px) + 66px); }
 }
 
 /* The telemetry status pills were light in every theme; in dark their light text needs a dark ground (4.5:1). */

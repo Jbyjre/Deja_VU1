@@ -1,16 +1,16 @@
-/* strip.js: the instrument strip along the bottom of every place.
+/* strip.js: Halt, and the floating dock.
  *
- * One instrument per printer (a layer-stack meter that fills as the print grows, its name, its progress or state and
- * its temperatures); a click selects that printer. After them: the connection pill (#conn, which says "Simulated"
- * while demo data is on), the Find button for the command bar (finder.js, Ctrl or Cmd K), the notification orb
- * (orb.js, moved in by index.html) and Halt.
+ * There is no bar along the bottom any more. The dock (#strip) floats at the corner and holds the notification orb (orb.js), the Ask button
+ * (assistant.js), the "continue on this computer" offer and a word about the link only when something is off (demo data, watch-only, no answer).
+ * The printers are chosen in the sidebar, Find is in the toolbar, and Halt sits on the Printer screen (cockpit.js builds its button): it is
+ * on screen while you are looking at the printer and nowhere else.
  *
- * Halt stops the selected printer with one press (M112: every motor and heater stops at once), from every place, with
- * the two-key shortcut H H. Afterwards the strip says in one line what happened and offers Restart firmware, which
- * calls the same route the Printer screen's own restart does and is refused in words unless the printer reports an
- * error. Settings › Advanced "Ask before Halt" turns on a second press (the button asks "Press again to halt" for four
- * seconds). A refusal from the printer, the server or watch-only mode is shown as a refusal, never as a stop.
- * On a phone only the selected printer shows and Halt sits at the right, within the thumb's reach.
+ * Halt stops the selected printer with one press (M112: every motor and heater stops at once). The two-key shortcut H H works from every
+ * place, because an emergency stop should never depend on which screen is open; it is simply not drawn anywhere but the Printer screen.
+ * Afterwards the Printer screen says in one line what happened and offers Restart firmware, which calls the same route the Printer screen's
+ * own restart does and is refused in words unless the printer reports an error. Settings › Advanced "Ask before Halt" turns on a second
+ * press (the button asks "Press again to halt" for four seconds). A refusal from the printer, the server or watch-only mode is shown as a
+ * refusal, never as a stop.
  */
 (() => {
   const $ = id => document.getElementById(id);
@@ -18,8 +18,7 @@
   const STATE_WORD = { printing: 'Printing', paused: 'Paused', error: 'Error', complete: 'Finished', ready: 'Ready' };
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
   let fleet = [];
-  let paintedFor = '';
-  let halted = null;          // { id, name, line, failed } while the strip is saying what Halt did
+  let halted = null;          // { id, name, line, failed } while the Printer screen is saying what Halt did
   let armed = 0;
   let sending = false;
 
@@ -34,39 +33,6 @@
     if (p.link_lost) return 'Not answering';
     if (p.state === 'printing') return `Printing ${pct(p)}%`;
     return STATE_WORD[p.state] || (p.state ? p.state[0].toUpperCase() + p.state.slice(1) : 'Ready');
-  }
-
-  /* ---- the instruments ---- */
-  function instrument(p, here) {
-    const st = stateOf(p);
-    const printing = p.state === 'printing' && !p.link_lost;
-    const done = printing && p.remaining_hours != null && typeof doneAt === 'function' ? doneAt(p.remaining_hours) : '';
-    const noz = temp(p.nozzle_temperature), bed = temp(p.bed_temperature);
-    // No aria-label: the button's name is its own visible text (WCAG 2.5.3), with one hidden word for what the figure is.
-    const read = printing
-      ? `<b>${pct(p)}%</b><span class="sr-only"> printing</span>${done ? `<span class="rd-extra"> done ${esc(done)}</span>` : ''}`
-      : `<b>${esc(words(p))}</b>`;
-    return `<button type="button" class="inst" data-printer="${esc(p.id)}" data-state="${st}" aria-pressed="${here}" data-full="${esc(p.name)}">
-      <span class="stack" aria-hidden="true" style="--p:${printing ? pct(p) : st === 'complete' ? 100 : 0}%"><i></i></span>
-      <span class="inst-name" title="${esc(p.name)}">${esc(p.name)}</span>
-      <span class="inst-rd"> ${read}</span>
-      ${noz || bed ? ` <span class="inst-temps rd-extra">${noz ? `<span>T ${esc(noz)}</span>` : ''} ${bed ? `<span>Bed ${esc(bed)}</span>` : ''}</span>` : ''}
-    </button>`;
-  }
-
-  function paint(force) {
-    const box = $('strip-insts');
-    if (!box) return;
-    const here = selected();
-    const sig = JSON.stringify([fleet.map(p => [p.id, p.name, p.state, p.link_lost, pct(p), Math.round(p.nozzle_temperature || 0),
-      Math.round(p.bed_temperature || 0), p.remaining_hours != null ? Math.round(p.remaining_hours * 60) : null]), here && here.id, halted && halted.line]);
-    if (!force && sig === paintedFor) return;
-    paintedFor = sig;
-    box.dataset.count = String(fleet.length);
-    box.innerHTML = fleet.length
-      ? fleet.map(p => instrument(p, !!here && here.id === p.id)).join('')
-      : '<span class="strip-empty">No printer yet</span>';
-    paintHalt(here);
   }
 
   /* ---- Halt ---- */
@@ -85,7 +51,8 @@
     const note = $('strip-halted');
     if (note) {
       note.hidden = !halted;
-      $('strip').classList.toggle('is-halted', !!halted);
+      const cockpit = $('cockpit');
+      if (cockpit) cockpit.classList.toggle('is-halted', !!halted);
       if (halted) {
         note.innerHTML = `<span class="halted-dot" aria-hidden="true"></span><span class="halted-text">${esc(halted.line)}</span>${
           halted.failed ? '' : '<button type="button" class="btn small" id="strip-restart">Restart firmware</button>'}
@@ -115,7 +82,7 @@
     halted = r.ok
       ? { id: p.id, name: p.name, line: `${p.name} halted: motors and heaters off` }
       : { id: p.id, name: p.name, failed: true, line: `${p.name}: Halt was refused. ${why || 'The printer did not stop.'}` };
-    paint(true);
+    paintHalt();
   }
 
   async function restart() {
@@ -125,30 +92,21 @@
     try {
       r = await runCommand(null, '/api/printer/control/restart', {}, { sending: 'Restarting…', done: 'Firmware restarted', failed: 'Restart refused' });
     } catch (err) { /* said by the toast */ }
-    if (r.ok) { halted = null; paint(true); return; }
+    if (r.ok) { halted = null; paintHalt(); return; }
     if (btn) btn.disabled = false;
     const why = r.result && r.result.body && r.result.body.error;
-    if (halted) { halted.line = `${halted.name} halted. Restart was refused: ${why || 'the printer did not answer'}`; paint(true); }
+    if (halted) { halted.line = `${halted.name} halted. Restart was refused: ${why || 'the printer did not answer'}`; paintHalt(); }
   }
 
   /* ---- wiring ---- */
   function init() {
-    const strip = $('strip');
-    if (!strip) return;
-    const cmdKey = $('strip-cmd-key');
-    if (cmdKey) cmdKey.dataset.keys = mac ? '⌘K' : 'Ctrl K';      // drawn by CSS, so a button's visible text is only its label
-    const haltKey = strip.querySelector('.halt-key');
+    const haltKey = document.querySelector('#strip-halt .halt-key');
     if (haltKey) haltKey.dataset.keys = 'H H';
-    strip.addEventListener('click', e => {
-      const inst = e.target.closest('[data-printer]');
-      if (inst) {
-        if (window.Workshop && inst.dataset.printer !== (typeof currentPrinter !== 'undefined' && currentPrinter)) Workshop.selectPrinter(inst.dataset.printer, null, true);
-        return;
-      }
+    // Halt and its follow-ups live on the Printer screen, which builds them after this file is parsed: one listener on the page.
+    document.addEventListener('click', e => {
       if (e.target.closest('#strip-halt')) { halt(); return; }
       if (e.target.closest('#strip-restart')) { restart(); return; }
-      if (e.target.closest('#strip-halted-x')) { halted = null; paint(true); return; }
-      if (e.target.closest('#strip-cmd')) { const i = $('feature-search'); if (i) { i.focus(); i.select(); } }
+      if (e.target.closest('#strip-halted-x')) { halted = null; paintHalt(); }
     });
     // H then H, within a second and a half, when nothing is being typed: Halt.
     let last = 0;
@@ -169,13 +127,13 @@
         if (p && p.state !== 'error' && !sending && Date.now() - (halted.at || 0) > 0 && halted.seen) halted = null;
         if (p && p.state === 'error') halted.seen = true;
       }
-      paint(false);
+      paintHalt();
     });
-    window.addEventListener('dv-printer', () => paint(true));
+    window.addEventListener('dv-printer', () => paintHalt());
     // The assistant's Ask button is built later by assistant.js; it belongs in the strip too.
     const adopt = () => {
       const ask = $('ai-launch');
-      const end = strip.querySelector('.strip-end');
+      const end = document.querySelector('#strip .strip-end');
       if (ask && end && ask.parentElement !== end) end.insertBefore(ask, $('orb-dock'));
       return !!ask;
     };
@@ -192,7 +150,7 @@
       orb.dataset.link = bad ? 'bad' : (conn.classList.contains('is-live') || conn.classList.contains('is-demo') ? 'ok' : 'wait');
     };
     if (conn) { new MutationObserver(tint).observe(conn, { attributes: true, attributeFilter: ['class'] }); tint(); }
-    paint(true);
+    paintHalt();
   }
 
   window.Strip = { halt, restart, selected, armedNow: () => !!armed };

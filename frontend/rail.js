@@ -11,9 +11,9 @@
  * opens it on another browser. Old names (#/library, #/care, #/prepare) still resolve. G then a letter goes to a
  * destination, Alt+1 to 8 to the eight places, and ? lists every shortcut.
  *
- * Width: 212 px with labels, or 60 px with icons only. In Printer, Slicer and Files the sidebar narrows by itself so
- * the place gets the room; a choice made with the fold button or the [ key is remembered and wins over that. A narrow
- * sidebar shows its labels over the page, without moving it, while it is hovered or holds focus. At phone width
+ * Width: 60 px with icons only at rest, in every place. The pointer or the keyboard opens it to 212 px with labels over the
+ * page, without moving anything, and it closes by itself 3 seconds after the pointer or the focus leaves it. The fold
+ * button or the [ key keeps it open (remembered). At phone width
  * (720 px and less) the bottom bar and the More sheet take over.
  *
  * What the sidebar shows from the live fleet (the dv-fleet event): the selected printer, its state and progress in the
@@ -36,12 +36,12 @@
     collapse: 'M15 6l-6 6 6 6',
     chevron: 'M6 9l6 6 6-6'
   };
-  // The places, in the order the sidebar lists them. `narrow` places take the room by narrowing the sidebar.
+  // The places, in the order the sidebar lists them.
   const PLACES = [
     { id: 'overview', label: 'Overview', group: 'main' },
-    { id: 'printer', label: 'Printer', group: 'main', narrow: true },
-    { id: 'slicer', label: 'Slicer', group: 'main', narrow: true },
-    { id: 'files', label: 'Files', group: 'main', narrow: true },
+    { id: 'printer', label: 'Printer', group: 'main' },
+    { id: 'slicer', label: 'Slicer', group: 'main' },
+    { id: 'files', label: 'Files', group: 'main' },
     { id: 'models', label: 'Models', group: 'main' },
     { id: 'ai', label: 'AI', group: 'main' },
     { id: 'maintenance', label: 'Maintenance', group: 'main' },
@@ -78,7 +78,12 @@
   ].map(([id, label, place, tab, part, sep, hide]) => ({ id, label, place, tab, part, sep: !!sep, hide: !!hide, group: placeById[place].group }));
   const byId = Object.fromEntries(DEST.map(d => [d.id, d]));
   const homeOf = place => DEST.find(d => d.place === place);
-  const partsOf = place => DEST.filter(d => d.place === place && !d.hide);
+  // Practice printers (simulated printers and scripted problems) are for trying the dashboard out: the part and every way to it stay out of sight
+  // until Settings › Printers & connection switches them on.
+  const PRACTICE_KEY = 'dejavu1.pref.practice';
+  const practiceOn = () => store.get(PRACTICE_KEY) === 'on';
+  const shownDest = d => !(d.id === 'sandbox' && !practiceOn());
+  const partsOf = place => DEST.filter(d => d.place === place && !d.hide && shownDest(d));
   // Keyboard: G then a letter goes to a destination; Alt+1 to Alt+8 go to the eight places; ? lists them all.
   const GO_KEYS = { o: 'overview', r: 'printer', i: 'readings', p: 'printers', s: 'slice', h: 'layers', f: 'files', q: 'queue',
     w: 'models', a: 'ai', m: 'maintenance', l: 'filament', ',': 'settings', e: 'prefs', t: 'automations', d: 'desk',
@@ -118,7 +123,8 @@
   function parse(hash) {
     const m = /^#\/([a-z-]+)(?:\/([^/?#]+))?/.exec(hash || '');
     if (!m) return null;
-    const d = byId[m[1]] || byId[OLD[m[1]]];
+    let d = byId[m[1]] || byId[OLD[m[1]]];
+    if (d && !shownDest(d)) d = byId.printers;                      // a link to a part that is switched off opens the printers instead
     return d ? { d, printer: m[2] ? decodeURIComponent(m[2]) : null } : null;
   }
 
@@ -140,15 +146,15 @@
   }
   function applyNarrow() {
     const mode = chosenMode();
-    const narrow = mode ? mode === 'narrow' : (!!currentPlace().narrow || !WIDE.matches);
+    const narrow = mode ? mode === 'narrow' : true;          // icons only at rest everywhere; wide only where someone kept it open
     root.classList.toggle('rail-collapsed', narrow);
     root.dataset.rail = narrow ? 'narrow' : 'wide';
     const btn = document.getElementById('rail-collapse');
     if (btn) {
       btn.setAttribute('aria-pressed', String(narrow));
-      btn.setAttribute('aria-label', narrow ? 'Show labels, widen the sidebar' : 'Narrow, icons only');
+      btn.setAttribute('aria-label', narrow ? 'Keep the sidebar open' : 'Let the sidebar close by itself');
       const lbl = btn.querySelector('.rail-label');
-      if (lbl) lbl.textContent = narrow ? 'Show labels' : 'Narrow';
+      if (lbl) lbl.textContent = narrow ? 'Keep open' : 'Auto-close';
     }
     if (narrow) closeMenu(false);
     window.dispatchEvent(new CustomEvent('dv-rail-width', { detail: { narrow } }));
@@ -156,6 +162,32 @@
   function toggleNarrow() {
     store.set(MODE_KEY, root.classList.contains('rail-collapsed') ? 'wide' : 'narrow');
     applyNarrow();
+  }
+
+  /* ---- the sidebar opens over the page and closes by itself ----
+     Icons only at rest. The pointer (or the keyboard) opens it over the page without moving anything; it closes 3 seconds after the pointer
+     or the focus last left it, so crossing to something and back does not make it flap. A sidebar someone chose to keep open is just wide. */
+  const LINGER_MS = 3000, INTENT_MS = 90;
+  let lingerTimer = 0, intentTimer = 0;
+  const setOpen = on => { if (root.classList.contains('rail-open') !== on) root.classList.toggle('rail-open', on); };
+  function wireOpen() {
+    const rail = document.getElementById('rail');
+    if (!rail) return;
+    const stays = () => menuOpen || rail.matches(':hover') || (rail.contains(document.activeElement) && document.activeElement.matches(':focus-visible'));
+    const later = () => {
+      clearTimeout(lingerTimer);
+      lingerTimer = setTimeout(() => { if (stays()) later(); else setOpen(false); }, LINGER_MS);
+    };
+    rail.addEventListener('pointerenter', e => {
+      if (e.pointerType === 'touch') return;                  // a tap goes to the item, it does not open the sidebar
+      clearTimeout(lingerTimer);
+      clearTimeout(intentTimer);
+      intentTimer = setTimeout(() => setOpen(true), INTENT_MS);
+    });
+    rail.addEventListener('pointerleave', () => { clearTimeout(intentTimer); if (root.classList.contains('rail-open')) later(); });
+    rail.addEventListener('focusin', e => { if (e.target.matches && e.target.matches(':focus-visible')) { clearTimeout(lingerTimer); setOpen(true); } });
+    rail.addEventListener('focusout', e => { if (!rail.contains(e.relatedTarget)) later(); });
+    rail.addEventListener('keydown', e => { if (e.key === 'Escape' && root.classList.contains('rail-open')) setOpen(false); });
   }
 
   /* Keep the address and the highlighted item in step with the page. */
@@ -468,6 +500,7 @@
     if (!window.showTab || !window.Sections) return;
     build();
     root.classList.add('has-rail');
+    wireOpen();
     setMore(store.get(MORE_KEY) !== '0', false);
     window.addEventListener('dv-fleet', e => { fleet = Array.isArray(e.detail) ? e.detail : []; paintStatus(false); });
     window.addEventListener('dv-theme', () => paintStatus(true));
@@ -492,7 +525,13 @@
   }
 
   window.Rail = {
-    destinations: DEST.map(d => ({ ...d })), places: PLACES.map(p => ({ ...p })), parse, current: () => current().id,
+    get destinations() { return DEST.filter(shownDest).map(d => ({ ...d })); }, places: PLACES.map(p => ({ ...p })), parse, current: () => current().id,
+    practice: practiceOn,
+    setPractice: on => {
+      store.set(PRACTICE_KEY, on ? 'on' : 'off');
+      if (!on && current().id === 'sandbox') location.hash = routeFor(byId.printers);
+      window.dispatchEvent(new CustomEvent('dv-practice', { detail: { on: !!on } }));
+    },
     place: () => current().place, partsOf: id => partsOf(id).map(d => ({ ...d })),
     destFor: tab => (DEST.find(d => d.tab === tab) ? homeOf(DEST.find(d => d.tab === tab).place) : byId.overview).id,
     label: id => (byId[id] || byId.overview).label, placeLabel: id => (placeById[id] || placeById.overview).label,

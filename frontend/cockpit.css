@@ -1,0 +1,280 @@
+/* cockpit.css: the Printer screen (cockpit.js), Overview (overview.js) and the sheets that open from their tiles (deck.js).
+ *
+ * Direction: the printer is the middle of the screen, drawn on paper with nothing around it; small tiles either side say how things stand in a
+ * few figures; a press opens a sheet over the screen. Nothing scrolls on the screen itself. Tiles are content, so they are flat paper with a
+ * hairline (never glass on glass); a sheet is the one floating thing, so it gets the strongest shadow (tier 3). Every colour is a token the
+ * dark look already redefines, every figure is mono with tabular numbers, and every motion is a transform or an opacity.
+ * Loaded after shell-panes.css and before looks.css. */
+
+/* ---- the screen ----------------------------------------------------------------------------------------------------------------- */
+html.has-shell #tab-control { display: flex; flex-direction: column; }
+html.has-shell #tab-control:not([hidden]) { overflow: hidden; }
+html.has-shell #tab-control.sec-one:not(.is-control) { overflow: auto; }
+html.has-shell .cp {
+  position: relative; flex: 1; min-height: 0; display: grid;
+  grid-template-columns: var(--left, 250px) 1px minmax(0, 1fr) 1px var(--right, 290px); grid-template-rows: minmax(0, 1fr) auto;
+}
+html.has-shell .cp > .cp-left { grid-column: 1; grid-row: 1 / 3; }
+html.has-shell .cp > .v1 { grid-column: 2; grid-row: 1 / 3; }
+html.has-shell .cp > .cp-stage { grid-column: 3; grid-row: 1; }
+html.has-shell .cp > .cp-dock { grid-column: 3; grid-row: 2; }
+html.has-shell .cp > .v2 { grid-column: 4; grid-row: 1 / 3; }
+html.has-shell .cp > .cp-right { grid-column: 5; grid-row: 1 / 3; }
+html.has-shell .cp-head-spent { display: none; }
+/* A rail dragged (or collapsed with Enter) to nothing leaves nothing behind: no padding, no tile edges. */
+html.has-shell .cp:has(> .v1[data-collapsed="true"]) > .cp-left, html.has-shell .cp:has(> .v2[data-collapsed="true"]) > .cp-right { padding: 0; visibility: hidden; }
+/* Cards that are not on show wait here: laid out at a real size, never seen. */
+html.has-shell .cp-hold { position: absolute; left: -10000px; top: 0; width: 640px; visibility: hidden; pointer-events: none; }
+
+/* ---- the rails and their tiles -------------------------------------------------------------------------------------------------- */
+html.has-shell .cp-rail { display: flex; flex-direction: column; gap: 10px; padding: 12px; min-width: 0; min-height: 0; overflow: hidden; contain: layout paint style; }
+html.has-shell .cp-right { padding-bottom: 68px; }                      /* the corner belongs to the floating dock */
+html.has-shell .tile {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin: 0; padding: 12px 14px 13px; text-align: left; color: var(--text); font: inherit;
+  border: 1px solid var(--hair); border-radius: 14px; background: var(--surface-2); cursor: pointer; flex: none;
+  transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+html.has-shell .tile:hover { background: var(--surface-solid); border-color: var(--hair-strong); }
+html.has-shell .tile:active { transform: scale(0.992); }
+html.has-shell .tile:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+html.has-shell .tile-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 600 10.5px var(--font-mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
+html.has-shell .tile-h::after { content: ""; width: 6px; height: 6px; flex: none; border-right: 1.6px solid currentColor; border-top: 1.6px solid currentColor; transform: rotate(45deg); opacity: 0.55; margin-right: 2px; }
+html.has-shell .tile-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+html.has-shell .tile-empty { font: 12.5px var(--font-sans); color: var(--text-faint); padding: 4px 0; }
+/* temperatures */
+html.has-shell .tt-row { display: grid; grid-template-columns: 10px 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 25px; padding: 0 6px; margin: 0 -6px; border-radius: 7px; font: 12px var(--font-mono); font-variant-numeric: tabular-nums; }
+html.has-shell .tt-row.is-active { background: var(--accent-soft); }
+html.has-shell .tt-row.is-bad b { color: var(--bad-text, var(--bad)); }
+html.has-shell .tt-row b { font-weight: 650; }
+html.has-shell .tt-row em { font-style: normal; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+html.has-shell .tt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hair-strong); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
+html.has-shell .tt-v { text-align: right; white-space: nowrap; }
+html.has-shell .tt-v strong { font-weight: 600; font-size: 13px; color: var(--text); }
+html.has-shell .tt-v small { color: var(--text-faint); font-size: 11.5px; }
+html.has-shell .tt-env { grid-template-columns: minmax(0, 1fr) auto; border-top: 1px solid var(--hair); border-radius: 0; margin-top: 4px; padding-top: 4px; min-height: 28px; }
+html.has-shell .tt-env + .tt-env { border-top: 0; margin-top: 0; padding-top: 0; }
+/* tune */
+html.has-shell .tile-tune .tile-body { flex-direction: row; gap: 0; }
+html.has-shell .tn { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+html.has-shell .tn i { font: normal 10.5px var(--font-sans); color: var(--text-faint); white-space: nowrap; }
+html.has-shell .tn b { font: 600 17px var(--font-mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* this print */
+html.has-shell .jb-file { font: 600 13px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell .jb-pct { display: flex; align-items: baseline; gap: 2px; margin-top: 2px; }
+html.has-shell .jb-pct b { font: 600 38px/1 var(--font-display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+html.has-shell .jb-pct small { font: 500 16px var(--font-display); color: var(--text-dim); }
+html.has-shell .jb-pct em { margin-left: 8px; font: normal 600 10.5px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); }
+html.has-shell .jb-bar { display: block; height: 6px; margin: 6px 0 4px; border-radius: 3px; background: var(--well); overflow: hidden; }
+html.has-shell .jb-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s ease; }
+html.has-shell .jb-line { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
+html.has-shell .jb-dim { color: var(--text-faint); }
+html.has-shell .jb-why { font: 11.5px/1.35 var(--font-sans); color: var(--text-faint); margin-top: 4px; }
+html.has-shell .jb-state { font: 600 22px/1.1 var(--font-display); letter-spacing: -0.02em; }
+html.has-shell .jb-state.is-ok { color: var(--ok-text, var(--ok)); }
+html.has-shell .jb-state.is-bad { color: var(--bad-text, var(--bad)); }
+/* the camera tile */
+html.has-shell .tile-cam { padding: 0; gap: 0; border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; background: #0d1117; cursor: default; flex: none; }
+html.has-shell .tile-cam-open { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0; padding: 10px 14px; border: 0; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
+html.has-shell .tile-cam-open:hover { background: var(--surface-solid); }
+html.has-shell .tile-cam-open .tile-h::after { display: none; }
+html.has-shell .tile-more { font: 550 11.5px var(--font-sans); color: var(--accent-text); letter-spacing: 0; text-transform: none; }
+html.has-shell .tile-cam-slot { position: relative; aspect-ratio: 16 / 9; cursor: zoom-in; }
+html.has-shell .tile-cam-slot > .card, html.has-shell .cp-side #pp-camera-card, html.has-shell .cp-main #pp-camera-card { border: 0; padding: 0; margin: 0; background: transparent; box-shadow: none; height: 100%; }
+html.has-shell .tile-cam-slot > .card > .card-head, html.has-shell .cp-side #pp-camera-card > .card-head { display: none; }
+html.has-shell .tile-cam-slot .pcam, html.has-shell .cp-side #pp-camera-card .pcam { height: 100%; margin: 0; border-radius: 0; }
+html.has-shell .tile-cam-slot .pcam-frame, html.has-shell .cp-side #pp-camera-card .pcam-frame { height: 100%; aspect-ratio: auto; border-radius: 0; }
+html.has-shell .tile-cam-slot .pcam-note { display: none; }
+
+/* ---- the stage ------------------------------------------------------------------------------------------------------------------ */
+html.has-shell .cp-stage > #twin-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; position: relative; }
+html.has-shell .cp-stage > #twin-card #twin-host { flex: 1; min-height: 0; margin: 0; cursor: zoom-in; }
+/* The picture fills whatever it sits in (the stage, a sheet's side, the twin's own sheet), not the fixed height the card had. */
+html.has-shell :is(.cp-stage, .cp-side, .cp-main) > #twin-card #twin-host { display: flex; flex-direction: column; }
+html.has-shell :is(.cp-stage, .cp-side, .cp-main) > #twin-card :is(.twin-model, .wf) { flex: 1 1 0; height: auto; min-height: 0; margin: 0; }
+html.has-shell :is(.cp-stage, .cp-side) > #twin-card .twin-model { border-radius: 0; }
+html.has-shell :is(.cp-stage, .cp-side) > #twin-card .wf-picks { display: none; }
+html.has-shell .cp-stage > #twin-card :is(.twin-head, .twin-tools, .twin-chips, .twin-readout, .twin-extras, .twin-note, .twin-other, #twin-sync) { display: none; }
+html.has-shell .cp-stage-top { position: absolute; z-index: 4; inset: 12px 14px auto 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
+html.has-shell .cp-stage-top > * { pointer-events: auto; }
+html.has-shell .cp-who { display: flex; align-items: center; min-width: 0; padding: 8px 14px 8px 12px; border: 1px solid var(--hair); border-radius: 12px; background: color-mix(in oklch, var(--surface-solid) 86%, transparent); box-shadow: var(--shadow-anchored); }
+html.has-shell .cp-who .pp-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+html.has-shell .cp-who .pp-name { margin: 0; font: 640 14px/1.2 var(--font-display); letter-spacing: -0.01em; text-transform: none; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell .cp-who .pp-state { font: 12px var(--font-mono); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell .cp-halt { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: min(420px, 60%); }
+html.has-shell .cp-halt .halt { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 6px 18px rgba(200, 16, 46, 0.32); }
+html.has-shell .cp-halted { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 9px 12px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow-float); font-size: 12.5px; color: var(--text); }
+html.has-shell .cp-halted[hidden] { display: none; }
+html.has-shell .cockpit.is-halted .halt { display: none; }
+html.has-shell .cp-twin-open { position: absolute; z-index: 3; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 14px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12px var(--font-sans); cursor: pointer; opacity: 0.9; transition: opacity 0.2s ease; }
+html.has-shell .cp-twin-open:hover, html.has-shell .cp-twin-open:focus-visible { opacity: 1; color: var(--text); }
+html.has-shell .cockpit.twin-hinted .cp-twin-open:not(:focus-visible) { opacity: 0; pointer-events: none; }
+html.has-shell .cockpit.twin-hinted .cp-stage:hover .cp-twin-open { opacity: 0.9; pointer-events: auto; }
+html.has-shell .cockpit.has-sheet .cp-twin-open { display: none; }
+
+/* ---- the dock under the twin ---------------------------------------------------------------------------------------------------- */
+html.has-shell .cp-dock { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; padding: 8px 10px 26px; }   /* the foot keeps clear of the floating dock */
+html.has-shell .dk-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px 0 10px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12.5px var(--font-sans); cursor: pointer; white-space: nowrap; transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease; }
+html.has-shell .dk-btn svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+html.has-shell .dk-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+html.has-shell .dk-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+
+/* ---- the sheet ------------------------------------------------------------------------------------------------------------------ */
+html.has-shell .cp-scrim { position: absolute; z-index: 20; inset: 0; background: oklch(18% 0.02 265 / 0.4); }
+html.has-shell .cp-scrim[hidden], html.has-shell .cp-sheet[hidden] { display: none; }
+html.has-shell .cp-sheet {
+  position: absolute; z-index: 21; inset: 12px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; border-radius: 18px;
+  background: var(--surface-solid); border: 1px solid var(--hair-strong); box-shadow: var(--shadow-float); will-change: clip-path, opacity;
+}
+html.has-shell .cp-sheet-head { display: flex; align-items: center; gap: 10px; flex: none; padding: 10px 12px 10px 18px; border-bottom: 1px solid var(--hair); }
+html.has-shell .cp-sheet-ico { display: grid; place-items: center; width: 24px; height: 24px; color: var(--accent-text); }
+html.has-shell .cp-sheet-ico svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell .cp-sheet-head h2 { margin: 0; font: 640 16px var(--font-display); letter-spacing: -0.01em; text-transform: none; color: var(--text); }
+html.has-shell .cp-x { margin-left: auto; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--hair-strong); border-radius: 50%; background: var(--surface-2); color: var(--text); cursor: pointer; }
+html.has-shell .cp-x svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+html.has-shell .cp-x:hover { background: var(--accent-soft); border-color: var(--accent); }
+html.has-shell .cp-sheet-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+html.has-shell .cp-sheet.has-side .cp-sheet-body { grid-template-columns: minmax(0, 1.1fr) minmax(280px, 1fr); }
+html.has-shell .cp-main { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 4px 10px 56px; }
+html.has-shell .cp-main > .card { border: 0; background: transparent; box-shadow: none; }
+html.has-shell .cp-main > .card:not(#ctrl-plate) > .card-head h2, html.has-shell .cp-main > .card:not(#ctrl-plate) > .card-head .card-sub { display: none; }
+html.has-shell .cp-main > .card > .card-head { min-height: 0; }
+html.has-shell .cp-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; padding: 12px 12px 56px; overflow: hidden; border-left: 1px solid var(--hair); background: var(--well); }
+html.has-shell .cp-side > #twin-card { flex: 1.25 1 0; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; background: var(--stage-a); }
+html.has-shell .cp-side > #twin-card :is(.twin-head, .twin-tools, .twin-chips, .twin-readout, .twin-extras, .twin-note, .twin-other, #twin-sync) { display: none; }
+html.has-shell .cp-side > #twin-card #twin-host { flex: 1; min-height: 0; margin: 0; }
+html.has-shell .cp-side > #pp-camera-card { flex: 1 1 0; min-height: 0; border-radius: 12px; overflow: hidden; background: #0d1117; border: 1px solid var(--hair); aspect-ratio: auto; }
+html.has-shell .cp-side > #pp-camera-card .pcam, html.has-shell .cp-side > #pp-camera-card .pcam-frame { min-height: 0; }
+/* the twin as the sheet's own content: all its controls, the whole height */
+html.has-shell .cp-main > #twin-card { height: 100%; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; }
+html.has-shell .cp-main > #twin-card #twin-host { flex: 1; min-height: 320px; margin: 0; cursor: grab; }
+html.has-shell .cp-sheet[data-name="twin"] .cp-main { padding: 0 14px 56px; overflow: hidden; display: flex; flex-direction: column; }
+html.has-shell .cp-sheet[data-name="twin"] .cp-main > #twin-card { flex: 1 1 auto; min-height: 0; height: auto; }
+html.has-shell .cp-main > #twin-card :is(.twin-hint, .twin-readout, .twin-extras) { display: none; }   /* the sheet is for the view and its controls: the figures are on the tiles */
+html.has-shell .cp-main > #twin-card #twin-host { min-height: 0; }
+html.has-shell .cp-main > #twin-card .twin-tools { gap: 6px; margin: 0; padding: 8px 4px 6px; }
+html.has-shell .cp-main > #twin-card > .twin-head h2 { display: none; }
+html.has-shell .cp-main > #twin-card .twin-note { display: none; }
+html.has-shell .cp-sheet[data-name="camera"] .cp-main { padding: 0; overflow: hidden; }
+html.has-shell .cp-sheet[data-name="camera"] .cp-main > #pp-camera-card { height: 100%; background: #0d1117; }
+html.has-shell .cp-sheet[data-name="camera"] #pp-camera-card > .card-head { display: none; }
+html.has-shell .cp-sheet[data-name="camera"] #pp-camera-card .pcam, html.has-shell .cp-sheet[data-name="camera"] #pp-camera-card .pcam-frame { height: 100%; border-radius: 0; aspect-ratio: auto; }
+/* this print's sheet */
+html.has-shell .cp-job { padding: 20px 18px 14px; }
+html.has-shell .cp-job .jb-file { font-size: 15px; }
+html.has-shell .cp-job .jb-pct b { font-size: 56px; }
+html.has-shell .cp-job .jb-bar { height: 9px; margin: 10px 0 8px; }
+html.has-shell .cp-job .jb-line { font-size: 14px; }
+html.has-shell .cp-job .jb-why { font-size: 12.5px; }
+html.has-shell .cp-job-body { display: flex; flex-direction: column; gap: 2px; }
+html.has-shell .cp-job-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+html.has-shell .cp-job-actions .btn { min-height: 38px; }
+html.has-shell .cp-job-actions .btn[hidden] { display: none; }
+html.has-shell .cp-job-actions #pp-estop { display: none; }
+
+/* the heater card in its sheet: readings and boxes together, the chart under them */
+html.has-shell .cp-main #pp-heaters .divider-row.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+html.has-shell .cp-main #pp-heaters:not(.is-setting) :is(#pp-presets, .temp-set, #pp-bed-form) { display: revert; }
+
+/* ---- Overview ------------------------------------------------------------------------------------------------------------------- */
+html.has-shell #tab-overview { display: flex; flex-direction: column; overflow: hidden; }
+html.has-shell .ovd { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 330px); }
+html.has-shell .ovd-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; padding: 18px 22px 16px; overflow: hidden; }
+html.has-shell .ovd-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; padding: 18px 20px 68px 6px; overflow: hidden; }
+html.has-shell .ovd-main > #ov-now { flex: none; border: 1px solid var(--hair); border-radius: 16px; background: var(--surface-2); padding: 16px 20px 18px; overflow: hidden; }
+html.has-shell .ovd-main > #ov-now > .card-head { min-height: 0; margin-bottom: 4px; }
+html.has-shell .ovd-main > #ov-now .ov-word { font: 640 34px/1.05 var(--font-display); letter-spacing: -0.03em; }
+html.has-shell .ovd-main > #ov-now .ov-file { font: 600 15px var(--font-sans); }
+html.has-shell .ovd-main > #ov-now .ov-facts { font: 13px var(--font-mono); }
+html.has-shell .ov-why { margin: 2px 0 0; font: 11.5px var(--font-sans); color: var(--text-faint); }
+html.has-shell .ovd-main > #ov-camera { flex: 1 1 0; min-height: 140px; display: flex; flex-direction: column; padding: 0; border: 1px solid var(--hair); border-radius: 16px; overflow: hidden; background: #0d1117; }
+html.has-shell .ovd-main > #ov-camera > .card-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #151b24; color: #d6dde8; min-height: 0; margin: 0; }
+html.has-shell .ovd-main > #ov-camera > .card-head h2 { color: #aab4c3; }
+html.has-shell .ovd-main > #ov-camera > .card-head .card-sub { display: none; }
+html.has-shell .ovd-main > #ov-camera .pcam { flex: 1; min-height: 0; margin: 0; border-radius: 0; }
+html.has-shell .ovd-main > #ov-camera .pcam-frame { height: 100%; aspect-ratio: auto; border-radius: 0; }
+html.has-shell .ovd-main > #ov-camera .pcam-note { display: none; }
+html.has-shell .ovd-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
+html.has-shell .ovd-chip { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px 0 11px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12.5px var(--font-sans); cursor: pointer; }
+html.has-shell .ovd-chip svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell .ovd-chip:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+html.has-shell .ovd-chip:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+html.has-shell .ovd-side > #attention { flex: 0 1 auto; min-height: 0; max-height: 58%; border: 1px solid var(--hair); border-radius: 16px; background: var(--surface-2); padding: 14px 16px; overflow: hidden; display: flex; flex-direction: column; }
+html.has-shell .ovd-side > #attention > .card-head { flex: none; min-height: 0; height: auto; align-items: flex-start; gap: 8px; margin: 0 0 6px; }
+html.has-shell .ovd-side > #attention > .card-head > div { min-width: 0; flex: 1; }
+html.has-shell .ovd-side > #attention #attention-sub { margin: 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell .ovd-side > #attention .att-count { display: none; }
+html.has-shell .ovd-side > #attention .att-list > li:nth-child(n+4) { display: none; }
+html.has-shell .att-more { flex: none; align-self: flex-start; padding: 5px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--accent-text); font: 600 12px var(--font-sans); cursor: pointer; }
+html.has-shell .att-more[hidden] { display: none; }
+html.has-shell .ovd-side > #ov-printers { flex: 1 1 0; min-height: 0; border: 0; padding: 0; background: none; overflow: hidden; display: flex; flex-direction: column; }
+html.has-shell .ovd-side > #ov-printers > .card-head { flex: none; min-height: 0; padding: 0 2px 6px; margin: 0; }
+html.has-shell .ovd-side > #ov-printers .ov-plist { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; min-height: 0; overflow: hidden; }
+html.has-shell .ovd-side > #ov-printers .ov-plist > li:nth-child(n+6) { display: none; }
+html.has-shell .ovd-side > #ov-printers .ov-prow { width: 100%; border: 1px solid var(--hair); border-radius: 12px; background: var(--surface-2); }
+html.has-shell .ovd-side > #ov-printers .ov-prow:hover { background: var(--surface-solid); border-color: var(--hair-strong); }
+html.has-shell .cp-sheet #ov-printers .ov-plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; list-style: none; margin: 0; padding: 0; }
+html.has-shell .cp-sheet #attention { border: 0; background: none; }
+@media (max-height: 640px) { html.has-shell .ovd-chips { display: none; } html.has-shell .ovd-main > #ov-camera { display: none; } }
+
+/* ---- smaller windows ----------------------------------------------------------------------------------------------------------- */
+@media (max-width: 1080px) {
+  html.has-shell .cp { grid-template-columns: var(--left, 216px) 1px minmax(0, 1fr) 1px var(--right, 240px); }
+  html.has-shell .ovd { grid-template-columns: minmax(0, 1fr) 260px; }
+}
+@media (max-width: 720px) {
+  html.has-shell #tab-control, html.has-shell #tab-overview { overflow: visible !important; }
+  html.has-shell .cp { display: flex; flex-direction: column; gap: 0; }
+  html.has-shell .cp > .split { display: none; }
+  html.has-shell .cp > .cp-stage { order: 1; min-height: 56vw; flex: none; }
+  html.has-shell .cp > .cp-dock { order: 2; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  html.has-shell .cp > .cp-left { order: 3; flex-direction: row; flex-wrap: wrap; overflow: visible; contain: none; }
+  html.has-shell .cp > .cp-right { order: 4; padding-bottom: 12px; overflow: visible; contain: none; }
+  html.has-shell .cp-left > .tile { flex: 1 1 100%; }
+  html.has-shell .cp-sheet { position: fixed; inset: 8px 8px calc(var(--dock-h, 150px) + 12px); z-index: 90; }
+  html.has-shell .cp-scrim { position: fixed; z-index: 89; }
+  html.has-shell .cp-sheet.has-side .cp-sheet-body { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; overflow: auto; }
+  html.has-shell .cp-side { border-left: 0; border-top: 1px solid var(--hair); min-height: 240px; }
+  html.has-shell .ovd { display: flex; flex-direction: column; }
+  html.has-shell .ovd-main, html.has-shell .ovd-side { padding: 12px; overflow: visible; }
+  html.has-shell .ovd-main > #ov-camera { display: flex; min-height: 220px; }
+}
+
+/* ---- the three accessibility settings ------------------------------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  html.has-shell .tile, html.has-shell .jb-bar i, html.has-shell .dk-btn, html.has-shell .cp-twin-open { transition: none; }
+}
+@media (prefers-contrast: more) {
+  html.has-shell .tile, html.has-shell .cp-who, html.has-shell .dk-btn, html.has-shell .cp-sheet, html.has-shell .ovd-chip { border: 1.5px solid var(--text); }
+  html.has-shell .tt-row.is-active { outline: 1.5px solid var(--text); }
+}
+html.is-resizing .cp-rail, html.is-resizing .cp-stage { pointer-events: none; }
+
+/* ---- the opening scene (intro.js) ----------------------------------------------------------------------------------------------- */
+html.intro-pending body::before { content: ""; position: fixed; inset: 0; z-index: 190; background: radial-gradient(80% 80% at 50% 45%, var(--stage-a, #f5f8fb) 45%, var(--stage-b, #e4eaf1)); }
+#intro { position: fixed; inset: 0; z-index: 200; overflow: hidden; opacity: 0; transition: opacity 0.45s ease; }
+#intro.is-in { opacity: 1; }
+#intro.is-leaving { transition: none; }
+#intro .intro-bg { position: absolute; inset: 0; background:
+  repeating-linear-gradient(0deg, var(--layer-ink, rgba(20, 30, 50, 0.04)) 0 1px, transparent 1px 5px),
+  radial-gradient(80% 80% at 50% 45%, var(--stage-a, #f5f8fb) 45%, var(--stage-b, #e4eaf1)); }
+#intro .intro-stage { position: absolute; inset: 0; display: flex; flex-direction: column; }
+#intro .intro-stage > #twin-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; box-shadow: none; transform-origin: 50% 50%; position: relative; }
+#intro .intro-stage > #twin-card #twin-host { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
+#intro .intro-stage > #twin-card :is(.twin-model, .wf) { flex: 1 1 0; height: auto; min-height: 0; margin: 0; border-radius: 0; }
+#intro .intro-stage > #twin-card :is(.twin-head, .twin-tools, .twin-chips, .twin-readout, .twin-extras, .twin-note, .twin-other, #twin-sync, .wf-picks) { display: none; }
+#intro .intro-foot { position: absolute; z-index: 2; left: 28px; right: 28px; bottom: 22px; display: flex; align-items: baseline; gap: 14px; color: var(--text-dim, #5a6575); }
+#intro .intro-brand { font: 640 15px var(--font-display); letter-spacing: -0.01em; color: var(--text, #1b2330); }
+#intro .intro-name { font: 12px var(--font-mono); color: var(--text-faint, #7a8596); }
+#intro .intro-skip { margin-left: auto; padding: 6px 14px; border: 1px solid var(--hair-strong, rgba(0, 0, 0, 0.2)); border-radius: 999px; background: var(--surface-solid, #fff); color: var(--text-dim, #5a6575); font: 550 12px var(--font-sans); cursor: pointer; }
+#intro .intro-skip:hover, #intro .intro-skip:focus-visible { color: var(--text, #1b2330); }
+html.intro-reveal .rail-card, html.intro-reveal .topbar, html.intro-reveal .cp-left > *, html.intro-reveal .cp-right > *, html.intro-reveal .cp-dock,
+html.intro-reveal .cp-stage-top, html.intro-reveal .ovd-main > *, html.intro-reveal .ovd-side > * { animation: intro-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+html.intro-reveal .topbar { animation-delay: 0.12s; }
+html.intro-reveal .cp-stage-top { animation-delay: 0.2s; }
+html.intro-reveal .cp-left > :nth-child(1), html.intro-reveal .ovd-main > :nth-child(1) { animation-delay: 0.26s; }
+html.intro-reveal .cp-left > :nth-child(2), html.intro-reveal .ovd-main > :nth-child(2) { animation-delay: 0.34s; }
+html.intro-reveal .cp-right > :nth-child(1), html.intro-reveal .ovd-side > :nth-child(1) { animation-delay: 0.3s; }
+html.intro-reveal .cp-right > :nth-child(2), html.intro-reveal .ovd-side > :nth-child(2) { animation-delay: 0.38s; }
+html.intro-reveal .cp-dock { animation-delay: 0.46s; }
+@keyframes intro-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #intro, html.intro-reveal * { transition: none !important; animation: none !important; } }

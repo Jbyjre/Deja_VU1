@@ -27,8 +27,10 @@
     layout.innerHTML = `<div class="card-head"><div><h2 id="layout-title">Words and layout</h2></div></div>
       <div class="set-row"><div class="set-t"><b>Your experience</b><span class="field-hint keep">Hints for your first few visits, or none.</span></div>
         ${seg('Your experience', 'exp', [['new', 'New to 3D printing'], ['know', 'I know my way around']], exp)}</div>
-      <div class="set-row"><div class="set-t"><b>Sidebar</b><span class="field-hint keep">Automatic narrows it in Printer, Slicer and Files.</span></div>
-        ${seg('Sidebar width', 'rail', [['auto', 'Automatic'], ['wide', 'Wide'], ['narrow', 'Narrow']], window.Rail ? Rail.mode() : 'auto')}</div>
+      <div class="set-row"><div class="set-t"><b>Sidebar</b><span class="field-hint keep">Icons only, opening over the page when you point at it and closing 3 seconds after you move away. Or keep it open.</span></div>
+        ${seg('Sidebar', 'rail', [['auto', 'Opens on hover'], ['wide', 'Always open']], window.Rail && Rail.mode() === 'wide' ? 'wide' : 'auto')}</div>
+      <div class="set-row"><div class="set-t"><b>Opening scene</b><span class="field-hint keep">The 3D printer fills the screen for three seconds when Deja Vu1 starts, then settles into place.</span></div>
+        ${seg('Opening scene', 'intro', [['on', 'Play it'], ['off', 'Skip it']], window.DVIntro && !DVIntro.on() ? 'off' : 'on')}</div>
       <div class="set-row"><div class="set-t"><b>Panes</b><span class="field-hint keep">The sizes you dragged are kept in this browser.</span></div>
         <div class="set-reset" id="layout-reset-box"><button type="button" class="btn" id="layout-reset">Reset layout</button></div></div>`;
     const halt = document.createElement('section');
@@ -39,7 +41,15 @@
         <label class="switch" for="halt-ask"><span class="switch-label">Ask before Halt</span>
           <input type="checkbox" id="halt-ask"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
       <p class="field-hint keep">Halt stops the selected printer with one press, from every place (shortcut H H). Turn this on to press twice.</p>`;
-    return [layout, halt];
+    const practice = document.createElement('section');
+    practice.className = 'card liquid-glass';
+    practice.id = 'practice-card';
+    practice.setAttribute('aria-labelledby', 'practice-title');
+    practice.innerHTML = `<div class="card-head"><div><h2 id="practice-title">Practice printers</h2></div>
+        <label class="switch" for="practice-show"><span class="switch-label">Show Practice printers</span>
+          <input type="checkbox" id="practice-show"><span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span></label></div>
+      <p class="field-hint keep">Simulated printers and scripted problems, for trying Deja Vu1 out without touching a real printer. They add a part to the Printer screen while this is on.</p>`;
+    return [layout, practice, halt];
   }
 
   function build() {
@@ -90,6 +100,7 @@
         seg.parentElement.querySelectorAll('button').forEach(b => { const on = b === seg; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
         if (name === 'exp' && window.DVTheme) DVTheme.setExperience(v);
         if (name === 'rail' && window.Rail) Rail.setMode(v);
+        if (name === 'intro' && window.DVIntro) DVIntro.set(v === 'on');
         return;
       }
       if (e.target.closest('#layout-reset')) confirmReset();
@@ -97,6 +108,9 @@
     const ask = $('halt-ask');
     ask.checked = store.get(ASK_KEY) === 'on';
     ask.addEventListener('change', () => store.set(ASK_KEY, ask.checked ? 'on' : 'off'));
+    const practice = $('practice-show');
+    practice.checked = !!window.Rail && Rail.practice();
+    practice.addEventListener('change', () => { if (window.Rail) Rail.setPractice(practice.checked); });
   }
 
   /* Reset layout asks in place, with the two choices written out. */

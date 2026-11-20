@@ -33,7 +33,7 @@ window.Finder = (() => {
     ['Digital twin', 'Printer', '3d model printer view drawing engineering realistic twin case off see-through print benchy colours', 'Digital twin'],
     ['What your history says', 'Printer › History', 'insights history success rate failures statistics trends stats filament per week', 'What your history says'],
     ['Quick control', 'Overview', 'pause resume cancel stop print buttons', 'Quick control'],
-    ['Print health', 'Printer › History', 'first layer quality health score', 'Print health'],
+    ['Ready to print', 'Printer › History', 'print health score first layer quality readiness ready to print', 'Ready to print'],
     ['Telemetry · live readings', 'Printer › Readings', 'telemetry live readings numbers temperatures nozzle bed position layer progress swaps sensors', 'Telemetry'],
     ['Chamber climate', 'Printer › Readings', 'chamber temperature humidity enclosure air', 'Chamber climate'],
     ['Print cost', 'Printer › History', 'price money electricity cost per print spend', 'Print cost'],
@@ -53,7 +53,7 @@ window.Finder = (() => {
     ['Worth printing?', 'Printer › Farm', 'profit price sell margin money per hour worth cost per piece', 'Worth printing?'],
     ['File library', 'Files', 'library files upload gcode stl 3mf obj models library', 'File library'],
     ['Print queue', 'Files › Queue', 'jobs queue next schedule auto advance waiting jobs', 'Print queue'],
-    ['Bambu / MakerWorld to U1 converter', 'Files', 'library convert converter bambu makerworld elegoo x1c p1s a1 h2d 3mf project import printables', '#convert-card'],
+    ['Bambu Studio profiles to Snapmaker U1 profiles', 'Files', 'snapmaker u1 profiles library convert converter bambu makerworld elegoo x1c p1s a1 h2d 3mf project import printables other slicer profiles', '#convert-card'],
     ['Get ready to slice', 'Slicer › Slice', 'prepare set up slicing setup find my slicer orca orcaslicer snapmaker orca install connect program path', 'Get ready to slice'],
     ['Slicer and profiles', 'Slicer › Slice', 'prepare slice slicer orca orcaslicer engine profile process preset quality speed infill supports', 'Slicer'],
     ['Slice a model', 'Slicer › Slice', 'prepare slice now gcode from model stl', 'Slice a model'],
@@ -97,6 +97,7 @@ window.Finder = (() => {
     ['Restart the printer\'s firmware', 'Do', 'restart firmware klipper recover error after halt', () => window.Strip && Strip.restart()],
     ['Narrow or widen the sidebar', 'Do', 'sidebar narrow wide fold collapse icons labels', () => window.Rail && Rail.toggleNarrow(), '['],
     ['Switch between light and dark', 'Do', 'dark light theme mode night day appearance', () => window.DVTheme && DVTheme.set(DVTheme.current() === 'dark' ? 'light' : 'dark')],
+    ['Play the opening scene', 'Do', 'intro opening scene animation start twin printer replay welcome', () => { if (window.DVIntro) DVIntro.replay(); }],
     ['Reset layout', 'Do', 'reset layout panes sizes dividers sidebar defaults', () => { if (window.Panes) Panes.reset(); if (window.Rail) Rail.setMode('auto'); toast('Layout reset: every pane and the sidebar are back to their defaults', 'ok'); }],
     ['Show me this screen', 'Do', 'tour tips guide this screen walk through help', () => { const t = document.body.dataset.tab; if (window.Guide && Guide.has(t)) Guide.screen(t); else toast('This screen has no extra tips', 'info'); }],
     ['Hints: I know my way around', 'Do', 'experience hints words text less explainers expert', () => window.DVTheme && DVTheme.setExperience('know')],
@@ -113,7 +114,7 @@ window.Finder = (() => {
     ['Install the app on this phone', 'Do', 'install app phone home screen android chrome iphone pwa shortcut', () => window.Phone && Phone.install()],
     ['Find my printer\'s camera', 'Do', 'camera find webcam stream mjpeg extended firmware', async () => { go('#camera-card'); document.getElementById('camera-find')?.scrollIntoView({ block: 'center' }); }],
   ];
-  const SUGGESTED = ['Needs you', 'Bambu / MakerWorld to U1 converter', 'Layer stack · mixed layer heights', 'Add a printer', 'Open the camera'];
+  const SUGGESTED = ['Needs you', 'Bambu Studio profiles to Snapmaker U1 profiles', 'Layer stack · mixed layer heights', 'Add a printer', 'Open the camera'];
 
   let items = [], active = -1, dynamic = { printers: [], files: [] }, loadedAt = 0;
 
@@ -161,11 +162,13 @@ window.Finder = (() => {
   }
 
   function entries() {
-    const places = PLACES.map(([title, path, keys, target]) => ({ group: 'Go to', title, path, keys, run: () => go(target) }));
+    const places = PLACES.filter(row => row[0] !== 'Farm sandbox' || (window.Rail && Rail.practice && Rail.practice()))
+      .map(([title, path, keys, target]) => ({ group: 'Go to', title, path, keys, run: () => go(target) }));
     // Every place and every part of a place, with the keys that reach it (Rail is the one list of them).
     const eight = window.Rail ? Rail.places.filter(p => p.group !== 'more') : [];
-    const dests = window.Rail ? Rail.destinations.filter(d => !d.hide).map(d => {
-      const home = Rail.destinations.find(x => x.place === d.place) === d;
+    const allDests = window.Rail ? Rail.destinations : [];             // one list: its entries are compared with each other below
+    const dests = window.Rail ? allDests.filter(d => !d.hide).map(d => {
+      const home = allDests.find(x => x.place === d.place) === d;
       const letter = Rail.keyFor(d.id), at = eight.findIndex(p => p.id === d.place);
       const hint = [letter ? `G ${letter.toUpperCase()}` : '', home && at >= 0 ? `Alt ${at + 1}` : ''].filter(Boolean).join('  ');
       return { group: 'Go to', title: home ? Rail.placeLabel(d.place) : `${Rail.placeLabel(d.place)} › ${d.label}`, path: 'Place', hint,

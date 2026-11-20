@@ -601,7 +601,7 @@ const SECTIONS = {
     ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
       '#pp-outputs', '#pp-mesh', '#pp-macros', '#pp-console', '#pp-print', '#ctrl-plate']],
     ['live', 'Live readings', ['#telemetry', '#chamber-card']],
-    ['history', 'History & upkeep', ['#insights-card', 'print health', 'print cost']],
+    ['history', 'History & upkeep', ['#insights-card', 'ready to print', 'print cost']],
     ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
   ],
   fleet: [
@@ -621,7 +621,7 @@ const SECTIONS = {
   ],
   // Settings (Preferences is folded in): the groups of the SHELL plan. A card no rule names joins the first group.
   modules: [
-    ['connection', 'Printers & connection', ['#watch-only-card', '#halt-card', 'printer firmware']],
+    ['connection', 'Printers & connection', ['#watch-only-card', '#practice-card', '#halt-card', 'printer firmware']],
     ['look', 'Look & layout', ['#layout-card', '#appearance-card', '#prefs-card']],
     ['phone', 'Phone & away', ['#phone-install-card', 'paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
@@ -775,7 +775,7 @@ function initTabs() {
 
   // Preferences → Open on: a fixed screen, or the one used last.
   const opening = store.get('dejavu1.pref.start');
-  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'overview'), true);
+  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'control'), true);      // the Printer screen is where a first start lands
 }
 
 /* ---- status ribbon (always visible) --------------------------------------*/

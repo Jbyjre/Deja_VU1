@@ -660,7 +660,10 @@ function wirePage() {
         if (aiState.st.demo) { toast('Check now needs a real printer’s camera. Demo printers have none.', 'info'); return; }
         now_.disabled = true;
         now_.querySelector('span').textContent = 'Looking…';
+        const view = document.getElementById('ai-watch-view');
+        if (view) view.classList.add('is-looking');                 // the scan runs over the picture while it looks
         const res = await postJSON(api('/api/assistant/watch/now'), {});
+        if (view) view.classList.remove('is-looking');
         now_.disabled = false;
         if (res.ok) { aiState.st.watch = res.body.watch; drawPage(); toast(`Print watch: ${res.body.why || res.body.verdict}`, res.body.verdict === 'failed' ? 'bad' : res.body.verdict === 'worry' ? 'warn' : 'ok'); }
         else { now_.querySelector('span').textContent = 'Check now'; toast(res.body.error || 'It couldn’t look just now', 'bad'); }

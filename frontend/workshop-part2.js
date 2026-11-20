@@ -605,46 +605,56 @@ function rememberHead(pid, pos) {
     } catch (e) { /* not remembered */ }
   }
 
-  /* Print health: one animated dial. */
+  /* Ready to print: one calm ring. It says how ready the printer is for its next print in a few kind words and lists what would help, as
+   * gains rather than penalties. The score is the same one Confirm Print uses (backend/print_gate.py); a refused start is still said plainly. */
 function gaugeSVG() {
-    return `<svg class="gauge" viewBox="0 0 200 120" aria-hidden="true">
-      <path class="g-track" d="M20 100 A80 80 0 0 1 180 100"/>
-      <path class="g-fill" id="g-fill" d="M20 100 A80 80 0 0 1 180 100"/>
-      <line class="g-needle" id="g-needle" x1="100" y1="100" x2="100" y2="42"/>
-      <circle class="g-hub" cx="100" cy="100" r="6"/>
+    return `<svg class="gauge rdy-ring" viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="g-track" cx="60" cy="60" r="50"/>
+      <circle class="g-fill" id="g-fill" cx="60" cy="60" r="50" transform="rotate(-90 60 60)"/>
+      <circle class="g-needle" id="g-needle" cx="60" cy="10" r="4.5"/>
     </svg>`;
-  }
+}
+
+const READY_WORDS = {
+  good: ['Ready to go', 'Nothing is in the way of a print.'],
+  fair: ['Nearly there', 'A few small things would help:'],
+  poor: ['Worth a look', 'These would help most:'],
+  blocked: ['Not ready yet', 'Confirm Print will wait until these are sorted:'],
+};
 
 async function loadHealth() {
     const host = $('health-host');
     if (!host) return;
     const data = await getJSON(api('/api/health')).catch(() => null);
-    // One failed or empty answer replaces the gauge with a note. Its animation must stop with it: it looks up the needle on every frame,
-    // and with the needle gone that was a script error (the page lost the server, and the next frame threw).
-    if (!data || !hasData(data) || data.score == null) { smooth.delete('gauge'); host.innerHTML = demoNeeded('print health'); host.dataset.built = ''; return; }
+    // One failed or empty answer replaces the ring with a note. Its animation must stop with it: it looks up the knob on every frame,
+    // and with the knob gone that was a script error (the page lost the server, and the next frame threw).
+    if (!data || !hasData(data) || data.score == null) { smooth.delete('gauge'); host.innerHTML = demoNeeded('whether this printer is ready to print'); host.dataset.built = ''; return; }
     if (!host.dataset.built || !$('g-needle')) {
       host.dataset.built = '1';
-      host.innerHTML = `<div class="gauge-wrap">${gaugeSVG()}<div class="g-num"><span id="g-score">—</span><small id="g-band"></small></div></div>
+      host.innerHTML = `<div class="rdy"><div class="gauge-wrap">${gaugeSVG()}<div class="g-num"><span id="g-score">—</span></div></div>
+        <div class="rdy-text"><b id="g-band"></b><span id="g-line"></span></div></div>
         <ul class="g-deductions" id="g-deductions"></ul>`;
     }
-    const arcLen = Math.PI * 80;
+    const circ = 2 * Math.PI * 50;
     const fill = $('g-fill');
-    fill.style.strokeDasharray = `${arcLen}`;
-    // "blocked" is red whatever the number: the score never overrules Confirm Print.
-    const color = data.band === 'good' ? 'var(--ok)' : (data.band === 'fair' ? 'var(--warn)' : 'var(--bad)');
+    fill.style.strokeDasharray = `${circ}`;
+    // A refused start is amber-to-red whatever the number: the score never overrules Confirm Print. Everything else stays calm.
+    const color = data.band === 'good' ? 'var(--ok)' : (data.band === 'blocked' ? 'var(--bad)' : 'var(--warn)');
     fill.style.stroke = color;
     tween('gauge', data.score, (v) => {
-      const needle = $('g-needle');
-      if (!needle) { smooth.delete('gauge'); return; }        // the panel was replaced while this was running
-      fill.style.strokeDashoffset = `${arcLen * (1 - v / 100)}`;
-      needle.setAttribute('transform', `rotate(${-90 + v * 1.8} 100 100)`);
+      const knob = $('g-needle');
+      if (!knob) { smooth.delete('gauge'); return; }        // the panel was replaced while this was running
+      fill.style.strokeDashoffset = `${circ * (1 - v / 100)}`;
+      knob.setAttribute('transform', `rotate(${v * 3.6} 60 60)`);
       setText($('g-score'), Math.round(v));
     });
-    host.setAttribute('aria-label', `Print health ${data.score} out of 100, ${data.band === 'blocked' ? 'can\'t start' : data.band}`);
-    $('g-band').textContent = { good: 'Good', fair: 'Fair', poor: 'Needs attention', blocked: 'Can\'t start' }[data.band];
+    const [word, line] = READY_WORDS[data.band] || READY_WORDS.fair;
+    host.setAttribute('aria-label', `Ready to print: ${word}. ${data.score} out of 100.`);
+    $('g-band').textContent = word;
+    $('g-line').textContent = (data.deductions || []).length || data.band === 'good' ? line : 'Confirm Print will check the file you pick.';
     $('g-deductions').innerHTML = (data.deductions || []).length
-      ? data.deductions.map(d => `<li><b>${d.points}</b> ${esc(d.reason)}</li>`).join('')
-      : '<li class="ok">Nothing is pulling the score down.</li>';
+      ? data.deductions.map(d => `<li><b>+${d.points}</b> ${esc(d.reason)}</li>`).join('')
+      : '';
   }
 
   /* Chamber climate: a read-only reading, where Klipper reports one. */

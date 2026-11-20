@@ -118,9 +118,11 @@ async function walk(browser, server, shots) {
   const base = server.base;
   let page = await openPage(browser, base, { width: 1366, height: 800 }, '#/overview');
 
-  /* No printer yet: Halt is there and off, and the strip says so in words. */
-  const idle = await page.evaluate(() => ({ halt: document.getElementById('strip-halt').disabled, empty: (document.getElementById('strip-insts').textContent || '').trim() }));
-  check(idle.halt && /no printer/i.test(idle.empty), 'With no printer Halt is off and the strip says so: ' + JSON.stringify(idle));
+  /* No printer yet: the Printer screen says so in words and Halt is there, off. */
+  await go(page, 'printer');
+  const idle = await page.evaluate(() => ({ halt: document.getElementById('strip-halt').disabled, tile: (document.getElementById('tile-job-body').textContent || '').trim() }));
+  check(idle.halt && /no printer/i.test(idle.tile), 'With no printer Halt is off and the print tile says so: ' + JSON.stringify(idle));
+  await go(page, 'overview');
   await demoOn(page);
 
   /* Nothing across the top: no bar, and the toolbar edge is the first row of the working surface. */
@@ -177,7 +179,17 @@ async function walk(browser, server, shots) {
   /* Parts: Printer has seven, a part never opens another place, and All printers is a part of Printer. */
   await go(page, 'printer');
   const parts = await page.evaluate(() => [...document.querySelectorAll('#pb-parts [data-part]')].map(b => b.textContent.trim()));
-  check(JSON.stringify(parts) === JSON.stringify(['Control', 'Readings', 'Camera & time-lapses', 'History', 'All printers', 'Farm', 'Practice printers']), 'Printer has its parts in the toolbar edge: ' + parts.join(' | '));
+  check(JSON.stringify(parts) === JSON.stringify(['Control', 'Readings', 'Camera & time-lapses', 'History', 'All printers', 'Farm']), 'Printer has its parts in the toolbar edge, without Practice printers: ' + parts.join(' | '));
+  await page.evaluate(() => Rail.setPractice(true));
+  await page.waitForTimeout(250);
+  const withPractice = await page.evaluate(() => [...document.querySelectorAll('#pb-parts [data-part]')].map(b => b.textContent.trim()));
+  check(withPractice.length === 7 && withPractice[6] === 'Practice printers', 'Settings turning Practice printers on adds the part: ' + withPractice.join(' | '));
+  await page.evaluate(() => Rail.setPractice(false));
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { location.hash = '#/sandbox'; });
+  await page.waitForTimeout(500);
+  check((await page.evaluate(() => location.hash)) === '#/printers', 'A link to Practice printers opens All printers while it is off');
+  await go(page, 'printer');
   await page.click('#pb-parts [data-part="readings"]');
   await page.waitForTimeout(300);
   let st = await page.evaluate(() => ({ title: document.getElementById('pb-title').textContent, section: Sections.current('control'), sel: document.querySelector('#pb-parts [aria-selected="true"]').textContent }));
@@ -189,46 +201,75 @@ async function walk(browser, server, shots) {
 
   /* Old links still land on the new home. */
   for (const [old, title, extra] of [['slice', 'Slicer', 'slicing'], ['layers', 'Slicer', 'layers'], ['queue', 'Files', 'jobs'], ['library', 'Files', 'library'], ['filament', 'Maintenance', 'filament'],
-    ['care', 'Maintenance', 'upkeep'], ['prefs', 'Settings', 'look'], ['modules', 'Settings', null], ['desk', 'Printer', 'desk'], ['sandbox', 'Printer', 'sandbox'], ['fleet', 'Printer', 'printers'],
+    ['care', 'Maintenance', 'upkeep'], ['prefs', 'Settings', 'look'], ['modules', 'Settings', null], ['desk', 'Printer', 'desk'], ['sandbox', 'Printer', 'printers'], ['fleet', 'Printer', 'printers'],
     ['control', 'Printer', 'control'], ['prepare', 'Slicer', 'slicing'], ['jobs', 'Files', 'jobs']]) {
     await go(page, old);
     const r = await page.evaluate(() => ({ t: document.getElementById('pb-title').textContent.trim(), tab: document.body.dataset.tab, s: Sections.current(document.body.dataset.tab) }));
     check(r.t === title && (extra == null || r.s === extra), `The old link #/${old} lands in ${title}${extra ? ' › ' + extra : ''}: ${JSON.stringify(r)}`);
   }
 
-  /* The sidebar narrows by itself in a working place, a chosen width wins, and [ toggles. */
-  await go(page, 'overview');
-  let w = await page.evaluate(() => ({ narrow: document.documentElement.classList.contains('rail-collapsed'), w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width) }));
-  check(!w.narrow && w.w >= 200, 'Overview keeps the full sidebar: ' + JSON.stringify(w));
-  await go(page, 'printer');
-  await page.waitForTimeout(400);
-  w = await page.evaluate(() => ({ narrow: document.documentElement.classList.contains('rail-collapsed'), w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width) }));
-  check(w.narrow && w.w <= 64, 'Printer narrows the sidebar by itself: ' + JSON.stringify(w));
+  /* The sidebar rests as icons in every place, opens over the page when pointed at, closes 3 seconds after the pointer leaves, and a width someone chose wins. */
+  const railNow = () => page.evaluate(() => ({ open: document.documentElement.classList.contains('rail-open'), w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width),
+    main: Math.round(document.getElementById('main').getBoundingClientRect().left) }));
+  for (const d of ['overview', 'printer', 'files']) {
+    await go(page, d);
+    await page.mouse.move(700, 400);
+    await page.waitForTimeout(3600);
+    const w = await railNow();
+    check(!w.open && w.w <= 64, `${d}: the sidebar rests as icons only: ` + JSON.stringify(w));
+  }
+  await page.hover('#rail .rail-item[data-place="files"]');
+  await page.waitForTimeout(700);
+  let rw = await railNow();
+  check(rw.open && rw.w >= 200 && rw.main < 100, 'Pointing at the sidebar shows its labels over the page without moving it: ' + JSON.stringify(rw));
+  await page.mouse.move(700, 400);
+  await page.waitForTimeout(1500);
+  rw = await railNow();
+  check(rw.open && rw.w >= 200, 'It stays open 1.5 s after the pointer leaves: ' + JSON.stringify(rw));
+  await page.waitForTimeout(2300);
+  rw = await railNow();
+  check(!rw.open && rw.w <= 64, 'It has closed 3.8 s after the pointer left: ' + JSON.stringify(rw));
   await page.hover('#rail .rail-item[data-place="files"]');
   await page.waitForTimeout(400);
-  w = await page.evaluate(() => ({ w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width), main: Math.round(document.getElementById('main').getBoundingClientRect().left) }));
-  check(w.w >= 200 && w.main < 100, 'A narrow sidebar shows its labels over the page without moving it: ' + JSON.stringify(w));
   await page.mouse.move(700, 400);
+  await page.waitForTimeout(2000);
+  await page.hover('#rail .rail-item[data-place="files"]');
+  await page.waitForTimeout(2200);
+  await page.mouse.move(700, 400);
+  rw = await railNow();
+  check(rw.open, 'Coming back inside 3 seconds keeps it open: ' + JSON.stringify(rw));
+  await page.waitForTimeout(3600);
   await page.evaluate(() => Rail.setMode('wide'));
   await go(page, 'files');
-  w = await page.evaluate(() => document.documentElement.classList.contains('rail-collapsed'));
-  check(!w, 'A width the person chose beats the place\'s own');
+  const wide = await page.evaluate(() => document.documentElement.classList.contains('rail-collapsed'));
+  check(!wide, 'A sidebar kept open stays open in every place');
   await page.evaluate(() => Rail.setMode('auto'));
 
-  /* The strip: one instrument per printer; selecting one selects it everywhere. */
+  /* No bar along the bottom: a small floating dock holds the orb; the printers are chosen in the sidebar. */
   await go(page, 'overview');
-  const strip = await page.evaluate(() => [...document.querySelectorAll('#strip-insts .inst')].map(b => ({ label: b.textContent.replace(/\s+/g, ' ').trim(), on: b.getAttribute('aria-pressed'), named: !b.hasAttribute('aria-label') })));
-  check(strip.length === 3 && strip.every(s => /^Demo printer \d/.test(s.label) && s.named) && strip.filter(s => s.on === 'true').length === 1,
-    'The strip has an instrument for each of the three demo printers, each named by the text it shows: ' + JSON.stringify(strip.map(s => s.label)));
-  await page.click('#strip-insts .inst:nth-child(2)');
-  await page.waitForTimeout(1200);
-  const sel = await page.evaluate(() => ({ pressed: [...document.querySelectorAll('#strip-insts .inst')].findIndex(b => b.getAttribute('aria-pressed') === 'true'), rail: document.getElementById('rail-printer').textContent }));
-  check(sel.pressed === 1 && /Demo printer 2/.test(sel.rail), 'Clicking an instrument selects that printer in the strip and the sidebar: ' + JSON.stringify(sel));
-  await page.click('#strip-insts .inst:nth-child(1)');
+  const dock = await page.evaluate(() => { const r = document.getElementById('strip').getBoundingClientRect(); const cs = getComputedStyle(document.getElementById('strip'));
+    return { fixed: cs.position === 'fixed', w: Math.round(r.width), insts: !!document.getElementById('strip-insts'), find: !!document.getElementById('strip-cmd'), orb: !!document.getElementById('orb'),
+      surfaceBottom: Math.round(document.getElementById('main').getBoundingClientRect().bottom) }; });
+  check(dock.fixed && dock.w < 700 && !dock.insts && !dock.find && dock.orb && dock.surfaceBottom >= 780, 'The strip is a small floating dock with the orb, and the surface runs to the bottom: ' + JSON.stringify(dock));
+  await page.click('#rail-switch');
+  await page.waitForTimeout(400);
+  const menu = await page.evaluate(() => [...document.querySelectorAll('#rail-menu [data-printer]')].map(b => b.textContent.replace(/\s+/g, ' ').trim()));
+  check(menu.length === 3 && menu.every(t => /^Demo printer \d/.test(t)), 'The sidebar lists the three demo printers to pick from: ' + JSON.stringify(menu));
+  await page.click('#rail-menu [data-printer]:nth-child(2)');
+  await page.waitForTimeout(1500);
+  const sel = await page.evaluate(() => ({ rail: document.getElementById('rail-printer').textContent, tab: document.body.dataset.tab }));
+  check(/Demo printer 2/.test(sel.rail) && sel.tab === 'control', 'Picking a printer in the sidebar selects it and opens its Printer screen: ' + JSON.stringify(sel));
+  await page.evaluate(() => Workshop.selectPrinter(document.querySelector('#rail-menu [data-printer]') ? 'u1-workshop' : 'u1-workshop', null, true));
   await page.waitForTimeout(900);
 
-  /* Halt: one press, says what happened in words, offers Restart firmware. */
-  await go(page, 'overview');
+  /* Halt sits on the Printer screen and on no other: one press, says what happened in words, offers Restart firmware. */
+  const haltSeen = {};
+  for (const d of ['overview', 'slice', 'files', 'models', 'ai', 'maintenance', 'settings', 'printer']) {
+    await go(page, d, 400);
+    haltSeen[d] = await page.evaluate(() => { const b = document.getElementById('strip-halt'); return !!b && b.offsetParent !== null; });
+  }
+  check(haltSeen.printer && Object.entries(haltSeen).every(([d, v]) => d === 'printer' || !v), 'Halt is on screen on the Printer screen and nowhere else: ' + JSON.stringify(haltSeen));
+  await go(page, 'printer');
   const before = await page.evaluate(() => ({ disabled: document.getElementById('strip-halt').disabled, label: document.getElementById('strip-halt').getAttribute('aria-label') }));
   check(!before.disabled && /^Halt Demo printer 1/.test(before.label), 'Halt names the selected printer: ' + JSON.stringify(before));
   await page.click('#strip-halt');
@@ -238,7 +279,7 @@ async function walk(browser, server, shots) {
   await page.click('#strip-restart');
   await page.waitForTimeout(1800);
   halted = await page.evaluate(() => !document.getElementById('strip-halted').hidden);
-  check(!halted, 'Restart firmware puts the strip back');
+  check(!halted, 'Restart firmware puts Halt back');
   /* The two-key shortcut, with the focus on the page. */
   await page.evaluate(() => document.activeElement && document.activeElement.blur());
   await page.keyboard.press('h');
@@ -287,48 +328,59 @@ async function walk(browser, server, shots) {
   const split = '#cockpit .split.v1';
   const props = async () => page.evaluate(s => { const e = document.querySelector(s); return { role: e.getAttribute('role'), o: e.getAttribute('aria-orientation'), now: +e.getAttribute('aria-valuenow'), label: e.getAttribute('aria-label') }; }, split);
   let p = await props();
-  check(p.role === 'separator' && p.o === 'vertical' && p.now === 300 && /heads/i.test(p.label), 'The divider is a labelled separator: ' + JSON.stringify(p));
+  check(p.role === 'separator' && p.o === 'vertical' && p.now === 250 && /temperature/i.test(p.label), 'The divider is a labelled separator: ' + JSON.stringify(p));
   await page.focus(split);
   await page.keyboard.press('ArrowRight');
   let q = await props();
   await page.keyboard.press('Shift+ArrowRight');
   const q2 = await props();
-  check(q.now === 312 && q2.now === 360, 'Arrow keys move the divider 12 px, Shift+arrow 48 px: ' + q.now + ', ' + q2.now);
+  check(q.now === 262 && q2.now === 310, 'Arrow keys move the divider 12 px, Shift+arrow 48 px: ' + q.now + ', ' + q2.now);
   await page.keyboard.press('Home');
   q = await props();
-  check(q.now === 220, 'Home goes to the smallest size: ' + q.now);
+  check(q.now === 190, 'Home goes to the smallest size: ' + q.now);
   await page.keyboard.press('Enter');
   q = await props();
-  const hidden = await page.evaluate(() => Math.round(document.querySelector('#cockpit .p-left').getBoundingClientRect().width));
-  check(q.now === 0 && hidden === 0, 'Enter collapses the pane: ' + JSON.stringify({ now: q.now, width: hidden }));
+  const hidden = await page.evaluate(() => Math.round(document.querySelector('#cockpit .cp-left').getBoundingClientRect().width));
+  check(q.now === 0 && hidden === 0, 'Enter collapses the rail: ' + JSON.stringify({ now: q.now, width: hidden }));
   await page.keyboard.press('Enter');
   q = await props();
-  check(q.now === 220, 'Enter restores it: ' + q.now);
+  check(q.now === 190, 'Enter restores it: ' + q.now);
   await page.reload();
   await page.waitForTimeout(1500);
   await go(page, 'printer');
   q = await props();
-  check(q.now === 220, 'The size is kept in this browser: ' + q.now);
+  check(q.now === 190, 'The size is kept in this browser: ' + q.now);
   const box = await page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, split);
   await page.mouse.move(box.x, box.y);
   await page.mouse.down();
   await page.mouse.move(box.x + 60, box.y, { steps: 5 });
   await page.mouse.up();
   q = await props();
-  check(q.now >= 270 && q.now <= 290, 'Dragging with the mouse moves it: ' + q.now);
+  check(q.now >= 240 && q.now <= 260, 'Dragging with the mouse moves it: ' + q.now);
   await page.evaluate(() => Panes.reset());
   q = await props();
-  check(q.now === 300, 'Reset layout puts the default size back: ' + q.now);
+  check(q.now === 250, 'Reset layout puts the default size back: ' + q.now);
 
-  /* The one twin is docked in the stage of the open place. */
+  /* The one twin lives on the Printer screen only: Overview has none, and a sheet that borrows it hands it back. */
   await go(page, 'overview');
-  await page.waitForTimeout(800);
-  let twin = await page.evaluate(() => { const c = document.getElementById('twin-card'); const r = c.getBoundingClientRect(); return { in: c.parentElement.id, w: Math.round(r.width), h: Math.round(r.height) }; });
-  check(twin.in === 'ov-stage' && twin.w > 300 && twin.h > 200, 'Overview opens on the printer in 3D: ' + JSON.stringify(twin));
+  await page.waitForTimeout(500);
+  let twin = await page.evaluate(() => { const c = document.getElementById('twin-card'); return { in: c.parentElement.id, shown: c.offsetParent !== null }; });
+  check(twin.in === 'p-stage' && !twin.shown, 'Overview shows no 3D printer: ' + JSON.stringify(twin));
   await go(page, 'printer');
   await page.waitForTimeout(800);
   twin = await page.evaluate(() => { const c = document.getElementById('twin-card'); const r = c.getBoundingClientRect(); return { in: c.parentElement.id, w: Math.round(r.width), h: Math.round(r.height) }; });
-  check(twin.in === 'p-stage' && twin.w > 300 && twin.h > 200, 'The same twin sits in the Printer stage: ' + JSON.stringify(twin));
+  check(twin.in === 'p-stage' && twin.w > 300 && twin.h > 300, 'The twin fills the middle of the Printer screen: ' + JSON.stringify(twin));
+  await page.evaluate(() => Cockpit.open('move'));
+  await page.waitForTimeout(700);
+  const smart = await page.evaluate(() => ({ twinIn: document.getElementById('twin-card').closest('.cp-side') ? 'side' : 'elsewhere', camIn: document.getElementById('pp-camera-card').closest('.cp-side') ? 'side' : 'elsewhere',
+    pad: !!document.querySelector('#cp-sheet .cp-main #pp-move'), dlg: document.getElementById('cp-sheet').getAttribute('role') }));
+  check(smart.twinIn === 'side' && smart.camIn === 'side' && smart.pad && smart.dlg === 'dialog', 'Move opens a sheet with the pad and brings the 3D printer and the camera beside it: ' + JSON.stringify(smart));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+  const back = await page.evaluate(() => ({ twin: document.getElementById('twin-card').parentElement.id, cam: document.getElementById('pp-camera-card').parentElement.id, open: Cockpit.isOpen() }));
+  check(back.twin === 'p-stage' && back.cam === 'cp-cam-slot' && !back.open, 'Escape closes the sheet and hands the twin and the camera back: ' + JSON.stringify(back));
+  const noScroll = await page.evaluate(() => [...document.querySelectorAll('#cockpit .cp-rail')].map(r => { const o = getComputedStyle(r).overflow; return o === 'hidden' || o === 'clip'; }));
+  check(noScroll.length === 2 && noScroll.every(Boolean), 'The tiles either side do not scroll');
 
   /* Settings: groups, search, demo data out of the way. */
   await go(page, 'settings');
@@ -361,21 +413,23 @@ async function walk(browser, server, shots) {
   check(page.errors.length === 0, 'The page raised no error on a computer: ' + page.errors.slice(0, 2).join(' | '));
   await page.context().close();
 
-  /* A phone: the strip keeps Halt in thumb reach above the dock, and nothing scrolls sideways. */
+  /* A phone: the orb floats above the dock, Halt is on the Printer screen within thumb reach, and nothing scrolls sideways. */
   page = await openPage(browser, base, { width: 390, height: 844 }, '#/overview');
   await demoOn(page);
   for (const d of ['overview', 'printer', 'slice', 'files', 'models', 'ai', 'maintenance', 'settings']) {
     await go(page, d);
     await page.waitForTimeout(300);
     const m = await page.evaluate(() => {
-      const strip = document.getElementById('strip').getBoundingClientRect(), halt = document.getElementById('strip-halt').getBoundingClientRect(), dock = document.querySelector('.bottom-nav').getBoundingClientRect();
-      return { over: document.documentElement.scrollWidth - window.innerWidth, haltIn: halt.right <= window.innerWidth && halt.bottom <= dock.top + 1 && halt.width >= 40, dock: dock.bottom <= window.innerHeight + 1, stripAbove: strip.bottom <= dock.top + 1 };
+      const strip = document.getElementById('strip').getBoundingClientRect(), halt = document.getElementById('strip-halt'), dockBar = document.querySelector('.bottom-nav').getBoundingClientRect();
+      const hr = halt.getBoundingClientRect(), here = document.body.dataset.tab === 'control';
+      return { over: document.documentElement.scrollWidth - window.innerWidth, haltRight: !here ? halt.offsetParent === null : (hr.right <= window.innerWidth && hr.width >= 40), dock: dockBar.bottom <= window.innerHeight + 1,
+        stripAbove: strip.bottom <= dockBar.top + 1 };
     });
-    check(m.over <= 0 && m.haltIn && m.dock && m.stripAbove, `${d} on a phone: no sideways scroll, Halt above the dock: ${JSON.stringify(m)}`);
+    check(m.over <= 0 && m.haltRight && m.dock && m.stripAbove, `${d} on a phone: no sideways scroll, Halt only on the Printer screen, the orb above the dock: ${JSON.stringify(m)}`);
     if (shots) await page.screenshot({ path: path.join(shots, `phone-${d}.png`) });
   }
-  const dock = await page.evaluate(() => ({ dock: [...document.querySelectorAll('.bottom-nav button')].map(b => b.textContent.trim()), more: [...document.querySelectorAll('#more-sheet .ms-grid button')].map(b => b.querySelector('b').textContent.trim()) }));
-  check(JSON.stringify(dock.dock) === JSON.stringify(['Overview', 'Printer', 'Slicer', 'Files', 'More']) && dock.more.length === 7, 'The phone dock names the places and More holds the rest: ' + JSON.stringify(dock));
+  const dockNames = await page.evaluate(() => ({ dock: [...document.querySelectorAll('.bottom-nav button')].map(b => b.textContent.trim()), more: [...document.querySelectorAll('#more-sheet .ms-grid button')].map(b => b.querySelector('b').textContent.trim()) }));
+  check(JSON.stringify(dockNames.dock) === JSON.stringify(['Overview', 'Printer', 'Slicer', 'Files', 'More']) && dockNames.more.length === 7, 'The phone dock names the places and More holds the rest: ' + JSON.stringify(dockNames));
   check(page.errors.length === 0, 'The page raised no error on a phone: ' + page.errors.slice(0, 2).join(' | '));
   await page.context().close();
 
@@ -386,9 +440,9 @@ async function walk(browser, server, shots) {
     await demoOn(page);
     await page.waitForTimeout(500);
     const l = await page.evaluate(() => {
-      const card = getComputedStyle(document.querySelector('#rail .rail-card')), strip = getComputedStyle(document.getElementById('strip')), halt = getComputedStyle(document.getElementById('strip-halt'));
+      const card = getComputedStyle(document.querySelector('#rail .rail-card')), halt = getComputedStyle(document.getElementById('strip-halt'));
       const flat = s => !/blur/.test(s.backdropFilter || s.webkitBackdropFilter || '');
-      return { theme: document.documentElement.dataset.theme, look: document.documentElement.dataset.ui, flat: flat(card) && flat(strip), halt: halt.backgroundColor };
+      return { theme: document.documentElement.dataset.theme, look: document.documentElement.dataset.ui, flat: flat(card), halt: halt.backgroundColor };
     });
     const solid = look !== 'glass';
     check(l.theme === theme && l.look === look && (!solid || l.flat) && l.halt === 'rgb(200, 16, 46)', `${look} (${theme}) keeps the frame, flat where it should be, Halt stays #c8102e: ` + JSON.stringify(l));
