@@ -276,5 +276,6 @@ route needs `python3 tools/online-demo/record.py` (about 3 minutes) and a commit
 The demo simulates single-printer commands (`tourControl`, including Feed, chamber light, fans and sensor
 toggles, remembered in `sim.tuning` and shown in the twin) and the fleet bar (`tourBroadcast`, with the
 real answer's words); a cancel parks the head. A command in `HANDS_ON` also needs its name in the route
-pattern in `tourPost`, or the demo refuses it. `/api/print/preview?file=` is recorded per sample file, and
+pattern in `tourPost`, or the demo refuses it. Halt (`estop`) puts the simulated printer into `sim.mode = 'error'` (heaters off) until Restart firmware, which the demo
+refuses unless the printer reports an error, as the server does. `/api/print/preview?file=` is recorded per sample file, and
 `tourGet` asks for the file on the plate, so a print started in the demo is drawn from its own layers.
