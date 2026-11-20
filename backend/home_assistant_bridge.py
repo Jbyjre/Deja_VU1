@@ -122,7 +122,11 @@ def _sensors_from_state(state, prefix, extras=None):
 
     progress = state.get("progress") or 0.0
     elapsed = state.get("print_duration_hours") or 0.0
-    remaining = (elapsed / progress - elapsed) if 0 < progress < 1 else 0.0
+    eta = state.get("eta") if isinstance(state.get("eta"), dict) else {}
+    if isinstance(eta.get("remaining_hours"), (int, float)):
+        remaining = eta["remaining_hours"]                       # print_eta.py: the one estimate every screen shares
+    else:
+        remaining = (elapsed / progress - elapsed) if 0 < progress < 1 else 0.0
     layer = state.get("layer") or {}
     sensors = {
         f"{prefix}_state": s(state["state"], "printer state", icon="mdi:printer-3d"),

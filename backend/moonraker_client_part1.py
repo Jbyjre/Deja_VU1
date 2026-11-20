@@ -953,6 +953,9 @@ _BASE_OBJECTS = {
     "webhooks": ["state", "state_message"],
     "print_stats": ["state", "filename", "print_duration", "total_duration", "filament_used", "message", "info"],
     "virtual_sdcard": ["progress", "is_active", "file_position", "file_size"],
+    # The progress the slicer wrote into the file itself (M73), which counts time rather than bytes (Klipper's
+    # docs/Status_Reference.md: display_status.progress, the bytes' progress when no M73 has come). Only where the printer has it.
+    "display_status": ["progress"],
     # axis_minimum / axis_maximum: the build volume (Klipper kinematics get_status)
     "toolhead": ["extruder", "position", "homed_axes", "axis_minimum", "axis_maximum", "max_velocity", "max_accel"],
     "gcode_move": ["gcode_position", "homing_origin", "speed_factor", "extrude_factor"],

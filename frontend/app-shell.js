@@ -288,11 +288,19 @@ function doneAt(hoursLeft) {
   return `${at.toLocaleDateString([], { weekday: 'short' })} ${clock}`;
 }
 
-/* Time left from a printer state: elapsed time scaled by progress, the same
- * estimate the fleet uses (backend/fleet.py). Null when there isn't one. */
+/* Time left from a printer state: the server's one estimate (backend/print_eta.py: the file's own estimate, how this print is running
+ * against it, and a truer share than bytes where the file or the printer gives one), the same one the fleet rows, the rules and the
+ * phone use. Without it (the static online demo's recording) it falls back to elapsed time scaled by progress. Null when there isn't one. */
 function hoursLeft(state) {
+  const eta = state && state.eta;
+  if (state && state.state === 'printing' && eta && eta.remaining_hours != null) return eta.remaining_hours;
   const p = state && state.progress, elapsed = state && state.print_duration_hours;
   return state && state.state === 'printing' && p > 0 && p < 1 && elapsed != null ? elapsed / p - elapsed : null;
+}
+/* One short line saying where the estimate comes from, for beside a time ("" when there is none). */
+function etaWords(state) {
+  const eta = state && state.eta;
+  return eta && eta.words ? eta.words : '';
 }
 
 /* ---- the browser tab mirrors the print -------------------------------------

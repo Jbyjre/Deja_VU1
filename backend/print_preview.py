@@ -29,6 +29,7 @@ import math
 import threading
 
 import gcode_tools
+import print_eta
 
 WALL_TOLERANCE_MM = 0.04         # a point closer than this to its neighbours' line is dropped
 MAX_WALL_POINTS = 160000
@@ -430,17 +431,22 @@ def for_current(file=None):
             with _cache_lock:
                 hit = _cache.get((source, name, version))
             if hit is not None and version != (None, None):
+                print_eta.remember(printer_id, name, hit)
                 return {**hit, "file": name, "source": source}
             data = mock_moonraker.fetch_gcode(name, MAX_FILE_BYTES)
             if version == (None, None):
                 version = (len(data), None)
-            return for_file(name, data.decode("utf-8", "surrogateescape"), source, version)
+            out = for_file(name, data.decode("utf-8", "surrogateescape"), source, version)
+            print_eta.remember(printer_id, name, out)      # the time-left estimate follows the file's own time, not just its bytes
+            return out
         except (mock_moonraker.PrinterCommandError, OSError, ValueError) as exc:
             reason = str(exc)
         try:
             path = file_library._path(name)
             st = __import__("os").stat(path)
             out = for_file(name, _library_text(name), "library", (st.st_size, st.st_mtime_ns))
+            if mock_moonraker.is_real(printer_id):
+                print_eta.remember(printer_id, name, out)
             out["note"] = ("Drawn from this dashboard's copy of the file: the printer's own copy could "
                            f"not be read ({reason})")
             return out
