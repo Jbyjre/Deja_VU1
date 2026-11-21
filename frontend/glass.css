@@ -267,6 +267,8 @@ html.has-shell #ai-page .ai-intro-text > p { font-size: 15px; }
 /* titles: a real sans at a working size, with a hairline under the header like a panel on a rack */
 html.has-shell .wrap :is(.card, .tab-sub) h2, html.has-shell .wrap .pane-block h2 { font: 650 13.5px/1.3 var(--font-sans); letter-spacing: 0; }
 html.has-shell .wrap .tab-panel .card:not(.cp *):not(.ovd *) > .card-head { border-bottom: 1px solid var(--g-line); margin-bottom: 6px; }
+/* a panel whose heading is all that shows (its body hidden, its explainer hidden for "I know my way around") is one row: no line under nothing */
+html.has-shell .wrap .tab-panel .card:not(.cp *):not(.ovd *):not(:has(> .card-head ~ :not([hidden], script, template))) > .card-head { border-bottom: 0; margin-bottom: 0; }
 html.has-shell .ovd-side > #attention > .card-head, html.has-shell .ovd-side > #ov-printers > .card-head { border-bottom: 1px solid var(--g-line); }
 html.has-shell .ovd-side > #attention h2, html.has-shell .ovd-side > #ov-printers h2 { font: 650 13.5px/1.2 var(--font-sans); }
 
@@ -320,7 +322,7 @@ html.has-shell .rail-group { min-height: 28px; }
 html.has-shell .rail-group span { font-size: 11px; }
 html.has-shell .wrap :is(.pref-check, .switch-label, label.check, label.pref-check) { min-height: 28px; display: inline-flex; align-items: center; gap: 8px; }
 html.has-shell .wrap :is(.pref-check, label.check) input[type="checkbox"] { width: 16px; height: 16px; }
-html.has-shell .wrap details > summary { min-height: 28px; display: flex; align-items: center; cursor: pointer; }
+html.has-shell .wrap details > summary { min-height: 28px; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 html.has-shell #camera-host .empty { padding: 14px 12px 6px; }
 html.has-shell .wrap details > summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
 /* a focused control is never left under a fixed bar: the page scrolls it clear */

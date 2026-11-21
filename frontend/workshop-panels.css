@@ -147,6 +147,11 @@
 .tm-rate { font: 500 11px/1 var(--font-mono); color: var(--text-faint); white-space: nowrap; }
 .tm-kv { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin: 6px 0 14px; border-radius: 12px; overflow: hidden; background: rgba(0, 0, 0, .06); border: 1px solid rgba(0, 0, 0, .06); }
 .tm-kv div { padding: 8px 10px; background: rgba(255, 255, 255, .78); min-width: 0; }
+/* the last cell fills its row, so a short last row leaves no grey hole (5 columns, 2 on a phone) */
+.tm-kv div:last-child:nth-child(5n+4) { grid-column: span 2; }
+.tm-kv div:last-child:nth-child(5n+3) { grid-column: span 3; }
+.tm-kv div:last-child:nth-child(5n+2) { grid-column: span 4; }
+.tm-kv div:last-child:nth-child(5n+1) { grid-column: span 5; }
 .tm-kv dt { font: 600 9.5px/1.2 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); }
 .tm-kv dd { margin: 3px 0 0; font: 600 14px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tm-envs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-bottom: 12px; }
@@ -177,7 +182,7 @@
 .tm-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tm-num small { color: var(--text-faint); }
 .tm-note { margin: 8px 0 0; font-size: 11.5px; color: var(--text-faint); }
-@media (max-width: 760px) { .tm-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tm-env { grid-template-columns: 64px auto 1fr 70px; } }
+@media (max-width: 760px) { .tm-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tm-kv div:last-child:nth-child(n) { grid-column: auto; } .tm-kv div:last-child:nth-child(odd) { grid-column: span 2; } .tm-env { grid-template-columns: 64px auto 1fr 70px; } }
 @media (prefers-contrast: more) { .tm-kv, .tm-env { border: 1.5px solid var(--text); } }
 
 /* ---- Logbook (logbook.js, Care tab) -------------------------------------- */
