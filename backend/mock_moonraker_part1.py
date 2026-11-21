@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import copy
 import math
 import moonraker_client
+import printer_problems
 import threading
 
 
@@ -170,6 +171,9 @@ _FLEET_SPEC = [
         "jobs": 24, "days": 40,
         "scenario": {
             "state": "paused", "file": "gridfinity_bin_2x1.gcode",
+            # Paused the way a U1 pauses on its own: a level 2 problem, here "Printing Anomaly" for toolhead 1 (a code
+            # in Snapmaker's table, with its guide and videos).
+            "problem": {"level": 2, "id": 523, "index": 0, "code": 38},
             "progress": 0.72, "hours": 1.4, "total_hours": 1.95,
             "active": "T0", "layers": 140,
             "loaded": {"T0": 0, "T1": 1, "T2": 3, "T3": 5},
@@ -365,8 +369,24 @@ def _record_failed_job(printer, message, status="error"):
     })
 
 
+def _attach_problem(live, state_name, level, ident, index, number, message=None):
+    """A simulated problem in the shape a real U1 gives it: the code with Snapmaker's words, and a state line naming it."""
+    found = printer_problems.collect(state_name, {"level": level, "id": ident, "index": index, "code": number,
+                                                  "message": message})
+    if found:
+        shown = printer_problems.public(found[0])
+        live["problem"], live["problems"] = shown, [shown]
+        live["state_message"] = ("Paused: " if state_name == "paused" else "") + printer_problems.words(shown)
+
+
+def _clear_problem(live):
+    live.pop("problem", None)
+    live.pop("problems", None)
+
+
 def _stop_with_error(printer, message):
     live = printer.live
+    _clear_problem(live)
     if live["state"] in ("printing", "paused"):
         _record_failed_job(printer, message)
     live["state"] = "error"

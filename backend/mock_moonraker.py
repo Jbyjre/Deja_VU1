@@ -71,7 +71,7 @@ from mock_moonraker_part1 import (  # noqa: F401  (split out 19 November 2026; n
     AMBIENT_C, BUILD_VOLUME_MM, DEFAULT_PRINTER_ID, DEMO_MACROS, FILAMENT_COLORS, MAX_SANDBOX_PRINTERS,
     PrinterCommandError, TOOLHEADS, _FLEET_SPEC, _JOB_NAMES, _REAL, _TUNE_TIMEOUTS, _approach,
     _build_print_history, _demo_objects, _demo_tuning, _fleet_lock, _plate, _point_on_rectangle,
-    _record_failed_job, _selected, _stop_with_error, any_connected, attach_real_printer, detach_real_printer,
+    _attach_problem, _clear_problem, _record_failed_job, _selected, _stop_with_error, any_connected, attach_real_printer, detach_real_printer,
     diagnostics, is_sandbox_printer, printer_ids, real_printer, real_printer_ids, selection_only,
     simulated_printer_ids,
 )
@@ -173,7 +173,7 @@ class SimulatedPrinter:
             message = f"Filament runout on {s['dock_error']}"
 
         bed = 60.0 if printing else AMBIENT_C
-        return {
+        live = {
             "state": s["state"],              # printing | ready | paused | error | complete
             "state_message": message,
             "current_file": s["file"],
@@ -195,6 +195,10 @@ class SimulatedPrinter:
             "machine": machines.public(machines.U1),    # every simulated printer is a U1
             **({"objects": _plate(s.get("objects") or _demo_objects(s["file"]))} if printing else {}),
         }
+        if s.get("problem"):
+            _attach_problem(live, s["state"], s["problem"]["level"], s["problem"]["id"], s["problem"]["index"],
+                            s["problem"]["code"], s["problem"].get("message"))
+        return live
 
     # -- helpers ------------------------------------------------------------
 
@@ -494,6 +498,12 @@ def get_printer_state():
     return state
 
 
+def printer_messages(limit=40):
+    """What the printer itself said that matters, newest first. A simulated printer says nothing of its own."""
+    printer = _current()
+    return printer.recent_messages(limit) if printer.real else []
+
+
 def advance(seconds, printer_id=None, scaled=True):
     """Move one simulated printer forward (a real one moves by itself). Returns a finish event, if any."""
     printer = _get(printer_id) if printer_id else _current()
@@ -530,6 +540,7 @@ def resume_print():
         printer.check_failure("resume")
         printer.live["state"] = "printing"
         printer.live["state_message"] = f"Printing {printer.live['current_file']}"
+        _clear_problem(printer.live)
         printer.log("resume", printer.live["current_file"])
         return printer.snapshot()
 
@@ -547,6 +558,7 @@ def cancel_print():
         printer.check_failure("cancel")
         cancelled_file = live["current_file"]
         _record_failed_job(printer, "Cancelled by the user", status="cancelled")
+        _clear_problem(live)
         live.pop("objects", None)
         live["state"] = "ready"
         live["state_message"] = "Idle"
@@ -628,6 +640,7 @@ def start_print(filename, job=None):
             "footprint_mm": job.get("footprint_mm") or [60.0, 40.0],
         }
         first_tool = required[0]["toolhead"] if required else "T0"
+        _clear_problem(live)
         live.update({
             "state": "printing",
             "state_message": f"Printing layer 1 of {printer.job['layers']}",
@@ -1047,10 +1060,14 @@ def inject_runout(toolhead):
         dock["status"] = "error"
         dock["filament_loaded"] = False
         message = f"Filament runout on {toolhead}"
-        if live["state"] == "printing" and live["active_toolhead"] == toolhead:
+        runout_paused = live["state"] == "printing" and live["active_toolhead"] == toolhead
+        if runout_paused:
             live["state"] = "paused"
         if live["state"] != "printing":
             live["state_message"] = message
+        if runout_paused:
+            # What a U1 raises for it: 0002-0523-<head>-0000, "Filament runout detected in Toolhead N" (Snapmaker's table).
+            _attach_problem(live, "paused", 2, 523, TOOLHEADS.index(toolhead), 0)
         printer.log("runout", toolhead)
         return printer.snapshot()
 

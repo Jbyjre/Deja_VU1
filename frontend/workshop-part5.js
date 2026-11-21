@@ -119,6 +119,13 @@ function onEvent(event) {
         if (typeof loadFilament === 'function') loadFilament();
       }
       if (mine) { loadHealth(); loadQueue(); loadTimelapse(); }
+    } else if (event.type === 'printer_problem') {
+      // backend/live_feed.py: the printer reported a problem (a code). Say what it is, and offer Snapmaker's explanation.
+      const p = event.problem || {};
+      const what = p.title ? `${p.title} (${p.code})` : `error ${p.code}`;
+      const effect = { paused: ' The print is paused.', stopped: ' The print was stopped.' }[p.effect] || '';
+      toast(`${event.printer_name}: ${what}.${effect}`, p.level >= 3 ? 'bad' : 'warn', 20000,
+        window.ErrorHelp ? { action: { label: 'What does this mean?', run: () => ErrorHelp.open(p.code, event.printer) } } : undefined);
     } else if (event.type === 'automation') {
       toast(`Rule "${event.rule_name}": ${event.ok ? event.detail : event.error}`, event.ok ? 'ok' : 'warn', 6500);
       loadRuleLog();

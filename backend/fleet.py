@@ -296,7 +296,8 @@ def _alerts(state, maint):
     if state["state"] == "error" and not state.get("never_connected"):
         alerts.append({"level": "error", "text": state.get("state_message") or "Printer error"})
     if state["state"] == "paused":
-        alerts.append({"level": "warning", "text": "Paused"})
+        # A pause the printer raised itself says why (its code with the wiki's title); one pressed by hand stays "Paused".
+        alerts.append({"level": "warning", "text": state.get("state_message") if state.get("problem") else "Paused"})
     if state.get("never_connected"):
         alerts.append({"level": "error", "text": state.get("state_message") or "Not connected yet"})
     elif state.get("link_lost"):
@@ -340,6 +341,8 @@ def summary_for(printer_id, state=None):
         "docks": {th: {"status": d.get("status"), "color": d.get("filament_color_hex")}
                   for th, d in (state.get("toolheads") or {}).items()},
         "alerts": _alerts(state, maint),
+        "problem": ({k: state["problem"].get(k) for k in ("code", "level", "level_name", "title", "effect")}
+                    if state.get("problem") else None),
         "health": health["score"],
         "health_band": health["band"],    # "blocked" while Confirm Print would refuse the loaded job
         "link_lost": bool(state.get("link_lost")),

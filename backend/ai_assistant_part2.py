@@ -29,7 +29,7 @@ def reset():
     ai_signin.reset()
 
 
-_GATES = {"queue": "print_queue", "queue_add": "print_queue", "queue_remove": "print_queue", "queue_move": "print_queue",
+_GATES = {"explain_error": "error_help", "queue": "print_queue", "queue_add": "print_queue", "queue_remove": "print_queue", "queue_move": "print_queue",
           "queue_tidy": "print_queue", "maintenance": "maintenance", "care_done": "maintenance", "care_snooze": "maintenance",
           "filament": "filament_inventory", "filament_check": "filament_inventory", "spool_add": "filament_inventory",
           "spool_weight": "filament_inventory", "print_settings": "auto_print", "suggest_settings": "auto_print",
@@ -220,6 +220,12 @@ def _card(name, args, result):
             return {"kind": "rule", "name": result["rule"].get("name"), "id": result["rule"].get("id")}
         if name == "look":
             return {"kind": "look"}
+        if name == "explain_error" and result.get("code"):
+            guide, clip = result.get("guide") or {}, result.get("video") or ((result.get("guide") or {}).get("videos") or [None])[0]
+            return {"kind": "error", "code": result["code"], "title": result.get("title") or "", "level": result.get("level") or "",
+                    "effect": result.get("what_happens_to_the_print") or "", "details": result.get("details_word_for_word") or "",
+                    "known": bool(result.get("in_snapmakers_table")), "guide": {"title": guide.get("title"), "url": guide.get("url")} if guide.get("url") else None,
+                    "video": {"id": clip["id"], "title": clip.get("title"), "start": clip.get("starts_at_second") or 0} if clip else None}
     except Exception:
         return None
     return None

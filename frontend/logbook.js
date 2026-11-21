@@ -20,6 +20,12 @@ window.Logbook = (() => {
   const anchor = [...tab.querySelectorAll('h2')].find(h => h.textContent.trim() === 'Maintenance');
   (anchor ? anchor.closest('.card') : tab.firstElementChild).after(card);
   let timer = null, seq = 0;
+  // What the printer was doing when it reported a code (backend/logbook.py record_problem): the file, how far along and when it went away.
+  function incidentFacts(i) {
+    const bits = [i.file ? `during ${i.file}` : '', i.progress != null && i.state !== 'ready' ? `${Math.round(i.progress * 100)}% done` : '',
+      i.layer && i.layers ? `layer ${i.layer} of ${i.layers}` : '', i.cleared_at ? `cleared ${i.cleared_at.replace('T', ' ').slice(11, 16)}` : 'still reported'].filter(Boolean);
+    return `<p class="lb-facts">${esc(bits.join(' · '))}</p>`;
+  }
 
   async function load() {
     const mine = ++seq, q = $('lb-q').value.trim();
@@ -35,6 +41,7 @@ window.Logbook = (() => {
     paint($('lb-list'), data.entries.length ? data.entries.map(e => `<li class="lb-item${e.fix ? '' : ' is-open'}">
         <div class="lb-meta"><time datetime="${esc(e.at)}">${esc(e.at.replace('T', ' ').slice(0, 16))}</time><span>${e.print_hours != null ? `${Number(e.print_hours).toFixed(1)} print h` : 'hours unknown'}</span>${e.auto ? '<span class="lb-tag">reported by printer</span>' : ''}${e.demo ? '<span class="lb-tag">demo</span>' : ''}</div>
         <p class="lb-problem">${esc(e.problem)}</p>
+        ${e.incident && window.ErrorHelp ? ErrorHelp.strip(e.incident, '') : ''}${e.incident ? incidentFacts(e.incident) : ''}
         ${e.fix ? `<p class="lb-fix"><b>Fix:</b> ${esc(e.fix)}</p>` : `<form class="lb-fixform" data-id="${esc(e.id)}"><label class="sr-only" for="lb-f-${esc(e.id)}">What fixed it</label><input id="lb-f-${esc(e.id)}" maxlength="600" placeholder="What fixed it?"><button class="btn small" type="submit">Save fix</button></form>`}
         <button class="lb-del" type="button" data-del="${esc(e.id)}" aria-label="Delete this entry" title="Delete">×</button></li>`).join('')
       : `<li class="log-empty">${q ? `Nothing in the logbook mentions “${esc(q)}”.` : 'Nothing logged yet. When something goes wrong, note it here with what fixed it.'}</li>`);
@@ -60,7 +67,7 @@ window.Logbook = (() => {
   };
   $('lb-q').oninput = () => { clearTimeout(timer); timer = setTimeout(load, 200); };
   window.addEventListener('dv-tab', e => { if (e.detail === 'maintenance') load(); });
-  window.addEventListener('dv-live-event', e => { if (e.detail && e.detail.type === 'print_event' && ['paused', 'failed'].includes(e.detail.event) && !tab.hidden) load(); });
+  window.addEventListener('dv-live-event', e => { if (e.detail && (e.detail.type === 'printer_problem' || (e.detail.type === 'print_event' && ['paused', 'failed'].includes(e.detail.event))) && !tab.hidden) load(); });
   window.addEventListener('dv-refresh', () => { if (!tab.hidden) load(); });
   return { load };
 })();

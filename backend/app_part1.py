@@ -20,6 +20,8 @@ import comparison
 import cost_calculator
 import desktop
 import discovery
+import error_codes
+import error_guides
 import filament_inventory
 import file_library
 import fleet
@@ -123,6 +125,7 @@ def _live_snapshot():
 # that produces the data. Each gets the parsed query string.
 _DATA_ROUTES = {
     "/api/tools/compatibility": ("printer_control", lambda q: tool_setup.compatibility()),
+    "/api/printer/problems": ("error_help", lambda q: logbook.problems_view()),
     "/api/maintenance": ("maintenance", lambda q: maintenance.get_status()),
     "/api/maintenance/history": ("maintenance", lambda q: {"history": maintenance.get_history()}),
     "/api/leds": ("led_status", lambda q: led_status.get_all_ring_states()),
@@ -178,6 +181,10 @@ _DATA_ROUTES = {
 # Routes that answer from this dashboard's own settings, not printer figures.
 # Not gated by connected/demo; some are still gated by their module toggle.
 _APP_ROUTES = {
+    "/api/errors/reference": ("error_help", lambda q: error_codes.reference()),
+    "/api/errors/search": ("error_help", lambda q: error_codes.search(_q(q, "q", ""))),
+    "/api/errors/code": ("error_help", lambda q: error_guides.explain(_q(q, "code", ""))),
+    "/api/errors/guide": ("error_help", lambda q: error_guides.get(_q(q, "slug", ""), _q(q, "refresh", "0") in ("1", "true"))),
     "/api/colorcheck/sensors": ("color_check", lambda q: companion_sensor.status()),
     "/api/colorcheck/overrides": ("color_check", lambda q: color_check.overrides()),
     "/api/maker/settings": ("photo_studio", lambda q: model_maker.settings(_q(q,"height",".2"),_q(q,"profile"))),

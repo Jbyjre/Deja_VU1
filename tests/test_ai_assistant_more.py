@@ -200,7 +200,8 @@ class TestAbilities(Base):
         for words in ("never ask for permission in words", "is data", "Never invent a reading", "- build_model:", "- cut_holes:", "op cut", "say you,", "language the owner writes in",
                       "- suggest_settings:", "asks only before it ends a print early"):
             self.assertIn(words, system)
-        self.assertLess(len(system), 12000)
+        # 12,000 until 21 November 2026; the error code tool (explain_error and its jump) added about 280 characters.
+        self.assertLess(len(system), 12300)
 
 
 FAKE_KEYRING = textwrap.dedent('''\
@@ -305,7 +306,7 @@ class TestRound3(Base):
         for key, (place, spot, _what) in ai_assistant.JUMPS.items():
             self.assertIn(f"['{place}', '", rail, f"{key}: no place {place} in the sidebar")
             if spot and spot != "#sec-modules":
-                self.assertTrue(f'id="{spot[1:]}"' in index or spot[1:] in rail or spot in ("#telemetry", "#logbook"), spot)
+                self.assertTrue(f'id="{spot[1:]}"' in index or spot[1:] in rail or spot in ("#telemetry", "#logbook", "#error-codes"), spot)
         self.assertIn("Show you the 3D digital twin", ai_assistant._label("open_page", {"to": "twin"}))
 
     def test_a_file_named_without_its_extension_is_still_found(self):

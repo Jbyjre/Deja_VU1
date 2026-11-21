@@ -106,7 +106,7 @@ slicing and launcher files have their own notes in this folder.
 - `automations.py`: triggers include progress, time_left, layer, error, link_lost; actions include
   cool_down (never mid-print) and macro (must be one the printer lists). `notifications.py` sends
   only from rules.
-- `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py` (31 module ids).
+- `home_assistant_bridge.py` (28 sensors), `wled_bridge.py`, `modules.py` (32 module ids).
 - `pairing.py`: device keys (hash stored, HttpOnly cookie); redeeming again from a paired browser
   replaces its entry. The optional device lock (`_locked_out`) always allows loopback.
 - `qr.py`: standard-library QR codes, checked against python-qrcode. `phone_link()` in app.py.
@@ -137,6 +137,19 @@ slicing and launcher files have their own notes in this folder.
   expires captures at 30 seconds and never gives optical print approval. Drivers and firmware remain to build.
   Keep the README's hardware line, `color_check.py`'s
   docstring, `docs/architecture.md`, `docs/hardware-modules.md` and the explain.js note in step.
+
+## Error codes (21 November 2026)
+
+- `reference/u1_error_codes.json` is Snapmaker's U1 error code reference table (413 codes, levels, modules, the guide and video per code), made by
+  `tools/update-error-codes.py` from the wiki; never read it whole, never hand-edit it, say where the words came from. `error_codes.py` reads it
+  (`describe`, `search`, `reference`; an unlisted code says so, nothing is invented), `wiki_page.py` turns a wiki page into safe blocks (only https,
+  pictures and clips only from the wiki's own host, YouTube by id), `error_guides.py` reads a guide on request (only a slug the table lists, same-host
+  redirects, 3 MB cap, kept 14 days in `<data>/error_guides/`, 30 s before a retry), `printer_problems.py` is the one shape for a printer's problems.
+- Module `error_help` (core) gates `/api/errors/reference|search|code|guide` and `/api/printer/problems` (current problems, the incident timeline from
+  the logbook, the printer's messages). The assistant's `explain_error` tool is gated by it; the instructions have a 12,300-character cap
+  (`test_the_instructions_tell_it_to_act...`), raised from 12,000 for that tool.
+- `fleet.summary_for` rows carry `problem`; `logbook` entries carry `incident`. Tester mode records `printer` events with `ev` `problem`.
+- The guides are Snapmaker's text: keep them out of the repository and out of the online demo's recording (`/api/errors/guide` is in `NOT_RECORDED`).
 
 ## Split server files (19 November 2026)
 

@@ -5,6 +5,7 @@ moonraker_client.py imports these back, so `moonraker_client.<name>` works as be
 """
 
 import machines
+import printer_problems
 from moonraker_client_part1 import _PRINT_STATES, _at, _hex, _num, _obj, _split, _str, clean_error, filament_from_metadata, live_or_commanded, plate_objects, print_sync, toolhead_for, tuning_from  # noqa: F401
 
 
@@ -167,6 +168,21 @@ def translate_state(status, ctx):
         else:
             message = "Idle" if raw != "cancelled" else "Idle - the last print was cancelled"
 
+    # The U1 says why a print paused or stopped as a code (print_stats.exception); the code is read here, whatever the
+    # state, so a pause the printer raised itself is never mistaken for one pressed by hand.
+    texts = [t for t in (_str(ps.get("message")), _str(ctx.get("klippy_message")), _str(wh.get("state_message"))) if t]
+    standing = list(_obj(status, "exception_manager").get("exceptions") or []) + list(ctx.get("standing") or [])
+    problems = [printer_problems.public(p) for p in printer_problems.collect(
+        state, ps.get("exception"), standing, ctx.get("notified"), texts)]
+    if problems and state in ("paused", "error"):
+        said = printer_problems.words(problems[0])
+        if state == "paused":
+            message = f"Paused: {said}"
+        elif problems[0]["code"] not in message:
+            message = said if message.startswith("The print stopped with an error") else f"{message} ({problems[0]['code']})"
+    elif state == "paused" and _str(ps.get("message")):
+        message = "Paused: " + clean_error(_str(ps.get("message")))
+
     out = {
         "state": state,
         "state_message": message,
@@ -188,6 +204,9 @@ def translate_state(status, ctx):
         "real": True,
         "machine": machines.public(ctx.get("machine")),
     }
+    if problems:
+        out["problem"] = problems[0]
+        out["problems"] = problems
     out["tuning"] = tuning_from(status, ctx.get("extras") or {})
     homed = _obj(status, "toolhead").get("homed_axes")
     if isinstance(homed, str):

@@ -53,6 +53,10 @@ and overdue maintenance at the top.</sub>
 - **Keep up with care.** Seven maintenance tasks counted by print hours, print counts and the
   calendar, a logbook of problems and fixes, a filament inventory with Spoolman import, and a print
   queue that waits until you confirm the bed is clear.
+- **Know what an error code means.** When the printer pauses or stops with a code, Deja Vu1 reads it
+  and shows what it means in Snapmaker's own words, with the wiki's guide and videos beside it. A lookup
+  finds any of the 413 codes in Snapmaker's table, by number or by words, and the logbook records each
+  one with what was printing. [Error codes](docs/error-codes.md)
 - **Check from your phone.** Scan the code on the Overview to open Deja Vu1 on your phone. Away
   from home, Settings → Away from home shares it on your private Tailscale network.
 - **Automate the rest.** Rules send ntfy, Discord or Telegram notifications, set a WLED strip or
@@ -227,13 +231,15 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
   assistant. The assistant has also run through a paid API key.
-- **Automated:** 1806 tests passed on Python 3.13 (21 November 2026). GitHub Actions
+- **Automated:** 1882 tests passed on Python 3.13 (21 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
   Other builds slice too, and **Check slicer** lists the builds with recorded runs.
 - **With stand-ins in the suite:** macOS and Windows start-up, a second printer and other Klipper
-  printers, the Extended Firmware's camera, Spoolman, WLED, Home Assistant and Tailscale. Each
-  stand-in answers the way the real program does.
+  printers, the Extended Firmware's camera, Spoolman, WLED, Home Assistant, Tailscale and error codes
+  raised the way the U1's firmware raises them. Each stand-in answers the way the real program does.
+- **Not yet on a real U1:** a printer raising an error code. The code reading follows the firmware's
+  published source and the stand-in; a tester can confirm it by comparing the app with the printer's screen.
 
 The dated record, with the hardware still in progress: [docs/testing.md](docs/testing.md).
 
@@ -265,7 +271,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1806 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1882 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 
@@ -273,6 +279,7 @@ and a bench test of a physical sensor are still to do.
 |---|---|
 | Installing and first steps | [Getting started](docs/getting-started.md) |
 | Adding a real printer, and what each message means | [Connecting a real printer](docs/real-printer.md) |
+| What an error code means, and where the words come from | [Error codes](docs/error-codes.md) |
 | Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [test it and send a report](docs/beta-testing.md) |
 | What ran where, with dates | [What has been tested](docs/testing.md) |
 | Reviewing it: ten minutes without a printer, what is new since Phase 1, what is not done | [Check Deja Vu1 yourself](docs/for-reviewers.md) |

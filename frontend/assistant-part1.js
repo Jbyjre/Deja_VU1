@@ -348,6 +348,16 @@ function cardHTML(m) {
     if (c.kind === 'look') {
       return `<div class="ai-approve"><button class="btn small" type="button" data-place="printer" data-part="#pp-camera-card">Open the camera</button></div>`;
     }
+    if (c.kind === 'error') {
+      // explain_error (backend/ai_assistant_part2.py _card): Snapmaker's own words for a code, its video, its guide. errorhelp.js draws the video.
+      const kind = { Notice: 'notice', Warning: 'warning', Error: 'error' }[c.level] || 'notice';
+      const effect = { paused: 'The print is paused', stopped: 'The print was stopped', continues: 'The print carries on' }[c.effect] || '';
+      const guide = c.guide && /^https:\/\/wiki\.snapmaker\.com\//.test(c.guide.url || '') ? c.guide : null;
+      return `<div class="ai-card eh-chat"><div class="eh-top"><span class="eh-level is-${kind}">${esc(c.level || 'Code')}</span>${effect ? `<span class="eh-effect">${esc(effect)}</span>` : ''}</div>
+        <p class="ai-card-h"><b class="eh-chat-title">${esc(c.title || (c.known ? 'Printer error' : 'Not in Snapmaker\'s table'))}</b> <code>${esc(c.code)}</code></p>
+        ${c.details ? `<p>${esc(c.details)}</p>` : ''}${c.video && window.ErrorHelp ? ErrorHelp.video(c.video.id, c.video.title, c.video.start) : ''}
+        <div class="ai-approve"><button class="btn primary small" type="button" data-errhelp="${esc(c.code)}">Open it in full</button>${guide ? `<a class="btn small" href="${esc(guide.url)}" target="_blank" rel="noopener noreferrer">Snapmaker's guide</a>` : ''}</div></div>`;
+    }
     return '';
   }
 

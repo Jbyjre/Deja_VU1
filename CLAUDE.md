@@ -143,7 +143,8 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
   interface for simulated and real printers), `moonraker_client.py` (real printers), `live_feed.py`
   (250 ms tick), `fleet.py`, `print_gate.py` (Confirm Print), `gcode_tools.py`, `slicer_bridge.py`,
   `app_updates.py`, `storage.py`, `modules.py`, `ai_assistant.py` + `ai_providers.py` + `ai_vault.py`
-  (the assistant, its safety limits and key storage), and one module per feature.
+  (the assistant, its safety limits and key storage), `error_codes.py` + `error_guides.py` + `wiki_page.py` + `printer_problems.py` (error codes, with
+  the table in `reference/`), and one module per feature.
 - `frontend/`: published as the product page and online demo. `index.html` + `app.js` and its six parts (shared
   globals) + one script per feature, `rail.js` (sidebar) last; `welcome.html` (product page);
   `demo/` (the recording); `media/` (the launch film).
@@ -159,6 +160,8 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
 
 - Windows and macOS launcher, autostart and recovery paths are read from documentation and tested
   on Linux only; the Windows engine-check fallback has run against a stand-in engine only.
+- Error codes (`docs/error-codes.md`) follow the firmware's published source and a stand-in printer; no real U1 has raised a code to this build, and video
+  playback was not confirmed in the cloud sandbox (the player loads, the stream does not start).
 - The colour checker, LED dock rings and spool scales are not built; `color_check.py` and
   `led_status.py` hold the decision logic and a simulation.
 - Heavy models render slowly under software graphics; real-phone performance is unmeasured.

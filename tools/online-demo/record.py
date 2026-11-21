@@ -50,6 +50,8 @@ NOT_RECORDED = {"/api/files/raw", "/api/files/thumb", "/api/files/lines", "/api/
                 "/api/timelapse/printer-video", "/api/assistant/watch/picture",
                 # Progress of a copy of a real printer's video; demo printers record no videos, so there is never one to report.
                 "/api/timelapse/jobs",
+                # Snapmaker's guides are their text, read from their wiki when asked; the demo points to the wiki instead (app.js tourGet).
+                "/api/errors/guide",
                 # Tester mode is off in the demo: its card shows labelled sample figures and a sample report page instead.
                 "/api/tester/status", "/api/tester/report.html", "/api/tester/report.zip", "/api/tester/study"}
 # Routes that need a file name, and the parameter it goes in.
@@ -60,6 +62,23 @@ IGNORED = {"demo", "since", "v", "t", "_", "device"}
 # Routes the dashboard asks with set parameters, and each set it uses.
 VARIANTS = {"/api/fleet/history": [{"days": 7, "bucket": "day"}, {"days": 30, "bucket": "day"},
                                    {"days": 90, "bucket": "week"}]}
+
+
+# The error code lookups the public demo can answer: a few searches and each code they list. The guides themselves are not
+# recorded (they are Snapmaker's text, read from their wiki when the app is asked); the demo points to the wiki instead.
+DEMO_ERROR_SEARCHES = ("filament runout", "tangled", "heated bed")
+
+
+def error_variants():
+    sys.path.insert(0, os.path.join(ROOT, "backend"))
+    import error_codes                              # noqa: E402
+    codes = []
+    for words in DEMO_ERROR_SEARCHES:
+        for row in error_codes.search(words)["results"]:
+            if row["code"] not in codes:
+                codes.append(row["code"])
+    return {"/api/errors/search": [{"q": words} for words in DEMO_ERROR_SEARCHES],
+            "/api/errors/code": [{"code": code} for code in codes]}
 
 
 def key_for(path, params):
@@ -146,6 +165,7 @@ def record():
         gcode = [n for n in names if n.endswith(".gcode")]
 
         bodies, index, get = [], {}, {}
+        VARIANTS.update(error_variants())
 
         def keep(key, status, body):
             text = json.dumps({"status": status, "body": body}, sort_keys=True, separators=(",", ":"))

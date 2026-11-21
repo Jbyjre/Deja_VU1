@@ -67,7 +67,7 @@ from ai_assistant_part1 import (  # noqa: F401  (split out 19 November 2026; nam
     STATE_CHARS, WATCH_CONFIRM_S, WATCH_DEFAULT_LOOKS, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _CHATS_DIR,
     _DATA_DIR, _DETAIL, _FILE_TOOLS, _OFFLINE, _SAFE_GCODE, _SETTINGS_PATH, _automation_add, _automation_toggle,
     _automations, _brief_state, _build_model, _connections, _cool_down, _cut_holes, _demo_now, _edit_model,
-    _extrude, _file_delete, _file_info, _files, _gcode, _job_words, _lib_name, _lock, _logbook_add, _logbook_read,
+    _explain_error, _extrude, _file_delete, _file_info, _files, _guide_text, _gcode, _job_words, _lib_name, _lock, _logbook_add, _logbook_read,
     _look, _make_shape, _model_info, _model_name, _money, _move, _move_by, _now, _now_ctx, _nozzle, _op,
     _open_page, _part_triangles, _placed, _position, _print_settings, _printers, _ring, _save_model, _set_look,
     _shape, _slice, _slice_status, _slicer_profiles, _snapshot, _start_print, _state, _stem, _suggest_settings,

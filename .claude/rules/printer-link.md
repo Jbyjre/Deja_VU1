@@ -68,6 +68,23 @@ its behaviour, never paste it.
 - A `link_lost` state disables Pause, Cancel and Home and never offers the firmware restart. A fresh
   page gets `{"connected": false}` instead, and the empty state names the added printer.
 
+## Error codes from the printer (`printer_problems.py`, `error_codes.py`)
+
+- The U1's firmware reports a problem as level, id, index, code (`CodedException.structured_code` is `level-id-index-code`, four digits each) in four
+  places, all subscribed or handled here: `print_stats.exception` (`_BASE_OBJECTS`; cleared by the firmware on resume, restart and cancel, so it counts only
+  while the print is paused or stopped), `exception_manager.exceptions` (standing problems; subscribed only where the printer lists the object),
+  `notify_exception_notification` (one raised, with `timestamp`) and `notify_exception_status` (the standing list), and codes written in message text
+  (`print_stats.message`, Klipper's state message, `!!` G-code replies). A printer without them behaves as before.
+- `translate_state` builds `state["problem"]` (the most important) and `state["problems"]` through `printer_problems.collect/public`, and puts the wiki's
+  title and the code in `state_message` ("Paused: Printing Anomaly (0002-0523-0000-0038)"). A pause with no code and no message stays "Paused". Never show
+  `print_stats.exception` while printing: a stale one is ignored on purpose.
+- `MoonrakerPrinter.messages` (80 lines) keeps problems, `!!`/code replies and shutdown reasons; `recent_messages()`. Not verified on a real U1: the field and
+  notification names come from the firmware's source, and no real printer has raised a code to this version. `tests/fake_moonraker.py` `raise_exception` /
+  `clear_exception` raise one the way that firmware does.
+- `live_feed._note_problems` judges the code appearing, not the state changing (the code can arrive after the pause): it publishes `printer_problem`,
+  `logbook.record_problem` (one entry with an `incident`, adopted again after a restart for 12 h), `tester.note_problem`, and `logbook.clear_problem` when
+  it goes. `automations` "error" fires for state error or a problem at level 2 or more. Demo printers raise real table codes (`_attach_problem`).
+
 ## Commands
 
 - `printer_control` builds standard Klipper G-code after checking every value; motion is refused

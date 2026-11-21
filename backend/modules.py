@@ -300,6 +300,14 @@ REGISTRY = [
         "status": "optional",
         "default_enabled": TESTER_ALWAYS_ON,
     },
+    {
+        "id": "error_help",
+        "name": "Error codes",
+        "description": "Explains the codes the printer reports, in Snapmaker's own words from its wiki, "
+                        "with their troubleshooting guides and videos.",
+        "status": "ready",
+        "default_enabled": True,
+    },
 ]
 
 EXTRAS = ("auto_print", "webrtc_camera", "led_status", "wled_bridge", "home_assistant_bridge", "color_check",

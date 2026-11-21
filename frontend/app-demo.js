@@ -67,6 +67,7 @@ function tourState(pid) {
   } else if (sim.excluded && st.objects) {
     st.objects.excluded = [...new Set([...(st.objects.excluded || []), ...sim.excluded])];
   }
+  if (sim.mode === 'printing' || sim.mode === 'ready' || sim.mode === 'error') { delete st.problem; delete st.problems; }
   tourTuning(st, sim.tuning);
   return st;
 }

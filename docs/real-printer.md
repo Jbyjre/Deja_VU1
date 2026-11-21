@@ -75,6 +75,14 @@ covers that.
 A printer that isn't connected never shows numbers, and demo data never
 fills it in: demo data only ever means the simulation.
 
+## When the printer reports an error code
+
+A U1 that pauses or stops a print on its own raises a code such as `0002-0523-0000-0038`. Deja Vu1 reads it from
+the printer, shows it on the Printer screen and Overview, names it in the status line ("Paused: Printing
+Anomaly (0002-0523-0000-0038)"), notifies you and adds a logbook entry. Snapmaker's own words, guide and videos
+for the code open from the **What does this mean?** button. A pause you press yourself shows no code. The full
+explanation is in [Error codes](error-codes.md).
+
 ## What was checked, and against what
 
 The connection (`backend/moonraker_client.py`) was written against the

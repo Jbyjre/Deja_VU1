@@ -616,7 +616,7 @@ const SECTIONS = {
     ['layers', 'Layer heights', ['#tab-layerplan']],
   ],
   maintenance: [
-    ['upkeep', 'Maintenance', ['maintenance', '#logbook', 'swapped a nozzle']],
+    ['upkeep', 'Maintenance', ['maintenance', '#error-codes', '#logbook', 'swapped a nozzle']],
     ['filament', 'Filament', ['#tab-filament']],
   ],
   // Settings (Preferences is folded in): the groups of the SHELL plan. A card no rule names joins the first group.

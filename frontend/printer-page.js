@@ -304,7 +304,7 @@ window.PrinterPage = (() => {
     paint(body, `<div class="ov-state" data-state="${esc(s.link_lost ? 'lost' : s.state)}">
         <span class="ov-dot" aria-hidden="true"></span><span class="ov-word">${esc(s.link_lost ? 'No live link' : WORD[s.state] || s.state)}</span>
         ${head ? `<span class="ov-head"><i style="background:${esc(head.filament_color_hex || '#ccc')}"></i>${esc(s.active_toolhead)}</span>` : ''}
-      </div>${lines}${nowFigures(s, head)}`);
+      </div>${lines}${s.problem && window.ErrorHelp ? ErrorHelp.strip(s.problem, s.printer_id) : ''}${nowFigures(s, head)}`);
   }
   /* The figures someone glances at: the head and bed against their targets, speed,
      fan and flow as the printer reports them. A figure it doesn't report is left out. */

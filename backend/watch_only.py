@@ -44,6 +44,8 @@ READ_CALLS = {
     "server.connection.identify", "server.info", "machine.system_info",
     "printer.objects.list", "printer.objects.query", "printer.objects.subscribe",
     "printer.emergency_stop",
+    # Moonraker's list of the problems the U1 is holding: a query that changes nothing, although Moonraker files it as a POST.
+    "server.exception.query",
 }
 MESSAGE = ("Watch-only mode is on, so Deja Vu1 sends nothing to your printers that moves, heats, "
            "prints or changes a setting. Turn it off in Settings, Watch-only mode")
