@@ -639,7 +639,7 @@
           <button class="btn primary" type="button" id="camera-find">Find my printer's camera</button>
         </form>
         <p class="field-hint" id="camera-url-hint" role="status">Optional. <b>Find my printer's camera</b> asks the selected printer which extra camera feed it has, checks the picture and saves the address. If the address stops answering, the Printer page switches to the printer's own camera by itself. On the Extended Firmware it is usually <code>http://&lt;printer address&gt;/webcam/stream.mjpg</code>.</p>
-        <details class="webrtc-setup" id="webrtc-setup" hidden>
+        <details class="webrtc-setup log" id="webrtc-setup" hidden>
           <summary>Low-latency camera (optional, needs go2rtc)</summary>
           <p class="log-empty">go2rtc is a separate program you install and run yourself, so this is one step beyond "nothing to install". When it can't connect, the normal camera feed above is used. <a href="https://github.com/Jbyjre/Deja_VU1/blob/main/docs/low-latency-camera.md" target="_blank" rel="noopener">How to set it up</a></p>
           <form id="webrtc-form" class="inline-form">
@@ -650,7 +650,7 @@
             <button class="btn" type="submit">Save</button>
           </form>
         </details>
-        <details class="stock-camera"><summary>U1 built-in camera</summary>
+        <details class="stock-camera log"><summary>U1 built-in camera</summary>
           <p class="field-hint">For the stock U1 camera: JPEG pictures requested directly from the selected printer. Requires compatible firmware. The stream address above is for a separately configured camera.</p>
           <button class="btn" id="stock-camera-start" type="button">Show built-in camera</button>
           <button class="btn" id="stock-camera-stop" type="button" hidden>Stop camera</button>
@@ -1373,7 +1373,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
         <div id="module-list"></div>
       </section>
 
-      <div style="display:flex; flex-direction:column; gap:20px;">
+      <div style="display:flex; flex-direction:column; gap:14px;">
         <section class="card liquid-glass">
           <div class="card-head"><div><h2>Paired devices</h2><p class="card-sub">Phones and other computers you use with this dashboard.</p></div></div>
           <label class="setup-check handoff-setting"><input type="checkbox" id="handoff-setting" data-setting-module="handoff" data-setting-name="Continue on another device" checked> <span><b>Continue on another device</b> Offers to pick up on your phone exactly where another device left off.</span></label>

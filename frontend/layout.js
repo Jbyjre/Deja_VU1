@@ -55,7 +55,9 @@
     var style = getComputedStyle(box);
     // The grid's own gap becomes part of each card's rows, so the spacing stays what the look chose.
     var gap = parseFloat(style.columnGap) || 0;
-    if (box.dataset.flowMargin === undefined) box.dataset.flowMargin = String(parseFloat(style.marginBottom) || 0);
+    // What the stylesheet gives the box, read again each time: a box can move to another container (Settings does) where its margin differs.
+    box.style.marginBottom = '';
+    box.dataset.flowMargin = String(parseFloat(style.marginBottom) || 0);
     box.style.rowGap = '0px';
     box.style.gridAutoRows = '1px';
     box.style.alignItems = 'start';

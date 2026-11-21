@@ -271,6 +271,10 @@ the dots (`backdrop.js`) and, softly, the colours of the loaded filaments (`.poo
 Printer room, Overview or a sheet is excluded from the generic card rule (`:not(.cp *):not(.ovd *)`): those are laid out by cockpit.css. The look is technical on purpose:
 16 px panels, 10 px controls, hairline rims, flat buttons, rectangular tags on leader lines, gauge ticks on progress bars, viewfinder corners on the camera, mono figures.
 Reduced transparency makes every panel solid, increased contrast adds borders, reduced motion removes the glints (end of glass.css and cockpit.css).
+**Panel spacing and the specificity trap.** Panels are 14 px apart on every screen: the one floating-panel rule gives each panel `margin: 0 0 14px`, a grid or flex stack that
+already has a `gap` (`.grid-2`, `.flow-run`, `.desk-grid`, `.ov-grid`, `.fleet-grid`, `.set-body`) takes it off its panels, and a wrapper's own top margin is zero. The rule carries two
+`:not()` exclusions, so it is more specific than any plain `.card` or `.fleet-card` rule: **a later rule for the same panels must name the same exclusions or it silently loses**
+(this is how the printer cards lost their padding and stacked cards lost their gap, on screens that looked fine). The audit's `flush`, `tight` and `uneven` checks find it.
 
 **Text (`text.css`, `text.js`).** One rule set for text that does not fit. Prose wraps and a long unbroken word wraps too (`overflow-wrap: anywhere`, which also lets flex
 and grid items shrink to it). Names and labels are one line with an ellipsis (the selector list at the top of text.css; add a new kind of name there); a button keeps its words and
@@ -278,7 +282,7 @@ only a label that carries a printer or file name may shrink. Nothing is under 11
 `title` of anything cut when the pointer rests on it, it cuts a file name in the middle (`.mt`: start gives way, extension and version stay; the cut falls between words), and
 it adds `<wbr>` hints after `_ - . /` in long names inside wrapped text. **`node tools/text-audit.js`** is the check: every screen, each sheet and Settings group, at 1366, 1024
 and 390 px (`--dark` adds dark, `--focus` tabs through every screen, `--only a,b` limits it), with the server's answers rewritten on the way so every printer, file and task name
-is about 70 characters longer and the WebSocket is off. It reports clipped, outside, hidden (a control a box cuts away or pushes out of the window: text cut away whole is not "clipped" text), collide, wrap, mute, tiny, target, unnamed and focus findings and exits 1 on any;
+is about 70 characters longer and the WebSocket is off. It reports clipped, outside, hidden (a control a box cuts away or pushes out of the window: text cut away whole is not "clipped" text), collide, stacked (text forced down one or two characters a line), flush (text touching its panel's edge: the panel lost its padding), overlap, tight (panels under 8 px apart), uneven (panels 8 to 48 px apart but not 14), wrap, mute, tiny, target, unnamed and focus findings and exits 1 on any;
 `tests/test_text_system.py` runs it. Run it after any change to a screen.
 
 ## Building blocks (the SHELL frame)

@@ -46,7 +46,7 @@ paths:
   checks. These browser checks block the service worker and mark setup as seen, and the Chromium here draws WebGL in software.
 - Text and glass: `tests/test_text_system.py` checks glass.css, text.css and text.js as source (the two grades, the accessibility fallbacks, the room's framing values, the
   file-name splitter run in Node) and runs `node tools/text-audit.js --widths 1366,390` in Chromium: every screen with very long names, nothing may be clipped, outside its
-  box, hidden by a box or pushed out of the window, colliding, wrapping a compact control, unreadable when cut or under 11 px, and every control needs 24 px and a name. `--focus` adds a Tab walk (every stop must show a
+  box, hidden by a box or pushed out of the window, stacked one character a line, flush against its panel's edge, touching or overlapping another panel, colliding, wrapping a compact control, unreadable when cut or under 11 px, and every control needs 24 px and a name. `--focus` adds a Tab walk (every stop must show a
   focus ring and not be hidden); run it by hand after changing a screen. A finding is fixed in text.css or the screen's own CSS, never by loosening the audit.
 - GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13 (Ubuntu 24.04). Write no
   parenthesised `with (a, b):`; `ruff check --select E701,E702 backend tests tools` must stay clean.
