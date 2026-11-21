@@ -85,6 +85,28 @@ class TestRegressionsFoundByTheScans(unittest.TestCase):
         self.assertLess(sheets.index("glass.css"), sheets.index("text.css"))
         self.assertLess(sheets.index("text.css"), sheets.index("looks.css"))
 
+    def test_a_rule_that_overrides_the_floating_panel_must_be_at_least_as_specific(self):
+        # the floating-panel rule excludes the Printer room (.cp) and Overview (.ovd): a later rule for the same panels that names only one of
+        # the two is weaker and silently loses. This took the printer cards' padding away and left stacked cards touching, on screens that
+        # looked fine in every earlier scan (found by the audit's flush and tight checks).
+        rule = [line for line in GLASS.splitlines() if ".fleet-card:not(.cp *)" in line and "padding: 18px 20px" in line]
+        self.assertEqual(len(rule), 1)
+        self.assertIn(":not(.ovd *)", rule[0])
+        self.assertIn("margin: 0 0 14px;", GLASS)                                       # panels are 14 px apart: each carries the gap under it
+
+    def test_the_masonry_reads_the_runs_margin_again_each_time(self):
+        # Settings moves a run of cards into its own stack, where the margin differs; a margin cached from the first place doubled the gap there
+        layout = read_frontend("layout.js")
+        self.assertIn("box.style.marginBottom = '';", layout)
+        self.assertNotIn("if (box.dataset.flowMargin === undefined)", layout)
+
+    def test_the_old_empty_stage_takes_no_space_and_a_ruler_label_never_breaks(self):
+        # an empty leftover container added 34 px above every part of Printer; the last time label on Farm broke to one character a line
+        self.assertIn("#tab-control > .pp-stage:not(:has(*)) { display: none; }", COCKPIT_CSS)
+        farm = read_frontend("farm.css")
+        self.assertIn(".dk-ruler span { white-space: nowrap; }", farm)
+        self.assertIn(".btn.block { flex-shrink: 1; min-width: 0; }", TEXT_CSS)         # a full-width button beside another gives way to it
+
     def test_the_sidebar_leaves_the_way_for_a_sheet_and_for_the_keyboard(self):
         rail = read_frontend("rail.js")
         self.assertIn("CLICK_MS * 2 : LINGER_MS", rail)                                  # Tab out of it: it hands the screen over quickly
@@ -130,7 +152,7 @@ class TestTextSystem(unittest.TestCase):
     def test_the_audit_checks_every_kind_of_text_trouble(self):
         with open(AUDIT, encoding="utf-8") as f:
             audit = f.read()
-        for kind in ("clipped", "outside", "hidden", "collide", "mute", "tiny", "wrap", "sideways", "target", "unnamed", "focus"):
+        for kind in ("clipped", "outside", "hidden", "collide", "stacked", "flush", "overlap", "tight", "uneven", "mute", "tiny", "wrap", "sideways", "target", "unnamed", "focus"):
             self.assertIn(f"add('{kind}'", audit) if kind != "focus" else self.assertIn("kind: 'focus'", audit)
         self.assertIn("route('**/api/**'", audit)                                      # the long names reach the page over the network, not through the product
 

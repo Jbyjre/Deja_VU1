@@ -105,7 +105,7 @@ html.has-shell .pb-title { font-size: 17px; }
 
 /* ---- panels: the frosted material (tier 2). Cards on a screen float; cards inside the Printer room, Overview or a sheet stay flat on it ---------------------- */
 html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *) {
-  position: relative; background: var(--m-tint); border: 0; border-radius: var(--r-card); margin: 0;
+  position: relative; background: var(--m-tint); border: 0; border-radius: var(--r-card); margin: 0 0 14px;
   box-shadow: var(--g-sh-2); -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
   padding: 4px 0 14px; animation: none;
 }
@@ -117,7 +117,15 @@ html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divide
 html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *)::before { display: none; }
 html.has-shell .wrap .grid-2, html.has-shell .wrap .flow-run, html.has-shell .wrap .desk-grid, html.has-shell .wrap .ov-grid { gap: 14px; }
 html.has-shell .wrap .grid-2 > .card, html.has-shell .wrap .flow-run > .card, html.has-shell .wrap .flow-run > .grid-2 > .card { box-shadow: var(--g-sh-2); }
-html.has-shell .wrap .tab-panel > .card + .card, html.has-shell .wrap .tab-panel > * + .card, html.has-shell .wrap .tab-panel > .card + * { margin-top: 14px; }
+/* Panels are 14 px apart: each one carries 14 px under it (so a panel inside a wrapper still has its gap), and a grid that already has a gap takes it off its panels. */
+html.has-shell .wrap .tab-panel :is(.grid-2, .flow-run, .desk-grid, .ov-grid, .fleet-grid, .set-body) > :is(.card, .stats, .fleet-card, .notice, .pane-block):not(.cp *):not(.ovd *) { margin-bottom: 0; }
+html.has-shell .wrap :is(.tab-panel, .tab-sub) > :is(.grid-2, .flow-run, .desk-grid) { margin-bottom: 14px; }
+html.has-shell .wrap :is(.tab-panel, .tab-sub) > :is(.grid-2, .flow-run, .desk-grid, .automations-grid, .ov-grid) { margin-top: 0; }
+/* Settings stacks its panels with a gap at every level (the set-body and the wrappers inside it), so no panel there carries a margin as well */
+html.has-shell .wrap .tab-panel .set-body :is(.card, .stats, .fleet-card, .notice, .pane-block):not(.cp *):not(.ovd *) { margin-bottom: 0; }
+/* layout.js sizes a run of cards (masonry) and adds a gap under the last one that it gives back through the run's bottom margin: in Settings the stack's own gap does that job */
+html.has-shell .wrap .tab-panel .set-body > :is(.flow-run, .grid-2) { margin-bottom: 0; }
+html.has-shell .studio-layout { gap: 14px; }
 html.has-shell .wrap .card-head { padding: 10px 16px 8px; }
 html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 16px; margin-right: 16px; max-width: calc(100% - 32px); }
 
@@ -189,12 +197,13 @@ html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *), html.has-sh
   background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0; border-radius: 0;
 }
 html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *)::after { display: none; }
-html.has-shell #tab-fleet .card:has(> .fleet-grid) > .card-head { padding: 2px 6px 10px; }
+html.has-shell #tab-fleet .card:has(> .fleet-grid) > .card-head { padding: 2px 0 10px; }
+html.has-shell #tab-fleet .card:has(> .fleet-grid) { margin-bottom: 14px; }
 html.has-shell #tab-fleet .card:has(> .fleet-grid) > :not(.card-head) { margin-left: 0; margin-right: 0; max-width: none; }
 html.has-shell .fc-bar, html.has-shell .fc-bar.liquid-glass { border: 0; border-radius: 12px; background: color-mix(in oklch, var(--m-tint-solid) 50%, transparent); box-shadow: var(--g-sh-1); -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); margin-bottom: 14px; }
 html.has-shell .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: stretch; }
-html.has-shell .wrap .tab-panel .fleet-card:not(.cp *) { padding: 18px 20px 18px; border-radius: var(--r-card); box-shadow: var(--g-sh-2); }
-html.has-shell .wrap .tab-panel .fleet-card.is-selected:not(.cp *) { box-shadow: var(--g-sh-2), 0 0 0 2px color-mix(in oklch, var(--accent) 70%, transparent); }
+html.has-shell .wrap .tab-panel .fleet-card:not(.cp *):not(.ovd *) { padding: 18px 20px 18px; border-radius: var(--r-card); box-shadow: var(--g-sh-2); }
+html.has-shell .wrap .tab-panel .fleet-card.is-selected:not(.cp *):not(.ovd *) { box-shadow: var(--g-sh-2), 0 0 0 2px color-mix(in oklch, var(--accent) 70%, transparent); }
 html.has-shell .fleet-card .fc-stat dt, html.has-shell .fleet-card dt { font: 500 11.5px var(--font-sans); letter-spacing: 0; text-transform: none; color: var(--text-faint); }
 html.has-shell .fleet-card .badge, html.has-shell .fleet-card .fc-state { font: 600 12px var(--font-sans); letter-spacing: 0; text-transform: none; }
 html.has-shell .fleet-card :is(.btn, button.open, .fc-open) { border-radius: 14px; }
@@ -312,6 +321,7 @@ html.has-shell .rail-group span { font-size: 11px; }
 html.has-shell .wrap :is(.pref-check, .switch-label, label.check, label.pref-check) { min-height: 28px; display: inline-flex; align-items: center; gap: 8px; }
 html.has-shell .wrap :is(.pref-check, label.check) input[type="checkbox"] { width: 16px; height: 16px; }
 html.has-shell .wrap details > summary { min-height: 28px; display: flex; align-items: center; cursor: pointer; }
+html.has-shell #camera-host .empty { padding: 14px 12px 6px; }
 html.has-shell .wrap details > summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
 /* a focused control is never left under a fixed bar: the page scrolls it clear */
 html.has-shell .wrap > .tab-panel { scroll-padding: 12px 0 84px; }                /* the floating dock keeps the last 76 px of the screen */

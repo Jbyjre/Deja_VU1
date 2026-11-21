@@ -185,7 +185,7 @@ html.has-shell .ai-intro-list li { align-items: center; padding: 13px 0; border-
 }
 
 /* ---- Files: the Snapmaker U1 profiles banner (Bambu Studio and other slicers' projects) ------------------------------------------- */
-html.has-shell #tab-files > #convert-card { margin: 14px 18px 4px; padding: 16px 20px 16px 22px; border: 1px solid var(--hair-strong); border-left: 3px solid var(--accent); border-radius: 14px; background: var(--surface-2); }
+html.has-shell #tab-files > #convert-card { margin: 0 0 14px; padding: 16px 20px 16px 22px; border: 1px solid var(--hair-strong); border-left: 3px solid var(--accent); border-radius: 14px; background: var(--surface-2); }
 html.has-shell #tab-files > #convert-card h2 { margin: 2px 0 6px; font: 640 19px/1.25 var(--font-display); letter-spacing: -0.015em; text-transform: none; color: var(--text); }
 html.has-shell #tab-files > #convert-card .eyebrow { font: 600 10.5px var(--font-mono); letter-spacing: 0.09em; color: var(--accent-text); }
 html.has-shell #tab-files > #convert-card .card-sub { display: block; max-width: 76ch; }

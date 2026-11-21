@@ -492,6 +492,8 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 .dk-ruler-row .dk-track { height: 22px; background: none; border: 0; overflow: visible; }
 .dk-ruler span { position: absolute; top: 4px; transform: translateX(-50%); font: 600 10px/1 var(--font-mono); color: var(--text-faint); }
 .dk-ruler span:first-child { transform: none; }
+.dk-ruler span { white-space: nowrap; }                                      /* a label at the track's end must not break down to one character a line */
+.dk-ruler span:nth-last-child(2) { transform: translateX(-100%); }      /* the last label ends at the track's end (the marker for now is the very last child) */
 .dk-now { position: absolute; left: 0; top: 18px; width: 2px; height: 9999px; background: var(--accent); pointer-events: none; }
 .dk-night { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(60, 70, 100, .07) 0 6px, transparent 6px 12px); }
 .dk-bar { position: absolute; top: 5px; bottom: 5px; display: grid; align-content: center; gap: 1px; padding: 0 8px 0 10px; border-radius: 8px; overflow: hidden; min-width: 6px;

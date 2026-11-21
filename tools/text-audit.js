@@ -14,6 +14,10 @@
  *   clipped    text cut off by its box with no ellipsis, so the end of it is simply gone
  *   outside    text that runs out of the panel, card or window that holds it
  *   collide    two pieces of text drawn over each other
+ *   tight      two panels with less than 8 px between them, or lying over each other (overlap)
+ *   uneven     two panels 8 to 48 px apart but not the usual 14 px
+ *   flush      text touching the edge of the panel that holds it (the panel has lost its padding)
+ *   stacked    text forced down one or two characters per line (a label squeezed into a column narrower than a word)
  *   mute       text cut with an ellipsis that gives no way to read it in full (no title, no accessible name; hovering is simulated first,
  *              because text.js fills the title in when the pointer rests on cut text)
  *   tiny       text smaller than 11 px
@@ -176,6 +180,25 @@ function inspectPage() {
       const compact = !host.matches('.btn:not(.small)');
       if (lines > (compact ? 1 : 2)) add('wrap', host, `${lines} lines`, L.text);
     }
+    // text touching the edge of the panel that holds it: the panel has lost its padding (a chip, button or table cell between them carries its own)
+    const surface = el.closest('.card, .fleet-card, .notice, .stats, .pane, .pane-block');
+    if (surface) {
+      let own = false;
+      for (let e = el; e && e !== surface; e = e.parentElement) {
+        const q = getComputedStyle(e);
+        if (!/rgba?\(0, 0, 0, 0\)|, 0\)$/.test(q.backgroundColor) || (parseFloat(q.borderTopWidth) > 0 && q.borderTopStyle !== 'none') || (parseFloat(q.borderLeftWidth) > 0 && q.borderLeftStyle !== 'none') || e.matches('button, a.btn, label.btn, input, select, th, td, summary, .pill, .badge, .chip, .tag')) { own = true; break; }
+      }
+      const sb = surface.getBoundingClientRect(), sq = getComputedStyle(surface);
+      const drawn = !/rgba?\(0, 0, 0, 0\)|, 0\)$/.test(sq.backgroundColor) || sq.boxShadow !== 'none' || parseFloat(sq.borderTopWidth) > 0;   // a card that only holds other panels draws nothing
+      const v = L.r;
+      if (!own && drawn && sb.width > 140 && sb.height > 30 && (v.left - sb.left < 6 || sb.right - v.right < 6)) add('flush', el, `text ${Math.round(v.left - sb.left)} px from the left edge and ${Math.round(sb.right - v.right)} px from the right edge of its panel`, L.text);
+    }
+    // text broken into slivers: three or more lines that hold only a few characters each (a word forced down one character per line)
+    if (L.rects.length > 2) {
+      const lineCount = new Set(L.rects.map(q => Math.round(q.top / 4))).size;
+      const chars = L.text.replace(/\s+/g, ' ').trim().length;
+      if (lineCount >= 3 && chars / lineCount < 3.2) add('stacked', el, `${lineCount} lines for ${chars} characters`, L.text);
+    }
   }
   // two pieces of text on top of each other
   for (let i = 0; i < leaves.length; i++) {
@@ -190,6 +213,31 @@ function inspectPage() {
       let hit = false;
       for (const p of a.rects) { for (const q of b.rects) { const xx = Math.min(p.right, q.right) - Math.max(p.left, q.left), yy = Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top); if (xx > 3 && yy > Math.max(4, 0.35 * Math.min(p.height, q.height))) { hit = true; break; } } if (hit) break; }
       if (hit) add('collide', a.el, `"${b.text.slice(0, 28)}" in ${(b.el.tagName || '').toLowerCase()}${typeof b.el.className === 'string' && b.el.className ? '.' + b.el.className.split(/\s+/)[0] : ''}`, a.text);
+    }
+  }
+  // panels that touch or nearly touch (a gap under 8 px reads as a mistake: panels are 14 px apart) or lie over each other
+  {
+    const panels = [...document.querySelectorAll('.card, .fleet-card, .notice, .stats, .pane-block')]
+      .filter(e => visible(e) && (!scope || scope.contains(e)) && !e.closest('#intro, .tester-ui, [data-audit-skip], .cp-hold') && !e.parentElement.closest('.card, .fleet-card, .notice, .stats, .pane-block'))
+      .filter(e => { const q = getComputedStyle(e); return (!/rgba?\(0, 0, 0, 0\)|, 0\)$/.test(q.backgroundColor) || q.boxShadow !== 'none') && getComputedStyle(e).position !== 'fixed' && getComputedStyle(e).position !== 'sticky'; })
+      .map(e => ({ e, r: e.getBoundingClientRect() })).filter(x => x.r.width > 80 && x.r.height > 30);
+    const nextVisible = e => { let n = e.nextElementSibling; while (n && (getComputedStyle(n).display === 'none' || n.getBoundingClientRect().height === 0)) n = n.nextElementSibling; return n; };
+    const stacked = (a, b) => {
+      if (/grid/.test(getComputedStyle(a.parentElement).display)) return false;
+      const n = nextVisible(a);
+      return !!n && (n === b || n.contains(b) && n.querySelector('.card, .fleet-card, .notice, .stats, .pane-block') === b);
+    };
+    const name = e => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}${typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\s+/)[0] : ''}`;
+    for (let i = 0; i < panels.length; i++) for (let j = i + 1; j < panels.length; j++) {
+      const a = panels[i], b = panels[j];
+      if (a.e.contains(b.e) || b.e.contains(a.e) || (a.e.closest('.cp-sheet') && b.e.closest('.cp-sheet'))) continue;      // a sheet spaces its own panels
+      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left), oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      if (ox > 3 && oy > 3) { add('overlap', a.e, `${Math.round(ox)}×${Math.round(oy)} px over ${name(b.e)}`, ''); continue; }
+      const gapY = -oy, gapX = -ox;
+      if (ox > 40 && gapY > -0.5 && gapY < 8) add('tight', a.e, `${Math.round(gapY)} px above ${name(b.e)} (in ${name(a.e.parentElement)}; margins ${getComputedStyle(a.e).marginBottom} / ${getComputedStyle(b.e).marginTop})`, '');
+      else if (oy > 40 && gapX > -0.5 && gapX < 8) add('tight', a.e, `${Math.round(gapX)} px beside ${name(b.e)}`, '');
+      else if (ox > 40 && gapY >= 8 && gapY < 48 && (gapY < 13 || gapY > 16) && stacked(a.e, b.e)) add('uneven', a.e, `${Math.round(gapY)} px above ${name(b.e)} (in ${name(a.e.parentElement)}; margins ${getComputedStyle(a.e).marginBottom} / ${getComputedStyle(b.e).marginTop}; panels are 14 px apart)`, '');
+      else if (oy > 40 && gapX >= 8 && gapX < 48 && (gapX < 13 || gapX > 16)) add('uneven', a.e, `${Math.round(gapX)} px beside ${name(b.e)} (in ${name(a.e.parentElement)}; margins ${getComputedStyle(a.e).marginBottom} / ${getComputedStyle(b.e).marginTop}; panels are 14 px apart)`, '');
     }
   }
   // controls: big enough to hit (WCAG 2.5.8 asks for 24 px), and named for a screen reader
@@ -388,7 +436,7 @@ async function main() {
   }
   const byKind = {};
   all.forEach(i => { (byKind[i.kind] = byKind[i.kind] || []).push(i); });
-  const order = ['script', 'sideways', 'clipped', 'outside', 'hidden', 'collide', 'wrap', 'mute', 'tiny', 'target', 'unnamed', 'focus'];
+  const order = ['script', 'sideways', 'clipped', 'outside', 'hidden', 'collide', 'stacked', 'flush', 'overlap', 'tight', 'uneven', 'wrap', 'mute', 'tiny', 'target', 'unnamed', 'focus'];
   console.log(`Text audit: ${screens} screens (${widths.join(', ')} px${themes.length > 1 ? ', light and dark' : ''}${stress ? ', very long names' : ', plain data'}); ${all.length} finding${all.length === 1 ? '' : 's'}.`);
   for (const k of order) {
     const list = byKind[k] || [];

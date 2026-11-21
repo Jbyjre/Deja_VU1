@@ -253,7 +253,7 @@ async function loadCamera() {
     cam.mjpeg = (s && s.stream_url) || '';
     cam.webrtc = webrtcModule && Boolean(w.go2rtc_url && w.stream) && typeof RTCPeerConnection === 'function';
     if (!cam.mjpeg && !cam.webrtc) {
-      host.innerHTML = empty('Nothing to set up', 'The printer\'s own camera shows on the Printer page, beside the twin. Add an address above only to use a different camera. Nothing is simulated here, so the demo has no camera.');
+      host.innerHTML = empty('No separate camera set', 'The printer\'s own camera shows on the Printer screen. Add an address above only to use a different camera.');
       cam.built = false;
       return;
     }
