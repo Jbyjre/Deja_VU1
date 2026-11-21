@@ -951,7 +951,11 @@ class WebSocketClient:
 # stream small; None means every field.
 _BASE_OBJECTS = {
     "webhooks": ["state", "state_message"],
-    "print_stats": ["state", "filename", "print_duration", "total_duration", "filament_used", "message", "info"],
+    # "exception" is the U1's own report of why a print paused or stopped (id, index, code, level, message); a printer
+    # without it leaves the field out. exception_manager lists the problems that stay until they are cleared.
+    "print_stats": ["state", "filename", "print_duration", "total_duration", "filament_used", "message", "info",
+                    "exception"],
+    "exception_manager": ["exceptions"],
     "virtual_sdcard": ["progress", "is_active", "file_position", "file_size"],
     # The progress the slicer wrote into the file itself (M73), which counts time rather than bytes (Klipper's
     # docs/Status_Reference.md: display_status.progress, the bytes' progress when no M73 has come). Only where the printer has it.

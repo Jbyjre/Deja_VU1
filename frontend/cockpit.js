@@ -185,6 +185,10 @@
     fill($('tile-tune-body'), s ? `<span class="tn"><i>Speed</i><b>${pct(t.speed_factor)}</b></span><span class="tn"><i>Flow</i><b>${pct(t.extrude_factor)}</b></span><span class="tn"><i>Part fan</i><b>${pct(t.part_fan)}</b></span>`
       : '<span class="tile-empty">Speed, flow and fan</span>');
   }
+  // The printer's own code for what is wrong (backend/printer_problems.py): one line and a button that opens its explanation (errorhelp.js).
+  function problemStrip(s) {
+    return s && s.problem && window.ErrorHelp ? ErrorHelp.strip(s.problem, s.printer_id) : '';
+  }
   function jobHtml(s, full) {
     if (!s || !s.state) return '<span class="tile-empty">No printer connected</span>';
     const pct = Math.round((s.progress || 0) * 100);
@@ -199,10 +203,10 @@
         <span class="jb-pct"><b>${pct}</b><small>%</small><em>${s.state === 'paused' ? 'Paused' : 'Printing'}</em></span>
         <span class="jb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Print progress"><i style="width:${pct}%"></i></span>
         <span class="jb-line">${left != null ? `${esc(words(left))} left${done ? ` · done ${esc(done)}` : ''}` : 'Time left: not known yet'}</span>
-        ${layer ? `<span class="jb-line jb-dim">${esc(layer)}</span>` : ''}${why ? `<span class="jb-why">${esc(why)}</span>` : ''}`;
+        ${layer ? `<span class="jb-line jb-dim">${esc(layer)}</span>` : ''}${why ? `<span class="jb-why">${esc(why)}</span>` : ''}${problemStrip(s)}`;
     }
     if (s.state === 'complete') return `<span class="jb-state is-ok">Finished</span><span class="jb-line jb-file">${esc(s.current_file || '')}</span>`;
-    if (s.state === 'error') return `<span class="jb-state is-bad">Needs attention</span><span class="jb-line">${esc(s.state_message || '')}</span>`;
+    if (s.state === 'error') return `<span class="jb-state is-bad">Needs attention</span><span class="jb-line">${esc(s.state_message || '')}</span>${problemStrip(s)}`;
     return '<span class="jb-state">Ready</span><span class="jb-line jb-dim">Nothing is printing</span>';
   }
   function paintJob(s) {

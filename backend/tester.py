@@ -671,6 +671,18 @@ def note_print_event(event):
            hours=summary.get("hours"), grams=summary.get("grams"), material=summary.get("material"))
 
 
+def note_problem(printer_id, problem, demo=False):
+    """The printer reported a problem (error_codes.py has its words). Only the code, its level and the wiki's title are kept."""
+    if not enabled() or not isinstance(problem, dict) or not problem.get("code"):
+        return
+    try:
+        said = ("%s: %s" % (problem["code"], problem["title"])) if problem.get("title") else problem["code"]
+        record("printer", ev="problem", printer=printer_label(printer_id), demo=bool(demo), code=problem["code"],
+               level=problem.get("level"), words=said, what=problem.get("level_name"))
+    except Exception:                   # noqa: BLE001
+        pass
+
+
 def note_start(filename, printer_id, demo=False):
     """The tester pressed Start after Confirm Print and the printer accepted it."""
     if enabled():

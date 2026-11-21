@@ -46,6 +46,7 @@ class Aggregator:
         self.sent = {}
         self.print_counts = {"real": Counter(), "demo": Counter()}
         self.link = Counter()
+        self.problems = {}                  # the codes a real printer reported: code -> title, level, how often
         self.firmware = {}
         self.gates = []
         self.gate_reasons = Counter()
@@ -344,6 +345,14 @@ class Aggregator:
         elif what == "firmware":
             self.firmware[ev.get("printer") or "printer"] = ev.get("facts") or {}
             return
+        elif what == "problem":
+            code = str(ev.get("code") or "")
+            if code and not ev.get("demo") and (code in self.problems or len(self.problems) < 200):
+                title = str(ev.get("words") or "").split(": ", 1)[1] if ": " in str(ev.get("words") or "") else None
+                item = self.problems.setdefault(code, {"code": code, "title": title, "level": ev.get("level"), "count": 0,
+                                                       "first": _iso(t), "last": _iso(t)})
+                item["count"] += 1
+                item["last"] = _iso(t)
         elif what in ("print_started", "print_finished", "print_failed", "print_cancelled"):
             self.print_counts["demo" if ev.get("demo") else "real"][what] += 1
             if what == "print_started":
@@ -650,7 +659,8 @@ class Aggregator:
                          "failed": self.failed},
             "errors": {"total": self.error_total, "groups": errors},
             "printer": {"connections": dict(self.link), "firmware": self.firmware, "prints": prints,
-                        "confirmed_by_printer": confirmed, "sent_not_read_back": sent, "refused": self.refused, "timeline": self.timeline},
+                        "confirmed_by_printer": confirmed, "sent_not_read_back": sent, "refused": self.refused, "timeline": self.timeline,
+                        "problems": sorted(self.problems.values(), key=lambda p: (-p["count"], p["code"]))},
             "confirm_print": {"checks": len(self.gates), "by_verdict": dict(gate_totals), "went_on_to_print": went_on,
                               "reasons": [{"reason": self.gate_reason_text.get(r, r), "count": c} for r, c in self.gate_reasons.most_common(30)],
                               "list": self.gates},

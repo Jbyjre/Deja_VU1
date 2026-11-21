@@ -21,12 +21,12 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
   `ar.js` → `twin3d-scene.js` → `twin3d-part1.js` → `twin3d.js` → `workshop-part1.js` … `workshop-part5.js` →
   `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
-  → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
+  → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `errorhelp.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
   `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `text.js` → `pagebar.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
-  `guide.css` → `assistant.css` → `tester.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
+  `guide.css` → `assistant.css` → `tester.css` → `errorhelp.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
   `shell.css` → `shell-panes.css` → `cockpit.css` → `glass.css` → `text.css` → `looks.css`.
 
 ## Split files (18 and 19 November 2026)
@@ -187,6 +187,12 @@ code can sit in more than one part: search the family (`grep -n "function render
   a printer already in the list is reused. Its flags go through `store` (app.js), which falls back from
   localStorage to sessionStorage to the page's memory. `tools/setup-walk.js` checks all of it in Chromium. `phone.js`: the QR sheet and `?pair=` redemption; `Phone.install()` picks install
   steps (Chrome installs only from https, localhost or a flagged address).
+- `errorhelp.js` + `errorhelp.css`: the error code window (a `glass-dialog`), the one-line strip (`ErrorHelp.strip(problem)`) the print tile, Overview card and logbook
+  share, the Care tab's "Error codes" lookup card (`#error-codes`, named in `SECTIONS`) and "What the printer said lately". Anything with
+  `data-errhelp="CODE"` opens the window (a capture-phase handler that stops the press, so a strip inside a tile does not also open the tile's sheet). Guides arrive as
+  plain blocks from `/api/errors/guide` and go through `esc()`. YouTube loads only after the play button (`youtube-nocookie.com`, `referrerpolicy` set because the
+  app sends no referrer and the player refuses with Error 153 without one); the page's own address goes to YouTube, which the line under the button says. The
+  online demo's `tourGet` answers `/api/errors/guide` with a note and the wiki's link, and records a few codes (`error_variants` in record.py).
 - `explain.js`: an ⓘ after each known card title (HELP, keyed by the title's letters and digits) and
   `[[word]]` glossary links. Write notes in plain words. `tests/test_explain.py` fails when a note's
   card is renamed. `finder.js` (Ctrl/Cmd+K) ignores the ⓘ button; `tests/test_finder.py`. Its search box lives at the right of the top bar (`.feature-finder`) and moves into the phone's More sheet.

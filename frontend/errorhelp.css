@@ -1,0 +1,166 @@
+/* errorhelp.css: the error code window and its small pieces (errorhelp.js).
+ * Colours are the app's own tokens: levels read through --accent, --warn and --bad (their -text forms for words), surfaces through --well and
+ * --hair. Content (the quote, the guide) is quiet paper; the window around it is the usual glass dialog. */
+
+.eh-dialog { width: min(880px, calc(100vw - 32px)); }
+.eh-panel { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 14px; }
+.eh-bar { display: flex; gap: 10px; align-items: center; }
+.eh-search { flex: 1 1 auto; min-width: 0; }
+.eh-search input, .eh-card-form input { width: 100%; box-sizing: border-box; min-height: 40px; }
+.eh-body { overflow: auto; overscroll-behavior: contain; max-height: calc(100vh - 190px); padding: 2px 2px 6px; outline: none; }
+.eh-body:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 10px; }
+
+/* Level pill */
+.eh-level { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; font: 600 12px/1 var(--font-sans);
+  letter-spacing: .02em; border: 1px solid currentColor; white-space: nowrap; }
+.eh-level.is-notice { color: var(--accent-text); background: var(--accent-soft); }
+.eh-level.is-warning { color: var(--warn-text); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.eh-level.is-error { color: var(--bad-text); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.eh-top { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.eh-effect { font-size: 14px; color: var(--text-dim); }
+
+/* The code as a readout: the four groups of its number, each captioned with what it is */
+.eh-code { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; margin: 12px 0 14px; }
+.eh-seg { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 10px; background: var(--well); border-top: 3px solid var(--hair-strong); min-width: 0; }
+.eh-seg b { font: 600 clamp(22px, 4.4vw, 34px)/1 var(--font-mono); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.eh-seg i { font: normal 500 11.5px/1.25 var(--font-sans); color: var(--text-dim); overflow-wrap: anywhere; }
+.eh-seg:first-child { border-radius: 12px 0 0 12px; }
+.eh-seg:last-child { border-radius: 0 12px 12px 0; }
+.eh-code.is-notice .is-level { border-top-color: var(--accent); }
+.eh-code.is-warning .is-level { border-top-color: var(--warn); }
+.eh-code.is-error .is-level { border-top-color: var(--bad); }
+.eh-code .is-module { border-top-color: var(--hair-strong); }
+
+.eh-title { margin: 4px 0 10px; font: 600 clamp(20px, 2.8vw, 26px)/1.2 var(--font-sans); text-wrap: balance; }
+.eh-title:focus { outline: none; }
+
+/* Snapmaker's own words, quoted */
+.eh-said { margin: 0 0 14px; padding: 12px 16px; background: var(--well); border-left: 3px solid var(--accent); border-radius: 0 12px 12px 0; }
+.eh-said blockquote { margin: 0; }
+.eh-said p { margin: 0; font-size: 16px; line-height: 1.5; text-wrap: pretty; }
+.eh-said figcaption, .eh-source, .eh-hint, .eh-fine, .eh-video-note { font-size: 12.5px; line-height: 1.45; color: var(--text-dim); }
+.eh-said figcaption { margin-top: 8px; }
+.eh-unknown, .eh-printer, .eh-help { margin: 0 0 14px; font-size: 14.5px; line-height: 1.5; }
+.eh-printer q { font-family: var(--font-mono); font-size: 13px; }
+.eh-warn { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 14px; background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--text); }
+.eh-wait { color: var(--text-dim); font-size: 14px; }
+.eh-empty h3 { margin: 4px 0 8px; font-size: 20px; }
+.eh-empty p { margin: 0 0 12px; color: var(--text-dim); max-width: 60ch; }
+
+/* Videos */
+.eh-clips { display: grid; gap: 10px; margin: 0 0 14px; }
+.eh-h { margin: 14px 0 6px; font-weight: 600; }
+.eh-h1 { font-size: 18px; }
+.eh-h2, .eh-h3 { font-size: 15px; }
+.eh-clips .eh-h { margin: 0; }
+.eh-video { display: grid; gap: 6px; max-width: 560px; }
+.eh-play { display: flex; align-items: flex-end; gap: 12px; width: 100%; aspect-ratio: 16 / 9; padding: 14px 16px; border: 1px solid var(--hair); border-radius: 14px;
+  background: var(--well); color: var(--text); text-align: left; cursor: pointer; position: relative; font: inherit; }
+.eh-play:hover { border-color: var(--hair-strong); }
+.eh-play:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.eh-play-icon { position: absolute; left: 50%; top: 42%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--accent); }
+.eh-play-icon::after { content: ""; position: absolute; left: 22px; top: 17px; border-left: 17px solid var(--on-accent); border-block: 11px solid transparent; }
+.eh-play-text { display: grid; gap: 2px; position: relative; max-width: 100%; }
+.eh-play-text b { font-size: 15px; line-height: 1.25; }
+.eh-play-text small { font-size: 12px; color: var(--text-dim); }
+.eh-video iframe { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 14px; background: var(--well); }
+
+/* The guide */
+.eh-guide { margin: 0 0 14px; }
+.eh-guide:focus { outline: none; }
+.eh-guide-head h4 { margin: 0 0 4px; font-size: 18px; }
+.eh-guide-head .eh-source { margin: 0 0 10px; }
+.eh-article { display: block; max-width: 70ch; }
+.eh-article p, .eh-article li { font-size: 15px; line-height: 1.55; text-wrap: pretty; }
+.eh-article p { margin: 8px 0; white-space: normal; }
+.eh-article h4 { margin: 20px 0 6px; font-size: 18px; border-top: 1px solid var(--hair); padding-top: 14px; }
+.eh-article h5 { margin: 14px 0 4px; font-size: 15px; }
+.eh-article .eh-h1:first-child { border-top: 0; padding-top: 0; margin-top: 4px; }
+.eh-list { margin: 6px 0 10px; padding-left: 20px; }
+.eh-list li { margin: 3px 0; }
+.eh-list .eh-d1 { margin-left: 18px; }
+.eh-list .eh-d2 { margin-left: 36px; }
+.eh-list .eh-d3 { margin-left: 54px; }
+.eh-fig { margin: 12px 0; }
+.eh-fig img, .eh-fig video { display: block; max-width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--hair); background: var(--well); }
+.eh-note { margin: 10px 0; padding: 4px 14px; border-radius: 0 12px 12px 0; background: var(--well); border-left: 3px solid var(--accent); }
+.eh-note.is-warning { border-left-color: var(--warn); }
+.eh-note.is-danger { border-left-color: var(--bad); }
+.eh-note.is-success { border-left-color: var(--ok); }
+.eh-note p { margin: 8px 0; }
+.eh-pre { overflow: auto; padding: 10px 12px; border-radius: 10px; background: var(--well); font: 13px/1.45 var(--font-mono); }
+.eh-tablewrap { overflow-x: auto; margin: 10px 0; }
+.eh-tablewrap table { border-collapse: collapse; min-width: 100%; font-size: 14px; }
+.eh-tablewrap th, .eh-tablewrap td { padding: 6px 10px; border-bottom: 1px solid var(--hair); text-align: left; vertical-align: top; }
+.eh-tablewrap thead th, .eh-tablewrap tr:first-child th { font-weight: 600; background: var(--well); }
+.eh-link { display: inline; padding: 0; margin: 0; border: 0; background: none; color: var(--accent-text); font: inherit; text-decoration: underline; cursor: pointer; min-height: 24px; }
+.eh-link:focus-visible, .eh-dialog a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.eh-dialog a { color: var(--accent-text); }
+.eh-ytlink::before { content: ""; display: inline-block; margin-right: .4em; border-left: .62em solid currentColor; border-block: .38em solid transparent; }
+
+/* How to read a code */
+.eh-how { margin-top: 6px; border-top: 1px solid var(--hair); padding-top: 10px; }
+.eh-how summary { cursor: pointer; font-weight: 600; min-height: 24px; }
+.eh-mods { columns: 2 200px; margin: 4px 0 10px; padding-left: 18px; font-size: 14px; }
+.eh-mods code, .eh-row code, .eh-strip code { font-family: var(--font-mono); }
+
+/* Search results */
+.eh-count { margin: 4px 0 8px; font-size: 15px; font-weight: 600; color: var(--text-dim); }
+.eh-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.eh-row { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 4px 12px; width: 100%; min-height: 48px; padding: 8px 12px; text-align: left;
+  border: 1px solid var(--hair); border-radius: 12px; background: var(--well); color: var(--text); cursor: pointer; font: inherit; }
+.eh-row:hover { border-color: var(--hair-strong); }
+.eh-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eh-row code { font-size: 13px; color: var(--text-dim); }
+.eh-row b { font-size: 15px; min-width: 0; }
+.eh-row-d { grid-column: 1 / -1; font-size: 13px; line-height: 1.4; color: var(--text-dim); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.eh-row small { grid-column: 1 / -1; font-size: 11.5px; color: var(--accent-text); }
+
+/* The one-line version other screens share */
+.eh-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 8px 0 0; padding: 8px 10px; border-radius: 12px; background: var(--well); border: 1px solid var(--hair); }
+.eh-strip.is-warning { border-color: color-mix(in srgb, var(--warn) 55%, var(--hair)); }
+.eh-strip.is-error { border-color: color-mix(in srgb, var(--bad) 55%, var(--hair)); }
+.eh-strip-text { display: grid; gap: 1px; min-width: 0; flex: 1 1 160px; }
+.eh-strip-text b { font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+.eh-strip-text code { font-size: 12px; color: var(--text-dim); overflow-wrap: anywhere; }
+
+/* The Care tab's lookup card */
+.eh-card-form { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.eh-card-form input { flex: 1 1 auto; }
+.eh-now { margin: 0 0 8px; }
+.eh-now-label { margin: 0; font-size: 12.5px; color: var(--text-dim); }
+
+/* The assistant's chat card */
+.eh-chat { display: grid; gap: 6px; }
+.eh-chat .eh-top { gap: 6px 10px; }
+.eh-chat-title { font-weight: 600; }
+.eh-chat code { font-family: var(--font-mono); font-size: 12.5px; }
+.eh-chat p { margin: 0; font-size: 14px; line-height: 1.45; }
+
+@media (max-width: 600px) {
+  .eh-dialog { width: calc(100vw - 16px); }
+  .eh-panel { padding: 12px 14px 16px; }
+  .eh-body { max-height: calc(100vh - 150px); }
+  .eh-code { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .eh-seg:first-child { border-radius: 12px 0 0 0; }
+  .eh-seg:nth-child(2) { border-radius: 0 12px 0 0; }
+  .eh-seg:nth-child(3) { border-radius: 0 0 0 12px; }
+  .eh-seg:last-child { border-radius: 0 0 12px 0; }
+  .eh-card-form { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .eh-play, .eh-row { transition: none; } }
+@media (prefers-contrast: more) {
+  .eh-seg, .eh-said, .eh-note, .eh-strip, .eh-row, .eh-play { border: 2px solid currentColor; }
+  .eh-level { border-width: 2px; }
+}
+@media (prefers-reduced-transparency: reduce) { .eh-dialog .dialog-panel { background: var(--paper-solid); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+
+/* The Care logbook's line about what the printer was doing */
+.lb-facts { margin: 4px 0 0; font-size: 12.5px; color: var(--text-dim); }
+
+.eh-said-h { margin: 12px 0 4px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.eh-msgs { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.eh-msgs li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 6px 0; border-top: 1px solid var(--hair); font-size: 13.5px; }
+.eh-msgs time { font: 12px var(--font-mono); color: var(--text-dim); }
+.eh-msg-kind { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+.eh-msg-text { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }

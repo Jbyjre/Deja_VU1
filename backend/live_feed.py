@@ -57,6 +57,7 @@ _seq = 0
 _fleet = {"seq": 0, "t": 0.0, "printers": []}
 _climate = {}                  # printer_id -> deque of samples
 _prev_state = {}
+_problems_seen = {}            # printer_id -> the codes being shown now, so each is announced and recorded once
 _detect_lock = threading.RLock()   # the feed thread and request threads both detect changes
 _demo_seen_at = 0.0
 _DATA_DIR = storage.DATA_DIR
@@ -300,12 +301,46 @@ def _detect_locked(printer_id, state, finish_event):
                     publish_event({"type": "queue", "printer": printer_id, "bed": print_queue.bed_state(printer_id)})
                 elif name == "finished":
                     threading.Thread(target=_advance_queue, args=(printer_id, ended_file), daemon=True).start()
+    if side_effects:
+        _note_problems(printer_id, state, simulated)
     if events and side_effects and modules.is_enabled("automations"):
         # Print events are checked against the rules here, where they are
         # detected - whether that is the 250 ms loop or straight after a
         # button press - so an event can never slip past the rules.
         automations.evaluate(printer_id, state, set(events), demo_printer=simulated, slow_checks=False)
     return events, side_effects, simulated
+
+
+def _note_problems(printer_id, state, simulated):
+    """
+    A problem the printer reports (a code with the wiki's words) is announced to the browser, recorded in the logbook and
+    noted for Tester mode once, when it appears, and marked cleared when the printer stops reporting it. It is judged on
+    the code appearing, not on the state changing, because the code can arrive a moment after the pause.
+    """
+    logbook.remember_readings(printer_id, state)
+    if state.get("never_connected") or state.get("link_lost"):
+        return
+    now = {p["code"]: p for p in (state.get("problems") or []) if isinstance(p, dict) and p.get("code")}
+    seen = _problems_seen.setdefault(printer_id, set())
+    for code, problem in now.items():
+        if code in seen:
+            continue
+        seen.add(code)
+        entry, new = None, True
+        if modules.is_enabled("maintenance"):
+            entry, new = logbook.record_problem(printer_id, state, problem, simulated)
+        if not new:
+            continue
+        keep = {k: problem.get(k) for k in ("code", "level", "level_name", "effect", "title", "details", "module_name",
+                                            "known", "guide", "video", "raised_at")}
+        publish_event({"type": "printer_problem", "printer": printer_id,
+                       "printer_name": mock_moonraker.printer_name(printer_id), "file": state.get("current_file"),
+                       "demo": simulated, "problem": keep, "logbook": (entry or {}).get("id")})
+        tester.note_problem(printer_id, problem, simulated)
+    for code in sorted(seen - set(now)):
+        seen.discard(code)
+        if modules.is_enabled("maintenance"):
+            logbook.clear_problem(printer_id, code)
 
 
 def _advance_queue(printer_id, filename=None):
@@ -507,6 +542,7 @@ def reset():
         _events.clear()
         _climate.clear()
         _prev_state.clear()
+        _problems_seen.clear()
         _seq = 0
         _event_seq = 0
         _demo_seen_at = 0.0

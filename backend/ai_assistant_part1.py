@@ -7,7 +7,7 @@ MAX_THREADS, MODES, OLD_PLACES, PLACES, Refused, SLICE_WAIT_S, STATE_CHARS, WATC
 WATCH_DEFAULT_LOOKS, WATCH_LOOKS, WATCH_MINUTES, WATCH_SENSITIVITY, _CHATS_DIR, _DATA_DIR, _DETAIL, _FILE_TOOLS,
 _OFFLINE, _SAFE_GCODE, _SETTINGS_PATH, _automation_add, _automation_toggle, _automations, _brief_state,
 _build_model, _connections, _cool_down, _cut_holes, _demo_now, _edit_model, _extrude, _file_delete, _file_info,
-_files, _gcode, _job_words, _lib_name, _lock, _logbook_add, _logbook_read, _look, _make_shape, _model_info,
+_files, _gcode, _explain_error, _job_words, _lib_name, _lock, _logbook_add, _logbook_read, _look, _make_shape, _model_info,
 _model_name, _money, _move, _move_by, _now, _now_ctx, _nozzle, _op, _open_page, _part_triangles, _placed,
 _position, _print_settings, _printers, _ring, _save_model, _set_look, _shape, _slice, _slice_status,
 _slicer_profiles, _snapshot, _start_print, _state, _stem, _suggest_settings, _threads, _timelapse_keep,
@@ -19,6 +19,8 @@ import ai_providers
 import automations
 import base64
 import carve
+import error_codes
+import error_guides
 import file_library
 import json
 import live_feed
@@ -36,6 +38,7 @@ import storage
 import threading
 import time
 import timelapse
+import wiki_page
 
 
 _DATA_DIR = storage.DATA_DIR
@@ -129,6 +132,7 @@ JUMPS = {
     "filament": ("filament", "#tab-filament", "the filament shelf: spools, adding one from a photo"),
     "maintenance": ("maintenance", "", "care tasks that are due"),
     "logbook": ("maintenance", "#logbook", "the logbook of problems and fixes"),
+    "error_codes": ("maintenance", "#error-codes", "look up an error code: what it means, Snapmaker's guide and videos"),
     "automations": ("automations", "", "when-this-then-that rules"),
     "ai": ("ai", "", "the AI screen: print watch and the AI's other features"),
     "settings": ("settings", "", "Settings"),
@@ -212,6 +216,8 @@ def _brief_state():
     machine = s.get("machine") or {}
     return {
         "printer": s.get("printer_name"), "state": s.get("state"), "message": s.get("state_message"),
+        "problem": ({k: (s.get("problem") or {}).get(k) for k in ("code", "level_name", "effect", "title", "details")}
+                    if s.get("problem") else None),
         "file": s.get("current_file"), "progress_percent": round((s.get("progress") or 0) * 100, 1),
         "layer": s.get("layer"), "active_head": s.get("active_toolhead"), "heads": heads,
         "bed": {"temperature": s.get("bed_temperature"), "target": s.get("bed_target")},
@@ -637,6 +643,64 @@ def _logbook_read():
     return {"entries": list(rows or [])[:25]}
 
 
+def _guide_text(blocks, limit=3600):
+    """A guide's blocks as plain lines (headings, paragraphs, steps, notes) for the model, cut at `limit` characters."""
+    lines = []
+    for b in blocks or []:
+        kind = b.get("t")
+        if kind == "h":
+            lines.append("\n## " + b.get("x", ""))
+        elif kind == "p":
+            lines.append(wiki_page.plain(b.get("r")))
+        elif kind == "list":
+            lines.extend("- " + wiki_page.plain(i.get("r")) for i in b.get("i", []))
+        elif kind == "note":
+            lines.extend("Note: " + wiki_page.plain(p) for p in b.get("p", []))
+        elif kind == "table":
+            lines.extend(" | ".join(wiki_page.plain(c) for c in row) for row in b.get("rows", [])[:12])
+    text = "\n".join(line for line in lines if line.strip())
+    return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + " ... (the guide goes on; the owner can open it in full)"
+
+
+def _explain_error(code=None):
+    """
+    Snapmaker's own words for an error code: the title and details from their wiki's reference table, the guide's text
+    where one is listed and its videos. With no code, the printer's current problem. A code the table does not list
+    says so; nothing is explained from memory.
+    """
+    code = str(code or "").strip()
+    if not code:
+        problems = _state().get("problems") or []
+        if not problems:
+            return {"problem": None, "note": "The printer is not reporting a problem right now. Ask with a code to look one up."}
+        code = problems[0]["code"]
+    shown = error_guides.explain(code)
+    source = shown.get("source") or {}
+    out = {"code": shown["code"], "in_snapmakers_table": shown["known"], "level": shown["level_name"],
+           "what_happens_to_the_print": shown["effect"], "module": shown["module_name"], "title": shown["title"],
+           "details_word_for_word": shown["details"], "the_printer_also_said": shown.get("message"),
+           "source": f"Snapmaker Wiki, U1 error code reference table, read {source.get('retrieved', 'on an unknown day')}",
+           "source_url": source.get("url")}
+    if shown["video"]:
+        out["video"] = {"title": shown["video"]["title"], "url": shown["video"]["url"], "id": shown["video"]["id"]}
+    guide = shown["guide"]
+    if guide:
+        got = error_guides.get(guide["slug"])
+        if got.get("ok"):
+            g = got["guide"]
+            out["guide"] = {"title": g["title"], "url": g["url"], "read": str(g["fetched"])[:10],
+                            "text_word_for_word": _guide_text(g["blocks"]),
+                            "videos": [{"title": v.get("title"), "url": f"https://www.youtube.com/watch?v={v['id']}", "id": v["id"],
+                                        "starts_at_second": v.get("start") or 0} for v in g.get("videos", [])[:5]]}
+            if guide.get("match") == "title":
+                out["guide"]["note"] = "A guide with the same name as this error; it does not name this exact code."
+        else:
+            out["guide"] = {"title": guide["title"], "url": guide["url"], "not_read": got.get("error"),
+                            "videos": [{"title": v["title"], "url": v["url"], "id": v["id"], "starts_at_second": v.get("start") or 0}
+                                       for v in guide.get("videos", [])[:5]]}
+    return out
+
+
 def _logbook_add(problem, fix=""):
     problem = str(problem or "").strip()
     if not problem:
@@ -931,7 +995,7 @@ def _tool(level, what, args, run):
 
 
 # Steps that work without a printer: files, the queue, care records, notes, spools, screens.
-_OFFLINE = {"timelapse_keep", "automation_add", "automation_toggle", "automation_remove", "print_watch", "file_delete", "set_look",
+_OFFLINE = {"explain_error", "timelapse_keep", "automation_add", "automation_toggle", "automation_remove", "print_watch", "file_delete", "set_look",
             "show_tour", "edit_model", "make_shape", "build_model", "cut_holes", "slice", "queue_add", "queue_remove", "queue_move", "queue_tidy", "care_done",
             "care_snooze", "logbook_add", "spool_add", "spool_weight", "open_page", "suggest_settings", "start_print"}
 

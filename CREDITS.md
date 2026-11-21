@@ -19,6 +19,11 @@ here with what Deja Vu1 does with each.
   it publishes and signs in the way its Web Authentication expects. The
   addresses and formats were read from its source and documentation; no code
   was copied.
+- **The Snapmaker Wiki** (wiki.snapmaker.com). Deja Vu1 keeps Snapmaker's U1 error code reference table (the codes,
+  their titles and details, the guide each points to, with the page address and the day it was read) and quotes
+  it as written, naming its source. It reads troubleshooting guides from the wiki when you ask for one and keeps
+  them on your computer only. The pages state no licence for their text, so Deja Vu1 keeps the table, a list of
+  short facts, and no guide text. Snapmaker's videos play in YouTube's own player after you press play.
 - **OrcaSlicer** (SoftFever/OrcaSlicer, AGPL-3.0) and **Snapmaker Orca**
   (Snapmaker/OrcaSlicer, AGPL-3.0). Used as an external slicing engine that
   you install yourself; nothing of either is bundled. Facts about the U1

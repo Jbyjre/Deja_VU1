@@ -1,0 +1,754 @@
+{
+ "schema": 1,
+ "source": {
+  "name": "Snapmaker Wiki, U1 error code reference table",
+  "url": "https://wiki.snapmaker.com/en/snapmaker_u1/troubleshooting/u1_error_codes",
+  "guides": "https://wiki.snapmaker.com/en/snapmaker_u1/troubleshooting",
+  "language": "en",
+  "retrieved": "2026-11-21"
+ },
+ "levels": {
+  "0": {
+   "name": "Invalid",
+   "safety_risk": "No",
+   "fire_risk": "No",
+   "print_effect": "No",
+   "user_action": "Not required"
+  },
+  "1": {
+   "name": "Notice",
+   "safety_risk": "No",
+   "fire_risk": "No",
+   "print_effect": "No",
+   "user_action": "Partially required"
+  },
+  "2": {
+   "name": "Warning",
+   "safety_risk": "Medium–low risk",
+   "fire_risk": "No",
+   "print_effect": "Yes (print paused)",
+   "user_action": "Required"
+  },
+  "3": {
+   "name": "Error",
+   "safety_risk": "High",
+   "fire_risk": "Yes",
+   "print_effect": "Yes (print stopped)",
+   "user_action": "Required"
+  }
+ },
+ "modules": {
+  "0522": "Motion control",
+  "0523": "Toolhead",
+  "0525": "Filament feeder",
+  "0526": "Heated bed",
+  "0527": "Chamber temperature detection",
+  "0528": "Homing failure",
+  "0529": "G-code",
+  "0530": "Detection/calibration",
+  "0531": "Slicing file exception"
+ },
+ "structure": [
+  {
+   "name": "Sub-module",
+   "text": "Used to differentiate between submodules or subprocesses within the same main category."
+  },
+  {
+   "name": "Issue",
+   "text": "Represents the specific type of exception or failure."
+  }
+ ],
+ "notes": [
+  "(1) Some abnormal states may have complex root causes. The displayed error code might not always represent the actual fault source.",
+  "(2) If the printer cannot be restored after following the suggested troubleshooting steps, or if the code shown does not match the real situation, please contact Snapmaker Technical Support for targeted guidance.",
+  "(3) Certain error states are still under refinement, as related evaluation methods are being optimized.",
+  "It is recommended to keep your firmware up to date to ensure accurate and complete error reporting."
+ ],
+ "articles": {
+  "troubleshooting/0003-0522-0000-0002or0000": {
+   "title": "Error Codes 0003-0522-0000-0000 / 0003-0522-0000-0002",
+   "codes": [
+    "0003-0522-0000-0000",
+    "0003-0522-0000-0002"
+   ],
+   "videos": []
+  },
+  "troubleshooting/Core_Components_Maintenance_Guide": {
+   "title": "U1 core components maintenance guide",
+   "codes": [],
+   "videos": [
+    {
+     "id": "EGfoaHfxalA",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/U1_homing_failure": {
+   "title": "U1 homing anomaly 0002-0528-0000-0000",
+   "codes": [
+    "0002-0528-0000-0000"
+   ],
+   "videos": []
+  },
+  "troubleshooting/U1_nozzle_temperature_is_abnormal_caused_by_incorrect_slicing_parameters": {
+   "title": "U1 nozzle temperature is abnormal (caused by incorrect slicing parameters) 0003-0523-0000-0006",
+   "codes": [
+    "0003-0523-0000-0006"
+   ],
+   "videos": []
+  },
+  "troubleshooting/bed_temperature_exceeds_limit": {
+   "title": "U1 heated bed temperature exceeds limit",
+   "codes": [],
+   "videos": [
+    {
+     "id": "LKDUnZjO5Jw",
+     "start": 384
+    },
+    {
+     "id": "GgDL4Bqjk_Y",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/bypass_a_faulty_toolhead": {
+   "title": "U1 how to bypass a faulty toolhead 0003-0523-0000-0002",
+   "codes": [
+    "0003-0523-0000-0002"
+   ],
+   "videos": []
+  },
+  "troubleshooting/corexy_home_is_unstable": {
+   "title": "U1 Corexy home is unstable 0003-0528-0000-0027 0003-0530-0000-0027",
+   "codes": [
+    "0003-0528-0000-0027",
+    "0003-0530-0000-0027"
+   ],
+   "videos": []
+  },
+  "troubleshooting/false_power_off_signal_triggered": {
+   "title": "U1 false power-off signal triggered",
+   "codes": [],
+   "videos": [
+    {
+     "id": "GgDL4Bqjk_Y",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/heated_bed_heating_anomaly": {
+   "title": "U1 heated bed heating anomaly 0003-0526-0000-0001",
+   "codes": [
+    "0003-0526-0000-0001"
+   ],
+   "videos": [
+    {
+     "id": "GgDL4Bqjk_Y",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/known_issues_and_quick_fixes": {
+   "title": "U1 Known issues and quick fixes",
+   "codes": [],
+   "videos": []
+  },
+  "troubleshooting/no_toolhead_detected": {
+   "title": "U1 No toolhead detected",
+   "codes": [],
+   "videos": [
+    {
+     "id": "kUYyEU3GDHM",
+     "start": 0
+    },
+    {
+     "id": "1SEiQlOCQYM",
+     "start": 0
+    },
+    {
+     "id": "GgDL4Bqjk_Y",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/nozzle_temperature_anomaly": {
+   "title": "Nozzle Temperature Anomaly",
+   "codes": [],
+   "videos": []
+  },
+  "troubleshooting/pogopin_contact_anomaly": {
+   "title": "U1 Pogopin contact anomaly",
+   "codes": [],
+   "videos": [
+    {
+     "id": "QWVKsyx088Y",
+     "start": 0
+    },
+    {
+     "id": "qeA16fCRZhc",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/printing_anomaly": {
+   "title": "U1 Tangled Filament Detected",
+   "codes": [],
+   "videos": [
+    {
+     "id": "agm4H0GITqE",
+     "start": 615
+    }
+   ]
+  },
+  "troubleshooting/tap_home_first_then_move_the_x_y_z_axis": {
+   "title": "U1 Tap Home first, then move the X / Y / Z axis",
+   "codes": [],
+   "videos": []
+  },
+  "troubleshooting/timer_too_close": {
+   "title": "U1 timer too close 0003-0522-0000-0016",
+   "codes": [
+    "0003-0522-0000-0016"
+   ],
+   "videos": []
+  },
+  "troubleshooting/toolhead_detached": {
+   "title": "U1 toolhead detached error after proper installation",
+   "codes": [],
+   "videos": [
+    {
+     "id": "GgDL4Bqjk_Y",
+     "start": 0
+    }
+   ]
+  },
+  "troubleshooting/u1_auto_loading_failure": {
+   "title": "U1 automatic loading failure",
+   "codes": [],
+   "videos": []
+  },
+  "troubleshooting/u1_axis_movement_anomaly": {
+   "title": "U1 axis movement anomaly 0003-0528-0000-0002",
+   "codes": [
+    "0003-0528-0000-0002"
+   ],
+   "videos": []
+  },
+  "troubleshooting/u1_calibration_anomaly": {
+   "title": "U1 calibration anomaly 0003-0530-0000-0000 0003-0530-0001-0000 0003-0530-0002-0000 0003-0530-0003-0000 0003-0530-0000-0001 0003-0530-0001-0001",
+   "codes": [
+    "0003-0530-0000-0000",
+    "0003-0530-0001-0000",
+    "0003-0530-0002-0000",
+    "0003-0530-0003-0000",
+    "0003-0530-0000-0001",
+    "0003-0530-0001-0001"
+   ],
+   "videos": []
+  },
+  "troubleshooting/u1_mainboard_MCU_control_timeout": {
+   "title": "U1 mainboard MCU control timed out 0003-0522-0001-0016",
+   "codes": [
+    "0003-0522-0001-0016"
+   ],
+   "videos": []
+  },
+  "troubleshooting/u1_toolhead_2_picking_failure": {
+   "title": "U1 toolhead 2 picking failure 0002-0523-0001-0021 0002-0523-0001-0022 0002-0523-0001-0023",
+   "codes": [
+    "0002-0523-0001-0021",
+    "0002-0523-0001-0022",
+    "0002-0523-0001-0023"
+   ],
+   "videos": []
+  },
+  "troubleshooting/u1_toolhead_3_picking_failure": {
+   "title": "U1 toolhead 3 picking failure 0002-0523-0002-0021 0002-0523-0002-0022 0002-0523-0002-0023",
+   "codes": [
+    "0002-0523-0002-0021",
+    "0002-0523-0002-0022",
+    "0002-0523-0002-0023"
+   ],
+   "videos": []
+  },
+  "troubleshooting/u1_toolhead_4_picking_failure": {
+   "title": "U1 toolhead 4 picking failure 0002-0523-0003-0021 0002-0523-0003-0022 0002-0523-0003-0023",
+   "codes": [
+    "0002-0523-0003-0021",
+    "0002-0523-0003-0022",
+    "0002-0523-0003-0023"
+   ],
+   "videos": []
+  },
+  "troubleshooting/u1_toolhead_disconnected": {
+   "title": "U1 toolhead disconnected 0003-0522-0002-0006",
+   "codes": [
+    "0003-0522-0002-0006"
+   ],
+   "videos": []
+  },
+  "troubleshooting/xy_movement_exceeded_travel_limit": {
+   "title": "U1 X/Y movement exceeded travel limit",
+   "codes": [],
+   "videos": []
+  },
+  "u1_false_filament_runout_detection": {
+   "title": "U1 false filament runout detection",
+   "codes": [],
+   "videos": []
+  }
+ },
+ "videos": {
+  "1SEiQlOCQYM": {
+   "title": "U1 Video Guide: Ceramic Heater & NTC Thermistor Replacement",
+   "channel": "Snapmaker"
+  },
+  "EGfoaHfxalA": {
+   "title": "U1 Video Guide: Key Components Maintenance",
+   "channel": "Snapmaker"
+  },
+  "GgDL4Bqjk_Y": {
+   "title": "U1 Video Guide: How to Remove the Side Panels",
+   "channel": "Snapmaker"
+  },
+  "LKDUnZjO5Jw": {
+   "title": "U1 Video Guide: Machine Unboxing & Assembly (V2.0)",
+   "channel": "Snapmaker"
+  },
+  "M00cjpjvqvE": {
+   "title": "U1 Video Guide: Toolhead Picking and Parking Troubleshooting",
+   "channel": "Snapmaker"
+  },
+  "QWVKsyx088Y": {
+   "title": "U1 Video Guide: Filament Runout Sensor Replacement",
+   "channel": "Snapmaker"
+  },
+  "agm4H0GITqE": {
+   "title": "U1 Video Guide: Auto Loading Failure Troubleshooting",
+   "channel": "Snapmaker"
+  },
+  "kUYyEU3GDHM": {
+   "title": "U1 Video Guide: Toolhead PCB Replacement",
+   "channel": "Snapmaker"
+  },
+  "qeA16fCRZhc": {
+   "title": "U1 Video Guide: Part Cooling Fan Adapter Board Replacement",
+   "channel": "Snapmaker"
+  }
+ },
+ "codes": {
+  "0001-0523-0000-0037": {"title": "Toolhead Maintenance", "details": "Toolhead swapping times have reached maintenance requirement. Clean the Pogopins on both sides, and add grease to the steel balls and steel pins of the toolhead.", "article": "troubleshooting/Core_Components_Maintenance_Guide"},
+  "0001-0525-0000-0008": {"title": "Filament Anomaly", "details": "Toolhead 1 has residual filament. Unload the filament from the toolhead first, then retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0010": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 1 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0011": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 1 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0012": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 1 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0013": {"title": "Filament Pre-loading Anomaly", "details": "No filament detected in Feeder 1. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0014": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 1 feeding timeout. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0015": {"title": "Filament Pre-loading Anomaly", "details": "Residual filament in Toolhead 1. Remove the residual filament from the toolhead, then reload.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0000-0090": {"title": "Manual Loading Anomaly", "details": "Feeder 1 manual loading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0008": {"title": "Filament Anomaly", "details": "Toolhead 2 has residual filament. Unload the filament from the toolhead first, then retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0010": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 2 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0011": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 2 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0012": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 2 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0013": {"title": "Filament Pre-loading Anomaly", "details": "No filament detected in Feeder 2. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0014": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 2 feeding timeout. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0015": {"title": "Filament Pre-loading Anomaly", "details": "Residual filament in Toolhead 2. Remove the residual filament from the toolhead, then reload.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0001-0090": {"title": "Manual Loading Anomaly", "details": "Feeder 2 manual loading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0008": {"title": "Filament Anomaly", "details": "Toolhead 3 has residual filament. Unload the filament from the toolhead first, then retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0010": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 3 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0011": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 3 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0012": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 3 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0013": {"title": "Filament Pre-loading Anomaly", "details": "No filament detected in Feeder 3. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0014": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 3 feeding timeout. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0015": {"title": "Filament Pre-loading Anomaly", "details": "Residual filament in Toolhead 3. Remove the residual filament from the toolhead, then reload.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0002-0090": {"title": "Manual Loading Anomaly", "details": "Feeder 3 manual loading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0008": {"title": "Filament Anomaly", "details": "Toolhead 4 has residual filament. Unload the filament from the toolhead first, then retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0010": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 4 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0011": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 4 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0012": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 4 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0013": {"title": "Filament Pre-loading Anomaly", "details": "No filament detected in Feeder 4. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0014": {"title": "Filament Pre-loading Anomaly", "details": "Feeder 4 feeding timeout. The filament may be tangled or the feeding path obstructed. Reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0015": {"title": "Filament Pre-loading Anomaly", "details": "Residual filament in Toolhead 4. Remove the residual filament from the toolhead, then reload.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0525-0003-0090": {"title": "Manual Loading Anomaly", "details": "Feeder 4 manual loading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0001-0531-0000-0000": {"title": "System Anomaly", "details": "Failed to retrieve file list."},
+  "0001-0531-0000-0001": {"title": "System Anomaly", "details": "Printer is printing, cannot operate slicing files. Retry when printer is idle."},
+  "0001-0531-0000-0002": {"title": "System Anomaly", "details": "Commands M28, M29, M30 are not supported. Please remove them."},
+  "0001-0531-0000-0003": {"title": "System Anomaly", "details": "Parsing G-code commands from slicing file. Resetting slicing file is not allowed."},
+  "0001-0531-0000-0004": {"title": "System Anomaly", "details": "Cannot open slicing file."},
+  "0001-0531-0000-0005": {"title": "System Anomaly", "details": "Failed to resume printing after power outage."},
+  "0001-0531-0000-0006": {"title": "System Anomaly", "details": "Deleting power-off data is not allowed during printing."},
+  "0002-0523-0000-0000": {"title": "Filament Anomaly", "details": "Filament runout detected in Toolhead 1. Try reloading filament, then tap the play button to resume the print job.", "article": "u1_false_filament_runout_detection"},
+  "0002-0523-0000-0007": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0008": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0009": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0010": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0011": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0012": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0013": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0014": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0015": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0016": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0017": {"title": "Toolhead Swapping Failure", "details": "Toolhead 1 swapping failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0018": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0019": {"title": "Toolhead Parking Failure", "details": "Toolhead 1 parking failed. Retry. If the issue persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0020": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0021": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Retry. If issue persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0022": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Retry. If issue persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0023": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0024": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0025": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0026": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0027": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0028": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0029": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0030": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0031": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0032": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0033": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0034": {"title": "Toolhead Picking Failure", "details": "Toolhead 1 picking failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0035": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0038": {"title": "Printing Anomaly", "details": "Check if the filament for Toolhead 1 is broken inside the tube, tangled on the spool, or if the toolhead is clogged. After troubleshooting, tap to resume printing. If issue persists, contact technical support.", "article": "troubleshooting/printing_anomaly"},
+  "0002-0523-0000-0039": {"title": "Filament Anomaly", "details": "Filament information not set for Toolhead 1. Go to the filament page to edit, then tap to resume printing."},
+  "0002-0523-0000-0040": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/toolhead_detached"},
+  "0002-0523-0000-0041": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0042": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 return failed. Foreign objects may be present in the dock or working area. Remove any obstructions, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0043": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0044": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0045": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0002-0523-0000-0046": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-0047": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 1 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0000-9000": {"title": "Flow Calibration Anomaly", "details": "Toolhead 1 flow calibration anomaly. Contact technical support."},
+  "0002-0523-0001-0000": {"title": "Filament Anomaly", "details": "Filament runout detected in Toolhead 2. Try reloading filament, then tap the play button to resume the print job.", "article": "u1_false_filament_runout_detection"},
+  "0002-0523-0001-0007": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0008": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0009": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0010": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0011": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0012": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0013": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0014": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0015": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0016": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0017": {"title": "Toolhead Swapping Failure", "details": "Toolhead 2 swapping failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0018": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0019": {"title": "Toolhead Parking Failure", "details": "Toolhead 2 parking failed. Retry. If the issue persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0020": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0021": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_2_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0022": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_2_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0023": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "article": "troubleshooting/u1_toolhead_2_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0024": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0025": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0026": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0027": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0028": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0029": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0030": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0031": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0032": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0033": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0034": {"title": "Toolhead Picking Failure", "details": "Toolhead 2 picking failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0035": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0038": {"title": "Printing Anomaly", "details": "Check if the filament for Toolhead 2 is broken inside the tube, tangled on the spool, or if the toolhead is clogged. After troubleshooting, tap to resume printing. If issue persists, contact technical support.", "article": "troubleshooting/printing_anomaly"},
+  "0002-0523-0001-0039": {"title": "Filament Anomaly", "details": "Filament information not set for Toolhead 2. Go to the filament page to edit, then tap to resume printing."},
+  "0002-0523-0001-0040": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/toolhead_detached"},
+  "0002-0523-0001-0041": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0042": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 return failed. Foreign objects may be present in the dock or working area. Remove any obstructions, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0043": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0044": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0045": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0002-0523-0001-0046": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-0047": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 2 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0001-9000": {"title": "Flow Calibration Anomaly", "details": "Toolhead 2 flow calibration anomaly. Contact technical support."},
+  "0002-0523-0002-0000": {"title": "Filament Anomaly", "details": "Filament runout detected in Toolhead 3. Try reloading filament, then tap the play button to resume the print job.", "article": "u1_false_filament_runout_detection"},
+  "0002-0523-0002-0007": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0008": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0009": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0010": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0011": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0012": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0013": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0014": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0015": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0016": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0017": {"title": "Toolhead Swapping Failure", "details": "Toolhead 3 swapping failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0018": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0019": {"title": "Toolhead Parking Failure", "details": "Toolhead 3 parking failed. Retry. If the issue persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0020": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0021": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_3_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0022": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_3_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0023": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "article": "troubleshooting/u1_toolhead_3_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0024": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0025": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0026": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0027": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0028": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0029": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0030": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0031": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0032": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0033": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0034": {"title": "Toolhead Picking Failure", "details": "Toolhead 3 picking failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0035": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0038": {"title": "Printing Anomaly", "details": "Check if the filament for Toolhead 3 is broken inside the tube, tangled on the spool, or if the toolhead is clogged. After troubleshooting, tap to resume printing. If issue persists, contact technical support.", "article": "troubleshooting/printing_anomaly"},
+  "0002-0523-0002-0039": {"title": "Filament Anomaly", "details": "Filament information not set for Toolhead 3. Go to the filament page to edit, then tap to resume printing."},
+  "0002-0523-0002-0040": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/toolhead_detached"},
+  "0002-0523-0002-0041": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0042": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 return failed. Foreign objects may be present in the dock or working area. Remove any obstructions, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0043": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0044": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0045": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0002-0523-0002-0046": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-0047": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 3 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0002-9000": {"title": "Flow Calibration Anomaly", "details": "Toolhead 3 flow calibration anomaly. Contact technical support."},
+  "0002-0523-0003-0000": {"title": "Filament Anomaly", "details": "Filament runout detected in Toolhead 4. Try reloading filament, then tap the play button to resume the print job.", "article": "u1_false_filament_runout_detection"},
+  "0002-0523-0003-0007": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0008": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0009": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0010": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0011": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0012": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0013": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0014": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0015": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0016": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0017": {"title": "Toolhead Swapping Failure", "details": "Toolhead 4 swapping failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If the anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0018": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0019": {"title": "Toolhead Parking Failure", "details": "Toolhead 4 parking failed. Retry. If the issue persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0020": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0021": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_4_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0022": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_4_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0023": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "article": "troubleshooting/u1_toolhead_4_picking_failure", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0024": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 1 and Toolhead 2 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0025": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 1 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0026": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 1 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0027": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0028": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0029": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0030": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 3 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0031": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 1, Toolhead 2 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0032": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 1, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0033": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check if Toolhead 2, Toolhead 3 and Toolhead 4 are dropped or tilted, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0034": {"title": "Toolhead Picking Failure", "details": "Toolhead 4 picking failed. Check all toolheads one by one for dropping or tilting, adjust manually and retry. If anomaly persists, contact technical support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0035": {"title": "Toolhead Swapping Anomaly", "details": "Check if the current toolhead is properly picked and placed, and ensure all idle toolheads on the dock are securely installed. Reinstall any misaligned toolheads, then tap to resume the task.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0038": {"title": "Printing Anomaly", "details": "Check if the filament for Toolhead 4 is broken inside the tube, tangled on the spool, or if the toolhead is clogged. After troubleshooting, tap to resume printing. If issue persists, contact technical support.", "article": "troubleshooting/printing_anomaly"},
+  "0002-0523-0003-0039": {"title": "Filament Anomaly", "details": "Filament information not set for Toolhead 4. Go to the filament page to edit, then tap to resume printing."},
+  "0002-0523-0003-0040": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/toolhead_detached"},
+  "0002-0523-0003-0041": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0042": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 return failed. Foreign objects may be present in the dock or working area. Remove any obstructions, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0043": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0044": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0045": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0002-0523-0003-0046": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-0047": {"title": "Toolhead Swapping Anomaly", "details": "Toolhead 4 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "video": "M00cjpjvqvE"},
+  "0002-0523-0003-9000": {"title": "Flow Calibration Anomaly", "details": "Toolhead 4 flow calibration anomaly. Contact technical support."},
+  "0002-0525-0000-0000": {"title": "Filament Anomaly", "details": "Toolhead 1 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0001": {"title": "Filament Anomaly", "details": "Toolhead 1 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0002": {"title": "Filament Anomaly", "details": "Filament Feeder 1 Loading Anomaly. Check for filament tangles or loose connector connections. If printing is in progress, tap the play button to resume the print job after troubleshooting.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0003": {"title": "Filament Not Loaded", "details": "Toolhead 1 filament feeder detected no filament entry. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0004": {"title": "Extrusion Blockage", "details": "Filament extrusion blocked at the drive gear of Toolhead 1. Check and clean, then retry. If printer is printing, tap the play button to the play button the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0005": {"title": "Filament Anomaly", "details": "Toolhead 1 filament feeder loading timed out. Check if the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to the play button the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0006": {"title": "Filament Anomaly", "details": "Toolhead 1 filament feeder loading timed out. Check if the filament tube is detached or the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0030": {"title": "Filament Loading Anomaly", "details": "Feeder 1 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0031": {"title": "Filament Loading Anomaly", "details": "Feeder 1 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0032": {"title": "Filament Loading Anomaly", "details": "Feeder 1 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0033": {"title": "Filament Loading Anomaly", "details": "No filament detected in Feeder 1. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0034": {"title": "Filament Loading Anomaly", "details": "Feeder 1 feeding timeout. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0035": {"title": "Filament Loading Anomaly", "details": "Feeder 1 feeding stroke overrun. Check if the filament tube has detached from this feeder. After reconnecting, tap to resume, or reload the filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0050": {"title": "Extrusion Anomaly", "details": "Feeder 1 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0051": {"title": "Extrusion Anomaly", "details": "Feeder 1 Feeding Failure. The filament may be tangled, jammed in the extrusion gears, or the nozzle may be clogged. Troubleshoot and retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0000-0070": {"title": "Filament Unloading Anomaly", "details": "Feeder 1 unloading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0000": {"title": "Filament Anomaly", "details": "Toolhead 2 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0001": {"title": "Filament Anomaly", "details": "Toolhead 2 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0002": {"title": "Filament Anomaly", "details": "Filament Feeder 2 Loading Anomaly. Check for filament tangles or loose connector connections. If printing is in progress, tap the play button to resume the print job after troubleshooting.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0003": {"title": "Filament Not Loaded", "details": "Toolhead 2 filament feeder detected no filament entry. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0004": {"title": "Extrusion Blockage", "details": "Filament extrusion blocked at the drive gear of Toolhead 2. Check and clean, then retry. If printer is printing, tap the play button to the play button the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0005": {"title": "Filament Anomaly", "details": "Toolhead 2 filament feeder loading timed out. Check if the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0006": {"title": "Filament Anomaly", "details": "Toolhead 2 filament feeder loading timed out. Check if the filament tube is detached or the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0030": {"title": "Filament Loading Anomaly", "details": "Feeder 2 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0031": {"title": "Filament Loading Anomaly", "details": "Feeder 2 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0032": {"title": "Filament Loading Anomaly", "details": "Feeder 2 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0033": {"title": "Filament Loading Anomaly", "details": "No filament detected in Feeder 2. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0034": {"title": "Filament Loading Anomaly", "details": "Feeder 2 feeding timeout. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0035": {"title": "Filament Loading Anomaly", "details": "Feeder 2 feeding stroke overrun. Check if the filament tube has detached from this feeder. After reconnecting, tap to resume, or reload the filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0050": {"title": "Extrusion Anomaly", "details": "Feeder 2 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0051": {"title": "Extrusion Anomaly", "details": "Feeder 2 Feeding Failure. The filament may be tangled, jammed in the extrusion gears, or the nozzle may be clogged. Troubleshoot and retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0001-0070": {"title": "Filament Unloading Anomaly", "details": "Feeder 2 unloading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0000": {"title": "Filament Anomaly", "details": "Toolhead 3 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0001": {"title": "Filament Anomaly", "details": "Toolhead 3 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0002": {"title": "Filament Anomaly", "details": "Filament Feeder 3 Loading Anomaly. Check for filament tangles or loose connector connections. If printing is in progress, tap the play button to resume the print job after troubleshooting.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0003": {"title": "Filament Not Loaded", "details": "Toolhead 3 filament feeder detected no filament entry. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0004": {"title": "Extrusion Blockage", "details": "Filament extrusion blocked at the drive gear of Toolhead 3. Check and clean, then retry. If printer is printing, tap the play button to the play button the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0005": {"title": "Filament Anomaly", "details": "Toolhead 3 filament feeder loading timed out. Check if the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0006": {"title": "Filament Anomaly", "details": "Toolhead 3 filament feeder loading timed out. Check if the filament tube is detached or the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0030": {"title": "Filament Loading Anomaly", "details": "Feeder 3 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0031": {"title": "Filament Loading Anomaly", "details": "Feeder 3 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0032": {"title": "Filament Loading Anomaly", "details": "Feeder 3 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0033": {"title": "Filament Loading Anomaly", "details": "No filament detected in Feeder 3. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0034": {"title": "Filament Loading Anomaly", "details": "Feeder 3 feeding timeout. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0035": {"title": "Filament Loading Anomaly", "details": "Feeder 3 feeding stroke overrun. Check if the filament tube has detached from this feeder. After reconnecting, tap to resume, or reload the filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0050": {"title": "Extrusion Anomaly", "details": "Feeder 3 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0051": {"title": "Extrusion Anomaly", "details": "Feeder 3 Feeding Failure. The filament may be tangled, jammed in the extrusion gears, or the nozzle may be clogged. Troubleshoot and retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0002-0070": {"title": "Filament Unloading Anomaly", "details": "Feeder 3 unloading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0000": {"title": "Filament Anomaly", "details": "Toolhead 4 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0001": {"title": "Filament Anomaly", "details": "Toolhead 4 filament feeder anomaly. Contact technical support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0002": {"title": "Filament Anomaly", "details": "Filament Feeder 4 Loading Anomaly. Check for filament tangles or loose connector connections. If printing is in progress, tap the play button to resume the print job after troubleshooting.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0003": {"title": "Filament Not Loaded", "details": "Toolhead 4 filament feeder detected no filament entry. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0004": {"title": "Extrusion Blockage", "details": "Filament extrusion blocked at the drive gear of Toolhead 4. Check and clean, then retry. If printer is printing, tap the play button to the play button the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0005": {"title": "Filament Anomaly", "details": "Toolhead 4 filament feeder loading timed out. Check if the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0006": {"title": "Filament Anomaly", "details": "Toolhead 4 filament feeder loading timed out. Check if the filament tube is detached or the loading path is blocked, ensure it is clear, then retry. If printer is printing, tap the play button to resume the print job.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0030": {"title": "Filament Loading Anomaly", "details": "Feeder 4 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0031": {"title": "Filament Loading Anomaly", "details": "Feeder 4 motor speed anomaly. Check and ensure the feeder cable is properly connected. If the error persists, contact Technical Support.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0032": {"title": "Filament Loading Anomaly", "details": "Feeder 4 encoder wheel speed anomaly. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0033": {"title": "Filament Loading Anomaly", "details": "No filament detected in Feeder 4. Insert filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0034": {"title": "Filament Loading Anomaly", "details": "Feeder 4 feeding timeout. The filament may be tangled or the feeding path obstructed. Tap to resume, or reload the filament after resolving the issue.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0035": {"title": "Filament Loading Anomaly", "details": "Feeder 4 feeding stroke overrun. Check if the filament tube has detached from this feeder. After reconnecting, tap to resume, or reload the filament.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0050": {"title": "Extrusion Anomaly", "details": "Feeder 4 anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0051": {"title": "Extrusion Anomaly", "details": "Feeder 4 Feeding Failure. The filament may be tangled, jammed in the extrusion gears, or the nozzle may be clogged. Troubleshoot and retry.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0525-0003-0070": {"title": "Filament Unloading Anomaly", "details": "Feeder 4 unloading anomaly. Tap the error code for details. It is recommended to contact Technical Support for assistance.", "article": "troubleshooting/u1_auto_loading_failure"},
+  "0002-0528-0000-0000": {"title": "Homing Anomaly", "details": "Home X and Y axes first, then home Z axis.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0000-0001": {"title": "Homing Anomaly", "details": "Current toolhead is unavailable, cannot home. Restart printer and retry. If issue persists, contact technical support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0000-0010": {"title": "Homing Anomaly", "details": "Home X and Y axes first before performing this operation.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0000-0011": {"title": "Homing Anomaly", "details": "Check if timing belts are tensioned properly, X and Y axes move smoothly, and there are no obstructions at the X and Y homing positions. Retry after troubleshooting. If issue persists, contact technical support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0000-0012": {"title": "Homing Anomaly", "details": "Check if timing belts are tensioned properly, X and Y axes move smoothly, and there are no obstructions at the X and Y homing positions. Retry after troubleshooting. If issue persists, contact technical support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0000-0013": {"title": "Homing Anomaly", "details": "Toolhead 1 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0000-0014": {"title": "Homing Anomaly", "details": "Toolhead 1 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0001-0013": {"title": "Homing Anomaly", "details": "Toolhead 2 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0001-0014": {"title": "Homing Anomaly", "details": "Toolhead 2 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0002-0013": {"title": "Homing Anomaly", "details": "Toolhead 3 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0002-0014": {"title": "Homing Anomaly", "details": "Toolhead 3 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0003-0013": {"title": "Homing Anomaly", "details": "Toolhead 4 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0002-0528-0003-0014": {"title": "Homing Anomaly", "details": "Toolhead 4 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/U1_homing_failure"},
+  "0003-0522-0000-0000": {"title": "System Anomaly", "details": "See anomaly details. Contact technical support.", "article": "troubleshooting/0003-0522-0000-0002or0000"},
+  "0003-0522-0000-0001": {"title": "System Anomaly", "details": "Contact technical support."},
+  "0003-0522-0000-0002": {"title": "System Anomaly", "details": "Printer stopped. See anomaly details. Contact technical support.", "article": "troubleshooting/0003-0522-0000-0002or0000"},
+  "0003-0522-0000-0003": {"title": "System Failed to Start", "details": "Configuration load anomaly. Contact technical support or restore factory settings."},
+  "0003-0522-0000-0004": {"title": "System Failed to Start", "details": "Configuration load anomaly. Contact technical support or restore factory settings."},
+  "0003-0522-0000-0005": {"title": "System Failed to Start", "details": "Communication protocol load anomaly. Contact technical support or update firmware."},
+  "0003-0522-0000-0006": {"title": "System Failed to Start", "details": "Host MCU connection failed. Contact technical support."},
+  "0003-0522-0000-0007": {"title": "System Failed to Start", "details": "Abnormal MCU connection. Contact technical support."},
+  "0003-0522-0000-0008": {"title": "System Anomaly", "details": "Host MCU connection interrupted. Contact technical support."},
+  "0003-0522-0000-0009": {"title": "Sensor Anomaly", "details": "Accelerometer storage anomaly. Try powering off and restarting to resume. If the problem recurs, contact technical support."},
+  "0003-0522-0000-0010": {"title": "Sensor Anomaly", "details": "Accelerometer failed to obtain valid device ID. Try powering off and restarting to resume. If the problem recurs, contact technical support."},
+  "0003-0522-0000-0011": {"title": "Motor Driver Anomaly", "details": "Motor driver anomaly. See anomaly details. Contact technical support."},
+  "0003-0522-0000-0012": {"title": "Axis Movement Anomaly", "details": "Tap Home first, then move the X axis.", "article": "troubleshooting/tap_home_first_then_move_the_x_y_z_axis"},
+  "0003-0522-0000-0013": {"title": "Axis Movement Anomaly", "details": "X-axis movement exceeded travel limit.", "article": "troubleshooting/xy_movement_exceeded_travel_limit"},
+  "0003-0522-0000-0014": {"title": "Sensor Anomaly", "details": "ADC sensor configuration exceeded limit. System has shut down for protection. Export printer logs and contact technical support."},
+  "0003-0522-0000-0015": {"title": "Temperature Anomaly", "details": "Heating module failed to heat up normally. System has shut down for protection. Export printer logs and contact technical support."},
+  "0003-0522-0000-0016": {"title": "System Anomaly", "details": "Host MCU control timed out. System has shut down for protection. Contact technical support.", "article": "troubleshooting/timer_too_close"},
+  "0003-0522-0000-0017": {"title": "System Anomaly", "details": "Mainboard MCU detected power-off signal. System has shut down for protection. Contact technical support.", "article": "troubleshooting/false_power_off_signal_triggered"},
+  "0003-0522-0001-0006": {"title": "System Failed to Start", "details": "Mainboard MCU connection failed. Contact technical support."},
+  "0003-0522-0001-0008": {"title": "System Anomaly", "details": "Mainboard MCU connection interrupted. Contact technical support."},
+  "0003-0522-0001-0012": {"title": "Axis Movement Anomaly", "details": "Tap Home first, then move the Y axis.", "article": "troubleshooting/tap_home_first_then_move_the_x_y_z_axis"},
+  "0003-0522-0001-0013": {"title": "Axis Movement Anomaly", "details": "Y-axis movement exceeded travel limit.", "article": "troubleshooting/xy_movement_exceeded_travel_limit"},
+  "0003-0522-0001-0016": {"title": "System Anomaly", "details": "Mainboard MCU control timed out. System has shut down for protection. Contact technical support.", "article": "troubleshooting/u1_mainboard_MCU_control_timeout"},
+  "0003-0522-0001-0017": {"title": "System Anomaly", "details": "Toolhead 1 MCU detected power-off signal. System has shut down for protection. Contact technical support.", "article": "troubleshooting/false_power_off_signal_triggered"},
+  "0003-0522-0002-0006": {"title": "System Failed to Start", "details": "Toolhead 1 MCU connection failed. Power off printer, check toolhead cable, then restart printer. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0002-0008": {"title": "System Anomaly", "details": "Toolhead 1 MCU connection interrupted. Power off printer, check Toolhead 1 cable, then restart to resume operation.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0002-0012": {"title": "Axis Movement Anomaly", "details": "Tap Home first, then move the Z axis.", "article": "troubleshooting/tap_home_first_then_move_the_x_y_z_axis"},
+  "0003-0522-0002-0013": {"title": "Axis Movement Anomaly", "details": "Z-axis movement exceeded travel limit."},
+  "0003-0522-0002-0016": {"title": "System Anomaly", "details": "Toolhead 1 MCU control timed out. System has shut down for protection. Power off printer, check Toolhead 1 cable, then restart to resume operation.", "article": "troubleshooting/timer_too_close"},
+  "0003-0522-0002-0017": {"title": "System Anomaly", "details": "Toolhead 2 MCU detected power-off signal. System has shut down for protection. Contact technical support.", "article": "troubleshooting/false_power_off_signal_triggered"},
+  "0003-0522-0003-0006": {"title": "System Failed to Start", "details": "Toolhead 2 MCU connection failed. Power off printer, check toolhead cable, then restart printer. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0003-0008": {"title": "System Anomaly", "details": "Toolhead 2 MCU connection interrupted. Power off printer, check Toolhead 2 cable, then restart to resume operation.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0003-0016": {"title": "System Anomaly", "details": "Toolhead 2 MCU control timed out. System has shut down for protection. Power off printer, check Toolhead 2 cable, then restart to resume operation.", "article": "troubleshooting/timer_too_close"},
+  "0003-0522-0003-0017": {"title": "System Anomaly", "details": "Toolhead 3 MCU detected power-off signal. System has shut down for protection. Contact technical support.", "article": "troubleshooting/false_power_off_signal_triggered"},
+  "0003-0522-0004-0006": {"title": "System Failed to Start", "details": "Toolhead 3 MCU connection failed. Power off printer, check toolhead cable, then restart printer. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0004-0008": {"title": "System Anomaly", "details": "Toolhead 3 MCU connection interrupted. Power off printer, check Toolhead 3 cable, then restart to resume operation.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0004-0016": {"title": "System Anomaly", "details": "Toolhead 3 MCU control timed out. System has shut down for protection. Power off printer, check Toolhead 3 cable, then restart to resume operation.", "article": "troubleshooting/timer_too_close"},
+  "0003-0522-0004-0017": {"title": "System Anomaly", "details": "Toolhead 4 MCU detected power-off signal. System has shut down for protection. Contact technical support.", "article": "troubleshooting/false_power_off_signal_triggered"},
+  "0003-0522-0005-0006": {"title": "System Failed to Start", "details": "Toolhead 4 MCU connection failed. Power off printer, check toolhead cable, then restart printer. If issue persists, contact technical support.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0005-0008": {"title": "System Anomaly", "details": "Toolhead 4 MCU connection interrupted. Power off printer, check Toolhead 4 cable, then restart to resume operation.", "article": "troubleshooting/u1_toolhead_disconnected"},
+  "0003-0522-0005-0016": {"title": "System Anomaly", "details": "Toolhead 4 MCU control timed out. System has shut down for protection. Power off printer, check Toolhead 4 cable, then restart to resume operation.", "article": "troubleshooting/timer_too_close"},
+  "0003-0522-0100-0006": {"title": "System Failed to Start", "details": "No toolhead detected. Please contact technical support.", "article": "troubleshooting/no_toolhead_detected"},
+  "0003-0523-0000-0001": {"title": "Nozzle Temperature Anomaly", "details": "Toolhead 1 nozzle temperature insufficient. Nozzle extrusion temperature must be above 170°C.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0000-0002": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 1 thermistor.", "article": "troubleshooting/bypass_a_faulty_toolhead"},
+  "0003-0523-0000-0003": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 1 ceramic heater or thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0000-0004": {"title": "Extrusion Length Exceeded", "details": "Toolhead 1 single extrusion distance was too long. There may be incorrect codes in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0000-0005": {"title": "Extrusion Flow Exceeded", "details": "Toolhead 1 printing extrusion volume exceeded maximum allowed. There may be incorrect configurations in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0000-0006": {"title": "Nozzle Temperature Anomaly", "details": "The G-code file may have set a toolhead unrecognized by printer. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue.", "article": "troubleshooting/U1_nozzle_temperature_is_abnormal_caused_by_incorrect_slicing_parameters"},
+  "0003-0523-0000-0036": {"title": "Nozzle Temperature Out of Range", "details": "Nozzle temperature set for Toolhead 1 is outside the allowable range. Reset to valid parameters.", "article": "troubleshooting/U1_nozzle_temperature_is_abnormal_caused_by_incorrect_slicing_parameters"},
+  "0003-0523-0001-0001": {"title": "Nozzle Temperature Anomaly", "details": "Toolhead 2 nozzle temperature insufficient. Nozzle extrusion temperature must be above 170°C.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0001-0002": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 2 thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0001-0003": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 2 ceramic heater or thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0001-0004": {"title": "Extrusion Length Exceeded", "details": "Toolhead 2 single extrusion distance was too long. There may be incorrect codes in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0001-0005": {"title": "Extrusion Flow Exceeded", "details": "Toolhead 2 printing extrusion volume exceeded maximum allowed. There may be incorrect configurations in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0001-0036": {"title": "Nozzle Temperature Out of Range", "details": "Nozzle temperature set for Toolhead 2 is outside the allowable range. Reset to valid parameters.", "article": "troubleshooting/U1_nozzle_temperature_is_abnormal_caused_by_incorrect_slicing_parameters"},
+  "0003-0523-0002-0001": {"title": "Nozzle Temperature Anomaly", "details": "Toolhead 3 nozzle temperature insufficient. Nozzle extrusion temperature must be above 170°C.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0002-0002": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 3 thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0002-0003": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 3 ceramic heater or thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0002-0004": {"title": "Extrusion Length Exceeded", "details": "Toolhead 3 single extrusion distance was too long. There may be incorrect codes in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0002-0005": {"title": "Extrusion Flow Exceeded", "details": "Toolhead 3 printing extrusion volume exceeded maximum allowed. There may be incorrect configurations in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0002-0036": {"title": "Nozzle Temperature Out of Range", "details": "Nozzle temperature set for Toolhead 3 is outside the allowable range. Reset to valid parameters.", "article": "troubleshooting/U1_nozzle_temperature_is_abnormal_caused_by_incorrect_slicing_parameters"},
+  "0003-0523-0003-0001": {"title": "Nozzle Temperature Anomaly", "details": "Toolhead 4 nozzle temperature insufficient. Nozzle extrusion temperature must be above 170°C.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0003-0002": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 4 thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0003-0003": {"title": "Nozzle Temperature Anomaly", "details": "Power off printer, then check the connection of Toolhead 4 ceramic heater or thermistor.", "article": "troubleshooting/nozzle_temperature_anomaly", "match": "title"},
+  "0003-0523-0003-0004": {"title": "Extrusion Length Exceeded", "details": "Toolhead 4 single extrusion distance was too long. There may be incorrect codes in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0003-0005": {"title": "Extrusion Flow Exceeded", "details": "Toolhead 4 printing extrusion volume exceeded maximum allowed. There may be incorrect configurations in the G-code file. It is recommended to use G-code files exported by Snapmaker Orca for printing to avoid this issue."},
+  "0003-0523-0003-0036": {"title": "Nozzle Temperature Out of Range", "details": "Nozzle temperature set for Toolhead 4 is outside the allowable range. Reset to valid parameters.", "article": "troubleshooting/U1_nozzle_temperature_is_abnormal_caused_by_incorrect_slicing_parameters"},
+  "0003-0526-0000-0000": {"title": "Heated Bed Temperature Exceeded", "details": "Heated bed temperature exceeded limit. Contact technical support.", "article": "troubleshooting/bed_temperature_exceeds_limit"},
+  "0003-0526-0000-0001": {"title": "Heated Bed Temperature Exceeded", "details": "Heated bed heating anomaly. Contact technical support.", "article": "troubleshooting/heated_bed_heating_anomaly"},
+  "0003-0527-0000-0000": {"title": "Chamber Temperature Exceeded", "details": "Chamber temperature exceeded limit. Check sensor connection or contact technical support."},
+  "0003-0528-0000-0002": {"title": "Axis Movement Anomaly", "details": "X-axis movement anomaly. Retry. If anomaly occurs repeatedly, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0000-0003": {"title": "Axis Movement Anomaly", "details": "X-axis movement anomaly. Retry. If anomaly occurs repeatedly, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0000-0004": {"title": "Axis Movement Anomaly", "details": "Check if X-axis movement has obvious resistance, then retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0000-0005": {"title": "Axis Movement Anomaly", "details": "Check if moving axes have obvious resistance, then retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0000-0006": {"title": "Axis Movement Anomaly", "details": "Check if timing belts are tensioned properly, X and Y axes move smoothly, and there are no obstructions at the X and Y homing positions. Retry after troubleshooting. If issue persists, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0000-0007": {"title": "System Anomaly", "details": "System is in shutdown protection, cannot home. Restart printer and retry. If the problem persists, contact technical support."},
+  "0003-0528-0000-0008": {"title": "System Anomaly", "details": "System is in shutdown protection, cannot level. Restart printer and retry. If the problem persists, contact technical support."},
+  "0003-0528-0000-0009": {"title": "Sensor Anomaly", "details": "Failed to activate. Retry. If anomaly occurs repeatedly, contact technical support."},
+  "0003-0528-0001-0002": {"title": "Axis Movement Anomaly", "details": "Y-axis movement anomaly. Retry. If anomaly occurs repeatedly, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0001-0003": {"title": "Axis Movement Anomaly", "details": "Y-axis movement anomaly. Retry. If anomaly occurs repeatedly, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0001-0004": {"title": "Axis Movement Anomaly", "details": "Check if Y-axis movement has obvious resistance, then retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0002-0002": {"title": "Axis Movement Anomaly", "details": "Z-axis movement anomaly. Retry. If anomaly occurs repeatedly, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0002-0003": {"title": "Axis Movement Anomaly", "details": "Z-axis movement anomaly. Retry. If anomaly occurs repeatedly, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0002-0004": {"title": "Axis Movement Anomaly", "details": "Check if Z-axis movement has obvious resistance, then retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_axis_movement_anomaly"},
+  "0003-0528-0003-0002": {"title": "Homing Anomaly", "details": "Retry. If issue persists, contact technical support.", "article": "troubleshooting/U1_homing_failure"},
+  "0003-0528-0003-0003": {"title": "Homing Anomaly", "details": "Retry. If issue persists, contact technical support.", "article": "troubleshooting/U1_homing_failure"},
+  "0003-0528-0003-0004": {"title": "Homing Anomaly", "details": "Homing sensor not triggered. Check the nozzle for residual filament and clean it before retrying. If issue persists, contact technical support.", "article": "troubleshooting/U1_homing_failure"},
+  "0003-0529-0000-0000": {"title": "Gcode Error", "details": "The Gcode command is missing a required parameter."},
+  "0003-0529-0000-0001": {"title": "Gcode Error", "details": "Gcode command parameter parsing failed.", "article": "troubleshooting/known_issues_and_quick_fixes"},
+  "0003-0529-0000-0002": {"title": "Gcode Error", "details": "Gcode command parameter is less than the minimum allowed value."},
+  "0003-0529-0000-0003": {"title": "Gcode Error", "details": "Gcode command parameter is greater than the maximum allowed value."},
+  "0003-0529-0000-0004": {"title": "Gcode Error", "details": "Gcode command parameter must be greater than the value set above."},
+  "0003-0529-0000-0005": {"title": "Gcode Error", "details": "Gcode command parameter must be less than the value set below."},
+  "0003-0529-0000-0006": {"title": "Gcode Error", "details": "Gcode command is registered repeatedly."},
+  "0003-0529-0000-0007": {"title": "Gcode Error", "details": "Gcode mux command registration error, key error."},
+  "0003-0529-0000-0008": {"title": "Gcode Error", "details": "Gcode cannot be parsed."},
+  "0003-0529-0000-0009": {"title": "Gcode Error", "details": "Gcode command receives an invalid parameter."},
+  "0003-0530-0000-0000": {"title": "Calibration Anomaly", "details": "Toolhead 1 calibration sensor anomaly. Check if the calibration sensor is disconnected. For assistance, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0001": {"title": "Calibration Anomaly", "details": "Toolhead 1 calibration sensor anomaly. Sensor data exceeded allowable range. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0002": {"title": "Calibration Anomaly", "details": "Toolhead must be homed before calibration module works. Home and retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0003": {"title": "Calibration Anomaly", "details": "Incorrect calibration parameters. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0004": {"title": "Calibration Anomaly", "details": "Calibration failed. Check if toolhead is properly positioned, manually return to home position, then retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0005": {"title": "Calibration Anomaly", "details": "Incorrect operation command. Check if toolheads match placement position numbers, ensure numbers match, then retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0006": {"title": "Calibration Anomaly", "details": "Calibration module model of current toolhead does not match. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0007": {"title": "Calibration Anomaly", "details": "Probe command anomaly. Axes other than X, Y, Z are used. Use correct commands.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0008": {"title": "Calibration Anomaly", "details": "Check the X axis for any obstructions and if toolhead nozzle has residual material. Clean and retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0009": {"title": "Calibration Anomaly", "details": "Calibration unavailable due to system anomaly. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0000-0010": {"title": "Heated Bed Detection Anomaly", "details": "PEI sheet detected as removed. Place PEI sheet and retry printing."},
+  "0003-0530-0000-0011": {"title": "Heated Bed Detection Anomaly", "details": "PEI sheet detected as not removed. Remove PEI sheet and retry calibration."},
+  "0003-0530-0000-0012": {"title": "Heated Bed Detection Anomaly", "details": "Heated bed detection anomaly. Contact technical support."},
+  "0003-0530-0000-0013": {"title": "Detection Anomaly", "details": "Attach any one toolhead and retry."},
+  "0003-0530-0000-0014": {"title": "Detection Anomaly", "details": "Toolhead 1 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0000-0015": {"title": "Detection Anomaly", "details": "Toolhead 1 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0003-0530-0000-0016": {"title": "Detection Anomaly", "details": "Toolhead 1 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0001-0000": {"title": "Calibration Anomaly", "details": "Toolhead 2 calibration sensor anomaly. Check if the calibration sensor is disconnected. For assistance, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0001-0001": {"title": "Calibration Anomaly", "details": "Toolhead 2 calibration sensor anomaly. Sensor data exceeded allowable range. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0001-0008": {"title": "Calibration Anomaly", "details": "Check the Y axis for any obstructions and if toolhead nozzle has residual material. Clean and retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0001-0014": {"title": "Detection Anomaly", "details": "Toolhead 2 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0001-0015": {"title": "Detection Anomaly", "details": "Toolhead 2 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0003-0530-0001-0016": {"title": "Detection Anomaly", "details": "Toolhead 2 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0002-0000": {"title": "Calibration Anomaly", "details": "Toolhead 3 calibration sensor anomaly. Check if the calibration sensor is disconnected. For assistance, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0002-0001": {"title": "Calibration Anomaly", "details": "Toolhead 3 calibration sensor anomaly. Sensor data exceeded allowable range. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0002-0008": {"title": "Calibration Anomaly", "details": "Check if Z axis for any obstructions and if toolhead nozzle has residual material. Clean and retry. If issue persists, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0002-0014": {"title": "Detection Anomaly", "details": "Toolhead 3 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0002-0015": {"title": "Detection Anomaly", "details": "Toolhead 3 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0003-0530-0002-0016": {"title": "Detection Anomaly", "details": "Toolhead 3 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0003-0000": {"title": "Calibration Anomaly", "details": "Toolhead 4 calibration sensor anomaly. Check if the calibration sensor is disconnected. For assistance, contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0003-0001": {"title": "Calibration Anomaly", "details": "Toolhead 4 calibration sensor anomaly. Sensor data exceeded allowable range. Contact technical support.", "article": "troubleshooting/u1_calibration_anomaly"},
+  "0003-0530-0003-0014": {"title": "Detection Anomaly", "details": "Toolhead 4 detached. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0003-0015": {"title": "Detection Anomaly", "details": "Toolhead 4 Pogopin contact anomaly. Clean both the toolhead and the Pogopin contacts on the toolhead swapper using a dust-free cloth. Then tap to attempt resuming the job. If the error persists, contact Technical Support.", "article": "troubleshooting/pogopin_contact_anomaly"},
+  "0003-0530-0003-0016": {"title": "Detection Anomaly", "details": "Toolhead 4 placement anomaly. Manually reinstall the toolhead into its dock, then tap to attempt resuming the job. If the error persists, contact Technical Support."},
+  "0003-0530-0003-0017": {"title": "Heated Bed Detection Anomaly", "details": "The PEI sheet is not properly positioned. Correctly place the PEI sheet and retry."}
+ }
+}

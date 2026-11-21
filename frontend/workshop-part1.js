@@ -230,7 +230,9 @@ function attentionItems(printers) {
         add(0, 'error', `${p.name}: ${a.text}`, detail[0].toUpperCase() + detail.slice(1), 'control');
       });
       if (p.state === 'paused') {
-        add(1, 'warning', `${p.name} is paused`, `${p.current_file || 'Current print'} · ${Math.round(p.progress * 100)}% done`, 'control');
+        // A pause the printer raised itself names what is wrong (its code and Snapmaker's title for it); one pressed by hand does not.
+        const why = p.problem ? `: ${p.problem.title || `printer error ${p.problem.code}`}` : '';
+        add(1, 'warning', `${p.name} is paused${why}`, `${p.problem ? `${p.problem.code} · ` : ''}${p.current_file || 'Current print'} · ${Math.round(p.progress * 100)}% done`, 'control');
       }
       const q = attention.queues[p.id];
       const bed = q && q.bed;

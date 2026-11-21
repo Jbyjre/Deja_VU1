@@ -70,9 +70,11 @@ from collections import deque
 from datetime import datetime
 from urllib.parse import quote, urlencode, urlparse
 
+import error_codes
 import gcode_tools
 import machines
 import printer_extras
+import printer_problems
 import websocket as ws
 from moonraker_client_part1 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
     CLIENT_VERSION, COMMAND_TIMEOUT, CONNECT_TIMEOUT, ComputerWoke, DEAD_AFTER, EXTRA_LIMIT, Endpoint,
@@ -149,6 +151,9 @@ class MoonrakerPrinter:
         self._filament_asked = float("-inf")
         self._klippy_state = None
         self._klippy_message = None
+        self._standing = []            # the U1's list of problems that stay until cleared (as its Moonraker sends it)
+        self._notified = deque(maxlen=40)   # problems the U1 raised lately, each as the printer sent it
+        self.messages = deque(maxlen=80)    # what the printer said that matters: problems, errors, shutdown reasons
         self._job = None
         self._finished_job = None
         self._finished_n = 0
@@ -488,6 +493,7 @@ class MoonrakerPrinter:
             self._connected_at = datetime.now().isoformat(timespec="seconds")
             self._last_error = None
         self._note("subscribed", {"objects": sorted(subscription), "klippy_state": state})
+        self._read_standing(objects)
         self._history_dirty.set()
         self.on_change(self.id)
         return True
@@ -594,6 +600,7 @@ class MoonrakerPrinter:
         elif method == "notify_klippy_shutdown":
             with self.lock:
                 self._klippy_state = "shutdown"
+                self._keep_message("shutdown", _str(_obj(self._status, "webhooks").get("state_message")) or "Klipper shut down")
             self.on_change(self.id)
         elif method == "notify_klippy_disconnected":
             with self.lock:
@@ -604,11 +611,69 @@ class MoonrakerPrinter:
             self.on_change(self.id)
         elif method == "notify_history_changed":
             self._history_dirty.set()
+        elif method in ("notify_exception_notification", "notify_exception_status"):
+            self._exception_report(method, params)
         elif method == "notify_gcode_response":
             line = params[0] if isinstance(params, list) and params else params
             with self.lock:
                 self.console.append({"time": datetime.now().isoformat(timespec="seconds"),
                                      "kind": "response", "detail": str(line)[:300]})
+                self._keep_message("response", line)
+
+    def _read_standing(self, objects):
+        """
+        The problems the printer is holding, read once per connection. What was remembered before the link dropped is
+        forgotten first, because the printer may have cleared it meanwhile; its Moonraker then lists what it holds
+        (`server.exception.query`, only where the U1's exception manager exists). A missing answer is never a failed connection.
+        """
+        with self.lock:
+            self._standing = []
+        if "exception_manager" not in objects:
+            return
+        try:
+            got = self._call("server.exception.query")
+        except Exception:                      # noqa: BLE001 - an older firmware, or a refusal: the subscription still reports
+            return
+        rows = got.get("exceptions") if isinstance(got, dict) else None
+        if isinstance(rows, list):
+            with self.lock:
+                self._standing = [dict(r) for r in rows[:20] if isinstance(r, dict)]
+
+    def recent_messages(self, limit=40):
+        """What the printer said that matters (problems with their codes, error replies, shutdown reasons), newest first."""
+        with self.lock:
+            return list(reversed(self.messages))[:max(1, int(limit))]
+
+    def _keep_message(self, kind, text, code=None, level=None):
+        """Remember a line worth finding again: an error reply, or anything that carries a problem code. Lock held."""
+        text = str(text if text is not None else "").strip()
+        codes = error_codes.find_codes(text)
+        if kind == "response" and not (text.startswith("!!") or codes):
+            return
+        row = {"time": datetime.now().isoformat(timespec="seconds"), "kind": kind, "detail": clean_error(text)[:300]}
+        if code or codes:
+            row["code"] = code or codes[0]
+        if level is not None:
+            row["level"] = level
+        self.messages.append(row)
+
+    def _exception_report(self, method, params):
+        """
+        The U1's own problem reports, which its Moonraker sends to every client: one raised just now
+        (`notify_exception_notification`, with the time) or the whole list of problems that stay until cleared
+        (`notify_exception_status`).
+        """
+        first = params[0] if isinstance(params, list) and params else params
+        with self.lock:
+            if method == "notify_exception_notification":
+                item = printer_problems.entry(first, "notification")
+                if item:
+                    self._notified.append(dict(first))
+                    self._keep_message("problem", first.get("message"), item["code"], item["level"])
+            else:
+                rows = first.get("exceptions") if isinstance(first, dict) else None
+                self._standing = [dict(r) for r in rows[:20] if isinstance(r, dict)] if isinstance(rows, list) else []
+        self.on_change(self.id)
 
     # -- the status, and noticing a print finish --------------------------------
 
@@ -685,7 +750,8 @@ class MoonrakerPrinter:
     def _ctx(self):
         return {"printer_id": self.id, "name": self.name, "extruders": self._extruders,
                 "chamber": self._chamber, "job": self._job, "extras": self._extras, "klippy_state": self._klippy_state,
-                "klippy_message": self._klippy_message, "machine": self._machine()}
+                "klippy_message": self._klippy_message, "machine": self._machine(),
+                "standing": list(self._standing), "notified": list(self._notified)}
 
     def snapshot(self):
         with self.lock:

@@ -62,7 +62,10 @@ class TestFleet(unittest.TestCase):
         self.assertEqual(rows["u1-workshop"]["state"], "printing")
         self.assertIsNotNone(rows["u1-workshop"]["remaining_hours"])
         self.assertEqual(rows["u1-studio"]["state"], "paused")
-        self.assertIn("Paused", [a["text"] for a in rows["u1-studio"]["alerts"]])
+        # Demo printer 2 is paused on one of Snapmaker's codes, so its alert says why; a pause pressed by hand just says "Paused".
+        self.assertIn("Paused: Printing Anomaly (0002-0523-0000-0038)", [a["text"] for a in rows["u1-studio"]["alerts"]])
+        self.assertEqual(rows["u1-studio"]["problem"]["code"], "0002-0523-0000-0038")
+        self.assertIsNone(rows["u1-workshop"]["problem"])
         self.assertEqual(rows["u1-garage"]["docks"]["T3"]["status"], "error")
         self.assertTrue(0 <= rows["u1-garage"]["health"] <= 100)
 

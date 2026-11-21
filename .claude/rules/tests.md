@@ -5,6 +5,9 @@ paths:
 
 # Test notes
 
+- Error codes: `tests/test_error_codes.py` (the table, the reader, `wiki_page`, `printer_problems`, `translate_state`, a stand-in printer over the wire),
+  `tests/test_printer_problem_feed.py` (live feed, logbook, rules, Tester mode), `tests/test_error_guides.py` (the fetcher with a canned wiki, the routes, the tester
+  report) and `tests/test_error_assistant.py`. No test asks the internet.
 - Standard-library `unittest`. API tests start the real server on a spare port. Tests use
   simulated printers, temporary folders and `tests/fake_moonraker.py` (a Moonraker stand-in built
   from Moonraker's source); none contacts a physical printer.

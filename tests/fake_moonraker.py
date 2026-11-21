@@ -97,6 +97,7 @@ class FakeMoonraker:
         self.metadata = {}
         self.history = []
         self.is_paused = False
+        self.system_exceptions = []        # problems Moonraker itself holds (raised by another client), which only server.exception.query lists
         self._clients = []
         self._timers = []
         self._conn_seq = 0
@@ -131,6 +132,10 @@ class FakeMoonraker:
                           "error_count": 0})
             self.status[name] = e
         if u1:
+            # The U1's firmware reports why a print paused or stopped (print_stats.exception: id, index, code, level,
+            # message) and keeps the problems that stay until cleared in exception_manager.
+            self.status["print_stats"]["exception"] = {}
+            self.status["exception_manager"] = {"exceptions": []}
             self.status["print_task_config"] = {
                 "filament_exist": [True, True, False, True],
                 "filament_type": ["PLA", "PETG", "NONE", "PLA"],
@@ -211,6 +216,32 @@ class FakeMoonraker:
                            "polygon": [[90.0 + 30 * i, 110.0], [110.0 + 30 * i, 110.0], [110.0 + 30 * i, 130.0]]}
                           for i, n in enumerate(names)), key=lambda o: o["name"])
         self.set("exclude_object", objects=objects, excluded_objects=[], current_object=objects[0]["name"])
+
+    def raise_exception(self, level, ident, index, number, message, oneshot=True):
+        """
+        A problem the way the U1's firmware raises it: a level 2 pauses the print, a level 3 stops it, the details
+        become print_stats.exception, and its Moonraker tells every client (with the time). A problem that is not
+        one-shot also stays in exception_manager until clear_exception.
+        """
+        exc = {"id": ident, "index": index, "code": number, "level": level, "message": message}
+        stats = {"exception": dict(exc)}
+        if self.status["print_stats"].get("state") == "printing" and level >= 2:
+            stats["state"] = "paused" if level == 2 else "error"
+        self.set("print_stats", **stats)
+        self.notify("notify_exception_notification", [dict(exc, timestamp=time.time())])
+        if not oneshot:
+            with self.lock:
+                standing = [e for e in self.status["exception_manager"]["exceptions"]
+                            if (e["id"], e["index"], e["code"]) != (ident, index, number)] + [dict(exc)]
+            self.set("exception_manager", exceptions=standing)
+            self.notify("notify_exception_status", [{"exceptions": standing}])
+
+    def clear_exception(self, ident, index, number):
+        with self.lock:
+            standing = [e for e in self.status["exception_manager"]["exceptions"]
+                        if (e["id"], e["index"], e["code"]) != (ident, index, number)]
+        self.set("exception_manager", exceptions=standing)
+        self.notify("notify_exception_status", [{"exceptions": standing}])
 
     def begin_print(self, filename, **stats):
         self.set("print_stats", state="printing", filename=filename, **stats)
@@ -685,6 +716,11 @@ class FakeMoonraker:
         if method == "machine.system_info" and self.device_name is not None:
             # u1-moonraker components/machine.py: product_info holds the name set on the printer.
             return ok(self.system_info())
+        if method == "server.exception.query":
+            # u1-moonraker components/exception_manager.py: the problems it holds, as {"state": "success", "exceptions": [...]}
+            if "exception_manager" not in self.status:
+                return err(-32601, "Method not found")
+            return ok({"state": "success", "exceptions": copy.deepcopy(self.status["exception_manager"]["exceptions"]) + copy.deepcopy(self.system_exceptions)})
         if method == "server.info":
             return ok({"klippy_connected": self.klippy_state != "disconnected", "klippy_state": self.klippy_state,
                        "components": [], "failed_components": [], "registered_directories": ["gcodes"],

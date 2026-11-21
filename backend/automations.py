@@ -358,7 +358,11 @@ def _trigger_now(rule, printer_id, state, events, cache):
         layer = (state.get("layer") or {}).get("current")
         return printing and isinstance(layer, int) and layer >= trigger["value"], f"layer {layer}"
     if t == "error":
-        return state.get("state") == "error" and not state.get("link_lost"), state.get("state_message") or "error"
+        problem = state.get("problem") or {}
+        # A stopped print, or a problem the printer itself rates a warning or an error (a pause it raised, which
+        # the state alone shows only as "paused"): the detail names the printer's own words and code.
+        hit = (state.get("state") == "error" or (problem.get("level") or 0) >= 2) and not state.get("link_lost")
+        return hit, state.get("state_message") or "error"
     if t == "link_lost":
         return bool(state.get("link_lost")), "no answer from the printer"
     if t == "filament_mismatch":

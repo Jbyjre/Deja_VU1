@@ -647,6 +647,13 @@ def _findings(r):
             "The printer reported a print as failed. It may be a physical failure, so read the printer timeline.", failed_prints * 3,
             origin="condition", code=["backend/live_feed.py"], count=failed_prints)
 
+    for problem in r["printer"].get("problems", []):
+        add("printer", "medium" if (problem.get("level") or 0) >= 2 else "low", "Printer error",
+            "The printer reported error %s%s" % (problem["code"], (": " + problem["title"]) if problem.get("title") else ""),
+            "Reported %s. This is the printer's own report, not a fault in the app; Snapmaker's wiki explains it inside the app." %
+            _times(problem["count"]), problem["count"] * 2, origin="condition",
+            code=["backend/error_codes.py", "backend/printer_problems.py"], count=problem["count"])
+
     for index, sl in enumerate(r["slicing"]):
         if not sl["ok"]:
             said = sl.get("why") or sl.get("cause") or "not given"

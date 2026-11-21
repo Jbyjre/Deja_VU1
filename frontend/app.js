@@ -299,6 +299,12 @@ async function tourGet(url) {
     return tourReply(body, status);
   }
   if (path === '/api/live/events') return tourReply({ events: tourEvents(+(q.get('since') || 0)) });
+  if (path === '/api/errors/guide') {
+    // Snapmaker's guides are read from their wiki by the app; the demo has no server to do that, so it says so and links to the page.
+    const slug = q.get('slug') || '';
+    return tourReply({ ok: false, status: 503, error: "The online demo doesn't read Snapmaker's wiki. The app opens the guide here, with its pictures and videos.",
+      url: /^[A-Za-z0-9_./&-]+$/.test(slug) && !slug.includes('..') ? `https://wiki.snapmaker.com/en/snapmaker_u1/${slug}` : null });
+  }
   if (path === '/api/files/raw') return realFetch(`demo/files/${encodeURIComponent(q.get('name') || '')}`);
   if (path === '/api/files/thumb') return realFetch(`demo/thumbs/${encodeURIComponent(q.get('name') || '')}.png`);
   if (path === '/api/files/lines') {
