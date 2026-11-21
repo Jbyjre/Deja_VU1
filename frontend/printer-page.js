@@ -63,6 +63,15 @@ window.PrinterPage = (() => {
     const cam = { host, run: 0, on: saved ? saved !== 'off' : store.get('dejavu1.pref.cam') !== 'off', url: null, timer: 0, noStream: null, noLive: null };
     cam.frame = host.querySelector('.pcam-frame');
     cam.img = host.querySelector('.pcam-img');
+    // The window takes the picture's own shape (the first picture or video says what it is), so the whole of it shows: nothing cropped, no bars.
+    const shape = e => {
+      const el = e.target, w = el.naturalWidth || el.videoWidth, h = el.naturalHeight || el.videoHeight;
+      if (!(w > 0 && h > 0)) return;
+      const ar = `${w} / ${h}`, box = host.closest('.card') || host;
+      if (box.dataset.camAr !== ar) { box.dataset.camAr = ar; box.style.setProperty('--cam-ar', ar); }
+    };
+    cam.frame.addEventListener('load', shape, true);
+    cam.frame.addEventListener('loadedmetadata', shape, true);
     cam.mode = host.querySelector('.pcam-mode');
     cam.note = host.querySelector('.pcam-note');
     cam.toggle = host.querySelector('.pcam-toggle');

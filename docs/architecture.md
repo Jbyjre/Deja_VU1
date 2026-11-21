@@ -768,6 +768,11 @@ bottom padding follows that height. The floating dock (`strip.js`, `#strip`) sit
 dock at the right: the notification orb, Ask and the "continue here" offer. Halt is not in it:
 it sits on the Printer screen (`cockpit.js`).
 
+Since 21 November the frame is glass over one room: controls and navigation are clear glass, panels are a frosted material, and everything sits over a neutral field
+with a faint grid and the loaded filaments' colours (`frontend/glass.css`). One set of rules (`frontend/text.css`, `frontend/text.js`) decides what text does when it does
+not fit, and `tools/text-audit.js` checks every screen against very long names. The Printer screen is one room: the 3D scene fills the window and the readings sit on the
+machine. `.claude/rules/frontend.md` has the details.
+
 The visual treatment is Apple Liquid Glass, built from five layers: a
 backdrop blur, edge refraction via an SVG displacement filter, a specular
 highlight that tracks the pointer, a thin bright rim, and an elevation

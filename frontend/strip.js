@@ -151,6 +151,18 @@
     };
     if (conn) { new MutationObserver(tint).observe(conn, { attributes: true, attributeFilter: ['class'] }); tint(); }
     paintHalt();
+    // A control reached with the keyboard is never left under the floating dock: if the dock (or the "continue here" offer) sits over it, the screen
+    // scrolls it to the middle. (A browser only scrolls a focused control that is out of view, and one under the dock is in view.)
+    document.addEventListener('focusin', e => {
+      const el = e.target;
+      if (!el || !el.closest || !el.closest('.wrap') || el.closest('.cp-sheet')) return;
+      const b = el.getBoundingClientRect();
+      const under = [...document.querySelectorAll('#strip > *:not([hidden])')].some(p => {
+        const q = p.getBoundingClientRect();
+        return q.width > 0 && q.height > 0 && b.left < q.right && b.right > q.left && b.top < q.bottom && b.bottom > q.top;
+      });
+      if (under) el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+    });
   }
 
   window.Strip = { halt, restart, selected, armedNow: () => !!armed };

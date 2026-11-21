@@ -6,65 +6,70 @@
  * dark look already redefines, every figure is mono with tabular numbers, and every motion is a transform or an opacity.
  * Loaded after shell-panes.css and before looks.css. */
 
-/* ---- the screen ----------------------------------------------------------------------------------------------------------------- */
+/* ---- the room: the printer fills the window, everything else floats in it ----------------------------------------------------- */
 html.has-shell #tab-control { display: flex; flex-direction: column; }
-html.has-shell #tab-control:not([hidden]) { overflow: hidden; }
+html.has-shell #tab-control:not([hidden]) { overflow: visible; }
 html.has-shell #tab-control.sec-one:not(.is-control) { overflow: auto; }
-html.has-shell .cp {
-  position: relative; flex: 1; min-height: 0; display: grid;
-  grid-template-columns: var(--left, 250px) 1px minmax(0, 1fr) 1px var(--right, 290px); grid-template-rows: minmax(0, 1fr) auto;
-}
-html.has-shell .cp > .cp-left { grid-column: 1; grid-row: 1 / 3; }
-html.has-shell .cp > .v1 { grid-column: 2; grid-row: 1 / 3; }
-html.has-shell .cp > .cp-stage { grid-column: 3; grid-row: 1; }
-html.has-shell .cp > .cp-dock { grid-column: 3; grid-row: 2; }
-html.has-shell .cp > .v2 { grid-column: 4; grid-row: 1 / 3; }
-html.has-shell .cp > .cp-right { grid-column: 5; grid-row: 1 / 3; }
+html.has-shell .cp { position: relative; flex: 1; min-height: 0; }
 html.has-shell .cp-head-spent { display: none; }
-/* A rail dragged (or collapsed with Enter) to nothing leaves nothing behind: no padding, no tile edges. */
-html.has-shell .cp:has(> .v1[data-collapsed="true"]) > .cp-left, html.has-shell .cp:has(> .v2[data-collapsed="true"]) > .cp-right { padding: 0; visibility: hidden; }
 /* Cards that are not on show wait here: laid out at a real size, never seen. */
 html.has-shell .cp-hold { position: absolute; left: -10000px; top: 0; width: 640px; visibility: hidden; pointer-events: none; }
+/* The 3D scene is the whole window, behind the sidebar and the toolbar: the glass over it has something real to bend. */
+html.has-shell .cp-stage { position: fixed; z-index: 0; inset: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 0;
+  background: linear-gradient(180deg, var(--room-top), var(--room-bot)); }
+html.has-shell .cp-stage { --twin-fit: 0.74; --twin-dx: 34px; --twin-dy: -16px; }
+html.has-shell .cp-stage > #twin-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; position: relative; box-shadow: none; }
+html.has-shell .cp-stage > #twin-card #twin-host { flex: 1; min-height: 0; margin: 0; cursor: zoom-in; }
+/* The picture fills whatever it sits in (the room, a sheet's side, the twin's own sheet), not the fixed height the card had. */
+html.has-shell :is(.cp-stage, .cp-side, .cp-main) > #twin-card #twin-host { display: flex; flex-direction: column; }
+html.has-shell :is(.cp-stage, .cp-side, .cp-main) > #twin-card :is(.twin-model, .wf) { flex: 1 1 0; height: auto; min-height: 0; margin: 0; }
+html.has-shell :is(.cp-stage, .cp-side) > #twin-card .twin-model { border-radius: 0; }
+html.has-shell :is(.cp-stage, .cp-side) > #twin-card .wf-picks { display: none; }
+html.has-shell .cp-stage > #twin-card :is(.twin-head, .twin-tools, .twin-chips, .twin-readout, .twin-extras, .twin-note, .twin-other, #twin-sync) { display: none; }
 
-/* ---- the rails and their tiles -------------------------------------------------------------------------------------------------- */
-html.has-shell .cp-rail { display: flex; flex-direction: column; gap: 10px; padding: 12px; min-width: 0; min-height: 0; overflow: hidden; contain: layout paint style; }
-html.has-shell .cp-right { padding-bottom: 68px; }                      /* the corner belongs to the floating dock */
-html.has-shell .tile {
-  display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin: 0; padding: 12px 14px 13px; text-align: left; color: var(--text); font: inherit;
-  border: 1px solid var(--hair); border-radius: 14px; background: var(--surface-2); cursor: pointer; flex: none;
-  transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+/* ---- floating things: glass over the room (tier 3) --------------------------------------------------------------------------- */
+html.has-shell .cp-top { position: absolute; z-index: 4; inset: 0 0 auto 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
+html.has-shell .cp-top > * { pointer-events: auto; }
+html.has-shell .cp-who { display: none; }
+html.has-shell .cp-halt { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-left: auto; max-width: min(420px, 60%); }
+html.has-shell .cp-halt .halt { height: 38px; border-radius: 10px; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 8px 22px rgba(200, 16, 46, 0.34); }
+html.has-shell .cp-halted { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 10px 14px; border: 0; border-radius: 12px; background: color-mix(in oklch, var(--m-tint-solid) 86%, transparent); box-shadow: var(--g-sh-3); font-size: 12.5px; color: var(--text); }
+html.has-shell .cp-halted[hidden] { display: none; }
+html.has-shell .cockpit.is-halted .halt { display: none; }
+
+html.has-shell .cp-left { position: absolute; z-index: 3; top: 0; left: 0; width: min(300px, 26vw); pointer-events: none; }
+html.has-shell .cp-left > * { pointer-events: auto; }
+html.has-shell .cp-right { position: absolute; z-index: 3; top: 52px; right: 0; width: min(340px, 28vw); pointer-events: none; }
+html.has-shell .cp-right > * { pointer-events: auto; }
+html.has-shell .glassy, html.has-shell .tile {
+  position: relative; isolation: isolate; border: 0; border-radius: 16px; background: color-mix(in oklch, var(--m-tint-solid) 52%, transparent); box-shadow: var(--g-sh-3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7); backdrop-filter: blur(18px) saturate(1.7);
 }
-html.has-shell .tile:hover { background: var(--surface-solid); border-color: var(--hair-strong); }
-html.has-shell .tile:active { transform: scale(0.992); }
-html.has-shell .tile:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-html.has-shell .tile-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 600 10.5px var(--font-mono); letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint); }
-html.has-shell .tile-h::after { content: ""; width: 6px; height: 6px; flex: none; border-right: 1.6px solid currentColor; border-top: 1.6px solid currentColor; transform: rotate(45deg); opacity: 0.55; margin-right: 2px; }
+html.has-shell .tile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 3;
+  background: linear-gradient(165deg, var(--g-rim-a), var(--g-rim-b) 40%, var(--g-rim-b) 62%, color-mix(in oklch, var(--g-rim-a) 55%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+html.has-shell .tile-main, html.has-shell .tile-tune { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin: 0; padding: 14px 18px; text-align: left; color: var(--text); font: inherit;
+  border: 0; background: transparent; cursor: pointer; transition: background-color 0.16s ease; }
+html.has-shell .tile-main { border-radius: 16px 16px 0 0; }
+html.has-shell .tile-tune { padding: 10px 16px 12px; border-radius: 0 0 16px 16px; border-top: 1px solid var(--g-line); }
+html.has-shell .tile-main:hover, html.has-shell .tile-tune:hover { background: color-mix(in oklch, var(--accent) 9%, transparent); }
+html.has-shell .tile-main:focus-visible, html.has-shell .tile-tune:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -3px; }
+html.has-shell .tile-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 620 12.5px var(--font-sans); color: var(--text-dim); }
+html.has-shell .tile-h::after { content: ""; width: 6px; height: 6px; flex: none; border-right: 1.6px solid currentColor; border-top: 1.6px solid currentColor; transform: rotate(45deg); opacity: 0.5; margin-right: 2px; }
 html.has-shell .tile-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-html.has-shell .tile-empty { font: 12.5px var(--font-sans); color: var(--text-faint); padding: 4px 0; }
-/* temperatures */
-html.has-shell .tt-row { display: grid; grid-template-columns: 10px 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 25px; padding: 0 6px; margin: 0 -6px; border-radius: 7px; font: 12px var(--font-mono); font-variant-numeric: tabular-nums; }
-html.has-shell .tt-row.is-active { background: var(--accent-soft); }
-html.has-shell .tt-row.is-bad b { color: var(--bad-text, var(--bad)); }
-html.has-shell .tt-row b { font-weight: 650; }
-html.has-shell .tt-row em { font-style: normal; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-html.has-shell .tt-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hair-strong); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
-html.has-shell .tt-v { text-align: right; white-space: nowrap; }
-html.has-shell .tt-v strong { font-weight: 600; font-size: 13px; color: var(--text); }
-html.has-shell .tt-v small { color: var(--text-faint); font-size: 11.5px; }
-html.has-shell .tt-env { grid-template-columns: minmax(0, 1fr) auto; border-top: 1px solid var(--hair); border-radius: 0; margin-top: 4px; padding-top: 4px; min-height: 28px; }
-html.has-shell .tt-env + .tt-env { border-top: 0; margin-top: 0; padding-top: 0; }
-/* tune */
+html.has-shell .tile-empty { font: 12.5px var(--font-sans); color: var(--text-faint); padding: 2px 0; }
+/* tune values on the foot of the print card */
 html.has-shell .tile-tune .tile-body { flex-direction: row; gap: 0; }
-html.has-shell .tn { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-html.has-shell .tn i { font: normal 10.5px var(--font-sans); color: var(--text-faint); white-space: nowrap; }
-html.has-shell .tn b { font: 600 17px var(--font-mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+html.has-shell .tn { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+html.has-shell .tn i { font: normal 11px var(--font-sans); color: var(--text-faint); white-space: nowrap; }
+html.has-shell .tn b { font: 600 15px var(--font-mono); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 /* this print */
 html.has-shell .jb-file { font: 600 13px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.has-shell .jb-pct { display: flex; align-items: baseline; gap: 2px; margin-top: 2px; }
-html.has-shell .jb-pct b { font: 600 38px/1 var(--font-display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+html.has-shell .jb-pct b { font: 600 40px/1 var(--font-display); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
 html.has-shell .jb-pct small { font: 500 16px var(--font-display); color: var(--text-dim); }
-html.has-shell .jb-pct em { margin-left: 8px; font: normal 600 10.5px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); }
-html.has-shell .jb-bar { display: block; height: 6px; margin: 6px 0 4px; border-radius: 3px; background: var(--well); overflow: hidden; }
+html.has-shell .jb-pct em { margin-left: 8px; font: normal 620 12px var(--font-sans); color: var(--accent-text); }
+html.has-shell .jb-bar { display: block; height: 6px; margin: 6px 0 4px; border-radius: 3px; background: color-mix(in oklch, var(--text) 10%, transparent); overflow: hidden; }
 html.has-shell .jb-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s ease; }
 html.has-shell .jb-line { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
 html.has-shell .jb-dim { color: var(--text-faint); }
@@ -72,53 +77,42 @@ html.has-shell .jb-why { font: 11.5px/1.35 var(--font-sans); color: var(--text-f
 html.has-shell .jb-state { font: 600 22px/1.1 var(--font-display); letter-spacing: -0.02em; }
 html.has-shell .jb-state.is-ok { color: var(--ok-text, var(--ok)); }
 html.has-shell .jb-state.is-bad { color: var(--bad-text, var(--bad)); }
-/* the camera tile */
-html.has-shell .tile-cam { padding: 0; gap: 0; border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; background: #0d1117; cursor: default; flex: none; }
-html.has-shell .tile-cam-open { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0; padding: 10px 14px; border: 0; background: #151b24; color: #d6dde8; font: inherit; cursor: pointer; }
-html.has-shell .tile-cam-open:hover { background: #1b2330; }
-html.has-shell .tile-cam-open .tile-h { color: #b4bfce; }
-html.has-shell .tile-cam-open .tile-more { color: #9ccbff; }
+/* the camera is a window: the whole picture at its own shape, never cropped */
+html.has-shell .tile-cam { padding: 0; overflow: hidden; background: #0d1117; cursor: default; }
+html.has-shell .tile-cam::after { z-index: 4; }
+/* one small expand button over the picture's corner (the window itself opens the camera too); its name stays for screen readers */
+html.has-shell .tile-cam-open { position: absolute; z-index: 5; top: 8px; right: 8px; display: grid; place-items: center; width: 34px; height: 34px; margin: 0; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: oklch(18% 0.02 250 / 0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7'/%3E%3C/svg%3E") center / 16px no-repeat;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: 0; transition: opacity 0.18s ease; }
+html.has-shell .tile-cam:hover .tile-cam-open, html.has-shell .tile-cam-open:focus-visible { opacity: 1; }
+html.has-shell .tile-cam-open .tile-h, html.has-shell .tile-cam-open .tile-more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 html.has-shell .tile-cam-open .tile-h::after { display: none; }
-html.has-shell .tile-more { font: 550 11.5px var(--font-sans); color: var(--accent-text); letter-spacing: 0; text-transform: none; }
-html.has-shell .tile-cam-slot { position: relative; aspect-ratio: 16 / 9; cursor: zoom-in; }
-html.has-shell .tile-cam-slot > .card, html.has-shell .cp-side #pp-camera-card, html.has-shell .cp-main #pp-camera-card { border: 0; padding: 0; margin: 0; background: transparent; box-shadow: none; height: 100%; }
-html.has-shell .tile-cam-slot > .card > .card-head, html.has-shell .cp-side #pp-camera-card > .card-head { display: none; }
-html.has-shell .tile-cam-slot .pcam, html.has-shell .cp-side #pp-camera-card .pcam { height: 100%; margin: 0; border-radius: 0; }
-html.has-shell .tile-cam-slot .pcam-frame, html.has-shell .cp-side #pp-camera-card .pcam-frame { height: 100%; aspect-ratio: auto; border-radius: 0; }
+html.has-shell .tile-cam-slot { position: relative; cursor: zoom-in; }
+/* the card takes the picture's shape; the frame and the picture fill it exactly */
+html.has-shell .tile-cam-slot > .card { position: relative; width: 100%; height: auto; aspect-ratio: var(--cam-ar, 16 / 9); max-height: 42vh; margin: 0; padding: 0; border: 0; background: transparent; box-shadow: none; }
+html.has-shell .tile-cam-slot > .card > .card-head { display: none; }
+html.has-shell .tile-cam-slot :is(.pcam, .pcam-frame) { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: 0; aspect-ratio: auto; }
+html.has-shell .tile-cam-slot :is(.pcam-img, .pcam-video) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 html.has-shell .tile-cam-slot .pcam-note { display: none; }
+html.has-shell .cp-side #pp-camera-card, html.has-shell .cp-main #pp-camera-card { border: 0; padding: 0; margin: 0; background: transparent; box-shadow: none; height: 100%; }
+html.has-shell .cp-side #pp-camera-card > .card-head { display: none; }
+html.has-shell .cp-side #pp-camera-card .pcam, html.has-shell .cp-side #pp-camera-card .pcam-frame { height: 100%; margin: 0; border-radius: 0; aspect-ratio: auto; }
 
-/* ---- the stage ------------------------------------------------------------------------------------------------------------------ */
-html.has-shell .cp-stage > #twin-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; position: relative; }
-html.has-shell .cp-stage > #twin-card #twin-host { flex: 1; min-height: 0; margin: 0; cursor: zoom-in; }
-/* The picture fills whatever it sits in (the stage, a sheet's side, the twin's own sheet), not the fixed height the card had. */
-html.has-shell :is(.cp-stage, .cp-side, .cp-main) > #twin-card #twin-host { display: flex; flex-direction: column; }
-html.has-shell :is(.cp-stage, .cp-side, .cp-main) > #twin-card :is(.twin-model, .wf) { flex: 1 1 0; height: auto; min-height: 0; margin: 0; }
-html.has-shell :is(.cp-stage, .cp-side) > #twin-card .twin-model { border-radius: 0; }
-html.has-shell :is(.cp-stage, .cp-side) > #twin-card .wf-picks { display: none; }
-html.has-shell .cp-stage > #twin-card :is(.twin-head, .twin-tools, .twin-chips, .twin-readout, .twin-extras, .twin-note, .twin-other, #twin-sync) { display: none; }
-html.has-shell .cp-stage-top { position: absolute; z-index: 4; inset: 12px 14px auto 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; pointer-events: none; }
-html.has-shell .cp-stage-top > * { pointer-events: auto; }
-html.has-shell .cp-who { display: flex; align-items: center; min-width: 0; padding: 8px 14px 8px 12px; border: 1px solid var(--hair); border-radius: 12px; background: color-mix(in oklch, var(--surface-solid) 86%, transparent); box-shadow: var(--shadow-anchored); }
-html.has-shell .cp-who .pp-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
-html.has-shell .cp-who .pp-name { margin: 0; font: 640 14px/1.2 var(--font-display); letter-spacing: -0.01em; text-transform: none; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-html.has-shell .cp-who .pp-state { font: 12px var(--font-mono); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-html.has-shell .cp-halt { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: min(420px, 60%); }
-html.has-shell .cp-halt .halt { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) inset, 0 6px 18px rgba(200, 16, 46, 0.32); }
-html.has-shell .cp-halted { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 9px 12px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--surface-solid); box-shadow: var(--shadow-float); font-size: 12.5px; color: var(--text); }
-html.has-shell .cp-halted[hidden] { display: none; }
-html.has-shell .cockpit.is-halted .halt { display: none; }
-html.has-shell .cp-twin-open { position: absolute; z-index: 3; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 6px 14px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12px var(--font-sans); cursor: pointer; opacity: 0.9; transition: opacity 0.2s ease; }
+/* the hint above the dock fades once it has been used */
+html.has-shell .cp-twin-open { position: absolute; z-index: 3; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 6px 12px; border: 0; border-radius: 8px; color: var(--text-dim); font: 550 12px var(--font-sans); cursor: pointer; opacity: 0.95; transition: opacity 0.2s ease;
+  background: color-mix(in oklch, var(--m-tint-solid) 55%, transparent); box-shadow: var(--g-sh-1); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 html.has-shell .cp-twin-open:hover, html.has-shell .cp-twin-open:focus-visible { opacity: 1; color: var(--text); }
 html.has-shell .cockpit.twin-hinted .cp-twin-open:not(:focus-visible) { opacity: 0; pointer-events: none; }
-html.has-shell .cockpit.twin-hinted .cp-stage:hover .cp-twin-open { opacity: 0.9; pointer-events: auto; }
 html.has-shell .cockpit.has-sheet .cp-twin-open { display: none; }
 
-/* ---- the dock under the twin ---------------------------------------------------------------------------------------------------- */
-html.has-shell .cp-dock { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; padding: 8px 10px 26px; }   /* the foot keeps clear of the floating dock */
-html.has-shell .dk-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px 0 10px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12.5px var(--font-sans); cursor: pointer; white-space: nowrap; transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease; }
+/* ---- the tool palette: one glass column of labelled buttons at the left (a CAD toolbox), clear of the corner where messages appear ---------------------- */
+html.has-shell .cp-dock { position: absolute; z-index: 5; left: 0; bottom: 6px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; width: 172px; padding: 6px;
+  border-radius: 14px; background: color-mix(in oklch, var(--m-tint-solid) 55%, transparent); box-shadow: var(--g-sh-3); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4); }
+html.has-shell .dk-btn { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text-dim); font: 580 13px var(--font-sans); cursor: pointer; white-space: nowrap; text-align: left;
+  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease; }
 html.has-shell .dk-btn svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-html.has-shell .dk-btn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
-html.has-shell .dk-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+html.has-shell .dk-btn:hover { color: var(--text); background: var(--g-tint-hi); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.12), inset 0 0 0 1px var(--g-line); }
+html.has-shell .dk-btn:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
 
 /* ---- the sheet ------------------------------------------------------------------------------------------------------------------ */
 html.has-shell .cp-scrim { position: absolute; z-index: 20; inset: 0; background: oklch(18% 0.02 265 / 0.4); }
@@ -178,95 +172,154 @@ html.has-shell .cp-main #pp-heaters .divider-row.cols-4 { grid-template-columns:
 html.has-shell .cp-main #pp-heaters:not(.is-setting) :is(#pp-presets, .temp-set, #pp-bed-form) { display: revert; }
 
 /* ---- Overview ------------------------------------------------------------------------------------------------------------------- */
-html.has-shell #tab-overview { display: flex; flex-direction: column; overflow: hidden; }
-html.has-shell .ovd { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 330px); }
-html.has-shell .ovd-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; padding: 18px 22px 16px; overflow: hidden; }
-html.has-shell .ovd-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; min-height: 0; padding: 18px 20px 68px 6px; overflow: hidden; }
-html.has-shell .ovd-main > #ov-now { flex: none; border: 1px solid var(--hair); border-radius: 16px; background: var(--surface-2); padding: 16px 20px 18px; overflow: hidden; }
-html.has-shell .ovd-main > #ov-now > .card-head { min-height: 0; margin-bottom: 4px; }
-html.has-shell .ovd-main > #ov-now .ov-word { font: 640 34px/1.05 var(--font-display); letter-spacing: -0.03em; }
-html.has-shell .ovd-main > #ov-now .ov-file { font: 600 15px var(--font-sans); }
-html.has-shell .ovd-main > #ov-now .ov-facts { font: 13px var(--font-mono); }
-html.has-shell .ov-why { margin: 2px 0 0; font: 11.5px var(--font-sans); color: var(--text-faint); }
-html.has-shell .ovd-main > #ov-camera { flex: 1 1 0; min-height: 140px; display: flex; flex-direction: column; padding: 0; border: 1px solid var(--hair); border-radius: 16px; overflow: hidden; background: #0d1117; }
-html.has-shell .ovd-main > #ov-camera > .card-head { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: #151b24; color: #d6dde8; min-height: 0; margin: 0; }
-html.has-shell .ovd-main > #ov-camera > .card-head h2 { color: #aab4c3; }
-html.has-shell .ovd-main > #ov-camera > .card-head .card-sub { display: none; }
-html.has-shell .ovd-main > #ov-camera .pcam { flex: 1; min-height: 0; margin: 0; border-radius: 0; }
-html.has-shell .ovd-main > #ov-camera .pcam-frame { height: 100%; aspect-ratio: auto; border-radius: 0; }
+/* The camera is the hero, whole and at its own shape; under it how the print stands; at the side what needs you and every printer.
+   Panels are the frosted material (tier 2) over the room; nothing is boxed inside another. */
+html.has-shell #tab-overview { display: flex; flex-direction: column; }
+html.has-shell #tab-overview:not([hidden]) { overflow: auto; scrollbar-width: thin; }
+html.has-shell .ovd { position: relative; flex: 1 0 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 350px); gap: 16px; align-items: start; padding: 4px 4px 70px; }
+html.has-shell .ovd-main, html.has-shell .ovd-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+html.has-shell .ovd :is(#ov-now, #attention, #ov-printers) { position: relative; border: 0; border-radius: var(--r-card); background: var(--m-tint); box-shadow: var(--g-sh-2); padding: 0; margin: 0;
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); }
+html.has-shell .ovd :is(#ov-now, #attention, #ov-printers)::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
+  background: linear-gradient(165deg, var(--g-rim-a), var(--g-rim-b) 40%, var(--g-rim-b) 62%, color-mix(in oklch, var(--g-rim-a) 50%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+
+/* the camera window */
+html.has-shell .ovd-main > #ov-camera { order: 1; position: relative; width: 100%; padding: 0; margin: 0; border: 0; border-radius: 16px; overflow: hidden; background: #0d1117; box-shadow: var(--g-sh-3);
+  aspect-ratio: var(--cam-ar, 16 / 9); max-height: min(54vh, 500px); min-height: 200px; cursor: zoom-in; }
+html.has-shell .ovd-main > #ov-camera::after { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 4;
+  background: linear-gradient(165deg, oklch(100% 0 0 / 0.5), oklch(100% 0 0 / 0.06) 40%, oklch(100% 0 0 / 0.04) 62%, oklch(100% 0 0 / 0.3));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+html.has-shell .ovd-main > #ov-camera > .card-head { position: absolute; z-index: 5; top: 10px; right: 10px; left: auto; width: auto; min-height: 0; margin: 0; padding: 0; background: none; }
+html.has-shell .ovd-main > #ov-camera > .card-head > div { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }   /* the name stays for screen readers */
+html.has-shell .ovd-main > #ov-camera .tile-more { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; font-size: 0; cursor: pointer; opacity: 0; transition: opacity 0.18s ease;
+  background: oklch(18% 0.02 250 / 0.55) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7'/%3E%3C/svg%3E") center / 16px no-repeat;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+html.has-shell .ovd-main > #ov-camera:hover .tile-more, html.has-shell .ovd-main > #ov-camera .tile-more:focus-visible { opacity: 1; }
+html.has-shell .ovd-main > #ov-camera :is(.pcam, .pcam-frame) { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: 0; aspect-ratio: auto; }
+html.has-shell .ovd-main > #ov-camera :is(.pcam-img, .pcam-video) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 html.has-shell .ovd-main > #ov-camera .pcam-note { display: none; }
-html.has-shell .ovd-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
-html.has-shell .ovd-chip { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px 0 11px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--text-dim); font: 550 12.5px var(--font-sans); cursor: pointer; }
-html.has-shell .ovd-chip svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-html.has-shell .ovd-chip:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+/* in a sheet the camera fills whatever it is given */
+html.has-shell .cp-sheet #ov-camera { position: relative; width: 100%; height: 100%; min-height: 260px; max-height: none; aspect-ratio: auto; padding: 0; border: 0; border-radius: 0; background: #0d1117; box-shadow: none; }
+html.has-shell .cp-sheet #ov-camera > .card-head { display: none; }
+html.has-shell .cp-sheet #ov-camera :is(.pcam, .pcam-frame) { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: 0; aspect-ratio: auto; }
+html.has-shell .cp-sheet #ov-camera :is(.pcam-img, .pcam-video) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+/* how the print stands: state and file on the left, the figures in a grid on the right */
+html.has-shell .ovd-main > #ov-now { order: 2; padding: 16px 20px 18px; }
+html.has-shell .ovd-main > #ov-now > .card-head { position: absolute; top: 14px; right: 16px; z-index: 3; min-height: 0; margin: 0; padding: 0; }
+html.has-shell .ovd-main > #ov-now > .card-head > div { display: none; }
+html.has-shell .ovd-main > #ov-now #ov-now-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 4px 28px; align-items: start; }
+html.has-shell .ovd-main > #ov-now .ov-state { grid-column: 1; display: flex; align-items: center; gap: 10px; }
+html.has-shell .ovd-main > #ov-now .ov-word { font: 640 30px/1.05 var(--font-display); letter-spacing: -0.03em; }
+html.has-shell .ovd-main > #ov-now .ov-head { margin-left: 6px; }
+html.has-shell .ovd-main > #ov-now .ov-file { grid-column: 1; margin: 2px 0 0; font: 600 14.5px var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell .ovd-main > #ov-now .ov-progress { grid-column: 1; margin: 6px 0 2px; height: 7px; border-radius: 4px; background: color-mix(in oklch, var(--text) 10%, transparent); overflow: hidden; }
+html.has-shell .ovd-main > #ov-now .ov-progress span { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+html.has-shell .ovd-main > #ov-now .ov-facts { grid-column: 1; margin: 2px 0 0; font: 13px var(--font-mono); font-variant-numeric: tabular-nums; }
+html.has-shell .ovd-main > #ov-now .ov-why { grid-column: 1; }
+html.has-shell .ovd-main > #ov-now .ov-figs { grid-column: 2; grid-row: 1 / span 5; display: grid; grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 12px 14px; align-content: start; margin: 36px 0 0; padding: 0; }
+html.has-shell .ovd-main > #ov-now .ov-figs > div { min-width: 0; }
+html.has-shell .ovd-main > #ov-now .ov-figs dt { font: 500 11.5px var(--font-sans); color: var(--text-faint); letter-spacing: 0; text-transform: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell .ovd-main > #ov-now .ov-figs dd { margin: 1px 0 0; font: 600 14.5px var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; white-space: nowrap; }
+html.has-shell .ov-why { margin: 2px 0 0; font: 11.5px var(--font-sans); color: var(--text-faint); }
+
+/* the chips under it: glass pills (tier 1) */
+html.has-shell .ovd-chips { order: 3; display: flex; flex-wrap: wrap; gap: 8px; }
+html.has-shell .ovd-chip { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 11px; border: 1px solid var(--g-line); border-radius: 10px; color: var(--text-dim); font: 580 13px var(--font-sans); cursor: pointer;
+  background: color-mix(in oklch, var(--m-tint-solid) 55%, transparent); box-shadow: var(--g-sh-1); -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6);
+  transition: color 0.15s ease, background-color 0.15s ease, transform 0.15s ease; }
+html.has-shell .ovd-chip svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell .ovd-chip:hover { color: var(--text); background: var(--g-tint-hi); transform: translateY(-1px); }
 html.has-shell .ovd-chip:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
-html.has-shell .ovd-side > #attention { flex: 0 1 auto; min-height: 0; max-height: 58%; border: 1px solid var(--hair); border-radius: 16px; background: var(--surface-2); padding: 14px 16px; overflow: hidden; display: flex; flex-direction: column; }
-html.has-shell .ovd-side > #attention > .card-head { flex: none; min-height: 0; height: auto; align-items: flex-start; gap: 8px; margin: 0 0 6px; }
+
+/* the side: what needs you, then every printer */
+html.has-shell .ovd-side > #attention { padding: 16px 18px 12px; }
+html.has-shell .ovd-side > #attention > .card-head { display: flex; align-items: center; gap: 8px; min-height: 0; margin: 0 0 6px; padding: 0; }
 html.has-shell .ovd-side > #attention > .card-head > div { min-width: 0; flex: 1; }
-html.has-shell .ovd-side > #attention #attention-sub { margin: 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.has-shell .ovd-side > #attention h2, html.has-shell .ovd-side > #ov-printers h2 { margin: 0; font: 640 16px/1.2 var(--font-display); letter-spacing: -0.01em; text-transform: none; color: var(--text); }
+html.has-shell .ovd-side > #attention #attention-sub { margin: 2px 0 0; font: 12.5px var(--font-sans); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html.has-shell .ovd-side > #attention .att-count { display: none; }
 html.has-shell .ovd-side > #attention .att-list > li:nth-child(n+4) { display: none; }
-html.has-shell .ovd-side > #attention .att-text { overflow-wrap: anywhere; }       /* a long file name wraps instead of running under the button */
-html.has-shell .ovd-side > #attention .att-item { gap: 4px 10px; }
-html.has-shell .att-more { flex: none; align-self: flex-start; padding: 5px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--accent-text); font: 600 12px var(--font-sans); cursor: pointer; }
+html.has-shell .ovd-side > #attention .att-text { overflow-wrap: anywhere; }
+html.has-shell .ovd-side > #attention .att-item { gap: 4px 10px; padding: 10px 0; }
+html.has-shell .ovd-side > #attention .att-item .btn { min-height: 30px; padding: 0 12px; font-size: 12px; }
+html.has-shell .att-more { flex: none; padding: 5px 11px; border: 0; border-radius: 8px; background: var(--accent-soft); color: var(--accent-text); font: 600 12px var(--font-sans); cursor: pointer; }
 html.has-shell .att-more[hidden] { display: none; }
-html.has-shell .ovd-side > #ov-printers { flex: 1 1 0; min-height: 0; border: 0; padding: 0; background: none; overflow: hidden; display: flex; flex-direction: column; }
-html.has-shell .ovd-side > #ov-printers > .card-head { flex: none; min-height: 0; padding: 0 2px 6px; margin: 0; }
-html.has-shell .ovd-side > #ov-printers .ov-plist { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; min-height: 0; overflow: hidden; }
+html.has-shell .ovd-side > #ov-printers { padding: 16px 14px 12px; }
+html.has-shell .ovd-side > #ov-printers > .card-head { min-height: 0; padding: 0 4px 8px; margin: 0; }
+html.has-shell .ovd-side > #ov-printers .card-sub { display: none; }
+html.has-shell .ovd-side > #ov-printers .ov-plist { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
 html.has-shell .ovd-side > #ov-printers .ov-plist > li:nth-child(n+6) { display: none; }
-html.has-shell .ovd-side > #ov-printers .ov-prow { width: 100%; border: 1px solid var(--hair); border-radius: 12px; background: var(--surface-2); }
-html.has-shell .ovd-side > #ov-printers .ov-prow:hover { background: var(--surface-solid); border-color: var(--hair-strong); }
+html.has-shell .ovd-side > #ov-printers .ov-prow { width: 100%; border: 0; border-radius: 10px; background: color-mix(in oklch, var(--text) 5%, transparent); transition: background-color 0.15s ease; }
+html.has-shell .ovd-side > #ov-printers .ov-prow:hover { background: color-mix(in oklch, var(--accent) 12%, transparent); }
 html.has-shell .cp-sheet #ov-printers .ov-plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; list-style: none; margin: 0; padding: 0; }
 html.has-shell .cp-sheet #attention { border: 0; background: none; }
-@media (max-height: 640px) { html.has-shell .ovd-chips { display: none; } html.has-shell .ovd-main > #ov-camera { display: none; } }
 
 /* ---- smaller windows ----------------------------------------------------------------------------------------------------------- */
 @media (max-width: 1080px) {
-  html.has-shell .cp { grid-template-columns: var(--left, 216px) 1px minmax(0, 1fr) 1px var(--right, 240px); }
-  html.has-shell .ovd { grid-template-columns: minmax(0, 1fr) 260px; }
+  html.has-shell .cp-left { width: 250px; }
+  html.has-shell .cp-right { width: 270px; }
+  html.has-shell .cp-dock { width: 48px; }
+  html.has-shell .dk-btn span { display: none; }                           /* icons only; the name is the title and the accessible name */
+  html.has-shell .dk-btn { justify-content: center; padding: 0; }
+  html.has-shell .ovd { grid-template-columns: minmax(0, 1fr) 280px; }
+}
+@media (max-width: 900px) {
+  html.has-shell .ovd { grid-template-columns: minmax(0, 1fr); }
+  html.has-shell .ovd-main > #ov-now #ov-now-body { grid-template-columns: minmax(0, 1fr); }
+  html.has-shell .ovd-main > #ov-now .ov-figs { grid-column: 1; grid-row: auto; margin-top: 12px; }
+  html.has-shell .cp-twin-open { display: none; }
 }
 @media (max-width: 720px) {
   html.has-shell #tab-control, html.has-shell #tab-overview { overflow: visible !important; }
-  html.has-shell .cp { display: flex; flex-direction: column; gap: 0; }
-  html.has-shell .cp > .split { display: none; }
-  html.has-shell .cp > .cp-stage { order: 1; min-height: 84vw; flex: none; }
-  html.has-shell .cp-stage-top { inset: 8px 8px auto 8px; }
-  html.has-shell .cp-who .pp-state { display: none; }                   /* the name and the dot; the print tile below says the rest */
-  html.has-shell .cp-who { padding: 6px 12px 6px 10px; }
-  html.has-shell .cp > .cp-dock { order: 2; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
-  html.has-shell .cp > .cp-right { order: 3; padding-bottom: 12px; overflow: visible; contain: none; }      /* the print and the camera first */
-  html.has-shell .cp > .cp-left { order: 4; flex-direction: row; flex-wrap: wrap; overflow: visible; contain: none; }
-  html.has-shell .cp-left > .tile { flex: 1 1 100%; }
+  html.has-shell .cp { display: flex; flex-direction: column; gap: 12px; }
+  /* on a phone the room is a picture at the top of the page, and the cards follow it */
+  html.has-shell .cp > .cp-stage { position: relative; inset: auto; z-index: auto; order: 1; flex: none; height: min(96vw, 60vh); min-height: 300px; border-radius: 16px; box-shadow: var(--g-sh-2);
+    --twin-fit: 0.92; --twin-dx: 0px; --twin-dy: 0px; }
+  html.has-shell .cp > .cp-top { inset: 10px 10px auto 10px; }
+  html.has-shell .cp > .cp-dock { position: relative; left: auto; bottom: auto; order: 2; width: 100%; max-width: none; flex-direction: row; overflow-x: auto; scrollbar-width: none; border-radius: 14px; }
+  html.has-shell .dk-btn { flex: none; width: auto; justify-content: flex-start; padding: 0 12px 0 10px; }
+  html.has-shell .dk-btn span { display: inline; }
+  html.has-shell .cp > .cp-left, html.has-shell .cp > .cp-right { position: relative; inset: auto; width: 100%; }
+  html.has-shell .cp > .cp-left { order: 3; }
+  html.has-shell .cp > .cp-right { order: 4; }
+  html.has-shell .cp-twin-open { display: none; }
+  html.has-shell .tile-cam-open { opacity: 1; }
   html.has-shell .cp-sheet { position: fixed; inset: 8px 8px calc(var(--dock-h, 150px) + 12px); z-index: 90; }
   html.has-shell .cp-scrim { position: fixed; z-index: 89; }
   html.has-shell .cp-sheet.has-side .cp-sheet-body { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; overflow: auto; }
   html.has-shell .cp-side { border-left: 0; border-top: 1px solid var(--hair); min-height: 240px; }
-  html.has-shell .ovd { display: flex; flex-direction: column; }
-  html.has-shell .ovd-main, html.has-shell .ovd-side { padding: 12px; overflow: visible; }
-  html.has-shell .ovd-main > #ov-camera { display: flex; min-height: 220px; }
+  html.has-shell .ovd { display: flex; flex-direction: column; align-items: stretch; padding: 0 0 8px; }      /* stretch: shrink-wrapping would make the column as wide as its longest unbroken line */
+  html.has-shell .ovd-main, html.has-shell .ovd-side { width: 100%; }
+  html.has-shell .ovd-main > #ov-camera { max-height: none; }
+  html.has-shell .ovd-main > #ov-camera .tile-more { opacity: 1; }
 }
 
 /* ---- the three accessibility settings ------------------------------------------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {
-  html.has-shell .tile, html.has-shell .jb-bar i, html.has-shell .dk-btn, html.has-shell .cp-twin-open { transition: none; }
+  html.has-shell .tile, html.has-shell .jb-bar i, html.has-shell .dk-btn, html.has-shell .cp-twin-open, html.has-shell .tile-cam-open, .t3-tag { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  html.has-shell .tile, html.has-shell .cp-dock, html.has-shell .cp-twin-open, html.has-shell .cp-halted, .t3-tag, html.has-shell .ovd :is(#ov-now, #attention, #ov-printers), html.has-shell .ovd-chip { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--m-tint-solid); }
 }
 @media (prefers-contrast: more) {
-  html.has-shell .tile, html.has-shell .cp-who, html.has-shell .dk-btn, html.has-shell .cp-sheet, html.has-shell .ovd-chip { border: 1.5px solid var(--text); }
-  html.has-shell .tt-row.is-active { outline: 1.5px solid var(--text); }
+  html.has-shell .tile, html.has-shell .cp-dock, html.has-shell .cp-sheet, html.has-shell .ovd-chip, .t3-tag, html.has-shell .ovd :is(#ov-now, #attention, #ov-printers), html.has-shell .ovd-side .ov-prow { box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .tile::after, html.has-shell .ovd :is(#ov-now, #attention, #ov-printers)::after { display: none; }
+  html.has-shell .btn { border-color: var(--text); }
 }
-html.is-resizing .cp-rail, html.is-resizing .cp-stage { pointer-events: none; }
+html.is-resizing .cp-stage { pointer-events: none; }
 /* While a divider is dragged the 3D picture is not redrawn: it keeps its shape and sits in the middle of the moving pane. */
 html.is-resizing .cp-stage #twin-model canvas { object-fit: contain; }
 
 /* ---- the opening scene (intro.js) ----------------------------------------------------------------------------------------------- */
-html.intro-pending body::before { content: ""; position: fixed; inset: 0; z-index: 190; background: radial-gradient(80% 80% at 50% 45%, var(--stage-a, #f5f8fb) 45%, var(--stage-b, #e4eaf1)); }
+html.intro-pending body::before { content: ""; position: fixed; inset: 0; z-index: 190; background: linear-gradient(180deg, var(--room-top), var(--room-bot)); }
 #intro { position: fixed; inset: 0; z-index: 200; overflow: hidden; opacity: 0; transition: opacity 0.45s ease; }
 #intro.is-in { opacity: 1; }
 #intro.is-leaving { transition: none; }
-#intro .intro-bg { position: absolute; inset: 0; background:
-  repeating-linear-gradient(0deg, var(--layer-ink, rgba(20, 30, 50, 0.04)) 0 1px, transparent 1px 5px),
-  radial-gradient(80% 80% at 50% 45%, var(--stage-a, #f5f8fb) 45%, var(--stage-b, #e4eaf1)); }
-#intro .intro-stage { position: absolute; inset: 0; display: flex; flex-direction: column; }
+#intro .intro-bg { position: absolute; inset: 0; background: linear-gradient(180deg, var(--room-top), var(--room-bot)); }
+/* the same framing as the room, so the pull-back ends exactly where the Printer screen draws the printer */
+#intro .intro-stage { position: absolute; inset: 0; display: flex; flex-direction: column; --twin-fit: 0.74; --twin-dx: 34px; --twin-dy: -16px; }
 #intro .intro-stage > #twin-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0; border: 0; background: transparent; box-shadow: none; transform-origin: 50% 50%; position: relative; }
 #intro .intro-stage > #twin-card #twin-host { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
 #intro .intro-stage > #twin-card :is(.twin-model, .wf) { flex: 1 1 0; height: auto; min-height: 0; margin: 0; border-radius: 0; }
@@ -277,9 +330,9 @@ html.intro-pending body::before { content: ""; position: fixed; inset: 0; z-inde
 #intro .intro-skip { margin-left: auto; padding: 6px 14px; border: 1px solid var(--hair-strong, rgba(0, 0, 0, 0.2)); border-radius: 999px; background: var(--surface-solid, #fff); color: var(--text-dim, #5a6575); font: 550 12px var(--font-sans); cursor: pointer; }
 #intro .intro-skip:hover, #intro .intro-skip:focus-visible { color: var(--text, #1b2330); }
 html.intro-reveal .rail-card, html.intro-reveal .topbar, html.intro-reveal .cp-left > *, html.intro-reveal .cp-right > *, html.intro-reveal .cp-dock,
-html.intro-reveal .cp-stage-top, html.intro-reveal .ovd-main > *, html.intro-reveal .ovd-side > * { animation: intro-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+html.intro-reveal .cp-top, html.intro-reveal .ovd-main > *, html.intro-reveal .ovd-side > * { animation: intro-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
 html.intro-reveal .topbar { animation-delay: 0.12s; }
-html.intro-reveal .cp-stage-top { animation-delay: 0.2s; }
+html.intro-reveal .cp-top { animation-delay: 0.2s; }
 html.intro-reveal .cp-left > :nth-child(1), html.intro-reveal .ovd-main > :nth-child(1) { animation-delay: 0.26s; }
 html.intro-reveal .cp-left > :nth-child(2), html.intro-reveal .ovd-main > :nth-child(2) { animation-delay: 0.34s; }
 html.intro-reveal .cp-right > :nth-child(1), html.intro-reveal .ovd-side > :nth-child(1) { animation-delay: 0.3s; }

@@ -27,7 +27,7 @@
     layout.innerHTML = `<div class="card-head"><div><h2 id="layout-title">Words and layout</h2></div></div>
       <div class="set-row"><div class="set-t"><b>Your experience</b><span class="field-hint keep">Hints for your first few visits, or none.</span></div>
         ${seg('Your experience', 'exp', [['new', 'New to 3D printing'], ['know', 'I know my way around']], exp)}</div>
-      <div class="set-row"><div class="set-t"><b>Sidebar</b><span class="field-hint keep">Icons only, opening over the page when you point at it and closing 3 seconds after you move away. Or keep it open.</span></div>
+      <div class="set-row"><div class="set-t"><b>Sidebar</b><span class="field-hint keep">Icons only, opening over the page when you point at it or at the window's left edge, and closing by itself once you move away. Or keep it open.</span></div>
         ${seg('Sidebar', 'rail', [['auto', 'Opens on hover'], ['wide', 'Always open']], window.Rail && Rail.mode() === 'wide' ? 'wide' : 'auto')}</div>
       <div class="set-row"><div class="set-t"><b>Opening scene</b><span class="field-hint keep">The 3D printer fills the screen for three seconds when Deja Vu1 starts, then settles into place.</span></div>
         ${seg('Opening scene', 'intro', [['on', 'Play it'], ['off', 'Skip it']], window.DVIntro && !DVIntro.on() ? 'off' : 'on')}</div>

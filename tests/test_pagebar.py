@@ -97,7 +97,7 @@ class ToolbarEdgeSource(unittest.TestCase):
         self.assertLess(scripts.index("deck.js"), scripts.index("cockpit.js"))
         self.assertLess(scripts.index("deck.js"), scripts.index("overview.js"))
         sheets = re.findall(r'<link rel="stylesheet" href="([^"]+)"', INDEX)
-        self.assertEqual(sheets[-5:], ["dark.css", "shell.css", "shell-panes.css", "cockpit.css", "looks.css"])
+        self.assertEqual(sheets[-7:], ["dark.css", "shell.css", "shell-panes.css", "cockpit.css", "glass.css", "text.css", "looks.css"])
 
     def test_the_frame_is_marked_in_the_head_before_anything_is_drawn(self):
         self.assertIn("classList.add('has-shell')", BOOT)

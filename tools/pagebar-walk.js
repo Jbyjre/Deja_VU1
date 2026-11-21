@@ -208,13 +208,14 @@ async function walk(browser, server, shots) {
     check(r.t === title && (extra == null || r.s === extra), `The old link #/${old} lands in ${title}${extra ? ' › ' + extra : ''}: ${JSON.stringify(r)}`);
   }
 
-  /* The sidebar rests as icons in every place, opens over the page when pointed at, closes 3 seconds after the pointer leaves, and a width someone chose wins. */
+  /* The sidebar rests as icons in every place, opens over the page when pointed at (or at the window's left edge), closes by itself after the
+     pointer leaves (sooner when it clearly went elsewhere), never under a pointer that comes back, and a width someone chose wins. */
   const railNow = () => page.evaluate(() => ({ open: document.documentElement.classList.contains('rail-open'), w: Math.round(document.querySelector('#rail .rail-card').getBoundingClientRect().width),
     main: Math.round(document.getElementById('main').getBoundingClientRect().left) }));
   for (const d of ['overview', 'printer', 'files']) {
     await go(page, d);
     await page.mouse.move(700, 400);
-    await page.waitForTimeout(3600);
+    await page.waitForTimeout(2200);
     const w = await railNow();
     check(!w.open && w.w <= 64, `${d}: the sidebar rests as icons only: ` + JSON.stringify(w));
   }
@@ -222,22 +223,32 @@ async function walk(browser, server, shots) {
   await page.waitForTimeout(700);
   let rw = await railNow();
   check(rw.open && rw.w >= 200 && rw.main < 100, 'Pointing at the sidebar shows its labels over the page without moving it: ' + JSON.stringify(rw));
-  await page.mouse.move(700, 400);
-  await page.waitForTimeout(1500);
+  await page.mouse.move(700, 400, { steps: 5 });
+  await page.waitForTimeout(250);
   rw = await railNow();
-  check(rw.open && rw.w >= 200, 'It stays open 1.5 s after the pointer leaves: ' + JSON.stringify(rw));
-  await page.waitForTimeout(2300);
+  check(rw.open, 'It does not close the instant the pointer leaves: ' + JSON.stringify(rw));
+  await page.waitForTimeout(700);
   rw = await railNow();
-  check(!rw.open && rw.w <= 64, 'It has closed 3.8 s after the pointer left: ' + JSON.stringify(rw));
+  check(!rw.open && rw.w <= 64, 'It has closed about a second after the pointer went far away: ' + JSON.stringify(rw));
   await page.hover('#rail .rail-item[data-place="files"]');
   await page.waitForTimeout(400);
-  await page.mouse.move(700, 400);
-  await page.waitForTimeout(2000);
-  await page.hover('#rail .rail-item[data-place="files"]');
-  await page.waitForTimeout(2200);
-  await page.mouse.move(700, 400);
+  await page.mouse.move(270, 330, { steps: 4 });                      // just beside it: a grace period of 1.5 s
+  await page.waitForTimeout(900);
   rw = await railNow();
-  check(rw.open, 'Coming back inside 3 seconds keeps it open: ' + JSON.stringify(rw));
+  check(rw.open, 'Just beside it, it is still open after 0.9 s: ' + JSON.stringify(rw));
+  await page.hover('#rail .rail-item[data-place="files"]');          // coming back cancels the close
+  await page.waitForTimeout(1900);
+  rw = await railNow();
+  check(rw.open, 'Coming back within the grace period keeps it open: ' + JSON.stringify(rw));
+  await page.mouse.click(700, 30);                                    // a press elsewhere (the empty part of the toolbar) closes it at once
+  await page.waitForTimeout(350);
+  rw = await railNow();
+  check(!rw.open, 'A press outside closes it at once: ' + JSON.stringify(rw));
+  await page.mouse.move(3, 300, { steps: 3 });                        // a flick to the window edge opens it
+  await page.waitForTimeout(400);
+  rw = await railNow();
+  check(rw.open, 'A flick to the window edge opens it: ' + JSON.stringify(rw));
+  await page.mouse.move(700, 450, { steps: 4 });
   await page.waitForTimeout(3600);
   await page.evaluate(() => Rail.setMode('wide'));
   await go(page, 'files');
@@ -322,44 +333,21 @@ async function walk(browser, server, shots) {
   st = await text(page, '#pb-title');
   check(st === 'Slicer', 'Enter on a place opens it: ' + st);
 
-  /* Dividers: W3C window splitter keys, remembered per browser. */
+  /* The Printer screen is one room: the 3D scene is a layer behind the sidebar and the toolbar, the cards float over it, nothing is a rail and
+     nothing can be dragged. */
   await go(page, 'printer');
-  await page.waitForTimeout(500);
-  const split = '#cockpit .split.v1';
-  const props = async () => page.evaluate(s => { const e = document.querySelector(s); return { role: e.getAttribute('role'), o: e.getAttribute('aria-orientation'), now: +e.getAttribute('aria-valuenow'), label: e.getAttribute('aria-label') }; }, split);
-  let p = await props();
-  check(p.role === 'separator' && p.o === 'vertical' && p.now === 250 && /temperature/i.test(p.label), 'The divider is a labelled separator: ' + JSON.stringify(p));
-  await page.focus(split);
-  await page.keyboard.press('ArrowRight');
-  let q = await props();
-  await page.keyboard.press('Shift+ArrowRight');
-  const q2 = await props();
-  check(q.now === 262 && q2.now === 310, 'Arrow keys move the divider 12 px, Shift+arrow 48 px: ' + q.now + ', ' + q2.now);
-  await page.keyboard.press('Home');
-  q = await props();
-  check(q.now === 190, 'Home goes to the smallest size: ' + q.now);
-  await page.keyboard.press('Enter');
-  q = await props();
-  const hidden = await page.evaluate(() => Math.round(document.querySelector('#cockpit .cp-left').getBoundingClientRect().width));
-  check(q.now === 0 && hidden === 0, 'Enter collapses the rail: ' + JSON.stringify({ now: q.now, width: hidden }));
-  await page.keyboard.press('Enter');
-  q = await props();
-  check(q.now === 190, 'Enter restores it: ' + q.now);
-  await page.reload();
-  await page.waitForTimeout(1500);
-  await go(page, 'printer');
-  q = await props();
-  check(q.now === 190, 'The size is kept in this browser: ' + q.now);
-  const box = await page.evaluate(s => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, split);
-  await page.mouse.move(box.x, box.y);
-  await page.mouse.down();
-  await page.mouse.move(box.x + 60, box.y, { steps: 5 });
-  await page.mouse.up();
-  q = await props();
-  check(q.now >= 240 && q.now <= 260, 'Dragging with the mouse moves it: ' + q.now);
-  await page.evaluate(() => Panes.reset());
-  q = await props();
-  check(q.now === 250, 'Reset layout puts the default size back: ' + q.now);
+  await page.waitForTimeout(600);
+  const room = await page.evaluate(() => {
+    const r = e => { const b = e.getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) }; };
+    const q = s => document.querySelector(s);
+    return { stage: r(q('#p-stage')), pos: getComputedStyle(q('#p-stage')).position, job: r(q('#tile-job')), cam: r(q('#tile-cam')), dock: r(q('#cp-dock')), splits: document.querySelectorAll('#cockpit .split').length,
+      tags: [...document.querySelectorAll('#twin-model .t3-tag')].map(t => t.textContent.trim()), win: { w: innerWidth, h: innerHeight } };
+  });
+  check(room.pos === 'fixed' && room.stage.w === room.win.w && room.stage.h === room.win.h, 'The 3D scene fills the whole window behind everything: ' + JSON.stringify(room.stage));
+  check(room.splits === 0 && room.job.l < room.win.w / 2 && room.cam.l > room.win.w / 2 && room.dock.l < room.win.w / 4 && room.dock.t > room.win.h / 3, 'No rails or dividers: the print card floats top left, the camera top right and the tool palette down the left: ' + JSON.stringify({ job: room.job, cam: room.cam, dock: room.dock }));
+  check(room.tags.some(t => /^T\d.*\d/.test(t)) && room.tags.some(t => /^Bed.*\d/.test(t)), 'The heads and the bed carry their temperatures on the machine: ' + JSON.stringify(room.tags));
+  const frame = await page.evaluate(() => { const i = document.querySelector('#cp-cam-slot .pcam-img:not([hidden])'); const c = document.querySelector('#cp-cam-slot > .card'); return i && c ? { img: i.getBoundingClientRect().width / i.getBoundingClientRect().height, card: c.getBoundingClientRect().width / c.getBoundingClientRect().height, fit: getComputedStyle(i).objectFit } : null; });
+  check(!frame || frame.fit === 'contain', 'The camera window shows the whole picture: ' + JSON.stringify(frame));
 
   /* The one twin lives on the Printer screen only: Overview has none, and a sheet that borrows it hands it back. */
   await go(page, 'overview');
@@ -379,8 +367,8 @@ async function walk(browser, server, shots) {
   await page.waitForTimeout(500);
   const back = await page.evaluate(() => ({ twin: document.getElementById('twin-card').parentElement.id, cam: document.getElementById('pp-camera-card').parentElement.id, open: Cockpit.isOpen() }));
   check(back.twin === 'p-stage' && back.cam === 'cp-cam-slot' && !back.open, 'Escape closes the sheet and hands the twin and the camera back: ' + JSON.stringify(back));
-  const noScroll = await page.evaluate(() => [...document.querySelectorAll('#cockpit .cp-rail')].map(r => { const o = getComputedStyle(r).overflow; return o === 'hidden' || o === 'clip'; }));
-  check(noScroll.length === 2 && noScroll.every(Boolean), 'The tiles either side do not scroll');
+  const noScroll = await page.evaluate(() => [...document.querySelectorAll('#cockpit .cp-left, #cockpit .cp-right, #cockpit .cp-top')].map(r => { const o = getComputedStyle(r).overflow; return o !== 'auto' && o !== 'scroll'; }));
+  check(noScroll.length === 3 && noScroll.every(Boolean), 'The cards over the room do not scroll');
 
   /* Settings: groups, search, demo data out of the way. */
   await go(page, 'settings');

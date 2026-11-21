@@ -1,0 +1,78 @@
+/* text.css: what text does when it does not fit. Loaded after glass.css and before looks.css.
+ *
+ * One rule set for every screen, checked by `node tools/text-audit.js` (every screen, three widths, very long names):
+ *   prose wraps, and a long unbroken word wraps too (overflow-wrap: anywhere also lets flex and grid items shrink to it, so one long name can
+ *     no longer push its neighbours out of the window);
+ *   names and labels stay on one line and end in an ellipsis; text.js puts the full text in the title when the pointer rests on one, and cuts
+ *     file names in the middle so the extension and the version stay visible;
+ *   a button keeps its size and its words; only a label that is long by nature (it carries a printer or file name) is allowed to shrink;
+ *   every figure is mono with tabular digits and never breaks;
+ *   nothing is set smaller than 11 px.
+ */
+
+/* ---- prose ----------------------------------------------------------------------------------------------------------------------- */
+html.has-shell .wrap { overflow-wrap: anywhere; }
+html.has-shell .wrap :is(pre, code, kbd, samp, textarea, input, select) { overflow-wrap: normal; }
+html.has-shell .wrap :is(h1, h2, h3, h4) { text-wrap: balance; }
+html.has-shell .wrap :is(p, li, dd, .card-sub, .field-hint) { text-wrap: pretty; }
+/* a command to copy wraps too, so it can always be read in full */
+html.has-shell .wrap :is(.vc-term, .vc-term pre, .vc-term code, .vc-cmd, pre.cmd) { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+
+/* ---- names: one line, an ellipsis, full text on hover ------------------------------------------------------------------------------ */
+html.has-shell :is(.ov-pname, .ov-pword, .fc-name, .fc-file, .dk-name b, .dk-name small, .jb-file, .ov-file, .pb-title, .pb-sub, .tm-kv dt, .tm-kv dd, .log-row > span:first-child,
+  .task-name > span:first-child, .rail-who b, .rail-who small, .fh-row > b, .fh-row > span:first-child) {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+html.has-shell .log-row > span:first-child { flex: 1 1 auto; }
+html.has-shell .task-name { min-width: 0; }
+html.has-shell .task-name .pill { flex: none; white-space: nowrap; }
+html.has-shell .dk-bar { grid-template-columns: minmax(0, 1fr); }
+html.has-shell .dk-bar :is(b, i, small) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell .att-text :is(b, small) { overflow-wrap: anywhere; }                 /* Needs you wraps instead: its words matter more than one line */
+/* the middle-cut file name (text.js): the start gives way, the end stays */
+.mt { display: flex; min-width: 0; max-width: 100%; overflow: hidden; }
+.mt > .mt-a { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt > .mt-b { flex: none; white-space: pre; }
+
+/* ---- controls --------------------------------------------------------------------------------------------------------------------- */
+html.has-shell .btn { flex-shrink: 0; max-width: 100%; overflow-wrap: normal; }      /* a button's words stay whole */
+html.has-shell .btn.small { white-space: nowrap; }
+html.has-shell .btn.block { flex-shrink: 1; min-width: 0; }                /* a full-width button beside another gives way to it */
+html.has-shell .btn:not(.small) { white-space: normal; }          /* a long label of a full-size button may wrap; a compact one never does */
+/* a label that carries a name (a printer, a file) is the one kind allowed to give way */
+html.has-shell .btn:is(#ap-slice-queue, #bed-clear, #fb-print, .btn-dynamic) { flex-shrink: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell #bed-clear { display: flex; flex-direction: column; align-items: stretch; white-space: normal; text-align: left; }
+html.has-shell #bed-clear small.mt { display: flex; }
+html.has-shell #bed-clear small { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell #bed-clear small:not(.mt) { display: block; }
+html.has-shell .wrap :is(.inline-form, .sr-acts, .cv-actions, .bed-hold, .temp-set, .st-layer, .vc-tools, .card-head) { flex-wrap: wrap; }
+html.has-shell .wrap .card-head > :is(.btn, .badge, .pill, button) { flex: none; }
+html.has-shell .wrap :is(.pill, .badge, .chip, .tag) { white-space: nowrap; flex: none; }
+html.has-shell :is(.pill-toggle, .seg) { flex-wrap: wrap; max-width: 100%; }
+html.has-shell :is(.pill-toggle, .seg) button { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 720px) {
+  html.has-shell .set-row .pill-toggle { flex-direction: column; align-items: stretch; border-radius: 16px; }
+  html.has-shell .set-row .pill-toggle button { text-align: center; }
+}
+
+/* ---- figures ---------------------------------------------------------------------------------------------------------------------- */
+html.has-shell :is(.stat-num, .stat-val, .ro b, .tn b, .jb-pct b, .ov-figs dd, .tm-kv dd, .tt-v, .t3-t, .task-meta, .jb-line, .ov-facts, .fc-temps b, .ob-count) { font-variant-numeric: tabular-nums; }
+
+/* ---- the size floor: nothing under 11 px ----------------------------------------------------------------------------------------------- */
+html.has-shell :is(.bottom-nav button, .tm-kv dt, .tm-num small, .ins small, .fc-temps small, .bed-hold small, .ro span, .ro-btn span, .pcam-mode, .pill, .badge, #conn-label, .ls-band, th,
+  .dk-ruler span, .dk-bar i, .stat-key, .tm-status, .tm-env span, .rf-group-name, .ob-kind, .pchip small, .eyebrow, .verdict, .ls-label, .fh-row small, label small, .fd-h small,
+  .plate-dot, .tester-always, .fx-group, .ls-facts dt, .dk-facts dt, .wf-facts dt, .ai-stats dt, .ls-dt, #convert-card .eyebrow) { font-size: 11px; }
+
+/* ---- notifications: a message is at most three lines in its bubble (the orb's list keeps all of it, and the title gives it in full) -------------- */
+html.has-shell .ob-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+html.has-shell .orb-bubble { font-size: 13.5px; padding: 10px 38px 10px 14px; }
+
+/* ---- a step's button goes under its words on a phone, so neither is squeezed -------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  html.has-shell .sr-step { grid-template-columns: 30px minmax(0, 1fr); }
+  html.has-shell .sr-step .sr-acts { grid-column: 2; justify-content: flex-start; }
+}
+
+/* ---- the camera windows: the mode label (demo data stays labelled) sits top left, the switch bottom right, so a narrow window never makes them meet ---------- */
+html.has-shell :is(.tile-cam-slot, .ovd-main > #ov-camera, .cp-sheet #pp-camera-card, .cp-sheet #ov-camera) .pcam-mode { top: 8px; bottom: auto; left: 8px; max-width: calc(100% - 56px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell #tab-files > #convert-card .eyebrow { font-size: 11px; }

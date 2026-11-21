@@ -96,7 +96,7 @@ html.has-shell .rail-card {
   border-radius: var(--sh-r); box-shadow: var(--shadow-anchored);
   transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background-color 0.3s ease;
 }
-/* Open: wider over the page, never moving it. It closes 3 seconds after the pointer leaves (rail.js), over the same curve. */
+/* Open: wider over the page, never moving it. It closes by itself after the pointer leaves, sooner when the pointer goes far away (rail.js), over the same curve. */
 html.has-shell.rail-collapsed.rail-open .rail-card { width: var(--rail-wide); box-shadow: var(--shadow-float); background: var(--surface-solid); }
 html.has-shell .rail-label, html.has-shell .rail-badge, html.has-shell .rail-group span { transition: opacity 0.2s ease; }
 html.has-shell.rail-collapsed:not(.rail-open) .rail-card .rail-label { opacity: 0; }
