@@ -479,7 +479,7 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 .desk-card .card-head { gap: 12px; flex-wrap: wrap; }
 .dk-hours { display: flex; gap: 10px; flex-wrap: wrap; font: 500 12px/1 var(--font-mono); color: var(--text-faint); }
 .dk-hours select { min-height: 32px; font-family: var(--font-mono); margin-left: 6px; }
-.dk-scroll { overflow-x: auto; overscroll-behavior-x: contain; margin: 4px -4px 0; padding: 0 4px 6px; }
+.dk-scroll { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; margin: 4px -4px 0; padding: 0 4px 6px; }   /* the tall marker for now must not make it scroll up and down */
 .dk-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dk-grid { min-width: 860px; display: grid; gap: 6px; }
 .dk-lane { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; align-items: stretch; }
@@ -502,6 +502,10 @@ ul > li.log-empty, ol > li.log-empty { display: block; border-top: 0; }
 .dk-bar.is-paused { background: color-mix(in oklch, var(--warn) 30%, white); border-color: color-mix(in oklch, var(--warn) 60%, white); }
 .dk-bar.is-unknown { background: repeating-linear-gradient(90deg, #eee 0 8px, #f8f8f8 8px 16px); border-style: dashed; border-color: #bbb; }
 .dk-bar.is-late { box-shadow: inset -3px 0 0 var(--warn); }
+.dk-bar.is-narrow > b, .dk-bar.is-narrow > i { visibility: hidden; }
+.dk-tag { position: absolute; top: 5px; bottom: 5px; display: grid; align-content: center; gap: 1px; padding: 0 8px; min-width: 0; pointer-events: none; }
+.dk-tag b { font: 600 11px/1.15 var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.dk-tag i { font: 500 11px/1 var(--font-mono); font-style: normal; color: var(--text-dim); white-space: nowrap; }
 .dk-bar b { font: 600 11px/1.15 var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
 .dk-bar i { font: 500 10px/1 var(--font-mono); font-style: normal; color: var(--text-dim); white-space: nowrap; }
 .dk-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; display: grid; }

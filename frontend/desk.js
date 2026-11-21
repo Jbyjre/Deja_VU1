@@ -153,7 +153,7 @@ window.FarmDesk = (() => {
     const shade = ticks.slice(0, span).filter(t => !awake(t.h)).map(t => `<span class="dk-night" style="left:${t.i * hourW}%;width:${hourW}%"></span>`).join('');
     const nextAwake = t => { const d = new Date(t); for (let k = 0; k < 48 && !awake(d.getHours()); k++) { d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1); } return d; };
     const lanes = data.printers.map(p => {
-      const bars = [];
+      const bars = [], starts = [], tags = [];
       let cursor = now.getTime();
       const push = (label, hours, colors, kind) => {
         if (hours == null) { bars.push(`<span class="dk-bar is-unknown" style="left:${((cursor - now) / 36e5) * hourW}%;width:${hourW * 1.5}%"><b>${esc(label)}</b><i>time unknown</i></span>`); cursor += 1.5 * 36e5; return; }
@@ -161,7 +161,11 @@ window.FarmDesk = (() => {
         const left = ((start - now) / 36e5) * hourW, width = Math.max(0.6, hours * hourW);
         const late = !awake(new Date(end).getHours());
         const strip = (colors || []).slice(0, 4).map(c => `<em style="background:${esc(c)}"></em>`).join('');
-        bars.push(`<span class="dk-bar is-${kind}${late ? ' is-late' : ''}" style="left:${left}%;width:${width}%" title="${esc(label)} · ${fmtH(hours)} · ends ${clock(new Date(end))}${late ? ' · waits for you' : ''}"><span class="dk-strip">${strip}</span><b>${esc(label)}</b><i>ends ${clock(new Date(end))}</i></span>`);
+        // A bar too short for its own words (under about an hour and a half) is labelled just after it, when the lane has room there.
+        const narrow = width < 7;
+        starts.push(left);
+        if (narrow) tags.push({ after: starts.length, at: left + width, label, end });
+        bars.push(`<span class="dk-bar is-${kind}${late ? ' is-late' : ''}${narrow ? ' is-narrow' : ''}" style="left:${left}%;width:${width}%" title="${esc(label)} · ${fmtH(hours)} · ends ${clock(new Date(end))}${late ? ' · waits for you' : ''}"><span class="dk-strip">${strip}</span><b>${esc(label)}</b><i>ends ${clock(new Date(end))}</i></span>`);
         cursor = end;
         if (late) {
           const clear = nextAwake(end).getTime() + 5 * 60000;
@@ -178,6 +182,10 @@ window.FarmDesk = (() => {
       q.filter(it => !it.status || it.status === 'waiting' || it.status === 'queued').forEach(it => {
         const f = data.files.find(x => x.name === it.filename), a = data.analyses[it.filename];
         push(it.filename, (a && a.estimated_hours) ?? (f && f.summary.estimated_hours) ?? null, f && f.summary.colours, 'queued');
+      });
+      tags.forEach(t => {
+        const room = (t.after < starts.length ? starts[t.after] : 100) - t.at;
+        if (room >= 12) bars.push(`<span class="dk-tag" aria-hidden="true" style="left:${t.at}%;max-width:${room}%"><b>${esc(t.label)}</b><i>ends ${clock(new Date(t.end))}</i></span>`);
       });
       const status = p.state === 'printing' ? `${Math.round((p.progress || 0) * 100)}% · ${fmtH(p.remaining_hours)} left` : p.state_message || p.state;
       return `<div class="dk-lane"><div class="dk-name"><b>${esc(p.name)}</b><small class="is-${esc(p.state)}">${esc(status)}</small></div>

@@ -275,6 +275,11 @@ Reduced transparency makes every panel solid, increased contrast adds borders, r
 already has a `gap` (`.grid-2`, `.flow-run`, `.desk-grid`, `.ov-grid`, `.fleet-grid`, `.set-body`) takes it off its panels, and a wrapper's own top margin is zero. The rule carries two
 `:not()` exclusions, so it is more specific than any plain `.card` or `.fleet-card` rule: **a later rule for the same panels must name the same exclusions or it silently loses**
 (this is how the printer cards lost their padding and stacked cards lost their gap, on screens that looked fine). The audit's `flush`, `tight` and `uneven` checks find it.
+**A panel whose heading is all that shows** (its body `[hidden]`, its `.card-sub` hidden for "I know my way around") has no line under its heading (glass.css, `:has()`), so it reads
+as one row, not an empty box. **Dark mode and raw colours:** a tile drawn with a raw light colour (`rgba(255, 255, 255, .6)`) needs a line in `dark.css` or it is pale grey under white
+text in dark (Readings' figures and History's findings were); prefer the tokens. **Fold toggles** (`details > summary`) are flex rows with `gap: 8px`, because a flex row drops the
+space after a text marker; `.log` toggles draw a chevron. **Farm:** a job bar under 7% of the day is labelled just after it (`.dk-tag`) when the lane has room; `.dk-scroll` hides
+its vertical overflow because the marker for now is drawn 9,999 px tall.
 
 **Text (`text.css`, `text.js`).** One rule set for text that does not fit. Prose wraps and a long unbroken word wraps too (`overflow-wrap: anywhere`, which also lets flex
 and grid items shrink to it). Names and labels are one line with an ellipsis (the selector list at the top of text.css; add a new kind of name there); a button keeps its words and

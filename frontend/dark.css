@@ -237,3 +237,10 @@ html[data-theme="dark"] .pb-help:hover { color: var(--text); }
 html[data-theme="dark"] .pb-help[aria-expanded="true"] { background: var(--accent); border-color: transparent; color: #fff; }
 html[data-theme="dark"] .pb-icon { background: color-mix(in oklch, var(--accent) 22%, #18212d); box-shadow: 0 0 0 1px color-mix(in oklch, var(--accent) 30%, transparent); }
 html[data-theme="dark"].pb-help-open #tab-intro { background: color-mix(in oklch, #18212d 94%, transparent); border-color: var(--edge); }
+
+/* Readouts and tiles first drawn in light-mode white had no dark version: Readings' figures and its bed and chamber
+   tiles, History's findings, the logbook, the plate lists. Without this they were pale grey under white text. */
+html[data-theme="dark"] :is(.tm-kv div, .tm-env, .ins, .pe, .plate-list) { background-color: var(--raised); border-color: var(--edge); color: var(--text); }
+html[data-theme="dark"] .lb-item { background-color: var(--raised); border-top-color: var(--edge); border-right-color: var(--edge); border-bottom-color: var(--edge); color: var(--text); }   /* its left stripe keeps its colour */
+html[data-theme="dark"] .tm-kv { background: var(--edge); border-color: var(--edge); }
+html[data-theme="dark"] :is(.pe-row, .plate-item):hover:not(:disabled) { background: #2a394a; }
