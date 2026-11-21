@@ -26,13 +26,7 @@
    * it hundreds of milliseconds a frame: there the scene does not play. ?intro=force plays it anyway (for checking it in such a browser). */
   function drawsInSoftware() {
     if (/[?&]intro=force\b/.test(location.search)) return false;
-    try {
-      const c = document.querySelector('#twin-model canvas');
-      const gl = c && (c.getContext('webgl2') || c.getContext('webgl'));
-      const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
-      const name = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '';
-      return /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i.test(name);
-    } catch (e) { return false; }
+    return !!(window.Cockpit && Cockpit.software && Cockpit.software());
   }
 
   function twinReady() {
@@ -137,8 +131,8 @@
 
   window.DVIntro = {
     replay: opts => play(Object.assign({ hold: HOLD_MS }, opts || {})),
-    on: () => localStorage.getItem(KEY) !== 'off',
-    set: on => { try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) { /* the choice just isn't remembered */ } },
+    on: () => store.get(KEY) !== 'off',                       // `store` falls back to the tab's memory where saved settings are blocked
+    set: on => store.set(KEY, on ? 'on' : 'off'),
   };
   start();
 })();

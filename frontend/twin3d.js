@@ -1096,14 +1096,21 @@ function create(host, { onPick } = {}) {
       if (!drag && document.visibilityState === 'visible') {
         cam.yaw -= (now - spinLast) * 0.005;
         if (viewName) { viewName = null; viewChanged(null); }
-        if (now - spinDrawn > 32) { spinDrawn = now; render(); }
+        // At most about 30 a second, and no faster than the page can afford: a drawing that costs a lot waits two and a half times its cost, so
+        // the turntable leaves the page most of the time however slow drawing is (the same rule as every other redraw: queueTwin).
+        if (now - spinDrawn > Math.max(32, Math.min(drawMs * 2.5, 3000))) { spinDrawn = now; render(); }
       }
       spinLast = now;
       spinRaf = requestAnimationFrame(turn);
     }
 
-    const ro = window.ResizeObserver ? new ResizeObserver(queue) : null;
+    // A change of size draws again, except while a divider is being dragged (html.is-resizing, panes.js): the picture then keeps its shape and the
+    // pane moves around it, and one drawing follows when the divider is let go (the page's resize notice).
+    let resizeHeld = false;
+    const dragging = () => document.documentElement.classList.contains('is-resizing');
+    const ro = window.ResizeObserver ? new ResizeObserver(() => { if (dragging()) resizeHeld = true; else queue(); }) : null;
     ro && ro.observe(canvas);
+    window.addEventListener('resize', () => { if (resizeHeld && !dragging()) { resizeHeld = false; queue(); } });
     const minute = setInterval(() => { if (state) queue(); }, 30000);
 
     return {

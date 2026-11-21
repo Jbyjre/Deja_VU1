@@ -20,7 +20,7 @@ controls. Snapmaker sponsored the printer through its Innovation Fund. Every mer
 new version on the [releases page](https://github.com/Jbyjre/Deja_VU1/releases/latest), and the
 app updates itself from there.
 
-![The Deja Vu1 Overview: the selected printer in 3D with its readings, a Needs you list ranking a dock error, a paused print and overdue maintenance across three demo printers, and a strip along the bottom with every printer, the connection and Halt](docs/img/readme-overview.jpg)
+![The Deja Vu1 Overview: the selected printer's state, progress, time left and readings with its camera under them, a Needs you list ranking a dock error, a paused print and overdue maintenance across three demo printers, and every printer in a list at the side](docs/img/readme-overview.jpg)
 
 <sub>The Overview with the built-in demo printers. **Needs you** puts a dock error, a paused print
 and overdue maintenance at the top.</sub>
@@ -60,12 +60,12 @@ and overdue maintenance at the top.</sub>
 
 <table>
 <tr>
-<td width="50%" valign="top"><img src="docs/img/readme-printer.jpg" alt="The Printer page: the 3D twin of a U1 with its four heads labelled and T1 printing, the demo camera picture and the Move pad"><br><sub><b>The Printer page:</b> the live 3D twin, the camera and the controls.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/readme-printer.jpg" alt="The Printer screen: the 3D twin of a U1 in the middle with its four heads labelled and T0 printing, tiles for temperatures, tuning, the print and the demo camera picture on either side, and a row of control buttons under it"><br><sub><b>The Printer screen:</b> the live 3D twin in the middle, a glance at the print, temperatures and camera beside it, and every control one press away.</sub></td>
 <td width="50%" valign="top"><img src="docs/img/readme-confirm.jpg" alt="Confirm print refusing the built-in unsafe example file: the printer is busy, it extrudes outside the 270 mm build volume on line 35, and T0 has orange loaded where the file wants red"><br><sub><b>Confirm Print, refusing:</b> every reason in words, and Start stays off.</sub></td>
 </tr>
 <tr>
 <td width="50%" valign="top"><img src="docs/img/readme-gcode.jpg" alt="The G-code preview of the two-colour Benchy sample: 240 layers, coloured by toolhead, with time, filament and a clear pre-flight"><br><sub><b>Inspect the G-code:</b> layers, heads and the pre-flight result before you print.</sub></td>
-<td width="50%" valign="top"><img src="docs/img/readme-phone.jpg" alt="Deja Vu1 on a phone: the printer in 3D, the strip with Halt, and the running print with Pause and Hold to cancel above the bottom bar" width="260"><br><sub><b>On a phone:</b> the printer first, with Halt and Pause in reach of your thumb.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/readme-phone.jpg" alt="Deja Vu1 on a phone: the Printer screen with the printer in 3D, Halt and Pause at the top, a row of control buttons under the printer, and the running print and camera below" width="260"><br><sub><b>On a phone:</b> the printer first, with Halt and Pause in reach of your thumb.</sub></td>
 </tr>
 </table>
 
@@ -227,7 +227,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
   assistant. The assistant has also run through a paid API key.
-- **Automated:** 1762 tests passed on Python 3.13 (20 November 2026). GitHub Actions
+- **Automated:** 1789 tests passed on Python 3.13 (20 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
   Other builds slice too, and **Check slicer** lists the builds with recorded runs.
@@ -265,7 +265,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1762 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1789 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

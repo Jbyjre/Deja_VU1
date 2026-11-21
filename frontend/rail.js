@@ -167,24 +167,27 @@
   /* ---- the sidebar opens over the page and closes by itself ----
      Icons only at rest. The pointer (or the keyboard) opens it over the page without moving anything; it closes 3 seconds after the pointer
      or the focus last left it, so crossing to something and back does not make it flap. A sidebar someone chose to keep open is just wide. */
-  const LINGER_MS = 3000, INTENT_MS = 90;
-  let lingerTimer = 0, intentTimer = 0;
+  const LINGER_MS = 3000, CHOSEN_MS = 700, INTENT_MS = 90;
+  let lingerTimer = 0, intentTimer = 0, chose = false;
   const setOpen = on => { if (root.classList.contains('rail-open') !== on) root.classList.toggle('rail-open', on); };
   function wireOpen() {
     const rail = document.getElementById('rail');
     if (!rail) return;
     const stays = () => menuOpen || rail.matches(':hover') || (rail.contains(document.activeElement) && document.activeElement.matches(':focus-visible'));
+    // Browsing keeps it open for 3 seconds after you leave; once you have chosen a place it gets out of the new screen's way after 0.7 s.
     const later = () => {
       clearTimeout(lingerTimer);
-      lingerTimer = setTimeout(() => { if (stays()) later(); else setOpen(false); }, LINGER_MS);
+      lingerTimer = setTimeout(() => { if (stays()) later(); else { chose = false; setOpen(false); } }, chose ? CHOSEN_MS : LINGER_MS);
     };
     rail.addEventListener('pointerenter', e => {
       if (e.pointerType === 'touch') return;                  // a tap goes to the item, it does not open the sidebar
       clearTimeout(lingerTimer);
       clearTimeout(intentTimer);
+      chose = false;
       intentTimer = setTimeout(() => setOpen(true), INTENT_MS);
     });
     rail.addEventListener('pointerleave', () => { clearTimeout(intentTimer); if (root.classList.contains('rail-open')) later(); });
+    rail.addEventListener('click', e => { if (e.target.closest('.rail-item')) chose = true; });
     rail.addEventListener('focusin', e => { if (e.target.matches && e.target.matches(':focus-visible')) { clearTimeout(lingerTimer); setOpen(true); } });
     rail.addEventListener('focusout', e => { if (!rail.contains(e.relatedTarget)) later(); });
     rail.addEventListener('keydown', e => { if (e.key === 'Escape' && root.classList.contains('rail-open')) setOpen(false); });

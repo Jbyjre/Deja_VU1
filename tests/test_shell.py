@@ -166,10 +166,12 @@ class TestPanes(unittest.TestCase):
         self.assertIn("html.has-shell .cp > .split { display: none; }", phone)
         self.assertIn("html.has-shell .cp > .cp-stage { order: 1;", phone)
 
-    def test_dragging_a_divider_is_one_move_per_frame_and_tells_the_twin_rarely(self):
-        for needle in ("requestAnimationFrame", "setTimeout(() => window.dispatchEvent(new Event('resize')), 90)", "announce(!live)"):
+    def test_dragging_a_divider_is_one_move_per_frame_and_tells_the_twin_only_when_let_go(self):
+        for needle in ("requestAnimationFrame", "announce(!live)", "if (now) window.dispatchEvent(new Event('resize'))"):
             self.assertIn(needle, PANES)
         self.assertNotIn("ev => set(from + sign", PANES)           # no resize broadcast for every pointer event
+        self.assertNotIn("setTimeout(() => window.dispatchEvent", PANES)
+        self.assertIn("html.is-resizing .cp-stage #twin-model canvas { object-fit: contain; }", COCKPIT_CSS)
 
 
 class TestTilesAndSheets(unittest.TestCase):
@@ -216,8 +218,10 @@ class TestOpeningScene(unittest.TestCase):
         for needle in ("type === 'navigate'", "dejavu1.pref.intro", "prefers-reduced-motion", "navigator.webdriver", "nointro", "intro-pending"):
             self.assertIn(needle, BOOT)
         self.assertIn("5200", BOOT)                                 # the cover is lifted by a timer too: a page is never left covered
-        for needle in ("HOLD_MS = 3000", "drawsInSoftware", "swiftshader", "intro=force", "keydown", "pointerdown", "Skip", "reduced()"):
+        for needle in ("HOLD_MS = 3000", "drawsInSoftware", "Cockpit.software()", "intro=force", "keydown", "pointerdown", "Skip", "reduced()"):
             self.assertIn(needle, INTRO)
+        self.assertIn("swiftshader", COCKPIT)                       # software drawing is read once, from the twin's own context
+        self.assertIn("(on && software())", COCKPIT)               # and the twin does not turn by itself there
         self.assertIn("'Opening scene'", SETTINGS)
 
     def test_the_twin_is_lent_to_the_scene_and_handed_back(self):

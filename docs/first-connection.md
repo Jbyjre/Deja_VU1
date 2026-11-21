@@ -46,7 +46,7 @@ its controls. Keep it on your home network for the session (see
 
    `DEJAVU_WATCH_ONLY=1` keeps watch-only mode on until Deja Vu1 is started
    without it, whatever the Settings switch says. A **Watch-only** label shows
-   in the strip at the bottom while it is on.
+   in the corner, beside the notification orb, while it is on.
 
    While a print runs, Klipper reports several times a second, so the detailed
    log is long. The `2> dejavu-log.txt` part puts it in a file in that folder

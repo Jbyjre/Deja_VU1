@@ -74,8 +74,10 @@ html.has-shell .jb-state.is-ok { color: var(--ok-text, var(--ok)); }
 html.has-shell .jb-state.is-bad { color: var(--bad-text, var(--bad)); }
 /* the camera tile */
 html.has-shell .tile-cam { padding: 0; gap: 0; border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; background: #0d1117; cursor: default; flex: none; }
-html.has-shell .tile-cam-open { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0; padding: 10px 14px; border: 0; background: var(--surface-2); color: var(--text); font: inherit; cursor: pointer; }
-html.has-shell .tile-cam-open:hover { background: var(--surface-solid); }
+html.has-shell .tile-cam-open { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0; padding: 10px 14px; border: 0; background: #151b24; color: #d6dde8; font: inherit; cursor: pointer; }
+html.has-shell .tile-cam-open:hover { background: #1b2330; }
+html.has-shell .tile-cam-open .tile-h { color: #b4bfce; }
+html.has-shell .tile-cam-open .tile-more { color: #9ccbff; }
 html.has-shell .tile-cam-open .tile-h::after { display: none; }
 html.has-shell .tile-more { font: 550 11.5px var(--font-sans); color: var(--accent-text); letter-spacing: 0; text-transform: none; }
 html.has-shell .tile-cam-slot { position: relative; aspect-ratio: 16 / 9; cursor: zoom-in; }
@@ -204,6 +206,8 @@ html.has-shell .ovd-side > #attention > .card-head > div { min-width: 0; flex: 1
 html.has-shell .ovd-side > #attention #attention-sub { margin: 2px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 html.has-shell .ovd-side > #attention .att-count { display: none; }
 html.has-shell .ovd-side > #attention .att-list > li:nth-child(n+4) { display: none; }
+html.has-shell .ovd-side > #attention .att-text { overflow-wrap: anywhere; }       /* a long file name wraps instead of running under the button */
+html.has-shell .ovd-side > #attention .att-item { gap: 4px 10px; }
 html.has-shell .att-more { flex: none; align-self: flex-start; padding: 5px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--surface-solid); color: var(--accent-text); font: 600 12px var(--font-sans); cursor: pointer; }
 html.has-shell .att-more[hidden] { display: none; }
 html.has-shell .ovd-side > #ov-printers { flex: 1 1 0; min-height: 0; border: 0; padding: 0; background: none; overflow: hidden; display: flex; flex-direction: column; }
@@ -225,10 +229,13 @@ html.has-shell .cp-sheet #attention { border: 0; background: none; }
   html.has-shell #tab-control, html.has-shell #tab-overview { overflow: visible !important; }
   html.has-shell .cp { display: flex; flex-direction: column; gap: 0; }
   html.has-shell .cp > .split { display: none; }
-  html.has-shell .cp > .cp-stage { order: 1; min-height: 56vw; flex: none; }
+  html.has-shell .cp > .cp-stage { order: 1; min-height: 84vw; flex: none; }
+  html.has-shell .cp-stage-top { inset: 8px 8px auto 8px; }
+  html.has-shell .cp-who .pp-state { display: none; }                   /* the name and the dot; the print tile below says the rest */
+  html.has-shell .cp-who { padding: 6px 12px 6px 10px; }
   html.has-shell .cp > .cp-dock { order: 2; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
-  html.has-shell .cp > .cp-left { order: 3; flex-direction: row; flex-wrap: wrap; overflow: visible; contain: none; }
-  html.has-shell .cp > .cp-right { order: 4; padding-bottom: 12px; overflow: visible; contain: none; }
+  html.has-shell .cp > .cp-right { order: 3; padding-bottom: 12px; overflow: visible; contain: none; }      /* the print and the camera first */
+  html.has-shell .cp > .cp-left { order: 4; flex-direction: row; flex-wrap: wrap; overflow: visible; contain: none; }
   html.has-shell .cp-left > .tile { flex: 1 1 100%; }
   html.has-shell .cp-sheet { position: fixed; inset: 8px 8px calc(var(--dock-h, 150px) + 12px); z-index: 90; }
   html.has-shell .cp-scrim { position: fixed; z-index: 89; }
@@ -248,6 +255,8 @@ html.has-shell .cp-sheet #attention { border: 0; background: none; }
   html.has-shell .tt-row.is-active { outline: 1.5px solid var(--text); }
 }
 html.is-resizing .cp-rail, html.is-resizing .cp-stage { pointer-events: none; }
+/* While a divider is dragged the 3D picture is not redrawn: it keeps its shape and sits in the middle of the moving pane. */
+html.is-resizing .cp-stage #twin-model canvas { object-fit: contain; }
 
 /* ---- the opening scene (intro.js) ----------------------------------------------------------------------------------------------- */
 html.intro-pending body::before { content: ""; position: fixed; inset: 0; z-index: 190; background: radial-gradient(80% 80% at 50% 45%, var(--stage-a, #f5f8fb) 45%, var(--stage-b, #e4eaf1)); }

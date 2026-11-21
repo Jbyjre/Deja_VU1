@@ -9,8 +9,7 @@
  *
  * A divider is a W3C window splitter: role="separator" with aria-orientation and aria-valuenow, min and max; the arrow keys move it
  * 12 px (48 px with Shift), Home and End go to the limits, and Enter collapses the pane it sizes and restores it. Mouse and touch
- * drag it, one move per display frame; whatever follows the pane's size is told once every 90 ms while it moves and once more when it is
- * let go. Sizes are kept in this browser (dejavu1.layout.*) and Panes.reset() puts the defaults back (Settings › Look and layout).
+ * drag it, one move per display frame; whatever follows the pane's size is told once, when it is let go. Sizes are kept in this browser (dejavu1.layout.*) and Panes.reset() puts the defaults back (Settings › Look and layout).
  * On a phone the dividers go and the panes stack under the stage.
  */
 (() => {
@@ -52,13 +51,10 @@
       return Math.max(min, Math.min(max, room));
     };
     const get = () => { const v = parseFloat(host.style.getPropertyValue(prop)); return Number.isFinite(v) ? v : def; };
-    // The twin and the camera follow their pane, but a resize on every pointer move made dragging rough: while it is
-    // being dragged they are told about once every 90 ms, and once more, at once, when it is let go.
-    let announced = 0;
-    const announce = now => {
-      clearTimeout(announced);
-      if (now) { announced = 0; window.dispatchEvent(new Event('resize')); } else announced = setTimeout(() => window.dispatchEvent(new Event('resize')), 90);
-    };
+    // The twin and the camera follow their pane, but a resize on every pointer move made dragging rough: while a divider is being dragged nothing
+    // is told (the 3D picture keeps its shape, centred, while the pane moves: see html.is-resizing in cockpit.css), and once it is let go the
+    // twin and the camera are told at once and draw one frame at the new size.
+    const announce = now => { if (now) window.dispatchEvent(new Event('resize')); };
     function set(v, remember, live) {
       v = Math.round(Math.max(0, Math.min(limit(), v)));
       host.style.setProperty(prop, `${v}px`);

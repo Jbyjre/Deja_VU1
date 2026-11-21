@@ -56,7 +56,9 @@ class TestFrameWalk(unittest.TestCase):
         self.assertEqual(done.returncode, 0, "The frame walk failed:\n" + out[-3000:])
         self.assertIn("PASSED", out)
         self.assertIn("One press of Halt stops the printer and says so in words", out)
-        self.assertIn("Overview opens on the printer in 3D", out)
+        self.assertIn("Overview shows no 3D printer", out)
+        self.assertIn("Halt is on screen on the Printer screen and nowhere else", out)
+        self.assertIn("Move opens a sheet with the pad and brings the 3D printer and the camera beside it", out)
 
 
 class ToolbarEdgeSource(unittest.TestCase):

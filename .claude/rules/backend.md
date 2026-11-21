@@ -84,6 +84,21 @@ slicing and launcher files have their own notes in this folder.
 - Inventory starts empty; multi-tool use without measured per-head totals is not deducted from a
   guessed spool.
 
+## Time left (`print_eta.py`)
+
+- One estimate of how long a print has left, for every screen, rule and sensor: `mock_moonraker.get_printer_state()` attaches `state["eta"]` to a printing or paused
+  printer (`remaining_hours`, `total_hours`, `basis`: `file` / `file_and_pace` / `pace`, `weighted_by`: `bytes` / `slicer` / `file`, `slicer_hours`, `pace`, `settled`,
+  `words`); `fleet.summary_for` reads it into the row's `remaining_hours`, automations (`_hours_left`) and the Home Assistant sensor read it too. `None` when there is
+  nothing honest to say (no file estimate and under 2 % or 2 minutes of print).
+- The method: start from the file's own estimate (Moonraker's `estimated_time`, `job["total_hours"]`), measure this print's pace against it (`print_stats.print_duration`
+  is Klipper's time from the first extrusion, without pauses), and let the pace count for more as the print goes (`PRIOR` 0.15, the weight is `q / (q + PRIOR)`, the pace
+  limited to 0.25 to 4 times the file's), so near the end it is all pace. `q` is the share of time done: the slicer's own M73 progress where it differs from the bytes
+  (`display_status.progress`, subscribed only where the printer lists that object), else where the byte the printer has read up to falls on the file's byte-to-time
+  track (`print_eta.remember` takes it from `print_preview` whenever the twin loads a real printer's file; the track is used only when the file's size matches to 1 %),
+  else the bytes. The old formula (elapsed / progress - elapsed) read 16 h early in a 7 h multi-colour print because colour changes spend time and read little file.
+- Not verified on a real U1: whether its firmware lists `display_status` or sends M73 lines, and how close the estimate runs on long multi-colour prints. The tests use
+  stand-in numbers (`tests/test_print_eta.py`).
+
 ## Everything else, briefly
 
 - `maintenance.py`: 7 tasks; `snooze()` 1, 3 or 7 days; `record_swap(..., nozzle=)` also writes

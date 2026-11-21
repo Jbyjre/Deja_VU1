@@ -23,11 +23,11 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `settings.js` → `strip.js` → `pagebar.js` → `rail.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
+  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `pagebar.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
   `guide.css` → `assistant.css` → `tester.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
-  `shell.css` → `shell-panes.css` → `looks.css`.
+  `shell.css` → `shell-panes.css` → `cockpit.css` → `looks.css`.
 
 ## Split files (18 and 19 November 2026)
 
@@ -85,43 +85,70 @@ code can sit in more than one part: search the family (`grep -n "function render
 
 ## Places and screens
 
-- The frame (`#shell`, a grid of sidebar, working surface and strip; `html.has-shell` is set in `theme-boot.js` before paint). There is no top bar.
-  `rail.js` (loaded last) is the sidebar of eight places: Overview, Printer, Slicer, Files, Models, AI, Maintenance, Settings, plus a "More" group
+- The frame (`#shell`, a grid of sidebar and working surface; `html.has-shell` is set in `theme-boot.js` before paint). There is no top bar and no bottom bar.
+  `rail.js` (loaded second to last) is the sidebar of eight places: Overview, Printer, Slicer, Files, Models, AI, Maintenance, Settings, plus a "More" group
   (Automations, Photo studio, Games). A place is one or more screens (`data-tab` panels) and the parts of them (`SECTIONS`); `DEST` lists every
-  address a link can name (`#/<dest>`, `#/printer/<id>`) with its place, and `OLD` maps old names. The sidebar is 212 px or 60 px; it narrows by
-  itself in Printer, Slicer and Files (`narrow: true`), a width chosen with `[` or in Settings wins (`dejavu1.rail.mode`), and a narrow sidebar
-  shows its labels over the page on hover or focus without moving it. It reads `dv-tab`, `dv-section`, `dv-printer` and `dv-fleet`. Items carry
-  `aria-label` that starts with the visible label, never `title`. A new place needs a `PLACES` row, a `DEST` row and an icon (`tests/test_rail.py`).
-  `#rail-menu` is a child of `body` (the card's backdrop-filter would trap a fixed child).
+  address a link can name (`#/<dest>`, `#/printer/<id>`) with its place, and `OLD` maps old names. **The sidebar rests as icons (60 px) in every place** and
+  opens to 212 px over the page, never moving it: `wireOpen` adds `html.rail-open` 90 ms after the pointer enters (never for touch) or when a keyboard focus
+  lands in it, and removes it `LINGER_MS` (3000) after the pointer or focus leaves, or `CHOSEN_MS` (700) after a place was chosen from it (so it does not sit over
+  the new screen). It stays open while the printer menu is open. `dejavu1.rail.mode` = `wide` keeps it open (the fold button, `[`, or Settings › Always open);
+  anything else is the hover sidebar. The open and close are one `width` transition on `.rail-card` (0.3 s, ease-out quint) with the labels fading in after it.
+  It reads `dv-tab`, `dv-section`, `dv-printer` and `dv-fleet`. Items carry `aria-label` that starts with the visible label, never `title`. A new place needs a
+  `PLACES` row, a `DEST` row and an icon (`tests/test_rail.py`). `#rail-menu` is a child of `body` (the card's backdrop-filter would trap a fixed child).
+  **Practice printers** (the simulated printers part of Printer) are hidden until Settings › Printers & connection › Show Practice printers is on
+  (`dejavu1.pref.practice`; `shownDest` in rail.js hides the part, the command bar entry and a `#/sandbox` link, which opens All printers; `dv-practice` repaints
+  the toolbar).
 - The toolbar edge (`pagebar.js`, `#topbar`, the first row of the working surface; `tests/test_pagebar.py`, `node tools/pagebar-walk.js` is the
   browser walk of the whole frame): the place's icon and name (the printer's name beside it on Printer), its parts as `role="tab"` buttons in
   `#pb-parts` (from `Rail.partsOf`; a place with one part shows no row), the place's own buttons in `#pb-actions` and the search. A button in
-  `ACTIONS` presses a control the screen already has (`mirror` copies its words, disabled state and hidden state): Pause and Cancel appear only while a
-  print runs. Halt is not in it. Everything the old banner carried and other scripts write to by id (`#printer-chip`, `#demo-toggle`, `#ver-chip`,
-  `#pb-help`) is kept in the hidden holder `.tb-hold`; `#pb-tabs` stays hidden for `Sections`' own part buttons. The search (`finder.js`) is the
-  command bar: the input at rest, a centred sheet while it has focus (`.feature-finder:focus-within`). It lists every place, part, settings group and
-  action with its shortcut (`hint`); a new action goes in `ACTIONS` with its keys.
-- The strip (`strip.js`, `<footer id="strip">`): one instrument per printer (the layer-stack meter, name, progress or state, temperatures; three or
-  more printers drop the extras), `#conn` (says "Simulated" in demo mode), Find, the Ask button (`assistant.js` builds it; the strip adopts it), the
-  notification orb with its toasts (`orb.js`; its colour follows the link through `data-link`) and **Halt**. Halt (one press, or `H H`) stops the
-  selected printer through `runCommand` so a refusal is shown in words, then offers Restart firmware (`/api/printer/control/restart`, refused unless the
-  printer reports an error). Settings › Halt "Ask before Halt" (`dejavu1.pref.haltAsk`) adds a second press. Halt is #c8102e with white text in every
-  look. On a phone only the selected printer shows. The "continue on this computer" offer (`#handoff`) is a line in the strip on computers and stays in
-  the dock on phones (`initDockStack`, `workshop-part3.js`), where it has its own ground (`.thumb-dock > .handoff`). Tester mode's `#tester-dock` (the
-  "Something felt off" button, `#tester-felt`) is moved by `tester.js` into `.strip-end` before Find (`.in-strip`), so no floating button covers the page; below
-  1340 px and on phones only its flag shows (the words stay its accessible name), and its note panel still floats above the strip.
-- Panes (`panes.js`, `shell-panes.css`): Overview is a stage (the twin) with its readings under it and a side pane; Printer › Control is a cockpit (left
-  pane of heads, bed and tuning; the twin with the console under it; right pane of camera, move pad and files). `Panes.put(id, pane)` moves a card
-  without losing its id, listeners or the `data-module-body` switch its wrapper carried. The twin is one shared instance: `Panes.dock()` moves
-  `#twin-card` into the stage of the open place. `Panes.splitter(...)` makes a divider (W3C window splitter; sizes kept in `dejavu1.layout.*`;
-  `Panes.reset()` is Settings › Reset layout). The cockpit's twin tools are two compact rows and the gesture hint (`#twin-hint`) shows only for "New to 3D
-  printing" or on a phone. The cockpit is calm until you click into something (`foldCards`, `calmTwin` in panes.js): each
-  pane section is a fold (`.fold-btn` in its h2, `.is-folded`; open ones kept in `dejavu1.cockpit.open`; Temperatures, Camera and Print a file open
-  first; Reset layout restores that); Temperatures shows readings and `#pp-heat-set` (Set temperatures) shows the boxes and material buttons; the console
-  folds to its title row. The twin turns by itself only on Printer (`autoSpin`, never with reduced motion), stops while the pointer is over it, hides
-  its head and tools, and a click (or `#twin-open`) expands it over the cockpit with every control (`#cockpit.twin-expanded`, `Panes.expandTwin`;
-  Escape or `#twin-close` closes). Anything that scrolls into a folded section opens it (`Panes.unfold`, from the scrollIntoView hook in app-shell.js).
-  Walks that press the twin's buttons call `Panes.expandTwin(true)` first.
+  `ACTIONS` presses a control the screen already has (`mirror` copies its words, disabled state and hidden state) or runs a function (`run`): Pause and Cancel
+  appear only while a print runs, Files has "Bambu to U1 profiles" (opens the converter's file chooser) and Add files. Halt is not in it. Everything the old banner
+  carried and other scripts write to by id (`#printer-chip`, `#demo-toggle`, `#ver-chip`, `#pb-help`) is kept in the hidden holder `.tb-hold`; `#pb-tabs` stays
+  hidden for `Sections`' own part buttons. The search (`finder.js`) is the command bar: the input at rest, a centred sheet while it has focus
+  (`.feature-finder:focus-within`). It lists every place, part, settings group and action with its shortcut (`hint`); a new action goes in `ACTIONS` with its keys.
+- The floating dock (`strip.js`, `<footer id="strip">`, `html.has-shell .strip`): **no bar along the bottom**. A fixed column in the bottom right corner holds the
+  notification orb with its toasts (`orb.js`; its colour follows the link through `data-link`), the Ask button (`assistant.js` builds it; strip.js adopts it),
+  Tester mode's "Something felt off" (`tester.js` moves it into `.strip-end`), the "continue on this computer" offer (`#handoff`, placed by `initDockStack` in
+  workshop-part3.js; on phones it stays in the thumb dock) and `#conn`/`#watch-only-pill`, which show only when something is off: demo data ("Simulated"),
+  watch-only, or no answer (a live link says nothing). Every screen keeps its last 60 px clear (`.tab-panel::after`) and the cockpit's right rail keeps its
+  foot clear. The printers are chosen in the sidebar (its printer row opens a menu); Find is in the toolbar. **Halt** (`strip.js` runs it, `cockpit.js` builds its
+  button `#strip-halt` and the note `#strip-halted`) is on the Printer screen and on no other: `H H` still stops the selected printer from any place (an
+  emergency stop should not depend on the open screen), through `runCommand` so a refusal is shown in words, then offers Restart firmware
+  (`/api/printer/control/restart`, refused unless the printer reports an error). Settings › Halt "Ask before Halt" (`dejavu1.pref.haltAsk`) adds a second press.
+  Halt is #c8102e with white text in every look.
+- Printer screen (`cockpit.js`, `cockpit.css`, `deck.js`): the 3D printer fills the middle (`#p-stage`, no card, no head); a left rail of tiles (Temperatures:
+  every head, bed, chamber; Tune: speed, flow, part fan) and a right rail (This print; the camera), each a real `<button class="tile">` named by its visible
+  text, and a dock of buttons under the stage (Move, Extrude, Fans & lights, Bed mesh, Buttons, Console, Print). **Nothing on the screen scrolls**; the rails are
+  `overflow: hidden` and draggable in width (`Panes.splitter`, `printer.left`, `printer.right`; one move per frame, and **the twin is not told while a divider
+  moves**: `html.is-resizing` keeps its picture at shape and the twin redraws once when the divider is let go). A press on a tile or dock button opens a **sheet**
+  (`Deck.create`; `data-open="name"`): a dialog over the screen that holds the existing card(s) (moved, never rebuilt, so ids and listeners stay) and brings
+  others beside them (`SHEETS` in cockpit.js: Move, Extrude, Tune, Printer's own buttons, Console, Fans & lights and This print bring the twin and/or the camera).
+  Cards not on show wait in `#cp-hold` (laid out off screen at a real size). The twin and the camera are one shared instance each: a sheet takes them and hands
+  them back on close; `Panes.dock()` skips the twin while it sits in a sheet. Escape, the close button and the dim area close a sheet; focus is kept inside and
+  returns to what opened it; `Deck.unfold(el)` (called from the `scrollIntoView` hook in app-shell.js) opens the sheet that holds a card a tour, the search or a
+  "Print a file…" button points at. The twin turns by itself on this screen (`autoSpin`; never with reduced motion, **never where drawing is in software**
+  (`Cockpit.software()` reads the renderer from the twin's context), stops under the pointer); `Panes.expandTwin(true)` opens the twin sheet (the walks use it).
+  `#cp-job` is the "This print" sheet's own card (progress, time left with where the figure comes from, `etaWords`, the old head's Pause/Cancel). Halt sits at the
+  stage's top right. On a phone the stage comes first, then the print and camera tiles, then temperatures; the dock scrolls sideways; a sheet is a fixed overlay.
+- Overview (`overview.js`): no 3D printer. The middle is the selected printer (`#ov-now`) with its camera (`#ov-camera`) under it and a row of chips (Temperatures,
+  Quick control, Maintenance, Totals, Phone) that open sheets; the side is Needs you (the first three; "All N" opens the rest) and every printer
+  (`#ov-printers`, the first five). It has its own deck (`Deck.create({ id: 'ov' })`).
+- Opening scene (`intro.js`, last script; cover set in `theme-boot.js` as `html.intro-pending`): on a fresh start (navigation type `navigate`, not a reload) the
+  twin card is borrowed into a full-screen layer, close up and turning, for 3 s; then the camera pulls back (`[data-twin="reset"]`) while the layer's window closes
+  onto `#p-stage` (one uniform scale, a clip) and the frame rises in (`html.intro-reveal`), and the card is docked back. Off for reduced motion, an automated browser
+  (`?intro` forces it), software drawing (`?intro=force` plays it anyway), Settings › Opening scene off, `?nointro`, or when the twin is not ready in 3.4 s; a click,
+  a key or Skip ends it; the cover is also lifted by a 5.2 s timer so a page is never left covered. Replay: the command bar's "Play the opening scene". A first start
+  (no saved screen and no Settings › Open on) opens on Printer.
+- Ready to print (`loadHealth`, workshop-part2.js; the card was "Print health"): a quiet ring with a knob at its end (`#g-needle`, kept for `tools/testfix-check.js`),
+  one of four kind phrases (Ready to go, Nearly there, Worth a look, Not ready yet) and what would help listed as gains ("+8 Overdue: ..."), never as penalties. The
+  score is still Confirm Print's (`backend/print_gate.py`); blocked stays red and under 55. Its explainer is keyed `ready to print` in explain.js.
+- AI print watch (`watchCard`, assistant-part1.js): the picture box is the printer's live camera (`PrinterPage.attachCam`; one player kept between redraws of the
+  page, `watchCamHost`) with brackets, what the AI looks for, its last verdict and, on a real printer, a small copy of the picture it last judged; `Check now` runs a scan
+  line over it (`.is-looking`, transform only).
+- Time left (`hoursLeft`, `etaWords`, app-shell.js): the server's one estimate (`state.eta`, backend/print_eta.py); the old elapsed/progress guess remains only as the
+  fallback for the static demo's recording. Show `etaWords(state)` beside a time so the figure says where it comes from.
+- Files: the Snapmaker U1 profiles banner (`#convert-card`, the converter for .3mf projects from Bambu Studio and other slicers) is the first thing on Files; the toolbar
+  has "Bambu to U1 profiles"; Models points to it (`#models-to-profiles`).
 - Settings (`settings.js`): Preferences' cards are moved into the Settings screen, `SECTIONS.modules` sorts every card into a group (Printers &
   connection, Look & layout, Phone & away, Alerts & smart home, Tester mode, Updates, Advanced, Help), the left list shows one group at a time and the
   search shows every card that mentions the words. Demo data is in Advanced (`#demo-toggle` stays as a hidden input that `#demo-setting` mirrors).
@@ -130,8 +157,8 @@ code can sit in more than one part: search the family (`grep -n "function render
   gauge, actions) with a hairline under it and a 3 px status stripe, flat in every look. Overview's small `.task` rows are untouched. Files: the whole
   `#tab-files` takes a dropped file (`html.is-dropping` outlines the surface, `#file-drop` is the label) and an empty library is one dashed button
   (`#file-empty`). AI with none connected: the headline and the three gains as rows beside it (`.ai-intro`).
-- Tabs: Overview (cards about now, no twin); Printer (data-tab `control`, kept for saved tabs and
-  tours: the twin, camera, Move pad, temperatures, extrude, tune, fans, mesh, macros, console);
+- Tabs: Overview (glance tiles, no twin); Printer (data-tab `control`, kept for saved tabs and
+  tours: the cockpit above);
   Preferences (`prefs`). Photo studio has no tab button.
 - Sections (`app.js` `SECTIONS`, `window.Sections`): Printer, Printers, Files, Care and Settings show
   one part at a time. Cards are sorted by `#id`, `.class` or the start of their h2 title; a card no
@@ -156,7 +183,7 @@ code can sit in more than one part: search the family (`grep -n "function render
   card is renamed. `finder.js` (Ctrl/Cmd+K) ignores the ⓘ button; `tests/test_finder.py`. Its search box lives at the right of the top bar (`.feature-finder`) and moves into the phone's More sheet.
 - `guide.js`: tours. The quick tour (`Guide.everything()`) is nine stops; keep it short. More detail
   lives in `Guide.screen(tab)`, 1 to 4 stops per screen.
-- `orb.js`: the notification orb (in the strip); `toast()` hands every message to `Orb.notify`. One translucent
+- `orb.js`: the notification orb (in the floating dock); `toast()` hands every message to `Orb.notify`. One translucent
   sphere tinted by `--orb-tint`, no centre dot.
 - `versions.js` + `versions.json`: Version & updates, the header chip and each version's tour.
 - `layout.js`: two-column card grids (`.grid-2`, `.desk-grid`) fill without holes. Each card gets rows as
@@ -223,7 +250,7 @@ code can sit in more than one part: search the family (`grep -n "function render
   commands and says what it is. Model text goes through `rich()`, which escapes first.
 - `app.js` `Familiar`: after four opens and three screens used, `html.familiar` hides the "Show me this
   screen" buttons and the intro line (Preferences → Beginner tips, or Ctrl+K "tips", brings them back).
-- `rail.js` keyboard: `GO_KEYS` (G then a letter), Alt+1 to 8 (the eight places), `[` narrows or widens the sidebar, `H H` is Halt (`strip.js`), `?` opens
+- `rail.js` keyboard: `GO_KEYS` (G then a letter), Alt+1 to 8 (the eight places), `[` keeps the sidebar open or lets it close by itself, `H H` is Halt (`strip.js`), `?` opens
   `#kb-sheet`; `typing()` skips text fields but not switches. `OLD` maps fleet, control, library, care, modules, autoprint, prepare, jobs and materials.
 
 ## Building blocks (the SHELL frame)
@@ -233,18 +260,18 @@ repository) holds the reasons.
 
 | Block | Where | What to know |
 |---|---|---|
-| Frame | `#shell`, `shell.css` | Grid: sidebar, working surface (`main.wrap`), strip. 8 px gutters. At 720 px and less the surface is the page and the strip and the dock are fixed at the bottom. |
+| Frame | `#shell`, `shell.css` | Grid: sidebar, working surface (`main.wrap`). 8 px gutters. At 720 px and less the surface is the page and the dock is fixed at the bottom. |
 | Surface | `html.has-shell .wrap`, `shell-panes.css` | Paper, one shape. A `.card` inside it has no box: it is a cell with a hairline under it, its `h2` is a small mono-caps label, and `.card-head` is a 38 px row. Write cards as before; do not add backgrounds, borders or shadows to them. |
 | Toolbar edge | `#topbar`, `pagebar.js` | The place's name, its parts (`Rail.partsOf`), its buttons (`ACTIONS`), the search. Parts never open another place. |
 | Pane, divider | `panes.js` | `.pane` scrolls by itself; `.split` is a W3C window splitter. Put cards in a pane with `Panes.put`; give a new divider a name so Reset layout covers it. |
-| Stage | `.stage` | The main view that fills the space (the twin). Panes dock around it; nothing floats over it. |
+| Stage | `.stage` | The main view that fills the space (the twin). Tiles dock around it. |
+| Tile, sheet | `cockpit.js`, `overview.js`, `deck.js`, `cockpit.css` | A tile is a glance (a few figures, one press); a sheet is the pop-up it opens, holding existing cards and bringing the twin and camera along. A screen that is a glance never scrolls. |
 | Readouts, row | `.readouts`, `.ro`, `.row` | Mono figures with units; a row is dot or meter, title, mono sub-line and one action, 44 px high. |
-| Sheet | dialogs, `.orb-panel`, the command bar | The card that stays: a confirmation, a short form, one setting. Floating, so tier 3 glass: the strongest shadow. |
-| Layer-stack meter | `.stack` in the strip | A few lines that fill from the bottom as a print grows. The only decoration. |
-| Halt, orb | `strip.js` | See "The strip" above. |
+| Floating card | dialogs, `.orb-panel`, the command bar, a deck sheet | The card that stays: a confirmation, a short form, one setting, a sheet. Floating, so the strongest shadow (a deck sheet is solid paper: it holds content, so no glass). |
+| Halt, orb | `strip.js`, `cockpit.js` | See "The floating dock" and "Printer screen" above. |
 
-- **Glass by tier** (the `liquid-glass` skill): the sidebar and the strip are tier 4 (anchored: soft, wide shadow, edge lensing), sheets and the narrow
-  sidebar's hover overlay are tier 3, segmented controls tier 1. The working surface is paper because it is content; never put glass on glass.
+- **Glass by tier** (the `liquid-glass` skill): the sidebar is tier 4 (anchored: soft, wide shadow, edge lensing), the open sidebar overlay, the orb panel and the
+  floating dock's pills are tier 3, segmented controls tier 1. The working surface is paper because it is content; never put glass on glass.
 - **Tokens:** `shell.css` redefines the existing names (`--bg`, `--text`, `--text-dim`, `--text-faint`, `--hair`, `--paper`, `--paper-solid`, `--raised`,
   `--edge`) in OKLCH and adds `--well` (sunk: inputs, segmented tracks), `--surface`, `--surface-2`, `--hair-strong`, `--accent-soft`, `--halt`. Dark is
   built first: lighter surfaces show elevation, accent and states are desaturated, the room is deep blue. Never use a raw colour in a screen.

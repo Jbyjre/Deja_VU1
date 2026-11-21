@@ -127,12 +127,27 @@
     stageGestures(stage);
   }
 
+  /* A computer that draws 3D in software (no graphics acceleration): the twin turning by itself would keep the page busy all the time, so there
+   * it stays still until it is moved. Read from the twin's own drawing context; decided once there is a canvas to ask. */
+  let soft = null;
+  function software() {
+    if (soft !== null) return soft;
+    const c = document.querySelector('#twin-model canvas');
+    if (!c) return false;
+    try {
+      const gl = c.getContext('webgl2') || c.getContext('webgl');
+      const info = gl && gl.getExtension('WEBGL_debug_renderer_info');
+      soft = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/i.test(info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || '') : '');
+    } catch (e) { soft = false; }
+    return soft;
+  }
+
   /* ---- the stage: the twin turns by itself, stops under the pointer, and a press opens it ---- */
   let spunByUs = false, autoOn = false;
   const spinning = () => { const b = $('twin-spin'); return !!b && b.getAttribute('aria-pressed') === 'true'; };
   function spin(on) {
     const b = $('twin-spin');
-    if (!b || reduced.matches || spinning() === on) return;
+    if (!b || reduced.matches || spinning() === on || (on && software())) return;
     b.click();
   }
   const open = (name, from) => { if (deck) deck.open(name, from); };
@@ -229,6 +244,6 @@
     window.addEventListener('dv-section', () => { if (isOpen()) close(); });
     paint(null);
   }
-  window.Cockpit = { open, close, isOpen, spin, sheets: () => Object.keys(SHEETS) };
+  window.Cockpit = { open, close, isOpen, spin, software, sheets: () => Object.keys(SHEETS) };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
