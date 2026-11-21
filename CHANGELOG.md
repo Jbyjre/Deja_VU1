@@ -86,6 +86,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.32 (21 November 2026): Dark mode readings you can read, Farm jobs labelled, and tidier panels and to...
+
+- Dark mode readings you can read, Farm jobs labelled, and tidier panels and toggles
+
 ## 0.20.31 (21 November 2026): Cards that stack have their gap back, printer cards have their padding back,...
 
 - Cards that stack have their gap back, printer cards have their padding back, and the text audit finds both
