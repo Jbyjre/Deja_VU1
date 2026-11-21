@@ -179,17 +179,26 @@ function create(host, { onPick } = {}) {
     let partsMeshes = [], partsKey = '', loopMeshes = {}, loopKey = '', screenKey = '', shadowKey = '', labels = [], viewName = 'iso';
     let viewChanged = () => {};
 
-    // How many of the canvas's pixels are drawn, 1 at full size. Where drawing is slow (software graphics, a weak driver) each draw ended in
-    // a main-thread stall of up to a second that froze the whole page; drawing fewer pixels costs about that much less, and the browser
-    // stretches the picture to the same size. It steps down when a draw is measured slow and back up after a quiet spell (see render).
-    let quality = 1, qualityAt = 0;
+    // How many of the canvas's pixels are drawn, 1 at full size. A run of frames (the head moving, a drag, a turn) steps down only
+    // while drawing is measurably slow, never below half, and climbs back as soon as it is cheap again; one still frame, and the frame
+    // drawn when a run of them ends, is always at full size (see render and adaptQuality). Where drawing is slow (software graphics, a
+    // weak driver) each draw ended in a main-thread stall of up to a second that froze the whole page: drawing fewer pixels costs about
+    // that much less, and the browser stretches the picture to the same size.
+    const QUALITY_MIN = 0.5;
+    let quality = 1, qualityAt = 0, drawCount = 0, burstNow = false, crispFrame = false, frameStill = false, lastDrawAt = 0, settleTimer = 0;
+    let crispBlockedUntil = 0, stillBlockedUntil = 0;   // a full-size frame that cost too much is not tried again for a minute
+    let nothingMoves = () => true;         // replaced once the drag and glide state exists (below)
+    const costs = [];                      // the last few measured costs of frames that were part of a run (ms)
     function resize() {
       const r = canvas.getBoundingClientRect();
       if (!r.width || !r.height) return false;
       // The drawing renders at twice the pixels, so its ink lines come out smooth.
       const dpr = style === 'drawing' ? Math.max(2, Math.min(3, devicePixelRatio || 1)) : Math.min(2, devicePixelRatio || 1);
       W = r.width; H = r.height;
-      const k = style === 'drawing' ? 1 : quality;
+      // A picture that is still may cost a second once (nothing else is being drawn); a frame among moving ones must be cheap.
+      frameStill = nothingMoves();
+      crispFrame = style !== 'drawing' && !burstNow && performance.now() >= (frameStill ? stillBlockedUntil : crispBlockedUntil);
+      const k = style === 'drawing' || crispFrame ? 1 : quality;
       const w = Math.max(2, Math.round(W * dpr * k)), h = Math.max(2, Math.round(H * dpr * k));
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
       return true;
@@ -602,18 +611,37 @@ function create(host, { onPick } = {}) {
     // What a drawing really costs: until the next frame can start, less one frame's time. Software
     // graphics does its work in the browser's GPU process, which the script's own clock never sees.
     let drawMs = 0;
+    const median = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };
     function render() {
       const began = performance.now();
+      burstNow = began - lastDrawAt < 400;       // a frame that follows another closely is part of a run; a lone one is a still picture
+      lastDrawAt = began;
+      clearTimeout(settleTimer);
       draw();
-      requestAnimationFrame(() => { drawMs = drawMs * 0.7 + Math.max(0, performance.now() - began - 17) * 0.3; adaptQuality(); });
+      const wasCrisp = crispFrame, wasStill = frameStill;
+      requestAnimationFrame(() => {
+        const ms = Math.max(0, performance.now() - began - 17);
+        drawCount++;
+        // The first frames build shaders and upload the model: that is start-up, not what a drawing costs.
+        if (drawCount > 3) drawMs = drawCount === 4 ? ms : drawMs * 0.7 + ms * 0.3;
+        if (drawCount > 3 && !document.hidden) {
+          if (wasCrisp) { if (wasStill) stillBlockedUntil = ms > 1000 ? performance.now() + 60000 : 0; else crispBlockedUntil = ms > 350 ? performance.now() + 60000 : 0; }
+          else { costs.push(Math.min(ms, 400)); if (costs.length > 5) costs.shift(); adaptQuality(); }
+        }
+        // A run of frames at reduced size ends in one frame at full size, once nothing has drawn for a moment.
+        if (style !== 'drawing' && quality < 1 && !wasCrisp) settleTimer = setTimeout(queue, 450);
+      });
     }
-    // Aim for draws of about 60 ms or less. A slow measure (over 120 ms, averaged over a few draws so one hiccup does not count) draws
-    // fewer pixels from the next frame on; draws that stay cheap (under 25 ms for 8 seconds) bring the pixels back a step at a time.
+    // Aim for draws of about 60 ms or less. A slow median (over 100 ms across five frames, so one stall does not count) draws fewer
+    // pixels from the next frame on, at most down to half; when the next step up would still cost little it climbs back after 1.5 s.
     function adaptQuality() {
-      if (style === 'drawing') return;
-      const now = performance.now();
-      if (drawMs > 120 && quality > 0.34) { quality = Math.max(0.34, quality * 0.7); qualityAt = now; }
-      else if (drawMs < 25 && quality < 1 && now - qualityAt > 8000) { quality = Math.min(1, quality / 0.85); qualityAt = now; }
+      if (style === 'drawing' || costs.length < 3) return;
+      const now = performance.now(), m = median(costs);
+      if (m > 100 && quality > QUALITY_MIN) { quality = Math.max(QUALITY_MIN, quality * 0.8); qualityAt = now; costs.length = 0; }
+      else if (quality < 1 && now - qualityAt > 1500) {
+        const next = Math.min(1, quality / 0.85);
+        if (m * (next / quality) * (next / quality) < 45) { quality = next; qualityAt = now; costs.length = 0; }
+      }
     }
     function draw() {
       queued = false;
@@ -899,6 +927,8 @@ function create(host, { onPick } = {}) {
      *      reset, click to pick ---- */
     const touches = new Map();
     let drag = null, spin = 0;
+    let gliding = false, viewMoving = false;         // a turn gliding to a stop; a change of view in progress
+    nothingMoves = () => !following() && !fx.busy && !drag && !moveDrag && !gliding && !viewMoving && !spinOn;
 
     /* Moving the real head from the twin. With move mode on, a drag across the
      * model carries a target over the nozzle's plane (the head moves in X and Y
@@ -956,9 +986,9 @@ function create(host, { onPick } = {}) {
       canvas.setPointerCapture?.(e.pointerId);
       if (moveFn && e.button === 0 && !e.shiftKey && !touches.size && style === 'model') {
         const pt = nozzlePlanePoint(e.clientX, e.clientY);
-        if (pt) { moveDrag = { id: e.pointerId, pt }; cancelAnimationFrame(spin); showMarker(pt); return; }
+        if (pt) { moveDrag = { id: e.pointerId, pt }; cancelAnimationFrame(spin); gliding = false; showMarker(pt); return; }
       }
-      cancelAnimationFrame(spin); cam.vyaw = cam.vpitch = 0;
+      cancelAnimationFrame(spin); gliding = false; cam.vyaw = cam.vpitch = 0;
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       drag = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, lt: performance.now(), yaw: cam.yaw, pitch: cam.pitch, tx: cam.tx, ty: cam.ty, pan: e.button === 2 || e.shiftKey, moved: false, zoom: cam.zoom, spread: 0 };
       if (touches.size === 2) { const [a, b] = [...touches.values()]; drag.spread = Math.hypot(a.x - b.x, a.y - b.y); }
@@ -1008,7 +1038,9 @@ function create(host, { onPick } = {}) {
           cam.yaw += cam.vyaw; cam.pitch = Math.max(-8, Math.min(89, cam.pitch + cam.vpitch));
           render();
           if (Math.abs(cam.vyaw) > 0.03 || Math.abs(cam.vpitch) > 0.03) spin = requestAnimationFrame(glide);
+          else gliding = false;
         };
+        gliding = true;
         spin = requestAnimationFrame(glide);
       }
       if (!touches.size) drag = null;
@@ -1036,7 +1068,7 @@ function create(host, { onPick } = {}) {
       // Close enough that the print fills about half the view.
       const close = name === 'print', fit = close ? Math.max(3, Math.min(7.5, 300 / ((print && print.size) || 60))) : 1;
       const to = { yaw: from.yaw + ((((ty - from.yaw) % 360) + 540) % 360 - 180), pitch: tp, zoom: fit, tx: 0, ty: 0, focus: close ? 1 : 0 };
-      cancelAnimationFrame(glideTo.raf); cancelAnimationFrame(spin);
+      cancelAnimationFrame(glideTo.raf); cancelAnimationFrame(spin); gliding = false; viewMoving = false;
       viewName = name; viewChanged(name);
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) { Object.assign(cam, to); queue(); return; }
       const t0 = performance.now();
@@ -1045,7 +1077,9 @@ function create(host, { onPick } = {}) {
         for (const key of Object.keys(to)) cam[key] = from[key] + (to[key] - from[key]) * e;
         render();
         if (k < 1) glideTo.raf = requestAnimationFrame(step);
+        else viewMoving = false;
       };
+      viewMoving = true;
       glideTo.raf = requestAnimationFrame(step);
     }
 
@@ -1062,14 +1096,21 @@ function create(host, { onPick } = {}) {
       if (!drag && document.visibilityState === 'visible') {
         cam.yaw -= (now - spinLast) * 0.005;
         if (viewName) { viewName = null; viewChanged(null); }
-        if (now - spinDrawn > 32) { spinDrawn = now; render(); }
+        // At most about 30 a second, and no faster than the page can afford: a drawing that costs a lot waits two and a half times its cost, so
+        // the turntable leaves the page most of the time however slow drawing is (the same rule as every other redraw: queueTwin).
+        if (now - spinDrawn > Math.max(32, Math.min(drawMs * 2.5, 3000))) { spinDrawn = now; render(); }
       }
       spinLast = now;
       spinRaf = requestAnimationFrame(turn);
     }
 
-    const ro = window.ResizeObserver ? new ResizeObserver(queue) : null;
+    // A change of size draws again, except while a divider is being dragged (html.is-resizing, panes.js): the picture then keeps its shape and the
+    // pane moves around it, and one drawing follows when the divider is let go (the page's resize notice).
+    let resizeHeld = false;
+    const dragging = () => document.documentElement.classList.contains('is-resizing');
+    const ro = window.ResizeObserver ? new ResizeObserver(() => { if (dragging()) resizeHeld = true; else queue(); }) : null;
     ro && ro.observe(canvas);
+    window.addEventListener('resize', () => { if (resizeHeld && !dragging()) { resizeHeld = false; queue(); } });
     const minute = setInterval(() => { if (state) queue(); }, 30000);
 
     return {

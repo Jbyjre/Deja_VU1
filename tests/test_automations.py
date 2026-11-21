@@ -61,6 +61,7 @@ class TestValidation(AutomationCase):
 class TestFiring(AutomationCase):
     def state(self, **changes):
         s = mock_moonraker.get_printer_state()
+        s.pop("eta", None)          # a hand-edited state has no estimate of its own; the rule falls back to progress and time spent
         s.update(changes)
         return s
 
@@ -167,6 +168,7 @@ class TestNewTriggersAndActions(AutomationCase):
 
     def state(self, **changes):
         s = mock_moonraker.get_printer_state()
+        s.pop("eta", None)          # a hand-edited state has no estimate of its own; the rule falls back to progress and time spent
         s.update(changes)
         return s
 

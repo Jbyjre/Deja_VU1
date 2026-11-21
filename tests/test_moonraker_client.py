@@ -241,8 +241,9 @@ class TestStateTranslation(unittest.TestCase):
         import mock_moonraker
         simulated = mock_moonraker.get_printer_state()
         real = mc.translate_state(self.fake_status(), self.ctx())
-        # "objects" is only there while a print that labels its objects runs.
-        self.assertLessEqual(set(simulated) - {"printer_id", "printer_name", "objects"}, set(real))
+        # "objects" is only there while a print that labels its objects runs; "eta" is put on by get_printer_state (print_eta.py)
+        # for a printer that is printing, whichever kind it is, so translate_state alone has none.
+        self.assertLessEqual(set(simulated) - {"printer_id", "printer_name", "objects", "eta"}, set(real))
         self.assertLessEqual(set(next(iter(simulated["toolheads"].values()))),
                              set(real["toolheads"]["T0"]))
 

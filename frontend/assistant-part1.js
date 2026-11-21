@@ -419,14 +419,30 @@ const FEATURES = [
     { id: 'brief', icon: 'brief', title: 'Catch me up', text: 'What finished, what failed, what is due and what is running low, in a few lines.', ask: BRIEF }
   ];
 
+let watchCam = null;
+/* The one live player the print watch card shows: made once, moved into each new drawing of the page. */
+function watchCamHost() {
+    if (!watchCam) {
+      watchCam = document.createElement('div');
+      watchCam.className = 'pcam';
+      watchCam.dataset.cam = 'ai';
+      if (window.PrinterPage && PrinterPage.attachCam) PrinterPage.attachCam(watchCam);
+    }
+    return watchCam;
+  }
+
 function drawPage() {
     const host = document.getElementById('ai-page');
     if (!host || host.closest('[hidden]')) return;
     if (!aiState.st) { host.innerHTML = '<section class="card liquid-glass"><div class="card-head"><div><h2>AI assistant</h2><p class="card-sub">Switched off. Turn it on in Settings, Optional extras.</p></div></div></section>'; return; }
+    const keepCam = watchCam && watchCam.parentElement;
+    if (keepCam) watchCam.remove();                              // the live picture outlives the redraw: it is put back below
     const keepOpen = [...host.querySelectorAll('details[open]')].map(d => d.id);
     const focus = document.activeElement && host.contains(document.activeElement) ? document.activeElement.id : '';
     const typed = [...host.querySelectorAll('textarea[id^="ai-fi-"]')].map(t => [t.id, t.value]);
     host.innerHTML = ready() ? connectedPage() : introPage();
+    const slot = host.querySelector('#ai-watch-cam');
+    if (slot) { slot.append(watchCamHost()); if (window.PrinterPage && PrinterPage.syncCams) PrinterPage.syncCams(); }
     keepOpen.forEach(id => { const d = host.querySelector('#' + id); if (d) d.open = true; });
     typed.forEach(([id, v]) => { const t = host.querySelector('#' + id); if (t) t.value = v; });
     if (focus) { const f = host.querySelector('#' + focus); if (f) f.focus({ preventScroll: true }); }
@@ -504,9 +520,10 @@ function watchCard() {
     const when = t => new Date(t * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const word = { ok: 'Looks fine', worry: 'Worth a look', failed: 'Looks failed', skipped: 'Not checked' };
     const last = (w.log || [])[0];
-    const pic = last && (w.pictures || []).includes(last.printer) && !aiState.st.demo
-      ? `<img class="ai-watch-pic" alt="What print watch saw at ${esc(when(last.at))}" src="/api/assistant/watch/picture?printer=${encodeURIComponent(last.printer)}&t=${Math.round(last.at)}">`
-      : `<div class="ai-watch-pic is-empty" aria-hidden="true">${I.eye}</div>`;
+    // What it last saw, kept as a small picture over the live view (a real printer only: the demo has no stored pictures).
+    const saw = last && (w.pictures || []).includes(last.printer) && !aiState.st.demo
+      ? `<img class="ai-watch-saw" alt="What print watch saw at ${esc(when(last.at))}" title="What it saw at ${esc(when(last.at))}" src="/api/assistant/watch/picture?printer=${encodeURIComponent(last.printer)}&t=${Math.round(last.at)}">` : '';
+    const lookNames = (w.looks || []).map(k => LOOK_NAME[k] || k);
     const next = Object.values(w.next_in_s || {})[0];
     const state = !w.on ? 'Off' : next != null ? `Watching · next look in ${Math.max(1, Math.round(next / 60))} min` : `On · every ${w.minutes} min while printing`;
     const minutes = [2, 5, 10, 15, 30, 60].filter(m => m >= w.minutes_range[0] && m <= w.minutes_range[1]);
@@ -527,7 +544,16 @@ function watchCard() {
           <div class="ai-actions"><button class="btn" type="button" id="ai-watch-now">${I.camera}<span>Check now</span></button></div>
           ${aiState.st.demo ? '<p class="ai-hint">In the online demo these settings are a preview: print watch needs a real printer’s camera.</p>' : ''}
         </div>
-        <figure class="ai-watch-last">${pic}<figcaption>${last ? `<span class="ai-pill is-${esc(last.verdict)}">${esc(word[last.verdict] || last.verdict)}</span> ${esc(last.why || '')}` : 'Its first look will show here, with what it saw.'}</figcaption></figure>
+        <figure class="ai-watch-last">
+          <div class="ai-watch-view" id="ai-watch-view">
+            <div class="ai-watch-cam" id="ai-watch-cam"></div>
+            <svg class="ai-brackets" viewBox="0 0 100 75" preserveAspectRatio="none" aria-hidden="true"><path d="M5 15V5h10M85 5h10v10M95 60v10H85M15 70H5V60" fill="none" stroke="currentColor" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round"/></svg>
+            <span class="ai-scan" aria-hidden="true"></span>
+            ${lookNames.length ? `<ul class="ai-watch-for" aria-label="What it looks for">${lookNames.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+            ${saw}
+            <div class="ai-watch-overlay" aria-live="polite">${last ? `<span class="ai-pill is-${esc(last.verdict)}">${esc(word[last.verdict] || last.verdict)}</span> <span>${esc(last.why || '')}</span>` : '<span>Its first look will show here, over the live picture.</span>'}</div>
+          </div>
+          <figcaption>${esc(state)}${last ? ` · last look ${esc(when(last.at))}` : ''}</figcaption></figure>
       </div>
       <details class="ai-watch-more" id="ai-watch-more"><summary>Customize${I.chevron}</summary>
         <div class="ai-watch-grid">

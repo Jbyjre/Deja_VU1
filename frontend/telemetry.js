@@ -63,7 +63,7 @@ window.Telemetry = (() => {
     last = now;
     card.hidden = false;
     const p = st.progress || 0, printing = st.state === 'printing' || st.state === 'paused';
-    const reported = st.remaining_hours ?? null;
+    const reported = st.remaining_hours ?? (st.eta && st.eta.remaining_hours) ?? null;
     const est = reported ?? (printing && p > 0.02 && st.print_duration_hours ? st.print_duration_hours * (1 - p) / p : null);
     const eta = est != null ? new Date(now + est * 3600000) : null;
     const pos = st.toolhead_position || [];

@@ -103,6 +103,7 @@ def translate_state(status, ctx):
     wh = _obj(status, "webhooks")
     ps = _obj(status, "print_stats")
     vsd = _obj(status, "virtual_sdcard")
+    ds = _obj(status, "display_status")
     gm = _obj(status, "gcode_move")
     bed = _obj(status, "heater_bed")
     ptc = _obj(status, "print_task_config")
@@ -172,6 +173,7 @@ def translate_state(status, ctx):
         "current_file": filename if state != "ready" else None,
         "progress": round(progress, 4),
         "print_duration_hours": round(_num(ps.get("print_duration"), 0.0) / 3600.0, 4),
+        "display_progress": (round(min(1.0, max(0.0, _num(ds.get("progress")))), 4) if _num(ds.get("progress")) is not None else None),
         "active_toolhead": active,
         "toolheads": toolheads,
         "bed_temperature": _num(bed.get("temperature")),

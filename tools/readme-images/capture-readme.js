@@ -31,7 +31,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(base + '/?dashboard');
     await page.evaluate(() => document.querySelector('label[for="demo-toggle"]').click());
-    await page.locator('#attention').waitFor();
+    await page.locator('#attention').waitFor({state: 'attached'});      // Overview is not the first screen any more
     await page.evaluate(() => document.fonts.ready);
     if (await page.locator('#handoff-dismiss').isVisible()) await page.locator('#handoff-dismiss').click();
     // Pop-up messages and the handoff offer come and go; keep them out of the pictures.
@@ -82,7 +82,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
     await page.locator('#confirm-cancel').click();
 
     await page.setViewportSize({width: 390, height: 844});
-    await tab('overview'); await wait(1500);
+    await tab('control'); await wait(2500);      // the phone picture shows the Printer screen: the 3D printer first, with Halt in reach
     await save('readme-phone.jpg');
 
     // The product page's Overview and phone pictures, at the sizes welcome.html declares (1440 × 900, 390 × 844).

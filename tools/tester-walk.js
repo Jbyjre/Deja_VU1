@@ -200,6 +200,8 @@ async function goTo(page, id, width) {
 async function openTesterCard(page, width) {
   await goTo(page, 'settings', width);
   const part = page.locator('.set-groups button:has-text("Tester mode")').first();   // Settings' list of groups
+  await page.mouse.move(width > 800 ? 900 : 200, 500);          // the pointer off the sidebar: an open sidebar sits over the list's left edge
+  await sleep(3300);
   await part.click();
   await sleep(500);
 }
@@ -244,11 +246,11 @@ async function walk(browser, server, standIn, width) {
   check((await page.locator('#tester-chip, #tester-hub, #tester-panel').count()) === 0, 'No tester pop-up, chip or panel appears on the first start (setup closed, 4 s later)');
   check((await page.locator('#tester-dock > *').count()) === 1, 'The only tester control on the screen is "Something felt off"');
   const feltBox = await page.evaluate(() => {
-    const f = document.getElementById('tester-felt'), strip = document.getElementById('strip'), wrap = document.getElementById('main');
-    const r = f.getBoundingClientRect(), a = strip.getBoundingClientRect(), b = wrap.getBoundingClientRect();
-    return { inStrip: strip.contains(f), insideStrip: r.top >= a.top - 1 && r.bottom <= a.bottom + 1, overSurface: r.bottom > b.top && r.top < b.bottom && r.right > b.left && r.left < b.right, w: Math.round(r.width) };
+    const f = document.getElementById('tester-felt'), dock = document.getElementById('strip');
+    const r = f.getBoundingClientRect(), a = dock.getBoundingClientRect();
+    return { inDock: dock.contains(f), fixed: getComputedStyle(dock).position === 'fixed', corner: r.bottom <= innerHeight && r.top > innerHeight - 90 && r.left > innerWidth / 2, within: r.left >= a.left - 1 && r.right <= a.right + 1, w: Math.round(r.width) };
   });
-  check(feltBox.inStrip && feltBox.insideStrip && !feltBox.overSurface && feltBox.w >= 24, 'The note button sits in the strip and covers none of the page: ' + JSON.stringify(feltBox));
+  check(feltBox.inDock && feltBox.fixed && feltBox.corner && feltBox.within && feltBox.w >= 24, 'The note button sits in the floating dock in the corner, away from the middle of the page: ' + JSON.stringify(feltBox));
   if (option('--shots')) await page.screenshot({ path: path.join(option('--shots'), 'first-start-' + width + '.png') });
 
   await post(page, '/api/fleet/registry', { name: 'Walk stand-in', moonraker_url: standIn.url });

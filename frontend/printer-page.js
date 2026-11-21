@@ -287,7 +287,8 @@ window.PrinterPage = (() => {
     const lines = busy(s) || s.state === 'complete'
       ? `<p class="ov-file">${esc(s.current_file || 'Current print')}</p>
          <div class="ov-progress" role="progressbar" aria-label="Print progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div>
-         <p class="ov-facts"><b>${pct}%</b>${left != null && s.state !== 'complete' ? ` · ${esc(hoursWords(left))} left · done ${esc(doneAt(left) || '')}` : ''}${layer ? ` · ${esc(layer)}` : ''}</p>`
+         <p class="ov-facts"><b>${pct}%</b>${left != null && s.state !== 'complete' ? ` · ${esc(hoursWords(left))} left · done ${esc(doneAt(left) || '')}` : ''}${layer ? ` · ${esc(layer)}` : ''}</p>
+         ${left != null && s.state !== 'complete' && etaWords(s) ? `<p class="ov-why">${esc(etaWords(s))}</p>` : ''}`
       : s.state === 'error'
         ? `<p class="ov-file">${esc(s.state_message || 'The printer stopped with an error')}</p>`
         : `<p class="ov-file">Ready for a print</p><p class="ov-facts">${esc(readyLine(s))}</p>`;
@@ -724,5 +725,12 @@ window.PrinterPage = (() => {
     renderPage(null);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  return { presets, DEFAULT_PRESETS, PRESET_KEY, hoursWords, syncCams };
+  /* A player somebody else made (the AI page's print watch). The caller keeps the node and puts it back after it redraws. */
+  function attachCam(host) {
+    if (!host.dataset.cam) host.dataset.cam = 'extra';
+    const cam = initCam(host);
+    setTimeout(() => syncCam(cam), 0);
+    return cam;
+  }
+  return { presets, DEFAULT_PRESETS, PRESET_KEY, hoursWords, syncCams, attachCam };
 })();

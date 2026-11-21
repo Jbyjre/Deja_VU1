@@ -683,9 +683,9 @@ function initDockStack() {
       if (phone.matches) dock.prepend(offer, pill);
       else {
         dock.before(pill);
-        // On a computer the "continue here" offer is a line in the instrument strip.
-        const insts = $('strip-insts');
-        if (insts) insts.before(offer); else dock.before(offer);
+        // On a computer the "continue here" offer is a small sheet above the orb, in the floating dock.
+        const floating = $('strip');
+        if (floating) floating.prepend(offer); else dock.before(offer);
       }
       // On a phone the search lives at the top of the More sheet.
       if (finder && finderHome) {

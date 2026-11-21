@@ -63,6 +63,8 @@ its behaviour, never paste it.
   `position` labelled `"commanded"`; `homed_axes` is reported. `state.sync` carries Klipper's
   `file_position` and `live_position` less `homing_origin` for the twin, and `extruding` from
   motion_report `live_extruder_velocity`.
+- `display_status.progress` (Klipper's last M73 progress, else the bytes' progress; Status_Reference.md) is subscribed through `_BASE_OBJECTS` only when the printer lists the
+  object, and arrives as `display_progress` for `print_eta.py`.
 - A `link_lost` state disables Pause, Cancel and Home and never offers the firmware restart. A fresh
   page gets `{"connected": false}` instead, and the empty state names the added printer.
 

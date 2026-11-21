@@ -8,8 +8,8 @@
  *
  * A button here never does more than the screen's own button: it presses that button, so Cancel still asks twice and
  * still says in words when the printer refuses. A mirrored button follows its source: its words, its disabled state and
- * whether it is shown at all (Pause and Cancel appear only while a print runs). Halt is not here: it lives in the
- * strip at the bottom (strip.js), one press from every place.
+ * whether it is shown at all (Pause and Cancel appear only while a print runs). Halt is not here: it sits on the Printer
+ * screen (cockpit.js builds it, strip.js runs it), where the printer is.
  */
 (() => {
   const $ = id => document.getElementById(id);
@@ -49,7 +49,8 @@
   const ACTIONS = {
     printer: [{ key: 'pause', mirror: 'ctrl-pause-resume', cls: 'primary' }, { key: 'cancel', mirror: 'ctrl-cancel', cls: 'danger' }],
     printers: [{ key: 'add-printer', label: 'Add printer', cls: 'primary', run: openAddPrinter }],
-    files: [{ key: 'add-files', label: 'Add files', cls: 'primary', run: () => { const f = $('file-upload'); if (f) f.click(); } }]
+    files: [{ key: 'convert', label: 'Bambu to U1 profiles', title: 'Turn a Bambu Studio or other slicer project into Snapmaker U1 profiles', run: () => { const f = $('cv-file'); if (f) f.click(); } },
+      { key: 'add-files', label: 'Add files', cls: 'primary', run: () => { const f = $('file-upload'); if (f) f.click(); } }]
   };
 
   function mirror(btn, src) {
@@ -81,6 +82,7 @@
       btn.className = `btn ${a.cls || ''}`.trim();
       btn.dataset.pb = a.key;
       btn.textContent = a.label || '';
+      if (a.title) btn.title = a.title;
       btn.addEventListener('click', () => { if (src) { if (!src.disabled) src.click(); } else a.run(); });
       if (src) watchers.push(mirror(btn, src));
       box.append(btn);
@@ -125,7 +127,7 @@
   function render() {
     const d = here();
     const sub = d.place === 'printer' ? printerName() : '';
-    const sig = JSON.stringify([d.id, d.place, d.label, sub]);
+    const sig = JSON.stringify([d.id, d.place, d.label, sub, !!(window.Rail && Rail.practice && Rail.practice())]);
     if (sig === paintedFor) return;
     const placeChanged = !paintedFor || JSON.parse(paintedFor)[0] !== d.id;
     paintedFor = sig;
@@ -140,7 +142,7 @@
 
   window.addEventListener('dv-tab', render);
   window.addEventListener('dv-rail', render);
-  ['dv-section', 'dv-printer'].forEach(name => window.addEventListener(name, render));
+  ['dv-section', 'dv-printer', 'dv-practice'].forEach(name => window.addEventListener(name, render));
   window.addEventListener('dv-fleet', e => { fleet = Array.isArray(e.detail) ? e.detail : []; render(); });
   document.addEventListener('DOMContentLoaded', render);
   render();

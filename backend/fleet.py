@@ -318,6 +318,9 @@ def summary_for(printer_id, state=None):
     progress = state.get("progress") or 0.0
     elapsed = state.get("print_duration_hours") or 0.0
     remaining = (elapsed / progress - elapsed) if 0 < progress < 1 and state["state"] == "printing" else None
+    eta = state.get("eta") if isinstance(state.get("eta"), dict) else None
+    if state["state"] == "printing" and eta and eta.get("remaining_hours") is not None:
+        remaining = eta["remaining_hours"]          # print_eta.py: the file's estimate and the print's own pace together
     active = state.get("active_toolhead")
     head = (state.get("toolheads") or {}).get(active) or {}
     return {
@@ -328,6 +331,7 @@ def summary_for(printer_id, state=None):
         "current_file": state.get("current_file"),
         "progress": round(progress, 4),
         "remaining_hours": round(remaining, 3) if remaining is not None else None,
+        "eta": eta if state["state"] == "printing" else None,
         "active_toolhead": active,
         "active_color": head.get("filament_color_hex"),
         "nozzle_temperature": head.get("temperature"),

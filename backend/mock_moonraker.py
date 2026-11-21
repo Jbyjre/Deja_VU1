@@ -65,6 +65,7 @@ from datetime import datetime, timedelta
 
 import machines
 import moonraker_client
+import print_eta
 import printer_extras
 from mock_moonraker_part1 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
     AMBIENT_C, BUILD_VOLUME_MM, DEFAULT_PRINTER_ID, DEMO_MACROS, FILAMENT_COLORS, MAX_SANDBOX_PRINTERS,
@@ -480,7 +481,17 @@ def get_printer_state():
     temperatures, which toolhead is active. A copy, so callers can't
     mutate the live state by editing the dict they were handed.
     """
-    return _current().snapshot()
+    printer = _current()
+    state = printer.snapshot()
+    # One estimate of the time left for every screen and rule (print_eta.py): the file's own estimate, how the print is
+    # running against it, and a truer share than bytes where the file or the printer gives one.
+    if isinstance(state, dict) and state.get("state") in ("printing", "paused"):
+        try:
+            job = printer.get_current_job() if printer.real else printer.job
+            print_eta.attach(state, getattr(printer, "id", None) or selected_printer_id(), (job or {}).get("total_hours"))
+        except Exception:                                  # the estimate is an extra: never let it stop the state
+            state.pop("eta", None)
+    return state
 
 
 def advance(seconds, printer_id=None, scaled=True):

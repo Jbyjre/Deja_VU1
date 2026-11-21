@@ -64,3 +64,13 @@ paths:
   in software graphics) before it was routed there.
 - To test the twin without a printer, run `tests/fake_moonraker.py` through a real G-code file and watch the
   card in Chromium (see printer-link.md). Frame time with the bead is the same as without it.
+- Sharpness (`twin3d.js` `render`, `adaptQuality`, `resize`): a picture that is still (nothing following, moving, dragged, gliding or turning: `nothingMoves`)
+  is always drawn at full size (the device pixel ratio up to 2). A run of frames steps down only on a slow median (over 100 ms across five), never below 0.5, and
+  climbs back after 1.5 s when the next step would still be cheap; one full-size frame is drawn 450 ms after a run ends. The first three frames are start-up (shaders,
+  geometry) and are not counted. A full-size frame that costs over 350 ms in a run, or over 1000 ms for a still picture, is not tried again for a minute (software
+  drawing). It used to drop to 0.34 on the first slow measure and recover only while redrawing, so a quiet view stayed grainy.
+- Size changes: the twin draws again on a change of its canvas size except while a divider is dragged (`html.is-resizing`); it draws once on the page's resize
+  notice after the drag. The turntable draws no faster than 2.5 times its draw cost (`drawMs`) allows, and the Printer screen does not start it where drawing is in
+  software (`Cockpit.software()`; `tools/testfix-check.js --only freeze`).
+- Borrowing: sheets (deck.js) and the opening scene (intro.js) dock the shared `#twin-card` elsewhere and hand it back; `Panes.dock()` leaves it alone while it sits in
+  `.cp-sheet`.

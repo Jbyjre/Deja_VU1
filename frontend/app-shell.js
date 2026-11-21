@@ -288,11 +288,19 @@ function doneAt(hoursLeft) {
   return `${at.toLocaleDateString([], { weekday: 'short' })} ${clock}`;
 }
 
-/* Time left from a printer state: elapsed time scaled by progress, the same
- * estimate the fleet uses (backend/fleet.py). Null when there isn't one. */
+/* Time left from a printer state: the server's one estimate (backend/print_eta.py: the file's own estimate, how this print is running
+ * against it, and a truer share than bytes where the file or the printer gives one), the same one the fleet rows, the rules and the
+ * phone use. Without it (the static online demo's recording) it falls back to elapsed time scaled by progress. Null when there isn't one. */
 function hoursLeft(state) {
+  const eta = state && state.eta;
+  if (state && state.state === 'printing' && eta && eta.remaining_hours != null) return eta.remaining_hours;
   const p = state && state.progress, elapsed = state && state.print_duration_hours;
   return state && state.state === 'printing' && p > 0 && p < 1 && elapsed != null ? elapsed / p - elapsed : null;
+}
+/* One short line saying where the estimate comes from, for beside a time ("" when there is none). */
+function etaWords(state) {
+  const eta = state && state.eta;
+  return eta && eta.words ? eta.words : '';
 }
 
 /* ---- the browser tab mirrors the print -------------------------------------
@@ -593,7 +601,7 @@ const SECTIONS = {
     ['control', 'Control', ['#pp-head', '#twin-card', '#pp-camera-card', '#pp-move', '#pp-heaters', '#pp-extrude', '#pp-tune',
       '#pp-outputs', '#pp-mesh', '#pp-macros', '#pp-console', '#pp-print', '#ctrl-plate']],
     ['live', 'Live readings', ['#telemetry', '#chamber-card']],
-    ['history', 'History & upkeep', ['#insights-card', 'print health', 'print cost']],
+    ['history', 'History & upkeep', ['#insights-card', 'ready to print', 'print cost']],
     ['camera', 'Camera & time-lapses', ['#camera-card', '#timelapse-card']],
   ],
   fleet: [
@@ -613,7 +621,7 @@ const SECTIONS = {
   ],
   // Settings (Preferences is folded in): the groups of the SHELL plan. A card no rule names joins the first group.
   modules: [
-    ['connection', 'Printers & connection', ['#watch-only-card', '#halt-card', 'printer firmware']],
+    ['connection', 'Printers & connection', ['#watch-only-card', '#practice-card', '#halt-card', 'printer firmware']],
     ['look', 'Look & layout', ['#layout-card', '#appearance-card', '#prefs-card']],
     ['phone', 'Phone & away', ['#phone-install-card', 'paired devices', '#remote-card']],
     ['alerts', 'Alerts & smart home', ['notifications', 'wled bridge', 'home assistant bridge']],
@@ -767,7 +775,7 @@ function initTabs() {
 
   // Preferences → Open on: a fixed screen, or the one used last.
   const opening = store.get('dejavu1.pref.start');
-  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'overview'), true);
+  show(opening && opening !== 'last' ? opening : (store.get(TAB_KEY) || 'control'), true);      // the Printer screen is where a first start lands
 }
 
 /* ---- status ribbon (always visible) --------------------------------------*/

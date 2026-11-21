@@ -64,6 +64,20 @@
   document.documentElement.setAttribute('data-page', firstPage());
   // The SHELL frame (shell.css) styles everything under html.has-shell, so it is set before the first paint.
   document.documentElement.classList.add('has-shell');
+  // The opening scene (intro.js) plays on a fresh start. While it is about to, a plain cover hides the page from the first paint so the app
+  // never flashes before it; intro.js lifts the cover, and a timer lifts it anyway so a page can never be left covered.
+  try {
+    var nav = window.performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    var fresh = !nav || nav.type === 'navigate';
+    var off = localStorage.getItem('dejavu1.pref.intro') === 'off';
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var robot = navigator.webdriver && !/[?&]intro(\b|=)/.test(location.search);
+    var skipped = /[?&]nointro(\b|=)/.test(location.search);
+    if (fresh && !off && !still && !robot && !skipped) {
+      document.documentElement.classList.add('intro-pending');
+      setTimeout(function () { document.documentElement.classList.remove('intro-pending'); }, 5200);
+    }
+  } catch (e) { /* no cover: the app simply opens */ }
   // Your experience (Settings › Look & layout, and the setup's "Make it yours"): "new" keeps short hints for the first visits,
   // "know" (the default) shows none. shell-panes.css reads data-experience.
   var EXP_KEY = 'dejavu1.pref.experience';

@@ -375,7 +375,10 @@ def _trigger_now(rule, printer_id, state, events, cache):
 
 def _hours_left(state):
     """The printer's own remaining time, else one estimated from the time so far and the progress."""
-    left = state.get("remaining_hours")
+    eta = state.get("eta") if isinstance(state.get("eta"), dict) else {}
+    left = eta.get("remaining_hours")
+    if not isinstance(left, (int, float)):
+        left = state.get("remaining_hours")
     if isinstance(left, (int, float)):
         return float(left)
     p, spent = state.get("progress") or 0, state.get("print_duration_hours") or 0
