@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.31",
+      "date": "2026-11-21",
+      "name": "Cards that stack have their gap back, printer cards have their padding back,...",
+      "published": true,
+      "summary": "Cards that stack have their gap back, printer cards have their padding back, and the text audit finds both.",
+      "changes": [
+        "Cards that stack have their gap back, printer cards have their padding back, and the text audit finds both"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.30",
       "date": "2026-11-21",
       "name": "The Printer screen is one room, Overview shows the whole camera picture, and...",

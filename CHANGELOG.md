@@ -86,6 +86,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.31 (21 November 2026): Cards that stack have their gap back, printer cards have their padding back,...
+
+- Cards that stack have their gap back, printer cards have their padding back, and the text audit finds both
+
 ## 0.20.30 (21 November 2026): The Printer screen is one room, Overview shows the whole camera picture, and...
 
 - The Printer screen is one room, Overview shows the whole camera picture, and every screen is glass with text that always fits
