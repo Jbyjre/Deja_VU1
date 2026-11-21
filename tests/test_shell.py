@@ -106,10 +106,18 @@ class TestAccessibleNames(unittest.TestCase):
     def test_the_printer_row_and_the_tiles_are_named_by_what_they_show(self):
         row = RAIL[RAIL.index('id="rail-switch"'):RAIL.index("rail-scroll")]
         self.assertNotIn('aria-label="', row)
-        for tile in ('id="tile-temps"', 'id="tile-tune"', 'id="tile-job"'):
+        # a tile is named by its visible text, which holds the figures; the tune row has only values, so it says what it is
+        for tile in ('id="tile-job-open"', 'id="tile-tune"'):
             button = COCKPIT[COCKPIT.index(tile):COCKPIT.index(">", COCKPIT.index(tile))]
-            self.assertNotIn("aria-label", button, tile)          # the name is the visible text, which holds the figures
             self.assertIn('aria-haspopup="dialog"', button)
+        job = COCKPIT[COCKPIT.index('id="tile-job-open"'):COCKPIT.index(">", COCKPIT.index('id="tile-job-open"'))]
+        self.assertNotIn("aria-label", job)
+        tune = COCKPIT[COCKPIT.index('id="tile-tune"'):COCKPIT.index(">", COCKPIT.index('id="tile-tune"'))]
+        self.assertIn('aria-label="Tune speed, flow and fan"', tune)
+        # the temperatures are drawn on the machine (twin3d.js tags), and their button in the dock keeps its name for screen readers
+        self.assertIn("['temps', 'Temperatures']", COCKPIT)
+        self.assertIn('aria-label="${label}"', COCKPIT)
+        self.assertNotIn('id="tile-temps"', COCKPIT)
         self.assertIn('aria-label="More places"', RAIL)
         self.assertIn("version history", read_frontend("versions.js"))
 
@@ -163,8 +171,9 @@ class TestPanes(unittest.TestCase):
     def test_a_phone_has_no_dividers_and_the_stage_comes_first(self):
         self.assertIn("html.has-shell .split { display: none; }", PANES_CSS)
         phone = COCKPIT_CSS[COCKPIT_CSS.index("@media (max-width: 720px)"):]
-        self.assertIn("html.has-shell .cp > .split { display: none; }", phone)
-        self.assertIn("html.has-shell .cp > .cp-stage { order: 1;", phone)
+        self.assertIn("html.has-shell .cp > .cp-stage { position: relative;", phone)       # a picture at the top of the page, not a window-sized layer
+        self.assertIn("order: 1;", phone[phone.index("html.has-shell .cp > .cp-stage"):][:200])
+        self.assertIn("html.has-shell .cp > .cp-dock { position: relative;", phone)
 
     def test_dragging_a_divider_is_one_move_per_frame_and_tells_the_twin_only_when_let_go(self):
         for needle in ("requestAnimationFrame", "announce(!live)", "if (now) window.dispatchEvent(new Event('resize'))"):
@@ -196,10 +205,17 @@ class TestTilesAndSheets(unittest.TestCase):
         self.assertIn("grows out of what opened it", DECK)
 
     def test_nothing_on_the_printer_screen_scrolls_but_a_sheet_may(self):
-        rail = COCKPIT_CSS[COCKPIT_CSS.index("html.has-shell .cp-rail {"):]
-        rail = rail[:rail.index("}")]
-        self.assertIn("overflow: hidden", rail)
-        self.assertNotIn("overflow: auto", rail)
+        # the room has no rails to scroll: the 3D scene is a fixed layer behind everything, the cards and the dock are laid over it
+        stage = COCKPIT_CSS[COCKPIT_CSS.index("html.has-shell .cp-stage {"):]
+        stage = stage[:stage.index("}")]
+        self.assertIn("position: fixed", stage)
+        self.assertIn("overflow: hidden", stage)
+        for part in ("html.has-shell .cp-left {", "html.has-shell .cp-right {", "html.has-shell .cp-dock {"):
+            rule = COCKPIT_CSS[COCKPIT_CSS.index(part):]
+            rule = rule[:rule.index("}")]
+            self.assertIn("position: absolute", rule, part)
+            self.assertNotIn("overflow: auto", rule.replace("overflow-x: auto", ""), part)
+        self.assertNotIn("cp-rail", COCKPIT)                        # no side rails, no dividers
         self.assertIn("overflow: auto", COCKPIT_CSS[COCKPIT_CSS.index("html.has-shell .cp-main {"):][:200])
 
     def test_overview_is_a_glance_with_no_3d_printer(self):

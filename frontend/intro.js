@@ -87,15 +87,20 @@
       if (spinBtn && !spinWas && spinBtn.getAttribute('aria-pressed') === 'true') spinBtn.click();
       click('[data-twin="reset"]');                           // the camera sets back (the twin's own 0.5 s move)
       const target = $('p-stage');
-      const onPrinter = document.body.dataset.tab === 'control' && target && target.offsetParent !== null;
+      const onPrinter = document.body.dataset.tab === 'control' && target && target.getClientRects().length > 0;   // (a fixed element has no offsetParent)
       const ms = fast ? 380 : PULL_MS;
       if (!card.animate) { end(); return; }
       const f = card.getBoundingClientRect();
       let anim;
-      if (onPrinter) {
+      const r = onPrinter ? target.getBoundingClientRect() : null;
+      const full = !!r && r.width > innerWidth * 0.94 && r.height > innerHeight * 0.94;   // the room fills the window: nothing to shrink onto
+      if (full) {
+        // The printer already fills the window on this screen, so only the camera moves (the twin's own pull-back to the room's framing) while the
+        // scene's colour settles and the glass rises in around it.
+        anim = $('intro-bg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing: 'ease-out', fill: 'forwards' });
+      } else if (onPrinter) {
         // The card is the whole screen; it shrinks, in one uniform scale, onto the stage while the layer's window closes down to the stage's
         // box, so the printer never squashes and lands where the stage will draw it.
-        const r = target.getBoundingClientRect();
         const s = Math.max(r.height / f.height, r.width / f.width);
         const dx = r.left + r.width / 2 - (f.left + f.width / 2), dy = r.top + r.height / 2 - (f.top + f.height / 2);
         stage.animate([{ clipPath: 'inset(0px 0px 0px 0px round 0px)' }, { clipPath: `inset(${r.top}px ${innerWidth - r.right}px ${innerHeight - r.bottom}px ${r.left}px round 18px)` }],
@@ -105,7 +110,7 @@
         stage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing: 'ease-in', fill: 'forwards' });
         anim = card.animate([{ transform: 'none' }, { transform: 'scale(0.92)' }], { duration: ms, easing: 'cubic-bezier(.65,0,.2,1)', fill: 'forwards' });
       }
-      $('intro-bg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, delay: onPrinter ? ms * 0.15 : 0, easing: 'ease-out', fill: 'forwards' });
+      if (!full) $('intro-bg').animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, delay: onPrinter ? ms * 0.15 : 0, easing: 'ease-out', fill: 'forwards' });
       layer.querySelector('.intro-foot').animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.min(260, ms), fill: 'forwards' });
       anim.onfinish = () => setTimeout(end, 40);
       setTimeout(end, ms + 400);                              // never left on screen if an animation does not report

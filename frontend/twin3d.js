@@ -189,12 +189,16 @@ function create(host, { onPick } = {}) {
     let crispBlockedUntil = 0, stillBlockedUntil = 0;   // a full-size frame that cost too much is not tried again for a minute
     let nothingMoves = () => true;         // replaced once the drag and glide state exists (below)
     const costs = [];                      // the last few measured costs of frames that were part of a run (ms)
+    const fit = { k: 1, dx: 0, dy: 0 };   // --twin-fit scales the view, --twin-dx and --twin-dy move it (px), all read in resize()
     function resize() {
       const r = canvas.getBoundingClientRect();
       if (!r.width || !r.height) return false;
       // The drawing renders at twice the pixels, so its ink lines come out smooth.
       const dpr = style === 'drawing' ? Math.max(2, Math.min(3, devicePixelRatio || 1)) : Math.min(2, devicePixelRatio || 1);
       W = r.width; H = r.height;
+      // Where the twin sits can frame it: the Printer screen draws it across the whole window and asks for the printer to sit inside the free area.
+      const cs = getComputedStyle(host), num = n => { const v = parseFloat(cs.getPropertyValue(n)); return isFinite(v) ? v : 0; };
+      fit.k = num('--twin-fit') || 1; fit.dx = num('--twin-dx'); fit.dy = num('--twin-dy');
       // A picture that is still may cost a second once (nothing else is being drawn); a frame among moving ones must be cheap.
       frameStill = nothingMoves();
       crispFrame = style !== 'drawing' && !burstNow && performance.now() >= (frameStill ? stillBlockedUntil : crispBlockedUntil);
@@ -241,9 +245,11 @@ function create(host, { onPick } = {}) {
         return { VP, eye: target.map((c, i) => c + dir[i] * 2000), pxPerMm: H / (2 * half), dir };
       }
       const fov = 26 * Math.PI / 180;
-      const dist = Math.max(radius / Math.sin(fov / 2), radius / Math.sin(Math.atan(Math.tan(fov / 2) * aspect))) * 0.8 / cam.zoom;
+      const dist = Math.max(radius / Math.sin(fov / 2), radius / Math.sin(Math.atan(Math.tan(fov / 2) * aspect))) * 0.8 / (cam.zoom * fit.k);
       const eye = target.map((c, i) => c + dir[i] * dist);
-      return { VP: mul(perspective(fov, aspect, 40, 8000), lookAt(eye, target, [0, 1, 0])), eye, dir };
+      let VP = mul(perspective(fov, aspect, 40, 8000), lookAt(eye, target, [0, 1, 0]));
+      if ((fit.dx || fit.dy) && W && H) VP = mul([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, fit.dx / (W / 2), -fit.dy / (H / 2), 0, 1], VP);   // a shift in clip space moves the picture, nothing else
+      return { VP, eye, dir };
     }
     const project = (VP, x, y, z) => {
       const p = [x, z, -y, 1], o = [0, 0, 0, 0];
@@ -535,6 +541,9 @@ function create(host, { onPick } = {}) {
         const say = !on ? '' : posKind === 'unknown' ? 'position unknown' : posKind === 'last' ? 'last known position' : posKind === 'homing' ? 'homing' : note;
         labels.push({ id: `head:${name}`, text: name, colour: d.filament_color_hex || '#999999', at, centre: [hx, hy, tipZ + HEAD.h / 2], on, fault, hot, temp: d.temperature, say });
       });
+      // The bed and the chamber read on the machine itself, like the heads (the Printer screen is one room: its readings sit in it).
+      if (typeof st.bed_temperature === 'number') labels.push({ id: 'bed', text: 'Bed', colour: '', at: [BED / 2, 14, bedTop + 8], on: st.bed_target > 0, fault: false, hot: st.bed_temperature > 60, temp: st.bed_temperature, say: '', env: true });
+      if (typeof st.chamber_temperature === 'number') labels.push({ id: 'chamber', text: 'Chamber', colour: '', at: [BED + 26, BED * 0.5, bedTop + 110], on: false, fault: false, hot: false, temp: st.chamber_temperature, say: '', env: true });
       if (lamp) items.forEach(it => { if (!it.lining && !it.shell && !it.rest) it.lamp = lamp.rgb; });
       // Spools on the side hubs, in the loaded colours: T0, T1 left (spools 1 and 2), T2, T3 right (3 and 4),
       // the first of each pair on the upper hub, as Snapmaker numbers them. The filament runs to the feeder.
@@ -675,7 +684,7 @@ function create(host, { onPick } = {}) {
       // The studio backdrop, then the scene over it.
       // The dark theme gets a dark studio; the printer and the print keep their own colours.
       const night = document.documentElement.getAttribute('data-theme') === 'dark';
-      const bgTop = night ? lin(.2, .23, .28) : lin(.968, .972, .98), bgBot = night ? lin(.085, .105, .135) : lin(.885, .892, .905);
+      const bgTop = night ? lin(.2, .24, .32) : lin(.9, .95, 1), bgBot = night ? lin(.07, .1, .15) : lin(.78, .88, .94);   // the room's sky, so the glass over it has colour to bend
       gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.useProgram(P.bg.p);
       gl.uniform3fv(P.bg.u.uBgTop, bgTop); gl.uniform3fv(P.bg.u.uBgBot, bgBot); gl.uniform2f(P.bg.u.uRes, canvas.width, canvas.height);
       gl.bindVertexArray(null); gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -700,11 +709,13 @@ function create(host, { onPick } = {}) {
       renderTags(M);
     }
 
+    // A temperature in the unit the person chose (formatTemp is the app's own; a bare degree sign where the twin runs on its own).
+    const tagTemp = t => (typeof t === 'number' && isFinite(t) ? `<b class="t3-t">${esc(typeof formatTemp === 'function' ? formatTemp(t) : Math.round(t) + '°')}</b>` : '');
     function renderTags(M) {
       const placed = [];
       const list = labels.map(l => ({ ...l, p: project(M.VP, ...l.at) })).sort((a, b) => b.p[1] - a.p[1]);
       list.forEach(l => {
-        const w = l.on ? 30 + 7.2 * (l.text.length + (l.say ? 3 + l.say.length : 0)) : 46, h = 22;
+        const w = 26 + 7.2 * (l.text.length + (typeof l.temp === 'number' ? 5 : 0) + (l.say ? 3 + l.say.length : 0)), h = 28;
         let y = l.p[1];
         for (let tries = 0; tries < 6; tries++) {
           const hit = placed.find(p => Math.abs(p.x - l.p[0]) < (p.w + w) / 2 && Math.abs(p.y - y) < h);
@@ -713,7 +724,7 @@ function create(host, { onPick } = {}) {
         }
         l.p = [l.p[0], y]; placed.push({ x: l.p[0], y, w });
       });
-      const html = !showTags ? '' : list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px"><i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>${esc(l.text)}${l.say ? ' · ' + esc(l.say) : ''}</span>`).join('');
+      const html = !showTags ? '' : list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px">${l.env ? '' : `<i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>`}<span class="t3-n">${esc(l.text)}</span>${tagTemp(l.temp)}${l.say ? '<em>' + esc(l.say) + '</em>' : ''}</span>`).join('');
       if (tags.innerHTML !== html) tags.innerHTML = html;
     }
 

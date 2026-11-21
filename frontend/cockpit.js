@@ -1,8 +1,9 @@
 /* cockpit.js: the Printer screen as a stage with glance tiles around it and sheets that open from them.
  *
- * The printer in 3D is the middle of the screen. Either side of it small tiles say how things stand at a glance (temperatures, tuning, the
- * print, the camera) and a row of buttons under it opens the rest. Nothing scrolls: a tile shows only what matters, and a press opens a sheet
- * (deck.js) with the deep controls. A sheet is made smart by what it brings along: Move, Extrude, Tune and the printer's buttons dock the 3D
+ * The printer in 3D is the room: it fills the window behind the sidebar and the toolbar, and everything else floats in it as glass. The heads, the
+ * bed and the chamber carry their own temperatures (tags drawn on the machine by twin3d.js); a card top left says how the print stands, the camera
+ * is a window top right, and a dock of buttons along the bottom opens the rest. Nothing scrolls: a press opens a sheet (deck.js) with the deep
+ * controls. A sheet is made smart by what it brings along: Move, Extrude, Tune and the printer's buttons dock the 3D
  * printer and the camera beside the controls, so the effect of every press is in view.
  *
  * The cards that already exist (#pp-move, #pp-heaters, #pp-extrude and the rest) are moved, not rebuilt. The twin and the camera are one
@@ -44,7 +45,7 @@
     print: { title: 'Print a file', main: ['pp-print'], side: [], icon: ICON.print },
     camera: { title: 'Camera', main: ['pp-camera-card'], side: [], icon: ICON.camera },
   };
-  const DOCK = [['move', 'Move'], ['extrude', 'Extrude'], ['outputs', 'Fans & lights'], ['mesh', 'Bed mesh'], ['macros', 'Buttons'], ['console', 'Console'], ['print', 'Print']];
+  const DOCK = [['temps', 'Temperatures'], ['move', 'Move'], ['extrude', 'Extrude'], ['outputs', 'Fans & lights'], ['mesh', 'Bed mesh'], ['macros', 'Buttons'], ['console', 'Console'], ['print', 'Print']];
   const svg = d => `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
 
   let grid = null, deck = null, state = null;
@@ -64,24 +65,24 @@
     grid.id = 'cockpit';
     grid.innerHTML = `
       <div class="cp-hold" id="cp-hold" aria-hidden="true"></div>
-      <aside class="cp-rail cp-left" id="cp-left" aria-label="Temperatures and tuning">
-        <button type="button" class="tile tile-temps" id="tile-temps" data-open="temps" aria-haspopup="dialog"><span class="tile-h">Temperatures</span><span class="tile-body" id="tile-temps-body"></span></button>
-        <button type="button" class="tile tile-tune" id="tile-tune" data-open="tune" aria-haspopup="dialog"><span class="tile-h">Tune</span><span class="tile-body" id="tile-tune-body"></span></button>
-      </aside>
-      <section class="stage cp-stage" id="p-stage" aria-label="The printer in 3D">
-        <div class="cp-stage-top">
-          <div class="cp-who" id="cp-who"></div>
-          <div class="cp-halt" id="cp-halt"><p class="cp-halted" id="strip-halted" role="status" hidden></p>
-            <button class="halt" id="strip-halt" type="button" disabled aria-label="Halt the selected printer: stops every motor and heater at once"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg><span class="halt-word">Halt</span><kbd class="halt-key" aria-hidden="true"></kbd></button></div>
+      <section class="stage cp-stage" id="p-stage" aria-label="The printer in 3D"></section>
+      <div class="cp-top" id="cp-top">
+        <div class="cp-who" id="cp-who"></div>
+        <div class="cp-halt" id="cp-halt"><p class="cp-halted" id="strip-halted" role="status" hidden></p>
+          <button class="halt" id="strip-halt" type="button" disabled aria-label="Halt the selected printer: stops every motor and heater at once"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3h8l5 5v8l-5 5H8l-5-5V8z"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg><span class="halt-word">Halt</span><kbd class="halt-key" aria-hidden="true"></kbd></button></div>
+      </div>
+      <aside class="cp-left" id="cp-left" aria-label="The print">
+        <div class="tile tile-job" id="tile-job">
+          <button type="button" class="tile-main" id="tile-job-open" data-open="job" aria-haspopup="dialog"><span class="tile-h">This print</span><span class="tile-body" id="tile-job-body"></span></button>
+          <button type="button" class="tile-tune" id="tile-tune" data-open="tune" aria-haspopup="dialog" aria-label="Tune speed, flow and fan"><span class="tile-body" id="tile-tune-body"></span></button>
         </div>
-        <button type="button" class="cp-twin-open" id="twin-open" data-open="twin">Click the printer to open it</button>
-      </section>
-      <aside class="cp-rail cp-right" id="cp-right" aria-label="The print and the camera">
-        <button type="button" class="tile tile-job" id="tile-job" data-open="job" aria-haspopup="dialog"><span class="tile-h">This print</span><span class="tile-body" id="tile-job-body"></span></button>
+      </aside>
+      <aside class="cp-right" id="cp-right" aria-label="The camera">
         <div class="tile tile-cam" id="tile-cam"><button type="button" class="tile-cam-open" data-open="camera" aria-haspopup="dialog"><span class="tile-h">Camera</span><span class="tile-more">Open large</span></button><div class="tile-cam-slot" id="cp-cam-slot" data-open="camera" data-open-only="plain"></div></div>
       </aside>
+      <button type="button" class="cp-twin-open" id="twin-open" data-open="twin">Press the printer to open it</button>
       <nav class="cp-dock" id="cp-dock" aria-label="Printer controls">${DOCK.map(([n, label]) =>
-        `<button type="button" class="dk-btn" data-open="${n}" data-module-body="printer_control" aria-haspopup="dialog">${svg(SHEETS[n].icon)}<span>${label}</span></button>`).join('')}</nav>`;
+        `<button type="button" class="dk-btn" data-open="${n}" data-module-body="printer_control" aria-haspopup="dialog" aria-label="${label}">${svg(SHEETS[n].icon)}<span>${label}</span></button>`).join('')}</nav>`;
     const head = $('pp-head');
     if (head) head.after(grid); else panel.prepend(grid);
     const hold = $('cp-hold'), stage = $('p-stage');
@@ -104,14 +105,6 @@
     put('pp-camera-card', $('cp-cam-slot'));
     panel.querySelectorAll('.pp-stage, .pp-side, .grid-2').forEach(el => { if (!el.querySelector('.card')) el.remove(); });
     panel.querySelectorAll(':scope > div[data-module-body]').forEach(el => { if (!el.children.length) el.remove(); });
-
-    // The widths of the two rails: draggable, remembered, and the same as before for anyone who set them.
-    if (window.Panes && Panes.splitter) {
-      const v1 = Panes.splitter({ host: grid, prop: '--left', axis: 'x', sign: 1, label: 'Resize the temperature tiles', min: 190, max: 400, def: 250, name: 'printer.left', cls: 'v1', keep: 560 });
-      const v2 = Panes.splitter({ host: grid, prop: '--right', axis: 'x', sign: -1, label: 'Resize the print and camera tiles', min: 220, max: 460, def: 290, name: 'printer.right', cls: 'v2', keep: 560 });
-      $('cp-left').after(v1);
-      $('cp-right').before(v2);
-    }
 
     deck = Deck.create({
       id: 'cp', root: grid, sheets: SHEETS, hold,
@@ -161,7 +154,8 @@
       if (!down || isOpen() || e.target.closest('button, a, input, select, summary, label')) { down = null; return; }
       const still = Math.abs(e.clientX - down.x) < 5 && Math.abs(e.clientY - down.y) < 5 && Date.now() - down.t < 400;
       down = null;
-      if (still && e.target.closest('#twin-card')) open('twin', stage);
+      if (still && e.target.closest('.t3-tag')) open('temps', e.target.closest('.t3-tag'));          // a reading on the machine opens its depth
+      else if (still && e.target.closest('#twin-card')) open('twin', stage);
     });
     stage.addEventListener('pointerenter', () => { if (!isOpen() && spinning()) { spunByUs = true; spin(false); } });
     stage.addEventListener('pointerleave', () => { if (spunByUs && !isOpen()) { spunByUs = false; spin(true); } });
@@ -185,24 +179,11 @@
 
   /* ---- the tiles ---- */
   const fill = (body, html) => { if (body && body.dataset.sig !== html) { body.dataset.sig = html; body.innerHTML = html; } };
-  function paintTemps(s) {
-    const heads = s && s.toolheads ? Object.entries(s.toolheads) : [];
-    const active = s && s.active_toolhead;
-    const rows = heads.map(([n, h]) => {
-      const c = hex(h.filament_color_hex), target = h.target_temperature;
-      return `<span class="tt-row${n === active ? ' is-active' : ''}${h.status === 'error' ? ' is-bad' : ''}">
-        <i class="tt-dot" style="${c ? `background:${c}` : ''}"></i><b>${esc(n)}</b><em>${esc(h.filament_material || '')}</em>
-        <span class="tt-v"><strong>${temp(h.temperature)}</strong>${target > 0 ? `<small> → ${temp(target)}</small>` : '<small> off</small>'}</span></span>`;
-    }).join('');
-    const bed = s ? `<span class="tt-row tt-env"><b>Bed</b><span class="tt-v"><strong>${temp(s.bed_temperature)}</strong>${s.bed_target > 0 ? `<small> → ${temp(s.bed_target)}</small>` : '<small> off</small>'}</span></span>` : '';
-    const ch = s && s.chamber_temperature != null ? `<span class="tt-row tt-env"><b>Chamber</b><span class="tt-v"><strong>${temp(s.chamber_temperature)}</strong></span></span>` : '';
-    fill($('tile-temps-body'), rows ? rows + bed + ch : '<span class="tile-empty">No printer connected</span>');
-  }
   function paintTune(s) {
     const t = (s && s.tuning) || {};
     const pct = v => (v == null || !isFinite(v) ? '—' : `${Math.round(v * 100)}%`);
     fill($('tile-tune-body'), s ? `<span class="tn"><i>Speed</i><b>${pct(t.speed_factor)}</b></span><span class="tn"><i>Flow</i><b>${pct(t.extrude_factor)}</b></span><span class="tn"><i>Part fan</i><b>${pct(t.part_fan)}</b></span>`
-      : '<span class="tile-empty">—</span>');
+      : '<span class="tile-empty">Speed, flow and fan</span>');
   }
   function jobHtml(s, full) {
     if (!s || !s.state) return '<span class="tile-empty">No printer connected</span>';
@@ -230,7 +211,6 @@
   }
   function paint(s) {
     state = s;
-    paintTemps(s);
     paintTune(s);
     paintJob(s);
     if (grid) grid.dataset.state = (s && s.state) || '';

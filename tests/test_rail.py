@@ -131,8 +131,8 @@ class TestRailLiveParts(unittest.TestCase):
             self.assertIn(needle, RAIL)
         self.assertNotIn("title=", RAIL[RAIL.index("function build()"):RAIL.index("function keySheet()")])   # names are aria-label, never title
 
-    def test_the_sidebar_rests_as_icons_opens_on_hover_and_closes_three_seconds_after_you_leave(self):
-        for needle in ("chosenMode", "dejavu1.rail.mode", "rail-collapsed", "dv-rail-width", "LINGER_MS = 3000", "rail-open", "pointerenter", "pointerleave",
+    def test_the_sidebar_rests_as_icons_opens_on_hover_and_closes_by_itself_after_you_leave(self):
+        for needle in ("chosenMode", "dejavu1.rail.mode", "rail-collapsed", "dv-rail-width", "LINGER_MS = 1500", "FAR_MS = 450", "CLICK_MS = 120", "EDGE_MS = 140", "SLACK_PX = 14", "rail-edge", "rail-open", "pointerenter", "pointerleave",
                        "focusin", "focusout", "e.pointerType === 'touch'"):
             self.assertIn(needle, RAIL)
         self.assertNotIn("narrow: true", RAIL)                  # no place decides the width: the sidebar is icons everywhere

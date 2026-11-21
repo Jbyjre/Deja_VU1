@@ -165,32 +165,71 @@
   }
 
   /* ---- the sidebar opens over the page and closes by itself ----
-     Icons only at rest. The pointer (or the keyboard) opens it over the page without moving anything; it closes 3 seconds after the pointer
-     or the focus last left it, so crossing to something and back does not make it flap. A sidebar someone chose to keep open is just wide. */
-  const LINGER_MS = 3000, CHOSEN_MS = 700, INTENT_MS = 90;
-  let lingerTimer = 0, intentTimer = 0, chose = false;
+     Icons only at rest. It opens when the pointer rests on the icons (INTENT_MS) or on a thin strip at the window's left edge (EDGE_MS), so a flick
+     to the edge is never missed, and it stays open while the pointer is on it or within SLACK_PX of it, so drifting out and back never makes it flap.
+     It closes LINGER_MS after the pointer left; sooner (FAR_MS) when the pointer is clearly somewhere else (over FAR_PX away, or out of the window);
+     almost at once (CLICK_MS) when you press anywhere outside it; and CHOSEN_MS after leaving once a place was chosen from it, so it does not sit
+     over the new screen. Never closed under you: an open printer menu and keyboard focus inside it keep it open (a mouse click leaves no focus ring,
+     so it never pins it). Escape closes it. A sidebar someone chose to keep open is just wide. */
+  const LINGER_MS = 1500, FAR_MS = 450, CLICK_MS = 120, CHOSEN_MS = 600, INTENT_MS = 110, EDGE_MS = 140, FAR_PX = 170, SLACK_PX = 14, EDGE_PX = 10;
+  let closeTimer = 0, closeAt = 0, intentTimer = 0, chose = false;
   const setOpen = on => { if (root.classList.contains('rail-open') !== on) root.classList.toggle('rail-open', on); };
   function wireOpen() {
     const rail = document.getElementById('rail');
-    if (!rail) return;
-    const stays = () => menuOpen || rail.matches(':hover') || (rail.contains(document.activeElement) && document.activeElement.matches(':focus-visible'));
-    // Browsing keeps it open for 3 seconds after you leave; once you have chosen a place it gets out of the new screen's way after 0.7 s.
-    const later = () => {
-      clearTimeout(lingerTimer);
-      lingerTimer = setTimeout(() => { if (stays()) later(); else { chose = false; setOpen(false); } }, chose ? CHOSEN_MS : LINGER_MS);
+    const card = rail && rail.querySelector('.rail-card');
+    if (!rail || !card) return;
+    const edge = document.createElement('div');
+    edge.className = 'rail-edge';
+    edge.id = 'rail-edge';
+    edge.setAttribute('aria-hidden', 'true');
+    document.body.append(edge);
+    const hover = () => root.classList.contains('rail-collapsed');          // a sidebar kept open has nothing to open or close
+    const isOpen = () => root.classList.contains('rail-open');
+    const keyboardIn = () => rail.contains(document.activeElement) && document.activeElement.matches(':focus-visible');
+    const stays = () => menuOpen || rail.matches(':hover') || keyboardIn();
+    const away = (x, y) => {                                              // how far the pointer is from the open sidebar (0 within its forgiving margin)
+      const r = card.getBoundingClientRect();
+      return Math.hypot(Math.max(r.left - SLACK_PX - x, 0, x - (r.right + SLACK_PX)), Math.max(r.top - SLACK_PX - y, 0, y - (r.bottom + SLACK_PX)));
     };
-    rail.addEventListener('pointerenter', e => {
-      if (e.pointerType === 'touch') return;                  // a tap goes to the item, it does not open the sidebar
-      clearTimeout(lingerTimer);
-      clearTimeout(intentTimer);
+    const cancelClose = () => { clearTimeout(closeTimer); closeTimer = 0; closeAt = 0; };
+    const fire = () => {
+      closeTimer = 0; closeAt = 0;
+      if (stays()) { if (!rail.matches(':hover')) { closeAt = performance.now() + 500; closeTimer = setTimeout(fire, 500); } return; }   // a menu or the keyboard still has it
       chose = false;
-      intentTimer = setTimeout(() => setOpen(true), INTENT_MS);
-    });
-    rail.addEventListener('pointerleave', () => { clearTimeout(intentTimer); if (root.classList.contains('rail-open')) later(); });
+      setOpen(false);
+    };
+    const closeIn = ms => {                                               // never lengthens a close that is already counting down
+      const at = performance.now() + ms;
+      if (closeTimer && closeAt <= at) return;
+      clearTimeout(closeTimer);
+      closeAt = at;
+      closeTimer = setTimeout(fire, ms);
+    };
+    const openSoon = ms => { if (!intentTimer) intentTimer = setTimeout(() => { intentTimer = 0; cancelClose(); setOpen(true); }, ms); };
+    const dropIntent = () => { clearTimeout(intentTimer); intentTimer = 0; };
+
+    rail.addEventListener('pointerenter', e => { if (e.pointerType === 'touch' || !hover()) return; cancelClose(); if (!isOpen()) openSoon(INTENT_MS); });
+    rail.addEventListener('pointerleave', e => { dropIntent(); if (e.pointerType !== 'touch' && isOpen() && hover()) closeIn(chose ? CHOSEN_MS : LINGER_MS); });
+    edge.addEventListener('pointerenter', e => { if (e.pointerType === 'touch' || !hover() || isOpen()) return; openSoon(EDGE_MS); });
+    edge.addEventListener('pointerleave', dropIntent);
+    // While it is open, how far the pointer has gone decides how soon it goes: near it, a grace period; far from it, no waiting.
+    document.addEventListener('pointermove', e => {
+      if (e.pointerType === 'touch' || !hover() || !isOpen() || menuOpen) return;
+      const d = away(e.clientX, e.clientY);
+      if (d === 0) { cancelClose(); return; }
+      closeIn(d > FAR_PX ? FAR_MS : chose ? CHOSEN_MS : LINGER_MS);
+    }, { passive: true });
+    document.documentElement.addEventListener('pointerleave', e => { if (e.pointerType !== 'touch' && isOpen() && hover() && !stays()) closeIn(FAR_MS); });   // the pointer left the window
+    // A press anywhere else is a clear "I am done with it".
+    document.addEventListener('pointerdown', e => {
+      if (!isOpen() || !hover() || e.target.closest('#rail, #rail-menu, #rail-switch')) return;
+      dropIntent();
+      closeIn(CLICK_MS);
+    }, true);
     rail.addEventListener('click', e => { if (e.target.closest('.rail-item')) chose = true; });
-    rail.addEventListener('focusin', e => { if (e.target.matches && e.target.matches(':focus-visible')) { clearTimeout(lingerTimer); setOpen(true); } });
-    rail.addEventListener('focusout', e => { if (!rail.contains(e.relatedTarget)) later(); });
-    rail.addEventListener('keydown', e => { if (e.key === 'Escape' && root.classList.contains('rail-open')) setOpen(false); });
+    rail.addEventListener('focusin', e => { if (e.target.matches && e.target.matches(':focus-visible')) { cancelClose(); setOpen(true); } });
+    rail.addEventListener('focusout', e => { if (!rail.contains(e.relatedTarget) && isOpen() && hover() && !rail.matches(':hover')) closeIn(LINGER_MS); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen() && hover() && (rail.contains(document.activeElement) || rail.matches(':hover'))) { cancelClose(); setOpen(false); } });
   }
 
   /* Keep the address and the highlighted item in step with the page. */

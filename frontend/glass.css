@@ -1,0 +1,244 @@
+/* glass.css: one glass system for the whole frame ("Daylight glass"). Loaded after cockpit.css and before looks.css.
+ *
+ * Two grades, one rule (Apple's Materials guidance, checked 21 November 2026): CONTROLS and NAVIGATION are Liquid Glass (clear, lensed edges, a
+ * bright rim, floating); CONTENT panels are a quieter frosted material that lets the coloured room show through. Everything sits over the room
+ * (the pools the loaded filaments tint, the layer lines, the dots), so glass always has something to bend. No panel is opaque paper, and no glass
+ * sits on glass: a panel's own controls are flat on it.
+ *
+ *   tier 4  anchored, wide and soft          the sidebar, the toolbar capsule
+ *   tier 3  floating, the strongest shadow   the dock pills, readings on the printer, the open sidebar, sheets' controls
+ *   tier 2  panels                            cards, tiles, the Settings list
+ *   tier 1  inline                            segmented controls, chips
+ *
+ * Looks (Workbench, Control room) still win: looks.css loads after this file and its rules carry an id's weight.
+ * Accessibility is at the end of the file: reduced transparency makes every panel solid, increased contrast adds borders, reduced motion
+ * removes the glints. */
+
+/* ---- tokens ---------------------------------------------------------------------------------------------------------------- */
+:root {
+  --g-tint: oklch(100% 0 0 / 0.40);
+  --g-tint-hi: oklch(100% 0 0 / 0.62);
+  --m-tint: oklch(100% 0.004 235 / 0.56);
+  --m-tint-solid: oklch(99% 0.004 235);
+  --g-line: oklch(30% 0.03 250 / 0.1);
+  --g-rim-a: oklch(100% 0 0 / 0.92);
+  --g-rim-b: oklch(100% 0 0 / 0.1);
+  --g-sh-1: 0 1px 2px rgba(20, 40, 80, 0.05), 0 4px 14px rgba(20, 40, 80, 0.06);
+  --g-sh-2: 0 1px 2px rgba(20, 40, 80, 0.06), 0 10px 30px rgba(20, 40, 80, 0.1);
+  --g-sh-3: 0 2px 4px rgba(20, 40, 80, 0.12), 0 16px 38px rgba(20, 40, 80, 0.22);
+  --g-sh-4: 0 1px 2px rgba(20, 40, 80, 0.06), 0 8px 28px rgba(20, 40, 80, 0.12);
+  --r-card: 22px;
+  --r-ctl: 16px;
+  --g-blur: 20px;
+  --g-sat: 1.55;
+  --scene-sky: oklch(93.5% 0.04 236);
+  --scene-mid: oklch(95.5% 0.026 214);
+  --scene-low: oklch(94.5% 0.034 196);
+  --room-top: oklch(93% 0.035 232);
+  --room-bot: oklch(87% 0.05 205);
+}
+html[data-theme="dark"]:not(#dv) {
+  --g-tint: oklch(32% 0.035 256 / 0.42);
+  --g-tint-hi: oklch(38% 0.04 256 / 0.6);
+  --m-tint: oklch(26% 0.03 256 / 0.55);
+  --m-tint-solid: oklch(22% 0.025 256);
+  --g-line: oklch(95% 0.02 250 / 0.12);
+  --g-rim-a: oklch(100% 0 0 / 0.3);
+  --g-rim-b: oklch(100% 0 0 / 0.04);
+  --g-sh-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.25);
+  --g-sh-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.32);
+  --g-sh-3: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 38px rgba(0, 0, 0, 0.5);
+  --g-sh-4: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.35);
+  --scene-sky: oklch(19% 0.045 262);
+  --scene-mid: oklch(16.5% 0.035 250);
+  --scene-low: oklch(15.5% 0.04 236);
+  --room-top: oklch(25% 0.045 258);
+  --room-bot: oklch(15% 0.04 244);
+}
+
+/* ---- the room: what the glass bends ----------------------------------------------------------------------------------------- */
+html.has-shell:not(#dv) body {
+  background:
+    radial-gradient(70% 60% at 12% 0%, color-mix(in oklch, var(--accent) 22%, transparent), transparent 70%),
+    radial-gradient(60% 55% at 96% 100%, color-mix(in oklch, oklch(80% 0.1 190) 38%, transparent), transparent 72%),
+    linear-gradient(160deg, var(--scene-sky), var(--scene-mid) 52%, var(--scene-low));
+}
+html.has-shell .bg .pool-a { opacity: 0.5; }
+html.has-shell .bg .pool-b { opacity: 0.42; }
+html[data-theme="dark"].has-shell:not(#dv) .bg .pool-a { opacity: 0.34; }
+html[data-theme="dark"].has-shell:not(#dv) .bg .pool-b { opacity: 0.3; }
+
+/* ---- the frame: nothing boxed ----------------------------------------------------------------------------------------------- */
+:root { --sh-gap: 12px; --sh-r: var(--r-card); }
+html.has-shell .wrap { overflow: visible; background: transparent; box-shadow: none; border-radius: 0; }
+html.has-shell .wrap::after { display: none; }
+html.has-shell .wrap > .tab-panel:not([hidden]) { padding: 2px 6px 0; margin: 0 -6px; }
+
+/* the toolbar: a clear glass capsule that floats over the room (tier 4) */
+html.has-shell .topbar {
+  margin: 0 0 12px; min-height: 56px; padding: 0 10px 0 18px; gap: 12px; border: 0; border-radius: 22px; position: relative; isolation: isolate;
+  background: var(--g-tint); box-shadow: var(--g-sh-4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.7); backdrop-filter: blur(16px) saturate(1.7);
+}
+html.has-shell .topbar::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(165deg, var(--g-rim-a), var(--g-rim-b) 38%, var(--g-rim-b) 62%, color-mix(in oklch, var(--g-rim-a) 55%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+html.has-shell .pb-parts { background: color-mix(in oklch, var(--text) 6%, transparent); border-radius: 13px; padding: 3px; }
+html.has-shell .pb-part { border-radius: 10px; min-height: 30px; }
+html.has-shell .pb-part[aria-selected="true"] { background: var(--g-tint-hi); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.14), inset 0 0 0 1px var(--g-line); color: var(--text); }
+html[data-theme="dark"].has-shell .pb-part[aria-selected="true"] { background: oklch(100% 0 0 / 0.14); }
+html.has-shell .feature-finder #feature-search { border: 0; border-radius: 13px; background-color: color-mix(in oklch, var(--text) 6%, transparent); height: 34px; }
+html.has-shell .pb-title { font-size: 18px; }
+
+/* ---- panels: the frosted material (tier 2). Cards on a screen float; cards inside the Printer room, Overview or a sheet stay flat on it ---------------------- */
+html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *) {
+  position: relative; background: var(--m-tint); border: 0; border-radius: var(--r-card); margin: 0;
+  box-shadow: var(--g-sh-2); -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+  padding: 6px 0 16px; animation: none;
+}
+html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *)::after {
+  display: block; content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
+  background: linear-gradient(165deg, var(--g-rim-a), var(--g-rim-b) 40%, var(--g-rim-b) 62%, color-mix(in oklch, var(--g-rim-a) 50%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *)::before { display: none; }
+html.has-shell .wrap .grid-2, html.has-shell .wrap .flow-run, html.has-shell .wrap .desk-grid, html.has-shell .wrap .ov-grid { gap: 14px; }
+html.has-shell .wrap .grid-2 > .card, html.has-shell .wrap .flow-run > .card, html.has-shell .wrap .flow-run > .grid-2 > .card { box-shadow: var(--g-sh-2); }
+html.has-shell .wrap .tab-panel > .card + .card, html.has-shell .wrap .tab-panel > * + .card, html.has-shell .wrap .tab-panel > .card + * { margin-top: 14px; }
+html.has-shell .wrap .card-head { padding: 12px 18px 4px; }
+html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 18px; margin-right: 18px; max-width: calc(100% - 36px); }
+
+/* titles: sentence case, a real weight; the mono capitals are for numbers and nothing else */
+html.has-shell .wrap :is(.card, .tab-sub) h2, html.has-shell .wrap .pane-block h2 {
+  font: 640 15px/1.3 var(--font-display); letter-spacing: -0.005em; text-transform: none; color: var(--text);
+}
+html.has-shell .wrap .pane-block h2 { padding: 14px 18px 4px; }
+
+html.has-shell .rail, html.has-shell:not(#dv) .rail { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }   /* only the card inside is glass */
+/* ---- the sidebar: tier 4 Liquid Glass, clear enough to read the room through it -------------------------------------------- */
+html.has-shell .rail-card {
+  border-radius: 26px; background: var(--g-tint); box-shadow: var(--g-sh-4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.7); backdrop-filter: blur(14px) saturate(1.7);
+}
+html.has-shell.rail-collapsed.rail-open .rail-card { background: color-mix(in oklch, var(--m-tint-solid) 62%, transparent); box-shadow: var(--g-sh-3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8); }
+html.has-shell .rail-item { border-radius: 14px; }
+html.has-shell .rail-item.active { background: var(--g-tint-hi); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.14), inset 0 0 0 1px var(--g-line); }
+html[data-theme="dark"].has-shell .rail-item.active { background: oklch(100% 0 0 / 0.14); }
+html.has-shell .rail-who { border: 0; background: color-mix(in oklch, var(--text) 6%, transparent); border-radius: 15px; }
+html.has-shell .rail-menu { border-radius: 20px; background: color-mix(in oklch, var(--m-tint-solid) 78%, transparent); box-shadow: var(--g-sh-3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); }
+
+/* ---- the floating dock: the orb, Ask, the tester flag, the link words (tier 3) ------------------------------------------------ */
+html.has-shell .strip .conn, html.has-shell .strip .ai-launch, html.has-shell .strip #handoff, html.has-shell .strip .wo-pill, html.has-shell .tester-flag,
+html.has-shell #tester-felt {
+  background: color-mix(in oklch, var(--m-tint-solid) 60%, transparent); border: 0; box-shadow: var(--g-sh-3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7); backdrop-filter: blur(18px) saturate(1.7);
+}
+html.has-shell .strip #handoff { border-radius: 20px; }
+
+/* ---- sheets: solid enough to hold controls, glass at the edge ------------------------------------------------------------------ */
+html.has-shell .cp-sheet {
+  background: color-mix(in oklch, var(--m-tint-solid) 84%, transparent); border: 0; border-radius: 26px; box-shadow: var(--g-sh-3);
+  -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7);
+}
+html.has-shell .cp-sheet-head { border-bottom: 1px solid var(--g-line); }
+html.has-shell .cp-x { border: 0; background: color-mix(in oklch, var(--text) 8%, transparent); }
+
+/* ---- accessibility: the three settings every approximation has to honour ------------------------------------------------------- */
+@media (prefers-reduced-transparency: reduce) {
+  html.has-shell .topbar, html.has-shell .rail-card, html.has-shell .rail-menu, html.has-shell .cp-sheet, html.has-shell .strip .conn, html.has-shell .strip .ai-launch,
+  html.has-shell .strip #handoff, html.has-shell #tester-felt, html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block) {
+    -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--m-tint-solid);
+  }
+}
+@media (prefers-contrast: more) {
+  html.has-shell .topbar, html.has-shell .rail-card, html.has-shell .rail-menu, html.has-shell .cp-sheet,
+  html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block) { background: var(--m-tint-solid); box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .topbar::after, html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block)::after { display: none; }
+}
+
+/* ---- readings on the printer: small glass tags (tier 3) --------------------------------------------------------------------- */
+.t3-tag {
+  gap: 6px; padding: 4px 11px 4px 8px; border-radius: 999px; font: 600 12px/1.2 var(--font-sans); color: var(--text);
+  background: color-mix(in oklch, var(--m-tint-solid) 58%, transparent); box-shadow: var(--g-sh-3);
+  -webkit-backdrop-filter: blur(10px) saturate(1.6); backdrop-filter: blur(10px) saturate(1.6);
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+.t3-tag .t3-t { font: 600 12px var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.t3-tag em { font: normal 550 11.5px var(--font-sans); opacity: 0.85; }
+.t3-tag:hover { transform: translate(-50%, -100%) scale(1.04); }
+.t3-tag.on { background: color-mix(in oklch, var(--accent) 86%, transparent); color: #fff; }
+.t3-tag.fault { background: color-mix(in oklch, var(--bad-text, #b3261e) 90%, transparent); color: #fff; }
+
+/* ---- a card that only holds other panels is not a panel itself (All printers) ---------------------------------------------- */
+html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *), html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *)::after {
+  background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0; border-radius: 0;
+}
+html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *)::after { display: none; }
+html.has-shell #tab-fleet .card:has(> .fleet-grid) > .card-head { padding: 2px 6px 10px; }
+html.has-shell #tab-fleet .card:has(> .fleet-grid) > :not(.card-head) { margin-left: 0; margin-right: 0; max-width: none; }
+html.has-shell .fc-bar, html.has-shell .fc-bar.liquid-glass { border: 0; border-radius: 18px; background: color-mix(in oklch, var(--m-tint-solid) 50%, transparent); box-shadow: var(--g-sh-1); -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); margin-bottom: 14px; }
+html.has-shell .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: stretch; }
+html.has-shell .wrap .tab-panel .fleet-card:not(.cp *) { padding: 18px 20px 18px; border-radius: var(--r-card); box-shadow: var(--g-sh-2); }
+html.has-shell .wrap .tab-panel .fleet-card.is-selected:not(.cp *) { box-shadow: var(--g-sh-2), 0 0 0 2px color-mix(in oklch, var(--accent) 70%, transparent); }
+html.has-shell .fleet-card .fc-stat dt, html.has-shell .fleet-card dt { font: 500 11.5px var(--font-sans); letter-spacing: 0; text-transform: none; color: var(--text-faint); }
+html.has-shell .fleet-card .badge, html.has-shell .fleet-card .fc-state { font: 600 12px var(--font-sans); letter-spacing: 0; text-transform: none; }
+html.has-shell .fleet-card :is(.btn, button.open, .fc-open) { border-radius: 14px; }
+
+/* ---- Settings: a glass list of groups, then panels of one width --------------------------------------------------------------- */
+html.has-shell .set-panes { grid-template-columns: 252px minmax(0, 1fr); gap: 16px; padding: 2px 4px 0; }
+html.has-shell .set-panes > .split { display: none; }
+html.has-shell .set-nav { align-self: start; border: 0; border-radius: var(--r-card); padding: 14px 10px 12px; background: var(--m-tint); box-shadow: var(--g-sh-2);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); overflow: visible; }
+html.has-shell .set-search input { height: 40px; border: 0; border-radius: 14px; background: color-mix(in oklch, var(--text) 6%, transparent); padding: 0 14px; }
+html.has-shell .set-groups { margin-top: 12px; gap: 3px; }
+html.has-shell .set-groups button { min-height: 42px; padding: 0 14px; border-radius: 14px; font: 560 13.5px var(--font-sans); }
+html.has-shell .set-groups button:hover { background: color-mix(in oklch, var(--text) 6%, transparent); }
+html.has-shell .set-groups button[aria-current="true"] { background: var(--g-tint-hi); color: var(--text); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.12), inset 0 0 0 1px var(--g-line); }
+html[data-theme="dark"].has-shell .set-groups button[aria-current="true"] { background: oklch(100% 0 0 / 0.14); }
+html.has-shell .set-body { padding: 0 6px 72px 2px; display: flex; flex-direction: column; gap: 14px; }
+html.has-shell .set-body > :is(.card, .flow-run, .pane-block, .stats, .notice) { width: 100%; max-width: 1020px; margin: 0; }
+html.has-shell .set-row { padding: 14px 18px; border-bottom: 1px solid var(--g-line); }
+html.has-shell .set-t b { font-size: 14px; }
+
+/* ---- the sidebar's hot strip: a flick to the window's left edge opens it (rail.js) -------------------------------------------- */
+.rail-edge { position: fixed; z-index: 7; left: 0; top: 0; bottom: 0; width: 10px; }
+@media (max-width: 720px) { .rail-edge { display: none; } }
+
+/* the sidebar opens over everything on the screen, a sheet included (a sheet's layer is 21; the floating dock is 60) */
+html.has-shell .rail { z-index: 40; }
+
+/* ---- screens that were mostly empty: given a purpose, not filler -------------------------------------------------------------- */
+/* Models: the model sites are large glass tiles, the converter pointer a quiet pill */
+html.has-shell #models-pointer { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 18px; margin-bottom: 14px; }
+html.has-shell #models-pointer .card-sub { margin: 0; flex: 1 1 280px; }
+html.has-shell #models-sites { padding: 18px 20px 22px; }
+html.has-shell #models-sites .site-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+html.has-shell #models-sites .site-row { display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 4px 10px; min-height: 108px; padding: 18px 20px; border-radius: 20px; text-decoration: none; color: var(--text);
+  background: color-mix(in oklch, var(--m-tint-solid) 62%, transparent); box-shadow: var(--g-sh-1), inset 0 0 0 1px var(--g-line); transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease; }
+html.has-shell #models-sites .site-row b { font: 640 19px/1.2 var(--font-display); letter-spacing: -0.015em; }
+html.has-shell #models-sites .site-row span { grid-column: 1; font: 12.5px var(--font-mono); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; }
+html.has-shell #models-sites .site-row svg { grid-column: 2; grid-row: 1 / span 2; align-self: center; width: 20px; height: 20px; fill: none; stroke: var(--accent-text); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+html.has-shell #models-sites .site-row:hover { transform: translateY(-2px); background: var(--g-tint-hi); box-shadow: var(--g-sh-2), inset 0 0 0 1px var(--g-line); }
+html.has-shell #models-sites .site-row:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+/* AI with none connected: the introduction is the page, set larger and centred in the room */
+html.has-shell #ai-page .ai-intro { width: min(100%, 1080px); margin: clamp(0px, 4vh, 40px) auto 0; padding: clamp(24px, 3.4vw, 44px); }
+html.has-shell #ai-page .ai-intro h2 { font-size: clamp(26px, 3vw, 38px); }
+html.has-shell #ai-page .ai-intro-text > p { font-size: 15px; }
+@media (prefers-reduced-motion: reduce) { html.has-shell #models-sites .site-row { transition: none; } html.has-shell #models-sites .site-row:hover { transform: none; } }
+
+/* ---- a phone: the page scrolls, panels are one column, nothing runs sideways ---------------------------------------------------- */
+@media (max-width: 720px) {
+  html.has-shell .set-panes { display: flex; flex-direction: column; gap: 12px; padding: 0; height: auto; }
+  html.has-shell .set-nav { align-self: stretch; min-width: 0; padding: 10px; }
+  html.has-shell .set-groups { flex-direction: row; overflow-x: auto; scrollbar-width: none; margin-top: 8px; }
+  html.has-shell .set-groups button { width: auto; white-space: nowrap; min-height: 38px; }
+  html.has-shell .set-body { padding: 0 0 8px; min-width: 0; }
+  html.has-shell .set-body > :is(.card, .flow-run, .pane-block, .stats, .notice) { max-width: none; }
+  html.has-shell .fleet-grid { grid-template-columns: minmax(0, 1fr); }
+  html.has-shell .topbar { border-radius: 20px; min-height: 0; }
+  html.has-shell .wrap > .tab-panel:not([hidden]) { margin: 0; padding: 0; }
+}
