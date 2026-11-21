@@ -23,19 +23,20 @@
   --g-line: oklch(30% 0.03 250 / 0.1);
   --g-rim-a: oklch(100% 0 0 / 0.92);
   --g-rim-b: oklch(100% 0 0 / 0.1);
-  --g-sh-1: 0 1px 2px rgba(20, 40, 80, 0.05), 0 4px 14px rgba(20, 40, 80, 0.06);
-  --g-sh-2: 0 1px 2px rgba(20, 40, 80, 0.06), 0 10px 30px rgba(20, 40, 80, 0.1);
-  --g-sh-3: 0 2px 4px rgba(20, 40, 80, 0.12), 0 16px 38px rgba(20, 40, 80, 0.22);
-  --g-sh-4: 0 1px 2px rgba(20, 40, 80, 0.06), 0 8px 28px rgba(20, 40, 80, 0.12);
-  --r-card: 22px;
-  --r-ctl: 16px;
-  --g-blur: 20px;
-  --g-sat: 1.55;
-  --scene-sky: oklch(93.5% 0.04 236);
-  --scene-mid: oklch(95.5% 0.026 214);
-  --scene-low: oklch(94.5% 0.034 196);
-  --room-top: oklch(93% 0.035 232);
-  --room-bot: oklch(87% 0.05 205);
+  --g-line-strong: oklch(28% 0.03 250 / 0.2);
+  --g-sh-1: 0 1px 1px rgba(15, 25, 45, 0.05);
+  --g-sh-2: 0 1px 1px rgba(15, 25, 45, 0.05), 0 6px 18px rgba(15, 25, 45, 0.07);
+  --g-sh-3: 0 1px 2px rgba(15, 25, 45, 0.1), 0 10px 28px rgba(15, 25, 45, 0.16);
+  --g-sh-4: 0 1px 1px rgba(15, 25, 45, 0.05), 0 6px 20px rgba(15, 25, 45, 0.09);
+  --r-card: 16px;
+  --r-ctl: 10px;
+  --g-blur: 16px;
+  --g-sat: 1.35;
+  --scene-sky: oklch(95.2% 0.01 248);
+  --scene-mid: oklch(94.4% 0.012 242);
+  --scene-low: oklch(93.6% 0.014 236);
+  --room-top: oklch(94% 0.012 244);
+  --room-bot: oklch(88% 0.02 238);
 }
 html[data-theme="dark"]:not(#dv) {
   --g-tint: oklch(32% 0.035 256 / 0.42);
@@ -45,26 +46,36 @@ html[data-theme="dark"]:not(#dv) {
   --g-line: oklch(95% 0.02 250 / 0.12);
   --g-rim-a: oklch(100% 0 0 / 0.3);
   --g-rim-b: oklch(100% 0 0 / 0.04);
-  --g-sh-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.25);
-  --g-sh-2: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.32);
-  --g-sh-3: 0 2px 4px rgba(0, 0, 0, 0.5), 0 16px 38px rgba(0, 0, 0, 0.5);
-  --g-sh-4: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.35);
-  --scene-sky: oklch(19% 0.045 262);
-  --scene-mid: oklch(16.5% 0.035 250);
-  --scene-low: oklch(15.5% 0.04 236);
-  --room-top: oklch(25% 0.045 258);
-  --room-bot: oklch(15% 0.04 244);
+  --g-line-strong: oklch(95% 0.02 250 / 0.22);
+  --g-sh-1: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --g-sh-2: 0 1px 1px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.28);
+  --g-sh-3: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 28px rgba(0, 0, 0, 0.45);
+  --g-sh-4: 0 1px 1px rgba(0, 0, 0, 0.35), 0 6px 20px rgba(0, 0, 0, 0.3);
+  --scene-sky: oklch(19% 0.02 258);
+  --scene-mid: oklch(16.5% 0.018 252);
+  --scene-low: oklch(15% 0.02 246);
+  --room-top: oklch(24% 0.025 256);
+  --room-bot: oklch(15% 0.02 248);
 }
 
 /* ---- the room: what the glass bends ----------------------------------------------------------------------------------------- */
 html.has-shell:not(#dv) body {
   background:
-    radial-gradient(70% 60% at 12% 0%, color-mix(in oklch, var(--accent) 22%, transparent), transparent 70%),
-    radial-gradient(60% 55% at 96% 100%, color-mix(in oklch, oklch(80% 0.1 190) 38%, transparent), transparent 72%),
-    linear-gradient(160deg, var(--scene-sky), var(--scene-mid) 52%, var(--scene-low));
+    linear-gradient(oklch(30% 0.03 250 / 0.045) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, oklch(30% 0.03 250 / 0.045) 1px, transparent 1px) 0 0 / 32px 32px,
+    radial-gradient(60% 50% at 8% 0%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 70%),
+    linear-gradient(160deg, var(--scene-sky), var(--scene-mid) 55%, var(--scene-low));
 }
-html.has-shell .bg .pool-a { opacity: 0.5; }
-html.has-shell .bg .pool-b { opacity: 0.42; }
+html[data-theme="dark"].has-shell:not(#dv) body {
+  background:
+    linear-gradient(oklch(90% 0.02 250 / 0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, oklch(90% 0.02 250 / 0.04) 1px, transparent 1px) 0 0 / 32px 32px,
+    radial-gradient(60% 50% at 8% 0%, color-mix(in oklch, var(--accent) 12%, transparent), transparent 70%),
+    linear-gradient(160deg, var(--scene-sky), var(--scene-mid) 55%, var(--scene-low));
+}
+html.has-shell .bg::before { display: none; }                      /* the grid replaces the layer lines */
+html.has-shell .bg .pool-a { opacity: 0.26; }
+html.has-shell .bg .pool-b { opacity: 0.2; }
 html[data-theme="dark"].has-shell:not(#dv) .bg .pool-a { opacity: 0.34; }
 html[data-theme="dark"].has-shell:not(#dv) .bg .pool-b { opacity: 0.3; }
 
@@ -76,7 +87,7 @@ html.has-shell .wrap > .tab-panel:not([hidden]) { padding: 2px 6px 0; margin: 0 
 
 /* the toolbar: a clear glass capsule that floats over the room (tier 4) */
 html.has-shell .topbar {
-  margin: 0 0 12px; min-height: 56px; padding: 0 10px 0 18px; gap: 12px; border: 0; border-radius: 22px; position: relative; isolation: isolate;
+  margin: 0 0 12px; min-height: 52px; padding: 0 10px 0 16px; gap: 12px; border: 0; border-radius: 16px; position: relative; isolation: isolate;
   background: var(--g-tint); box-shadow: var(--g-sh-4);
   -webkit-backdrop-filter: blur(16px) saturate(1.7); backdrop-filter: blur(16px) saturate(1.7);
 }
@@ -85,18 +96,18 @@ html.has-shell .topbar::after {
   background: linear-gradient(165deg, var(--g-rim-a), var(--g-rim-b) 38%, var(--g-rim-b) 62%, color-mix(in oklch, var(--g-rim-a) 55%, transparent));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
 }
-html.has-shell .pb-parts { background: color-mix(in oklch, var(--text) 6%, transparent); border-radius: 13px; padding: 3px; }
-html.has-shell .pb-part { border-radius: 10px; min-height: 30px; }
+html.has-shell .pb-parts { background: color-mix(in oklch, var(--text) 6%, transparent); border-radius: 10px; padding: 3px; }
+html.has-shell .pb-part { border-radius: 7px; min-height: 28px; }
 html.has-shell .pb-part[aria-selected="true"] { background: var(--g-tint-hi); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.14), inset 0 0 0 1px var(--g-line); color: var(--text); }
 html[data-theme="dark"].has-shell .pb-part[aria-selected="true"] { background: oklch(100% 0 0 / 0.14); }
-html.has-shell .feature-finder #feature-search { border: 0; border-radius: 13px; background-color: color-mix(in oklch, var(--text) 6%, transparent); height: 34px; }
-html.has-shell .pb-title { font-size: 18px; }
+html.has-shell .feature-finder #feature-search { border: 1px solid var(--g-line); border-radius: 10px; background-color: color-mix(in oklch, var(--m-tint-solid) 60%, transparent); height: 34px; }
+html.has-shell .pb-title { font-size: 17px; }
 
 /* ---- panels: the frosted material (tier 2). Cards on a screen float; cards inside the Printer room, Overview or a sheet stay flat on it ---------------------- */
 html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *) {
   position: relative; background: var(--m-tint); border: 0; border-radius: var(--r-card); margin: 0;
   box-shadow: var(--g-sh-2); -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
-  padding: 6px 0 16px; animation: none;
+  padding: 4px 0 14px; animation: none;
 }
 html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divider-row, .pane-block):not(.cp *):not(.ovd *)::after {
   display: block; content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
@@ -107,8 +118,8 @@ html.has-shell .wrap .tab-panel :is(.card, .stats, .fleet-card, .notice, .divide
 html.has-shell .wrap .grid-2, html.has-shell .wrap .flow-run, html.has-shell .wrap .desk-grid, html.has-shell .wrap .ov-grid { gap: 14px; }
 html.has-shell .wrap .grid-2 > .card, html.has-shell .wrap .flow-run > .card, html.has-shell .wrap .flow-run > .grid-2 > .card { box-shadow: var(--g-sh-2); }
 html.has-shell .wrap .tab-panel > .card + .card, html.has-shell .wrap .tab-panel > * + .card, html.has-shell .wrap .tab-panel > .card + * { margin-top: 14px; }
-html.has-shell .wrap .card-head { padding: 12px 18px 4px; }
-html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 18px; margin-right: 18px; max-width: calc(100% - 36px); }
+html.has-shell .wrap .card-head { padding: 10px 16px 8px; }
+html.has-shell .wrap :is(.card, .tab-sub, .pane-block) > :not(.card-head):not(.pcam):not(.twin-host):not(h2) { margin-left: 16px; margin-right: 16px; max-width: calc(100% - 32px); }
 
 /* titles: sentence case, a real weight; the mono capitals are for numbers and nothing else */
 html.has-shell .wrap :is(.card, .tab-sub) h2, html.has-shell .wrap .pane-block h2 {
@@ -119,16 +130,16 @@ html.has-shell .wrap .pane-block h2 { padding: 14px 18px 4px; }
 html.has-shell .rail, html.has-shell:not(#dv) .rail { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }   /* only the card inside is glass */
 /* ---- the sidebar: tier 4 Liquid Glass, clear enough to read the room through it -------------------------------------------- */
 html.has-shell .rail-card {
-  border-radius: 26px; background: var(--g-tint); box-shadow: var(--g-sh-4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.7); backdrop-filter: blur(14px) saturate(1.7);
+  border-radius: 18px; background: var(--g-tint); box-shadow: var(--g-sh-4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
 }
 html.has-shell.rail-collapsed.rail-open .rail-card { background: color-mix(in oklch, var(--m-tint-solid) 62%, transparent); box-shadow: var(--g-sh-3);
   -webkit-backdrop-filter: blur(22px) saturate(1.8); backdrop-filter: blur(22px) saturate(1.8); }
-html.has-shell .rail-item { border-radius: 14px; }
+html.has-shell .rail-item { border-radius: 10px; }
 html.has-shell .rail-item.active { background: var(--g-tint-hi); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.14), inset 0 0 0 1px var(--g-line); }
 html[data-theme="dark"].has-shell .rail-item.active { background: oklch(100% 0 0 / 0.14); }
-html.has-shell .rail-who { border: 0; background: color-mix(in oklch, var(--text) 6%, transparent); border-radius: 15px; }
-html.has-shell .rail-menu { border-radius: 20px; background: color-mix(in oklch, var(--m-tint-solid) 78%, transparent); box-shadow: var(--g-sh-3);
+html.has-shell .rail-who { border: 1px solid var(--g-line); background: color-mix(in oklch, var(--text) 4%, transparent); border-radius: 10px; }
+html.has-shell .rail-menu { border-radius: 14px; background: color-mix(in oklch, var(--m-tint-solid) 78%, transparent); box-shadow: var(--g-sh-3);
   -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); }
 
 /* ---- the floating dock: the orb, Ask, the tester flag, the link words (tier 3) ------------------------------------------------ */
@@ -137,11 +148,11 @@ html.has-shell #tester-felt {
   background: color-mix(in oklch, var(--m-tint-solid) 60%, transparent); border: 0; box-shadow: var(--g-sh-3);
   -webkit-backdrop-filter: blur(18px) saturate(1.7); backdrop-filter: blur(18px) saturate(1.7);
 }
-html.has-shell .strip #handoff { border-radius: 20px; }
+html.has-shell .strip #handoff { border-radius: 14px; }
 
 /* ---- sheets: solid enough to hold controls, glass at the edge ------------------------------------------------------------------ */
 html.has-shell .cp-sheet {
-  background: color-mix(in oklch, var(--m-tint-solid) 84%, transparent); border: 0; border-radius: 26px; box-shadow: var(--g-sh-3);
+  background: color-mix(in oklch, var(--m-tint-solid) 86%, transparent); border: 0; border-radius: 18px; box-shadow: var(--g-sh-3);
   -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7);
 }
 html.has-shell .cp-sheet-head { border-bottom: 1px solid var(--g-line); }
@@ -180,7 +191,7 @@ html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *), html.has-sh
 html.has-shell .wrap .tab-panel .card:has(> .fleet-grid):not(.cp *)::after { display: none; }
 html.has-shell #tab-fleet .card:has(> .fleet-grid) > .card-head { padding: 2px 6px 10px; }
 html.has-shell #tab-fleet .card:has(> .fleet-grid) > :not(.card-head) { margin-left: 0; margin-right: 0; max-width: none; }
-html.has-shell .fc-bar, html.has-shell .fc-bar.liquid-glass { border: 0; border-radius: 18px; background: color-mix(in oklch, var(--m-tint-solid) 50%, transparent); box-shadow: var(--g-sh-1); -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); margin-bottom: 14px; }
+html.has-shell .fc-bar, html.has-shell .fc-bar.liquid-glass { border: 0; border-radius: 12px; background: color-mix(in oklch, var(--m-tint-solid) 50%, transparent); box-shadow: var(--g-sh-1); -webkit-backdrop-filter: blur(14px) saturate(1.6); backdrop-filter: blur(14px) saturate(1.6); margin-bottom: 14px; }
 html.has-shell .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: stretch; }
 html.has-shell .wrap .tab-panel .fleet-card:not(.cp *) { padding: 18px 20px 18px; border-radius: var(--r-card); box-shadow: var(--g-sh-2); }
 html.has-shell .wrap .tab-panel .fleet-card.is-selected:not(.cp *) { box-shadow: var(--g-sh-2), 0 0 0 2px color-mix(in oklch, var(--accent) 70%, transparent); }
@@ -193,9 +204,9 @@ html.has-shell .set-panes { grid-template-columns: 252px minmax(0, 1fr); gap: 16
 html.has-shell .set-panes > .split { display: none; }
 html.has-shell .set-nav { align-self: start; border: 0; border-radius: var(--r-card); padding: 14px 10px 12px; background: var(--m-tint); box-shadow: var(--g-sh-2);
   -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); overflow: visible; }
-html.has-shell .set-search input { height: 40px; border: 0; border-radius: 14px; background: color-mix(in oklch, var(--text) 6%, transparent); padding: 0 14px; }
+html.has-shell .set-search input { height: 38px; border: 1px solid var(--g-line); border-radius: 10px; background: color-mix(in oklch, var(--text) 6%, transparent); padding: 0 14px; }
 html.has-shell .set-groups { margin-top: 12px; gap: 3px; }
-html.has-shell .set-groups button { min-height: 42px; padding: 0 14px; border-radius: 14px; font: 560 13.5px var(--font-sans); }
+html.has-shell .set-groups button { min-height: 38px; padding: 0 12px; border-radius: 9px; font: 560 13.5px var(--font-sans); }
 html.has-shell .set-groups button:hover { background: color-mix(in oklch, var(--text) 6%, transparent); }
 html.has-shell .set-groups button[aria-current="true"] { background: var(--g-tint-hi); color: var(--text); box-shadow: 0 1px 3px rgba(20, 40, 80, 0.12), inset 0 0 0 1px var(--g-line); }
 html[data-theme="dark"].has-shell .set-groups button[aria-current="true"] { background: oklch(100% 0 0 / 0.14); }
@@ -217,7 +228,7 @@ html.has-shell #models-pointer { display: flex; align-items: center; gap: 14px; 
 html.has-shell #models-pointer .card-sub { margin: 0; flex: 1 1 280px; }
 html.has-shell #models-sites { padding: 18px 20px 22px; }
 html.has-shell #models-sites .site-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-html.has-shell #models-sites .site-row { display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 4px 10px; min-height: 108px; padding: 18px 20px; border-radius: 20px; text-decoration: none; color: var(--text);
+html.has-shell #models-sites .site-row { display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 4px 10px; min-height: 96px; padding: 16px 18px; border-radius: 12px; text-decoration: none; color: var(--text);
   background: color-mix(in oklch, var(--m-tint-solid) 62%, transparent); box-shadow: var(--g-sh-1), inset 0 0 0 1px var(--g-line); transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease; }
 html.has-shell #models-sites .site-row b { font: 640 19px/1.2 var(--font-display); letter-spacing: -0.015em; }
 html.has-shell #models-sites .site-row span { grid-column: 1; font: 12.5px var(--font-mono); color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; }
@@ -239,6 +250,73 @@ html.has-shell #ai-page .ai-intro-text > p { font-size: 15px; }
   html.has-shell .set-body { padding: 0 0 8px; min-width: 0; }
   html.has-shell .set-body > :is(.card, .flow-run, .pane-block, .stats, .notice) { max-width: none; }
   html.has-shell .fleet-grid { grid-template-columns: minmax(0, 1fr); }
-  html.has-shell .topbar { border-radius: 20px; min-height: 0; }
+  html.has-shell .topbar { border-radius: 14px; min-height: 0; }
   html.has-shell .wrap > .tab-panel:not([hidden]) { margin: 0; padding: 0; }
 }
+
+/* ---- precision: the details that make it read as an instrument ----------------------------------------------------------------- */
+/* titles: a real sans at a working size, with a hairline under the header like a panel on a rack */
+html.has-shell .wrap :is(.card, .tab-sub) h2, html.has-shell .wrap .pane-block h2 { font: 650 13.5px/1.3 var(--font-sans); letter-spacing: 0; }
+html.has-shell .wrap .tab-panel .card:not(.cp *):not(.ovd *) > .card-head { border-bottom: 1px solid var(--g-line); margin-bottom: 6px; }
+html.has-shell .ovd-side > #attention > .card-head, html.has-shell .ovd-side > #ov-printers > .card-head { border-bottom: 1px solid var(--g-line); }
+html.has-shell .ovd-side > #attention h2, html.has-shell .ovd-side > #ov-printers h2 { font: 650 13.5px/1.2 var(--font-sans); }
+
+/* buttons: flat, a hairline, a precise corner; the glass is in what they sit on */
+html.has-shell .btn {
+  border-radius: 10px; min-height: 34px; padding: 0 14px; color: var(--text); border: 1px solid var(--g-line-strong); box-shadow: none;
+  background: color-mix(in oklch, var(--m-tint-solid) 58%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; letter-spacing: 0;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+}
+html.has-shell .btn::before, html.has-shell .btn::after { display: none; }
+html.has-shell .btn:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--g-tint-hi); border-color: color-mix(in oklch, var(--accent) 50%, var(--g-line-strong)); color: var(--text); }
+html.has-shell .btn:active:not(:disabled) { transform: translateY(1px); }
+html.has-shell .btn:disabled, html.has-shell .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+html.has-shell .btn.primary { background: var(--accent); color: var(--on-accent, #fff); border-color: color-mix(in oklch, var(--accent) 78%, black); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22); }
+html.has-shell .btn.primary:hover:not(:disabled) { background: color-mix(in oklch, var(--accent) 86%, white); color: var(--on-accent, #fff); }
+html.has-shell .btn.danger { color: var(--bad-text, var(--bad)); border-color: color-mix(in oklch, var(--bad) 45%, var(--g-line-strong)); }
+html.has-shell .btn.estop { background: var(--halt); border-color: var(--halt); color: #fff; }
+html.has-shell .btn.small { min-height: 28px; padding: 0 10px; border-radius: 8px; }
+/* fields */
+html.has-shell .wrap :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]), select, textarea) {
+  border-radius: 9px; border: 1px solid var(--g-line-strong); background-color: color-mix(in oklch, var(--m-tint-solid) 66%, transparent); min-height: 34px; box-shadow: none;
+}
+html.has-shell .wrap :is(input, select, textarea):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+/* the search box: its shortcut sits in the middle of the field, never on its edge */
+html.has-shell .feature-finder .fx-hint { top: 50%; transform: translateY(-50%); }
+html.has-shell .feature-finder { display: flex; align-items: center; }
+/* segmented controls */
+html.has-shell :is(.pill-toggle, .seg) { border-radius: 10px; }
+html.has-shell :is(.pill-toggle, .seg) button { border-radius: 7px; }
+
+/* readings on the printer: rectangular tags on a leader line to the part they describe */
+.t3-tag { border-radius: 7px; padding: 3px 8px 3px 6px; box-shadow: var(--g-sh-2), inset 0 0 0 1px var(--g-line); }
+.t3-tag::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 9px; background: color-mix(in oklch, var(--text) 50%, transparent); transform: translateX(-50%); pointer-events: none; }
+.t3-tag::before { content: ""; position: absolute; left: 50%; top: calc(100% + 8px); width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: color-mix(in oklch, var(--text) 70%, transparent); pointer-events: none; }
+/* progress with a scale: a tick at every tenth */
+html.has-shell :is(.jb-bar, .ov-progress) { position: relative; }
+html.has-shell :is(.jb-bar, .ov-progress)::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), oklch(100% 0 0 / 0.5) calc(10% - 1px) 10%); }
+/* the camera is a viewfinder: corner marks */
+html.has-shell :is(.tile-cam, .ovd-main > #ov-camera)::before { content: ""; position: absolute; inset: 9px; z-index: 3; pointer-events: none; opacity: 0.6;
+  background:
+    linear-gradient(#fff, #fff) left top / 12px 1.5px no-repeat, linear-gradient(#fff, #fff) left top / 1.5px 12px no-repeat,
+    linear-gradient(#fff, #fff) right top / 12px 1.5px no-repeat, linear-gradient(#fff, #fff) right top / 1.5px 12px no-repeat,
+    linear-gradient(#fff, #fff) left bottom / 12px 1.5px no-repeat, linear-gradient(#fff, #fff) left bottom / 1.5px 12px no-repeat,
+    linear-gradient(#fff, #fff) right bottom / 12px 1.5px no-repeat, linear-gradient(#fff, #fff) right bottom / 1.5px 12px no-repeat; }
+
+/* ---- small details: a target you can hit, a focus you can see ----------------------------------------------------------------------- */
+html.has-shell .feature-finder:focus-within { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+html.has-shell .rail-group { min-height: 28px; }
+html.has-shell .rail-group span { font-size: 11px; }
+html.has-shell .wrap :is(.pref-check, .switch-label, label.check, label.pref-check) { min-height: 28px; display: inline-flex; align-items: center; gap: 8px; }
+html.has-shell .wrap :is(.pref-check, label.check) input[type="checkbox"] { width: 16px; height: 16px; }
+html.has-shell .wrap details > summary { min-height: 28px; display: flex; align-items: center; cursor: pointer; }
+html.has-shell .wrap details > summary:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 6px; }
+/* a focused control is never left under a fixed bar: the page scrolls it clear */
+html.has-shell .wrap > .tab-panel { scroll-padding: 12px 0 84px; }                /* the floating dock keeps the last 76 px of the screen */
+@media (max-width: 720px) { html.has-shell { scroll-padding: 24px 0 calc(var(--dock-h, 150px) + 40px); } }
+
+/* the messages stack above the "continue here" offer, never over it */
+html.has-shell .strip:has(#handoff:not([hidden])) .orb-dock .orb-stack { bottom: calc(100% + 14px + 76px); }
+html.has-shell .wrap label:has(> input[type="checkbox"], > input[type="radio"]) { min-height: 28px; display: inline-flex; align-items: center; gap: 8px; }

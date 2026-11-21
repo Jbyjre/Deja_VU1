@@ -228,7 +228,8 @@
     }, true);
     rail.addEventListener('click', e => { if (e.target.closest('.rail-item')) chose = true; });
     rail.addEventListener('focusin', e => { if (e.target.matches && e.target.matches(':focus-visible')) { cancelClose(); setOpen(true); } });
-    rail.addEventListener('focusout', e => { if (!rail.contains(e.relatedTarget) && isOpen() && hover() && !rail.matches(':hover')) closeIn(LINGER_MS); });
+    // focus moved on to the page (Tab out of the sidebar): it has been left, so it gets out of the way of what the focus is now on
+    rail.addEventListener('focusout', e => { if (!rail.contains(e.relatedTarget) && isOpen() && hover() && !rail.matches(':hover')) closeIn(e.relatedTarget ? CLICK_MS * 2 : LINGER_MS); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen() && hover() && (rail.contains(document.activeElement) || rail.matches(':hover'))) { cancelClose(); setOpen(false); } });
   }
 

@@ -240,7 +240,7 @@ async function walk(browser, server, shots) {
   await page.waitForTimeout(1900);
   rw = await railNow();
   check(rw.open, 'Coming back within the grace period keeps it open: ' + JSON.stringify(rw));
-  await page.mouse.click(700, 400);                                   // a press elsewhere closes it at once
+  await page.mouse.click(700, 30);                                    // a press elsewhere (the empty part of the toolbar) closes it at once
   await page.waitForTimeout(350);
   rw = await railNow();
   check(!rw.open, 'A press outside closes it at once: ' + JSON.stringify(rw));

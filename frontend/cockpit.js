@@ -82,7 +82,7 @@
       </aside>
       <button type="button" class="cp-twin-open" id="twin-open" data-open="twin">Press the printer to open it</button>
       <nav class="cp-dock" id="cp-dock" aria-label="Printer controls">${DOCK.map(([n, label]) =>
-        `<button type="button" class="dk-btn" data-open="${n}" data-module-body="printer_control" aria-haspopup="dialog" aria-label="${label}">${svg(SHEETS[n].icon)}<span>${label}</span></button>`).join('')}</nav>`;
+        `<button type="button" class="dk-btn" data-open="${n}" data-module-body="printer_control" aria-haspopup="dialog" aria-label="${label}" title="${label}">${svg(SHEETS[n].icon)}<span>${label}</span></button>`).join('')}</nav>`;
     const head = $('pp-head');
     if (head) head.after(grid); else panel.prepend(grid);
     const hold = $('cp-hold'), stage = $('p-stage');
@@ -201,7 +201,7 @@
         <span class="jb-line">${left != null ? `${esc(words(left))} left${done ? ` · done ${esc(done)}` : ''}` : 'Time left: not known yet'}</span>
         ${layer ? `<span class="jb-line jb-dim">${esc(layer)}</span>` : ''}${why ? `<span class="jb-why">${esc(why)}</span>` : ''}`;
     }
-    if (s.state === 'complete') return `<span class="jb-state is-ok">Finished</span><span class="jb-line">${esc(s.current_file || '')}</span>`;
+    if (s.state === 'complete') return `<span class="jb-state is-ok">Finished</span><span class="jb-line jb-file">${esc(s.current_file || '')}</span>`;
     if (s.state === 'error') return `<span class="jb-state is-bad">Needs attention</span><span class="jb-line">${esc(s.state_message || '')}</span>`;
     return '<span class="jb-state">Ready</span><span class="jb-line jb-dim">Nothing is printing</span>';
   }

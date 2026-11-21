@@ -41,7 +41,7 @@ class TestDarkTheme(unittest.TestCase):
         head = INDEX[:INDEX.index("</head>")]
         self.assertIn('<script src="theme-boot.js"></script>', head)
         sheets = re.findall(r'<link rel="stylesheet" href="([^"]+)"', head)
-        self.assertEqual(sheets[-6:], ["dark.css", "shell.css", "shell-panes.css", "cockpit.css", "glass.css", "looks.css"])   # the frame (shell.css) restyles after dark
+        self.assertEqual(sheets[-7:], ["dark.css", "shell.css", "shell-panes.css", "cockpit.css", "glass.css", "text.css", "looks.css"])   # the frame (shell.css) restyles after dark
         self.assertLess(head.index('href="dark.css"'), head.index("theme-boot.js"))
         boot = read("theme-boot.js")
         self.assertNotIn("defer", INDEX[INDEX.index("theme-boot.js") - 40:INDEX.index("theme-boot.js") + 20])

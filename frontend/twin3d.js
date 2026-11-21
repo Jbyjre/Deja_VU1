@@ -684,7 +684,7 @@ function create(host, { onPick } = {}) {
       // The studio backdrop, then the scene over it.
       // The dark theme gets a dark studio; the printer and the print keep their own colours.
       const night = document.documentElement.getAttribute('data-theme') === 'dark';
-      const bgTop = night ? lin(.2, .24, .32) : lin(.9, .95, 1), bgBot = night ? lin(.07, .1, .15) : lin(.78, .88, .94);   // the room's sky, so the glass over it has colour to bend
+      const bgTop = night ? lin(.17, .2, .27) : lin(.925, .945, .965), bgBot = night ? lin(.07, .09, .13) : lin(.8, .84, .885);   // the room's sky, so the glass over it has colour to bend
       gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND); gl.useProgram(P.bg.p);
       gl.uniform3fv(P.bg.u.uBgTop, bgTop); gl.uniform3fv(P.bg.u.uBgBot, bgBot); gl.uniform2f(P.bg.u.uRes, canvas.width, canvas.height);
       gl.bindVertexArray(null); gl.drawArrays(gl.TRIANGLES, 0, 3);
