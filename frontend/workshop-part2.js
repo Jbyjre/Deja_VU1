@@ -653,7 +653,7 @@ async function loadHealth() {
     $('g-band').textContent = word;
     $('g-line').textContent = (data.deductions || []).length || data.band === 'good' ? line : 'Confirm Print will check the file you pick.';
     $('g-deductions').innerHTML = (data.deductions || []).length
-      ? data.deductions.map(d => `<li><b>+${d.points}</b> ${esc(d.reason)}</li>`).join('')
+      ? data.deductions.map(d => `<li><b>+${Math.abs(d.points)}</b> ${esc(d.reason)}</li>`).join('')      // the server's points are negative: shown as what each would add
       : '';
   }
 
