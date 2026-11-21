@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 /*
- * The text audit: every screen, three widths, with very long names, looking for text that is cut, hidden, colliding or unreadable.
+ * The text audit: every screen, at several widths, with very long names, looking for text that is cut, hidden, colliding or unreadable.
  *
  *   node tools/text-audit.js                 starts its own server, runs the audit and prints what it found (exit 1 when anything is found)
  *   node tools/text-audit.js --base URL      audits a server that is already running (demo data is switched on in the page)
+ *   node tools/text-audit.js --probe         only says whether Playwright and a Chromium are available
  *   node tools/text-audit.js --plain         only the plain data, no very long names
  *   node tools/text-audit.js --only overview,printers   only those screens
  *   node tools/text-audit.js --focus         also tab through each screen and check that the focus is always visible
@@ -18,6 +19,8 @@
  *   tiny       text smaller than 11 px
  *   wrap       a button or tag whose one-line label breaks onto a second line
  *   sideways   the page scrolls sideways
+ *   hidden     a control or button-like label that a box above it cuts away (hidden or clip) or that sits beyond the window's edge, so it
+ *              exists but cannot be seen or reached (text cut away whole is not 'clipped' text, so this is its own check)
  *   target     a control smaller than 24 px either way (WCAG 2.5.8)
  *   unnamed    a control with no accessible name
  *   focus      (with --focus) a keyboard stop with no visible focus ring, or hidden behind something
@@ -192,6 +195,49 @@ function inspectPage() {
   // controls: big enough to hit (WCAG 2.5.8 asks for 24 px), and named for a screen reader
   const controls = [...document.querySelectorAll('a[href], button, input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="menuitem"], summary')]
     .filter(c => visible(c) && (!scope || scope.contains(c)) && !c.closest('#intro, .tester-ui, [data-audit-skip]'));
+  // How much of a control can be seen: the box above it that clips (overflow hidden or clip) and the window's edge cut it. A box that
+  // scrolls (auto, scroll) only defers a control, so it does not count; an absolutely positioned control is clipped only by a positioned box.
+  const shareInView = c => {
+    const b = c.getBoundingClientRect();
+    let l = b.left, t = b.top, r = b.right, bt = b.bottom;
+    let needPositioned = false;
+    let by = null;                                                   // the box that does the cutting (a box collapsed to nothing is a section that is shut)
+    for (let e = c; e && e !== document.documentElement; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (e !== c && (!needPositioned || cs.position !== 'static')) {
+        // a box that scrolls can bring the control into its own window, so by then the control counts as inside it
+        const sx = ['auto', 'scroll'].includes(cs.overflowX) && e.scrollWidth > e.clientWidth + 1, sy = ['auto', 'scroll'].includes(cs.overflowY) && e.scrollHeight > e.clientHeight + 1;
+        if (sx || sy) {
+          const sb = e.getBoundingClientRect();
+          if (sx) { const w = r - l; l = Math.min(Math.max(l, sb.left), Math.max(sb.left, sb.right - Math.min(w, sb.width))); r = l + w; }
+          if (sy) { const h = bt - t; t = Math.min(Math.max(t, sb.top), Math.max(sb.top, sb.bottom - Math.min(h, sb.height))); bt = t + h; }
+        }
+        const cx = ['hidden', 'clip'].includes(cs.overflowX), cy = ['hidden', 'clip'].includes(cs.overflowY);
+        if (cx || cy) {
+          const eb = e.getBoundingClientRect();
+          if (!by && ((cx && (eb.left > l + 1 || eb.right < r - 1)) || (cy && (eb.top > t + 1 || eb.bottom < bt - 1)))) by = e;
+          if (cx) { l = Math.max(l, eb.left); r = Math.min(r, eb.right); }
+          if (cy) { t = Math.max(t, eb.top); bt = Math.min(bt, eb.bottom); }
+        }
+        if (cs.position !== 'static') needPositioned = false;
+      }
+      if (cs.position === 'fixed') break;
+      if (cs.position === 'absolute') needPositioned = true;
+    }
+    if (!scrollsSideways(c)) { l = Math.max(l, 0); r = Math.min(r, vw); }
+    const area = b.width * b.height;
+    const collapsed = by && (by.getBoundingClientRect().height < 8 || by.getBoundingClientRect().width < 8);
+    return { share: area && !collapsed ? Math.max(0, r - l) * Math.max(0, bt - t) / area : 1, by };
+  };
+  const reach = [...new Set([...controls, ...document.querySelectorAll('label.btn, .btn')])]
+    .filter(c => visible(c) && (!scope || scope.contains(c)) && !c.closest('#intro, .tester-ui, [data-audit-skip], .sr-only'));
+  for (const c of reach) {
+    const { share, by } = shareInView(c);
+    if (share < 0.5) {
+      const bb = by && by.getBoundingClientRect();
+      add('hidden', c, `${Math.round(share * 100)}% of the control can be seen${by ? `, cut by ${by.tagName.toLowerCase()}${by.id ? '#' + by.id : ''}${typeof by.className === 'string' && by.className ? '.' + by.className.trim().split(/\s+/)[0] : ''} (${Math.round(bb.width)}×${Math.round(bb.height)})` : ' at the window edge'}`, c.textContent || c.getAttribute('aria-label') || '');
+    }
+  }
   const nameOf = c => {
     const t = [c.getAttribute('aria-label'), c.getAttribute('title'), c.getAttribute('alt')].find(x => x && x.trim());
     if (t) return t;
@@ -275,6 +321,7 @@ async function focusWalk(page, place, width, dark, out) {
   const seen = new Set();
   for (let i = 0; i < 28; i++) {
     await page.keyboard.press('Tab');
+    await page.waitForTimeout(350);                                   // a scroll that brings the control clear of the floating dock takes a moment
     const r = await page.evaluate(() => {
       const e = document.activeElement;
       if (!e || e === document.body) return null;
@@ -287,12 +334,14 @@ async function focusWalk(page, place, width, dark, out) {
       // (a message bubble over a control is a passing overlay, not a hidden control)
       const sameLabel = !!top && !!e.closest('label') && e.closest('label') === top.closest('label');
       const skip = ['checkbox', 'radio'].includes(e.type) || e.classList.contains('sr-only') || sameLabel;   // a switch draws its own focus on the label
-      return { skip, name, ring, covered: !!top && !(e.contains(top) || top.contains(e)) && !e.closest('#rail') && !top.closest('#rail, .orb-stack'), inView: b.bottom > 0 && b.top < innerHeight && b.right > 0 && b.left < innerWidth, text: (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 40), inRail: !!e.closest('#rail') };
+      const tall = b.height > innerHeight * 0.9 || e.tagName === 'CANVAS';      // a tall container's middle may sit under a fixed bar; a canvas has readings laid over it by design
+      const by = top ? (top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') + '.' + String(top.className).slice(0, 30)) : '';
+      return { by, skip, name, ring, covered: !tall && !!top && !(e.contains(top) || top.contains(e)) && !e.closest('#rail') && !top.closest('#rail, .orb-stack'), inView: b.bottom > 0 && b.top < innerHeight && b.right > 0 && b.left < innerWidth, text: (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 40), inRail: !!e.closest('#rail') };
     });
     if (!r || seen.has(r.name + r.text) || r.skip) continue;
     seen.add(r.name + r.text);
     if (!r.ring && !r.inRail) out.push({ kind: 'focus', screen: place, width, dark, at: r.name, detail: 'no visible focus ring', text: r.text });
-    else if (r.covered && r.inView) out.push({ kind: 'focus', screen: place, width, dark, at: r.name, detail: 'focused but covered by another element', text: r.text });
+    else if (r.covered && r.inView) out.push({ kind: 'focus', screen: place, width, dark, at: r.name, detail: 'focused but covered by ' + r.by, text: r.text });
   }
 }
 
@@ -301,6 +350,7 @@ async function main() {
   try { playwright = require('playwright'); } catch (e) { console.error('Playwright is not installed here.'); process.exit(2); }
   const exe = findChromium(playwright);
   if (!exe) { console.error('No Chromium found. Set DEJAVU_BROWSER to the file.'); process.exit(2); }
+  if (flag('--probe')) { console.log('Playwright and a Chromium are available: ' + exe); process.exit(0); }
   const widths = (option('--widths') || '1366,1024,390').split(',').map(Number);
   const themes = flag('--dark') ? [false, true] : [false];
   const stress = !flag('--plain');
@@ -338,7 +388,7 @@ async function main() {
   }
   const byKind = {};
   all.forEach(i => { (byKind[i.kind] = byKind[i.kind] || []).push(i); });
-  const order = ['script', 'sideways', 'clipped', 'outside', 'collide', 'wrap', 'mute', 'tiny', 'target', 'unnamed', 'focus'];
+  const order = ['script', 'sideways', 'clipped', 'outside', 'hidden', 'collide', 'wrap', 'mute', 'tiny', 'target', 'unnamed', 'focus'];
   console.log(`Text audit: ${screens} screens (${widths.join(', ')} px${themes.length > 1 ? ', light and dark' : ''}${stress ? ', very long names' : ', plain data'}); ${all.length} finding${all.length === 1 ? '' : 's'}.`);
   for (const k of order) {
     const list = byKind[k] || [];

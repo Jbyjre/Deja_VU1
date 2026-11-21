@@ -1,12 +1,15 @@
 /* text.js: text that does not fit.
  *
- * Two small jobs for the whole app, both done once here so no screen has to remember them:
+ * Three small jobs for the whole app, done once here so no screen has to remember them:
  *
  *   1. Cut text can be read. When the pointer rests on, or the keyboard focuses, anything that ends in an ellipsis, its title becomes its full
  *      text (and goes again when the text fits). A title someone wrote is never replaced.
  *   2. A file name that is laid out to be cut is cut in the middle: the start gives way and the end, which is where the version and the extension
  *      are, stays. ("two_benchies_two_c…olours_v2.gcode".) The text stays one piece for a screen reader; the split is two spans (text.css `.mt`).
  *      The cut falls between words (_ - space) where one is near the end, as a name should not be cut inside an identifier.
+ *
+ *   3. A long name inside a sentence that wraps breaks at its joints (after _ - . /) through <wbr> hints, so it never splits in the middle of a word
+ *      or of its extension. The copied text is the same.
  *
  * Screens that draw names do not call anything: a MutationObserver looks at what was added or changed, once a frame. */
 (() => {
@@ -63,10 +66,36 @@
     el.classList.add('mt');
     el.append(sa, sb);
   }
+  /* ---- 3. a long name inside a sentence breaks at its joints ---- */
+  const LONG = /[^\s]{20,}/;
+  const NO_BREAK_TAGS = new Set(['CODE', 'PRE', 'TEXTAREA', 'SCRIPT', 'STYLE', 'INPUT', 'OPTION', 'KBD', 'SAMP']);
+  function softBreaks(root) {
+    if (!root || root.nodeType !== 1) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const hits = [];
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      const el = n.parentElement;
+      if (!el || !LONG.test(n.nodeValue) || NO_BREAK_TAGS.has(el.tagName) || el.closest('.mt, [data-no-mid], #twin-model, .tester-ui')) continue;
+      const ws = getComputedStyle(el).whiteSpace;
+      if (ws === 'nowrap' || ws === 'pre' || ws === 'pre-wrap') continue;      // names laid out on one line are cut, not broken
+      hits.push(n);
+    }
+    for (const n of hits) {
+      const parts = n.nodeValue.split(/([^\s]{20,})/);
+      if (!parts.some(p => LONG.test(p) && /[_\-./]/.test(p))) continue;
+      const frag = document.createDocumentFragment();
+      for (const p of parts) {
+        if (!LONG.test(p)) { frag.append(p); continue; }
+        p.split(/(?<=[_\-./])/).forEach((piece, i) => { if (i) frag.append(document.createElement('wbr')); frag.append(piece); });
+      }
+      n.replaceWith(frag);
+    }
+  }
   function scan(root) {
     if (!root || !root.isConnected || (root.closest && root.closest(SKIP))) return;
     enhance(root);
     if (root.querySelectorAll) root.querySelectorAll('*').forEach(enhance);
+    softBreaks(root);
   }
 
   const pending = new Set();

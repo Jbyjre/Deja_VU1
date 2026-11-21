@@ -20,7 +20,7 @@ controls. Snapmaker sponsored the printer through its Innovation Fund. Every mer
 new version on the [releases page](https://github.com/Jbyjre/Deja_VU1/releases/latest), and the
 app updates itself from there.
 
-![The Deja Vu1 Overview: the selected printer's state, progress, time left and readings with its camera under them, a Needs you list ranking a dock error, a paused print and overdue maintenance across three demo printers, and every printer in a list at the side](docs/img/readme-overview.jpg)
+![The Deja Vu1 Overview: the selected printer's camera showing the whole picture, with its state, progress, time left and readings under it, a Needs you list ranking a dock error, a paused print and overdue maintenance across three demo printers, and every printer in a list at the side](docs/img/readme-overview.jpg)
 
 <sub>The Overview with the built-in demo printers. **Needs you** puts a dock error, a paused print
 and overdue maintenance at the top.</sub>
@@ -60,7 +60,7 @@ and overdue maintenance at the top.</sub>
 
 <table>
 <tr>
-<td width="50%" valign="top"><img src="docs/img/readme-printer.jpg" alt="The Printer screen: the 3D twin of a U1 in the middle with its four heads labelled and T0 printing, tiles for temperatures, tuning, the print and the demo camera picture on either side, and a row of control buttons under it"><br><sub><b>The Printer screen:</b> the live 3D twin in the middle, a glance at the print, temperatures and camera beside it, and every control one press away.</sub></td>
+<td width="50%" valign="top"><img src="docs/img/readme-printer.jpg" alt="The Printer screen: the 3D twin of a U1 filling the window with each head, the bed and the chamber showing their temperature on the machine and T0 printing, a print card top left, the demo camera picture top right under Halt, and a column of labelled control buttons at the left"><br><sub><b>The Printer screen:</b> the live 3D twin is the room. Temperatures sit on the heads, the bed and the chamber; the print, the camera and every control are over it, one press away.</sub></td>
 <td width="50%" valign="top"><img src="docs/img/readme-confirm.jpg" alt="Confirm print refusing the built-in unsafe example file: the printer is busy, it extrudes outside the 270 mm build volume on line 35, and T0 has orange loaded where the file wants red"><br><sub><b>Confirm Print, refusing:</b> every reason in words, and Start stays off.</sub></td>
 </tr>
 <tr>
@@ -227,7 +227,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
   assistant. The assistant has also run through a paid API key.
-- **Automated:** 1789 tests passed on Python 3.13 (20 November 2026). GitHub Actions
+- **Automated:** 1803 tests passed on Python 3.13 (21 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
   Other builds slice too, and **Check slicer** lists the builds with recorded runs.
@@ -265,7 +265,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1789 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1803 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

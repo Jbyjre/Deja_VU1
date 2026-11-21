@@ -72,5 +72,9 @@ paths:
 - Size changes: the twin draws again on a change of its canvas size except while a divider is dragged (`html.is-resizing`); it draws once on the page's resize
   notice after the drag. The turntable draws no faster than 2.5 times its draw cost (`drawMs`) allows, and the Printer screen does not start it where drawing is in
   software (`Cockpit.software()`; `tools/testfix-check.js --only freeze`).
+- Framing and tags (21 November): `resize()` reads `--twin-fit`, `--twin-dx` and `--twin-dy` from the element the twin sits in (`fit`), and `matrices()` applies them (a scale of the
+  distance and a shift in clip space, so views, picks and tags all agree); the Printer screen's room and the opening scene's layer set them, a sheet sets none. Tags (`renderTags`) show
+  the temperature next to the name (`tagTemp`, in the person's unit through `formatTemp`) for each head and, from `labels`, for `bed` and `chamber`; a tag has a leader line to its part
+  (`.t3-tag::before/::after`). The studio colours behind the printer (`bgTop`, `bgBot` in `render()`) are the room's cool neutral, light and dark.
 - Borrowing: sheets (deck.js) and the opening scene (intro.js) dock the shared `#twin-card` elsewhere and hand it back; `Panes.dock()` leaves it alone while it sits in
   `.cp-sheet`.

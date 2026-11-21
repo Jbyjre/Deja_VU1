@@ -12,7 +12,7 @@
  * destination, Alt+1 to 8 to the eight places, and ? lists every shortcut.
  *
  * Width: 60 px with icons only at rest, in every place. The pointer or the keyboard opens it to 212 px with labels over the
- * page, without moving anything, and it closes by itself 3 seconds after the pointer or the focus leaves it. The fold
+ * page, without moving anything, and it closes by itself after the pointer or the focus leaves it (see the timings below). The fold
  * button or the [ key keeps it open (remembered). At phone width
  * (720 px and less) the bottom bar and the More sheet take over.
  *

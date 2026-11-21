@@ -320,3 +320,7 @@ html.has-shell .wrap > .tab-panel { scroll-padding: 12px 0 84px; }              
 /* the messages stack above the "continue here" offer, never over it */
 html.has-shell .strip:has(#handoff:not([hidden])) .orb-dock .orb-stack { bottom: calc(100% + 14px + 76px); }
 html.has-shell .wrap label:has(> input[type="checkbox"], > input[type="radio"]) { min-height: 28px; display: inline-flex; align-items: center; gap: 8px; }
+/* while the "continue on this computer" offer is up, the last 150 px of a screen are its and the dock's: scrolling a focused control clear needs more room */
+html.has-shell:has(#handoff:not([hidden])) .wrap > .tab-panel { scroll-padding-bottom: 150px; }
+html.has-shell:has(#handoff:not([hidden])) .wrap > .tab-panel:not(#tab-control):not(#tab-overview)::after { height: 140px; }
+html.has-shell:has(#handoff:not([hidden])) .ovd { padding-bottom: 150px; }

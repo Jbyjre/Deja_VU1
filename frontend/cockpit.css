@@ -176,7 +176,7 @@ html.has-shell .cp-main #pp-heaters:not(.is-setting) :is(#pp-presets, .temp-set,
    Panels are the frosted material (tier 2) over the room; nothing is boxed inside another. */
 html.has-shell #tab-overview { display: flex; flex-direction: column; }
 html.has-shell #tab-overview:not([hidden]) { overflow: auto; scrollbar-width: thin; }
-html.has-shell .ovd { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 350px); gap: 16px; align-items: start; padding: 4px 4px 70px; }
+html.has-shell .ovd { position: relative; flex: 1 0 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 350px); gap: 16px; align-items: start; padding: 4px 4px 70px; }
 html.has-shell .ovd-main, html.has-shell .ovd-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 html.has-shell .ovd :is(#ov-now, #attention, #ov-printers) { position: relative; border: 0; border-radius: var(--r-card); background: var(--m-tint); box-shadow: var(--g-sh-2); padding: 0; margin: 0;
   -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat)); }
@@ -290,7 +290,8 @@ html.has-shell .cp-sheet #attention { border: 0; background: none; }
   html.has-shell .cp-scrim { position: fixed; z-index: 89; }
   html.has-shell .cp-sheet.has-side .cp-sheet-body { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; overflow: auto; }
   html.has-shell .cp-side { border-left: 0; border-top: 1px solid var(--hair); min-height: 240px; }
-  html.has-shell .ovd { display: flex; flex-direction: column; padding: 0 0 8px; }
+  html.has-shell .ovd { display: flex; flex-direction: column; align-items: stretch; padding: 0 0 8px; }      /* stretch: shrink-wrapping would make the column as wide as its longest unbroken line */
+  html.has-shell .ovd-main, html.has-shell .ovd-side { width: 100%; }
   html.has-shell .ovd-main > #ov-camera { max-height: none; }
   html.has-shell .ovd-main > #ov-camera .tile-more { opacity: 1; }
 }
@@ -300,11 +301,12 @@ html.has-shell .cp-sheet #attention { border: 0; background: none; }
   html.has-shell .tile, html.has-shell .jb-bar i, html.has-shell .dk-btn, html.has-shell .cp-twin-open, html.has-shell .tile-cam-open, .t3-tag { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  html.has-shell .tile, html.has-shell .cp-dock, html.has-shell .cp-twin-open, html.has-shell .cp-halted, .t3-tag { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--m-tint-solid); }
+  html.has-shell .tile, html.has-shell .cp-dock, html.has-shell .cp-twin-open, html.has-shell .cp-halted, .t3-tag, html.has-shell .ovd :is(#ov-now, #attention, #ov-printers), html.has-shell .ovd-chip { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--m-tint-solid); }
 }
 @media (prefers-contrast: more) {
-  html.has-shell .tile, html.has-shell .cp-dock, html.has-shell .cp-sheet, html.has-shell .ovd-chip, .t3-tag { box-shadow: inset 0 0 0 1.5px var(--text); }
-  html.has-shell .tile::after { display: none; }
+  html.has-shell .tile, html.has-shell .cp-dock, html.has-shell .cp-sheet, html.has-shell .ovd-chip, .t3-tag, html.has-shell .ovd :is(#ov-now, #attention, #ov-printers), html.has-shell .ovd-side .ov-prow { box-shadow: inset 0 0 0 1.5px var(--text); }
+  html.has-shell .tile::after, html.has-shell .ovd :is(#ov-now, #attention, #ov-printers)::after { display: none; }
+  html.has-shell .btn { border-color: var(--text); }
 }
 html.is-resizing .cp-stage { pointer-events: none; }
 /* While a divider is dragged the 3D picture is not redrawn: it keeps its shape and sits in the middle of the moving pane. */

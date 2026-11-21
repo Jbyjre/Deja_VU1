@@ -344,7 +344,7 @@ async function walk(browser, server, shots) {
       tags: [...document.querySelectorAll('#twin-model .t3-tag')].map(t => t.textContent.trim()), win: { w: innerWidth, h: innerHeight } };
   });
   check(room.pos === 'fixed' && room.stage.w === room.win.w && room.stage.h === room.win.h, 'The 3D scene fills the whole window behind everything: ' + JSON.stringify(room.stage));
-  check(room.splits === 0 && room.job.l < room.win.w / 2 && room.cam.l > room.win.w / 2 && room.dock.t > room.win.h / 2, 'No rails or dividers: the print card floats left, the camera right and the dock along the bottom: ' + JSON.stringify({ job: room.job, cam: room.cam, dock: room.dock }));
+  check(room.splits === 0 && room.job.l < room.win.w / 2 && room.cam.l > room.win.w / 2 && room.dock.l < room.win.w / 4 && room.dock.t > room.win.h / 3, 'No rails or dividers: the print card floats top left, the camera top right and the tool palette down the left: ' + JSON.stringify({ job: room.job, cam: room.cam, dock: room.dock }));
   check(room.tags.some(t => /^T\d.*\d/.test(t)) && room.tags.some(t => /^Bed.*\d/.test(t)), 'The heads and the bed carry their temperatures on the machine: ' + JSON.stringify(room.tags));
   const frame = await page.evaluate(() => { const i = document.querySelector('#cp-cam-slot .pcam-img:not([hidden])'); const c = document.querySelector('#cp-cam-slot > .card'); return i && c ? { img: i.getBoundingClientRect().width / i.getBoundingClientRect().height, card: c.getBoundingClientRect().width / c.getBoundingClientRect().height, fit: getComputedStyle(i).objectFit } : null; });
   check(!frame || frame.fit === 'contain', 'The camera window shows the whole picture: ' + JSON.stringify(frame));

@@ -74,7 +74,7 @@
       <aside class="cp-left" id="cp-left" aria-label="The print">
         <div class="tile tile-job" id="tile-job">
           <button type="button" class="tile-main" id="tile-job-open" data-open="job" aria-haspopup="dialog"><span class="tile-h">This print</span><span class="tile-body" id="tile-job-body"></span></button>
-          <button type="button" class="tile-tune" id="tile-tune" data-open="tune" aria-haspopup="dialog" aria-label="Tune speed, flow and fan"><span class="tile-body" id="tile-tune-body"></span></button>
+          <button type="button" class="tile-tune" id="tile-tune" data-open="tune" aria-haspopup="dialog"><span class="sr-only">Tune </span><span class="tile-body" id="tile-tune-body"></span></button>
         </div>
       </aside>
       <aside class="cp-right" id="cp-right" aria-label="The camera">

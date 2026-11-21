@@ -23,11 +23,11 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` →
   `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
-  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `pagebar.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
+  `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `text.js` → `pagebar.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
   `guide.css` → `assistant.css` → `tester.css` → `theme.css` → `theme-screens.css` → `theme-shell.css` → `dark.css` →
-  `shell.css` → `shell-panes.css` → `cockpit.css` → `looks.css`.
+  `shell.css` → `shell-panes.css` → `cockpit.css` → `glass.css` → `text.css` → `looks.css`.
 
 ## Split files (18 and 19 November 2026)
 
@@ -89,9 +89,13 @@ code can sit in more than one part: search the family (`grep -n "function render
   `rail.js` (loaded second to last) is the sidebar of eight places: Overview, Printer, Slicer, Files, Models, AI, Maintenance, Settings, plus a "More" group
   (Automations, Photo studio, Games). A place is one or more screens (`data-tab` panels) and the parts of them (`SECTIONS`); `DEST` lists every
   address a link can name (`#/<dest>`, `#/printer/<id>`) with its place, and `OLD` maps old names. **The sidebar rests as icons (60 px) in every place** and
-  opens to 212 px over the page, never moving it: `wireOpen` adds `html.rail-open` 90 ms after the pointer enters (never for touch) or when a keyboard focus
-  lands in it, and removes it `LINGER_MS` (3000) after the pointer or focus leaves, or `CHOSEN_MS` (700) after a place was chosen from it (so it does not sit over
-  the new screen). It stays open while the printer menu is open. `dejavu1.rail.mode` = `wide` keeps it open (the fold button, `[`, or Settings › Always open);
+  opens to 212 px over the page, never moving it, and above a sheet (z-index 40). `wireOpen` opens it when the pointer rests on the icons 110 ms (`INTENT_MS`) or on
+  a 10 px strip at the window's left edge 140 ms (`.rail-edge`, so a flick to the edge is never missed), or when a keyboard focus lands in it (never for touch). While
+  it is open the pointer's distance from it decides how soon it goes: inside it plus a 14 px margin (`SLACK_PX`) it stays; beside it, 1.5 s (`LINGER_MS`); over
+  170 px away or out of the window, 0.45 s (`FAR_MS`); a press anywhere outside, 0.12 s (`CLICK_MS`); 0.6 s (`CHOSEN_MS`) after leaving once a place was chosen from it;
+  focus that Tabs out of it, 0.24 s. A closing countdown is never made longer, and the pointer coming back cancels it. An open printer menu and a keyboard focus
+  inside it (`:focus-visible`, so a mouse click leaves nothing that pins it) keep it open; Escape closes it. `tools/pagebar-walk.js` checks every one of these with a real
+  pointer. `dejavu1.rail.mode` = `wide` keeps it open (the fold button, `[`, or Settings › Always open);
   anything else is the hover sidebar. The open and close are one `width` transition on `.rail-card` (0.3 s, ease-out quint) with the labels fading in after it.
   It reads `dv-tab`, `dv-section`, `dv-printer` and `dv-fleet`. Items carry `aria-label` that starts with the visible label, never `title`. A new place needs a
   `PLACES` row, a `DEST` row and an icon (`tests/test_rail.py`). `#rail-menu` is a child of `body` (the card's backdrop-filter would trap a fixed child).
@@ -110,17 +114,19 @@ code can sit in more than one part: search the family (`grep -n "function render
   notification orb with its toasts (`orb.js`; its colour follows the link through `data-link`), the Ask button (`assistant.js` builds it; strip.js adopts it),
   Tester mode's "Something felt off" (`tester.js` moves it into `.strip-end`), the "continue on this computer" offer (`#handoff`, placed by `initDockStack` in
   workshop-part3.js; on phones it stays in the thumb dock) and `#conn`/`#watch-only-pill`, which show only when something is off: demo data ("Simulated"),
-  watch-only, or no answer (a live link says nothing). Every screen keeps its last 60 px clear (`.tab-panel::after`) and the cockpit's right rail keeps its
-  foot clear. The printers are chosen in the sidebar (its printer row opens a menu); Find is in the toolbar. **Halt** (`strip.js` runs it, `cockpit.js` builds its
+  watch-only, or no answer (a live link says nothing). Every screen keeps its last 60 px clear (`.tab-panel::after`; `scroll-padding` also scrolls a focused control clear of it). The printers are chosen in the sidebar (its printer row opens a menu); Find is in the toolbar. **Halt** (`strip.js` runs it, `cockpit.js` builds its
   button `#strip-halt` and the note `#strip-halted`) is on the Printer screen and on no other: `H H` still stops the selected printer from any place (an
   emergency stop should not depend on the open screen), through `runCommand` so a refusal is shown in words, then offers Restart firmware
   (`/api/printer/control/restart`, refused unless the printer reports an error). Settings › Halt "Ask before Halt" (`dejavu1.pref.haltAsk`) adds a second press.
   Halt is #c8102e with white text in every look.
-- Printer screen (`cockpit.js`, `cockpit.css`, `deck.js`): the 3D printer fills the middle (`#p-stage`, no card, no head); a left rail of tiles (Temperatures:
-  every head, bed, chamber; Tune: speed, flow, part fan) and a right rail (This print; the camera), each a real `<button class="tile">` named by its visible
-  text, and a dock of buttons under the stage (Move, Extrude, Fans & lights, Bed mesh, Buttons, Console, Print). **Nothing on the screen scrolls**; the rails are
-  `overflow: hidden` and draggable in width (`Panes.splitter`, `printer.left`, `printer.right`; one move per frame, and **the twin is not told while a divider
-  moves**: `html.is-resizing` keeps its picture at shape and the twin redraws once when the divider is let go). A press on a tile or dock button opens a **sheet**
+- Printer screen (`cockpit.js`, `cockpit.css`, `deck.js`): **the printer is the room.** The 3D scene (`#p-stage`, no card, no head) is a fixed layer the size of the window,
+  behind the sidebar and the toolbar, and everything else floats over it as glass. The twin frames itself from three CSS values read where it sits (`--twin-fit`,
+  `--twin-dx`, `--twin-dy`; `fit` in twin3d.js `resize()` and `matrices()`), so the printer sits in the free area and a sheet or the opening scene gets the same framing by
+  setting the same values. The readings sit on the machine: each head, the bed and the chamber carry their temperature in a tag drawn by twin3d.js (`renderTags`, `tagTemp`,
+  `.t3-tag` with a leader line to the part); pressing a tag opens the Temperatures sheet. Over the scene: the "This print" card top left (`#tile-job`; its foot is the
+  tune row `#tile-tune`), Halt top right and the camera window under it (`#tile-cam`, `#cp-cam-slot`), and a tool palette of labelled buttons at the left (`#cp-dock`: Temperatures,
+  Move, Extrude, Fans & lights, Bed mesh, Buttons, Console, Print; icons only under 1100 px, each with a title). The messages stay clear because they stack in the bottom right
+  corner, above the "continue here" offer. **Nothing scrolls, and nothing is a rail or a divider.** A press on a tile, a tag or a palette button opens a **sheet**
   (`Deck.create`; `data-open="name"`): a dialog over the screen that holds the existing card(s) (moved, never rebuilt, so ids and listeners stay) and brings
   others beside them (`SHEETS` in cockpit.js: Move, Extrude, Tune, Printer's own buttons, Console, Fans & lights and This print bring the twin and/or the camera).
   Cards not on show wait in `#cp-hold` (laid out off screen at a real size). The twin and the camera are one shared instance each: a sheet takes them and hands
@@ -128,14 +134,17 @@ code can sit in more than one part: search the family (`grep -n "function render
   returns to what opened it; `Deck.unfold(el)` (called from the `scrollIntoView` hook in app-shell.js) opens the sheet that holds a card a tour, the search or a
   "Print a file…" button points at. The twin turns by itself on this screen (`autoSpin`; never with reduced motion, **never where drawing is in software**
   (`Cockpit.software()` reads the renderer from the twin's context), stops under the pointer); `Panes.expandTwin(true)` opens the twin sheet (the walks use it).
-  `#cp-job` is the "This print" sheet's own card (progress, time left with where the figure comes from, `etaWords`, the old head's Pause/Cancel). Halt sits at the
-  stage's top right. On a phone the stage comes first, then the print and camera tiles, then temperatures; the dock scrolls sideways; a sheet is a fixed overlay.
-- Overview (`overview.js`): no 3D printer. The middle is the selected printer (`#ov-now`) with its camera (`#ov-camera`) under it and a row of chips (Temperatures,
-  Quick control, Maintenance, Totals, Phone) that open sheets; the side is Needs you (the first three; "All N" opens the rest) and every printer
+  `#cp-job` is the "This print" sheet's own card (progress, time left with where the figure comes from, `etaWords`, the old head's Pause/Cancel). **The camera window takes
+  the picture's own shape** (`shape()` in printer-page.js reads the first frame's size into `--cam-ar` on the camera card; the picture is `object-fit: contain`, so the whole
+  of it shows and nothing is cropped). On a phone the scene is a rounded picture at the top of the page, then the tool palette (scrolling sideways), the print card and the camera.
+- Overview (`overview.js`): no 3D printer. The camera is the hero (`#ov-camera`: a glass window with the picture at its own shape, whole, capped at 54 vh), the
+  selected printer's status is a compact card under it (`#ov-now`: state, file, progress with a tick at every tenth, the figures in a grid that wraps by width) and a row
+  of chips (Temperatures, Quick control, Maintenance, Totals, Phone) opens sheets; the side is Needs you (the first three; "All N" opens the rest) and every printer
   (`#ov-printers`, the first five). It has its own deck (`Deck.create({ id: 'ov' })`).
 - Opening scene (`intro.js`, last script; cover set in `theme-boot.js` as `html.intro-pending`): on a fresh start (navigation type `navigate`, not a reload) the
-  twin card is borrowed into a full-screen layer, close up and turning, for 3 s; then the camera pulls back (`[data-twin="reset"]`) while the layer's window closes
-  onto `#p-stage` (one uniform scale, a clip) and the frame rises in (`html.intro-reveal`), and the card is docked back. Off for reduced motion, an automated browser
+  twin card is borrowed into a full-screen layer, close up and turning, for 3 s (`.intro-stage` carries the room's `--twin-*` framing); then the camera pulls back
+  (`[data-twin="reset"]`) to exactly where the Printer screen draws the printer, the layer's colour fades and the frame rises in (`html.intro-reveal`), and the card is docked
+  back. Where the stage does not fill the window (a phone) the old shrink onto the stage runs instead. Off for reduced motion, an automated browser
   (`?intro` forces it), software drawing (`?intro=force` plays it anyway), Settings › Opening scene off, `?nointro`, or when the twin is not ready in 3.4 s; a click,
   a key or Skip ends it; the cover is also lifted by a 5.2 s timer so a page is never left covered. Replay: the command bar's "Play the opening scene". A first start
   (no saved screen and no Settings › Open on) opens on Printer.
@@ -252,6 +261,25 @@ code can sit in more than one part: search the family (`grep -n "function render
   screen" buttons and the intro line (Preferences → Beginner tips, or Ctrl+K "tips", brings them back).
 - `rail.js` keyboard: `GO_KEYS` (G then a letter), Alt+1 to 8 (the eight places), `[` keeps the sidebar open or lets it close by itself, `H H` is Halt (`strip.js`), `?` opens
   `#kb-sheet`; `typing()` skips text fields but not switches. `OLD` maps fleet, control, library, care, modules, autoprint, prepare, jobs and materials.
+
+## Glass and text systems (21 November 2026)
+
+**Glass (`glass.css`, loaded after `cockpit.css`).** Two grades under one rule (Apple's Materials guidance): controls and navigation (the sidebar, the toolbar, the tool
+palette, readings on the printer, sheets) are Liquid Glass, tier 3 and 4; content panels (cards, fleet cards, Settings groups, Overview's side panels) are the quieter
+frosted material, tier 2 (`--m-tint`, `--g-blur`). Everything sits over **the room**: a neutral cool field with a faint 32 px grid (`body` background in glass.css),
+the dots (`backdrop.js`) and, softly, the colours of the loaded filaments (`.pool-a`, `.pool-b`). No panel is opaque paper and no glass sits on glass. A card inside the
+Printer room, Overview or a sheet is excluded from the generic card rule (`:not(.cp *):not(.ovd *)`): those are laid out by cockpit.css. The look is technical on purpose:
+16 px panels, 10 px controls, hairline rims, flat buttons, rectangular tags on leader lines, gauge ticks on progress bars, viewfinder corners on the camera, mono figures.
+Reduced transparency makes every panel solid, increased contrast adds borders, reduced motion removes the glints (end of glass.css and cockpit.css).
+
+**Text (`text.css`, `text.js`).** One rule set for text that does not fit. Prose wraps and a long unbroken word wraps too (`overflow-wrap: anywhere`, which also lets flex
+and grid items shrink to it). Names and labels are one line with an ellipsis (the selector list at the top of text.css; add a new kind of name there); a button keeps its words and
+only a label that carries a printer or file name may shrink. Nothing is under 11 px (the floor list at the end). `text.js` does three things: it puts the full text in the
+`title` of anything cut when the pointer rests on it, it cuts a file name in the middle (`.mt`: start gives way, extension and version stay; the cut falls between words), and
+it adds `<wbr>` hints after `_ - . /` in long names inside wrapped text. **`node tools/text-audit.js`** is the check: every screen, each sheet and Settings group, at 1366, 1024
+and 390 px (`--dark` adds dark, `--focus` tabs through every screen, `--only a,b` limits it), with the server's answers rewritten on the way so every printer, file and task name
+is about 70 characters longer and the WebSocket is off. It reports clipped, outside, hidden (a control a box cuts away or pushes out of the window: text cut away whole is not "clipped" text), collide, wrap, mute, tiny, target, unnamed and focus findings and exits 1 on any;
+`tests/test_text_system.py` runs it. Run it after any change to a screen.
 
 ## Building blocks (the SHELL frame)
 

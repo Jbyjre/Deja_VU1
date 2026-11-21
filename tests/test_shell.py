@@ -112,8 +112,9 @@ class TestAccessibleNames(unittest.TestCase):
             self.assertIn('aria-haspopup="dialog"', button)
         job = COCKPIT[COCKPIT.index('id="tile-job-open"'):COCKPIT.index(">", COCKPIT.index('id="tile-job-open"'))]
         self.assertNotIn("aria-label", job)
-        tune = COCKPIT[COCKPIT.index('id="tile-tune"'):COCKPIT.index(">", COCKPIT.index('id="tile-tune"'))]
-        self.assertIn('aria-label="Tune speed, flow and fan"', tune)
+        tune = COCKPIT[COCKPIT.index('id="tile-tune"'):COCKPIT.index("</button>", COCKPIT.index('id="tile-tune"'))]
+        self.assertNotIn("aria-label", tune)                           # its name is "Tune " plus the values it shows, so the visible text is inside the name (WCAG label in name)
+        self.assertIn('<span class="sr-only">Tune </span>', tune)
         # the temperatures are drawn on the machine (twin3d.js tags), and their button in the dock keeps its name for screen readers
         self.assertIn("['temps', 'Temperatures']", COCKPIT)
         self.assertIn('aria-label="${label}"', COCKPIT)

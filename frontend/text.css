@@ -37,6 +37,7 @@ html.has-shell .att-text :is(b, small) { overflow-wrap: anywhere; }             
 /* ---- controls --------------------------------------------------------------------------------------------------------------------- */
 html.has-shell .btn { flex-shrink: 0; max-width: 100%; overflow-wrap: normal; }      /* a button's words stay whole */
 html.has-shell .btn.small { white-space: nowrap; }
+html.has-shell .btn.block { flex-shrink: 1; min-width: 0; }                /* a full-width button beside another gives way to it */
 html.has-shell .btn:not(.small) { white-space: normal; }          /* a long label of a full-size button may wrap; a compact one never does */
 /* a label that carries a name (a printer, a file) is the one kind allowed to give way */
 html.has-shell .btn:is(#ap-slice-queue, #bed-clear, #fb-print, .btn-dynamic) { flex-shrink: 1; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
@@ -60,7 +61,7 @@ html.has-shell :is(.stat-num, .stat-val, .ro b, .tn b, .jb-pct b, .ov-figs dd, .
 /* ---- the size floor: nothing under 11 px ----------------------------------------------------------------------------------------------- */
 html.has-shell :is(.bottom-nav button, .tm-kv dt, .tm-num small, .ins small, .fc-temps small, .bed-hold small, .ro span, .ro-btn span, .pcam-mode, .pill, .badge, #conn-label, .ls-band, th,
   .dk-ruler span, .dk-bar i, .stat-key, .tm-status, .tm-env span, .rf-group-name, .ob-kind, .pchip small, .eyebrow, .verdict, .ls-label, .fh-row small, label small, .fd-h small,
-  .plate-dot, .tester-always, .ls-facts dt, .dk-facts dt, .wf-facts dt, .ai-stats dt, .ls-dt, #convert-card .eyebrow) { font-size: 11px; }
+  .plate-dot, .tester-always, .fx-group, .ls-facts dt, .dk-facts dt, .wf-facts dt, .ai-stats dt, .ls-dt, #convert-card .eyebrow) { font-size: 11px; }
 
 /* ---- notifications: a message is at most three lines in its bubble (the orb's list keeps all of it, and the title gives it in full) -------------- */
 html.has-shell .ob-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
@@ -73,5 +74,5 @@ html.has-shell .orb-bubble { font-size: 13.5px; padding: 10px 38px 10px 14px; }
 }
 
 /* ---- the camera windows: the mode label (demo data stays labelled) sits top left, the switch bottom right, so a narrow window never makes them meet ---------- */
-html.has-shell :is(.tile-cam-slot, .ovd-main > #ov-camera) .pcam-mode { top: 8px; bottom: auto; left: 8px; max-width: calc(100% - 56px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.has-shell :is(.tile-cam-slot, .ovd-main > #ov-camera, .cp-sheet #pp-camera-card, .cp-sheet #ov-camera) .pcam-mode { top: 8px; bottom: auto; left: 8px; max-width: calc(100% - 56px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.has-shell #tab-files > #convert-card .eyebrow { font-size: 11px; }
