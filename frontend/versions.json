@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.29",
+      "date": "2026-11-21",
+      "name": "Ready to print lists what would help as +30 and +5",
+      "published": true,
+      "summary": "Ready to print lists what would help as +30 and +5.",
+      "changes": [
+        "Ready to print lists what would help as +30 and +5"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.28",
       "date": "2026-11-21",
       "name": "The printer in the middle of the Printer screen, a calmer Overview, a sidebar...",

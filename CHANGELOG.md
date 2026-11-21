@@ -82,6 +82,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.29 (21 November 2026): Ready to print lists what would help as +30 and +5
+
+- Ready to print lists what would help as +30 and +5
+
 ## 0.20.28 (21 November 2026): The printer in the middle of the Printer screen, a calmer Overview, a sidebar...
 
 - The printer in the middle of the Printer screen, a calmer Overview, a sidebar that opens on hover, and a time left that follows your file
