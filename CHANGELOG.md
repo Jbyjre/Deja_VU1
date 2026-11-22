@@ -92,6 +92,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.35 (22 November 2026): The Slicer: models slice on the real engine, Orca's camera and keys, a filame...
+
+- The Slicer: models slice on the real engine, Orca's camera and keys, a filament picker per head, saved settings
+
 ## 0.20.34 (22 November 2026): The Slicer: Snapmaker Orca's layout on the U1's own plate, with the engine in...
 
 - The Slicer: Snapmaker Orca's layout on the U1's own plate, with the engine installed for you
