@@ -28,6 +28,7 @@ import random
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import date
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -224,7 +225,7 @@ def cmd_todo(args):
         "context": {k: places.get(k, [])[:3] for k in missing},
         "items": missing,
     }
-    path = args.out or os.path.join(os.environ.get("TMPDIR", "/tmp"), f"dejavu1-todo-{code}.json")
+    path = args.out or os.path.join(tempfile.gettempdir(), f"dejavu1-todo-{code}.json")
     write_json(path, out)
     chars = sum(len(v) for v in missing.values())
     print(f"{len(missing)} text(s) to translate into {translate.language_name(code)} (about {chars // 4:,} tokens of English). Wrote {path}")
