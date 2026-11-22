@@ -22,7 +22,7 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
   `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `errorhelp.js` →
-  `insights.js` → `printroom.js` → `plate.js` → `gcode-view.js` → `slicer-workspace.js` →
+  `insights.js` → `printroom.js` → `gcode-view.js` → `slicer-model.js` → `slicer-scene.js` → `slicer-ui.js` → `slicer-prepare.js` → `slicer-settings.js` → `slicer-help.js` → `slicer-sheet.js` → `slicer-path.js` → `slicer-preview.js` → `slicer.js` →
   `backup.js` → `maker.js` → `assistant-part1.js` → `assistant-part2.js` → `assistant.js` → `panes.js` → `deck.js` → `cockpit.js` → `overview.js` → `settings.js` → `strip.js` → `text.js` → `pagebar.js` → `rail.js` → `intro.js`. The arcade loads on demand (`loadGames()`). `tester.js` loads
   right after the app parts (it wraps `fetch`, `toast` and `syncModuleBodies`, which they define).
 - CSS: `style.css` → `style-games.css` → `style-layout.css` → `workshop.css` → `workshop-files.css` → `workshop-panels.css` → `farm.css` → `printer.css` →
@@ -119,6 +119,10 @@ code can sit in more than one part: search the family (`grep -n "function render
   emergency stop should not depend on the open screen), through `runCommand` so a refusal is shown in words, then offers Restart firmware
   (`/api/printer/control/restart`, refused unless the printer reports an error). Settings › Halt "Ask before Halt" (`dejavu1.pref.haltAsk`) adds a second press.
   Halt is #c8102e with white text in every look.
+- Slicer (`slicer*.js`, `slicer.css`, `u1-plate.js`; `data-tab` `slicer`, parts Prepare and Preview; old `#/slice`, `#/layers`, `#/prepare` links open it): a dock of glass blocks
+  at the left (Printer with the Engine button, Heads, Process, Objects), the plate in the free area (the 3D view draws the U1's own plate from `U1Plate`
+  in the app's room colours; `U1Plate` is shared with the twin's and the other viewers' plate), a floating toolbar, view buttons, a plate switcher, an
+  inspector and a Slice bar. Built from the shared tokens, so it follows light, dark and the accessibility fallbacks. Details in `slicing.md` "The Slicer".
 - Printer screen (`cockpit.js`, `cockpit.css`, `deck.js`): **the printer is the room.** The 3D scene (`#p-stage`, no card, no head) is a fixed layer the size of the window,
   behind the sidebar and the toolbar, and everything else floats over it as glass. The twin frames itself from three CSS values read where it sits (`--twin-fit`,
   `--twin-dx`, `--twin-dy`; `fit` in twin3d.js `resize()` and `matrices()`), so the printer sits in the free area and a sheet or the opening scene gets the same framing by

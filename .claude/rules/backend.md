@@ -161,7 +161,7 @@ slicing and launcher files have their own notes in this folder.
   short `ai_assistant.py` that imports them all back; `moonraker_client.py` keeps `MoonrakerPrinter`, with helpers in
   `moonraker_client_part1.py` and the state and job translation in `moonraker_client_part2.py`. `_count` is defined in
   both parts as it was twice in the old file; the later one (part 2) is the one every caller uses.
-- `slicer_bridge.py` (jobs, the engine run) with `slicer_bridge_part1.py`; `mock_moonraker.py` (the fleet and every
+- `slicer_bridge.py` (jobs, the engine run) with `slicer_bridge_part1.py`; `engine_installer.py` (download, check and keep the Snapmaker Orca engine) and `slicer_working.py` (the Slicer's working profile); `mock_moonraker.py` (the fleet and every
   printer function) with `mock_moonraker_part1.py`; `tester_report.py` (a short module: the zip, thinning) with
   `tester_report_part1.py` to `part4.py` (the findings, the Aggregator, the stalls and code pointers) and `tester_report_render.py` +
   `tester_report_top.py` (the pages and their shared top).

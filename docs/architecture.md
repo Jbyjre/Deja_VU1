@@ -566,8 +566,8 @@ recorded yet.
 `backend/slicer_profiles.py` discovers installed U1 presets and resolves parent
 settings with cycle/size bounds. Native profiles retain printer/tool identity,
 validate nozzle/material compatibility and expose grouped process/material settings. Current capable-engine height contracts and working-preset compatibility are described below.
-`plate.js` keeps immutable sources and affine transforms; `plate-worker.js`
-checks contacts and surface rays away from the browser UI thread.
+`slicer-model.js` keeps the Slicer's models, their 12-number transforms, undo and the checks (over the edge, overhangs, a missing prime tower);
+`slicer-scene.js` draws them on the U1's plate (`u1-plate.js`) and picks by colour on the graphics card.
 `plate_project.py` streams source geometry, preserves 3MF parts and stores
 original inputs plus editable state in saved projects.
 `model_maker.py` creates four-tool image tiles, measured layer recipes and
@@ -1004,10 +1004,8 @@ rises. See `slicing-and-models.md` for the workflow and remaining format limits.
 
 ## Slicing and isolated recovery
 
-`slicer-workspace.js` relocates the existing plate/profile/tool controls rather
-than creating another settings store. Each mounted plate retains its own DOM
-references and worker lifecycle. Selection reuses geometry; edits invalidate
-output preview. Engine jobs are scoped to their captured printer, bounded,
+The Slicer (`slicer*.js`) keeps one settings store, the working profile (`slicer_working.py`), which the dock's printer, heads and process
+blocks and the full settings sheet all write to. Edits invalidate the Preview. Engine jobs are scoped to their captured printer, bounded,
 cancellable as process groups and checked before an atomic queue handoff.
 
 `slicing_contract.py` validates conservative exact physical-head heights. The

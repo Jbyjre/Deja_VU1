@@ -3,7 +3,6 @@
 window.DVGcode = {
   mount(entry, a, viewer, inspector = document.getElementById('fd-side')) {
     if (!viewer || !a.toolpath) return;
-    if (!window.DVPlate?.active) window.DVWorkspace?.previewFile(entry);
     const path = a.toolpath,
       segments = path.segments;
     const recorded = path.layer_table?.length ? path.layer_table : null;

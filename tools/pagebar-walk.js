@@ -200,9 +200,9 @@ async function walk(browser, server, shots) {
   check(st.title === 'Printer' && st.tab === 'fleet' && st.hash === '#/printers', 'All printers is a part of Printer: ' + JSON.stringify(st));
 
   /* Old links still land on the new home. */
-  for (const [old, title, extra] of [['slice', 'Slicer', 'slicing'], ['layers', 'Slicer', 'layers'], ['queue', 'Files', 'jobs'], ['library', 'Files', 'library'], ['filament', 'Maintenance', 'filament'],
+  for (const [old, title, extra] of [['slice', 'Slicer', 'prepare'], ['layers', 'Slicer', 'prepare'], ['preview', 'Slicer', 'preview'], ['queue', 'Files', 'jobs'], ['library', 'Files', 'library'], ['filament', 'Maintenance', 'filament'],
     ['care', 'Maintenance', 'upkeep'], ['prefs', 'Settings', 'look'], ['modules', 'Settings', null], ['desk', 'Printer', 'desk'], ['sandbox', 'Printer', 'printers'], ['fleet', 'Printer', 'printers'],
-    ['control', 'Printer', 'control'], ['prepare', 'Slicer', 'slicing'], ['jobs', 'Files', 'jobs']]) {
+    ['control', 'Printer', 'control'], ['prepare', 'Slicer', 'prepare'], ['jobs', 'Files', 'jobs']]) {
     await go(page, old);
     const r = await page.evaluate(() => ({ t: document.getElementById('pb-title').textContent.trim(), tab: document.body.dataset.tab, s: Sections.current(document.body.dataset.tab) }));
     check(r.t === title && (extra == null || r.s === extra), `The old link #/${old} lands in ${title}${extra ? ' › ' + extra : ''}: ${JSON.stringify(r)}`);

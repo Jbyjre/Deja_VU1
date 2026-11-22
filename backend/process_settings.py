@@ -4,7 +4,7 @@ process_settings.py
 
 The print-process settings Deja Vu1 can write into a private working copy of
 an installed Snapmaker/Orca process preset, laid out the way OrcaSlicer's
-own process tabs are (Quality, Strength, Speed, Support, Others).
+own process tabs are (Quality, Strength, Speed, Support, Multi-material, Others).
 
 Every key and every choice was checked against OrcaSlicer's option table
 (src/libslic3r/PrintConfig.cpp, the `this->add("...")` definitions and their
@@ -120,6 +120,24 @@ _RAW = [
     ("support_interface_pattern", "Interface pattern", "enum", "Support", "Advanced", dict(choices=["auto", "rectilinear", "concentric", "rectilinear_interlaced", "grid"])),
     ("independent_support_layer_height", "Independent support layer height", "bool", "Support", "Advanced", {}),
     ("raft_layers", "Raft layers", "int", "Support", "Raft", dict(min=0, max=10)),
+    # ---- Multi-material: the prime tower, and what keeps a tall one standing (Snapmaker Orca 2.4.1's option table) -----------
+    ("enable_prime_tower", "Prime tower", "bool", "Multi-material", "Prime tower", dict(tip="Needed for clean colour changes on a tool changer; switch off only for single-head prints.", simple=True)),
+    ("prime_tower_width", "Prime tower width", "float", "Multi-material", "Prime tower", dict(min=2, max=200, unit="mm", simple=True)),
+    ("prime_tower_brim_width", "Prime tower brim width", "float", "Multi-material", "Prime tower", dict(min=0, max=20, unit="mm")),
+    ("prime_tower_brim_chamfer", "Brim chamfer", "bool", "Multi-material", "Prime tower", dict(tip="Shrinks the tower's brim a little each layer.")),
+    ("prime_tower_brim_chamfer_max_width", "Max chamfer width", "float", "Multi-material", "Prime tower", dict(min=0, max=20, unit="mm")),
+    ("wipe_tower_max_purge_speed", "Tower max speed", "float", "Multi-material", "Prime tower", dict(min=10, max=300, unit="mm/s", tip="The fastest the tower prints, not counting ramming.")),
+    ("wipe_tower_no_sparse_layers", "Skip the tower on layers without a change", "bool", "Multi-material", "Prime tower", dict(tip="The engine marks this beta.")),
+    ("wipe_tower_wall_type", "Tower wall", "enum", "Multi-material", "Strong tower", dict(choices=["rectangle", "cone", "rib"], simple=True,
+        tip="Rectangle is plain. Cone widens the base so a tall tower stands. Rib adds four ribs to the wall.")),
+    ("wipe_tower_cone_angle", "Cone angle", "float", "Multi-material", "Strong tower", dict(min=0, max=90, unit="°", tip="A larger angle makes a wider base.")),
+    ("wipe_tower_rib_width", "Rib width", "float", "Multi-material", "Strong tower", dict(min=0, max=60, unit="mm")),
+    ("wipe_tower_extra_rib_length", "Extra rib length", "float", "Multi-material", "Strong tower", dict(min=-100, max=300, unit="mm", tip="Longer ribs are stronger. They cannot be shorter than the purge volume needs.")),
+    ("wipe_tower_fillet_wall", "Fillet wall", "bool", "Multi-material", "Strong tower", dict(tip="Rounds the tower's corners.")),
+    ("prime_tower_enable_framework", "Internal ribs", "bool", "Multi-material", "Strong tower", dict(tip="Ribs inside the tower make it stiffer.")),
+    ("wipe_tower_extra_spacing", "Purge line spacing", "percent", "Multi-material", "Purging", dict(min=100, max=300, unit="%")),
+    ("wipe_tower_extra_flow", "Extra flow for purging", "percent", "Multi-material", "Purging", dict(min=100, max=300, unit="%")),
+    ("ooze_prevention", "Ooze prevention", "bool", "Multi-material", "Purging", dict(tip="Drops idle heads' temperature while another head prints.")),
     # ---- Others ----------------------------------------------------------
     ("skirt_loops", "Skirt loops", "int", "Others", "Skirt", dict(min=0, max=20)),
     ("skirt_distance", "Skirt distance", "float", "Others", "Skirt", dict(min=0, max=30, unit="mm")),
@@ -127,10 +145,6 @@ _RAW = [
     ("brim_type", "Brim type", "enum", "Others", "Brim", dict(choices=["no_brim", "outer_only", "inner_only", "outer_and_inner", "auto_brim", "brim_ears"], simple=True)),
     ("brim_width", "Brim width", "float", "Others", "Brim", dict(min=0, max=30, unit="mm", simple=True)),
     ("brim_object_gap", "Brim-object gap", "float", "Others", "Brim", dict(min=0, max=2, unit="mm")),
-    ("enable_prime_tower", "Prime tower", "bool", "Others", "Prime tower", dict(tip="Needed for clean colour changes on a tool changer; switch off only for single-head prints.")),
-    ("prime_tower_width", "Prime tower width", "float", "Others", "Prime tower", dict(min=2, max=200, unit="mm")),
-    ("prime_tower_brim_width", "Prime tower brim width", "float", "Others", "Prime tower", dict(min=0, max=20, unit="mm")),
-    ("ooze_prevention", "Ooze prevention", "bool", "Others", "Prime tower", dict(tip="Drops idle heads' temperature while another head prints.")),
     ("print_sequence", "Print sequence", "enum", "Others", "Special modes", dict(choices=["by layer", "by object"])),
     ("spiral_mode", "Spiral vase", "bool", "Others", "Special modes", {}),
     ("slow_down_layers", "Slow down for the first", "int", "Others", "Special modes", dict(min=0, max=20, unit="layers")),
@@ -141,7 +155,7 @@ _RAW = [
     ("gcode_label_objects", "Label objects in comments", "bool", "Others", "G-code output", {}),
 ]
 
-TABS = ["Quality", "Strength", "Speed", "Support", "Others"]
+TABS = ["Quality", "Strength", "Speed", "Support", "Multi-material", "Others"]
 OPTIONS = {key: {"key": key, "label": label, "type": kind, "tab": tab, "section": section, **extra}
            for key, label, kind, tab, section, extra in _RAW}
 LINE_WIDTHS = [k for k in OPTIONS if k.endswith("line_width")]

@@ -8,6 +8,7 @@ paths:
 - Error codes: `tests/test_error_codes.py` (the table, the reader, `wiki_page`, `printer_problems`, `translate_state`, a stand-in printer over the wire),
   `tests/test_printer_problem_feed.py` (live feed, logbook, rules, Tester mode), `tests/test_error_guides.py` (the fetcher with a canned wiki, the routes, the tester
   report) and `tests/test_error_assistant.py`. No test asks the internet.
+- The Slicer: `tests/test_engine_installer.py` (a stand-in release server and engine from `tools/stand-in-engine.py --make-engine`: download, checksum, unpack, check, update, cancel, bad archive), `tests/test_slicer_working.py`, `tests/test_slicer_model.py` (runs `tests/slicer_model_check.js` in Node) and `tests/test_slicer_browser.py` (runs `node tools/slicer-check.js`: 54 browser checks with a stand-in engine; skipped without Node, Playwright and Chromium). No test runs the real engine; `python3 tools/engine-selftest.py` does, on a person's own computer.
 - Standard-library `unittest`. API tests start the real server on a spare port. Tests use
   simulated printers, temporary folders and `tests/fake_moonraker.py` (a Moonraker stand-in built
   from Moonraker's source); none contacts a physical printer.
@@ -23,7 +24,7 @@ paths:
   `tools/readme-images/boards.html`, `docs/slicer-workspace-validation.md`, `docs/testing.md`).
 - Some tests read source files as text (`test_frontend_refresh.py` reads the arcade, through
   `tests/frontend_parts.py`, which joins a split file's parts so a test finds code in whichever part holds it;
-  `test_plate_keyboard.py` reads `plate.js`, `test_install_blocks.py` reads the README). Write such
+  `test_install_blocks.py` reads the README). Write such
   tests so spacing doesn't matter.
 - `test_ai_assistant.py` holds the shared helpers (`Base`, `act`, the fake servers) and the first half of the AI tests;
   `test_ai_assistant_more.py` the rest, importing those helpers.

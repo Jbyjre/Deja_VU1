@@ -241,11 +241,8 @@ function renderJobs() {
 function decorateModel(entry) {
     const slot = $('fd-slice-slot');
     if (!slot || !ap.enabled) return;
-    slot.innerHTML = `<button class="btn" type="button" id="fd-slice">Slice…</button>`;
-    $('fd-slice').addEventListener('click', () => {
-      showTab('autoprint');
-      setTimeout(() => { $('ap-model').value = entry.name; $('ap-model').focus(); }, 300);
-    });
+    slot.innerHTML = `<button class="btn primary" type="button" id="fd-slice">Open in Slicer</button>`;
+    $('fd-slice').addEventListener('click', () => { if (window.Slicer) Slicer.open(entry.name); else showTab('slicer'); });
   }
 
 function initAutoPrint() {

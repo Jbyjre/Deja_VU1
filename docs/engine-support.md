@@ -4,7 +4,7 @@ Deja Vu1 slices with a program you install yourself: Snapmaker Orca or OrcaSlice
 (see [slicing and models](slicing-and-models.md)). This page lists the builds that
 were run for real. A row exists only where slices were made with that exact build
 on that system and the result is written down in this repository. Any other build
-still slices, and **Check slicer** shows which builds have recorded runs.
+still slices, and the engine card in the Slicer shows which builds have recorded runs.
 
 ## Tested
 
@@ -17,7 +17,7 @@ The processor type of the Linux runs was not written down.
 
 ## Next to record
 
-- Windows and macOS builds. On Windows, Check slicer reads the version from the engine's settings
+- Windows and macOS builds. On Windows, the engine check reads the version from the engine's settings
   file because the engine prints `--help` to a console window; the suite tests that route with a
   stand-in engine.
 - Other versions of Snapmaker Orca and OrcaSlicer, including newer releases.
@@ -40,10 +40,43 @@ These builds slice like the tested ones. A row gets added once someone records a
 fails, the message names the cause and what to try
 ([when the engine check or a slice fails](slicing-and-models.md#when-the-engine-check-or-a-slice-fails)).
 
+## The engine Deja Vu1 installs
+
+The Slicer's **Install engine** button downloads Snapmaker's own release and nothing else. What that means, and what has and has not been run:
+
+- **Which file.** The newest stable release of `Snapmaker/OrcaSlicer` for this computer, chosen by name from the release's own file list:
+  `Snapmaker_Orca_Linux_AppImage_Ubuntu2404_V<version>.AppImage` (64-bit Intel and AMD Linux only; Snapmaker publishes no ARM build),
+  `Snapmaker_Orca_Windows_V<version>_portable.zip` or `Snapmaker_Orca_Mac_universal_V<version>.dmg`. Only https, and only github.com and
+  the `githubusercontent.com` hosts its downloads redirect to.
+- **Is it the file Snapmaker published.** For v2.4.1 the files were downloaded and hashed on 21 November 2026 and their SHA-256 values are
+  recorded in `backend/engine_installer.py` (`PINNED`): Linux 137,423,352 bytes `2b5117e2…cc06`, Windows 175,353,541 bytes `1f002e21…8c9d`,
+  macOS 274,143,110 bytes `7a590830…815f`. A pinned release is always checked against the pin, even if a release list says otherwise. A newer
+  release is checked against the `digest` GitHub lists for the file. With neither, the file is refused unless you press **Install anyway**, and
+  it is recorded as unverified. Size is checked too.
+- **How it is installed.** Downloaded to a working folder, unpacked into a staging folder (the Windows zip with path, size and entry limits;
+  the Linux AppImage with its own `--appimage-extract`, which needs no FUSE; the macOS disk image mounted read-only and the app copied out),
+  started once to read its version, and only then renamed into place and made current. A failed or cancelled install leaves the engine that
+  worked. Under `<data>/engine/`; slicing with it uses `--datadir <data>/engine/engine-data`, so a Snapmaker Orca or OrcaSlicer you installed is
+  never read or changed.
+- **What was run.** `tests/test_engine_installer.py` runs the whole install (download, checksum, unpack, check, update, cancel, a bad
+  archive, a bad engine, a wrong or missing checksum) against a local stand-in release server and a stand-in engine. The real files were
+  downloaded and hashed, and the Windows zip's contents were listed (`snapmaker-orca.exe` at the top of `Snapmaker_Orca_Windows_V2.4.1_portable`,
+  its `resources/profiles/Snapmaker` presets, 11,333 files, about 396 MB unpacked). **The real engine was not run in the session that built
+  this**, so the Linux unpacking layout, the macOS copy and the engine's own arrange and orient export are unverified. `python3
+  tools/engine-selftest.py` runs the real engine through the app's own code on your computer and prints each step; send its output, or the
+  `--json` form, to settle them.
+- **The plate's drawing.** Snapmaker Orca ships the U1's plate model and texture under the AGPL-3.0, so Deja Vu1 does not copy them. It draws its
+  own plate from measurements of the engine's bed model (a 0.5 mm sheet, 276 × 293 mm, a straight back edge, straight sides and a narrower front
+  edge that widens through chamfers; the printable area is 270 × 270 mm from x 0.5, y 1; 270.05 mm tall) with its own lettering, ruler and
+  brackets. The printer's name is shown because the real plate carries it; it says nothing about who made Deja Vu1.
+- **The prime tower's place.** The Slicer draws the tower with its left-front corner at the engine's default (x 15, y 220 mm), the convention
+  Orca inherited from PrusaSlicer. The Preview draws the tower the engine really printed; a difference between the two would be a bug to report.
+
 ## What the app does about it
 
-- **Check slicer** reads the engine's version and shows "Tested" for a recorded
-  build, or "Ready to slice" with the builds that have recorded runs, in Files, Slicing.
+- The engine check (run by the Slicer the first time it finds an engine, and by the engine card) reads the
+  engine's version and shows "Tested" for a recorded build, or "Ready to slice" with the builds that have
+  recorded runs.
 - A slice waits for a new check when the engine program was updated, replaced or
   swapped for another since the last check. Deja Vu1 never slices with a program
   whose version it has not read since the file changed.

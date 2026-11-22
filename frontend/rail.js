@@ -62,8 +62,9 @@
     ['printers', 'All printers', 'printer', 'fleet', 'printers', true],
     ['desk', 'Farm', 'printer', 'fleet', 'desk'],
     ['sandbox', 'Practice printers', 'printer', 'fleet', 'sandbox'],
-    ['slice', 'Slice', 'slicer', 'files', 'slicing'],
-    ['layers', 'Layer heights', 'slicer', 'files', 'layers'],
+    ['slice', 'Prepare', 'slicer', 'slicer', 'prepare'],
+    ['preview', 'Preview', 'slicer', 'slicer', 'preview'],
+    ['layers', 'Layer heights', 'slicer', 'slicer', 'prepare', false, true],
     ['files', 'Library', 'files', 'files', 'library'],
     ['queue', 'Queue', 'files', 'files', 'jobs'],
     ['models', 'Models', 'models', 'models', null],
@@ -86,7 +87,7 @@
   const partsOf = place => DEST.filter(d => d.place === place && !d.hide && shownDest(d));
   // Keyboard: G then a letter goes to a destination; Alt+1 to Alt+8 go to the eight places; ? lists them all.
   const GO_KEYS = { o: 'overview', r: 'printer', i: 'readings', p: 'printers', s: 'slice', h: 'layers', f: 'files', q: 'queue',
-    w: 'models', a: 'ai', m: 'maintenance', l: 'filament', ',': 'settings', e: 'prefs', t: 'automations', d: 'desk',
+    w: 'models', v: 'preview', a: 'ai', m: 'maintenance', l: 'filament', ',': 'settings', e: 'prefs', t: 'automations', d: 'desk',
     u: 'studio', g: 'games' };
   const keyFor = id => Object.keys(GO_KEYS).find(k => GO_KEYS[k] === id);
   // Old screen names in links and remembered values.

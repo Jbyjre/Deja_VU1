@@ -20,6 +20,7 @@ import comparison
 import cost_calculator
 import desktop
 import discovery
+import engine_installer
 import error_codes
 import error_guides
 import filament_inventory
@@ -51,6 +52,7 @@ import readiness
 import remote
 import sanity_check
 import slicer_bridge
+import slicer_working
 import socket
 import socketserver
 import spoolman_bridge
@@ -236,6 +238,8 @@ _APP_ROUTES = {
     "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
+    "/api/slicer/engine": ("auto_print", lambda q: engine_installer.status()),
+    "/api/slicer/working": ("auto_print", lambda q: slicer_working.state()),
     "/api/tester/status": ("tester", lambda q: tester.status()),
     "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
