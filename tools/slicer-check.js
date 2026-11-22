@@ -295,6 +295,23 @@ async function main() {
     /* ---- settings ---- */
     const heads = await page.evaluate(() => document.querySelectorAll('#sl-blk-heads .sl-hrow').length);
     check(heads === 4, 'the dock lists the four heads');
+    /* ---- saved sets of settings ---- */
+    {
+      const V = fn => page.evaluate(fn);
+      await page.fill('[data-quick="wall_loops"]', '4'); await page.dispatchEvent('[data-quick="wall_loops"]', 'change'); await page.waitForTimeout(300);
+      await page.click('#sl-sets-save'); await page.fill('#sl-sets-name', 'Tough'); await page.press('#sl-sets-name', 'Enter'); await page.waitForTimeout(300);
+      check(await V(() => SL.sets.list().length === 1 && SL.sets.list()[0].name === 'Tough' && SL.sets.list()[0].overrides.wall_loops === 4), 'Save keeps the settings under a name');
+      await V(() => { SL.state.overrides = {}; SL.settings.save(); SL.settings.render(); });
+      await page.selectOption('#sl-sets-pick', { label: 'Tough' }); await page.waitForTimeout(500);
+      check(await V(() => SL.state.overrides.wall_loops === 4 && document.querySelector('[data-quick="wall_loops"]').value === '4'), 'choosing a saved set puts its settings back on screen');
+      await page.click('#sl-sets-more');
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 6000 }).catch(() => null), page.click('#sl-sets-export')]);
+      check(!!dl && /Tough\.dejavu-settings\.json$/.test(dl.suggestedFilename()), 'Export writes a file');
+      await page.click('#sl-sets-delete'); await page.waitForTimeout(200);
+      check(await V(() => SL.sets.list().length === 0), 'Delete removes the set');
+      await V(() => { SL.state.overrides = {}; SL.settings.save(); SL.settings.render(); });
+    }
+
     /* ---- filament per head ---- */
     {
       const V = fn => page.evaluate(fn);

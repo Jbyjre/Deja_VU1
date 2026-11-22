@@ -417,3 +417,10 @@ button.sl-lg:hover { background: color-mix(in oklch, var(--text) 6%, transparent
 .sl-fn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #sl-root .sl-fn .sl-s-num input { padding-right: 46px; }
 #sl-root .sl-fn.is-changed .sl-s-num input { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+
+/* ---- saved sets of settings in the Process block ------------------------------------------------------------------------------------------ */
+.sl-sets { margin-top: 8px; }
+.sl-sets-row { display: flex; align-items: center; gap: 6px; }
+.sl-sets-row select, .sl-sets-row input[type="text"] { flex: 1; min-width: 0; }
+.sl-sets-menu { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sl-sets .sl-hint { margin-top: 6px; }

@@ -50,19 +50,22 @@
         material: rec.material || live.filament_material || '', nozzle: Number(rec.nozzle || live.nozzle_diameter || 0.4), height: Number(rec.height || 0.2), saved: !!rec.toolhead,
         loaded: live.filament_loaded !== false, spool: rec.spool_id || '' };
     });
-    // A filament chosen for a head stays only while the engine still lists it and its material is the head's.
-    const offered = (work && work.filaments) || [];
-    if (offered.length && !keepHeads) {
-      state.preset.filaments = [0, 1, 2, 3].map(i => {
-        const name = state.preset.filaments[i], row = name && offered.find(r => r.name === name || r.label === name);
-        return row && row.material === String(state.heads[i].material || '').toUpperCase() ? name : '';
-      });
-    }
+    if (!keepHeads) sanitizeFilaments(work);
     if (state.preset.process && work && work.processes && !work.processes.some(p => p.id === state.preset.process)) state.preset.process = null;
     render();
     // The object list, the object panel and the colours on the plate follow the heads only when the heads changed; a refresh that found the
     // same answer leaves them alone, so whatever is being typed in the object panel keeps its place.
     if (SL.prepare && JSON.stringify(state.heads) !== headsBefore) { SL.prepare.renderObjects(); SL.prepare.renderInspector(); if (state.view) SL.prepare.syncScene(); }
+  }
+
+  /* A filament chosen for a head stays only while the engine still lists it and its material is the head's. */
+  function sanitizeFilaments(work) {
+    const offered = ((work || w.data) && (work || w.data).filaments) || [];
+    if (!offered.length || state.heads.length !== 4) return;
+    state.preset.filaments = [0, 1, 2, 3].map(i => {
+      const name = state.preset.filaments[i], row = name && offered.find(r => r.name === name || r.label === name);
+      return row && row.material === String(state.heads[i].material || '').toUpperCase() ? name : '';
+    });
   }
 
   const baseProcess = () => {
@@ -258,7 +261,9 @@
       </div>
       <div class="sl-speed"><label for="sl-spd">Speed</label><input type="range" id="sl-spd" min="50" max="120" step="5" value="${state.speed}" aria-valuetext="${state.speed}% of the preset"><output id="sl-spd-o">${state.speed}%</output></div>
       ${Object.keys(ov).length ? `<div class="sl-changed"><span>${Object.keys(ov).length} setting${Object.keys(ov).length > 1 ? 's' : ''} changed</span><button type="button" class="sl-btn sl-quiet" id="sl-reset-all">${ic('reset')}Back to the preset</button></div>` : ''}
-      ${w.warnings.length ? `<p class="sl-hint">${esc(w.warnings[0])}</p>` : ''}`;
+      ${w.warnings.length ? `<p class="sl-hint">${esc(w.warnings[0])}</p>` : ''}
+      <div class="sl-sets" id="sl-sets"></div>`;
+    if (SL.sets) SL.sets.paint();
     on(q('#sl-all'), 'click', () => SL.sheet && SL.sheet.open());
     on(q('#sl-preset'), 'change', e => { state.preset.process = e.target.value; state.overrides = {}; save(); render(); scheduleProfile(); });
     for (const input of qa('[data-quick]', box)) on(input, 'change', () => {
@@ -475,6 +480,6 @@
     return true;
   };
 
-  SL.settings = { build, refresh, render, openEngine, closeEngine, scheduleProfile, applyProfile, effective, save, baseProcess, w, headsChanged, activeFilament, printerDiff };
+  SL.settings = { build, refresh, render, openEngine, closeEngine, scheduleProfile, applyProfile, effective, save, baseProcess, w, headsChanged, activeFilament, printerDiff, sanitizeFilaments };
   void hexRGB;
 })();

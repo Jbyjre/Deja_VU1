@@ -74,6 +74,12 @@ saved by the Slicer comes back with its objects where they were.
   it rebuilds one working profile from the stock U1 presets that fit the four
   heads (read from the installed engine) plus what you changed, so the engine's
   own refusals appear where you type.
+- **Saved settings.** Under the dock's print settings, **Save** keeps the preset, every
+  changed setting, the speed and each head's filament choice and numbers under a
+  name. Pick one to put them all back; the arrow beside Save offers Rename, Delete,
+  Export and Import. A file is a plain JSON file; one that holds a setting the engine
+  does not have, or a value that does not fit, is read with those left out and says
+  how many. The heads' colours and spools are not part of a set.
 
 **Slice plate** saves the plate as a source-preserving 3MF (the original files
 stay intact), rebuilds the working profile, and runs the engine on that one

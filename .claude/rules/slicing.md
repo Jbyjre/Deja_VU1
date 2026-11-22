@@ -90,7 +90,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
 ## The Slicer (frontend)
 
 - Load order (`index.html`): `u1-plate.js` (before `viewer3d.js`), then `slicer-model.js`, `slicer-scene.js`, `slicer-ui.js`, `slicer-prepare.js`,
-  `slicer-keys.js`, `slicer-settings.js`, `slicer-filament.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
+  `slicer-keys.js`, `slicer-settings.js`, `slicer-filament.js`, `slicer-sets.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
   `slicer-gcode-worker.js` is the Preview's Web Worker. Styles are all in `slicer.css` (11 px floor; the page's generic `.tab-sub > *` rule gives
   every direct child a 16 px side margin and its own `max-width`, so set widths outright).
 - `PlateModel` (slicer-model.js) owns the objects and the 12-number transform (3 rows of turn and scale, then the move; row-vector convention, shared with
@@ -116,7 +116,10 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   Per-head numbers: `slicer_profiles.FILAMENT_NUMBERS` (11 keys, ranges served as `filament_limits`; the U1's bed temperature is `textured_plate_temp`, because its machine preset's `default_bed_type` is the
   textured plate) go in `material_options`, one dict per head, and each filament row carries the engine's own values as `own`. The browser keeps them in `state.preset.tune` and clears a head's numbers when its material or
   filament changes. The Preview reader (`slicer-gcode-worker.js`) takes its layers from `;LAYER_CHANGE` when the file has any (the start code's purge line is no layer); `tests/test_slicer_gcode.py` runs it in Node.
-- Checks: `node tools/slicer-check.js` (82 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
+- Saved sets (`slicer-sets.js`): a set is the print preset's name, `state.overrides`, the speed, `state.preset.filaments` and `state.preset.tune`, kept in `dejavu1.slicer.sets` (30 at most) and exported as
+  `{format: 'deja-vu1-slicer-settings', version: 1, ...}`. An imported file goes through `clean()`: keys must match `[a-z0-9_]` and be in `/api/slicer/schema`, values must be numbers, booleans or short strings, tune
+  numbers inside `filament_limits`, the speed held to 50 to 120, the name stripped of control characters and angle brackets; what is dropped is counted and reported. Heads' colours and spools are never in a set.
+- Checks: `node tools/slicer-check.js` (86 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
   `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 
 ## Profiles and per-head heights
