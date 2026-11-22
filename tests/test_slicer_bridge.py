@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
 
 import file_library    # noqa: E402
+import plate_project   # noqa: E402
 import mock_moonraker  # noqa: E402
 import print_queue     # noqa: E402
 import sample_files    # noqa: E402
@@ -104,6 +105,22 @@ FAKE_ORCA = textwrap.dedent('''\
         sys.stdout.write("[2026-11-19 10:00:01] [warning] plate 1: found slicing warnings: Empty layers detected between 4.2 and 4.4 at 192.168.1.50\\n")
         sys.stdout.write("Slic3r::CLI::run found error, exit\\n")
         sys.exit(256 - 100)
+    if mode in ("version_refused", "version_refused_old_engine"):
+        # A project the engine's own window saved: its command line takes it for a newer file (CLI_FILE_VERSION_NOT_SUPPORTED, -24).
+        if "--allow-newer-file" not in args:
+            result(-24, "Unsupported 3MF version.")
+            sys.exit(256 - 24)
+        if mode == "version_refused_old_engine":
+            sys.stderr.write("Unknown option --allow-newer-file\\n")
+            result(-2, "Invalid parameters to the slicer.")
+            sys.exit(256 - 2)
+        mode = "ok"
+    if mode == "nothing_inside":
+        # The Windows and macOS builds write no result.json. The two exclude-triangle lines come out of every run, good ones too.
+        sys.stdout.write("[error]   Slic3r::GUI::PartPlate::calc_exclude_triangles:Unable to create exclude triangles\\n\\n" * 2)
+        sys.stdout.write("[error]   plate 1: Nothing to be sliced, Either the print is empty or no object is fully inside the print "
+                         "volume before apply.\\n\\nSlic3r::CLI::run found error, exit\\n")
+        sys.exit(256 - 50)
     if mode == "no_output":
         result(0, "Success.")
         sys.exit(0)
@@ -868,6 +885,65 @@ class TestWhyItFailed(SlicerBridgeTest):
             slicer_bridge.wait(job["id"], timeout=20)
         self.assertEqual(len(slicer_bridge._traces), slicer_bridge.MAX_JOBS_KEPT)
         self.assertEqual(set(slicer_bridge._traces), set(slicer_bridge._jobs))
+
+
+class TestProjectsFromOtherSlicers(SlicerBridgeTest):
+    def setUp(self):
+        super().setUp()
+        self.project = plate_project.save({"objects": [{"name": "spur_gear_24t.stl", "tool": 0, "transform": [1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 135, 0]}]})["name"]
+
+    def test_a_project_the_engine_calls_too_new_is_tried_once_more_with_its_own_switch(self):
+        # Read from the engine's source and reproduced on a real slice: the engine's command line refuses a 3MF its own window saved
+        # (the file says 2.4.0.1, the engine is build 01.10.01.50) unless it is given --allow-newer-file.
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "version_refused"
+        job = slicer_bridge.wait(slicer_bridge.start_job(self.project)["id"])
+        self.assertEqual(job["status"], "done", job.get("error"))
+        with open(self.args_file) as fh:
+            self.assertIn("--allow-newer-file", json.load(fh))
+        self.assertIn("--allow-newer-file", job["report"]["command"])
+        self.assertTrue(any("--allow-newer-file" in note for note in job["report"]["input_notes"]), job["report"]["input_notes"])
+
+    def test_an_engine_that_does_not_know_the_switch_keeps_the_first_refusal(self):
+        self.configure()
+        os.environ["FAKE_ORCA_MODE"] = "version_refused_old_engine"
+        job = slicer_bridge.wait(slicer_bridge.start_job(self.project)["id"])
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("newer version of the slicer", job["error"])
+        self.assertEqual(job["cause"]["code"], "orca_-24")
+        self.assertNotIn("--allow-newer-file", job["report"]["command"])
+        self.assertTrue(any("Engine" in fix for fix in job["cause"]["fixes"]))
+
+    def test_a_plain_slice_is_not_given_the_switch(self):
+        self.configure()
+        job = slicer_bridge.wait(slicer_bridge.start_job("spur_gear_24t.stl")["id"])
+        self.assertEqual(job["status"], "done")
+        with open(self.args_file) as fh:
+            self.assertNotIn("--allow-newer-file", json.load(fh))
+
+    def test_nothing_inside_the_plate_says_which_object_reaches_out_and_by_how_much(self):
+        self.machine = _preset(self.tmp, "Snapmaker U1 (0.4 nozzle)", "machine", printable_height="270.05",
+                               printable_area=["0.5x1", "270.5x1", "270.5x271", "0.5x271"])
+        self.configure()
+        file_library.save("far.stl", sample_files.dock_bracket_stl(), origin="sample")
+        plate = plate_project.save({"objects": [{"name": "far.stl", "tool": 0, "transform": [1, 0, 0, 0, 1, 0, 0, 0, 1, 400, 20, 0]}]})
+        os.environ["FAKE_ORCA_MODE"] = "nothing_inside"
+        job = slicer_bridge.wait(slicer_bridge.start_job(plate["name"])["id"])
+        self.assertEqual(job["status"], "failed")
+        self.assertRegex(job["error"], r"far\.stl reaches [\d.]+ mm past the right edge of the plate")
+        self.assertIn("past the right edge", job["cause"]["detail"])
+        self.assertNotIn("add a model", job["error"].lower())
+        self.assertNotIn("exclude triangles", job["error"])
+        self.assertEqual(job["cause"]["code"], "orca_-50")
+
+    def test_nothing_inside_without_a_measurement_is_still_not_blamed_on_an_empty_plate(self):
+        self.configure()                                              # this preset lists no plate size, so there is nothing to measure
+        os.environ["FAKE_ORCA_MODE"] = "nothing_inside"
+        job = slicer_bridge.wait(slicer_bridge.start_job(self.project)["id"])
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("no model fully inside the plate", job["error"])
+        self.assertIn("Nothing to be sliced", job["error"])
+        self.assertNotIn("exclude triangles", job["error"])
 
 
 class TestEngineSupportAndChanges(SlicerBridgeTest):

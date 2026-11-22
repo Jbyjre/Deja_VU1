@@ -69,12 +69,33 @@ ORCA_FIXES = {
     -5: ["Open the Slicer and pick the printer and print presets again."],
     -6: ["Open the model in the Slicer and save the plate again, or export the model again from your design program."],
     -14: ["Close other programs and slice again. A large model needs more memory."],
+    -15: ["Add the project's models to the Slicer and slice from there with the U1's own presets."],
+    -16: ["Add the project's models to the Slicer and slice from there with the U1's own presets."],
     -17: ["Choose a process preset made for the same printer as the machine preset."],
-    -50: ["Add a model to the plate, then slice again."],
+    -18: ["Save the project again in the program that made it, or add its models to the Slicer and slice from there."],
+    -19: ["Remove the post-processing script from the project's settings in the program that made it, or add its models to the "
+          "Slicer and slice from there."],
+    -20: ["Add the project's models to the Slicer, which uses the U1's own plate, and slice from there."],
+    -21: ["Make room: move the objects apart or take one off the plate, then slice again."],
+    -22: ["Turn the model by hand in the Slicer (or lay it flat), then slice again."],
+    -23: ["Add the project's models to the Slicer and slice from there with the U1's own presets."],
+    -24: ["Press Engine in the Slicer and update the engine, so it is as new as the program that saved the project.",
+          "Or add the project's models to the Slicer and slice from there: that does not depend on the version that saved it."],
+    -50: ["Check that the model sits fully inside the plate and is no taller than the printer allows (the U1 prints up to 270 mm "
+          "each way). Arrange puts it back in the middle and Drop to plate puts it on the bed.",
+          "If it looks well inside the plate on screen, the model's file may hold a stray point far from the model. Deja Vu1 "
+          "leaves those out of 3MF files; for another kind of file, export the model again from your design program.",
+          "If the plate really is empty, add a model to it."],
     -51: ["Move every object fully inside the build plate, then slice again."],
     -52: ["Move every object fully inside the build plate, then slice again.",
           "If the model is far larger than the plate, check that it was saved in millimetres."],
     -58: ["Raise the slicing time limit in Settings, or use a smaller model."],
+    -59: ["Reduce the model's triangle count in your design program (or use a simpler model), then slice again."],
+    -61: ["Choose a material that can print on the U1's plate, or change the plate type in the print settings."],
+    -62: ["Use materials that print at similar temperatures on one plate."],
+    -63: ["Move the objects further apart, or print them all at once instead of one at a time."],
+    -64: ["Move the objects apart so none touch, then slice again."],
+    -65: ["Open the print settings and turn Spiral vase off, or change the settings it complains about."],
     -100: ["Open the same model in Orca with the same presets and slice it there: Orca shows the warning that stopped the slice.",
            "The command-line engine treats some slicing warnings (empty layers, overlapping toolpaths) as errors, so a model that "
            "slices on screen can still stop here.",
@@ -199,6 +220,9 @@ def from_text(text):
 # about the reason: the reason is printed before it.
 _FOUND_ERROR = re.compile(r"\bfound error\b", re.I)
 _PROBLEM = re.compile(r"error|fail|cannot|can't|unable|invalid|conflict|overlap|empty|exceed|warning", re.I)
+# Lines the engine prints on every run, slices that work included. The U1's preset lists one excluded area with a single point
+# (bed_exclude_area = 0x0), which the engine cannot triangulate, so each run says so twice. Checked on a real Linux slice that finished.
+_HARMLESS = re.compile(r"calc_exclude_triangles:\s*Unable to create exclude triangles", re.I)
 
 
 def orca_code(code):
@@ -222,7 +246,7 @@ def reason_lines(*texts, limit=3):
     Orca's own "found error" line. Each is cut at 240 characters.
     """
     lines = [line.strip() for text in texts for line in str(text or "").splitlines()
-             if line.strip() and not _FOUND_ERROR.search(line)]
+             if line.strip() and not _FOUND_ERROR.search(line) and not _HARMLESS.search(line)]
     return [line[:240] for line in ([x for x in lines if _PROBLEM.search(x)] or lines)[-limit:]]
 
 

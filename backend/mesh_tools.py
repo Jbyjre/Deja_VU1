@@ -219,8 +219,12 @@ def _read_model_part(stream, part_name):
     return objects, build, metadata
 
 
-def iter_3mf(data):
-    """3MF bytes -> (triangle iterator, info), every build item placed."""
+def iter_3mf(data, points=False):
+    """
+    3MF bytes -> (triangle iterator, info), every build item placed. With points=True the first part is instead an iterator of
+    (build item number, iterator of that item's stored points), every stored vertex placed, used by a triangle or not: the slicing
+    engine's check that an object is inside the plate measures all of them.
+    """
     try:
         archive = safe_zip.open_archive(data, "3MF file")
     except safe_zip.DamagedArchive as exc:
@@ -262,7 +266,10 @@ def iter_3mf(data):
             raise MeshError(f"3MF object {object_id} is missing")
         verts, tris = obj["verts"], obj["tris"]
         n_verts = len(verts) // 3
-        for i in range(0, len(tris) - 2, 3):
+        if points:
+            for k in range(n_verts):
+                yield tuple(v * unit_scale for v in _apply(transform, (verts[3 * k], verts[3 * k + 1], verts[3 * k + 2])))
+        for i in range(0, 0 if points else len(tris) - 2, 3):
             count[0] += 1
             if count[0] > MAX_TRIANGLES:
                 raise MeshError(f"The model has more than {MAX_TRIANGLES:,} triangles")
@@ -279,9 +286,13 @@ def iter_3mf(data):
         for object_id, item_transform in items:
             yield from emit(main, object_id, _matrix(item_transform))
 
+    def item_points():
+        for number, (object_id, item_transform) in enumerate(items):
+            yield number, emit(main, object_id, _matrix(item_transform))
+
     info = {"application": metadata.get("Application", ""), "title": metadata.get("Title", ""),
             "objects": len(items), "parts": sorted(names.values())}
-    return all_triangles(), info
+    return (item_points() if points else all_triangles()), info
 
 
 def parse_3mf(data):

@@ -76,7 +76,7 @@ from slicer_bridge_part1 import (  # noqa: F401  (split out 19 November 2026; na
     MAX_PROFILES, ORCA_ERRORS, STOCK_COLOURS, SliceCancelled, SliceFailed, _DATA_DIR, _MAX_LISTED, _PATH,
     _RECEIPTS, _TAIL, _app_facts, _app_from_name, _cancellations, _capabilities, _check_program,
     _could_be_program, _defaults, _explain, _free_name, _job_update, _jobs, _listing, _load_receipts, _lock,
-    _looks_like_orca, _mark_interrupted, _mode_facts, _now, _operation, _order, _persist_locked, _previous_output,
+    _looks_like_orca, _mark_interrupted, _mode_facts, _now, _operation, _order, _orca_number, _persist_locked, _previous_output,
     _profile, _profile_facts, _program_files, _program_identity, _run_lock, _save, _search_places,
     _plain, _settings_file_is_orca, _shown_command, _stock_heads, _tail, _traces, any_active, cancel_all, cancel_job,
     command_for, diagnose, engine_capabilities, engine_changed, find_slicers, get_job, get_settings,
@@ -514,12 +514,24 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
         trace["stage"] = "slice"
         started = time.monotonic()
         code, out, err = _run(cmd, timeout, cwd=work)
+        rpath = os.path.join(outdir, "result.json")
+        result_json = storage.load_json(rpath, None) if os.path.isfile(rpath) else None
+        if kind == "3mf" and "--allow-newer-file" not in cmd and _orca_number(code, result_json) == -24:
+            # A project the engine's own window saved is refused by that same engine's command line: the file names the app's release
+            # (2.4.x) and the engine its build (01.10.x), and it takes the difference for a newer file (read from its source and
+            # reproduced on a real slice, 22 November 2026). --allow-newer-file is the engine's own switch for this. It is tried once, and
+            # only after this refusal, because an engine that does not know the option would stop on it.
+            again = cmd[:3] + ["--allow-newer-file"] + cmd[3:]
+            if os.path.isfile(rpath):
+                os.remove(rpath)
+            code2, out2, err2 = _run(again, timeout, cwd=work)
+            result2 = storage.load_json(rpath, None) if os.path.isfile(rpath) else None
+            if _orca_number(code2, result2) != -2:
+                cmd, code, out, err, result_json = again, code2, out2, err2, result2
+                input_notes.append("The engine took this project for one saved by a newer version of the slicer and refused it, "
+                                   "so it was told to accept it (--allow-newer-file).")
         seconds = round(time.monotonic() - started, 1)
         out_tail, err_tail = _tail(out), _tail(err)
-        result_json = None
-        rpath = os.path.join(outdir, "result.json")
-        if os.path.isfile(rpath):
-            result_json = storage.load_json(rpath, None)
         report = {"command": [os.path.basename(cmd[0])] + cmd[1:-2] + ["<temp folder>", os.path.basename(name)],
                   "seconds": seconds, "exit_code": code, "orca_result": result_json,
                   "output_tail": out_tail[-800:], "error_tail": err_tail[-800:],
@@ -543,6 +555,14 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
                            "plates": [{"file": f, "bytes": os.path.getsize(os.path.join(outdir, f))} for f in plates]}
         if code != 0 or (rc not in (None, 0)):
             headline, cause = diagnose(code, result_json, out, err)
+            orca = _orca_number(code, result_json)
+            if kind == "3mf" and orca in (-50, -51, -52):
+                # The engine only says "no model fully inside"; the plate's own numbers say which one reaches out, and where.
+                where = project_plates.volume_check(data, machine_data)
+                if where:
+                    headline = cause["title"] = f"{ORCA_ERRORS[orca]}. {' '.join(where)}"
+                    cause["detail"] = " ".join(where)
+                    trace["run"]["volume_check"] = where
             raise SliceFailed(headline, report, cause)
         trace["stage"] = "output"
         if not plates:

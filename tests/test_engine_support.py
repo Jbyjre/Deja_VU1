@@ -41,6 +41,19 @@ class TestAssess(unittest.TestCase):
         self.assertIn("OrcaSlicer 2.3.2", result["title"])
         self.assertIn("2.4.2", result["title"])
 
+    def test_the_release_name_and_the_build_name_are_one_engine(self):
+        # `--help` says 01.10.01.50; the settings file, which is all a Windows build gives the app, says 2.4.1 (the same download).
+        for name in ("2.4.1", "01.10.01.50"):
+            self.assertEqual(support.assess("Snapmaker_Orca", name, "Linux")["level"], "tested", name)
+        windows = support.assess("Snapmaker_Orca", "2.4.1", "Windows")
+        self.assertEqual(windows["level"], "untested")
+        self.assertIn("recorded runs are on Linux", windows["title"])
+        self.assertIn("Windows is next", windows["title"])
+        self.assertNotIn("02.08.01.55", windows["title"])                  # not pointed at a different build
+
+    def test_a_release_with_no_alias_is_still_another_version(self):
+        self.assertIn("9.9.9", support.assess("Snapmaker_Orca", "9.9.9", "Windows")["title"])
+
     def test_an_unknown_engine_is_not_tested(self):
         result = support.assess("SomethingElse", "1.0", "Linux")
         self.assertEqual(result["level"], "untested")

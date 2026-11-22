@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 
 import converter_3mf
 import file_library
+import mesh_tools
 import plate_project
 import safe_zip
 
@@ -205,7 +206,119 @@ def save(body):
     )
 
 
+def _compact_sources(data):
+    """
+    A 3MF with the points no triangle uses left out of its models, as (bytes, notes); the bytes are the input's own when nothing
+    changed. The engine measures every stored point when it asks whether an object is inside the plate (see plate_project.compact_vertices),
+    so this is done on the temporary copy it gets, never on the library file.
+    """
+    with safe_zip.open_archive(data) as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)):
+            return data, []             # engine_input's own check names this problem
+        changed, removed = {}, 0
+        for info in archive.infolist():
+            if info.is_dir() or not info.filename.lower().endswith('.model'):
+                continue
+            part = plate_project._name(info.filename)
+            fixed, count = plate_project.compact_vertices(
+                safe_zip.read(archive, part, limit=plate_project.MAX_SOURCE_BYTES)
+            )
+            if count:
+                changed[part] = fixed
+                removed += count
+        if not changed:
+            return data, []
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as target:
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                name = plate_project._name(info.filename)
+                target.writestr(
+                    name,
+                    changed[name] if name in changed else safe_zip.read(archive, name, limit=plate_project.MAX_SOURCE_BYTES),
+                )
+    return out.getvalue(), [
+        f'{removed:,} stored point{"s" if removed != 1 else ""} that no triangle uses {"were" if removed != 1 else "was"} left out '
+        'of the temporary copy sent to the engine (the engine counts every stored point when it checks that a model is inside the '
+        'plate). The model itself and the library file are unchanged.'
+    ]
+
+
+_EDGE = 1e-4        # the engine's own tolerance (EPSILON in libslic3r), in millimetres
+
+
+def _bed_box(area):
+    """printable_area (["0.5x1", "270.5x1", ...] or "0.5x1,270.5x1,...") -> (x0, y0, x1, y1), or None."""
+    corners = area.split(',') if isinstance(area, str) else area
+    try:
+        points = [tuple(float(n) for n in str(c).lower().split('x')) for c in corners]
+    except (TypeError, ValueError):
+        return None
+    if len(points) < 3 or any(len(p) != 2 for p in points):
+        return None
+    xs, ys = [p[0] for p in points], [p[1] for p in points]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def volume_check(data, machine, limit=3):
+    """
+    Which objects of a plate the engine would count as outside the printer's build volume, in words (an empty list when none, or
+    when the file or the preset can't be read). The engine measures every stored point, not only the ones triangles use, so a stray
+    point far from a model counts like the model. Checked on the real engine (22 November 2026, a cube with one extra point): a
+    point outside the plate's width or depth fails it with -50 at any height, even below the bed; a point above the height limit
+    fails it too; a point under the bed but inside the plate is accepted and the slice then fails with -100.
+    """
+    try:
+        box = _bed_box((machine or {}).get('printable_area'))
+        height = float((machine or {}).get('printable_height') or 0)
+        items, info = mesh_tools.iter_3mf(data, points=True)
+        names = []
+        with safe_zip.open_archive(data) as archive:
+            if 'DejaVu/plate.json' in archive.namelist():
+                rows = json.loads(safe_zip.read(archive, 'DejaVu/plate.json', limit=4 * 1024 * 1024)).get('objects')
+                names = [str(r.get('label') or r.get('name') or '') for r in rows if isinstance(r, dict)]
+        found = []
+        for number, points in items:
+            low, high, above = [math.inf] * 3, [-math.inf] * 3, False
+            for p in points:
+                above = above or p[2] >= -_EDGE
+                for axis in range(3):
+                    low[axis], high[axis] = min(low[axis], p[axis]), max(high[axis], p[axis])
+            who = names[number] if number < len(names) and names[number] else (
+                f'Object {number + 1}' if info['objects'] > 1 else 'The model')
+            if low[0] == math.inf:
+                continue                        # no points at all
+            if not above:
+                found.append(f'{who} lies completely below the plate.')
+                continue
+            if not box:
+                continue
+            x0, y0, x1, y1 = box
+            width, depth = high[0] - low[0], high[1] - low[1]
+            if width > x1 - x0 + _EDGE or depth > y1 - y0 + _EDGE:
+                found.append(f'{who} measures {width:.1f} by {depth:.1f} mm across, counting every point its file stores, '
+                             f'and the plate is only {x1 - x0:.1f} by {y1 - y0:.1f} mm.')
+            else:
+                for gap, side in ((x0 - low[0], 'left'), (high[0] - x1, 'right'), (y0 - low[1], 'front'), (high[1] - y1, 'back')):
+                    if gap > _EDGE:
+                        found.append(f'{who} reaches {gap:.1f} mm past the {side} edge of the plate.')
+            if height > 0 and high[2] > height + _EDGE:
+                found.append(f'{who} is {high[2]:.1f} mm tall and this printer prints up to {height:g} mm.')
+        return found[:limit]
+    except Exception:                           # noqa: BLE001 - this only adds detail to a refusal that is already worded
+        return []
+
+
 def engine_input(data, filaments):
+    """What the engine is given for a 3MF: unused points left out, then the source preset identity slots aligned."""
+    data, notes = _compact_sources(data)
+    data, aligned = _align_identity(data, filaments)
+    return data, notes + aligned
+
+
+def _align_identity(data, filaments):
     """Align source preset identity slots with the explicitly selected CLI materials."""
     part = 'Metadata/project_settings.config'
     with safe_zip.open_archive(data) as archive:
