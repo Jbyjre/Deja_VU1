@@ -113,6 +113,9 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   `stock_rank` would choose for each material. `POST /api/slicer/working` takes `filament_presets` (four names, short or full, or null) and the browser keeps them in `state.preset.filaments`
   (names, not ids: ids follow the engine's folder). A head change bumps `w.headsVersion`, and a `refresh()` that started before it leaves the heads alone (an older read must not undo it).
   `printerDiff()` words where a head differs from the printer's own toolhead reading. Nothing here writes to the printer.
+  Per-head numbers: `slicer_profiles.FILAMENT_NUMBERS` (11 keys, ranges served as `filament_limits`; the U1's bed temperature is `textured_plate_temp`, because its machine preset's `default_bed_type` is the
+  textured plate) go in `material_options`, one dict per head, and each filament row carries the engine's own values as `own`. The browser keeps them in `state.preset.tune` and clears a head's numbers when its material or
+  filament changes. The Preview reader (`slicer-gcode-worker.js`) takes its layers from `;LAYER_CHANGE` when the file has any (the start code's purge line is no layer); `tests/test_slicer_gcode.py` runs it in Node.
 - Checks: `node tools/slicer-check.js` (82 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
   `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 

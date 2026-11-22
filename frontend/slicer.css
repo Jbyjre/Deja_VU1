@@ -410,3 +410,10 @@ button.sl-lg:hover { background: color-mix(in oklch, var(--text) 6%, transparent
 #sl-root .sl-fil-hex input[type="color"] { width: 44px; min-height: 30px; height: 30px; padding: 2px; border: 1px solid var(--g-line); border-radius: 8px; background: transparent; cursor: pointer; }
 #sl-root .sl-fil-hex input[type="text"] { width: 96px; font-family: var(--font-mono); }
 @media (max-width: 720px) { .sl-fil { position: fixed; inset: 70px 8px auto 8px; width: auto; top: 70px !important; } }
+.sl-fil-tune summary { cursor: pointer; font: 620 11px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); padding: 4px 0; }
+.sl-fil-tune[open] summary { color: var(--text-dim); margin-bottom: 6px; }
+.sl-fil-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.sl-fn { display: flex; flex-direction: column; gap: 3px; font: 500 11.5px var(--font-sans); color: var(--text-dim); min-width: 0; }
+.sl-fn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sl-root .sl-fn .sl-s-num input { padding-right: 46px; }
+#sl-root .sl-fn.is-changed .sl-s-num input { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }

@@ -10,6 +10,12 @@
   const COLOURS = [['White', '#f2f2f2'], ['Black', '#1a1a1a'], ['Grey', '#8a8f98'], ['Red', '#d7263d'], ['Orange', '#f2711c'], ['Yellow', '#f7c92b'], ['Green', '#2fa84f'],
     ['Teal', '#14a3a3'], ['Blue', '#2f6fe4'], ['Purple', '#7b4bd8'], ['Pink', '#e86aa8'], ['Brown', '#7a4a2a'], ['Natural', '#e9e1cf']];
   const HEX = /^#[0-9a-f]{6}$/i;
+  /* [the engine's name, the words, the unit]: what Snapmaker Orca's Filament tab sets, for the plate the U1 comes with (the textured one) */
+  const TUNE = [['nozzle_temperature', 'Nozzle', '°C'], ['nozzle_temperature_initial_layer', 'First layer nozzle', '°C'], ['textured_plate_temp', 'Bed', '°C'],
+    ['textured_plate_temp_initial_layer', 'First layer bed', '°C'], ['filament_flow_ratio', 'Flow ratio', ''], ['filament_max_volumetric_speed', 'Most flow', 'mm³/s'],
+    ['fan_min_speed', 'Fan, least', '%'], ['fan_max_speed', 'Fan, most', '%'], ['overhang_fan_speed', 'Fan on overhangs', '%'],
+    ['close_fan_the_first_x_layers', 'Fan off for the first', 'layers'], ['slow_down_layer_time', 'Slow down under', 's a layer']];
+  let tuneOpen = false;
   let shown = -1, spools = null, spoolsAt = 0;
   // the head's button is drawn again whenever the Heads block is, so it is looked up each time rather than kept
   const anchorOf = () => q(`.sl-hpick[data-pick="${shown}"]`);
@@ -43,6 +49,7 @@
     if (change.material !== undefined || change.hex !== undefined) {
       const chosen = state.preset.filaments[i], row = chosen && ((W().data && W().data.filaments) || []).find(r => r.name === chosen || r.label === chosen);
       if (!row || row.material !== String(h.material || '').toUpperCase()) state.preset.filaments[i] = '';
+      if (change.material !== undefined) state.preset.tune[i] = {};      // another material starts from its own numbers
     }
     SL.settings.headsChanged();
     paint();
@@ -59,6 +66,9 @@
     for (const r of rows) (groups[r.brand] = groups[r.brand] || []).push(r);
     const auto = rows.find(r => r.stock), stock = auto ? auto.label : '';
     const known = COLOURS.find(([, hex]) => hex === String(h.hex || '').toLowerCase());
+    const limits = (W().data && W().data.filament_limits) || {}, typed = state.preset.tune[i] || {};
+    const using = (chosen && rows.find(r => r.name === chosen || r.label === chosen)) || rows.find(r => r.stock), own = (using && using.own) || {};
+    const changed = Object.keys(typed).length;
     const mine = (spools || []).filter(s => s && s.color_hex);
     box.innerHTML = `
       <div class="sl-ch"><b>T${i} filament</b><button type="button" class="sl-ix" id="sl-fil-x" aria-label="Close">${ic('x')}</button></div>
@@ -80,7 +90,11 @@
         : `<p class="sl-hint">${W().data && W().data.ready ? 'The engine lists no ' + esc(mat) + ' filament for this printer.' : 'Install the slicing engine to choose from its filaments.'}</p>`}</section>
       <section class="sl-fil-s"><h3>Colour${known ? ' · ' + esc(known[0]) : ''}</h3>
         <div class="sl-fil-sw" role="group" aria-label="Colour">${COLOURS.map(([name, hex]) => `<button type="button" class="sl-sw-c" data-hex="${hex}" style="--c:${hex}" aria-label="${esc(name)}" aria-pressed="${hex === String(h.hex || '').toLowerCase()}" title="${esc(name)}"></button>`).join('')}</div>
-        <div class="sl-fil-hex"><input type="color" id="sl-fil-pick" value="${HEX.test(h.hex || '') ? h.hex : '#9aa3ae'}" aria-label="Pick a colour"><input type="text" id="sl-fil-hex" value="${esc(h.hex || '')}" maxlength="7" spellcheck="false" aria-label="Colour as #rrggbb"></div></section>`;
+        <div class="sl-fil-hex"><input type="color" id="sl-fil-pick" value="${HEX.test(h.hex || '') ? h.hex : '#9aa3ae'}" aria-label="Pick a colour"><input type="text" id="sl-fil-hex" value="${esc(h.hex || '')}" maxlength="7" spellcheck="false" aria-label="Colour as #rrggbb"></div></section>
+      ${Object.keys(limits).length && W().data && W().data.ready ? `<details class="sl-fil-tune" id="sl-fil-tune"${tuneOpen || changed ? ' open' : ''}><summary>Temperatures, flow and cooling${changed ? ` · ${changed} changed` : ''}</summary>
+        <div class="sl-fil-grid">${TUNE.filter(([k]) => limits[k]).map(([k, label, unit]) => `<label class="sl-fn${typed[k] !== undefined ? ' is-changed' : ''}"><span>${esc(label)}</span><span class="sl-s-num"><input type="number" inputmode="decimal" step="any" data-fk="${k}" min="${limits[k][0]}" max="${limits[k][1]}" placeholder="${esc(own[k] !== undefined ? own[k] : '')}" value="${typed[k] !== undefined ? typed[k] : ''}" aria-label="${esc(label)}"><i>${esc(unit)}</i></span></label>`).join('')}</div>
+        <p class="sl-hint">A blank box uses the filament's own value, shown faintly. A change goes into the slice for T${i} only.</p>
+        ${changed ? '<div class="sl-ea"><button type="button" class="sl-btn" id="sl-fil-tune-reset">Back to the filament\'s own</button></div>' : ''}</details>` : ''}`;
     on(q('#sl-fil-x'), 'click', () => { const n = shown; close(); const a = q(`.sl-hpick[data-pick="${n}"]`); if (a) a.focus(); });
     on(q('#sl-fil-live'), 'click', () => apply(i, { hex: liveHex || h.hex, material: MATERIALS.includes(liveMat) ? liveMat : h.material, name: (live && live.filament_color_name) || '', spool: '' }));
     for (const b of qa('[data-spool]', box)) on(b, 'click', () => {
@@ -88,7 +102,16 @@
       if (s) apply(i, { hex: s.color_hex.toLowerCase(), material: String(s.material).toUpperCase(), name: s.color_name || '', spool: s.id });
     });
     for (const b of qa('[data-mat]', box)) on(b, 'click', () => { if (b.dataset.mat !== mat) apply(i, { material: b.dataset.mat, spool: '' }); });
-    on(q('#sl-fil-preset'), 'change', e => { state.preset.filaments[i] = e.target.value; SL.settings.headsChanged(); paint(); });
+    on(q('#sl-fil-preset'), 'change', e => { state.preset.filaments[i] = e.target.value; state.preset.tune[i] = {}; SL.settings.headsChanged(); paint(); });
+    on(q('#sl-fil-tune'), 'toggle', e => { tuneOpen = e.target.open; });
+    for (const input of qa('[data-fk]', box)) on(input, 'change', () => {
+      const k = input.dataset.fk, row = TUNE.find(t => t[0] === k), raw = input.value.trim(), v = Number(raw);
+      if (!raw) delete state.preset.tune[i][k];
+      else if (!Number.isFinite(v) || v < limits[k][0] || v > limits[k][1]) { say(`${row[1]} must be between ${limits[k][0]} and ${limits[k][1]}.`, 'warn'); input.value = typed[k] !== undefined ? typed[k] : ''; return; }
+      else state.preset.tune[i][k] = v;
+      SL.settings.headsChanged(); paint();
+    });
+    on(q('#sl-fil-tune-reset'), 'click', () => { state.preset.tune[i] = {}; SL.settings.headsChanged(); paint(); });
     for (const b of qa('[data-hex]', box)) on(b, 'click', () => { const c = COLOURS.find(x => x[1] === b.dataset.hex); apply(i, { hex: b.dataset.hex, name: c ? c[0] : '', spool: '' }); });
     on(q('#sl-fil-pick'), 'change', e => apply(i, { hex: e.target.value.toLowerCase(), name: '', spool: '' }));
     on(q('#sl-fil-hex'), 'change', e => {

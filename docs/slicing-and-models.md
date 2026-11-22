@@ -54,7 +54,11 @@ saved by the Slicer comes back with its objects where they were.
   reports for that head (one press uses it), the spools you own, the material
   (PLA, PETG, ABS, ASA, TPU, PVA, PA or PC), one of the engine's own filaments
   for that material (Snapmaker's, Generic and others; its temperatures, flow and
-  cooling go into the slice), and the colour. **Sync** reads the four heads from
+  cooling go into the slice), the colour, and a fold of eleven numbers (nozzle and
+  bed temperature, first-layer temperatures, flow ratio, most flow, fan limits, fan
+  on overhangs, fan off for the first layers, slow down under so many seconds a
+  layer) with the filament's own value shown in each box; a blank box keeps it.
+  The bed number is for the textured plate the U1 comes with. **Sync** reads the four heads from
   the printer again. A line under the heads says where one differs from what the
   printer reports (material, colour or nozzle). Nothing is written to the
   printer from here, and a blend a head cannot hold (carbon fibre, for example) is
@@ -77,7 +81,9 @@ plate with `--arrange 0`, so objects stay where you put them. A slice has named
 stages and Cancel; no fabricated percentage is shown. A change to the plate or
 the settings marks the slice out of date at once.
 
-**Preview** reads the sliced G-code in the browser with every move kept. It
+**Preview** reads the sliced G-code in the browser with every move kept. Its layer
+numbers are the slicer's own: the purge line the U1's start code lays down before
+the first layer is drawn with layer 1 and is not counted as a layer. It
 colours the toolpath by line type, head, speed, flow, layer height or line width;
 has a layer slider with two ends, a move slider with play, a switch for travel
 moves and a view from underneath; and shows the slicer's own time and filament

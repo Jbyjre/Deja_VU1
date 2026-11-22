@@ -23,10 +23,16 @@ FILAMENT_NUMBERS = {
     'nozzle_temperature_initial_layer': (170, 320),
     'hot_plate_temp': (0, 110),
     'hot_plate_temp_initial_layer': (0, 110),
+    # The U1's own plate is the textured one (its machine preset's default_bed_type), so this is the bed temperature its slices use.
+    'textured_plate_temp': (0, 110),
+    'textured_plate_temp_initial_layer': (0, 110),
     'filament_flow_ratio': (0.5, 1.5),
     'filament_max_volumetric_speed': (1, 50),
     'fan_min_speed': (0, 100),
     'fan_max_speed': (0, 100),
+    'overhang_fan_speed': (0, 100),
+    'close_fan_the_first_x_layers': (0, 20),
+    'slow_down_layer_time': (0, 100),
 }
 
 

@@ -39,7 +39,7 @@ function parse(text) {
   const names = new Map(), meta = {}, markers = [], layers = [], toolsSeen = new Set();
   const totals = { timeByFeature: new Float64Array(16), lengthByFeature: new Float64Array(16), extrudedByTool: [0, 0, 0, 0], travel: 0, toolChanges: 0, retractions: 0 };
   let x = 0, y = 0, z = 0, e = 0, absolute = true, absE = false, f = 1800, tool = 0, feature = 15, layer = -1, width = 0.42, height = 0.2, order = 0, capped = false;
-  let sawMarker = false, layerStartZ = -1, firstExtrusion = false, lastLayerOrder = 0, layerTime = 0;
+  let layerStartZ = -1, firstExtrusion = false, lastLayerOrder = 0, layerTime = 0;
   const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
 
   const closeLayer = () => { if (layer >= 0 && layers[layer]) { layers[layer].last = order - 1; layers[layer].time = layerTime; } layerTime = 0; };
@@ -60,6 +60,9 @@ function parse(text) {
     else totals.travel += len;
   };
 
+  // The slicer's own layer markers decide the layers. Without any, a new layer starts where an extruding move reaches a new height. The purge line the
+  // U1's start code lays down before the first marker belongs to no layer: counted as one it shifted every layer number against the slicer's own.
+  const hasMarkers = text.indexOf(';LAYER_CHANGE') >= 0;
   const lines = text.length;
   let at = 0;
   while (at < lines) {
@@ -73,7 +76,7 @@ function parse(text) {
     if (first === 59) {                                   // ';' a comment
       const c = text.slice(a + 1, Math.min(end, a + 160)).trim();
       if (c.startsWith('TYPE:')) { const n = c.slice(5).trim(); feature = featureIndex(n); names.set(feature, n); }
-      else if (c.startsWith('LAYER_CHANGE')) { sawMarker = true; openLayer(z); }
+      else if (c.startsWith('LAYER_CHANGE')) openLayer(z);
       else if (c.startsWith('WIDTH:')) width = parseFloat(c.slice(6)) || width;
       else if (c.startsWith('HEIGHT:')) height = parseFloat(c.slice(7)) || height;
       else if (c.startsWith('Z:')) { const zz = parseFloat(c.slice(2)); if (Number.isFinite(zz) && layers[layer]) layers[layer].z = zz; }
@@ -103,8 +106,8 @@ function parse(text) {
       }
       const de = ne - e, extruding = de > 1e-9 && (nx !== x || ny !== y);
       if (de < -1e-9) totals.retractions++;
-      if (extruding && !firstExtrusion) { firstExtrusion = true; if (layer < 0) openLayer(nz); }
-      if (extruding && !sawMarker && nz > layerStartZ + 0.001 && layer >= 0) { layerStartZ = nz; openLayer(nz); }
+      if (extruding && !firstExtrusion) { firstExtrusion = true; if (layer < 0 && !hasMarkers) { openLayer(nz); layerStartZ = nz; } }
+      if (extruding && !hasMarkers && nz > layerStartZ + 0.001 && layer >= 0) { layerStartZ = nz; openLayer(nz); }
       if (extruding && layerStartZ < 0) layerStartZ = nz;
       if (extruding) totals.extrudedByTool[tool] += de;
       if (cmd === 'G2' || cmd === 'G3') {

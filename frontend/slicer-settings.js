@@ -14,16 +14,18 @@
   /* ---- remembered choices ----------------------------------------------------------------------------------------------------- */
   function load() {
     state.preset.filaments = ['', '', '', ''];
+    state.preset.tune = [{}, {}, {}, {}];
     try {
       const saved = JSON.parse(store.get(KEY) || '{}');
       state.preset.process = saved.process || null;
       if (Array.isArray(saved.filaments)) state.preset.filaments = [0, 1, 2, 3].map(i => (typeof saved.filaments[i] === 'string' ? saved.filaments[i].slice(0, 80) : ''));
+      if (Array.isArray(saved.tune)) state.preset.tune = [0, 1, 2, 3].map(i => Object.fromEntries(Object.entries(saved.tune[i] && typeof saved.tune[i] === 'object' ? saved.tune[i] : {}).filter(([, v]) => Number.isFinite(v))));
       state.overrides = saved.overrides && typeof saved.overrides === 'object' ? saved.overrides : {};
       state.speed = Number.isFinite(saved.speed) ? saved.speed : 100;
     } catch (_) { /* a damaged value is the same as none */ }
   }
   function save() {
-    try { store.set(KEY, JSON.stringify({ process: state.preset.process, overrides: state.overrides, speed: state.speed, filaments: state.preset.filaments })); } catch (_) { /* no storage */ }
+    try { store.set(KEY, JSON.stringify({ process: state.preset.process, overrides: state.overrides, speed: state.speed, filaments: state.preset.filaments, tune: state.preset.tune })); } catch (_) { /* no storage */ }
   }
 
   /* ---- reading the server ------------------------------------------------------------------------------------------------------ */
@@ -297,7 +299,7 @@
     const d = w.data;
     if (!d || !d.ready) { if (strict) throw new Error(d && d.problem ? d.problem : 'The slicing engine is not ready yet'); return null; }
     const heads = state.heads.map(h => ({ toolhead: 'T' + h.i, nozzle: h.nozzle, material: (h.material || 'PLA').toUpperCase(), color_hex: h.hex, height: state.headHeights[h.i] || baseHeight(), spool_id: h.spool || '' }));
-    const body = { process: state.preset.process || null, options: effective(), layer_mode: state.layerMode, heads, filament_presets: state.preset.filaments.map(n => n || null) };
+    const body = { process: state.preset.process || null, options: effective(), layer_mode: state.layerMode, heads, filament_presets: state.preset.filaments.map(n => n || null), material_options: state.preset.tune.map(o => ({ ...o })) };
     const r = await postJSON('/api/slicer/working', body);
     if (mine !== w.token) return w.profileId;
     if (!r.ok) {

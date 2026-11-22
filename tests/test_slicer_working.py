@@ -193,6 +193,25 @@ class TestFilamentChoice(WorkingProfile):
         result = work.set_working({"filament_presets": ["Snapmaker PLA Silk", None, None, None]})
         self.assertEqual(result["names"]["filaments"][0], "Snapmaker PLA Silk @U1")
 
+    def test_a_filament_row_carries_the_engines_own_numbers_and_the_limits_are_listed(self):
+        state = work.state()
+        self.assertIn("nozzle_temperature", state["filament_limits"])
+        self.assertIn("textured_plate_temp", state["filament_limits"], "the U1's own plate is the textured one")
+        row = next(r for r in state["filaments"] if r["label"] == "Generic PLA")
+        self.assertIsInstance(row["own"], dict)
+
+    def test_temperatures_flow_and_cooling_per_head_reach_the_profile_and_are_checked(self):
+        result = work.set_working({"material_options": [{"nozzle_temperature": 205, "textured_plate_temp": 55, "filament_flow_ratio": 0.97}, {}, {}, {"fan_max_speed": 80}]})
+        prof = next(p for p in slicer_bridge.get_settings()["profiles"] if p["id"] == result["profile_id"])
+        first = json.loads(Path(prof["filaments"][0]).read_text())
+        self.assertEqual(first["nozzle_temperature"], ["205"])
+        self.assertEqual(first["textured_plate_temp"], ["55"])
+        self.assertEqual(first["filament_flow_ratio"], ["0.97"])
+        self.assertEqual(json.loads(Path(prof["filaments"][3]).read_text())["fan_max_speed"], ["80"])
+        for bad in ({"nozzle_temperature": 900}, {"filament_flow_ratio": "x"}, {"pressure_advance": 1}, {"fan_min_speed": 90, "fan_max_speed": 10}):
+            with self.assertRaises(ValueError):
+                work.set_working({"material_options": [bad, {}, {}, {}]})
+
     def test_a_stranger_or_a_special_material_is_refused_in_words(self):
         for name in ("Nonsense", "Generic PLA-CF", "Generic ABS"):
             with self.assertRaises(ValueError) as caught:

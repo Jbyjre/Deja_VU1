@@ -75,7 +75,8 @@ def _filament_rows(presets, machine):
         if label in seen:
             continue
         seen.add(label)
-        out.append({"id": r["id"], "name": r["name"], "label": label, "material": material, "brand": label.split(" ")[0]})
+        own = {k: (v[0] if isinstance(v, list) and v else v) for k, v in (r.get("material_options") or {}).items()}
+        out.append({"id": r["id"], "name": r["name"], "label": label, "material": material, "brand": label.split(" ")[0], "own": own})
     rank = {"Snapmaker": 0, "Generic": 1}
     for row in out:
         row["stock"] = False
@@ -118,7 +119,8 @@ def state():
     machine = next(r for r in found["presets"] if r["id"] == pick["machine"])
     out.update({"ready": True, "heads": heads, "heads_saved": not made, "machine": {"id": machine["id"], "name": machine["name"], "nozzles": machine.get("nozzles")},
                 "stock": {"process": pick["process"], "filaments": pick["filaments"], "names": pick["names"], "notes": pick["notes"]},
-                "processes": _process_rows(found["presets"], machine), "filaments": _filament_rows(found["presets"], machine)})
+                "processes": _process_rows(found["presets"], machine), "filaments": _filament_rows(found["presets"], machine),
+                "filament_limits": {k: list(v) for k, v in slicer_profiles.FILAMENT_NUMBERS.items()}})
     return out
 
 
