@@ -38,6 +38,17 @@ The processor type of the Linux runs was not written down.
   back to -100, shows the lines Orca printed before its closing line, and keeps the engine's whole
   output in the tester report. No Windows run has been recorded as working, so there is no Windows row
   above.
+- **Snapmaker Orca 2.4.1 on Windows 11, "Nothing to slice"** (a tester's computer, 22 November 2026): a plate with one model that sat inside
+  the plate on screen ended with exit code 4294967246, which is Orca's number -50 (no model fully inside the print volume). The output held two
+  `Unable to create exclude triangles` lines. The same release prints those on every Linux run, slices that work included, because the U1's
+  printer preset lists one excluded area with a single point (`bed_exclude_area = 0x0`), so they are not the cause. The model from that report was
+  not available here, so its cause is not confirmed. Two causes were reproduced on the same release on Linux with the real engine, each ending with
+  the same code and the same message, and both are fixed: a 3MF source that stores one point no triangle uses, outside the plate (the engine
+  measures every stored point; a point outside the plate's width or depth fails at any height, even under the bed, and a point above the height
+  limit fails too, while a point under the bed but inside the plate is accepted and the slice then fails with -100), and a plate built from a
+  source in Bambu Studio's layout, where the build item names an object that only lists components (the engine loads that as empty). The same
+  engine also refuses a 3MF its own window saved: the file says 2.4.0.1 and the engine is build 01.10.01.50, so its version check stops with -24
+  unless it is given `--allow-newer-file`.
 
 These builds slice like the tested ones. A row gets added once someone records a run. If a slice
 fails, the message names the cause and what to try
@@ -87,6 +98,15 @@ The Slicer's **Install engine** button downloads Snapmaker's own release and not
 - The engine check (run by the Slicer the first time it finds an engine, and by the engine card) reads the
   engine's version and shows "Tested" for a recorded build, or "Ready to slice" with the builds that have
   recorded runs.
+- The v2.4.1 release names itself two ways: `--help` prints `Snapmaker_Orca-01.10.01.50` and the settings file it exports says
+  `"version": "2.4.1"`. A Windows engine can only be read through the settings file, so the support table treats the two as one build
+  (`engine_support.RELEASE_BUILDS`). A Windows engine of that release reads as "Ready to slice. This build's recorded runs are on Linux; Windows is
+  next", and a different version still reads as another version.
+- A 3MF reaches the engine as a temporary copy. Points no triangle uses are left out of it, a plate built from a project that nests its parts
+  points at the parts themselves, and a project the engine refuses as too new (-24) is tried once more with `--allow-newer-file`. If the
+  engine does not know that option, the first message stays. The library file is never changed.
+- When the engine finds no model inside the plate (-50, -51 or -52) the message measures the plate itself: which object reaches past which
+  edge and by how much, or how tall it is against the printer's limit. It no longer says to add a model to a plate that has one.
 - A slice waits for a new check when the engine program was updated, replaced or
   swapped for another since the last check. Deja Vu1 never slices with a program
   whose version it has not read since the file changed.
