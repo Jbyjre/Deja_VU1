@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.36",
+      "date": "2026-11-22",
+      "name": "Credits say where the Slicer's mouse and key behaviour was read from",
+      "published": true,
+      "summary": "Credits say where the Slicer's mouse and key behaviour was read from.",
+      "changes": [
+        "Credits say where the Slicer's mouse and key behaviour was read from"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.35",
       "date": "2026-11-22",
       "name": "The Slicer: models slice on the real engine, Orca's camera and keys, a filame...",
