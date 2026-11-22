@@ -22,6 +22,7 @@
       return;
     }
     const v = state.view;
+    if (SL.keys) SL.keys.apply();
     v.accent = cssRGB('--accent', '#4a8fff');
     window.addEventListener('dv-theme', () => { v.accent = cssRGB('--accent', '#4a8fff'); v.draw(); });
     window.addEventListener('dv-ui', () => { v.accent = cssRGB('--accent', '#4a8fff'); v.draw(); });
@@ -71,6 +72,7 @@
   window.addEventListener('dv-tab', e => { if (e.detail && e.detail.tab === 'slicer') onShow(); });
   window.addEventListener('dv-section', e => { if (e.detail && e.detail.tab === 'slicer') onPart(e.detail.key); });
   document.addEventListener('keydown', e => { if (built) SL.prepare.onKey(e); });
+  document.addEventListener('keydown', e => { if (built) SL.prepare.onKeyFirst(e); }, true);
   // A model opened from Files lands on the plate (Files calls Slicer.open).
   window.Slicer = {
     ensure,

@@ -23,10 +23,16 @@ FILAMENT_NUMBERS = {
     'nozzle_temperature_initial_layer': (170, 320),
     'hot_plate_temp': (0, 110),
     'hot_plate_temp_initial_layer': (0, 110),
+    # The U1's own plate is the textured one (its machine preset's default_bed_type), so this is the bed temperature its slices use.
+    'textured_plate_temp': (0, 110),
+    'textured_plate_temp_initial_layer': (0, 110),
     'filament_flow_ratio': (0.5, 1.5),
     'filament_max_volumetric_speed': (1, 50),
     'fan_min_speed': (0, 100),
     'fan_max_speed': (0, 100),
+    'overhang_fan_speed': (0, 100),
+    'close_fan_the_first_x_layers': (0, 20),
+    'slow_down_layer_time': (0, 100),
 }
 
 
@@ -390,6 +396,14 @@ def _nozzle_of(row):
         return []
 
 
+def stock_rank(row, kind):
+    """How well a filament preset suits a material as the stock choice: Snapmaker's own Basic first, then Generic, then any other of theirs."""
+    n = row['name']
+    base = n.split(' @')[0]
+    return (0 if base == f'Snapmaker {kind} Basic' else 1 if base == f'Generic {kind}' else
+            2 if base.startswith(f'Snapmaker {kind}') else 3 if base.startswith(f'Generic {kind}') else 4, len(n))
+
+
 def stock_choice(presets, heads):
     """
     Snapmaker's stock U1 presets that fit the fitted heads: the printer preset for those nozzles, its Standard
@@ -422,12 +436,7 @@ def stock_choice(presets, heads):
     notes, filaments, names = [], [], []
     for h in sorted(heads, key=lambda x: x['toolhead']):
         kind = str(h.get('material') or 'PLA').upper()
-
-        def rank(r, kind=kind):
-            n = r['name']
-            base = n.split(' @')[0]
-            return (0 if base == f'Snapmaker {kind} Basic' else 1 if base == f'Generic {kind}' else
-                    2 if base.startswith(f'Snapmaker {kind}') else 3 if base.startswith(f'Generic {kind}') else 4, len(n))
+        rank = lambda r, kind=kind: stock_rank(r, kind)  # noqa: E731
         same = [r for r in materials if str(r.get('material') or '').upper() == kind]
         if not same:
             same = [r for r in materials if str(r.get('material') or '').upper() == 'PLA']

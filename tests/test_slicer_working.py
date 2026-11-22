@@ -153,5 +153,84 @@ class TestSetting(WorkingProfile):
         self.assertIn("layer height between", str(caught.exception))
 
 
+class TestFilamentChoice(WorkingProfile):
+    """Each head can use any of the engine's own filaments that fit the printer, not only the stock one for its material."""
+
+    def setUp(self):
+        super().setUp()
+        compatible = ["Snapmaker U1 (0.4 nozzle)"]
+        self.write("silk", {"type": "filament", "name": "Snapmaker PLA Silk @U1", "instantiation": "true", "filament_type": ["PLA"], "compatible_printers": compatible})
+        self.write("petg", {"type": "filament", "name": "Generic PETG @U1", "instantiation": "true", "filament_type": ["PETG"], "compatible_printers": compatible})
+        self.write("carbon", {"type": "filament", "name": "Generic PLA-CF @U1", "instantiation": "true", "filament_type": ["PLA-CF"], "compatible_printers": compatible})
+        self.write("other", {"type": "filament", "name": "Generic ABS @U1 0.6 nozzle", "instantiation": "true", "filament_type": ["ABS"],
+                             "compatible_printers": ["Snapmaker U1 (0.6 nozzle)"]})
+
+    def test_it_lists_the_filaments_that_fit_with_snapmakers_own_first(self):
+        rows = work.state()["filaments"]
+        labels = [r["label"] for r in rows]
+        self.assertEqual(labels[0], "Snapmaker PLA Silk", labels)
+        self.assertIn("Generic PETG", labels)
+        self.assertNotIn("Generic PLA-CF", labels, "a material a head record cannot hold is not offered")
+        self.assertNotIn("Generic ABS", labels, "a filament made for another nozzle is not offered")
+        self.assertEqual({r["material"] for r in rows}, {"PLA", "PETG"})
+
+    def test_each_material_names_the_filament_that_is_chosen_for_it_when_none_is(self):
+        rows = work.state()["filaments"]
+        stock = {r["material"]: r["label"] for r in rows if r["stock"]}
+        self.assertEqual(stock, {"PLA": "Generic PLA", "PETG": "Generic PETG"})
+        self.assertEqual(sum(1 for r in rows if r["stock"] and r["material"] == "PLA"), 1)
+
+    def test_a_chosen_filament_is_the_one_the_slice_uses_and_the_others_keep_the_stock_choice(self):
+        result = work.set_working({"filament_presets": [None, "Snapmaker PLA Silk", None, None]})
+        self.assertEqual(result["names"]["filaments"][1], "Snapmaker PLA Silk @U1")
+        self.assertEqual(result["names"]["filaments"][0], "Generic PLA @U1")
+        prof = next(p for p in slicer_bridge.get_settings()["profiles"] if p["id"] == result["profile_id"])
+        used = [json.loads(Path(f).read_text())["filament_settings_id"] for f in prof["filaments"]]
+        self.assertEqual(used[1], ["Snapmaker PLA Silk @U1"])
+        self.assertEqual(used[0], ["Generic PLA @U1"])
+
+    def test_a_filament_can_be_named_by_its_short_name(self):
+        result = work.set_working({"filament_presets": ["Snapmaker PLA Silk", None, None, None]})
+        self.assertEqual(result["names"]["filaments"][0], "Snapmaker PLA Silk @U1")
+
+    def test_a_filament_row_carries_the_engines_own_numbers_and_the_limits_are_listed(self):
+        state = work.state()
+        self.assertIn("nozzle_temperature", state["filament_limits"])
+        self.assertIn("textured_plate_temp", state["filament_limits"], "the U1's own plate is the textured one")
+        row = next(r for r in state["filaments"] if r["label"] == "Generic PLA")
+        self.assertIsInstance(row["own"], dict)
+
+    def test_temperatures_flow_and_cooling_per_head_reach_the_profile_and_are_checked(self):
+        result = work.set_working({"material_options": [{"nozzle_temperature": 205, "textured_plate_temp": 55, "filament_flow_ratio": 0.97}, {}, {}, {"fan_max_speed": 80}]})
+        prof = next(p for p in slicer_bridge.get_settings()["profiles"] if p["id"] == result["profile_id"])
+        first = json.loads(Path(prof["filaments"][0]).read_text())
+        self.assertEqual(first["nozzle_temperature"], ["205"])
+        self.assertEqual(first["textured_plate_temp"], ["55"])
+        self.assertEqual(first["filament_flow_ratio"], ["0.97"])
+        self.assertEqual(json.loads(Path(prof["filaments"][3]).read_text())["fan_max_speed"], ["80"])
+        for bad in ({"nozzle_temperature": 900}, {"filament_flow_ratio": "x"}, {"pressure_advance": 1}, {"fan_min_speed": 90, "fan_max_speed": 10}):
+            with self.assertRaises(ValueError):
+                work.set_working({"material_options": [bad, {}, {}, {}]})
+
+    def test_a_stranger_or_a_special_material_is_refused_in_words(self):
+        for name in ("Nonsense", "Generic PLA-CF", "Generic ABS"):
+            with self.assertRaises(ValueError) as caught:
+                work.set_working({"filament_presets": [None, name, None, None]})
+            self.assertIn("T1", str(caught.exception))
+        with self.assertRaises(ValueError):
+            work.set_working({"filament_presets": [None, None]})
+
+    def test_a_filament_of_another_material_than_the_head_holds_is_refused(self):
+        with self.assertRaises(ValueError) as caught:
+            work.set_working({"filament_presets": [None, "Generic PETG", None, None]})
+        self.assertIn("does not match", str(caught.exception))
+
+    def test_a_head_that_holds_petg_takes_a_petg_filament(self):
+        heads = [dict(h, material="PETG") if h["toolhead"] == "T2" else h for h in self.heads]
+        result = work.set_working({"heads": heads, "filament_presets": [None, None, "Generic PETG", None]})
+        self.assertEqual(result["names"]["filaments"][2], "Generic PETG @U1")
+        self.assertEqual(tool_setup.get()["heads"][2]["material"], "PETG")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -58,6 +58,37 @@ def _process_rows(presets, machine):
     return out
 
 
+def _filament_rows(presets, machine):
+    """
+    The engine's own filament presets that fit this printer, as the screen offers them per head: only the materials a head record can hold
+    (tool_setup.MATERIALS; carbon-fibre and other special blends are set on the printer), one row for each name, Snapmaker's own first.
+    """
+    out, seen = [], set()
+    for r in presets:
+        if r["type"] != "filament":
+            continue
+        compatible = r.get("compatible_printers") or []
+        material = str(r.get("material") or "").upper()
+        if (compatible and machine["name"] not in compatible) or material not in tool_setup.MATERIALS:
+            continue
+        label = r["name"].split(" @")[0]
+        if label in seen:
+            continue
+        seen.add(label)
+        own = {k: (v[0] if isinstance(v, list) and v else v) for k, v in (r.get("material_options") or {}).items()}
+        out.append({"id": r["id"], "name": r["name"], "label": label, "material": material, "brand": label.split(" ")[0], "own": own})
+    rank = {"Snapmaker": 0, "Generic": 1}
+    for row in out:
+        row["stock"] = False
+    for kind in tool_setup.MATERIALS:
+        same = [r for r in out if r["material"] == kind]
+        if same:
+            best = min(same, key=lambda r: slicer_profiles.stock_rank({"name": r["name"]}, kind))
+            best["stock"] = True
+    out.sort(key=lambda r: (rank.get(r["brand"], 2), r["brand"], tool_setup.MATERIALS.index(r["material"]), r["label"]))
+    return out
+
+
 def state():
     """Everything the sidebar needs, with a plain `problem` when it cannot be built (no engine, no presets, mixed nozzles)."""
     settings = slicer_bridge.get_settings()
@@ -88,7 +119,8 @@ def state():
     machine = next(r for r in found["presets"] if r["id"] == pick["machine"])
     out.update({"ready": True, "heads": heads, "heads_saved": not made, "machine": {"id": machine["id"], "name": machine["name"], "nozzles": machine.get("nozzles")},
                 "stock": {"process": pick["process"], "filaments": pick["filaments"], "names": pick["names"], "notes": pick["notes"]},
-                "processes": _process_rows(found["presets"], machine)})
+                "processes": _process_rows(found["presets"], machine), "filaments": _filament_rows(found["presets"], machine),
+                "filament_limits": {k: list(v) for k, v in slicer_profiles.FILAMENT_NUMBERS.items()}})
     return out
 
 
@@ -124,7 +156,22 @@ def set_working(body):
     options = body.get("options") or {}
     if not isinstance(options, dict):
         raise ValueError("Print settings must be a settings object")
-    request = {"name": WORKING_NAME, "machine": pick["machine"], "process": process_id, "filaments": pick["filaments"],
+    filaments, filament_names = list(pick["filaments"]), list(pick["names"]["filaments"])
+    chosen = body.get("filament_presets")
+    if chosen is not None:
+        if not isinstance(chosen, list) or len(chosen) != 4:
+            raise ValueError("Choose a filament for each of the four heads, or leave one blank for the stock choice")
+        fitting = {r["name"]: r for r in _filament_rows(found["presets"], rows[pick["machine"]])}
+        fitting.update({r["label"]: r for r in fitting.values()})
+        for i, name in enumerate(chosen):
+            if not name:
+                continue
+            row = fitting.get(str(name))
+            if row is None:
+                raise ValueError(f"T{i}: {str(name)[:60]} is not one of the engine's filaments for this printer, or its material is one a head cannot hold")
+            filaments[i], filament_names[i] = row["id"], row["name"]
+    pick["names"] = {**pick["names"], "filaments": filament_names}
+    request = {"name": WORKING_NAME, "machine": pick["machine"], "process": process_id, "filaments": filaments,
                "options": options, "layer_mode": body.get("layer_mode") or "shared",
                "material_options": body.get("material_options") or [{}, {}, {}, {}]}
     settings = slicer_bridge.get_settings()

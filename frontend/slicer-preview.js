@@ -188,5 +188,21 @@
     if (SL.path && SL.path.onPage) SL.path.onPage(page);
   }
 
-  SL.preview = { build, renderGo, markStale, onPage, slicePlate, savePlate };
+  /* the keys Ctrl R, Ctrl G and Ctrl Shift G (Snapmaker Orca's Slice plate, Export plate sliced file and Print plate) */
+  function ready() {
+    if (sl.state === 'saving' || sl.state === 'slicing') { say('The plate is being sliced.', 'info'); return null; }
+    if (!sl.result || sl.stale) { say('Slice the plate first (Ctrl R).', 'info'); return null; }
+    return sl.result;
+  }
+  function sliceKey() { if (sl.state !== 'saving' && sl.state !== 'slicing' && state.model.onPlate().some(o => !o.hidden)) onSliceClick(); }
+  function printKey() { if (ready()) printPlate(); }
+  function saveKey() {
+    const r = ready();
+    if (!r) return;
+    const a = document.createElement('a');
+    a.href = `/api/files/raw?name=${encodeURIComponent(r.name)}&download=1`; a.download = r.name;
+    document.body.append(a); a.click(); a.remove();
+  }
+
+  SL.preview = { build, renderGo, markStale, onPage, slicePlate, savePlate, sliceKey, printKey, saveKey };
 })();

@@ -12,7 +12,7 @@
       { id: 'add', icon: 'add', label: 'Add models', key: 'Ctrl I', run: () => q('#sl-file').click() },
       { id: 'delete', icon: 'trash', label: 'Delete', key: 'Del', run: () => removeSelected(), needs: 'sel' },
       { id: 'arrange', icon: 'arrange', label: 'Arrange', key: 'A', run: () => SL.arrange(), needs: 'objects' },
-      { id: 'orient', icon: 'orient', label: 'Auto-orient', key: 'O', run: () => SL.orient(), needs: 'sel' }] },
+      { id: 'orient', icon: 'orient', label: 'Auto-orient', key: 'Q', run: () => SL.orient(), needs: 'sel' }] },
     { group: 'Shape', items: [
       { id: 'move', icon: 'move', label: 'Move', key: 'M', tool: true, needs: 'sel' },
       { id: 'rotate', icon: 'rotate', label: 'Rotate', key: 'R', tool: true, needs: 'sel' },
@@ -27,7 +27,9 @@
       { id: 'redo', icon: 'redo', label: 'Redo', key: 'Ctrl Y', run: () => P().redo() }] }
   ];
 
-  const VIEWS = [['iso', 'Corner view', '0'], ['top', 'Top', '1'], ['bottom', 'Underneath', '2'], ['front', 'Front', '3'], ['back', 'Back', '4'], ['left', 'Left', '5'], ['right', 'Right', '6']];
+  /* [name the scene knows, words, Snapmaker Orca's key, what the button says] */
+  const VIEWS = [['iso', 'Default view', 'Ctrl 0', '3D'], ['top', 'Top view', 'Ctrl 1', 'Top'], ['bottom', 'Bottom view', 'Ctrl 2', 'Btm'], ['front', 'Front view', 'Ctrl 3', 'Frt'],
+    ['back', 'Rear view', 'Ctrl 4', 'Rear'], ['left', 'Left view', 'Ctrl 5', 'Lft'], ['right', 'Right view', 'Ctrl 6', 'Rgt']];
 
   /* ---- the page ------------------------------------------------------------------------------------------------------------------ */
   function build() {
@@ -46,8 +48,10 @@
       </aside>
       <div class="sl-toolbar" id="sl-toolbar" role="toolbar" aria-label="Plate tools">${tools}</div>
       <div class="sl-views" id="sl-views" role="group" aria-label="View">
-        ${VIEWS.map(([id, label, key]) => `<button type="button" class="sl-vb" data-view="${id}" aria-label="${esc(label)}" data-tip="${esc(label)} · ${key}"><span>${esc(label[0])}</span></button>`).join('')}
-        <button type="button" class="sl-vb sl-vfit" id="sl-fit" aria-label="Fit the view" data-tip="Fit the view · Home">${ic('fit')}</button>
+        ${VIEWS.map(([id, label, key, short]) => `<button type="button" class="sl-vb" data-view="${id}" aria-label="${esc(label)}" data-tip="${esc(label)} · ${key}"><span>${esc(short)}</span></button>`).join('')}
+        <button type="button" class="sl-vb sl-vfit" id="sl-fit" aria-label="Fit the view" data-tip="Fit the view · Z">${ic('fit')}</button>
+        <button type="button" class="sl-vb sl-vopt" id="sl-cam-btn" aria-label="Camera options" aria-expanded="false" data-tip="Camera options">${ic('camera')}</button>
+        <button type="button" class="sl-vb" id="sl-keys-btn" aria-label="Keyboard and mouse" aria-expanded="false" data-tip="Keyboard and mouse · ?">${ic('keys')}</button>
       </div>
       <div class="sl-problems" id="sl-problems" aria-live="polite"></div>
       <section class="sl-insp" id="sl-insp" aria-label="Selected object" hidden></section>
@@ -62,6 +66,8 @@
     }
     for (const b of qa('[data-view]')) on(b, 'click', () => { S() && S().setView(b.dataset.view); });
     on(q('#sl-fit'), 'click', () => S() && S().fitSelection());
+    on(q('#sl-cam-btn'), 'click', () => SL.keys && SL.keys.toggleCamera());
+    on(q('#sl-keys-btn'), 'click', () => SL.keys && SL.keys.toggle());
     on(q('#sl-file'), 'change', e => { addFiles([...e.target.files]); e.target.value = ''; });
     bindDrop();
   }
@@ -133,14 +139,15 @@
     if (res.failed.length) say(`${res.failed.length} object${res.failed.length > 1 ? 's' : ''} would not fit on this plate. Move ${res.failed.length > 1 ? 'them' : 'it'} to another plate.`, 'warn');
     else note(SL.engineReady && SL.engineReady() ? '' : 'Arranged with the quick arrangement. With the slicing engine installed, the engine arranges.', 5000);
   };
-  SL.orient = async function () {
-    const m = P(), ids = [...m.selected];
+  /* Q turns the selected models; with none selected (or with Shift) it turns every model on the plate, as in Snapmaker Orca. */
+  SL.orient = async function (everyModel) {
+    const m = P(), ids = m.selected.size && !everyModel ? [...m.selected] : m.onPlate().map(o => o.id);
+    if (!ids.length) return;
     if (SL.engineArrange && await SL.engineArrange('orient', ids)) return;
     let moved = 0, shown = null;
     for (const id of ids) { const r = m.autoOrient(id); if (r && r.changed) { moved++; shown = r; } }
     if (!moved) return note('It already stands the way that needs the least support.', 4000);
     note(`Turned to need less support (${Math.round(shown.before.overhang * 100)}% of the surface hung out, now ${Math.round(shown.after.overhang * 100)}%). This is the built-in orienting.`, 6000);
-    S() && S().fitSelection();
   };
 
   /* ---- the scene follows the model ------------------------------------------------------------------------------------------------ */
@@ -178,8 +185,10 @@
     if (SL.onPlateChanged) SL.onPlateChanged(kind, ids);
     if (kind !== 'init') saveProject();
     const v = S();
-    if (v && ['add', 'arrange', 'clear', 'plate', 'plates', 'duplicate', 'split', 'remove'].includes(kind)) {
-      if (kind === 'add' && m.onPlate().length === 1) v.fitSelection(); else v.fitAll();
+    // The view is the person's: it is framed again only for the first model on a plate, a new plate and an emptied one (Snapmaker Orca
+    // does not move the camera when models are arranged, copied or deleted).
+    if (v && ['add', 'clear', 'plate', 'plates'].includes(kind)) {
+      if (kind === 'add' && m.onPlate().length === 1) v.fitSelection(); else if (kind !== 'add') v.fitAll();
     }
   }
 
@@ -187,9 +196,13 @@
   let drag = null;
   function bindScene() {
     const v = S();
-    v.on('select', ({ id, additive }) => {
+    v.on('select', ({ id, additive, ids, mode }) => {
       const m = P();
-      if (!id) { if (!additive) m.selected = new Set(); }
+      if (ids) {
+        // a box dragged on the plate: it replaces the selection, adds to it (Ctrl) or takes away from it (Alt)
+        const found = ids.filter(i => m.get(i));
+        m.selected = mode === 'add' ? new Set([...m.selected, ...found]) : mode === 'remove' ? new Set([...m.selected].filter(i => !found.includes(i))) : new Set(found);
+      } else if (!id) { if (!additive) m.selected = new Set(); }
       else if (additive) { if (m.selected.has(id)) m.selected.delete(id); else m.selected.add(id); }
       else m.selected = new Set([id]);
       v.select([...m.selected]);
@@ -566,27 +579,103 @@
     });
   }
 
+  /* ---- the clipboard: Ctrl C and Ctrl X keep what is needed to put the models back, Ctrl V places copies in a free spot (like Snapmaker Orca) ---- */
+  let clip = [];
+  function copySelected(cut) {
+    const m = P(), rows = [...m.selected].map(id => m.get(id)).filter(Boolean);
+    if (!rows.length) return false;
+    clip = rows.map(o => ({ ...o, transform: o.transform.slice(), settings: { ...o.settings }, _b: null, _o: null }));
+    if (cut) removeSelected();
+    note(`${cut ? 'Cut' : 'Copied'} ${rows.length} model${rows.length > 1 ? 's' : ''}. Ctrl V ${cut ? 'puts' : 'places'} ${rows.length > 1 ? 'them' : 'it'} on the plate.`, 3500);
+    return true;
+  }
+  function pasteClip() {
+    const m = P();
+    if (!clip.length) { note('Nothing is copied yet. Select a model and press Ctrl C.', 3500); return true; }
+    m.checkpoint();
+    const made = [];
+    try {
+      for (const src of clip) {
+        const o = m.add({ name: src.file, label: src.name, sourceName: src.sourceName, local: src.local, mesh: src.mesh, tool: src.tool, transform: src.transform, settings: src.settings,
+          keepColour: src.keepColour }, { checkpoint: false });
+        m.placeInFreeSpot(o);
+        made.push(o.id);
+      }
+    } catch (e) { say(e.message, 'warn'); }
+    if (made.length) { m.selected = new Set(made); m.changed('duplicate', made); }
+    return true;
+  }
+  function deleteAll() {
+    const m = P();
+    if (!m.objects.length) return true;
+    m.clear();
+    note('Deleted every model. Ctrl Z brings them back.', 5000);
+    return true;
+  }
+  function togglePanels() {
+    SL.root().classList.toggle('sl-panels-off');
+    setInsets();
+  }
+  const DIGIT = e => { const d = /^(?:Digit|Numpad)(\d)$/.exec(e.code || ''); return d ? Number(d[1]) : null; };
+
   /* ---- keys ----------------------------------------------------------------------------------------------------------------------- */
+  /* Snapmaker Orca's keys (the list the Slicer shows on ? is slicer-keys.js). A key acts only while a field is not being typed in and no
+     sheet is open; Escape closes a sheet first. Tab flips Prepare and Preview only while the 3D view has the focus from a mouse press, so a
+     person moving round the controls with the keyboard is never caught by it. */
   function typing(e) {
     const t = e.target;
     return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !(t.type === 'checkbox' || t.type === 'button'));
   }
   function onKey(e) {
     if (document.body.dataset.tab !== 'slicer' || typing(e) || e.defaultPrevented) return;
-    if (document.querySelector('#sl-sheet, #sl-engine, #sl-why-card, dialog[open], .glass-dialog.is-open')) return;
-    const m = P(), v = S(), mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-    const ids = [...m.selected];
-    const nudge = (dx, dy, dz) => { if (!ids.length) return false; const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1; m.checkpoint(); for (const id of ids) m.moveBy(id, [dx * step, dy * step, dz * step], { checkpoint: false }); return true; };
+    if (document.querySelector('#sl-sheet, #sl-engine, #sl-why-card, #sl-keys, dialog[open], .glass-dialog.is-open')) return;
+    const m = P(), v = S();
+    if (!m || !v) return;                 // no 3D view (the browser gave no WebGL): nothing here to act on
+    const mod = e.ctrlKey || e.metaKey, shift = e.shiftKey, k = e.key.toLowerCase(), ids = [...m.selected];
+    const prepare = state.page !== 'preview', digit = DIGIT(e), arrow = /^arrow(left|right|up|down)$/.test(k);
+    const nudge = (dx, dy, dz) => {
+      if (!ids.length) return false;
+      const step = shift ? 1 : e.altKey ? 0.1 : 10;
+      let mx = dx, my = dy;
+      if (mod && v) { const a = v.planeAxes(); mx = a.right[0] * dx + a.away[0] * dy; my = a.right[1] * dx + a.away[1] * dy; }
+      if (!e.repeat) m.checkpoint();        // holding a key is one step to undo, not one for every repeat
+      for (const id of ids) m.moveBy(id, [mx * step, my * step, dz * step], { checkpoint: false });
+      return true;
+    };
+    const move = { arrowleft: [-1, 0, 0], arrowright: [1, 0, 0], arrowup: [0, 1, 0], arrowdown: [0, -1, 0], pageup: [0, 0, 1], pagedown: [0, 0, -1] }[k];
     let handled = true;
-    if (mod && k === 'z') { e.shiftKey ? m.redo() : m.undo(); }
-    else if (mod && k === 'y') m.redo();
-    else if (mod && k === 'd') m.duplicate(ids, 1);
-    else if (mod && k === 'a') { m.selected = new Set(m.onPlate().map(o => o.id)); v.select([...m.selected]); renderObjects(); renderInspector(); refreshTools(); }
+    if (mod && digit !== null && digit <= 6) v.setView(VIEWS[digit][0]);
+    else if (mod && k === 'r' && !shift) SL.preview && SL.preview.sliceKey();
+    else if (mod && k === 'g') { if (shift) SL.preview && SL.preview.printKey(); else SL.preview && SL.preview.saveKey(); }
     else if (mod && k === 'i') q('#sl-file').click();
-    else if (mod) handled = false;
+    else if (mod && !prepare) handled = SL.path && SL.path.key ? SL.path.key(e) : false;
+    else if (mod) {
+      if (k === 'z') { if (shift) m.redo(); else m.undo(); }
+      else if (k === 'y') m.redo();
+      else if (k === 'a') { m.selected = new Set(m.onPlate().map(o => o.id)); v.select([...m.selected]); renderObjects(); renderInspector(); refreshTools(); }
+      else if (k === 'c') handled = copySelected(false);
+      else if (k === 'x') handled = copySelected(true);
+      else if (k === 'v') handled = pasteClip();
+      else if (k === 'k') { if (ids.length) m.duplicate(ids, 1); else handled = false; }
+      else if (k === 'd') handled = deleteAll();
+      else if (arrow) handled = nudge(...move);
+      else handled = false;
+    }
+    else if (k === '?') { e.stopImmediatePropagation(); SL.keys && SL.keys.toggle(); }
+    else if (k === 'i') v.zoomBy(1);
+    else if (k === 'o') v.zoomBy(-1);
+    else if (k === 'z') v.fitSelection();
+    else if (k === 'tab') {
+      // only when the mouse gave the 3D view the focus: a keyboard user who tabbed onto it must be able to tab on
+      if (e.target !== v.canvas || !v.pointerFocused) handled = false;
+      else if (shift) togglePanels();
+      else if (window.Sections) Sections.choose('slicer', state.page === 'prepare' ? 'preview' : 'prepare');
+    }
+    else if (k === 'escape' && q('#sl-cam')) SL.keys.closeCamera();
+    else if (!prepare) handled = SL.path && SL.path.key ? SL.path.key(e) : false;
     else if (k === 'delete' || k === 'backspace') removeSelected();
     else if (k === 'a') SL.arrange();
-    else if (k === 'o') SL.orient();
+    else if (k === 'q') SL.orient(shift);
     else if (k === 'm') setTool('move');
     else if (k === 'r') setTool('rotate');
     else if (k === 's') setTool('scale');
@@ -594,16 +683,25 @@
     else if (k === 'u') setTool('measure');
     else if (k === 'escape') { if (state.tool !== 'move') setTool('move'); else { m.selected = new Set(); v.select([]); renderObjects(); renderInspector(); refreshTools(); } }
     else if (k === 'home') v.fitSelection();
-    else if ('0123456'.includes(k) && k.length === 1) v.setView(VIEWS[Number(k)][0]);
-    else if (k === 'tab' && !e.shiftKey) { if (window.Sections) Sections.choose('slicer', state.page === 'prepare' ? 'preview' : 'prepare'); }
-    else if (k === 'arrowleft') handled = nudge(-1, 0, 0);
-    else if (k === 'arrowright') handled = nudge(1, 0, 0);
-    else if (k === 'arrowup') handled = nudge(0, 1, 0);
-    else if (k === 'arrowdown') handled = nudge(0, -1, 0);
-    else if (k === 'pageup') handled = nudge(0, 0, 1);
-    else if (k === 'pagedown') handled = nudge(0, 0, -1);
+    else if (digit !== null && !e.altKey) {
+      if (digit >= 1 && digit <= 4) { if (ids.length) m.setTool(ids, digit - 1); else note(`Select a model first, then 1 to 4 chooses its head (T0 to T3).`, 3500); }
+      else note('The U1 has four heads, T0 to T3: keys 1 to 4.', 3500);
+    }
+    else if (move) handled = nudge(...move);
+    else if (SL.keys && SL.keys.notBuilt(k)) handled = true;
     else handled = false;
     if (handled) e.preventDefault();
+  }
+
+  /* Ctrl K is "Find anything" everywhere else in the app. In the Slicer it clones the selected models, as in Snapmaker Orca, and it keeps finding when
+     nothing is selected (the / key and the search box always find). It must run before the app's own handler, so slicer.js binds it first. */
+  function onKeyFirst(e) {
+    if (document.body.dataset.tab !== 'slicer' || typing(e) || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'k') return;
+    if (document.querySelector('#sl-sheet, #sl-engine, #sl-why-card, #sl-keys, dialog[open], .glass-dialog.is-open')) return;
+    const m = P();
+    if (!m || !m.selected.size || state.page === 'preview') return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    m.duplicate([...m.selected], 1);
   }
 
   /* what the camera must leave clear: the dock, the inspector, the toolbar and the bottom row */
@@ -667,5 +765,5 @@
   }
   SL.restoreProject = restoreProject;
 
-  SL.prepare = { build, bindScene, bindObjects, saveProject, flushProject, afterChange, renderObjects, renderInspector, renderProblems, renderPlates, renderEmpty, refreshTools, syncScene, onKey, setTool, note, toggleOverhang, TOWER_ID };
+  SL.prepare = { build, bindScene, bindObjects, saveProject, flushProject, afterChange, renderObjects, renderInspector, renderProblems, renderPlates, renderEmpty, refreshTools, syncScene, onKey, onKeyFirst, setTool, note, toggleOverhang, TOWER_ID };
 })();
