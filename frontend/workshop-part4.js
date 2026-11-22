@@ -89,8 +89,6 @@ async function loadFiles() {
   }
 
 async function openFile(name, fromEl) {
-    window.DVWorkspace?.close();
-    if(window.DVPlate?.active){window.DVPlate.active.dispose();window.DVPlate.active=null;}
     let entry = files.list.find(f => f.name === name);
     if (!entry) { await loadFiles(); entry = files.list.find(f => f.name === name); }      // made elsewhere (studio, slicer)
     if (!entry) return;
@@ -287,7 +285,7 @@ async function openModel(entry, viewer) {
           <div><span class="stat-key">Objects</span><b>${mesh.objects}</b><small>${esc(mesh.application || (is3mf ? 'No application named' : 'STL'))}</small></div>
           <div><span class="stat-key">Fits the U1?</span><b>${mesh.size[0] <= 270 && mesh.size[1] <= 270 && mesh.size[2] <= 270 ? 'Yes' : 'No'}</b><small>270 × 270 × 270 mm</small></div>
         </div>
-        <p class="log-empty">Models need slicing (in Snapmaker Orca) before they can be printed.</p>
+        <p class="log-empty">Open it in the Slicer to arrange it on the plate, slice it and print it.</p>
         ${entry.local ? `<p class="log-empty">Read in this browser - the file isn't uploaded. Converting for the U1 and
           slicing need the Deja Vu1 server.</p>
         <div class="fd-actions"><span id="fd-ar-slot" class="fd-ar-slot"></span>

@@ -14,6 +14,7 @@ remove_profile, reset, slicer_path, wait.
 """
 
 from datetime import datetime
+import engine_installer
 import file_library
 import json
 import mock_moonraker
@@ -142,7 +143,7 @@ def engine_changed(settings, path):
     if checked['program_identity'] == _program_identity(path):
         return None
     return ("The slicer program changed since it was last checked (it was updated, replaced or another one was "
-            "chosen), so Deja Vu1 doesn't know which version it is now. Press Check slicer, then slice again")
+            "chosen), so Deja Vu1 doesn't know which version it is now. Open the Slicer, press Engine to check it, then slice again")
 
 
 def _defaults():
@@ -173,6 +174,10 @@ def slicer_path(settings=None):
     configured = (settings or get_settings()).get("slicer_path", "")
     if configured:
         return configured, "settings"
+    # The engine Deja Vu1 installed for the person (engine_installer.py) comes before anything found on the computer.
+    managed = engine_installer.managed_program()
+    if managed:
+        return managed, "managed"
     # Snapmaker's build names its program "snapmaker-orca" (its CMakeLists.txt,
     # OUTPUT_NAME); the stock build "orca-slicer". The install folders below are
     # the usual ones; each is only used if the program is really there.
@@ -444,12 +449,21 @@ def _profile(profile_id, settings):
     return prof
 
 
-def command_for(slicer, profile, model_path, outdir):
-    """The exact command line - kept in one place so it's shown and tested as run."""
-    return [slicer, "--slice", "0",
-            "--load-settings", f"{profile['machine']};{profile['process']}",
-            "--load-filaments", ";".join(profile["filaments"]),
-            "--outputdir", outdir, model_path]
+def command_for(slicer, profile, model_path, outdir, keep_placement=False, datadir=None):
+    """
+    The exact command line - kept in one place so it's shown and tested as run. `keep_placement` is for a plate the person
+    arranged in Deja Vu1: without --arrange 0 the engine moves the objects again (Snapmaker Orca's CLI arranges unless told
+    not to). `datadir` gives the managed engine its own settings folder so the person's own Orca is never read or changed.
+    The extra flags sit right after --slice so the command still ends with --outputdir <folder> <model>.
+    """
+    cmd = [slicer, "--slice", "0"]
+    if keep_placement:
+        cmd += ["--arrange", "0", "--orient", "0"]
+    if datadir:
+        cmd += ["--datadir", datadir]
+    return cmd + ["--load-settings", f"{profile['machine']};{profile['process']}",
+                  "--load-filaments", ";".join(profile["filaments"]),
+                  "--outputdir", outdir, model_path]
 
 
 def _free_name(stem, plate, plates):

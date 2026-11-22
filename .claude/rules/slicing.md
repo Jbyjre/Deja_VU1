@@ -16,9 +16,11 @@ paths:
   - "backend/sample_files.py"
   - "backend/sample_slicer.py"
   - "backend/safe_zip.py"
-  - "frontend/slicer-workspace.js"
-  - "frontend/plate.js"
-  - "frontend/plate-worker.js"
+  - "backend/engine_installer.py"
+  - "backend/slicer_working.py"
+  - "frontend/slicer*.js"
+  - "frontend/slicer.css"
+  - "frontend/u1-plate.js"
   - "frontend/farm.js"
   - "frontend/gcode-view.js"
   - "frontend/layer-stack.js"
@@ -31,9 +33,11 @@ paths:
 
 # Slicing, plates and models
 
-Deja Vu1 runs a slicing engine the user installs (Snapmaker Orca or OrcaSlicer, AGPL-3.0). It never
-bundles one, copies its code or rewrites G-code to fake heights. People read "Slicing"; the module
-id stays `auto_print`.
+Deja Vu1 runs Snapmaker Orca (or OrcaSlicer), AGPL-3.0, as a separate program. It never bundles one,
+copies its code or rewrites G-code to fake heights; the Slicer's Engine button downloads Snapmaker's own release into
+`<data>/engine/` (below). People read "Slicer"; the module id stays `auto_print`. **The screen is the Slicer** (a sidebar place, Prepare and
+Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › Slicing screens remain in the hidden `#legacy-slicing` holder of
+`index.html` so scripts that look for their ids still find them; nothing there is shown, and new work goes in the Slicer.
 
 ## The engine
 
@@ -58,18 +62,47 @@ id stays `auto_print`.
   home folders as `~`.
 - `find_slicers`: usual install folders, one level deep, names containing "orca", no installers,
   nothing run.
-- Files › Slicing opens with "Get ready to slice" (`farm.js` `renderReady`): five steps (on, find,
-  check, print settings, check it all works), the first undone one has the main button; "Find it for me"
-  is `POST /api/slicer/find`. "Use the stock U1 settings" is `POST /api/slicer/profiles/stock`
+- Engine set-up used to be Files › Slicing "Get ready to slice" (`farm.js` `renderReady`, now in the hidden holder). The Slicer's engine card
+  does it: Install, Update, Use my own Snapmaker Orca (`POST /api/slicer/find`, `settings`, `check`), and the time limit per slice. Error texts
+  tell people to open the Slicer and press Engine. "Use the stock U1 settings" is `POST /api/slicer/profiles/stock`
   (`slicer_bridge.use_stock_profile`, `slicer_profiles.stock_choice`): Snapmaker's own presets for the
   fitted nozzles, saved as the default, then `testSlice()` slices the sample 3DBenchy. With no heads set
   up it saves four 0.4 mm heads from what the printer reports (else PLA). The catalog counts a preset as
   U1 when its name says U1 or its `compatible_printers` names a Snapmaker U1: the 0.4 mm stock
-  materials are "Generic PLA" and so on. `farm.js`
-  `causeHtml`/`bindCause` draw a failure's cause in Files, Slicing and Prepare (`#sw-cause`).
-- Evidence: `docs/slicer-workspace-validation.md`, `docs/native-studio-validation.md`,
+  materials are "Generic PLA" and so on. The Slicer's slice bar draws a failure's cause (`slicer-preview.js`, **Why?**).
+- Evidence: `docs/slicer-workspace-validation.md` (engine output; its plate-editor sections are history), `docs/native-studio-validation.md`,
   `docs/viewer-performance.json`. Real Orca 2.4.2 and Snapmaker Orca 02.08.01.55 Linux slices are
-  recorded; Windows and macOS engine runs are not.
+  recorded; Windows and macOS engine runs are not. **Snapmaker Orca 2.4.1 (the managed download) has not been run by any session yet**
+  (`tools/engine-selftest.py` is a run on a computer that has the engine).
+
+## The managed engine (`engine_installer.py`)
+
+- `PINNED` holds the SHA-256 and size of the three v2.4.1 downloads (hashed on 21 November 2026); a pinned release is always checked against
+  its pin, a newer one against the `digest` GitHub lists, and a file with neither is refused unless `allow_unverified` (recorded as unverified).
+  Only https, and only github.com and the `githubusercontent.com` hosts its downloads redirect to. Asset names follow `ASSET_PATTERNS`.
+- Install = download to a working folder, unpack to staging (zip with path, size and entry limits; AppImage with `--appimage-extract`, no FUSE; dmg
+  mounted read-only), start once to read the version, then rename into place and make current (`_use_it` never overrides a path the user chose).
+  A failed or cancelled install leaves the working engine. The managed engine runs with its own `--datadir` (`data_dir_for_engine()`), so the
+  user's own Orca is never read or changed. `DEJAVU_ENGINE_FEED` and `DEJAVU_ENGINE_PLATFORM` point tests at a local release server.
+- Licence: AGPL-3.0, a separate program, source and licence links in the card. Never copy its plate model, textures or code: `u1-plate.js` draws
+  the plate from measurements.
+
+## The Slicer (frontend)
+
+- Load order (`index.html`): `u1-plate.js` (before `viewer3d.js`), then `slicer-model.js`, `slicer-scene.js`, `slicer-ui.js`, `slicer-prepare.js`,
+  `slicer-settings.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
+  `slicer-gcode-worker.js` is the Preview's Web Worker. Styles are all in `slicer.css` (11 px floor; the page's generic `.tab-sub > *` rule gives
+  every direct child a 16 px side margin and its own `max-width`, so set widths outright).
+- `PlateModel` (slicer-model.js) owns the objects and the 12-number transform (3 rows of turn and scale, then the move; row-vector convention, shared with
+  `plate_project.py`); every edit is one undo step. `SliceScene` (slicer-scene.js) draws them and picks with GPU colour IDs. The working profile
+  (`slicer_working.py`, `GET/POST /api/slicer/working`, `working/sync-heads`) is the one settings store: the dock's printer, heads and process blocks
+  and the full sheet (`slicer-sheet.js`, every setting of `process_settings.py` with `slicer-help.js` words) write to it, and per-head heights go
+  through the shared `tool_setup` records. Plate projects are sliced with `--arrange 0 --orient 0` (Deja Vu1 arranges and orients itself).
+- Unbuilt on purpose: cut, colour and support painting, calibration prints and print by object (SLICER.6), multi-plate project save, the engine's own
+  arrange and orient export (`tools/engine-selftest.py` prints what settles its 3MF convention), a movable prime tower, a time estimate corrected by
+  history. The tower is drawn with its left-front corner at the engine's default (15, 220); the Preview draws what the engine printed.
+- Checks: `node tools/slicer-check.js` (54 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
+  `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 
 ## Profiles and per-head heights
 
@@ -80,7 +113,7 @@ id stays `auto_print`.
 - `slicing_contract.py`: capable engines get distinct per-head heights. Check the exported schema
   and the executable identity, not version names. Only exact grids are accepted. Startup extrusion
   beyond 270 mm is refused.
-- `process_settings.py`: the 106 Orca process settings (names and choices from Orca's
+- `process_settings.py`: the 118 Orca process settings (names and choices from Orca's
   `PrintConfig.cpp`), served by `GET /api/slicer/schema`.
 - `layer_planner.py` and `farm.js` `planLayers()` must stay identical (`tests/test_layer_planner.py`).
 
@@ -93,12 +126,10 @@ id stays `auto_print`.
   inside `DejaVu/Sources/`.
 - `colour_map.py`: which filaments a 3MF uses (objects, parts, paint, height ranges) and a head for each; writes a copy using at most
   four. Paint codec per OrcaSlicer's TriangleSelector.
-- `plate.js` keyboard (`onKey`): single keys and Shift + arrows act only while the model view has
-  focus; Ctrl/Cmd + Z, Y, D, S act while the plate is on screen and no field has focus; arrows alone
-  orbit the camera. `tests/test_plate_keyboard.py` reads the source, so keep those guards.
-- `slicer-workspace.js` moves the plate editor's controls between panels; never rebuild mesh buffers
-  to select another object. Edits invalidate the preview; stale replies can't accept a new slice.
-- `gcode-view.js`: layer index, filters and events. Toolpath segments append mm/s, feature index and
+- Slicer keyboard (`slicer-prepare.js` `onKey`): single keys act only while the stage has focus and no field or sheet is open; Escape closes the sheet, the
+  engine card and the why card first; arrows alone orbit. Never rebuild mesh buffers to select another object. Edits mark the Preview stale; a stale
+  reply can't accept a new slice.
+- `gcode-view.js` (Files and the printer pages) and `slicer-path.js` + `slicer-gcode-worker.js` (the Slicer's Preview): layer index, filters and events. Toolpath segments append mm/s, feature index and
   line number after the original eight values. Nominal time excludes acceleration, heating, macros.
 - `sample_slicer.py` is deliberately simple and says so in every file; the 3DBenchy is CC0.
 - `layer-stack.js` (mixed heights: base × N per head) mirrors `slicing_contract.tool_layers`.

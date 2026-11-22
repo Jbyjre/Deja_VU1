@@ -468,12 +468,12 @@ footer p { max-width: 70ch; }
     <div class="wrap">
       <p class="eyebrow">What's inside</p>
       <h2 id="inside-title">From a plate on screen to a job you can review.</h2>
-      <p class="intro">Edit objects, assign physical heads T0–T3, slice through an engine you install, then inspect the output in the same workspace.</p>
+      <p class="intro">Put models on the U1's own plate, give each one a head from T0 to T3, slice with Snapmaker Orca (Deja Vu1 can install it for you), then check every layer before you print.</p>
       <figure class="shot glass" style="margin:28px 0 12px">
         <img src="img/workspace.png" width="1366" height="900" loading="lazy"
-             alt="The preparation workspace with two objects and physical tool assignments, plate controls and slicing settings. Recorded Linux validation capture.">
+             alt="The Slicer with a 3DBenchy on the U1's plate: printer, heads and print settings at the left, the object's position, size and head at the right.">
       </figure>
-      <p class="caption">Preparation workspace from the recorded Linux checks. Slicing needs a separate compatible engine.</p>
+      <p class="caption">The Slicer, captured with demo data. Slicing needs Snapmaker Orca, which Deja Vu1 can download and check for you.</p>
       <div class="sheet">
         <div>
           <h3>Watch</h3>
@@ -493,9 +493,9 @@ footer p { max-width: 70ch; }
             <li><b>Start from your phone</b><span>Review pre-flight and Confirm Print checks before starting.</span></li>
             <li><b>The printer's own controls</b><span>Move, heat, extrude and tune, a temperature chart, the bed mesh as a map, macros with their settings, fans, lights, filament sensors, endstops and automatic feeding, all from the printer's own answers.</span></li>
             <li><b>Mixed layer heights</b><span>One fine base layer, each head printing a whole multiple of it, with smart set-ups and a section view of the passes.</span></li>
-            <li><b>106 OrcaSlicer settings</b><span>Quality, strength, speed, support and others, laid out like Orca's own tabs, for an engine you install.</span></li>
+            <li><b>118 print settings</b><span>Quality, strength, speed, support, multi-material and others, laid out like Orca's own tabs, each with a plain-words note and a way back to the preset.</span></li>
             <li><b>Skip one object</b><span>When one part on a full plate fails, skip that one and let the rest finish.</span></li>
-            <li><b>Prepare, slice, inspect</b><span>Edit objects and profiles in one workspace, slice with an external engine, then inspect layers, tools, speed and events.</span></li>
+            <li><b>Slice and inspect</b><span>Arrange and orient models, set a layer height for each head, slice, then check layers, line types, heads, speed and warnings in a Preview before Confirm Print.</span></li>
             <li><b>Honest controls</b><span>A command the printer refuses is shown as refused, in words, never as done.</span></li>
           </ul>
         </div>
@@ -558,7 +558,7 @@ footer p { max-width: 70ch; }
             <li>Tested on a real Snapmaker U1 with its stock firmware: adding the printer, live readings and the 3D twin, starting prints through Confirm Print, pausing and cancelling, the camera and time-lapses, the Printer page controls, and the AI assistant, which has also run through a paid API key.</li>
             <li>The printer connection follows the Moonraker, Klipper and U1 source code Snapmaker publishes. A stand-in Moonraker built from that source tests it on every release, over real network connections.</li>
             <li>Automated tests run with nothing but Python; see the repository for current results.</li>
-            <li>Workspace checks passed in Chromium at 1366 and 390 pixels: editing, profiles, actual slicing, preview and Confirm Print entry.</li>
+            <li>The Slicer's browser checks passed in Chromium at 1366 and 390 pixels against a stand-in engine: editing, settings, slicing, the Preview and Confirm Print entry. They did not run Snapmaker's own engine.</li>
             <li>Different physical-head heights were verified in actual Linux engine output. Backup recovery and its generated Linux launcher were exercised.</li>
             <li>WLED, Home Assistant, ntfy, Discord and Telegram checked against each service's own source or documentation.</li>
             <li>Representative converted plates passed the Linux engine.</li>

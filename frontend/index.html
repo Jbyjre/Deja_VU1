@@ -45,6 +45,7 @@
 <link rel="stylesheet" href="shell.css">
 <link rel="stylesheet" href="shell-panes.css">
 <link rel="stylesheet" href="cockpit.css">
+<link rel="stylesheet" href="slicer.css">
 <link rel="stylesheet" href="glass.css">
 <link rel="stylesheet" href="text.css">
 <link rel="stylesheet" href="looks.css">
@@ -733,6 +734,21 @@
         <button class="btn" type="button" data-open-tab="studio">Open Photo studio</button></div>
     </section>
 
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- SLICER: Prepare and Preview on the U1's own plate (slicer.js)  -->
+  <!-- ============================================================ -->
+  <section id="tab-slicer" class="tab-panel" hidden>
+    <div class="sl" id="sl-root">
+      <div class="sl-stage" id="sl-stage"><canvas id="sl-canvas" tabindex="0" aria-label="The plate. Drag a model to move it, drag the empty plate to turn the view, scroll to zoom."></canvas></div>
+      <section id="sl-prepare" class="tab-sub sl-page" aria-label="Prepare"></section>
+      <section id="sl-preview" class="tab-sub sl-page" aria-label="Preview"></section>
+    </div>
+  </section>
+
+  <!-- The first slicing screens, kept out of sight until the Slicer has taken over every job they did (scripts still look for their ids). -->
+  <div id="legacy-slicing" hidden>
     <!-- Folded into this tab so every section is always in the tab bar. -->
     <section id="tab-autoprint" class="tab-sub" aria-labelledby="sub-autoprint-title">
       <div class="tab-sub-head"><h2 class="tab-sub-title" id="sub-autoprint-title">Slicing</h2><p>Turn a model into a print file with the slicer you already use, then check and queue it</p></div>
@@ -813,7 +829,7 @@
         <p class="lp-source">This plans layer heights; it does not slice a model. Nozzle limits come from Snapmaker's U1 machine profiles. To slice with it, save the same heights in Slicer › Slice › Tools &amp; filaments and choose "Mixed" in a process profile; that needs an engine that lists per-head layer heights. Confirm Print checks each fitted nozzle before starting.</p>
       </section>
     </section>
-  </section>
+  </div>
 
 
   <!-- ============================================================ -->
@@ -1763,6 +1779,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="layout.js"></script>
 <script src="orb.js"></script>
 <script src="backdrop.js"></script>
+<script src="u1-plate.js"></script>
 <script src="viewer3d.js"></script>
 <script src="ar.js"></script>
 <script src="twin3d-scene.js"></script>
@@ -1793,9 +1810,17 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="errorhelp.js"></script>
 <script src="insights.js"></script>
 <script src="printroom.js"></script>
-<script src="plate.js"></script>
 <script src="gcode-view.js"></script>
-<script src="slicer-workspace.js"></script>
+<script src="slicer-model.js"></script>
+<script src="slicer-scene.js"></script>
+<script src="slicer-ui.js"></script>
+<script src="slicer-prepare.js"></script>
+<script src="slicer-settings.js"></script>
+<script src="slicer-help.js"></script>
+<script src="slicer-sheet.js"></script>
+<script src="slicer-path.js"></script>
+<script src="slicer-preview.js"></script>
+<script src="slicer.js"></script>
 <script src="backup.js"></script>
 <script src="maker.js"></script>
 <script src="assistant-part1.js"></script>

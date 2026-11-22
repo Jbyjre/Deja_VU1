@@ -115,7 +115,7 @@ model on your own computer keeps all of that at home.
   works on a 0.4 mm grid (coarser for a large part, and the answer says the size): flat faces stay
   flat and exact, and edges come out rounded by about one grid step. A model with gaps in its
   surface gets a warning to check the result in the 3D view.
-- **Slice:** it slices a model from your library with a saved profile (Files, Slicing, Profiles)
+- **Slice:** it slices a model from your library with a saved slicing profile
   and reports the time and filament the slicer worked out. To print the result it opens Confirm
   Print, which checks the file first; it cannot start a print itself.
 - **Print watch:** on the AI screen, switch on **Print watch** and your AI looks at the camera every

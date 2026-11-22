@@ -573,13 +573,14 @@ const TAB_KEY = 'dejavu1.tab';
    visitor knows what each section is for before reading it. */
 const TAB_NAMES = { overview: 'Overview', fleet: 'Printers', control: 'Printer', files: 'Files', studio: 'Photo studio',
   models: 'Models', ai: 'AI', automations: 'Automations', maintenance: 'Maintenance', prefs: 'Preferences', modules: 'Settings',
-  games: 'Games' };
+  games: 'Games', slicer: 'Slicer' };
 const TAB_INTROS = {
   ai: 'What your own AI can do here: watch prints through the camera, diagnose a print from a photo, add a spool from a photo and more. Deja Vu1 works fully without one.',
   overview: 'What is happening now: what needs you, the selected printer, its camera and temperatures, and your printers.',
   fleet: 'All your printers side by side. Add a printer here, or practise on pretend ones.',
   control: 'Everything about one printer: its live 3D twin and camera, moving and heating it, tuning, its readings and its history. If the printer says no, you see why.',
-  files: 'Your print files. Look inside them, prepare and slice models, and queue prints. Every print gets checked before it starts.',
+  files: 'Your print files. Look inside them, open them in the Slicer, and queue prints. Every print gets checked before it starts.',
+  slicer: 'Put models on the U1\'s plate, set it up, slice it and check the result before you print.',
   studio: 'Turn a photo into a colour print, using the filaments you have loaded.',
   models: 'Find a model on a model site, or convert a project from another slicer so it prints on a U1.',
   automations: '“When this happens, do that” rules, like a message when a print finishes. They run on this computer, not in the cloud.',
@@ -611,9 +612,11 @@ const SECTIONS = {
   ],
   files: [
     ['library', 'Your files', ['#orca-import', '#convert-card', 'file library', '#file-detail', '#studio-link']],
-    ['slicing', 'Slice', ['#tab-autoprint']],
     ['jobs', 'Queue', ['print queue']],
-    ['layers', 'Layer heights', ['#tab-layerplan']],
+  ],
+  slicer: [
+    ['prepare', 'Prepare', ['#sl-prepare']],
+    ['preview', 'Preview', ['#sl-preview']],
   ],
   maintenance: [
     ['upkeep', 'Maintenance', ['maintenance', '#error-codes', '#logbook', 'swapped a nozzle']],
@@ -633,7 +636,7 @@ const SECTIONS = {
 };
 const SECTION_KEY = 'dejavu1.section.';
 // Fixed ids for each screen's row of parts, so tours can point at them.
-const SECTION_BAR_IDS = { control: 'sec-control', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules' };
+const SECTION_BAR_IDS = { control: 'sec-control', fleet: 'sec-fleet', files: 'sec-files', maintenance: 'sec-maintenance', modules: 'sec-modules', slicer: 'sec-slicer' };
 
 window.Sections = (() => {
   const chosen = {};
@@ -739,7 +742,7 @@ function initTabs() {
   // Sections folded into another tab: their old names (a remembered tab,
   // a "Slice…" button, another device's handoff) open the parent tab and
   // scroll to the section.
-  const FOLDED = { sandbox: 'fleet', autoprint: 'files', filament: 'maintenance', prefs: 'modules' };
+  const FOLDED = { sandbox: 'fleet', autoprint: 'slicer', layerplan: 'slicer', filament: 'maintenance', prefs: 'modules' };
 
   function show(requested, initial = false) {
     const name = FOLDED[requested] || requested;

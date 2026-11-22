@@ -43,7 +43,9 @@ import orca_import
 import readiness
 import selfcheck
 import sandbox
+import engine_installer
 import slicer_bridge
+import slicer_working
 import timelapse
 import tool_setup
 import plate_project
@@ -445,6 +447,17 @@ class PostRoutes:
                 return self._send_json(slicer_bridge.export(body.get("job")))
             if verb == "find":
                 return self._send_json(slicer_bridge.find_slicers())
+            if verb == "engine/check":
+                # The person pressed "Check for a newer engine": the only time the engine's release list is asked for.
+                return self._send_json(engine_installer.check_for_update())
+            if verb == "engine/install":
+                return self._send_json(engine_installer.install(allow_unverified=bool(body.get("allow_unverified"))), status=202)
+            if verb == "engine/cancel":
+                return self._send_json(engine_installer.cancel())
+            if verb == "working":
+                return self._send_json(slicer_working.set_working(body))
+            if verb == "working/sync-heads":
+                return self._send_json(slicer_working.sync_heads())
             if verb == "profiles":
                 return self._send_json(slicer_bridge.add_profile(body.get("name"), body.get("machine"),
                                                                  body.get("process"), body.get("filaments")))

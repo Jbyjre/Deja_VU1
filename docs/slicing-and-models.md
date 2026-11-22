@@ -1,59 +1,123 @@
 # Prepare, slice and inspect a plate
 
 A model describes a shape. A slicing engine turns it into G-code: the movement,
-heating and extrusion instructions a printer follows. The viewer and nozzle
-calculator do not create those instructions.
+heating and extrusion instructions a printer follows. The Slicer is the screen
+where that happens in Deja Vu1. It is laid out like Snapmaker Orca, with the
+settings at the left, a tool strip across the top and Slice plate in the
+corner, so nothing has to be learned. It runs on Snapmaker Orca, which does the
+slicing, and the whole screen is Deja Vu1's own.
 
-## One workspace
+## The Slicer
 
-Open an STL, triangular OBJ or 3MF in Files. **Prepare** has an object list,
-precise position/rotation/scale, duplicate, arrange, mirror, lay-flat, drop,
-contact checks and surface measurement. Click a model to select it, or use the
-keyboard in the object list. Arrange frames the moved objects automatically.
-The selected object shows its base physical tool; source paint can override it.
+**Prepare** shows the U1's own plate: a 276 × 293 mm sheet with a 270 × 270 ×
+270 mm printable area, drawn from the outline and numbers in Snapmaker's U1
+profile (version 2.4.1), in the app's light or dark room. Put a model on it by
+dropping an STL, 3MF or OBJ, pressing **Add models**, choosing a file in the
+empty plate's list, or pressing **Open in Slicer** on a model in Files. A 3MF
+saved by the Slicer comes back with its objects where they were.
 
-**Profiles & tools** uses the same saved tool assignments and profile editor as
-Auto-print. **Slice plate** saves a new source-preserving 3MF, then starts the
-local engine. The original remains intact. A slice has named stages, cancellation
-and actual output validation; no fabricated percentage is shown.
+- **Tool strip.** Add, Delete, Arrange, Auto-orient; Move, Rotate, Scale, Lay on
+  face, Split into parts; Measure and Show overhangs; Undo and Redo. Keys follow
+  Orca's where it has one: A, O, M, R, S, F, U, Delete, Ctrl+Z and Ctrl+Y,
+  0 to 6 for the views, Home to fit, Tab to switch between Prepare and Preview.
+- **On the plate.** Drag a model to move it. The selected model shows handles:
+  arrows to move along an axis, rings to turn (5° steps, Alt for free), a corner
+  to scale. Arrow keys nudge by 1 mm (Shift 10 mm, Alt 0.1 mm).
+- **Object panel.** Exact position, size, turn and scale, the head that prints
+  it, walls, infill and supports for that object only, Drop to plate, Lay flat,
+  Reset, Mirror, Duplicate and Set aside.
+- **Plates.** Tabs along the bottom. Each plate is sliced on its own.
+- **Problems.** Shown on the plate as they happen, each with its fix one press
+  away: over the edge, bigger than the U1 can print, floating or below the plate,
+  overlapping, a model that looks drawn in inches or metres, surfaces that hang
+  out more than 45° where supports are off, a multi-head plate with the prime
+  tower off, and a prime tower that will be tall and narrow.
+- **Prime tower.** Shown as a see-through block as soon as two heads are used.
+  Arrange keeps objects clear of it. Its position is the engine's default corner
+  (15, 220 mm) and it cannot be moved yet.
+- **Settings dock.** The printer; the four heads with the spool the printer
+  reports, the nozzle and a layer height for each head; the print preset with its
+  layer height, infill, walls, supports and prime tower dials and a speed slider
+  from 50 to 120 % of the preset; and **All settings**, a sheet of every print
+  setting the app offers (118) in Orca's groups (Quality, Strength, Speed,
+  Support, Multi-material, Others) with Simple and Advanced, a search, the
+  preset's own value in each box, changed values marked and a plain-words note
+  beside each. A blank box uses the preset. The dock keeps no profile of its own:
+  it rebuilds one working profile from the stock U1 presets that fit the four
+  heads (read from the installed engine) plus what you changed, so the engine's
+  own refusals appear where you type.
 
-**Preview** inspects that output, with a layer slider, direct layer number,
-previous/next, one-layer mode, travel visibility, tool/speed/feature colours,
-legends and event markers. On phones, optional display controls fold away and
-settings replace the viewport. Editing the plate or changing its profile
-invalidates the preview. A result from an earlier revision stays in the library.
-Open the result to inspect pre-flight and enter **Confirm Print**. Queueing never
-starts a print or bypasses Confirm Print. Blocked output remains inspectable and
-never enters the automatic queue handoff.
+**Slice plate** saves the plate as a source-preserving 3MF (the original files
+stay intact), rebuilds the working profile, and runs the engine on that one
+plate with `--arrange 0`, so objects stay where you put them. A slice has named
+stages and Cancel; no fabricated percentage is shown. A change to the plate or
+the settings marks the slice out of date at once.
 
-## Install and select an external engine
+**Preview** reads the sliced G-code in the browser with every move kept. It
+colours the toolpath by line type, head, speed, flow, layer height or line width;
+has a layer slider with two ends, a move slider with play, a switch for travel
+moves and a view from underneath; and shows the slicer's own time and filament
+(the file's header), the filament per head, tool changes and retractions. The
+shares by line type are nominal (length over requested speed). Checks that
+matter on a tool changer each jump to the layer where they happen: a head that
+prints where no object uses it, a multi-head plate sliced without a prime tower,
+a tall and narrow tower (with a one-press strengthening: rib wall, internal ribs,
+a brim), and overhangs with supports off.
 
-No engine, engine presets or Linux libraries are bundled or downloaded by the
-app. Use an independently installed Orca-compatible program with U1 presets.
-The current verified specialised Linux build identifies itself as
-**Snapmaker_Orca 02.08.01.55**. A private delivery report identifies the exact
-release and source. Stock OrcaSlicer 2.4.2 remains a shared-height route; its
-historical successful slices do not prove per-head support. The builds and systems that
-have been run for real are listed in [engine support](engine-support.md).
+**Print plate** opens Confirm Print for the sliced file, which checks it against
+the printer and says no in words. **More** saves the G-code or adds it to the
+queue. Queueing never starts a print or bypasses Confirm Print. Blocked output
+remains inspectable and never enters the automatic queue handoff.
+
+Built into Deja Vu1 for now: **Arrange** is a quick packing (it names objects
+that do not fit) and **Auto-orient** picks the way up with the least overhang.
+The engine also has its own arrange and orient; using them waits for a run
+with the real engine ([engine support](engine-support.md)). Not built yet: cut,
+painting colours or supports, calibration prints and printing one object at a
+time.
+
+## The slicing engine
+
+Press **Install engine** in the Slicer's Printer block and Deja Vu1 downloads
+the official Snapmaker Orca release for this computer (about 137 MB on Linux, 175
+MB on Windows, 274 MB on macOS), checks it is the file Snapmaker published,
+unpacks it into its own folder and uses it. Snapmaker Orca is open source under
+the AGPL-3.0 and runs as a separate program; Deja Vu1 does not include its
+code, and the card shows its source and licence. The engine and its settings
+live under the app's data folder, and your own Snapmaker Orca or OrcaSlicer is
+never read or changed. Nothing is downloaded until you press the button, and a
+newer release is looked for only when you press **Check for a newer one**. How
+the file is trusted, and what was and was not run, is in
+[engine support](engine-support.md).
+
+You can also use a Snapmaker Orca you installed yourself (**Use my own Snapmaker
+Orca**). The current verified specialised Linux build identifies itself as
+**Snapmaker_Orca 02.08.01.55**. Stock OrcaSlicer 2.4.2 remains a shared-height
+route; its historical successful slices do not prove per-head support. The builds
+and systems that have been run for real are listed in
+[engine support](engine-support.md).
+
+For an engine of your own, in order:
 
 1. Install and open your engine normally. First verify its own U1 setup.
 2. Enable **Auto-print pipeline** and **Filament inventory** in Settings.
 3. Save the fitted T0–T3 nozzles, materials, colours, preferred heights and
-   explicit spool identities. These records do not change fitted hardware.
-4. Enter the full engine program path and **Check slicer**. The check reads its
+   explicit spool identities. These records do not change fitted hardware (the
+   Slicer's **Heads** block reads and writes the same records; **Sync** reads
+   them from the printer again).
+4. Choose the program (**Use my own Snapmaker Orca**, or enter its full path in
+   the older Slicing settings) and let the Slicer check it. The check reads its
    actual version/help and, where available, exported option schema. Changing the
    executable invalidates its capability result. Schema recognition is not a
    claim that every geometry or platform has been tested.
-5. **Find installed U1 profiles**. Some engine builds package presets in an opaque
-   cache. For those, select a matching unpacked profiles folder containing
-   `Snapmaker/`, or use complete exported JSON files in advanced setup. The app
-   does not download or unpack proprietary engine caches. Linux validation used
-   matching source presets outside this repository. Normal Windows/macOS setup
-   remains unverified. The Linux build needed WebKitGTK 4.1, JavaScriptCore and
-   mspack runtime libraries; follow the engine's installation requirements.
-6. Select printer, process and four material presets. Review compatibility;
-   explicitly acknowledge using another U1 nozzle/material variant where needed.
-   Save a new named profile. Installed files stay intact. Internal working copies
+5. The Slicer lists the engine's stock U1 presets that fit your heads. Some
+   engine builds package presets in an opaque cache. For those, select a matching
+   unpacked profiles folder containing `Snapmaker/`, or use complete exported
+   JSON files in advanced setup. The app does not unpack proprietary engine
+   caches. The Linux build needed WebKitGTK 4.1, JavaScriptCore and mspack runtime
+   libraries; follow the engine's installation requirements.
+6. Review compatibility; explicitly acknowledge using another U1 nozzle/material
+   variant where needed. Installed files stay intact. Internal working copies
    live in application storage and enter app-data backups.
 
 Quality/shells, infill, support/adhesion, speed and per-material temperature,
@@ -66,8 +130,7 @@ exported preset paths remain external resources and must be backed up separately
 
 ## When the engine check or a slice fails
 
-The message names the cause and what to try, under Files, Slicing and in the
-Prepare workspace. Each failed slice also says where it stopped: reading the
+The message names the cause and what to try, in the Slicer (the slice bar's **Why?**). Each failed slice also says where it stopped: reading the
 model, checking the engine, checking the presets, checking layer heights,
 preparing the plate, slicing, checking the G-code or saving it.
 

@@ -15,8 +15,6 @@ const WorkshopPart3 = (() => {
   const { ar, files, loadHealth } = WorkshopPart2;
 
 function closeFile() {
-    window.DVWorkspace?.close();
-    if(window.DVPlate?.active){window.DVPlate.active.dispose();window.DVPlate.active=null;}
     if (ar.handle) ar.handle.end();
     $('file-detail').hidden = true;
     files.open = null;

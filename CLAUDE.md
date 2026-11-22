@@ -142,7 +142,7 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
   `app_get.py` and `app_post.py`, helpers in `app_part1.py`), `mock_moonraker.py` (one
   interface for simulated and real printers), `moonraker_client.py` (real printers), `live_feed.py`
   (250 ms tick), `fleet.py`, `print_gate.py` (Confirm Print), `gcode_tools.py`, `slicer_bridge.py`,
-  `app_updates.py`, `storage.py`, `modules.py`, `ai_assistant.py` + `ai_providers.py` + `ai_vault.py`
+  `app_updates.py`, `storage.py`, `modules.py`, `engine_installer.py` + `slicer_working.py` (the Slicer's engine and working profile), `ai_assistant.py` + `ai_providers.py` + `ai_vault.py`
   (the assistant, its safety limits and key storage), `error_codes.py` + `error_guides.py` + `wiki_page.py` + `printer_problems.py` (error codes, with
   the table in `reference/`), and one module per feature.
 - `frontend/`: published as the product page and online demo. `index.html` + `app.js` and its six parts (shared

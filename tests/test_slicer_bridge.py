@@ -689,7 +689,7 @@ class TestWhyItFailed(SlicerBridgeTest):
     def test_a_check_with_no_slicer_set_has_a_cause_with_a_way_on(self):
         result = slicer_bridge.check()
         self.assertEqual(result["cause"]["code"], "engine_problem")
-        self.assertIn("Find it for me", result["cause"]["fixes"][0])
+        self.assertIn("Install or Use my own Snapmaker Orca", result["cause"]["fixes"][0])
 
     def test_a_slice_that_cannot_load_a_library_says_which(self):
         self.configure()
@@ -791,7 +791,7 @@ class TestWhyItFailed(SlicerBridgeTest):
         self.assertIsNone(report["run"])
         self.assertEqual(report["stage"]["label"], "Checking the presets")
         self.assertEqual(report["output"]["status"], "none")
-        self.assertIn("Profiles", job["cause"]["fixes"][0])
+        self.assertIn("Open the Slicer", job["cause"]["fixes"][0])
 
     def test_the_report_names_what_came_out_when_the_engine_wrote_nothing_useful(self):
         for mode, status in (("no_output", "no_plate_files"), ("empty", "empty"), ("nothing_printable", "no_layers")):

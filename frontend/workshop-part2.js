@@ -815,7 +815,15 @@ async function startAR(mesh, btn) {
   }
 
 function modelTools(entry, original, viewer, side) {
-    if (window.DVPlate) return DVPlate.mount(entry, original, viewer, side);
+    // The plate, its tools and slicing live in the Slicer screen. This panel shows the model, on the U1's plate, and hands it over:
+    // "Open in Slicer" (farm-part2.js) for a file in the library, and the button below for one read only in this browser.
+    const slot = side && side.querySelector('#fd-ar-slot');
+    if (entry.local && slot && window.Slicer && !side.querySelector('#fd-open-local')) {
+      const b = document.createElement('button');
+      b.className = 'btn primary'; b.type = 'button'; b.id = 'fd-open-local'; b.textContent = 'Open in Slicer';
+      b.addEventListener('click', () => window.Slicer.openLocal(entry.local));
+      slot.before(b);
+    }
   }
   return { LOCAL_MAX_BYTES, ar, files, kindOf, loadChamber, loadHealth, modelTools, preflightList, renderPill,
     renderTwin, setupAR, updateChamberNow };

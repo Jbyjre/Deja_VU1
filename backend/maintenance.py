@@ -411,7 +411,7 @@ def record_swap(kind, toolhead, note="", nozzle=None):
             tool_setup.save({"heads": heads})
             setup_note = f"{toolhead} now has a {size:g} mm nozzle in its tool setup"
         else:
-            setup_note = "No tool setup saved for this printer yet: set the nozzle in Files › Slicing › Tools & filaments"
+            setup_note = "No tool setup saved for this printer yet: set the nozzle in the Slicer's Heads block"
         note = (f"{size:g} mm nozzle. " + (note or "")).strip()
     log = _load_log()
     now = datetime.now().isoformat(timespec="seconds")

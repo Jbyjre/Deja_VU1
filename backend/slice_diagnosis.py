@@ -62,19 +62,19 @@ def stage_label(stage):
 # ---------------------------------------------------------------------------
 
 ORCA_FIXES = {
-    -1: ["Press Check slicer: the engine's own words are shown there.",
+    -1: ["Open the Slicer and press its Engine button: the engine's own words are shown there.",
          "On Linux this usually means a system library or a screen is missing; the report shows the line it printed."],
-    -2: ["Press Check slicer again. If you updated the engine recently, go back to the version that worked."],
+    -2: ["Open the Slicer and check the engine again from its Engine button. If you updated the engine recently, go back to the version that worked."],
     -3: ["Save the profile again so it points at preset files that exist."],
-    -5: ["Open Files, Slicing, Profiles and pick the machine, process and filament presets again."],
-    -6: ["Open the model in the plate editor and save it again, or export it again from your design program."],
+    -5: ["Open the Slicer and pick the printer and print presets again."],
+    -6: ["Open the model in the Slicer and save the plate again, or export the model again from your design program."],
     -14: ["Close other programs and slice again. A large model needs more memory."],
     -17: ["Choose a process preset made for the same printer as the machine preset."],
     -50: ["Add a model to the plate, then slice again."],
     -51: ["Move every object fully inside the build plate, then slice again."],
     -52: ["Move every object fully inside the build plate, then slice again.",
           "If the model is far larger than the plate, check that it was saved in millimetres."],
-    -58: ["Raise the slicing time limit in Files, Slicing, or use a smaller model."],
+    -58: ["Raise the slicing time limit in Settings, or use a smaller model."],
     -100: ["Open the same model in Orca with the same presets and slice it there: Orca shows the warning that stopped the slice.",
            "The command-line engine treats some slicing warnings (empty layers, overlapping toolpaths) as errors, so a model that "
            "slices on screen can still stop here.",
@@ -145,17 +145,17 @@ def from_text(text):
             "needs_fuse", "The slicer is an AppImage and this computer can't run it without FUSE 2",
             "An AppImage mounts itself like a small disk when it starts. This one asks for the FUSE 2 library "
             "(libfuse.so.2), which newer Linux systems often don't include.",
-            ["Install the FUSE 2 library for your system, then press Check slicer again.",
+            ["Install the FUSE 2 library for your system, then check the engine again from the Slicer's Engine button.",
              "Or use an engine build that isn't an AppImage."],
             evidence=_line_with(text, found))
     found = _LOADER.search(text)
     if found:
         library = found.group(1)
         package = DEBIAN_PACKAGES.get(library)
-        fixes = ([f"On Debian or Ubuntu, install the package {package}, then press Check slicer again."]
+        fixes = ([f"On Debian or Ubuntu, install the package {package}, then check the engine again from the Slicer's Engine button."]
                  if package else
                  [f"Install the system package that provides {library} (search your package manager for "
-                  f"{library.split('.so')[0]}), then press Check slicer again."])
+                  f"{library.split('.so')[0]}), then check the engine again from the Slicer's Engine button."])
         return _cause(
             "missing_library", f"The slicer can't start: this computer is missing the library {library}",
             "A library is a shared piece of software that programs borrow from the system. The slicer asked for "
@@ -167,7 +167,7 @@ def from_text(text):
         return _cause(
             "missing_library", f"The slicer can't start: macOS couldn't load {found.group(1)}",
             "The slicer asked for a library file that isn't there, so it stopped before it did any work.",
-            ["Reinstall the slicer from its official download, then press Check slicer again."],
+            ["Reinstall the slicer from its official download, then check the engine again from the Slicer's Engine button."],
             evidence=_line_with(text, found))
     found = _TOO_OLD.search(text)
     if found:
@@ -274,8 +274,8 @@ def from_orca(code, words, orca_says):
 
 def for_stage(stage, message):
     """A cause for a check that refused the slice before the engine ran."""
-    fixes = {"engine": ["Open Files, Slicing, press Find it for me, then Check slicer."],
-             "profile": ["Open Files, Slicing, Profiles and save the profile again."]}.get(stage)
+    fixes = {"engine": ["Open the Slicer, press its Engine button, then Install or Use my own Snapmaker Orca."],
+             "profile": ["Open the Slicer and pick the printer and print presets again."]}.get(stage)
     return _cause(f"{stage or 'setup'}_problem", message, "", fixes)
 
 

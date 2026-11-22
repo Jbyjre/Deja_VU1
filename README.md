@@ -44,9 +44,13 @@ and overdue maintenance at the top.</sub>
 - **Watch a live 3D twin.** A model of the U1 follows the print: the head on the gantry, the bed
   dropping as layers build, the spools in their colours, and the print itself, drawn from the
   file's own G-code. One click turns it into an engineering drawing with dimensions.
-- **Prepare and slice.** Arrange STL, OBJ and 3MF models, assign heads T0 to T3, slice with
-  Snapmaker Orca or OrcaSlicer (you install the engine) and inspect the G-code layer by layer.
-  Projects from Bambu Studio, PrusaSlicer, OrcaSlicer and its forks, MakerWorld and Printables
+- **Slicer.** A screen laid out like Snapmaker Orca, on the U1's own plate: put STL, 3MF and OBJ models on it,
+  drag, turn, scale, lay on a face, arrange and orient them, give each model a head T0 to T3, set the four
+  heads' layer heights, change any of 118 print settings with a plain-words note beside each, see problems
+  (over the edge, a missing prime tower, overhangs) with a fix for each, slice, then check every layer in a
+  Preview coloured by line type, head or speed before you press Print. Deja Vu1 can install Snapmaker Orca for
+  you, kept apart from any copy you have, and does the slicing with it.
+Projects from Bambu Studio, PrusaSlicer, OrcaSlicer and its forks, MakerWorld and Printables
   convert to the U1, with any number of colours fitted to its four heads.
 - **Run the printer from your desk.** Move, heat, extrude and tune; fans, lights, the bed mesh,
   macros and the console, on one page per printer. Skip one failed object and let the rest finish.
@@ -231,10 +235,10 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 - **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
   Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
   assistant. The assistant has also run through a paid API key.
-- **Automated:** 1882 tests passed on Python 3.13 (21 November 2026). GitHub Actions
+- **Automated:** 1911 tests passed on Python 3.13 (22 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
-  Other builds slice too, and **Check slicer** lists the builds with recorded runs.
+  Other builds slice too, and the Slicer's engine card lists the builds with recorded runs.
 - **With stand-ins in the suite:** macOS and Windows start-up, a second printer and other Klipper
   printers, the Extended Firmware's camera, Spoolman, WLED, Home Assistant, Tailscale and error codes
   raised the way the U1's firmware raises them. Each stand-in answers the way the real program does.
@@ -271,7 +275,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1882 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 1911 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

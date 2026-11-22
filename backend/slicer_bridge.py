@@ -58,6 +58,7 @@ import time
 import uuid
 from datetime import datetime
 
+import engine_installer
 import engine_support
 import file_library
 import gcode_tools
@@ -192,7 +193,7 @@ def use_stock_profile():
     """
     path, _ = slicer_path()
     if not path:
-        raise ValueError("Find your slicer program first: Find it for me, in step 2")
+        raise ValueError("No slicing engine yet: open the Slicer and press Engine to install one or to choose your own")
     found = installed_catalog()
     if not found["available"]:
         raise ValueError(found["problem"])
@@ -324,15 +325,20 @@ def _check_by_settings_file(path, started):
             "program_identity": _program_identity(path)}
 
 
-def check():
+def check(path=None, save=True):
     """
     Is the slicer there and does it answer like OrcaSlicer's command line?
     Runs `<slicer> --help`, whose first line is "<AppKey>-<version>:"
     (CLI::print_help in src/OrcaSlicer.cpp). A build that exits cleanly but prints no such line
     (the Windows ones: see _check_by_settings_file) is asked for its settings file instead.
+    `path` checks a program that is not the chosen one yet (an engine being installed), and `save=False` keeps the answer out of
+    the saved settings, so a half-installed engine is never taken for the working one.
     """
     s = get_settings()
-    path, source = slicer_path(s)
+    if path:
+        source = "managed"
+    else:
+        path, source = slicer_path(s)
     problem = _check_program(path, source)
     if problem:
         result = {"ok": False, "error": problem}
@@ -386,17 +392,31 @@ def check():
                           "output": text}
                 cause = slice_diagnosis.make("not_orca", result["error"], "", [
                     "Point Deja Vu1 at the slicer's own program (Snapmaker Orca or OrcaSlicer).",
-                    "Press Find it for me to list the ones installed on this computer."], evidence=text[-240:] or None)
+                    "In the Slicer, press Engine, then Use my own Snapmaker Orca, to list the ones installed on this computer."], evidence=text[-240:] or None)
         if code not in ("failed", None):
             result["exit_code"] = code
     if not result["ok"]:
         found = None if problem else cause
         result["cause"] = found or slice_diagnosis.for_stage("engine", result["error"])
     result["checked_at"] = datetime.now().isoformat(timespec="seconds")
-    s = get_settings()
-    s["last_check"] = result
-    _save(s)
+    if save:
+        s = get_settings()
+        s["last_check"] = result
+        _save(s)
     return result
+
+
+def _is_plate_project(data, kind):
+    """A plate saved by Deja Vu1's Slicer: its objects are where the person put them, so the engine must not arrange them again."""
+    if kind != "3mf":
+        return False
+    try:
+        import io
+        import zipfile
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            return "DejaVu/plate.json" in z.namelist()
+    except (zipfile.BadZipFile, OSError):
+        return False
 
 
 def slice_model(name, profile_id=None, on_step=None, trace=None):
@@ -487,7 +507,8 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
         os.makedirs(outdir)
         with open(model_path, "wb") as fh:
             fh.write(data)
-        cmd = command_for(path, profile, model_path, outdir)
+        cmd = command_for(path, profile, model_path, outdir, keep_placement=_is_plate_project(data, kind),
+                          datadir=engine_installer.data_dir_for_engine() if engine_installer.is_managed(path) else None)
         timeout = int(s.get("timeout_s") or DEFAULT_TIMEOUT)
         step(f"Slicing with {os.path.basename(path)} (time limit {timeout} s)")
         trace["stage"] = "slice"
@@ -514,7 +535,7 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
             message = (f"Slicing didn't finish within {timeout} s, so it was stopped. A big model can "
                        "need longer (raise the time limit), or Orca may be stuck waiting for a screen")
             raise SliceFailed(message, report, slice_diagnosis.make(
-                "timeout", message, "", ["Raise the time limit in Files, Slicing, or try a smaller model."]))
+                "timeout", message, "", ["Raise the time limit in Settings, or try a smaller model."]))
         rc = result_json.get("return_code") if isinstance(result_json, dict) else None
         plates = sorted((f for f in os.listdir(outdir) if re.match(r"^plate_\d+\.gcode$", f)),
                         key=lambda f: int(re.findall(r"\d+", f)[0]))
@@ -529,7 +550,7 @@ def slice_model(name, profile_id=None, on_step=None, trace=None):
             message = ("Orca finished without an error but wrote no G-code (no plate_*.gcode in its "
                        "output folder). Its output layout may have changed in this version")
             raise SliceFailed(message, report, slice_diagnosis.make(
-                "no_gcode", message, "", ["Press Check slicer to see which engine version this is.",
+                "no_gcode", message, "", ["Open the Slicer and press Engine to see which engine version this is.",
                                           "If you updated the engine recently, go back to the version that worked."]))
 
         step("Checking the G-code that came out")
