@@ -139,6 +139,41 @@ class TestOrcaCodes(unittest.TestCase):
         self.assertEqual(missing, [], "a code with words but nothing to try")
 
 
+class TestWhatTheEnginePrintsOnEveryRun(unittest.TestCase):
+    def test_the_lines_printed_by_slices_that_work_are_never_given_as_the_reason(self):
+        # The U1's preset lists one excluded area with a single point, so the engine says this twice on every run, even a good one
+        # (read on a real Linux slice that finished). A Windows tester's report quoted it as the reason for a -50.
+        text = ("[2026-11-22 11:35:39.765216] [0x00001ca4] [error]   Slic3r::GUI::PartPlate::calc_exclude_triangles:Unable to create exclude triangles\r\n\r\n"
+                "[2026-11-22 11:35:39.766231] [0x00001ca4] [error]   calc_exclude_triangles:Unable to create exclude triangles\n\n"
+                "[2026-11-22 11:35:39.767235] [0x00001ca4] [error]   plate 1: Nothing to be sliced, Either the print is empty or no object is "
+                "fully inside the print volume before apply.\r\n\r\nSlic3r::CLI::run found error, exit")
+        lines = diag.reason_lines(text)
+        self.assertEqual(len(lines), 1)
+        self.assertIn("Nothing to be sliced", lines[0])
+
+    def test_a_real_problem_with_the_same_words_elsewhere_is_still_a_reason(self):
+        self.assertEqual(diag.reason_lines("[error] could not create exclude triangles for the plate"),
+                         ["[error] could not create exclude triangles for the plate"])
+
+
+class TestCodesAProjectFromAnotherSlicerRaises(unittest.TestCase):
+    def test_windows_and_macos_numbers_map_back_to_the_documented_codes(self):
+        for code, number in ((4294967272, -24), (232, -24), (4294967273, -23), (4294967237, -59)):
+            self.assertEqual(diag.orca_code(code), number)
+
+    def test_each_has_words_and_something_to_try(self):
+        import slicer_bridge
+        for number in (-15, -16, -18, -19, -20, -21, -22, -23, -24, -59, -61, -62, -63, -64, -65):
+            self.assertIn(number, slicer_bridge.ORCA_ERRORS)
+            self.assertTrue(diag.ORCA_FIXES[number])
+
+    def test_no_model_inside_the_plate_no_longer_says_to_add_one_first(self):
+        import slicer_bridge
+        self.assertNotIn("empty", slicer_bridge.ORCA_ERRORS[-50])
+        self.assertIn("inside the plate", diag.ORCA_FIXES[-50][0])
+        self.assertIn("empty", diag.ORCA_FIXES[-50][-1])
+
+
 class TestOrcaNumbersFromHowTheProgramEnded(unittest.TestCase):
     """result.json is written on Linux only, so Windows and macOS give the exit code alone: -100 arrives as 4294967196 or 156."""
 

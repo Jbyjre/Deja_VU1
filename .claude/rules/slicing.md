@@ -71,9 +71,16 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   U1 when its name says U1 or its `compatible_printers` names a Snapmaker U1: the 0.4 mm stock
   materials are "Generic PLA" and so on. The Slicer's slice bar draws a failure's cause (`slicer-preview.js`, **Why?**).
 - Evidence: `docs/slicer-workspace-validation.md` (engine output; its plate-editor sections are history), `docs/native-studio-validation.md`,
-  `docs/viewer-performance.json`. Real Orca 2.4.2 and Snapmaker Orca 02.08.01.55 Linux slices are
-  recorded; Windows and macOS engine runs are not. **Snapmaker Orca 2.4.1 (the managed download) has not been run by any session yet**
-  (`tools/engine-selftest.py` is a run on a computer that has the engine).
+  `docs/viewer-performance.json`. Real Orca 2.4.2, Snapmaker Orca 02.08.01.55 and Snapmaker Orca v2.4.1 (build 01.10.01.50, the managed download) Linux
+  slices are recorded; Windows and macOS engine runs are not (`tools/engine-selftest.py` is a run on a computer that has the engine).
+- v2.4.1 names itself two ways: `--help` says `01.10.01.50`, its exported settings say `"version": "2.4.1"`, and a Windows engine can only be read
+  through the settings file. `engine_support.RELEASE_BUILDS` makes them one build. Its command line refuses a 3MF its own window saved (file
+  version 2.4.0.1, exit -24) unless given `--allow-newer-file`: `slice_model` retries once with it after -24 only, and keeps the first outcome if
+  the engine answers -2 (an engine without the option). Real-engine rules, measured 22 November 2026: it counts every stored vertex, used or not, when it
+  asks whether an instance is inside the plate (outside the plate's width or depth at any height, even under the bed, or above the height: -50; under the
+  bed but inside the plate: accepted, then -100), and it loads an object whose components are themselves containers as empty (-50).
+  `Unable to create exclude triangles` is printed twice on every run (the U1's `bed_exclude_area = 0x0`); `slice_diagnosis._HARMLESS` keeps it out of "why".
+  After -50, -51 or -52 on a 3MF `slicer_bridge.slice_model` adds `project_plates.volume_check` (which object, which edge, how far) to the message.
 
 ## The managed engine (`engine_installer.py`)
 
@@ -141,7 +148,10 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   and assume a zero exit proves correctness.
 - `plate_project.py`: keep XML prefixes when moving paths (`requiredextensions` refers to them).
   List every model part in `3D/_rels/3dmodel.model.rels` or Orca imports empty geometry. Sources live
-  inside `DejaVu/Sources/`.
+  inside `DejaVu/Sources/`. A build item whose object only lists components (Bambu Studio and Orca projects) is flattened to the mesh objects with the
+  transforms combined (`_flatten`; anything it does not understand keeps the old one-level reference), because the engine reads two levels as empty.
+  `compact_vertices` (regex on the XML, never a re-serialise) drops vertices no triangle uses; `project_plates.engine_input` applies it to the
+  temporary engine copy of every 3MF, plate or direct, and leaves the library file and untouched meshes byte for byte as they were.
 - `colour_map.py`: which filaments a 3MF uses (objects, parts, paint, height ranges) and a head for each; writes a copy using at most
   four. Paint codec per OrcaSlicer's TriangleSelector.
 - Slicer keyboard (`slicer-prepare.js` `onKey`): single keys act only while the stage has focus and no field or sheet is open; Escape closes the sheet, the

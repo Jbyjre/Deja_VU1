@@ -38,6 +38,11 @@ VERIFIED = (
 
 _SYSTEM_WORDS = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}
 
+# One release, two names. `--help` names the build ("Snapmaker_Orca-01.10.01.50:"); the settings file `--export-settings` writes says
+# "version": "2.4.1". Windows builds do not print `--help` where the app can read it, so there the app only ever sees the release name.
+# Both were read from the same v2.4.1 Linux download on 22 November 2026.
+RELEASE_BUILDS = {("snapmakerorca", "2.4.1"): "01.10.01.50"}
+
 
 def _key(text):
     return re.sub(r"[^a-z0-9]", "", str(text or "").lower())
@@ -57,14 +62,15 @@ def assess(app, version, system):
     (an exact row exists) or "untested", with the words to show and the rows.
     """
     same_app = [row for row in VERIFIED if _key(row["app"]) == _key(app)]
-    exact = next((row for row in same_app if row["version"] == version and row["system"] == system), None)
+    build = RELEASE_BUILDS.get((_key(app), str(version)), version)
+    exact = next((row for row in same_app if row["version"] == build and row["system"] == system), None)
     where = system_name(system)
     if exact:
         heights = ("Per-head layer heights are tested too." if exact["per_head_heights"]
                    else "Shared layer heights only: this build has no per-head height options.")
         return {"level": "tested", "title": f"Tested: this exact build has sliced on {where}.", "detail": heights,
                 "evidence": exact["evidence"], "tested": _tested_words(), "per_head_heights": exact["per_head_heights"]}
-    if any(row["version"] == version for row in same_app):
+    if any(row["version"] == build for row in same_app):
         title = f"Ready to slice. This build's recorded runs are on {system_name(same_app[0]['system'])}; {where} is next."
     elif same_app:
         title = f"Ready to slice with {app} {version}. Its recorded runs are at {same_app[0]['version']}."
