@@ -390,6 +390,14 @@ def _nozzle_of(row):
         return []
 
 
+def stock_rank(row, kind):
+    """How well a filament preset suits a material as the stock choice: Snapmaker's own Basic first, then Generic, then any other of theirs."""
+    n = row['name']
+    base = n.split(' @')[0]
+    return (0 if base == f'Snapmaker {kind} Basic' else 1 if base == f'Generic {kind}' else
+            2 if base.startswith(f'Snapmaker {kind}') else 3 if base.startswith(f'Generic {kind}') else 4, len(n))
+
+
 def stock_choice(presets, heads):
     """
     Snapmaker's stock U1 presets that fit the fitted heads: the printer preset for those nozzles, its Standard
@@ -422,12 +430,7 @@ def stock_choice(presets, heads):
     notes, filaments, names = [], [], []
     for h in sorted(heads, key=lambda x: x['toolhead']):
         kind = str(h.get('material') or 'PLA').upper()
-
-        def rank(r, kind=kind):
-            n = r['name']
-            base = n.split(' @')[0]
-            return (0 if base == f'Snapmaker {kind} Basic' else 1 if base == f'Generic {kind}' else
-                    2 if base.startswith(f'Snapmaker {kind}') else 3 if base.startswith(f'Generic {kind}') else 4, len(n))
+        rank = lambda r, kind=kind: stock_rank(r, kind)  # noqa: E731
         same = [r for r in materials if str(r.get('material') or '').upper() == kind]
         if not same:
             same = [r for r in materials if str(r.get('material') or '').upper() == 'PLA']

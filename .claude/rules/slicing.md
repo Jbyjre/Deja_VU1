@@ -90,7 +90,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
 ## The Slicer (frontend)
 
 - Load order (`index.html`): `u1-plate.js` (before `viewer3d.js`), then `slicer-model.js`, `slicer-scene.js`, `slicer-ui.js`, `slicer-prepare.js`,
-  `slicer-keys.js`, `slicer-settings.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
+  `slicer-keys.js`, `slicer-settings.js`, `slicer-filament.js`, `slicer-help.js`, `slicer-sheet.js`, `slicer-path.js`, `slicer-preview.js`, `slicer.js` (boots, `window.Slicer.open/openLocal`);
   `slicer-gcode-worker.js` is the Preview's Web Worker. Styles are all in `slicer.css` (11 px floor; the page's generic `.tab-sub > *` rule gives
   every direct child a 16 px side margin and its own `max-width`, so set widths outright).
 - `PlateModel` (slicer-model.js) owns the objects and the 12-number transform (3 rows of turn and scale, then the move; row-vector convention, shared with
@@ -108,7 +108,12 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   with a selection, otherwise it stays the app's Find (`onKeyFirst`, bound in the capture phase because `finder.js` runs first). Tab flips Prepare and Preview only while a mouse press gave the 3D view the focus
   (`pointerFocused`), because the canvas is also a keyboard stop. The camera options (zoom to the pointer, swap the buttons, reverse the wheel, turning speed) are Orca's four. Orca's Cut, Boolean, seam and
   fuzzy-skin painting, Text, Brim ears and Assemble keys say "not in the Slicer yet". The view is only re-framed for a first model, a new plate and an emptied one.
-- Checks: `node tools/slicer-check.js` (76 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
+- Filament per head (`slicer-filament.js`, `slicer-settings.js`, `slicer_working.py`): `state()["filaments"]` lists the engine's filament presets that fit the machine and whose material a head can hold
+  (`tool_setup.MATERIALS`; `slicer_profiles.prepare` refuses a preset whose `filament_type` differs from the head's saved material), one row per short name, Snapmaker's first, with `stock: true` on the one
+  `stock_rank` would choose for each material. `POST /api/slicer/working` takes `filament_presets` (four names, short or full, or null) and the browser keeps them in `state.preset.filaments`
+  (names, not ids: ids follow the engine's folder). A head change bumps `w.headsVersion`, and a `refresh()` that started before it leaves the heads alone (an older read must not undo it).
+  `printerDiff()` words where a head differs from the printer's own toolhead reading. Nothing here writes to the printer.
+- Checks: `node tools/slicer-check.js` (82 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
   `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 
 ## Profiles and per-head heights

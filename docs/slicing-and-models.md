@@ -17,12 +17,27 @@ empty plate's list, or pressing **Open in Slicer** on a model in Files. A 3MF
 saved by the Slicer comes back with its objects where they were.
 
 - **Tool strip.** Add, Delete, Arrange, Auto-orient; Move, Rotate, Scale, Lay on
-  face, Split into parts; Measure and Show overhangs; Undo and Redo. Keys follow
-  Orca's where it has one: A, O, M, R, S, F, U, Delete, Ctrl+Z and Ctrl+Y,
-  0 to 6 for the views, Home to fit, Tab to switch between Prepare and Preview.
+  face, Split into parts; Measure and Show overhangs; Undo and Redo. Press **?**
+  for every key. They are Snapmaker Orca's: A arranges, Q orients, M, R, S, F and
+  U pick the tool, 1 to 4 give the selection a head, Ctrl+C, X, V and K copy,
+  cut, paste and clone, Ctrl+A selects all, Ctrl+D deletes all (Ctrl+Z brings it
+  back), Ctrl+R slices, Ctrl+G saves the G-code, Ctrl+Shift+G prints, Tab switches
+  between Prepare and Preview.
+- **The view.** The left button turns the view round the selected model (or all of
+  them), 0.8° a pixel, and the model stays where it is on the screen. Ctrl and the
+  left button turn it round the middle of the screen. The right or middle button
+  pans, so what was under the pointer follows it. The wheel zooms a tenth a notch
+  towards the pointer (small trackpad steps add up); I and O zoom, Z fits. Ctrl+0
+  is the default view (from the front, at 45°); Ctrl+1 to 6 are top, bottom,
+  front, rear, left and right through a flat lens, until you turn the view again.
+  Shift and the left button draw a box that selects what it touches (Ctrl adds,
+  Alt takes away). On a touch screen two fingers pinch and pan. The camera button
+  offers Orca's four options: zoom to the pointer, swap the turn and pan buttons,
+  reverse the wheel, and the turning speed.
 - **On the plate.** Drag a model to move it. The selected model shows handles:
   arrows to move along an axis, rings to turn (5° steps, Alt for free), a corner
-  to scale. Arrow keys nudge by 1 mm (Shift 10 mm, Alt 0.1 mm).
+  to scale. The arrow keys move the selection 10 mm (Shift 1 mm, Alt 0.1 mm, Ctrl
+  the way the camera sees it).
 - **Object panel.** Exact position, size, turn and scale, the head that prints
   it, walls, infill and supports for that object only, Drop to plate, Lay flat,
   Reset, Mirror, Duplicate and Set aside.
@@ -35,8 +50,17 @@ saved by the Slicer comes back with its objects where they were.
 - **Prime tower.** Shown as a see-through block as soon as two heads are used.
   Arrange keeps objects clear of it. Its position is the engine's default corner
   (15, 220 mm) and it cannot be moved yet.
-- **Settings dock.** The printer; the four heads with the spool the printer
-  reports, the nozzle and a layer height for each head; the print preset with its
+- **Heads and filament.** Press a head to choose its filament: what the printer
+  reports for that head (one press uses it), the spools you own, the material
+  (PLA, PETG, ABS, ASA, TPU, PVA, PA or PC), one of the engine's own filaments
+  for that material (Snapmaker's, Generic and others; its temperatures, flow and
+  cooling go into the slice), and the colour. **Sync** reads the four heads from
+  the printer again. A line under the heads says where one differs from what the
+  printer reports (material, colour or nozzle). Nothing is written to the
+  printer from here, and a blend a head cannot hold (carbon fibre, for example) is
+  set on the printer.
+- **Settings dock.** The printer; the four heads with the nozzle and a layer
+  height for each; the print preset with its
   layer height, infill, walls, supports and prime tower dials and a speed slider
   from 50 to 120 % of the preset; and **All settings**, a sheet of every print
   setting the app offers (118) in Orca's groups (Quality, Strength, Speed,
@@ -71,8 +95,9 @@ remains inspectable and never enters the automatic queue handoff.
 
 Built into Deja Vu1 for now: **Arrange** is a quick packing (it names objects
 that do not fit) and **Auto-orient** picks the way up with the least overhang.
-The engine also has its own arrange and orient; using them waits for a run
-with the real engine ([engine support](engine-support.md)). Not built yet: cut,
+The engine also has its own arrange and orient. They ran for real on
+22 November 2026 ([engine support](engine-support.md)), but the Slicer does not use
+them yet. Not built yet: cut,
 painting colours or supports, calibration prints and printing one object at a
 time.
 

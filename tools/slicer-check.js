@@ -295,6 +295,25 @@ async function main() {
     /* ---- settings ---- */
     const heads = await page.evaluate(() => document.querySelectorAll('#sl-blk-heads .sl-hrow').length);
     check(heads === 4, 'the dock lists the four heads');
+    /* ---- filament per head ---- */
+    {
+      const V = fn => page.evaluate(fn);
+      check(await V(() => document.querySelectorAll('#sl-blk-heads .sl-hpick').length === 4), 'each head has a button to choose its filament');
+      await page.click('#sl-blk-heads [data-pick="1"]'); await page.waitForTimeout(400);
+      check(await V(() => !!document.getElementById('sl-fil') && document.querySelectorAll('#sl-fil [data-mat]').length === 8 && document.querySelectorAll('#sl-fil [data-hex]').length >= 12), 'pressing a head opens its picker with the eight materials and the colours');
+      await page.click('#sl-fil [data-mat="PETG"]'); await page.waitForTimeout(500);
+      check(await V(() => SL.state.heads[1].material === 'PETG' && /PETG/.test(document.querySelector('#sl-blk-heads [data-pick="1"] .sl-hname span').textContent + document.querySelector('#sl-fil-preset option')?.textContent)), 'choosing a material changes the head and the filaments on offer');
+      await page.click('#sl-fil [data-hex="#2f6fe4"]'); await page.waitForTimeout(400);
+      check(await V(() => SL.state.heads[1].hex === '#2f6fe4' && getComputedStyle(document.querySelector('#sl-blk-heads [data-pick="1"] .sl-hdot')).getPropertyValue('--c').trim() === '#2f6fe4'), 'choosing a colour changes the head\'s dot');
+      await page.fill('#sl-fil-hex', '#10b981'); await page.dispatchEvent('#sl-fil-hex', 'change'); await page.waitForTimeout(400);
+      await page.fill('#sl-fil-hex', 'green'); await page.dispatchEvent('#sl-fil-hex', 'change'); await page.waitForTimeout(200);
+      check(await V(() => SL.state.heads[1].hex === '#10b981'), 'a typed colour is used and a bad one is refused');
+      await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+      check(await V(() => !document.getElementById('sl-fil') && document.activeElement && document.activeElement.dataset.pick === '1'), 'Escape closes the picker and returns the focus to the head');
+      // put the head back as the later checks expect it
+      await V(() => { SL.state.heads[1].material = 'PLA'; SL.state.heads[1].hex = '#1c1c1e'; SL.state.preset.filaments[1] = ''; SL.settings.headsChanged(); });
+      await page.waitForTimeout(900);
+    }
     const posted = [];
     page.on('request', r => { if (r.method() === 'POST' && /\/api\/slicer\/working$/.test(r.url())) posted.push(r.postData()); });
     await page.fill('[data-quick="wall_loops"]', '5'); await page.dispatchEvent('[data-quick="wall_loops"]', 'change');

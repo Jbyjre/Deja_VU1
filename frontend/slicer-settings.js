@@ -9,23 +9,26 @@
 (() => {
   const { state, ic, q, qa, on, esc, fmt, say, hexRGB } = SL;
   const KEY = 'dejavu1.slicer.settings';
-  const w = state.work = { data: null, profileId: null, warnings: [], error: null, pending: 0, busy: false, token: 0 };
+  const w = state.work = { data: null, profileId: null, warnings: [], error: null, pending: 0, busy: false, token: 0, headsVersion: 0 };
 
   /* ---- remembered choices ----------------------------------------------------------------------------------------------------- */
   function load() {
+    state.preset.filaments = ['', '', '', ''];
     try {
       const saved = JSON.parse(store.get(KEY) || '{}');
       state.preset.process = saved.process || null;
+      if (Array.isArray(saved.filaments)) state.preset.filaments = [0, 1, 2, 3].map(i => (typeof saved.filaments[i] === 'string' ? saved.filaments[i].slice(0, 80) : ''));
       state.overrides = saved.overrides && typeof saved.overrides === 'object' ? saved.overrides : {};
       state.speed = Number.isFinite(saved.speed) ? saved.speed : 100;
     } catch (_) { /* a damaged value is the same as none */ }
   }
   function save() {
-    try { store.set(KEY, JSON.stringify({ process: state.preset.process, overrides: state.overrides, speed: state.speed })); } catch (_) { /* no storage */ }
+    try { store.set(KEY, JSON.stringify({ process: state.preset.process, overrides: state.overrides, speed: state.speed, filaments: state.preset.filaments })); } catch (_) { /* no storage */ }
   }
 
   /* ---- reading the server ------------------------------------------------------------------------------------------------------ */
   async function refresh() {
+    const versionAtStart = w.headsVersion;
     const [engine, work, printer, assigned] = await Promise.all([
       getJSON('/api/slicer/engine').catch(() => null), getJSON('/api/slicer/working').catch(() => null),
       getJSON(api('/api/printer')).catch(() => null), getJSON(api('/api/tools/assignments')).catch(() => null)]);
@@ -37,12 +40,22 @@
       try { await postJSON('/api/slicer/check', {}); w.data = await getJSON('/api/slicer/working').catch(() => work); } finally { w.checking = false; }
     }
     const saved = (assigned && assigned.heads && assigned.heads.length ? assigned.heads : null) || (work && work.heads) || [];
-    state.heads = [0, 1, 2, 3].map(i => {
+    // A head was changed here while this read was on its way: what came back is older, so the heads stay as they are.
+    const keepHeads = w.headsVersion !== versionAtStart && state.heads.length === 4;
+    if (!keepHeads) state.heads = [0, 1, 2, 3].map(i => {
       const live = printer && printer.toolheads && printer.toolheads['T' + i] || {}, rec = saved.find(h => h.toolhead === 'T' + i) || {};
       return { i, hex: rec.color_hex || (/^#[0-9a-f]{6}$/i.test(live.filament_color_hex || '') ? live.filament_color_hex : '#9aa3ae'), name: live.filament_color_name || '',
         material: rec.material || live.filament_material || '', nozzle: Number(rec.nozzle || live.nozzle_diameter || 0.4), height: Number(rec.height || 0.2), saved: !!rec.toolhead,
-        loaded: live.filament_loaded !== false };
+        loaded: live.filament_loaded !== false, spool: rec.spool_id || '' };
     });
+    // A filament chosen for a head stays only while the engine still lists it and its material is the head's.
+    const offered = (work && work.filaments) || [];
+    if (offered.length && !keepHeads) {
+      state.preset.filaments = [0, 1, 2, 3].map(i => {
+        const name = state.preset.filaments[i], row = name && offered.find(r => r.name === name || r.label === name);
+        return row && row.material === String(state.heads[i].material || '').toUpperCase() ? name : '';
+      });
+    }
     if (state.preset.process && work && work.processes && !work.processes.some(p => p.id === state.preset.process)) state.preset.process = null;
     render();
     // The object list, the object panel and the colours on the plate follow the heads only when the heads changed; a refresh that found the
@@ -118,23 +131,60 @@
     } catch (e) { return e.message; }
   }
 
+  /* the filament a head will print with: the one chosen for it, else the engine's stock one for its material */
+  function activeFilament(i) {
+    const chosen = state.preset.filaments[i];
+    if (chosen) return chosen.split(' @')[0];
+    const material = String((state.heads[i] || {}).material || '').toUpperCase();
+    const row = ((w.data && w.data.filaments) || []).find(r => r.stock && r.material === material);
+    return row ? row.label : '';
+  }
+
+  /* where a head differs from what the printer reports (its material, its colour, its nozzle), in words; Sync reads the printer */
+  function printerDiff() {
+    const p = state.printer;
+    if (!p || !p.toolheads) return [];   // with no printer there are no toolhead readings at all
+    const out = [];
+    for (const h of state.heads) {
+      const live = p.toolheads['T' + h.i];
+      if (!live) continue;
+      const liveMat = String(live.filament_material || '').toUpperCase(), mat = String(h.material || '').toUpperCase();
+      const liveHex = /^#[0-9a-f]{6}$/i.test(live.filament_color_hex || '') ? live.filament_color_hex.toLowerCase() : '';
+      const [a, b] = [hexRGB(liveHex), hexRGB(h.hex)], parts = [];
+      if (liveMat && mat && liveMat !== mat) parts.push(`the printer has ${liveMat}, here it is ${mat}`);
+      else if (liveHex && h.hex && Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) > 0.25) parts.push(`the printer has ${live.filament_color_name || liveHex}`);
+      if (live.nozzle_diameter && Math.abs(Number(live.nozzle_diameter) - h.nozzle) > 0.001) parts.push(`the printer has a ${fmt(Number(live.nozzle_diameter), 2)} mm nozzle, here it is ${fmt(h.nozzle, 1)} mm`);
+      if (parts.length) out.push(`T${h.i}: ${parts.join('; ')}`);
+    }
+    return out;
+  }
+
+  /* a head's filament changed here (colour, material, spool or preset): the profile, the plate's colours and the object panel follow */
+  function headsChanged() {
+    w.headsVersion++;
+    renderHeads(); scheduleProfile(); save();
+    if (SL.prepare) { SL.prepare.renderObjects(); SL.prepare.renderInspector(); if (state.view) SL.prepare.syncScene(); }
+  }
+
   function renderHeads() {
     const uses = [0, 0, 0, 0];
     for (const o of state.model.onPlate()) uses[o.tool]++;
     const rows = state.heads.map(h => {
       const mine = state.headHeights[h.i];
       return `<div class="sl-hrow${uses[h.i] ? ' is-used' : ''}" data-head="${h.i}">
-        <span class="sl-hdot" style="--c:${esc(h.hex)}" aria-hidden="true"></span>
-        <span class="sl-hname"><b>T${h.i}</b><span>${esc(h.material || (h.name ? '' : 'no spool reported'))}${h.name ? ' · ' + esc(h.name) : ''}</span></span>
+        <button type="button" class="sl-hpick" data-pick="${h.i}" aria-label="Choose the filament for T${h.i}" aria-haspopup="dialog" title="${esc([h.material, h.name].filter(Boolean).join(' · ') || 'Choose the filament')}">
+          <span class="sl-hdot" style="--c:${esc(h.hex)}" aria-hidden="true"></span>
+          <span class="sl-hname"><b>T${h.i}</b><span>${esc(activeFilament(h.i) || h.material || 'no spool reported')}</span></span></button>
         <span class="sl-dim">${fmt(h.nozzle, 1)}</span>
         <label class="sl-hh"><input type="number" step="0.02" min="0.04" max="0.6" inputmode="decimal" data-hh="${h.i}" aria-label="Layer height for T${h.i}" placeholder="${fmt(baseHeight(), 2)}" value="${mine ? fmt(mine, 3) : ''}"></label>
         <span class="sl-uses" title="Objects on this plate printed by T${h.i}">${uses[h.i] ? '×' + uses[h.i] : ''}</span></div>`;
     }).join('');
-    const note = headNote();
+    const note = headNote(), differs = printerDiff();
     q('#sl-blk-heads').innerHTML = `
       <div class="sl-bh"><span class="sl-bt">Heads</span><span class="sl-bs">nozzle mm · layer mm</span><button type="button" class="sl-btn sl-quiet" id="sl-sync" aria-label="Read the spools from the printer again" data-tip="Read the spools again">${ic('refresh')}Sync</button></div>
       ${rows}
       ${note ? `<p class="sl-hint">${esc(note)}</p>` : ''}
+      ${differs.length ? `<p class="sl-hint sl-warn">${esc(differs.slice(0, 2).join('. '))}${differs.length > 2 ? ` and ${differs.length - 2} more` : ''}. Sync reads the printer.</p>` : ''}
       ${w.error ? `<p class="sl-hint sl-bad" role="alert">${esc(w.error)}</p>` : ''}`;
     for (const input of qa('[data-hh]', q('#sl-blk-heads'))) on(input, 'change', () => {
       const i = Number(input.dataset.hh), v = parseFloat(input.value);
@@ -142,16 +192,18 @@
       state.layerMode = state.headHeights.some(x => x && Math.abs(x - baseHeight()) > 1e-6) ? 'per_tool' : 'shared';
       renderHeads(); scheduleProfile();
     });
+    for (const b of qa('[data-pick]', q('#sl-blk-heads'))) on(b, 'click', e => { e.stopPropagation(); if (SL.filament) SL.filament.open(Number(b.dataset.pick), b); });
     for (const row of qa('.sl-hrow', q('#sl-blk-heads'))) on(row, 'click', e => {
-      if (e.target.closest('input')) return;
+      if (e.target.closest('input, .sl-hpick')) return;
       const ids = [...state.model.selected];
       if (ids.length) state.model.setTool(ids, Number(row.dataset.head));
     });
     on(q('#sl-sync'), 'click', e => SL.busy(e.currentTarget, 'Reading…', async () => {
       const r = await postJSON('/api/slicer/working/sync-heads', {});
       if (!r.ok) return say(r.body.error || 'The heads could not be read', 'warn');
-      say('Read the four heads from the printer.', 'ok');
+      if (SL.filament) SL.filament.close();
       await refresh();
+      say('Read the four heads from the printer: ' + state.heads.map(h => `T${h.i} ${h.material || 'no spool'}${h.name ? ' ' + h.name : ''}`).join(', ') + '.', 'ok');
     }));
   }
 
@@ -244,8 +296,8 @@
     const mine = ++w.token;
     const d = w.data;
     if (!d || !d.ready) { if (strict) throw new Error(d && d.problem ? d.problem : 'The slicing engine is not ready yet'); return null; }
-    const heads = state.heads.map(h => ({ toolhead: 'T' + h.i, nozzle: h.nozzle, material: (h.material || 'PLA').toUpperCase(), color_hex: h.hex, height: state.headHeights[h.i] || baseHeight(), spool_id: '' }));
-    const body = { process: state.preset.process || null, options: effective(), layer_mode: state.layerMode, heads };
+    const heads = state.heads.map(h => ({ toolhead: 'T' + h.i, nozzle: h.nozzle, material: (h.material || 'PLA').toUpperCase(), color_hex: h.hex, height: state.headHeights[h.i] || baseHeight(), spool_id: h.spool || '' }));
+    const body = { process: state.preset.process || null, options: effective(), layer_mode: state.layerMode, heads, filament_presets: state.preset.filaments.map(n => n || null) };
     const r = await postJSON('/api/slicer/working', body);
     if (mine !== w.token) return w.profileId;
     if (!r.ok) {
@@ -421,6 +473,6 @@
     return true;
   };
 
-  SL.settings = { build, refresh, render, openEngine, closeEngine, scheduleProfile, applyProfile, effective, save, baseProcess, w };
+  SL.settings = { build, refresh, render, openEngine, closeEngine, scheduleProfile, applyProfile, effective, save, baseProcess, w, headsChanged, activeFilament, printerDiff };
   void hexRGB;
 })();
