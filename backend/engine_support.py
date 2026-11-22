@@ -25,6 +25,11 @@ VERIFIED = (
      "evidence": "docs/slicer-workspace-validation.md: version and help read, exported option schema read, "
                  "mixed-height slices for three nozzle pairs, three separated plates and heavy models, each "
                  "checked by pre-flight (recorded 21 October 2026, merge 9efb807)"},
+    {"app": "Snapmaker_Orca", "version": "01.10.01.50", "system": "Linux",
+     "per_head_heights": False,
+     "evidence": "docs/engine-support.md: the release the Slicer installs (v2.4.1, checksum matched the pin) run through the app's own plate "
+                 "project, 22 November 2026: the 3DBenchy, a gear, a vase and a bracket sliced (the Benchy 240 layers), the engine's arrange and "
+                 "orient exported; shared layer heights only, since this build has no per-head height options"},
     {"app": "OrcaSlicer", "version": "2.4.2", "system": "Linux",
      "per_head_heights": False,
      "evidence": "CHANGELOG.md and docs/native-studio-validation.md: real bracket, tile, swatch and relief slices; "

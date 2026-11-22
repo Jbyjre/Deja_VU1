@@ -110,15 +110,25 @@ def _write_mesh(target, path, data, name):
         )
         with tempfile.SpooledTemporaryFile(max_size=2 * 1024 * 1024) as faces:
             count = 0
+            # Corners that print the same number are one vertex. A 3MF that gives every triangle its own three corners
+            # reads as a surface in loose pieces: the engine finds "empty layers" in it and refuses to slice a real model
+            # (the 3DBenchy, a gear, a vase), while a 20-triangle part with whole-number corners happened to pass.
+            shared = {}
             for tri in triangles:
+                ids = []
                 for v in tri:
-                    write('<vertex x="%.9g" y="%.9g" z="%.9g"/>' % v)
+                    x, y, z = ('%.9g' % (c + 0.0) for c in v)   # + 0.0 turns -0 into 0
+                    index = shared.get((x, y, z))
+                    if index is None:
+                        index = shared[(x, y, z)] = len(shared)
+                        write(f'<vertex x="{x}" y="{y}" z="{z}"/>')
+                    ids.append(index)
                 attrs = (
                     (' pid="2" ' + ' '.join(f'p{i + 1}="{c or 0}"' for i, c in enumerate(current)))
                     if any(c is not None for c in current)
                     else ''
                 )
-                faces.write(f'<triangle v1="{count * 3}" v2="{count * 3 + 1}" v3="{count * 3 + 2}"{attrs}/>'.encode())
+                faces.write(f'<triangle v1="{ids[0]}" v2="{ids[1]}" v3="{ids[2]}"{attrs}/>'.encode())
                 count += 1
             if not count:
                 raise ValueError("The model has no triangles")

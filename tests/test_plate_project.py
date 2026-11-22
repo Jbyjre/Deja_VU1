@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import sys
 import unittest
 import zipfile
@@ -28,6 +29,22 @@ class PlateProjects(unittest.TestCase):
         settings = z.read('Metadata/model_settings.config')
         self.assertIn(b'key="extruder" value="2"',settings)
         self.assertEqual(z.read('DejaVu/Sources/0/bracket.stl'),self.sources['bracket.stl'])
+
+    def test_touching_triangles_share_their_corners(self):
+        # Every triangle with three private corners reads to the engine as a surface in loose pieces ("empty layer
+        # between 0 and 2.05" on a gear, a vase and the 3DBenchy, found by the first real engine run on 22 November).
+        self.sources['gear.stl'] = sample_files.gear_stl()
+        data = plate.build({'objects': [{'name': 'gear.stl', 'tool': 0}]})
+        z = zipfile.ZipFile(io.BytesIO(data))
+        source = next(n for n in z.namelist() if n.startswith('3D/sources/') and n.endswith('3dmodel.model'))
+        xml = z.read(source).decode()
+        vertices = xml.count('<vertex ')
+        triangles = xml.count('<triangle ')
+        self.assertEqual(triangles, 3840)
+        self.assertLess(vertices, triangles)               # a closed surface has about half as many corners as triangles
+        for index in re.findall(r'<triangle v1="(\d+)" v2="(\d+)" v3="(\d+)"', xml)[:50]:
+            self.assertTrue(all(int(i) < vertices for i in index))
+        self.assertNotIn('"-0"', xml)
 
     def test_source_3mf_colours_and_metadata_kept(self):
         data=plate.build({'objects':[{'name':'original.3mf','tool':1}]})

@@ -11,6 +11,7 @@ still slices, and the engine card in the Slicer shows which builds have recorded
 | Engine | Version | System | Shared layer heights | Per-head layer heights | Evidence |
 |---|---|---|---|---|---|
 | Snapmaker_Orca | 02.08.01.55 | Linux | Tested | Tested, three nozzle pairs | [slicer workspace validation](slicer-workspace-validation.md), recorded 21 October 2026 |
+| Snapmaker_Orca | 01.10.01.50 (the v2.4.1 release the Slicer installs) | Linux | Tested | Not available: this build has no per-head height options | [The engine Deja Vu1 installs](#the-engine-deja-vu1-installs), recorded 22 November 2026 |
 | OrcaSlicer | 2.4.2 | Linux | Tested | Not available: this build has no per-head height options, so Deja Vu1 refuses those profiles | [native studio validation](native-studio-validation.md), [changelog](../CHANGELOG.md) |
 
 The processor type of the Linux runs was not written down.
@@ -31,7 +32,9 @@ The processor type of the Linux runs was not written down.
   is the slicing error, raised for example when a plate has empty layers or overlapping toolpaths, and
   Orca writes `result.json` only on Linux, so on Windows the exit code and the printed text are all there
   is. That report kept only Orca's closing line (`Slic3r::CLI::run found error`), which announces the
-  exit and does not say why, so the cause of that failure is not known. Deja Vu1 now maps the exit code
+  exit and does not say why, so the cause of that failure was not known then. A Linux run of the same release on 22 November 2026 produced the same code (-100) and the same
+  engine message ("Object can't be printed for empty layer") for the cause described under "What was run" above, and the fix is in; the Windows
+  report is probably the same fault, but no Windows run has confirmed it. Deja Vu1 now maps the exit code
   back to -100, shows the lines Orca printed before its closing line, and keeps the engine's whole
   output in the tester report. No Windows run has been recorded as working, so there is no Windows row
   above.
@@ -61,10 +64,17 @@ The Slicer's **Install engine** button downloads Snapmaker's own release and not
 - **What was run.** `tests/test_engine_installer.py` runs the whole install (download, checksum, unpack, check, update, cancel, a bad
   archive, a bad engine, a wrong or missing checksum) against a local stand-in release server and a stand-in engine. The real files were
   downloaded and hashed, and the Windows zip's contents were listed (`snapmaker-orca.exe` at the top of `Snapmaker_Orca_Windows_V2.4.1_portable`,
-  its `resources/profiles/Snapmaker` presets, 11,333 files, about 396 MB unpacked). **The real engine was not run in the session that built
-  this**, so the Linux unpacking layout, the macOS copy and the engine's own arrange and orient export are unverified. `python3
-  tools/engine-selftest.py` runs the real engine through the app's own code on your computer and prints each step; send its output, or the
-  `--json` form, to settle them.
+  its `resources/profiles/Snapmaker` presets, 11,333 files, about 396 MB unpacked). **The real engine was first run on 22 November 2026**, on Ubuntu 24.04 (Linux, 64-bit Intel): the Linux AppImage
+  (137,423,352 bytes, SHA-256 equal to the pin) unpacked with `--appimage-extract` to a `bin/snapmaker-orca` program, which needed
+  `libwebkit2gtk-4.1-0` and `libegl1` installed before it would start (the missing-library advice names these), then printed `Snapmaker_Orca-01.10.01.50`
+  as its version. `python3 tools/engine-selftest.py` ran 9 of 9 steps: help line, the engine's U1 presets (8 print presets, machine
+  `Snapmaker U1 (0.4 nozzle)`), the working profile, a slice of the 3DBenchy through the app's plate project (240 layers, 0.53 h, 12.08 g, in 6.4 s),
+  the line types the Preview reads, and the engine's own arrange and orient exports. The gear, the vase and the bracket sliced the same way. That
+  run found a fault in Deja Vu1 itself: the plate project stored every triangle with three private corners, which the engine read as a surface in loose
+  pieces ("empty layer between 0 and 2.05", exit code -100), so everything except a part with whole-number corners failed to slice. Triangles
+  that meet now share their corners (`tests/test_plate_project.py`). In the engine's exported arrange and orient the Benchy's origin sits at the middle
+  of its height (z 24.0 for 48 mm). **Not run:** the Windows and macOS installs, and the installer's own download and unpack on any system (the run
+  fetched the same file by hand because the release list's address was not reachable from that sandbox).
 - **The plate's drawing.** Snapmaker Orca ships the U1's plate model and texture under the AGPL-3.0, so Deja Vu1 does not copy them. It draws its
   own plate from measurements of the engine's bed model (a 0.5 mm sheet, 276 × 293 mm, a straight back edge, straight sides and a narrower front
   edge that widens through chamfers; the printable area is 270 × 270 mm from x 0.5, y 1; 270.05 mm tall) with its own lettering, ruler and
