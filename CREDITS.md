@@ -28,7 +28,9 @@ here with what Deja Vu1 does with each.
   (Snapmaker/OrcaSlicer, AGPL-3.0). Used as an external slicing engine that
   you install yourself; nothing of either is bundled. Facts about the U1
   (plate size, nozzle layer limits, preset folder names and file formats)
-  were read from their profiles and source; no files were copied.
+  were read from their profiles and source; no files were copied. The Slicer's mouse and keys (the turn rate, the pan,
+  the zoom step, the standard views and the shortcut list) were read from Snapmaker Orca's source and shortcut list and
+  written again here; no code was copied.
 
 ## Shipped with Deja Vu1
 
