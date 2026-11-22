@@ -626,15 +626,20 @@
      opens again. An object that was only read from a file on this computer has no copy to come back to, so it is left out. */
   const PKEY = 'dejavu1.slicer.project';
   let saveTimer = 0;
+  function writeProject() {
+    const m = P();
+    if (!m) return;
+    const rows = m.objects.filter(o => o.sourceName && !o.local).map(o => ({ source: o.sourceName, name: o.name, file: o.file, transform: o.transform, tool: o.tool, settings: o.settings, plate: o.plate, hidden: o.hidden, aside: o.aside }));
+    try { store.set(PKEY, JSON.stringify({ v: 1, plates: m.plates, current: m.current, rows })); } catch (_) { /* no storage */ }
+  }
   function saveProject() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      const m = P();
-      if (!m) return;
-      const rows = m.objects.filter(o => o.sourceName && !o.local).map(o => ({ source: o.sourceName, name: o.name, file: o.file, transform: o.transform, tool: o.tool, settings: o.settings, plate: o.plate, hidden: o.hidden, aside: o.aside }));
-      try { store.set(PKEY, JSON.stringify({ v: 1, plates: m.plates, current: m.current, rows })); } catch (_) { /* no storage */ }
-    }, 600);
+    saveTimer = setTimeout(writeProject, 400);
   }
+  // A reload or a closed tab right after a change must not lose it, so a waiting save is written the moment the page is left.
+  const flushProject = () => { if (saveTimer) { clearTimeout(saveTimer); saveTimer = 0; writeProject(); } };
+  window.addEventListener('pagehide', flushProject);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushProject(); });
   async function restoreProject() {
     let saved = null;
     try { saved = JSON.parse(store.get(PKEY) || 'null'); } catch (_) { saved = null; }
@@ -662,5 +667,5 @@
   }
   SL.restoreProject = restoreProject;
 
-  SL.prepare = { build, bindScene, bindObjects, saveProject, afterChange, renderObjects, renderInspector, renderProblems, renderPlates, renderEmpty, refreshTools, syncScene, onKey, setTool, note, toggleOverhang, TOWER_ID };
+  SL.prepare = { build, bindScene, bindObjects, saveProject, flushProject, afterChange, renderObjects, renderInspector, renderProblems, renderPlates, renderEmpty, refreshTools, syncScene, onKey, setTool, note, toggleOverhang, TOWER_ID };
 })();

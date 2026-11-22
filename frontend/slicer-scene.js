@@ -26,7 +26,7 @@ window.SliceScene = (() => {
   /* ---- matrices (column-major, as the graphics card wants them) ---------------------------------------------------------------- */
   const mat = {
     identity: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-    /* an object's transform is 12 numbers, the way plate.js keeps it: three rows of the turn and scale, then the move */
+    /* an object's transform is 12 numbers, the way plate_project.py keeps it: three rows of the turn and scale, then the move */
     fromTransform(t) { return [t[0], t[1], t[2], 0, t[3], t[4], t[5], 0, t[6], t[7], t[8], 0, t[9], t[10], t[11], 1]; },
     translate(x, y, z) { const m = mat.identity(); m[12] = x; m[13] = y; m[14] = z; return m; },
     scale(x, y, z) { const m = mat.identity(); m[0] = x; m[5] = y; m[10] = z; return m; },

@@ -301,7 +301,7 @@ async function main() {
     {
       const c3 = await open(browser, server.base, { width: 1366, height: 800 });
       await c3.page.evaluate(async () => { await SL.openFromLibrary('3dbenchy.stl'); const m = SL.state.model; m.place(m.objects[0].id, { x: 100, y: 90 }); m.setTool([m.objects[0].id], 2); });
-      await c3.page.waitForTimeout(1200);
+      await c3.page.waitForFunction(() => { try { return /"tool":2/.test(localStorage.getItem('dejavu1.slicer.project') || ''); } catch (e) { return false; } }, null, { timeout: 15000 }).catch(() => {});
       await c3.page.reload({ waitUntil: 'domcontentloaded' });
       await c3.page.waitForFunction(() => window.SL && SL.state.model && SL.state.model.onPlate().length === 1, null, { timeout: 25000 }).catch(() => {});
       const back = await model(c3.page);

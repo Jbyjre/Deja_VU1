@@ -60,7 +60,7 @@ ROUTE_CODE = (("/api/printer/control/", ["backend/printer_control.py"]), ("/api/
 AREA_CODE = {"Overview": ["frontend/telemetry.js", "frontend/app-shell.js"], "Printers": ["frontend/desk.js", "frontend/workshop-part5.js"],
              "Printer page": ["frontend/workshop-part2.js", "frontend/workshop-part3.js", "frontend/workshop-part5.js"],
              "Files": ["frontend/workshop-part5.js", "frontend/gcode-view.js"],
-             "Slicing": ["frontend/farm-part1.js", "frontend/slicer-workspace.js", "frontend/plate.js"],
+             "Slicing": ["frontend/slicer-prepare.js", "frontend/slicer-settings.js", "frontend/slicer-preview.js"],
              "Queue": ["frontend/workshop-part4.js", "frontend/farm-part1.js"], "Filament": ["frontend/app-print.js"],
              "Maintenance": ["frontend/app-modules.js", "frontend/logbook.js"], "Settings": ["frontend/app-modules.js"],
              "Insights": ["frontend/insights.js"], "Care log": ["frontend/logbook.js"], "Camera": ["frontend/workshop-part3.js"],

@@ -2,7 +2,7 @@
  * every check that says what is wrong with the plate before it is sliced. No graphics and no network here, so it can be tested alone
  * (tests/test_slicer_model.py runs it in Node).
  *
- * An object's transform is 12 numbers, as plate.js and the server's plate_project.py keep it: three rows (the turn and size) and a
+ * An object's transform is 12 numbers, as the server's plate_project.py keeps it: three rows (the turn and size) and a
  * move, applied as  point' = point x rows + move. Moves and turns are made about the middle of the object's box.
  *
  * What it does not do: slicing, and the engine's own arranging and orienting (the server asks the engine for those). The packing

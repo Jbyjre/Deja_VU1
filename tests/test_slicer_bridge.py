@@ -791,7 +791,7 @@ class TestWhyItFailed(SlicerBridgeTest):
         self.assertIsNone(report["run"])
         self.assertEqual(report["stage"]["label"], "Checking the presets")
         self.assertEqual(report["output"]["status"], "none")
-        self.assertIn("Profiles", job["cause"]["fixes"][0])
+        self.assertIn("Open the Slicer", job["cause"]["fixes"][0])
 
     def test_the_report_names_what_came_out_when_the_engine_wrote_nothing_useful(self):
         for mode, status in (("no_output", "no_plate_files"), ("empty", "empty"), ("nothing_printable", "no_layers")):

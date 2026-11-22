@@ -1,6 +1,6 @@
 """
 The browser walk (tools/browser-walk.js): every place in the sidebar and the main workflows (import,
-Confirm Print, queue, model, slicer set-up, pairing) in a real Chromium, with demo data, in light and dark.
+Confirm Print, queue, model, the Slicer, pairing) in a real Chromium, with demo data, in light and dark.
 
 It needs Node, Playwright for Node and a Chromium, so it is skipped where they are missing (GitHub's Python
 jobs). Run it by hand with `python3 -m unittest tests.test_browser_walk` or run the tool for the full table:

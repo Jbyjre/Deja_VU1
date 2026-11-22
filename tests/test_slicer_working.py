@@ -16,6 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
 import slicer_bridge  # noqa: E402
+import slicer_bridge_part1  # noqa: E402
 import slicer_profiles  # noqa: E402
 import slicer_working as work  # noqa: E402
 import tool_setup  # noqa: E402
@@ -40,11 +41,12 @@ class WorkingProfile(unittest.TestCase):
         self.write("process-other", {"type": "process", "name": "0.20mm Standard @Snapmaker U1 (0.6 nozzle)", "instantiation": "true", "layer_height": ".2",
                                      "compatible_printers": ["Snapmaker U1 (0.6 nozzle)"]})
         self.write("pla", {"type": "filament", "name": "Generic PLA @U1", "instantiation": "true", "filament_type": ["PLA"], "compatible_printers": ["Snapmaker U1 (0.4 nozzle)"]})
-        for target, value in ((slicer_bridge, "_DATA_DIR"), (slicer_profiles, "_DATA_DIR"), (tool_setup, "_DATA_DIR")):
+        # the settings file is read by functions in slicer_bridge_part1, so that is the module whose names are replaced
+        for target, value in ((slicer_bridge_part1, "_DATA_DIR"), (slicer_profiles, "_DATA_DIR"), (tool_setup, "_DATA_DIR")):
             p = patch.object(target, value, str(root / "data"))
             p.start()
             self.addCleanup(p.stop)
-        for target, name, value in ((slicer_bridge, "_PATH", str(root / "data" / "slicer.json")), (slicer_bridge, "_RECEIPTS", str(root / "data" / "r.json")),
+        for target, name, value in ((slicer_bridge_part1, "_PATH", str(root / "data" / "slicer.json")), (slicer_bridge_part1, "_RECEIPTS", str(root / "data" / "r.json")),
                                     (tool_setup, "_PATH", str(root / "data" / "tool_setup.json"))):
             p = patch.object(target, name, value)
             p.start()

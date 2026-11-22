@@ -21,7 +21,7 @@
  * Workflows (demo data, both widths): import a file through the file picker; open every sample G-code file
  * in Confirm Print and check the verdict is complete and that "blocked" really disables Start; a slow answer
  * for an earlier file must not replace the one on screen; add to and remove from the queue; open a model;
- * the slicer set-up card; the phone pairing sheet; the colour sensor on a stand-in printer (tools/stand-in-printer.py):
+ * the Slicer and its Engine button; the phone pairing sheet; the colour sensor on a stand-in printer (tools/stand-in-printer.py):
  * assign it, record a white reference with the real button, and see the sensor beside the file's and the printer's
  * colours in Confirm Print; text from files, printers, spools and notes shows as plain text (script payloads are
  * planted in each, after a control that proves the check can see an injection).
@@ -342,24 +342,24 @@ const FLOWS = [
   ['open a model', async s => {
     const { page } = s;
     await openFileNamed(page, 'spur_gear_24t.stl');
-    await page.waitForFunction(() => /Object settings/.test(document.getElementById('fd-side').innerText), null, { timeout: 15000 }).catch(() => {});
+    await page.waitForFunction(() => /Open in Slicer/.test(document.getElementById('fd-side').innerText), null, { timeout: 15000 }).catch(() => {});
     const side = await page.evaluate(() => document.getElementById('fd-side').innerText);
-    s.check(/Object settings/.test(side), 'the model panel did not finish loading: "' + side.slice(0, 50).replace(/\s+/g, ' ') + '"');
+    s.check(/Open in Slicer/.test(side), 'the model panel did not finish loading: "' + side.slice(0, 50).replace(/\s+/g, ' ') + '"');
     s.check(await page.evaluate(() => !!document.getElementById('fd-canvas')), 'no 3D view');
   }],
 
-  ['the slicer set-up card', async s => {
+  ['the Slicer and its engine', async s => {
     const { page } = s;
     await page.evaluate(() => {
       location.hash = '#/slice';
     });
-    await page.waitForTimeout(900);
+    await page.waitForFunction(() => { const d = document.getElementById('sl-dock'); return d && d.offsetParent && d.querySelectorAll('button').length >= 2; }, null, { timeout: 10000 }).catch(() => {});
     const info = await page.evaluate(() => {
-      const e = document.getElementById('slice-ready');
-      return { visible: !!(e && e.offsetParent), buttons: e ? e.querySelectorAll('button').length : 0, text: e ? e.innerText : '' };
+      const e = document.getElementById('sl-engine-btn'), d = document.getElementById('sl-dock');
+      return { engine: !!(e && e.offsetParent), words: e ? e.innerText : '', dock: !!(d && d.offsetParent), buttons: d ? d.querySelectorAll('button').length : 0 };
     });
-    s.check(info.visible && info.text.length > 60, 'the slicer set-up card is empty or hidden');
-    s.check(info.buttons >= 1, 'the slicer set-up card offers no button');
+    s.check(info.dock && info.engine && info.words.length > 3, 'the Slicer or its Engine button is empty or hidden');
+    s.check(info.buttons >= 2, 'the Slicer offers no controls: ' + JSON.stringify(info));
   }],
 
   ['the phone pairing sheet', async s => {
