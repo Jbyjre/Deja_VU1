@@ -17,7 +17,7 @@ window.Logbook = (() => {
       <button class="btn primary" type="submit">Add to logbook</button></form>
     <label class="lb-search"><span class="sr-only">Search the logbook</span><input type="search" id="lb-q" placeholder="Search past problems and fixes: clog, warp, dock…" autocomplete="off"></label>
     <ol class="lb-list" id="lb-list"></ol>`;
-  const anchor = [...tab.querySelectorAll('h2')].find(h => h.textContent.trim() === 'Maintenance');
+  const anchor = [...tab.querySelectorAll('h2')].find(h => I18n.same(h.textContent, 'Maintenance'));
   (anchor ? anchor.closest('.card') : tab.firstElementChild).after(card);
   let timer = null, seq = 0;
   // What the printer was doing when it reported a code (backend/logbook.py record_problem): the file, how far along and when it went away.

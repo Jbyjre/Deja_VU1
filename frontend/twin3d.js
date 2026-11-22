@@ -725,12 +725,13 @@ function create(host, { onPick } = {}) {
         l.p = [l.p[0], y]; placed.push({ x: l.p[0], y, w });
       });
       const html = !showTags ? '' : list.map(l => `<span class="t3-tag${l.on ? ' on' : ''}${l.fault ? ' fault' : ''}${selected === l.id ? ' sel' : ''}" data-id="${esc(l.id)}" style="left:${l.p[0].toFixed(1)}px;top:${l.p[1].toFixed(1)}px">${l.env ? '' : `<i style="background:${/^#[0-9a-f]{6}$/i.test(l.colour) ? l.colour : '#999'}"></i>`}<span class="t3-n">${esc(l.text)}</span>${tagTemp(l.temp)}${l.say ? '<em>' + esc(l.say) + '</em>' : ''}</span>`).join('');
-      if (tags.innerHTML !== html) tags.innerHTML = html;
+      if (tags._drawn !== html) { tags._drawn = html; tags.innerHTML = html; }      // what was drawn, not what the page shows now: a translated page shows other words
     }
 
     /* ---- the engineering drawing ---- */
     function renderDrawing(M, items, live) {
       tags.innerHTML = '';
+      tags._drawn = null;
       sizeTargets(canvas.width, canvas.height);
       // Pass 1: surface direction, part id and depth for every visible solid.
       // The case, door and spools are left out unless "Show the case" is on,

@@ -9,6 +9,8 @@
  *   node tools/text-audit.js --only overview,printers   only those screens
  *   node tools/text-audit.js --focus         also tab through each screen and check that the focus is always visible
  *   node tools/text-audit.js --widths 1366,390 --dark --json FILE
+ *   node tools/text-audit.js --lang pseudo   the same audit with every translatable text accented and about a third longer (frontend/i18n.js),
+ *                                            which finds a label that will not fit once it is translated; --lang de uses a real language
  *
  * What it looks for, on each screen and with each sheet that opens from it:
  *   clipped    text cut off by its box with no ellipsis, so the end of it is simply gone
@@ -312,15 +314,15 @@ function inspectPage() {
 /* ---- the screens ----------------------------------------------------------------------------------------------------------------- */
 const PLACES = ['overview', 'printer', 'readings', 'camera', 'history', 'printers', 'desk', 'slice', 'layers', 'files', 'queue', 'models', 'ai', 'maintenance', 'filament', 'settings', 'automations', 'studio'];
 
-async function prepare(browser, base, width, height, dark, stress) {
+async function prepare(browser, base, width, height, dark, stress, lang) {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: width < 700, isMobile: width < 700 });
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', e => page.errors.push(e.message));
-  await page.addInitScript(d => {
-    try { localStorage.setItem('dejavu1.pref.theme', d ? 'dark' : 'light'); localStorage.setItem('dejavu1.setup.done', '1'); } catch (e) { /* blocked */ }
+  await page.addInitScript(([d, l]) => {
+    try { localStorage.setItem('dejavu1.pref.theme', d ? 'dark' : 'light'); localStorage.setItem('dejavu1.setup.done', '1'); if (l) localStorage.setItem('dejavu1.lang', l); } catch (e) { /* blocked */ }
     window.WebSocket = class { constructor() { throw new Error('WebSocket is off for this audit'); } };
-  }, dark);
+  }, [dark, lang]);
   if (stress) {
     await context.route('**/api/**', async route => {
       try {
@@ -334,8 +336,14 @@ async function prepare(browser, base, width, height, dark, stress) {
   }
   await page.goto(base + '/#/overview');
   await page.waitForTimeout(1200);
-  const skip = await page.$('text=Skip setup');
-  if (skip && (await skip.isVisible())) { await skip.click(); await page.waitForTimeout(400); }
+  // The button is found by its English words even when the page shows another language (I18n.source turns a translated text back).
+  const skipped = await page.evaluate(() => {
+    const words = t => (window.I18n ? I18n.source(t) : t).trim();
+    const b = [...document.querySelectorAll('button')].find(x => words(x.textContent) === 'Skip setup' && x.offsetParent);
+    if (b) b.click();
+    return !!b;
+  });
+  if (skipped) await page.waitForTimeout(400);
   await page.evaluate(() => { const t = document.getElementById('demo-toggle'); if (t && !t.checked) { t.checked = true; t.dispatchEvent(new Event('change')); } });
   await page.waitForTimeout(3200);
   return { context, page };
@@ -411,7 +419,7 @@ async function main() {
     for (const dark of themes) {
       for (const width of widths) {
         const height = width < 700 ? 844 : width < 1100 ? 760 : 800;
-        const { context, page } = await prepare(browser, base, width, height, dark, stress);
+        const { context, page } = await prepare(browser, base, width, height, dark, stress, option('--lang'));
         for (const place of PLACES.filter(pl => !option('--only') || option('--only').split(',').includes(pl))) {
           await page.evaluate(x => { location.hash = '#/' + x; }, place);
           await page.waitForTimeout(900);

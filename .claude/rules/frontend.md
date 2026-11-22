@@ -17,7 +17,7 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
 
 ## Load order and shared names
 
-- Scripts: `theme-boot.js` in `<head>`, then `app.js` and its six parts (below) → `tester.js` → `tester-study.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
+- Scripts: `theme-boot.js` and `i18n.js` in `<head>`, then `app.js` and its six parts (below) → `tester.js` → `tester-study.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
   `ar.js` → `twin3d-scene.js` → `twin3d-part1.js` → `twin3d.js` → `workshop-part1.js` … `workshop-part5.js` →
   `workshop.js` → `studio.js` → `layer-stack.js` →
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
@@ -67,6 +67,17 @@ code can sit in more than one part: search the family (`grep -n "function render
   `DOMContentLoaded`.
 
 ## Rules the screens depend on
+
+- Translations (`i18n.js`, `strings/`, `docs/translating.md`): with English chosen the file does nothing and fetches nothing. With another
+  language it loads `strings/en.json` and `strings/<code>.json`, translates every text node and the attributes `title`, `placeholder`,
+  `aria-label`, `alt`, `data-tip`, `data-title` and `label` as they appear and change (a MutationObserver), matches a sentence with pieces
+  (`{0}`) as a pattern, translates `alert`, `confirm` and `prompt`, and writes dates in the language. It skips `pre`, `code`, `kbd`, `samp`,
+  `textarea`, `[translate="no"]` and `[data-no-i18n]`. So: write English as before, a whole sentence in one string; **never compare what is
+  on screen with an English word** (`I18n.same(text, 'English')`, `I18n.source(text)`, `I18n.englishText(el)`; `Sections.titleOf`, explain.js and
+  finder.js do); **never compare the DOM with a string you computed to skip a redraw** (keep what you drew, as `tags._drawn` in twin3d.js does).
+  A text that reaches no DOM node as one piece goes through `I18n.t('Saved {name}', { name })`. `?lang=pseudo` accents and lengthens every
+  catalogued text (nothing is saved), `?i18n=debug` makes `I18n.misses()` list what was seen and not found. The picker is in Settings,
+  Appearance (`#language-choice`). Check a screen with `node tools/i18n-check.js` and its fit with `node tools/text-audit.js --lang pseudo`.
 
 - Escape everything that reaches `innerHTML` with `esc()`, including file metadata.
 - Panels on the 5-second refresh render through `paint()`; it skips unchanged HTML and stops the

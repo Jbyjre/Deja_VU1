@@ -268,7 +268,7 @@ window.Explain = (() => {
   function decorate() {
     document.querySelectorAll('section.card h2, .card-head h2, .tab-sub-title, .dk-sec h2, section h2').forEach(h => {
       if (h.dataset.xpDone || h.closest('dialog, .guide, .xp-pop, .setup-dialog')) return;
-      const k = key(h.textContent);
+      const k = key(I18n.englishText(h));
       if (!HELP[k]) return;
       h.dataset.xpDone = '1';
       h.classList.add('xp-title');
@@ -278,7 +278,7 @@ window.Explain = (() => {
       b.dataset.xp = k;
       const shown = h.cloneNode(true);
       shown.querySelectorAll('.sr-only').forEach(n => n.remove());
-      b.dataset.title = shown.textContent.replace(/New version available/, '').replace(/\s+/g, ' ').trim();
+      b.dataset.title = shown.textContent.replace(/New version available/, '').replace(I18n.t('New version available'), '').replace(/\s+/g, ' ').trim();
       b.setAttribute('aria-expanded', 'false');
       b.setAttribute('aria-label', `What is ${h.textContent.trim()}?`);
       b.innerHTML = '<span aria-hidden="true">i</span>';

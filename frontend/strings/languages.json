@@ -1,0 +1,139 @@
+{
+ "about": "The languages the picker in Settings can offer, in the order it lists them. A language appears in the picker once frontend/strings/<code>.json exists and meta.json lists it (tools/i18n.py). English is the original and always there. Arabic and Hebrew wait until the layout can be mirrored right to left.",
+ "languages": [
+  {
+   "code": "zh-CN",
+   "name": "Simplified Chinese",
+   "native": "简体中文",
+   "dir": "ltr"
+  },
+  {
+   "code": "zh-TW",
+   "name": "Traditional Chinese",
+   "native": "繁體中文",
+   "dir": "ltr"
+  },
+  {
+   "code": "ja",
+   "name": "Japanese",
+   "native": "日本語",
+   "dir": "ltr"
+  },
+  {
+   "code": "ko",
+   "name": "Korean",
+   "native": "한국어",
+   "dir": "ltr"
+  },
+  {
+   "code": "de",
+   "name": "German",
+   "native": "Deutsch",
+   "dir": "ltr"
+  },
+  {
+   "code": "fr",
+   "name": "French",
+   "native": "Français",
+   "dir": "ltr"
+  },
+  {
+   "code": "es",
+   "name": "Spanish",
+   "native": "Español",
+   "dir": "ltr"
+  },
+  {
+   "code": "it",
+   "name": "Italian",
+   "native": "Italiano",
+   "dir": "ltr"
+  },
+  {
+   "code": "pt-BR",
+   "name": "Brazilian Portuguese",
+   "native": "Português (Brasil)",
+   "dir": "ltr"
+  },
+  {
+   "code": "ru",
+   "name": "Russian",
+   "native": "Русский",
+   "dir": "ltr"
+  },
+  {
+   "code": "uk",
+   "name": "Ukrainian",
+   "native": "Українська",
+   "dir": "ltr"
+  },
+  {
+   "code": "pl",
+   "name": "Polish",
+   "native": "Polski",
+   "dir": "ltr"
+  },
+  {
+   "code": "nl",
+   "name": "Dutch",
+   "native": "Nederlands",
+   "dir": "ltr"
+  },
+  {
+   "code": "tr",
+   "name": "Turkish",
+   "native": "Türkçe",
+   "dir": "ltr"
+  },
+  {
+   "code": "sv",
+   "name": "Swedish",
+   "native": "Svenska",
+   "dir": "ltr"
+  },
+  {
+   "code": "cs",
+   "name": "Czech",
+   "native": "Čeština",
+   "dir": "ltr"
+  },
+  {
+   "code": "vi",
+   "name": "Vietnamese",
+   "native": "Tiếng Việt",
+   "dir": "ltr"
+  },
+  {
+   "code": "th",
+   "name": "Thai",
+   "native": "ไทย",
+   "dir": "ltr"
+  },
+  {
+   "code": "id",
+   "name": "Indonesian",
+   "native": "Bahasa Indonesia",
+   "dir": "ltr"
+  },
+  {
+   "code": "hi",
+   "name": "Hindi",
+   "native": "हिन्दी",
+   "dir": "ltr"
+  }
+ ],
+ "later": [
+  {
+   "code": "ar",
+   "name": "Arabic",
+   "native": "العربية",
+   "dir": "rtl"
+  },
+  {
+   "code": "he",
+   "name": "Hebrew",
+   "native": "עברית",
+   "dir": "rtl"
+  }
+ ]
+}
