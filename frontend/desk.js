@@ -60,7 +60,7 @@ window.FarmDesk = (() => {
         <div id="dk-worth" class="dk-out"></div>
       </section>
     </div>`;
-  const anchor = [...fleetTab.querySelectorAll('h2')].find(h => h.textContent.trim() === 'Farm history');
+  const anchor = [...fleetTab.querySelectorAll('h2')].find(h => I18n.same(h.textContent, 'Farm history'));
   const before = anchor ? anchor.closest('.card') : null;
   if (before) before.before(host); else fleetTab.append(host);
 

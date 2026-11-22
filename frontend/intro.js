@@ -56,7 +56,7 @@
     card.dataset.stage = 'intro';
     const nameEl = $('intro-name');
     const who = $('pp-name');
-    if (nameEl && who && who.textContent && who.textContent !== 'Printer') nameEl.textContent = who.textContent;
+    if (nameEl && who && who.textContent && !I18n.same(who.textContent, 'Printer')) nameEl.textContent = who.textContent;
     lift();                                                    // the layer covers the page now: the plain cover can go
     window.dispatchEvent(new Event('resize'));
     if (spinBtn && !spinWas) spinBtn.click();                  // turn slowly

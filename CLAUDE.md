@@ -97,6 +97,11 @@ soften the AI-assistance disclosure. Details: `.claude/rules/public-text.md`.
   from files are validated server-side because they end up in style attributes.
 - **Accessibility:** `theme.css` loads late, so its reduced-transparency and increased-contrast
   blocks repeat overrides with selectors at least as specific as the rules they override.
+- **Translations:** English is the source and the words stay in the page files and the scripts. `frontend/i18n.js` (the first script after
+  `theme-boot.js`) puts a language's words on the page from `frontend/strings/<code>.json`; `tools/i18n.py` writes `en.json` from the code and
+  runs a round of translation (`docs/translating.md`). Write a whole sentence as one string, never compare on-screen text with an English
+  word (use `I18n.same`, `I18n.source` or `I18n.englishText`), and never edit `frontend/strings/*.json` by hand. `node tools/i18n-check.js`
+  opens every screen in English and in the pseudo language and fails when a screen is built differently.
 - **Updates never wait for a print.** The printer runs its file by itself; Deja Vu1 holds printer
   writes during a restart (`update_hold.py`).
 - **Keep README "What has been tested" and `docs/testing.md` honest:** real U1, stand-in printer and
@@ -150,7 +155,7 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
   `demo/` (the recording); `media/` (the launch film).
 - `tests/`: unittest; `fake_moonraker.py` is a Moonraker stand-in.
 - `tools/`: release tools, the online-demo recorder, `readme-images/` (README pictures),
-  `engine-fixtures.py`.
+  `engine-fixtures.py`, `i18n.py` + `i18n_scan.py` + `translate.py` (translations), `i18n-check.js`.
 - `docs/`: user guides and the evidence (`testing.md`, `slicer-workspace-validation.md`,
   `engine-support.md`). `docs/architecture.md` is the long version of this map.
 - Root: `start.py` and the double-click launchers `start-windows.bat`, `start-mac.command`,

@@ -692,7 +692,8 @@ Font License files, `img/` the product page's screenshots, taken from the
 simulated farm, and `demo/` the recording the online demo replays. `workshop.js` tells the
 newer files what happens through window events - `dv-tab`, `dv-refresh`,
 `dv-fleet`, `dv-live-event`, `dv-model-open` - rather than them reaching
-into its internals. No framework, no build
+into its internals. `i18n.js` and the `strings/` folder (the English list of every text, one file per translated language and the language list; `tools/i18n.py` writes them,
+[translating.md](translating.md) says how) put another language's words where the English text appears. No framework, no build
 step, and nothing fetched from any external host: no webfonts, no CDN. The
 dashboard runs fully offline, including phone pairing, which talks
 directly to this server over the local network.

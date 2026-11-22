@@ -205,7 +205,7 @@ window.Finder = (() => {
     if (target.startsWith('tab:')) { showTab(target.slice(4)); focusPanel(document.getElementById('tab-' + target.slice(4))); return; }
     let el = target.startsWith('#') ? document.querySelector(target) : null;
     // A title's own words: without its ⓘ help button (explain.js) or screen-reader-only text.
-    const words = h => { const c = h.cloneNode(true); c.querySelectorAll('.xp-btn, .sr-only, .vc-badge').forEach(n => n.remove()); return c.textContent.replace(/\s+/g, ' ').trim(); };
+    const words = h => { const c = h.cloneNode(true); c.querySelectorAll('.xp-btn, .sr-only, .vc-badge').forEach(n => n.remove()); return I18n.englishText(c).replace(/\s+/g, ' ').trim(); };
     if (!el) el = [...document.querySelectorAll('main h2, main h3')].find(h => words(h) === target) || null;
     const tab = el && el.closest('.tab-panel');
     if (tab) showTab(tab.id.replace(/^tab-/, ''));

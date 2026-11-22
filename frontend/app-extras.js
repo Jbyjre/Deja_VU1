@@ -66,7 +66,7 @@ async function loadModules() {
         return;
       }
       note.textContent = want ? 'On' : 'Off';
-      setTimeout(() => { if (note.textContent === (want ? 'On' : 'Off')) note.textContent = ''; }, 1600);
+      setTimeout(() => { if (I18n.same(note.textContent, want ? 'On' : 'Off')) note.textContent = ''; }, 1600);
       modCounts(host);
       refreshAll();
     });

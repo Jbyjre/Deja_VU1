@@ -642,7 +642,13 @@ window.Sections = (() => {
   const chosen = {};
   const UNIT = 'section.card, section.stats, .tab-sub';
   const unitsOf = panel => [...panel.querySelectorAll(UNIT)].filter(u => !u.parentElement.closest(UNIT));
-  const titleOf = u => (u.querySelector('h2')?.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const titleOf = u => {
+    const h = u.querySelector('h2');
+    if (!h) return '';
+    const own = h.cloneNode(true);                                   // the title's own words, without its help button or hidden text
+    own.querySelectorAll('.xp-btn, .sr-only, .vc-badge').forEach(n => n.remove());
+    return I18n.englishText(own).replace(/\s+/g, ' ').trim().toLowerCase();
+  };
   const matches = (u, rule, title) => rule[0] === '#' ? u.id === rule.slice(1)
     : rule[0] === '.' ? u.classList.contains(rule.slice(1)) : title.startsWith(rule);
   function groupOf(tab, unit) {

@@ -211,11 +211,11 @@ corners where you drew them. Only joining, cutting and keeping parts uses the gr
 
 ## Translating Deja Vu1
 
-`tools/translate.py` is a tool for whoever translates the app. It sends the words through the AI you
+`tools/translate.py` is a tool for whoever translates the app ([how a round works](translating.md)). It sends the words through the AI you
 connected in Deja Vu1 and checks every answer before writing it:
 
 ```bash
-python3 tools/translate.py catalogue strings/en.json --to zh-CN   # fills strings/zh-CN.json
+python3 tools/translate.py catalogue frontend/strings/en.json --to zh-CN   # fills frontend/strings/zh-CN.json
 python3 tools/translate.py doc docs/getting-started.md --to ja    # writes docs/ja/getting-started.md
 python3 tools/translate.py doc docs/getting-started.md --to de --dry-run   # counts only
 ```

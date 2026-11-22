@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 Translate Deja Vu1's words with the AI you connected in Deja Vu1 (its AI screen).
+tools/i18n.py makes the catalogue and runs a round (docs/translating.md); this tool is one way to fill a language.
 
-    python3 tools/translate.py catalogue strings/en.json --to zh-CN            # fills strings/zh-CN.json
+    python3 tools/translate.py catalogue frontend/strings/en.json --to zh-CN  # fills frontend/strings/zh-CN.json
     python3 tools/translate.py doc docs/getting-started.md --to zh-CN          # writes docs/zh-CN/getting-started.md
     python3 tools/translate.py doc docs/first-connection.md --to ja --dry-run  # counts only, sends nothing
 

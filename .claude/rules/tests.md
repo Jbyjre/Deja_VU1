@@ -48,9 +48,12 @@ paths:
   code before the fix). `tests/test_long_jobs.py` covers the server side (a copy is a job, a video streams and answers Range) with
   `tests/fake_moonraker.py`'s throttled videos; `tests/fake_moonraker_serve.py` runs that stand-in as its own process for the browser
   checks. These browser checks block the service worker and mark setup as seen, and the Chromium here draws WebGL in software.
+- Translations: `tests/test_i18n.py` (the scanner, the catalogue files, the checks on a translation, `tools/i18n.py`'s commands in a temporary folder;
+  no browser) and `tests/test_i18n_browser.py`, which runs `node tools/i18n-check.js` (25 loader scenarios, then every screen and every part of it in English
+  and in the pseudo language; skipped without Node, Playwright and Chromium). No test reads a real translation: none exists until the first round.
 - Text and glass: `tests/test_text_system.py` checks glass.css, text.css and text.js as source (the two grades, the accessibility fallbacks, the room's framing values, the
   file-name splitter run in Node) and runs `node tools/text-audit.js --widths 1366,390` in Chromium: every screen with very long names, nothing may be clipped, outside its
   box, hidden by a box or pushed out of the window, stacked one character a line, flush against its panel's edge, touching or overlapping another panel, colliding, wrapping a compact control, unreadable when cut or under 11 px, and every control needs 24 px and a name. `--focus` adds a Tab walk (every stop must show a
-  focus ring and not be hidden); run it by hand after changing a screen. A finding is fixed in text.css or the screen's own CSS, never by loosening the audit.
+  focus ring and not be hidden); run it by hand after changing a screen. A finding is fixed in text.css or the screen's own CSS, never by loosening the audit. `--lang pseudo` (or an installed language) runs the same audit with longer words.
 - GitHub Actions runs the suite on Python 3.8, 3.10, 3.12 and 3.13 (Ubuntu 24.04). Write no
   parenthesised `with (a, b):`; `ruff check --select E701,E702 backend tests tools` must stay clean.
