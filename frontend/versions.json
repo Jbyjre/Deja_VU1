@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.37",
+      "date": "2026-11-22",
+      "name": "3MF projects slice: stray points, projects from other slicers and the engine'...",
+      "published": true,
+      "summary": "3MF projects slice: stray points, projects from other slicers and the engine's version check.",
+      "changes": [
+        "3MF projects slice: stray points, projects from other slicers and the engine's version check"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.36",
       "date": "2026-11-22",
       "name": "Credits say where the Slicer's mouse and key behaviour was read from",

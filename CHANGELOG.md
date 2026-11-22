@@ -94,6 +94,10 @@ recording cost on the Printer page with the 3D twin, measured over 24 alternatin
 page main-thread time +2.1 %, frame time within the noise (`docs/testing.md`). Not yet tried on a real U1, on Windows or
 on macOS.
 
+## 0.20.37 (22 November 2026): 3MF projects slice: stray points, projects from other slicers and the engine'...
+
+- 3MF projects slice: stray points, projects from other slicers and the engine's version check
+
 ## 0.20.36 (22 November 2026): Credits say where the Slicer's mouse and key behaviour was read from
 
 - Credits say where the Slicer's mouse and key behaviour was read from
