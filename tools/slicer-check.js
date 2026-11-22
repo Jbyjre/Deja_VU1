@@ -163,6 +163,85 @@ async function main() {
     check(Math.abs((await model(page))[0].c[0] - 155.5) < 0.6, 'redo moves it again');
     await page.evaluate(() => SL.state.model.place(SL.state.model.objects[0].id, { x: 135.5, y: 136 }));
 
+    /* ---- camera and keys (Snapmaker Orca's: the mouse, the views, the keyboard) ---- */
+    {
+      const V = fn => page.evaluate(fn), near = (a, b, t) => Math.abs(a - b) <= t;
+      const cam = () => V(() => { const v = SL.state.view; return { yaw: v.yaw, pitch: v.pitch, dist: v.dist, target: v.target.slice(), ortho: v.ortho }; });
+      const scr = p => page.evaluate(q => SL.state.view.toScreen(q), p);
+      const settle = async () => { let last = ''; for (let i = 0; i < 40; i++) { const now = await V(() => { const v = SL.state.view; return JSON.stringify([v.yaw, v.pitch, v.dist, v.target, v.anim]); }); if (now === last) return; last = now; await page.waitForTimeout(200); } };
+      const spot = { x: 620, y: 560 };      // empty plate, clear of the dock and the object panel
+      await page.keyboard.press('Control+0'); await settle();
+      await V(() => { SL.state.model.selected = new Set(); SL.state.view.select([]); });
+      const c0 = await cam(), pivot = await V(() => SL.state.view.pivot()), at0 = await scr(pivot);
+      check(near(c0.yaw, -Math.PI / 2, 1e-3) && near(c0.pitch, Math.PI / 4, 1e-3) && !c0.ortho, 'Ctrl 0 is the default view: from the front at 45 degrees, perspective');
+      await page.mouse.move(spot.x, spot.y); await page.mouse.down(); await page.mouse.move(spot.x + 120, spot.y - 40, { steps: 8 }); await page.mouse.up();
+      const c1 = await cam(), at1 = await scr(pivot);
+      check(near(Math.abs(c1.yaw - c0.yaw), 120 * 0.8 * Math.PI / 180, 0.02), `a left drag turns the view 0.8 degrees a pixel, as Orca does (${(c1.yaw - c0.yaw).toFixed(3)} rad for 120 px)`);
+      check(Math.hypot(at0[0] - at1[0], at0[1] - at1[1]) < 1.5, 'the model stays where it is on the screen while the view turns round it');
+      await page.keyboard.press('Control+0'); await settle();
+      const grab = await V(() => { const v = SL.state.view; return v.viewPoint(v.rayAt(700, 480)); }), g0 = await scr(grab);
+      await page.mouse.move(700, 480); await page.mouse.down({ button: 'right' }); await page.mouse.move(760, 520, { steps: 6 }); await page.mouse.up({ button: 'right' });
+      const g1 = await scr(grab);
+      check(near(g1[0] - g0[0], 60, 1.5) && near(g1[1] - g0[1], 40, 1.5), 'a right drag pans: what was under the pointer follows it');
+      await page.keyboard.press('Control+0'); await settle();
+      const d0 = (await cam()).dist, zw = await V(() => { const v = SL.state.view; return v.viewPoint(v.rayAt(760, 430)); }), z0 = await scr(zw);
+      await page.mouse.move(760, 430); await page.mouse.wheel(0, -100); await page.waitForTimeout(150);
+      const d1 = (await cam()).dist, z1 = await scr(zw);
+      check(near(d1 / d0, 0.9, 0.005) && Math.hypot(z1[0] - z0[0], z1[1] - z0[1]) < 1.5, `one wheel notch is a tenth, towards the pointer (${(d1 / d0).toFixed(3)})`);
+      for (let i = 0; i < 10; i++) await page.mouse.wheel(0, -10);
+      await page.waitForTimeout(150);
+      check(near((await cam()).dist / d1, 0.9, 0.04), 'ten small trackpad steps add up to about one notch');
+      await page.mouse.click(spot.x, spot.y);
+      const e0 = (await cam()).dist; await page.keyboard.press('i'); const e1 = (await cam()).dist; await page.keyboard.press('o'); const e2 = (await cam()).dist;
+      check(near(e1 / e0, 0.9, 0.005) && near(e2 / e1, 1.1, 0.005), 'I zooms in and O zooms out');
+      for (const [key, name, yaw, pitch] of [['1', 'Top', -Math.PI / 2, 1.5533], ['2', 'Bottom', -Math.PI / 2, -1.5533], ['3', 'Front', -Math.PI / 2, 0], ['4', 'Rear', Math.PI / 2, 0], ['5', 'Left', Math.PI, 0], ['6', 'Right', 0, 0]]) {
+        await page.keyboard.press('Control+' + key); await settle();
+        const c = await cam(), dy = ((c.yaw - yaw + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+        check(c.ortho && Math.abs(dy) < 0.02 && near(c.pitch, pitch, 0.01), `Ctrl ${key} is the ${name} view, through the flat lens`);
+      }
+      await page.keyboard.press('Control+0'); await settle();
+      await page.evaluate(() => { const m = SL.state.model; m.selected = new Set([m.objects[0].id]); SL.state.view.select([...m.selected]); });
+      await page.mouse.click(spot.x, spot.y);
+      await page.evaluate(() => { const m = SL.state.model; m.selected = new Set([m.objects[0].id]); SL.state.view.select([...m.selected]); });
+      const p0 = await V(() => SL.state.model.objects[0].transform.slice(9));
+      await page.keyboard.press('ArrowRight'); const p1 = await V(() => SL.state.model.objects[0].transform.slice(9));
+      await page.keyboard.press('Shift+ArrowUp'); const p2 = await V(() => SL.state.model.objects[0].transform.slice(9));
+      check(near(p1[0] - p0[0], 10, 0.01) && near(p2[1] - p1[1], 1, 0.01), 'an arrow moves the selection 10 mm and Shift makes it 1 mm');
+      await page.keyboard.press('Control+c'); await page.keyboard.press('Control+v'); await page.waitForTimeout(250);
+      const copies = await V(() => SL.state.model.onPlate().length);
+      await page.keyboard.press('Control+k'); await page.waitForTimeout(250);
+      const clones = await V(() => SL.state.model.onPlate().length);
+      check(copies === 2 && clones === 3, `Ctrl C and Ctrl V copy a model (${copies}), Ctrl K clones it (${clones})`);
+      await page.keyboard.press('3'); await page.waitForTimeout(150);
+      check(await V(() => [...SL.state.model.selected].length > 0 && [...SL.state.model.selected].every(id => SL.state.model.get(id).tool === 2)), 'the key 3 gives the selected model to head T2');
+      await page.keyboard.press('Control+d'); await page.waitForTimeout(200);
+      const none = await V(() => SL.state.model.objects.length);
+      await page.keyboard.press('Control+z'); await page.waitForTimeout(250);
+      check(none === 0 && await V(() => SL.state.model.onPlate().length) === 3, 'Ctrl D deletes everything and Ctrl Z brings it back');
+      await V(() => { const m = SL.state.model; m.remove(m.objects.slice(1).map(o => o.id)); m.setTool([m.objects[0].id], 0); m.place(m.objects[0].id, { x: 135.5, y: 136 }); m.selected = new Set(); SL.state.view.select([]); });
+      await page.keyboard.press('Control+0'); await settle();
+      const spotOn = await V(() => { const v = SL.state.view; return v.toScreen(v.pivot()); });
+      await page.keyboard.down('Shift'); await page.mouse.move(spotOn[0] - 90, spotOn[1] - 110); await page.mouse.down(); await page.mouse.move(spotOn[0] + 90, spotOn[1] + 90, { steps: 6 });
+      const boxShown = await V(() => !!document.querySelector('.sl-rubber'));
+      await page.mouse.up(); await page.keyboard.up('Shift'); await page.waitForTimeout(150);
+      check(boxShown && await V(() => SL.state.model.selected.size === 1 && !document.querySelector('.sl-rubber')), 'Shift and a left drag draw a box that selects what it touches');
+      await page.keyboard.press('?'); await page.waitForTimeout(250);
+      check(await V(() => !!document.getElementById('sl-keys') && document.querySelectorAll('#sl-keys .sl-keys-g li').length >= 40 && !document.getElementById('kb-sheet')?.open), 'the question mark lists every key (the Slicer\'s list, not the app-wide one)');
+      await page.keyboard.press('Escape'); await page.waitForTimeout(100);
+      check(await V(() => !document.getElementById('sl-keys')), 'Escape closes the list');
+      await page.click('#sl-cam-btn'); await page.locator('#sl-cam label', { hasText: 'Swap turn' }).click(); await page.click('#sl-cam-x');
+      const swapped = await V(() => SL.state.view.prefs.swap);
+      const sw0 = await cam();
+      await page.mouse.move(spot.x, spot.y); await page.mouse.down(); await page.mouse.move(spot.x + 60, spot.y + 20, { steps: 5 }); await page.mouse.up();
+      const sw1 = await cam();
+      check(swapped === true && near(sw1.yaw, sw0.yaw, 1e-6) && Math.hypot(sw1.target[0] - sw0.target[0], sw1.target[1] - sw0.target[1]) > 1, 'the camera option "swap turn and pan buttons" makes the left button pan');
+      await page.click('#sl-cam-btn'); await page.locator('#sl-cam label', { hasText: 'Swap turn' }).click(); await page.click('#sl-cam-x');
+      await page.keyboard.press('Control+0'); await settle();
+      check(await V(() => SL.state.view.prefs.swap === false), 'and it goes back off');
+      // the plate is as the next checks expect it: one model, selected
+      await V(() => { const m = SL.state.model; m.selected = new Set([m.objects[0].id]); SL.state.view.select([...m.selected]); SL.prepare.renderObjects(); SL.prepare.renderInspector(); SL.prepare.refreshTools(); });
+    }
+
     /* ---- tools ---- */
     await page.fill('#sl-i-rz', '90'); await page.dispatchEvent('#sl-i-rz', 'change'); await page.waitForTimeout(300);
     let s = (await model(page))[0].s;

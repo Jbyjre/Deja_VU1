@@ -60,6 +60,28 @@ window.SliceScene = (() => {
     }
   };
 
+  /* ---- the camera's own maths ---------------------------------------------------------------------------------------------------- */
+  function lookAt(eye, target, up) {
+    const z = v3.norm(v3.sub(eye, target)), x = v3.norm(v3.cross(up, z)), y = v3.cross(z, x);
+    return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -v3.dot(x, eye), -v3.dot(y, eye), -v3.dot(z, eye), 1];
+  }
+  /* a lens with no perspective: parallel lines stay parallel, so a top view is a true plan */
+  function orthographic(halfW, halfH, near, far) {
+    return [1 / halfW, 0, 0, 0, 0, 1 / halfH, 0, 0, 0, 0, -2 / (far - near), 0, 0, 0, -(far + near) / (far - near), 1];
+  }
+  /* The camera sits on a ball round its target: yaw turns it round the vertical, pitch lifts it, dist is its distance. */
+  const eyeOf = (target, dist, yaw, pitch) => [target[0] + dist * Math.cos(pitch) * Math.cos(yaw), target[1] + dist * Math.cos(pitch) * Math.sin(yaw), target[2] + dist * Math.sin(pitch)];
+  /* the camera's right, up and forward directions for a yaw and pitch */
+  function basisOf(yaw, pitch) {
+    const f = [-Math.cos(pitch) * Math.cos(yaw), -Math.cos(pitch) * Math.sin(yaw), -Math.sin(pitch)];
+    const right = v3.norm(v3.cross(f, [0, 0, 1])), up = v3.cross(right, f);
+    return { f, right, up };
+  }
+  const MAX_PITCH = 1.5533;      // 89 degrees: straight above or below, without the up direction flipping
+  const ORBIT_PER_PIXEL = 0.8 * Math.PI / 180;   // a turn per pixel of drag
+  const ZOOM_STEP = 0.1;         // one wheel notch changes the distance by a tenth
+  const CAMERA_DEFAULTS = { zoomToMouse: true, swap: false, reverse: false, orbit: 1 };
+
   /* ---- shapes for the handles --------------------------------------------------------------------------------------------------- */
   function shape() {
     const pos = [], nrm = [];
@@ -198,6 +220,10 @@ window.SliceScene = (() => {
       this.pickMode = false;          // a click on a surface is reported (Lay on face, Measure) instead of starting a drag
       this.insets = { left: 0, right: 0, top: 0, bottom: 0 };
       this.free = null;
+      this.ortho = false;             // the six flat views look through a lens with no perspective; any turn of the view brings the perspective one back
+      this.prefs = { ...CAMERA_DEFAULTS };   // zoom to the pointer, swap the buttons, reverse the wheel, orbit speed: Snapmaker Orca's four camera options
+      this.rubber = null;             // the rectangle being dragged to select several objects
+      this.pointerFocused = false;    // the 3D view has the keyboard because of a mouse press (never because Tab landed on it)
       this.bindScene();
       this.fitPlate(false);
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
@@ -287,14 +313,16 @@ window.SliceScene = (() => {
       this.anim = requestAnimationFrame(step);
     }
 
-    /* the corner view is the one a slicer opens on; the others look straight down or along an axis */
+    /* The corner view is the one a slicer opens on; the others look straight down, up or along an axis, through the flat lens, like Snapmaker
+       Orca's (its Top, Bottom, Front, Rear, Left and Right). The flat views look level, so a model's height reads true. */
     setView(name) {
       const c = [BED / 2, BED / 2, 40];
       const views = {
-        iso: { yaw: -0.9, pitch: 0.62 }, top: { yaw: -Math.PI / 2, pitch: 1.5533 }, front: { yaw: -Math.PI / 2, pitch: 0.1 },
-        back: { yaw: Math.PI / 2, pitch: 0.1 }, left: { yaw: Math.PI, pitch: 0.1 }, right: { yaw: 0, pitch: 0.1 }, bottom: { yaw: -Math.PI / 2, pitch: -1.5533 }
+        iso: { yaw: -Math.PI / 2, pitch: Math.PI / 4 }, top: { yaw: -Math.PI / 2, pitch: MAX_PITCH }, front: { yaw: -Math.PI / 2, pitch: 0 },
+        back: { yaw: Math.PI / 2, pitch: 0 }, left: { yaw: Math.PI, pitch: 0 }, right: { yaw: 0, pitch: 0 }, bottom: { yaw: -Math.PI / 2, pitch: -MAX_PITCH }
       };
       const v = views[name] || views.iso;
+      this.ortho = name !== 'iso' && !!views[name];
       this.animateTo({ yaw: v.yaw, pitch: v.pitch, dist: this.fitDistance(), target: c });
     }
 
@@ -308,8 +336,16 @@ window.SliceScene = (() => {
       this.draw();
     }
 
+    /* the flat lens: the same size at the target as the perspective one, so changing lens does not make the plate jump */
+    orthoMatrix() {
+      const w = this.canvas.clientWidth || 1, h = this.canvas.clientHeight || 1;
+      this.eye = eyeOf(this.target, this.dist, this.yaw, this.pitch);
+      const halfH = this.dist * Math.tan(0.4);
+      return mat.mul(orthographic(halfH * w / h, halfH, -1500, 4000), lookAt(this.eye, this.target, [0, 0, 1]));
+    }
+
     matrix() {
-      const m = Array.from(super.matrix()), f = this.free, w = this.canvas.clientWidth || 1, h = this.canvas.clientHeight || 1;
+      const m = this.ortho ? this.orthoMatrix() : Array.from(super.matrix()), f = this.free, w = this.canvas.clientWidth || 1, h = this.canvas.clientHeight || 1;
       if (!f) return m;
       const tx = ((f.x0 + f.x1) / 2 - w / 2) / (w / 2), ty = -((f.y0 + f.y1) / 2 - h / 2) / (h / 2);
       for (const k of [0, 4, 8, 12]) { m[k] += tx * m[k + 3]; m[k + 1] += ty * m[k + 3]; }
@@ -325,7 +361,7 @@ window.SliceScene = (() => {
 
     fitPlate(animate = true) {
       const to = { dist: this.fitDistance(), target: [BED / 2, BED / 2, 30] };
-      if (animate) this.animateTo(to); else { this.dist = to.dist; this.target = to.target; this.yaw = -0.9; this.pitch = 0.62; }
+      if (animate) this.animateTo(to); else { this.dist = to.dist; this.target = to.target; this.yaw = -Math.PI / 2; this.pitch = Math.PI / 4; this.ortho = false; }
     }
 
     /* frame every object on the plate (or the plate itself when it is empty) */
@@ -604,7 +640,7 @@ window.SliceScene = (() => {
     /* ---- the pointer ----------------------------------------------------------------------------------------------------------------- */
     bindScene() {
       const c = this.canvas, pointers = new Map();
-      let pinch = 0, hoverQueued = 0, last = null;
+      let hoverQueued = 0, last = null;
       c.style.touchAction = 'none';
       const setHover = hit => {
         const next = hit.kind === 'none' ? null : hit.id;
@@ -613,17 +649,24 @@ window.SliceScene = (() => {
         if (cursor !== this.cursorFor) { this.cursorFor = cursor; c.style.cursor = cursor; }
       };
       const down = e => {
-        if (pointers.size === 0) c.focus?.({ preventScroll: true });
+        if (pointers.size === 0) { this.pointerFocused = true; c.focus?.({ preventScroll: true }); }
         pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         try { c.setPointerCapture(e.pointerId); } catch (_) { /* not capturable */ }
-        if (pointers.size > 1) { this.gesture = { kind: 'orbit', multi: true }; return; }
-        const wantsPan = e.button === 1 || e.button === 2 || e.shiftKey && this.mode !== 'prepare';
-        const hit = wantsPan ? { kind: 'none', id: 0 } : this.pickAt(e.clientX, e.clientY);
+        if (this.rubber) this.endRubber();
+        if (pointers.size > 1) { this.gesture = { kind: 'touch' }; return; }      // two fingers: pinch to zoom, drag to pan
+        // Snapmaker Orca: the left button turns the view, the right and middle buttons pan it ("swap" exchanges them). An object under
+        // the left button is dragged instead; shift and a drag over the empty plate draws a box that selects what it touches.
+        const left = e.button === 0, swap = this.prefs.swap, prepare = this.mode === 'prepare';
+        const turnWithThis = swap ? !left && e.button !== 1 : false, panWithThis = swap ? e.button === 1 : !left;
+        const wantsPan = panWithThis || (e.shiftKey && !prepare && left);
+        const hit = wantsPan || turnWithThis ? { kind: 'none', id: 0 } : this.pickAt(e.clientX, e.clientY);
         last = { x: e.clientX, y: e.clientY, moved: false };
-        if (this.mode === 'prepare' && hit.kind === 'handle') this.startHandle(hit.id, e);
-        else if (this.mode === 'prepare' && hit.kind === 'item' && this.pickMode) { this.gesture = { kind: 'none' }; this.emit('surface', { id: hit.id, x: e.clientX, y: e.clientY }); }
-        else if (this.mode === 'prepare' && hit.kind === 'item') this.startDrag(hit.id, e);
-        else this.gesture = { kind: wantsPan ? 'pan' : 'orbit', downOnEmpty: hit.kind === 'none' && !wantsPan };
+        if (prepare && left && hit.kind === 'handle') this.startHandle(hit.id, e);
+        else if (prepare && left && hit.kind === 'item' && this.pickMode) { this.gesture = { kind: 'none' }; this.emit('surface', { id: hit.id, x: e.clientX, y: e.clientY }); }
+        else if (prepare && left && hit.kind === 'item') this.startDrag(hit.id, e);
+        else if (prepare && left && e.shiftKey && !swap) this.startRubber(e);
+        else if (left && swap && !wantsPan) this.gesture = { kind: 'pan', downOnEmpty: hit.kind === 'none' };
+        else this.gesture = { kind: wantsPan ? 'pan' : 'orbit', downOnEmpty: left && !wantsPan && hit.kind === 'none', centre: e.ctrlKey || e.metaKey };
       };
       const move = e => {
         const prev = pointers.get(e.pointerId);
@@ -635,39 +678,36 @@ window.SliceScene = (() => {
         }
         if (last && Math.hypot(e.clientX - last.x, e.clientY - last.y) > 3) last.moved = true;
         if (pointers.size >= 2) {
+          // two fingers: the distance between them zooms, the point halfway between them pans
+          const mid = pts => ({ x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 });
+          const before = [...pointers.values()], d0 = Math.hypot(before[0].x - before[1].x, before[0].y - before[1].y), m0 = mid(before);
           pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-          const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
-          if (pinch) this.dist = Math.max(30, Math.min(1500, this.dist * pinch / d));
-          pinch = d; this.draw();
+          const after = [...pointers.values()], d1 = Math.hypot(after[0].x - after[1].x, after[0].y - after[1].y), m1 = mid(after);
+          this.panBetween(m0, m1);
+          if (d0 > 1 && d1 > 1) this.zoomTo(this.dist * d0 / d1, m1.x, m1.y);
           return;
         }
-        const g = this.gesture;
+        const g = this.gesture, here = { x: e.clientX, y: e.clientY };
         if (g && g.kind === 'handle') this.moveHandle(e);
         else if (g && g.kind === 'drag') this.moveDrag(e);
-        else if (g && g.kind === 'pan') {
-          const dx = (e.clientX - prev.x) * this.dist / 700, dy = (e.clientY - prev.y) * this.dist / 700;
-          this.target[0] -= Math.cos(this.yaw) * dx + Math.sin(this.yaw) * dy * Math.sin(this.pitch);
-          this.target[1] -= Math.sin(this.yaw) * dx - Math.cos(this.yaw) * dy * Math.sin(this.pitch);
-          this.target[2] += dy * Math.cos(this.pitch); this.draw();
-        } else if (g && g.kind === 'orbit') {
-          this.yaw -= (e.clientX - prev.x) * 0.008;
-          this.pitch = Math.max(-1.5533, Math.min(1.5533, this.pitch + (e.clientY - prev.y) * 0.008));
-          this.draw();
-        }
-        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        else if (g && g.kind === 'rubber') this.moveRubber(e);
+        else if (g && g.kind === 'pan') this.panBetween(prev, here);
+        else if (g && g.kind === 'orbit') this.orbitBy(here.x - prev.x, here.y - prev.y, g.centre);
+        pointers.set(e.pointerId, here);
       };
       const up = e => {
         if (!pointers.has(e.pointerId)) return;
         pointers.delete(e.pointerId);
-        if (pointers.size < 2) pinch = 0;
         const g = this.gesture;
         if (pointers.size === 0 && g) {
           if (g.kind === 'handle' || g.kind === 'drag') this.endGesture();
-          else if (g.kind === 'orbit' && g.downOnEmpty && last && !last.moved) { this.emit('select', { id: 0, additive: e.shiftKey || e.ctrlKey || e.metaKey }); }
+          else if (g.kind === 'rubber') this.finishRubber(e, last && last.moved);
+          else if (g.downOnEmpty && last && !last.moved) { this.emit('select', { id: 0, additive: e.shiftKey || e.ctrlKey || e.metaKey }); }
           this.gesture = null;
           this.draw();
         } else if (pointers.size === 0) this.gesture = null;
       };
+      c.addEventListener('blur', () => { this.pointerFocused = false; });
       c.addEventListener('pointerdown', down);
       c.addEventListener('pointermove', move);
       c.addEventListener('pointerleave', () => { if (!this.gesture) setHover({ kind: 'none', id: 0 }); });
@@ -677,15 +717,118 @@ window.SliceScene = (() => {
       document.addEventListener('pointercancel', up);
       c.addEventListener('wheel', e => {
         e.preventDefault();
-        // zoom towards what the pointer is over, like a map
-        const ray = this.rayAt(e.clientX, e.clientY), before = this.planePoint(ray, this.target[2]);
-        this.dist = Math.max(30, Math.min(1500, this.dist * (1 + Math.sign(e.deltaY) * 0.1)));
-        if (before) {
-          const after = this.planePoint(this.rayAt(e.clientX, e.clientY), this.target[2]);
-          if (after) { this.target[0] += before[0] - after[0]; this.target[1] += before[1] - after[1]; }
-        }
-        this.draw();
+        // One notch of a mouse wheel is one step; a trackpad sends many small ones, which add up to the same distance.
+        // A pinch on a trackpad arrives as a wheel with Ctrl held and small steps, so it counts for more.
+        const notches = e.deltaMode === 1 ? e.deltaY / 3 : e.deltaMode === 2 ? e.deltaY : e.deltaY / (e.ctrlKey ? 25 : 100);
+        this.zoomBy(this.prefs.reverse ? notches : -notches, e.clientX, e.clientY);
       }, { passive: false });
+    }
+
+    /* ---- moving the camera, the way Snapmaker Orca does ---------------------------------------------------------------------------- */
+    eyePosition() { return eyeOf(this.target, this.dist, this.yaw, this.pitch); }
+
+    /* where the view turns: the selected objects' middle, else the middle of every object on the plate, else the plate's middle */
+    pivot() {
+      if (this.mode !== 'prepare') return this.target.slice();
+      const pick = [...this.selected].map(id => this.items.get(id)).filter(it => it && !it.hidden && !it.ghost);
+      const rows = pick.length ? pick : [...this.items.values()].filter(it => !it.hidden && !it.ghost);
+      if (!rows.length) return [BED / 2, BED / 2, 0];
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (const it of rows) for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], it.bounds.min[k]); hi[k] = Math.max(hi[k], it.bounds.max[k]); }
+      return lo.map((v, k) => (v + hi[k]) / 2);
+    }
+
+    /* Turn the view by a drag of dx, dy pixels about `pivot` (the screen's middle with Ctrl): the pivot stays where it is on the screen. */
+    orbitBy(dx, dy, aroundCentre) {
+      const k = ORBIT_PER_PIXEL * (this.prefs.orbit > 0 ? this.prefs.orbit : 1);
+      const pivot = aroundCentre ? this.target.slice() : this.pivot();
+      const b0 = basisOf(this.yaw, this.pitch), rel = v3.sub(pivot, this.eyePosition());
+      const c = [v3.dot(rel, b0.right), v3.dot(rel, b0.up), v3.dot(rel, b0.f)];
+      this.yaw -= dx * k;
+      this.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.pitch + dy * k));
+      const b1 = basisOf(this.yaw, this.pitch);
+      const eye = v3.sub(pivot, v3.add(v3.add(v3.mul(b1.right, c[0]), v3.mul(b1.up, c[1])), v3.mul(b1.f, c[2])));
+      this.target = this.keepTarget(v3.add(eye, v3.mul(b1.f, this.dist)));
+      this.ortho = false;
+      this.draw();
+    }
+
+    /* the point on the plane through the target that faces the camera, under a pointer ray */
+    viewPoint(ray) {
+      const f = basisOf(this.yaw, this.pitch).f, denom = v3.dot(ray.d, f);
+      if (Math.abs(denom) < 1e-6) return null;
+      return v3.add(ray.o, v3.mul(ray.d, v3.dot(v3.sub(this.target, ray.o), f) / denom));
+    }
+
+    /* the scene follows the pointer: what was under `a` is under `b` afterwards */
+    panBetween(a, b) {
+      const p0 = this.viewPoint(this.rayAt(a.x, a.y)), p1 = this.viewPoint(this.rayAt(b.x, b.y));
+      if (!p0 || !p1) return;
+      this.target = this.keepTarget(v3.add(this.target, v3.sub(p0, p1)));
+      this.draw();
+    }
+
+    /* the camera's right and away directions along the plate: Ctrl and an arrow move a model the way the camera sees it */
+    planeAxes() {
+      const b = basisOf(this.yaw, this.pitch), flat = a => { const l = Math.hypot(a[0], a[1]) || 1; return [a[0] / l, a[1] / l]; };
+      return { right: flat(b.right), away: flat(b.f) };
+    }
+
+    /* the target stays near the plate, so the view can never be lost */
+    keepTarget(t) { return t.map(v => Math.max(-BED, Math.min(2 * BED, v))); }
+
+    /* a new distance, keeping what is under the pointer where it is (or the screen's middle when no pointer is given) */
+    zoomTo(dist, clientX, clientY) {
+      const next = Math.max(30, Math.min(1500, dist));
+      const follow = this.prefs.zoomToMouse && Number.isFinite(clientX);
+      const before = follow ? this.viewPoint(this.rayAt(clientX, clientY)) : null;
+      this.dist = next;
+      if (before) {
+        const after = this.viewPoint(this.rayAt(clientX, clientY));
+        if (after) this.target = this.keepTarget(v3.add(this.target, v3.sub(before, after)));
+      }
+      this.draw();
+    }
+
+    /* Orca's step: one notch in, a tenth closer; at most four notches in one go. Positive notches zoom in. */
+    zoomBy(notches, clientX, clientY) {
+      const n = Math.max(-4, Math.min(4, notches));
+      this.zoomTo(this.dist * (1 - n * ZOOM_STEP), clientX, clientY);
+    }
+
+    /* ---- selecting with a box ------------------------------------------------------------------------------------------------------- */
+    startRubber(e) {
+      this.gesture = { kind: 'rubber', x0: e.clientX, y0: e.clientY, remove: e.altKey, add: e.ctrlKey || e.metaKey };
+    }
+    moveRubber(e) {
+      const g = this.gesture, host = this.canvas.parentElement, hr = host.getBoundingClientRect();
+      if (!this.rubber) {
+        this.rubber = document.createElement('div');
+        this.rubber.className = 'sl-rubber';
+        this.rubber.setAttribute('aria-hidden', 'true');
+        host.appendChild(this.rubber);
+      }
+      const x = Math.min(g.x0, e.clientX) - hr.left, y = Math.min(g.y0, e.clientY) - hr.top;
+      Object.assign(this.rubber.style, { left: x + 'px', top: y + 'px', width: Math.abs(e.clientX - g.x0) + 'px', height: Math.abs(e.clientY - g.y0) + 'px' });
+      this.rubber.classList.toggle('is-remove', !!g.remove);
+    }
+    endRubber() { if (this.rubber) { this.rubber.remove(); this.rubber = null; } }
+    finishRubber(e, moved) {
+      const g = this.gesture;
+      this.endRubber();
+      if (!moved) return;
+      const x0 = Math.min(g.x0, e.clientX), x1 = Math.max(g.x0, e.clientX), y0 = Math.min(g.y0, e.clientY), y1 = Math.max(g.y0, e.clientY);
+      const ids = [];
+      for (const [id, it] of this.items) {
+        if (it.hidden || it.ghost) continue;
+        let lx = Infinity, hx = -Infinity, ly = Infinity, hy = -Infinity;
+        for (let k = 0; k < 8; k++) {
+          const s = this.toScreen([k & 1 ? it.bounds.max[0] : it.bounds.min[0], k & 2 ? it.bounds.max[1] : it.bounds.min[1], k & 4 ? it.bounds.max[2] : it.bounds.min[2]]);
+          lx = Math.min(lx, s[0]); hx = Math.max(hx, s[0]); ly = Math.min(ly, s[1]); hy = Math.max(hy, s[1]);
+        }
+        if (hx >= x0 && lx <= x1 && hy >= y0 && ly <= y1) ids.push(id);
+      }
+      this.emit('select', { ids, mode: g.remove ? 'remove' : g.add ? 'add' : 'replace' });
     }
 
     /* the object is pressed: it is selected now, and dragging moves it across the plate */

@@ -52,7 +52,9 @@ window.SL = (() => {
     tower: 'M9 21l1.5-15h3L15 21M8 21h8M10 9h4M9.6 13h4.8',
     send: 'M4 12l16-8-6 16-3-7z',
     queue: 'M4 6h16M4 12h16M4 18h10',
-    ruler: 'M3 8h18v8H3zM7 8v3M11 8v4M15 8v3M19 8v4'
+    ruler: 'M3 8h18v8H3zM7 8v3M11 8v4M15 8v3M19 8v4',
+    keys: 'M3 6.5h18v11H3zM6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9',
+    camera: 'M3 8h4l1.8-2.5h6.4L17 8h4v11H3zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7'
   };
   const ic = (name, cls = '') => `<svg class="sl-ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${ICONS[name] || ''}"/></svg>`;
 

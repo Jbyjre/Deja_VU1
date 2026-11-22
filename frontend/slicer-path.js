@@ -58,7 +58,7 @@
     P.ranges = ranges(d);
     P.first = firstUse(d);
     v.setPath({ n: d.n, p: d.p, a: d.a.slice(), c: d.c.slice(), layers: d.layers });
-    P.min = 1; P.max = d.layers.length; P.hidden = new Set(); P.mode = 0; P.travel = false; P.under = false;
+    P.min = 1; P.max = d.layers.length; P.one = false; P.hidden = new Set(); P.mode = 0; P.travel = false; P.under = false;
     v.hidePlate = false;
     applyView(true);
     buildDock(); buildLayerSlider(); buildMoveSlider(); computeWarnings();
@@ -174,7 +174,8 @@
     };
     const set = (which, layer, fromKey) => {
       layer = Math.max(1, Math.min(n, Math.round(layer)));
-      if (which === 'top') P.max = Math.max(layer, P.min); else P.min = Math.min(layer, P.max);
+      if (P.one) P.max = P.min = layer;          // one-layer mode: both ends travel together
+      else if (which === 'top') P.max = Math.max(layer, P.min); else P.min = Math.min(layer, P.max);
       paint(); applyView(true); buildMoveSlider(); void fromKey;
     };
     P.setLayers = (a, b) => { P.min = Math.max(1, Math.min(n, a)); P.max = Math.max(P.min, Math.min(n, b)); paint(); applyView(true); buildMoveSlider(); };
@@ -289,5 +290,31 @@
     } else { P.playing = false; state.view.setMode('prepare'); state.view.hidePlate = false; if (P.under) { P.under = false; } paintMessage(''); }
   }
 
-  SL.path = { build, load, onPage, state: P };
+  /* Snapmaker Orca's Preview keys: Up and Down move the layer slider, Left and Right the moves along the layer, Shift or Ctrl make a step five
+     times longer, Home and End go to the first and last move, and L shows one layer. True when the key was used. */
+  function key(e) {
+    if (!P.data || state.page !== 'preview' || !P.setLayers) return false;
+    const n = P.data.layers.length, k = e.key, big = e.shiftKey || e.ctrlKey || e.metaKey ? 5 : 1;
+    if (k === 'ArrowUp' || k === 'ArrowDown') {
+      const top = Math.max(1, Math.min(n, P.max + (k === 'ArrowUp' ? 1 : -1) * big));
+      P.setLayers(P.one ? top : P.min, top);
+      return true;
+    }
+    const mv = q('#sl-mv');
+    if (mv && (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'Home' || k === 'End')) {
+      const lo = Number(mv.min), hi = Number(mv.max);
+      mv.value = k === 'Home' ? lo : k === 'End' ? hi : Math.max(lo, Math.min(hi, Number(mv.value) + (k === 'ArrowRight' ? 1 : -1) * big));
+      mv.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    }
+    if (k.toLowerCase() === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      P.one = !P.one;
+      P.setLayers(P.one ? P.max : 1, P.max);
+      say(P.one ? 'Showing one layer. Up and Down step through the layers; L again shows them all.' : 'Showing every layer up to this one.', 'info');
+      return true;
+    }
+    return false;
+  }
+
+  SL.path = { build, load, onPage, state: P, key };
 })();
