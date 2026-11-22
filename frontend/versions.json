@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.38",
+      "date": "2026-11-22",
+      "name": "A language list in Settings and the machinery to translate Deja Vu1",
+      "published": true,
+      "summary": "A language list in Settings and the machinery to translate Deja Vu1.",
+      "changes": [
+        "A language list in Settings and the machinery to translate Deja Vu1"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.37",
       "date": "2026-11-22",
       "name": "3MF projects slice: stray points, projects from other slicers and the engine'...",
