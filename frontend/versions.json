@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.34",
+      "date": "2026-11-22",
+      "name": "The Slicer: Snapmaker Orca's layout on the U1's own plate, with the engine in...",
+      "published": true,
+      "summary": "The Slicer: Snapmaker Orca's layout on the U1's own plate, with the engine installed for you.",
+      "changes": [
+        "The Slicer: Snapmaker Orca's layout on the U1's own plate, with the engine installed for you"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.33",
       "date": "2026-11-21",
       "name": "Error codes: the printer's code, in Snapmaker's words, with their guides and...",
