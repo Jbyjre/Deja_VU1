@@ -629,7 +629,9 @@
   function onKey(e) {
     if (document.body.dataset.tab !== 'slicer' || typing(e) || e.defaultPrevented) return;
     if (document.querySelector('#sl-sheet, #sl-engine, #sl-why-card, #sl-keys, dialog[open], .glass-dialog.is-open')) return;
-    const m = P(), v = S(), mod = e.ctrlKey || e.metaKey, shift = e.shiftKey, k = e.key.toLowerCase(), ids = [...m.selected];
+    const m = P(), v = S();
+    if (!m || !v) return;                 // no 3D view (the browser gave no WebGL): nothing here to act on
+    const mod = e.ctrlKey || e.metaKey, shift = e.shiftKey, k = e.key.toLowerCase(), ids = [...m.selected];
     const prepare = state.page !== 'preview', digit = DIGIT(e), arrow = /^arrow(left|right|up|down)$/.test(k);
     const nudge = (dx, dy, dz) => {
       if (!ids.length) return false;
