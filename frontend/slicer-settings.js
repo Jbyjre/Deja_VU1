@@ -189,7 +189,7 @@
       <div class="sl-bh"><span class="sl-bt">Heads</span><span class="sl-bs">nozzle mm · layer mm</span><button type="button" class="sl-btn sl-quiet" id="sl-sync" aria-label="Read the spools from the printer again" data-tip="Read the spools again">${ic('refresh')}Sync</button></div>
       ${rows}
       ${note ? `<p class="sl-hint">${esc(note)}</p>` : ''}
-      ${differs.length ? `<p class="sl-hint sl-warn">${esc(differs.slice(0, 2).join('. '))}${differs.length > 2 ? ` and ${differs.length - 2} more` : ''}. Sync reads the printer.</p>` : ''}
+      ${differs.length ? `<p class="sl-hint sl-warn">${esc(differs.slice(0, 2).join('. '))}${differs.length > 2 ? `. ${differs.length - 2} more differ` : ''}. Sync reads the printer.</p>` : ''}
       ${w.error ? `<p class="sl-hint sl-bad" role="alert">${esc(w.error)}</p>` : ''}`;
     for (const input of qa('[data-hh]', q('#sl-blk-heads'))) on(input, 'change', () => {
       const i = Number(input.dataset.hh), v = parseFloat(input.value);
