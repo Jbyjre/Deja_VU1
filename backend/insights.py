@@ -77,7 +77,8 @@ def findings(jobs, now=None):
     if len(recent) >= MIN_GROUP and len(before) >= MIN_GROUP and abs(_rate(recent) - _rate(before)) * 100 >= GAP_POINTS:
         better = _rate(recent) > _rate(before)
         out.append({"id": "trend", "tone": "good" if better else "watch",
-                    "title": f"Success rate {'up' if better else 'down'} to {_pct(_rate(recent))} this month",
+                    "title": (f"Success rate up to {_pct(_rate(recent))} this month" if better
+                              else f"Success rate down to {_pct(_rate(recent))} this month"),
                     "detail": f"From {_pct(_rate(before))} in the 30 days before."
                               + ("" if better else " Worth a look at what changed: a new filament, a plate, a nozzle."),
                     "evidence": f"{len(recent)} recent and {len(before)} earlier prints"})
@@ -159,7 +160,8 @@ def findings(jobs, now=None):
         if share >= 0.6 or idle:
             out.append({"id": "heads", "tone": "info",
                         "title": f"{top} is in {_pct(share)} of your prints",
-                        "detail": (f"{', '.join(idle)} {'has' if len(idle) == 1 else 'have'} not printed in this history. "
+                        "detail": ((f"{', '.join(idle)} has not printed in this history. " if len(idle) == 1
+                                    else f"{', '.join(idle)} have not printed in this history. ")
                                    if idle else "") + "Swapping which head carries your everyday filament spreads wear across them.",
                         "evidence": f"{n} prints"})
 

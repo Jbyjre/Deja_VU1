@@ -229,6 +229,20 @@ def mm_to_grams(mm, material, diameter=None):
     return max(0.0, _num(mm, 0.0)) * 3.141592653589793 * (d / 2) ** 2 * density / 1000.0
 
 
+_EMBEDDED_ERROR = re.compile(r'\{[^{}]*"(?:msg|message)"[^{}]*\}')
+
+
+def _spoken(match):
+    try:
+        data = json.loads(match.group(0))
+    except ValueError:
+        return match.group(0)
+    if not isinstance(data, dict) or not (data.get("msg") or data.get("message")):
+        return match.group(0)
+    code = data.get("coded") or data.get("code")
+    return str(data.get("msg") or data.get("message")).strip() + (f" (code {code})" if code else "")
+
+
 def clean_error(message):
     """
     Moonraker/Klipper error text, readable. The U1's Klipper sometimes sends
@@ -246,6 +260,11 @@ def clean_error(message):
         if isinstance(data, dict) and (data.get("msg") or data.get("message")):
             code = data.get("coded") or data.get("code")
             text = str(data.get("msg") or data.get("message")).strip() + (f" (code {code})" if code else "")
+    # The same JSON inside longer text: after a Halt the U1's shutdown message carried it behind other words and the screen showed it raw.
+    text = _EMBEDDED_ERROR.sub(_spoken, text)
+    if re.search(r"\bM112\b", text) and "emergency stop" not in text.lower():
+        code = re.search(r"\(code ([0-9-]+)\)", text)
+        text = "Emergency stop: every motor and heater was stopped, and the printer needs a firmware restart" + (f" (code {code.group(1)})" if code else "")
     return text[:500] or "no reason given"
 
 
@@ -956,7 +975,9 @@ _BASE_OBJECTS = {
     "print_stats": ["state", "filename", "print_duration", "total_duration", "filament_used", "message", "info",
                     "exception"],
     "exception_manager": ["exceptions"],
-    "virtual_sdcard": ["progress", "is_active", "file_position", "file_size"],
+    # pl_env_valid is the U1 fork's own flag that a halted or interrupted print is saved and the printer can restart it (a printer without it
+    # leaves the field out).
+    "virtual_sdcard": ["progress", "is_active", "file_position", "file_size", "pl_env_valid"],
     # The progress the slicer wrote into the file itself (M73), which counts time rather than bytes (Klipper's
     # docs/Status_Reference.md: display_status.progress, the bytes' progress when no M73 has come). Only where the printer has it.
     "display_status": ["progress"],

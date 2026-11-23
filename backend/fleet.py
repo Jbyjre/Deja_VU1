@@ -343,6 +343,7 @@ def summary_for(printer_id, state=None):
         "alerts": _alerts(state, maint),
         "problem": ({k: state["problem"].get(k) for k in ("code", "level", "level_name", "title", "effect")}
                     if state.get("problem") else None),
+        "resume_saved": bool(state.get("resume_saved")),     # a real U1 that still holds a halted print and could restart it by itself
         "health": health["score"],
         "health_band": health["band"],    # "blocked" while Confirm Print would refuse the loaded job
         "link_lost": bool(state.get("link_lost")),

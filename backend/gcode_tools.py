@@ -409,7 +409,8 @@ def analyze(text, want_toolpath=True, machine=None):
                 top = MAX_BED_C if bed else MAX_NOZZLE_C
                 if s > top:
                     flag("error", "bed_too_hot" if bed else "nozzle_too_hot", line_no,
-                         f"Sets the {'bed' if bed else 'nozzle'} to {s:.0f}°C; this dashboard allows at most {top}°C")
+                         f"Sets the bed to {s:.0f}°C; this dashboard allows at most {top}°C" if bed
+                         else f"Sets the nozzle to {s:.0f}°C; this dashboard allows at most {top}°C")
                 if s >= 150 and not bed:
                     heated = True
             continue

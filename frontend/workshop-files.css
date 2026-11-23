@@ -213,6 +213,14 @@
 .qi-tools { display: flex; gap: 6px; margin-top: 8px; }
 
 /* Confirm Print. */
+.gate-bed { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 10px 0; padding: 10px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--hair)); }
+.gate-bed-map { width: 116px; height: 116px; flex: none; }
+.gate-bed-map .plate { fill: var(--well); stroke: var(--hair); stroke-width: 2; }
+.gate-bed-map .left { fill: color-mix(in srgb, var(--warn) 30%, transparent); stroke: var(--warn); stroke-width: 3; stroke-dasharray: 8 5; }
+.gate-bed-map .this { fill: color-mix(in srgb, var(--accent) 28%, transparent); stroke: var(--accent); stroke-width: 3; }
+.gate-bed-text { flex: 1 1 200px; min-width: 0; display: grid; gap: 6px; }
+.gate-bed-text p { margin: 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.gate-bed-tick { display: flex; gap: 8px; align-items: center; font-weight: 600; font-size: 14px; min-height: 28px; }
 .gate-banner { padding: 12px 14px; border-radius: 14px; font-weight: 700; font-size: 14px; margin-bottom: 12px; }
 .gate-banner.blocked { background: color-mix(in srgb, var(--bad) 12%, white); color: color-mix(in srgb, var(--bad) 75%, black); }
 .gate-banner.confirm { background: color-mix(in srgb, var(--warn) 22%, white); color: color-mix(in srgb, var(--warn) 35%, black); }

@@ -208,6 +208,10 @@ def translate_state(status, ctx):
         out["problem"] = problems[0]
         out["problems"] = problems
     out["tuning"] = tuning_from(status, ctx.get("extras") or {})
+    # After a Halt or a power cut the U1 keeps the print it was on and can restart it by itself (seen on firmware 2.1.2, 22 November 2026);
+    # virtual_sdcard.pl_env_valid says so. Only a printer at rest is held to it: during a print the flag has nothing to say.
+    if isinstance(vsd.get("pl_env_valid"), bool):
+        out["resume_saved"] = bool(vsd["pl_env_valid"]) and state in ("ready", "complete")
     homed = _obj(status, "toolhead").get("homed_axes")
     if isinstance(homed, str):
         out["homed_axes"] = "".join(a for a in "xyz" if a in homed.lower())

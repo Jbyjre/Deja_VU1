@@ -182,6 +182,7 @@
     renderPlates();
     renderEmpty();
     refreshTools();
+    if (SL.preview && SL.preview.renderGo) SL.preview.renderGo();          // whether the plate can be sliced may have changed
     if (SL.onPlateChanged) SL.onPlateChanged(kind, ids);
     if (kind !== 'init') saveProject();
     const v = S();

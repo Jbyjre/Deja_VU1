@@ -196,6 +196,64 @@ class TestTheCatalogue(unittest.TestCase):
         self.assertIn('id="language-note"', html)
 
 
+class TestSpanishIsInstalled(unittest.TestCase):
+    """Spanish is the first language (23 November 2026). Made by an AI in one session, not yet read by a native speaker."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(STRINGS, "en.json"), encoding="utf-8") as f:
+            cls.en = json.load(f)
+        with open(os.path.join(STRINGS, "es.json"), encoding="utf-8") as f:
+            cls.es = json.load(f)
+
+    def test_every_english_text_has_a_spanish_one_and_none_is_left_over(self):
+        self.assertEqual(sorted(self.es), sorted(self.en))
+        self.assertEqual([k for k, v in self.es.items() if not v.strip()], [])
+
+    def test_the_picker_offers_it_by_its_own_name(self):
+        with open(os.path.join(STRINGS, "languages.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        spanish = [item for item in data["languages"] if item["code"] == "es"]
+        self.assertEqual(len(spanish), 1)
+        self.assertEqual((spanish[0]["name"], spanish[0]["native"]), ("Spanish", "Español"))
+
+    def test_the_screen_names_read_the_same_everywhere(self):
+        glossary = tool.translate.load_glossary(tool.translate.GLOSSARY)
+        chosen = glossary["chosen"]["es"]
+        self.assertEqual(sorted(chosen), sorted(glossary["fixed"]))
+        by_text = {text: key for key, text in self.en.items()}
+        alone = [name for name in chosen if name in by_text]          # some names only appear inside sentences
+        self.assertTrue(alone)
+        for name in alone:
+            self.assertEqual(self.es[by_text[name]], chosen[name], name)
+
+    def test_a_sentence_keeps_each_of_its_pieces_exactly_once(self):
+        # Spanish plurals and word order cannot repeat or drop a piece ({1} twice was refused when the answers were merged).
+        for key, text in self.en.items():
+            self.assertEqual(sorted(re.findall(r"\{\d+\}", text)), sorted(re.findall(r"\{\d+\}", self.es[key])), text)
+
+
+class TestSentencesStayWhole(unittest.TestCase):
+    """A sentence the server builds from a bare English word ('task' or 'tasks') leaves that word in English inside a translation."""
+
+    PATTERN = re.compile(r"""\{['"][a-z ]{2,12}['"] if [^}]*else ['"][a-z ]{0,12}['"]\}""")
+    # URL schemes and the like are not words a person reads.
+    ALLOWED = {("camera.py", "'https' if printer.endpoint.tls else 'http'")}
+
+    def test_no_server_sentence_is_glued_together_from_english_words(self):
+        found = []
+        backend = os.path.join(ROOT, "backend")
+        for name in sorted(os.listdir(backend)):
+            if not name.endswith(".py") or name.startswith("tester"):
+                continue
+            with open(os.path.join(backend, name), encoding="utf-8") as f:
+                for number, line in enumerate(f, 1):
+                    for hit in self.PATTERN.findall(line):
+                        if (name, hit.strip("{}")) not in self.ALLOWED:
+                            found.append(f"{name}:{number} {hit}")
+        self.assertEqual(found, [], "write each variant as its own whole sentence so a translation can reorder it")
+
+
 class TestTheCodeNeverReadsItsOwnEnglish(unittest.TestCase):
     def test_no_script_compares_what_is_on_screen_with_an_english_word(self):
         # A page in another language shows other words, so a heading found by its English text, or a button compared with "On", stops working.

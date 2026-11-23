@@ -120,7 +120,7 @@ named in text.
 - `setup-phone.png`, `launch-overview.png`, `launch-phone.png` and `native-*`:
   earlier setup/studio captures, retained as historical comparisons.
 
-The current boards use the **1993-test** suite count (By the numbers re-rendered 22 November 2026, version 0.20.37 plus the translation setup).
+The current boards use the **2030-test** suite count (By the numbers re-rendered 23 November 2026, version 0.20.38 plus the live-run fixes).
 Historical engine screenshots keep their original provenance.
 
 [Workspace validation](../../docs/slicer-workspace-validation.md) records engine,

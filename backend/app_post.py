@@ -131,6 +131,8 @@ class PostRoutes:
                 if verb == "chat":
                     return self._send_json(ai_assistant.chat(body.get("thread"), body.get("text"), printer_id, demo,
                                                              body.get("context"), body.get("picture")))
+                if verb == "retry":
+                    return self._send_json(ai_assistant.retry(body.get("thread"), body.get("provider"), printer_id, demo))
                 if verb == "decide":
                     return self._send_json(ai_assistant.decide(body.get("thread"), body.get("n"), body.get("approve"),
                                                                printer_id, demo, bool(body.get("always"))))

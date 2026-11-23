@@ -2,7 +2,7 @@
 mock_moonraker_part1.py: part 1 of 1 split out of mock_moonraker.py (one interface for simulated and real
 printers) on 19 November 2026, so a session reads only the part it needs. mock_moonraker.py imports every name
 here back, so `mock_moonraker.<name>` works as before. Holds: AMBIENT_C, BUILD_VOLUME_MM, DEFAULT_PRINTER_ID,
-DEMO_MACROS, FILAMENT_COLORS, MAX_SANDBOX_PRINTERS, PrinterCommandError, TOOLHEADS, _FLEET_SPEC, _JOB_NAMES,
+DEMO_MACROS, FILAMENT_COLORS, MAX_SANDBOX_PRINTERS, PrinterCommandError, PrinterRefused, TOOLHEADS, _FLEET_SPEC, _JOB_NAMES,
 _REAL, _TUNE_TIMEOUTS, _approach, _build_print_history, _demo_objects, _demo_tuning, _fleet_lock, _plate,
 _point_on_rectangle, _record_failed_job, _selected, _stop_with_error, any_connected, attach_real_printer,
 detach_real_printer, diagnostics, is_sandbox_printer, printer_ids, real_printer, real_printer_ids,
@@ -56,6 +56,7 @@ AMBIENT_C = 24.0
 # ValueError ("the dashboard asked for something invalid"). The real client
 # raises the same class, so one `except` covers both.
 PrinterCommandError = moonraker_client.PrinterCommandError
+PrinterRefused = moonraker_client.PrinterRefused
 
 
 def _build_print_history(rng, job_count=38, days_back=64):

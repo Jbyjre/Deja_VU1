@@ -76,6 +76,7 @@
           <button type="button" class="tile-main" id="tile-job-open" data-open="job" aria-haspopup="dialog"><span class="tile-h">This print</span><span class="tile-body" id="tile-job-body"></span></button>
           <button type="button" class="tile-tune" id="tile-tune" data-open="tune" aria-haspopup="dialog"><span class="sr-only">Tune </span><span class="tile-body" id="tile-tune-body"></span></button>
         </div>
+        <div class="cp-saved" id="cp-saved" hidden></div>
       </aside>
       <aside class="cp-right" id="cp-right" aria-label="The camera">
         <div class="tile tile-cam" id="tile-cam"><button type="button" class="tile-cam-open" data-open="camera" aria-haspopup="dialog"><span class="tile-h">Camera</span><span class="tile-more">Open large</span></button><div class="tile-cam-slot" id="cp-cam-slot" data-open="camera" data-open-only="plain"></div></div>
@@ -189,6 +190,16 @@
   function problemStrip(s) {
     return s && s.problem && window.ErrorHelp ? ErrorHelp.strip(s.problem, s.printer_id) : '';
   }
+  /* Resume took 13 to 26 s on a real U1 with nothing on screen (22 November 2026): the printer heats back up and cleans the nozzle first. The tile says what the
+     printer reports while that happens, in its own figures: a head or the bed more than 8 degrees under its target. */
+  function heatingWords(s) {
+    const parts = [];
+    Object.entries(s.toolheads || {}).forEach(([name, h]) => {
+      if (h && h.target_temperature > 0 && h.temperature != null && h.target_temperature - h.temperature > 8) parts.push(`${name} ${Math.round(h.temperature)} of ${Math.round(h.target_temperature)}°`);
+    });
+    if (s.bed_target > 0 && s.bed_temperature != null && s.bed_target - s.bed_temperature > 8) parts.push(`bed ${Math.round(s.bed_temperature)} of ${Math.round(s.bed_target)}°`);
+    return parts.length ? `Heating: ${parts.join(', ')}` : '';
+  }
   function jobHtml(s, full) {
     if (!s || !s.state) return '<span class="tile-empty">No printer connected</span>';
     const pct = Math.round((s.progress || 0) * 100);
@@ -203,7 +214,7 @@
         <span class="jb-pct"><b>${pct}</b><small>%</small><em>${s.state === 'paused' ? 'Paused' : 'Printing'}</em></span>
         <span class="jb-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Print progress"><i style="width:${pct}%"></i></span>
         <span class="jb-line">${left != null ? `${esc(words(left))} left${done ? ` · done ${esc(done)}` : ''}` : 'Time left: not known yet'}</span>
-        ${layer ? `<span class="jb-line jb-dim">${esc(layer)}</span>` : ''}${why ? `<span class="jb-why">${esc(why)}</span>` : ''}${problemStrip(s)}`;
+        ${layer ? `<span class="jb-line jb-dim">${esc(layer)}</span>` : ''}${heatingWords(s) ? `<span class="jb-line jb-heat">${esc(heatingWords(s))}</span>` : ''}${why ? `<span class="jb-why">${esc(why)}</span>` : ''}${problemStrip(s)}`;
     }
     if (s.state === 'complete') return `<span class="jb-state is-ok">Finished</span><span class="jb-line jb-file">${esc(s.current_file || '')}</span>`;
     if (s.state === 'error') return `<span class="jb-state is-bad">Needs attention</span><span class="jb-line">${esc(s.state_message || '')}</span>${problemStrip(s)}`;
@@ -213,10 +224,19 @@
     fill($('tile-job-body'), jobHtml(s, false));
     if (deck && deck.current() === 'job') fill($('cp-job-body'), jobHtml(s, true));
   }
+  // A halted print the printer still holds, or a pause for a dirty bed (printer-page.js builds the cards).
+  function paintSaved(s) {
+    const host = $('cp-saved');
+    if (!host) return;
+    const html = window.PrinterPage && PrinterPage.notes ? PrinterPage.notes(s) : '';
+    if (host.dataset.sig !== html) { host.dataset.sig = html; host.innerHTML = html; }
+    host.hidden = !html;
+  }
   function paint(s) {
     state = s;
     paintTune(s);
     paintJob(s);
+    paintSaved(s);
     if (grid) grid.dataset.state = (s && s.state) || '';
   }
 

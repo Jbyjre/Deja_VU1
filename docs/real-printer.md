@@ -87,7 +87,7 @@ explanation is in [Error codes](error-codes.md).
 
 The connection (`backend/moonraker_client.py`) was written against the
 **source code and documentation** of Moonraker, Klipper and Snapmaker's U1
-firmware and has been tested on a real U1 with stock firmware
+firmware and has been tested on a real U1 with stock firmware 2.1.2
 ([what was tested](testing.md)). Every release is also tested against a
 stand-in server built from the same source (`tests/fake_moonraker.py`), over
 real sockets: real HTTP, a real WebSocket handshake, masked frames, JSON-RPC.
@@ -186,12 +186,16 @@ U1's presets. Tested only against the Moonraker stand-in playing a one-head
 
 ## Where printers can differ
 
-Deja Vu1 has been tested on a real U1 with stock firmware. Another firmware
+Deja Vu1 has been tested on a real U1 with stock firmware 2.1.2. Another firmware
 version, the community Extended Firmware or another Klipper printer can still
 differ from the published source. These are the places a difference would
 show, and what Deja Vu1 does about each. The Details panel and the terminal
 log (`DEJAVU_MOONRAKER_LOG=1`) show every exchange.
 
+- **The size Deja Vu1 checks files against.** Snapmaker specifies a 270 × 270 × 270 mm build volume for the U1, and Confirm Print and the
+  Slicer use it. The firmware reports wider travel limits for the print head (271 × 335 × 275 mm on firmware 2.1.2, read in the live run of
+  22 November 2026): the head also travels to its docks and parking places, so those limits are not a bigger print area. A file that
+  prints outside 270 × 270 × 270 mm is refused even though the head could reach the place.
 - **The U1's filament and dock objects** (`print_task_config`, the park
   sensors) follow Snapmaker's source. How a hand-loaded spool appears there
   is inferred from the defaults in `print_task_config.py`.

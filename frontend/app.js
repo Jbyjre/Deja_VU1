@@ -88,7 +88,7 @@ document.addEventListener('change', async e => {
   }
   if (want) modGate.off.delete(id); else modGate.off.add(id);
   syncModuleBodies();
-  toast(`${name} is ${want ? 'on' : 'off'}`, 'ok', 2200);
+  toast(want ? `${name} is on` : `${name} is off`, 'ok', 2200);
   refreshAll();
 });
 

@@ -82,6 +82,18 @@ function sensorLine(m) {
     return `<span class="gf-sensor">${chip}<span>${words}</span></span>`;
   }
 
+/* A print that ended on this bed may still be there. A small map of the plate shows where it sat (the sliced file's own extent, known only
+   while that file is still in the library) against where this print goes, and the tick below it is what the start waits for. */
+function bedBlock(b) {
+    const W = 270, box = (v, cls) => v ? `<rect class="${cls}" x="${v[0].toFixed(1)}" y="${(W - v[3]).toFixed(1)}" width="${(v[2] - v[0]).toFixed(1)}" height="${(v[3] - v[1]).toFixed(1)}" rx="2"></rect>` : '';
+    const l = b.leftover_box, name = b.file || 'the last print';
+    const where = l ? `${name} sat at X ${Math.round(l[0])} to ${Math.round(l[2])} mm, Y ${Math.round(l[1])} to ${Math.round(l[3])} mm${b.overlaps ? '. This print overlaps it.' : '.'}`
+      : `Where ${name} sat isn't known: its file is no longer in your library.`;
+    const map = l || b.this_box ? `<svg class="gate-bed-map" viewBox="0 0 ${W} ${W}" role="img" aria-label="${esc(where)}"><rect class="plate" x="0" y="0" width="${W}" height="${W}" rx="6"></rect>${box(l, 'left')}${box(b.this_box, 'this')}</svg>` : '';
+    return `<div class="gate-bed">${map}<div class="gate-bed-text"><p>${esc(where)}</p>${l && b.this_box ? '<p class="field-hint">Dashed: where it sat. Solid: where this print goes.</p>' : ''}
+      <label class="gate-bed-tick"><input type="checkbox" id="confirm-bed-clear"> <span>I looked at the bed and it is clear</span></label></div></div>`;
+  }
+
 function renderGate(gate) {
     const go = $('confirm-go');
     const panel = qs('#confirm-dialog .dialog-panel');
@@ -109,6 +121,7 @@ function renderGate(gate) {
       ${gate.blocking.length ? `<ul class="pf-list">${gate.blocking.map(b => `<li class="pf-error">${esc(b)}</li>`).join('')}</ul>` : ''}
       ${gate.warnings.length ? `<ul class="pf-list">${gate.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
       ${gate.info.length ? `<ul class="pf-list">${gate.info.map(w => `<li class="pf-info">${esc(w)}</li>`).join('')}</ul>` : ''}
+      ${gate.bed_check ? bedBlock(gate.bed_check) : ''}
       <div class="gate-grid divider-row cols-4">
         <div><span class="stat-key">Time</span><b>${fmtHours(gate.estimated_hours)}</b></div>
         <div><span class="stat-key">Filament</span><b>${gate.filament_grams.toFixed(1)} g</b></div>
@@ -120,6 +133,12 @@ function renderGate(gate) {
       <h3 class="fd-h">Filament, as the printer reports it loaded</h3>
       ${fil || '<p class="log-empty">The file doesn\'t say which toolheads it uses.</p>'}
       ${gate.spools ? `<h3 class="fd-h">Spool weight</h3>${gate.spools.map(s => `<p class="gate-spool ${s.status}">${esc(s.toolhead)}: ${s.status === 'no_spool' ? 'no matching spool in your inventory' : s.status === 'unknown_weight' ? `${esc(s.spool)}: weight unknown, so there's no check that ${Math.round(s.grams_needed)} g is left` : `${esc(s.spool)}: ${s.weight_source === 'weighed' ? '' : '≈ '}${s.grams_remaining} g now, about ${s.grams_after} g after this print`}</p>`).join('')}` : ''}`;
+    // A print that ended here may still be on the bed: the start waits for the tick.
+    const tick = $('confirm-bed-clear');
+    if (tick) {
+      go.disabled = true;
+      tick.addEventListener('change', () => { go.disabled = gate.verdict === 'blocked' || !tick.checked; });
+    }
   }
 
   /* ================================================================

@@ -20,6 +20,22 @@
   const PHONE_STEPS = ['Welcome', 'Make it yours', 'Your printer', 'The tour', 'Home Screen'];
   const onPhone = () => matchMedia('(max-width: 720px)').matches && matchMedia('(pointer: coarse)').matches;
   let names = COMPUTER_STEPS, TOUR = names.indexOf('The tour');
+  // The Language step comes first, and only while a language besides English is installed and this browser has not chosen one yet
+  // (i18n.js). Choosing a language other than the one on screen saves it and reloads the page, which reopens setup in that language.
+  let installed = [];
+  const loadLanguages = () => (window.I18n && I18n.available ? I18n.available() : Promise.resolve([])).then(list => { installed = list; return list; });
+  const wantsLanguage = () => installed.length > 1 && window.I18n && I18n.canSave() && !I18n.chosen() && I18n.lang() !== 'pseudo';
+  function suggestedLanguage() {
+    const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]).filter(Boolean);
+    for (const p of prefs) {
+      const code = String(p).toLowerCase();
+      const hit = installed.find(l => l.code !== 'en' && (l.code.toLowerCase() === code || l.code.toLowerCase() === code.split('-')[0]));
+      if (hit) return hit;
+      if (code.split('-')[0] === 'en') return null;
+    }
+    return null;
+  }
+  const languageLabel = l => (l.code === 'en' || l.native === l.name ? l.name : `${l.native} (${l.name})`);
   const privacy = 'Only saved in this browser on this device. Never sent to the server, logs, backups or update checks. Optional; delete it any time.';
   function greeting() {
     const name = read(key);
@@ -112,7 +128,19 @@
     $('setup-next').textContent = step === names.length - 1 ? 'Finish setup' : 'Continue';
     dialog.classList.add('is-full');
     document.documentElement.classList.add('setup-full-open');
-    if (step === 0) {
+    if (names[step] === 'Language') {
+      const suggested = suggestedLanguage(), now = I18n.lang();
+      content.innerHTML = `<h2 id="setup-title">Choose your language.</h2><p class="setup-lead">Deja Vu1 is available in more than one language. Pick the one you read best. Settings, Appearance changes it later.</p>
+        <div class="setup-choices" role="group" aria-label="Language">${installed.map(l => `<button class="btn ${l.code === (suggested ? suggested.code : now) ? 'primary' : ''}" type="button" data-setup-lang="${esc(l.code)}" lang="${esc(l.code)}" translate="no" aria-pressed="${l.code === now}">${esc(languageLabel(l))}</button>`).join('')}</div>
+        ${suggested ? `<p class="field-hint">Your browser is set to ${esc(suggested.name)}. Press ${esc(languageLabel(suggested))} to use it, or Continue to stay in English.</p>` : ''}
+        <p class="field-hint">A new translation may have mistakes, and a text without one shows in English.</p>`;
+      content.querySelectorAll('[data-setup-lang]').forEach(b => { b.onclick = () => {
+        const code = b.dataset.setupLang;
+        if (code === I18n.lang()) { I18n.choose(code); step++; render(); return; }
+        $('setup-status').textContent = '…';
+        I18n.setLanguage(code);
+      }; });
+    } else if (names[step] === 'Welcome') {
       content.innerHTML = `<div class="setup-mark" aria-hidden="true">◉</div><h2 id="setup-title">Set up your U1 workspace.</h2>
         <p class="setup-lead">Deja Vu1 runs on this computer and keeps an eye on your Snapmaker U1 printers over your home Wi-Fi. Open it here, in its own window, or on your phone. Your printer data stays at home.</p>
         <ul class="setup-points"><li><strong>Watch it live:</strong> your printer in 3D, its progress and temperatures.</li><li><strong>Check before printing:</strong> the file, the colours and the printer, before anything starts.</li><li><strong>Look after it:</strong> upkeep reminders and your filament.</li></ul>
@@ -220,7 +248,7 @@
   }
   function open() {
     returnFocus=document.activeElement;step=0;mode=tourOn()?'demo':'real';
-    names=onPhone()?PHONE_STEPS:COMPUTER_STEPS;TOUR=names.indexOf('The tour');typedUrl='';added='';carry='';skipFor='';
+    names=(onPhone()?PHONE_STEPS:COMPUTER_STEPS).slice();if(wantsLanguage())names.unshift('Language');TOUR=names.indexOf('The tour');typedUrl='';added='';carry='';skipFor='';
     dialog.showModal();render();refreshInfo();
   }
   $('setup-replay').onclick=open;
@@ -236,6 +264,7 @@
         carry='Printer added: My U1.';
       }
     }
+    if(names[step]==='Language'&&window.I18n&&!I18n.chosen())I18n.choose(I18n.lang());
     if(step===names.length-1)finish();else{step++;render();}
   };
   $('setup-back').onclick=()=>{step=Math.max(0,step-1);render();};
@@ -383,6 +412,6 @@
   greeting();
   // versions.js loads after this file, so wait until every script has run.
   const allLoaded=new Promise(r=>document.readyState==='loading'?addEventListener('DOMContentLoaded',r,{once:true}):r());
-  Promise.all([serverReady(),allLoaded]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(viaPhoneLink)save(seenKey,'1');else if(!read(seenKey)&&!tourOn())open();});
+  Promise.all([serverReady(),allLoaded,loadLanguages()]).then(async()=>{await Versions.ready;info=Versions.info();renderDesktop();if(viaPhoneLink)save(seenKey,'1');else if(!read(seenKey)&&!tourOn())open();});
   if('serviceWorker' in navigator && window.isSecureContext)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

@@ -697,5 +697,82 @@ class TestRoutes(APITestCase):
         self.assertTrue(row["has_key"])
 
 
+class TestWhatTheScreenSaysWhileAStepWaits(Base):
+    """The model once wrote "The bed is now set" over a step that still waited for a yes (22 November 2026, Ask mode)."""
+
+    def notes(self, view):
+        return [m["text"] for m in view["messages"] if m["role"] == "note"]
+
+    def test_a_step_that_waits_is_followed_by_a_line_saying_nothing_is_done(self):
+        view = self.say("warm T1", "The bed is now set. " + act("nozzle_temp", toolhead="T1", target=233), "Heating.")
+        self.assertEqual(self.steps(view), [("nozzle_temp", "waiting")])
+        self.assertTrue(any("Nothing is done until you approve the step below" in n for n in self.notes(view)), self.notes(view))
+        order = [m["role"] for m in view["messages"] if m["role"] in ("assistant", "note", "action")]
+        self.assertEqual(order[:3], ["assistant", "note", "action"])          # the line sits between the claim and the step
+
+    def test_a_step_that_runs_by_itself_gets_no_such_line(self):
+        self.idle()
+        view = self.say("home it", "Homing now. " + act("home", axes=["X", "Y"]), "Homed.")
+        self.assertFalse([n for n in self.notes(view) if "Nothing is done until" in n])
+
+    def test_a_step_the_owner_released_from_asking_gets_none_either(self):
+        ai_assistant.select(never_ask=["nozzle_temp"])
+        view = self.say("warm T1", "Heating. " + act("nozzle_temp", toolhead="T1", target=233), "Heating.")
+        self.assertFalse([n for n in self.notes(view) if "Nothing is done until" in n])
+
+
+class TestAnotherAIAfterAnError(Base):
+    """The saved AI answered "503 high demand" and nothing offered the Claude plan that was ready (22 November 2026)."""
+
+    OTHER = {"id": "codex", "name": "Codex", "kind": "subscription", "model": "m1"}
+
+    def connections(self, active="claude-code"):
+        return {**self.real, "provider": active, "connections": [
+            {"id": "claude-code", "name": "Claude Code", "kind": "subscription", "model": "m"}, self.OTHER]}
+
+    def setUp(self):
+        super().setUp()
+        self.real = ai_assistant.status()
+
+    def failing(self):
+        def ask(pid, model, system, messages):
+            raise ai_providers.AIError("The service says: 503 high demand. Try again soon")
+        return ask
+
+    def test_the_error_names_the_other_ready_ais(self):
+        with patch("ai_assistant_part3.status", return_value=self.connections()), patch.object(ai_providers, "ask", self.failing()):
+            ai_assistant.chat(self.tid, "what is connected?", PRINTER, demo=True)
+            view = self.wait()
+        error = [m for m in view["messages"] if m["role"] == "error"][0]
+        self.assertIn("503 high demand", error["text"])
+        self.assertEqual([a["id"] for a in error["alternatives"]], ["codex"])      # not the one that just failed
+
+    def test_asking_again_with_another_ai_answers_the_same_question(self):
+        with patch("ai_assistant_part3.status", return_value=self.connections()), patch.object(ai_providers, "ask", self.failing()):
+            ai_assistant.chat(self.tid, "what is connected?", PRINTER, demo=True)
+            self.wait()
+        chosen = []
+        script = Script("Four heads.")
+        with patch("ai_assistant_part3.status", return_value=self.connections()), \
+                patch("ai_assistant_part3.select", side_effect=lambda p, *a, **k: chosen.append(p) or self.connections(p)), \
+                patch.object(ai_providers, "ask", script):
+            ai_assistant.retry(self.tid, "codex", PRINTER, demo=True)
+            view = self.wait()
+        self.assertEqual(chosen, ["codex"])
+        self.assertEqual([m["text"] for m in view["messages"] if m["role"] == "assistant"], ["Four heads."])
+        self.assertIn("what is connected?", script.seen[0][-1]["text"])         # the same question, not a new one
+        self.assertTrue([m for m in view["messages"] if m["role"] == "note" and "Asking again with" in m["text"]])
+
+    def test_an_ai_that_is_not_connected_cannot_be_asked(self):
+        with patch("ai_assistant_part3.status", return_value=self.connections()):
+            with self.assertRaises(ValueError):
+                ai_assistant.retry(self.tid, "nobody", PRINTER, demo=True)
+
+    def test_there_is_nothing_to_ask_again_before_a_question(self):
+        with patch("ai_assistant_part3.status", return_value=self.connections()):
+            with self.assertRaises(ValueError):
+                ai_assistant.retry(self.tid, "codex", PRINTER, demo=True)
+
+
 if __name__ == "__main__":
     unittest.main()

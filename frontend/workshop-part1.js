@@ -229,6 +229,10 @@ function attentionItems(printers) {
         const detail = [said, p.current_file ? `during ${p.current_file}` : ''].filter(Boolean).join(' · ') || 'see it in Control';
         add(0, 'error', `${p.name}: ${a.text}`, detail[0].toUpperCase() + detail.slice(1), 'control');
       });
+      if (p.resume_saved) {
+        // After a Halt or a power cut the U1 keeps the print and can restart it by itself, onto whatever is on the bed.
+        add(0, 'error', `${p.name} still holds a halted print`, 'It can restart that print by itself. Clear the bed, then discard it on the Printer screen', 'control');
+      }
       if (p.state === 'paused') {
         // A pause the printer raised itself names what is wrong (its code and Snapmaker's title for it); one pressed by hand does not.
         const why = p.problem ? `: ${p.problem.title || `printer error ${p.problem.code}`}` : '';

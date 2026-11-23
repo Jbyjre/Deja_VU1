@@ -123,6 +123,7 @@
 .eh-strip-text { display: grid; gap: 1px; min-width: 0; flex: 1 1 160px; }
 .eh-strip-text b { font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
 .eh-strip-text code { font-size: 12px; color: var(--text-dim); overflow-wrap: anywhere; }
+.eh-strip-text .eh-hint { font-size: 13px; line-height: 1.4; color: var(--text); overflow-wrap: anywhere; }
 
 /* The Care tab's lookup card */
 .eh-card-form { display: flex; gap: 8px; align-items: center; margin-top: 6px; }

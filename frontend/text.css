@@ -76,3 +76,10 @@ html.has-shell .orb-bubble { font-size: 13.5px; padding: 10px 38px 10px 14px; }
 /* ---- the camera windows: the mode label (demo data stays labelled) sits top left, the switch bottom right, so a narrow window never makes them meet ---------- */
 html.has-shell :is(.tile-cam-slot, .ovd-main > #ov-camera, .cp-sheet #pp-camera-card, .cp-sheet #ov-camera) .pcam-mode { top: 8px; bottom: auto; left: 8px; max-width: calc(100% - 56px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.has-shell #tab-files > #convert-card .eyebrow { font-size: 11px; }
+
+/* Touch targets on a phone: the live run on a real U1 found 47 buttons under 32 px (Pause was 57 x 30) at 390 px. Small buttons and the toolbar's
+   own buttons get 36 px of height where the pointer is a finger. Same selectors as the rules they raise (glass.css, shell.css), and later. */
+@media (max-width: 720px) and (pointer: coarse) {
+  html.has-shell .btn.small, html.has-shell .pb-actions .btn, html.has-shell .chip-btn,
+  html.has-shell .ovd-side > #attention .att-item .btn, html.has-shell #tasks .task-actions .btn, html.has-shell #tasks .task-snooze { min-height: 36px; }
+}

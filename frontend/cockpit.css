@@ -38,6 +38,10 @@ html.has-shell .cp-halt { display: flex; flex-direction: column; align-items: fl
 html.has-shell .cp-halt .halt { height: 38px; border-radius: 10px; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 8px 22px rgba(200, 16, 46, 0.34); }
 html.has-shell .cp-halted { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin: 0; padding: 10px 14px; border: 0; border-radius: 12px; background: color-mix(in oklch, var(--m-tint-solid) 86%, transparent); box-shadow: var(--g-sh-3); font-size: 12.5px; color: var(--text); }
 html.has-shell .cp-halted[hidden] { display: none; }
+html.has-shell .cp-saved { display: grid; gap: 8px; width: 100%; margin-top: 10px; }
+html.has-shell .cp-saved[hidden] { display: none; }
+html.has-shell .cp-saved .eh-strip { margin: 0; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; }
+html.has-shell .cp-saved .eh-strip-text { flex: none; width: 100%; }
 html.has-shell .cockpit.is-halted .halt { display: none; }
 
 html.has-shell .cp-left { position: absolute; z-index: 3; top: 0; left: 0; width: min(300px, 26vw); pointer-events: none; }
@@ -76,6 +80,7 @@ html.has-shell .jb-bar { display: block; height: 6px; margin: 6px 0 4px; border-
 html.has-shell .jb-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s ease; }
 html.has-shell .jb-line { font: 12px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text); }
 html.has-shell .jb-dim { color: var(--text-faint); }
+html.has-shell .jb-heat { color: color-mix(in srgb, var(--warn) 65%, var(--text)); font: 500 12.5px/1.4 var(--font-mono); }
 html.has-shell .jb-why { font: 11.5px/1.35 var(--font-sans); color: var(--text-faint); margin-top: 4px; }
 html.has-shell .jb-state { font: 600 22px/1.1 var(--font-display); letter-spacing: -0.02em; }
 html.has-shell .jb-state.is-ok { color: var(--ok-text, var(--ok)); }

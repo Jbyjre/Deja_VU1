@@ -1,4 +1,11 @@
 {
- "strings": 6231,
- "languages": {}
+ "strings": 6278,
+ "languages": {
+  "es": {
+   "translated": 6278,
+   "updated": "2026-11-23",
+   "app_version": "0.20.38"
+  }
+ },
+ "baseline": "ece9acf2eac0914350e54ae5f4c8e67daded7964"
 }

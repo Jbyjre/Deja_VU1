@@ -67,5 +67,14 @@
       "settings": "设置"
     }
   },
-  "chosen": {}
+  "chosen": {
+    "es": {
+      "Confirm Print": "Confirmar impresión",
+      "Needs you": "Requiere tu atención",
+      "Print a file": "Imprimir un archivo",
+      "Warm up": "Precalentar",
+      "Start over": "Empezar de nuevo",
+      "Ask": "Preguntar"
+    }
+  }
 }

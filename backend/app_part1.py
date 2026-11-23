@@ -320,7 +320,7 @@ def module_routes():
 _CONTROL_ACTIONS = {
     "/api/printer/control/filament": lambda b: mock_moonraker.set_filament(b),
     "/api/printer/control/start": lambda body: printer_control.start_print(
-        body.get("filename"), confirmed=bool(body.get("confirmed"))),
+        body.get("filename"), confirmed=bool(body.get("confirmed")), bed_clear=bool(body.get("bed_clear"))),
     "/api/printer/control/pause": lambda body: printer_control.pause_print(),
     "/api/printer/control/resume": lambda body: printer_control.resume_print(),
     "/api/printer/control/cancel": lambda body: printer_control.cancel_print(),
@@ -331,6 +331,7 @@ _CONTROL_ACTIONS = {
     "/api/printer/control/bed-temperature": lambda b: printer_control.set_bed_temperature(b.get("target")),
     "/api/printer/control/gcode": lambda body: printer_control.send_gcode(body.get("command")),
     "/api/printer/control/restart": lambda body: printer_control.clear_error(),
+    "/api/printer/control/discard-saved-print": lambda body: printer_control.discard_saved_print(),
     # Hands-on controls (printer_control.jog and the rest): every value checked before any G-code.
     "/api/printer/control/jog": lambda b: printer_control.jog(b.get("axis"), b.get("distance"), b.get("speed")),
     "/api/printer/control/move": lambda b: printer_control.move_to(b.get("x"), b.get("y"), b.get("z"), b.get("speed")),

@@ -95,9 +95,12 @@ Nothing about this changes what the printer does. Deja Vu1 only reads.
 
 ## What was not checked
 
-- **A real U1 raising a code.** No real printer has reported a problem to this version. The fields and the
-  notification names come from the firmware source, not from a live fault. A tester who sees a code on a real U1
-  can confirm the match: the window should show the same code as the screen.
+- **A real U1's own codes, beyond one run.** On 22 November 2026 a real U1 (firmware 2.1.2) paused a print by
+  itself for a dirty bed and went into shutdown twice after Halt. The Logbook recorded all three, and the guide
+  explained the Halt code as not in Snapmaker's table. That run did not record the dirty-bed pause's code on the
+  Printer screen or whether its guide opened. The fields and the notification names still come from the firmware
+  source. A tester who sees a code on a real U1 can confirm the match: the window should show the same code as
+  the screen.
 - **A video playing in the sandbox where this was built.** The player loaded and showed each video's title, but
   its network did not let playback start. Playback in a normal browser is expected and unconfirmed.
 - **Other languages.** The table and guides are Snapmaker's English wiki.

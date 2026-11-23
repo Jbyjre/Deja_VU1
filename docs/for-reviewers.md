@@ -49,11 +49,11 @@ Phase 1 (the entry of 5 August 2026) ran on simulated printers only.
 
 | Area | Now (version 0.20.14, 16 November 2026) | Where to look |
 |---|---|---|
-| Real printers | A Moonraker client: live state over a WebSocket, commands over HTTP, up to 12 printers, a watch-only mode that lets no write through. Run on a real U1 with stock firmware: adding it, live readings and the 3D twin, prints through Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls (8 November). | [testing.md](testing.md), [real-printer.md](real-printer.md) |
+| Real printers | A Moonraker client: live state over a WebSocket, commands over HTTP, up to 12 printers, a watch-only mode that lets no write through. Run on a real U1 with stock firmware 2.1.2: adding it, live readings and the 3D twin, a two-colour print sliced in the app that ran to the end through Confirm Print, pause, resume, skipping one object, cancel, Halt and Restart firmware, Watch-only, the camera and time-lapses, the Printer page controls (live run of 22 November, dated detail in testing.md). | [testing.md](testing.md), [real-printer.md](real-printer.md) |
 | Before a print | Confirm Print reads the file and the printer: moves outside the build volume, the loaded colour and material against the file, spool weight, bed clearance, overdue care. It blocks, warns or clears, and the server runs it again at the start. | [architecture.md](architecture.md) |
 | Prepare, slice, inspect | Plates, tool and colour assignment, slicing with an engine you install, and a layer-by-layer view with time, filament and heads. Engine support is listed per build. | [engine-support.md](engine-support.md) |
 | Colour checker | A versioned API for a companion device, white-reference calibration for the AS7341 and TCS34725, and the sensor's reading shown in Confirm Print beside the file's colour and the printer's report as advice that never blocks a start. Tested with synthetic readings and a stand-in printer. | [colour-sensor-api.md](colour-sensor-api.md) |
-| AI assistant | Optional. Talks to the printer inside safety limits; nothing in the app needs it. Run on the real U1 and through a paid API key (13 November). | [ai-assistant.md](ai-assistant.md) |
+| AI assistant | Optional. Talks to the printer inside safety limits; nothing in the app needs it. Run on the real U1 (13 and 22 November) and through a paid API key (13 November). | [ai-assistant.md](ai-assistant.md) |
 | Checks | The test suite on Python 3.8, 3.10, 3.12 and 3.13, a browser walk of every place and workflow, an automated accessibility check (WCAG 2.2 AA) and script-injection probes. Dated results are in testing.md. | [testing.md](testing.md) |
 
 ## What is not done
@@ -64,9 +64,13 @@ These are the limits as of 16 November 2026.
   reading exists yet, so there is no measure of how close a sensor comes to a spool's colour. The
   calibration arithmetic is checked against known spectra, not against a physical sensor.
 - **LED dock rings and spool scales.** The on-screen states exist. The hardware does not.
-- **Real runs on other systems.** The Windows engine check, macOS, Android AR, a second printer, the
-  Extended Firmware, Spoolman, WLED, Home Assistant, go2rtc and Tailscale are tested with stand-ins that
-  the suite names, not on the real thing.
-- **The tested U1's firmware version** is still to be recorded.
+- **Real runs on other systems.** macOS, Android AR, a second printer, the Extended Firmware,
+  Spoolman, WLED, Home Assistant, go2rtc and Tailscale are tested with stand-ins that the suite
+  names, not on the real thing. The Windows engine did run for real on 22 November (the engine's
+  own arrange and orient crash there; the app does not use them).
+- **What the live run on the real U1 did not cover** (firmware 2.1.2, 22 November): a link that
+  drops during a move, two browser tabs at once, a real notification send, Backup restore, an
+  update install and the Colour, Farm, Sandbox, plugins and Compare screens beyond opening them.
+  The list is in testing.md.
 
 If you find a claim that this page or the README cannot back up, please open an issue.

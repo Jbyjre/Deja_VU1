@@ -364,7 +364,12 @@ function cardHTML(m) {
 function rowHTML(m) {
     if (m.role === 'user') return `<div class="ai-msg is-user${m.sending ? ' is-sending' : ''}">${m.picture ? `<span class="ai-msg-photo">${m.preview ? `<img src="${esc(m.preview)}" alt="">` : ''}${I.camera}<span>Photo</span></span>` : ''}<p>${esc(m.text)}</p>${m.sending ? '<span class="sr-only">Sending</span>' : ''}</div>`;
     if (m.role === 'assistant') return `<div class="ai-msg is-assistant">${rich(m.text)}</div>`;
-    if (m.role === 'error' || m.role === 'note') return `<div class="ai-msg is-${m.role}" role="${m.role === 'error' ? 'alert' : 'status'}"><p>${esc(m.text)}</p></div>`;
+    if (m.role === 'error' || m.role === 'note') {
+      // After an error from the AI in use, the other AIs you have connected are one press away (the server lists them).
+      const again = m.role === 'error' && Array.isArray(m.alternatives) && m.alternatives.length
+        ? `<p class="ai-again">${m.alternatives.map(a => `<button class="btn small" type="button" data-retry="${esc(a.id)}">Ask again with ${esc(a.name)}</button>`).join(' ')}</p>` : '';
+      return `<div class="ai-msg is-${m.role}" role="${m.role === 'error' ? 'alert' : 'status'}"><p>${esc(m.text)}</p>${again}</div>`;
+    }
     const wait = m.status === 'waiting', done = m.status === 'done';
     const h = m.handoff || {};
     const where = h.kind === 'page' ? (SPOT_NAME[h.spot] || PLACE[h.place] || h.place) : '';

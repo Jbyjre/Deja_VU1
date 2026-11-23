@@ -3,7 +3,7 @@
 A local dashboard and model-preparation workspace for Snapmaker U1 printers. It talks to Moonraker,
 edits plates, runs a separately installed slicing engine and checks G-code before a print. The
 core is standard-library Python and plain HTML/CSS/JS with no build step and no packages. It has
-been tested on a real U1 with stock firmware (`docs/testing.md`). README.md is the human overview;
+been tested on a real U1 with stock firmware 2.1.2, including a two-colour print to the end on 22 November 2026 (`docs/testing.md`). README.md is the human overview;
 this file is the working core. Checked against the code on 8 November 2026: if code and notes
 disagree, trust the code and fix the note.
 
@@ -164,8 +164,10 @@ screenshots at 1366 px and 390 px and look at them. To mimic the public static h
 ## Known open issues
 
 - Windows and macOS launcher, autostart and recovery paths are read from documentation and tested
-  on Linux only; the Windows engine-check fallback has run against a stand-in engine only.
-- Error codes (`docs/error-codes.md`) follow the firmware's published source and a stand-in printer; no real U1 has raised a code to this build, and video
+  on Linux only. The app itself, its Windows engine install and a slice on the real engine ran on Windows 11 (22 November 2026, `docs/testing.md`);
+  the engine's own arrange and orient crash there (exit 3221225477) and the app does not use them.
+- Error codes (`docs/error-codes.md`) follow the firmware's published source and a stand-in printer. A real U1 raised a dirty-bed pause and the
+  Halt shutdown on 22 November 2026 and the Logbook recorded both; what the Printer screen showed for the pause was not recorded. Video
   playback was not confirmed in the cloud sandbox (the player loads, the stream does not start).
 - The colour checker, LED dock rings and spool scales are not built; `color_check.py` and
   `led_status.py` hold the decision logic and a simulation.

@@ -10,7 +10,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
 import file_library    # noqa: E402
 import maintenance     # noqa: E402
 import mock_moonraker  # noqa: E402
+import print_gate      # noqa: E402
 import print_queue     # noqa: E402
+import printer_control  # noqa: E402
 
 
 class TestQueue(unittest.TestCase):
@@ -135,6 +137,68 @@ class TestQueue(unittest.TestCase):
     def test_queues_are_per_printer(self):
         print_queue.add("3dbenchy_pla.gcode")
         self.assertEqual(print_queue.get("u1-studio")["items"], [])
+
+
+class TestConfirmPrintWaitsForTheBedTick(unittest.TestCase):
+    """A print that ended on the bed may still be there: the start waits for the screen's tick (22 November 2026 live run)."""
+
+    def setUp(self):
+        mock_moonraker.reset_all()
+        file_library.reset()
+        file_library.add_samples()
+        print_queue.reset()
+        maintenance.reset_log()
+        for task in maintenance.TASKS:
+            maintenance.mark_done(task["id"])
+        mock_moonraker.cancel_print()
+        self.pid = mock_moonraker.selected_printer_id()
+
+    def tearDown(self):
+        mock_moonraker.reset_all()
+        file_library.reset()
+        print_queue.reset()
+
+    def test_a_clear_bed_has_nothing_to_tick(self):
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertIsNone(gate["bed_check"])
+        printer_control.start_print("3dbenchy_pla.gcode", confirmed=True)
+        self.assertEqual(mock_moonraker.get_printer_state()["state"], "printing")
+
+    def test_a_cancelled_print_makes_the_start_wait_for_the_tick(self):
+        print_queue.print_ended(self.pid, "3dbenchy_pla.gcode", "cancelled")
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        check = gate["bed_check"]
+        self.assertEqual((check["file"], check["outcome"]), ("3dbenchy_pla.gcode", "cancelled"))
+        self.assertEqual(check["leftover_box"], check["this_box"])
+        self.assertTrue(check["overlaps"])
+        self.assertTrue(any("sit where 3dbenchy_pla.gcode did" in w for w in gate["warnings"]), gate["warnings"])
+        with self.assertRaises(printer_control.PrintBlocked) as ctx:
+            printer_control.start_print("3dbenchy_pla.gcode", confirmed=True)
+        self.assertIn("Tick that you looked at the bed", " ".join(ctx.exception.gate["warnings"]))
+        self.assertEqual(mock_moonraker.get_printer_state()["state"], "ready")
+        printer_control.start_print("3dbenchy_pla.gcode", confirmed=True, bed_clear=True)
+        self.assertEqual(mock_moonraker.get_printer_state()["state"], "printing")
+
+    def test_the_tick_alone_does_not_skip_a_blocked_print(self):
+        print_queue.print_ended(self.pid, "earlier.gcode", "failed")
+        data = file_library.read_bytes("3dbenchy_pla.gcode")
+        mock_moonraker.upload_file("3dbenchy_pla.gcode", len(data), data)
+        mock_moonraker.start_print("3dbenchy_pla.gcode", {})          # the printer is busy: the gate refuses
+        with self.assertRaises(printer_control.PrintBlocked):
+            printer_control.start_print("3dbenchy_pla.gcode", confirmed=True, bed_clear=True)
+
+    def test_a_last_file_that_is_gone_still_needs_the_tick_and_draws_no_guess(self):
+        print_queue.print_ended(self.pid, "gone-from-the-library.gcode", "failed")
+        gate = print_gate.summary("3dbenchy_pla.gcode")
+        self.assertIsNone(gate["bed_check"]["leftover_box"])
+        self.assertFalse(gate["bed_check"]["overlaps"])
+        with self.assertRaises(printer_control.PrintBlocked):
+            printer_control.start_print("3dbenchy_pla.gcode", confirmed=True)
+
+    def test_confirming_the_bed_removes_the_tick(self):
+        ended = print_queue.print_ended(self.pid, "3dbenchy_pla.gcode", "finished")
+        print_queue.confirm_bed_clear(self.pid, ended["job_key"])
+        self.assertIsNone(print_gate.summary("3dbenchy_pla.gcode")["bed_check"])
 
 
 if __name__ == "__main__":
