@@ -191,7 +191,8 @@ async function route(body, target) {
     const used = document.activeElement;
     const card = used && used.closest && used.closest('#fleet-grid .fleet-card');
     if (card && used.closest('[data-f="queue"]')) { card.tabIndex = -1; card.focus({ preventScroll: true }); }
-    if (r.ok) toast(`${r.body.routed} ${r.body.moved_from ? 'moved' : 'queued'} on ${r.body.to_name}. It starts only after its Confirm Print check`, 'ok', 5500);
+    if (r.ok) toast(r.body.moved_from ? `${r.body.routed} moved on ${r.body.to_name}. It starts only after its Confirm Print check`
+      : `${r.body.routed} queued on ${r.body.to_name}. It starts only after its Confirm Print check`, 'ok', 5500);
     else toast(`Couldn't queue it on ${name(target)}: ${r.body.error || r.status}`, 'bad', 7000);
     await loadQueues();
     if (window.Workshop) Workshop.loadQueue();

@@ -80,8 +80,8 @@ from ai_assistant_part2 import (  # noqa: F401  (split out 19 November 2026; nam
 )
 from ai_assistant_part3 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
     TOOLS, _NEEDS_PRINTER, _WRITES_PRINTER, _advance, _carry_out, _check_allowed, _count_usage, _label,
-    _needs_yes, _price_row, _print_watch, _run, _settings, _start, _system, _watch_ask, _watch_one, budget, chat,
-    decide, estimate, forget, select, signin, status, test, watch_loop, watch_now, watch_once_for_rule,
+    _needs_yes, _other_ais, _price_row, _print_watch, _run, _settings, _start, _system, _waits_for_a_yes, _watch_ask, _watch_one, budget, chat,
+    decide, estimate, forget, retry, select, signin, status, test, watch_loop, watch_now, watch_once_for_rule,
     watch_settings, watch_tick, watch_view,
 )
 

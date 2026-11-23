@@ -40,7 +40,7 @@ def get_capabilities():
     return {
         "actions": ["start", "pause", "resume", "cancel", "exclude_object", "set_temperature", "home", "gcode",
                     "jog", "move", "z_nudge", "extrude", "speed", "flow", "fan", "pressure_advance", "limits",
-                    "motors_off", "bed_mesh", "macro", "tool", "estop"],
+                    "motors_off", "bed_mesh", "macro", "tool", "estop", "discard_saved_print"],
         "toolheads": list(mock_moonraker.TOOLHEADS),
         "temperature_range": {"min": MIN_TEMP, "max": MAX_TEMP},
     }
@@ -54,7 +54,7 @@ class PrintBlocked(Exception):
         self.gate = gate
 
 
-def start_print(filename, confirmed=False):
+def start_print(filename, confirmed=False, bed_clear=False):
     """
     Start a print from the file library - with the interlock in front of it.
 
@@ -63,6 +63,8 @@ def start_print(filename, confirmed=False):
       - "blocked": refused, whatever the caller says.
       - "confirm": refused unless the caller passes confirmed=True, which
         the dashboard only sends from the final confirm screen.
+      - a print that ended here may still be on the bed: confirmed is not enough, bed_clear=True (the screen's tick that
+        the bed was looked at and is clear) is needed as well.
     Then the file is uploaded to the printer and the print is started, the
     same two calls a real Moonraker needs.
     """
@@ -75,15 +77,18 @@ def start_print(filename, confirmed=False):
     if not lock.acquire(blocking=False):
         raise ValueError("A print is being started on this printer right now - wait for it to finish starting")
     try:
-        return _start_locked(filename, confirmed)
+        return _start_locked(filename, confirmed, bed_clear)
     finally:
         lock.release()
 
 
-def _start_locked(filename, confirmed):
+def _start_locked(filename, confirmed, bed_clear=False):
     gate = print_gate.summary(filename)
     if gate["verdict"] == "blocked" or (gate["verdict"] == "confirm" and not confirmed):
         raise PrintBlocked(gate)
+    if gate.get("bed_check") and not bed_clear:
+        raise PrintBlocked({**gate, "blocking": [], "verdict": "confirm",
+                            "warnings": gate["warnings"] + ["Tick that you looked at the bed and it is clear, then start"]})
     if not confirmed:
         raise PrintBlocked({**gate, "blocking": [], "verdict": "confirm",
                             "warnings": gate["warnings"] or ["Confirm the print summary to start"]})
@@ -113,6 +118,11 @@ def resume_print():
 
 def cancel_print():
     return mock_moonraker.cancel_print()
+
+
+def discard_saved_print():
+    """Forget the halted print a real U1 still holds (see moonraker_client.discard_saved_print)."""
+    return mock_moonraker.discard_saved_print()
 
 
 def clear_error():

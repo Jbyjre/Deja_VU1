@@ -113,6 +113,31 @@ def _filament_match(required, state):
     return rows, blocking, warnings
 
 
+def _box(analysis):
+    """Where a file prints on the bed: [min x, min y, max x, max y] in mm, from the extruded moves."""
+    bounds = (analysis or {}).get("bounds")
+    if not bounds:
+        return None
+    return [bounds["min"][0], bounds["min"][1], bounds["max"][0], bounds["max"][1]]
+
+
+def _leftover(bed, analysis, machine):
+    """
+    The print that ended on this bed and may still be there, against where this file will print. The last file's place is known only
+    while it is still in the library; a part the printer was halted in is somewhere in that same box.
+    """
+    name = bed.get("file")
+    last = None
+    if name and file_library.exists(name) and file_library.kind_of(name) == "gcode":
+        try:
+            last = _box(file_library.checked(name, machine))
+        except (ValueError, OSError, KeyError):
+            last = None
+    this = _box(analysis)
+    overlaps = bool(this and last and this[0] < last[2] and last[0] < this[2] and this[1] < last[3] and last[1] < this[3])
+    return {"file": name, "outcome": bed.get("outcome"), "this_box": this, "leftover_box": last, "overlaps": overlaps}
+
+
 def summary(filename, printer_state=None):
     """The whole Confirm Print screen for one file on the selected printer."""
     if file_library.kind_of(filename) != "gcode":
@@ -124,6 +149,7 @@ def summary(filename, printer_state=None):
     # Checked against the printer it is for: its own size and heads.
     analysis = file_library.checked(filename, state.get("machine"))
     blocking, warnings, info = [], [], []
+    bed_check = None
     if modules.is_enabled('filament_inventory'):
         warnings += tool_setup.check_saved(state)
 
@@ -132,6 +158,10 @@ def summary(filename, printer_state=None):
         blocking.append(f"The printer is busy ({state['state']} {state.get('current_file') or ''})".strip())
     elif state["state"] == "error":
         blocking.append(f"The printer is reporting an error: {state.get('state_message')}")
+    if state.get("resume_saved"):
+        # The U1 kept the print it was halted in and can restart it by itself, onto whatever is on the bed now.
+        blocking.append("The printer still holds a halted print and can restart it by itself. Discard it on the Printer screen, "
+                        "or restore it on the printer's own screen, before starting another")
     errored = [th for th, d in state["toolheads"].items() if d["status"] == "error"]
     required = gcode_tools.required_filament(analysis)
     used = {r["toolhead"] for r in required}
@@ -178,6 +208,11 @@ def summary(filename, printer_state=None):
         if bed["state"] == "awaiting_clear":
             warnings.append(f"{bed.get('file') or 'The last print'} ended on this printer and may still be on "
                             "the bed. Take it off and check the bed is clear before starting")
+            bed_check = _leftover(bed, analysis, state.get("machine"))
+            if bed_check["overlaps"]:
+                lx0, ly0, lx1, ly1 = bed_check["leftover_box"]
+                warnings.append(f"This print would sit where {bed.get('file') or 'the last print'} did: X {lx0:.0f} to {lx1:.0f} mm, "
+                                f"Y {ly0:.0f} to {ly1:.0f} mm")
 
     # -- maintenance ----------------------------------------------------------
     maint = maintenance.get_status()
@@ -198,6 +233,8 @@ def summary(filename, printer_state=None):
         "warnings": warnings,
         "info": info,
         "printer_state": state["state"],
+        # Set while a print that ended here may still be on the bed: the start then needs the bed_clear tick, not only the warnings read.
+        "bed_check": bed_check,
         "estimated_hours": analysis["estimated_hours"],
         "estimated_hours_source": analysis["estimated_hours_source"],
         "filament_grams": analysis["filament_grams"],
@@ -249,9 +286,9 @@ def health(preflight, filament_rows, maint, blocking=None):
     overdue = sum(1 for t in maint["tasks"] if t["status"] == "overdue")
     soon = sum(1 for t in maint["tasks"] if t["status"] == "due_soon")
     if overdue:
-        take(min(45, overdue * 15), f"{overdue} maintenance {'task' if overdue == 1 else 'tasks'} overdue")
+        take(min(45, overdue * 15), f"{overdue} maintenance task overdue" if overdue == 1 else f"{overdue} maintenance tasks overdue")
     if soon:
-        take(min(15, soon * 5), f"{soon} maintenance {'task' if soon == 1 else 'tasks'} due soon")
+        take(min(15, soon * 5), f"{soon} maintenance task due soon" if soon == 1 else f"{soon} maintenance tasks due soon")
     if filament_rows is not None:
         bad = [r for r in filament_rows if r["status"] in _BAD_FILAMENT]
         close = [r for r in filament_rows if r["status"] == "close"]

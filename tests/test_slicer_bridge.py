@@ -216,6 +216,41 @@ class TestSettings(SlicerBridgeTest):
         self.assertIn("didn't answer like OrcaSlicer", result["error"])
 
 
+class TestTheEngineRunsBelowNormalPriority(unittest.TestCase):
+    """The engine takes every core while it slices; at normal priority the dashboard stopped answering (22 November 2026)."""
+
+    @unittest.skipUnless(os.name == "posix" and hasattr(os, "setpriority"), "nice values exist on Linux and macOS")
+    def test_the_program_it_starts_is_niced(self):
+        code, out, _err = slicer_bridge._run(
+            [sys.executable, "-c", "import os, time; time.sleep(0.6); print(os.getpriority(os.PRIO_PROCESS, 0))"], 20)
+        self.assertEqual(code, 0)
+        self.assertGreaterEqual(int(out.decode().strip()), slicer_bridge._NICE)
+
+    @unittest.skipUnless(os.name == "posix" and hasattr(os, "setpriority"), "nice values exist on Linux and macOS")
+    def test_a_priority_that_cannot_be_changed_never_stops_a_slice(self):
+        with unittest.mock.patch.object(os, "setpriority", side_effect=PermissionError("no")):
+            code, out, _err = slicer_bridge._run([sys.executable, "-c", "print('ok')"], 20)
+        self.assertEqual((code, out.decode().strip()), (0, "ok"))
+
+    def test_windows_is_asked_for_below_normal_in_the_creation_flags(self):
+        seen = {}
+
+        class Proc:
+            pid = 1
+            returncode = 0
+
+            def communicate(self, timeout=None):
+                return b"", b""
+
+        def popen(cmd, **kwargs):
+            seen.update(kwargs)
+            return Proc()
+        with unittest.mock.patch.object(slicer_bridge.os, "name", "nt"), \
+                unittest.mock.patch.object(slicer_bridge.subprocess, "Popen", popen):
+            slicer_bridge._run(["engine.exe", "--help"], 5)
+        self.assertTrue(seen["creationflags"] & 0x00004000)               # BELOW_NORMAL_PRIORITY_CLASS
+
+
 class TestWindowsConsoleBuild(SlicerBridgeTest):
     """
     Snapmaker Orca on Windows prints `--help` to a console window of its own (Snapmaker_Orca.cpp,

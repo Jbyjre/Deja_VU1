@@ -621,11 +621,11 @@ async function loadQueue() {
     const bed = q.bed || { state: 'clear' };
     const who = printerName(q.printer);
     const ended = bed.ended_at ? bed.ended_at.slice(11, 16) : '';
-    const how = { finished: 'finished', failed: 'failed', cancelled: 'was cancelled' }[bed.outcome] || 'ended';
+    const how = { finished: 'It finished', failed: 'It failed', cancelled: 'It was cancelled' }[bed.outcome] || 'It ended';
     host.innerHTML = `
       ${bed.state === 'awaiting_clear' ? `<div class="bed-hold" role="status">
         <p><b>Take ${esc(bed.file || 'the last print')} off the bed</b>
-          <small>It ${how} on ${esc(who)}${ended ? ` at ${esc(ended)}` : ''}. Nothing in this queue starts on ${esc(who)} until you confirm.</small></p>
+          <small>${how} on ${esc(who)}${ended ? ` at ${esc(ended)}` : ''}. Nothing in this queue starts on ${esc(who)} until you confirm.</small></p>
         <button class="btn primary" id="bed-clear" type="button" data-job="${esc(bed.job_key || '')}"
                 aria-label="Part removed, bed clear: ${esc(who)}, ${esc(bed.file || 'the last print')}">Part removed, bed clear
           <small>${esc(who)} · ${esc(bed.file || 'the last print')}</small></button>

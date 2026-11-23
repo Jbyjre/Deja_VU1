@@ -26,8 +26,18 @@
 
 function wire() {
     el.body.addEventListener('click', e => {
-      const t = e.target.closest('[data-yes],[data-no],[data-always],[data-print],[data-file],[data-place],[data-apply],[data-say],[data-chat],[data-del]');
+      const t = e.target.closest('[data-yes],[data-no],[data-always],[data-print],[data-file],[data-place],[data-apply],[data-say],[data-chat],[data-del],[data-retry]');
       if (!t || !el.body.contains(t)) return;
+      if (t.dataset.retry) {
+        t.parentElement.querySelectorAll('button').forEach(b => { b.disabled = true; });
+        aiState.autoFrom = Math.min(aiState.autoFrom, aiState.seen);
+        postJSON(api('/api/assistant/retry'), { thread: threadId(), provider: t.dataset.retry }).then(res => {
+          if (!res.ok) { toast(res.body.error || 'That AI could not be asked', 'bad'); t.parentElement.querySelectorAll('button').forEach(b => { b.disabled = false; }); return; }
+          refresh();
+          poll();
+        });
+        return;
+      }
       if (t.dataset.chat) { openChat(t.dataset.chat); return; }
       if (t.dataset.del) { deleteChat(t.dataset.del, t); return; }
       if (t.dataset.print) { if (window.Workshop) Workshop.openConfirm(t.dataset.print, t); return; }

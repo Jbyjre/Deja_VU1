@@ -29,7 +29,7 @@ function renderTaskRow(task) {
         <div class="task-desc" title="${esc(task.description)}">${esc(task.description)}</div>
       </div>
       <div class="task-gauge">
-        <div class="task-meta" title="${esc(task.reason)}">${esc(task.reason)} · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min${snoozed}</div>
+        <div class="task-meta" title="${esc(task.reason)}"><span>${esc(task.reason)}</span> · ${task.percent.toFixed(0)}% · ~${task.est_minutes} min${snoozed}</div>
         <div class="bar"><span style="width:${Math.min(task.percent, 100)}%"></span></div>
       </div>
       <div class="task-actions">

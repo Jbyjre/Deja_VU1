@@ -26,7 +26,7 @@ paths:
 
 # Talking to a real printer
 
-Deja Vu1 has run on a real Snapmaker U1 with stock firmware (see `docs/testing.md`). It talks to
+Deja Vu1 has run on a real Snapmaker U1 with stock firmware 2.1.2 (see `docs/testing.md`, the live run of 22 November 2026). It talks to
 Moonraker: one WebSocket per printer for live state, HTTP for commands, history and uploads.
 Upstream code (u1-moonraker, u1-klipper, the Extended Firmware, paxx12/v4l2-mpp) is GPL-3: match
 its behaviour, never paste it.
@@ -78,8 +78,8 @@ its behaviour, never paste it.
 - `translate_state` builds `state["problem"]` (the most important) and `state["problems"]` through `printer_problems.collect/public`, and puts the wiki's
   title and the code in `state_message` ("Paused: Printing Anomaly (0002-0523-0000-0038)"). A pause with no code and no message stays "Paused". Never show
   `print_stats.exception` while printing: a stale one is ignored on purpose.
-- `MoonrakerPrinter.messages` (80 lines) keeps problems, `!!`/code replies and shutdown reasons; `recent_messages()`. Not verified on a real U1: the field and
-  notification names come from the firmware's source, and no real printer has raised a code to this version. `tests/fake_moonraker.py` `raise_exception` /
+- `MoonrakerPrinter.messages` (80 lines) keeps problems, `!!`/code replies and shutdown reasons; `recent_messages()`. Seen on a real U1 (22 November 2026): a dirty-bed pause and the Halt
+  shutdown, both in the Logbook; the field and notification names still come from the firmware's source and a pause's code on screen was not recorded. `tests/fake_moonraker.py` `raise_exception` /
   `clear_exception` raise one the way that firmware does.
 - `live_feed._note_problems` judges the code appearing, not the state changing (the code can arrive after the pause): it publishes `printer_problem`,
   `logbook.record_problem` (one entry with an `incident`, adopted again after a restart for 12 h), `tester.note_problem`, and `logbook.clear_problem` when

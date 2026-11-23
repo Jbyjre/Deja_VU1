@@ -304,7 +304,36 @@ window.PrinterPage = (() => {
     paint(body, `<div class="ov-state" data-state="${esc(s.link_lost ? 'lost' : s.state)}">
         <span class="ov-dot" aria-hidden="true"></span><span class="ov-word">${esc(s.link_lost ? 'No live link' : WORD[s.state] || s.state)}</span>
         ${head ? `<span class="ov-head"><i style="background:${esc(head.filament_color_hex || '#ccc')}"></i>${esc(s.active_toolhead)}</span>` : ''}
-      </div>${lines}${s.problem && window.ErrorHelp ? ErrorHelp.strip(s.problem, s.printer_id) : ''}${nowFigures(s, head)}`);
+      </div>${lines}${s.problem && window.ErrorHelp ? ErrorHelp.strip(s.problem, s.printer_id) : ''}${resumeCard(s)}${nowFigures(s, head)}`);
+  }
+  /* After a Halt or a power cut the U1 keeps the print it was on and can restart it by itself, onto whatever is on the bed now
+     (seen on firmware 2.1.2). Confirm Print refuses another start until this is decided: discard it here, or restore it on the printer. */
+  function resumeCard(s) {
+    if (!s.resume_saved || s.link_lost) return '';
+    return `<div class="eh-strip is-warning rs-card" role="status"><span class="eh-level is-warning">Saved print</span>
+      <span class="eh-strip-text"><b>The printer still holds a halted print</b>
+        <span class="rs-why">It can restart that print by itself, onto whatever is on the bed now. Clear the bed, then discard it here or restore it on the printer's screen. Deja Vu1 starts no other print until then.</span></span>
+      <button class="btn small" type="button" data-resume-discard>Discard the halted print</button></div>`;
+  }
+  /* Discarding can't be undone, so the first press only arms the button, like Cancel. */
+  function discardSaved(button) {
+    if (button.dataset.armed) {
+      clearTimeout(Number(button.dataset.armed));
+      delete button.dataset.armed;
+      button.classList.remove('is-armed');
+      button.textContent = button.dataset.label;
+      runCommand(button, '/api/printer/control/discard-saved-print', {},
+        { sending: 'Discarding…', done: 'Halted print discarded', failed: 'Discard refused', expect: st => !st.resume_saved });
+      return;
+    }
+    button.dataset.label = button.textContent;
+    button.textContent = 'Press again to discard';
+    button.classList.add('is-armed');
+    button.dataset.armed = String(setTimeout(() => {
+      delete button.dataset.armed;
+      button.classList.remove('is-armed');
+      button.textContent = button.dataset.label;
+    }, 4000));
   }
   /* The figures someone glances at: the head and bed against their targets, speed,
      fan and flow as the printer reports them. A figure it doesn't report is left out. */
@@ -697,6 +726,8 @@ window.PrinterPage = (() => {
     initPrefs();
     document.querySelectorAll('.pcam[data-cam]').forEach(initCam);
     document.addEventListener('click', e => {
+      const discard = e.target.closest('[data-resume-discard]');
+      if (discard) { discardSaved(discard); return; }
       const open = e.target.closest('[data-open-printer]');
       if (open) {
         if (window.Workshop && Workshop.selectPrinter && open.dataset.openPrinter !== currentPrinter) Workshop.selectPrinter(open.dataset.openPrinter);
@@ -741,5 +772,7 @@ window.PrinterPage = (() => {
     setTimeout(() => syncCam(cam), 0);
     return cam;
   }
-  return { presets, DEFAULT_PRESETS, PRESET_KEY, hoursWords, syncCams, attachCam };
+  // What the Printer screen (cockpit.js) shows under This print: the halted print the U1 still holds.
+  const notes = s => (s ? resumeCard(s) : '');
+  return { presets, DEFAULT_PRESETS, PRESET_KEY, hoursWords, syncCams, attachCam, notes };
 })();

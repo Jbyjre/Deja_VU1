@@ -66,9 +66,15 @@ class GetRoutes:
             return self._send_json({"error": str(exc), "updating": True}, status=409)
         except mock_moonraker.PrinterCommandError as exc:
             # The printer side failed. Say so plainly - never a success.
-            self._note_refusal(502, f"The printer reported a failure: {exc}")
-            return self._send_json({"error": f"The printer reported a failure: {exc}",
-                                    "printer_failed": True}, status=502)
+            # A command the printer answered and refused ("Must home X and Y axes first") was understood and cannot be done in the state the
+            # printer is in: a 409, not the 502 of a printer that could not be reached (the live run on a real U1, 22 November 2026). A read
+            # the printer does not support (a stand-in, an older firmware) stays a 502: nothing was asked of the printer's state.
+            refused = isinstance(exc, mock_moonraker.PrinterRefused) and self.command != "GET"
+            self._note_refusal(409 if refused else 502, f"The printer reported a failure: {exc}")
+            body = {"error": f"The printer reported a failure: {exc}", "printer_failed": True}
+            if refused:
+                body["printer_refused"] = True
+            return self._send_json(body, status=409 if refused else 502)
         except ValueError as exc:
             if self.path.startswith(("/api/printer/control/", "/api/fleet/broadcast")):
                 self._note_refusal(400, str(exc))

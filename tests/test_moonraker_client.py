@@ -257,6 +257,21 @@ class TestSmallPieces(unittest.TestCase):
         self.assertEqual(mc.clean_error('!! {"coded": "0001-0531-0000-0001", "msg":"SD busy", "action": "none"}'),
                          "SD busy (code 0001-0531-0000-0001)")
 
+    def test_json_behind_other_words_is_readable_too(self):
+        # After a Halt on a real U1 the screen showed this raw (22 November 2026); the exact words are not recorded, so these are the shapes.
+        self.assertEqual(mc.clean_error('Printer is shutdown\n\nreason: {"coded": "0003-0523-0000-0001", "msg": "Heater e0 not heating", "action": "none"}'),
+                         'Printer is shutdown\n\nreason: Heater e0 not heating (code 0003-0523-0000-0001)')
+        self.assertEqual(mc.clean_error('two: {"msg": "one"} and {"coded": "0001-0001-0000-0002", "msg": "two"}'),
+                         "two: one and two (code 0001-0001-0000-0002)")
+        self.assertEqual(mc.clean_error('keep {not json} and {"msg": "unclosed'), 'keep {not json} and {"msg": "unclosed')
+
+    def test_a_halt_is_said_as_the_emergency_stop(self):
+        said = mc.clean_error('Printer is shutdown\n\n{"coded": "0003-0519-0000-0007", "msg": "Shutdown due to M112 command"}')
+        self.assertTrue(said.startswith("Emergency stop: every motor and heater was stopped"), said)
+        self.assertIn("(code 0003-0519-0000-0007)", said)
+        self.assertNotIn("{", said)
+        self.assertEqual(mc.clean_error("Emergency stop pressed"), "Emergency stop pressed")      # already plain: left alone
+
     def test_update_status(self):
         packages = mc.packages_from_update_status(DOC_UPDATE_STATUS)["packages"]
         self.assertEqual([p["name"] for p in packages], ["mainsail", "moonraker"])   # "system" has no version

@@ -62,7 +62,8 @@ async function loadModules() {
         input.checked = !want;
         rowEl.classList.toggle('is-on', !want);
         note.textContent = '';
-        toast(`Couldn't turn ${input.getAttribute('aria-label')} ${want ? 'on' : 'off'}: ${body.error || 'the server refused'}`, 'bad', 6000);
+        const label = input.getAttribute('aria-label'), why = body.error || 'the server refused';
+        toast(want ? `Couldn't turn ${label} on: ${why}` : `Couldn't turn ${label} off: ${why}`, 'bad', 6000);
         return;
       }
       note.textContent = want ? 'On' : 'Off';

@@ -415,7 +415,7 @@ function initConfirm() {
     $('confirm-go').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       const name = wsState.confirmFile;
-      const r = await runCommand(btn, '/api/printer/control/start', { filename: name, confirmed: true }, {
+      const r = await runCommand(btn, '/api/printer/control/start', { filename: name, confirmed: true, bed_clear: !!($('confirm-bed-clear') && $('confirm-bed-clear').checked) }, {
         sending: 'Starting…', done: `Started ${name}`, failed: 'Start refused',
         expect: s => s.state === 'printing' && s.current_file === name,
       });

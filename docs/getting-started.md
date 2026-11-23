@@ -365,8 +365,8 @@ The GitHub Desktop steps have not been tried on Windows or macOS.
 
 ## What has been tested
 
-Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware, from a
-Windows computer. Every release also runs the automated suite on Linux, with
+Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware 2.1.2, from a
+Windows computer, including a two-colour print that ran to the end. Every release also runs the automated suite on Linux, with
 the launcher, updates, rollback and git-copy updates exercised against real
 processes and real git repositories, and macOS start-up runs with stand-ins. The dated record of
 what ran where is [testing.md](testing.md).

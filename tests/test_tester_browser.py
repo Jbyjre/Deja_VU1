@@ -131,8 +131,8 @@ class TestTesterWalk(unittest.TestCase):
         ob = self.report["onboarding"]
         self.assertTrue(ob["first_run"])
         wizard = ob["wizard"]
-        self.assertEqual((wizard["opened"], wizard["skipped"], wizard["finished"], wizard["furthest_step"], wizard["steps_total"]), (1, 1, 0, 3, 7))
-        self.assertEqual([s["name"] for s in wizard["steps"]], ["Welcome", "Make it yours", "Your printer"])
+        self.assertEqual((wizard["opened"], wizard["skipped"], wizard["finished"], wizard["furthest_step"], wizard["steps_total"]), (1, 1, 0, 4, 8))
+        self.assertEqual([s["name"] for s in wizard["steps"]], ["Language", "Welcome", "Make it yours", "Your printer"])
         self.assertEqual(ob["tour"]["started"], 1)
         self.assertEqual(ob["tour"]["ended_early"], 1)
         self.assertGreaterEqual(ob["tour"]["steps_seen"], 2)

@@ -631,7 +631,8 @@ def _label(name, args):
         "spool_weight": lambda: f"Record a spool at {g('grams_remaining')} g",
         "pressure_advance": lambda: f"Set pressure advance on {str(g('toolhead')).upper()} to {g('value')}",
         "motion_limits": lambda: "Set the speed and acceleration limits",
-        "runout_sensor": lambda: f"Switch the runout sensor {g('name')} {'on' if g('enabled') in (True, 'true', 1, '1') else 'off'}",
+        "runout_sensor": lambda: (f"Switch the runout sensor {g('name')} on" if g('enabled') in (True, 'true', 1, '1')
+                                  else f"Switch the runout sensor {g('name')} off"),
         "mesh_profile": lambda: f"{str(g('action')).capitalize()} the bed mesh {g('profile')}".strip(),
         "clear_error": lambda: "Restart the firmware to clear the error",
         "skip_object": lambda: f"Skip {g('name')} for the rest of this print",
@@ -639,7 +640,8 @@ def _label(name, args):
         "set_look": lambda: f"Switch the look to {g('theme')}",
         "show_tour": lambda: "Show a short tour" + (f" of {g('screen')}" if g("screen") else ""),
         "automation_add": lambda: "Add the automation " + ((g("rule") or {}).get("name") or "rule" if isinstance(g("rule"), dict) else "rule"),
-        "automation_toggle": lambda: f"Switch an automation {'on' if g('enabled', True) in (True, 'true', 1, '1') else 'off'}",
+        "automation_toggle": lambda: ("Switch an automation on" if g('enabled', True) in (True, 'true', 1, '1')
+                                      else "Switch an automation off"),
         "automation_remove": lambda: "Delete an automation",
         "print_watch": lambda: "Change print watch: " + ", ".join(f"{k} {v}" for k, v in a.items())[:120],
         "file_delete": lambda: f"Delete {g('name')}",
@@ -852,6 +854,21 @@ def _advance(thread, ctx):
     return True
 
 
+def _waits_for_a_yes(actions, settings):
+    """True when one of the steps an answer asks for will wait for the owner's yes in the mode in use."""
+    return any(not a.get("error") and a.get("tool") in TOOLS and _needs_yes(a["tool"], a.get("args"), settings["mode"], settings["never_ask"])
+               for a in actions)
+
+
+def _other_ais():
+    """The other AIs that have answered a check and are still set up, for the "Ask again with" buttons after an error."""
+    try:
+        s = status()
+        return [c for c in s["connections"] if c["id"] != s["provider"]][:4]
+    except Exception:
+        return []
+
+
 def _run(thread, ctx):
     """One request, start to finish (or until a step waits). Runs on its own thread."""
     try:
@@ -884,11 +901,16 @@ def _run(thread, ctx):
                 say, actions = parse(answer)
                 if say:
                     _add(thread, "assistant", text=say[:MAX_TEXT])
+                    if actions and _waits_for_a_yes(actions, settings):
+                        # The model wrote this before the owner answered, and once wrote "The bed is now set" over a step still waiting
+                        # (22 November 2026, Ask mode). Whatever it says, the screen says what is true.
+                        _add(thread, "note", text="Nothing is done until you approve the step below. It only counts once it says Done.")
                 if not actions:
                     return
                 thread["work"] = {"actions": actions, "index": 0, "results": [], "images": [], "done": 0}
     except ai_providers.AIError as error:
-        _add(thread, "error", text=str(error))
+        # An AI that is busy or down (a 503 "high demand") leaves the others you connected ready: offer them in one press.
+        _add(thread, "error", text=str(error), alternatives=_other_ais())
     except Exception as error:
         _add(thread, "error", text=f"The assistant stopped: {error}")
     finally:
@@ -931,6 +953,24 @@ def _count_usage(thread, answer):
 def _start(thread, ctx):
     thread["busy"], thread["stop"] = True, False
     threading.Thread(target=_run, args=(thread, ctx), daemon=True, name="assistant").start()
+
+
+def retry(tid, provider, printer_id, demo=False):
+    """Ask the last question again with another AI you have connected, after the one in use answered with an error."""
+    if provider not in [c["id"] for c in status()["connections"]]:
+        raise ValueError("That AI is not connected")
+    thread = _thread(tid, printer_id)
+    if thread["busy"] or thread["pending"]:
+        raise ValueError("The assistant is still working on the last request. Stop it first to ask again")
+    if not thread["history"] or thread["history"][-1]["role"] != "user":
+        raise ValueError("There is no unanswered question to ask again")
+    s = select(provider)
+    name = next((c["name"] for c in s["connections"] if c["id"] == provider), provider)
+    _add(thread, "note", text=f"Asking again with {name}.")
+    thread["rounds"], thread["work"] = 0, None
+    _save_chat(thread)
+    _start(thread, _ctx(printer_id, demo))
+    return view(tid)
 
 
 def chat(tid, text, printer_id, demo=False, context=None, picture=None):

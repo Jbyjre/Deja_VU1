@@ -285,8 +285,11 @@ async function main() {
     await page.waitForTimeout(300);
     const prob = await page.evaluate(() => [...document.querySelectorAll('#sl-problems .sl-pb')].map(r => r.innerText.replace(/\s+/g, ' ')));
     check(prob.some(t => /over the edge/i.test(t) && /Move onto the plate/.test(t)), `an object over the edge is named with its fix: ${prob[0]}`);
+    const gate = await page.evaluate(() => ({ off: document.getElementById('sl-slice').disabled, why: (document.getElementById('sl-go-why') || {}).textContent || '' }));
+    check(gate.off && /over the edge/i.test(gate.why), `Slice plate is off while a model hangs over the edge, and the bar says why: ${gate.why}`);
     await page.click('#sl-problems .sl-pf'); await page.waitForTimeout(400);
     check((await model(page)).every(o => o.max[0] <= 270.5), 'the fix moves it back inside');
+    check(await page.evaluate(() => !document.getElementById('sl-slice').disabled && !document.getElementById('sl-go-why')), 'and Slice plate is on again, with no reason shown');
     await page.evaluate(() => { const m = SL.state.model; m.setTool([m.objects[1].id], 1); });
     await page.waitForTimeout(500);
     check(await page.evaluate(() => SL.state.view.items.has(990) && !!SL.state.model.tower), 'two heads bring up the prime tower on the plate');

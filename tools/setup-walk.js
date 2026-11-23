@@ -102,7 +102,11 @@ const LAPTOP = { viewport: { width: 1366, height: 800 } };
 const PHONE = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 
 async function visit(browser, server, options, init) {
-  const context = await browser.newContext(options);
+  // A visit has chosen English already, so the steps below are the same ones as before translations existed; the language visits
+  // at the end of the walk start with nothing chosen.
+  const { freshLanguage, ...contextOptions } = options;
+  const context = await browser.newContext(contextOptions);
+  if (!freshLanguage) await context.addInitScript(() => { try { localStorage.setItem('dejavu1.lang', 'en'); } catch (e) { /* blocked */ } });
   if (init) await context.addInitScript(init);
   const page = await context.newPage();
   page.errors = [];
@@ -205,6 +209,36 @@ async function walk(browser, server, address, shots) {
   await page.waitForTimeout(1500);
   check(!(await page.evaluate(() => document.getElementById('setup-dialog').open)), 'With localStorage blocked, setup stays closed after a reload');
   check(page.errors.length === 0, 'No script errors with localStorage blocked');
+  await page.context().close();
+
+  // The Language step: first, while a translation is installed and none was chosen; a language other than the one on screen is saved
+  // and the page reloads in it; the browser's own language is suggested, never applied by itself.
+  page = await visit(browser, server, { ...LAPTOP, freshLanguage: true });
+  check(/Step 1 of 8 · Language/.test(await stepText(page)), 'A first visit sees a Language step first, eight steps in all: ' + (await stepText(page)));
+  const labels = await page.$$eval('[data-setup-lang]', els => els.map(e => e.textContent.trim()));
+  check(labels.includes('English') && labels.includes('Español (Spanish)'), 'It offers English and Spanish by their own names: ' + labels.join(' | '));
+  check(!(await page.textContent('#setup-content')).includes('Your browser is set to'), 'With an English browser it suggests nothing');
+  await shot(page, 'language-step');
+  await page.click('[data-setup-lang="es"]');
+  await page.waitForFunction(() => /Paso 1 de 7/.test((document.getElementById('setup-step') || {}).textContent || ''), null, { timeout: 15000 }).catch(() => {});
+  check(/Paso 1 de 7/.test(await stepText(page)), 'Choosing Spanish reloads the page in Spanish, and setup goes on at its first step: ' + (await stepText(page)));
+  check((await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === 'es', 'The choice is saved in this browser');
+  check((await page.textContent('#setup-content')).includes('Configura tu espacio de trabajo'), 'The welcome step is in Spanish');
+  await shot(page, 'welcome-in-spanish');
+  check(page.errors.length === 0, 'No script errors in Spanish' + (page.errors.length ? ': ' + page.errors[0] : ''));
+  await page.context().close();
+
+  page = await visit(browser, server, { ...LAPTOP, freshLanguage: true, locale: 'es-ES' });
+  const hint = await page.textContent('#setup-content');
+  check(/Your browser is set to Spanish/.test(hint) && (await page.getAttribute('[data-setup-lang="es"]', 'class')).includes('primary'),
+    'A Spanish browser sees Spanish suggested, but English still on screen until it is pressed');
+  check((await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === null, 'Nothing is saved until a language is pressed');
+  await page.click('#setup-next');
+  check(/Step 2 of 8 · Welcome/.test(await stepText(page)) && (await page.evaluate(() => localStorage.getItem('dejavu1.lang'))) === 'en',
+    'Continue stays in English and remembers it');
+  await page.reload();
+  await page.waitForSelector('#setup-dialog[open]', { timeout: 15000 });
+  check(/Step 1 of 7/.test(await stepText(page)), 'After a language was chosen the Language step does not come back');
   await page.context().close();
 }
 

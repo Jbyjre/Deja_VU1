@@ -325,11 +325,22 @@
     return languageList;
   }
 
+  /* Saves a choice without reloading (the first-run setup does this when the language on screen is the one that was picked). */
+  function choose(code) { store.set(STORE, code); }
+  /* True once a language, English included, has been chosen on this browser. */
+  function chosen() { return !!store.get(STORE); }
+  /* False in a browser that blocks saved settings: a choice would be lost at the reload, so none is offered. */
+  function canSave() {
+    try { localStorage.setItem(STORE + '.probe', '1'); localStorage.removeItem(STORE + '.probe'); return true; } catch (_) { return false; }
+  }
+
   function setLanguage(code) {
     store.set(STORE, code);
     const url = new URL(location.href);
     url.searchParams.delete('lang');
-    location.replace(url.toString());
+    // Replacing a page with the same address (every address here ends in #/place) only moves within the page: reload it instead.
+    if (url.toString() === location.href) location.reload();
+    else location.replace(url.toString());
   }
 
   // The picker in Settings, Appearance.
@@ -365,6 +376,9 @@
     same,
     available,
     setLanguage,
+    choose,
+    chosen,
+    canSave,
     lang: () => lang,
     misses: () => [...missed].map(([textValue, v]) => ({ text: textValue, count: v.count, where: v.where })).sort((a, b) => b.count - a.count),
     translateNow: root => { if (lang !== 'en' && ready) walk(root || document.documentElement); },

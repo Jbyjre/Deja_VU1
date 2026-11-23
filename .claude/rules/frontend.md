@@ -77,7 +77,9 @@ code can sit in more than one part: search the family (`grep -n "function render
   finder.js do); **never compare the DOM with a string you computed to skip a redraw** (keep what you drew, as `tags._drawn` in twin3d.js does).
   A text that reaches no DOM node as one piece goes through `I18n.t('Saved {name}', { name })`. `?lang=pseudo` accents and lengthens every
   catalogued text (nothing is saved), `?i18n=debug` makes `I18n.misses()` list what was seen and not found. The picker is in Settings,
-  Appearance (`#language-choice`). Check a screen with `node tools/i18n-check.js` and its fit with `node tools/text-audit.js --lang pseudo`.
+  Appearance (`#language-choice`); on a first start setup opens with a Language step (`launchpad.js`, only while a language besides English is installed, none was chosen and
+  `I18n.canSave()`; a browser language that is installed is highlighted, never applied by itself). `I18n.setLanguage` reloads with `location.reload()` when the address would not change (every address ends in `#/place`).
+  A server or page sentence with a changing word is written as one whole sentence per case, never `${n === 1 ? 'task' : 'tasks'}` (`TestSentencesStayWhole`). Check a screen with `node tools/i18n-check.js` and its fit with `node tools/text-audit.js --lang pseudo`.
 
 - Escape everything that reaches `innerHTML` with `esc()`, including file metadata.
 - Panels on the 5-second refresh render through `paint()`; it skips unchanged HTML and stops the

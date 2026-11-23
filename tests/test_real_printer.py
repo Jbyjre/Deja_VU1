@@ -430,12 +430,31 @@ class TestPrinting(RealPrinterAPI):
         self.assertEqual(body["confirmed_state"]["state"], "printing")
         self.assertEqual(self.fake.files[CUBE], file_library.read_bytes(CUBE))
 
-    def test_a_printer_refusal_is_a_502_in_its_own_words(self):
+    def test_a_printer_refusal_is_a_409_in_its_own_words(self):
+        # The printer answered and said no: a 409. A printer that cannot be reached stays a 502 (the next test).
         file_library.add_samples()
         self.fake.gcode_errors["SDCARD_PRINT_FILE"] = "Must home axis first"
         status, body = self.request("/api/printer/control/start", {"filename": CUBE, "confirmed": True})
-        self.assertEqual(status, 502)
+        self.assertEqual(status, 409)
+        self.assertTrue(body["printer_refused"] and body["printer_failed"])
         self.assertIn("Must home axis first", body["error"])
+
+    def test_a_read_the_printer_does_not_support_stays_a_502(self):
+        # A command that is refused is a 409 (above). A read the printer answers with "no such method" (a stand-in, an older firmware) asked
+        # nothing of the printer's state: it stays a 502, which the browser walk's stand-in printer relies on.
+        with patch("mock_moonraker.printer_reading", side_effect=mc.PrinterRefused("Method not found: printer.objects.list")):
+            status, body = self.request("/api/printer/macros")
+        self.assertEqual(status, 502)
+        self.assertTrue(body["printer_failed"])
+        self.assertNotIn("printer_refused", body)
+
+    def test_a_printer_that_cannot_be_reached_is_still_a_502(self):
+        import printer_control
+        with patch.object(printer_control, "home", side_effect=mc.PrinterUnreachable("No answer from Moonraker")):
+            status, body = self.request("/api/printer/control/home", {"axes": "XYZ"})
+        self.assertEqual(status, 502)
+        self.assertTrue(body["printer_failed"])
+        self.assertNotIn("printer_refused", body)
 
     def test_sign_in_and_bare_addresses_through_the_api(self):
         key = "abcdef0123456789abcdef0123456789"
@@ -525,6 +544,81 @@ class TestPrinting(RealPrinterAPI):
         self.assertFalse(finished[0]["demo"])
         left = next(s for s in filament_inventory.get_inventory() if s["id"] == spool["id"])
         self.assertEqual(left["grams_remaining"], 490.0)
+
+
+class TestAHaltedPrintTheU1StillHolds(RealPrinterAPI):
+    """After a Halt the U1 keeps the print and can restart it by itself (22 November 2026, firmware 2.1.2)."""
+
+    def hold(self):
+        self.fake.set("virtual_sdcard", pl_env_valid=True)
+        self.assertTrue(wait_for(lambda: mock_moonraker.real_printer(self.pid).snapshot().get("resume_saved")))
+
+    def test_the_state_says_whether_the_printer_holds_one(self):
+        self.assertIs(mock_moonraker.real_printer(self.pid).snapshot()["resume_saved"], False)
+        self.hold()
+        status, state = self.request(f"/api/printer?printer={self.pid}")
+        self.assertEqual((status, state["resume_saved"]), (200, True))
+
+    def test_a_printer_without_the_flag_says_nothing_about_it(self):
+        import moonraker_client_part2 as part2
+        ctx = {"printer_id": "x", "name": "Other Klipper printer"}
+        plain = part2.translate_state({"print_stats": {"state": "standby"}, "virtual_sdcard": {"progress": 0.0}}, ctx)
+        self.assertNotIn("resume_saved", plain)
+        junk = part2.translate_state({"print_stats": {"state": "standby"}, "virtual_sdcard": {"pl_env_valid": "yes"}}, ctx)
+        self.assertNotIn("resume_saved", junk)                          # only a real boolean counts
+        held = part2.translate_state({"print_stats": {"state": "standby"}, "virtual_sdcard": {"pl_env_valid": True}}, ctx)
+        self.assertIs(held["resume_saved"], True)
+        error = part2.translate_state({"print_stats": {"state": "error"}, "virtual_sdcard": {"pl_env_valid": True}}, ctx)
+        self.assertIs(error["resume_saved"], False)                     # an errored printer can't restart anything
+
+    def test_confirm_print_refuses_to_start_another_until_it_is_decided(self):
+        file_library.add_samples()
+        self.hold()
+        status, gate = self.request(f"/api/print/confirm?file={CUBE}")
+        self.assertEqual((status, gate["verdict"]), (200, "blocked"))
+        self.assertTrue(any("still holds a halted print" in why for why in gate["blocking"]), gate["blocking"])
+        status, body = self.request("/api/printer/control/start", {"filename": CUBE, "confirmed": True})
+        self.assertNotEqual(status, 200)
+        self.assertNotIn(CUBE, self.fake.files)                       # nothing was uploaded
+        self.assertFalse([s for s in self.fake.scripts if s.startswith("SDCARD_PRINT_FILE")])
+
+    def test_discarding_it_sends_the_printers_own_command_and_frees_the_start(self):
+        file_library.add_samples()
+        self.hold()
+        status, body = self.request("/api/printer/control/discard-saved-print", {})
+        self.assertEqual(status, 200, body)
+        self.assertIn("SDCARD_PRINT_PL_CLEAR_ENV", self.fake.scripts)
+        self.assertIs(body["confirmed_state"]["resume_saved"], False)
+        status, gate = self.request(f"/api/print/confirm?file={CUBE}")
+        self.assertFalse(any("halted print" in why for why in gate["blocking"]), gate["blocking"])
+
+    def test_there_is_nothing_to_discard_when_none_is_held_or_a_print_runs(self):
+        status, body = self.request("/api/printer/control/discard-saved-print", {})
+        self.assertEqual(status, 400)
+        self.assertIn("isn't holding a halted print", body["error"])
+        self.assertNotIn("SDCARD_PRINT_PL_CLEAR_ENV", self.fake.scripts)
+        self.printing()
+        self.fake.set("virtual_sdcard", pl_env_valid=True)
+        status, body = self.request("/api/printer/control/discard-saved-print", {})
+        self.assertEqual(status, 400)
+        self.assertIn("print is running", body["error"])
+
+    def test_the_flag_means_nothing_during_a_print(self):
+        self.printing()
+        self.fake.set("virtual_sdcard", pl_env_valid=True)
+        time.sleep(0.4)
+        self.assertIs(mock_moonraker.real_printer(self.pid).snapshot()["resume_saved"], False)
+
+    def test_watch_only_refuses_the_discard(self):
+        import watch_only
+        watch_only.reset()
+        self.addCleanup(watch_only.reset)
+        self.hold()
+        self.request("/api/app/watch-only", {"on": True})
+        status, body = self.request(f"/api/printer/control/discard-saved-print?printer={self.pid}", {})
+        self.assertEqual(status, 409)
+        self.assertTrue(body.get("watch_only"))
+        self.assertNotIn("SDCARD_PRINT_PL_CLEAR_ENV", self.fake.scripts)
 
 
 class TestPrintPreviewFromThePrinter(RealPrinterAPI):

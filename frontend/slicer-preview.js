@@ -112,9 +112,13 @@
       buttons = r ? `<button type="button" class="sl-btn" id="sl-back">${ic('back')}Prepare</button>${sl.stale ? '<button type="button" class="sl-btn sl-primary" id="sl-slice">Slice again</button>' : `<button type="button" class="sl-btn" id="sl-more">More…</button><button type="button" class="sl-btn sl-primary" id="sl-print">${ic('printer')}Print plate</button>`}`
         : `<button type="button" class="sl-btn" id="sl-back">${ic('back')}Prepare</button>`;
     } else {
-      info = count ? `<span class="sl-go-info"><b>${count} object${count > 1 ? 's' : ''}</b><span>${sl.state === 'done' && !sl.stale && sl.result ? 'Sliced: ' + esc(timeWords(sl.result.hours)) : 'Plate ' + (m.current + 1) + (haveEngine ? '' : ' · no engine yet')}</span></span>` : '';
+      // A model bigger than the U1, or hanging over the plate's edge, cannot be sliced: the button says so instead of doing nothing (22 November 2026).
+      const blocked = count > 0 && !m.canSlice();
+      const why = blocked ? ((m.problems({ overhangs: false }).find(p => p.level === 'error') || {}).text || 'A model is outside the printable area.') : '';
+      info = blocked ? `<span class="sl-go-info"><b class="sl-bad">Can't slice yet</b><span id="sl-go-why">${esc(why)}</span></span>`
+        : count ? `<span class="sl-go-info"><b>${count} object${count > 1 ? 's' : ''}</b><span>${sl.state === 'done' && !sl.stale && sl.result ? 'Sliced: ' + esc(timeWords(sl.result.hours)) : 'Plate ' + (m.current + 1) + (haveEngine ? '' : ' · no engine yet')}</span></span>` : '';
       buttons = sl.state === 'done' && sl.result ? `<button type="button" class="sl-btn" id="sl-view">Preview</button>` : '';
-      buttons += `<button type="button" class="sl-btn sl-primary" id="sl-slice"${count ? '' : ' disabled'}>${ic('layers')}Slice plate</button>`;
+      buttons += `<button type="button" class="sl-btn sl-primary" id="sl-slice"${count && !blocked ? '' : ' disabled'}${blocked ? ` title="${esc(why)}" aria-describedby="sl-go-why"` : ''}>${ic('layers')}Slice plate</button>`;
     }
     box.innerHTML = info + buttons;
     box.hidden = state.page === 'preview' && sl.state === 'idle' && !sl.result ? false : false;
@@ -131,6 +135,10 @@
   SL.engineReady = () => !!(state.engine && (state.engine.installed || (state.work && state.work.data && state.work.data.engine && state.work.data.engine.path)));
 
   async function onSliceClick() {
+    if (!state.model.canSlice()) {
+      const why = (state.model.problems({ overhangs: false }).find(p => p.level === 'error') || {}).text;
+      return say(`${why || 'A model is outside the printable area.'} Use Scale to fit or move it onto the plate.`, 'warn');
+    }
     if (!SL.engineReady()) { SL.settings.openEngine(); return say('The slicing engine is not installed yet.', 'info'); }
     slicePlate();
   }

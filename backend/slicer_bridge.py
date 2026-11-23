@@ -223,6 +223,22 @@ def use_stock_profile():
 # ---------------------------------------------------------------------------
 
 
+# The engine uses every processor core while it slices. At normal priority it takes the processor from Deja Vu1's own server, and the
+# dashboard stopped answering for seconds while a slice ran (22 November 2026, a Windows laptop beside the live U1). It runs below normal.
+_BELOW_NORMAL_PRIORITY = 0x00004000
+_NICE = 10
+
+
+def _lower_priority(proc):
+    """Nice the engine on Linux and macOS (children it starts inherit it); Windows is handled by the creation flag."""
+    if os.name != "posix" or not hasattr(os, "setpriority"):
+        return
+    try:
+        os.setpriority(os.PRIO_PROCESS, proc.pid, max(_NICE, os.getpriority(os.PRIO_PROCESS, 0)))
+    except OSError:
+        pass                                   # a priority that cannot be changed never stops a slice
+
+
 def _run(cmd, timeout, cwd=None):
     """
     Run a program with a hard time limit. Returns (code, stdout, stderr),
@@ -236,9 +252,11 @@ def _run(cmd, timeout, cwd=None):
     else:
         # No console window: the Windows build opens one of its own for `--help` when it finds none to attach to.
         kwargs["creationflags"] = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-                                   | getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                                   | getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                                   | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", _BELOW_NORMAL_PRIORITY))
     try:
         proc = subprocess.Popen(cmd, **kwargs)
+        _lower_priority(proc)
     except PermissionError as exc:
         cause = slice_diagnosis.from_start(13, exc.strerror, name=os.path.basename(cmd[0]))
         raise EngineStartFailed(f"{cmd[0]} isn't allowed to run (on Linux: chmod +x it)", cause)

@@ -239,10 +239,14 @@ def _compact_sources(data):
                     name,
                     changed[name] if name in changed else safe_zip.read(archive, name, limit=plate_project.MAX_SOURCE_BYTES),
                 )
+    if removed == 1:
+        return out.getvalue(), [
+            '1 stored point that no triangle uses was left out of the temporary copy sent to the engine (the engine counts every '
+            'stored point when it checks that a model is inside the plate). The model itself and the library file are unchanged.'
+        ]
     return out.getvalue(), [
-        f'{removed:,} stored point{"s" if removed != 1 else ""} that no triangle uses {"were" if removed != 1 else "was"} left out '
-        'of the temporary copy sent to the engine (the engine counts every stored point when it checks that a model is inside the '
-        'plate). The model itself and the library file are unchanged.'
+        f'{removed:,} stored points that no triangle uses were left out of the temporary copy sent to the engine (the engine counts '
+        'every stored point when it checks that a model is inside the plate). The model itself and the library file are unchanged.'
     ]
 
 

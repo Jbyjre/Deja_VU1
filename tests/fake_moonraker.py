@@ -109,7 +109,7 @@ class FakeMoonraker:
                             "state": "standby", "message": "",
                             "info": {"total_layer": None, "current_layer": None}},
             "virtual_sdcard": {"file_path": None, "progress": 0.0, "is_active": False, "file_position": 0,
-                               "file_size": 0},
+                               "file_size": 0, "pl_env_valid": False},       # pl_env_valid: u1-klipper virtual_sdcard.get_status
             # kinematics get_status adds the axis limits (klippy/kinematics/cartesian.py, corexy.py)
             "toolhead": {"extruder": "extruder", "position": [135.0, 135.0, 10.0, 0.0], "homed_axes": "xyz",
                          "axis_minimum": list(axis_minimum) + [0.0], "axis_maximum": list(axis_maximum) + [0.0]},
@@ -245,7 +245,7 @@ class FakeMoonraker:
 
     def begin_print(self, filename, **stats):
         self.set("print_stats", state="printing", filename=filename, **stats)
-        self.set("virtual_sdcard", is_active=True, progress=0.1)
+        self.set("virtual_sdcard", is_active=True, progress=0.1, pl_env_valid=False)     # a print start forgets a saved one
 
     def klippy_disconnect(self):
         with self.lock:
@@ -320,6 +320,10 @@ class FakeMoonraker:
             if name:
                 excluded = sorted(set(self.status["exclude_object"]["excluded_objects"]) | {name})
                 self.set("exclude_object", excluded_objects=excluded)
+        elif word == "SDCARD_PRINT_PL_CLEAR_ENV":
+            if self.status["print_stats"]["state"] == "printing":
+                return 400, "Do not delete power-loss info during printing"          # u1-klipper cmd_SDCARD_PRINT_PL_CLEAR_ENV
+            self.set("virtual_sdcard", pl_env_valid=False)
         elif word == "SDCARD_PRINT_FILE":
             name = script.split('FILENAME="', 1)[1].rsplit('"', 1)[0]
             if name not in self.files:

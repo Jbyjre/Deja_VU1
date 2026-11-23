@@ -1,8 +1,9 @@
 # Try Deja Vu1 on your own U1
 
-Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware: adding the printer, live
-readings and the 3D twin, starting prints through Confirm Print, pausing and cancelling, the camera
-and time-lapses, and the Printer page controls ([what was tested](testing.md)). Snapmaker sponsored
+Deja Vu1 has been tested on a real Snapmaker U1 with stock firmware 2.1.2: adding the printer, live
+readings and the 3D twin, slicing and starting prints through Confirm Print (a two-colour print ran to
+the end), pausing, resuming, skipping an object and cancelling, Halt, the camera and time-lapses, and
+the Printer page controls ([what was tested](testing.md)). Snapmaker sponsored
 that printer through the Innovation Fund.
 
 One printer can't show everything. A session on your U1, on another network and with other

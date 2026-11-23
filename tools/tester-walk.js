@@ -231,10 +231,13 @@ async function walk(browser, server, standIn, width) {
   const { base } = server;
   const { context, page, seen } = await openPage(browser, base, { width, keepSetup: true });
 
-  // 2. The tester build as shipped. The first run opens the setup by itself; it is clicked through to step 3 and skipped.
+  // 2. The tester build as shipped. The first run opens the setup by itself, with the Language step first (a language besides English is
+  // installed and none was chosen); it is clicked through the Language step and the two after it, and skipped on the third.
   await page.waitForSelector('#setup-dialog[open]', { timeout: 10000 });
   check(true, 'The first run opens the setup by itself');
   await sleep(1500);
+  await page.click('#setup-next');
+  await sleep(500);
   await page.click('#setup-next');
   await sleep(500);
   await page.click('#setup-next');

@@ -9,6 +9,7 @@
 (() => {
   const { state, ic, q, qa, on, esc, fmt, say, hexRGB } = SL;
   const KEY = 'dejavu1.slicer.settings';
+  let poll = 0;                      // the install watcher (watchInstall)
   const w = state.work = { data: null, profileId: null, warnings: [], error: null, pending: 0, busy: false, token: 0, headsVersion: 0 };
 
   /* ---- remembered choices ----------------------------------------------------------------------------------------------------- */
@@ -36,6 +37,7 @@
       getJSON(api('/api/printer')).catch(() => null), getJSON(api('/api/tools/assignments')).catch(() => null)]);
     const headsBefore = JSON.stringify(state.heads);
     state.engine = engine; w.data = work; state.printer = printer;
+    if (engine && engine.job && engine.job.state === 'running') watchInstall();
     // The first time an engine is found it is asked once what it can do (a local run, nothing is sent anywhere).
     if (work && work.engine && work.engine.path && !work.engine.checked && !w.checking) {
       w.checking = true;
@@ -301,6 +303,8 @@
   async function applyProfile(strict) {
     clearTimeout(timer);
     const mine = ++w.token;
+    // The engine may have become ready since this page last asked (an install that finished while the card was shut): ask once more before refusing.
+    if (strict && (!w.data || !w.data.ready)) await refresh();
     const d = w.data;
     if (!d || !d.ready) { if (strict) throw new Error(d && d.problem ? d.problem : 'The slicing engine is not ready yet'); return null; }
     const heads = state.heads.map(h => ({ toolhead: 'T' + h.i, nozzle: h.nozzle, material: (h.material || 'PLA').toUpperCase(), color_hex: h.hex, height: state.headHeights[h.i] || baseHeight(), spool_id: h.spool || '' }));
@@ -319,7 +323,6 @@
   SL.ensureProfile = () => applyProfile(true);
 
   /* ---- the engine card ----------------------------------------------------------------------------------------------------------------- */
-  let poll = 0;
   function openEngine() {
     closeEngine();
     const card = document.createElement('section');
@@ -330,17 +333,26 @@
     paintEngine();
     getJSON('/api/slicer/settings').then(r => { state.limit = r && r.timeout_s; paintEngine(); }).catch(() => {});
     const first = card.querySelector('button'); first && first.focus();
-    clearInterval(poll);
+    if (state.engine && state.engine.job && state.engine.job.state === 'running') watchInstall();
+  }
+  /* An install takes minutes, and the card may be closed while it runs (22 November 2026: the first slice after an install said "engine not ready" until
+     the page was loaded again, because only the open card noticed the end). This watcher belongs to the page, not to the card: it runs while a job runs. */
+  function watchInstall() {
+    if (poll) return;
     poll = setInterval(async () => {
       const prev = state.engine && state.engine.job && state.engine.job.state, before = JSON.stringify(state.engine);
-      state.engine = await getJSON('/api/slicer/engine').catch(() => state.engine);
-      if (JSON.stringify(state.engine) !== before) paintEngine();
+      const next = await getJSON('/api/slicer/engine').catch(() => null);
+      if (!next) return;
+      state.engine = next;
+      if (JSON.stringify(next) !== before && q('#sl-engine')) paintEngine();
       engineButton();
-      const now = state.engine && state.engine.job && state.engine.job.state;
-      if (prev === 'running' && now !== 'running') { await refresh(); if (now === 'done') say('The slicing engine is installed.', 'ok'); }
+      const now = next.job && next.job.state;
+      if (now === 'running') return;
+      clearInterval(poll); poll = 0;
+      if (prev === 'running') { await refresh(); if (now === 'done') say('The slicing engine is installed.', 'ok'); }
     }, 900);
   }
-  function closeEngine() { clearInterval(poll); if (SL.engineEsc) document.removeEventListener('keydown', SL.engineEsc); const c = q('#sl-engine'); if (c) c.remove(); }
+  function closeEngine() { if (SL.engineEsc) document.removeEventListener('keydown', SL.engineEsc); const c = q('#sl-engine'); if (c) c.remove(); }
 
   function paintEngine() {
     const card = q('#sl-engine'), e = state.engine;
@@ -383,6 +395,7 @@
       const r = await postJSON('/api/slicer/engine/install', { allow_unverified: !!anyway });
       if (!r.ok) return say(r.body.error || 'The install could not start', 'warn');
       state.engine = r.body; paintEngine(); engineButton();
+      watchInstall();
     });
     on(q('#sl-e-limit'), 'change', async ev => {
       const r = await postJSON('/api/slicer/settings', { timeout_s: Number(ev.target.value) });

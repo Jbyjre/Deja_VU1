@@ -560,8 +560,8 @@ program path set from the dashboard must be named like Orca (this
 dashboard has no login); `DEJAVU_SLICER_PATH` set by whoever starts the
 server overrides it. Portable tests use a stand-in program. Real OrcaSlicer 2.4.2 on Linux now
 slices bracket, multi-object, four-tool image, swatch and heightmap projects.
-Printing on a real U1 is tested ([testing.md](testing.md)); engine runs on Windows and macOS are not
-recorded yet.
+Printing on a real U1 is tested ([testing.md](testing.md)), and the Windows engine has sliced for real
+(22 November 2026); a macOS engine run is not recorded yet.
 
 `backend/slicer_profiles.py` discovers installed U1 presets and resolves parent
 settings with cycle/size bounds. Native profiles retain printer/tool identity,

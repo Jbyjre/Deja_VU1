@@ -43,7 +43,8 @@ paths:
   so drawing the reading threw the bed to the bottom on Home. A reading outside the axis starts an offset that
   keeps the axis where it was drawn and moves it by the reported motion; a sudden jump back inside the axis
   (Klipper setting the endstop position), 2 s still inside it, or 3 minutes ends it. The readout says Homing.
-  Checked against a stand-in replaying that sequence; not yet watched on a real U1 (its homing macro may differ).
+  Checked against a stand-in replaying that sequence, and watched on a real U1 on 22 November 2026 (Home all and Home X, Y, Z one by one: the labels read
+  "homing" then "on carriage" while the camera showed the head move; Home X also homes Y on that printer, which reports "xy").
 - Extrusion: the bead and halo at the nozzle (`dyn.bead`, `dyn.halo`, marked `rest: true` so the drawing
   skips them) show while `extruding`: the file's own stretches (`timeline.extrusion`) when it is followed,
   else the printer's `sync.extruding`.

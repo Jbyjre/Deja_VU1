@@ -33,6 +33,12 @@ _ROOT = os.path.join(_DATA_DIR, "timelapse")
 MAX_FRAMES = 400
 KEEP_SESSIONS = 5
 EVERY_N_LAYERS = 2
+# A frame is also taken when this many seconds of printing have passed without one, whatever the layer says. A two-colour print of
+# 34 minutes kept one frame (22 November 2026, live run): the layer is counted from the nozzle's height when the printer does not
+# report it, and the lift at each of its 80 tool changes read as layers that never came, so no later layer counted as new.
+GAP_SECONDS = 90
+# This many identical pictures in a row from the camera (it should never repeat byte for byte) are said in the session, not skipped silently.
+SAME_PICTURE_WARNING = 4
 _lock = threading.RLock()
 _active = {}          # printer_id -> {"session": id, "last_layer": n}
 _capturing = set()
@@ -59,7 +65,7 @@ def begin(printer_id, filename, source):
                           {"session": session, "filename": filename, "source": source,
                            "started_at": datetime.now().isoformat(timespec="seconds"),
                            "frames": 0, "finished": False}, indent=None)
-        _active[printer_id] = {"session": session, "last_layer": -99}
+        _active[printer_id] = {"session": session, "last_layer": -99, "last_at": time.monotonic()}
         _prune(printer_id)
     return session
 
@@ -86,7 +92,8 @@ def resume(printer_id, filename):
             if (isinstance(meta, dict) and not meta.get("finished") and meta.get("filename") == filename
                     and 0 <= age < RESUME_HOURS * 3600):
                 last = meta.get("last_layer")
-                _active[printer_id] = {"session": session, "last_layer": last if isinstance(last, int) else -99}
+                _active[printer_id] = {"session": session, "last_layer": last if isinstance(last, int) else -99,
+                                       "last_at": time.monotonic()}
                 return True
         return False
 
@@ -97,11 +104,11 @@ def _prune(printer_id):
         shutil.rmtree(_dir(printer_id, old), ignore_errors=True)
 
 
-def maybe_capture(printer_id, layer, frame_bytes, extension):
-    """Store a frame if this layer is due for one. Returns True if stored."""
+def maybe_capture(printer_id, layer, frame_bytes, extension, force=False):
+    """Store a frame if this layer is due for one (or `force`, when time rather than the layer made it due). Returns True if stored."""
     with _lock:
         info = _active.get(printer_id)
-        if not info or layer - info["last_layer"] < EVERY_N_LAYERS:
+        if not info or (not force and layer - info["last_layer"] < EVERY_N_LAYERS):
             return False
         meta_path = _meta_path(printer_id, info["session"])
         meta = storage.load_json(meta_path, None)
@@ -113,9 +120,11 @@ def maybe_capture(printer_id, layer, frame_bytes, extension):
         name = f"{meta['frames']:05d}.{extension}"
         with open(os.path.join(_dir(printer_id, info["session"]), name), "wb") as fh:
             fh.write(frame_bytes)
-        meta["last_layer"] = layer              # kept, so a restart in the middle of a print can carry on
+        if isinstance(layer, int):
+            meta["last_layer"] = layer          # kept, so a restart in the middle of a print can carry on
+            info["last_layer"] = layer
         storage.save_json(meta_path, meta, indent=None)
-        info["last_layer"] = layer
+        info["last_at"] = time.monotonic()
         return True
 
 
@@ -137,21 +146,27 @@ def is_recording(printer_id):
 
 
 def request_camera(printer_id, layer):
-    """One on-demand worker per printer; slow cameras never stall live status."""
+    """
+    One on-demand worker per printer; slow cameras never stall live status. `layer` is None when the printer does not say which layer it is on:
+    a frame is then due by time alone (GAP_SECONDS), as it is whenever the layers stop counting.
+    """
     with _lock:
         info = _active.get(printer_id)
         now = time.monotonic()
-        if (not info or printer_id in _capturing or layer - info["last_layer"] < EVERY_N_LAYERS
-                or now < info.get("retry_at", 0)):
+        if not info or printer_id in _capturing or now < info.get("retry_at", 0):
+            return False
+        by_layer = isinstance(layer, int) and layer - info["last_layer"] >= EVERY_N_LAYERS
+        by_time = now - info.get("last_at", now) >= GAP_SECONDS
+        if not (by_layer or by_time):
             return False
         _capturing.add(printer_id)
         session = info["session"]
-    threading.Thread(target=_capture_camera, args=(printer_id, layer, session),
+    threading.Thread(target=_capture_camera, args=(printer_id, layer, session, not by_layer),
                      name="timelapse-camera", daemon=True).start()
     return True
 
 
-def _capture_camera(printer_id, layer, session):
+def _capture_camera(printer_id, layer, session, by_time=False):
     import modules
     import mock_moonraker
     try:
@@ -170,12 +185,21 @@ def _capture_camera(printer_id, layer, session):
                 return
             if info.get("last_picture") == fingerprint:
                 info["retry_at"] = time.monotonic() + 2
+                info["same"] = info.get("same", 0) + 1
+                if info["same"] == SAME_PICTURE_WARNING:
+                    path = _meta_path(printer_id, session)
+                    meta = storage.load_json(path, {})
+                    meta["last_error"] = "The camera keeps sending the same picture, so frames are not being kept"
+                    storage.save_json(path, meta)
                 return
-            if maybe_capture(printer_id, layer, data, "jpg"):
+            if maybe_capture(printer_id, layer, data, "jpg", force=by_time):
                 info["last_picture"] = fingerprint
+                info["same"] = 0
                 path = _meta_path(printer_id, session)
                 meta = storage.load_json(path, {})
-                meta.update(source="printer camera", last_error=None, last_layer=layer)
+                meta.update(source="printer camera", last_error=None)
+                if isinstance(layer, int):
+                    meta["last_layer"] = layer
                 storage.save_json(path, meta)
     except Exception as exc:
         with _lock:

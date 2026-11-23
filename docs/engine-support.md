@@ -12,15 +12,16 @@ still slices, and the engine card in the Slicer shows which builds have recorded
 |---|---|---|---|---|---|
 | Snapmaker_Orca | 02.08.01.55 | Linux | Tested | Tested, three nozzle pairs | [slicer workspace validation](slicer-workspace-validation.md), recorded 21 October 2026 |
 | Snapmaker_Orca | 01.10.01.50 (the v2.4.1 release the Slicer installs) | Linux | Tested | Not available: this build has no per-head height options | [The engine Deja Vu1 installs](#the-engine-deja-vu1-installs), recorded 22 November 2026 |
+| Snapmaker_Orca | 01.10.01.50 (the v2.4.1 release the Slicer installs; the Windows engine reads as 2.4.1) | Windows | Tested | Not available: this build has no per-head height options | [The Windows run](#the-windows-run-of-22-november-2026), recorded 22 November 2026 |
 | OrcaSlicer | 2.4.2 | Linux | Tested | Not available: this build has no per-head height options, so Deja Vu1 refuses those profiles | [native studio validation](native-studio-validation.md), [changelog](../CHANGELOG.md) |
 
 The processor type of the Linux runs was not written down.
 
 ## Next to record
 
-- Windows and macOS builds. On Windows, the engine check reads the version from the engine's settings
-  file because the engine prints `--help` to a console window; the suite tests that route with a
-  stand-in engine.
+- macOS builds, and the Windows builds of any release other than v2.4.1. On Windows, the engine check
+  reads the version from the engine's settings file because the engine prints `--help` to a console
+  window; the v2.4.1 build was read that way on 22 November 2026.
 - Other versions of Snapmaker Orca and OrcaSlicer, including newer releases.
 - Other slicers.
 
@@ -36,8 +37,7 @@ The processor type of the Linux runs was not written down.
   engine message ("Object can't be printed for empty layer") for the cause described under "What was run" above, and the fix is in; the Windows
   report is probably the same fault, but no Windows run has confirmed it. Deja Vu1 now maps the exit code
   back to -100, shows the lines Orca printed before its closing line, and keeps the engine's whole
-  output in the tester report. No Windows run has been recorded as working, so there is no Windows row
-  above.
+  output in the tester report. A Windows run with the fixed app slices (see below).
 - **Snapmaker Orca 2.4.1 on Windows 11, "Nothing to slice"** (a tester's computer, 22 November 2026): a plate with one model that sat inside
   the plate on screen ended with exit code 4294967246, which is Orca's number -50 (no model fully inside the print volume). The output held two
   `Unable to create exclude triangles` lines. The same release prints those on every Linux run, slices that work included, because the U1's
@@ -84,8 +84,16 @@ The Slicer's **Install engine** button downloads Snapmaker's own release and not
   run found a fault in Deja Vu1 itself: the plate project stored every triangle with three private corners, which the engine read as a surface in loose
   pieces ("empty layer between 0 and 2.05", exit code -100), so everything except a part with whole-number corners failed to slice. Triangles
   that meet now share their corners (`tests/test_plate_project.py`). In the engine's exported arrange and orient the Benchy's origin sits at the middle
-  of its height (z 24.0 for 48 mm). **Not run:** the Windows and macOS installs, and the installer's own download and unpack on any system (the run
+  of its height (z 24.0 for 48 mm). **Not run:** the macOS install, and the installer's own download and unpack on Linux (the run
   fetched the same file by hand because the release list's address was not reachable from that sandbox).
+- <a id="the-windows-run-of-22-november-2026"></a>**The Windows run of 22 November 2026.** The Slicer's Install engine button downloaded and
+  installed the v2.4.1 Windows zip on Windows 11 (175 MB at about 6 MB a second, 4 minutes 3 seconds in all, about 3.5 minutes of it unpacking, with
+  the checksum pinned). The engine read as 2.4.1 through its settings file. It sliced the 3DBenchy in 12.7 s, a 20 mm cube (100 layers, 9 minutes,
+  3.9 g) and two 16 mm cubes (80 layers, 33 minutes, 11.6 g); the first slice after the install said "engine not ready" until the page was reloaded
+  (fixed in the version after 0.20.38). The two-cube plate printed to the end on a real U1. An unreadable file and a model bigger than the U1 were
+  refused in words. `python3 tools/engine-selftest.py` passed 7 of 9 steps: the engine's own arrange and orient crashed with exit code 3221225477.
+  The app does not use them (it arranges and orients itself and slices plate projects with `--arrange 0 --orient 0`), so slicing is not affected.
+  The cause of the crash is not known.
 - **The plate's drawing.** Snapmaker Orca ships the U1's plate model and texture under the AGPL-3.0, so Deja Vu1 does not copy them. It draws its
   own plate from measurements of the engine's bed model (a 0.5 mm sheet, 276 × 293 mm, a straight back edge, straight sides and a narrower front
   edge that widens through chamfers; the printable area is 270 × 270 mm from x 0.5, y 1; 270.05 mm tall) with its own lettering, ruler and
@@ -100,8 +108,8 @@ The Slicer's **Install engine** button downloads Snapmaker's own release and not
   recorded runs.
 - The v2.4.1 release names itself two ways: `--help` prints `Snapmaker_Orca-01.10.01.50` and the settings file it exports says
   `"version": "2.4.1"`. A Windows engine can only be read through the settings file, so the support table treats the two as one build
-  (`engine_support.RELEASE_BUILDS`). A Windows engine of that release reads as "Ready to slice. This build's recorded runs are on Linux; Windows is
-  next", and a different version still reads as another version.
+  (`engine_support.RELEASE_BUILDS`). A Windows engine of that release reads as "Tested: this exact build has sliced on Windows", a macOS one as
+  "Ready to slice. This build's recorded runs are on Linux and Windows; macOS is next", and a different version still reads as another version.
 - A 3MF reaches the engine as a temporary copy. Points no triangle uses are left out of it, a plate built from a project that nests its parts
   points at the parts themselves, and a project the engine refuses as too new (-24) is tried once more with `--allow-newer-file`. If the
   engine does not know that option, the first message stays. The library file is never changed.

@@ -30,6 +30,12 @@ VERIFIED = (
      "evidence": "docs/engine-support.md: the release the Slicer installs (v2.4.1, checksum matched the pin) run through the app's own plate "
                  "project, 22 November 2026: the 3DBenchy, a gear, a vase and a bracket sliced (the Benchy 240 layers), the engine's arrange and "
                  "orient exported; shared layer heights only, since this build has no per-head height options"},
+    {"app": "Snapmaker_Orca", "version": "01.10.01.50", "system": "Windows",
+     "per_head_heights": False,
+     "evidence": "docs/testing.md: the same v2.4.1 release, installed by the Slicer's Install engine button on Windows 11 and run through the "
+                 "app's own plate project on 22 November 2026 beside a real U1: the 3DBenchy sliced in 12.7 s, and a 20 mm cube and two 16 mm "
+                 "cubes sliced and printed to the end; the engine's own arrange and orient steps crash there (exit 3221225477), so the app "
+                 "keeps its own arrange; shared layer heights only"},
     {"app": "OrcaSlicer", "version": "2.4.2", "system": "Linux",
      "per_head_heights": False,
      "evidence": "CHANGELOG.md and docs/native-studio-validation.md: real bracket, tile, swatch and relief slices; "
@@ -40,7 +46,8 @@ _SYSTEM_WORDS = {"Darwin": "macOS", "Linux": "Linux", "Windows": "Windows"}
 
 # One release, two names. `--help` names the build ("Snapmaker_Orca-01.10.01.50:"); the settings file `--export-settings` writes says
 # "version": "2.4.1". Windows builds do not print `--help` where the app can read it, so there the app only ever sees the release name.
-# Both were read from the same v2.4.1 Linux download on 22 November 2026.
+# Both were read from the same v2.4.1 Linux download on 22 November 2026. The Windows run of the same release (22 November 2026) read only
+# the settings file's "2.4.1", which this table treats as the same build.
 RELEASE_BUILDS = {("snapmakerorca", "2.4.1"): "01.10.01.50"}
 
 
@@ -71,7 +78,8 @@ def assess(app, version, system):
         return {"level": "tested", "title": f"Tested: this exact build has sliced on {where}.", "detail": heights,
                 "evidence": exact["evidence"], "tested": _tested_words(), "per_head_heights": exact["per_head_heights"]}
     if any(row["version"] == build for row in same_app):
-        title = f"Ready to slice. This build's recorded runs are on {system_name(same_app[0]['system'])}; {where} is next."
+        seen = list(dict.fromkeys(system_name(row["system"]) for row in same_app if row["version"] == build))
+        title = f"Ready to slice. This build's recorded runs are on {' and '.join(seen)}; {where} is next."
     elif same_app:
         title = f"Ready to slice with {app} {version}. Its recorded runs are at {same_app[0]['version']}."
     else:

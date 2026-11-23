@@ -35,8 +35,10 @@ window.ErrorHelp = (() => {
   function strip(p, printerId) {
     if (!p || !p.code) return '';
     const [word, kind] = levelOf(p);
+    // The U1 paused a print by itself with the words "detected dirty bed" (22 November 2026); say what to do about it.
+    const hint = p.message && /dirty bed/i.test(p.message) ? '<span class="eh-hint">Take what is on the bed off, then press Resume.</span>' : '';
     return `<div class="eh-strip is-${kind}"><span class="eh-level is-${kind}">${esc(word)}</span>
-      <span class="eh-strip-text"><b>${esc(p.title || 'Printer error')}</b><code>${esc(p.code)}</code></span>
+      <span class="eh-strip-text"><b>${esc(p.title || (p.message && String(p.message).length < 80 ? p.message : '') || 'Printer error')}</b><code>${esc(p.code)}</code>${hint}</span>
       <button class="btn small" type="button" data-errhelp="${esc(p.code)}"${printerId ? ` data-printer="${esc(printerId)}"` : ''}>What does this mean?</button></div>`;
   }
 
@@ -331,7 +333,29 @@ window.ErrorHelp = (() => {
     if (b && b.closest('.eh-video')) play(b.closest('.eh-video'));
   });
   // Capture phase, and the press goes no further: a strip inside the print tile must not also open the tile's own sheet.
+  // The tile repaints every time the printer reports a new figure, and a repaint between pressing the mouse and letting go replaces the
+  // button: the browser then sends the click to the tile around it (its own sheet opened, seen on a real U1 on 22 November 2026) or sends
+  // none. So a press that began on an explain button and ended in the same place opens the explanation as the button comes up, and the
+  // click that may follow is dropped. A key press on the button still arrives as a click.
+  let pressed = null, handled = null;
+  document.addEventListener('pointerdown', e => {
+    const b = e.target.closest && e.target.closest('[data-errhelp]');
+    pressed = b ? { code: b.dataset.errhelp, printer: b.dataset.printer, x: e.clientX, y: e.clientY, at: Date.now() } : null;
+  }, true);
+  document.addEventListener('pointercancel', () => { pressed = null; }, true);
+  document.addEventListener('pointerup', e => {
+    const from = pressed;
+    pressed = null;
+    if (!from || Date.now() - from.at > 1500 || Math.abs(e.clientX - from.x) > 8 || Math.abs(e.clientY - from.y) > 8) return;
+    handled = { at: Date.now(), x: e.clientX, y: e.clientY };
+    open(from.code, from.printer);
+  }, true);
   document.addEventListener('click', e => {
+    // Only the click that belongs to the press just handled is dropped: one click, at the same place, within 700 ms. A later press
+    // on something else (the window's own buttons) always arrives.
+    const h = handled;
+    handled = null;
+    if (h && Date.now() - h.at < 700 && Math.abs(e.clientX - h.x) <= 8 && Math.abs(e.clientY - h.y) <= 8) { e.preventDefault(); e.stopPropagation(); return; }
     const t = e.target.closest('[data-errhelp]');
     if (!t) return;
     e.preventDefault();

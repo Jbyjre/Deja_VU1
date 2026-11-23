@@ -351,8 +351,10 @@ def _evaluate_event_task(task, entry, usage):
     swap = entry.get("swap_pending")
     if swap:
         status, percent = "overdue", 100.0
-        reason = (f"{swap['kind'].capitalize()} swapped on {swap['toolhead']} "
-                  f"{swap['at'][:10]} - not recalibrated since")
+        if swap["kind"] == "hotend":
+            reason = f"Hotend swapped on {swap['toolhead']} {swap['at'][:10]} - not recalibrated since"
+        else:
+            reason = f"Nozzle swapped on {swap['toolhead']} {swap['at'][:10]} - not recalibrated since"
     else:
         status, percent = "ok", 0.0
         reason = "No nozzle or hotend swap recorded since the last calibration"
@@ -418,7 +420,7 @@ def record_swap(kind, toolhead, note="", nozzle=None):
     log["tasks"]["calibration"]["swap_pending"] = {"kind": kind, "toolhead": toolhead, "at": now}
     log["history"].append({
         "task_id": "hardware_swap",
-        "task_name": f"{kind.capitalize()} swapped on {toolhead}",
+        "task_name": f"Hotend swapped on {toolhead}" if kind == "hotend" else f"Nozzle swapped on {toolhead}",
         "completed_at": now,
         "printer_hours_at_completion": get_printer_totals()["total_print_hours"],
         "note": note,

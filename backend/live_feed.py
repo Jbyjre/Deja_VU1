@@ -438,12 +438,12 @@ def _side_effects(printer_id, state, count, simulated, side_effects, now):
             with mock_moonraker.use_printer(printer_id):
                 job = mock_moonraker.get_current_job()
             layer = (state.get("layer") or {}).get("current")
-            if not isinstance(layer, int):
-                pass                      # the printer doesn't know the layer: no frame is due
-            elif simulated:
-                timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
+            if simulated:
+                if isinstance(layer, int):
+                    timelapse.maybe_capture(printer_id, layer, timelapse.simulated_frame(state, job), "svg")
             elif modules.is_enabled("camera"):
-                timelapse.request_camera(printer_id, layer)
+                # A printer that does not say its layer still gets frames, by time (timelapse.GAP_SECONDS).
+                timelapse.request_camera(printer_id, layer if isinstance(layer, int) else None)
 
     samples = _climate.setdefault(printer_id, deque(maxlen=CHAMBER_SAMPLES))
     if not samples or now - samples[-1]["t"] >= CHAMBER_SAMPLE_SECONDS:

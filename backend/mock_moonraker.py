@@ -69,7 +69,7 @@ import print_eta
 import printer_extras
 from mock_moonraker_part1 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
     AMBIENT_C, BUILD_VOLUME_MM, DEFAULT_PRINTER_ID, DEMO_MACROS, FILAMENT_COLORS, MAX_SANDBOX_PRINTERS,
-    PrinterCommandError, TOOLHEADS, _FLEET_SPEC, _JOB_NAMES, _REAL, _TUNE_TIMEOUTS, _approach,
+    PrinterCommandError, PrinterRefused, TOOLHEADS, _FLEET_SPEC, _JOB_NAMES, _REAL, _TUNE_TIMEOUTS, _approach,
     _build_print_history, _demo_objects, _demo_tuning, _fleet_lock, _plate, _point_on_rectangle,
     _attach_problem, _clear_problem, _record_failed_job, _selected, _stop_with_error, any_connected, attach_real_printer, detach_real_printer,
     diagnostics, is_sandbox_printer, printer_ids, real_printer, real_printer_ids, selection_only,
@@ -1088,6 +1088,14 @@ def load_filament(toolhead, color_index):
             dock["status"] = "docked"
         printer.log("filament", f"{toolhead} loaded {colour['name']}")
         return printer.snapshot()
+
+
+def discard_saved_print():
+    """SDCARD_PRINT_PL_CLEAR_ENV on a real U1 that holds a halted print. A simulated printer never holds one."""
+    printer = _current()
+    if printer.real:
+        return printer.discard_saved_print()
+    raise ValueError("The printer isn't holding a halted print")
 
 
 def clear_error():

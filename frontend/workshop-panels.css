@@ -171,10 +171,11 @@
 .tm-table { width: 100%; min-width: 720px; border-collapse: collapse; font-size: 12.5px; }
 .tm-table th, .tm-table td { padding: 7px 8px; border-bottom: 1px solid rgba(0, 0, 0, .06); text-align: left; vertical-align: middle; }
 .tm-table thead th { font: 600 9.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); }
+.tm-table thead th:first-child { white-space: nowrap; }      /* a long word for "Head" (Cabezal) is never broken into pieces; the table scrolls sideways */
 .tm-table tr.is-active { background: color-mix(in oklch, var(--accent) 9%, transparent); }
 .tm-th { font: 700 12.5px/1 var(--font-mono); }
 .tm-temp { min-width: 150px; }
-.tm-status { padding: 2px 7px; border-radius: 8px; font: 600 10.5px/1.5 var(--font-mono); background: rgba(120, 120, 128, .12); }
+.tm-status { white-space: nowrap; padding: 2px 7px; border-radius: 8px; font: 600 10.5px/1.5 var(--font-mono); background: rgba(120, 120, 128, .12); }
 .tm-status.is-active { background: color-mix(in oklch, var(--ok) 20%, white); color: var(--ok-text); }
 .tm-status.is-error { background: color-mix(in oklch, var(--bad) 15%, white); color: var(--bad-text); }
 .tm-fil { display: inline-flex; align-items: center; gap: 6px; }

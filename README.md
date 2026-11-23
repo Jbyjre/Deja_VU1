@@ -14,9 +14,9 @@ cloud.
 <sub>App cards from the built-in demo printers. The blue loop is AI-generated brand art, not
 hardware or a print. Deja Vu1 is an independent project, not made or endorsed by Snapmaker.</sub>
 
-**Tested on a real Snapmaker U1** with stock firmware: live readings and the 3D twin, prints
-started through Confirm Print, pause and cancel, the camera and time-lapses, and the Printer page
-controls. Snapmaker sponsored the printer through its Innovation Fund. Every merge publishes a
+**Tested on a real Snapmaker U1** with stock firmware 2.1.2: live readings and the 3D twin, a
+two-colour plate sliced in the app and printed to the end through Confirm Print, pause, resume,
+skipping an object, cancel, Halt, the camera and time-lapses, and the Printer page controls. Snapmaker sponsored the printer through its Innovation Fund. Every merge publishes a
 new version on the [releases page](https://github.com/Jbyjre/Deja_VU1/releases/latest), and the
 app updates itself from there.
 
@@ -232,18 +232,24 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
 
 ## What has been tested
 
-- **On a real U1** with stock firmware: connecting, live readings and the 3D twin, prints through
-  Confirm Print, pause and cancel, the camera and time-lapses, the Printer page controls and the AI
-  assistant. The assistant has also run through a paid API key.
-- **Automated:** 1993 tests passed on Python 3.13 (22 November 2026). GitHub Actions
+- **On a real U1** (stock firmware 2.1.2, run of 22 November 2026, checked against the printer's own
+  readings and the camera): live readings and the 3D twin, slicing on Windows, a two-colour print that
+  ran to the end through Confirm Print, pause, resume, speed, skipping one object, cancel, Halt (the
+  printer in shutdown within 0.2 s) and Restart firmware, Watch-only mode, the camera and time-lapses,
+  the Printer page controls and the AI assistant. The assistant has also run through a paid API key.
+  Not yet run there: a link that drops mid-move, two browser tabs at once, a real notification send,
+  Backup restore and an update install.
+- **Automated:** 2030 tests passed on Python 3.13 (23 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
-- **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux.
+- **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux, and
+  Snapmaker Orca v2.4.1 on Linux and Windows.
   Other builds slice too, and the Slicer's engine card lists the builds with recorded runs.
 - **With stand-ins in the suite:** macOS and Windows start-up, a second printer and other Klipper
   printers, the Extended Firmware's camera, Spoolman, WLED, Home Assistant, Tailscale and error codes
   raised the way the U1's firmware raises them. Each stand-in answers the way the real program does.
-- **Not yet on a real U1:** a printer raising an error code. The code reading follows the firmware's
-  published source and the stand-in; a tester can confirm it by comparing the app with the printer's screen.
+- **Error codes:** the code reading follows the firmware's published source and the stand-in. A real
+  U1 raised its dirty-bed pause and its Halt shutdown on 22 November and the Logbook recorded both;
+  a tester can confirm the rest by comparing the app with the printer's screen.
 
 The dated record, with the hardware still in progress: [docs/testing.md](docs/testing.md).
 
@@ -275,7 +281,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 1993 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 2030 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 
@@ -284,7 +290,7 @@ and a bench test of a physical sensor are still to do.
 | Installing and first steps | [Getting started](docs/getting-started.md) |
 | Adding a real printer, and what each message means | [Connecting a real printer](docs/real-printer.md) |
 | What an error code means, and where the words come from | [Error codes](docs/error-codes.md) |
-| Showing Deja Vu1 in another language, and how a round of translation runs | [Translating Deja Vu1](docs/translating.md) |
+| Deja Vu1 in Spanish (a first, AI-made translation), and how a round of translation runs | [Translating Deja Vu1](docs/translating.md) |
 | Trying Deja Vu1 on your own U1 | [Try it on your U1](docs/first-connection.md), [test it and send a report](docs/beta-testing.md) |
 | What ran where, with dates | [What has been tested](docs/testing.md) |
 | Reviewing it: ten minutes without a printer, what is new since Phase 1, what is not done | [Check Deja Vu1 yourself](docs/for-reviewers.md) |

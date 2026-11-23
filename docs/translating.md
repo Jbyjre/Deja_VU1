@@ -5,8 +5,10 @@ file of translated words that sits next to the English list, and the page puts t
 the English text would appear. A text without a translation shows in English, so a language can grow
 a round at a time.
 
-This page says how it works, how a round of translation runs, and what to check in the result. No
-language is translated yet: the first round has not been made.
+This page says how it works, how a round of translation runs, and what to check in the result.
+Spanish is the first language installed (23 November 2026). An AI wrote it in one session and no
+native speaker has read it yet, so treat it as a first draft: [What was checked](#what-was-checked)
+says what is known.
 
 ## What an owner sees
 
@@ -14,6 +16,15 @@ Settings, Look & layout, Appearance, **Language**. The list shows English and ev
 file is installed. Choosing one saves the choice in this browser and reloads the page, so every
 screen starts again in that language. Dates and times follow the language too. Numbers keep the
 decimal point the page already writes.
+
+**On a first start**, setup opens with a Language step before the others whenever a language besides
+English is installed and this browser has not chosen one. It lists English and each installed
+language by its own name (Español (Spanish)). When the browser's own language is installed, that
+button is highlighted and a line says so; nothing changes until a button is pressed. Pressing a
+language other than the one on screen saves it and reloads the page, so setup goes on in that
+language. Continue keeps English and remembers that choice, and the step does not come back. A
+browser that blocks saved settings is not offered the step, because the choice would be lost at the
+reload.
 
 `?lang=de` opens one visit in German and saves it. `?lang=pseudo` shows every catalogued text accented
 and about a third longer. It saves nothing, and it is how text that is missing from the list and
@@ -157,19 +168,45 @@ You do not need to run `extract` when you add text. The next round does it.
 
 ## What was checked
 
-On 22 November 2026, Chromium on Linux, demo data, with the pseudo language and a two-text German
-stand-in. No real translation exists, so no real language has been read.
+**Spanish, 23 November 2026** (Chromium on Linux, demo data).
 
-- 25 loader scenarios: English fetches nothing, text added later and changed in place is translated,
-  pieces move in a pattern, code and `translate="no"` stay, attributes and dialogs are translated,
-  a missing language file leaves the page in English, the picker lists what is installed.
-- All 19 screens and every part of them, in English and in pseudo: no script error, the same cards,
-  headings, help buttons and part buttons. Putting the old English-only lookup back made 17 screens differ.
-- `text-audit.js --lang pseudo`: 270 screens (1366, 1024 and 390 px, light and dark, very long names).
-  One run reported 10 findings on the 3D printer sheet at 1024 px while four other browser runs
-  used the computer. The same screens alone found nothing.
-- Of the visible texts on those screens, 67 percent are reached by the list. What remains is figures,
-  units, file and printer names, the release notes, and a few sentences the code builds in pieces.
+- **The translation:** 6,278 of 6,278 texts. `python3 tools/i18n.py check`: 6,278 good, 0 refused,
+  0 stale. Every placeholder, tag, code string and link came back as written, and no answer repeats or
+  drops a `{0}`. The six screen names that must read the same everywhere (Confirm Print, Needs you, Print
+  a file, Warm up, Start over, Ask) are recorded in `tools/translation-glossary.json`.
+- **Every screen:** `node tools/i18n-check.js` opens all 19 screens and every part of them in English
+  and in pseudo: no script error and no screen built differently (0 and 0). It saw 2,426 distinct visible texts; 424 are not in the list:
+  300 are release notes, 122 are figures, units, file and printer names, and demo data, and 2 are the
+  halves of the Telegram set-up sentence.
+- **Fit:** `node tools/text-audit.js --lang es --widths 1366,390` (very long names, light theme):
+  90 screens, 0 findings. The first run found one: the Readings table's "Cabezal" heading broken
+  into three lines at 390 px, which is why that heading no longer wraps.
+- **Setup:** `node tools/setup-walk.js` has 30 checks, 11 of them on the Language step: it comes first,
+  both languages are offered by their own names, a Spanish browser sees Spanish suggested and nothing
+  saved, pressing Español reloads the page in Spanish and setup goes on at its first step ("Paso 1 de
+  7"), Continue keeps English and the step does not come back.
+- **What the audit found and fixed:** choosing a language in Settings or in setup did not reload the
+  page, because every address ends in `#/place` and replacing a page with its own address only moves
+  within it (the first language ever chosen on a real address showed this). The Readings table's
+  "Cabezal" heading broke into pieces at phone width. Sixteen server and page sentences were built from a
+  bare English word ("1 maintenance **task** overdue", "was cancelled", "were left out", a nozzle or
+  hotend swap): Spanish would have shown English inside a Spanish sentence. Each is now a whole
+  sentence per case (`TestSentencesStayWhole` keeps it that way for the server).
+- **English that remains in Spanish, on purpose or not yet fixed:** the version history's release notes,
+  the product page and the documents; the words a printer reports about itself ("docked", "active",
+  "cavity fan"); printer, file and spool names; the name of a Chrome flag in the phone's install steps
+  ("Insecure origins treated as secure", which Chrome shows in English); the label "Electricity ($ per
+  kWh)", which the scanner reads as code; and the Telegram set-up paragraph, whose links split it
+  into pieces. `?i18n=debug` and `I18n.misses()` list what is seen and not found.
 
-Not checked: any real translation, a native speaker's reading, searching the command bar in a
-language other than English, a phone, a real printer.
+Not checked: a native speaker's reading (the first thing to do: `python3 tools/i18n.py review es`, then
+the steps under "Reviewing a round"), a phone, searching the command bar in Spanish, a real printer
+with the app in Spanish, and how the Snapmaker error-code guides read next to Spanish screens (they
+stay in Snapmaker's English).
+
+**22 November 2026**, before a real language existed: the pseudo language and a two-text German
+stand-in. 25 loader scenarios (English fetches nothing, text added later and changed in place is
+translated, pieces move in a pattern, code and `translate="no"` stay, attributes and dialogs are
+translated, a missing language file leaves the page in English, the picker lists what is installed); all
+19 screens and every part of them in English and in pseudo (putting the old English-only lookup back
+made 17 screens differ); `text-audit.js --lang pseudo` on 270 screens at three widths, light and dark.

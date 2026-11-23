@@ -45,9 +45,9 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   library prints nothing on stdout). Windows builds print `--help` to their own console window, so a
   clean exit with no help line falls back to `_check_by_settings_file` (`--export-settings` must
   write Orca's shape: version, layer_height, nozzle_diameter). `_run` adds CREATE_NO_WINDOW on
-  Windows. That fallback has run only against a stand-in engine.
+  Windows. That fallback read the real v2.4.1 engine's version on Windows 11 (22 November 2026).
 - `engine_support.VERIFIED` lists engine builds run for real (Snapmaker_Orca 02.08.01.55 and
-  OrcaSlicer 2.4.2, both Linux). `docs/engine-support.md` holds the same table (a test fails when
+  OrcaSlicer 2.4.2 on Linux, Snapmaker Orca v2.4.1 / 01.10.01.50 on Linux and Windows). `docs/engine-support.md` holds the same table (a test fails when
   they differ). Add a row only with a recorded run. Untested never blocks a slice.
 - `engine_changed`: a slice waits for a new check when the program's path, size or mtime changed.
 - `slice_diagnosis.py` (pure functions): the cause of a failed check or slice from text, exit code,
@@ -72,7 +72,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   materials are "Generic PLA" and so on. The Slicer's slice bar draws a failure's cause (`slicer-preview.js`, **Why?**).
 - Evidence: `docs/slicer-workspace-validation.md` (engine output; its plate-editor sections are history), `docs/native-studio-validation.md`,
   `docs/viewer-performance.json`. Real Orca 2.4.2, Snapmaker Orca 02.08.01.55 and Snapmaker Orca v2.4.1 (build 01.10.01.50, the managed download) Linux
-  slices are recorded; Windows and macOS engine runs are not (`tools/engine-selftest.py` is a run on a computer that has the engine).
+  slices are recorded, and so is a Windows 11 run of v2.4.1 (install, slices, a real print; its own arrange and orient crash, exit 3221225477); a macOS engine run is not (`tools/engine-selftest.py` is a run on a computer that has the engine).
 - v2.4.1 names itself two ways: `--help` says `01.10.01.50`, its exported settings say `"version": "2.4.1"`, and a Windows engine can only be read
   through the settings file. `engine_support.RELEASE_BUILDS` makes them one build. Its command line refuses a 3MF its own window saved (file
   version 2.4.0.1, exit -24) unless given `--allow-newer-file`: `slice_model` retries once with it after -24 only, and keeps the first outcome if
@@ -126,7 +126,7 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
 - Saved sets (`slicer-sets.js`): a set is the print preset's name, `state.overrides`, the speed, `state.preset.filaments` and `state.preset.tune`, kept in `dejavu1.slicer.sets` (30 at most) and exported as
   `{format: 'deja-vu1-slicer-settings', version: 1, ...}`. An imported file goes through `clean()`: keys must match `[a-z0-9_]` and be in `/api/slicer/schema`, values must be numbers, booleans or short strings, tune
   numbers inside `filament_limits`, the speed held to 50 to 120, the name stripped of control characters and angle brackets; what is dropped is counted and reported. Heads' colours and spools are never in a set.
-- Checks: `node tools/slicer-check.js` (86 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
+- Checks: `node tools/slicer-check.js` (88 checks, stand-in engine, Chromium at 1366 and 390, light and dark; `tests/test_slicer_browser.py`),
   `tests/slicer_model_check.js` (`tests/test_slicer_model.py`), `tests/test_engine_installer.py`, `tests/test_slicer_working.py`.
 
 ## Profiles and per-head heights

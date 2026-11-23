@@ -1121,6 +1121,24 @@ class MoonrakerPrinter:
         self.http.request("POST", "/printer/print/cancel", timeout=COMMAND_TIMEOUT)
         return self._await(lambda s: s["state"] not in ("printing", "paused"), STATE_WAIT)
 
+    def discard_saved_print(self):
+        """
+        Forget the print the U1 saved after a Halt or a power cut, so it can no longer restart it by itself (SDCARD_PRINT_PL_CLEAR_ENV,
+        the same command its own screen uses to decline the restart). Only on a printer at rest that says it holds one; the firmware
+        refuses it during a print as well.
+        """
+        state = self._fresh_state()
+        if state["state"] in ("printing", "paused"):
+            raise ValueError("A print is running, so there is no halted print to discard")
+        if not state.get("resume_saved"):
+            raise ValueError("The printer isn't holding a halted print")
+        self._log_command("discard_saved_print", "SDCARD_PRINT_PL_CLEAR_ENV")
+        self._gcode("SDCARD_PRINT_PL_CLEAR_ENV", timeout=COMMAND_TIMEOUT)
+        state = self._await(lambda s: not s.get("resume_saved"), STATE_WAIT)
+        if state.get("resume_saved"):
+            raise PrinterRefused("The printer still says it holds the halted print. Try again, or discard it on the printer's own screen")
+        return state
+
     def upload_file(self, filename, size_bytes=0, data=None):
         """
         POST /server/files/upload with a SHA-256 checksum: Moonraker checks
