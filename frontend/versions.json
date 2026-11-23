@@ -2,6 +2,24 @@
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
   "versions": [
     {
+      "version": "0.20.39",
+      "date": "2026-11-23",
+      "name": "Deja Vu1 on a real U1: a halted print it still holds, a bed-clear tick, and S...",
+      "published": true,
+      "summary": "Deja Vu1 on a real U1: a halted print it still holds, a bed-clear tick, and Spanish with a language step.",
+      "changes": [
+        "Deja Vu1 on a real U1: a halted print it still holds, a bed-clear tick, and Spanish with a language step"
+      ],
+      "highlights": [
+        {
+          "title": "What changed",
+          "tab": "modules",
+          "target": "#version-history",
+          "text": "Every version is listed here, newest first. Open What changed for the full list."
+        }
+      ]
+    },
+    {
       "version": "0.20.38",
       "date": "2026-11-22",
       "name": "A language list in Settings and the machinery to translate Deja Vu1",
