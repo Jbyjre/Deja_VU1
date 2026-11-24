@@ -17,7 +17,7 @@ when you slice. This page says what runs, where its files are, what it connects 
 - **The slicing engine**, only for slicing inside Deja Vu1. If Snapmaker Orca (or OrcaSlicer) is already on your
   computer, Deja Vu1 finds it and uses it, so there is nothing to install. Otherwise the Slicer offers to download
   Snapmaker's own copy.
-- **Memory and processor.** Deja Vu1 is built for a computer with 8 GB of memory, and lighter is better. MEASURED
+- **Memory and processor.** Deja Vu1 is built for a computer with 8 GB of memory, and lighter is better. Measured on 24 November 2026 in a Linux cloud computer with no printer connected: the server uses about 37 MB of memory and under 1% of one processor core, with or without a page open (`tools/load-time.js` and a short memory check). It answers about a quarter of a second after it starts. A first visit from a phone-like link (30 Mbit/s home Wi-Fi) downloads about 1.2 MB and is usable after about 1.4 seconds (about 3.1 MB and 1.6 seconds before this version); a browser on the same computer is usable after about half a second. With a printer connected, the work grows with what the printer reports; that was not measured here.
 
 ## What runs, and when
 
