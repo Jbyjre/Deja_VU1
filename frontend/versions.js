@@ -368,7 +368,7 @@ window.Versions = (() => {
     btn.disabled = false;
   };
   $('app-stop').onclick = async e => {
-    if (!confirm('Stop Deja Vu1?\n\nThe dashboard closes on this computer and on your phone. Prints already running carry on. Start it again with the double-click launcher. If it starts with the computer, it also comes back by itself when the computer restarts or after four hours.')) return;
+    if (!confirm('Stop Deja Vu1?\n\nThe dashboard closes on this computer and on your phone. Prints already running carry on. Start it again with the double-click launcher. It does not come back by itself.')) return;
     const btn = e.currentTarget; btn.disabled = true;
     try {
       const r = await postJSON('/api/app/stop', {});

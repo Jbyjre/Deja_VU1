@@ -4,8 +4,10 @@ Start Deja Vu1 and open it in your browser.
 Double-click start-windows.bat (Windows), start-mac.command (macOS) or
 start-linux.sh (Linux), or run:  python3 start.py
 Deja Vu1 then runs apart from that window: closing the window doesn't stop it.
-It also starts by itself at sign-in (Settings -> Desktop app turns that off).
-To stop it: Settings -> Version & updates -> Stop.
+It stops by itself 5 minutes after its last page closes, once no print, slice
+or download is under way (backend/idle_stop.py), and it never starts with the
+computer. Opening the dashboard again shows a Start button.
+To stop it at once: Settings -> Version & updates -> Stop.
 
   python3 start.py --background   the same (the paste blocks name it)
   python3 start.py --foreground   runs in this window instead (for developers;
@@ -15,9 +17,8 @@ Once the dashboard answers, this window shows whether Deja Vu1 is ready and
 fully working, or what is wrong and which block to paste next. If Deja Vu1 is
 already running, it shows that check for the running copy and opens it.
   python3 start.py --check   only checks a running copy (starts nothing)
-  python3 start.py --ensure  starts Deja Vu1 quietly if nothing answers, else does
-                             nothing (Task Scheduler runs this at sign-in, after
-                             waking and every 5 minutes; Settings -> Stop is kept)
+  python3 start.py --ensure  what older versions' start-with-the-computer entries
+                             run: it now removes that entry and starts nothing
   python3 start.py --from-link   what the offline page's "Start Deja Vu1" button
                              runs (the deja-vu1:// link): a background start
 
@@ -70,9 +71,9 @@ def quiet_console(name):
 
 def register_starters():
     """
-    Point the deja-vu1:// link (the offline page's Start button) and the
-    start-with-this-computer entry at this copy. Runs at every start, so a moved
-    folder or a new Python is picked up; a failure is only noted in the log.
+    Point the deja-vu1:// link (the offline page's Start button) at this copy, and
+    remove a start-with-this-computer entry an older version made. Runs at every
+    start, so a moved folder or a new Python is picked up; a failure is only noted.
     """
     if os.environ.get("DEJAVU_NO_REGISTER") == "1":
         return
@@ -83,13 +84,10 @@ def register_starters():
         log(f"The deja-vu1:// start link couldn't be registered: {exc!r}")
     try:
         import autostart
-        state = autostart.refresh()
-        if state.get("on"):
-            log(f"Starts with this computer ({state.get('how')}: {state.get('where')})")
-        if state.get("note"):
-            log(state["note"])
+        if autostart.retire():
+            log("Removed the start-with-this-computer entry an older version made")
     except Exception as exc:
-        log(f"Start with this computer couldn't be refreshed: {exc!r}")
+        log(f"Start with this computer couldn't be checked: {exc!r}")
 
 
 def say(message):
@@ -326,12 +324,19 @@ def supervise(ensure=False):
     and Deja Vu1 wasn't stopped on purpose, and say nothing otherwise.
     """
     quiet_console("launcher-output")
+    if ensure:
+        # Only an older version's start-up entry runs --ensure. Deja Vu1 no longer starts with the computer, so the
+        # entry is removed and nothing starts.
+        try:
+            import autostart
+            if autostart.retire():
+                log("Removed the start-with-this-computer entry an older version made; nothing was started")
+        except Exception as exc:
+            log(f"Couldn't remove the start-with-this-computer entry: {exc!r}")
+        return 0
     try:
         import autostart
-        if ensure and autostart.stopped_on_purpose(DATA_DIR):
-            return 0
-        if not ensure:
-            autostart.clear_stopped(DATA_DIR)
+        autostart.clear_stopped(DATA_DIR)
     except Exception as exc:
         log(f"Couldn't read whether Deja Vu1 was stopped on purpose: {exc!r}")
     running = already_running()
@@ -546,7 +551,7 @@ def start_in_background():
     os.environ["DEJAVU_BACKGROUND_PARENT"] = "1"
     try:
         import autostart
-        autostart.clear_stopped(DATA_DIR)       # started by hand: the 5-minute check may keep it running again
+        autostart.clear_stopped(DATA_DIR)       # started by hand: an old "stopped on purpose" note no longer applies
     except Exception as exc:
         log(f"Couldn't clear the stopped note: {exc!r}")
     running = already_running()
@@ -602,27 +607,33 @@ def start_in_background():
             return 1
     else:
         print(f"Deja Vu1 {running} is already running at http://localhost:{PORT}.", flush=True)
-    # Every start by hand also makes sure Deja Vu1 starts by itself at sign-in (and, on
-    # Windows, comes back after sleep or a stop), unless the person switched that off in
-    # Settings -> Desktop app. --autostart (the 0.14 Start blocks) asks for the same.
+    # Deja Vu1 never starts with the computer: nothing of it runs while nobody uses it. Older versions could, and
+    # their entry is taken away here, once, whoever chose it.
     if os.environ.get("DEJAVU_NO_REGISTER") != "1":
         try:
             import autostart
-            if not autostart.chosen_off(DATA_DIR) and not autostart.status()["on"]:
-                state = autostart.set_on(True)
-                say("It also starts by itself when you sign in to this computer"
-                    + (", after the computer wakes, and within 5 minutes if it ever stops" if state.get("keeps_running")
-                       else "") + " (Settings -> Desktop app turns that off).")
-                if state.get("note"):
-                    say(state["note"])
-        except (OSError, ValueError) as exc:
-            say(f"Starting at sign-in couldn't be switched on: {exc}")
+            if autostart.status()["on"]:
+                autostart.set_on(False)
+                say("Deja Vu1 no longer starts with this computer or keeps running in the background: the entry an "
+                    "older version made is removed.")
+        except (OSError, ValueError, KeyError) as exc:
+            log(f"Starting with this computer couldn't be checked: {exc!r}")
     show_ready()
     if os.environ.get("DEJAVU_NO_BROWSER") != "1":
         open_when_ready()
-    say(f"Deja Vu1 keeps running after you close this window. Open http://localhost:{PORT} any time. "
-        "To stop it: Settings -> Version & updates -> Stop.")
+    n = idle_minutes()
+    say(f"You can close this window. Deja Vu1 stops by itself {n} minute{'' if n == '1' else 's'} after its last page closes, "
+        "unless a print, a slice or a download is still under way. To start it again, open "
+        f"http://localhost:{PORT} or the installed app and press Start, or double-click the launcher.")
     return 0
+
+
+def idle_minutes():
+    try:
+        import idle_stop
+        return f"{idle_stop.minutes():g}"
+    except Exception:              # noqa: BLE001 - an older backend/ without idle_stop.py
+        return "5"
 
 
 def show_port_in_use():

@@ -140,7 +140,7 @@ let updateTicks = 0;
  * again the strip goes, and a restarted program reloads the page. */
 const QUIET_MS = 10000;       // how long the server must stay silent before the page says anything: a restart or a wake-up from sleep is over by then
 const serverWatch = { fails: 0, since: 0, pid: null, el: null, shown: false };
-function serverStrip(text, help) {
+function serverStrip(text, help, longGone = false) {
   if (!serverWatch.el) {
     const el = document.createElement('div');
     el.className = 'server-lost liquid-glass';
@@ -151,7 +151,6 @@ function serverStrip(text, help) {
   }
   serverWatch.el.querySelector('b').textContent = text;
   serverWatch.el.querySelector('span').textContent = help;
-  const longGone = help.includes('start');
   serverWatch.el.querySelector('a[href="offline.html"]').hidden = !longGone;
   // The start link only works on the computer Deja Vu1 runs on (it registers it there).
   serverWatch.el.querySelector('.sl-start').hidden = !longGone || !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -199,7 +198,8 @@ async function watchServer() {
   const secs = Math.round((Date.now() - serverWatch.since) / 1000);
   if (Date.now() - updating < 5 * 60 * 1000 && secs < 90) serverStrip('Deja Vu1 is restarting after the update.', 'This page carries on by itself in a moment. A print on your printer keeps going.');
   else if (secs < 20) serverStrip('Deja Vu1 stopped answering.', 'Trying again every few seconds…');
-  else serverStrip('Deja Vu1 isn’t answering.', 'It starts again by itself within a few minutes if it is set to start with the computer. You can also press Start. This page reconnects by itself.');
+  else if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) serverStrip('Deja Vu1 isn’t answering.', 'Press Start to start it again. This page reconnects by itself.', true);
+  else serverStrip('Deja Vu1 isn’t answering.', 'Start it again on the computer it runs on: open the dashboard there, or double-click the launcher. This page reconnects by itself.', true);
 }
 setInterval(watchServer, 4000);
 

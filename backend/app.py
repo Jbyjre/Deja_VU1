@@ -313,6 +313,8 @@ import filament_inventory
 import spoolman_bridge
 import fleet
 import handoff
+import idle_stop
+import static_files
 import webrtc_camera
 import home_assistant_bridge
 import led_status
@@ -354,7 +356,7 @@ import watch_only
 import websocket
 import wled_bridge
 from app_part1 import (  # noqa: F401  (split out 19 November 2026; names kept here for callers)
-    DejaVuServer, LIVE_FPS, LIVE_SECONDS, MAX_UPLOAD, PORT, PORT_IN_USE, WRITE_GRACE, _APP_ROUTES,
+    DejaVuServer, DualStackServer, LIVE_FPS, LIVE_SECONDS, MAX_UPLOAD, PORT, PORT_IN_USE, WRITE_GRACE, _APP_ROUTES,
     _CONTROL_ACTIONS, _DATA_ROUTES, _FARM_ROUTES, _Gone, _LOCAL_SUFFIXES, _QUEUE_ACTIONS, _chamber, _close_down,
     _colour_plan, _confirm_print, _demo, _fleet_rows, _host_name, _live_snapshot, _loaded_heads, _print_phone_qr,
     _q, _restart_soon, _tester_study, module_routes,
@@ -454,7 +456,32 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
         # Tell the built-in file server to serve out of the frontend folder.
         super().__init__(*args, directory=_FRONTEND_DIR, **kwargs)
 
+    # HTTP/1.1 lets a browser send many requests over one connection instead of opening a new one for each of the
+    # page's hundred files and every reading after them. Only a reply whose end the browser can tell (a length, or no
+    # body at all) to a GET keeps the connection open; everything else says "Connection: close" (end_headers).
+    protocol_version = "HTTP/1.1"
+    # On a connection that stays open, a reply's headers and body leave as separate small writes; without this the
+    # computer holds the second one back waiting for an acknowledgement (Nagle's rule), about 40 ms a file. Measured
+    # 24 November 2026: the dashboard took about 880 ms to open on this computer with the wait and about 500 ms without.
+    disable_nagle_algorithm = True
+
+    def send_response(self, code, message=None):
+        self._reply = {"status": code, "length": False, "connection": False, "keep": True}
+        super().send_response(code, message)
+
+    def _no_keep_alive(self):
+        """This reply ends when the connection closes (a stream that may stop short)."""
+        getattr(self, "_reply", {})["keep"] = False
+
     def end_headers(self):
+        reply = getattr(self, "_reply", None)
+        if reply is not None and self.request_version != "HTTP/0.9":
+            keep = (self.command in ("GET", "HEAD") and reply["keep"]
+                    and (reply["length"] or reply["status"] in (204, 304)))
+            if not keep:
+                if not reply["connection"]:
+                    self.send_header("Connection", "close")
+                self.close_connection = True
         # Sent with every response, pages and API alike:
         #  - nosniff: a stored file is only ever treated as the type we say.
         #  - frame-ancestors / X-Frame-Options: no other site can load the
@@ -476,8 +503,14 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
         super().end_headers()
 
     def send_header(self, keyword, value):
-        if keyword.lower() == "cache-control":
+        name = keyword.lower()
+        if name == "cache-control":
             self._cache_rule_sent = True
+        reply = getattr(self, "_reply", None)
+        if reply is not None and name == "content-length":
+            reply["length"] = True
+        if reply is not None and name == "connection":
+            reply["connection"] = True
         super().send_header(keyword, value)
 
     # -- helpers ----------------------------------------------------------
@@ -526,6 +559,7 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
         stops sending part-way ends it with a short body, which the browser reads as a failed video, never as a whole one.
         """
         self.send_response(status)
+        self._no_keep_alive()           # a printer that stops part-way leaves the body short: only a close ends it
         self.send_header("Content-Type", content_type)
         if length is not None:
             self.send_header("Content-Length", str(length))
@@ -718,7 +752,10 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
         """A browser on this computer, reached as localhost (not via a tunnel or network address)."""
         ip = (self.client_address or ("",))[0]
         try:
-            loopback = ipaddress.ip_address(ip.split("%")[0]).is_loopback
+            address = ipaddress.ip_address(ip.split("%")[0])
+            # On the dual-stack socket an IPv4 caller shows as ::ffff:a.b.c.d; judge the IPv4 address itself.
+            address = getattr(address, "ipv4_mapped", None) or address
+            loopback = address.is_loopback
         except ValueError:
             loopback = False
         return loopback and _host_name(self.headers.get("Host", "")).lower() in ("localhost", "127.0.0.1", "::1")
@@ -744,9 +781,15 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
                                   "computer it runs on.", "pairing_required": True}, status=401)
         return True
 
+    def _note_page(self):
+        """Any request but the launcher's own checks means a page is open (idle_stop.py). Not a security check."""
+        if not self.headers.get("User-Agent", "").startswith("Python-urllib"):
+            idle_stop.page_seen()
+
     def do_GET(self):
         if not self._host_allowed():
             return None
+        self._note_page()
         if self.path.startswith("/api/") and self._locked_out():
             return None
         if self.path.split("?")[0] == "/api/app/alive":
@@ -757,12 +800,19 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
                                     "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""),
                                     "restarting": update_hold.active()})
         if self.path.startswith("/api/live") and websocket.is_upgrade_request(self.headers):
-            return self._handle_websocket()
+            idle_stop.socket_opened()
+            try:
+                return self._handle_websocket()
+            finally:
+                self.close_connection = True        # the socket carried the live feed; it is never used again
+                idle_stop.socket_closed()
         if self.path.startswith("/api/"):
             return self._dispatch(self._handle_api_get)
         # Not an API call, so serve a file from the frontend folder.
         if self.path.startswith("/media/") and self.headers.get("Range"):
             return self._send_media_range()
+        if static_files.send(self):
+            return None
         return super().do_GET()
 
     def _send_media_range(self):
@@ -815,6 +865,7 @@ class DejaVuHandler(PostRoutes, GetRoutes, SimpleHTTPRequestHandler):
             return self._send_json({"error": "Refused: this request came from another website"}, status=403)
         if self._locked_out():
             return None
+        self._note_page()
         return self._dispatch(self._handle_api_post)
 
     def _same_origin(self):
@@ -1020,6 +1071,17 @@ def _run_install(server, repair, raise_errors=False):
     return result
 
 
+def _listen():
+    """IPv6 and IPv4 on one socket where the system allows it (DualStackServer), IPv4 alone where it doesn't."""
+    if socket.has_ipv6 and os.environ.get("DEJAVU_IPV4_ONLY") != "1":
+        try:
+            return DualStackServer(("::", PORT), DejaVuHandler)
+        except OSError as exc:
+            if exc.errno in (errno.EADDRINUSE, 10048) or getattr(exc, "winerror", None) == 10048:
+                raise
+    return DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
+
+
 def _bind(attempts=10, wait=0.5):
     """
     The server on PORT. A port still held by a copy that is closing frees
@@ -1028,7 +1090,7 @@ def _bind(attempts=10, wait=0.5):
     """
     for attempt in range(attempts):
         try:
-            return DejaVuServer(("0.0.0.0", PORT), DejaVuHandler)
+            return _listen()
         except OSError as exc:
             in_use = exc.errno in (errno.EADDRINUSE, 10048) or getattr(exc, "winerror", None) == 10048
             if not in_use:
@@ -1066,7 +1128,8 @@ def main():
     threading.Thread(target=ai_providers.protect_saved_keys, name="ai-keys", daemon=True).start()
     threading.Thread(target=ai_assistant.watch_loop, name="ai-watch", daemon=True).start()
     # Windows' Task Scheduler answers in a second or more; ask it now, so no page ever waits for it.
-    threading.Thread(target=autostart.status, name="autostart-warm", daemon=True).start()
+    # A copy the launcher started stops by itself once no page has been open for a while and nothing is under way.
+    threading.Thread(target=idle_stop.watch, args=(server.shutdown,), name="idle-stop", daemon=True).start()
     print("=" * 58)
     print("  Deja Vu1 dashboard")
     print(f"  Open your browser at:  http://localhost:{PORT}")

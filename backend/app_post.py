@@ -163,8 +163,12 @@ class PostRoutes:
             body = self._read_json_body()
             if not self._this_computer():
                 return self._send_json({"error": "Change this on the computer that runs Deja Vu1"}, status=403)
-            autostart.remember_choice(storage.DATA_DIR, bool(body.get("on")))
-            return self._send_json(autostart.set_on(bool(body.get("on"))))
+            if body.get("on"):
+                return self._send_json({"error": "Deja Vu1 no longer starts with the computer or keeps running in "
+                                                 "the background. It starts when you open it and stops by itself "
+                                                 "when nobody uses it."}, status=410)
+            autostart.retire()
+            return self._send_json(autostart.status())
         if route == "/api/app/updates/settings":
             return self._send_json(app_updates.save_settings(self._read_json_body()))
         if route == "/api/app/updates/check":

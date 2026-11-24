@@ -31,7 +31,7 @@ You need your own running copy for real readings.
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
    Set-Location $dest
-   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
    ```
 
    **Mac, Linux or Raspberry Pi:** open **Terminal** (on a Mac: Cmd + Space, type
@@ -40,7 +40,7 @@ You need your own running copy for real readings.
    ```bash
    curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
    python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+   cd ~/Documents/Deja_VU1 && python3 start.py --background
    ```
 
    If a Mac says the `python3` command needs the command line developer tools,
@@ -297,7 +297,8 @@ Your browser says "Deja Vu1 isn't running right now", or the dashboard stopped
 answering? Paste one block. It starts Deja Vu1 in Documents if it isn't
 running, then that window shows **Deja Vu1 is ready and fully working**, or what
 is wrong and the next block to paste. Then close the window if you like: Deja Vu1
-keeps running in the background, and starts by itself whenever you sign in.
+keeps running while you use it and stops by itself a few minutes after its last
+page closes. It never starts with the computer.
 
    **Windows:** open a new **PowerShell** window and paste:
 
@@ -305,14 +306,14 @@ keeps running in the background, and starts by itself whenever you sign in.
    $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
    if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
    Set-Location $dest
-   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
    ```
 
    **Mac, Linux or Raspberry Pi:** open a new Terminal window and paste:
 
    ```bash
    [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-   cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+   cd ~/Documents/Deja_VU1 && python3 start.py --background
    ```
 
 If that window still shows a problem, paste the update block above: it also

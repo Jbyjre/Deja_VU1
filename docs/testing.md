@@ -260,8 +260,8 @@ preview and heavy-model checks ran in Chromium.
   stand-in printers at once and report each printer's own result (`tests/test_fleet_command.py`).
   A one-head 235 × 235 × 250 mm Klipper printer connects and describes its own size and heads
   (`tests/test_machines.py`).
-- **macOS:** the start-at-sign-in file is checked as a valid macOS launch file
-  (`tests/test_autostart.py`), and the engine check names macOS for an engine there
+- **macOS:** the start-at-sign-in file that versions before 24 November 2026 wrote is checked as a valid
+  macOS launch file, and Deja Vu1 now takes it away (`tests/test_autostart.py`, `tests/test_idle_stop.py`), and the engine check names macOS for an engine there
   (`tests/test_engine_support.py`). The AI key store runs its macOS Keychain path against a
   stand-in `security` program.
 - **Windows:** the server answers every command when started with no window, the way Windows

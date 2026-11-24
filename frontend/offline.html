@@ -53,14 +53,14 @@ small,#check{color:var(--soft)}
 <h2>Double-click the launcher</h2>
 <ol><li>Open your Deja Vu1 folder (in Documents, if you used the paste block).</li><li>Double-click <code>start-windows.bat</code> (Windows), <code>start-mac.command</code> (Mac) or <code>start-linux.sh</code> (Linux).</li><li>The window that opens says when Deja Vu1 is ready. You can close it then: Deja Vu1 keeps running.</li></ol>
 <h2>Or paste one block</h2>
-<p>Copy this into a new PowerShell window (Windows) or Terminal window (Mac, Linux) and press Enter. It starts Deja Vu1 if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. You can close the window afterwards: Deja Vu1 keeps running, and starts by itself when you sign in.</p>
+<p>Copy this into a new PowerShell window (Windows) or Terminal window (Mac, Linux) and press Enter. It starts Deja Vu1 if it isn&rsquo;t running. Then that window shows &ldquo;Deja Vu1 is ready and fully working&rdquo;, or what is wrong and the block to paste next. You can close the window afterwards. Deja Vu1 stops by itself once no page has been open for 5 minutes and nothing is under way; this page then starts it again.</p>
 <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="win" aria-pressed="true">Windows</button><button type="button" data-os="unix" aria-pressed="false">Mac &amp; Linux</button></div>
 <div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }</code></pre></div>
 <div class="term" data-block="unix" hidden><button class="copy" type="button">Copy</button><pre><code>[ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip &amp;&amp; python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 &amp;&amp; chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background --autostart</code></pre></div>
+cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></div>
 <h2>Still not working? Repair the app files</h2>
 <p>This block stops any stuck copy, downloads fresh app files from GitHub, puts them in your Deja Vu1 folder in Documents and starts it. Your settings, printers and files stay.</p>
 <div class="term" data-block="win"><button class="copy" type="button">Copy</button><pre><code>$ProgressPreference = 'SilentlyContinue'
@@ -79,7 +79,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 </details>
 </div>
 <div id="away" hidden>
-<p>The computer that runs Deja Vu1 isn&rsquo;t answering. Check that it is switched on and awake, and that this phone or computer is on the same Wi-Fi or your private remote connection. Deja Vu1 on that computer runs without a window and starts by itself when you sign in there.</p>
+<p>The computer that runs Deja Vu1 isn&rsquo;t answering. Check that it is switched on and awake, and that this phone or computer is on the same Wi-Fi or your private remote connection. Deja Vu1 on that computer runs without a window. It stops by itself when nobody has used it for a while: then start it again on that computer.</p>
 <p><a class="btn" href="./?dashboard">Try again</a></p>
 </div>
 <details><summary>While you wait</summary>

@@ -46,6 +46,7 @@ import print_record
 import timelapse
 
 TICK_SECONDS = 0.25
+QUIET_TICK_SECONDS = 2.0        # with no Deja Vu1 page open anywhere: one look every two seconds, not four a second
 DEMO_ACTIVE_SECONDS = 120
 CHAMBER_SAMPLE_SECONDS = 5
 CHAMBER_SAMPLES = 360          # 30 minutes at one sample per 5 s
@@ -518,6 +519,17 @@ def forget(printer_id):
     _refresh_fleet()
 
 
+def _pace():
+    """Four looks a second while someone watches; one every two seconds while nobody does (idle_stop.pages_open).
+    A print being recorded with no page open then costs almost nothing, and the readings are fresh again within two
+    seconds of a page opening."""
+    try:
+        import idle_stop
+        return TICK_SECONDS if idle_stop.pages_open() else QUIET_TICK_SECONDS
+    except Exception:                 # noqa: BLE001 - an unknown answer keeps the usual pace
+        return TICK_SECONDS
+
+
 def _loop():
     count = 0
     last = time.monotonic()
@@ -531,8 +543,12 @@ def _loop():
             import sys
             sys.stderr.write(f"  live feed tick failed: {exc}\n")
         last = now
-        count += 1
-        time.sleep(max(0.0, TICK_SECONDS - (time.monotonic() - now)))
+        pace = _pace()
+        # The count stays in quarter seconds, so "every fourth tick" and "about once a minute" keep their meaning.
+        # A quiet step lands on a multiple of itself, so those checks are still reached.
+        step = max(1, round(pace / TICK_SECONDS))
+        count = (count // step + 1) * step
+        time.sleep(max(0.0, pace - (time.monotonic() - now)))
 
 
 # Automation firings become live events as soon as this module is loaded,

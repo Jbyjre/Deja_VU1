@@ -119,14 +119,6 @@ class StartWithThisComputer(unittest.TestCase):
         self.addCleanup(setattr, autostart, "_boot_time", real)
         self.assertFalse(autostart.stopped_on_purpose(data))
 
-    def test_switching_it_off_in_settings_is_remembered(self):
-        data = self.home.name
-        self.assertFalse(autostart.chosen_off(data))
-        autostart.remember_choice(data, False)
-        self.assertTrue(autostart.chosen_off(data))
-        autostart.remember_choice(data, True)
-        self.assertFalse(autostart.chosen_off(data))
-
     def test_mac_launch_agent_is_a_valid_plist(self):
         on, text = self.toggle("darwin")
         self.assertTrue(on["where"].endswith("Library/LaunchAgents/io.github.jbyjre.dejavu1.plist"))

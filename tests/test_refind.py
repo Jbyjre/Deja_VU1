@@ -123,5 +123,25 @@ class TestFollowingAMovedPrinter(unittest.TestCase):
         self.assertEqual(saved["moonraker_url"], self.old.url)
 
 
+class TestOnlyWhileSomeoneUsesIt(unittest.TestCase):
+    """The wider search sweeps the home network, so it waits while no page is open (24 November 2026)."""
+
+    def run_watch(self, pages_open):
+        import idle_stop
+        import threading
+        stop = threading.Event()
+        stop.wait = lambda timeout=None: True          # one round, then stop
+        with mock.patch.object(idle_stop, "pages_open", return_value=pages_open), \
+                mock.patch.object(refind, "check") as check:
+            refind.watch(stop_event=stop)
+        return check.call_count
+
+    def test_no_page_open_means_no_search(self):
+        self.assertEqual(self.run_watch(False), 0)
+
+    def test_an_open_page_brings_it_back(self):
+        self.assertEqual(self.run_watch(True), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

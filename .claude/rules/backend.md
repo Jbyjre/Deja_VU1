@@ -24,7 +24,26 @@ slicing and launcher files have their own notes in this folder.
   or subprocess work while holding `app_updates._lock`.
 - Never write to `sys.stdout` or `sys.stderr` in request code: under `pythonw.exe` there are no
   streams and a log line broke every POST reply. Use `console.write`.
-- `app._bind()` retries a busy port, then exits `PORT_IN_USE` (3).
+- `app._bind()` retries a busy port, then exits `PORT_IN_USE` (3). `_listen()` opens one socket for IPv6
+  and IPv4 (`DualStackServer`, `::` with `IPV6_V6ONLY` 0) and falls back to `0.0.0.0` where IPv6 is
+  missing (`DEJAVU_IPV4_ONLY=1` forces it); a busy port is never hidden by the fallback. An IPv4 caller
+  then shows as `::ffff:a.b.c.d`, so `_this_computer` unmaps it before judging loopback.
+- The handler speaks HTTP/1.1 so a browser keeps one connection for many files. Keep-alive is opt-in
+  per reply (`end_headers`): only a GET or HEAD with a Content-Length, or a 204/304, keeps it; streams
+  (`_no_keep_alive()`), the WebSocket and every POST send `Connection: close`. A new reply without a
+  length closes by itself, so a forgotten header can never leave a browser waiting. `disable_nagle_algorithm`
+  is on: without it each file on a kept-open connection waited about 40 ms (measured 24 November 2026).
+- `static_files.send()` answers the page's text files (js, css, html, json, svg and the like, 1 KB and
+  up) gzip-compressed, cached in memory by mtime and size, with an ETag and a 304. Pictures, fonts,
+  small files and Range requests go to the built-in file server, and so does every request from this
+  computer (`same_computer`: no network to save, only time). `tools/load-time.js` measures start-up and
+  page load (this computer, phone-like Wi-Fi over the network address, second visit).
+- The live feed ticks every 250 ms while a page is open and every 2 s while none is (`live_feed._pace`,
+  `QUIET_TICK_SECONDS`); the tick count stays in quarter seconds so "every Nth tick" checks keep their meaning.
+- `refind.watch` (the wider network search for a printer that moved) runs only while a page is open
+  (`idle_stop.pages_open()`); `check()` itself is unchanged.
+- The live WebSocket sends `{"type":"alive"}` with its 20-second ping; the page reconnects a link that
+  has heard nothing for 50 s (`watchLive` in `workshop-part5.js`), since a browser can't see pings.
 
 ## One printer interface (`mock_moonraker.py`)
 

@@ -69,10 +69,17 @@ Installing and updating must work every time, including while a print runs.
   instead of waiting `START_WAIT`.
 - The health check matches `DEJAVU_LAUNCH_ID` or the PID, never through a proxy, for up to
   `START_WAIT` (90 s), asking `/api/app/alive` first and falling back to `/api/app/info` on 404.
-- `autostart.py`: Windows Task Scheduler task "Deja Vu1" (sign-in, wake, every 5 minutes; no admin)
-  running `pythonw start.py --ensure`, else the Startup folder; macOS LaunchAgent; Linux XDG
-  autostart. Settings → Stop and Ctrl+C write `stopped-on-purpose.json`, which `--ensure` respects
-  until a start by hand, a reboot or `STOP_HOURS` (4). Only Linux is exercised in tests.
+- **Nothing starts with the computer (24 November 2026, the owner's request: an 8 GB computer is the standard and
+  nothing of Deja Vu1 runs while unused).** `autostart.py` now only finds and removes what older versions wrote
+  (Windows Task Scheduler task "Deja Vu1" running `pythonw start.py --ensure`, else the Startup folder; macOS
+  LaunchAgent; Linux XDG autostart): `autostart.retire()` runs at every start, `start.py --ensure` (what an old
+  entry runs) retires the entry and exits 0 without starting anything, and `POST /api/app/autostart` with
+  `on: true` answers 410. Never add a way back to start with the computer. Only Linux is exercised in tests.
+- **`idle_stop.py`:** every launcher start (`DEJAVU_BACKGROUND=1`) stops 5 minutes (`DEJAVU_IDLE_MINUTES`,
+  0 = never) after its last page closed, unless a print
+  on a real printer, a slice, an engine install, an app update or a time-lapse copy is under way. It
+  exits 0, so the supervisor ends too. A server run by hand or a test never stops by itself.
+  `docs/how-it-runs.md` is the owner-facing version.
 - `console.py` gives a window-less process a log file and writes through a thread so a paused
   console never blocks a reply. On Windows the server holds its port with SO_EXCLUSIVEADDRUSE.
 - `launch_link.py` registers `deja-vu1://`; the command never receives the opened address. Tests
