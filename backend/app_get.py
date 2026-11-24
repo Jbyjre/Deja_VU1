@@ -397,6 +397,9 @@ class GetRoutes:
                                                    "t": snap["t"], **tag_for(current)}))
                 if time.time() - last_ping > 20:
                     conn.ping()
+                    # A ping is answered by the browser itself and never reaches the page's code. This line does,
+                    # so a page that has heard nothing for a minute knows its link is dead and opens a new one.
+                    conn.send_text('{"type":"alive"}')
                     last_ping = time.time()
         except (websocket.ConnectionClosed, OSError):
             pass

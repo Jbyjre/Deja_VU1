@@ -6,6 +6,11 @@ VERSION is already released, this raises the last number by one (0.9.0 ->
 the top of frontend/versions.json and a CHANGELOG.md heading. The changes are
 the titles of the merges since the last release.
 
+The version's "What's new" walk stops at every spot that changed. A session that changes a screen lists the spot
+under "next" > "highlights" at the top of frontend/versions.json ({tab, target, title, text}, the same shape as a
+version's highlights); the release moves them into the new entry, ahead of the version history's own stop, and
+empties the list for the next round.
+
 Usage: python3 tools/next-release.py <last released tag, e.g. v0.9.0>
 Prints the new version number.
 """
@@ -60,12 +65,16 @@ def write(root, new, changes, today):
     (root / 'VERSION').write_text(new + '\n')
     path = root / 'frontend' / 'versions.json'
     data = json.loads(path.read_text(encoding='utf-8'))
+    waiting = (data.get('next') or {}).get('highlights') or []
+    stops = [h for h in waiting if isinstance(h, dict) and h.get('target', '').startswith('#') and h.get('title') and h.get('text')]
+    if 'next' in data:
+        data['next']['highlights'] = []
     data['versions'].insert(0, {
         'version': new, 'date': today.isoformat(), 'name': name, 'published': True,
         'summary': changes[0].rstrip('.') + '.' if len(changes) == 1 else f'{len(changes)} improvements, listed below.',
         'changes': changes,
-        'highlights': [{'title': 'What changed', 'tab': 'modules', 'target': '#version-history',
-                        'text': 'Every version is listed here, newest first. Open What changed for the full list.'}],
+        'highlights': stops + [{'title': 'What changed', 'tab': 'modules', 'target': '#version-history',
+                                'text': 'Every version is listed here, newest first. Open What changed for the full list.'}],
     })
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     log = root / 'CHANGELOG.md'

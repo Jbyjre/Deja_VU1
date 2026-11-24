@@ -13,7 +13,7 @@
    left out. */
 'use strict';
 window.Guide = (() => {
-  let root, ring, card, beacon, steps = [], at = 0, opts = {}, returnTab = null, returnFocus = null, raf = 0, target = null;
+  let root, ring, card, beacon, steps = [], at = 0, opts = {}, returnTab = null, returnSection = null, returnScroll = { page: 0, pane: 0 }, returnFocus = null, raf = 0, target = null;
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const narrow = () => matchMedia('(max-width: 720px)').matches;
 
@@ -226,7 +226,11 @@ window.Guide = (() => {
     if (!steps.length) return;
     opts = options; at = Math.min(options.startAt || 0, steps.length - 1);
     returnFocus = document.activeElement;
-    returnTab = document.querySelector('.navtab.active')?.dataset.tab || 'overview';
+    returnTab = document.body.dataset.tab || document.querySelector('.navtab.active')?.dataset.tab || 'overview';
+    // Where the walk started, down to the part of the screen and how far it was scrolled, so the end puts it all back.
+    returnSection = window.Sections && Sections.current ? Sections.current(returnTab) : null;
+    const pane = document.querySelector(`#tab-${returnTab}`);
+    returnScroll = { page: window.scrollY, pane: pane ? pane.scrollTop : 0 };
     build();
     document.documentElement.classList.add('guide-open');
     addEventListener('scroll', schedule, { passive: true, capture: true });
@@ -247,7 +251,16 @@ window.Guide = (() => {
     old.classList.remove('is-in');
     setTimeout(() => old.remove(), still() ? 0 : 300);
     document.documentElement.classList.remove('guide-open');
-    if (!opts.keepTab && returnTab) showTab(returnTab);
+    if (!opts.keepTab && returnTab) {
+      showTab(returnTab);
+      if (returnSection && window.Sections && Sections.current(returnTab) !== returnSection) Sections.choose(returnTab, returnSection);
+      const back = returnScroll, tab = returnTab;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const pane = document.querySelector(`#tab-${tab}`);
+        if (pane) pane.scrollTop = back.pane;
+        window.scrollTo(0, back.page);
+      }));
+    }
     if (returnFocus && returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
     if (opts.onEnd) opts.onEnd(finished);
   }

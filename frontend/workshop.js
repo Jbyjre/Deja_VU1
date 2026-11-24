@@ -26,9 +26,10 @@ const Workshop = (() => {
   const { fmtHours, isLive, live, printerName, tween, twinFeed, twinFx } = WorkshopPart1;
   const { flipbookVideo, loadCamera, morph, stopCamera } = WorkshopPart3;
   const { applyState, loadFiles, loadQueue, openConfirm, openDialog, openDiff, openFile, refreshPrinter } = WorkshopPart4;
-  const { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter } = WorkshopPart5;
+  const { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter, watchLive } = WorkshopPart5;
 document.addEventListener('visibilitychange', nudgeLive);
 window.addEventListener('online', nudgeLive);
+setInterval(watchLive, 10000);
 window.addEventListener('pageshow', e => { if (e.persisted) nudgeLive(); });
 setInterval(() => {
     if (!isLive()) return;

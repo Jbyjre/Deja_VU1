@@ -98,7 +98,8 @@ class TestPlaces(unittest.TestCase):
         scripts = re.findall(r'<script src="([^"]+)"', INDEX)
         self.assertEqual(scripts[-1], "intro.js")            # the opening scene borrows the twin once everything else is built
         self.assertEqual(scripts[-2], "rail.js")
-        self.assertEqual(scripts[-3], "pagebar.js")
+        self.assertEqual(scripts[-3], "activity.js")           # the Activity tray mounts in the frame pagebar.js built
+        self.assertEqual(scripts[-4], "pagebar.js")
         self.assertIn("(max-width: 720px)", RAIL)
         css = read("shell.css")
         self.assertIn("html.has-shell .rail, html.has-shell .rail-menu { display: none; }", css)

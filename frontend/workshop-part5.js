@@ -4,7 +4,7 @@
  * checkHandoff, closeDialog, connect, convertFromCard, honourReducedMotion, init, initConfirm, initConverterCard,
  * initDialogs, initFiles, initFleet, initPhone, loadRules, loadTimelapse, nudgeLive, onEvent, onTab, openLocalFiles,
  * openPrinterMenu, playFlipbook, reconnect, refresh, renderFleet, ruleForm, selectPrinter, showSummary,
- * startPolling, uploadFiles
+ * startPolling, uploadFiles, watchLive
  */
 'use strict';
 const WorkshopPart5 = (() => {
@@ -44,9 +44,10 @@ function connect() {
     try { ws = new WebSocket(`${proto}://${location.host}/api/live?${params.join('&')}`); }
     catch (e) { startPolling(); return; }
     live.ws = ws;
-    ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; badge(); };
+    ws.onopen = () => { clearInterval(live.poll); live.poll = null; live.mode = 'ws'; live.retries = 0; live.heardAt = performance.now(); badge(); };
     ws.onmessage = (e) => {
       if (live.ws !== ws) return;
+      live.heardAt = performance.now();
       let msg;
       try { msg = JSON.parse(e.data); } catch (err) { return; }
       if (!msg.type) { live.mode = 'off'; badge(); return; }          // {"connected":false,"demo":false}
@@ -77,6 +78,14 @@ function connect() {
 function nudgeLive() {
     if (!liveData() || tourOn() || document.hidden) return;
     if (live.mode !== 'ws' || (performance.now() - live.lastAt) > 5000) reconnect();
+  }
+
+  /* A link can die without the page being told (a router that dropped it, a computer that changed networks). The server
+   * sends a line at least every 20 seconds, so a page that has heard nothing for 50 seconds opens a new link. */
+  const LIVE_SILENT_MS = 50000;
+function watchLive() {
+    if (document.hidden || tourOn() || live.mode !== 'ws' || !live.ws) return;
+    if (performance.now() - (live.heardAt || 0) > LIVE_SILENT_MS) reconnect();
   }
 
   /* Fallback when a WebSocket can't be opened (an old proxy, a strict
@@ -841,5 +850,5 @@ function init() {
     setInterval(() => { if (liveData()) { loadHealth(); loadChamber(); } }, 15000);
     window.addEventListener('resize', () => moveTabBlob(currentTab()));
   }
-  return { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter };
+  return { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter, watchLive };
 })();
