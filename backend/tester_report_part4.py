@@ -46,7 +46,7 @@ ROUTE_CODE = (("/api/printer/control/", ["backend/printer_control.py"]), ("/api/
               ("/api/convert", ["backend/converter_3mf.py"]), ("/api/colours", ["backend/colour_map.py"]),
               ("/api/queue", ["backend/print_queue.py"]), ("/api/filament", ["backend/filament_inventory.py"]),
               ("/api/maintenance", ["backend/maintenance.py"]), ("/api/camera", ["backend/camera.py", "backend/stock_camera.py"]),
-              ("/api/timelapse", ["backend/timelapse.py"]), ("/api/assistant", ["backend/ai_assistant.py"]),
+              ("/api/timelapse", ["backend/timelapse.py"]), ("/api/prints", ["backend/print_record.py"]), ("/api/assistant", ["backend/ai_assistant.py"]),
               ("/api/app/", ["backend/app_updates.py", "backend/app_post.py"]), ("/api/updates", ["backend/app_updates.py"]),
               ("/api/fleet", ["backend/fleet.py"]), ("/api/printers", ["backend/fleet.py"]),
               ("/api/notifications", ["backend/notifications.py"]), ("/api/automations", ["backend/automations.py"]),
@@ -58,7 +58,7 @@ ROUTE_CODE = (("/api/printer/control/", ["backend/printer_control.py"]), ("/api/
 
 # Where a screen's code lives, for a slow press or a freeze that has no script error to point at.
 AREA_CODE = {"Overview": ["frontend/telemetry.js", "frontend/app-shell.js"], "Printers": ["frontend/desk.js", "frontend/workshop-part5.js"],
-             "Printer page": ["frontend/workshop-part2.js", "frontend/workshop-part3.js", "frontend/workshop-part5.js"],
+             "Printer page": ["frontend/workshop-part2.js", "frontend/workshop-part3.js", "frontend/workshop-part5.js", "frontend/prints.js"],
              "Files": ["frontend/workshop-part5.js", "frontend/gcode-view.js"],
              "Slicing": ["frontend/slicer-prepare.js", "frontend/slicer-settings.js", "frontend/slicer-preview.js"],
              "Queue": ["frontend/workshop-part4.js", "frontend/farm-part1.js"], "Filament": ["frontend/app-print.js"],

@@ -24,6 +24,7 @@ import time
 import uuid
 from datetime import datetime, timedelta
 
+import file_library
 import storage
 
 _DATA_DIR = storage.DATA_DIR
@@ -132,7 +133,7 @@ def started(printer_id, printer_name, state, job, demo):
     return dict(entry)
 
 
-def ended(printer_id, how, state, job=None, cost=None, timelapse_session=None):
+def ended(printer_id, how, state, job=None, cost=None, timelapse_session=None, demo=False):
     """
     The open print on this printer ended (`how` is finished, failed or cancelled). Fills in what is known now. Returns the entry,
     or None when no print was open (it started before Deja Vu1 was watching: one is made from what the end says).
@@ -145,7 +146,7 @@ def ended(printer_id, how, state, job=None, cost=None, timelapse_session=None):
         entry = next((e for e in reversed(data["prints"]) if e.get("printer") == printer_id and e.get("status") == "running"), None)
         if entry is None:
             entry = {"id": uuid.uuid4().hex[:12], "printer": printer_id, "printer_name": state.get("printer_name"),
-                     "file": job.get("filename") or state.get("current_file") or "(unknown file)", "demo": False,
+                     "file": job.get("filename") or state.get("current_file") or "(unknown file)", "demo": bool(demo),
                      "started_at": job.get("start_time"), "estimated_hours": None, "grams_in_file": None,
                      "material": job.get("filament_type"), "heads": [], "picture": None, "note": "",
                      "joined_late": True}
@@ -334,7 +335,41 @@ def listing(demo=False, query=None, printer_history=None, printer_id=None, print
             return " ".join(str(e.get(k) or "") for k in ("file", "printer_name", "material", "status", "note")).lower()
         rows = [e for e in rows if all(w in text(e) for w in words)]
     rows.sort(key=lambda e: _stamp(e.get("started_at") or e.get("ended_at")) or 0, reverse=True)
-    return {"prints": rows, "settings": {"keep_days": keep_days}, "keep_choices": list(KEEP_CHOICES)}
+    return {"prints": _with_files(rows), "settings": {"keep_days": keep_days}, "keep_choices": list(KEEP_CHOICES)}
+
+
+def seen_printing(printer_id, printer_name, state, job, demo):
+    """
+    A print already running when Deja Vu1 started watching has no entry yet (its start was never seen): this row shows it
+    under Now until it ends, when ended() records it. Nothing is written. None when the printer isn't printing.
+    """
+    if (state or {}).get("state") not in ("printing", "paused"):
+        return None
+    row = {"id": "now-" + str(printer_id), "printer": printer_id, "printer_name": printer_name,
+           "file": state.get("current_file") or (job or {}).get("filename") or "(unknown file)", "status": "running",
+           "demo": bool(demo), "started_at": None, "ended_at": None, "estimated_hours": _num((job or {}).get("total_hours")),
+           "real_hours": None, "grams": None, "grams_in_file": _num((job or {}).get("filament_grams")),
+           "material": (job or {}).get("material"), "heads": _heads(state, job, printer_id), "cost": None,
+           "timelapse": None, "picture": None, "note": "", "joined_late": True, "from_printer": True}
+    return _with_files([row])[0]
+
+
+_SLICED_FROM = re.compile(r'^Sliced from (.+?) with "')
+
+
+def _with_files(rows):
+    """Say whether each print's file is still in Files (Reprint) and which model it was sliced from (Open in Slicer)."""
+    try:
+        files = file_library.origins()
+    except Exception:
+        files = {}
+    out = []
+    for e in rows:
+        entry = files.get(e.get("file") or "")
+        found = _SLICED_FROM.match((entry or {}).get("note") or "")
+        model = found.group(1) if found and found.group(1) in files else None
+        out.append({**e, "in_library": entry is not None, "model": model})
+    return out
 
 
 def get(entry_id, demo=False, printer_history=None, printer_id=None, printer_name=None):

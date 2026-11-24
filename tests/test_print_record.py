@@ -8,6 +8,7 @@ import unittest
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import file_library    # noqa: E402
 import live_feed       # noqa: E402
@@ -16,6 +17,7 @@ import mock_moonraker  # noqa: E402
 import print_queue     # noqa: E402
 import print_record    # noqa: E402
 import timelapse       # noqa: E402
+from test_api import APITestCase  # noqa: E402
 
 STATE = {"current_file": "bracket.gcode", "printer_name": "Bench", "active_toolhead": "T0",
          "toolheads": {"T0": {"filament_color_hex": "#ff0000", "filament_color_name": "Red", "filament_material": "PLA"}}}
@@ -53,6 +55,17 @@ class TestRecord(unittest.TestCase):
         ended = print_record.ended("p1", "cancelled", STATE, {"filename": "late.gcode", "print_duration_hours": 0.2})
         self.assertTrue(ended["joined_late"])
         self.assertEqual(ended["file"], "late.gcode")
+
+    def test_a_demo_print_seen_only_at_its_end_stays_a_demo_print(self):
+        print_record.ended("u1-workshop", "finished", STATE, {"filename": "late.gcode"}, demo=True)
+        self.assertEqual(print_record.listing(demo=False)["prints"], [])
+        self.assertEqual(print_record.listing(demo=True)["prints"][0]["file"], "late.gcode")
+
+    def test_a_print_already_running_shows_as_printing_now(self):
+        self.assertIsNone(print_record.seen_printing("p1", "Bench", {**STATE, "state": "standby"}, JOB, False))
+        row = print_record.seen_printing("p1", "Bench", {**STATE, "state": "printing"}, JOB, False)
+        self.assertEqual((row["status"], row["file"], row["estimated_hours"], row["joined_late"]), ("running", "bracket.gcode", 1.5, True))
+        self.assertEqual(print_record.listing()["prints"], [])          # nothing was written
 
     def test_demo_and_real_prints_never_mix(self):
         real = print_record.started("p1", "Bench", STATE, JOB, demo=False)
@@ -102,6 +115,20 @@ class TestRecord(unittest.TestCase):
             print_record.set_settings(7)
         self.assertEqual(print_record.settings()["keep_days"], 30)
         del entry
+
+    def test_reprint_and_open_in_slicer_know_the_files(self):
+        file_library.reset()
+        self.addCleanup(file_library.reset)
+        file_library.save("cube.stl", b"solid cube\nendsolid cube\n", origin="upload")
+        file_library.save("cube_plate1.gcode", b"G28\n", origin="sliced", note='Sliced from cube.stl with "0.20 mm Standard"')
+        print_record.started("p1", "Bench", {**STATE, "current_file": "cube_plate1.gcode"}, {**JOB, "filename": "cube_plate1.gcode"}, False)
+        print_record.started("p2", "Other", STATE, JOB, demo=False)
+        rows = {r["file"]: r for r in print_record.listing()["prints"]}
+        self.assertEqual((rows["cube_plate1.gcode"]["in_library"], rows["cube_plate1.gcode"]["model"]), (True, "cube.stl"))
+        self.assertEqual((rows["bracket.gcode"]["in_library"], rows["bracket.gcode"]["model"]), (False, None))
+        file_library.delete("cube.stl")                                     # the model is gone: nothing to open in the Slicer
+        rows = {r["file"]: r for r in print_record.listing()["prints"]}
+        self.assertIsNone(rows["cube_plate1.gcode"]["model"])
 
     def test_the_end_picture_is_kept_and_served(self):
         entry = print_record.started("p1", "Bench", STATE, JOB, demo=True)
@@ -165,6 +192,43 @@ class TestLiveFeedFillsTheRecord(unittest.TestCase):
         self.assertEqual(print_record.get(entry["id"], demo=True)["picture"], "svg")
         self.assertEqual(print_record.listing(demo=False)["prints"], [])
         del cancelled
+
+
+class TestRoutes(APITestCase):
+    """The five routes the Prints screen uses, with no printer connected: the record lives on this computer."""
+
+    def setUp(self):
+        super().setUp()
+        print_record.reset()
+        self.addCleanup(print_record.reset)
+
+    def test_list_search_note_keep_and_forget(self):
+        entry = print_record.started("p1", "Bench", STATE, JOB, demo=False)
+        print_record.ended("p1", "finished", STATE)
+        status, body = self.get("/api/prints")
+        self.assertEqual(status, 200)
+        self.assertEqual([r["id"] for r in body["prints"]], [entry["id"]])
+        self.assertEqual(body["settings"]["keep_days"], 365)
+        self.assertEqual(self.get("/api/prints?q=nothing-like-it")[1]["prints"], [])
+        demo = self.get("/api/prints?demo=1")[1]["prints"]                     # the simulated printer's own history
+        self.assertNotIn(entry["id"], [r["id"] for r in demo])                    # real prints never show in the demo
+        self.assertTrue(demo and all(r["demo"] for r in demo))
+        status, body = self.post("/api/prints/note", {"id": entry["id"], "note": "Brim helped"})
+        self.assertEqual((status, body["note"]), (200, "Brim helped"))
+        self.assertEqual(self.get("/api/prints/item?id=" + entry["id"])[1]["note"], "Brim helped")
+        self.assertEqual(self.post("/api/prints/settings", {"keep_days": 90})[1]["keep_days"], 90)
+        self.assertEqual(self.post("/api/prints/settings", {"keep_days": 5})[0], 400)
+        self.assertEqual(self.post("/api/prints/note", {"id": "nope", "note": "x"})[0], 400)
+        self.assertEqual(self.post("/api/prints/forget", {"id": entry["id"]})[0], 200)
+        self.assertEqual(self.get("/api/prints")[1]["prints"], [])
+
+    def test_the_picture_route(self):
+        entry = print_record.started("p1", "Bench", STATE, JOB, demo=False)
+        print_record.keep_picture(entry["id"], b"\xff\xd8\xff\xe0 jpeg", "image/jpeg")
+        from urllib.request import urlopen
+        with urlopen(self.base + "/api/prints/picture?id=" + entry["id"], timeout=10) as response:
+            self.assertEqual(response.headers["Content-Type"], "image/jpeg")
+            self.assertTrue(response.read().startswith(b"\xff\xd8"))
 
 
 if __name__ == "__main__":

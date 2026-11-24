@@ -328,7 +328,7 @@ def _record_print(printer_id, name, state, finish_event, payload, simulated):
         job = (finish_event or {}).get("job") if name == "finished" else None
         cost = (payload.get("summary") or {}).get("cost")
         entry = print_record.ended(printer_id, name, {**state, "printer_name": mock_moonraker.printer_name(printer_id)},
-                                   job, cost, timelapse.current_session(printer_id))
+                                   job, cost, timelapse.current_session(printer_id), simulated)
     except Exception:
         return None
     if modules.is_enabled("camera"):

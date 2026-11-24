@@ -593,6 +593,19 @@
     </section>
 
 
+    <!-- Every print, kept on this computer (prints.js, /api/prints). -->
+    <section class="card liquid-glass prints-card" id="prints-card" aria-labelledby="prints-title">
+      <div class="card-head">
+        <div><h2 id="prints-title">Prints</h2><p class="card-sub" id="prints-sub">Every print, day by day, with its end picture, time and filament. Kept on this computer.</p></div>
+        <div class="pr-tools">
+          <label class="pr-search"><span class="sr-only">Search prints</span><input type="search" id="prints-q" placeholder="Search prints" autocomplete="off" spellcheck="false"></label>
+          <label class="pr-keep"><span>Keep</span><select id="prints-keep" aria-label="How long prints are kept">
+            <option value="30">30 days</option><option value="90">90 days</option><option value="365">A year</option><option value="0">Always</option></select></label>
+        </div>
+      </div>
+      <div id="prints-body"><p class="log-empty is-loading">Loading…</p></div>
+    </section>
+
     <!-- What the printer's own history says (insights.js, /api/insights). -->
     <section class="card liquid-glass insights-card" id="insights-card" aria-labelledby="insights-title">
       <div class="card-head"><div><h2 id="insights-title">What your history says</h2><p class="card-sub" id="insights-sub">Read from this printer's own print history. A finding only appears with enough prints behind it.</p></div></div>
@@ -1813,6 +1826,7 @@ cd ~/Documents/Deja_VU1 &amp;&amp; python3 start.py --background</code></pre></d
 <script src="logbook.js"></script>
 <script src="errorhelp.js"></script>
 <script src="insights.js"></script>
+<script src="prints.js"></script>
 <script src="printroom.js"></script>
 <script src="gcode-view.js"></script>
 <script src="slicer-model.js"></script>

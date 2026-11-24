@@ -262,7 +262,16 @@ def _record_history(q):
 def _prints(q):
     """The print record (FLOW.4): running, queued and ended prints for the selected printer's view, newest first."""
     pid = mock_moonraker.selected_printer_id()
-    out = print_record.listing(_demo(q), _q(q, "q"), _record_history(q), pid, mock_moonraker.printer_name(pid), _q(q, "status"))
+    out = print_record.listing(_demo(q), _q(q, "q", ""), _record_history(q), pid, mock_moonraker.printer_name(pid), _q(q, "status", ""))
+    if _demo(q) != mock_moonraker.is_connected() and not _q(q, "q", "") and not any(
+            p["status"] == "running" and p["printer"] == pid for p in out["prints"]):
+        try:
+            now = print_record.seen_printing(pid, mock_moonraker.printer_name(pid), mock_moonraker.get_printer_state(),
+                                             mock_moonraker.get_current_job(), _demo(q))
+        except Exception:
+            now = None
+        if now:
+            out["prints"].insert(0, now)
     out["queued"] = []
     if modules.is_enabled("print_queue"):
         out["queued"] = [{"file": i.get("filename"), "status": i.get("status"), "note": i.get("note"), "id": i.get("id")}
