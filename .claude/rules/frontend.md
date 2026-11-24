@@ -19,7 +19,7 @@ mode at least as good as light. Cards stay only where a small, self-contained ta
 
 - Scripts: `theme-boot.js` and `i18n.js` in `<head>`, then `app.js` and its six parts (below) → `tester.js` → `tester-study.js` → `layout.js` → `orb.js` → `backdrop.js` → `viewer3d.js` →
   `ar.js` → `twin3d-scene.js` → `twin3d-part1.js` → `twin3d.js` → `workshop-part1.js` … `workshop-part5.js` →
-  `workshop.js` → `studio.js` → `layer-stack.js` →
+  `workshop.js` → `player.js` → `studio.js` → `layer-stack.js` →
   `farm-part1.js` → `farm-part2.js` → `farm.js` → `guide.js` → `launchpad.js` → `phone.js` → `explain.js` → `versions.js` → `finder.js`
   → `desk.js` → `telemetry.js` → `printer-page.js` → `printer-extras.js` → `logbook.js` → `errorhelp.js` →
   `insights.js` → `prints.js` → `printroom.js` → `gcode-view.js` → `slicer-model.js` → `slicer-scene.js` → `slicer-ui.js` → `slicer-prepare.js` → `slicer-keys.js` → `slicer-settings.js` → `slicer-filament.js` → `slicer-sets.js` → `slicer-help.js` → `slicer-sheet.js` → `slicer-path.js` → `slicer-preview.js` → `slicer.js` →

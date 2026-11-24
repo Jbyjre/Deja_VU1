@@ -24,7 +24,7 @@
 const Workshop = (() => {
   /* The rest of this closure lives in workshop-part1.js, workshop-part2.js, workshop-part3.js, workshop-part4.js, workshop-part5.js (loaded before this file). */
   const { fmtHours, isLive, live, printerName, tween, twinFeed, twinFx } = WorkshopPart1;
-  const { loadCamera, morph, stopCamera } = WorkshopPart3;
+  const { flipbookVideo, loadCamera, morph, stopCamera } = WorkshopPart3;
   const { applyState, loadFiles, loadQueue, openConfirm, openDialog, openDiff, openFile, refreshPrinter } = WorkshopPart4;
   const { closeDialog, init, nudgeLive, onTab, reconnect, refresh, selectPrinter } = WorkshopPart5;
 document.addEventListener('visibilitychange', nudgeLive);
@@ -64,7 +64,8 @@ window.addEventListener('dv-section', e => {
   });
 
 return { init, refresh, applyState, refreshPrinter, reconnect, onTab, isLive, selectPrinter, morph, twinFeed, twinFx,
-           openFile, openConfirm, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween };
+           openFile, openConfirm, openDiff, loadQueue, loadFiles, printerName, fmtHours, openDialog, closeDialog, tween,
+           flipbookVideo };
 })();
 
 window.Workshop = Workshop;

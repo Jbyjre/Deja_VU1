@@ -12,7 +12,7 @@ const WorkshopPart5 = (() => {
     live, loadRegistry, money, printerName, qs, qsa, renderAttention, renderChip, ringSVG, showTest, since,
     tintRoom, wsState } = WorkshopPart1;
   const { LOCAL_MAX_BYTES, ar, files, kindOf, loadChamber, loadHealth, renderTwin } = WorkshopPart2;
-  const { ACTIONS, PRESETS, TRIGGERS, aiOn, closeFile, currentTab, deviceId, flip, flipbookVideo, initBlobResize,
+  const { ACTIONS, PRESETS, TRIGGERS, aiOn, closeFile, currentTab, deviceId, flipbookVideo, initBlobResize,
     initCameraForm, initDemoTools, initDockStack, initGlassMenu, initHoldToCancel, initPressGlow, initScrollEdge,
     initSwap, loadCamera, loadForecast, loadPrinterVideos, loadRuleLog, loadSideBySide, morph, moveTabBlob,
     openMenu, renderGate, reportView, sentence, stopCamera, syncNav, tlForget, tlKeep, tlReset } = WorkshopPart3;
@@ -571,7 +571,8 @@ function bindTimelapse(host) {
       if ((b = hit('[data-keep-path]'))) { if (!b.disabled) tlKeep(b); }
       else if ((b = hit('[data-forget-video]'))) tlForget(b);
       else if ((b = hit('[data-flip-video]'))) flipbookVideo(b.dataset.flipVideo, b.dataset.flipName, b);
-      else if ((b = hit('[data-flip]'))) playFlipbook(b.dataset.flip);
+      else if ((b = hit('[data-flip]'))) playFlipbook(b.dataset.flip, null, b.dataset.flipName);
+      else if ((b = hit('[data-play-video]')) && window.Player) Player.video(b.dataset.playVideo, { title: b.dataset.playName, download: b.dataset.playDownload });
     });
   }
 
@@ -605,33 +606,15 @@ async function loadTimelapse() {
       <div class="reg-row">
         <span class="reg-name">${esc(s.filename || 'print')}</span>
         <span class="log-empty">${s.frames} frames · ${since(s.started_at)}${s.finished ? '' : ' · recording'} · ${esc(s.source)}${s.last_error ? ' · '+esc(s.last_error) : ''}</span>
-        <span class="tl-acts"><button class="btn small" data-flip="${esc(s.session)}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
+        <span class="tl-acts"><button class="btn small" data-flip="${esc(s.session)}" data-flip-name="${esc(s.filename || 'print')}" type="button" ${s.frames ? '' : 'disabled'}>Play</button>
         <button class="btn small" data-flip-video="${esc(s.session)}" data-flip-name="${esc(s.filename || 'print')}" type="button" ${s.frames > 1 && window.MediaRecorder ? '' : 'hidden'}>Save as video</button></span>
       </div>`).join('') : '<p class="log-empty">No time-lapses yet. One is recorded during every print.</p>');
     loadPrinterVideos(host);
   }
-async function playFlipbook(session) {
-    const dialog = $('flip-dialog');
-    const data = await getJSON(api(`/api/timelapse/frames?session=${enc(session)}`));
-    if (!data.frames || !data.frames.length) { toast('No frames in that time-lapse yet', 'warn'); return; }
-    flip.frames = data.frames.map(n => {
-      const img = new Image();
-      img.src = api(`/api/timelapse/frame?session=${enc(session)}&name=${enc(n)}`);
-      return img;
-    });
-    flip.i = 0;
-    $('flip-sub').textContent = `${session} · ${flip.frames.length} frames, played at 12 per second in your browser`;
-    const scrub = $('flip-scrub');
-    scrub.max = flip.frames.length - 1;
-    const show = () => { $('flip-img').src = flip.frames[flip.i].src; scrub.value = flip.i; $('flip-count').textContent = `${flip.i + 1} / ${flip.frames.length}`; };
-    const play = () => { clearInterval(flip.timer); flip.timer = setInterval(() => { flip.i = (flip.i + 1) % flip.frames.length; show(); }, 1000 / 12); $('flip-play').textContent = 'Pause'; };
-    const stop = () => { clearInterval(flip.timer); flip.timer = null; $('flip-play').textContent = 'Play'; };
-    $('flip-play').onclick = () => (flip.timer ? stop() : play());
-    scrub.oninput = () => { stop(); flip.i = +scrub.value; show(); };
-    dialog.addEventListener('close', stop, { once: true });
-    show();
-    openDialog(dialog);
-    if (!REDUCED.matches) play(); else stop();
+/* Plays one flipbook in the time-lapse player (player.js): it stops at the last frame unless Loop is on. */
+function playFlipbook(session, printer, title) {
+    if (window.Player) return Player.frames(session, { printer: printer || undefined, title });
+    toast('The time-lapse player did not load. Reload the page and try again.', 'warn');
   }
 
 async function checkHandoff() {
@@ -742,7 +725,7 @@ function showSummary(event) {
       dialog.close();
       const data = await getJSON(api(`/api/timelapse?printer=${enc(event.printer)}`));
       const session = data.sessions && data.sessions[0];
-      if (session) playFlipbook(session.session); else toast('No time-lapse was recorded for this print', 'warn');
+      if (session) playFlipbook(session.session, event.printer, session.filename); else toast('No time-lapse was recorded for this print', 'warn');
     };
     const pill = $('live-pill');
     openDialog(dialog, pill && !pill.hidden ? pill : null);
