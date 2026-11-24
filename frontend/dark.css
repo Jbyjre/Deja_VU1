@@ -60,6 +60,13 @@ html[data-theme="dark"] .liquid-glass:is(.card, .stats, .fleet-card, .divider-ro
 html[data-theme="dark"] .liquid-glass:is(.card, .stats, .fleet-card, .divider-row, .notice)::after {
   background: linear-gradient(160deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, 0) 40%);
 }
+/* A plain well or divider row (not itself glass, such as the finished-print figures) keeps its light-mode white wash
+   otherwise and reads as a pale grey box. */
+html[data-theme="dark"] :is(.well, .divider-row):not(.liquid-glass) {
+  background: rgba(255, 255, 255, .05);
+  border-color: rgba(255, 255, 255, .1);
+}
+html[data-theme="dark"] .divider-row:not(.liquid-glass) > * { border-color: rgba(255, 255, 255, .08); }
 html[data-theme="dark"] .topbar.liquid-glass, html[data-theme="dark"] .tabbar.liquid-glass,
 html[data-theme="dark"] .status-ribbon.liquid-glass, html[data-theme="dark"] .rail, html[data-theme="dark"] .rail-menu.liquid-glass {
   --rail-ring: var(--wb-panel, rgba(20, 28, 38, .9));

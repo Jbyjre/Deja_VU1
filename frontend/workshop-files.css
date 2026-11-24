@@ -213,6 +213,7 @@
 .qi-tools { display: flex; gap: 6px; margin-top: 8px; }
 
 /* Confirm Print. */
+.gate-fixes { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
 .gate-bed { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; margin: 10px 0; padding: 10px 12px; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--warn) 50%, var(--hair)); }
 .gate-bed-map { width: 116px; height: 116px; flex: none; }
 .gate-bed-map .plate { fill: var(--well); stroke: var(--hair); stroke-width: 2; }
@@ -313,6 +314,8 @@
 @keyframes ring-reveal { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
 .celebrate-stats { margin-top: 18px; text-align: left; }
 .celebrate-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.celebrate-next { margin: 14px 0 0; font-size: 14px; color: var(--text-dim); text-align: left; }
+.celebrate-actions { flex-wrap: wrap; }
 .celebrate-stats b { font: 700 17px/1.2 var(--font-mono); }
 .celebrate .dialog-actions { justify-content: center; }
 

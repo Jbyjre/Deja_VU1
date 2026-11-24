@@ -16,7 +16,7 @@ const WorkshopPart5 = (() => {
     initCameraForm, initDemoTools, initDockStack, initGlassMenu, initHoldToCancel, initPressGlow, initScrollEdge,
     initSwap, loadCamera, loadForecast, loadPrinterVideos, loadRuleLog, loadSideBySide, morph, moveTabBlob,
     openMenu, renderGate, reportView, sentence, stopCamera, syncNav, tlForget, tlKeep, tlReset } = WorkshopPart3;
-  const { applyState, convertFile, loadFiles, loadQueue, openDialog, openFile, refreshPrinter, renderLocalFiles,
+  const { applyState, convertFile, loadFiles, loadQueue, openConfirm, openDialog, openFile, refreshPrinter, renderLocalFiles,
     startNext } = WorkshopPart4;
 
 function reconnect() {
@@ -341,9 +341,12 @@ function openLocalFiles(list) {
 async function uploadFiles(list) {
     if (serverMissing()) { openLocalFiles(list); return; }
     for (const file of list) {
-      const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file });
-      const body = await res.json().catch(() => ({}));
-      toast(res.ok ? `Added ${body.name}` : `Couldn't add ${file.name}: ${body.error || res.status}`, res.ok ? 'ok' : 'bad', 6000);
+      const act = window.Activity && Activity.add({ text: `Adding ${file.name} to your files`, go: 'files', label: 'Open Files' });
+      const res = await fetch(`/api/files/upload?name=${enc(file.name)}`, { method: 'POST', body: file }).catch(() => null);
+      const body = res ? await res.json().catch(() => ({})) : {};
+      const ok = !!(res && res.ok);
+      toast(ok ? `Added ${body.name}` : `Couldn't add ${file.name}: ${body.error || (res ? res.status : 'the server did not answer')}`, ok ? 'ok' : 'bad', 6000);
+      if (act) ok ? act.done(`Added ${body.name} to your files`) : act.fail(`Couldn't add ${file.name}`);
     }
     loadFiles();
   }
@@ -415,13 +418,39 @@ function initConfirm() {
     $('confirm-go').addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       const name = wsState.confirmFile;
+      const where = printerName(currentPrinter) || 'the printer';
+      const act = window.Activity && Activity.add({ text: `Starting ${name} on ${where}`, go: 'printer', label: 'Open the Printer page' });
       const r = await runCommand(btn, '/api/printer/control/start', { filename: name, confirmed: true, bed_clear: !!($('confirm-bed-clear') && $('confirm-bed-clear').checked) }, {
         sending: 'Starting…', done: `Started ${name}`, failed: 'Start refused',
         expect: s => s.state === 'printing' && s.current_file === name,
       });
-      if (r.ok) { closeDialog($('confirm-dialog')); showTab('overview'); loadQueue(); }
+      if (act) r.ok ? act.done(`Started ${name} on ${where}`) : act.fail(`${where} did not start ${name}`);
+      // A started print is watched on the Printer page, where the twin draws this file.
+      if (r.ok) { closeDialog($('confirm-dialog')); goPlace('printer'); loadQueue(); }
       else if (r.result.body.gate) renderGate(r.result.body.gate);        // things changed: show why
     });
+    // Each refusal's fix (print_gate.py, "fixes") lands on the place that fixes it. None of them starts a print.
+    $('confirm-body').addEventListener('click', async e => {
+      const b = e.target.closest('[data-fix]');
+      if (!b) return;
+      const name = wsState.confirmFile, kind = b.dataset.fix;
+      if (kind === 'bed') { const t = $('confirm-bed-clear'); if (t) { t.scrollIntoView({ block: 'center' }); t.focus(); } return; }
+      if (kind === 'queue') {
+        const r = await runCommand(b, '/api/queue/add', { filename: name }, { sending: 'Adding…', done: `Added ${name} to the queue`, failed: 'Could not queue it' });
+        if (r.ok) { closeDialog($('confirm-dialog')); loadQueue(); goPlace('queue'); }
+        return;
+      }
+      closeDialog($('confirm-dialog'));
+      if (kind === 'slicer' && window.Slicer) Slicer.open(b.dataset.fixModel);
+      else if (kind === 'nozzle' && window.Finder) { goPlace('maintenance'); setTimeout(() => Finder.go('#swap-form'), 120); }
+      else goPlace('printer');
+    });
+  }
+
+/* Goes to one of the rail's places (rail.js), or to the old tab where the rail isn't there. */
+function goPlace(id) {
+    if (window.Rail && Rail.goDest) Rail.goDest(id);
+    else showTab({ printer: 'control', queue: 'files', maintenance: 'maintenance' }[id] || 'overview');
   }
 
 function ruleForm() {
@@ -727,6 +756,20 @@ function showSummary(event) {
       const session = data.sessions && data.sessions[0];
       if (session) playFlipbook(session.session, event.printer, session.filename); else toast('No time-lapse was recorded for this print', 'warn');
     };
+    // The print's record, the same file again, and the next queued print: offered here, never started from here.
+    $('celebrate-record').onclick = () => { dialog.close(); goPlace('history'); if (window.Prints) Prints.load(); };
+    $('celebrate-again').onclick = e => { dialog.close(); openConfirm(s.file, e.currentTarget); };
+    const next = $('celebrate-next'), nextGo = $('celebrate-next-go');
+    next.hidden = nextGo.hidden = true;
+    getJSON(api(`/api/queue?printer=${enc(event.printer)}`)).then(q => {
+      const item = q && (q.items || []).find(i => i.status === 'queued');
+      if (!item || !dialog.open) return;
+      next.textContent = q.auto_advance
+        ? `Next in the queue for ${event.printer_name}: ${item.filename}. The automatic queue is on for this printer, so the queue moves on by itself.`
+        : `Next in the queue for ${event.printer_name}: ${item.filename}. It starts only when you start it.`;
+      next.hidden = nextGo.hidden = false;
+      nextGo.onclick = ev => { dialog.close(); openConfirm(item.filename, ev.currentTarget); };
+    }).catch(() => {});
     const pill = $('live-pill');
     openDialog(dialog, pill && !pill.hidden ? pill : null);
   }

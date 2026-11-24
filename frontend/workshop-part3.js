@@ -119,6 +119,7 @@ function renderGate(gate) {
     $('confirm-body').innerHTML = `
       <div class="gate-banner ${gate.verdict}">${banner}</div>
       ${gate.blocking.length ? `<ul class="pf-list">${gate.blocking.map(b => `<li class="pf-error">${esc(b)}</li>`).join('')}</ul>` : ''}
+      ${(gate.fixes || []).length ? `<div class="gate-fixes" role="group" aria-label="Ways to fix this">${gate.fixes.map(f => `<button class="btn small" type="button" data-fix="${esc(f.kind)}"${f.model ? ` data-fix-model="${esc(f.model)}"` : ''}>${esc(f.label)}</button>`).join('')}</div>` : ''}
       ${gate.warnings.length ? `<ul class="pf-list">${gate.warnings.map(w => `<li class="pf-warning">${esc(w)}</li>`).join('')}</ul>` : ''}
       ${gate.info.length ? `<ul class="pf-list">${gate.info.map(w => `<li class="pf-info">${esc(w)}</li>`).join('')}</ul>` : ''}
       ${gate.bed_check ? bedBlock(gate.bed_check) : ''}
@@ -502,6 +503,7 @@ async function tlKeep(btn) {
     if (r.body.job) tlPrinter.jobs = [r.body.job, ...tlPrinter.jobs.filter(j => j.id !== r.body.job.id)];
     tlDrawPrinter();
     tlWatchCopies();
+    if (window.Activity) Activity.refresh();
   }
 
 async function tlForget(btn) {

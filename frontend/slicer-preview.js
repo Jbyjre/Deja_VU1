@@ -50,6 +50,7 @@
       const profile = await SL.ensureProfile();
       sl.state = 'slicing'; sl.step = 'Starting the engine'; startedAt = Date.now(); renderGo();
       const r = await postJSON('/api/slicer/slice', { name: file, profile });
+      if (window.Activity) Activity.refresh();                        // the tray shows the slice at once
       if (!r.ok) throw new Error(r.body.error || 'The engine could not start');
       sl.job = r.body; sl.plateFile = file; sl.plateVersion = m.version;
       clearInterval(poll); clearInterval(ticker);

@@ -186,6 +186,26 @@ html.has-shell .pb-actions .btn { min-height: 30px; padding: 0 12px; font-size: 
 html.has-shell .pb-actions .btn[hidden] { display: none; }
 html.has-shell .pb-actions:empty { display: none; }
 
+/* ---- the activity tray (activity.js): long jobs in words, each with a way to its place ---- */
+.act-btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 11px; border: 1px solid var(--hair-strong); border-radius: 9px; background: var(--well); color: var(--text); font: 550 12.5px var(--font-sans); white-space: nowrap; cursor: pointer; }
+.act-btn[hidden] { display: none; }
+.act-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.act-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+[data-state="running"] > .act-dot { background: var(--accent); animation: act-pulse 1.2s ease-in-out infinite; }
+[data-state="failed"] > .act-dot { background: var(--bad); }
+@keyframes act-pulse { 50% { opacity: 0.35; } }
+.act-panel { position: fixed; inset: auto; margin: 0; width: min(380px, calc(100vw - 16px)); max-height: min(70vh, 520px); overflow: auto; padding: 14px 14px 10px; border-radius: 16px; border: 1px solid var(--hair-strong); background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow-float); }
+.act-panel:not(:popover-open):not(.is-open) { display: none; }
+.act-h { margin: 0 0 8px; font: 600 11px/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.act-list { list-style: none; margin: 0; padding: 0; }
+.act-row { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 10px; min-height: 44px; padding: 6px 0; border-top: 1px solid var(--hair); }
+.act-row:first-child { border-top: 0; }
+.act-text { font-size: 13.5px; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
+.act-bar { display: block; height: 4px; margin-top: 6px; border-radius: 2px; background: var(--well); overflow: hidden; }
+.act-bar i { display: block; height: 100%; background: var(--accent); }
+.act-empty, .act-note { margin: 6px 0 0; font-size: 12px; color: var(--text-faint); }
+@media (prefers-reduced-motion: reduce) { [data-state="running"] > .act-dot { animation: none; } }
+
 /* ---- the command bar: the search field at rest, a centred sheet while it has focus (finder.js opens it with Ctrl or Cmd K) --- */
 html.has-shell .feature-finder { position: relative; flex: none; }
 html.has-shell .feature-finder #feature-search {
