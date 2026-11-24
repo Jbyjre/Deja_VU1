@@ -61,7 +61,10 @@ Preview parts, `frontend/slicer*.js`; "The Slicer" below). The first Files › S
   becomes failed + `interrupted` at start-up. `POST /api/slicer/report` exports one help report with
   home folders as `~`.
 - `find_slicers`: usual install folders, one level deep, names containing "orca", no installers,
-  nothing run.
+  nothing run. `slicer_path()` falls back to the same look (`found_elsewhere`, folder listings only, at most
+  every 5 minutes; Snapmaker's build first), so a copy the person already has is used as "detected" before the
+  app offers a download (24 November 2026: a copy outside Program Files was not found and the owner was asked to
+  install it again). `GET /api/slicer/engine` carries `own` (`own_engine()`) for the setup step.
 - Engine set-up used to be Files › Slicing "Get ready to slice" (`farm.js` `renderReady`, now in the hidden holder). The Slicer's engine card
   does it: Install, Update, Use my own Snapmaker Orca (`POST /api/slicer/find`, `settings`, `check`), and the time limit per slice. Error texts
   tell people to open the Slicer and press Engine. "Use the stock U1 settings" is `POST /api/slicer/profiles/stock`

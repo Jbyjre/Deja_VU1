@@ -79,8 +79,8 @@ from slicer_bridge_part1 import (  # noqa: F401  (split out 19 November 2026; na
     _looks_like_orca, _mark_interrupted, _mode_facts, _now, _operation, _order, _orca_number, _persist_locked, _previous_output,
     _profile, _profile_facts, _program_files, _program_identity, _run_lock, _save, _search_places,
     _plain, _settings_file_is_orca, _shown_command, _stock_heads, _tail, _traces, any_active, cancel_all, cancel_job,
-    command_for, diagnose, engine_capabilities, engine_changed, find_slicers, get_job, get_settings,
-    installed_catalog, jobs, public_settings, read_preset, remove_profile, reset, slicer_path, wait,
+    command_for, diagnose, engine_capabilities, engine_changed, find_slicers, found_elsewhere, get_job, get_settings,
+    installed_catalog, jobs, own_engine, public_settings, read_preset, remove_profile, reset, slicer_path, wait,
 )
 
 

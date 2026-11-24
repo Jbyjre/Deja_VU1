@@ -64,7 +64,7 @@ class WorkingProfile(unittest.TestCase):
 class TestState(WorkingProfile):
     def test_it_says_what_is_missing_when_there_is_no_engine(self):
         os.environ.pop(slicer_bridge.ENV_PATH)
-        with patch.object(slicer_bridge.engine_installer, "managed_program", return_value=None), patch.object(slicer_bridge, "_search_places", return_value=[]), \
+        with patch.object(slicer_bridge.engine_installer, "managed_program", return_value=None), patch("slicer_bridge_part1.found_elsewhere", return_value=""), \
                 patch("shutil.which", return_value=None):
             state = work.state()
         self.assertFalse(state["ready"])

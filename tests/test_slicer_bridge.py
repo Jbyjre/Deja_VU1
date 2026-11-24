@@ -20,6 +20,7 @@ import textwrap
 import time
 import unittest
 import unittest.mock
+from unittest.mock import patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "backend"))
@@ -419,6 +420,32 @@ class TestFindSlicers(SlicerBridgeTest):
             self.place("Downloads", f"orca-slicer-{i}")
         found = slicer_bridge.find_slicers([(os.path.join(self.tmp, "places", "Downloads"), "Downloads")])["found"]
         self.assertEqual(len(found), slicer_bridge.MAX_FOUND)
+
+
+    def test_a_copy_already_installed_elsewhere_is_used_before_offering_a_download(self):
+        # 24 November 2026: an owner with Snapmaker Orca in Windows' per-person programs folder was still asked to install it
+        mine = self.place("Programs", "Snapmaker Orca", "snapmaker-orca")
+        self.place("Downloads", "OrcaSlicer_Linux_V2.3.0.AppImage")
+        places = [(os.path.join(self.tmp, "places", "Downloads"), "Downloads"), (os.path.join(self.tmp, "places", "Programs"), "your programs")]
+        with patch("slicer_bridge_part1._search_places", return_value=places), \
+                patch.object(slicer_bridge.engine_installer, "managed_program", return_value=None), patch("shutil.which", return_value=None):
+            self.assertEqual(slicer_bridge.slicer_path(), (mine, "detected"))
+            self.assertEqual(slicer_bridge.own_engine(), {"path": mine, "source": "detected", "name": "Snapmaker Orca"})
+
+    def test_the_look_through_folders_is_kept_for_a_while(self):
+        places = [(os.path.join(self.tmp, "places", "Downloads"), "Downloads")]
+        with patch("slicer_bridge_part1._search_places", return_value=places) as look:
+            self.assertEqual(slicer_bridge.found_elsewhere(), "")
+            self.assertEqual(slicer_bridge.found_elsewhere(), "")
+            self.assertEqual(look.call_count, 1)
+            later = self.place("Downloads", "orca-slicer")
+            self.assertEqual(slicer_bridge.found_elsewhere(fresh=True), later)
+            self.assertEqual(look.call_count, 2)
+
+    def test_the_engine_deja_vu1_installed_is_not_called_your_own(self):
+        with patch.object(slicer_bridge.engine_installer, "managed_program", return_value=self.orca):
+            self.assertEqual(slicer_bridge.slicer_path(), (self.orca, "managed"))
+            self.assertIsNone(slicer_bridge.own_engine())
 
 
 class TestProfiles(SlicerBridgeTest):

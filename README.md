@@ -110,11 +110,12 @@ same block again any time to repair the app; your settings and files stay put.
    Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"
    Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force
    Set-Location $dest
-   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } else { python start.py --background --autostart }
+   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } else { python start.py --background }
    ```
 
-You can close PowerShell afterwards: Deja Vu1 keeps running and starts by itself when you sign in
-(**Settings → Desktop app** turns that off).
+You can close PowerShell afterwards. Deja Vu1 stops by itself once no page has been open for 5 minutes
+and nothing is under way, so no Python is left running; open the dashboard again and press **Start**.
+[How Deja Vu1 runs](docs/how-it-runs.md) says what it runs on, what runs and when, and what it needs from your computer.
 
 ### Mac or Linux: paste into Terminal
 
@@ -123,7 +124,7 @@ Open **Terminal** (Cmd + Space, type `Terminal`, press Enter), paste this block 
 ```bash
 curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip
 python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh
-cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+cd ~/Documents/Deja_VU1 && python3 start.py --background
 
 ```
 
@@ -199,14 +200,14 @@ Windows:
 $dest = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Deja_VU1'
 if (-not (Test-Path "$dest\start.py")) { $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest 'https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip' -OutFile "$env:TEMP\dejavu1.zip"; Expand-Archive "$env:TEMP\dejavu1.zip" -DestinationPath $dest -Force }
 Set-Location $dest
-if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background --autostart } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background --autostart } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
+if (Get-Command py -ErrorAction SilentlyContinue) { py -3 start.py --background } elseif (Get-Command python -ErrorAction SilentlyContinue) { python start.py --background } else { Write-Host 'Deja Vu1 needs Python 3.8 or newer: https://www.python.org/downloads/' }
 ```
 
 Mac and Linux:
 
 ```bash
 [ -f ~/Documents/Deja_VU1/start.py ] || { curl -fL -o /tmp/dejavu1.zip https://github.com/Jbyjre/Deja_VU1/releases/latest/download/deja-vu1-update.zip && python3 -m zipfile -e /tmp/dejavu1.zip ~/Documents/Deja_VU1 && chmod +x ~/Documents/Deja_VU1/*.command ~/Documents/Deja_VU1/*.sh; }
-cd ~/Documents/Deja_VU1 && python3 start.py --background --autostart
+cd ~/Documents/Deja_VU1 && python3 start.py --background
 ```
 
 </details>

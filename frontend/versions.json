@@ -1,5 +1,39 @@
 {
   "about": "Deja Vu1's version history, newest first. The app's Settings, the What's new tours and the GitHub release notes all read this file. The first entry must match the VERSION file.",
+  "next": {
+    "about": "The spots this round changed, for the next version's What's new walk. tools/next-release.py moves them into the new entry and empties this list.",
+    "highlights": [
+      {
+        "title": "Activity",
+        "target": "#act-btn",
+        "text": "Long jobs (a slice, an upload, a print starting, a download) are listed here in words, each one click from its place."
+      },
+      {
+        "title": "Prints",
+        "tab": "control",
+        "target": "#prints-card",
+        "text": "Every print, day by day and searchable, with its end picture, the time-lapse, Reprint and Open in Slicer."
+      },
+      {
+        "title": "A camera window you control",
+        "tab": "control",
+        "target": "#pp-camera-card",
+        "text": "The arrow at the top of any camera view opens one window you can move, resize, zoom into, pin over every screen, show full screen or save a picture from."
+      },
+      {
+        "title": "Runs only while you use it",
+        "tab": "modules",
+        "target": "#desktop-card",
+        "text": "Deja Vu1 stops 5 minutes after its last page closes and never starts with the computer, so nothing of it runs while you are not using it, except while a print is running."
+      },
+      {
+        "title": "Uses your own Snapmaker Orca",
+        "tab": "files",
+        "target": "#slice-ready",
+        "text": "A Snapmaker Orca already on this computer is found and used, so there is nothing more to install."
+      }
+    ]
+  },
   "versions": [
     {
       "version": "0.20.39",
@@ -913,7 +947,7 @@
         {
           "title": "Always there",
           "tab": "modules",
-          "target": "#da-autostart",
+          "target": "#da-autostart-note",
           "text": "Deja Vu1 starts when you sign in and after the computer wakes, with no window to keep open."
         },
         {

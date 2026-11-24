@@ -27,6 +27,7 @@ import filament_inventory
 import file_library
 import fleet
 import handoff
+import idle_stop
 import home_assistant_bridge
 import insights
 import led_status
@@ -202,7 +203,7 @@ _APP_ROUTES = {
     "/api/assistant/chats": ("ai_assistant", lambda q: ai_assistant.chats()),
     "/api/assistant/thread": ("ai_assistant", lambda q: ai_assistant.view(_q(q, "id", "online-demo"), _q(q, "since", "0"))),
     "/api/app/watch-only": (None, lambda q: watch_only.status()),
-    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "autostart": autostart.status(wait=False),
+    "/api/app/info": (None, lambda q: {**app_updates.status(), "watch_only": watch_only.status(), "server_pid": os.getpid(), "phone_address": discovery.home_address(), "port": PORT, "desktop": desktop.settings(), "idle_stop": idle_stop.status(),
                                        "launch_id": os.environ.get("DEJAVU_LAUNCH_ID", ""), "update_job": app_updates.job(),
                                        "last_update": readiness.last_update(), "launcher_version": readiness.launcher_version()}),
     "/api/app/memory": (None, lambda q: memory.status()),
@@ -239,7 +240,7 @@ _APP_ROUTES = {
     "/api/studio/palette": ("photo_studio", lambda q: photo_studio.palette()),
     "/api/slicer/settings": ("auto_print", lambda q: slicer_bridge.public_settings()),
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
-    "/api/slicer/engine": ("auto_print", lambda q: engine_installer.status()),
+    "/api/slicer/engine": ("auto_print", lambda q: dict(engine_installer.status(), own=slicer_bridge.own_engine())),
     "/api/slicer/working": ("auto_print", lambda q: slicer_working.state()),
     "/api/prints": (None, lambda q: _prints(q)),
     "/api/prints/item": (None, lambda q: _print_item(q)),
@@ -444,6 +445,20 @@ class DejaVuServer(ThreadingHTTPServer):
         if isinstance(sys.exc_info()[1], (ConnectionError, TimeoutError)):
             return
         super().handle_error(request, client_address)
+
+
+class DualStackServer(DejaVuServer):
+    """
+    The same server listening on IPv6 and IPv4 at once. A browser asked for "localhost" may try IPv6 (::1) first;
+    with the server on IPv4 alone that try has to fail before the IPv4 one is made, and Windows is slow to report
+    that failure. Listening on both answers either at once. Where the system has
+    no IPv6, or refuses one socket for both, app.py falls back to IPv4 alone, as before.
+    """
+    address_family = socket.AF_INET6
+
+    def server_bind(self):
+        self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        DejaVuServer.server_bind(self)
 
 
 WRITE_GRACE = 20               # seconds a command already on its way to a printer may finish
