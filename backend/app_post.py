@@ -14,6 +14,7 @@ import automations
 import backup
 import project_plates
 import logbook
+import print_record
 import camera
 import color_check
 import companion_sensor
@@ -514,6 +515,14 @@ class PostRoutes:
             entry = file_library.save(colour_map.mapped_name(file_library.clean_name(name)), data, origin="colours",
                                       note=f"{name} with its colours on the U1's heads ({report['summary']})")
             return self._send_json({"file": entry, "report": report})
+
+        if route in ("/api/prints/note", "/api/prints/settings", "/api/prints/forget"):
+            body = self._read_json_body()
+            if route == "/api/prints/note":
+                return self._send_json(print_record.set_note(body.get("id"), body.get("note")))
+            if route == "/api/prints/forget":
+                return self._send_json(print_record.forget(body.get("id")))
+            return self._send_json(print_record.set_settings(body.get("keep_days")))
 
         if route.startswith("/api/logbook"):
             if self._module_blocked("maintenance"):

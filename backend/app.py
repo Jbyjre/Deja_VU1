@@ -166,6 +166,11 @@ API endpoints
   POST /api/automations              add a rule {"rule": {...}}
   POST /api/automations/<id>/update | delete | test
 
+  GET  /api/prints?q=&status=        the print record: running, queued and ended prints, newest first
+  GET  /api/prints/item?id=          one print in the record
+  GET  /api/prints/picture?id=       the camera picture from the end of a print
+  POST /api/prints/note|forget       {"id", "note"} a note on a print; {"id"} remove it from the record
+  POST /api/prints/settings          {"keep_days": 30|90|365|0} how long the record is kept
   GET  /api/timelapse                recorded prints for this printer
   GET  /api/timelapse/frames?session=
   GET  /api/timelapse/printer         the printer's own recorded videos, and the copies kept here

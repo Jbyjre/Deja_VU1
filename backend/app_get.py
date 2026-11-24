@@ -17,6 +17,7 @@ import live_feed
 import mock_moonraker
 import modules
 import pairing
+import print_record
 import printer_control
 import sandbox
 import timelapse
@@ -240,6 +241,10 @@ class GetRoutes:
                 extra = {"Content-Range": headers["content-range"]} if headers.get("content-range") else None
                 return self._send_stream(status, ctype, chunks, length=headers.get("content-length"), extra=extra,
                                          filename=name if download else None)
+
+        if route == "/api/prints/picture":
+            data, ctype = print_record.picture(_q(query, "id"))
+            return self._send_bytes(data, ctype, cache=True)
 
         if route == "/api/timelapse/frame":
             if self._module_blocked("timelapse"):

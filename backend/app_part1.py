@@ -44,6 +44,7 @@ import photo_studio
 import print_gate
 import print_preview
 import print_queue
+import print_record
 import printer_control
 import process_settings
 import project_plates
@@ -240,9 +241,38 @@ _APP_ROUTES = {
     "/api/slicer/jobs": ("auto_print", lambda q: slicer_bridge.jobs()),
     "/api/slicer/engine": ("auto_print", lambda q: engine_installer.status()),
     "/api/slicer/working": ("auto_print", lambda q: slicer_working.state()),
+    "/api/prints": (None, lambda q: _prints(q)),
+    "/api/prints/item": (None, lambda q: _print_item(q)),
     "/api/tester/status": ("tester", lambda q: tester.status()),
     "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
+
+
+def _record_history(q):
+    """The printer's own job history for the print record: a real printer's outside demo mode, a simulated one's in it."""
+    demo, connected = _demo(q), mock_moonraker.is_connected()
+    if demo == connected:
+        return None
+    try:
+        return mock_moonraker.get_print_history()
+    except Exception:
+        return None
+
+
+def _prints(q):
+    """The print record (FLOW.4): running, queued and ended prints for the selected printer's view, newest first."""
+    pid = mock_moonraker.selected_printer_id()
+    out = print_record.listing(_demo(q), _q(q, "q"), _record_history(q), pid, mock_moonraker.printer_name(pid), _q(q, "status"))
+    out["queued"] = []
+    if modules.is_enabled("print_queue"):
+        out["queued"] = [{"file": i.get("filename"), "status": i.get("status"), "note": i.get("note"), "id": i.get("id")}
+                         for i in print_queue.get(pid).get("items", []) if i.get("status") in ("queued", "held")]
+    return out
+
+
+def _print_item(q):
+    pid = mock_moonraker.selected_printer_id()
+    return print_record.get(_q(q, "id"), _demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
 
 
 def _tester_study(q):
