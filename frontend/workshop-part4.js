@@ -105,6 +105,16 @@ async function openFile(name, fromEl) {
     // final on-screen position.
     if (fromEl) morph(fromEl, () => panel, () => reveal(true)); else reveal(false);
     $('fd-name').textContent = name;
+    let recallHost = $('fd-recall');
+    if (!recallHost) {
+      recallHost = document.createElement('div');
+      recallHost.id = 'fd-recall';
+      recallHost.hidden = true;
+      $('fd-sub').after(recallHost);
+    }
+    recallHost.dataset.file = name;
+    if (window.Recall && !entry.local) Recall.intoFiles(recallHost, name);   // printed before: how it went
+    else recallHost.hidden = true;
     const s = entry.summary || {};
     $('fd-sub').textContent = entry.note || ({ sample: 'Sample file', converted: 'Converted for the Snapmaker U1', edited: 'Edited here', upload: 'Uploaded' }[entry.origin] || '');
     $('fd-side').innerHTML = '<p class="log-empty">Reading the file…</p>';
@@ -588,7 +598,7 @@ async function openDiff(a, b) {
    * 7. Confirm Print gate + queue
    * ================================================================ */
 
-async function openConfirm(filename, fromEl, preloaded) {
+async function openConfirm(filename, fromEl, preloaded, opts = {}) {
     if (!liveData()) { toast('No printer connected. Turn on demo data to print on a simulated printer', 'warn'); return; }
     wsState.confirmFile = filename;
     const dialog = $('confirm-dialog');
@@ -608,6 +618,7 @@ async function openConfirm(filename, fromEl, preloaded) {
     if (wsState.confirmFile !== filename || !dialog.open) return;
     if (!gate) { $('confirm-body').innerHTML = '<p class="log-empty">Could not check this file. Try again.</p>'; return; }
     renderGate(gate);
+    if (window.Recall) Recall.intoConfirm($('confirm-body'), filename, opts.repeat);   // its history and what differs now
   }
 
 async function loadQueue() {

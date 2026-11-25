@@ -545,6 +545,7 @@
       const res = await fetch(`/api/files/raw?name=${encodeURIComponent(name)}`);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `The server said ${res.status}`);
       await addMesh(name, await res.arrayBuffer(), { sourceName: name });
+      if (window.Recall) Recall.intoSlicer(name, text => note(text, 15000));   // printed before: how it went
     } catch (e) { say(`Could not open ${name}: ${e.message}`, 'warn'); }
   }
   SL.openFromLibrary = openFromLibrary;

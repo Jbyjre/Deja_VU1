@@ -47,6 +47,7 @@ import print_preview
 import print_queue
 import print_record
 import printer_control
+import recall
 import process_settings
 import project_plates
 import qr
@@ -244,6 +245,9 @@ _APP_ROUTES = {
     "/api/slicer/working": ("auto_print", lambda q: slicer_working.state()),
     "/api/prints": (None, lambda q: _prints(q)),
     "/api/prints/item": (None, lambda q: _print_item(q)),
+    "/api/prints/recall": (None, lambda q: _recall(q, recall.about)),
+    "/api/prints/repeat": (None, lambda q: _recall(q, recall.like_last_time)),
+    "/api/prints/facts": (None, lambda q: _recall_facts(q)),
     "/api/tester/status": ("tester", lambda q: tester.status()),
     "/api/tester/study": ("tester", lambda q: _tester_study(q)),
 }
@@ -283,6 +287,18 @@ def _prints(q):
 def _print_item(q):
     pid = mock_moonraker.selected_printer_id()
     return print_record.get(_q(q, "id"), _demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
+
+
+def _recall(q, ask):
+    """RECALL.1: what the record knows about a file in Files, or the print to repeat ("print it like the time it worked")."""
+    pid = mock_moonraker.selected_printer_id()
+    return ask(_q(q, "file"), _demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
+
+
+def _recall_facts(q):
+    """RECALL.3: plain facts from the ended prints in the record, each with the prints behind it."""
+    pid = mock_moonraker.selected_printer_id()
+    return recall.facts(_demo(q), _record_history(q), pid, mock_moonraker.printer_name(pid))
 
 
 def _tester_study(q):

@@ -865,11 +865,23 @@ def _watch_log(entry):
     _watch["log"].append({"at": time.time(), **entry})
     del _watch["log"][:-30]
     if entry.get("verdict") in ("worry", "failed"):
+        _remember_on_the_print(entry)
         try:
             live_feed.publish_event({"type": "ai_watch", "printer": entry["printer"], "printer_name": entry.get("printer_name"),
                                      "verdict": entry["verdict"], "why": entry.get("why", ""), "paused": entry.get("paused")})
         except Exception:
             pass
+
+
+def _remember_on_the_print(entry):
+    """A worry or a failure is kept on the print's entry in the record, so the file's history says what the watch saw (RECALL)."""
+    try:
+        import print_record
+        with mock_moonraker.use_printer(entry["printer"]):
+            layer = (mock_moonraker.get_printer_state() or {}).get("layer")
+        print_record.add_watch_note(entry["printer"], entry.get("why"), entry.get("verdict"), layer)
+    except Exception:
+        pass
 
 
 def _snapshot():
@@ -883,9 +895,10 @@ def _watch_due(printer, state, w, now):
     """Why this printer is due a check now, or None."""
     if w["first_layer"] and printer not in _watch["first"]:
         layer, progress = state.get("layer"), state.get("progress") or 0
+        current = (layer or {}).get("current") if isinstance(layer, dict) else layer   # the printer reports {current, total}
         if progress >= 0.15:                       # joined a print already well past its first layers
             _watch["first"][printer] = now
-        elif (isinstance(layer, (int, float)) and layer >= 2) or progress >= 0.02:
+        elif (isinstance(current, (int, float)) and current >= 2) or progress >= 0.02:
             _watch["first"][printer] = now
             return "first layers"
     if now - _watch["last"].get(printer, now - 10 ** 9) >= w["minutes"] * 60:

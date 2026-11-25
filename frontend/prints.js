@@ -13,6 +13,7 @@
   const PAGE = 60;
   const WORD = { running: 'Printing', finished: 'Finished', failed: 'Failed', cancelled: 'Stopped', unknown: 'Ended', queued: 'Queued', held: 'Waiting for a clear bed' };
   let data = null, shown = PAGE, open = null, seq = 0, timer = 0;
+  let only = null;                               // { ids: Set, label }: the prints behind a fact or a file's history
 
   const stamp = iso => { if (!iso) return null; const d = new Date(iso); return isNaN(d) ? null : d; };
   const clock = iso => { const d = stamp(iso); return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''; };
@@ -84,6 +85,10 @@
         </div>
         ${vs ? `<p class="pr-vs">${esc(vs)}.</p>` : ''}
         ${p.ended_because ? `<p class="pr-why">Why it ended: ${esc(p.ended_because)}</p>` : ''}
+        ${p.layer && p.layer.current && p.status !== 'finished' && p.status !== 'running' ? `<p class="pr-why">${esc(p.layer.total
+          ? `It stopped at layer ${p.layer.current} of ${p.layer.total}.` : `It stopped at layer ${p.layer.current}.`)}</p>` : ''}
+        ${Array.isArray(p.watch) && p.watch.length ? `<p class="pr-watch-h">What the AI watch noted</p><ul class="pr-watch">${p.watch.map(w => `<li>${esc(w.layer && w.layer.current
+          ? `At layer ${w.layer.current}: ${w.why}` : w.why)}</li>`).join('')}</ul>` : ''}
         <p class="pr-span">${esc(span(p))}</p>
         ${heads ? `<ul class="pr-heads" aria-label="Filament per head">${heads}</ul>` : ''}
         ${p.from_printer ? '' : `<label class="pr-note"><span>Note</span><textarea rows="2" maxlength="1000" data-note="${esc(p.id)}" placeholder="What you changed, what worked, what to try next">${esc(p.note || '')}</textarea></label>`}
@@ -100,9 +105,16 @@
   function draw() {
     if (!data) return;
     const q = search.value.trim();
-    const now = (data.prints || []).filter(p => p.status === 'running');
-    const ended = (data.prints || []).filter(p => p.status !== 'running');
-    const queued = q ? [] : (data.queued || []);
+    const onlyBox = $('prints-only');
+    if (onlyBox) {
+      onlyBox.hidden = !only;
+      if (only) paint(onlyBox, `<p>${esc(only.ids.size === 1 ? `Showing 1 print: ${only.label}` : `Showing ${only.ids.size} prints: ${only.label}`)}</p>
+        <button class="btn small" type="button" data-all>Show every print</button>`);
+    }
+    const all = (data.prints || []).filter(p => !only || only.ids.has(p.id));
+    const now = all.filter(p => p.status === 'running');
+    const ended = all.filter(p => p.status !== 'running');
+    const queued = q || only ? [] : (data.queued || []);
     if (!now.length && !ended.length && !queued.length) {
       paint(body, `<p class="log-empty">${q ? `Nothing in the record matches “${esc(q)}”.`
         : 'No prints yet. Every print from now on is kept here from start to end, with a picture of the bed when it ends.'}</p>`);
@@ -137,6 +149,7 @@
       return;
     }
     data = res;
+    if (window.Recall) Recall.facts($('prints-facts'));
     if (keep && res.settings && document.activeElement !== keep) keep.value = String(res.settings.keep_days);
     $('prints-sub').textContent = demoOn
       ? 'Simulated prints (demo data). With a real U1 every print is kept here from start to end, on this computer.'
@@ -198,5 +211,14 @@
     if (e.detail && e.detail.type === 'print_event' && ['started', 'finished', 'failed', 'cancelled'].includes(e.detail.event)) setTimeout(load, 400);
   });
   setTimeout(load, 700);
-  window.Prints = { load, open: id => { open = id; draw(); } };
+  const onlyBox = $('prints-only');
+  if (onlyBox) onlyBox.addEventListener('click', e => { if (e.target.closest('[data-all]')) { only = null; draw(); search.focus(); } });
+  /* Show only these prints (the ones behind a fact or a file's history), with a way back to every print. */
+  function showOnly(ids, label) {
+    only = ids && ids.length ? { ids: new Set(ids), label: label || '' } : null;
+    shown = PAGE;
+    if (search.value) { search.value = ''; load(); } else if (data) draw(); else load();
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  window.Prints = { load, open: id => { open = id; draw(); }, only: showOnly };
 })();

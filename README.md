@@ -41,6 +41,11 @@ and overdue maintenance at the top.</sub>
   build volume, toolheads and temperatures (with line numbers), the colour loaded in each head,
   nozzles, spool weight, maintenance, time, grams and cost. The server checks again when you press
   Start, even from your phone, and refuses in words if something changed.
+- **It remembers what you printed.** A file that comes back to Files, Confirm Print or the Slicer says how
+  often it printed and how the last time ended, with the layer it stopped at and what the AI watch noted. Print it
+  like the time it worked runs the same G-code again, and Confirm Print says which heads hold other filament now.
+  Printer › Prints shows plain facts from your own prints, such as how often PETG finished, each with the prints behind it.
+  Files are recognised by a fingerprint worked out on your computer; nothing is sent anywhere.
 - **Watch a live 3D twin.** A model of the U1 follows the print: the head on the gantry, the bed
   dropping as layers build, the spools in their colours, and the print itself, drawn from the
   file's own G-code. One click turns it into an engineering drawing with dimensions.
@@ -240,7 +245,7 @@ cd ~/Documents/Deja_VU1 && python3 start.py --background
   the Printer page controls and the AI assistant. The assistant has also run through a paid API key.
   Not yet run there: a link that drops mid-move, two browser tabs at once, a real notification send,
   Backup restore and an update install.
-- **Automated:** 2101 tests passed on Python 3.13 (24 November 2026). GitHub Actions
+- **Automated:** 2120 tests passed on Python 3.13 (25 November 2026). GitHub Actions
   runs them on Python 3.8, 3.10, 3.12 and 3.13, and again before every release.
 - **Slicing engines run for real:** Snapmaker_Orca 02.08.01.55 and OrcaSlicer 2.4.2 on Linux, and
   Snapmaker Orca v2.4.1 on Linux and Windows.
@@ -282,7 +287,7 @@ and a bench test of a physical sensor are still to do.
 - Deja Vu1 is written with the help of an AI coding assistant,
   [Claude Code](https://claude.com/claude-code), and every change is in the public history.
 
-![By the numbers: 2101 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
+![By the numbers: 2120 automated tests, a 250 ms server loop target, 12 printers on one dashboard, 0 packages to install beyond Python, 7 maintenance tasks, 28 Home Assistant sensors, 27 printers in the farm sandbox, and the 270 mm per axis U1 build volume its files are checked against](docs/img/explainer-by-the-numbers.jpg)
 
 ## Documentation
 

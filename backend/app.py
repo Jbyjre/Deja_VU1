@@ -169,6 +169,10 @@ API endpoints
   GET  /api/prints?q=&status=        the print record: running, queued and ended prints, newest first
   GET  /api/prints/item?id=          one print in the record
   GET  /api/prints/picture?id=       the camera picture from the end of a print
+  GET  /api/prints/recall?file=      what the record knows about a file in Files: how often it printed, the last time,
+                                     the last time it worked and the last time it did not (RECALL.1)
+  GET  /api/prints/repeat?file=      the print to repeat ("print it like the time it worked") and what differs now
+  GET  /api/prints/facts             plain facts from the ended prints, each with the prints behind it (RECALL.3)
   POST /api/prints/note|forget       {"id", "note"} a note on a print; {"id"} remove it from the record
   POST /api/prints/settings          {"keep_days": 30|90|365|0} how long the record is kept
   GET  /api/timelapse                recorded prints for this printer

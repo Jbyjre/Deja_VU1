@@ -39,9 +39,10 @@ BUILD_VOLUME_MM = {"x": 270.0, "y": 270.0, "z": 270.0}
 
 
 # Names used to make the fake print history look like a real person's folder.
+# One is a sample file in Files (3dbenchy_pla.gcode), so the demo shows a file Deja Vu1 recognises from the record.
 _JOB_NAMES = [
     "bracket_v3.gcode", "phone_stand.gcode", "gridfinity_bin_2x1.gcode",
-    "hinge_test.gcode", "cable_clip_x8.gcode", "benchy.gcode",
+    "3dbenchy_pla.gcode", "cable_clip_x8.gcode", "benchy.gcode",
     "vase_spiral.gcode", "toolhead_cover.gcode", "spool_holder.gcode",
     "drawer_insert.gcode", "gopro_mount.gcode", "articulated_dragon.gcode",
     "fan_duct_r2.gcode", "keycap_set.gcode", "desk_hook.gcode",
