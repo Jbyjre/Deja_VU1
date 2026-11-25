@@ -283,7 +283,7 @@
     else if (!e.supported) html = `<p class="setup-note">${esc(e.reason || 'Deja Vu1 cannot install the engine on this computer.')} In the Slicer, “Use my own Snapmaker Orca” points it at a copy you installed yourself.</p>`;
     else {
       const failed = job && job.state === 'failed' ? `<p class="setup-note" role="alert">${esc(job.error)}</p>` : '';
-      html = `${failed}<div class="setup-choices"><button class="btn primary" type="button" id="setup-engine-go">Install the engine · ${esc((e.offer || {}).size_words || '')}</button></div>
+      html = `${failed}<div class="setup-choices"><button class="btn primary" type="button" id="setup-engine-go">${(e.offer || {}).size_words ? `Install the engine (${esc(e.offer.size_words)})` : 'Install the engine'}</button></div>
         <p class="field-hint">A download from Snapmaker’s own GitHub release, checked before it runs. Skip it and the Slicer offers it again.</p>`;
     }
     box.innerHTML = html;
@@ -412,11 +412,19 @@
   function stopWords(s) {
     if (!s) return 'Deja Vu1 stops by itself when nobody has used it for a while.';
     if (!s.started_by_launcher) return 'This copy was started by hand (python3 backend/app.py), so it runs until its window closes.';
-    if (s.busy && s.busy.length) return `Still running for ${s.busy.join(', ')}; it stops by itself ${mins(s.minutes)} after that ends and no page is open.`;
-    if (s.stops_in_seconds != null) return `No page is open, so it stops by itself in about ${mins(Math.max(1, Math.round(s.stops_in_seconds / 60)))}.`;
-    return `It stops by itself ${mins(s.minutes)} after its last page closes.`;
+    const n = s.minutes;
+    if (s.busy && s.busy.length) {
+      const what = s.busy.join(', ');
+      return n === 1 ? `Still running for ${what}; it stops by itself 1 minute after that ends and no page is open.`
+        : `Still running for ${what}; it stops by itself ${n} minutes after that ends and no page is open.`;
+    }
+    if (s.stops_in_seconds != null) {
+      const left = Math.max(1, Math.round(s.stops_in_seconds / 60));
+      return left === 1 ? 'No page is open, so it stops by itself in about a minute.'
+        : `No page is open, so it stops by itself in about ${left} minutes.`;
+    }
+    return n === 1 ? 'It stops by itself 1 minute after its last page closes.' : `It stops by itself ${n} minutes after its last page closes.`;
   }
-  function mins(n) { return `${n} minute${n === 1 ? '' : 's'}`; }
   $('da-install').onclick = () => install();
   $('da-modes').addEventListener('change', e => { if (e.target.name === 'da-mode') saveWindow(e.target.value, $('da-window-note')); });
   $('guide-replay').onclick = () => Guide.everything();

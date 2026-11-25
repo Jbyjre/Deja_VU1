@@ -51,6 +51,15 @@
       ${isOpen ? detail(p) : ''}</li>`;
   }
 
+  /* When it ran, as whole sentences so a translation can order them its own way. */
+  function span(p) {
+    const start = stamp(p.started_at) ? stamp(p.started_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    const end = p.ended_at ? clock(p.ended_at) : '';
+    const when = start && end ? `Started ${start}, ended ${end}.` : start ? `Started ${start}.` : 'Start time not recorded.';
+    if (!p.joined_late) return when;
+    return `${when} ${p.status === 'running' ? 'It was already printing when Deja Vu1 started watching.' : 'Deja Vu1 saw only the end.'}`;
+  }
+
   /* One print, opened: what it took, what it cost and what to do with it next. */
   function detail(p) {
     const diff = p.real_hours != null && p.estimated_hours ? Math.round((p.real_hours - p.estimated_hours) * 60) : null;
@@ -75,7 +84,7 @@
         </div>
         ${vs ? `<p class="pr-vs">${esc(vs)}.</p>` : ''}
         ${p.ended_because ? `<p class="pr-why">Why it ended: ${esc(p.ended_because)}</p>` : ''}
-        <p class="pr-span">${stamp(p.started_at) ? `Started ${esc(stamp(p.started_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))}` : 'Start time not recorded'}${p.ended_at ? `, ended ${esc(clock(p.ended_at))}` : ''}${p.joined_late ? (p.status === 'running' ? ' (it was already printing when Deja Vu1 started watching)' : ' (Deja Vu1 saw only the end)') : ''}.</p>
+        <p class="pr-span">${esc(span(p))}</p>
         ${heads ? `<ul class="pr-heads" aria-label="Filament per head">${heads}</ul>` : ''}
         ${p.from_printer ? '' : `<label class="pr-note"><span>Note</span><textarea rows="2" maxlength="1000" data-note="${esc(p.id)}" placeholder="What you changed, what worked, what to try next">${esc(p.note || '')}</textarea></label>`}
         <div class="pr-acts">
@@ -142,7 +151,9 @@
         && !confirm(`Keep prints for ${days} days? Prints older than that are removed from this computer now.`)) { keep.value = String(data.settings.keep_days); return; }
     const r = await postJSON('/api/prints/settings', { keep_days: days }).catch(() => null);
     if (!r || !r.ok) { toast((r && r.body && r.body.error) || 'The setting was not changed', 'bad'); return; }
-    toast(r.body.removed ? `Kept for ${days ? `${days} days` : 'always'}. ${r.body.removed} older prints removed.` : `Prints are kept ${days ? `for ${days} days` : 'always'}.`, 'ok');
+    const removed = r.body.removed;
+    toast(!days ? (removed ? `Prints are kept always. ${removed} older prints removed.` : 'Prints are kept always.')
+      : removed ? `Prints are kept for ${days} days. ${removed} older prints removed.` : `Prints are kept for ${days} days.`, 'ok');
     load();
   });
 

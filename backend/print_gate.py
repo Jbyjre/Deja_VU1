@@ -140,7 +140,7 @@ def _leftover(bed, analysis, machine):
     return {"file": name, "outcome": bed.get("outcome"), "this_box": this, "leftover_box": last, "overlaps": overlaps}
 
 
-_SLICED_FROM = re.compile(r'^Sliced from (.+?) with "')
+from print_record import _SLICED_FROM    # one pattern for the note Files keeps on a sliced file
 
 
 def _model_of(filename):
